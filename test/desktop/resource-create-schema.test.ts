@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
-  CREATE_RESOURCE_TYPES,
-  RESOURCE_CREATE_SCHEMAS,
   buildCreateRequestBody,
+  CREATE_RESOURCE_TYPES,
   fieldError,
   getResourceCreateSchema,
   initialValuesFor,
+  RESOURCE_CREATE_SCHEMAS,
   validateValues,
   valuesAreDirty,
   visibleFields,
@@ -21,6 +21,9 @@ describe("resource create schemas", () => {
       const keys = schema.fields.map((field) => field.key);
       expect(new Set(keys).size).toBe(keys.length);
     }
+    expect(Object.keys(RESOURCE_CREATE_SCHEMAS).sort()).toEqual(
+      [...CREATE_RESOURCE_TYPES].sort(),
+    );
   });
 
   test("common fields are present and correctly required", () => {
@@ -98,10 +101,12 @@ describe("form value helpers", () => {
     const spec = getResourceCreateSchema("env_var").fields.find(
       (field) => field.key === "key",
     );
-    expect(spec).toBeDefined();
-    expect(fieldError(spec!, "")).toBe("Key is required");
-    expect(fieldError(spec!, "  ")).toBe("Key is required");
-    expect(fieldError(spec!, "FOO")).toBeNull();
+    if (!spec) {
+      throw new Error("env_var key field missing");
+    }
+    expect(fieldError(spec, "")).toBe("Key is required");
+    expect(fieldError(spec, "  ")).toBe("Key is required");
+    expect(fieldError(spec, "FOO")).toBeNull();
   });
 
   test("valuesAreDirty compares against initial snapshot", () => {

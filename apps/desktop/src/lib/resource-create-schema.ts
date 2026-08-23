@@ -54,23 +54,27 @@ export interface ResourceCreateSchema {
   supportsComposition?: boolean;
 }
 
-const NAME_FIELD: CreateFieldSpec = {
-  key: "name",
-  label: "Name",
-  required: true,
-  kind: "text",
-  placeholder: "Unique name",
-  path: "name",
-};
+function nameField(): CreateFieldSpec {
+  return {
+    key: "name",
+    label: "Name",
+    required: true,
+    kind: "text",
+    placeholder: "Unique name",
+    path: "name",
+  };
+}
 
-const DESCRIPTION_FIELD: CreateFieldSpec = {
-  key: "description",
-  label: "Description",
-  required: false,
-  kind: "textarea",
-  placeholder: "Optional description",
-  path: "description",
-};
+function descriptionField(): CreateFieldSpec {
+  return {
+    key: "description",
+    label: "Description",
+    required: false,
+    kind: "textarea",
+    placeholder: "Optional description",
+    path: "description",
+  };
+}
 
 function contentField(): CreateFieldSpec {
   return {
@@ -89,27 +93,27 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
     title: "Plugin",
     description: "A versioned context package composed from library resources.",
     supportsComposition: true,
-    fields: [NAME_FIELD, DESCRIPTION_FIELD],
+    fields: [nameField(), descriptionField()],
   },
   instruction: {
     type: "instruction",
     title: "Instruction",
     description: "Standing guidance injected into the model context.",
-    fields: [NAME_FIELD, DESCRIPTION_FIELD, contentField()],
+    fields: [nameField(), descriptionField(), contentField()],
   },
   skill: {
     type: "skill",
     title: "Skill",
     description: "A reusable capability the agent can load on demand.",
-    fields: [NAME_FIELD, DESCRIPTION_FIELD, contentField()],
+    fields: [nameField(), descriptionField(), contentField()],
   },
   rule: {
     type: "rule",
     title: "Rule",
     description: "Guidance applied to prompts, optionally scoped by globs.",
     fields: [
-      NAME_FIELD,
-      DESCRIPTION_FIELD,
+      nameField(),
+      descriptionField(),
       contentField(),
       {
         key: "globs",
@@ -134,8 +138,8 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
     title: "MCP server",
     description: "A Model Context Protocol server registration.",
     fields: [
-      NAME_FIELD,
-      DESCRIPTION_FIELD,
+      nameField(),
+      descriptionField(),
       {
         key: "transport",
         label: "Transport",
@@ -182,8 +186,8 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
     title: "Permission",
     description: "An allow, deny, or ask rule for tool usage patterns.",
     fields: [
-      NAME_FIELD,
-      DESCRIPTION_FIELD,
+      nameField(),
+      descriptionField(),
       {
         key: "action",
         label: "Action",
@@ -211,8 +215,8 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
     title: "Hook",
     description: "A command triggered by a harness lifecycle event.",
     fields: [
-      NAME_FIELD,
-      DESCRIPTION_FIELD,
+      nameField(),
+      descriptionField(),
       {
         key: "event",
         label: "Event",
@@ -252,8 +256,8 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
     title: "Agent",
     description: "A subagent definition with optional model settings.",
     fields: [
-      NAME_FIELD,
-      DESCRIPTION_FIELD,
+      nameField(),
+      descriptionField(),
       contentField(),
       {
         key: "model",
@@ -282,15 +286,15 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
     type: "command",
     title: "Command",
     description: "A slash-command prompt template.",
-    fields: [NAME_FIELD, DESCRIPTION_FIELD, contentField()],
+    fields: [nameField(), descriptionField(), contentField()],
   },
   env_var: {
     type: "env_var",
     title: "Environment variable",
     description: "A single environment variable entry.",
     fields: [
-      NAME_FIELD,
-      DESCRIPTION_FIELD,
+      nameField(),
+      descriptionField(),
       {
         key: "key",
         label: "Key",
@@ -314,8 +318,8 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
     title: "Model config",
     description: "A named model and provider configuration.",
     fields: [
-      NAME_FIELD,
-      DESCRIPTION_FIELD,
+      nameField(),
+      descriptionField(),
       {
         key: "model",
         label: "Model",
@@ -456,9 +460,7 @@ export function buildCreateRequestBody(
       coerced = trimmed;
     }
 
-    if (spec.path.startsWith("metadata.")) {
-      metadata[spec.path.slice("metadata.".length)] = coerced;
-    } else if (spec.path === "name") {
+    if (spec.path === "name") {
       name = String(coerced);
     } else if (spec.path === "description") {
       if (coerced) {
@@ -466,17 +468,20 @@ export function buildCreateRequestBody(
       }
     } else if (spec.path === "content") {
       content = String(coerced);
-    } else {
-      const neverPath: never = spec.path;
-      void neverPath;
+    } else if (spec.path.startsWith("metadata.")) {
+      metadata[spec.path.slice("metadata.".length)] = coerced;
     }
   }
 
-  return {
-    type: schema.type,
-    ...(name ? { name } : {}),
-    ...(description !== undefined ? { description } : {}),
-    ...(content !== undefined ? { content } : {}),
-    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
-  };
+  const body: CreateResourceRequestBody = { type: schema.type, name };
+  if (description !== undefined) {
+    body.description = description;
+  }
+  if (content !== undefined) {
+    body.content = content;
+  }
+  if (Object.keys(metadata).length > 0) {
+    body.metadata = metadata;
+  }
+  return body;
 }
