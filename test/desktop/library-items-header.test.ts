@@ -46,7 +46,7 @@ const headerRow = sliceBetween(
 );
 
 describe("library items header actions", () => {
-  test("clusters Create plugin, Import, and Tracked directories instead of spreading them as siblings", () => {
+  test("clusters Create resource, Import, and Tracked directories instead of spreading them as siblings", () => {
     expect(headerRow).toContain('className="resources-panel-header-actions"');
     const clusterIdx = headerRow.indexOf("resources-panel-header-actions");
     const createIdx = headerRow.indexOf('className="btn primary"');
@@ -148,7 +148,7 @@ describe("library items header action styles", () => {
 
 describe("library items header design lock", () => {
   test("documents the Library header action cluster", () => {
-    expect(designSource).toContain("**Create plugin** (accent");
+    expect(designSource).toContain("**Create resource** (accent");
     expect(designSource).toContain("Header cluster");
   });
 
@@ -160,7 +160,7 @@ describe("library items header design lock", () => {
 
   test("documents unified library list and detail", () => {
     expect(designSource).toContain("No Items/Packages tabs");
-    expect(designSource).toContain("Create plugin (accent primary");
+    expect(designSource).toContain("Create resource (accent primary");
     expect(designSource).toContain("Sync on a library row is `resource sync`");
     expect(designSource).toContain("plugin ref");
     expect(designSource).toContain(
