@@ -290,7 +290,7 @@ Manage HarnessTap Cloud authentication and cloud account state.
 - `auth login --base-url <url>`
 - `auth status --account <name> --format json`
 - `auth orgs --switch <slug>`
-- `auth orgs --format json` — when not logged in, prints `[]` and warns (same as human mode)
+- `auth orgs --format json` — when not logged in, prints `[]` on stdout and warns on stderr (human mode warns on stdout)
 - `auth logout --account <name>`
 
 Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands.

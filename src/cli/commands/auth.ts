@@ -15,6 +15,7 @@ import {
   requestDeviceCode,
 } from "../../services/cloud-client.js";
 import { ui } from "../../ui/index.js";
+import { renderWarn } from "../../ui/status.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
 
@@ -84,11 +85,12 @@ async function handleCloudOrgsCommand(
   const format = parseOutputFormat(opts.format);
   const created = await createPersistingCloudClient(opts.account);
   if (!created) {
-    ui.warn("Not authenticated to cloud.");
     if (format === "json") {
+      console.error(renderWarn("Not authenticated to cloud."));
       printJson([]);
       return;
     }
+    ui.warn("Not authenticated to cloud.");
     return;
   }
   try {
