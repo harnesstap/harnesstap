@@ -1,3 +1,3 @@
 kind: Features
-body: Add a Settings Advanced action to convert apply-order dependence into resource overrides via the agent.
+body: Add a Settings Advanced check that pins last-applied resource winners as overrides when current resolution would pick a different plugin.
 time: 2026-08-12T12:00:00Z

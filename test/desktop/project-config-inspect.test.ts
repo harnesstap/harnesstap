@@ -95,8 +95,50 @@ describe("settings project config picker", () => {
   });
 
   test("DESIGN.md locks a Project tab directory picker", () => {
-    expect(designSource).toContain(
-      "Project tab uses the project directory picker",
-    );
+    expect(designSource).toContain("Project tab is inspect-only");
+    expect(designSource).toContain("project directory picker");
+  });
+});
+
+describe("settings project config inspect surface", () => {
+  test("DESIGN.md locks inspect-only Project tab", () => {
+    expect(designSource).toContain("Project tab is inspect-only");
+    expect(designSource).toContain("Open config");
+    expect(designSource).toContain("profile definition list");
+  });
+
+  test("does not dump config path, root, or zero counts", () => {
+    expect(inspectSource).not.toContain('<dd className="mono">{config.config_path}</dd>');
+    expect(inspectSource).not.toContain('<dd className="mono">{config.root_path}</dd>');
+    expect(inspectSource).not.toContain("environment_count");
+    expect(inspectSource).not.toContain("plugin_count");
+    expect(inspectSource).not.toContain("<dt>Config</dt>");
+    expect(inspectSource).not.toContain("<dt>Root</dt>");
+    expect(inspectSource).not.toContain("<dt>Default profile</dt>");
+    expect(inspectSource).not.toContain("<dt>Environments</dt>");
+    expect(inspectSource).not.toContain("<dt>Inline plugins</dt>");
+  });
+
+  test("does not celebrate valid config", () => {
+    expect(inspectSource).not.toContain("Config is valid.");
+  });
+
+  test("opens config via labeled button and openResourcePath", () => {
+    expect(inspectSource).toContain("Open config");
+    expect(inspectSource).toContain('className="btn"');
+    expect(inspectSource).toContain("openResourcePath");
+    expect(inspectSource).toContain("config_path");
+  });
+
+  test("marks default profile with a badge not an asterisk", () => {
+    expect(inspectSource).toContain('className="badge"');
+    expect(inspectSource).toContain(">default<");
+    expect(inspectSource).not.toContain('" *"');
+  });
+
+  test("lists profiles as definition lists not a table", () => {
+    expect(inspectSource).toContain("harness-block");
+    expect(inspectSource).toContain("resource-detail-kv");
+    expect(inspectSource).not.toContain("<table");
   });
 });

@@ -26,7 +26,7 @@ export async function postMigrateResolveOrder(
   if (!response.ok) {
     return throwAgentError(
       response,
-      "Could not convert apply-order to overrides.",
+      "Could not compare last applied winners to current resolution.",
     );
   }
   return (await response.json()) as OrderMigrationReport;

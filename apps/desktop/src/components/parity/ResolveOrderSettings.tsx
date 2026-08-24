@@ -22,6 +22,16 @@ function projectCountLabel(count: number): string {
   return `${count} project${count === 1 ? "" : "s"}`;
 }
 
+function previewSummary(report: OrderMigrationReport): string {
+  if (report.overridesWritten.length > 0) {
+    return `${overrideCountLabel(report.overridesWritten.length)} would pin last-applied winners across ${projectCountLabel(report.projectsWithSnapshot)} with snapshots.`;
+  }
+  if (report.projectsWithSnapshot > 0) {
+    return "Last applied winners already match current resolution. No overrides to write.";
+  }
+  return "No apply snapshots to compare. This only pins winners from a recorded project apply.";
+}
+
 export function ResolveOrderSettings({
   baseUrl,
   token,
@@ -65,11 +75,11 @@ export function ResolveOrderSettings({
   );
 
   const controlsDisabled = disabled || !baseUrl || previewing || writing;
-  const canWrite =
-    previewed && (report?.overridesWritten.length ?? 0) > 0 && !controlsDisabled;
+  const pendingOverrideCount = report?.overridesWritten.length ?? 0;
+  const canWrite = previewed && pendingOverrideCount > 0 && !controlsDisabled;
 
-  const runPreview = async () => {
-    if (!baseUrl || controlsDisabled) return;
+  const runPreview = useCallback(async () => {
+    if (!baseUrl || disabled) return;
     const generation = ++generationRef.current;
     setPreviewing(true);
     setError(null);
@@ -87,7 +97,7 @@ export function ResolveOrderSettings({
       setError(
         errorMessage(
           previewError,
-          "Could not convert apply-order to overrides.",
+          "Could not compare last applied winners to current resolution.",
         ),
       );
     } finally {
@@ -95,7 +105,12 @@ export function ResolveOrderSettings({
         setPreviewing(false);
       }
     }
-  };
+  }, [baseUrl, token, disabled, clearSuccessTimer]);
+
+  useEffect(() => {
+    if (!baseUrl || disabled) return;
+    void runPreview();
+  }, [baseUrl, disabled, runPreview]);
 
   const runWrite = async () => {
     if (!baseUrl || writing) return;
@@ -111,7 +126,7 @@ export function ResolveOrderSettings({
       setPreviewed(true);
       setConfirmOpen(false);
       flashSuccess(
-        `Migrated ordering to overrides · ${overrideCountLabel(next.overridesWritten.length)} across ${projectCountLabel(next.projectsWithSnapshot)}`,
+        `Wrote ${overrideCountLabel(next.overridesWritten.length)} across ${projectCountLabel(next.projectsWithSnapshot)}`,
       );
       onSaved?.();
     } catch (writeError) {
@@ -120,7 +135,7 @@ export function ResolveOrderSettings({
       setError(
         errorMessage(
           writeError,
-          "Could not convert apply-order to overrides.",
+          "Could not write resource overrides.",
         ),
       );
     } finally {
@@ -136,12 +151,14 @@ export function ResolveOrderSettings({
       data-testid="resolve-order-settings"
     >
       <h3>Advanced</h3>
-      <h4>Convert apply-order to overrides</h4>
+      <h4>Preserve last applied winners</h4>
       <p className="field-note muted">
-        After nearest-wins resolution, previously applied plugin results can
-        shift. This writes explicit resource overrides so those results stay
-        the same. Preview first. This does not export or import files, and it
-        does not re-apply profiles.
+        When two plugins provide the same resource, apply prefers the plugin
+        closer to the one you applied. Older applies used last-in-stack instead.
+        This compares recorded project apply snapshots to current resolution
+        and can write resource overrides so those older winners stay. It only
+        updates plugin override records — harness files are unchanged until
+        you apply again.
       </p>
       {error ? (
         <div className="banner error" role="alert">
@@ -158,26 +175,19 @@ export function ResolveOrderSettings({
           {warning}
         </div>
       ))}
-      {previewed && report && report.overridesWritten.length === 0 ? (
-        <p className="muted">
-          No overrides needed. Previously applied winners already match current
-          resolution.
+      {previewed && report ? (
+        <p className="muted" data-testid="resolve-order-summary">
+          {previewSummary(report)}
         </p>
       ) : null}
       {previewed && report && report.overridesWritten.length > 0 ? (
-        <>
-          <p>
-            {overrideCountLabel(report.overridesWritten.length)} across{" "}
-            {projectCountLabel(report.projectsWithSnapshot)} with snapshots
-          </p>
-          <ul>
-            {report.overridesWritten.map((row) => (
-              <li key={`${row.root}:${row.key}:${row.winner}`}>
-                {row.root} · {row.key} → {row.winner}
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul>
+          {report.overridesWritten.map((row) => (
+            <li key={`${row.root}:${row.key}:${row.winner}`}>
+              {row.root} · {row.key} → {row.winner}
+            </li>
+          ))}
+        </ul>
       ) : null}
       <div className="dialog-actions">
         <button
@@ -189,26 +199,28 @@ export function ResolveOrderSettings({
           aria-busy={previewing}
         >
           {previewing ? <ButtonSpinner size={16} /> : null}
-          {previewing ? "Previewing…" : "Preview"}
+          {previewing ? "Checking…" : "Check again"}
         </button>
-        <button
-          className={["btn", "primary", writing ? "is-busy" : ""]
-            .filter(Boolean)
-            .join(" ")}
-          type="button"
-          data-testid="resolve-order-write"
-          onClick={() => setConfirmOpen(true)}
-          disabled={!canWrite}
-          aria-busy={writing}
-        >
-          {writing ? <ButtonSpinner size={16} /> : null}
-          {writing ? "Writing…" : "Write overrides"}
-        </button>
+        {previewed && pendingOverrideCount > 0 ? (
+          <button
+            className={["btn", "primary", writing ? "is-busy" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            data-testid="resolve-order-write"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!canWrite}
+            aria-busy={writing}
+          >
+            {writing ? <ButtonSpinner size={16} /> : null}
+            {writing ? "Writing…" : "Write overrides"}
+          </button>
+        ) : null}
       </div>
       <ConfirmDialog
         open={confirmOpen}
         title="Write resource overrides?"
-        description="This writes explicit resource overrides on plugin roots so previously applied results keep winning. It does not re-apply profiles or change live harness files."
+        description="This pins last-applied winners on plugin roots where current resolution would pick a different plugin. Harness files are not rewritten until you apply again."
         confirmLabel="Write overrides"
         cancelLabel="Cancel"
         confirmBusy={writing}

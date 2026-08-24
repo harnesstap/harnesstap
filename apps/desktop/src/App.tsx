@@ -1886,13 +1886,14 @@ export function App() {
             </button>
             <button
               type="button"
-              className={`header-focus-btn${workspaceFocus === "sources" ? " on" : ""}`}
+              className={`header-focus-btn labeled${workspaceFocus === "sources" ? " on" : ""}`}
               onClick={() => onHeaderDestinationClick("sources")}
               disabled={switching}
               aria-label="Sources"
               title="Sources"
             >
               <PackageSearch size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+              Sources
             </button>
             <ParityChrome
               workspaceFocus={workspaceFocus}

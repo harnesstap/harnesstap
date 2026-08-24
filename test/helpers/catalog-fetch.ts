@@ -62,6 +62,8 @@ export function createCatalogFetchMock(input?: {
   baseUrl?: string;
   failOrgFilters?: string[];
   pageDelayMs?: number;
+  packageStatus?: number;
+  yankReason?: string | null;
 }) {
   const baseUrl = (input?.baseUrl ?? DEFAULT_CLOUD_BASE_URL).replace(/\/+$/, "");
   const plugins = (input?.plugins ?? [{
@@ -169,6 +171,18 @@ export function createCatalogFetchMock(input?: {
       /\/api\/public\/.+\/versions\/.+\/package/.test(url)
       || /\/api\/catalog\/.+\/versions\/.+\/package/.test(url)
     ) {
+      if (input?.packageStatus === 410) {
+        const payload = { error: "yanked", reason: input.yankReason ?? null };
+        return {
+          ok: false,
+          status: 410,
+          clone() {
+            return this;
+          },
+          json: async () => payload,
+          text: async () => JSON.stringify(payload),
+        };
+      }
       const body = packageBodyForUrl(url, input?.packages, bundle);
       return { ok: true, status: 200, text: async () => body };
     }

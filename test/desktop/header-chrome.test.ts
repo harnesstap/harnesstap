@@ -117,8 +117,9 @@ describe("desktop header chrome", () => {
     expect(paritySource).toContain('aria-label="Environments"');
   });
 
-  test("labels header destinations Library, Environments, Global, and Project", () => {
+  test("labels header destinations Library, Sources, Environments, Global, and Project", () => {
     expect(appSource).toMatch(/<Library[\s\S]*\/>\s*Library\s*</);
+    expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*Sources\s*</);
     expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*Environments\s*</);
     expect(appSource).toMatch(/<Globe[\s\S]*\/>\s*Global\s*</);
     expect(appSource).toMatch(/<FolderGit2[\s\S]*\/>\s*Project\s*</);

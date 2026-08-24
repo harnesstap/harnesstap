@@ -34,6 +34,11 @@ export function normalizeCatalogPlugin(
   };
 }
 
+/** Catalog rows with no installable (non-yanked) version are omitted from pull/list. */
+export function isCatalogPluginInstallable(plugin: CatalogPlugin): boolean {
+  return Boolean(plugin.latestVersion);
+}
+
 export interface CatalogListResult {
   plugins: CatalogPlugin[];
   nextCursor: string | null;

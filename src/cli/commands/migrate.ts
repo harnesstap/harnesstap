@@ -193,12 +193,21 @@ function printMigrateResolveOrderHuman(
   report: OrderMigrationReport,
   dryRun: boolean,
 ): void {
-  const overrideCount = formatCount(report.overridesWritten.length, "override");
-  const projectCount = formatCount(report.projectsWithSnapshot, "project");
   const dryRunSuffix = dryRun ? ` ${ui.icons.bullet} dry-run` : "";
-  ui.success(
-    `Migrated ordering → overrides ${ui.icons.bullet} ${overrideCount} across ${projectCount}${dryRunSuffix}`,
-  );
+  if (report.overridesWritten.length === 0) {
+    const aligned =
+      report.projectsWithSnapshot > 0
+        ? "Last applied winners already match current resolution. No overrides to write"
+        : "No apply snapshots to compare. No overrides to write";
+    ui.success(`${aligned}${dryRunSuffix}`);
+  } else {
+    const overrideCount = formatCount(report.overridesWritten.length, "override");
+    const projectCount = formatCount(report.projectsWithSnapshot, "project");
+    const verb = dryRun ? "Would write" : "Wrote";
+    ui.success(
+      `${verb} ${overrideCount} across ${projectCount}${dryRunSuffix}`,
+    );
+  }
   for (const warning of report.warnings) {
     ui.warn(warning);
   }
@@ -271,7 +280,7 @@ export function registerMigrateCommands(root: Command): void {
     .option("--dry-run", "Report what would be written without writing")
     .option("--format <mode>", "Output format: human or json", "human")
     .description(
-      "Convert apply-order dependence into explicit overrides so previously applied results reproduce",
+      "Pin last-applied resource winners as overrides where current resolution would pick a different plugin",
     )
     .action(handleMigrateResolveOrderCommand);
 }

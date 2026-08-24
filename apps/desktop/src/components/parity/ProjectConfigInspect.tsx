@@ -5,6 +5,7 @@ import {
   type ProjectConfigInspectPayload,
   type ProjectConfigProfile,
 } from "../../lib/api/project-config";
+import { openResourcePath } from "../../lib/agent-client";
 import { ProjectPicker } from "../ProjectPicker";
 
 export interface ProjectConfigInspectProps {
@@ -46,6 +47,8 @@ export function ProjectConfigInspect({
 }: ProjectConfigInspectProps) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
   const [payload, setPayload] = useState<ProjectConfigInspectPayload | null>(null);
 
   useEffect(() => {
@@ -55,6 +58,7 @@ export function ProjectConfigInspect({
     if (!projectPath || !baseUrl) {
       setPayload(null);
       setLoadError(null);
+      setOpenError(null);
       setLoading(false);
       return;
     }
@@ -62,6 +66,7 @@ export function ProjectConfigInspect({
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
+    setOpenError(null);
     void fetchProjectConfig(baseUrl, token, projectPath)
       .then((next) => {
         if (cancelled) return;
@@ -84,6 +89,22 @@ export function ProjectConfigInspect({
   const config = payload?.config;
   const validation = payload?.validation;
   const profiles = config?.profiles ?? [];
+  const canOpen = Boolean(baseUrl && config && !disabled && !opening);
+
+  async function handleOpenConfig(): Promise<void> {
+    if (!baseUrl || !config || opening) {
+      return;
+    }
+    setOpening(true);
+    setOpenError(null);
+    try {
+      await openResourcePath(baseUrl, token, { path: config.config_path });
+    } catch (error: unknown) {
+      setOpenError(errorMessage(error, "Could not open file in editor"));
+    } finally {
+      setOpening(false);
+    }
+  }
 
   return (
     <section className="settings-section" data-testid="project-config-inspect">
@@ -102,78 +123,65 @@ export function ProjectConfigInspect({
         <p className="muted">Select a project to inspect its config.</p>
       ) : loading ? (
         <p className="muted">Loading project config…</p>
-      ) : loadError ? (
+      ) : null}
+      {loadError ?? openError ? (
         <div className="banner error" role="alert">
-          {loadError}
+          {loadError ?? openError}
         </div>
-      ) : config ? (
+      ) : null}
+      {config && !loading ? (
         <>
-          <dl className="resource-detail-kv">
-            <div>
-              <dt>Config</dt>
-              <dd className="mono">{config.config_path}</dd>
-            </div>
-            <div>
-              <dt>Root</dt>
-              <dd className="mono">{config.root_path}</dd>
-            </div>
-            {config.default_profile ? (
-              <div>
-                <dt>Default profile</dt>
-                <dd>{config.default_profile}</dd>
-              </div>
-            ) : null}
-            {config.default_environment ? (
-              <div>
-                <dt>Default environment</dt>
-                <dd>{config.default_environment}</dd>
-              </div>
-            ) : null}
-            <div>
-              <dt>Environments</dt>
-              <dd>{config.environment_count}</dd>
-            </div>
-            <div>
-              <dt>Inline plugins</dt>
-              <dd>{config.plugin_count}</dd>
-            </div>
-          </dl>
+          <div className="project-config-actions">
+            <button
+              type="button"
+              className="btn"
+              disabled={!canOpen}
+              onClick={() => void handleOpenConfig()}
+            >
+              Open config
+            </button>
+          </div>
           {profiles.length === 0 ? (
             <p className="muted">No profiles configured.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th>Profile</th>
-                  <th>Source</th>
-                  <th>Selector/plugin</th>
-                  <th>Environment</th>
-                </tr>
-              </thead>
-              <tbody>
-                {profiles.map((profile) => (
-                  <tr key={profile.name}>
-                    <td>
-                      {profile.name}
-                      {profile.name === config.default_profile ? " *" : ""}
-                    </td>
-                    <td>{profile.source}</td>
-                    <td>{profileTarget(profile)}</td>
-                    <td>{profile.environment ?? config.default_environment ?? ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            profiles.map((profile) => {
+              const environment =
+                profile.environment ?? config.default_environment ?? "";
+              return (
+                <article className="harness-block" key={profile.name}>
+                  <h4 className="harness-header">
+                    {profile.name}
+                    {profile.name === config.default_profile ? (
+                      <span className="badge">default</span>
+                    ) : null}
+                  </h4>
+                  <dl className="resource-detail-kv">
+                    <div>
+                      <dt>Source</dt>
+                      <dd>{profile.source}</dd>
+                    </div>
+                    <div>
+                      <dt>Selector/plugin</dt>
+                      <dd>{profileTarget(profile)}</dd>
+                    </div>
+                    {environment ? (
+                      <div>
+                        <dt>Environment</dt>
+                        <dd>{environment}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </article>
+              );
+            })
           )}
-          {validation?.valid ? (
-            <p className="muted">Config is valid.</p>
-          ) : (
+          {validation && !validation.valid ? (
             <div className="banner error" role="alert">
-              {(validation?.errors ?? []).map((item) => (
+              {validation.errors.map((item) => (
                 <div key={item}>{item}</div>
               ))}
             </div>
-          )}
+          ) : null}
         </>
       ) : null}
     </section>

@@ -314,7 +314,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `plugin rollback` | Copies a frozen `--to` version onto the working head (same semver, `dirty: true`). Authored only. TTY confirms; non-interactive requires `--yes`. Does not apply. |
 | `plugin delete` | Deletes a plugin by selector. |
 | `apply` | Applies plugin selectors, bundle paths, or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
-| `plugin pull` | Downloads a published plugin and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). |
+| `plugin pull` | Downloads a published plugin and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Yanked pins fail with a yanked error (Cloud 410); plugins with no installable version are omitted from `plugin list --search`. |
 | `plugin publish` | Publishes a local plugin to effective publish targets (all registered catalogs, or per-plugin allow list). Refuses dirty heads unless `--version` cuts first. One-off `org/catalog` override supported. |
 | `plugin publish plan` | Dry-run publish: effective targets and planned versions per catalog. |
 | `plugin catalog` | Interactive wizard for per-plugin publish bindings. |

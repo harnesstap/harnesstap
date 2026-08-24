@@ -3816,6 +3816,11 @@ button:focus-visible,
   width: 100%;
 }
 
+.settings-section .project-config-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
 .settings-tabs {
   display: flex;
   flex-wrap: wrap;

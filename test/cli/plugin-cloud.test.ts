@@ -977,6 +977,34 @@ describe("CLI cloud plugin workflows", () => {
     }
   });
 
+  it("plugin pull reports yanked versions from Cloud 410", async () => {
+    const context = await createTestContext("cli-plugin-pull-yanked");
+    try {
+      await runCli(["init"]);
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://cloud.harnesstap.com",
+        packageStatus: 410,
+        yankReason: "broken release",
+      });
+
+      const result = await runCli([
+        "plugin",
+        "pull",
+        "harnesstap-cloud/default/team@1.0.0",
+        "--as",
+        "yanked-team",
+      ]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain("yanked");
+      expect(result.stderr).toContain("broken release");
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("plugin catalog connect org expands the saved catalog scope", async () => {
     const context = await createTestContext("cli-plugin-catalog-connect-org");
     try {

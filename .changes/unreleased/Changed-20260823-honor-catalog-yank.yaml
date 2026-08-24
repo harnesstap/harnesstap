@@ -1,0 +1,3 @@
+kind: Changed
+body: plugin list --search omits catalog plugins with no installable version, and plugin pull reports yanked pins from Cloud 410 instead of a generic download failure
+time: 2026-08-23T15:40:00Z

@@ -496,7 +496,7 @@ For multiplayer distribution, use `plugin publish` / `plugin pull` via HarnessTa
 
 - `migrate export [file]` — export workspace, plugin, or resource as an Agent Plugins package (or workspace archive); interactive when `[file]` omitted on a TTY
 - `migrate import [file]` — import a package directory, `.ap.json` envelope, or `.tar.gz` workspace archive (auto-detects scope)
-- `migrate resolve-order` — convert apply-order dependence into explicit resource overrides so previously applied results reproduce under graph resolution
+- `migrate resolve-order` — pin last-applied resource winners as overrides where current resolution would pick a different plugin
 
 ### Important options
 

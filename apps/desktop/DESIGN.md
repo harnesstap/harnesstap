@@ -36,7 +36,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Labeled `btn primary` for the one accent action in a cluster; labeled `btn` for secondary. Icon-only is for header and rail chrome (workspace back, refresh, settings, History), never for Library, Sources, or Environments record actions. Header destinations show icon plus name.
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons.
 - Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, history, and resource inspect. Back (top left) and Esc leave the panel. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. The Library create-resource type picker is a centered dialog. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
-- Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab uses the project directory picker (recent + Browse) to inspect `.harnesstap/config.toml`. Marketplaces and catalogs are managed in Sources, not Settings.
+- Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab is inspect-only: project directory picker (recent + Browse), labeled Open config, profile definition list, validation/load errors only. It inspects `.harnesstap/config.toml`. Marketplaces and catalogs are managed in Sources, not Settings.
 
 ## Layout
 

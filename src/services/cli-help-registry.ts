@@ -497,7 +497,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "migrate.resolve-order": {
     description:
-      "Convert apply-order dependence into explicit overrides so previously applied results reproduce",
+      "Pin last-applied resource winners as overrides where current resolution would pick a different plugin",
     examples: [
       "migrate resolve-order",
       "migrate resolve-order --dry-run",

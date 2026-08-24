@@ -9,6 +9,7 @@ import {
   forceRefreshCloudAccountAccess,
 } from "./cloud-account-auth.js";
 import {
+  isCatalogPluginInstallable,
   normalizeCatalogPlugin,
   type CatalogPlugin,
   type CatalogListOptions,
@@ -19,6 +20,7 @@ import {
   formatPublishedSelector,
   parsePluginSelector,
 } from "./plugin-selector.js";
+import { throwIfCatalogPackageYanked } from "./catalog-package-errors.js";
 import { parseApEnvelope } from "./agent-plugins/envelope.js";
 import type { ApPackageFiles } from "./agent-plugins/files.js";
 import { AP_PACKAGE_MEDIA_TYPE, cloudFetch } from "./cloud-api-version.js";
@@ -80,10 +82,14 @@ function sortCatalogPlugins(
   return sorted;
 }
 
+export { CatalogPluginYankedError } from "./catalog-package-errors.js";
+
 function normalizeListResult(result: CatalogListResult): CatalogListResult {
   return {
     ...result,
-    plugins: result.plugins.map((plugin) => normalizeCatalogPlugin(plugin)),
+    plugins: result.plugins
+      .map((plugin) => normalizeCatalogPlugin(plugin))
+      .filter((plugin) => isCatalogPluginInstallable(plugin)),
   };
 }
 
@@ -317,6 +323,7 @@ export async function downloadCatalogPackage(input: {
         response = await downloadOnce(refreshed.accessToken);
       }
     }
+    await throwIfCatalogPackageYanked(response, `${input.orgSlug}/${catalogSlug}/${input.pluginSlug}@${version}`);
     if (response.ok) {
       return {
         version,
