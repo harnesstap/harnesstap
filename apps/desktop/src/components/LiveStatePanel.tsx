@@ -21,7 +21,6 @@ import {
   groupFileChangesByResource,
   orderedTypeCounts,
   summarizeStackChanges,
-  typeCountsFromItems,
   type ContentsDiffItem,
   type FileChangeKind,
   type FileChangeResourceGroup,
@@ -30,6 +29,10 @@ import {
   type StackChangeTone,
 } from "../lib/contents-diff";
 import { fileChangeRowActions } from "../lib/file-change-actions";
+import {
+  profileStackHasList,
+  resolveProfileResourceStack,
+} from "../lib/profile-resource-stack";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
   hoverModelFromContentsDiffItem,
@@ -586,14 +589,6 @@ function EnabledPluginGroup({
   );
 }
 
-function pluginIdentityKey(plugin: {
-  id: string;
-  name: string;
-  version: string;
-}): string {
-  return `plugin:${plugin.id}:${plugin.name}@${plugin.version}`;
-}
-
 function pinIdentityKey(pin: { ref: string }): string {
   return `pin:${pin.ref}`;
 }
@@ -1125,13 +1120,19 @@ function FileChangeRows({
   );
 }
 
-function allItemsFromContents(
-  contents: ProfileContents | null | undefined,
-): ContentsDiffItem[] {
-  return diffProfileContents(contents, null).added.map((item) => ({
-    ...item,
-    kind: "unchanged" as const,
-  }));
+function contentsResourceAsItem(
+  resource: ProfileContentsResource,
+): ContentsDiffItem {
+  return {
+    key: `resource:${resource.type}:${resource.name}`,
+    kind: "unchanged",
+    category: "resource",
+    iconType: resource.type,
+    label: resource.name,
+    detail: resource.type.replaceAll("_", " "),
+    path: resource.source,
+    selector: resource.id ?? `${resource.type}:${resource.name}`,
+  };
 }
 
 function expandRecoveryActions(actions: RecoveryAction[]): RecoveryAction[] {
@@ -1193,7 +1194,9 @@ export interface LiveStatePanelProps {
   onCreateProfileFromProject?: () => void;
   onEditProfile?: () => void;
   onAddResource?: (resource: ProfileContentsResource) => Promise<void>;
+  onAddAllResources?: () => Promise<void>;
   addingResourceKey?: string | null;
+  addingAllResources?: boolean;
   onCommitManagedChanges?: () => Promise<void>;
   committingManagedChanges?: boolean;
   onOpenResourceInEditor?: (resource: ProfileContentsResource) => Promise<void>;
@@ -1238,7 +1241,9 @@ export function LiveStatePanel({
   onCreateProfileFromProject,
   onEditProfile,
   onAddResource,
+  onAddAllResources,
   addingResourceKey = null,
+  addingAllResources = false,
   onCommitManagedChanges,
   committingManagedChanges = false,
   onOpenResourceInEditor,
@@ -1289,27 +1294,19 @@ export function LiveStatePanel({
     && applyPreview?.profile === selectedProfile
     && !applyPreviewLoading;
   const diff = diffProfileContents(targetContents, liveContents);
-
-  // Until apply-preview resolves for the selected profile, diffing against a null
-  // target would blank the stack — keep showing live contents while loading.
-  const useLiveEnabledStack =
-    !selectedProfile || relativeToActive || !previewMatchesSelection;
-
-  const enabledItems = useLiveEnabledStack
-    ? allItemsFromContents(liveContents)
-    : diff.unchanged;
-
-  const enabledKeys = new Set(enabledItems.map((item) => item.key));
-  const enabledSourceContents = useLiveEnabledStack ? liveContents : targetContents;
-  const enabledPlugins = (enabledSourceContents?.plugins ?? []).filter((plugin) =>
-    enabledKeys.has(pluginIdentityKey(plugin)),
-  );
-  const enabledPins = (enabledSourceContents?.plugin_pins ?? []).filter((pin) =>
-    enabledKeys.has(pinIdentityKey(pin)),
-  );
-  const hasEnabledList = enabledPlugins.length > 0 || enabledPins.length > 0;
+  const resourceStack = resolveProfileResourceStack({
+    selectedProfile,
+    activeProfile,
+    relativeToActive,
+    previewMatchesSelection,
+    liveContents,
+    targetContents,
+  });
+  const enabledSourceContents = resourceStack.contents;
+  const enabledPlugins = enabledSourceContents?.plugins ?? [];
+  const enabledPins = enabledSourceContents?.plugin_pins ?? [];
   const profileStackEmpty =
-    previewMatchesSelection && (enabledItems.length === 0 || !hasEnabledList);
+    resourceStack.kind !== "loading" && !profileStackHasList(enabledSourceContents);
 
   const profileNameForActions = selectedProfile ?? activeProfile;
 
@@ -1445,18 +1442,47 @@ export function LiveStatePanel({
         >
           <summary className="contents-header">
             <span>Profile resources</span>
+            {selectedProfile && notStagedResources.length > 0 ? (
+              <span className="contents-header-toolbar">
+                <span className="contents-header-meta muted">
+                  {notStagedResources.length} not staged
+                </span>
+                {onAddAllResources ? (
+                  <button
+                    type="button"
+                    className={[
+                      "btn",
+                      addingAllResources ? "is-busy" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={addingAllResources}
+                    aria-busy={addingAllResources}
+                    aria-label={`Add all ${notStagedResources.length} not-staged resources to ${selectedProfile}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void onAddAllResources();
+                    }}
+                  >
+                    {addingAllResources ? <ButtonSpinner size={16} /> : null}
+                    Add all
+                  </button>
+                ) : null}
+              </span>
+            ) : null}
           </summary>
           <div className="contents-body">
             {!activeProfile && !selectedProfile ? (
               <p className="muted">No active profile to inspect.</p>
-            ) : !liveContents && enabledItems.length === 0 ? (
+            ) : resourceStack.kind === "loading" ? (
+              <p className="muted">Loading profile resources…</p>
+            ) : !enabledSourceContents ? (
               <p className="muted">
-                {selectedProfile && applyPreviewLoading && !previewMatchesSelection
-                  ? "Loading profile resources…"
-                  : activeProfile
-                    ? "Could not resolve active profile contents."
-                    : "No profile resources yet."}
-                {onEditProfile && activeProfile && !applyPreviewLoading ? (
+                {activeProfile || selectedProfile
+                  ? "Could not resolve profile contents."
+                  : "No profile resources yet."}
+                {onEditProfile && (activeProfile || selectedProfile) ? (
                   <>
                     {" "}
                     <button
@@ -1478,11 +1504,7 @@ export function LiveStatePanel({
             ) : (
               <>
                 <ResourceSummaryStrip
-                  counts={
-                    useLiveEnabledStack
-                      ? fallbackTypeCounts(liveContents)
-                      : typeCountsFromItems(enabledItems)
-                  }
+                  counts={fallbackTypeCounts(enabledSourceContents)}
                   label="Profile resource summary"
                 />
                 <ListSearchField
@@ -1514,10 +1536,27 @@ export function LiveStatePanel({
                     const filteredPins = enabledPins.filter((pin) =>
                       matchesPinSearch(pin, profileResourceSearch),
                     );
+                    const nestedResourceKeys = new Set<string>();
+                    for (const plugin of enabledPlugins) {
+                      for (const resource of plugin.resources) {
+                        nestedResourceKeys.add(`${resource.type}:${resource.name}`);
+                      }
+                    }
+                    const filteredLoose = dedupeContentsResources(
+                      filterContentsResourcesBySearch(
+                        (enabledSourceContents?.resources ?? []).filter(
+                          (resource) =>
+                            !nestedResourceKeys.has(
+                              `${resource.type}:${resource.name}`,
+                            ),
+                        ),
+                        profileResourceSearch,
+                      ),
+                    );
                     const totalResourceRows = filteredPlugins.reduce(
                       (sum, plugin) => sum + plugin.resources.length,
                       0,
-                    ) + filteredPins.length;
+                    ) + filteredPins.length + filteredLoose.length;
 
                     let remaining = profileResourceVisible;
                     const truncatedPlugins: ProfileContentsPlugin[] = [];
@@ -1538,12 +1577,17 @@ export function LiveStatePanel({
                       remaining > 0
                         ? filteredPins.slice(0, remaining)
                         : [];
+                    remaining -= pinSlice.length;
+                    const looseSlice =
+                      remaining > 0
+                        ? filteredLoose.slice(0, remaining)
+                        : [];
                     const visibleResourceRows =
                       truncatedPlugins.reduce(
                         (sum, plugin) =>
                           sum + Math.max(plugin.resources.length, plugin.resources.length === 0 ? 1 : 0),
                         0,
-                      ) + pinSlice.length;
+                      ) + pinSlice.length + looseSlice.length;
 
                     return (
                       <>
@@ -1586,6 +1630,13 @@ export function LiveStatePanel({
                                 ? `@${pin.version_constraint}`
                                 : undefined,
                             }}
+                          />
+                        ))}
+                        {looseSlice.map((resource) => (
+                          <EnabledResourceRow
+                            key={contentsResourceAsItem(resource).key}
+                            item={contentsResourceAsItem(resource)}
+                            onOpenResource={openResource}
                           />
                         ))}
                         <ListTruncationControls

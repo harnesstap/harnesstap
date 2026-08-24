@@ -2,9 +2,14 @@ import type { PluginMarketplacePlatform } from "../config/settings.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import {
   listCatalogPlugins,
+  listPluginsFromMarketplaceRoot,
   refreshMarketplaceCatalog,
 } from "../services/marketplace-catalog.js";
-import { addMarketplace, listMarketplaces } from "../services/marketplace-registry.js";
+import {
+  listVisibleMarketplaces,
+  toMarketplaceListEntry,
+} from "../services/host-marketplaces.js";
+import { addMarketplace } from "../services/marketplace-registry.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
 
@@ -44,7 +49,9 @@ export function handleMarketplacesList(request: Request, token: string): Respons
   if (authError) return authError;
 
   const harnesstapDir = getHarnesstapDir();
-  return jsonResponse({ marketplaces: listMarketplaces(harnesstapDir) });
+  return jsonResponse({
+    marketplaces: listVisibleMarketplaces(harnesstapDir).map(toMarketplaceListEntry),
+  });
 }
 
 export async function handleMarketplacesAdd(
@@ -119,7 +126,9 @@ export function handleMarketplacePluginsList(
   if (authError) return authError;
 
   const harnesstapDir = getHarnesstapDir();
-  const entry = listMarketplaces(harnesstapDir).find((marketplace) => marketplace.name === name);
+  const entry = listVisibleMarketplaces(harnesstapDir).find(
+    (marketplace) => marketplace.name === name,
+  );
   if (!entry) {
     return jsonResponse(
       { error: "not_found", message: `Marketplace not found: ${name}` },
@@ -127,6 +136,10 @@ export function handleMarketplacePluginsList(
     );
   }
 
-  const plugins = listCatalogPlugins(harnesstapDir, { name: entry.name });
+  const plugins = entry.managed
+    ? listCatalogPlugins(harnesstapDir, { name: entry.name })
+    : entry.contentRoot
+      ? listPluginsFromMarketplaceRoot(entry.contentRoot, entry.name)
+      : [];
   return jsonResponse({ marketplace: entry.name, plugins });
 }

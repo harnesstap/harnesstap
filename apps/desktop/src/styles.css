@@ -1780,6 +1780,17 @@ button:focus-visible,
   margin-left: auto;
 }
 
+.contents-header-toolbar {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.contents-header-toolbar .contents-header-meta {
+  margin-left: 0;
+}
+
 .contents-body {
   padding: 0.45rem 0.6rem;
   margin: 0;
@@ -2892,6 +2903,33 @@ button:focus-visible,
   flex: 0 0 auto;
 }
 
+.create-profile-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: min(90vh, 40rem);
+  overflow: hidden;
+}
+
+.create-profile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.create-profile-header h2 {
+  margin: 0;
+}
+
+.create-profile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+  margin-top: 0.75rem;
+  overflow-y: auto;
+}
+
 .dialog.doctor-report-dialog {
   width: min(36rem, 100%);
   max-height: min(80vh, 40rem);
@@ -3121,7 +3159,7 @@ button:focus-visible,
   font-weight: 600;
 }
 
-.form-field input,
+.form-field input:not([type="radio"]):not([type="checkbox"]),
 .form-field textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -3132,7 +3170,7 @@ button:focus-visible,
   resize: vertical;
 }
 
-.form-field input:focus,
+.form-field input:not([type="radio"]):not([type="checkbox"]):focus,
 .form-field textarea:focus {
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
   border-color: var(--accent);

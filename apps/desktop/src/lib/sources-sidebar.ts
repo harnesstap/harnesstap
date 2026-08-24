@@ -9,7 +9,7 @@ export interface SourceRow {
 }
 
 export function buildSourceRows(input: {
-  marketplaces: Array<{ name: string }>;
+  marketplaces: Array<{ name: string; managed?: boolean }>;
   defaultOrg: string;
   connectedOrgs: string[];
   registered: Array<{ org: string; catalog: string }>;
@@ -23,7 +23,7 @@ export function buildSourceRows(input: {
       id: `mkt:${marketplace.name}`,
       kind: "marketplace",
       label: marketplace.name,
-      removable: true,
+      removable: marketplace.managed !== false,
     });
   }
 
@@ -59,4 +59,49 @@ export function buildSourceRows(input: {
 
 export function defaultCheckedSourceIds(rows: SourceRow[]): string[] {
   return rows.map((row) => row.id);
+}
+
+export type SourceSectionId = "local" | "marketplaces" | "cloud";
+
+export interface SourceSection {
+  id: SourceSectionId;
+  label: string;
+  rows: SourceRow[];
+}
+
+export function groupSourceRows(rows: SourceRow[]): SourceSection[] {
+  const local: SourceRow[] = [];
+  const marketplaces: SourceRow[] = [];
+  const cloud: SourceRow[] = [];
+
+  for (const row of rows) {
+    switch (row.kind) {
+      case "local":
+        local.push(row);
+        break;
+      case "marketplace":
+        marketplaces.push(row);
+        break;
+      case "cloud-org":
+      case "cloud-catalog":
+        cloud.push(row);
+        break;
+      default: {
+        const neverKind: never = row.kind;
+        return neverKind;
+      }
+    }
+  }
+
+  const sections: SourceSection[] = [];
+  if (local.length > 0) {
+    sections.push({ id: "local", label: "Local", rows: local });
+  }
+  if (marketplaces.length > 0) {
+    sections.push({ id: "marketplaces", label: "Marketplaces", rows: marketplaces });
+  }
+  if (cloud.length > 0) {
+    sections.push({ id: "cloud", label: "Cloud", rows: cloud });
+  }
+  return sections;
 }

@@ -1,0 +1,3 @@
+kind: Changed
+body: Show the selected profile’s full resource stack in Profile resources, with labeled Add all and per-row add for not-staged live resources.
+time: 2026-08-24T06:20:00Z

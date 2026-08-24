@@ -1120,19 +1120,20 @@ export function App() {
     [executeDropFileChange],
   );
 
-  const handleAddAllResources = useCallback(async () => {
-    if (!baseUrl || !activeProfile || addingAllResources) {
+  const handleAddAllResources = useCallback(async (profileName?: string) => {
+    const targetProfile = profileName ?? selectedProfile ?? activeProfile;
+    if (!baseUrl || !targetProfile || addingAllResources) {
       return;
     }
     setAddingAllResources(true);
     setAddResourceError(null);
     try {
-      await addAllProfileResources(baseUrl, token, activeProfile, {
+      await addAllProfileResources(baseUrl, token, targetProfile, {
         scope: view,
         ...(view === "project" && projectPath ? { projectPath } : {}),
       });
       const previewProfile =
-        selectedProfile === activeProfile ? activeProfile : selectedProfile;
+        selectedProfile === targetProfile ? targetProfile : selectedProfile;
       if (previewProfile) {
         const preview = await fetchApplyPreview(baseUrl, token, {
           profile: previewProfile,
@@ -2569,7 +2570,7 @@ export function App() {
                         || stashBusy
                       }
                       onClick={() => {
-                        void handleAddAllResources();
+                        void handleAddAllResources(activeProfile ?? undefined);
                       }}
                     >
                       {addingAllResources ? (
@@ -2944,7 +2945,13 @@ export function App() {
                     : undefined
                 }
                 onAddResource={handleAddResource}
+                onAddAllResources={
+                  connected && token && !switching
+                    ? () => handleAddAllResources()
+                    : undefined
+                }
                 addingResourceKey={addingResourceKey}
+                addingAllResources={addingAllResources}
                 onCommitManagedChanges={
                   connected && token && !switching
                     ? handleCommitManagedChanges
