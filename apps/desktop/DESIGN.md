@@ -72,6 +72,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Switching: yellow panel, ordered steps, cancel disabled during apply.
 - **Remove profile** is a labeled `btn` in the edit-profile header action cluster (next to Done), not icon-only. The same labeled control appears on the live-state header when a profile is selected. Confirm dialog keeps the delete-plugin checkbox.
 - Name and description are the first fields of the edit pane (not behind Metadata). Composition stays below.
+- Profile rail rows can be dragged to reorder when the filter is empty. Profile rail order is a desktop-only localStorage preference, separate for Global and Project.
 
 **Apply vs Sync**
 
@@ -112,3 +113,4 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 **Lists**
 
 - Resource hover cards sit at the pointer and close when the pointer leaves.
+- Profile rail order is a desktop-only localStorage preference.

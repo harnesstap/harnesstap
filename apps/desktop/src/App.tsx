@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -67,6 +67,13 @@ import {
   loadRecentProjects,
   rememberProject,
 } from "./lib/recent-projects";
+import {
+  applyProfileRailOrder,
+  insertBeforeIndexForDrop,
+  loadProfileRailOrder,
+  reorderProfileNames,
+  saveProfileRailOrder,
+} from "./lib/profile-rail-order";
 import type { CutVersionRow } from "./lib/cut-versions-form";
 import { mergeStatusUpdate } from "./lib/status-merge";
 import type {
@@ -187,6 +194,11 @@ export function App() {
   /** When true, keep an empty selection until the user picks a profile again. */
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
   const [profileFilter, setProfileFilter] = useState("");
+  const [profileRailOrder, setProfileRailOrder] = useState(loadProfileRailOrder);
+  const [draggingProfile, setDraggingProfile] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<
+    { name: string; placeAfter: boolean } | "end" | null
+  >(null);
   const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
   const [screenHistory, setScreenHistory] = useState<HeaderDestination[]>([]);
   const [homeResetNonce, setHomeResetNonce] = useState(0);
@@ -241,6 +253,7 @@ export function App() {
   const [cutBusy, setCutBusy] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const renameIgnoreBlurRef = useRef(false);
+  const skipProfileClickRef = useRef(false);
   const [projectPath, setProjectPath] = useState<string>(() => {
     const recent = loadRecentProjects();
     return recent[0]?.path ?? "";
@@ -445,18 +458,28 @@ export function App() {
     }
   }, [baseUrl, token]);
 
-  const visibleProfiles = useMemo(
-    () =>
-      profiles.filter(
-        (profile) => profile.scopes.includes(view) && profile.name !== "empty",
-      ),
-    [profiles, view],
-  );
+  const visibleProfiles = useMemo(() => {
+    const scoped = profiles.filter(
+      (profile) => profile.scopes.includes(view) && profile.name !== "empty",
+    );
+    const orderedNames = applyProfileRailOrder(
+      scoped.map((profile) => profile.name),
+      profileRailOrder[view],
+    );
+    const byName = new Map(scoped.map((profile) => [profile.name, profile]));
+    return orderedNames.flatMap((name) => {
+      const profile = byName.get(name);
+      return profile ? [profile] : [];
+    });
+  }, [profileRailOrder, profiles, view]);
 
   const filteredProfiles = useMemo(
     () => filterProfilesByQuery(visibleProfiles, profileFilter),
     [profileFilter, visibleProfiles],
   );
+
+  const canReorderProfiles =
+    connected && !switching && profileFilter.trim() === "";
 
   const clearProfileSelection = useCallback(() => {
     setPreferEmptySelection(true);
@@ -469,6 +492,125 @@ export function App() {
     setSelectedProfile(name);
     setEditingProfile((current) => (current ? name : null));
   }, []);
+
+  const persistProfileRailOrder = useCallback(
+    (fromName: string, toName: string | null, placeAfter: boolean) => {
+      const names = visibleProfiles.map((profile) => profile.name);
+      const fromIndex = names.indexOf(fromName);
+      if (fromIndex < 0) {
+        return;
+      }
+      let insertBeforeIndex = names.length;
+      if (toName !== null) {
+        const targetIndex = names.indexOf(toName);
+        if (targetIndex < 0) {
+          return;
+        }
+        insertBeforeIndex = insertBeforeIndexForDrop(targetIndex, placeAfter);
+      }
+      const nextNames = reorderProfileNames(names, fromIndex, insertBeforeIndex);
+      if (nextNames.every((name, index) => name === names[index])) {
+        return;
+      }
+      setProfileRailOrder(saveProfileRailOrder(view, nextNames));
+    },
+    [view, visibleProfiles],
+  );
+
+  const onProfileDragStart = useCallback(
+    (event: DragEvent<HTMLElement>, name: string) => {
+      if (!canReorderProfiles) {
+        event.preventDefault();
+        return;
+      }
+      event.dataTransfer.setData("text/plain", name);
+      event.dataTransfer.effectAllowed = "move";
+      setDraggingProfile(name);
+      setDropTarget(null);
+    },
+    [canReorderProfiles],
+  );
+
+  const onProfileDragEnd = useCallback(() => {
+    if (draggingProfile) {
+      skipProfileClickRef.current = true;
+    }
+    setDraggingProfile(null);
+    setDropTarget(null);
+  }, [draggingProfile]);
+
+  const onProfileRowDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>, name: string) => {
+      if (!canReorderProfiles || !draggingProfile || draggingProfile === name) {
+        return;
+      }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      const rect = event.currentTarget.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      setDropTarget((current) => {
+        if (
+          current !== "end"
+          && current?.name === name
+          && current.placeAfter === placeAfter
+        ) {
+          return current;
+        }
+        return { name, placeAfter };
+      });
+    },
+    [canReorderProfiles, draggingProfile],
+  );
+
+  const onProfileRowDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>, name: string) => {
+      if (!canReorderProfiles) {
+        return;
+      }
+      event.preventDefault();
+      const fromName =
+        draggingProfile || event.dataTransfer.getData("text/plain");
+      const rect = event.currentTarget.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      persistProfileRailOrder(fromName, name, placeAfter);
+      skipProfileClickRef.current = true;
+      setDraggingProfile(null);
+      setDropTarget(null);
+    },
+    [canReorderProfiles, draggingProfile, persistProfileRailOrder],
+  );
+
+  const onProfileListDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (!canReorderProfiles || !draggingProfile) {
+        return;
+      }
+      if ((event.target as HTMLElement).closest(".profile-item")) {
+        return;
+      }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      setDropTarget("end");
+    },
+    [canReorderProfiles, draggingProfile],
+  );
+
+  const onProfileListDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (!canReorderProfiles || !draggingProfile) {
+        return;
+      }
+      if ((event.target as HTMLElement).closest(".profile-item")) {
+        return;
+      }
+      event.preventDefault();
+      persistProfileRailOrder(draggingProfile, null, true);
+      skipProfileClickRef.current = true;
+      setDraggingProfile(null);
+      setDropTarget(null);
+    },
+    [canReorderProfiles, draggingProfile, persistProfileRailOrder],
+  );
 
   const openEditProfile = useCallback((name: string) => {
     setPreferEmptySelection(false);
@@ -2253,7 +2395,16 @@ export function App() {
               </button>
             ) : null}
           </div>
-          <div className="profiles-list">
+          <div
+            className={[
+              "profiles-list",
+              dropTarget === "end" ? "drop-target-end" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            onDragOver={onProfileListDragOver}
+            onDrop={onProfileListDrop}
+          >
             {profilesError && (
               <div className="empty-state">
                 <p>{profilesError}</p>
@@ -2322,6 +2473,15 @@ export function App() {
               const isActive = profile.name === activeProfile;
               const isSelected = profile.name === selectedProfile;
               const showAddAll = isActive && activeProfileUntrackedCount > 0;
+              const isDragging = draggingProfile === profile.name;
+              const isDropBefore =
+                dropTarget !== "end"
+                && dropTarget?.name === profile.name
+                && !dropTarget.placeAfter;
+              const isDropAfter =
+                dropTarget !== "end"
+                && dropTarget?.name === profile.name
+                && dropTarget.placeAfter;
               return (
                 <div
                   key={profile.name}
@@ -2329,15 +2489,33 @@ export function App() {
                     "profile-item",
                     isActive ? "active" : "",
                     isSelected ? "selected" : "",
+                    isDragging ? "dragging" : "",
+                    isDropBefore ? "drop-target-before" : "",
+                    isDropAfter ? "drop-target-after" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
+                  draggable={canReorderProfiles}
+                  aria-grabbed={isDragging}
+                  onDragStart={(event) => onProfileDragStart(event, profile.name)}
+                  onDragOver={(event) => onProfileRowDragOver(event, profile.name)}
+                  onDrop={(event) => onProfileRowDrop(event, profile.name)}
+                  onDragEnd={onProfileDragEnd}
                 >
                   <button
                     type="button"
                     className="profile-item-main"
                     data-testid={`profile-rail-${profile.name}`}
+                    draggable={canReorderProfiles}
+                    onDragStart={(event) => {
+                      event.stopPropagation();
+                      onProfileDragStart(event, profile.name);
+                    }}
                     onClick={() => {
+                      if (skipProfileClickRef.current) {
+                        skipProfileClickRef.current = false;
+                        return;
+                      }
                       if (isSelected) {
                         clearProfileSelection();
                         return;
@@ -2355,6 +2533,11 @@ export function App() {
                     data-testid={`edit-profile-${profile.name}`}
                     aria-label={`Edit ${profile.name}`}
                     title={`Edit ${profile.name}`}
+                    draggable={false}
+                    onDragStart={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
                     disabled={!connected || switching || stashBusy}
                     onClick={() => openEditProfile(profile.name)}
                   >
@@ -2373,6 +2556,11 @@ export function App() {
                       aria-label={`Commit ${activeProfileUntrackedCount} not-staged resources into profile`}
                       title={`Commit all ${activeProfileUntrackedCount} not-staged resources into profile`}
                       aria-busy={addingAllResources}
+                      draggable={false}
+                      onDragStart={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
                       disabled={
                         !connected
                         || !token
