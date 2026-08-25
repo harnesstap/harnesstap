@@ -588,6 +588,7 @@ export interface PluginMarketplaceEntry {
   name: string;
   url: string;
   platforms: PluginMarketplacePlatform[];
+  managed?: boolean;
 }
 
 export interface MarketplaceListResult {

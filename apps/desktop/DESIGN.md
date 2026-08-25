@@ -68,7 +68,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 - Clicking a profile selects it; **Switch** commits. No “Both” view. Switch applies to the current view only.
 - Profiles enabled in home appear in Global; profiles in project config appear in Project; enabled in both appear in both.
-- Right pane is always machine live state. Target preview is a collapsible details block in that pane.
+- Profile resources lists the selected profile’s composition. When that profile is also active, the list is live library state for it. Target preview is a collapsible apply-delta block in the same pane. Not-staged live resources (on disk, not in any profile) stay below that list: Plus adds one; labeled **Add all** in the Profile resources header adds every not-staged resource to the selected profile.
 - Switching: yellow panel, ordered steps, cancel disabled during apply.
 - **Remove profile** is a labeled `btn` in the edit-profile header action cluster (next to Done), not icon-only. The same labeled control appears on the live-state header when a profile is selected. Confirm dialog keeps the delete-plugin checkbox.
 - Name and description are the first fields of the edit pane (not behind Metadata). Composition stays below.
@@ -98,6 +98,8 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 **Sources**
 
 - Source sidebar + one main pane (list XOR plugin-tree XOR preview). No profile rail. Marketplaces and catalogs are managed in Sources, not Settings.
+- The sidebar lists HarnessTap-registered marketplaces and host-configured Claude Code marketplaces from `~/.claude/plugins/known_marketplaces.json`. Host-only rows are not editable or removable in Sources.
+- The source sidebar groups checkboxes under Local, Marketplaces, and Cloud. Empty sections are omitted.
 - Sources re-click clears the search query, checks all sources, and returns to the list. Back/Esc: preview → plugin-tree → list (standalone preview skips the tree). Esc while a confirm is open dismisses the confirm only.
 - Header cluster (right of the Sources title): **Add marketplace** (accent), **Connect catalog**. Labeled, compact, not icon-only. Add marketplace is the only accent control in this cluster.
 - Record actions on the plugin tree (preview inherits parent plugin actions) are labeled: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Not icon-only. No Update button on Sources.

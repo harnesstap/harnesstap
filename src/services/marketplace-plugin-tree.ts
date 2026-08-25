@@ -3,9 +3,11 @@ import { join, relative, sep } from "node:path";
 import { isInvalidPreviewPath } from "../utils/preview-path.js";
 import {
   listCatalogPlugins,
+  listPluginsFromMarketplaceRoot,
   marketplaceCacheDir,
   refreshMarketplaceCatalog,
 } from "./marketplace-catalog.js";
+import { listVisibleMarketplaces } from "./host-marketplaces.js";
 
 export type MarketplaceTreeFile = { path: string; kind: "file" };
 
@@ -56,29 +58,24 @@ function ensureCatalogPlugins(harnesstapDir: string, marketplace: string) {
   return listCatalogPlugins(harnesstapDir, { name: marketplace });
 }
 
-export function previewMarketplacePlugin(
-  harnesstapDir: string,
-  input: { marketplace: string; plugin: string; path?: string },
+function previewFromRoot(
+  cacheDir: string,
+  plugin: string,
+  path?: string,
 ): MarketplacePluginTreeResult {
-  const plugins = ensureCatalogPlugins(harnesstapDir, input.marketplace);
-  if (!plugins.some((plugin) => plugin.name === input.plugin)) {
-    return { status: "not_found" };
-  }
-
-  const cacheDir = marketplaceCacheDir(harnesstapDir, input.marketplace);
-  const pluginRoot = resolvePluginDirectory(cacheDir, input.plugin);
+  const pluginRoot = resolvePluginDirectory(cacheDir, plugin);
   if (!pluginRoot) {
     return { status: "not_found" };
   }
 
-  const requestedPath = input.path?.trim();
+  const requestedPath = path?.trim();
   if (!requestedPath) {
     const files: string[] = [];
     collectFiles(pluginRoot, pluginRoot, files);
     files.sort();
     return {
       status: "ok",
-      files: files.map((path) => ({ path, kind: "file" as const })),
+      files: files.map((filePath) => ({ path: filePath, kind: "file" as const })),
     };
   }
 
@@ -96,4 +93,31 @@ export function previewMarketplacePlugin(
     path: requestedPath,
     content: readFileSync(absolute, "utf8"),
   };
+}
+
+export function previewMarketplacePlugin(
+  harnesstapDir: string,
+  input: { marketplace: string; plugin: string; path?: string },
+): MarketplacePluginTreeResult {
+  const visible = listVisibleMarketplaces(harnesstapDir).find(
+    (entry) => entry.name === input.marketplace,
+  );
+
+  if (visible && !visible.managed) {
+    const plugins = visible.contentRoot
+      ? listPluginsFromMarketplaceRoot(visible.contentRoot, visible.name)
+      : [];
+    if (!plugins.some((plugin) => plugin.name === input.plugin) || !visible.contentRoot) {
+      return { status: "not_found" };
+    }
+    return previewFromRoot(visible.contentRoot, input.plugin, input.path);
+  }
+
+  const plugins = ensureCatalogPlugins(harnesstapDir, input.marketplace);
+  if (!plugins.some((plugin) => plugin.name === input.plugin)) {
+    return { status: "not_found" };
+  }
+
+  const cacheDir = marketplaceCacheDir(harnesstapDir, input.marketplace);
+  return previewFromRoot(cacheDir, input.plugin, input.path);
 }

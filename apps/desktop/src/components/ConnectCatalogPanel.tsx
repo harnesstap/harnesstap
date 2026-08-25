@@ -173,8 +173,8 @@ export function ConnectCatalogPanel({
               {error}
             </div>
           ) : null}
-          <fieldset className="form-field gap-1.5">
-            <legend>How to connect</legend>
+          <fieldset className="resource-filter-section">
+            <legend className="p-0 text-xs font-semibold">How to connect</legend>
             <label
               className={`resource-filter-option${mode === "register" ? " selected" : ""}`}
             >

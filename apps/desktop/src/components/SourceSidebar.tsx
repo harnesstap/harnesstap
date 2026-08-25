@@ -3,7 +3,7 @@ import { FilterX } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { sourcesSidebarChangeAction } from "../lib/sources-pane";
-import type { SourceRow } from "../lib/sources-sidebar";
+import { groupSourceRows, type SourceRow } from "../lib/sources-sidebar";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 const ACTION_ICON_SIZE = 16;
@@ -145,25 +145,31 @@ export function SourceSidebar({
           {error}
         </div>
       ) : null}
-      <div className="resource-filter-section source-row-list">
-        {rows.map((row) => (
-          <SourceRowItem
-            key={row.id}
-            row={row}
-            checked={checkedIds.includes(row.id)}
-            disabled={controlsDisabled}
-            onToggle={() => applySidebarChange(() => onToggle(row.id))}
-            onEditMarketplace={onEditMarketplace}
-            onRequestRemoveMarketplace={(name) =>
-              setPending({ kind: "marketplace", name })
-            }
-            onRequestDisconnectOrg={(org) => setPending({ kind: "org", org })}
-            onRequestUnregisterCatalog={(selector) =>
-              setPending({ kind: "catalog", selector })
-            }
-          />
-        ))}
-      </div>
+      {groupSourceRows(rows).map((section) => (
+        <div
+          key={section.id}
+          className="resource-filter-section source-row-list"
+        >
+          <span className="resource-filter-section-label">{section.label}</span>
+          {section.rows.map((row) => (
+            <SourceRowItem
+              key={row.id}
+              row={row}
+              checked={checkedIds.includes(row.id)}
+              disabled={controlsDisabled}
+              onToggle={() => applySidebarChange(() => onToggle(row.id))}
+              onEditMarketplace={onEditMarketplace}
+              onRequestRemoveMarketplace={(name) =>
+                setPending({ kind: "marketplace", name })
+              }
+              onRequestDisconnectOrg={(org) => setPending({ kind: "org", org })}
+              onRequestUnregisterCatalog={(selector) =>
+                setPending({ kind: "catalog", selector })
+              }
+            />
+          ))}
+        </div>
+      ))}
       <ConfirmDialog
         open={pending !== null}
         title={pending ? confirmCopy(pending).title : ""}
@@ -244,6 +250,9 @@ function SourceRowActions({
     case "local":
       return null;
     case "marketplace":
+      if (!row.removable) {
+        return null;
+      }
       return (
         <div className="source-row-actions">
           <button

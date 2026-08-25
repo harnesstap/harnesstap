@@ -243,6 +243,35 @@ export function listCatalogPlugins(
   return stored?.plugins ?? [];
 }
 
+export function listPluginsFromMarketplaceRoot(
+  root: string,
+  registryName: string,
+  platforms: PluginMarketplacePlatform[] = ["claude-code"],
+): CatalogPlugin[] {
+  const manifest = resolveManifest(root, platforms);
+  if (!manifest) return [];
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
+  } catch {
+    return [];
+  }
+
+  return catalogWithRegistryIdentity(parseManifest(manifest.platform, raw), registryName)
+    .plugins;
+}
+
+export function readMarketplaceManifest(root: string): unknown | undefined {
+  const manifest = resolveManifest(root, ["claude-code", "cursor", "copilot-cli"]);
+  if (!manifest) return undefined;
+  try {
+    return JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
 function pluginMatchesQuery(plugin: CatalogPlugin, query: string): boolean {
   const needle = query.toLowerCase();
   if (plugin.name.toLowerCase().includes(needle)) return true;

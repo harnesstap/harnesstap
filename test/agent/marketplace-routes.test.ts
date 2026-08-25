@@ -66,6 +66,59 @@ describe("agent marketplace routes", () => {
     await expect(ok.json()).resolves.toEqual({ marketplaces: [] });
   });
 
+  it("lists Claude known_marketplaces that are not in the HarnessTap registry", async () => {
+    const server = await withServer();
+    const teadsRoot = join(process.env.HOME ?? "", "projects", "claude-plugins");
+    mkdirSync(join(teadsRoot, ".claude-plugin"), { recursive: true });
+    writeFileSync(
+      join(teadsRoot, ".claude-plugin/marketplace.json"),
+      JSON.stringify({
+        name: "teads-plugins",
+        repository: { type: "git", url: "https://github.com/outbrain/claude-plugins" },
+        plugins: [{ name: "design-doc", version: "1.0.0" }],
+      }),
+    );
+    mkdirSync(join(process.env.HOME ?? "", ".claude", "plugins"), { recursive: true });
+    writeFileSync(
+      join(process.env.HOME ?? "", ".claude", "plugins", "known_marketplaces.json"),
+      JSON.stringify({
+        "teads-plugins": {
+          source: { source: "directory", path: teadsRoot },
+          installLocation: teadsRoot,
+        },
+      }),
+    );
+
+    const list = await fetch(`${server.url}/v1/marketplaces`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(list.status).toBe(200);
+    const listed = (await list.json()) as {
+      marketplaces: Array<{ name: string; url: string; managed?: boolean }>;
+    };
+    expect(listed.marketplaces).toEqual([
+      {
+        name: "teads-plugins",
+        url: "https://github.com/outbrain/claude-plugins",
+        platforms: ["claude-code"],
+        managed: false,
+      },
+    ]);
+
+    const plugins = await fetch(`${server.url}/v1/marketplaces/teads-plugins/plugins`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(plugins.status).toBe(200);
+    const pluginBody = (await plugins.json()) as {
+      marketplace: string;
+      plugins: Array<{ name: string; ref: string }>;
+    };
+    expect(pluginBody.marketplace).toBe("teads-plugins");
+    expect(pluginBody.plugins.some((plugin) => plugin.ref === "design-doc@teads-plugins")).toBe(
+      true,
+    );
+  });
+
   it("adds a marketplace from a local git path and refreshes catalog", async () => {
     const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();

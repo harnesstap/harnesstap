@@ -84,6 +84,19 @@ const sourcesSearchSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/lib/sources-search.ts"),
   "utf8",
 );
+const stylesSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
+  "utf8",
+);
+
+function cssBlock(source: string, selector: string): string {
+  const needle = `\n${selector} {`;
+  const start = source.indexOf(needle);
+  expect(start).toBeGreaterThan(-1);
+  const end = source.indexOf("}", start);
+  expect(end).toBeGreaterThan(start);
+  return source.slice(start, end + 1);
+}
 
 describe("sources workspace chrome", () => {
   test("SourcesWorkspace is rendered from App when workspaceFocus is sources", () => {
@@ -91,6 +104,12 @@ describe("sources workspace chrome", () => {
     expect(appSource).toContain('workspaceFocus === "sources"');
     expect(workspaceSource).toContain("export function SourcesWorkspace");
     expect(workspaceSource).toContain("homeResetNonce");
+  });
+
+  test("source sidebar groups checkboxes under Local, Marketplaces, and Cloud", () => {
+    expect(sidebarSource).toContain("groupSourceRows");
+    expect(sidebarSource).toContain("resource-filter-section-label");
+    expect(sidebarSource).toContain("{section.label}");
   });
 
   test("header cluster uses Add marketplace and Connect catalog", () => {
@@ -137,6 +156,22 @@ describe("sources workspace chrome", () => {
     expect(catalogPanelSource).toContain("connectCatalogDraftIsDirty");
     expect(catalogPanelSource).toContain("Discard");
     expect(catalogPanelSource).toContain("ConfirmDialog");
+  });
+
+  test("connect catalog mode radios use compact option rows, not stretched form-field inputs", () => {
+    expect(catalogPanelSource).toContain("resource-filter-section");
+    expect(catalogPanelSource).not.toContain(
+      'fieldset className="form-field gap-1.5"',
+    );
+    expect(stylesSource).toContain(
+      '.form-field input:not([type="radio"]):not([type="checkbox"])',
+    );
+  });
+
+  test("sources centered dialogs pin the close control in the header row", () => {
+    const header = cssBlock(stylesSource, ".create-profile-header");
+    expect(header).toContain("display: flex");
+    expect(header).toContain("justify-content: space-between");
   });
 });
 
@@ -340,6 +375,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Cloud browse overlay");
     expect(designSource).toContain("Update available");
     expect(designSource).toContain("No Update button on Sources");
+    expect(designSource).toContain("Local, Marketplaces, and Cloud");
   });
 });
 
