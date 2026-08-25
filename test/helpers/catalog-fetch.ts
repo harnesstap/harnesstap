@@ -12,6 +12,7 @@ export type CatalogPackageFixture = {
 function normalizePlugin(plugin: Record<string, unknown>) {
   return {
     catalogSlug: "default",
+    latestVersion: "1.0.0",
     ...plugin,
   };
 }
