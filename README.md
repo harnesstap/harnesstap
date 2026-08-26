@@ -151,7 +151,13 @@ More install and follow-up recipes: [Getting started](docs/cli/getting-started.m
 
 HarnessTap Desktop is a local app for the same library the CLI uses. Browse plugins and profiles, preview conflicts, and apply without leaving the GUI.
 
-It is **not** in the npm package. Download the macOS `.dmg` from [GitHub Releases](https://github.com/harnesstap/harnesstap/releases). The build is unsigned, so macOS Gatekeeper may require **Open Anyway** under System Settings → Privacy & Security.
+It is **not** in the npm package. Download installers from [GitHub Releases](https://github.com/harnesstap/harnesstap/releases):
+
+- **macOS:** `.dmg` for Apple Silicon (`aarch64`) and Intel (`x64`)
+- **Windows:** NSIS (`.exe`) and MSI for x64 and arm64
+- **Linux:** `.AppImage` and `.deb` for x64 and arm64
+
+Builds are unsigned (no Apple notarization, Windows Authenticode, or Linux package signing). macOS Gatekeeper may require **Open Anyway** under System Settings → Privacy & Security; Windows SmartScreen may warn on first launch.
 
 To build from this repo:
 

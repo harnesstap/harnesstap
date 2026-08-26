@@ -7,6 +7,8 @@ Tauri 2 desktop app for the profile control plane. Visual language: [DESIGN.md](
 - Bun 1.3+
 - Rust toolchain (for Tauri)
 - macOS: Xcode command line tools (for `.app` / `.dmg` builds)
+- Linux: WebKitGTK 4.1 and GTK deps (see [Tauri v2 Linux prerequisites](https://v2.tauri.app/start/prerequisites/#linux))
+- Windows: MSVC Build Tools (for NSIS / MSI)
 
 ## Local development
 
@@ -43,7 +45,7 @@ bun src/agent/entry.ts
 
 Set `VITE_AGENT_URL=http://127.0.0.1:7474` and `VITE_AGENT_TOKEN=$(cat ~/.harnesstap/agent-token)` when testing mutating routes in the browser.
 
-## Build macOS app
+## Build packaged app
 
 ```bash
 bun run desktop:build
@@ -51,9 +53,22 @@ bun run desktop:build
 
 Output: `apps/desktop/src-tauri/target/release/bundle/`
 
-GitHub Releases attach the `.dmg` from that bundle on each tagged CLI release. The CI build is unsigned.
+`tauri.conf.json` requests DMG, NSIS, MSI, AppImage, and deb; Tauri v2 keeps only the formats the host OS can produce.
 
-To build and install straight into `/Applications` (quits a running instance first):
+GitHub Releases attach those installers on each tagged CLI release:
+
+| Platform | Runner | Artifacts |
+| --- | --- | --- |
+| macOS Apple Silicon | `macos-latest` | `HarnessTap_<version>_aarch64.dmg` |
+| macOS Intel | `macos-15-intel` | `HarnessTap_<version>_x64.dmg` |
+| Windows x64 | `windows-latest` | NSIS `*-setup.exe`, MSI `*.msi` |
+| Windows arm64 | `windows-11-arm` | NSIS `*-setup.exe`, MSI `*.msi` |
+| Linux x64 | `ubuntu-24.04` | `.AppImage`, `.deb` |
+| Linux arm64 | `ubuntu-24.04-arm` | `.AppImage`, `.deb` |
+
+CI builds are **unsigned**. There are no Apple Developer ID / notarization, Windows Authenticode, or Linux package-signing secrets in the workflow. macOS Gatekeeper may require **Open Anyway**; Windows SmartScreen may warn; unsigned Linux packages are normal for GitHub downloads. Signing can be added later without changing this artifact matrix.
+
+To build and install straight into `/Applications` (macOS; quits a running instance first):
 
 ```bash
 bun run desktop:install
@@ -62,7 +77,7 @@ bun run desktop:install
 ## Sidecar embedding
 
 - Root `bun run build:sidecar` compiles `src/agent/entry.ts` → `dist/sidecar/ht-agent`
-- `apps/desktop/scripts/prepare-sidecar.sh` copies the binary to `src-tauri/binaries/ht-agent-<target-triple>`
+- `apps/desktop/scripts/prepare-sidecar.sh` copies the binary to `src-tauri/binaries/ht-agent-<target-triple>` (`.exe` suffix on Windows)
 - `tauri.conf.json` lists `externalBin: ["binaries/ht-agent"]`
 
 ## Dogfood checklist
