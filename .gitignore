@@ -66,6 +66,12 @@ scratchpad.md
 docs/internal/
 docs/superpowers/
 
+# Local HarnessTap project config (generated; do not ship)
+.harnesstap/config.toml
+
+# Impeccable critique artifacts
+.impeccable/
+
 #workspaces
 *.code-workspace
 
