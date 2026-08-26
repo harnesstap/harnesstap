@@ -3,6 +3,9 @@ import {
   buildSourceRows,
   defaultCheckedSourceIds,
   groupSourceRows,
+  isSourcesFilterActive,
+  nextCheckedSourceIds,
+  sourceCheckState,
 } from "../../apps/desktop/src/lib/sources-sidebar.ts";
 
 describe("buildSourceRows", () => {
@@ -108,6 +111,77 @@ describe("buildSourceRows", () => {
       registered: [{ org: "acme", catalog: "internal" }],
     });
     expect(defaultCheckedSourceIds(rows)).toEqual(rows.map((row) => row.id));
+  });
+});
+
+describe("isSourcesFilterActive", () => {
+  const rows = buildSourceRows({
+    marketplaces: [{ name: "demo" }],
+    defaultOrg: "harnesstap-cloud",
+    connectedOrgs: ["acme"],
+    registered: [{ org: "acme", catalog: "internal" }],
+  });
+  const defaults = defaultCheckedSourceIds(rows);
+
+  test("is inactive at search-empty all-checked defaults", () => {
+    expect(isSourcesFilterActive("", defaults, rows)).toBe(false);
+    expect(isSourcesFilterActive("   ", defaults, rows)).toBe(false);
+  });
+
+  test("is active when search is non-empty even if checkboxes stay default", () => {
+    expect(isSourcesFilterActive("demo", defaults, rows)).toBe(true);
+  });
+
+  test("is active when a default-checked source is unchecked", () => {
+    expect(isSourcesFilterActive("", ["local"], rows)).toBe(true);
+    expect(
+      isSourcesFilterActive(
+        "",
+        defaults.filter((id) => id !== "mkt:demo"),
+        rows,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("sourceCheckState", () => {
+  const rows = buildSourceRows({
+    marketplaces: [{ name: "demo" }],
+    defaultOrg: "harnesstap-cloud",
+    connectedOrgs: ["acme"],
+    registered: [{ org: "acme", catalog: "internal" }],
+  });
+  const defaults = defaultCheckedSourceIds(rows);
+
+  test("is all when every source is checked", () => {
+    expect(sourceCheckState(defaults, rows)).toBe("all");
+  });
+
+  test("is none when no source is checked", () => {
+    expect(sourceCheckState([], rows)).toBe("none");
+  });
+
+  test("is mixed when some sources are checked", () => {
+    expect(sourceCheckState(["local"], rows)).toBe("mixed");
+  });
+});
+
+describe("nextCheckedSourceIds", () => {
+  const rows = buildSourceRows({
+    marketplaces: [{ name: "demo" }],
+    defaultOrg: "harnesstap-cloud",
+    connectedOrgs: ["acme"],
+    registered: [{ org: "acme", catalog: "internal" }],
+  });
+  const defaults = defaultCheckedSourceIds(rows);
+
+  test("clears every source when all are checked", () => {
+    expect(nextCheckedSourceIds(defaults, rows)).toEqual([]);
+  });
+
+  test("reselects every source from none or mixed", () => {
+    expect(nextCheckedSourceIds([], rows)).toEqual(defaults);
+    expect(nextCheckedSourceIds(["local"], rows)).toEqual(defaults);
   });
 });
 

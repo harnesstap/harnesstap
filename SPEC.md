@@ -282,7 +282,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 
 | Command | Current behavior |
 | --- | --- |
-| `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds a `default` profile plugin (unless `--no-default-profile`), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
+| `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds a `global default` profile plugin (unless `--no-default-profile`), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
 | `harnesstap add <source>` | Discovers and installs skills from a GitHub repo, Git URL, or local skill package; optionally creates or attaches a plugin. |
 | `harnesstap plugin ...` | Plugin CRUD, **cut**, **editor**, composition attach/detach, cloud catalog workflows, diff, doctor, and origin **check** / **update**. |
 | `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. |
@@ -544,8 +544,8 @@ JSON output is unchanged by the visual plugin.
 
 1. Initializes the local database.
 2. Discovers supported harness configuration in the user's home directory and imports findings.
-3. Seeds a local **`default` profile plugin** (tagged `profile`) from non-plugin library resources when that profile is missing or empty, and writes `active-profile.json` → `{ "name": "default" }`. Does **not** run global apply — switch explicitly with `ht profile use default`. Pass `--no-default-profile` to skip.
-4. Seeds a local **`default` environment** when none exists and writes `active-environment.json` → `{ "name": "default" }` if the home active pointer is unset. Desktop `ht-agent` boot runs the same home scan and profile seed so a fresh install has a default home entry in tracked directories and a populated default profile.
+3. Seeds a local **`global default` profile plugin** (tagged `profile`) from non-plugin library resources when that profile is missing or empty, and writes `active-profile.json` → `{ "name": "global default" }`. A leftover `default` profile from older installs is renamed. Does **not** run global apply — switch explicitly with `ht profile use "global default"` (or `ht default`). Pass `--no-default-profile` to skip.
+4. Seeds a local **`default` environment** when none exists and writes `active-environment.json` → `{ "name": "default" }` if the home active pointer is unset. Desktop `ht-agent` boot runs the same home scan and profile seed so a fresh install has a default home entry in tracked directories and a populated global default profile. Opening a project in the desktop app writes `.harnesstap/config.toml` if needed and seeds a **`project default`** profile from that repository’s on-disk resources.
 5. Prints the tracked directory list (home defaults as `~`, plus any custom roots).
 6. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
 

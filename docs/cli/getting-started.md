@@ -104,7 +104,7 @@ After the baseline fits, build and share your own plugins.
 
 Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, tracked projects, snapshots). Optional settings live in `~/.harnesstap/config.jsonc`. Override the base directory with `HARNESSTAP_HOME`.
 
-`init` seeds a `default` profile plugin and writes `active-profile.json`, but does **not** run global apply automatically. Run `ht profile use default` to materialize home harness files. See [Profiles](./concepts/profiles.md).
+`init` seeds a `global default` profile plugin and writes `active-profile.json`, but does **not** run global apply automatically. Run `ht profile use "global default"` to materialize home harness files. See [Profiles](./concepts/profiles.md).
 
 ## Next steps
 

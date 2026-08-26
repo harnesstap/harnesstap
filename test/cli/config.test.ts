@@ -173,13 +173,13 @@ plugin = "missing-plugin"
 
       expect(result.exitCode).toBeUndefined();
       expect(result.stdout).toContain("Created project config");
-      expect(result.stdout).toContain("default");
+      expect(result.stdout).toContain("global default");
 
       const show = await runCli(["config", "show", "--format", "json"]);
       const payload = JSON.parse(show.stdout);
-      expect(payload.default_profile).toBe("default");
+      expect(payload.default_profile).toBe("global default");
       expect(payload.profiles).toEqual([
-        expect.objectContaining({ name: "default" }),
+        expect.objectContaining({ name: "global default" }),
       ]);
     } finally {
       await context.cleanup();

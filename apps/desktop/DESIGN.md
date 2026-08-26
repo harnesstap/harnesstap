@@ -33,9 +33,9 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Harness inventories are bordered sections / definition lists, not a card mosaic.
 - Motion: status color transitions and in-progress switch-step highlight only.
 - Focus: 2px `--accent` outline, 2px offset.
-- Labeled `btn primary` for the one accent action in a cluster; labeled `btn` for secondary. Icon-only is for header and rail chrome (workspace back, refresh, settings, History), never for Library, Sources, or Environments record actions. Header destinations show icon plus name.
+- Labeled `btn primary` for the one accent action in a cluster; labeled `btn` for secondary. Icon-only is for header and rail chrome (workspace back, refresh, settings, History), never for Library, Sources, or Environments record actions except open-in-editor on Path, Content, and contained files. Header destinations show icon plus name.
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons.
-- Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, history, and resource inspect. Back (top left) and Esc leave the panel. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. The Library create-resource type picker is a centered dialog. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
+- Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, and history. Resource inspect is a centered, viewport-capped dialog (scrollable body, height follows content). Back (top left) and Esc leave the panel or dialog. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. The Library create-resource type picker is a centered dialog. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
 - Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab is inspect-only: project directory picker (recent + Browse), labeled Open config, profile definition list, validation/load errors only. It inspects `.harnesstap/config.toml`. Marketplaces and catalogs are managed in Sources, not Settings.
 
 ## Layout
@@ -60,14 +60,14 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Re-clicking an already-active header destination (Library, Sources, Environments, Global, Project) returns that view to its entrypoint and clears its filters. Clicking a different destination only switches.
 - Back icon to the left of the panel title (Library, Sources, Environments, Profiles). Back returns to the previous screen: nested pane first (Library detail / history, Sources preview / plugin-tree, or edit-profile), then the previous header destination. The control deactivates when there is no previous screen.
 - Library re-click applies default filters and returns to the list via the same path as a sidebar filter change (`applyFilterChange`).
-- Sources re-click clears the search query, checks all sources, and returns to the list. Add/edit panels stay if open.
+- Sources re-click clears the search query, checks all sources, and returns to the list. Add/edit panels stay if open. Sidebar **Clear filters** uses the same filter defaults (empty search, every source checkbox checked).
 - Environments re-click clears the name filter and deselects. Create/edit full-screen panel stays if open.
 - Global and Project re-click clear the profile rail search and close edit-profile; the selected profile stays. Project re-click does not reopen the directory picker.
 
 **Scope (Global / Project)**
 
 - Clicking a profile selects it; **Switch** commits. No “Both” view. Switch applies to the current view only.
-- Profiles enabled in home appear in Global; profiles in project config appear in Project; enabled in both appear in both.
+- Profiles enabled in home appear in Global; profiles in project config appear in Project; enabled in both appear in both. The init profile is named **global default** and stays Global-only. Desktop project bootstrap seeds a **project default** from that repo’s on-disk resources and does not enable the global profile in the project. Auto-seeded project defaults are project-scoped only.
 - Profile resources lists the selected profile’s composition. When that profile is also active, the list is live library state for it. Target preview is a collapsible apply-delta block in the same pane. Not-staged live resources (on disk, not in any profile) stay below that list: Plus adds one; labeled **Add all** in the Profile resources header adds every not-staged resource to the selected profile.
 - Switching: yellow panel, ordered steps, cancel disabled during apply.
 - **Remove profile** is a labeled `btn` in the edit-profile header action cluster (next to Done), not icon-only. The same labeled control appears on the live-state header when a profile is selected. Confirm dialog keeps the delete-plugin checkbox.
@@ -88,8 +88,8 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Main pane is list XOR full-panel detail. Back (top left) and Esc return to the list. Esc while editing a field cancels that edit only. Sidebar filter changes return to the list (blocked while a confirm is open or an action is in flight).
 - Authored plugin detail **History** opens a version list in the main pane (not a drawer). Frozen inspect is the same detail document, read-only. Back/Esc: frozen → version list → working head → library list.
 - Restore copies a frozen snapshot onto the working head and marks it dirty. It does not Apply.
-- Filters: type as badges; updated as a segment; namespace as a searchable select; origin as a radio list. Origin groups `manual` and `local_snapshot` as **Local**; `marketplace_link` as **Marketplace**. Same labels on hover and detail. Storage `origin_kind` is unchanged.
-- Detail: title is the name (double-click to rename). Other fields are icon + value; icon tooltip names the field. Double-click to edit. Default environment is only the field-row combobox. Updated is locale absolute date with relative time in parentheses. Plugin-type rows (`resources.type = plugin`) omit Description, Namespace, and Content; Origin is Local / Marketplace only (no `origin_ref`); Marketplace URL shows for Marketplace origin when the registry has a URL; Path is the install directory. Contained files are grouped relative paths with an icon-only open-in-editor control (the only Library icon-only record action).
+- Filters: type as badges; updated as a segment; namespace as a searchable select; origin as a radio list. Origin groups `manual` and `local_snapshot` as **Local**; `marketplace_link` as **Marketplace**. Same labels on hover and detail. Storage `origin_kind` is unchanged. **Clear filters** restores every facet to its default (All / empty).
+- Detail: title is the name (double-click to rename). Other fields are icon + value; icon tooltip names the field. Double-click to edit. Default environment is only the field-row combobox. Updated is locale absolute date with relative time in parentheses. Plugin-type rows (`resources.type = plugin`) omit Description, Namespace, and Content; Origin is Local / Marketplace only (no `origin_ref`); Marketplace URL shows for Marketplace origin when the registry has a URL; Path is the install directory. Contained files are grouped relative paths with an icon-only open-in-editor control. Material Content is a 15-line code block; Path and Content (and the inspect-dialog header) also have icon-only open-in-editor controls.
 - Header cluster (right of the Library title): **Create resource** (accent), **Import**, **Tracked directories**, **Update all**. Labeled, compact, not icon-only. Create resource (accent primary) opens the centered type-picker dialog, then a full-screen single-page form per type with Cancel/Create in the footer; canceling dirty edits confirms discard. Material forms offer an optional add-to-current-profile-and-apply checkbox. **Update all** is secondary (`btn`, not accent); disabled when origin check found no outdated plugin-package heads or an update is in flight. Confirm: “Update N plugins from origin?”
 - Plugin-package list rows show a yellow **Update available** badge (color + text, never color alone) when origin check is outdated. Not on authored, frozen, or resource rows.
 - Plugin detail actions for upstream/catalog working heads: Apply, labeled **Update**, Fork, Doctor, Delete. Update has no extra confirm; busy disables the cluster.
@@ -99,7 +99,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 - Source sidebar + one main pane (list XOR plugin-tree XOR preview). No profile rail. Marketplaces and catalogs are managed in Sources, not Settings.
 - The sidebar lists HarnessTap-registered marketplaces and host-configured Claude Code marketplaces from `~/.claude/plugins/known_marketplaces.json`. Host-only rows are not editable or removable in Sources.
-- The source sidebar groups checkboxes under Local, Marketplaces, and Cloud. Empty sections are omitted.
+- The source sidebar groups checkboxes under Local, Marketplaces, and Cloud. Empty sections are omitted. A top-level **All sources** checkbox selects or clears every source; mixed selection is indeterminate. **Clear filters** clears search and checks every source.
 - Sources re-click clears the search query, checks all sources, and returns to the list. Back/Esc: preview → plugin-tree → list (standalone preview skips the tree). Esc while a confirm is open dismisses the confirm only.
 - Header cluster (right of the Sources title): **Add marketplace** (accent), **Connect catalog**. Labeled, compact, not icon-only. Add marketplace is the only accent control in this cluster.
 - Record actions on the plugin tree (preview inherits parent plugin actions) are labeled: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Not icon-only. No Update button on Sources.
@@ -109,7 +109,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 **Environments**
 
 - Globally active environment is a list-row `active` badge, not a header status marker.
-- Name filter lives in the list sidebar. Sidebar inventory is values and secrets only. Plugins that default to this environment appear in detail as “Plugins referencing this environment” and open that plugin’s Library detail.
+- Name filter lives in the list sidebar. **Clear filter** clears that query. Sidebar inventory is values and secrets only. Plugins that default to this environment appear in detail as “Plugins referencing this environment” and open that plugin’s Library detail.
 - Detail: keyed definition list + harness blocks. Apply / edit / delete are icon-actions in the detail header. Apply (`environment use`) only when process env drifted from this environment.
 
 **Lists**

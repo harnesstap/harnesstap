@@ -61,6 +61,65 @@ export function defaultCheckedSourceIds(rows: SourceRow[]): string[] {
   return rows.map((row) => row.id);
 }
 
+export function isSourcesFilterActive(
+  query: string,
+  checkedIds: string[],
+  rows: SourceRow[],
+): boolean {
+  if (query.trim().length > 0) {
+    return true;
+  }
+  const defaults = defaultCheckedSourceIds(rows);
+  if (checkedIds.length !== defaults.length) {
+    return true;
+  }
+  const checked = new Set(checkedIds);
+  return defaults.some((id) => !checked.has(id));
+}
+
+export type SourceCheckState = "all" | "none" | "mixed";
+
+export function sourceCheckState(
+  checkedIds: string[],
+  rows: SourceRow[],
+): SourceCheckState {
+  if (rows.length === 0) {
+    return "none";
+  }
+  const checked = new Set(checkedIds);
+  let selected = 0;
+  for (const row of rows) {
+    if (checked.has(row.id)) {
+      selected += 1;
+    }
+  }
+  if (selected === 0) {
+    return "none";
+  }
+  if (selected === rows.length) {
+    return "all";
+  }
+  return "mixed";
+}
+
+export function nextCheckedSourceIds(
+  checkedIds: string[],
+  rows: SourceRow[],
+): string[] {
+  const state = sourceCheckState(checkedIds, rows);
+  switch (state) {
+    case "all":
+      return [];
+    case "none":
+    case "mixed":
+      return defaultCheckedSourceIds(rows);
+    default: {
+      const neverState: never = state;
+      return neverState;
+    }
+  }
+}
+
 export type SourceSectionId = "local" | "marketplaces" | "cloud";
 
 export interface SourceSection {

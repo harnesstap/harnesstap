@@ -20,10 +20,10 @@ describe("CLI profile", () => {
     try {
       await runCli(["init"]);
       const listInitial = await runCli(["profile", "list", "--local-only"]);
-      expect(listInitial.stdout).toContain("default");
+      expect(listInitial.stdout).toContain("global default");
 
       const listAlias = await runCli(["p", "ls", "--local-only"]);
-      expect(listAlias.stdout).toContain("default");
+      expect(listAlias.stdout).toContain("global default");
 
       const createResult = await runCli(["profile", "create", "work"]);
       expect(createResult.stdout).toContain("Created profile");

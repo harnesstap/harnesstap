@@ -5,6 +5,7 @@ import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "../../constants/onboarding.js";
+import { GLOBAL_DEFAULT_PROFILE_NAME } from "../../constants/profile.js";
 import { getDb, getDbPath, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import {
@@ -46,7 +47,7 @@ function printQuickStartGuide(): void {
   console.log("");
   ui.subheader("NEXT STEPS");
   console.log("");
-  console.log(`  ${formatCommand("profile use default")}`);
+  console.log(`  ${formatCommand(`profile use "${GLOBAL_DEFAULT_PROFILE_NAME}"`)}`);
   console.log(
     `  ${formatCommand(`plugin list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`)}`,
   );
@@ -358,7 +359,7 @@ export function registerInitCommands(root: Command): void {
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--main <slug>", "Default main harness slug")
     .option("--aliases <slugs>", "Comma-separated alias harness slugs")
-    .option("--no-default-profile", "Skip creating and activating the default profile plugin")
+    .option("--no-default-profile", "Skip creating and activating the global default profile plugin")
     .option(
       "--interactive",
       "Prompt for harness selection instead of relying on explicit flags",

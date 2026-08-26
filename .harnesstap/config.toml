@@ -1,9 +1,8 @@
-default_profile = "default"
+default_profile = "project default"
 schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
-name = "default"
-selector = "default"
+name = "project default"
+selector = "project default"
 source = "local"
-

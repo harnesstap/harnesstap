@@ -922,6 +922,10 @@ export function resolvePluginSelector(selector: string): Plugin | undefined {
   }
   const asPlugin = getPluginByName(selector);
   if (asPlugin) return asPlugin;
+  if (selector === "default") {
+    const globalDefault = getPluginByName("global default");
+    if (globalDefault) return globalDefault;
+  }
   return getPlugin(selector);
 }
 

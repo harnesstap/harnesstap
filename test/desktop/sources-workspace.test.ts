@@ -112,6 +112,27 @@ describe("sources workspace chrome", () => {
     expect(sidebarSource).toContain("{section.label}");
   });
 
+  test("sidebar Clear filters resets search and default-checked sources", () => {
+    expect(sidebarSource).toContain("isSourcesFilterActive");
+    expect(sidebarSource).toContain("onClear");
+    expect(sidebarSource).toContain('aria-label="Clear filters"');
+    expect(sidebarSource).toContain('title="Clear filters"');
+    expect(sidebarSource).not.toContain('aria-label="Clear search"');
+    expect(sidebarSource).not.toContain("query.trim() === \"\"");
+    expect(workspaceSource).toContain("function resetSourcesFilters");
+    expect(workspaceSource).toContain("resetSourcesFilters()");
+    expect(workspaceSource).toContain("applyListQueryOrChecks(resetSourcesFilters)");
+  });
+
+  test("sidebar All sources checkbox selects or clears every source", () => {
+    expect(sidebarSource).toContain("onToggleAll");
+    expect(sidebarSource).toContain("sourceCheckState");
+    expect(sidebarSource).toContain("All sources");
+    expect(sidebarSource).toContain('"indeterminate"');
+    expect(workspaceSource).toContain("onToggleAll=");
+    expect(workspaceSource).toContain("nextCheckedSourceIds");
+  });
+
   test("header cluster uses Add marketplace and Connect catalog", () => {
     expect(workspaceSource).toContain("Add marketplace");
     expect(workspaceSource).toContain("Connect catalog");
@@ -368,6 +389,8 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("**Sources**");
     expect(designSource).toContain("list XOR plugin-tree XOR preview");
     expect(designSource).toContain("Sources re-click");
+    expect(designSource).toContain("Clear filters");
+    expect(designSource).toContain("every source checkbox checked");
     expect(designSource).toContain("Add marketplace");
     expect(designSource).toContain("Connect catalog");
     expect(designSource).toContain("Open in Library");
@@ -376,6 +399,8 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Update available");
     expect(designSource).toContain("No Update button on Sources");
     expect(designSource).toContain("Local, Marketplaces, and Cloud");
+    expect(designSource).toContain("All sources");
+    expect(designSource).toContain("indeterminate");
   });
 });
 

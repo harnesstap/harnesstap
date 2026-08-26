@@ -49,11 +49,11 @@ Key options:
 
 - `--main <slug>` — set the default main harness
 - `--aliases <slugs>` — comma-separated alias harnesses
-- `--no-default-profile` — skip seeding the `default` profile plugin and `active-profile.json` pointer
+- `--no-default-profile` — skip seeding the `global default` profile plugin and `active-profile.json` pointer
 - `--interactive` — prompt for harness selection instead of relying on explicit flags
 - `--format <mode>` — `human` or `json`
 
-`init` seeds a local `default` profile plugin (tagged `profile`) from library resources imported from home, writes `active-profile.json` unless `--no-default-profile` is passed, and prints the tracked directory list (home as `~`). Global apply does **not** run automatically — run `ht profile use default` to materialize home harness files.
+`init` seeds a local `global default` profile plugin (tagged `profile`) from library resources imported from home, writes `active-profile.json` unless `--no-default-profile` is passed, and prints the tracked directory list (home as `~`). Global apply does **not** run automatically — run `ht profile use "global default"` to materialize home harness files.
 
 ### init completion
 

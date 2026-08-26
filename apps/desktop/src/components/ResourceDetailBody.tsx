@@ -12,6 +12,7 @@ import {
   AlignLeft,
   ArrowLeft,
   Clock,
+  ExternalLink,
   FileCode2,
   Folder,
   Hash,
@@ -41,6 +42,10 @@ import {
   isPluginTypeResource,
   pluginRefShowsMarketplaceUrl,
 } from "../lib/plugin-ref-detail";
+import {
+  RESOURCE_CONTENT_PREVIEW_LINES,
+  previewResourceContent,
+} from "../lib/resource-content-preview";
 import {
   attachersFromResourceDetail,
   formatResourceDeleteAttachers,
@@ -76,6 +81,7 @@ const APPLY_SYNC_TOOLTIP =
   "Write the pending sync into the library. This still does not apply the plugin.";
 const DELETE_TOOLTIP =
   "Remove this from the library, or from the library and known on-disk locations.";
+const OPEN_IN_EDITOR_LABEL = "Open this file in the default editor.";
 
 export interface ResourceDetailBodyProps {
   target: ResourceDetailTarget;
@@ -473,6 +479,32 @@ export function ResourceDetailBody({
     }
   }
 
+  function editorPathFor(resource: LibraryResourceDetail): string {
+    if (isPluginTypeResource(resource.type)) {
+      return resource.install_path ?? "";
+    }
+    return resource.source;
+  }
+
+  function renderOpenInEditor(path: string): ReactNode {
+    if (!path) {
+      return null;
+    }
+    return (
+      <button
+        type="button"
+        className="icon-action"
+        title={OPEN_IN_EDITOR_LABEL}
+        aria-label={OPEN_IN_EDITOR_LABEL}
+        disabled={disabled || !baseUrl || loading || Boolean(openingPath)}
+        onClick={() => void openContainedPath(path)}
+      >
+        <ExternalLink size={14} aria-hidden />
+      </button>
+    );
+  }
+
+  const editorPath = detail ? editorPathFor(detail) : "";
   const showSync = Boolean(detail && !isUntrackedDetail(detail) && isSyncableDetail(detail));
   const showDelete = Boolean(detail && !isUntrackedDetail(detail));
   const showApply = Boolean(preview && preview.updated.length > 0);
@@ -651,6 +683,7 @@ export function ResourceDetailBody({
             placeholder="Install path not found"
             editing={false}
             onStartEdit={() => undefined}
+            action={renderOpenInEditor(editorPath)}
           />
           <LibraryFieldRow
             icon={<Clock size={16} aria-hidden />}
@@ -700,6 +733,7 @@ export function ResourceDetailBody({
             display={detail.source || "—"}
             editing={false}
             onStartEdit={() => undefined}
+            action={renderOpenInEditor(editorPath)}
           />
           <LibraryFieldRow
             icon={<MapPin size={16} aria-hidden />}
@@ -722,12 +756,23 @@ export function ResourceDetailBody({
             icon={<FileCode2 size={16} aria-hidden />}
             fieldName="Content"
             readOnly={fieldsReadOnly}
-            mono
-            display={detail.content}
+            display={
+              detail.content ? (
+                <pre className="resource-detail-content">
+                  <code>
+                    {previewResourceContent(
+                      detail.content,
+                      RESOURCE_CONTENT_PREVIEW_LINES,
+                    )}
+                  </code>
+                </pre>
+              ) : undefined
+            }
             placeholder="No content"
             editing={editingField === "content"}
             error={editingField === "content" ? fieldError : null}
             onStartEdit={() => void startEdit("content")}
+            action={renderOpenInEditor(editorPath)}
           >
             {renderEditor("content", true)}
           </LibraryFieldRow>
@@ -754,9 +799,6 @@ export function ResourceDetailBody({
             </p>
           ))}
         </div>
-      ) : null}
-      {chrome === "dialog" && (showSync || showDelete) ? (
-        <div className="resource-detail-actions">{actionButtons}</div>
       ) : null}
     </>
   ) : (
@@ -873,7 +915,14 @@ export function ResourceDetailBody({
           typeLabel={typeLabel}
           onBack={onBack}
           backDisabled={busy}
-          actions={showSync || showDelete ? actionButtons : null}
+          actions={
+            editorPath || showSync || showDelete ? (
+              <>
+                {renderOpenInEditor(editorPath)}
+                {actionButtons}
+              </>
+            ) : null
+          }
         >
           <div className="library-detail-body">{fields}</div>
         </Chrome>
@@ -896,12 +945,16 @@ export function ResourceDetailBody({
         >
           <ArrowLeft size={16} aria-hidden />
         </button>
-        <div>
+        <div className="resource-detail-heading">
           <div className="eyebrow">Resource</div>
           <h2 id={titleId}>{nameEditor}</h2>
         </div>
+        {renderOpenInEditor(editorPath)}
       </div>
       <div className="resource-detail-body">{fields}</div>
+      {showSync || showDelete ? (
+        <div className="resource-detail-actions">{actionButtons}</div>
+      ) : null}
       {confirms}
     </>
   );

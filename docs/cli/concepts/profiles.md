@@ -12,14 +12,14 @@ When you run `ht init`, HarnessTap:
 
 1. Creates the local workspace at `~/.harnesstap`
 2. Imports home harness defaults into the library and lists tracked directories (home as `~`)
-3. Seeds a `default` profile plugin (tagged `profile`) from those library resources
+3. Seeds a `global default` profile plugin (tagged `profile`) from those library resources
 4. Writes `~/.harnesstap/active-profile.json` pointing at that plugin
 
 `init` sets the active profile pointer only — it does **not** run global apply. Materialize home harness files after bootstrap:
 
 ```bash
 ht init --main codex --aliases claude-code,cursor
-ht profile use default
+ht profile use "global default"
 # or shorthand when <name> is not a reserved command:
 ht default
 ```

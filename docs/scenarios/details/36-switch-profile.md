@@ -13,7 +13,7 @@ Typical commands:
 ```bash
 harnesstap init
 harnesstap profile list
-harnesstap profile use default --dry-run
+harnesstap profile use "global default" --dry-run
 harnesstap profile use work --harness claude-code,cursor
 harnesstap profile status
 ht work
@@ -21,15 +21,15 @@ ht work
 
 What this gives you:
 
-- a `default` profile plugin seeded at `init` (tagged `profile`) plus
+- a `global default` profile plugin seeded at `init` (tagged `profile`) plus
   `~/.harnesstap/active-profile.json` pointing at it
 - `profile use` merges the profile plugin and transitive `plugin` refs, then
   writes global harness files (not project directories)
 - root shorthand `ht <name>` when `<name>` is a profile plugin and not a
-  reserved command
+  reserved command (`ht default` still resolves to `global default`)
 
 `init` sets the active profile pointer only — it does **not** run global
-apply. Run `profile use default` (or `ht default`) after bootstrap to
+apply. Run `profile use "global default"` (or `ht default`) after bootstrap to
 materialize home harness files.
 
 Create additional profiles with `profile create <name>` (promotes an

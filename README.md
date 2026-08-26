@@ -136,12 +136,12 @@ ht status .
 
 ```bash
 ht init --main claude-code --aliases cursor,codex
-ht profile use default
+ht profile use "global default"
 # after you compose a `work` profile:
 ht work
 ```
 
-`init` seeds a `default` profile plugin. It does **not** write home harness files until you run `profile use` (or the `ht <name>` shorthand).
+`init` seeds a `global default` profile plugin. It does **not** write home harness files until you run `profile use` (or the `ht <name>` shorthand; `ht default` still resolves to `global default`).
 
 More install and follow-up recipes: [Getting started](docs/cli/getting-started.md).
 

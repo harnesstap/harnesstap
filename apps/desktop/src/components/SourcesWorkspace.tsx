@@ -55,6 +55,7 @@ import {
 import {
   buildSourceRows,
   defaultCheckedSourceIds,
+  nextCheckedSourceIds,
   type SourceRow,
 } from "../lib/sources-sidebar";
 import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
@@ -250,14 +251,18 @@ export function SourcesWorkspace({
     }
   }, [rows, checksTouched]);
 
+  function resetSourcesFilters(): void {
+    setQuery("");
+    setChecksTouched(false);
+    setCheckedIds(defaultCheckedSourceIds(rows));
+  }
+
   useEffect(() => {
     if (homeResetNonceSeen.current === homeResetNonce) {
       return;
     }
     homeResetNonceSeen.current = homeResetNonce;
-    setQuery("");
-    setChecksTouched(false);
-    setCheckedIds(defaultCheckedSourceIds(rows));
+    resetSourcesFilters();
     setPane({ mode: "list" });
   }, [homeResetNonce, rows]);
 
@@ -802,6 +807,13 @@ export function SourcesWorkspace({
     });
   };
 
+  const onToggleAll = () => {
+    applyListQueryOrChecks(() => {
+      setChecksTouched(true);
+      setCheckedIds((current) => nextCheckedSourceIds(current, rows));
+    });
+  };
+
   const onRemoveMarketplace = async (name: string) => {
     if (!baseUrl || busy) {
       return;
@@ -1168,9 +1180,13 @@ export function SourcesWorkspace({
           onQueryChange={(next) => {
             applyListQueryOrChecks(() => setQuery(next));
           }}
+          onClear={() => {
+            applyListQueryOrChecks(resetSourcesFilters);
+          }}
           rows={rows}
           checkedIds={checkedIds}
           onToggle={onToggle}
+          onToggleAll={onToggleAll}
           disabled={controlsDisabled}
           busy={busy}
           error={error}

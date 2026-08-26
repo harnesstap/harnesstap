@@ -33,7 +33,7 @@ Switch the active environment to change secrets and env vars without rebuilding 
 ht environment create work --from-plugin my-setup --bind
 ht environment edit work --secret SLACK_TOKEN:keychain:harnesstap/slack-work
 ht environment use work
-ht profile use default --reapply
+ht profile use "global default" --reapply
 ```
 
 Use `environment status` to see the active pointer and terminal drift. Use `environment show <name> --plugin <selector>` to find missing keys required by a plugin's MCP env vars or plugin `needs[]`.

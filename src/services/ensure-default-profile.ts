@@ -1,4 +1,10 @@
-import { PROFILE_PLUGIN_TAG, isProfilePlugin, listProfilePlugins } from "../constants/profile.js";
+import {
+  GLOBAL_DEFAULT_PROFILE_NAME,
+  LEGACY_DEFAULT_PROFILE_NAME,
+  PROFILE_PLUGIN_TAG,
+  isProfilePlugin,
+  listProfilePlugins,
+} from "../constants/profile.js";
 import {
   addResourceToPlugin,
   createPlugin,
@@ -11,18 +17,40 @@ import {
   getActiveProfileName,
   setActiveProfileName,
 } from "./active-profile.js";
-import { createProfileCommand } from "./profile-commands.js";
+import { createProfileCommand, renameProfileCommand } from "./profile-commands.js";
 
 export interface EnsureDefaultProfileResult {
   plugin: Plugin;
   created: boolean;
 }
 
+function findProfileByName(name: string): Plugin | undefined {
+  return listPlugins().find((entry) => entry.name === name && isProfilePlugin(entry));
+}
+
 /**
- * When no profile plugins exist, seed a `default` profile (same name as `ht init`)
- * and point the active-profile pointer at it if unset.
+ * Rename a leftover `default` profile plugin to `global default` when the
+ * new name is free.
+ */
+export function migrateLegacyDefaultProfile(): Plugin | undefined {
+  const already = findProfileByName(GLOBAL_DEFAULT_PROFILE_NAME);
+  if (already) {
+    return already;
+  }
+  const legacy = findProfileByName(LEGACY_DEFAULT_PROFILE_NAME);
+  if (!legacy) {
+    return undefined;
+  }
+  renameProfileCommand(legacy.name, GLOBAL_DEFAULT_PROFILE_NAME);
+  return findProfileByName(GLOBAL_DEFAULT_PROFILE_NAME);
+}
+
+/**
+ * When no profile plugins exist, seed a `global default` profile (same name as
+ * `ht init`) and point the active-profile pointer at it if unset.
  */
 export function ensureDefaultProfilePlugin(): EnsureDefaultProfileResult {
+  migrateLegacyDefaultProfile();
   const existing = listProfilePlugins();
   const [first] = existing;
   if (first) {
@@ -30,8 +58,8 @@ export function ensureDefaultProfilePlugin(): EnsureDefaultProfileResult {
   }
 
   const { plugin, created } = createProfileCommand({
-    name: "default",
-    description: "Default profile",
+    name: GLOBAL_DEFAULT_PROFILE_NAME,
+    description: "Global default profile",
   });
 
   if (!getActiveProfileName()) {
@@ -46,17 +74,16 @@ function libraryResourcesForDefaultProfile() {
 }
 
 /**
- * Create the `default` profile plugin when missing, then attach every
+ * Create the `global default` profile plugin when missing, then attach every
  * non-plugin library resource if the profile has none yet.
  */
 export function seedDefaultProfileFromLibrary(): EnsureDefaultProfileResult {
-  let plugin = listPlugins().find(
-    (entry) => entry.name === "default" && isProfilePlugin(entry),
-  );
+  migrateLegacyDefaultProfile();
+  let plugin = findProfileByName(GLOBAL_DEFAULT_PROFILE_NAME);
   const created = !plugin;
   if (!plugin) {
     plugin = createPlugin({
-      name: "default",
+      name: GLOBAL_DEFAULT_PROFILE_NAME,
       version: "1.0.0",
       description: "Bootstrap profile from init",
       tags: [PROFILE_PLUGIN_TAG],
@@ -72,6 +99,6 @@ export function seedDefaultProfileFromLibrary(): EnsureDefaultProfileResult {
     }
   }
 
-  setActiveProfileName("default");
+  setActiveProfileName(GLOBAL_DEFAULT_PROFILE_NAME);
   return { plugin, created };
 }

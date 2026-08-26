@@ -143,7 +143,7 @@ describe("agent serve", () => {
       const { getPluginResources, listPlugins } = await import(
         "../../src/models/plugin-model.ts"
       );
-      const defaultPlugin = listPlugins().find((plugin) => plugin.name === "default");
+      const defaultPlugin = listPlugins().find((plugin) => plugin.name === "global default");
       expect(defaultPlugin).toBeDefined();
       const attached = getPluginResources(defaultPlugin!.id);
       expect(attached.map((resource) => resource.type).sort()).toEqual([

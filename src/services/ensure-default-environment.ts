@@ -14,8 +14,8 @@ export interface EnsureDefaultEnvironmentResult {
 }
 
 /**
- * When no environments exist, seed a `default` environment (same name as the
- * default profile) and point the home active environment at it if unset.
+ * When no environments exist, seed a `default` environment and point the home
+ * active environment at it if unset.
  */
 export function ensureDefaultEnvironment(): EnsureDefaultEnvironmentResult {
   const existing = listEnvironments();

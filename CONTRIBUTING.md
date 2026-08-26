@@ -102,12 +102,12 @@ Commit the generated fragment with your PR.
 ### Release (maintainers)
 
 1. Merge pending PRs that include `.changes/unreleased/` fragments.
-2. Run the **Generate Release PR** workflow (`changie-release-pr.yml`) from the Actions tab.
+2. Run the **Generate Release PR** workflow (`changie-release-pr.yml`) from the Actions tab. The repo must allow GitHub Actions to create pull requests (Settings → Actions → General → Workflow permissions).
 3. Review and merge the release PR (updates `CHANGELOG.md` and `package.json`).
 4. **Tag release** runs on `main` when `CHANGELOG.md` changes and pushes `vX.Y.Z` if that tag does not exist yet.
-5. Pushing the tag runs **Release** (`release.yml`): preflight, `npm publish`, and a GitHub release whose body comes from `.changes/vX.Y.Z.md`.
+5. **Release** (`release.yml`) runs after that tag exists: preflight, `npm publish` via [trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC, no `NPM_TOKEN`), and a GitHub release whose body comes from `.changes/vX.Y.Z.md`. A human-pushed `v*` tag also triggers Release.
 
-npm publish runs only in CI on tag push. Configure the `NPM_TOKEN` repository secret (npm automation token with publish access).
+npm publish runs only in CI. The npm package's trusted publisher must point at workflow filename `release.yml` in `harnesstap/harnesstap`.
 
 ### Security
 

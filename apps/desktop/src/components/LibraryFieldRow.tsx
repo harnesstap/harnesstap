@@ -11,6 +11,7 @@ export interface LibraryFieldRowProps {
   onStartEdit: () => void;
   error?: string | null;
   mono?: boolean;
+  action?: ReactNode;
   children?: ReactNode;
 }
 
@@ -24,6 +25,7 @@ export function LibraryFieldRow({
   onStartEdit,
   error,
   mono = false,
+  action,
   children,
 }: LibraryFieldRowProps) {
   const showPlaceholder = display == null || display === "";
@@ -79,6 +81,7 @@ export function LibraryFieldRow({
         )}
         {error ? <p className="library-field-error">{error}</p> : null}
       </div>
+      {action ? <div className="library-field-action">{action}</div> : null}
     </div>
   );
 }

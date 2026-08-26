@@ -1,6 +1,10 @@
 import type { Command } from "commander";
 import { initializeSchema } from "../db/schema.js";
 import { getDb } from "../db/connection.js";
+import {
+  GLOBAL_DEFAULT_PROFILE_NAME,
+  LEGACY_DEFAULT_PROFILE_NAME,
+} from "../constants/profile.js";
 import { listProfilePluginsCommand } from "../services/profile-commands.js";
 import { CliUsageError } from "../services/cli-errors.js";
 import { PluginProvenanceError } from "../services/plugin-origin.js";
@@ -109,6 +113,9 @@ function rewriteProfileShorthandArgv(argv: string[]): string[] {
     profileNames = new Set(
       listProfilePluginsCommand().map((profile) => profile.name),
     );
+    if (profileNames.has(GLOBAL_DEFAULT_PROFILE_NAME)) {
+      profileNames.add(LEGACY_DEFAULT_PROFILE_NAME);
+    }
   } catch {
     return argv;
   }

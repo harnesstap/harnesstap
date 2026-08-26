@@ -17,14 +17,14 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("NEXT STEPS");
       expect(result.stdout).not.toContain("already exists");
       expect(result.stdout).toContain("plugin list --search foundation");
-      expect(result.stdout).toContain("profile use default");
+      expect(result.stdout).toContain('profile use "global default"');
       expect(result.stdout).toContain("apply engineering-foundation");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
       expect(context.connection.getDbPath()).toContain(".harnesstap/harnesstap.db");
       expect(pluginModel.listPlugins()).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            name: "default",
+            name: "global default",
             tags: expect.arrayContaining(["profile"]),
           }),
         ]),
@@ -35,7 +35,7 @@ describe("CLI init", () => {
           "utf-8",
         ),
       ) as { name: string };
-      expect(activeProfile.name).toBe("default");
+      expect(activeProfile.name).toBe("global default");
       const environmentModel = await import("../../src/models/environment.ts");
       expect(environmentModel.listEnvironments()).toEqual([
         expect.objectContaining({ name: "default" }),
@@ -88,13 +88,13 @@ describe("CLI init", () => {
         ]),
       );
 
-      const pluginShow = await runCli(["plugin", "show", "default"]);
+      const pluginShow = await runCli(["plugin", "show", "global default"]);
       expect(pluginShow.stdout).toContain("instruction");
       expect(pluginShow.stdout).not.toContain("No resources in this plugin.");
 
       const pluginModel = await import("../../src/models/plugin-model.ts");
       const defaultPlugin = pluginModel.listPlugins().find(
-        (plugin) => plugin.name === "default",
+        (plugin) => plugin.name === "global default",
       );
       expect(defaultPlugin).toBeDefined();
       const db = context.connection.getDb();
@@ -108,7 +108,7 @@ describe("CLI init", () => {
       expect(rerun.stdout).toContain("~");
       expect(homeResources()).toHaveLength(2);
 
-      const backfilledShow = await runCli(["plugin", "show", "default"]);
+      const backfilledShow = await runCli(["plugin", "show", "global default"]);
       expect(backfilledShow.stdout).toContain("instruction");
       expect(backfilledShow.stdout).not.toContain("No resources in this plugin.");
     } finally {

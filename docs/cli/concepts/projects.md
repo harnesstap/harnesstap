@@ -177,7 +177,7 @@ ht config init --profile work --profile personal --default work
 ht config init --force   # overwrite an existing file
 ```
 
-`config init` maps each selected profile plugin to a `source = "local"` entry and sets `default_profile`.
+`config init` maps each selected profile plugin to a `source = "local"` entry and sets `default_profile`. Opening a project in HarnessTap Desktop instead seeds a `project default` profile from that repository’s on-disk resources. It does not add `global default` to the project.
 
 Switch to a configured profile with `ht use`:
 

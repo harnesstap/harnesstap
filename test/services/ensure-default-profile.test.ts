@@ -39,15 +39,26 @@ describe("ensureDefaultProfilePlugin", () => {
     return dir;
   }
 
-  it("creates and activates a default profile when none exist", () => {
+  it("creates and activates a global default profile when none exist", () => {
     withHome();
     expect(listProfilePlugins()).toHaveLength(0);
 
     const result = ensureDefaultProfilePlugin();
     expect(result.created).toBe(true);
-    expect(result.plugin.name).toBe("default");
-    expect(listProfilePlugins().map((plugin) => plugin.name)).toEqual(["default"]);
-    expect(getActiveProfileName()).toBe("default");
+    expect(result.plugin.name).toBe("global default");
+    expect(listProfilePlugins().map((plugin) => plugin.name)).toEqual(["global default"]);
+    expect(getActiveProfileName()).toBe("global default");
+  });
+
+  it("renames a legacy default profile to global default", () => {
+    withHome();
+    createProfileCommand({ name: "default" });
+    expect(getActiveProfileName()).toBeUndefined();
+
+    const result = ensureDefaultProfilePlugin();
+    expect(result.created).toBe(false);
+    expect(result.plugin.name).toBe("global default");
+    expect(listProfilePlugins().map((plugin) => plugin.name)).toEqual(["global default"]);
   });
 
   it("attaches distinct library resources to an empty default profile", () => {
@@ -84,7 +95,7 @@ describe("ensureDefaultProfilePlugin", () => {
 
     const result = seedDefaultProfileFromLibrary();
     expect(result.created).toBe(true);
-    expect(result.plugin.name).toBe("default");
+    expect(result.plugin.name).toBe("global default");
     const attached = getPluginResources(result.plugin.id);
     expect(attached.map((resource) => resource.type).sort()).toEqual([
       "instruction",

@@ -137,7 +137,7 @@ describe("agent routes", () => {
     await expect(response.json()).resolves.toEqual({ error: "invalid_profile" });
   });
 
-  it("bootstraps a project with no prior profiles by seeding default", async () => {
+  it("bootstraps a project by seeding project default from local resources", async () => {
     const server = await withServer();
     const projectDir = mkdtempSync(join(tmpdir(), "ht-agent-bootstrap-"));
     tempDirs.push(projectDir);
@@ -156,8 +156,8 @@ describe("agent routes", () => {
       profiles: string[];
       config_path: string;
     };
-    expect(body.default_profile).toBe("default");
-    expect(body.profiles).toEqual(["default"]);
+    expect(body.default_profile).toBe("project default");
+    expect(body.profiles).toEqual(["project default"]);
     expect(body.config_path).toContain(".harnesstap/config.toml");
   });
 
@@ -190,7 +190,42 @@ describe("agent routes", () => {
     };
     expect(body.already_existed).toBe(true);
     expect(body.default_profile).toBe("work");
-    expect(body.profiles).toEqual(["work"]);
+    expect(body.profiles).toEqual(expect.arrayContaining(["work", "project default"]));
     expect(body.config_path).toContain(".harnesstap/config.toml");
+  });
+
+  it("keeps project default off the home profile list", async () => {
+    const server = await withServer();
+    const projectDir = mkdtempSync(join(tmpdir(), "ht-agent-bootstrap-home-"));
+    tempDirs.push(projectDir);
+
+    await fetch(`${server.url}/v1/bootstrap`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${server.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ projectPath: projectDir }),
+    });
+
+    const home = await fetch(`${server.url}/v1/profiles`);
+    const homeBody = (await home.json()) as {
+      profiles: Array<{ name: string; scopes: string[] }>;
+    };
+    expect(homeBody.profiles.some((profile) => profile.name === "project default")).toBe(
+      false,
+    );
+
+    const project = await fetch(
+      `${server.url}/v1/profiles?projectPath=${encodeURIComponent(projectDir)}`,
+    );
+    const projectBody = (await project.json()) as {
+      profiles: Array<{ name: string; scopes: string[] }>;
+    };
+    const byName = new Map(
+      projectBody.profiles.map((profile) => [profile.name, profile]),
+    );
+    expect(byName.get("project default")?.scopes).toEqual(["project"]);
+    expect(byName.get("global default")?.scopes).toEqual(["home"]);
   });
 });

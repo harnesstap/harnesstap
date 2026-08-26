@@ -1,0 +1,2 @@
+kind: Docs
+body: Publish the CLI with npm trusted publishing (OIDC) instead of a long-lived NPM_TOKEN, and run Release after Tag release so a bot-pushed tag still ships.

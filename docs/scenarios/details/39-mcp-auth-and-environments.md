@@ -29,7 +29,7 @@ ht environment edit personal --secret SLACK_BOT_TOKEN:keychain:harnesstap/slack-
 
 # Switch and materialize
 ht environment use work
-ht profile use default --reapply
+ht profile use "global default" --reapply
 # or: ht apply my-setup --project . --harness claude-code,cursor
 ```
 
@@ -43,7 +43,7 @@ Verify resolved keys before apply:
 
 ```bash
 ht environment show work --plugin my-setup
-ht profile use default --dry-run
+ht profile use "global default" --dry-run
 ```
 
 ## OAuth MCP (host-managed)

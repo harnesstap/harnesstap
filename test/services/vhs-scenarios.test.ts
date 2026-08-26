@@ -205,7 +205,7 @@ describe("VHS scenario manifest", () => {
 
     expect(readme).toContain("Agent harness configuration toolkit");
     expect(readme).toContain("ht harness list");
-    expect(readme).toContain("ht profile use default");
+    expect(readme).toContain("ht profile use \"global default\"");
     expect(readme).toContain("ht plugin doctor");
     expect(readme).toContain("ht plugin edit my-setup --add research-helper --type skill");
     expect(readme).toContain(

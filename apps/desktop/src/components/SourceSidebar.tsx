@@ -3,7 +3,13 @@ import { FilterX } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { sourcesSidebarChangeAction } from "../lib/sources-pane";
-import { groupSourceRows, type SourceRow } from "../lib/sources-sidebar";
+import {
+  groupSourceRows,
+  isSourcesFilterActive,
+  sourceCheckState,
+  type SourceCheckState,
+  type SourceRow,
+} from "../lib/sources-sidebar";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 const ACTION_ICON_SIZE = 16;
@@ -16,9 +22,11 @@ type PendingConfirm =
 export interface SourceSidebarProps {
   query: string;
   onQueryChange: (query: string) => void;
+  onClear: () => void;
   rows: SourceRow[];
   checkedIds: string[];
   onToggle: (id: string) => void;
+  onToggleAll: () => void;
   disabled?: boolean;
   busy?: boolean;
   error?: string | null;
@@ -60,12 +68,31 @@ function confirmCopy(pending: PendingConfirm): {
   }
 }
 
+function sourceMasterChecked(
+  state: SourceCheckState,
+): boolean | "indeterminate" {
+  switch (state) {
+    case "all":
+      return true;
+    case "none":
+      return false;
+    case "mixed":
+      return "indeterminate";
+    default: {
+      const neverState: never = state;
+      return neverState;
+    }
+  }
+}
+
 export function SourceSidebar({
   query,
   onQueryChange,
+  onClear,
   rows,
   checkedIds,
   onToggle,
+  onToggleAll,
   disabled = false,
   busy = false,
   error,
@@ -82,6 +109,8 @@ export function SourceSidebar({
   }, [confirmOpen, onConfirmOpenChange]);
   const sidebarChange = sourcesSidebarChangeAction({ busy, confirmOpen });
   const controlsDisabled = disabled || sidebarChange === "block";
+  const dirty = isSourcesFilterActive(query, checkedIds, rows);
+  const masterChecked = sourceMasterChecked(sourceCheckState(checkedIds, rows));
 
   const applySidebarChange = (apply: () => void): void => {
     if (sourcesSidebarChangeAction({ busy, confirmOpen }) === "block") {
@@ -131,10 +160,10 @@ export function SourceSidebar({
           <button
             type="button"
             className="icon-action resource-filter-clear"
-            aria-label="Clear search"
-            title="Clear search"
-            disabled={controlsDisabled || query.trim() === ""}
-            onClick={() => applySidebarChange(() => onQueryChange(""))}
+            aria-label="Clear filters"
+            title="Clear filters"
+            disabled={controlsDisabled || !dirty}
+            onClick={() => applySidebarChange(() => onClear())}
           >
             <FilterX size={ACTION_ICON_SIZE} aria-hidden />
           </button>
@@ -143,6 +172,25 @@ export function SourceSidebar({
       {error ? (
         <div className="banner error" role="alert">
           {error}
+        </div>
+      ) : null}
+      {rows.length > 0 ? (
+        <div className="resource-filter-section source-row-list">
+          <div className="source-row">
+            <div className="source-row-check">
+              <Checkbox
+                id="source-all"
+                checked={masterChecked}
+                disabled={controlsDisabled}
+                onCheckedChange={() =>
+                  applySidebarChange(() => onToggleAll())
+                }
+              />
+              <Label htmlFor="source-all" className="font-normal">
+                All sources
+              </Label>
+            </div>
+          </div>
         </div>
       ) : null}
       {groupSourceRows(rows).map((section) => (

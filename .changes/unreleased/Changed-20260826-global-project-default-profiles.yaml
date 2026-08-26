@@ -1,0 +1,3 @@
+kind: Changed
+body: Rename the init profile to "global default" (Global-only) and seed a Project-only "project default" from each repo when desktop adds a project.
+time: 2026-08-26T04:10:00Z

@@ -1,10 +1,14 @@
-import { executeConfigInit } from "../services/config-init.js";
+import { bootstrapProjectWorkspace } from "../services/bootstrap-project-workspace.js";
 import {
   detectGlobalProfileStatus,
   type GlobalProfileStatus,
 } from "../services/global-profile-drift.js";
 import type { GlobalProfileStatusDepth } from "../services/global-profile-status-panel.js";
-import { PROFILE_PLUGIN_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
+import {
+  PROFILE_PLUGIN_TAG,
+  isEmptyBuiltinProfile,
+  isProjectProfilePlugin,
+} from "../constants/profile.js";
 import { listProfilePluginsCommand } from "../services/profile-commands.js";
 import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
 import { findProjectConfig } from "../services/project-config.js";
@@ -97,8 +101,13 @@ export interface ProfileSummaryPayload {
 
 function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
   const byName = new Map<string, ProfileSummaryPayload>();
+  const plugins = listProfilePluginsCommand();
+  const pluginsByName = new Map(plugins.map((profile) => [profile.name, profile]));
 
-  for (const profile of listProfilePluginsCommand()) {
+  for (const profile of plugins) {
+    if (isProjectProfilePlugin(profile)) {
+      continue;
+    }
     byName.set(profile.name, {
       name: profile.name,
       version: profile.version,
@@ -123,13 +132,14 @@ function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
           }
           continue;
         }
+        const plugin = pluginsByName.get(entry.selector ?? entry.name);
         byName.set(entry.name, {
           name: entry.name,
-          version: "",
-          tags: [PROFILE_PLUGIN_TAG],
-          description: null,
+          version: plugin?.version ?? "",
+          tags: plugin?.tags ?? [PROFILE_PLUGIN_TAG],
+          description: plugin?.description ?? null,
           scopes: ["project"],
-          dirty: false,
+          dirty: plugin?.dirty ?? false,
         });
       }
     }
@@ -315,37 +325,9 @@ export function createAgentRouteHandlers(
       }
 
       const projectPath = (body as { projectPath: string }).projectPath;
-      const profilesRaw = (body as { profiles?: unknown }).profiles;
-      const defaultProfileRaw = (body as { defaultProfile?: unknown }).defaultProfile;
-      const profiles = Array.isArray(profilesRaw)
-        ? profilesRaw.filter((name): name is string => typeof name === "string" && name.length > 0)
-        : undefined;
-      const defaultProfile =
-        typeof defaultProfileRaw === "string" && defaultProfileRaw.length > 0
-          ? defaultProfileRaw
-          : undefined;
-
-      // Idempotent: project view re-enters bootstrap whenever the repo is not
-      // DB-tracked yet; existing `.harnesstap/config.toml` must not re-init.
-      const existing = findProjectConfig(projectPath);
-      if (existing) {
-        const profileNames = existing.profiles.map((profile) => profile.name);
-        return jsonResponse({
-          config_path: existing.configPath,
-          default_profile: existing.default_profile ?? profileNames[0] ?? "",
-          profiles: profileNames,
-          already_existed: true,
-        });
-      }
 
       try {
-        const result = await executeConfigInit({
-          project: projectPath,
-          ...(profiles && profiles.length > 0 ? { profiles } : {}),
-          ...(defaultProfile ? { defaultProfile } : {}),
-          noInteractive: true,
-          format: "json",
-        });
+        const result = await bootstrapProjectWorkspace(projectPath);
         return jsonResponse(result);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

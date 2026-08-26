@@ -29,7 +29,13 @@ kinds:
     auto: major
   - label: Features
     auto: minor
+  - label: Added
+    auto: minor
+  - label: Changed
+    auto: patch
   - label: Fixes
+    auto: patch
+  - label: Fixed
     auto: patch
   - label: Docs
     auto: patch
