@@ -92,9 +92,18 @@ jobs:
             exit 1
           fi
 
-      - name: Run preflight
+      - name: Lint, typecheck, test, and build
         if: steps.resolve.outputs.skip != 'true'
-        run: bun run preflight
+        run: |
+          bun run lint
+          bun run typecheck
+          bun run test:core
+          bun run test:platforms
+          bun run test:plugins
+          bun run test:services
+          bun run test:cli
+          bun run test:docs
+          bun run build
 
       - name: Set up Node for npm publish
         if: steps.resolve.outputs.skip != 'true'
