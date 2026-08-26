@@ -102,7 +102,7 @@ Commit the generated fragment with your PR.
 ### Release (maintainers)
 
 1. Merge pending PRs that include `.changes/unreleased/` fragments.
-2. Run the **Generate Release PR** workflow (`changie-release-pr.yml`) from the Actions tab. The repo must allow GitHub Actions to create pull requests (Settings → Actions → General → Workflow permissions).
+2. Run the **Generate Release PR** workflow (`changie-release-pr.yml`) from the Actions tab. The repo must allow GitHub Actions to create pull requests (Settings → Actions → General → Workflow permissions). The first cut batches `v0.1.0`; later cuts use `changie batch auto`.
 3. Review and merge the release PR (updates `CHANGELOG.md` and `package.json`).
 4. **Tag release** runs on `main` when `CHANGELOG.md` changes and pushes `vX.Y.Z` if that tag does not exist yet.
 5. **Release** (`release.yml`) runs after that tag exists: preflight, `npm publish` via [trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC, no `NPM_TOKEN`), and a GitHub release whose body comes from `.changes/vX.Y.Z.md`. A human-pushed `v*` tag also triggers Release.

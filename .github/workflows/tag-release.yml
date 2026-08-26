@@ -20,12 +20,14 @@ jobs:
 
       - name: Get the latest version
         id: latest
+        continue-on-error: true
         uses: miniscruff/changie-action@v3
         with:
           version: latest
           args: latest
 
       - name: Create and push tag if missing
+        if: steps.latest.outcome == 'success' && steps.latest.outputs.output != ''
         run: |
           TAG="${{ steps.latest.outputs.output }}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
