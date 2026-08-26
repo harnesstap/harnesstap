@@ -100,7 +100,7 @@ function filterPluginsByVersionConstraint(
 }
 
 function getUnpublishedLocalByName(name: string): Plugin | undefined {
-  const plugin = getPluginByName(name);
+  const plugin = resolvePluginSelector(name);
   if (!plugin) {
     return undefined;
   }

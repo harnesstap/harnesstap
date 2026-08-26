@@ -1,0 +1,2 @@
+kind: Fixed
+body: Resolve `ht apply default` to the `global default` profile so project apply still finds the init-seeded plugin after the rename.

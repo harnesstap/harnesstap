@@ -243,4 +243,15 @@ describe("resolveApplyPluginSource", () => {
       await context.cleanup();
     }
   });
+
+  it("resolves legacy default to the unpublished global default profile", async () => {
+    const context = await createInitializedTestContext("resolve-apply-legacy-default");
+    try {
+      const plugin = createPlugin({ name: "global default", tags: ["profile"] });
+      const resolved = await resolveApplyPluginSource("default");
+      expect(resolved).toEqual({ kind: "local", pluginId: plugin.id });
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
