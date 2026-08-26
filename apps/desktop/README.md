@@ -51,6 +51,8 @@ bun run desktop:build
 
 Output: `apps/desktop/src-tauri/target/release/bundle/`
 
+GitHub Releases attach the `.dmg` from that bundle on each tagged CLI release. The CI build is unsigned.
+
 To build and install straight into `/Applications` (quits a running instance first):
 
 ```bash

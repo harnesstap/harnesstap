@@ -151,7 +151,9 @@ More install and follow-up recipes: [Getting started](docs/cli/getting-started.m
 
 HarnessTap Desktop is a local app for the same library the CLI uses. Browse plugins and profiles, preview conflicts, and apply without leaving the GUI.
 
-It is **not** in the npm package. Build it from this repo (macOS `.app` / `.dmg` today):
+It is **not** in the npm package. Download the macOS `.dmg` from [GitHub Releases](https://github.com/harnesstap/harnesstap/releases). The build is unsigned, so macOS Gatekeeper may require **Open Anyway** under System Settings → Privacy & Security.
+
+To build from this repo:
 
 ```bash
 bun run desktop:dev      # development
