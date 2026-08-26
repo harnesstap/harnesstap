@@ -1,3 +1,0 @@
-kind: Changed
-body: Rename `layer` to `plugin` across the CLI, storage, agent API, and desktop; `ht layer …` keeps working for one release. `ht layer apply` becomes top-level `ht apply`, with `--global` for machine-wide application
-time: 2026-08-09T22:00:00Z

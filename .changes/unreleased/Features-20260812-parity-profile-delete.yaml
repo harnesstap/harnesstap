@@ -1,3 +1,0 @@
-kind: Features
-body: Add desktop profile delete (demote, optional library plugin removal) via DELETE /v1/profiles/:name.
-time: 2026-08-12T16:00:00Z

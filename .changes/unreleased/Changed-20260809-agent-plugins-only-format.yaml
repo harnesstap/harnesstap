@@ -1,3 +1,0 @@
-kind: Changed
-body: Portable plugins are now Agent Plugins 1.0 packages exclusively — a directory with a root plugin.json, or a single .ap.json envelope. The .harnesstap.toml transport is removed, `migrate export --environment` is gone in favor of `--workspace`, and workspace archives now contain AP packages
-time: 2026-08-09T23:00:00Z

@@ -1,2 +1,0 @@
-kind: Features
-body: Add Changie-based semver, CHANGELOG.md, and CI release workflows (tag-triggered npm publish and GitHub releases)

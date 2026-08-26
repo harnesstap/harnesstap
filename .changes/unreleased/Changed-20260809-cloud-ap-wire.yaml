@@ -1,3 +1,0 @@
-kind: Changed
-body: HarnessTap Cloud publishes and serves Agent Plugins packages exclusively, on `/api/plugins` and a `package` download route. Requests carry a CLI and API version, and a CLI below the supported floor now fails with an upgrade instruction
-time: 2026-08-09T23:30:00Z
