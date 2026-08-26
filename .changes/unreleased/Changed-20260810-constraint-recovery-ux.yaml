@@ -1,3 +1,0 @@
-kind: Changed
-body: Give apply-preview errors real recovery actions, including create-plugin, singleton pick-winner, and tag-as-profile
-time: 2026-08-10T18:00:00Z

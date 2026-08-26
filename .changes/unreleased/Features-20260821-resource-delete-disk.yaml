@@ -1,3 +1,0 @@
-kind: Features
-body: Resource delete can remove a library row only or also clean known on-disk locations, with a preview plan that surgically edits shared files and blocks modified or ambiguous paths
-time: 2026-08-21T15:26:00Z

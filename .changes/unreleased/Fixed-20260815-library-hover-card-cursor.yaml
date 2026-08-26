@@ -1,3 +1,0 @@
-kind: Fixed
-body: Anchor desktop resource row hover cards to the pointer and close them immediately when leaving a row so prior cards cannot linger.
-time: 2026-08-15T21:10:00Z
