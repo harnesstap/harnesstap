@@ -52,6 +52,11 @@ jobs:
         run: |
           set -euo pipefail
           LATEST="${{ steps.latest.outputs.output }}"
+          if [ -z "$LATEST" ] || [ "$LATEST" = "v0.0.0" ] || [ "$LATEST" = "0.0.0" ] || [ ! -f ".changes/${LATEST}.md" ]; then
+            echo "No batched changelog for ${LATEST:-<empty>}; skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "${{ github.event_name }}" = "push" ]; then
             TAG="${GITHUB_REF_NAME}"
             if [ "$TAG" != "$LATEST" ]; then

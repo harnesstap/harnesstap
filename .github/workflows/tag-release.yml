@@ -30,6 +30,10 @@ jobs:
         if: steps.latest.outcome == 'success' && steps.latest.outputs.output != ''
         run: |
           TAG="${{ steps.latest.outputs.output }}"
+          if [ "$TAG" = "v0.0.0" ] || [ "$TAG" = "0.0.0" ] || [ ! -f ".changes/${TAG}.md" ]; then
+            echo "No batched changelog for $TAG; skipping tag."
+            exit 0
+          fi
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists; skipping."
             exit 0
