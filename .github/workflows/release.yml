@@ -235,16 +235,20 @@ jobs:
         run: bun run desktop:build
 
       # Linux: tauri.conf.json lists appimage before deb/rpm, and a single
-      # `tauri build` stops at the first bundler failure. linuxdeploy is itself
-      # an AppImage; GitHub-hosted runners have no FUSE, so AppImage failed in
-      # https://github.com/harnesstap/harnesstap/actions/runs/33028872600
-      # (`failed to run linuxdeploy`) and skipped .deb/.rpm entirely.
+      # `tauri build` stops at the first bundler failure. Keep the split so
+      # a later AppImage-only failure is obvious and .deb/.rpm are already built.
       #
-      # APPIMAGE_EXTRACT_AND_RUN: extract-and-run instead of FUSE (AppImage
-      # runtime + linuxdeploy plugin AppImages; tauri-bundler also sets this on
-      # the linuxdeploy process itself since 2.7.0).
+      # APPIMAGE_EXTRACT_AND_RUN: extract-and-run instead of FUSE (linuxdeploy
+      # and its plugin AppImages; GitHub-hosted runners have no FUSE).
       # NO_STRIP: skip linuxdeploy's bundled strip, which fails on modern ELF
-      # .relr.dyn sections (tauri-apps/tauri#14796).
+      # .relr.dyn sections (tauri-apps/tauri#14796) and would corrupt the Bun
+      # sidecar if it were scanned.
+      #
+      # AppImage failure in run 33032582858 was not FUSE: linuxdeploy started
+      # with --appimage-extract-and-run, then the GTK plugin re-invoked
+      # linuxdeploy, ldd'd usr/bin/ht-agent (Bun --compile sidecar), and
+      # SIGABRTed (`Failed to run ldd: exited with code 1`). Seed a wrapper
+      # GTK plugin that shelters ldd-incompatible usr/bin files for that pass.
       - name: Build Linux deb and rpm
         if: startsWith(matrix.runner, 'ubuntu-')
         env:
@@ -257,6 +261,20 @@ jobs:
           bun install
           bun run tauri -- build --bundles deb,rpm
 
+      - name: Seed linuxdeploy GTK plugin
+        if: startsWith(matrix.runner, 'ubuntu-')
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.cache/tauri"
+          curl -fsSL \
+            https://raw.githubusercontent.com/tauri-apps/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh \
+            -o "$HOME/.cache/tauri/linuxdeploy-plugin-gtk.upstream.sh"
+          cp apps/desktop/scripts/linuxdeploy-plugin-gtk.sh \
+            "$HOME/.cache/tauri/linuxdeploy-plugin-gtk.sh"
+          chmod +x \
+            "$HOME/.cache/tauri/linuxdeploy-plugin-gtk.sh" \
+            "$HOME/.cache/tauri/linuxdeploy-plugin-gtk.upstream.sh"
+
       - name: Build Linux AppImage
         if: startsWith(matrix.runner, 'ubuntu-')
         env:
@@ -265,15 +283,8 @@ jobs:
         run: |
           set -euo pipefail
           cd apps/desktop
-          set +e
           bun run tauri -- bundle --verbose --bundles appimage
-          status=$?
-          set -e
-          if [ "$status" -eq 0 ]; then
-            echo "AppImage bundle succeeded."
-          else
-            echo "::warning::AppImage bundling failed (linuxdeploy). .deb/.rpm will still be uploaded if present."
-          fi
+          echo "AppImage bundle succeeded."
 
       - name: Attach installers to GitHub release
         env:
@@ -315,7 +326,9 @@ jobs:
               exit 1
             fi
             if [ "$has_appimage" != true ]; then
-              echo "::warning::No AppImage produced for ${{ matrix.name }}; uploading .deb/.rpm only."
+              echo "Linux job produced no .AppImage for ${{ matrix.name }}."
+              find "$BUNDLE" -type f || true
+              exit 1
             fi
           fi
           gh release upload "$TAG" "${files[@]}" --clobber --repo "${{ github.repository }}"
