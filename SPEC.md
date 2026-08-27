@@ -852,7 +852,7 @@ The primary walkthrough is a single adoption story (`init` → `scan` → `resou
 
 ## Build, test, and release workflow
 
-The project uses Bun for local dependency management, CI, and builds. Distribution of the CLI is through the npm registry. An optional Tauri desktop app lives under `apps/desktop/` (`bun run desktop:dev` / `desktop:build` / `desktop:install`); it is not part of the published npm package. Tagged GitHub releases attach unsigned macOS, Windows, and Linux installers for x64 and arm where GitHub-hosted runners can build them. Linux AppImage, deb, and rpm artifacts are built on Ubuntu 22.04 so glibc stays compatible with Ubuntu 22.04 / Debian 12. Release packaging builds deb and rpm first; AppImage is best-effort because linuxdeploy is an AppImage and GitHub-hosted runners have no FUSE.
+The project uses Bun for local dependency management, CI, and builds. Distribution of the CLI is through the npm registry. An optional Tauri desktop app lives under `apps/desktop/` (`bun run desktop:dev` / `desktop:build` / `desktop:install`); it is not part of the published npm package. Tagged GitHub releases attach unsigned macOS, Windows, and Linux installers for x64 and arm where GitHub-hosted runners can build them. Linux AppImage, deb, and rpm artifacts are built on Ubuntu 22.04 so glibc stays compatible with Ubuntu 22.04 / Debian 12. Release packaging builds deb and rpm first, then AppImage. CI extracts linuxdeploy without FUSE and shelters the Bun ht-agent sidecar so linuxdeploy does not ldd or patchelf it. The Linux job fails if no AppImage is produced.
 
 ```bash
 bun install

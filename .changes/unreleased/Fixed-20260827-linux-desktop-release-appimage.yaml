@@ -1,2 +1,2 @@
 kind: Fixed
-body: Produce Linux .deb and .rpm desktop installers on GitHub Releases even when AppImage bundling fails on GitHub Actions (linuxdeploy/FUSE).
+body: Produce Linux AppImage, deb, and rpm desktop installers on GitHub Releases (x64 and arm64) by extracting linuxdeploy without FUSE and keeping the Bun ht-agent sidecar out of linuxdeploy's ldd scan.
