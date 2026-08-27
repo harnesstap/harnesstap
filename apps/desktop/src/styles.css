@@ -8,8 +8,9 @@
   --border: #2a3340;
   --fg: #e8eef5;
   --muted: #8b9aab;
-  --accent: #4d8dff;
-  --green: #3ecf8e;
+  /* Hexes match the Flow Split brand mark (violet #8b5cf6, blue #3b82f6, teal #14b8a6). Keep CLI and Desktop in sync. */
+  --accent: #3b82f6;
+  --green: #14b8a6;
   --yellow: #e6b84d;
   --red: #e85d5d;
   --font: "IBM Plex Sans", "Segoe UI", sans-serif;
