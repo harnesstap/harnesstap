@@ -1,0 +1,2 @@
+kind: Fixed
+body: Produce Linux .deb and .rpm desktop installers on GitHub Releases even when AppImage bundling fails on GitHub Actions (linuxdeploy/FUSE).
