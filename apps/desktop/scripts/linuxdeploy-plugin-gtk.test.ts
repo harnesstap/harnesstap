@@ -24,7 +24,13 @@ describe("linuxdeploy-plugin-gtk wrapper", () => {
   });
 
   it("reports plugin API version 0", () => {
-    const result = Bun.spawnSync(["/bin/bash", WRAPPER, "--plugin-api-version"]);
+    const result = Bun.spawnSync({
+      cmd: ["/bin/bash", WRAPPER, "--plugin-api-version"],
+      env: {
+        ...process.env,
+        PATH: `/usr/bin:/bin:${process.env.PATH ?? ""}`,
+      },
+    });
     expect(result.exitCode).toBe(0);
     expect(result.stdout.toString().trim()).toBe("0");
   });
