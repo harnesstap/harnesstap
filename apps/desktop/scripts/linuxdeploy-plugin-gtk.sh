@@ -7,18 +7,20 @@
 # ldd exits 1 and linuxdeploy SIGABRTs (std::runtime_error, exit 134).
 # strip/patchelf on that ELF can also corrupt the bunfs trailer.
 #
-# This wrapper moves ldd-incompatible usr/bin files aside for the GTK pass and
-# restores them before returning, so they still land in the AppImage next to
-# the desktop executable (sidecar_binary_path / tauri-plugin-shell externalBin).
-#
-# Seeded into ~/.cache/tauri/linuxdeploy-plugin-gtk.sh before `tauri bundle`
-# so tauri-bundler reuses it instead of downloading the upstream script.
+# HARNESSTAP_LINUXDEPLOY_GTK_WRAPPER
+# This wrapper moves usr/bin/ht-agent aside by sidecar name (not system ldd)
+# for the GTK pass and restores it before returning, so it still lands in the
+# AppImage next to the desktop executable. Seeded into
+# ~/.cache/tauri/linuxdeploy-plugin-gtk.sh and symlinked next to extracted
+# linuxdeploy AppRun so that is the plugin linuxdeploy actually loads.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 UPSTREAM="${LINUXDEPLOY_PLUGIN_GTK_UPSTREAM:-$SCRIPT_DIR/linuxdeploy-plugin-gtk.upstream.sh}"
 UPSTREAM_URL="https://raw.githubusercontent.com/tauri-apps/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh"
+# shellcheck source=linuxdeploy-shelter.sh
+. "$SCRIPT_DIR/linuxdeploy-shelter.sh"
 
 if [ "${1:-}" = "--plugin-api-version" ]; then
   echo 0
@@ -85,15 +87,11 @@ restore_sheltered() {
 
 trap restore_sheltered EXIT
 
-shopt -s nullglob
-for bin in "$APPDIR/usr/bin"/*; do
-  [ -f "$bin" ] || continue
-  [ -x "$bin" ] || continue
-  if ldd "$bin" >/dev/null 2>&1; then
-    continue
-  fi
-  echo "Sheltering ldd-incompatible binary from linuxdeploy GTK scan: $bin"
-  mv "$bin" "$SHELTER_DIR/"
-done
+echo "HARNESSTAP_LINUXDEPLOY_GTK_WRAPPER"
+linuxdeploy_shelter_usr_bin "$APPDIR" "$SHELTER_DIR"
+if [ -e "$APPDIR/usr/bin/ht-agent" ]; then
+  echo "linuxdeploy-plugin-gtk: ht-agent still in usr/bin after shelter" >&2
+  exit 1
+fi
 
 "$UPSTREAM" "$@"

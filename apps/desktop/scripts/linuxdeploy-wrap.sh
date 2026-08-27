@@ -7,10 +7,14 @@
 #   1. first pass: ldd + patchelf rpath on usr/bin/ht-agent (Bun --compile)
 #   2. gtk plugin re-invoke: ldd ht-agent -> SIGABRT (exit 134)
 #
-# This wrapper keeps ldd-incompatible usr/bin ELFs out of both scans, then
-# restores them before plugin-appimage so they still sit next to the desktop
-# exe. Recurses through the gtk plugin's $LINUXDEPLOY re-invoke: skip a second
-# shelter/restore so ht-agent stays aside until the outer pass finishes.
+# Shelter usr/bin/ht-agent by sidecar name (and bunfs / failed ldd as extras),
+# then restore before plugin-appimage so it still sits next to the desktop exe.
+# Do not use system ldd exit 0 as "keep": Release #7 left ht-agent in usr/bin
+# and gtk upstream.sh:296 SIGABRTed.
+#
+# Recurses through the gtk plugin's $LINUXDEPLOY re-invoke: skip a second
+# shelter/restore so the outer pass's aside copy is not restored until gtk
+# finishes. The gtk wrapper also name-shelters as defense in depth.
 #
 # --output appimage is split out and handed to the extracted plugin-appimage
 # AppRun. Re-running linuxdeploy with --output would ldd usr/bin again.
@@ -34,9 +38,15 @@ fi
 export PATH="$CACHE_DIR:$(dirname "$APPRUN"):${PATH:-}"
 
 if [ "${LINUXDEPLOY_WRAP_ACTIVE:-}" = "1" ]; then
+  # Nested gtk re-invoke. Do not restore here: that would put ht-agent back
+  # into usr/bin before upstream gtk (line 296) finishes.
   exec "$APPRUN" "$@"
 fi
 export LINUXDEPLOY_WRAP_ACTIVE=1
+
+_linuxdeploy_scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=linuxdeploy-shelter.sh
+. "$_linuxdeploy_scripts_dir/linuxdeploy-shelter.sh"
 
 parse_appdir() {
   local prev=""
@@ -121,16 +131,11 @@ trap restore_sheltered EXIT
 
 if [ -n "$APPDIR" ] && [ -d "$APPDIR/usr/bin" ]; then
   SHELTER_DIR="$(mktemp -d "${TMPDIR:-/tmp}/linuxdeploy-shelter.XXXXXX")"
-  shopt -s nullglob
-  for bin in "$APPDIR/usr/bin"/*; do
-    [ -f "$bin" ] || continue
-    [ -x "$bin" ] || continue
-    if ldd "$bin" >/dev/null 2>&1; then
-      continue
-    fi
-    echo "Sheltering ldd-incompatible binary from linuxdeploy: $bin"
-    mv "$bin" "$SHELTER_DIR/"
-  done
+  linuxdeploy_shelter_usr_bin "$APPDIR" "$SHELTER_DIR"
+  if [ -e "$APPDIR/usr/bin/ht-agent" ]; then
+    echo "linuxdeploy-wrap: ht-agent still in usr/bin after shelter" >&2
+    exit 1
+  fi
 fi
 
 set +e

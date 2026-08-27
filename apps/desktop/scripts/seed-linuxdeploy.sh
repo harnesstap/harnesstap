@@ -120,6 +120,7 @@ rm -f "$PLUGIN_IMG"
 test -x "$CACHE/linuxdeploy-plugin-appimage-extracted/AppRun"
 
 cp "$ROOT/apps/desktop/scripts/linuxdeploy-wrap.sh" "$CACHE/linuxdeploy-wrap.sh"
+cp "$ROOT/apps/desktop/scripts/linuxdeploy-shelter.sh" "$CACHE/linuxdeploy-shelter.sh"
 chmod +x "$CACHE/linuxdeploy-wrap.sh"
 compile_stub "$CACHE/linuxdeploy-${ARCH}.AppImage" "$CACHE/linuxdeploy-wrap.sh"
 
@@ -144,6 +145,18 @@ ln -sfn "$CACHE/linuxdeploy-plugin-gtk.upstream.sh" \
   "$CACHE/linuxdeploy-extracted/linuxdeploy-plugin-gtk.upstream.sh"
 ln -sfn "$CACHE/linuxdeploy-plugin-appimage.AppImage" \
   "$CACHE/linuxdeploy-extracted/linuxdeploy-plugin-appimage.AppImage"
+ln -sfn "$CACHE/linuxdeploy-shelter.sh" \
+  "$CACHE/linuxdeploy-extracted/linuxdeploy-shelter.sh"
+
+extracted_gtk="$CACHE/linuxdeploy-extracted/linuxdeploy-plugin-gtk.sh"
+if ! grep -q "HARNESSTAP_LINUXDEPLOY_GTK_WRAPPER" "$CACHE/linuxdeploy-plugin-gtk.sh"; then
+  echo "seed-linuxdeploy: gtk plugin in cache is not the HarnessTap wrapper" >&2
+  exit 1
+fi
+if [ "$(readlink -f "$extracted_gtk")" != "$(readlink -f "$CACHE/linuxdeploy-plugin-gtk.sh")" ]; then
+  echo "seed-linuxdeploy: extracted gtk plugin is not the HarnessTap wrapper" >&2
+  exit 1
+fi
 
 # Local mtime newer than GitHub assets so a wget -N style fetch would keep stubs.
 touch \
