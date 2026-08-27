@@ -71,4 +71,4 @@ jobs:
           body: |
             Release ${{ steps.latest.outputs.output }}.
 
-            After merge, [Tag release](https://github.com/harnesstap/harnesstap/actions/workflows/tag-release.yml) pushes the Git tag if it is missing. [Release](https://github.com/harnesstap/harnesstap/actions/workflows/release.yml) then publishes to npm (trusted publishing) and creates the GitHub release.
+            After merge, [Tag release](https://github.com/harnesstap/harnesstap/actions/workflows/tag-release.yml) pushes the Git tag if it is missing. [Release](https://github.com/harnesstap/harnesstap/actions/workflows/release.yml) then publishes to npm (trusted publishing), creates the GitHub release, and attaches unsigned desktop installers.

@@ -150,18 +150,68 @@ jobs:
           body_path: .changes/${{ steps.resolve.outputs.tag }}.md
           generate_release_notes: false
 
-  desktop-macos:
+  # Native GitHub-hosted runners (no cross-compile). Tauri v2 filters
+  # bundle.targets to the host OS, so each job only produces that platform's
+  # installers. Builds are unsigned; see apps/desktop/README.md.
+  desktop:
+    name: desktop (${{ matrix.name }})
     needs: release
     if: needs.release.result == 'success' && needs.release.outputs.skip != 'true'
-    runs-on: macos-latest
-    timeout-minutes: 45
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-latest is Apple Silicon (aarch64). macos-15-intel is the
+          # current GitHub-hosted Intel image (last x86_64 macOS runner).
+          - name: macos-aarch64
+            runner: macos-latest
+          - name: macos-x64
+            runner: macos-15-intel
+          - name: windows-x64
+            runner: windows-latest
+          - name: windows-arm64
+            runner: windows-11-arm
+          # Ubuntu 22.04 is Tauri v2's oldest WebKitGTK 4.1 image, so
+          # AppImage/deb/rpm stay glibc-compatible with 22.04 / Debian 12.
+          # ubuntu-22.04-arm is a standard GitHub-hosted runner.
+          - name: linux-x64
+            runner: ubuntu-22.04
+          - name: linux-arm64
+            runner: ubuntu-22.04-arm
     steps:
-      - name: Check out tagged sources
+      # Tag/workflow_run: build the tagged commit. workflow_dispatch: build
+      # this workflow revision so a backfill onto an older tag (e.g. v0.1.0)
+      # can still produce Windows/Linux installers.
+      - name: Check out sources
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release.outputs.tag }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || needs.release.outputs.tag }}
+
+      - name: Install Linux Tauri / WebKit deps
+        if: startsWith(matrix.runner, 'ubuntu-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            xdg-utils \
+            rpm
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -179,21 +229,34 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build macOS app
+      - name: Build desktop app
         run: bun run desktop:build
 
-      - name: Attach DMG to GitHub release
+      - name: Attach installers to GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="${{ needs.release.outputs.tag }}"
+          BUNDLE="apps/desktop/src-tauri/target/release/bundle"
           shopt -s nullglob
-          dmg_files=(apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg)
-          if [ "${#dmg_files[@]}" -eq 0 ]; then
-            echo "No DMG produced."
-            find apps/desktop/src-tauri/target/release/bundle -type f || true
+          files=()
+          for match in \
+            "$BUNDLE"/dmg/*.dmg \
+            "$BUNDLE"/nsis/*.exe \
+            "$BUNDLE"/msi/*.msi \
+            "$BUNDLE"/appimage/*.AppImage \
+            "$BUNDLE"/deb/*.deb \
+            "$BUNDLE"/rpm/*.rpm
+          do
+            if [ -f "$match" ]; then
+              files+=("$match")
+            fi
+          done
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No desktop installers produced for ${{ matrix.name }}."
+            find "$BUNDLE" -type f || true
             exit 1
           fi
-          gh release upload "$TAG" "${dmg_files[@]}" --clobber --repo "${{ github.repository }}"
-          echo "Uploaded ${dmg_files[*]} to $TAG"
+          gh release upload "$TAG" "${files[@]}" --clobber --repo "${{ github.repository }}"
+          echo "Uploaded ${files[*]} to $TAG"

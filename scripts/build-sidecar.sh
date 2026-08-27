@@ -9,7 +9,12 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENTRY="$ROOT/src/agent/entry.ts"
-OUT="$ROOT/dist/sidecar/ht-agent"
+# bun --compile on Windows writes an .exe; Tauri's sidecar lookup requires it.
+EXE_SUFFIX=""
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) EXE_SUFFIX=".exe" ;;
+esac
+OUT="$ROOT/dist/sidecar/ht-agent${EXE_SUFFIX}"
 
 mkdir -p "$(dirname "$OUT")"
 

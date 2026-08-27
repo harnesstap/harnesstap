@@ -122,6 +122,19 @@ fn spawn_sidecar_reload_watcher(app: AppHandle) {
     });
 }
 
+fn sidecar_exe_suffix() -> &'static str {
+    if cfg!(windows) {
+        ".exe"
+    } else {
+        ""
+    }
+}
+
+#[cfg(debug_assertions)]
+fn prepared_sidecar_filename() -> String {
+    format!("ht-agent-{}{}", host_target_triple(), sidecar_exe_suffix())
+}
+
 fn sidecar_binary_path() -> Result<PathBuf, String> {
     // Dev-only ergonomics: during `tauri dev`, prefer the prepared binary under
     // src-tauri/binaries so `desktop:prepare-sidecar` takes effect without a
@@ -131,7 +144,7 @@ fn sidecar_binary_path() -> Result<PathBuf, String> {
     {
         let prepared = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
-            .join(format!("ht-agent-{}", host_target_triple()));
+            .join(prepared_sidecar_filename());
         if prepared.exists() {
             return Ok(prepared);
         }
@@ -141,14 +154,14 @@ fn sidecar_binary_path() -> Result<PathBuf, String> {
     let dir = exe
         .parent()
         .ok_or_else(|| "missing executable directory".to_string())?;
-    let candidate = dir.join("ht-agent");
+    let candidate = dir.join(format!("ht-agent{}", sidecar_exe_suffix()));
     if candidate.exists() {
         return Ok(candidate);
     }
     #[cfg(debug_assertions)]
     let prepared = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("binaries")
-        .join(format!("ht-agent-{}", host_target_triple()));
+        .join(prepared_sidecar_filename());
     #[cfg(not(debug_assertions))]
     let prepared = candidate.clone();
     Err(format!(
