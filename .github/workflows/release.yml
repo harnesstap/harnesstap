@@ -186,10 +186,13 @@ jobs:
           - name: linux-arm64
             runner: ubuntu-22.04-arm
     steps:
-      - name: Check out tagged sources
+      # Tag/workflow_run: build the tagged commit. workflow_dispatch: build
+      # this workflow revision so a backfill onto an older tag (e.g. v0.1.0)
+      # can still produce Windows/Linux installers.
+      - name: Check out sources
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release.outputs.tag }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || needs.release.outputs.tag }}
 
       - name: Install Linux Tauri / WebKit deps
         if: startsWith(matrix.runner, 'ubuntu-')
