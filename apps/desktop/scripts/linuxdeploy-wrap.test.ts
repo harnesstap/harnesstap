@@ -132,8 +132,8 @@ exit 0
 
     const pluginArgs = (await Bun.file(pluginLog).text()).trim();
     expect(pluginArgs).toContain("--appdir");
-    expect(pluginArgs).toContain("--output appimage");
     expect(pluginArgs).not.toContain("--appimage-extract-and-run");
+    expect(pluginArgs).not.toContain("--plugin");
   });
 
   test("nested gtk re-invoke does not restore the sidecar early", async () => {

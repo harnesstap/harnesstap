@@ -152,5 +152,5 @@ if [ "$want_output" = 1 ]; then
     echo "linuxdeploy-wrap: missing extracted plugin-appimage AppRun at $PLUGIN_APPRUN" >&2
     exit 1
   fi
-  exec "$PLUGIN_APPRUN" --appdir "$APPDIR" --output appimage
+  exec "$PLUGIN_APPRUN" --appdir "$APPDIR"
 fi
