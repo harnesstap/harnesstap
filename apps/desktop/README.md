@@ -68,6 +68,8 @@ GitHub Releases attach those installers on each tagged CLI release:
 
 Linux uses Ubuntu 22.04 (the oldest GitHub-hosted image with WebKitGTK 4.1) so glibc stays compatible with Ubuntu 22.04 / Debian 12. There is one builder per arch, not a matrix of distros. Snap, Flatpak, and AUR are out of scope.
 
+Release jobs build `.deb` and `.rpm` first, then AppImage. AppImage uses `APPIMAGE_EXTRACT_AND_RUN=1` and `NO_STRIP=1` because linuxdeploy is itself an AppImage and GitHub-hosted runners have no FUSE. If AppImage bundling fails, `.deb` and `.rpm` are still uploaded.
+
 CI builds are **unsigned**. There are no Apple Developer ID / notarization, Windows Authenticode, or Linux package-signing secrets in the workflow. macOS Gatekeeper may require **Open Anyway**; Windows SmartScreen may warn; unsigned Linux packages are normal for GitHub downloads. Signing can be added later without changing this artifact matrix.
 
 To build and install straight into `/Applications` (macOS; quits a running instance first):

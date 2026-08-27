@@ -229,8 +229,51 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # macOS / Windows: one tauri build produces that OS's installers.
       - name: Build desktop app
+        if: ${{ !startsWith(matrix.runner, 'ubuntu-') }}
         run: bun run desktop:build
+
+      # Linux: tauri.conf.json lists appimage before deb/rpm, and a single
+      # `tauri build` stops at the first bundler failure. linuxdeploy is itself
+      # an AppImage; GitHub-hosted runners have no FUSE, so AppImage failed in
+      # https://github.com/harnesstap/harnesstap/actions/runs/33028872600
+      # (`failed to run linuxdeploy`) and skipped .deb/.rpm entirely.
+      #
+      # APPIMAGE_EXTRACT_AND_RUN: extract-and-run instead of FUSE (AppImage
+      # runtime + linuxdeploy plugin AppImages; tauri-bundler also sets this on
+      # the linuxdeploy process itself since 2.7.0).
+      # NO_STRIP: skip linuxdeploy's bundled strip, which fails on modern ELF
+      # .relr.dyn sections (tauri-apps/tauri#14796).
+      - name: Build Linux deb and rpm
+        if: startsWith(matrix.runner, 'ubuntu-')
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          NO_STRIP: "1"
+        run: |
+          set -euo pipefail
+          bun run desktop:prepare-sidecar
+          cd apps/desktop
+          bun install
+          bun run tauri -- build --bundles deb,rpm
+
+      - name: Build Linux AppImage
+        if: startsWith(matrix.runner, 'ubuntu-')
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          NO_STRIP: "1"
+        run: |
+          set -euo pipefail
+          cd apps/desktop
+          set +e
+          bun run tauri -- bundle --verbose --bundles appimage
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "AppImage bundle succeeded."
+          else
+            echo "::warning::AppImage bundling failed (linuxdeploy). .deb/.rpm will still be uploaded if present."
+          fi
 
       - name: Attach installers to GitHub release
         env:
@@ -257,6 +300,23 @@ jobs:
             echo "No desktop installers produced for ${{ matrix.name }}."
             find "$BUNDLE" -type f || true
             exit 1
+          fi
+          if [[ "${{ matrix.name }}" == linux-* ]]; then
+            has_deb_or_rpm=false
+            has_appimage=false
+            for f in "${files[@]}"; do
+              case "$f" in
+                *.deb|*.rpm) has_deb_or_rpm=true ;;
+                *.AppImage) has_appimage=true ;;
+              esac
+            done
+            if [ "$has_deb_or_rpm" != true ]; then
+              echo "Linux job produced no .deb or .rpm for ${{ matrix.name }}."
+              exit 1
+            fi
+            if [ "$has_appimage" != true ]; then
+              echo "::warning::No AppImage produced for ${{ matrix.name }}; uploading .deb/.rpm only."
+            fi
           fi
           gh release upload "$TAG" "${files[@]}" --clobber --repo "${{ github.repository }}"
           echo "Uploaded ${files[*]} to $TAG"
