@@ -203,7 +203,7 @@ describe("VHS scenario manifest", () => {
     const readmePath = resolve(repoRoot, "README.md");
     const readme = readFileSync(readmePath, "utf-8");
 
-    expect(readme).toContain("Agent harness configuration toolkit");
+    expect(readme).toContain("One setup. Every coding agent.");
     expect(readme).toContain("ht harness list");
     expect(readme).toContain("ht profile use \"global default\"");
     expect(readme).toContain("ht plugin doctor");

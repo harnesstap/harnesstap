@@ -4,7 +4,7 @@
   <img src="docs/assets/harnesstap-lockup.svg" alt="HarnessTap" width="320" />
 </h1>
 
-**Agent harness configuration toolkit** for Claude Code, Codex, Cursor, and other coding CLIs.
+**One setup. Every coding agent.**
 
 Scan existing setup → store canonical resources → compose **plugins** → share offline or via catalog → materialize into any supported harness.
 
