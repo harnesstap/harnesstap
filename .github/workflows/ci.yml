@@ -92,6 +92,7 @@ jobs:
               - 'test/docs/**'
             desktop:
               - 'apps/desktop/src/**'
+              - 'apps/desktop/scripts/**'
               - 'apps/desktop/package.json'
               - 'apps/desktop/bun.lock'
               - 'apps/desktop/tsconfig*.json'
@@ -228,6 +229,9 @@ jobs:
       - name: Typecheck desktop app
         working-directory: apps/desktop
         run: bunx tsc -p tsconfig.app.json --noEmit
+
+      - name: Test linuxdeploy wrappers
+        run: bun test apps/desktop/scripts
 
   validate:
     runs-on: ubuntu-latest
