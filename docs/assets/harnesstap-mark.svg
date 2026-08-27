@@ -1,10 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="ht-mark-title" aria-describedby="ht-mark-description">
   <title id="ht-mark-title">HarnessTap</title>
-  <desc id="ht-mark-description">Flow Split mark with cobalt inlet and three output lanes.</desc>
+  <desc id="ht-mark-description">Flow Split mark with one inlet becoming three violet, blue, and teal output lanes.</desc>
+  <defs>
+    <linearGradient id="ht-mark-flow" x1="0" y1="5.25" x2="0" y2="26.75" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
   <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5">
-    <path d="M12.5 16C17 16 17 7.5 22 7.5H29" stroke="#8B5CF6"/>
-    <path d="M12.5 16H29" stroke="#3B82F6"/>
-    <path d="M12.5 16C17 16 17 24.5 22 24.5H29" stroke="#14B8A6"/>
+    <path d="M12.5 16C17 16 17 7.5 22 7.5H29" stroke="url(#ht-mark-flow)"/>
+    <path d="M12.5 16H29" stroke="url(#ht-mark-flow)"/>
+    <path d="M12.5 16C17 16 17 24.5 22 24.5H29" stroke="url(#ht-mark-flow)"/>
   </g>
-  <path d="M3 13.25H13.5A2.75 2.75 0 0 1 13.5 18.75H3A2.75 2.75 0 0 1 3 13.25Z" fill="#3B82F6"/>
+  <path d="M3 13.25H13.5A2.75 2.75 0 0 1 13.5 18.75H3A2.75 2.75 0 0 1 3 13.25Z" fill="url(#ht-mark-flow)"/>
 </svg>
