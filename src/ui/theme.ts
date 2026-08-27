@@ -1,5 +1,8 @@
 import chalk from "chalk";
 
+// Hexes match the Flow Split brand mark (violet #8b5cf6, blue #3b82f6, teal #14b8a6).
+// Keep CLI and Desktop in sync.
+
 export type ThemeFn = (value: string) => string;
 
 function colorEnabled(): boolean {
@@ -47,17 +50,17 @@ export const theme = {
   primary: maybe((value) => chalk.bold(value)),
   accent: maybe((value) => chalk.hex("#3b82f6")(value)),
   muted: mutedStyle,
-  success: maybe((value) => chalk.hex("#10b981")(value)),
-  warn: maybe((value) => chalk.hex("#f59e0b")(value)),
+  success: maybe((value) => chalk.hex("#14b8a6")(value)),
+  warn: maybe((value) => chalk.hex("#e6b84d")(value)),
   danger: maybe((value) => chalk.hex("#ef4444")(value)),
-  badge: maybe((value) => chalk.bgHex("#1d4ed8").white.bold(` ${value} `)),
+  badge: maybe((value) => chalk.bgHex("#3b82f6").white.bold(` ${value} `)),
 
   // Role-based tokens
   heading: maybe((value) => chalk.bold.hex("#3b82f6")(value)),
   label: maybe((value) => chalk.hex("#6b7280")(value)),
-  command: maybe((value) => chalk.hex("#10b981")(value)),
+  command: maybe((value) => chalk.hex("#14b8a6")(value)),
   flag: maybe((value) => chalk.hex("#3b82f6")(value)),
-  entity: maybe((value) => chalk.hex("#f59e0b")(value)),
+  entity: maybe((value) => chalk.hex("#e6b84d")(value)),
   path: maybe((value) => chalk.hex("#8b5cf6")(value)),
   info: maybe((value) => chalk.hex("#6b7280")(value)),
   border: maybe((value) => chalk.hex("#374151")(value)),

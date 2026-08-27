@@ -12,7 +12,7 @@ describe("formatVersionWithDrift", () => {
     chalk.level = 1;
     delete process.env.NO_COLOR;
     const result = formatVersionWithDrift("1.2.3", "1.2.3");
-    expect(result).toBe(chalk.hex("#10b981")("1.2.3"));
+    expect(result).toBe(chalk.hex("#14b8a6")("1.2.3"));
   });
 
   it("colors divergent semver segments after the first mismatch", () => {
@@ -20,7 +20,7 @@ describe("formatVersionWithDrift", () => {
     delete process.env.NO_COLOR;
     const result = formatVersionWithDrift("1.0.1", "1.2.3");
     expect(result).toBe(
-      `${chalk.hex("#10b981")("1")}.${chalk.hex("#ef4444")("0")}.${chalk.hex("#ef4444")("1")}`,
+      `${chalk.hex("#14b8a6")("1")}.${chalk.hex("#ef4444")("0")}.${chalk.hex("#ef4444")("1")}`,
     );
   });
 
@@ -29,7 +29,7 @@ describe("formatVersionWithDrift", () => {
     delete process.env.NO_COLOR;
     const result = formatVersionWithDrift("1.2.0", "1.2.3");
     expect(result).toBe(
-      `${chalk.hex("#10b981")("1")}.${chalk.hex("#10b981")("2")}.${chalk.hex("#ef4444")("0")}`,
+      `${chalk.hex("#14b8a6")("1")}.${chalk.hex("#14b8a6")("2")}.${chalk.hex("#ef4444")("0")}`,
     );
   });
 
