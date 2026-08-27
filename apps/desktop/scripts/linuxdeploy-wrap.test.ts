@@ -23,7 +23,7 @@ async function writeExecutable(path: string, body: string): Promise<void> {
 }
 
 describe("linuxdeploy-wrap.sh", () => {
-  test("shelters usr/bin ELF files that fail ldd, then restores them before --output appimage", async () => {
+  test("shelters ht-agent by sidecar name even when system ldd exits 0, then restores before --output appimage", async () => {
     const root = await tempDir("linuxdeploy-wrap-");
     const appDir = join(root, "HarnessTap.AppDir");
     const usrBin = join(appDir, "usr", "bin");
@@ -82,10 +82,7 @@ fi
       ldd,
       `#!/usr/bin/env bash
 set -euo pipefail
-if [[ "\${1:-}" == ${JSON.stringify(sidecar)} ]]; then
-  echo "ldd: \${1}: not a dynamic executable" >&2
-  exit 1
-fi
+# Release #7: system ldd exits 0 on Bun --compile ht-agent.
 echo "        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6"
 exit 0
 `,
@@ -93,7 +90,7 @@ exit 0
 
     const proc = Bun.spawn(
       [
-        "bash",
+        "/bin/bash",
         WRAP,
         "--appimage-extract-and-run",
         "--verbosity",
@@ -109,7 +106,7 @@ exit 0
         cwd: root,
         env: {
           ...process.env,
-          PATH: `${root}:${process.env.PATH ?? ""}`,
+          PATH: `${root}:/usr/bin:/bin:${process.env.PATH ?? ""}`,
           LINUXDEPLOY_EXTRACTED_APPRUN: join(extracted, "AppRun"),
           LINUXDEPLOY_PLUGIN_APPIMAGE_APPRUN: join(pluginExtracted, "AppRun"),
         },
@@ -117,9 +114,14 @@ exit 0
         stderr: "pipe",
       },
     );
-    const [exitCode, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()]);
+    const [exitCode, stdout, stderr] = await Promise.all([
+      proc.exited,
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ]);
     expect(stderr, `wrap stderr:\n${stderr}`).toBe("");
     expect(exitCode).toBe(0);
+    expect(stdout).toContain("Sheltering sidecar from linuxdeploy");
 
     expect(await Bun.file(sidecar).text()).toBe("sidecar-bytes");
     expect(await Bun.file(desktop).text()).toBe("desktop-bytes");
@@ -134,6 +136,63 @@ exit 0
     expect(pluginArgs).toContain("--appdir");
     expect(pluginArgs).not.toContain("--appimage-extract-and-run");
     expect(pluginArgs).not.toContain("--plugin");
+  });
+
+  test("shelters bunfs ELFs that are not named ht-agent", async () => {
+    const root = await tempDir("linuxdeploy-wrap-bunfs-");
+    const appDir = join(root, "HarnessTap.AppDir");
+    const usrBin = join(appDir, "usr", "bin");
+    await mkdir(usrBin, { recursive: true });
+    const sidecar = join(usrBin, "other-agent");
+    const desktop = join(usrBin, "harnesstap-desktop");
+    await writeFile(sidecar, "ELF-header\nbunfs trailer\n");
+    await writeFile(desktop, "desktop-bytes");
+    await chmod(sidecar, 0o755);
+    await chmod(desktop, 0o755);
+
+    const extracted = join(root, "extracted");
+    const pluginExtracted = join(root, "plugin-extracted");
+    await mkdir(extracted);
+    await mkdir(pluginExtracted);
+    await writeExecutable(
+      join(extracted, "AppRun"),
+      `#!/usr/bin/env bash
+set -euo pipefail
+if [[ -e ${JSON.stringify(sidecar)} ]]; then
+  echo "bunfs binary still in usr/bin during linuxdeploy scan" >&2
+  exit 3
+fi
+if [[ ! -e ${JSON.stringify(desktop)} ]]; then
+  echo "harnesstap-desktop was incorrectly sheltered" >&2
+  exit 4
+fi
+`,
+    );
+    await writeExecutable(join(pluginExtracted, "AppRun"), "#!/usr/bin/env bash\nexit 0\n");
+    await writeExecutable(
+      join(root, "ldd"),
+      `#!/usr/bin/env bash
+echo "        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6"
+exit 0
+`,
+    );
+
+    const proc = Bun.spawn(["/bin/bash", WRAP, "--appdir", appDir], {
+      cwd: root,
+      env: {
+        ...process.env,
+        PATH: `${root}:/usr/bin:/bin:${process.env.PATH ?? ""}`,
+        LINUXDEPLOY_EXTRACTED_APPRUN: join(extracted, "AppRun"),
+        LINUXDEPLOY_PLUGIN_APPIMAGE_APPRUN: join(pluginExtracted, "AppRun"),
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [exitCode, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()]);
+    expect(stderr, `wrap stderr:\n${stderr}`).toBe("");
+    expect(exitCode).toBe(0);
+    expect(await Bun.file(sidecar).text()).toBe("ELF-header\nbunfs trailer\n");
+    expect(await Bun.file(desktop).text()).toBe("desktop-bytes");
   });
 
   test("nested gtk re-invoke does not restore the sidecar early", async () => {
@@ -174,11 +233,11 @@ exit 1
 `,
     );
 
-    const nested = Bun.spawn(["bash", WRAP, "--appdir", appDir], {
+    const nested = Bun.spawn(["/bin/bash", WRAP, "--appdir", appDir], {
       cwd: root,
       env: {
         ...process.env,
-        PATH: `${root}:${process.env.PATH ?? ""}`,
+        PATH: `${root}:/usr/bin:/bin:${process.env.PATH ?? ""}`,
         LINUXDEPLOY_WRAP_ACTIVE: "1",
         LINUXDEPLOY_EXTRACTED_APPRUN: join(extracted, "AppRun"),
         LINUXDEPLOY_PLUGIN_APPIMAGE_APPRUN: join(pluginExtracted, "AppRun"),

@@ -260,8 +260,11 @@ jobs:
       # Tauri only looks in ~/.cache/tauri for linuxdeploy-${ARCH}.AppImage
       # (and linuxdeploy-plugin-appimage.AppImage). Pre-extract both AppImages
       # with unsquashfs and install ELF stubs so they run without FUSE.
-      # linuxdeploy-wrap.sh also shelters the Bun sidecar for the first
-      # linuxdeploy scan (the GTK wrapper alone only covers the re-invoke).
+      # linuxdeploy-wrap.sh shelters usr/bin/ht-agent by sidecar name (Release
+      # #7: system ldd exited 0 on the Bun --compile ELF, so ldd-based shelter
+      # never ran; gtk upstream.sh:296 then SIGABRTed). The GTK wrapper also
+      # name-shelters before invoking upstream. Nested LINUXDEPLOY_WRAP_ACTIVE
+      # exec must not restore the sidecar before gtk finishes.
       - name: Seed linuxdeploy without FUSE
         if: startsWith(matrix.runner, 'ubuntu-')
         run: bash apps/desktop/scripts/seed-linuxdeploy.sh

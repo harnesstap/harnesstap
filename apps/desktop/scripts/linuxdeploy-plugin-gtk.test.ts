@@ -24,12 +24,18 @@ describe("linuxdeploy-plugin-gtk wrapper", () => {
   });
 
   it("reports plugin API version 0", () => {
-    const result = Bun.spawnSync(["bash", WRAPPER, "--plugin-api-version"]);
+    const result = Bun.spawnSync({
+      cmd: ["/bin/bash", WRAPPER, "--plugin-api-version"],
+      env: {
+        ...process.env,
+        PATH: `/usr/bin:/bin:${process.env.PATH ?? ""}`,
+      },
+    });
     expect(result.exitCode).toBe(0);
     expect(result.stdout.toString().trim()).toBe("0");
   });
 
-  it("shelters ldd-incompatible usr/bin files during the gtk pass and restores them", () => {
+  it("shelters ht-agent by sidecar name even when system ldd exits 0, and restores it", () => {
     if (process.platform !== "linux") {
       return;
     }
@@ -45,7 +51,8 @@ describe("linuxdeploy-plugin-gtk wrapper", () => {
     mkdirSync(join(appdir, "usr", "bin"), { recursive: true });
     copyFileSync(trueBin, join(appdir, "usr", "bin", "harnesstap-desktop"));
     chmodSync(join(appdir, "usr", "bin", "harnesstap-desktop"), 0o755);
-    writeFileSync(join(appdir, "usr", "bin", "ht-agent"), "#!/bin/sh\necho sidecar\n");
+    // Same ELF as the desktop binary: system ldd exits 0 (Release #7).
+    copyFileSync(trueBin, join(appdir, "usr", "bin", "ht-agent"));
     chmodSync(join(appdir, "usr", "bin", "ht-agent"), 0o755);
 
     const seenPath = join(root, "seen.txt");
@@ -68,14 +75,16 @@ ls -1 "$APPDIR/usr/bin" > "${seenPath}"
     chmodSync(upstream, 0o755);
 
     const result = Bun.spawnSync({
-      cmd: ["bash", WRAPPER, "--appdir", appdir],
+      cmd: ["/bin/bash", WRAPPER, "--appdir", appdir],
       env: {
         ...process.env,
+        PATH: `/usr/bin:/bin:${process.env.PATH ?? ""}`,
         LINUXDEPLOY_PLUGIN_GTK_UPSTREAM: upstream,
       },
     });
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.toString()).toContain("Sheltering ldd-incompatible binary");
+    expect(result.stdout.toString()).toContain("HARNESSTAP_LINUXDEPLOY_GTK_WRAPPER");
+    expect(result.stdout.toString()).toContain("Sheltering sidecar from linuxdeploy");
 
     const seen = readFileSync(seenPath, "utf8")
       .trim()
@@ -104,9 +113,10 @@ ls -1 "$APPDIR/usr/bin" > "${seenPath}"
     chmodSync(upstream, 0o755);
 
     const result = Bun.spawnSync({
-      cmd: ["bash", WRAPPER, "--appdir", appdir],
+      cmd: ["/bin/bash", WRAPPER, "--appdir", appdir],
       env: {
         ...process.env,
+        PATH: `/usr/bin:/bin:${process.env.PATH ?? ""}`,
         LINUXDEPLOY_PLUGIN_GTK_UPSTREAM: upstream,
       },
     });
