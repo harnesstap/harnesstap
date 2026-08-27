@@ -178,10 +178,13 @@ jobs:
             runner: windows-latest
           - name: windows-arm64
             runner: windows-11-arm
+          # Ubuntu 22.04 is Tauri v2's oldest WebKitGTK 4.1 image, so
+          # AppImage/deb/rpm stay glibc-compatible with 22.04 / Debian 12.
+          # ubuntu-22.04-arm is a standard GitHub-hosted runner.
           - name: linux-x64
-            runner: ubuntu-24.04
+            runner: ubuntu-22.04
           - name: linux-arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-22.04-arm
     steps:
       - name: Check out tagged sources
         uses: actions/checkout@v4
@@ -204,7 +207,8 @@ jobs:
             wget \
             file \
             libxdo-dev \
-            xdg-utils
+            xdg-utils \
+            rpm
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -239,7 +243,8 @@ jobs:
             "$BUNDLE"/nsis/*.exe \
             "$BUNDLE"/msi/*.msi \
             "$BUNDLE"/appimage/*.AppImage \
-            "$BUNDLE"/deb/*.deb
+            "$BUNDLE"/deb/*.deb \
+            "$BUNDLE"/rpm/*.rpm
           do
             if [ -f "$match" ]; then
               files+=("$match")

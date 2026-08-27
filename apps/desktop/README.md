@@ -53,7 +53,7 @@ bun run desktop:build
 
 Output: `apps/desktop/src-tauri/target/release/bundle/`
 
-`tauri.conf.json` requests DMG, NSIS, MSI, AppImage, and deb; Tauri v2 keeps only the formats the host OS can produce.
+`tauri.conf.json` requests DMG, NSIS, MSI, AppImage, deb, and rpm; Tauri v2 keeps only the formats the host OS can produce.
 
 GitHub Releases attach those installers on each tagged CLI release:
 
@@ -63,8 +63,10 @@ GitHub Releases attach those installers on each tagged CLI release:
 | macOS Intel | `macos-15-intel` | `HarnessTap_<version>_x64.dmg` |
 | Windows x64 | `windows-latest` | NSIS `*-setup.exe`, MSI `*.msi` |
 | Windows arm64 | `windows-11-arm` | NSIS `*-setup.exe`, MSI `*.msi` |
-| Linux x64 | `ubuntu-24.04` | `.AppImage`, `.deb` |
-| Linux arm64 | `ubuntu-24.04-arm` | `.AppImage`, `.deb` |
+| Linux x64 | `ubuntu-22.04` | `.AppImage`, `.deb`, `.rpm` |
+| Linux arm64 | `ubuntu-22.04-arm` | `.AppImage`, `.deb`, `.rpm` |
+
+Linux uses Ubuntu 22.04 (the oldest GitHub-hosted image with WebKitGTK 4.1) so glibc stays compatible with Ubuntu 22.04 / Debian 12. There is one builder per arch, not a matrix of distros. Snap, Flatpak, and AUR are out of scope.
 
 CI builds are **unsigned**. There are no Apple Developer ID / notarization, Windows Authenticode, or Linux package-signing secrets in the workflow. macOS Gatekeeper may require **Open Anyway**; Windows SmartScreen may warn; unsigned Linux packages are normal for GitHub downloads. Signing can be added later without changing this artifact matrix.
 

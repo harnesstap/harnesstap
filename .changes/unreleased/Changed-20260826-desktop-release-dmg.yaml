@@ -1,2 +1,2 @@
 kind: Changed
-body: Attach unsigned HarnessTap Desktop installers for macOS (Apple Silicon and Intel), Windows (x64 and arm64), and Linux (x64 and arm64) to each GitHub release.
+body: Attach unsigned HarnessTap Desktop installers for macOS (Apple Silicon and Intel), Windows (x64 and arm64), and Linux AppImage, deb, and rpm (x64 and arm64, built on Ubuntu 22.04) to each GitHub release.
