@@ -90,7 +90,7 @@ exit 0
 
     const proc = Bun.spawn(
       [
-        "bash",
+        "/bin/bash",
         WRAP,
         "--appimage-extract-and-run",
         "--verbosity",
@@ -106,7 +106,7 @@ exit 0
         cwd: root,
         env: {
           ...process.env,
-          PATH: `${root}:${process.env.PATH ?? ""}`,
+          PATH: `${root}:/usr/bin:/bin:${process.env.PATH ?? ""}`,
           LINUXDEPLOY_EXTRACTED_APPRUN: join(extracted, "AppRun"),
           LINUXDEPLOY_PLUGIN_APPIMAGE_APPRUN: join(pluginExtracted, "AppRun"),
         },
@@ -177,11 +177,11 @@ exit 0
 `,
     );
 
-    const proc = Bun.spawn(["bash", WRAP, "--appdir", appDir], {
+    const proc = Bun.spawn(["/bin/bash", WRAP, "--appdir", appDir], {
       cwd: root,
       env: {
         ...process.env,
-        PATH: `${root}:${process.env.PATH ?? ""}`,
+        PATH: `${root}:/usr/bin:/bin:${process.env.PATH ?? ""}`,
         LINUXDEPLOY_EXTRACTED_APPRUN: join(extracted, "AppRun"),
         LINUXDEPLOY_PLUGIN_APPIMAGE_APPRUN: join(pluginExtracted, "AppRun"),
       },
@@ -233,11 +233,11 @@ exit 1
 `,
     );
 
-    const nested = Bun.spawn(["bash", WRAP, "--appdir", appDir], {
+    const nested = Bun.spawn(["/bin/bash", WRAP, "--appdir", appDir], {
       cwd: root,
       env: {
         ...process.env,
-        PATH: `${root}:${process.env.PATH ?? ""}`,
+        PATH: `${root}:/usr/bin:/bin:${process.env.PATH ?? ""}`,
         LINUXDEPLOY_WRAP_ACTIVE: "1",
         LINUXDEPLOY_EXTRACTED_APPRUN: join(extracted, "AppRun"),
         LINUXDEPLOY_PLUGIN_APPIMAGE_APPRUN: join(pluginExtracted, "AppRun"),

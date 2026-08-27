@@ -24,7 +24,7 @@ describe("linuxdeploy-plugin-gtk wrapper", () => {
   });
 
   it("reports plugin API version 0", () => {
-    const result = Bun.spawnSync(["bash", WRAPPER, "--plugin-api-version"]);
+    const result = Bun.spawnSync(["/bin/bash", WRAPPER, "--plugin-api-version"]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout.toString().trim()).toBe("0");
   });
@@ -69,9 +69,10 @@ ls -1 "$APPDIR/usr/bin" > "${seenPath}"
     chmodSync(upstream, 0o755);
 
     const result = Bun.spawnSync({
-      cmd: ["bash", WRAPPER, "--appdir", appdir],
+      cmd: ["/bin/bash", WRAPPER, "--appdir", appdir],
       env: {
         ...process.env,
+        PATH: `/usr/bin:/bin:${process.env.PATH ?? ""}`,
         LINUXDEPLOY_PLUGIN_GTK_UPSTREAM: upstream,
       },
     });
@@ -106,9 +107,10 @@ ls -1 "$APPDIR/usr/bin" > "${seenPath}"
     chmodSync(upstream, 0o755);
 
     const result = Bun.spawnSync({
-      cmd: ["bash", WRAPPER, "--appdir", appdir],
+      cmd: ["/bin/bash", WRAPPER, "--appdir", appdir],
       env: {
         ...process.env,
+        PATH: `/usr/bin:/bin:${process.env.PATH ?? ""}`,
         LINUXDEPLOY_PLUGIN_GTK_UPSTREAM: upstream,
       },
     });
