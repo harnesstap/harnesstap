@@ -117,7 +117,20 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "apply base",
       "apply base --harness claude-code",
       "apply work --global",
+      "apply ./build/my-pkg",
       "apply base --format json",
+    ],
+  },
+  pack: {
+    description:
+      "Pack an apm.yml project into an Agent Plugins 1.0 bundle (plugin.json + primitives + apm.lock.yaml)",
+    details:
+      "Writes build/<name>/ by default, or a .zip with --archive. Consumers install the artifact with ht apply <dir-or-zip>. Bundles are target-agnostic; plugin.json is metadata and is never deployed as a harness file.",
+    examples: [
+      "pack",
+      "pack --archive -o ./dist",
+      "pack --dry-run --verbose",
+      "pack --format json",
     ],
   },
   "plugin.create": {

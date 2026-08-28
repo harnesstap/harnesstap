@@ -77,13 +77,26 @@ export function collectHookEntries(
   }
 }
 
-export function scanHooksFile(
-  filePath: string,
+export function parseHooksJsonContent(
+  content: string,
   displayPath: string,
 ): ResourceCreateInput[] {
-  const config = readJsonFile(filePath);
-  if (!config) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content) as unknown;
+  } catch {
+    return [];
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return [];
+  }
+  return scanHooksConfig(parsed as Record<string, unknown>, displayPath);
+}
 
+function scanHooksConfig(
+  config: Record<string, unknown>,
+  displayPath: string,
+): ResourceCreateInput[] {
   const hooks = config.hooks;
   if (!hooks || typeof hooks !== "object" || Array.isArray(hooks)) {
     return [];
@@ -126,6 +139,15 @@ export function scanHooksFile(
   }
 
   return resources;
+}
+
+export function scanHooksFile(
+  filePath: string,
+  displayPath: string,
+): ResourceCreateInput[] {
+  const config = readJsonFile(filePath);
+  if (!config) return [];
+  return scanHooksConfig(config, displayPath);
 }
 
 function buildFlatHookEntry(hook: HookMetadata): Record<string, unknown> {

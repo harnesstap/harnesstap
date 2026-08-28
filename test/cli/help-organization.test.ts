@@ -205,6 +205,7 @@ describe("CLI help and command organization", () => {
       "init",
       "mirror",
       "open",
+      "pack",
       "revert",
       "scan",
       "status",

@@ -158,8 +158,30 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 - Pass `--global` to materialize into machine home paths (profile plugins also update the active profile pointer when applicable).
 - First human line reports destination (`→ project …` or `→ machine home …`).
 - Flags include `--dry-run`, `--explain`, `--update`, `--harness`, `--strict-plugin-versions`, `--ignore-plugin-versions`, and `--sync-plugins`.
+- Selectors may be local plugin names, catalog identities, a packed bundle directory, a `.zip` produced by `ht pack`, or a `.ap.json` envelope. Packed bundles with `pack.bundle_files` are rehashed and fail closed on tampering.
 
 `ht layer …` is a hidden deprecated alias for `ht plugin …` for one release; prefer `ht plugin` and top-level `ht apply`.
+
+## pack
+
+Pack a project that has `apm.yml` into an Agent Plugins 1.0 bundle (`plugin.json`, primitive dirs, embedded `apm.lock.yaml`). See the [Author ramp: pack a bundle](author/pack.md).
+
+```bash
+ht pack
+ht pack --archive -o ./dist
+ht pack --dry-run --verbose
+```
+
+Key options:
+
+- `-o, --output <dir>` — output directory (default `build`)
+- `--archive` — write a `.zip` instead of a directory
+- `--dry-run` — print the file list without writing
+- `--verbose` — list every packed file and remapping
+- `--project <path>` — project directory (default `.`)
+- `--format json`
+
+Consumers install the artifact with `ht apply <dir-or-zip>`. Bundles are target-agnostic. There is no `--format apm` flag.
 
 ## plugin (`l`)
 

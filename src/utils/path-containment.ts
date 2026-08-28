@@ -1,4 +1,4 @@
-import { readdirSync, realpathSync, statSync } from "node:fs";
+import { lstatSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 export class PathEscapeError extends Error {
@@ -73,6 +73,52 @@ export function listContainedFiles(root: string): string[] {
     }
   };
 
+  walk(resolvedRoot);
+  return files;
+}
+
+export class BundleSymlinkError extends Error {
+  readonly entry: string;
+
+  constructor(entry: string) {
+    super(`Symlinks are not allowed in a bundle: ${entry}`);
+    this.name = "BundleSymlinkError";
+    this.entry = entry;
+  }
+}
+
+/**
+ * Walk `root` and return every regular file as a POSIX-style relative path.
+ * Any symlink (file or directory) is rejected rather than followed.
+ */
+export function listContainedRegularFiles(root: string): string[] {
+  const resolvedRoot = resolve(root);
+  const files: string[] = [];
+
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const absolute = join(dir, entry.name);
+      const relativePath = relative(resolvedRoot, absolute).split(sep).join("/");
+      if (entry.isSymbolicLink() || lstatSync(absolute).isSymbolicLink()) {
+        throw new BundleSymlinkError(relativePath);
+      }
+      if (isOutsideRelative(relative(resolvedRoot, absolute))) {
+        throw new PathEscapeError(relativePath, resolvedRoot);
+      }
+      if (entry.isDirectory()) {
+        walk(absolute);
+        continue;
+      }
+      if (!entry.isFile()) {
+        throw new BundleSymlinkError(relativePath);
+      }
+      files.push(relativePath);
+    }
+  };
+
+  if (lstatSync(resolvedRoot).isSymbolicLink()) {
+    throw new BundleSymlinkError(".");
+  }
   walk(resolvedRoot);
   return files;
 }

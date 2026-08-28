@@ -285,7 +285,8 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds a `global default` profile plugin (unless `--no-default-profile`), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
 | `harnesstap add <source>` | Discovers and installs skills from a GitHub repo, Git URL, or local skill package; optionally creates or attaches a plugin. |
 | `harnesstap plugin ...` | Plugin CRUD, **cut**, **editor**, composition attach/detach, cloud catalog workflows, diff, doctor, and origin **check** / **update**. |
-| `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. With no plugin selector, resolves the graph from `apm.yml`. |
+| `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. With no plugin selector, resolves the graph from `apm.yml`. Also applies a local Agent Plugins bundle directory or `.zip` (rehashing `pack.bundle_files` and failing closed on mismatch, extra, missing, or symlink). |
+| `harnesstap pack` | Packs a project that has `apm.yml` into an Agent Plugins 1.0 bundle (`plugin.json`, primitive dirs, embedded `apm.lock.yaml` with `pack.bundle_files` SHA-256). Default output `build/<name>/`; `--archive` writes a `.zip`. |
 | `harnesstap migrate ...` | Exports or imports workspace archives and Agent Plugins packages (offline sharing). |
 | `harnesstap resource ...` | Lists, shows, deletes, and syncs canonical resources. |
 | `harnesstap marketplace ...` | Registers and browses plugin marketplace sources. |
@@ -313,7 +314,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `plugin versions` | Lists local versions for a plugin name (working head + frozen cuts), newest first. JSON includes `frozen_at`, `dirty`, `is_head`. |
 | `plugin rollback` | Copies a frozen `--to` version onto the working head (same semver, `dirty: true`). Authored only. TTY confirms; non-interactive requires `--yes`. Does not apply. |
 | `plugin delete` | Deletes a plugin by selector. |
-| `apply` | Applies plugin selectors, bundle paths, or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
+| `apply` | Applies plugin selectors, bundle paths (directory or `.zip`), or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. Packed bundles with `pack.bundle_files` are rehashed and fail closed on mismatch, extra, missing, or symlink. `plugin.json` is metadata and is never deployed as a harness file. |
 | `plugin pull` | Downloads a published plugin and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Yanked pins fail with a yanked error (Cloud 410); plugins with no installable version are omitted from `plugin list --search`. |
 | `plugin publish` | Publishes a local plugin to effective publish targets (all registered catalogs, or per-plugin allow list). Refuses dirty heads unless `--version` cuts first. One-off `org/catalog` override supported. |
 | `plugin publish plan` | Dry-run publish: effective targets and planned versions per catalog. |
@@ -449,7 +450,7 @@ Remote catalog workflows live on **`plugin`**, not `cloud`:
 - `plugin pull` — fetch a published plugin + local import (distinct from `migrate import` on a local file)
 - `plugin publish` — export bundle + upload a versioned plugin to an org catalog
 
-`apply` resolves local plugin names, bundle paths, and URLs. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `plugin pull`).
+`apply` resolves local plugin names, bundle paths (directory or `.zip`), and URLs. Packed bundles with `pack.bundle_files` are rehashed and fail closed on mismatch, extra, missing, or symlink. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `plugin pull`).
 
 ### `migrate` subcommands
 
@@ -477,7 +478,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `plugin list|show|cut|apply --dry-run|doctor`, `profile list|show|status|use|switch|stash`, `environment list|show|edit|status|create --dry-run`, `status|history`, `harness list|status`, `init`, `auth status|orgs`, `migrate export|import`, `config show|validate|init`, `use --dry-run`, `add --dry-run|--list`, `marketplace list|show`, `plugin search`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `plugin list|show|cut|apply --dry-run|doctor`, `profile list|show|status|use|switch|stash`, `environment list|show|edit|status|create --dry-run`, `status|history`, `harness list|status`, `init`, `auth status|orgs`, `migrate export|import`, `config show|validate|init`, `use --dry-run`, `add --dry-run|--list`, `marketplace list|show`, `plugin search`, `pack`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -771,19 +772,23 @@ Orphans are removed only with `--prune`.
 
 ## Transport formats
 
-Every portable artifact is an Agent Plugins package: a directory with a root `plugin.json`, or a single `.ap.json` envelope of the same content. TOML is for local files only — environment documents and `.harnesstap/local.toml`. There is no second transport format.
+Every portable artifact is an Agent Plugins package: a directory with a root `plugin.json`, a `.zip` of that directory, or a single `.ap.json` envelope of the same content. TOML is for local files only — environment documents and `.harnesstap/local.toml`. There is no second transport format.
 
-Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. The project manifest is `apm.yml` (OpenAPM YAML with first-class HarnessTap fields at the document root: `default_profile`, `environments`, `profiles`, `plugins`). `environments.default` is the default/active environment name; other `environments` keys are named environments. Lockfiles use `apm.lock.yaml` (`lockfile_version: "1"`, APM dependency/MCP/file-hash fields, plus root-level HT replay metadata: `root`, `resource_map_hash`, `environment` as the bound environment name, `plugins`).
+Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. The project manifest is `apm.yml` (OpenAPM YAML with first-class HarnessTap fields at the document root: `default_profile`, `environments`, `profiles`, `plugins`). `environments.default` is the default/active environment name; other `environments` keys are named environments. Lockfiles use `apm.lock.yaml` (`lockfile_version: "1"`, APM dependency/MCP/file-hash fields, plus root-level HT replay metadata: `root`, `resource_map_hash`, `environment` as the bound environment name, `plugins`). Packed bundles embed an enriched copy of that lockfile with `pack.bundle_files` (SHA-256 per packed file).
 
 ### Agent Plugins package
 
 `migrate export --plugin` writes an Agent Plugins 1.0 package directory by default (`plugin.json`, optional `skills/` and `mcp.json`, plus `com.harnesstap/` for HarnessTap-only material). Pass `--single-file` for a `plugin.ap.json` envelope (`schema = urn:harnesstap:ap-package:v1`) whose `files` map is the same content. Dirty heads cannot be exported — cut first.
+
+`ht pack` is the APM-aligned producer for a project that has `apm.yml`. It writes the same Agent Plugins 1.0 layout (`plugin.json` synthesized from `apm.yml` identity fields, plus `agents/` / `skills/` / `commands/` / `hooks/`, and embedded `apm.lock.yaml`). Default output is `build/<name>/`; `--archive` writes `build/<name>-<version>.zip`. `.apm/` wins over root primitive dirs (root sources are skipped with a warning). Dependency files are packed only from lockfile-attested `deployed_files`, never from `apm_modules`. Symlinks fail the pack. Critical hidden-Unicode findings fail the pack. There is no `--format apm` legacy layout.
 
 HarnessTap-specific composition (dependencies, overrides, profile flag, needs, non-AP component pointers) lives under `extensions["com.harnesstap"]` and the `com.harnesstap/` directory — never as invented top-level `plugin.json` fields. Non-HarnessTap clients load skills and MCP servers and ignore the namespace.
 
 `migrate export --resource` wraps one resource in a single-resource package. Standalone `migrate export --environment` is removed — environments are machine-local secret references and travel only inside a workspace archive.
 
 Legacy `*.harnesstap.toml` / `*.environment.toml` transport files are rejected with a message naming the package form.
+
+Consumers install a packed directory or zip with `ht apply <path>` (or `migrate import`). When `pack.bundle_files` is present, every listed file is rehashed; mismatch, extra, missing, or symlink fails closed before import. `plugin.json` and `apm.lock.yaml` are bundle metadata and are never materialized as harness files.
 
 ### Machine transfer archives
 
