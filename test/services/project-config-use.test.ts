@@ -265,8 +265,8 @@ profiles:
     source: local
     selector: team-stack
     environment: staging
-environments:
-  - name: staging
+environment:
+  staging:
     values:
       REGION: eu
 `,
@@ -297,17 +297,17 @@ environments:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-default_environment: shared
 profiles:
   - name: dev
     source: local
     selector: team-stack
     environment: staging
-environments:
-  - name: shared
+environment:
+  default: shared
+  shared:
     values:
       REGION: us
-  - name: staging
+  staging:
     values:
       REGION: eu
 `,

@@ -15,7 +15,18 @@ import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 const VALID_PROJECT_CONFIG = `name: demo
 version: "1.0.0"
 default_profile: dev
-default_environment: shared
+environment:
+  default: shared
+  shared:
+    values:
+      REGION: us
+  staging:
+    values:
+      REGION: eu
+    secret_refs:
+      PD_TOKEN:
+        provider: env
+        ref: PD_TOKEN
 profiles:
   - name: dev
     source: local
@@ -32,17 +43,6 @@ profiles:
     source: local
     selector: ops
     environment: staging
-environments:
-  - name: shared
-    values:
-      REGION: us
-  - name: staging
-    values:
-      REGION: eu
-    secret_refs:
-      PD_TOKEN:
-        provider: env
-        ref: PD_TOKEN
 plugins:
   - name: embedded-plugin
     description: inline plugin for custom profile
@@ -159,6 +159,10 @@ profiles:
       expect(again.plugins).toEqual(parsed.plugins);
       const formatted = formatApmManifest(parsed, root);
       expect(formatted).toContain("default_profile:");
+      expect(formatted).toContain("environment:");
+      expect(formatted).toContain("default: shared");
+      expect(formatted).not.toContain("default_environment:");
+      expect(formatted).not.toContain("\nenvironments:");
       expect(formatted).not.toContain("x-harnesstap");
     } finally {
       cleanupDir(root);
@@ -329,7 +333,11 @@ profiles:
         `name: demo
 version: "1.0.0"
 default_profile: dev
-default_environment: shared
+environment:
+  default: shared
+  shared:
+    values:
+      REGION: us
 profiles:
   - name: dev
     source: local
@@ -467,6 +475,114 @@ targets: [cursor]
       const config = parseProjectConfigFile(configPath, root);
       expect(config.profiles).toEqual([]);
       expect(config.default_profile).toBeUndefined();
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("validateProjectConfig rejects unknown environment.default", () => {
+    const root = createTempDir("project-config-validate-default-env");
+    try {
+      const configPath = join(root, "apm.yml");
+      writeTextFile(
+        configPath,
+        `name: demo
+version: "1.0.0"
+environment:
+  default: missing
+  shared:
+    values:
+      REGION: us
+`,
+      );
+      const config = parseProjectConfigFile(configPath);
+
+      expect(validateProjectConfig(config)).toEqual({
+        valid: false,
+        errors: ["environment.default references unknown environment: missing"],
+      });
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("preserves extra OpenAPM top-level keys on round-trip", () => {
+    const root = createTempDir("project-config-extra-keys");
+    try {
+      const configPath = join(root, "apm.yml");
+      writeTextFile(
+        configPath,
+        `name: demo
+version: "1.0.0"
+license: MIT
+authors:
+  - name: Ada
+targets: [cursor]
+environment:
+  default: shared
+  shared:
+    values:
+      REGION: us
+`,
+      );
+      const parsed = parseProjectConfigFile(configPath, root);
+      const formatted = formatApmManifest(parsed, root);
+      expect(formatted).toContain("license: MIT");
+      expect(formatted).toContain("authors:");
+      expect(formatted).toContain("targets:");
+      expect(parsed.default_environment).toBe("shared");
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("ignores leftover default_environment and environments sibling keys", () => {
+    const root = createTempDir("project-config-ignore-old-env");
+    try {
+      const configPath = join(root, "apm.yml");
+      writeTextFile(
+        configPath,
+        `name: demo
+version: "1.0.0"
+default_environment: hidden
+environments:
+  - name: hidden
+    values:
+      REGION: xx
+environment:
+  default: shared
+  shared:
+    values:
+      REGION: us
+`,
+      );
+      const config = parseProjectConfigFile(configPath);
+      expect(config.default_environment).toBe("shared");
+      expect(config.environments).toEqual([
+        { name: "shared", values: { REGION: "us" } },
+      ]);
+      const formatted = formatApmManifest(config, root);
+      expect(formatted).not.toContain("default_environment:");
+      expect(formatted).not.toContain("\nenvironments:");
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("rejects environment when it is not a mapping", () => {
+    const root = createTempDir("project-config-env-string");
+    try {
+      const configPath = join(root, "apm.yml");
+      writeTextFile(
+        configPath,
+        `name: demo
+version: "1.0.0"
+environment: shared
+`,
+      );
+      expect(() => parseProjectConfigFile(configPath)).toThrow(
+        /environment must be a mapping/,
+      );
     } finally {
       cleanupDir(root);
     }

@@ -1,10 +1,9 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { formatApmManifest } from "./apm-manifest.js";
+import { apmDocumentFromProjectConfig, formatApmManifest } from "./apm-manifest.js";
 import {
   projectManifestPath,
   type ProjectConfig,
-  type ProjectProfileEntry,
 } from "./project-config.js";
 import { PROJECT_CONFIG_EXISTS_MESSAGE } from "./project-config-messages.js";
 
@@ -63,29 +62,8 @@ export function writeStarterProjectConfig(input: {
   return { configPath };
 }
 
-function serializeProfileEntry(profile: ProjectProfileEntry): Record<string, unknown> {
-  return {
-    name: profile.name,
-    source: profile.source,
-    ...(profile.selector ? { selector: profile.selector } : {}),
-    ...(profile.plugin ? { plugin: profile.plugin } : {}),
-    ...(profile.environment ? { environment: profile.environment } : {}),
-  };
-}
-
 export function projectConfigToDocument(config: ProjectConfig): Record<string, unknown> {
-  return {
-    ...(config.apm_name ? { name: config.apm_name } : {}),
-    ...(config.apm_version ? { version: config.apm_version } : {}),
-    ...(config.apm_description ? { description: config.apm_description } : {}),
-    ...(config.default_profile ? { default_profile: config.default_profile } : {}),
-    ...(config.default_environment ? { default_environment: config.default_environment } : {}),
-    ...(config.profiles.length > 0
-      ? { profiles: config.profiles.map(serializeProfileEntry) }
-      : {}),
-    ...(config.environments.length > 0 ? { environments: config.environments } : {}),
-    ...(config.plugins.length > 0 ? { plugins: config.plugins } : {}),
-  };
+  return apmDocumentFromProjectConfig(config, ".");
 }
 
 export function writeProjectConfigFile(

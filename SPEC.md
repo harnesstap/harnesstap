@@ -75,7 +75,7 @@ The CLI uses a small set of concepts consistently across commands.
 - `profile`: a plugin whose `tags` include the reserved string `profile`; switchable global preset. `profile use` merges the profile stack (including transitive `plugin` refs) and applies to machine home harness paths. Stored as a normal plugin row — not a separate entity type.
 - `workspace`: the single implicit local library in `~/.harnesstap/harnesstap.db` — all plugins, resources, and environments. Share offline with `migrate export` / `import` (`--workspace`, `--plugin`, or `--resource`).
 - `account`: a named HarnessTap Cloud login identity in `~/.harnesstap/cloud-accounts.json` (access tokens, refresh tokens, active org). Use `--account <name>` on catalog commands; distinct from a profile plugin.
-- `project config`: optional `{project}/apm.yml` declaring named profiles (local / catalog / inline), environments, and plugin composition for `ht use` / `ht apply`. HarnessTap-only fields are first-class top-level keys (`default_profile`, `default_environment`, `profiles`, `environments`, `plugins`).
+- `project config`: optional `{project}/apm.yml` declaring named profiles (local / catalog / inline), environments, and plugin composition for `ht use` / `ht apply`. HarnessTap-only fields are first-class top-level keys (`default_profile`, `environment`, `profiles`, `plugins`). `environment` is a mapping: `default` names the active environment; other keys are named environments with `values` and optional `secret_refs`.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
 - `main harness`: the project's canonical harness reference. Imports, plugin application, and sync planning normalize through this harness first.
 - `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses use symlinks when the file layout allows it, and generated copies otherwise.
@@ -360,7 +360,7 @@ Host install/ensure of pinned plugins still runs through providers when a profil
 
 ### `config` / `use` (project profile config)
 
-Repositories may declare named profiles, environments, and plugin composition in `apm.yml` at the repo root. Standard OpenAPM keys (`name`, `version`, `targets`, `dependencies.apm`, `dependencies.mcp`, `devDependencies`) parse as a vanilla APM manifest. HarnessTap-only fields are first-class top-level keys (`default_profile`, `default_environment`, `profiles`, `environments` with secret **refs** only, inline `plugins`). Vanilla APM readers ignore the extra keys. `ht config`, `ht use`, `ht apply`, and lock write/replay honor those fields.
+Repositories may declare named profiles, environments, and plugin composition in `apm.yml` at the repo root. Standard OpenAPM keys (`name`, `version`, `targets`, `dependencies.apm`, `dependencies.mcp`, `devDependencies`) parse as a vanilla APM manifest. Extra top-level keys are allowed and preserved (OpenAPM additionalProperties). HarnessTap-only fields are first-class top-level keys: `default_profile`, `environment`, `profiles`, and inline `plugins`. `environment` is a mapping whose `default` key names the active environment; other keys are named environments with `values` and optional secret **refs**. Vanilla APM readers ignore the extra keys. `ht config`, `ht use`, `ht apply`, and lock write/replay honor those fields.
 
 | Command | Current behavior |
 | --- | --- |
@@ -773,7 +773,7 @@ Orphans are removed only with `--prune`.
 
 Every portable artifact is an Agent Plugins package: a directory with a root `plugin.json`, or a single `.ap.json` envelope of the same content. TOML is for local files only — environment documents and `.harnesstap/local.toml`. There is no second transport format.
 
-Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. The project manifest is `apm.yml` (OpenAPM YAML with first-class HarnessTap fields at the document root). Lockfiles use `apm.lock.yaml` (`lockfile_version: "1"`, APM dependency/MCP/file-hash fields, plus root-level HT replay metadata: `root`, `resource_map_hash`, `environment`, `plugins`).
+Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. The project manifest is `apm.yml` (OpenAPM YAML with first-class HarnessTap fields at the document root: `default_profile`, `environment`, `profiles`, `plugins`). `environment.default` is the default/active environment name; other `environment` keys are named environments. Lockfiles use `apm.lock.yaml` (`lockfile_version: "1"`, APM dependency/MCP/file-hash fields, plus root-level HT replay metadata: `root`, `resource_map_hash`, `environment` as the bound environment name, `plugins`).
 
 ### Agent Plugins package
 

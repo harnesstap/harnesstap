@@ -13,10 +13,15 @@ export const APM_MANIFEST_FILENAME = "apm.yml";
 
 const HT_TOP_LEVEL_KEYS = [
   "default_profile",
-  "default_environment",
+  "environment",
   "profiles",
-  "environments",
   "plugins",
+] as const;
+
+const STRIP_TOP_LEVEL_KEYS = [
+  "x-harnesstap",
+  "default_environment",
+  "environments",
 ] as const;
 
 const RESERVED_TOP_LEVEL = new Set([
@@ -24,7 +29,7 @@ const RESERVED_TOP_LEVEL = new Set([
   "version",
   "description",
   ...HT_TOP_LEVEL_KEYS,
-  "x-harnesstap",
+  ...STRIP_TOP_LEVEL_KEYS,
 ]);
 
 export interface ApmManifestFields {
@@ -157,6 +162,29 @@ function sanitizePackageName(projectPath: string): string {
   return base.length > 0 ? base : "project";
 }
 
+export function serializeEnvironmentBlock(
+  config: ProjectConfig,
+): Record<string, unknown> | undefined {
+  if (!config.default_environment && config.environments.length === 0) {
+    return undefined;
+  }
+  const block: Record<string, unknown> = {};
+  if (config.default_environment) {
+    block.default = config.default_environment;
+  }
+  for (const environment of config.environments) {
+    const entry: Record<string, unknown> = {};
+    if (Object.keys(environment.values).length > 0) {
+      entry.values = environment.values;
+    }
+    if (environment.secret_refs && Object.keys(environment.secret_refs).length > 0) {
+      entry.secret_refs = environment.secret_refs;
+    }
+    block[environment.name] = entry;
+  }
+  return block;
+}
+
 export function apmDocumentFromProjectConfig(
   config: ProjectConfig,
   projectPath: string,
@@ -164,10 +192,14 @@ export function apmDocumentFromProjectConfig(
   const name = config.apm_name ?? sanitizePackageName(projectPath);
   const version = config.apm_version ?? "1.0.0";
   const rest = { ...(config.apm_document ?? {}) };
-  delete rest["x-harnesstap"];
+  for (const key of STRIP_TOP_LEVEL_KEYS) {
+    delete rest[key];
+  }
   for (const key of HT_TOP_LEVEL_KEYS) {
     delete rest[key];
   }
+
+  const environment = serializeEnvironmentBlock(config);
 
   return {
     ...rest,
@@ -175,7 +207,7 @@ export function apmDocumentFromProjectConfig(
     version,
     ...(config.apm_description ? { description: config.apm_description } : {}),
     ...(config.default_profile ? { default_profile: config.default_profile } : {}),
-    ...(config.default_environment ? { default_environment: config.default_environment } : {}),
+    ...(environment ? { environment } : {}),
     ...(config.profiles.length > 0
       ? {
           profiles: config.profiles.map((profile) => ({
@@ -187,7 +219,6 @@ export function apmDocumentFromProjectConfig(
           })),
         }
       : {}),
-    ...(config.environments.length > 0 ? { environments: config.environments } : {}),
     ...(config.plugins.length > 0 ? { plugins: config.plugins } : {}),
   };
 }

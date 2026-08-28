@@ -9,7 +9,11 @@ import { writeTextFile } from "../helpers/fs.ts";
 const VALID_PROJECT_CONFIG = `name: demo
 version: "1.0.0"
 default_profile: dev
-default_environment: shared
+environment:
+  default: shared
+  shared:
+    values:
+      REGION: us
 profiles:
   - name: dev
     source: local
@@ -17,10 +21,6 @@ profiles:
   - name: custom
     source: inline
     plugin: embedded-plugin
-environments:
-  - name: shared
-    values:
-      REGION: us
 plugins:
   - name: embedded-plugin
     description: inline plugin for custom profile

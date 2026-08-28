@@ -62,6 +62,20 @@ describe("lockfile", () => {
     expect(raw).toContain("version: 2.1.0");
   });
 
+  it("records the bound environment name at the lockfile root", async () => {
+    await buildGraph();
+    const result = resolveComposition({ rootSelectors: ["root"] });
+    writeLockfile(
+      ctx.projectDir,
+      lockfileFromResolution(result, { environment: "shared" }),
+    );
+
+    const raw = readFileSync(lockfilePath(ctx.projectDir), "utf8");
+    expect(raw).toContain("environment: shared");
+    expect(raw).not.toContain("x-harnesstap");
+    expect(readLockfile(ctx.projectDir)?.environment).toBe("shared");
+  });
+
   it("round-trips through read and reports locked versions", async () => {
     await buildGraph();
     const result = resolveComposition({ rootSelectors: ["root"] });
