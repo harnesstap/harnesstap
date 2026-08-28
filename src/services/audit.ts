@@ -189,19 +189,19 @@ export function auditProject(options: AuditOptions = {}): AuditResult {
     ? integrityForLock(projectRoot)
     : { ok: true, issues: [] as DeployedHashIssue[] };
 
-    const stripped: Array<{ path: string; removed: number }> = [];
-    if (options.strip) {
-      for (const relativePath of scannedFiles) {
-        const content = readRelativeText(projectRoot, relativePath);
-        if (content === undefined) continue;
-        const result = stripHiddenUnicode(content);
-        if (result.removed === 0) continue;
-        stripped.push({ path: relativePath, removed: result.removed });
-        if (!options.dryRun) {
-          writeFileSync(join(projectRoot, relativePath), result.text, "utf8");
-        }
+  const stripped: Array<{ path: string; removed: number }> = [];
+  if (options.strip) {
+    for (const relativePath of scannedFiles) {
+      const content = readRelativeText(projectRoot, relativePath);
+      if (content === undefined) continue;
+      const result = stripHiddenUnicode(content);
+      if (result.removed === 0) continue;
+      stripped.push({ path: relativePath, removed: result.removed });
+      if (!options.dryRun) {
+        writeFileSync(join(projectRoot, relativePath), result.text, "utf8");
       }
     }
+  }
 
   const summary = summarizeUnicodeFindings(findings);
   return {

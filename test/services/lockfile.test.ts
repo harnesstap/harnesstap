@@ -137,5 +137,11 @@ describe("lockfile", () => {
         { path: "extra.md", content: "nope" },
       ]),
     ).toThrow(/extra/);
+    expect(() =>
+      verifyDeployedFileHashes(
+        { "skills/../escape.md": "sha256:deadbeef" },
+        [{ path: "skills/../escape.md", content: "# Hello\n" }],
+      ),
+    ).toThrow(/Unsafe local_deployed_file_hashes path/);
   });
 });

@@ -411,7 +411,8 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     result.files.map((file) => ({ path: file.path, content: file.content })),
   );
   const shouldVerifyHashes = Boolean(
-    existingLock &&
+    !parsed.update &&
+      existingLock &&
       lockIsUsable(existingLock, primaryName) &&
       existingLock.deployed_file_hashes &&
       Object.keys(existingLock.deployed_file_hashes).length > 0,

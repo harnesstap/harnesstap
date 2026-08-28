@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { hasParentTraversalSegment } from "../utils/path-containment.js";
 import { getPluginById, getPluginResources } from "../models/plugin-model.js";
 import type { McpServerMetadata, Resource } from "../types.js";
 import { PACKAGE_VERSION } from "../version.js";
@@ -171,7 +172,7 @@ export function diffDeployedFileHashes(
   const actual = deployedFileHashes(files);
 
   for (const relativePath of Object.keys(expected).sort()) {
-    if (relativePath.split("/").includes("..") || relativePath.startsWith("/")) {
+    if (hasParentTraversalSegment(relativePath) || relativePath.startsWith("/")) {
       issues.push({ kind: "unsafe-path", path: relativePath });
     }
   }

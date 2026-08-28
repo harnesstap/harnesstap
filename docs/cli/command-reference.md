@@ -204,7 +204,7 @@ Key options:
 - `--project <path>` — project directory (default `.`)
 - `--format json`
 
-`--ci` cannot be combined with `--strip` or `--file`.
+`--ci` cannot be combined with `--strip`, `--file`, or `--dry-run`. `--dry-run` requires `--strip`.
 
 ## plugin (`l`)
 

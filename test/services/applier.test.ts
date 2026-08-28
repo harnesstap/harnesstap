@@ -48,7 +48,7 @@ describe("applier services", () => {
     }
   });
 
-  it("preserves project writes through symlinked project directories", async () => {
+  it("rejects project writes that escape through symlinked directories", async () => {
     const context = await createInitializedTestContext("applier-project-symlink");
 
     try {

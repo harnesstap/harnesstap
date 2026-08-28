@@ -879,7 +879,8 @@ export async function handleProjectApplyCommand(
     result.files.map((file) => ({ path: file.path, content: file.content })),
   );
   const shouldVerifyHashes = Boolean(
-    existingLock &&
+    !opts.update &&
+      existingLock &&
       lockIsUsable(existingLock, resolvedPluginNames[0] ?? "") &&
       existingLock.deployed_file_hashes &&
       Object.keys(existingLock.deployed_file_hashes).length > 0,
