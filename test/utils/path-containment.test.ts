@@ -34,6 +34,7 @@ describe("assertContainedPath", () => {
   it("rejects a parent traversal", () => {
     expect(() => assertContainedPath(root, "../escape.md")).toThrow(PathEscapeError);
     expect(() => assertContainedPath(root, "skills/../../escape.md")).toThrow(PathEscapeError);
+    expect(() => assertContainedPath(root, "skills/../escape.md")).toThrow(PathEscapeError);
   });
 
   it("rejects an absolute path", () => {
@@ -98,6 +99,7 @@ describe("isContainedPath", () => {
   it("returns a boolean rather than throwing", () => {
     expect(isContainedPath(root, "a/b")).toBe(true);
     expect(isContainedPath(root, "../b")).toBe(false);
+    expect(isContainedPath(root, "skills/../b")).toBe(false);
   });
 
   it("does not treat ..foo or ... as escapes", () => {
@@ -112,6 +114,7 @@ describe("assertArchiveMembersContained", () => {
     expect(() => assertArchiveMembersContained(root, ["foo/../../escape.md"])).toThrow(
       PathEscapeError,
     );
+    expect(() => assertArchiveMembersContained(root, ["foo/../bar.md"])).toThrow(PathEscapeError);
     expect(() => assertArchiveMembersContained(root, ["/etc/passwd"])).toThrow(PathEscapeError);
   });
 

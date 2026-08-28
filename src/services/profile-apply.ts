@@ -57,6 +57,7 @@ import { parsePluginSelector, resolveRemotePluginSelector } from "./plugin-selec
 import { resolveComposition } from "./resolve/index.js";
 import type { ResolutionResult } from "./resolve/types.js";
 import { ui } from "../ui/index.js";
+import { gateDeployFiles } from "./deploy-gate.js";
 
 /** HT library deps that belong in the profile stack (not host marketplace/git/path pins). */
 function isProfileStackDependency(ref: string): boolean {
@@ -102,6 +103,7 @@ export interface ApplyProfilePluginOptions {
    * Defaults to true (require profile tag).
    */
   recordActiveProfile?: boolean;
+  forceUnicode?: boolean;
 }
 
 export interface ApplyProfilePluginResult {
@@ -589,6 +591,7 @@ export async function applyProfilePlugin(
       resolvedEnvironment,
     });
     const files = generated.flatMap((result) => result.files);
+    gateDeployFiles(files, { forceUnicode: options.forceUnicode });
     const materialized = await materializeFiles(files, homeRoot, {
       conflictPolicy: options.conflictPolicy,
       conflictResolver: options.conflictResolver,
@@ -628,6 +631,7 @@ export async function applyProfilePlugin(
     conflictResolver: options.conflictResolver,
     resolvedEnvironment,
     claudeConfig: merged.claude,
+    forceUnicode: options.forceUnicode,
   });
   let snapshotId: string | undefined;
   let removedFiles: string[] = [];

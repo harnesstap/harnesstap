@@ -87,6 +87,8 @@ const FLAG_PROVIDERS: FlagRegistry = {
   "pack:output": [completeDirectoryPath],
   "pack:o": [completeDirectoryPath],
   "pack:project": [completeDirectoryPath],
+  "audit:project": [completeDirectoryPath],
+  "audit:file": [completeFilePath],
   "auth status:account": [completeCloudAccounts],
   "auth logout:account": [completeCloudAccounts],
   "auth orgs:account": [completeCloudAccounts],

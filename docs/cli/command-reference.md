@@ -157,8 +157,9 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 - Default scope is the **project** (cwd / `--project`).
 - Pass `--global` to materialize into machine home paths (profile plugins also update the active profile pointer when applicable).
 - First human line reports destination (`→ project …` or `→ machine home …`).
-- Flags include `--dry-run`, `--explain`, `--update`, `--harness`, `--strict-plugin-versions`, `--ignore-plugin-versions`, and `--sync-plugins`.
+- Flags include `--dry-run`, `--explain`, `--update`, `--harness`, `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`, and `--force` (override critical hidden-Unicode findings).
 - Selectors may be local plugin names, catalog identities, a packed bundle directory, a `.zip` produced by `ht pack`, or a `.ap.json` envelope. Packed bundles with `pack.bundle_files` are rehashed and fail closed on tampering.
+- Before writing, apply scans generated files for hidden Unicode. Critical findings block apply unless `--force` is passed; warnings are printed and apply continues. When `apm.lock.yaml` already has `local_deployed_file_hashes` and `--update` is not set, apply rehashes the generated tree and fails closed on mismatch, extra, or missing files.
 
 `ht layer …` is a hidden deprecated alias for `ht plugin …` for one release; prefer `ht plugin` and top-level `ht apply`.
 
@@ -182,6 +183,28 @@ Key options:
 - `--format json`
 
 Consumers install the artifact with `ht apply <dir-or-zip>`. Bundles are target-agnostic. There is no `--format apm` flag.
+
+## audit
+
+Scan a project for hidden Unicode and verify lockfile SHA-256 hashes. See the [Use ramp: audit a project](use/audit.md).
+
+```bash
+ht audit
+ht audit --file .cursorrules
+ht audit --ci --format json
+ht audit --strip --dry-run
+```
+
+Key options:
+
+- `--file <path>` — scan one file
+- `--ci` — fail on critical Unicode or lockfile hash mismatch / extra / missing
+- `--strip` — remove critical and warning hidden characters (preserves emoji)
+- `--dry-run` — preview `--strip`
+- `--project <path>` — project directory (default `.`)
+- `--format json`
+
+`--ci` cannot be combined with `--strip` or `--file`.
 
 ## plugin (`l`)
 

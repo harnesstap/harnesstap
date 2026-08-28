@@ -285,8 +285,9 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds a `global default` profile plugin (unless `--no-default-profile`), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
 | `harnesstap add <source>` | Discovers and installs skills from a GitHub repo, Git URL, or local skill package; optionally creates or attaches a plugin. |
 | `harnesstap plugin ...` | Plugin CRUD, **cut**, **editor**, composition attach/detach, cloud catalog workflows, diff, doctor, and origin **check** / **update**. |
-| `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. With no plugin selector, resolves the graph from `apm.yml`. Also applies a local Agent Plugins bundle directory or `.zip` (rehashing `pack.bundle_files` and failing closed on mismatch, extra, missing, or symlink). |
+| `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. With no plugin selector, resolves the graph from `apm.yml`. Also applies a local Agent Plugins bundle directory or `.zip` (rehashing `pack.bundle_files` and failing closed on mismatch, extra, missing, or symlink). Generated files are scanned for hidden Unicode before write; critical findings block apply unless `--force` is passed. When `apm.lock.yaml` already records `local_deployed_file_hashes`, apply verifies SHA-256 and fails closed on mismatch, extra, or missing unless `--update` is passed. |
 | `harnesstap pack` | Packs a project that has `apm.yml` into an Agent Plugins 1.0 bundle (`plugin.json`, primitive dirs, embedded `apm.lock.yaml` with `pack.bundle_files` SHA-256). Default output `build/<name>/`; `--archive` writes a `.zip`. |
+| `harnesstap audit` | Scans a project (or `--file`) for hidden Unicode and, with `--ci`, verifies lockfile SHA-256 hashes. `--strip` removes critical and warning characters. |
 | `harnesstap migrate ...` | Exports or imports workspace archives and Agent Plugins packages (offline sharing). |
 | `harnesstap resource ...` | Lists, shows, deletes, and syncs canonical resources. |
 | `harnesstap marketplace ...` | Registers and browses plugin marketplace sources. |
@@ -314,7 +315,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `plugin versions` | Lists local versions for a plugin name (working head + frozen cuts), newest first. JSON includes `frozen_at`, `dirty`, `is_head`. |
 | `plugin rollback` | Copies a frozen `--to` version onto the working head (same semver, `dirty: true`). Authored only. TTY confirms; non-interactive requires `--yes`. Does not apply. |
 | `plugin delete` | Deletes a plugin by selector. |
-| `apply` | Applies plugin selectors, bundle paths (directory or `.zip`), or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. Packed bundles with `pack.bundle_files` are rehashed and fail closed on mismatch, extra, missing, or symlink. `plugin.json` is metadata and is never deployed as a harness file. |
+| `apply` | Applies plugin selectors, bundle paths (directory or `.zip`), or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`, `--force` (override critical hidden Unicode), `--update` (refresh lock hashes). Packed bundles with `pack.bundle_files` are rehashed and fail closed on mismatch, extra, missing, or symlink. `plugin.json` is metadata and is never deployed as a harness file. Generated files are Unicode-scanned before write; lockfile `local_deployed_file_hashes` are verified on subsequent apply. |
 | `plugin pull` | Downloads a published plugin and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Yanked pins fail with a yanked error (Cloud 410); plugins with no installable version are omitted from `plugin list --search`. |
 | `plugin publish` | Publishes a local plugin to effective publish targets (all registered catalogs, or per-plugin allow list). Refuses dirty heads unless `--version` cuts first. One-off `org/catalog` override supported. |
 | `plugin publish plan` | Dry-run publish: effective targets and planned versions per catalog. |
@@ -450,7 +451,7 @@ Remote catalog workflows live on **`plugin`**, not `cloud`:
 - `plugin pull` — fetch a published plugin + local import (distinct from `migrate import` on a local file)
 - `plugin publish` — export bundle + upload a versioned plugin to an org catalog
 
-`apply` resolves local plugin names, bundle paths (directory or `.zip`), and URLs. Packed bundles with `pack.bundle_files` are rehashed and fail closed on mismatch, extra, missing, or symlink. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `plugin pull`).
+`apply` resolves local plugin names, bundle paths (directory or `.zip`), and URLs. Packed bundles with `pack.bundle_files` are rehashed and fail closed on mismatch, extra, missing, or symlink. Subsequent apply of a project verifies `local_deployed_file_hashes` the same way unless `--update` is passed. Critical hidden Unicode in generated files blocks apply unless `--force` is passed. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `plugin pull`).
 
 ### `migrate` subcommands
 
@@ -478,7 +479,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `plugin list|show|cut|apply --dry-run|doctor`, `profile list|show|status|use|switch|stash`, `environment list|show|edit|status|create --dry-run`, `status|history`, `harness list|status`, `init`, `auth status|orgs`, `migrate export|import`, `config show|validate|init`, `use --dry-run`, `add --dry-run|--list`, `marketplace list|show`, `plugin search`, `pack`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `plugin list|show|cut|apply --dry-run|doctor`, `profile list|show|status|use|switch|stash`, `environment list|show|edit|status|create --dry-run`, `status|history`, `harness list|status`, `init`, `auth status|orgs`, `migrate export|import`, `config show|validate|init`, `use --dry-run`, `add --dry-run|--list`, `marketplace list|show`, `plugin search`, `pack`, `audit`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -788,7 +789,7 @@ HarnessTap-specific composition (dependencies, overrides, profile flag, needs, n
 
 Legacy `*.harnesstap.toml` / `*.environment.toml` transport files are rejected with a message naming the package form.
 
-Consumers install a packed directory or zip with `ht apply <path>` (or `migrate import`). When `pack.bundle_files` is present, every listed file is rehashed; mismatch, extra, missing, or symlink fails closed before import. `plugin.json` and `apm.lock.yaml` are bundle metadata and are never materialized as harness files.
+Consumers install a packed directory or zip with `ht apply <path>` (or `migrate import`). When `pack.bundle_files` is present, every listed file is rehashed; mismatch, extra, missing, or symlink fails closed before import. `plugin.json` and `apm.lock.yaml` are bundle metadata and are never materialized as harness files. Apply of any project also scans generated files for hidden Unicode (critical findings block unless `--force`) and verifies `local_deployed_file_hashes` on subsequent apply (fail closed on mismatch, extra, or missing unless `--update`). `ht audit` is the on-demand / CI scanner.
 
 ### Machine transfer archives
 

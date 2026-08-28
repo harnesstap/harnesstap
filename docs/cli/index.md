@@ -16,6 +16,7 @@ HarnessTap is an agent harness configuration toolkit for Claude Code, Codex, Cur
 - [Interactive UX](./interactive-ux.md) — keyboard reference for TTY browse prompts
 - [HarnessTap Cloud](./cloud.md) — authenticate, search, pull, and publish shared plugins
 - [Pack a bundle](./author/pack.md) — Author ramp: emit an Agent Plugins 1.0 bundle from `apm.yml`
+- [Audit a project](./use/audit.md) — Use ramp: hidden-Unicode scan, lockfile hash check, optional `--strip`
 
 ## Quick links
 

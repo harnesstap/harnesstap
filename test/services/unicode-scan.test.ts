@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   hasCriticalUnicode,
   scanUnicodeText,
+  stripHiddenUnicode,
   summarizeUnicodeFindings,
 } from "../../src/services/unicode-scan.ts";
 
@@ -36,5 +37,14 @@ describe("scanUnicodeText", () => {
     const zwj = findings.filter((finding) => finding.codepoint === "U+200D");
     expect(zwj.length).toBeGreaterThan(0);
     expect(zwj.every((finding) => finding.severity === "info")).toBe(true);
+  });
+});
+
+describe("stripHiddenUnicode", () => {
+  it("removes critical and warning characters and preserves emoji ZWJ", () => {
+    const family = "👨‍👩‍👧";
+    const stripped = stripHiddenUnicode(`keep\u202Esecret\u200B${family}`);
+    expect(stripped.text).toBe(`keepsecret${family}`);
+    expect(stripped.removed).toBe(2);
   });
 });

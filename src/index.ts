@@ -4,6 +4,7 @@ import { registerHarnessCommands } from "./cli/commands/harness.js";
 import { registerMarketplaceCommands } from "./cli/commands/marketplace.js";
 import { registerParityCommands } from "./cli/commands/parity-register.js";
 import { registerPackCommand } from "./cli/commands/pack.js";
+import { registerAuditCommand } from "./cli/commands/audit.js";
 import {
   registerDeprecatedLayerAlias,
   registerPluginCommands,
@@ -34,6 +35,7 @@ registerDeprecatedLayerAlias(program);
 registerMarketplaceCommands(program);
 registerApplyCommand(program);
 registerPackCommand(program);
+registerAuditCommand(program);
 registerParityCommands(program);
 registerCommands(program);
 

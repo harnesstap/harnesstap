@@ -133,6 +133,18 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "pack --format json",
     ],
   },
+  audit: {
+    description:
+      "Scan a project for hidden Unicode and verify lockfile SHA-256 hashes",
+    details:
+      "Default scan covers lockfile-recorded deployed files plus local primitive dirs. --ci fails on critical Unicode or hash mismatch/extra/missing. --strip removes critical and warning characters (mutually exclusive with --ci). Use --file to scan any one file.",
+    examples: [
+      "audit",
+      "audit --file .cursorrules",
+      "audit --ci --format json",
+      "audit --strip --dry-run",
+    ],
+  },
   "plugin.create": {
     description: "Create a new local plugin",
     examples: [

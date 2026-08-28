@@ -1,0 +1,3 @@
+kind: Added
+body: Add pre-deploy Unicode scanning and lockfile SHA-256 verification on apply, path-traversal guards, and `ht audit`.
+time: 2026-08-28T12:00:00Z
