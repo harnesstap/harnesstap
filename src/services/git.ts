@@ -4,10 +4,13 @@ import { basename } from "node:path";
 /**
  * Detect the git remote origin URL for a project directory.
  * Returns undefined if not a git repo or no origin remote.
+ *
+ * Reads the stored `remote.origin.url` so url.*.insteadOf rewrites (credential
+ * helpers) do not change project identity.
  */
 export function getGitOrigin(projectRoot: string): string | undefined {
   try {
-    const url = execSync("git remote get-url origin", {
+    const url = execSync("git config --get remote.origin.url", {
       cwd: projectRoot,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
