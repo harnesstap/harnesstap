@@ -13,6 +13,8 @@ import {
   lockfilePath,
   lockedVersionsFrom,
   readLockfile,
+  verifyDeployedFileHashes,
+  LockIntegrityError,
   writeLockfile,
 } from "../../src/services/lockfile.ts";
 
@@ -101,5 +103,45 @@ describe("lockfile", () => {
     const second = resolveComposition({ rootSelectors: ["root"] });
     expect(second.selected.find((s) => s.name === "base")?.version).toBe("2.2.0");
     expect(lockfileMatchesResolution(lock, second)).toBe(false);
+  });
+
+  it("records and verifies SHA-256 hashes of deployed files", async () => {
+    await buildGraph();
+    const result = resolveComposition({ rootSelectors: ["root"] });
+    const files = [
+      { path: "AGENTS.md", content: "# Hello\n" },
+      { path: ".claude/CLAUDE.md", content: "# Claude\n" },
+    ];
+    writeLockfile(
+      ctx.projectDir,
+      lockfileFromResolution(result, { deployedFiles: files }),
+    );
+    const lock = readLockfile(ctx.projectDir);
+    const hashes = lock?.deployed_file_hashes;
+    expect(hashes?.["AGENTS.md"]).toMatch(/^sha256:[a-f0-9]{64}$/);
+    if (!hashes) throw new Error("missing deployed_file_hashes");
+    const agents = files[0];
+    if (!agents) throw new Error("missing fixture file");
+
+    expect(() => verifyDeployedFileHashes(hashes, files)).not.toThrow();
+    expect(() =>
+      verifyDeployedFileHashes(hashes, [
+        { path: "AGENTS.md", content: "# Tampered\n" },
+        { path: ".claude/CLAUDE.md", content: "# Claude\n" },
+      ]),
+    ).toThrow(LockIntegrityError);
+    expect(() => verifyDeployedFileHashes(hashes, [agents])).toThrow(/missing/);
+    expect(() =>
+      verifyDeployedFileHashes(hashes, [
+        ...files,
+        { path: "extra.md", content: "nope" },
+      ]),
+    ).toThrow(/extra/);
+    expect(() =>
+      verifyDeployedFileHashes(
+        { "skills/../escape.md": "sha256:deadbeef" },
+        [{ path: "skills/../escape.md", content: "# Hello\n" }],
+      ),
+    ).toThrow(/Unsafe local_deployed_file_hashes path/);
   });
 });

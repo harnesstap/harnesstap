@@ -35,6 +35,8 @@ import {
   readLockfile,
   writeLockfile,
 } from "../../services/lockfile.js";
+import { gateDeployFiles, LockIntegrityError } from "../../services/deploy-gate.js";
+import { CriticalUnicodeError } from "../../services/unicode-scan.js";
 import { findProjectConfig } from "../../services/project-config.js";
 import { detectProfileOwnedOverwriteConflicts } from "../../services/profile-owned-overwrite.js";
 import { applyProfilePlugin } from "../../services/profile-apply.js";
@@ -82,6 +84,8 @@ interface ParsedApplyBody {
   dryRun: boolean;
   confirmOwnedOverwrite: boolean;
   harness?: string;
+  force?: boolean;
+  update?: boolean;
 }
 
 function parseBody(body: unknown): ParsedApplyBody | Response {
@@ -147,6 +151,12 @@ function parseBody(body: unknown): ParsedApplyBody | Response {
   if (body.harness !== undefined && typeof body.harness !== "string") {
     return jsonResponse({ error: "invalid_body", message: "harness must be a string" }, { status: 400 });
   }
+  if (body.force !== undefined && typeof body.force !== "boolean") {
+    return jsonResponse({ error: "invalid_body", message: "force must be a boolean" }, { status: 400 });
+  }
+  if (body.update !== undefined && typeof body.update !== "boolean") {
+    return jsonResponse({ error: "invalid_body", message: "update must be a boolean" }, { status: 400 });
+  }
   if (body.projectPath !== undefined && typeof body.projectPath !== "string") {
     return jsonResponse(
       { error: "invalid_body", message: "projectPath must be a string" },
@@ -171,6 +181,8 @@ function parseBody(body: unknown): ParsedApplyBody | Response {
     confirmOwnedOverwrite: body.confirmOwnedOverwrite === true,
     ...(body.projectPath?.trim() ? { projectPath: body.projectPath.trim() } : {}),
     ...(body.harness?.trim() ? { harness: body.harness.trim() } : {}),
+    ...(body.force === true ? { force: true } : {}),
+    ...(body.update === true ? { update: true } : {}),
   };
 }
 
@@ -276,6 +288,7 @@ async function executeHomeApply(parsed: ParsedApplyBody): Promise<Response> {
     dryRun: parsed.dryRun,
     conflictPolicy: parsed.onConflict,
     ...(parsed.harness ? { harness: parsed.harness } : {}),
+    ...(parsed.force ? { forceUnicode: true } : {}),
   };
 
   const payload = isProfilePlugin(plugin)
@@ -333,7 +346,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     }
   }
 
-  const existingLock = readLockfile(projectRoot);
+  const existingLock = parsed.update ? undefined : readLockfile(projectRoot);
   const primaryName = pluginIds[0] ?? "";
   const lockedVersions =
     existingLock && lockIsUsable(existingLock, primaryName)
@@ -393,6 +406,32 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     claudeConfig: mergePluginsById(configuredPluginIds).claude,
     resolvedEnvironment,
   });
+
+  const generatedFiles = generated.flatMap((result) =>
+    result.files.map((file) => ({ path: file.path, content: file.content })),
+  );
+  const shouldVerifyHashes = Boolean(
+    !parsed.update &&
+      existingLock &&
+      lockIsUsable(existingLock, primaryName) &&
+      existingLock.deployed_file_hashes &&
+      Object.keys(existingLock.deployed_file_hashes).length > 0,
+  );
+  try {
+    gateDeployFiles(generatedFiles, {
+      forceUnicode: parsed.force,
+      verifyHashes: shouldVerifyHashes,
+      expectedHashes: existingLock?.deployed_file_hashes,
+    });
+  } catch (err) {
+    if (err instanceof CriticalUnicodeError || err instanceof LockIntegrityError) {
+      return jsonResponse(
+        { error: "apply_blocked", message: err.message },
+        { status: 400 },
+      );
+    }
+    throw err;
+  }
 
   if (parsed.dryRun) {
     return jsonResponse({

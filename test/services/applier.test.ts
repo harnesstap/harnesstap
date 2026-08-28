@@ -48,7 +48,7 @@ describe("applier services", () => {
     }
   });
 
-  it("preserves project writes through symlinked project directories", async () => {
+  it("rejects project writes that escape through symlinked directories", async () => {
     const context = await createInitializedTestContext("applier-project-symlink");
 
     try {
@@ -57,12 +57,14 @@ describe("applier services", () => {
       mkdirSync(outsideDir, { recursive: true });
       symlinkSync(outsideDir, join(context.projectDir, ".claude"), "dir");
 
-      applier.writeFiles(
-        [{ path: ".claude/skills/demo/SKILL.md", content: "# Demo" }],
-        context.projectDir,
-      );
+      expect(() =>
+        applier.writeFiles(
+          [{ path: ".claude/skills/demo/SKILL.md", content: "# Demo" }],
+          context.projectDir,
+        ),
+      ).toThrow(/outside root|symlink/i);
 
-      expect(readFileSync(join(outsideDir, "skills/demo/SKILL.md"), "utf-8")).toBe("# Demo");
+      expect(existsSync(join(outsideDir, "skills/demo/SKILL.md"))).toBe(false);
     } finally {
       await context.cleanup();
     }
@@ -470,6 +472,28 @@ describe("applier services", () => {
 
       expect(result.cancelled).toBe(true);
       expect(resolver).toHaveBeenCalledTimes(1);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects global writes that escape through parent traversal", async () => {
+    const context = await createInitializedTestContext("applier-parent-traversal");
+
+    try {
+      const applier = await import("../../src/services/applier.ts");
+      await expect(
+        applier.materializeFiles(
+          [{ path: "../escape.md", content: "nope" }],
+          context.homeDir,
+        ),
+      ).rejects.toThrow(/outside root/i);
+      await expect(
+        applier.materializeFiles(
+          [{ path: "skills/../escape.md", content: "nope" }],
+          context.homeDir,
+        ),
+      ).rejects.toThrow(/outside root/i);
     } finally {
       await context.cleanup();
     }

@@ -140,6 +140,12 @@ import {
   readLockfile,
   writeLockfile,
 } from "../../services/lockfile.js";
+import {
+  gateDeployFiles,
+  LockIntegrityError,
+  printUnicodeGateWarnings,
+} from "../../services/deploy-gate.js";
+import { CriticalUnicodeError } from "../../services/unicode-scan.js";
 import { resolveApplySelectorsFromProjectManifest } from "../../services/apm-project-plugin.js";
 import { findProjectConfig } from "../../services/project-config.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
@@ -867,6 +873,43 @@ export async function handleProjectApplyCommand(
     );
   } finally {
     generateSpin.stop();
+  }
+
+  const generatedFiles = generated.flatMap((result) =>
+    result.files.map((file) => ({ path: file.path, content: file.content })),
+  );
+  const shouldVerifyHashes = Boolean(
+    !opts.update &&
+      existingLock &&
+      lockIsUsable(existingLock, resolvedPluginNames[0] ?? "") &&
+      existingLock.deployed_file_hashes &&
+      Object.keys(existingLock.deployed_file_hashes).length > 0,
+  );
+  try {
+    const gate = gateDeployFiles(generatedFiles, {
+      forceUnicode: opts.force,
+      verifyHashes: shouldVerifyHashes,
+      expectedHashes: existingLock?.deployed_file_hashes,
+    });
+    if (outputFormat === "human") {
+      printUnicodeGateWarnings(gate.findings, opts.force);
+    }
+  } catch (err) {
+    process.exitCode = 1;
+    if (err instanceof CriticalUnicodeError) {
+      ui.danger(err.message, {
+        hints: [formatCommand("apply --force")],
+      });
+      return;
+    }
+    if (err instanceof LockIntegrityError) {
+      ui.danger(err.message, {
+        hints: [formatCommand("apply --update")],
+      });
+      return;
+    }
+    ui.danger(err instanceof Error ? err.message : String(err));
+    return;
   }
 
   // Strict plugin validation must happen BEFORE any files are written.

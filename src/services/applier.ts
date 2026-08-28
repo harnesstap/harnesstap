@@ -7,7 +7,8 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+import { dirname, resolve, sep } from "node:path";
+import { hasParentTraversalSegment } from "../utils/path-containment.js";
 import {
   findImportedSnapshotOwnersByFile,
   getImportedSnapshot,
@@ -29,6 +30,7 @@ import {
   attachResourceOwnership,
   persistWrittenMaterializations,
 } from "./materialization-ownership.js";
+import { gateDeployFiles } from "./deploy-gate.js";
 import {
   type EnvironmentFragment,
   mergeResolvedEnvironmentIntoResources,
@@ -72,6 +74,7 @@ export interface GenerateFilesOptions extends SerializeOptions {
 
 export interface GlobalApplyOptions extends GenerateFilesOptions, MaterializeFilesOptions {
   snapshotId?: string;
+  forceUnicode?: boolean;
 }
 
 export interface MaterializationResult {
@@ -102,8 +105,13 @@ function isAutoReplaceConflict(
 }
 
 function resolveMaterializedPath(rootPath: string, relativePath: string): string {
-  if (!relativePath || relativePath.startsWith("/") || relativePath.startsWith("\\")) {
-    throw new Error(`Refusing to materialize non-relative path: ${relativePath}`);
+  if (
+    !relativePath ||
+    hasParentTraversalSegment(relativePath) ||
+    relativePath.startsWith("/") ||
+    relativePath.startsWith("\\")
+  ) {
+    throw new Error(`Refusing to materialize path outside root: ${relativePath}`);
   }
 
   const resolvedRoot = resolve(rootPath);
@@ -269,7 +277,7 @@ export function writeFiles(
   projectRoot: string,
 ): void {
   for (const file of files) {
-    const fullPath = join(projectRoot, file.path);
+    const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
     mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, file.content, "utf-8");
   }
@@ -473,6 +481,7 @@ export async function applyToGlobal(
     target: "global",
   });
   const allFiles = results.flatMap((result) => result.files);
+  gateDeployFiles(allFiles, { forceUnicode: options.forceUnicode });
   const materialized = await materializeFiles(allFiles, homeRoot, {
     conflictPolicy: options.conflictPolicy ?? "prompt",
     conflictResolver: options.conflictResolver,

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { hasParentTraversalSegment } from "../utils/path-containment.js";
 import { getPluginById, getPluginResources } from "../models/plugin-model.js";
 import type { McpServerMetadata, Resource } from "../types.js";
 import { PACKAGE_VERSION } from "../version.js";
@@ -141,6 +142,97 @@ function deployedFileHashes(
     hashes[file.path] = sha256Envelope(canonicalizeText(file.content));
   }
   return hashes;
+}
+
+function normalizeDigest(value: string): string {
+  return value.replace(/^sha256:/i, "").toLowerCase();
+}
+
+export class LockIntegrityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LockIntegrityError";
+  }
+}
+
+export type DeployedHashIssueKind = "missing" | "extra" | "mismatch" | "unsafe-path";
+
+export interface DeployedHashIssue {
+  kind: DeployedHashIssueKind;
+  path: string;
+  expected?: string;
+  actual?: string;
+}
+
+export function diffDeployedFileHashes(
+  expected: Record<string, string>,
+  files: Array<{ path: string; content: string }>,
+): DeployedHashIssue[] {
+  const issues: DeployedHashIssue[] = [];
+  const actual = deployedFileHashes(files);
+
+  for (const relativePath of Object.keys(expected).sort()) {
+    if (hasParentTraversalSegment(relativePath) || relativePath.startsWith("/")) {
+      issues.push({ kind: "unsafe-path", path: relativePath });
+    }
+  }
+
+  for (const relativePath of Object.keys(expected).sort()) {
+    const expectedHash = expected[relativePath];
+    const actualHash = actual[relativePath];
+    if (actualHash === undefined) {
+      issues.push({ kind: "missing", path: relativePath, expected: expectedHash });
+      continue;
+    }
+    if (expectedHash && normalizeDigest(expectedHash) !== normalizeDigest(actualHash)) {
+      issues.push({
+        kind: "mismatch",
+        path: relativePath,
+        expected: normalizeDigest(expectedHash),
+        actual: normalizeDigest(actualHash),
+      });
+    }
+  }
+
+  for (const relativePath of Object.keys(actual).sort()) {
+    if (expected[relativePath] === undefined) {
+      issues.push({ kind: "extra", path: relativePath, actual: actual[relativePath] });
+    }
+  }
+
+  return issues;
+}
+
+export function verifyDeployedFileHashes(
+  expected: Record<string, string>,
+  files: Array<{ path: string; content: string }>,
+): void {
+  const issues = diffDeployedFileHashes(expected, files);
+  const first = issues[0];
+  if (!first) return;
+
+  switch (first.kind) {
+    case "unsafe-path":
+      throw new LockIntegrityError(
+        `Unsafe local_deployed_file_hashes path ${first.path} — apply aborted closed`,
+      );
+    case "missing":
+      throw new LockIntegrityError(
+        `Deployed tree is missing ${first.path} listed in local_deployed_file_hashes`,
+      );
+    case "mismatch":
+      throw new LockIntegrityError(
+        `Hash mismatch for ${first.path}: lockfile records ${first.expected}, file is ${first.actual}`,
+      );
+    case "extra":
+      throw new LockIntegrityError(
+        `Deployed tree contains extra file ${first.path} that is not listed in local_deployed_file_hashes`,
+      );
+    default: {
+      const unhandled: never = first.kind;
+      throw new LockIntegrityError(`Unknown lock integrity issue: ${String(unhandled)}`);
+    }
+  }
 }
 
 export function lockfileFromResolution(

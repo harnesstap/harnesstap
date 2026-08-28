@@ -26,6 +26,7 @@ import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
 import { formatCommand } from "../shared.js";
+import { CriticalUnicodeError } from "../../services/unicode-scan.js";
 import { handleProjectApplyCommand } from "./plugin.js";
 
 export type ApplyCommandActionOpts = ApplyCommandOpts & {
@@ -104,6 +105,7 @@ async function handleGlobalApplyCommand(
     ...(conflictPolicy === "prompt"
       ? { conflictResolver: promptMaterializationConflict }
       : {}),
+    ...(opts.force ? { forceUnicode: true } : {}),
   };
 
   try {
@@ -142,6 +144,12 @@ async function handleGlobalApplyCommand(
     );
   } catch (err) {
     process.exitCode = 1;
+    if (err instanceof CriticalUnicodeError) {
+      ui.danger(err.message, {
+        hints: [formatCommand("apply --global --force")],
+      });
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }

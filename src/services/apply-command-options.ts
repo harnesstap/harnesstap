@@ -16,6 +16,7 @@ export interface ApplyCommandOpts {
   onConflict?: string;
   explain?: boolean;
   update?: boolean;
+  force?: boolean;
 }
 
 export function addApplyCommandOptions(command: Command): Command {
@@ -50,10 +51,14 @@ export function addApplyCommandOptions(command: Command): Command {
     )
     .option(
       "--update",
-      "Ignore apm.lock.yaml and re-resolve the dependency graph",
+      "Ignore apm.lock.yaml, re-resolve the dependency graph, and refresh file hashes",
     )
     .option(
       "--strict",
       "Fail apply when ${VAR} environment placeholders cannot be resolved",
+    )
+    .option(
+      "--force",
+      "Override critical hidden-Unicode findings and continue apply",
     );
 }

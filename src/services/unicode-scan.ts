@@ -399,3 +399,73 @@ export function summarizeUnicodeFindings(
   }
   return counts;
 }
+
+export function formatUnicodeFinding(finding: UnicodeScanFinding): string {
+  return `${finding.file}:${finding.line}:${finding.column} ${finding.codepoint} ${finding.description}`;
+}
+
+export class CriticalUnicodeError extends Error {
+  readonly findings: UnicodeScanFinding[];
+
+  constructor(findings: UnicodeScanFinding[]) {
+    const critical = findings.filter((finding) => finding.severity === "critical");
+    const first = critical[0];
+    super(
+      `Critical hidden Unicode in ${first?.file ?? "content"} ` +
+        `(${first?.codepoint ?? "U+????"} ${first?.description ?? "critical character"}). ` +
+        "Re-run with --force to override.",
+    );
+    this.name = "CriticalUnicodeError";
+    this.findings = findings;
+  }
+}
+
+export function assertUnicodeAllowed(
+  findings: UnicodeScanFinding[],
+  force = false,
+): void {
+  if (hasCriticalUnicode(findings) && !force) {
+    throw new CriticalUnicodeError(findings);
+  }
+}
+
+export function isStrippableUnicodeFinding(finding: UnicodeScanFinding): boolean {
+  return finding.severity === "critical" || finding.severity === "warning";
+}
+
+/**
+ * Remove critical and warning hidden-Unicode code points.
+ * Info-level characters (emoji presentation, unusual whitespace, ZWJ in emoji
+ * sequences) are preserved.
+ */
+export function stripHiddenUnicode(content: string): { text: string; removed: number } {
+  const findings = scanUnicodeText(content);
+  const stripAt = new Set(
+    findings
+      .filter(isStrippableUnicodeFinding)
+      .map((finding) => `${finding.line}:${finding.column}`),
+  );
+  if (stripAt.size === 0) {
+    return { text: content, removed: 0 };
+  }
+
+  const lines = content.split("\n");
+  let removed = 0;
+  const out: string[] = [];
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const lineText = lines[lineIdx] ?? "";
+    const chars = [...lineText];
+    let column = 1;
+    const kept: string[] = [];
+    for (const ch of chars) {
+      if (stripAt.has(`${lineIdx + 1}:${column}`)) {
+        removed += 1;
+      } else {
+        kept.push(ch);
+      }
+      column += 1;
+    }
+    out.push(kept.join(""));
+  }
+  return { text: out.join("\n"), removed };
+}

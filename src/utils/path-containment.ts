@@ -16,8 +16,13 @@ function isOutsideRelative(rel: string): boolean {
   return rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel);
 }
 
+/** True when any path segment is exactly `..` (not names that merely start with dots). */
+export function hasParentTraversalSegment(entry: string): boolean {
+  return entry.split(/[\\/]/).some((segment) => segment === "..");
+}
+
 export function isContainedPath(root: string, entry: string): boolean {
-  if (isAbsolute(entry)) return false;
+  if (isAbsolute(entry) || hasParentTraversalSegment(entry)) return false;
   const resolvedRoot = resolve(root);
   const rel = relative(resolvedRoot, resolve(resolvedRoot, entry));
   return rel !== "" && !isOutsideRelative(rel);
