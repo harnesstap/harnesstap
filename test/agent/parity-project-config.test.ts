@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
@@ -89,19 +89,34 @@ describe("GET /v1/config tryHandle", () => {
     expect(validation.errors).toEqual([]);
     expect(config.default_profile).toBe("dev");
     expect(config.root_path).toBe(dir);
-    expect(String(config.config_path)).toContain(".harnesstap/config.toml");
+    expect(String(config.config_path)).toContain("apm.yml");
     const resolved = findProjectConfig(dir);
     expect(resolved).not.toBeNull();
     expect(config).toEqual({
       root_path: resolved!.rootPath,
       config_path: resolved!.configPath,
+      name: resolved!.apm_name,
+      version: resolved!.apm_version,
       default_profile: resolved!.default_profile,
       default_environment: resolved!.default_environment,
+      targets: resolved!.harnessTargets,
+      skipped_targets: resolved!.skippedTargets,
       profiles: resolved!.profiles,
       environments: resolved!.environments,
       plugins: resolved!.plugins.map((plugin) => ({ name: plugin.name })),
       environment_count: resolved!.environments.length,
       plugin_count: resolved!.plugins.length,
+      apm_dependencies: resolved!.apmDependencies.map((dependency) => ({
+        name: dependency.name,
+        source: dependency.sourceKind,
+        selector: dependency.applySelector,
+        ...(dependency.ref ? { ref: dependency.ref } : {}),
+      })),
+      mcp_dependencies: resolved!.mcpDependencies.map((dependency) => ({
+        name: dependency.name,
+        ...(dependency.registryId ? { registry_id: dependency.registryId } : {}),
+      })),
+      warnings: resolved!.warnings,
     });
   });
 
@@ -119,17 +134,15 @@ describe("GET /v1/config tryHandle", () => {
 
   it("returns 200 with validation.valid false for unknown default_profile", async () => {
     const dir = tempDir("ht-config-invalid-ref-");
-    mkdirSync(join(dir, ".harnesstap"), { recursive: true });
     writeFileSync(
-      join(dir, ".harnesstap", "config.toml"),
-      `schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "missing"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
+      join(dir, "apm.yml"),
+      `name: demo
+version: "1.0.0"
+default_profile: missing
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
 `,
       "utf-8",
     );
@@ -144,18 +157,16 @@ selector = "team-stack"
 
   it("returns 400 invalid_config for malformed project schema", async () => {
     const dir = tempDir("ht-config-bad-toml-");
-    mkdirSync(join(dir, ".harnesstap"), { recursive: true });
     writeFileSync(
-      join(dir, ".harnesstap", "config.toml"),
-      `schema = "not-a-project-schema"
-version = 1
+      join(dir, "apm.yml"),
+      `version: "1.0.0"
 `,
       "utf-8",
     );
     const result = await inspect(configRequest(dir));
     expect(result?.status).toBe(400);
     expect(result?.body.error).toBe("invalid_config");
-    expect(String(result?.body.message)).toContain("Unsupported project schema");
+    expect(String(result?.body.message)).toContain("missing required field name");
   });
 
   it("returns the existing file after POST /v1/bootstrap already_existed", async () => {

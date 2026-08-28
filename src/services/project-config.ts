@@ -1,12 +1,13 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import type { DeckJsonEnvironment, DeckJsonEnvironmentSecretRef } from "../types.js";
+import type { DeckJsonEnvironment, DeckJsonEnvironmentSecretRef, DeckJsonSecretProvider } from "../types.js";
+import type { ParsedApmDependency, ParsedMcpDependency } from "./apm-dependencies.js";
 import {
-  PROJECT_SCHEMA,
-  PROJECT_SCHEMA_VERSION,
-} from "../types.js";
+  APM_MANIFEST_FILENAME,
+  parseApmManifestContents,
+} from "./apm-manifest.js";
+import type { ApmOverlayInfo } from "./apm-overlay.js";
 import { parseTransportToml } from "./toml/read.js";
-import { readSchemaHeader } from "./toml/validate.js";
 
 export type ProjectProfileSource = "catalog" | "local" | "inline";
 
@@ -26,14 +27,22 @@ export interface ProjectConfig {
   profiles: ProjectProfileEntry[];
   environments: DeckJsonEnvironment[];
   plugins: ProjectPluginTable[];
+  apm_name?: string;
+  apm_version?: string;
+  apm_description?: string;
+  apm_document?: Record<string, unknown>;
 }
 
 export interface ResolvedProjectConfig extends ProjectConfig {
   rootPath: string;
   configPath: string;
+  harnessTargets: string[];
+  skippedTargets: string[];
+  apmDependencies: ParsedApmDependency[];
+  mcpDependencies: ParsedMcpDependency[];
+  overlay?: ApmOverlayInfo;
+  warnings: string[];
 }
-
-const CONFIG_FILE_NAMES = ["config.toml"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -51,22 +60,23 @@ function resolveWalkRoot(startPath: string): string {
   return absolute;
 }
 
+export function projectManifestPath(rootPath: string): string {
+  return join(rootPath, APM_MANIFEST_FILENAME);
+}
+
 function locateProjectConfigFile(
   startPath: string,
 ): { rootPath: string; configPath: string; configDir: string } | null {
   let current = resolveWalkRoot(startPath);
 
   while (true) {
-    const harnesstapDir = join(current, ".harnesstap");
-    for (const fileName of CONFIG_FILE_NAMES) {
-      const configPath = join(harnesstapDir, fileName);
-      if (existsSync(configPath)) {
-        return {
-          rootPath: current,
-          configPath,
-          configDir: harnesstapDir,
-        };
-      }
+    const configPath = projectManifestPath(current);
+    if (existsSync(configPath)) {
+      return {
+        rootPath: current,
+        configPath,
+        configDir: join(current, ".harnesstap"),
+      };
     }
 
     const parent = dirname(current);
@@ -74,23 +84,6 @@ function locateProjectConfigFile(
       return null;
     }
     current = parent;
-  }
-}
-
-function assertProjectSchema(schema: string, version: number, filePath: string): void {
-  if (schema.includes(":layer:")) {
-    throw new Error(
-      `${filePath} looks like a legacy plugin bundle schema (${schema}); ` +
-        "portable plugins are Agent Plugins packages, not project config",
-    );
-  }
-  if (schema !== PROJECT_SCHEMA) {
-    throw new Error(`Unsupported project schema in ${filePath}: ${schema}`);
-  }
-  if (version !== PROJECT_SCHEMA_VERSION) {
-    throw new Error(
-      `Unsupported project version in ${filePath}: ${version} (expected ${PROJECT_SCHEMA_VERSION})`,
-    );
   }
 }
 
@@ -153,18 +146,34 @@ function parseProfileEntry(value: unknown, index: number): ProjectProfileEntry {
   }
 }
 
-function parseEnvironmentEntry(value: unknown, index: number): DeckJsonEnvironment {
-  if (!isRecord(value)) {
-    throw new Error(`Environment at index ${index} must be a table`);
+function parseSecretProvider(
+  value: unknown,
+  environmentName: string,
+  key: string,
+): DeckJsonSecretProvider {
+  const provider = String(value ?? "env");
+  switch (provider) {
+    case "keychain":
+    case "env":
+    case "file":
+      return provider;
+    default:
+      throw new Error(
+        `Environment ${environmentName} secret_refs.${key} has unknown provider: ${provider}`,
+      );
   }
+}
 
-  const name = value.name;
-  if (typeof name !== "string" || name.length === 0) {
-    throw new Error(`Environment at index ${index} must include a non-empty name`);
+function parseNamedEnvironment(name: string, value: unknown): DeckJsonEnvironment {
+  if (!isRecord(value)) {
+    throw new Error(`Environment ${name} must be a mapping`);
   }
 
   const valuesRaw = value.values;
   const values: Record<string, string> = {};
+  if (valuesRaw !== undefined && !isRecord(valuesRaw)) {
+    throw new Error(`Environment ${name} field values must be a mapping`);
+  }
   if (isRecord(valuesRaw)) {
     for (const [key, entry] of Object.entries(valuesRaw)) {
       values[key] = String(entry);
@@ -173,13 +182,16 @@ function parseEnvironmentEntry(value: unknown, index: number): DeckJsonEnvironme
 
   const secretRefsRaw = value.secret_refs;
   const secret_refs: Record<string, DeckJsonEnvironmentSecretRef> = {};
+  if (secretRefsRaw !== undefined && !isRecord(secretRefsRaw)) {
+    throw new Error(`Environment ${name} field secret_refs must be a mapping`);
+  }
   if (isRecord(secretRefsRaw)) {
     for (const [key, entry] of Object.entries(secretRefsRaw)) {
       if (!isRecord(entry)) {
-        continue;
+        throw new Error(`Environment ${name} secret_refs.${key} must be a mapping`);
       }
       secret_refs[key] = {
-        provider: String(entry.provider ?? "env") as DeckJsonEnvironmentSecretRef["provider"],
+        provider: parseSecretProvider(entry.provider, name, key),
         ref: String(entry.ref ?? ""),
       };
     }
@@ -239,15 +251,46 @@ function parseProfiles(document: Record<string, unknown>): ProjectProfileEntry[]
   return profiles;
 }
 
-function parseEnvironments(document: Record<string, unknown>): DeckJsonEnvironment[] {
-  const environmentsRaw = document.environments;
-  if (environmentsRaw === undefined) {
-    return [];
+function parseEnvironmentBlock(document: Record<string, unknown>): {
+  default_environment?: string;
+  environments: DeckJsonEnvironment[];
+} {
+  const raw = document.environment;
+  if (raw === undefined) {
+    return { environments: [] };
   }
-  if (!Array.isArray(environmentsRaw)) {
-    throw new Error("Project config environments must be an array of tables");
+  if (!isRecord(raw)) {
+    throw new Error("Project config field environment must be a mapping");
   }
-  return environmentsRaw.map(parseEnvironmentEntry);
+
+  let default_environment: string | undefined;
+  const environments: DeckJsonEnvironment[] = [];
+  const seen = new Set<string>();
+
+  for (const [key, value] of Object.entries(raw)) {
+    if (key === "default") {
+      if (value === undefined) {
+        continue;
+      }
+      if (typeof value !== "string" || value.length === 0) {
+        throw new Error(
+          "Project config field environment.default must be a non-empty string when set",
+        );
+      }
+      default_environment = value;
+      continue;
+    }
+    if (seen.has(key)) {
+      throw new Error(`Duplicate environment name: ${key}`);
+    }
+    seen.add(key);
+    environments.push(parseNamedEnvironment(key, value));
+  }
+
+  return {
+    ...(default_environment !== undefined ? { default_environment } : {}),
+    environments,
+  };
 }
 
 function parsePlugins(document: Record<string, unknown>): ProjectPluginTable[] {
@@ -263,23 +306,49 @@ function parsePlugins(document: Record<string, unknown>): ProjectPluginTable[] {
 
 export function projectConfigFromTomlDocument(document: Record<string, unknown>): ProjectConfig {
   const default_profile = parseOptionalStringField(document, "default_profile");
-  const default_environment = parseOptionalStringField(document, "default_environment");
+  const parsedEnvironment = parseEnvironmentBlock(document);
 
   return {
     ...(default_profile !== undefined ? { default_profile } : {}),
-    ...(default_environment !== undefined ? { default_environment } : {}),
+    ...parsedEnvironment,
     profiles: parseProfiles(document),
-    environments: parseEnvironments(document),
     plugins: parsePlugins(document),
   };
 }
 
-export function parseProjectConfigFile(filePath: string): ProjectConfig {
+export function parseProjectConfigFile(filePath: string, rootPath?: string): ProjectConfig {
   const raw = readFileSync(filePath, "utf-8");
-  const document = parseTransportToml(raw, "project config");
-  const { schema, version } = readSchemaHeader(document);
-  assertProjectSchema(schema, version, filePath);
-  return projectConfigFromTomlDocument(document);
+  const fields = parseApmManifestContents(raw, filePath, rootPath);
+  const config = projectConfigFromTomlDocument(fields.vendor);
+  return {
+    ...config,
+    apm_name: fields.name,
+    apm_version: fields.version,
+    ...(fields.description ? { apm_description: fields.description } : {}),
+    ...(Object.keys(fields.rest).length > 0 ? { apm_document: fields.rest } : {}),
+  };
+}
+
+function parseResolvedProjectConfig(
+  filePath: string,
+  rootPath: string,
+): Omit<ResolvedProjectConfig, "rootPath" | "configPath"> {
+  const raw = readFileSync(filePath, "utf-8");
+  const fields = parseApmManifestContents(raw, filePath, rootPath);
+  const config = projectConfigFromTomlDocument(fields.vendor);
+  return {
+    ...config,
+    apm_name: fields.name,
+    apm_version: fields.version,
+    ...(fields.description ? { apm_description: fields.description } : {}),
+    ...(Object.keys(fields.rest).length > 0 ? { apm_document: fields.rest } : {}),
+    harnessTargets: fields.harnessTargets,
+    skippedTargets: fields.skippedTargets,
+    apmDependencies: fields.apmDependencies,
+    mcpDependencies: fields.mcpDependencies,
+    ...(fields.overlay ? { overlay: fields.overlay } : {}),
+    warnings: fields.warnings,
+  };
 }
 
 export function mergeProjectConfigLocalOverrides(
@@ -309,15 +378,20 @@ export function findProjectConfig(startPath: string): ResolvedProjectConfig | nu
     return null;
   }
 
-  const config = mergeProjectConfigLocalOverrides(
-    parseProjectConfigFile(located.configPath),
-    located.configDir,
-  );
+  const parsed = parseResolvedProjectConfig(located.configPath, located.rootPath);
+  const merged = mergeProjectConfigLocalOverrides(parsed, located.configDir);
 
   return {
-    ...config,
+    ...parsed,
+    ...merged,
     rootPath: located.rootPath,
     configPath: located.configPath,
+    harnessTargets: parsed.harnessTargets,
+    skippedTargets: parsed.skippedTargets,
+    apmDependencies: parsed.apmDependencies,
+    mcpDependencies: parsed.mcpDependencies,
+    warnings: parsed.warnings,
+    ...(parsed.overlay ? { overlay: parsed.overlay } : {}),
   };
 }
 
@@ -359,7 +433,7 @@ export function validateProjectConfig(config: ProjectConfig): ProjectConfigValid
 
   if (config.default_environment && !environmentNames.has(config.default_environment)) {
     errors.push(
-      `default_environment references unknown environment: ${config.default_environment}`,
+      `environment.default references unknown environment: ${config.default_environment}`,
     );
   }
 

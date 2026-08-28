@@ -1,20 +1,15 @@
 import { describe, expect, it } from "bun:test";
-import { LOCK_SCHEMA } from "../../src/services/lockfile.ts";
-import {
-  AP_PACKAGE_SCHEMA,
-} from "../../src/services/agent-plugins/files.ts";
+import { AP_PACKAGE_SCHEMA } from "../../src/services/agent-plugins/files.ts";
 import { HT_EXTENSION_SCHEMA } from "../../src/services/agent-plugins/manifest.ts";
 import { environmentToTomlDocument } from "../../src/services/toml/environment-document.ts";
-import { DECK_SCHEMA, PROJECT_SCHEMA } from "../../src/types.js";
+import { DECK_SCHEMA } from "../../src/types.js";
 import * as types from "../../src/types.js";
 
 describe("schema URNs", () => {
   it("keeps surviving local and package schemas", () => {
-    expect(LOCK_SCHEMA).toBe("urn:harnesstap:lock:v1");
     expect(AP_PACKAGE_SCHEMA).toBe("urn:harnesstap:ap-package:v1");
     expect(HT_EXTENSION_SCHEMA).toBe("urn:harnesstap:ap-extension:v1");
     expect(DECK_SCHEMA).toBe("urn:harnesstap:deck:v1");
-    expect(PROJECT_SCHEMA).toBe("urn:harnesstap:project:v1");
   });
 
   it("keeps environment documents as schema-less TOML tables", () => {

@@ -20,12 +20,27 @@ const ENV_KEYS = [
   "HOME",
   "NODE_ENV",
   "npm_config_registry",
-];
+] as const;
+
+const ORIGINAL_ENV: Record<(typeof ENV_KEYS)[number], string | undefined> = {
+  REQ_EXACT: process.env.REQ_EXACT,
+  REQ_FUZZY_TOKEN: process.env.REQ_FUZZY_TOKEN,
+  MY_API_TOKEN: process.env.MY_API_TOKEN,
+  PATH: process.env.PATH,
+  HOME: process.env.HOME,
+  NODE_ENV: process.env.NODE_ENV,
+  npm_config_registry: process.env.npm_config_registry,
+};
 
 describe("environment requirements service", () => {
   afterEach(() => {
     for (const key of ENV_KEYS) {
-      delete process.env[key];
+      const original = ORIGINAL_ENV[key];
+      if (original === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original;
+      }
     }
   });
 

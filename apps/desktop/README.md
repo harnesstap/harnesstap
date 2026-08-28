@@ -92,7 +92,7 @@ bun run desktop:install
 - [ ] Profiles rail lists profile-tagged plugins (default seeded on first boot)
 - [ ] Switch shows SSE steps; Cancel disabled during apply step
 - [ ] Live panel G/Y/R from `GET /v1/status`
-- [ ] Project view auto-bootstraps `.harnesstap/config.toml` on first use
+- [ ] Project view auto-bootstraps `apm.yml` on first use
 
 ## End-to-end tests (Tauri + WebdriverIO)
 

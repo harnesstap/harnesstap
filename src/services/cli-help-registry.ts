@@ -60,7 +60,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   use: {
     description:
-      "Switch to a project-configured profile and environment from .harnesstap/config.toml",
+      "Switch to a project-configured profile and environment from apm.yml",
     examples: [
       "use",
       "use --profile dev",
@@ -83,7 +83,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "config.init": {
-    description: "Create a starter .harnesstap/config.toml from local profile plugins",
+    description: "Create a starter apm.yml from local profile plugins",
     examples: [
       "config init",
       "config init --profile work --profile personal --default work",

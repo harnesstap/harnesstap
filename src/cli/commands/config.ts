@@ -11,7 +11,7 @@ export function registerConfigCommands(root: Command): void {
   const configCmd = configureCommandGroup(
     root
       .command("config")
-      .description("Manage project profile config (.harnesstap/config.toml)"),
+      .description("Manage project profile config (apm.yml)"),
   );
 
   configCmd
@@ -35,7 +35,7 @@ export function registerConfigCommands(root: Command): void {
   configCmd
     .command("init")
     .option("--project <path>", "Project directory", ".")
-    .option("--force", "Overwrite an existing .harnesstap/config.toml")
+    .option("--force", "Overwrite an existing apm.yml")
     .option(
       "--profile <name>",
       "Profile plugin to include (repeatable; defaults to all local profile plugins)",
@@ -46,7 +46,7 @@ export function registerConfigCommands(root: Command): void {
     .option("--no-interactive", "Disable interactive prompts")
     .option("--interactive", "Enable interactive prompts")
     .option("--format <mode>", "Output format: human or json", "human")
-    .description("Create a starter .harnesstap/config.toml from local profile plugins")
+    .description("Create a starter apm.yml from local profile plugins")
     .action(async (opts: {
       project?: string;
       force?: boolean;

@@ -350,9 +350,6 @@ export interface ProjectPlugin {
 export const DECK_SCHEMA = "urn:harnesstap:deck:v1" as const;
 export const DECK_JSON_VERSION = 1 as const;
 
-export const PROJECT_SCHEMA = "urn:harnesstap:project:v1" as const;
-export const PROJECT_SCHEMA_VERSION = 1 as const;
-
 export interface DeckJsonPlugin {
   name: string;
   version: string;

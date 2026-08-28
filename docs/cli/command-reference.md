@@ -111,7 +111,7 @@ Git-style commands for working in a project directory. Each defaults to the curr
 ### Commands
 
 - `scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
-- `use` — switch to a project-configured profile from `.harnesstap/config.toml` (`ht use --profile <key>`, not a positional profile name)
+- `use` — switch to a project-configured profile from `apm.yml` (`ht use --profile <key>`, not a positional profile name)
 - `mirror [path]` — mirror alias harness outputs from the main harness state
 - `status [path]` — show project status with drift summary
 - `history [path]` — list snapshots for a tracked project
@@ -128,7 +128,7 @@ Apply plugins with top-level `apply` (not under this group).
 - `scan --namespace <name>` — namespace for imported project resources
 - `scan --global` — install imported plugin sources into global harness locations
 - `scan --harness <slugs>` — harness targets for `--global` plugin installs
-- `use --profile <key>` — profile key from `.harnesstap/config.toml` (required unless `--list`)
+- `use --profile <key>` — profile key from `apm.yml` (required unless `--list`)
 - `use --list` — list profiles from project config without applying
 - `use --dry-run` — preview global apply without writing
 - `use --force` — apply even when the profile is already active and in sync
@@ -138,7 +138,7 @@ Apply plugins with top-level `apply` (not under this group).
 - `mirror --force-shift-reference <slug>` — set the project main harness before mirroring
 - `mirror --reference <strategy>` — reference source: main, plugin, agents, or auto
 - `mirror --format json`
-- `status --check` — exit `1` when drift exists since the last snapshot, or when `.harnesstap/lock.toml` disagrees with the applied manifest (CI)
+- `status --check` — exit `1` when drift exists since the last snapshot, or when `apm.lock.yaml` disagrees with the applied manifest (CI)
 - `status --format json` — includes a `drift` object when git-backed
 - `history --format json`
 - `history --show-id` — show full snapshot IDs in human tables
@@ -250,7 +250,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `apply --harness <slugs>` — comma-separated harness slugs
 - `apply --dry-run` — show planned file writes only
 - `apply --explain` — print the resolution trail (selected versions and every resource decision)
-- `apply --update` — ignore `.harnesstap/lock.toml` and re-resolve the dependency graph
+- `apply --update` — ignore `apm.lock.yaml` and re-resolve the dependency graph
 - `apply --strict-plugin-versions` / `--ignore-plugin-versions` / `--sync-plugins`
 - `plugin why --project <path>` — project with the lockfile to inspect (default `.`)
 - `plugin why --root <plugin>` — resolve against this root instead of the lockfile root
@@ -351,8 +351,8 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile create -y, --yes` — skip the interactive enable prompt
 - `profile delete --plugin` — also delete the underlying plugin without prompting
 - `profile delete -y, --yes` — skip the interactive plugin delete prompt
-- `profile use --profile <key>` — profile key from `.harnesstap/config.toml` (delegates to project config when set)
-- `profile use --project <path>` — project directory for config.toml discovery (default `.`)
+- `profile use --profile <key>` — profile key from `apm.yml` (delegates to project config when set)
+- `profile use --project <path>` — project directory for `apm.yml` discovery (default `.`)
 - `profile use --force` — apply even when the profile is already active and in sync
 - `profile use --dry-run` — preview global file writes
 - `profile use --harness <slugs>` — comma-separated harness slugs (default: global harness preference)

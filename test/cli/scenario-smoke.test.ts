@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
@@ -23,19 +23,17 @@ const smokeCases = JSON.parse(
   readFileSync(join(repoRoot, "docs/scenarios/scenario-smoke.json"), "utf-8"),
 ) as ScenarioSmokeCase[];
 
-const VALID_PROJECT_CONFIG = `schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "dev"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "default"
+const VALID_PROJECT_CONFIG = `name: demo
+version: "1.0.0"
+default_profile: dev
+profiles:
+  - name: dev
+    source: local
+    selector: default
 `;
 
 function writeProjectConfig(projectDir: string) {
-  mkdirSync(join(projectDir, ".harnesstap"), { recursive: true });
-  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), VALID_PROJECT_CONFIG);
+  writeTextFile(join(projectDir, "apm.yml"), VALID_PROJECT_CONFIG);
 }
 
 function resolveSmokeArgv(

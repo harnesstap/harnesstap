@@ -630,7 +630,7 @@ export function registerProjectCommandsBeforeConfig(root: Command): void {
   root
     .command("use")
     .description("Switch to a project-configured profile and environment")
-    .option("--profile <name>", "Profile key from .harnesstap/config.toml")
+    .option("--profile <name>", "Profile key from apm.yml")
     .option("--project <path>", "Project directory", ".")
     .option("--list", "List profiles from project config without applying")
     .option("--dry-run", "Show what would be written without applying")

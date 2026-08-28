@@ -87,9 +87,9 @@ describe("bootstrapProjectWorkspace", () => {
     expect(result.default_profile).toBe("work");
     expect(result.profiles).toContain("work");
     expect(result.profiles).toContain("project default");
-    const raw = readFileSync(join(projectDir, ".harnesstap", "config.toml"), "utf-8");
-    expect(raw).toContain('name = "project default"');
-    expect(raw).toContain('default_profile = "work"');
+    const raw = readFileSync(join(projectDir, "apm.yml"), "utf-8");
+    expect(raw).toContain("project default");
+    expect(raw).toContain("work");
   });
 
   it("migrates a legacy default project config and makes project default the default", async () => {

@@ -1,0 +1,2 @@
+kind: Breaking Changes
+body: Replace `.harnesstap/config.toml` and `.harnesstap/lock.toml` with `apm.yml` and `apm.lock.yaml` as the only project manifest and lockfile. HarnessTap-only fields are first-class top-level keys (`default_profile`, `environment`, `profiles`, `plugins`), not vendor extensions. `environment` is a mapping (`default` plus named environments) honored by config, use, apply, and lock replay.

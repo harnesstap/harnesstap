@@ -4,10 +4,10 @@
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when a repository ships `.harnesstap/config.toml` with named profiles
+Use this when a repository ships `apm.yml` with named profiles
 so teammates can switch stacks without remembering plugin selectors.
 
-Create the file with `ht config init` (from local profile plugins) or copy a team template. See [Project config](../../cli/concepts/projects.md) for the `urn:harnesstap:project:v1` schema.
+Create the file with `ht config init` (from local profile plugins) or copy a team template. See [Project config](../../cli/concepts/projects.md) for the `apm.yml` shape.
 
 ## Inspect the config
 

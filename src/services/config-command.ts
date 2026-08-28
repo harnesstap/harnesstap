@@ -84,13 +84,28 @@ function summarizeConfigForJson(config: ResolvedProjectConfig) {
   return {
     root_path: config.rootPath,
     config_path: config.configPath,
+    name: config.apm_name,
+    version: config.apm_version,
     default_profile: config.default_profile,
     default_environment: config.default_environment,
+    targets: config.harnessTargets,
+    skipped_targets: config.skippedTargets,
     profiles: config.profiles,
     environments: config.environments,
     plugins: config.plugins.map((plugin) => ({ name: plugin.name })),
     environment_count: config.environments.length,
     plugin_count: config.plugins.length,
+    apm_dependencies: config.apmDependencies.map((dependency) => ({
+      name: dependency.name,
+      source: dependency.sourceKind,
+      selector: dependency.applySelector,
+      ...(dependency.ref ? { ref: dependency.ref } : {}),
+    })),
+    mcp_dependencies: config.mcpDependencies.map((dependency) => ({
+      name: dependency.name,
+      ...(dependency.registryId ? { registry_id: dependency.registryId } : {}),
+    })),
+    warnings: config.warnings,
   };
 }
 
@@ -107,9 +122,15 @@ export function handleConfigShowCommand(opts: ConfigCommandOptions): void {
     return;
   }
 
+  for (const warning of config.warnings) {
+    ui.warn(warning);
+  }
+
   ui.kvBlock([
     { key: "Config", value: config.configPath },
     { key: "Root", value: config.rootPath },
+    ...(config.apm_name ? [{ key: "Name", value: config.apm_name }] : []),
+    ...(config.apm_version ? [{ key: "Version", value: config.apm_version }] : []),
     ...(config.default_profile
       ? [{ key: "Default profile", value: config.default_profile }]
       : []),

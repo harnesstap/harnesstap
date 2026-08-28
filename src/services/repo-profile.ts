@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { APM_MANIFEST_FILENAME } from "./apm-manifest.js";
 import { discoverSkillPackage } from "./skill-discovery.js";
 import { detectPlatforms, hasPluginSourceLayout } from "./scanner.js";
 
@@ -25,7 +26,7 @@ export function classifyRepo(rootPath: string): RepoClassification {
   if (hasPluginSourceLayout(rootPath)) {
     profiles.push("plugin-source");
   }
-  if (existsSync(join(rootPath, ".harnesstap", "config.toml"))) {
+  if (existsSync(join(rootPath, APM_MANIFEST_FILENAME))) {
     profiles.push("project-config");
   }
   if (detectPlatforms(rootPath).length > 0) {

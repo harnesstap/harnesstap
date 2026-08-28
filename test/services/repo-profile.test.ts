@@ -1,4 +1,3 @@
-import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { classifyRepo } from "../../src/services/repo-profile.ts";
@@ -14,13 +13,12 @@ describe("repo-profile", () => {
     });
   });
 
-  it("detects project-config when .harnesstap/config.toml exists", () => {
+  it("detects project-config when apm.yml exists", () => {
     const root = createTempDir("repo-profile-project-config");
-    mkdirSync(join(root, ".harnesstap"), { recursive: true });
     writeTextFile(
-      join(root, ".harnesstap", "config.toml"),
-      `schema = "urn:harnesstap:project:v1"
-version = 1
+      join(root, "apm.yml"),
+      `name: demo
+version: "1.0.0"
 `,
     );
 

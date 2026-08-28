@@ -45,7 +45,7 @@ after HarnessTap is set up — not how important it is the first time.
 | [26](./details/26-plugin-from-project.md) | Turn a project's current state into a plugin        | Common     | Shipped |
 | [27](./details/27-project-sync.md) | True cross-harness `mirror`                 | Common     | Shipped |
 | [36](./details/36-switch-profile.md) | Switch global profile presets                    | Common     | Shipped |
-| [40](./details/40-use-project-profile.md) | Switch repo profiles from `.harnesstap/config.toml` | Common | Shipped |
+| [40](./details/40-use-project-profile.md) | Switch repo profiles from `apm.yml` | Common | Shipped |
 | [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessTap on a machine                  | Occasional | Shipped |
 | [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
 | [5](./details/05-build-plugin-from-resources.md)  | Build a reusable plugin from imported resources     | Occasional | Shipped |
@@ -100,7 +100,7 @@ one repo needs different harness defaults than your machine-wide setup.
 | [26](./details/26-plugin-from-project.md) | Turn a project's current state into a plugin |
 | [27](./details/27-project-sync.md) | True cross-harness `mirror` |
 | [36](./details/36-switch-profile.md) | Switch global profile presets on the machine |
-| [40](./details/40-use-project-profile.md) | Switch repo profiles from `.harnesstap/config.toml` |
+| [40](./details/40-use-project-profile.md) | Switch repo profiles from `apm.yml` |
 
 ---
 
