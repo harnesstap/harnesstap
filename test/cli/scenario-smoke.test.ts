@@ -25,12 +25,11 @@ const smokeCases = JSON.parse(
 
 const VALID_PROJECT_CONFIG = `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_profile: dev
-  profiles:
-    - name: dev
-      source: local
-      selector: default
+default_profile: dev
+profiles:
+  - name: dev
+    source: local
+    selector: default
 `;
 
 function writeProjectConfig(projectDir: string) {

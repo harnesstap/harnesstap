@@ -37,11 +37,10 @@ describe("CLI use", () => {
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
 `,
       );
 
@@ -78,13 +77,12 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_profile: dev
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
-      environment: staging
+default_profile: dev
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
+    environment: staging
 `,
       );
 
@@ -124,11 +122,10 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
 `,
       );
 

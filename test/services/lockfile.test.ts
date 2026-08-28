@@ -55,7 +55,9 @@ describe("lockfile", () => {
 
     const raw = readFileSync(path, "utf8");
     expect(raw).toContain("lockfile_version: \"1\"");
-    expect(raw).toContain("x-harnesstap:");
+    expect(raw).toContain("resource_map_hash:");
+    expect(raw).toContain("root: root");
+    expect(raw).not.toContain("x-harnesstap");
     expect(raw).toContain("name: base");
     expect(raw).toContain("version: 2.1.0");
   });

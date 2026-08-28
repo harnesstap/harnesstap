@@ -40,11 +40,10 @@ describe("project-config-use", () => {
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
 `,
       );
 
@@ -79,26 +78,25 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: custom
-      source: inline
-      plugin: embedded-plugin
-  plugins:
-    - name: embedded-plugin
-      description: inline profile plugin
-      tags: ["profile"]
-      resources:
-        - type: instruction
-          name: embedded-guide
-          description: ""
-          content: "# embedded profile"
-          metadata: {}
-          namespace: ""
-          origin_kind: manual
-          origin_ref: ""
-          content_hash: ""
-          content_blob_ref: ""
+profiles:
+  - name: custom
+    source: inline
+    plugin: embedded-plugin
+plugins:
+  - name: embedded-plugin
+    description: inline profile plugin
+    tags: ["profile"]
+    resources:
+      - type: instruction
+        name: embedded-guide
+        description: ""
+        content: "# embedded profile"
+        metadata: {}
+        namespace: ""
+        origin_kind: manual
+        origin_ref: ""
+        content_hash: ""
+        content_blob_ref: ""
 `,
       );
 
@@ -133,11 +131,10 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
 `,
       );
 
@@ -171,14 +168,13 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: alpha
-      source: local
-      selector: alpha
-    - name: beta
-      source: local
-      selector: beta
+profiles:
+  - name: alpha
+    source: local
+    selector: alpha
+  - name: beta
+    source: local
+    selector: beta
 `,
       );
 
@@ -204,11 +200,10 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: solo
-      source: local
-      selector: solo
+profiles:
+  - name: solo
+    source: local
+    selector: solo
 `,
       );
 
@@ -233,11 +228,10 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: prod
-      source: catalog
-      selector: acme/platform/frontend@1.0.0
+profiles:
+  - name: prod
+    source: catalog
+    selector: acme/platform/frontend@1.0.0
 `,
       );
 
@@ -266,16 +260,15 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
-      environment: staging
-  environments:
-    - name: staging
-      values:
-        REGION: eu
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
+    environment: staging
+environments:
+  - name: staging
+    values:
+      REGION: eu
 `,
       );
 
@@ -304,20 +297,19 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_environment: shared
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
-      environment: staging
-  environments:
-    - name: shared
-      values:
-        REGION: us
-    - name: staging
-      values:
-        REGION: eu
+default_environment: shared
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
+    environment: staging
+environments:
+  - name: shared
+    values:
+      REGION: us
+  - name: staging
+    values:
+      REGION: eu
 `,
       );
 

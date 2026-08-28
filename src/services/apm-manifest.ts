@@ -10,7 +10,22 @@ import { collectApmTargetTokens, mapApmTargets } from "./apm-targets.js";
 import type { ProjectConfig } from "./project-config.js";
 
 export const APM_MANIFEST_FILENAME = "apm.yml";
-export const HARNESSTAP_VENDOR_EXTENSION = "x-harnesstap";
+
+const HT_TOP_LEVEL_KEYS = [
+  "default_profile",
+  "default_environment",
+  "profiles",
+  "environments",
+  "plugins",
+] as const;
+
+const RESERVED_TOP_LEVEL = new Set([
+  "name",
+  "version",
+  "description",
+  ...HT_TOP_LEVEL_KEYS,
+  "x-harnesstap",
+]);
 
 export interface ApmManifestFields {
   name: string;
@@ -25,13 +40,6 @@ export interface ApmManifestFields {
   warnings: string[];
   rest: Record<string, unknown>;
 }
-
-const RESERVED_TOP_LEVEL = new Set([
-  "name",
-  "version",
-  "description",
-  HARNESSTAP_VENDOR_EXTENSION,
-]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -64,6 +72,16 @@ export function parseApmYamlDocument(
   return parsed;
 }
 
+function htFieldsFromDocument(document: Record<string, unknown>): Record<string, unknown> {
+  const vendor: Record<string, unknown> = {};
+  for (const key of HT_TOP_LEVEL_KEYS) {
+    if (document[key] !== undefined) {
+      vendor[key] = document[key];
+    }
+  }
+  return vendor;
+}
+
 export function extractApmManifestFields(
   document: Record<string, unknown>,
   filePath: string,
@@ -92,12 +110,7 @@ export function extractApmManifestFields(
   warnings.push(...targetMapping.warnings);
 
   const deps = collectApmAndDevDependencies(document);
-
-  const vendorRaw = document[HARNESSTAP_VENDOR_EXTENSION];
-  if (vendorRaw !== undefined && !isRecord(vendorRaw)) {
-    throw new Error(`${filePath} field ${HARNESSTAP_VENDOR_EXTENSION} must be a mapping`);
-  }
-  const vendor = vendorRaw ?? {};
+  const vendor = htFieldsFromDocument(document);
 
   const rest: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(document)) {
@@ -150,7 +163,17 @@ export function apmDocumentFromProjectConfig(
 ): Record<string, unknown> {
   const name = config.apm_name ?? sanitizePackageName(projectPath);
   const version = config.apm_version ?? "1.0.0";
-  const xHarnesstap: Record<string, unknown> = {
+  const rest = { ...(config.apm_document ?? {}) };
+  delete rest["x-harnesstap"];
+  for (const key of HT_TOP_LEVEL_KEYS) {
+    delete rest[key];
+  }
+
+  return {
+    ...rest,
+    name,
+    version,
+    ...(config.apm_description ? { description: config.apm_description } : {}),
     ...(config.default_profile ? { default_profile: config.default_profile } : {}),
     ...(config.default_environment ? { default_environment: config.default_environment } : {}),
     ...(config.profiles.length > 0
@@ -166,14 +189,6 @@ export function apmDocumentFromProjectConfig(
       : {}),
     ...(config.environments.length > 0 ? { environments: config.environments } : {}),
     ...(config.plugins.length > 0 ? { plugins: config.plugins } : {}),
-  };
-
-  return {
-    ...(config.apm_document ?? {}),
-    name,
-    version,
-    ...(config.apm_description ? { description: config.apm_description } : {}),
-    [HARNESSTAP_VENDOR_EXTENSION]: xHarnesstap,
   };
 }
 

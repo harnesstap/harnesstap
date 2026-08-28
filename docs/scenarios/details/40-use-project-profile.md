@@ -7,7 +7,7 @@
 Use this when a repository ships `apm.yml` with named profiles
 so teammates can switch stacks without remembering plugin selectors.
 
-Create the file with `ht config init` (from local profile plugins) or copy a team template. See [Project config](../../cli/concepts/projects.md) for the `apm.yml` / `x-harnesstap` shape.
+Create the file with `ht config init` (from local profile plugins) or copy a team template. See [Project config](../../cli/concepts/projects.md) for the `apm.yml` shape.
 
 ## Inspect the config
 

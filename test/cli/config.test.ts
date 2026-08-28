@@ -8,23 +8,22 @@ import { writeTextFile } from "../helpers/fs.ts";
 
 const VALID_PROJECT_CONFIG = `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_profile: dev
-  default_environment: shared
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
-    - name: custom
-      source: inline
-      plugin: embedded-plugin
-  environments:
-    - name: shared
-      values:
-        REGION: us
-  plugins:
-    - name: embedded-plugin
-      description: inline plugin for custom profile
+default_profile: dev
+default_environment: shared
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
+  - name: custom
+    source: inline
+    plugin: embedded-plugin
+environments:
+  - name: shared
+    values:
+      REGION: us
+plugins:
+  - name: embedded-plugin
+    description: inline plugin for custom profile
 `;
 
 function writeProjectConfig(projectDir: string, yaml = VALID_PROJECT_CONFIG) {
@@ -104,11 +103,10 @@ describe("CLI config", () => {
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: custom
-      source: inline
-      plugin: missing-plugin
+profiles:
+  - name: custom
+    source: inline
+    plugin: missing-plugin
 `,
       );
       const result = await runCli(["config", "validate", "--format", "json"]);

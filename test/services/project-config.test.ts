@@ -14,39 +14,38 @@ import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 const VALID_PROJECT_CONFIG = `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_profile: dev
-  default_environment: shared
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
-    - name: prod
-      source: catalog
-      selector: acme/platform/frontend@1.0.0
-    - name: custom
-      source: inline
-      plugin: embedded-plugin
-    - name: local-fallback
-      source: local
-    - name: profile-env
-      source: local
-      selector: ops
-      environment: staging
-  environments:
-    - name: shared
-      values:
-        REGION: us
-    - name: staging
-      values:
-        REGION: eu
-      secret_refs:
-        PD_TOKEN:
-          provider: env
-          ref: PD_TOKEN
-  plugins:
-    - name: embedded-plugin
-      description: inline plugin for custom profile
+default_profile: dev
+default_environment: shared
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
+  - name: prod
+    source: catalog
+    selector: acme/platform/frontend@1.0.0
+  - name: custom
+    source: inline
+    plugin: embedded-plugin
+  - name: local-fallback
+    source: local
+  - name: profile-env
+    source: local
+    selector: ops
+    environment: staging
+environments:
+  - name: shared
+    values:
+      REGION: us
+  - name: staging
+    values:
+      REGION: eu
+    secret_refs:
+      PD_TOKEN:
+        provider: env
+        ref: PD_TOKEN
+plugins:
+  - name: embedded-plugin
+    description: inline plugin for custom profile
 `;
 
 describe("project-config", () => {
@@ -58,12 +57,11 @@ describe("project-config", () => {
         join(root, "packages", "app", "apm.yml"),
         `name: app
 version: "1.0.0"
-x-harnesstap:
-  default_profile: app
-  profiles:
-    - name: app
-      source: local
-      selector: app-plugin
+default_profile: app
+profiles:
+  - name: app
+    source: local
+    selector: app-plugin
 `,
       );
 
@@ -146,7 +144,7 @@ x-harnesstap:
     }
   });
 
-  it("round-trips x-harnesstap fields through format and parse", () => {
+  it("round-trips HarnessTap fields through format and parse", () => {
     const root = createTempDir("project-config-roundtrip");
     try {
       const configPath = join(root, "apm.yml");
@@ -159,7 +157,9 @@ x-harnesstap:
       expect(again.profiles).toEqual(parsed.profiles);
       expect(again.environments).toEqual(parsed.environments);
       expect(again.plugins).toEqual(parsed.plugins);
-      expect(formatApmManifest(parsed, root)).toContain("x-harnesstap:");
+      const formatted = formatApmManifest(parsed, root);
+      expect(formatted).toContain("default_profile:");
+      expect(formatted).not.toContain("x-harnesstap");
     } finally {
       cleanupDir(root);
     }
@@ -265,8 +265,7 @@ Run the checklist.
       writeTextFile(
         configPath,
         `version: "1.0.0"
-x-harnesstap:
-  default_profile: dev
+default_profile: dev
 `,
       );
 
@@ -284,11 +283,10 @@ x-harnesstap:
         configPath,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: bad
-      source: remote
-      selector: team-stack
+profiles:
+  - name: bad
+    source: remote
+    selector: team-stack
 `,
       );
 
@@ -306,14 +304,13 @@ x-harnesstap:
         configPath,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: dev
-      source: local
-      selector: one
-    - name: dev
-      source: catalog
-      selector: acme/platform/two
+profiles:
+  - name: dev
+    source: local
+    selector: one
+  - name: dev
+    source: catalog
+    selector: acme/platform/two
 `,
       );
 
@@ -331,13 +328,12 @@ x-harnesstap:
         join(root, "apm.yml"),
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_profile: dev
-  default_environment: shared
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
+default_profile: dev
+default_environment: shared
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
 `,
       );
       writeTextFile(
@@ -399,11 +395,10 @@ x-harnesstap:
         configPath,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: custom
-      source: inline
-      plugin: missing-plugin
+profiles:
+  - name: custom
+    source: inline
+    plugin: missing-plugin
 `,
       );
       const config = parseProjectConfigFile(configPath);
@@ -427,12 +422,11 @@ x-harnesstap:
         configPath,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_profile: missing
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
+default_profile: missing
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
 `,
       );
       const config = parseProjectConfigFile(configPath);
@@ -446,7 +440,7 @@ x-harnesstap:
     }
   });
 
-  it("parses a vanilla OpenAPM apm.yml without x-harnesstap", () => {
+  it("parses a vanilla OpenAPM apm.yml without HarnessTap fields", () => {
     const root = createTempDir("project-config-vanilla");
     try {
       const configPath = join(root, "apm.yml");
@@ -473,6 +467,31 @@ targets: [cursor]
       const config = parseProjectConfigFile(configPath, root);
       expect(config.profiles).toEqual([]);
       expect(config.default_profile).toBeUndefined();
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("ignores leftover x-harnesstap instead of reading it", () => {
+    const root = createTempDir("project-config-ignore-vendor");
+    try {
+      const configPath = join(root, "apm.yml");
+      writeTextFile(
+        configPath,
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  default_profile: hidden
+  profiles:
+    - name: hidden
+      source: local
+      selector: hidden-plugin
+`,
+      );
+      const config = parseProjectConfigFile(configPath);
+      expect(config.default_profile).toBeUndefined();
+      expect(config.profiles).toEqual([]);
+      expect(formatApmManifest(config, root)).not.toContain("x-harnesstap");
     } finally {
       cleanupDir(root);
     }

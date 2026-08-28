@@ -251,7 +251,7 @@ dependencies:
     );
     expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(true);
     expect(readFileSync(join(ctx.projectDir, "apm.lock.yaml"), "utf8")).toContain(
-      "x-harnesstap:",
+      "resource_map_hash:",
     );
   });
 });

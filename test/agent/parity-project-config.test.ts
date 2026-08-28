@@ -138,12 +138,11 @@ describe("GET /v1/config tryHandle", () => {
       join(dir, "apm.yml"),
       `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_profile: missing
-  profiles:
-    - name: dev
-      source: local
-      selector: team-stack
+default_profile: missing
+profiles:
+  - name: dev
+    source: local
+    selector: team-stack
 `,
       "utf-8",
     );

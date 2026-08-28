@@ -190,11 +190,6 @@ function serializeLockDependency(entry: LockEntry): Record<string, unknown> {
     ...(entry.resolved_commit ? { resolved_commit: entry.resolved_commit } : {}),
     ...(entry.resolved_ref ? { resolved_ref: entry.resolved_ref } : {}),
     ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
-    "x-harnesstap": {
-      integrity: entry.integrity,
-      path: entry.path,
-      source: entry.source,
-    },
   };
 }
 
@@ -216,22 +211,20 @@ export function writeLockfile(projectRoot: string, lock: Lockfile): void {
     ...(lock.deployed_file_hashes
       ? { local_deployed_file_hashes: lock.deployed_file_hashes }
       : {}),
-    "x-harnesstap": {
-      root: lock.root,
-      resource_map_hash: lock.resource_map_hash,
-      ...(lock.environment ? { environment: lock.environment } : {}),
-      plugins: lock.plugins.map((entry) => ({
-        name: entry.name,
-        version: entry.version,
-        source: entry.source,
-        integrity: entry.integrity,
-        depth: entry.depth,
-        path: entry.path,
-        ...(entry.repo_url ? { repo_url: entry.repo_url } : {}),
-        ...(entry.resolved_commit ? { resolved_commit: entry.resolved_commit } : {}),
-        ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
-      })),
-    },
+    root: lock.root,
+    resource_map_hash: lock.resource_map_hash,
+    ...(lock.environment ? { environment: lock.environment } : {}),
+    plugins: lock.plugins.map((entry) => ({
+      name: entry.name,
+      version: entry.version,
+      source: entry.source,
+      integrity: entry.integrity,
+      depth: entry.depth,
+      path: entry.path,
+      ...(entry.repo_url ? { repo_url: entry.repo_url } : {}),
+      ...(entry.resolved_commit ? { resolved_commit: entry.resolved_commit } : {}),
+      ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
+    })),
   };
   writeFileSync(
     path,
@@ -276,14 +269,13 @@ function parseHtPluginEntry(entry: Record<string, unknown>): LockEntry {
 }
 
 function parseApmDependencyEntry(entry: Record<string, unknown>): LockEntry {
-  const vendor = isRecord(entry["x-harnesstap"]) ? entry["x-harnesstap"] : {};
   return parseHtPluginEntry({
     name: entry.name,
     version: entry.version,
-    source: vendor.source ?? entry.source,
-    integrity: vendor.integrity ?? entry.content_hash,
+    source: entry.source,
+    integrity: entry.integrity ?? entry.content_hash,
     depth: entry.depth,
-    path: vendor.path,
+    path: entry.path,
     repo_url: entry.repo_url,
     resolved_commit: entry.resolved_commit,
     resolved_ref: entry.resolved_ref,
@@ -308,9 +300,8 @@ export function readLockfile(projectRoot: string): Lockfile | undefined {
     );
   }
 
-  const vendor = isRecord(parsed["x-harnesstap"]) ? parsed["x-harnesstap"] : {};
-  const htPlugins = Array.isArray(vendor.plugins)
-    ? vendor.plugins.filter(isRecord).map(parseHtPluginEntry)
+  const htPlugins = Array.isArray(parsed.plugins)
+    ? parsed.plugins.filter(isRecord).map(parseHtPluginEntry)
     : [];
   const apmDeps = Array.isArray(parsed.dependencies)
     ? parsed.dependencies.filter(isRecord).map(parseApmDependencyEntry)
@@ -335,11 +326,11 @@ export function readLockfile(projectRoot: string): Lockfile | undefined {
     : undefined;
 
   return {
-    root: String(vendor.root ?? ""),
-    resolved_at: String(parsed.generated_at ?? vendor.resolved_at ?? ""),
-    resource_map_hash: String(vendor.resource_map_hash ?? ""),
+    root: String(parsed.root ?? ""),
+    resolved_at: String(parsed.generated_at ?? parsed.resolved_at ?? ""),
+    resource_map_hash: String(parsed.resource_map_hash ?? ""),
     plugins,
-    ...(typeof vendor.environment === "string" ? { environment: vendor.environment } : {}),
+    ...(typeof parsed.environment === "string" ? { environment: parsed.environment } : {}),
     ...(mcp_servers && mcp_servers.length > 0 ? { mcp_servers } : {}),
     ...(deployed_file_hashes ? { deployed_file_hashes } : {}),
   };

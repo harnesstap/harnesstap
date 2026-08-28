@@ -38,12 +38,11 @@ describe("profile use selection", () => {
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  default_profile: dev
-  profiles:
-    - name: dev
-      source: local
-      selector: repo-dev
+default_profile: dev
+profiles:
+  - name: dev
+    source: local
+    selector: repo-dev
 `,
       );
 
@@ -77,11 +76,10 @@ x-harnesstap:
         context.projectDir,
         `name: demo
 version: "1.0.0"
-x-harnesstap:
-  profiles:
-    - name: dev
-      source: local
-      selector: work
+profiles:
+  - name: dev
+    source: local
+    selector: work
 `,
       );
 
