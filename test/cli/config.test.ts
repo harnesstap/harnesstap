@@ -9,7 +9,7 @@ import { writeTextFile } from "../helpers/fs.ts";
 const VALID_PROJECT_CONFIG = `name: demo
 version: "1.0.0"
 default_profile: dev
-environment:
+environments:
   default: shared
   shared:
     values:

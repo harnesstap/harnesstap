@@ -124,7 +124,7 @@ Use [Profiles](./profiles.md) for machine-wide defaults and projects for reposit
 
 ## Project profile config
 
-Repositories can declare named **profiles**, environments, and plugin composition in `apm.yml` at the repo root. Standard OpenAPM keys (`name`, `version`, `targets`, `dependencies`) still parse. Extra top-level keys are preserved. HarnessTap-only fields are first-class top-level keys (`default_profile`, `environment`, `profiles`, `plugins`); vanilla APM readers ignore them. `environment.default` names the active environment; other `environment` keys are named how-value bundles (secret **refs** only).
+Repositories can declare named **profiles**, environments, and plugin composition in `apm.yml` at the repo root. Standard OpenAPM keys (`name`, `version`, `targets`, `dependencies`) still parse. Extra top-level keys are preserved. HarnessTap-only fields are first-class top-level keys (`default_profile`, `environments`, `profiles`, `plugins`); vanilla APM readers ignore them. `environments.default` names the active environment; other `environments` keys are named how-value bundles (secret **refs** only).
 
 Example:
 
@@ -138,11 +138,15 @@ dependencies:
   mcp:
     - io.github.modelcontextprotocol/servers/filesystem
 default_profile: dev
-environment:
+environments:
   default: shared
   shared:
     values:
       REGION: us
+    secret_refs:
+      API_KEY:
+        provider: env
+        ref: API_KEY
 profiles:
   - name: dev
     source: local
