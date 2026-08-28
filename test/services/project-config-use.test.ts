@@ -265,7 +265,7 @@ profiles:
     source: local
     selector: team-stack
     environment: staging
-environment:
+environments:
   staging:
     values:
       REGION: eu
@@ -302,7 +302,7 @@ profiles:
     source: local
     selector: team-stack
     environment: staging
-environment:
+environments:
   default: shared
   shared:
     values:

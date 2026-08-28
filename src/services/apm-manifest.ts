@@ -13,7 +13,7 @@ export const APM_MANIFEST_FILENAME = "apm.yml";
 
 const HT_TOP_LEVEL_KEYS = [
   "default_profile",
-  "environment",
+  "environments",
   "profiles",
   "plugins",
 ] as const;
@@ -21,7 +21,7 @@ const HT_TOP_LEVEL_KEYS = [
 const STRIP_TOP_LEVEL_KEYS = [
   "x-harnesstap",
   "default_environment",
-  "environments",
+  "environment",
 ] as const;
 
 const RESERVED_TOP_LEVEL = new Set([
@@ -199,7 +199,7 @@ export function apmDocumentFromProjectConfig(
     delete rest[key];
   }
 
-  const environment = serializeEnvironmentBlock(config);
+  const environments = serializeEnvironmentBlock(config);
 
   return {
     ...rest,
@@ -207,7 +207,7 @@ export function apmDocumentFromProjectConfig(
     version,
     ...(config.apm_description ? { description: config.apm_description } : {}),
     ...(config.default_profile ? { default_profile: config.default_profile } : {}),
-    ...(environment ? { environment } : {}),
+    ...(environments ? { environments } : {}),
     ...(config.profiles.length > 0
       ? {
           profiles: config.profiles.map((profile) => ({

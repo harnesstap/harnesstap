@@ -255,12 +255,12 @@ function parseEnvironmentBlock(document: Record<string, unknown>): {
   default_environment?: string;
   environments: DeckJsonEnvironment[];
 } {
-  const raw = document.environment;
+  const raw = document.environments;
   if (raw === undefined) {
     return { environments: [] };
   }
   if (!isRecord(raw)) {
-    throw new Error("Project config field environment must be a mapping");
+    throw new Error("Project config field environments must be a mapping");
   }
 
   let default_environment: string | undefined;
@@ -274,7 +274,7 @@ function parseEnvironmentBlock(document: Record<string, unknown>): {
       }
       if (typeof value !== "string" || value.length === 0) {
         throw new Error(
-          "Project config field environment.default must be a non-empty string when set",
+          "Project config field environments.default must be a non-empty string when set",
         );
       }
       default_environment = value;
@@ -433,7 +433,7 @@ export function validateProjectConfig(config: ProjectConfig): ProjectConfigValid
 
   if (config.default_environment && !environmentNames.has(config.default_environment)) {
     errors.push(
-      `environment.default references unknown environment: ${config.default_environment}`,
+      `environments.default references unknown environment: ${config.default_environment}`,
     );
   }
 
