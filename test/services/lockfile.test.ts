@@ -8,7 +8,6 @@ import { createResource } from "../../src/models/resource.ts";
 import { addPluginAttachment } from "../../src/services/plugin-composition.ts";
 import { resolveComposition } from "../../src/services/resolve/index.ts";
 import {
-  LOCK_SCHEMA,
   lockfileFromResolution,
   lockfileMatchesResolution,
   lockfilePath,
@@ -45,20 +44,20 @@ async function buildGraph(): Promise<void> {
 }
 
 describe("lockfile", () => {
-  it("writes a TOML lockfile at .harnesstap/lock.toml", async () => {
+  it("writes an APM-shaped lockfile at apm.lock.yaml", async () => {
     await buildGraph();
     const result = resolveComposition({ rootSelectors: ["root"] });
     writeLockfile(ctx.projectDir, lockfileFromResolution(result));
 
     const path = lockfilePath(ctx.projectDir);
-    expect(path).toBe(join(ctx.projectDir, ".harnesstap", "lock.toml"));
+    expect(path).toBe(join(ctx.projectDir, "apm.lock.yaml"));
     expect(existsSync(path)).toBe(true);
 
     const raw = readFileSync(path, "utf8");
-    expect(raw).toContain(`schema = "${LOCK_SCHEMA}"`);
-    expect(raw).toContain("[[plugins]]");
-    expect(raw).toContain('name = "base"');
-    expect(raw).toContain('version = "2.1.0"');
+    expect(raw).toContain("lockfile_version: \"1\"");
+    expect(raw).toContain("x-harnesstap:");
+    expect(raw).toContain("name: base");
+    expect(raw).toContain("version: 2.1.0");
   });
 
   it("round-trips through read and reports locked versions", async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
+import { formatApmManifest, parseApmManifestContents } from "../../src/services/apm-manifest.ts";
 import {
   findProjectConfig,
   getProfileEntry,
@@ -8,74 +9,61 @@ import {
   resolveProfileEnvironment,
   validateProjectConfig,
 } from "../../src/services/project-config.ts";
+import { writeProjectConfigFile } from "../../src/services/project-config-write.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
-const VALID_PROJECT_CONFIG = `schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "dev"
-default_environment = "shared"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
-
-[[profiles]]
-name = "prod"
-source = "catalog"
-selector = "acme/platform/frontend@1.0.0"
-
-[[profiles]]
-name = "custom"
-source = "inline"
-plugin = "embedded-plugin"
-
-[[profiles]]
-name = "local-fallback"
-source = "local"
-
-[[profiles]]
-name = "profile-env"
-source = "local"
-selector = "ops"
-environment = "staging"
-
-[[environments]]
-name = "shared"
-
-[environments.values]
-REGION = "us"
-
-[[environments]]
-name = "staging"
-
-[environments.values]
-REGION = "eu"
-
-[environments.secret_refs.PD_TOKEN]
-provider = "env"
-ref = "PD_TOKEN"
-
-[[plugins]]
-name = "embedded-plugin"
-description = "inline plugin for custom profile"
+const VALID_PROJECT_CONFIG = `name: demo
+version: "1.0.0"
+x-harnesstap:
+  default_profile: dev
+  default_environment: shared
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
+    - name: prod
+      source: catalog
+      selector: acme/platform/frontend@1.0.0
+    - name: custom
+      source: inline
+      plugin: embedded-plugin
+    - name: local-fallback
+      source: local
+    - name: profile-env
+      source: local
+      selector: ops
+      environment: staging
+  environments:
+    - name: shared
+      values:
+        REGION: us
+    - name: staging
+      values:
+        REGION: eu
+      secret_refs:
+        PD_TOKEN:
+          provider: env
+          ref: PD_TOKEN
+  plugins:
+    - name: embedded-plugin
+      description: inline plugin for custom profile
 `;
 
 describe("project-config", () => {
-  it("walk-up finds nearest ancestor config in monorepo fixture", () => {
+  it("walk-up finds nearest ancestor apm.yml in monorepo fixture", () => {
     const root = createTempDir("project-config-monorepo");
     try {
-      writeTextFile(join(root, ".harnesstap", "config.toml"), VALID_PROJECT_CONFIG);
+      writeTextFile(join(root, "apm.yml"), VALID_PROJECT_CONFIG);
       writeTextFile(
-        join(root, "packages", "app", ".harnesstap", "config.toml"),
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "app"
-
-[[profiles]]
-name = "app"
-source = "local"
-selector = "app-plugin"
+        join(root, "packages", "app", "apm.yml"),
+        `name: app
+version: "1.0.0"
+x-harnesstap:
+  default_profile: app
+  profiles:
+    - name: app
+      source: local
+      selector: app-plugin
 `,
       );
 
@@ -85,7 +73,7 @@ selector = "app-plugin"
       const resolved = findProjectConfig(deepPath);
       expect(resolved).not.toBeNull();
       expect(resolved?.rootPath).toBe(join(root, "packages", "app"));
-      expect(resolved?.configPath).toBe(join(root, "packages", "app", ".harnesstap", "config.toml"));
+      expect(resolved?.configPath).toBe(join(root, "packages", "app", "apm.yml"));
       expect(resolved?.default_profile).toBe("app");
     } finally {
       cleanupDir(root);
@@ -95,10 +83,12 @@ selector = "app-plugin"
   it("parses valid config with multiple profiles", () => {
     const root = createTempDir("project-config-valid");
     try {
-      const configPath = join(root, ".harnesstap", "config.toml");
+      const configPath = join(root, "apm.yml");
       writeTextFile(configPath, VALID_PROJECT_CONFIG);
 
       const config = parseProjectConfigFile(configPath);
+      expect(config.apm_name).toBe("demo");
+      expect(config.apm_version).toBe("1.0.0");
       expect(config.default_profile).toBe("dev");
       expect(config.default_environment).toBe("shared");
       expect(config.profiles).toEqual([
@@ -156,23 +146,131 @@ selector = "app-plugin"
     }
   });
 
-  it("rejects plugin v1 schema at config path", () => {
-    const root = createTempDir("project-config-plugin-collision");
+  it("round-trips x-harnesstap fields through format and parse", () => {
+    const root = createTempDir("project-config-roundtrip");
     try {
-      const configPath = join(root, ".harnesstap", "config.toml");
+      const configPath = join(root, "apm.yml");
+      writeTextFile(configPath, VALID_PROJECT_CONFIG);
+      const parsed = parseProjectConfigFile(configPath, root);
+      writeProjectConfigFile(configPath, parsed);
+      const again = parseProjectConfigFile(configPath, root);
+      expect(again.default_profile).toBe(parsed.default_profile);
+      expect(again.default_environment).toBe(parsed.default_environment);
+      expect(again.profiles).toEqual(parsed.profiles);
+      expect(again.environments).toEqual(parsed.environments);
+      expect(again.plugins).toEqual(parsed.plugins);
+      expect(formatApmManifest(parsed, root)).toContain("x-harnesstap:");
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("maps APM target aliases onto HarnessTap harness slugs", () => {
+    const root = createTempDir("project-config-targets");
+    try {
+      writeTextFile(
+        join(root, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+targets:
+  - claude
+  - copilot
+  - vscode
+  - agent-skills
+  - mystery-box
+`,
+      );
+      const resolved = findProjectConfig(root);
+      expect(resolved?.harnessTargets).toEqual(["claude-code", "github-copilot"]);
+      expect(resolved?.skippedTargets).toEqual(["agent-skills", "mystery-box"]);
+      expect(resolved?.warnings.some((warning) => warning.includes("agent-skills"))).toBe(true);
+      expect(resolved?.warnings.some((warning) => warning.includes("mystery-box"))).toBe(true);
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("maps dependencies.apm git refs and MCP ids", () => {
+    const root = createTempDir("project-config-deps");
+    try {
+      writeTextFile(
+        join(root, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - microsoft/contoso-plugin#v1.2.3
+  mcp:
+    - io.github.modelcontextprotocol/servers/filesystem
+`,
+      );
+      const resolved = findProjectConfig(root);
+      expect(resolved?.apmDependencies).toEqual([
+        expect.objectContaining({
+          sourceKind: "git",
+          name: "contoso-plugin",
+          originRef: "https://github.com/microsoft/contoso-plugin.git",
+          ref: "v1.2.3",
+        }),
+      ]);
+      expect(resolved?.mcpDependencies).toEqual([
+        expect.objectContaining({
+          name: "filesystem",
+          registryId: "io.github.modelcontextprotocol/servers/filesystem",
+          selfDefined: false,
+        }),
+      ]);
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("imports .apm/skills overlay and warns about other primitive dirs", () => {
+    const root = createTempDir("project-config-overlay");
+    try {
+      writeTextFile(
+        join(root, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+`,
+      );
+      writeTextFile(
+        join(root, ".apm", "skills", "ship", "SKILL.md"),
+        `---
+name: ship
+description: Ship checklist
+---
+Run the checklist.
+`,
+      );
+      writeTextFile(join(root, ".apm", "prompts", "draft.md"), "draft");
+      const resolved = findProjectConfig(root);
+      expect(resolved?.overlay?.skills).toEqual([
+        expect.objectContaining({
+          name: "ship",
+          description: "Ship checklist",
+          skillMdRelative: ".apm/skills/ship/SKILL.md",
+        }),
+      ]);
+      expect(resolved?.warnings.some((warning) => warning.includes(".apm/prompts"))).toBe(true);
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("rejects a manifest missing required name", () => {
+    const root = createTempDir("project-config-missing-name");
+    try {
+      const configPath = join(root, "apm.yml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnesstap:layer:v1"
-version = 1
-
-[[plugins]]
-name = "team-stack"
-version = "1.0.0"
-description = "plugin bundle misplaced in project config"
+        `version: "1.0.0"
+x-harnesstap:
+  default_profile: dev
 `,
       );
 
-      expect(() => parseProjectConfigFile(configPath)).toThrow(/plugin bundle schema/);
+      expect(() => parseProjectConfigFile(configPath)).toThrow(/missing required field name/);
     } finally {
       cleanupDir(root);
     }
@@ -181,16 +279,16 @@ description = "plugin bundle misplaced in project config"
   it("rejects unknown profile source", () => {
     const root = createTempDir("project-config-unknown-source");
     try {
-      const configPath = join(root, ".harnesstap", "config.toml");
+      const configPath = join(root, "apm.yml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "bad"
-source = "remote"
-selector = "team-stack"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: bad
+      source: remote
+      selector: team-stack
 `,
       );
 
@@ -203,21 +301,19 @@ selector = "team-stack"
   it("rejects duplicate profile names", () => {
     const root = createTempDir("project-config-duplicate-profiles");
     try {
-      const configPath = join(root, ".harnesstap", "config.toml");
+      const configPath = join(root, "apm.yml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "one"
-
-[[profiles]]
-name = "dev"
-source = "catalog"
-selector = "acme/platform/two"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: dev
+      source: local
+      selector: one
+    - name: dev
+      source: catalog
+      selector: acme/platform/two
 `,
       );
 
@@ -232,16 +328,16 @@ selector = "acme/platform/two"
     try {
       const configDir = join(root, ".harnesstap");
       writeTextFile(
-        join(configDir, "config.toml"),
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "dev"
-default_environment = "shared"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
+        join(root, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  default_profile: dev
+  default_environment: shared
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
 `,
       );
       writeTextFile(
@@ -250,7 +346,7 @@ selector = "team-stack"
 `,
       );
 
-      const config = parseProjectConfigFile(join(configDir, "config.toml"));
+      const config = parseProjectConfigFile(join(root, "apm.yml"));
       const merged = mergeProjectConfigLocalOverrides(config, configDir);
       expect(merged.default_profile).toBe("personal");
       expect(merged.default_environment).toBe("shared");
@@ -262,7 +358,7 @@ selector = "team-stack"
   it("resolveProfileEnvironment uses entry, then default_environment", () => {
     const root = createTempDir("project-config-env-precedence");
     try {
-      const configPath = join(root, ".harnesstap", "config.toml");
+      const configPath = join(root, "apm.yml");
       writeTextFile(configPath, VALID_PROJECT_CONFIG);
       const config = parseProjectConfigFile(configPath);
 
@@ -285,7 +381,7 @@ selector = "team-stack"
   it("validateProjectConfig accepts valid inline plugin references", () => {
     const root = createTempDir("project-config-validate-valid");
     try {
-      const configPath = join(root, ".harnesstap", "config.toml");
+      const configPath = join(root, "apm.yml");
       writeTextFile(configPath, VALID_PROJECT_CONFIG);
       const config = parseProjectConfigFile(configPath);
 
@@ -298,16 +394,16 @@ selector = "team-stack"
   it("validateProjectConfig rejects unknown inline plugin references", () => {
     const root = createTempDir("project-config-validate-inline");
     try {
-      const configPath = join(root, ".harnesstap", "config.toml");
+      const configPath = join(root, "apm.yml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "custom"
-source = "inline"
-plugin = "missing-plugin"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: custom
+      source: inline
+      plugin: missing-plugin
 `,
       );
       const config = parseProjectConfigFile(configPath);
@@ -326,17 +422,17 @@ plugin = "missing-plugin"
   it("validateProjectConfig rejects unknown default_profile", () => {
     const root = createTempDir("project-config-validate-default-profile");
     try {
-      const configPath = join(root, ".harnesstap", "config.toml");
+      const configPath = join(root, "apm.yml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "missing"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  default_profile: missing
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
 `,
       );
       const config = parseProjectConfigFile(configPath);
@@ -345,6 +441,38 @@ selector = "team-stack"
         valid: false,
         errors: ["default_profile references unknown profile: missing"],
       });
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("parses a vanilla OpenAPM apm.yml without x-harnesstap", () => {
+    const root = createTempDir("project-config-vanilla");
+    try {
+      const configPath = join(root, "apm.yml");
+      writeTextFile(
+        configPath,
+        `name: vanilla
+version: "0.1.0"
+targets: [cursor]
+dependencies:
+  apm:
+    - ./plugins/local-pack
+`,
+      );
+      const fields = parseApmManifestContents(
+        `name: vanilla
+version: "0.1.0"
+targets: [cursor]
+`,
+        configPath,
+        root,
+      );
+      expect(fields.name).toBe("vanilla");
+      expect(fields.harnessTargets).toEqual(["cursor"]);
+      const config = parseProjectConfigFile(configPath, root);
+      expect(config.profiles).toEqual([]);
+      expect(config.default_profile).toBeUndefined();
     } finally {
       cleanupDir(root);
     }

@@ -1,4 +1,4 @@
-import { basename, join, resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import {
   PROFILE_PLUGIN_TAG,
   PROJECT_DEFAULT_PROFILE_NAME,
@@ -17,6 +17,7 @@ import type { Plugin } from "../types.js";
 import { ensureDefaultProfilePlugin } from "./ensure-default-profile.js";
 import {
   findProjectConfig,
+  projectManifestPath,
   type ProjectConfig,
   type ProjectProfileEntry,
 } from "./project-config.js";
@@ -165,7 +166,7 @@ export async function bootstrapProjectWorkspace(
     profiles = ensureProfileListed(profiles, default_profile, "start");
   }
 
-  const configPath = existing?.configPath ?? join(resolvedRoot, ".harnesstap", "config.toml");
+  const configPath = existing?.configPath ?? projectManifestPath(resolvedRoot);
   writeProjectConfigFile(configPath, {
     default_profile,
     ...(migrated?.default_environment
@@ -174,6 +175,10 @@ export async function bootstrapProjectWorkspace(
     profiles,
     environments: migrated?.environments ?? [],
     plugins: migrated?.plugins ?? [],
+    ...(migrated?.apm_name ? { apm_name: migrated.apm_name } : {}),
+    ...(migrated?.apm_version ? { apm_version: migrated.apm_version } : {}),
+    ...(migrated?.apm_description ? { apm_description: migrated.apm_description } : {}),
+    ...(migrated?.apm_document ? { apm_document: migrated.apm_document } : {}),
   });
 
   return {

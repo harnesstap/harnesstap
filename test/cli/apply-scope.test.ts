@@ -120,7 +120,7 @@ describe("ht apply", () => {
   it("does not write a project lockfile on a --global apply", async () => {
     seed("work", "GLOBAL", true);
     await runCli(["apply", "work", "--global", "--harness", "claude-code"]);
-    expect(existsSync(join(ctx.projectDir, ".harnesstap", "lock.toml"))).toBe(
+    expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(
       false,
     );
   });

@@ -93,7 +93,7 @@ ht apply team-base team-overrides   # ephemeral root with both as dependencies
 
 ### Lockfile
 
-Successful project applies write `.harnesstap/lock.toml`. Check it in. It records the resolved plugin name → version set (plus integrity metadata) so re-applies reuse the same resolution until you ask otherwise:
+Successful project applies write `apm.lock.yaml`. Check it in. It records the resolved plugin name → version set (plus integrity metadata) so re-applies reuse the same resolution until you ask otherwise:
 
 ```bash
 ht apply my-setup            # reuse lock when consistent with the manifest

@@ -140,6 +140,8 @@ import {
   readLockfile,
   writeLockfile,
 } from "../../services/lockfile.js";
+import { resolveApplySelectorsFromProjectManifest } from "../../services/apm-project-plugin.js";
+import { findProjectConfig } from "../../services/project-config.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
 import { substituteResourcesForApply } from "../../services/environment-var-substitution.js";
 import { setPluginEnvironmentCommand, unsetPluginEnvironmentCommand } from "../../services/environment-commands.js";
@@ -379,25 +381,43 @@ export async function handleProjectApplyCommand(
   initializeSchema(db);
 
   const outputFormat = parseOutputFormat(opts.format);
+  const projectRoot = resolve(opts.project);
 
-  const resolvedPluginNames = pluginNames.length > 0
-    ? pluginNames
-    : await (shouldUseWizard({
+  let resolvedPluginNames: string[] = pluginNames.length > 0 ? [...pluginNames] : [];
+  if (resolvedPluginNames.length === 0) {
+    const fromManifest = await resolveApplySelectorsFromProjectManifest(projectRoot, {
+      dryRun: opts.dryRun,
+      account: opts.account,
+      baseUrl: opts.baseUrl,
+    });
+    if (fromManifest && fromManifest.length > 0) {
+      resolvedPluginNames = fromManifest;
+      const manifest = findProjectConfig(projectRoot);
+      if (outputFormat === "human") {
+        for (const warning of manifest?.warnings ?? []) {
+          ui.warn(warning);
+        }
+      }
+    } else if (
+      shouldUseWizard({
         interactive: opts.interactive,
         noInteractive: opts.noInteractive,
         format: parseOutputFormat(opts.format),
         missingRequiredArgs: true,
       })
-        ? runPluginApplyWizard().then((pluginName) => [pluginName] as [string])
-        : Promise.resolve([] as []));
+    ) {
+      resolvedPluginNames = [await runPluginApplyWizard()];
+    }
+  }
 
   if (resolvedPluginNames.length === 0) {
     process.exitCode = 1;
     ui.danger(
-      "Provide at least one plugin name, plugin export path, or URL.",
+      "Provide at least one plugin name, plugin export path, or URL, or declare dependencies in apm.yml.",
       {
         hints: [
           formatCommand("apply <plugin>"),
+          formatCommand("config init"),
         ],
       },
     );
@@ -412,7 +432,6 @@ export async function handleProjectApplyCommand(
     return;
   }
 
-  const projectRoot = resolve(opts.project);
   let applyBundle: Awaited<ReturnType<typeof resolveApplyPlugins>>;
   const pluginLabel = resolvedPluginNames.join(" + ");
   const resolveSpin = createProgress(`Resolving ${pluginLabel}…`);
@@ -872,7 +891,18 @@ export async function handleProjectApplyCommand(
   // writing that lock would poison checked-in locks. Durable single-root
   // applies still record the resolved plugin set.
   if (!opts.dryRun && !applyBundle.resolution.root.ephemeral) {
-    writeLockfile(projectRoot, lockfileFromResolution(applyBundle.resolution));
+    const manifest = findProjectConfig(projectRoot);
+    writeLockfile(
+      projectRoot,
+      lockfileFromResolution(applyBundle.resolution, {
+        ...(manifest?.default_environment
+          ? { environment: manifest.default_environment }
+          : {}),
+        deployedFiles: generated.flatMap((result) =>
+          result.files.map((file) => ({ path: file.path, content: file.content })),
+        ),
+      }),
+    );
   }
 
   const gitOrigin = getGitOrigin(projectRoot);
@@ -1398,6 +1428,13 @@ function resolveApplyHarnessTargets(
   if (explicitTargets.length > 0) {
     assertSupportedHarnessTargets(explicitTargets);
     return explicitTargets;
+  }
+
+  const manifest = findProjectConfig(projectRoot);
+  if (manifest && manifest.harnessTargets.length > 0) {
+    const mapped = uniqueHarnessTargets(manifest.harnessTargets);
+    assertSupportedHarnessTargets(mapped);
+    return mapped;
   }
 
   const projectByPath = getProjectByLocalPath(projectRoot);

@@ -300,8 +300,8 @@ profileCmd
 profileCmd
   .command("use")
   .argument("[name]", "Profile plugin name or selector")
-  .option("--profile <name>", "Profile key from .harnesstap/config.toml")
-  .option("--project <path>", "Project directory for config.toml discovery", ".")
+  .option("--profile <name>", "Profile key from apm.yml")
+  .option("--project <path>", "Project directory for apm.yml discovery", ".")
   .option("--dry-run", "Show what would be written")
   .option(
     "--harness <slugs>",

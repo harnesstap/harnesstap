@@ -9,7 +9,12 @@ function makeConfig(
 ): ResolvedProjectConfig {
   return {
     rootPath: "/tmp/project",
-    configPath: "/tmp/project/.harnesstap/config.toml",
+    configPath: "/tmp/project/apm.yml",
+    harnessTargets: [],
+    skippedTargets: [],
+    apmDependencies: [],
+    mcpDependencies: [],
+    warnings: [],
     profiles,
     environments: [],
     plugins: [],

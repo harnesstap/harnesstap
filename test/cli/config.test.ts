@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
@@ -6,35 +6,29 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
-const VALID_PROJECT_CONFIG = `schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "dev"
-default_environment = "shared"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
-
-[[profiles]]
-name = "custom"
-source = "inline"
-plugin = "embedded-plugin"
-
-[[environments]]
-name = "shared"
-
-[environments.values]
-REGION = "us"
-
-[[plugins]]
-name = "embedded-plugin"
-description = "inline plugin for custom profile"
+const VALID_PROJECT_CONFIG = `name: demo
+version: "1.0.0"
+x-harnesstap:
+  default_profile: dev
+  default_environment: shared
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
+    - name: custom
+      source: inline
+      plugin: embedded-plugin
+  environments:
+    - name: shared
+      values:
+        REGION: us
+  plugins:
+    - name: embedded-plugin
+      description: inline plugin for custom profile
 `;
 
-function writeProjectConfig(projectDir: string, toml = VALID_PROJECT_CONFIG) {
-  mkdirSync(join(projectDir, ".harnesstap"), { recursive: true });
-  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), toml);
+function writeProjectConfig(projectDir: string, yaml = VALID_PROJECT_CONFIG) {
+  writeTextFile(join(projectDir, "apm.yml"), yaml);
 }
 
 describe("CLI config", () => {
@@ -46,7 +40,7 @@ describe("CLI config", () => {
       const result = await runCli(["config", "show"]);
 
       expect(result.exitCode).toBeUndefined();
-      expect(result.stdout).toContain("config.toml");
+      expect(result.stdout).toContain("apm.yml");
       expect(result.stdout).toContain("dev");
       expect(result.stdout).toContain("shared");
       expect(result.stdout).toContain("2 profile");
@@ -65,6 +59,8 @@ describe("CLI config", () => {
       expect(result.exitCode).toBeUndefined();
       const payload = JSON.parse(result.stdout);
       expect(payload.default_profile).toBe("dev");
+      expect(payload.name).toBe("demo");
+      expect(payload.version).toBe("1.0.0");
       expect(payload.environment_count).toBe(1);
       expect(payload.plugin_count).toBe(1);
       expect(payload.plugins).toEqual([{ name: "embedded-plugin" }]);
@@ -80,7 +76,7 @@ describe("CLI config", () => {
       const result = await runCli(["config", "show"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/config/i);
+      expect(result.stderr).toMatch(/apm\.yml|config/i);
     } finally {
       await context.cleanup();
     }
@@ -106,13 +102,13 @@ describe("CLI config", () => {
     try {
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "custom"
-source = "inline"
-plugin = "missing-plugin"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: custom
+      source: inline
+      plugin: missing-plugin
 `,
       );
       const result = await runCli(["config", "validate", "--format", "json"]);
@@ -154,6 +150,7 @@ plugin = "missing-plugin"
       expect(result.stdout).toContain("Created project config");
       expect(result.stdout).toContain("work");
       expect(result.stdout).toContain("personal");
+      expect(existsSync(join(context.projectDir, "apm.yml"))).toBe(true);
 
       const show = await runCli(["config", "show", "--format", "json"]);
       const payload = JSON.parse(show.stdout);

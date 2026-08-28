@@ -27,6 +27,7 @@ import { collectPluginPinsForPrepare, preparePluginPinsForApply } from "../../se
 import { resolveComposition } from "../../services/resolve/index.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
 import { substituteResourcesForApply } from "../../services/environment-var-substitution.js";
+import { resolveApplySelectorsFromProjectManifest } from "../../services/apm-project-plugin.js";
 import {
   lockfileFromResolution,
   lockIsUsable,
@@ -34,6 +35,7 @@ import {
   readLockfile,
   writeLockfile,
 } from "../../services/lockfile.js";
+import { findProjectConfig } from "../../services/project-config.js";
 import { detectProfileOwnedOverwriteConflicts } from "../../services/profile-owned-overwrite.js";
 import { applyProfilePlugin } from "../../services/profile-apply.js";
 import { withProfileApplyLock } from "../../services/profile-apply-lock.js";
@@ -98,9 +100,9 @@ function parseBody(body: unknown): ParsedApplyBody | Response {
       { status: 400 },
     );
   }
-  if (!Array.isArray(body.plugins) || body.plugins.length === 0) {
+  if (!Array.isArray(body.plugins)) {
     return jsonResponse(
-      { error: "invalid_plugins", message: "plugins must be a non-empty array of strings" },
+      { error: "invalid_plugins", message: "plugins must be an array of strings" },
       { status: 400 },
     );
   }
@@ -108,7 +110,7 @@ function parseBody(body: unknown): ParsedApplyBody | Response {
   for (const entry of body.plugins) {
     if (typeof entry !== "string" || entry.trim().length === 0) {
       return jsonResponse(
-        { error: "invalid_plugins", message: "plugins must be a non-empty array of strings" },
+        { error: "invalid_plugins", message: "plugins must be an array of strings" },
         { status: 400 },
       );
     }
@@ -177,6 +179,12 @@ function resolveProjectHarnesses(projectRoot: string, harnessOption?: string): s
   if (explicit.length > 0) {
     assertSupportedHarnessTargets(explicit);
     return explicit;
+  }
+  const manifest = findProjectConfig(projectRoot);
+  if (manifest && manifest.harnessTargets.length > 0) {
+    const mapped = uniqueHarnessTargets(manifest.harnessTargets);
+    assertSupportedHarnessTargets(mapped);
+    return mapped;
   }
   const projectByPath = getProjectByLocalPath(projectRoot);
   const projectConfig = projectByPath
@@ -298,7 +306,25 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     );
   }
 
-  for (const selector of parsed.plugins) {
+  let pluginIds = parsed.plugins;
+  if (pluginIds.length === 0) {
+    const fromManifest = await resolveApplySelectorsFromProjectManifest(projectRoot, {
+      dryRun: parsed.dryRun,
+    });
+    if (!fromManifest || fromManifest.length === 0) {
+      return jsonResponse(
+        {
+          error: "invalid_plugins",
+          message:
+            "plugins must be a non-empty array of strings, or declare plugins in apm.yml.",
+        },
+        { status: 400 },
+      );
+    }
+    pluginIds = fromManifest;
+  }
+
+  for (const selector of pluginIds) {
     if (!resolvePluginSelector(selector)) {
       return jsonResponse(
         { error: "plugin_not_found", message: `Plugin not found: ${selector}` },
@@ -308,13 +334,13 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
   }
 
   const existingLock = readLockfile(projectRoot);
-  const primaryName = parsed.plugins[0] ?? "";
+  const primaryName = pluginIds[0] ?? "";
   const lockedVersions =
     existingLock && lockIsUsable(existingLock, primaryName)
       ? lockedVersionsFrom(existingLock)
       : undefined;
 
-  const rootPluginIds = parsed.plugins.map((selector) => {
+  const rootPluginIds = pluginIds.map((selector) => {
     const plugin = resolvePluginSelector(selector);
     if (!plugin) {
       throw new Error(`Plugin not found: ${selector}`);
@@ -334,7 +360,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
   }
 
   const resolution = resolveComposition({
-    rootSelectors: parsed.plugins,
+    rootSelectors: pluginIds,
     ...(lockedVersions ? { lockedVersions } : {}),
   });
   const configuredPluginIds = resolution.selected.map((row) => row.pluginId);
@@ -372,7 +398,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     return jsonResponse({
       scope: "project",
       plugin: primaryPlugin.name,
-      plugins: parsed.plugins,
+      plugins: pluginIds,
       project_root: projectRoot,
       platforms: generated.map((result) => ({
         platform: result.platformId,
@@ -382,7 +408,18 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
   }
 
   if (!resolution.root.ephemeral) {
-    writeLockfile(projectRoot, lockfileFromResolution(resolution));
+    const manifest = findProjectConfig(projectRoot);
+    writeLockfile(
+      projectRoot,
+      lockfileFromResolution(resolution, {
+        ...(manifest?.default_environment
+          ? { environment: manifest.default_environment }
+          : {}),
+        deployedFiles: generated.flatMap((result) =>
+          result.files.map((file) => ({ path: file.path, content: file.content })),
+        ),
+      }),
+    );
   }
 
   const gitOrigin = getGitOrigin(projectRoot);

@@ -158,7 +158,7 @@ describe("agent routes", () => {
     };
     expect(body.default_profile).toBe("project default");
     expect(body.profiles).toEqual(["project default"]);
-    expect(body.config_path).toContain(".harnesstap/config.toml");
+    expect(body.config_path).toContain("apm.yml");
   });
 
   it("returns existing project config without re-init on bootstrap", async () => {
@@ -191,7 +191,7 @@ describe("agent routes", () => {
     expect(body.already_existed).toBe(true);
     expect(body.default_profile).toBe("work");
     expect(body.profiles).toEqual(expect.arrayContaining(["work", "project default"]));
-    expect(body.config_path).toContain(".harnesstap/config.toml");
+    expect(body.config_path).toContain("apm.yml");
   });
 
   it("keeps project default off the home profile list", async () => {

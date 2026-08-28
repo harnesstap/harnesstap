@@ -1,12 +1,13 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { DeckJsonEnvironment, DeckJsonEnvironmentSecretRef } from "../types.js";
+import type { ParsedApmDependency, ParsedMcpDependency } from "./apm-dependencies.js";
 import {
-  PROJECT_SCHEMA,
-  PROJECT_SCHEMA_VERSION,
-} from "../types.js";
+  APM_MANIFEST_FILENAME,
+  parseApmManifestContents,
+} from "./apm-manifest.js";
+import type { ApmOverlayInfo } from "./apm-overlay.js";
 import { parseTransportToml } from "./toml/read.js";
-import { readSchemaHeader } from "./toml/validate.js";
 
 export type ProjectProfileSource = "catalog" | "local" | "inline";
 
@@ -26,14 +27,22 @@ export interface ProjectConfig {
   profiles: ProjectProfileEntry[];
   environments: DeckJsonEnvironment[];
   plugins: ProjectPluginTable[];
+  apm_name?: string;
+  apm_version?: string;
+  apm_description?: string;
+  apm_document?: Record<string, unknown>;
 }
 
 export interface ResolvedProjectConfig extends ProjectConfig {
   rootPath: string;
   configPath: string;
+  harnessTargets: string[];
+  skippedTargets: string[];
+  apmDependencies: ParsedApmDependency[];
+  mcpDependencies: ParsedMcpDependency[];
+  overlay?: ApmOverlayInfo;
+  warnings: string[];
 }
-
-const CONFIG_FILE_NAMES = ["config.toml"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -51,22 +60,23 @@ function resolveWalkRoot(startPath: string): string {
   return absolute;
 }
 
+export function projectManifestPath(rootPath: string): string {
+  return join(rootPath, APM_MANIFEST_FILENAME);
+}
+
 function locateProjectConfigFile(
   startPath: string,
 ): { rootPath: string; configPath: string; configDir: string } | null {
   let current = resolveWalkRoot(startPath);
 
   while (true) {
-    const harnesstapDir = join(current, ".harnesstap");
-    for (const fileName of CONFIG_FILE_NAMES) {
-      const configPath = join(harnesstapDir, fileName);
-      if (existsSync(configPath)) {
-        return {
-          rootPath: current,
-          configPath,
-          configDir: harnesstapDir,
-        };
-      }
+    const configPath = projectManifestPath(current);
+    if (existsSync(configPath)) {
+      return {
+        rootPath: current,
+        configPath,
+        configDir: join(current, ".harnesstap"),
+      };
     }
 
     const parent = dirname(current);
@@ -74,23 +84,6 @@ function locateProjectConfigFile(
       return null;
     }
     current = parent;
-  }
-}
-
-function assertProjectSchema(schema: string, version: number, filePath: string): void {
-  if (schema.includes(":layer:")) {
-    throw new Error(
-      `${filePath} looks like a legacy plugin bundle schema (${schema}); ` +
-        "portable plugins are Agent Plugins packages, not project config",
-    );
-  }
-  if (schema !== PROJECT_SCHEMA) {
-    throw new Error(`Unsupported project schema in ${filePath}: ${schema}`);
-  }
-  if (version !== PROJECT_SCHEMA_VERSION) {
-    throw new Error(
-      `Unsupported project version in ${filePath}: ${version} (expected ${PROJECT_SCHEMA_VERSION})`,
-    );
   }
 }
 
@@ -274,12 +267,39 @@ export function projectConfigFromTomlDocument(document: Record<string, unknown>)
   };
 }
 
-export function parseProjectConfigFile(filePath: string): ProjectConfig {
+export function parseProjectConfigFile(filePath: string, rootPath?: string): ProjectConfig {
   const raw = readFileSync(filePath, "utf-8");
-  const document = parseTransportToml(raw, "project config");
-  const { schema, version } = readSchemaHeader(document);
-  assertProjectSchema(schema, version, filePath);
-  return projectConfigFromTomlDocument(document);
+  const fields = parseApmManifestContents(raw, filePath, rootPath);
+  const config = projectConfigFromTomlDocument(fields.vendor);
+  return {
+    ...config,
+    apm_name: fields.name,
+    apm_version: fields.version,
+    ...(fields.description ? { apm_description: fields.description } : {}),
+    ...(Object.keys(fields.rest).length > 0 ? { apm_document: fields.rest } : {}),
+  };
+}
+
+function parseResolvedProjectConfig(
+  filePath: string,
+  rootPath: string,
+): Omit<ResolvedProjectConfig, "rootPath" | "configPath"> {
+  const raw = readFileSync(filePath, "utf-8");
+  const fields = parseApmManifestContents(raw, filePath, rootPath);
+  const config = projectConfigFromTomlDocument(fields.vendor);
+  return {
+    ...config,
+    apm_name: fields.name,
+    apm_version: fields.version,
+    ...(fields.description ? { apm_description: fields.description } : {}),
+    ...(Object.keys(fields.rest).length > 0 ? { apm_document: fields.rest } : {}),
+    harnessTargets: fields.harnessTargets,
+    skippedTargets: fields.skippedTargets,
+    apmDependencies: fields.apmDependencies,
+    mcpDependencies: fields.mcpDependencies,
+    ...(fields.overlay ? { overlay: fields.overlay } : {}),
+    warnings: fields.warnings,
+  };
 }
 
 export function mergeProjectConfigLocalOverrides(
@@ -309,15 +329,20 @@ export function findProjectConfig(startPath: string): ResolvedProjectConfig | nu
     return null;
   }
 
-  const config = mergeProjectConfigLocalOverrides(
-    parseProjectConfigFile(located.configPath),
-    located.configDir,
-  );
+  const parsed = parseResolvedProjectConfig(located.configPath, located.rootPath);
+  const merged = mergeProjectConfigLocalOverrides(parsed, located.configDir);
 
   return {
-    ...config,
+    ...parsed,
+    ...merged,
     rootPath: located.rootPath,
     configPath: located.configPath,
+    harnessTargets: parsed.harnessTargets,
+    skippedTargets: parsed.skippedTargets,
+    apmDependencies: parsed.apmDependencies,
+    mcpDependencies: parsed.mcpDependencies,
+    warnings: parsed.warnings,
+    ...(parsed.overlay ? { overlay: parsed.overlay } : {}),
   };
 }
 

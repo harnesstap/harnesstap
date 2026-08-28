@@ -18,7 +18,7 @@ The product currently supports these main workflows:
 - Compose plugins by attaching context-side material resources, **`plugin_pin`** references (host marketplace/local plugins), and nested **`plugin`** references through one attachment model.
 - Register plugin **marketplaces**, search catalogs, and attach pins with `marketplace` / `plugin`.
 - Apply one or more plugins, a local bundle file, or a plugin export URL to a project.
-- Declare repo **project profiles** in `.harnesstap/config.toml` and switch with `ht use`.
+- Declare repo **project profiles** in `apm.yml` and switch with `ht use`.
 - Sync plugin composition resources from marketplace or local install roots via `resource sync`.
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
 - Export or import a machine-transfer archive of local plugins, harness preferences, and config (`migrate`).
@@ -50,7 +50,7 @@ flowchart TB
     PL --> AP
   end
 
-  subgraph Project["project (.harnesstap/config.toml)"]
+  subgraph Project["project (apm.yml)"]
     PC[named profiles + envs]
   end
 
@@ -75,7 +75,7 @@ The CLI uses a small set of concepts consistently across commands.
 - `profile`: a plugin whose `tags` include the reserved string `profile`; switchable global preset. `profile use` merges the profile stack (including transitive `plugin` refs) and applies to machine home harness paths. Stored as a normal plugin row — not a separate entity type.
 - `workspace`: the single implicit local library in `~/.harnesstap/harnesstap.db` — all plugins, resources, and environments. Share offline with `migrate export` / `import` (`--workspace`, `--plugin`, or `--resource`).
 - `account`: a named HarnessTap Cloud login identity in `~/.harnesstap/cloud-accounts.json` (access tokens, refresh tokens, active org). Use `--account <name>` on catalog commands; distinct from a profile plugin.
-- `project config`: optional `{project}/.harnesstap/config.toml` declaring named profiles (local / catalog / inline) and environments for `ht use`.
+- `project config`: optional `{project}/apm.yml` declaring named profiles (local / catalog / inline), environments, and plugin composition for `ht use` / `ht apply`. HarnessTap-only fields live under `x-harnesstap`.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
 - `main harness`: the project's canonical harness reference. Imports, plugin application, and sync planning normalize through this harness first.
 - `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses use symlinks when the file layout allows it, and generated copies otherwise.
@@ -130,7 +130,7 @@ Use this table to disambiguate overlapping words.
 | **Workspace** | Single local SQLite library; offline share via `migrate` | `~/.harnesstap/harnesstap.db` |
 | **Catalog** | Org-scoped published plugin collection (multiplayer) | `plugin list --search`, `plugin pull` · Cloud APIs |
 | **Account** | Cloud auth identity (tokens, org context) | `auth login`, `--account` · `cloud-accounts.json` |
-| **Project config** | Repo-declared profiles for `ht use` | `.harnesstap/config.toml` · `config show|init`, `use` |
+| **Project config** | Repo-declared profiles, environments, and plugin graph for `ht use` / `ht apply` | `apm.yml` · `config show|init`, `use`, `apply` |
 | **Context-side** | What the model sees: instructions, skills, rules, MCP, hooks, agents, commands, and composition refs | Plugin material attachments |
 | **Environment-side** | Runtime how: env vars, models, permissions, secret refs | Environment values; satisfies `needs[]` |
 | **Dependency** | A required plugin from marketplace, path, git, or catalog | `plugin` / `plugin_pin` resources — not the material rows inside a plugin |
@@ -285,13 +285,13 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds a `global default` profile plugin (unless `--no-default-profile`), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
 | `harnesstap add <source>` | Discovers and installs skills from a GitHub repo, Git URL, or local skill package; optionally creates or attaches a plugin. |
 | `harnesstap plugin ...` | Plugin CRUD, **cut**, **editor**, composition attach/detach, cloud catalog workflows, diff, doctor, and origin **check** / **update**. |
-| `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. |
+| `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. With no plugin selector, resolves the graph from `apm.yml`. |
 | `harnesstap migrate ...` | Exports or imports workspace archives and Agent Plugins packages (offline sharing). |
 | `harnesstap resource ...` | Lists, shows, deletes, and syncs canonical resources. |
 | `harnesstap marketplace ...` | Registers and browses plugin marketplace sources. |
 | `harnesstap scan`, `mirror`, `status`, `history`, `revert` | Scans, mirrors, reports status/drift, and manages snapshots for git-backed projects. |
-| `harnesstap use` | Switches to a profile/environment declared in `.harnesstap/config.toml`. |
-| `harnesstap config ...` | Shows, validates, or initializes project profile config (`.harnesstap/config.toml`). |
+| `harnesstap use` | Switches to a profile/environment declared in `apm.yml`. |
+| `harnesstap config ...` | Shows, validates, or initializes project profile config (`apm.yml`). |
 | `harnesstap harness ...` | Lists harness targets and manages global/project main/alias preferences. |
 | `harnesstap environment ...` | Creates and manages environments; edits values and secret refs; sets global or session-local active environment; status/drift against terminal env. |
 | `harnesstap profile ...` | Lists, shows, creates, tags, switches, and stashes profile plugins; global apply via `profile use`. |
@@ -360,13 +360,13 @@ Host install/ensure of pinned plugins still runs through providers when a profil
 
 ### `config` / `use` (project profile config)
 
-Repositories may declare named profiles in `.harnesstap/config.toml` (`urn:harnesstap:project:v1`): local plugins, catalog selectors, or inline plugin tables, plus optional project-scoped environments.
+Repositories may declare named profiles, environments, and plugin composition in `apm.yml` at the repo root. Standard OpenAPM keys (`name`, `version`, `targets`, `dependencies.apm`, `dependencies.mcp`, `devDependencies`) parse as a vanilla APM manifest. HarnessTap-only fields live under the vendor extension `x-harnesstap` (profiles, environments with secret **refs** only, inline plugin tables, default profile/environment). `ht config`, `ht use`, `ht apply`, and lock write/replay honor those fields.
 
 | Command | Current behavior |
 | --- | --- |
 | `config show` | Shows resolved project profile config. |
 | `config validate` | Validates references (inline plugins, default profile/environment keys); exits `1` when invalid. |
-| `config init` | Creates a starter `.harnesstap/config.toml` from local profile plugins (`--profile`, `--default`, `--force`). |
+| `config init` | Creates a starter `apm.yml` from local profile plugins (`--profile`, `--default`, `--force`). |
 | `use` | Resolves a profile from project config and applies it to **home** harness paths (same materialization path as `profile use`), optionally switching the active environment. `--list` lists profiles without applying; `--profile` selects a key; interactive picker when multiple profiles exist. |
 
 ### `resource` subcommands
@@ -383,7 +383,7 @@ Repositories may declare named profiles in `.harnesstap/config.toml` (`urn:harne
 | Command | Current behavior |
 | --- | --- |
 | `scan` | Detects harnesses, imports resources via hash-aware upsert, respects `.harnesstapignore`, canonicalizes shared `AGENTS.md` instruction imports, prompts on TTY when content differs. Accepts plugin directories and marketplace manifests as scan sources. `--global` installs imported plugin sources into global harness locations. |
-| `use` | Applies a profile from `.harnesstap/config.toml` to home harness paths (see [config / use](#config--use-project-profile-config)). |
+| `use` | Applies a profile from `apm.yml` to home harness paths (see [config / use](#config--use-project-profile-config)). |
 | `status --check` | Compares working tree against the latest apply/sync snapshot. |
 | `mirror` | Re-materializes alias harness outputs from the main harness reference. |
 | `history` | Lists stored snapshots (requires git-backed project). |
@@ -545,7 +545,7 @@ JSON output is unchanged by the visual plugin.
 1. Initializes the local database.
 2. Discovers supported harness configuration in the user's home directory and imports findings.
 3. Seeds a local **`global default` profile plugin** (tagged `profile`) from non-plugin library resources when that profile is missing or empty, and writes `active-profile.json` → `{ "name": "global default" }`. A leftover `default` profile from older installs is renamed. Does **not** run global apply — switch explicitly with `ht profile use "global default"` (or `ht default`). Pass `--no-default-profile` to skip.
-4. Seeds a local **`default` environment** when none exists and writes `active-environment.json` → `{ "name": "default" }` if the home active pointer is unset. Desktop `ht-agent` boot runs the same home scan and profile seed so a fresh install has a default home entry in tracked directories and a populated global default profile. Opening a project in the desktop app writes `.harnesstap/config.toml` if needed and seeds a **`project default`** profile from that repository’s on-disk resources.
+4. Seeds a local **`default` environment** when none exists and writes `active-environment.json` → `{ "name": "default" }` if the home active pointer is unset. Desktop `ht-agent` boot runs the same home scan and profile seed so a fresh install has a default home entry in tracked directories and a populated global default profile. Opening a project in the desktop app writes `apm.yml` if needed and seeds a **`project default`** profile from that repository’s on-disk resources.
 5. Prints the tracked directory list (home defaults as `~`, plus any custom roots).
 6. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
 
@@ -569,7 +569,9 @@ Persistent operational state lives in SQLite at `~/.harnesstap/harnesstap.db` (o
 | `~/.harnesstap/plugin-refresh-cache.json` | Internal refresh timestamps used during `resource sync` |
 | `~/.harnesstap/environments/<name>.json` | Named environment fragments (JSONC) |
 | `~/.harnesstap/blobs/sha256/…` | Content-addressed resource bodies |
-| `{project}/.harnesstap/config.toml` | Project profile config (`urn:harnesstap:project:v1`) for `ht use` |
+| `{project}/apm.yml` | Project manifest (OpenAPM + `x-harnesstap`) for `ht use` / `ht apply` |
+| `{project}/apm.lock.yaml` | Apply lockfile (APM lock shape + `x-harnesstap` replay metadata) |
+| `{project}/.harnesstap/local.toml` | Uncommitted local overrides for `default_profile` / `default_environment` |
 
 Example `config.jsonc`:
 
@@ -769,9 +771,9 @@ Orphans are removed only with `--prune`.
 
 ## Transport formats
 
-Every portable artifact is an Agent Plugins package: a directory with a root `plugin.json`, or a single `.ap.json` envelope of the same content. TOML is for local files only — `.harnesstap/lock.toml`, project config, and environment documents. There is no second transport format.
+Every portable artifact is an Agent Plugins package: a directory with a root `plugin.json`, or a single `.ap.json` envelope of the same content. TOML is for local files only — environment documents and `.harnesstap/local.toml`. There is no second transport format.
 
-Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. Project config (`.harnesstap/config.toml`) is TOML with schema `urn:harnesstap:project:v1`. Lockfiles use `.harnesstap/lock.toml` (`urn:harnesstap:lock:v1`).
+Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. The project manifest is `apm.yml` (OpenAPM YAML; HarnessTap fields under `x-harnesstap`). Lockfiles use `apm.lock.yaml` (`lockfile_version: "1"`, APM dependency/MCP/file-hash fields, plus `x-harnesstap` for plugin-graph replay).
 
 ### Agent Plugins package
 

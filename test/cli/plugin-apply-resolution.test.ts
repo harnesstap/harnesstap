@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
+import { writeTextFile } from "../helpers/fs.ts";
 import {
   addResourceToPlugin,
   createPlugin,
@@ -102,9 +103,9 @@ describe("plugin apply resolution", () => {
       "claude-code",
     ]);
 
-    const lockPath = join(ctx.projectDir, ".harnesstap", "lock.toml");
+    const lockPath = join(ctx.projectDir, "apm.lock.yaml");
     expect(existsSync(lockPath)).toBe(true);
-    expect(readFileSync(lockPath, "utf8")).toContain('name = "base"');
+    expect(readFileSync(lockPath, "utf8")).toContain("name: base");
   });
 
   it("does not write a lockfile on --dry-run", async () => {
@@ -118,7 +119,7 @@ describe("plugin apply resolution", () => {
       "claude-code",
       "--dry-run",
     ]);
-    expect(existsSync(join(ctx.projectDir, ".harnesstap", "lock.toml"))).toBe(false);
+    expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(false);
   });
 
   it("does not write a lockfile for multi-selector (ephemeral) apply", async () => {
@@ -137,7 +138,7 @@ describe("plugin apply resolution", () => {
       "claude-code",
     ]);
 
-    expect(existsSync(join(ctx.projectDir, ".harnesstap", "lock.toml"))).toBe(false);
+    expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(false);
   });
 
   it("prints the resolution trail with --explain", async () => {
@@ -216,5 +217,41 @@ describe("plugin apply resolution", () => {
     expect(
       existsSync(join(ctx.projectDir, ".cursor", "rules", "format-code.mdc")),
     ).toBe(true);
+  });
+
+  it("applies from apm.yml when no plugin selector is given", async () => {
+    const local = createPlugin({ name: "team-stack" });
+    attachInstruction(local.id, "FROM-MANIFEST", "team-stack");
+    writeTextFile(
+      join(ctx.projectDir, "apm.yml"),
+      `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - team-stack
+  mcp:
+    - name: demo-mcp
+      command: echo
+      registry: false
+`,
+    );
+
+    const result = await runCli([
+      "apply",
+      "--project",
+      ctx.projectDir,
+      "--harness",
+      "claude-code",
+      "--no-interactive",
+    ]);
+
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(readFileSync(join(ctx.projectDir, "CLAUDE.md"), "utf8")).toContain(
+      "FROM-MANIFEST",
+    );
+    expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(true);
+    expect(readFileSync(join(ctx.projectDir, "apm.lock.yaml"), "utf8")).toContain(
+      "x-harnesstap:",
+    );
   });
 });

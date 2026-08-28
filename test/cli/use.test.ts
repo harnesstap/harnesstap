@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
@@ -7,9 +7,8 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
-function writeProjectConfig(projectDir: string, toml: string) {
-  mkdirSync(join(projectDir, ".harnesstap"), { recursive: true });
-  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), toml);
+function writeProjectConfig(projectDir: string, yaml: string) {
+  writeTextFile(join(projectDir, "apm.yml"), yaml);
 }
 
 function createProfilePlugin(name: string) {
@@ -36,13 +35,13 @@ describe("CLI use", () => {
       createProfilePlugin("team-stack");
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
 `,
       );
 
@@ -77,15 +76,15 @@ selector = "team-stack"
       createProfilePlugin("team-stack");
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "dev"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
-environment = "staging"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  default_profile: dev
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
+      environment: staging
 `,
       );
 
@@ -123,13 +122,13 @@ environment = "staging"
       createProfilePlugin("team-stack");
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
 `,
       );
 

@@ -50,7 +50,7 @@ export function addApplyCommandOptions(command: Command): Command {
     )
     .option(
       "--update",
-      "Ignore .harnesstap/lock.toml and re-resolve the dependency graph",
+      "Ignore apm.lock.yaml and re-resolve the dependency graph",
     )
     .option(
       "--strict",

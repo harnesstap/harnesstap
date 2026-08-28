@@ -124,40 +124,39 @@ Use [Profiles](./profiles.md) for machine-wide defaults and projects for reposit
 
 ## Project profile config
 
-Repositories can declare named **profiles** in `.harnesstap/config.toml`. This file maps profile keys to local plugins, catalog selectors, or inline plugin tables — plus optional project-scoped environments.
+Repositories can declare named **profiles**, environments, and plugin composition in `apm.yml` at the repo root. Standard OpenAPM keys (`name`, `version`, `targets`, `dependencies`) still parse. HarnessTap-only fields live under `x-harnesstap`.
 
 Example:
 
-```toml
-schema = "urn:harnesstap:project:v1"
-version = 1
-default_profile = "dev"
-default_environment = "shared"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
-
-[[profiles]]
-name = "prod"
-source = "catalog"
-selector = "acme/platform/frontend@1.0.0"
-
-[[profiles]]
-name = "custom"
-source = "inline"
-plugin = "embedded-plugin"
-
-[[environments]]
-name = "shared"
-
-[environments.values]
-REGION = "us"
-
-[[plugins]]
-name = "embedded-plugin"
-description = "Small inline plugin bundled with the repo"
+```yaml
+name: demo
+version: "1.0.0"
+targets: [cursor, claude]
+dependencies:
+  apm:
+    - team-stack
+  mcp:
+    - io.github.modelcontextprotocol/servers/filesystem
+x-harnesstap:
+  default_profile: dev
+  default_environment: shared
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
+    - name: prod
+      source: catalog
+      selector: acme/platform/frontend@1.0.0
+    - name: custom
+      source: inline
+      plugin: embedded-plugin
+  environments:
+    - name: shared
+      values:
+        REGION: us
+  plugins:
+    - name: embedded-plugin
+      description: Small inline plugin bundled with the repo
 ```
 
 Inspect and validate the resolved config:
@@ -177,7 +176,7 @@ ht config init --profile work --profile personal --default work
 ht config init --force   # overwrite an existing file
 ```
 
-`config init` maps each selected profile plugin to a `source = "local"` entry and sets `default_profile`. Opening a project in HarnessTap Desktop instead seeds a `project default` profile from that repository’s on-disk resources. It does not add `global default` to the project.
+`config init` maps each selected profile plugin to a local `source: local` entry and sets `default_profile`. Opening a project in HarnessTap Desktop instead seeds a `project default` profile from that repository’s on-disk resources. It does not add `global default` to the project.
 
 Switch to a configured profile with `ht use`:
 

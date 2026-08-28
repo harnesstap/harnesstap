@@ -12,7 +12,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 function writeProjectConfig(projectDir: string, content: string): void {
-  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), content);
+  writeTextFile(join(projectDir, "apm.yml"), content);
 }
 
 function createProfilePlugin(name: string) {
@@ -38,13 +38,13 @@ describe("project-config-use", () => {
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
 `,
       );
 
@@ -77,30 +77,28 @@ selector = "team-stack"
     try {
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "custom"
-source = "inline"
-plugin = "embedded-plugin"
-
-[[plugins]]
-name = "embedded-plugin"
-description = "inline profile plugin"
-tags = ["profile"]
-
-[[plugins.resources]]
-type = "instruction"
-name = "embedded-guide"
-description = ""
-content = "# embedded profile"
-metadata = {}
-namespace = ""
-origin_kind = "manual"
-origin_ref = ""
-content_hash = ""
-content_blob_ref = ""
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: custom
+      source: inline
+      plugin: embedded-plugin
+  plugins:
+    - name: embedded-plugin
+      description: inline profile plugin
+      tags: ["profile"]
+      resources:
+        - type: instruction
+          name: embedded-guide
+          description: ""
+          content: "# embedded profile"
+          metadata: {}
+          namespace: ""
+          origin_kind: manual
+          origin_ref: ""
+          content_hash: ""
+          content_blob_ref: ""
 `,
       );
 
@@ -133,13 +131,13 @@ content_blob_ref = ""
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
 `,
       );
 
@@ -171,18 +169,16 @@ selector = "team-stack"
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "alpha"
-source = "local"
-selector = "alpha"
-
-[[profiles]]
-name = "beta"
-source = "local"
-selector = "beta"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: alpha
+      source: local
+      selector: alpha
+    - name: beta
+      source: local
+      selector: beta
 `,
       );
 
@@ -206,13 +202,13 @@ selector = "beta"
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "solo"
-source = "local"
-selector = "solo"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: solo
+      source: local
+      selector: solo
 `,
       );
 
@@ -235,13 +231,13 @@ selector = "solo"
     try {
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "prod"
-source = "catalog"
-selector = "acme/platform/frontend@1.0.0"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: prod
+      source: catalog
+      selector: acme/platform/frontend@1.0.0
 `,
       );
 
@@ -268,20 +264,18 @@ selector = "acme/platform/frontend@1.0.0"
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
-environment = "staging"
-
-[[environments]]
-name = "staging"
-
-[environments.values]
-REGION = "eu"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
+      environment: staging
+  environments:
+    - name: staging
+      values:
+        REGION: eu
 `,
       );
 
@@ -308,27 +302,22 @@ REGION = "eu"
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnesstap:project:v1"
-version = 1
-default_environment = "shared"
-
-[[profiles]]
-name = "dev"
-source = "local"
-selector = "team-stack"
-environment = "staging"
-
-[[environments]]
-name = "shared"
-
-[environments.values]
-REGION = "us"
-
-[[environments]]
-name = "staging"
-
-[environments.values]
-REGION = "eu"
+        `name: demo
+version: "1.0.0"
+x-harnesstap:
+  default_environment: shared
+  profiles:
+    - name: dev
+      source: local
+      selector: team-stack
+      environment: staging
+  environments:
+    - name: shared
+      values:
+        REGION: us
+    - name: staging
+      values:
+        REGION: eu
 `,
       );
 

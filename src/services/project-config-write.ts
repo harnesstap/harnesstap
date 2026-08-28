@@ -1,23 +1,29 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { PROJECT_SCHEMA, PROJECT_SCHEMA_VERSION } from "../types.js";
-import type { ProjectConfig, ProjectProfileEntry } from "./project-config.js";
+import { existsSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { formatApmManifest } from "./apm-manifest.js";
+import {
+  projectManifestPath,
+  type ProjectConfig,
+  type ProjectProfileEntry,
+} from "./project-config.js";
 import { PROJECT_CONFIG_EXISTS_MESSAGE } from "./project-config-messages.js";
-import { formatTransportToml } from "./toml/write.js";
 
 export function buildStarterProjectConfigDocument(input: {
   defaultProfile: string;
   profileNames: string[];
-}): Record<string, unknown> {
+  packageName?: string;
+}): ProjectConfig {
   return {
-    schema: PROJECT_SCHEMA,
-    version: PROJECT_SCHEMA_VERSION,
+    ...(input.packageName ? { apm_name: input.packageName } : {}),
+    apm_version: "1.0.0",
     default_profile: input.defaultProfile,
     profiles: input.profileNames.map((name) => ({
       name,
-      source: "local",
+      source: "local" as const,
       selector: name,
     })),
+    environments: [],
+    plugins: [],
   };
 }
 
@@ -28,8 +34,7 @@ export function writeStarterProjectConfig(input: {
   force?: boolean;
 }): { configPath: string } {
   const root = resolve(input.projectPath);
-  const configDir = join(root, ".harnesstap");
-  const configPath = join(configDir, "config.toml");
+  const configPath = projectManifestPath(root);
 
   if (existsSync(configPath) && !input.force) {
     throw new Error(PROJECT_CONFIG_EXISTS_MESSAGE);
@@ -52,6 +57,7 @@ export function writeStarterProjectConfig(input: {
     })),
     environments: [],
     plugins: [],
+    apm_version: "1.0.0",
   });
 
   return { configPath };
@@ -69,8 +75,9 @@ function serializeProfileEntry(profile: ProjectProfileEntry): Record<string, unk
 
 export function projectConfigToDocument(config: ProjectConfig): Record<string, unknown> {
   return {
-    schema: PROJECT_SCHEMA,
-    version: PROJECT_SCHEMA_VERSION,
+    ...(config.apm_name ? { name: config.apm_name } : {}),
+    ...(config.apm_version ? { version: config.apm_version } : {}),
+    ...(config.apm_description ? { description: config.apm_description } : {}),
     ...(config.default_profile ? { default_profile: config.default_profile } : {}),
     ...(config.default_environment ? { default_environment: config.default_environment } : {}),
     ...(config.profiles.length > 0
@@ -85,6 +92,6 @@ export function writeProjectConfigFile(
   configPath: string,
   config: ProjectConfig,
 ): void {
-  mkdirSync(dirname(configPath), { recursive: true });
-  writeFileSync(configPath, formatTransportToml(projectConfigToDocument(config)), "utf-8");
+  const projectPath = resolve(configPath, "..");
+  writeFileSync(configPath, formatApmManifest(config, projectPath), "utf-8");
 }
