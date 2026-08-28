@@ -4,16 +4,15 @@ import { getPlugin, getPluginResources } from "../models/plugin-model.js";
 import type { Plugin } from "../types.js";
 import {
   buildApPackageFiles,
-  readApPackageFiles,
   writeApPackageFiles,
 } from "./agent-plugins/files.js";
 import { importApPackageFiles } from "./agent-plugins/import.js";
 import {
   isApEnvelopePath,
-  readApEnvelope,
   writeApEnvelope,
 } from "./agent-plugins/envelope.js";
 import { slugifyApName } from "./agent-plugins/name.js";
+import { loadVerifiedPackageFiles } from "./apm-bundle.js";
 import {
   isLegacyTomlTransportPath,
   legacyTomlTransportRejection,
@@ -224,7 +223,7 @@ export function detectImportScopeFromFile(filePath: string): MigrateScope {
   }
   const lower = resolved.toLowerCase();
   if (lower.endsWith(".tar.gz")) return "workspace";
-  if (isApEnvelopePath(resolved)) return "plugin";
+  if (isApEnvelopePath(resolved) || lower.endsWith(".zip")) return "plugin";
   if (isLegacyTomlTransportPath(resolved)) {
     throw new Error(legacyTomlTransportRejection(resolved));
   }
@@ -344,9 +343,7 @@ export function importScopedMigration(
       };
     }
     case "plugin": {
-      const files = statSync(resolved).isDirectory()
-        ? readApPackageFiles(resolved)
-        : readApEnvelope(resolved);
+      const files = loadVerifiedPackageFiles(resolved);
       const plugin = importApPackageFiles(files);
       return {
         scope: "plugin",

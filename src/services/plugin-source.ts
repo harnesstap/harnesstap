@@ -3,6 +3,11 @@ import { fetchWithTimeout } from "../utils/fetch-with-timeout.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isApEnvelopePath } from "./agent-plugins/envelope.js";
+import {
+  isPluginPackageDirectory,
+  isZipBundlePath,
+  looksLikeFilesystemPath,
+} from "./apm-bundle.js";
 
 const URL_PATTERN = /^https?:\/\//i;
 
@@ -11,7 +16,10 @@ export function isPluginUrl(source: string): boolean {
 }
 
 export function isPluginExportFilePath(source: string): boolean {
-  return isApEnvelopePath(source) || source.endsWith("/plugin.json");
+  if (isApEnvelopePath(source)) return true;
+  if (source.endsWith("/plugin.json") || source.endsWith("\\plugin.json")) return true;
+  if (isZipBundlePath(source)) return true;
+  return looksLikeFilesystemPath(source) && isPluginPackageDirectory(source);
 }
 
 export function writePluginExportToTempFile(body: string): string {

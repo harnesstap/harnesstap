@@ -23,6 +23,7 @@ import {
   setPluginResourceOverride,
   setPluginVersionOverride,
 } from "../plugin-overrides.js";
+import { parseHooksJsonContent } from "../hook-serialization.js";
 import { parseTransportToml } from "../toml/read.js";
 import type { ApPackageFile, ApPackageFiles } from "./files.js";
 import { readApPackageFiles } from "./files.js";
@@ -154,6 +155,71 @@ function listSkillAuxNames(
     names.push(rest);
   }
   return names.sort();
+}
+
+function nativeBasename(relativePath: string, prefix: string): string {
+  const rest = relativePath.slice(prefix.length);
+  const base = rest.split("/").pop() ?? rest;
+  return base.replace(/\.(agent|prompt|instructions)\.md$/i, "").replace(/\.md$/i, "");
+}
+
+function parseNativeMarkdownResources(
+  type: ResourceType,
+  dirName: string,
+  files: ApPackageFiles,
+): ResourceCreateInput[] {
+  const prefix = `${dirName}/`;
+  const resources: ResourceCreateInput[] = [];
+  for (const relativePath of Object.keys(files).sort()) {
+    if (!relativePath.startsWith(prefix) || !relativePath.endsWith(".md")) continue;
+    const entry = files[relativePath];
+    if (!entry) continue;
+    const parsed = matter(fileText(entry));
+    const data = isRecord(parsed.data) ? { ...parsed.data } : {};
+    const fallback = nativeBasename(relativePath, prefix);
+    const name =
+      typeof data.name === "string" && data.name.length > 0 ? data.name : fallback;
+    const description = typeof data.description === "string" ? data.description : "";
+    delete data.name;
+    delete data.description;
+    resources.push({
+      type,
+      name,
+      description,
+      content: parsed.content,
+      metadata: data,
+      source: RESOURCE_SOURCE,
+    });
+  }
+  return resources;
+}
+
+function parseNativeHookResources(files: ApPackageFiles): ResourceCreateInput[] {
+  const resources: ResourceCreateInput[] = [];
+  const hookPaths = Object.keys(files)
+    .filter((path) => path === "hooks.json" || /^hooks\/.+\.json$/.test(path))
+    .sort();
+  for (const relativePath of hookPaths) {
+    const entry = files[relativePath];
+    if (!entry) continue;
+    const parsed = parseHooksJsonContent(fileText(entry), relativePath);
+    if (parsed.length > 0) {
+      resources.push(
+        ...parsed.map((resource) => ({ ...resource, source: RESOURCE_SOURCE })),
+      );
+      continue;
+    }
+    const name = relativePath.replace(/^hooks\//, "").replace(/\.json$/i, "").replaceAll("/", "-");
+    resources.push({
+      type: "hook",
+      name: name || "hook",
+      description: "",
+      content: fileText(entry),
+      metadata: {},
+      source: RESOURCE_SOURCE,
+    });
+  }
+  return resources;
 }
 
 function parseSkillResources(files: ApPackageFiles): ResourceCreateInput[] {
@@ -360,6 +426,9 @@ export function parseApPackageFiles(files: ApPackageFiles): ParsedApPackage {
   const resources = [
     ...parseSkillResources(files),
     ...parseMcpResources(files),
+    ...parseNativeMarkdownResources("agent", "agents", files),
+    ...parseNativeMarkdownResources("command", "commands", files),
+    ...parseNativeHookResources(files),
     ...parseComponentResources(files),
   ];
 

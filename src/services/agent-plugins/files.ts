@@ -336,11 +336,15 @@ export function readApPackageFiles(packageDir: string): ApPackageFiles {
   const files: ApPackageFiles = {};
   for (const relativePath of listContainedFiles(packageDir).sort()) {
     const buffer = readFileSync(join(packageDir, relativePath));
-    files[relativePath] = isProbablyText(buffer)
-      ? { encoding: "utf8", content: buffer.toString("utf8") }
-      : { encoding: "base64", content: buffer.toString("base64") };
+    files[relativePath] = packageFileFromBytes(buffer);
   }
   return files;
+}
+
+export function packageFileFromBytes(buffer: Buffer): ApPackageFile {
+  return isProbablyText(buffer)
+    ? { encoding: "utf8", content: buffer.toString("utf8") }
+    : { encoding: "base64", content: buffer.toString("base64") };
 }
 
 function isProbablyText(buffer: Buffer): boolean {
