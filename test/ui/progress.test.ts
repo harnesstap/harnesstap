@@ -69,6 +69,8 @@ describe("ui progress", () => {
       value: true,
       configurable: true,
     });
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "test";
 
     const { createProgress } = await import("../../src/ui/progress.ts");
     const lines: string[] = [];
@@ -79,6 +81,11 @@ describe("ui progress", () => {
       handle.succeed("work done");
     } finally {
       console.log = origLog;
+      if (previousNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = previousNodeEnv;
+      }
     }
     expect(lines.some((l) => l.includes("work done"))).toBe(true);
   });
