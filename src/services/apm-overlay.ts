@@ -1,7 +1,7 @@
 import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import matter from "gray-matter";
-import type { ResourceType, RuleMetadata, SkillMetadata } from "../types.js";
+import type { ResourceMetadata, ResourceType, RuleMetadata, SkillMetadata } from "../types.js";
 import {
   BundleSymlinkError,
   listContainedRegularFiles,
@@ -34,7 +34,7 @@ export interface ApmOverlayPrimitive {
   name: string;
   description: string;
   content: string;
-  metadata: Record<string, unknown>;
+  metadata: ResourceMetadata;
   sourceRelative: string;
 }
 
@@ -186,7 +186,7 @@ function markdownPrimitive(
     name,
     description,
     content: content.trim(),
-    metadata: data,
+    metadata: data as ResourceMetadata,
     sourceRelative: relativePath,
   };
 }
