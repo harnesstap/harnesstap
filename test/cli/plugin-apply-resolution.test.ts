@@ -277,7 +277,7 @@ dependencies:
         "claude-code",
         "--no-interactive",
       ]);
-      expect(first.exitCode ?? 0).toBe(0);
+      expect(first.exitCode ?? 0, first.stderr || first.stdout).toBe(0);
       expect(
         readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
       ).toContain("FROM-GIT");
@@ -301,7 +301,7 @@ dependencies:
         "claude-code",
         "--no-interactive",
       ]);
-      expect(replay.exitCode ?? 0).toBe(0);
+      expect(replay.exitCode ?? 0, replay.stderr || replay.stdout).toBe(0);
       expect(
         readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
       ).toContain("FROM-GIT");
@@ -318,7 +318,7 @@ dependencies:
         "--no-interactive",
         "--update",
       ]);
-      expect(updated.exitCode ?? 0).toBe(0);
+      expect(updated.exitCode ?? 0, updated.stderr || updated.stdout).toBe(0);
       expect(
         readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
       ).toContain("FROM-GIT-NEXT");

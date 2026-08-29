@@ -303,6 +303,9 @@ function canReplayLock(
   if (!entry.resolved_commit || !FULL_SHA.test(entry.resolved_commit)) {
     return false;
   }
+  if (kind === "none") {
+    return true;
+  }
   if (kind === "semver") {
     const constraint = dependency.versionConstraint ?? dependency.ref ?? "";
     return Boolean(entry.constraint && entry.constraint === constraint);

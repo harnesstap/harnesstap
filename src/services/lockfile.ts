@@ -148,10 +148,10 @@ function mergeGitLockFields(
     source: "git",
     repo_url: extra.repo_url,
     resolved_commit: extra.resolved_commit,
-    ...(extra.resolved_ref ? { resolved_ref: extra.resolved_ref } : {}),
-    ...(extra.constraint ? { constraint: extra.constraint } : {}),
-    ...(extra.resolved_tag ? { resolved_tag: extra.resolved_tag } : {}),
-    ...(extra.virtual_path ? { virtual_path: extra.virtual_path } : {}),
+    resolved_ref: extra.resolved_ref,
+    constraint: extra.constraint,
+    resolved_tag: extra.resolved_tag,
+    virtual_path: extra.virtual_path,
   };
 }
 

@@ -158,6 +158,42 @@ describe("apm git resolve", () => {
     }
   });
 
+  it("replays a locked HEAD pin when the manifest has no ref", () => {
+    const remote = createPluginGitRepo();
+    const calls: string[] = [];
+    const runCommand: RunCommand = (command, args) => {
+      calls.push([command, ...args].join(" "));
+      throw new Error("network should not run");
+    };
+    try {
+      const dependency = parseApmDependencyEntry({ git: remote.url });
+      const lock: Lockfile = {
+        root: "demo",
+        resolved_at: new Date().toISOString(),
+        resource_map_hash: "sha256:00",
+        plugins: [
+          {
+            name: "widgets",
+            version: "1.0.0",
+            source: "git",
+            integrity: "sha256:00",
+            depth: 1,
+            path: [],
+            repo_url: canonicalApmRepoUrl(remote.url),
+            resolved_commit: remote.sha,
+            resolved_ref: remote.sha,
+          },
+        ],
+      };
+      const resolved = resolveApmGitDependency(dependency, { lock, runCommand });
+      expect(resolved.commit).toBe(remote.sha);
+      expect(resolved.replayed).toBe(true);
+      expect(calls).toEqual([]);
+    } finally {
+      cleanupDir(remote.dir);
+    }
+  });
+
   it("rejects a traversing virtual path", () => {
     const remote = createPluginGitRepo();
     try {
