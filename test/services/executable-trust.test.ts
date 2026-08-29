@@ -16,6 +16,7 @@ import {
   type ExecTypeDecision,
 } from "../../src/services/executable-trust.ts";
 import { parseApmPolicyDocument } from "../../src/services/apm-policy.ts";
+import { createInitializedTestContext } from "../helpers/db.ts";
 import { createTempDir } from "../helpers/fs.ts";
 
 function context(overrides: Partial<ExecutableTrustContext> = {}): ExecutableTrustContext {
@@ -285,19 +286,20 @@ describe("executable trust response fields", () => {
     });
   });
 
-  it("reads pending refs from a project lock when the gate is on", () => {
-    const dir = createTempDir("exec-project-fields-");
-    writeFileSync(
-      join(dir, "apm.yml"),
-      `name: demo
+  it("reads pending refs from a project lock when the gate is on", async () => {
+    const ctx = await createInitializedTestContext("exec-project-fields-");
+    try {
+      writeFileSync(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
 version: "1.0.0"
 executables: {}
 `,
-      "utf8",
-    );
-    writeFileSync(
-      join(dir, "apm.lock.yaml"),
-      `lockfile_version: "1"
+        "utf8",
+      );
+      writeFileSync(
+        join(ctx.projectDir, "apm.lock.yaml"),
+        `lockfile_version: "1"
 plugins:
   - name: dep-hooks
     version: "1.0.0"
@@ -307,12 +309,15 @@ plugins:
     path: [root]
     exec_status: gated_pending_approval
 `,
-      "utf8",
-    );
-    const fields = executableTrustFieldsFromProject(dir);
-    expect(fields.optedIn).toBe(true);
-    expect(fields.parked.some((entry) => entry.ref === "dep-hooks")).toBe(true);
-    expect(fields.execStatuses["dep-hooks"]).toBe("gated_pending_approval");
+        "utf8",
+      );
+      const fields = executableTrustFieldsFromProject(ctx.projectDir);
+      expect(fields.optedIn).toBe(true);
+      expect(fields.parked.some((entry) => entry.ref === "dep-hooks")).toBe(true);
+      expect(fields.execStatuses["dep-hooks"]).toBe("gated_pending_approval");
+    } finally {
+      await ctx.cleanup();
+    }
   });
 });
 
