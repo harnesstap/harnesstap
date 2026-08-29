@@ -150,13 +150,36 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Scan a project for hidden Unicode, lockfile hashes, and apm-policy.yml",
     details:
-      "Default scan covers lockfile-recorded deployed files plus local primitive dirs, and evaluates apm-policy.yml when present. --ci fails on critical Unicode, hash mismatch/extra/missing, or blocking policy. --require-policy with --ci fails if no policy file exists. --strip removes critical and warning characters (mutually exclusive with --ci). Use --file to scan any one file.",
+      "Default scan covers lockfile-recorded deployed files plus local primitive dirs, and evaluates apm-policy.yml when present. --ci fails on critical Unicode, hash mismatch/extra/missing, blocking policy, or required-executable-untrusted. --require-policy with --ci fails if no policy file exists. --strip removes critical and warning characters (mutually exclusive with --ci). Use --file to scan any one file.",
     examples: [
       "audit",
       "audit --file .cursorrules",
       "audit --ci --require-policy --format json",
       "audit --strip --dry-run",
     ],
+  },
+  approve: {
+    description: "Approve executable primitives from dependency packages",
+    details:
+      "Writes project apm.yml executables.allow by default. --user writes ~/.harnesstap/config.jsonc (can only narrow past org/project deny). --pending lists gated packages; --all approves them; --recommended accepts the org recommend set; --list shows the effective decision per locked package.",
+    examples: [
+      "approve owner/repo",
+      "approve --user owner/repo",
+      "approve --pending",
+      "approve --all",
+    ],
+  },
+  deny: {
+    description: "Deny executable primitives from dependency packages",
+    details:
+      "Writes project apm.yml executables.deny by default. --user writes ~/.harnesstap/config.jsonc.",
+    examples: ["deny owner/repo", "deny --user owner/repo"],
+  },
+  "policy.explain": {
+    description: "Print the effective executable-trust decision for a package",
+    details:
+      "Shows allowed or blocked per executable type, the deciding policy layer, and shadowed lower-authority layers.",
+    examples: ["policy explain owner/repo", "policy explain owner/repo --format json"],
   },
   "plugin.create": {
     description: "Create a new local plugin",

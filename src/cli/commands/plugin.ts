@@ -153,6 +153,11 @@ import {
   evaluateApplyPolicy,
   PolicyError,
 } from "../../services/apm-policy.js";
+import {
+  applyExecutableTrustGate,
+  formatApproveRemedy,
+  overlappingDeployedHashes,
+} from "../../services/executable-trust.js";
 import { findProjectConfig } from "../../services/project-config.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
 import { substituteResourcesForApply } from "../../services/environment-var-substitution.js";
@@ -853,8 +858,14 @@ export async function handleProjectApplyCommand(
     }
   }
 
+  const manifestForPolicy = findProjectConfig(projectRoot);
+  const executableTrust = applyExecutableTrustGate({
+    projectRoot,
+    resolution: applyBundle.resolution,
+    resources: applyResources,
+    gitLocks: manifestGitLocks,
+  });
   try {
-    const manifestForPolicy = findProjectConfig(projectRoot);
     const policyEvaluation = evaluateApplyPolicy({
       projectRoot,
       resolution: applyBundle.resolution,
@@ -865,7 +876,7 @@ export async function handleProjectApplyCommand(
       ...(manifestForPolicy?.policyPin ? { pin: manifestForPolicy.policyPin } : {}),
     });
     if (outputFormat === "human") {
-      for (const warning of policyEvaluation.warnings) {
+      for (const warning of [...policyEvaluation.warnings, ...executableTrust.warnings]) {
         ui.warn(warning);
       }
       for (const violation of policyEvaluation.violations) {
@@ -887,6 +898,17 @@ export async function handleProjectApplyCommand(
     }
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
+  }
+
+  applyResources = executableTrust.resources;
+  if (outputFormat === "human" && executableTrust.parked.length > 0) {
+    const refs = executableTrust.parked.map((entry) => entry.ref);
+    for (const entry of executableTrust.parked) {
+      ui.warn(
+        `Parked unapproved executables from ${entry.ref} (${entry.types.join(", ")})`,
+      );
+    }
+    ui.hint(formatApproveRemedy(refs));
   }
 
   const homeRoot = resolveHomeRoot();
@@ -939,10 +961,14 @@ export async function handleProjectApplyCommand(
       Object.keys(existingLock.deployed_file_hashes).length > 0,
   );
   try {
+    const expectedHashes = existingLock?.deployed_file_hashes;
     const gate = gateDeployFiles(generatedFiles, {
       forceUnicode: opts.force,
       verifyHashes: shouldVerifyHashes,
-      expectedHashes: existingLock?.deployed_file_hashes,
+      expectedHashes:
+        executableTrust.optedIn && expectedHashes
+          ? overlappingDeployedHashes(expectedHashes, generatedFiles)
+          : expectedHashes,
     });
     if (outputFormat === "human") {
       printUnicodeGateWarnings(gate.findings, opts.force);
@@ -998,6 +1024,7 @@ export async function handleProjectApplyCommand(
           result.files.map((file) => ({ path: file.path, content: file.content })),
         ),
         ...(manifestGitLocks.length > 0 ? { gitLocks: manifestGitLocks } : {}),
+        ...(executableTrust.optedIn ? { execStatuses: executableTrust.execStatuses } : {}),
       }),
     );
   }

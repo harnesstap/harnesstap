@@ -43,6 +43,10 @@ import {
   evaluateApplyPolicy,
   PolicyError,
 } from "../../services/apm-policy.js";
+import {
+  applyExecutableTrustGate,
+  overlappingDeployedHashes,
+} from "../../services/executable-trust.js";
 import { findProjectConfig } from "../../services/project-config.js";
 import { detectProfileOwnedOverwriteConflicts } from "../../services/profile-owned-overwrite.js";
 import { applyProfilePlugin } from "../../services/profile-apply.js";
@@ -433,7 +437,13 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     }
     throw err;
   }
-  const generated = await generateFiles(substituted.resources, platforms, projectRoot, {
+  const executableTrust = applyExecutableTrustGate({
+    projectRoot,
+    resolution,
+    resources: substituted.resources,
+    gitLocks: manifestGitLocks,
+  });
+  const generated = await generateFiles(executableTrust.resources, platforms, projectRoot, {
     claudeConfig: mergePluginsById(configuredPluginIds).claude,
     resolvedEnvironment,
     skillSourceRoot: projectRoot,
@@ -450,10 +460,14 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
       Object.keys(existingLock.deployed_file_hashes).length > 0,
   );
   try {
+    const expectedHashes = existingLock?.deployed_file_hashes;
     gateDeployFiles(generatedFiles, {
       forceUnicode: parsed.force,
       verifyHashes: shouldVerifyHashes,
-      expectedHashes: existingLock?.deployed_file_hashes,
+      expectedHashes:
+        executableTrust.optedIn && expectedHashes
+          ? overlappingDeployedHashes(expectedHashes, generatedFiles)
+          : expectedHashes,
     });
   } catch (err) {
     if (err instanceof CriticalUnicodeError || err instanceof LockIntegrityError) {
@@ -490,6 +504,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
           result.files.map((file) => ({ path: file.path, content: file.content })),
         ),
         ...(manifestGitLocks.length > 0 ? { gitLocks: manifestGitLocks } : {}),
+        ...(executableTrust.optedIn ? { execStatuses: executableTrust.execStatuses } : {}),
       }),
     );
   }

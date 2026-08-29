@@ -44,6 +44,17 @@ export interface ApmPolicyPin {
   algorithm: PolicyHashAlgorithm;
 }
 
+export interface OrgExecutablePolicy {
+  present: boolean;
+  nonEmpty: boolean;
+  denyAll: boolean;
+  deny: string[];
+  require: string[];
+  recommend: string[];
+  enforce: string[];
+  warnings: string[];
+}
+
 export interface ApmPolicyDocument {
   name: string;
   version: string;
@@ -56,6 +67,10 @@ export interface ApmPolicyDocument {
   mcpDeny: string[] | null;
   trustTransitive: boolean;
   contentTypesAllow: string[] | null;
+  executables: OrgExecutablePolicy;
+  binDeployDenyAll: boolean;
+  binDeployDeny: string[];
+  binDeployNonEmpty: boolean;
   warnings: string[];
 }
 
@@ -341,6 +356,10 @@ export function parseApmPolicyDocument(raw: string, filePath: string): ApmPolicy
     warnings.push(message);
   }
 
+  const executables = parseOrgExecutables(document.executables);
+  const binDeploy = parseBinDeploy(document.bin_deploy);
+  warnings.push(...executables.warnings);
+
   return {
     name: typeof document.name === "string" ? document.name : "",
     version: typeof document.version === "string" ? document.version : "",
@@ -353,7 +372,81 @@ export function parseApmPolicyDocument(raw: string, filePath: string): ApmPolicy
     mcpDeny: stringList(mcp.deny, "mcp.deny"),
     trustTransitive: mcp.trust_transitive === undefined ? false : mcp.trust_transitive === true,
     contentTypesAllow,
+    executables,
+    binDeployDenyAll: binDeploy.denyAll,
+    binDeployDeny: binDeploy.deny,
+    binDeployNonEmpty: binDeploy.nonEmpty,
     warnings,
+  };
+}
+
+function emptyOrgExecutables(present: boolean, nonEmpty: boolean): OrgExecutablePolicy {
+  return {
+    present,
+    nonEmpty,
+    denyAll: false,
+    deny: [],
+    require: [],
+    recommend: [],
+    enforce: [],
+    warnings: [],
+  };
+}
+
+export function parseOrgExecutables(value: unknown): OrgExecutablePolicy {
+  if (value === undefined) {
+    return emptyOrgExecutables(false, false);
+  }
+  if (value === null) {
+    return emptyOrgExecutables(true, false);
+  }
+  if (!isRecord(value)) {
+    throw new PolicyError("executables must be a mapping");
+  }
+  const nonEmpty = Object.keys(value).length > 0;
+  const deny = stringList(value.deny, "executables.deny") ?? [];
+  const require = stringList(value.require, "executables.require") ?? [];
+  const recommend = stringList(value.recommend, "executables.recommend") ?? [];
+  const enforce = stringList(value.enforce, "executables.enforce") ?? [];
+  const warnings: string[] = [];
+  if (enforce.length > 0) {
+    warnings.push(
+      "executables.enforce is accepted but inert in this release; treated as recommend",
+    );
+  }
+  if (value.deny_all !== undefined && value.deny_all !== null && typeof value.deny_all !== "boolean") {
+    throw new PolicyError("executables.deny_all must be a boolean");
+  }
+  return {
+    present: true,
+    nonEmpty,
+    denyAll: value.deny_all === true,
+    deny,
+    require,
+    recommend: [...new Set([...recommend, ...enforce])],
+    enforce,
+    warnings,
+  };
+}
+
+function parseBinDeploy(value: unknown): {
+  denyAll: boolean;
+  deny: string[];
+  nonEmpty: boolean;
+} {
+  if (value === undefined || value === null) {
+    return { denyAll: false, deny: [], nonEmpty: false };
+  }
+  if (!isRecord(value)) {
+    throw new PolicyError("bin_deploy must be a mapping");
+  }
+  if (value.deny_all !== undefined && value.deny_all !== null && typeof value.deny_all !== "boolean") {
+    throw new PolicyError("bin_deploy.deny_all must be a boolean");
+  }
+  return {
+    denyAll: value.deny_all === true,
+    deny: stringList(value.deny, "bin_deploy.deny") ?? [],
+    nonEmpty: Object.keys(value).length > 0,
   };
 }
 

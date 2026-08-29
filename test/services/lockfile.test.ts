@@ -78,6 +78,22 @@ describe("lockfile", () => {
     expect(readLockfile(ctx.projectDir)?.environment).toBe("shared");
   });
 
+  it("records exec_status on locked dependencies", async () => {
+    await buildGraph();
+    const result = resolveComposition({ rootSelectors: ["root"] });
+    writeLockfile(
+      ctx.projectDir,
+      lockfileFromResolution(result, {
+        execStatuses: { base: "gated_pending_approval" },
+      }),
+    );
+    const lock = readLockfile(ctx.projectDir);
+    expect(lock?.plugins[0]?.exec_status).toBe("gated_pending_approval");
+    const raw = readFileSync(lockfilePath(ctx.projectDir), "utf8");
+    expect(raw).toContain("exec_status: gated_pending_approval");
+    expect(raw).not.toContain("x-harnesstap");
+  });
+
   it("round-trips through read and reports locked versions", async () => {
     await buildGraph();
     const result = resolveComposition({ rootSelectors: ["root"] });

@@ -8,6 +8,7 @@ import type { McpServerMetadata, Resource } from "../types.js";
 import { PACKAGE_VERSION } from "../version.js";
 import { recoverOriginLocator } from "./plugin-origin-locator.js";
 import { canonicalApmRepoUrl } from "./apm-git-resolve.js";
+import type { ExecStatus } from "./executable-trust.js";
 import { resourceFingerprint, resolutionKey } from "./resolve/resource-resolution.js";
 import type { ResolutionResult, SelectedPlugin } from "./resolve/types.js";
 
@@ -32,6 +33,7 @@ export interface LockEntry {
   resolved_tag?: string;
   virtual_path?: string;
   content_hash?: string;
+  exec_status?: ExecStatus;
 }
 
 export interface LockMcpServer {
@@ -66,6 +68,7 @@ export interface LockfileFromResolutionExtras {
   environment?: string;
   deployedFiles?: Array<{ path: string; content: string }>;
   gitLocks?: ApmGitLockFields[];
+  execStatuses?: Record<string, ExecStatus>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -294,6 +297,9 @@ export function lockfileFromResolution(
             path: plugin.path,
             content_hash: integrity,
             ...gitFieldsForPlugin(plugin.pluginId),
+            ...(extras.execStatuses?.[plugin.name]
+              ? { exec_status: extras.execStatuses[plugin.name] }
+              : {}),
           },
           extras.gitLocks,
         );
@@ -323,6 +329,7 @@ function serializeLockDependency(entry: LockEntry): Record<string, unknown> {
     ...(entry.resolved_tag ? { resolved_tag: entry.resolved_tag } : {}),
     ...(entry.virtual_path ? { virtual_path: entry.virtual_path } : {}),
     ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
+    ...(entry.exec_status ? { exec_status: entry.exec_status } : {}),
   };
 }
 
@@ -361,6 +368,7 @@ export function writeLockfile(projectRoot: string, lock: Lockfile): void {
       ...(entry.resolved_tag ? { resolved_tag: entry.resolved_tag } : {}),
       ...(entry.virtual_path ? { virtual_path: entry.virtual_path } : {}),
       ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
+      ...(entry.exec_status ? { exec_status: entry.exec_status } : {}),
     })),
   };
   writeFileSync(
@@ -405,7 +413,20 @@ function parseHtPluginEntry(entry: Record<string, unknown>): LockEntry {
     ...(typeof entry.resolved_tag === "string" ? { resolved_tag: entry.resolved_tag } : {}),
     ...(typeof entry.virtual_path === "string" ? { virtual_path: entry.virtual_path } : {}),
     ...(typeof entry.content_hash === "string" ? { content_hash: entry.content_hash } : {}),
+    ...(parseExecStatus(entry.exec_status) ? { exec_status: parseExecStatus(entry.exec_status) } : {}),
   };
+}
+
+function parseExecStatus(value: unknown): ExecStatus | undefined {
+  switch (value) {
+    case "deployed":
+    case "gated_pending_approval":
+    case "denied":
+    case "absent":
+      return value;
+    default:
+      return undefined;
+  }
 }
 
 function parseApmDependencyEntry(entry: Record<string, unknown>): LockEntry {
@@ -423,6 +444,7 @@ function parseApmDependencyEntry(entry: Record<string, unknown>): LockEntry {
     resolved_tag: entry.resolved_tag,
     virtual_path: entry.virtual_path,
     content_hash: entry.content_hash,
+    exec_status: entry.exec_status,
   });
 }
 

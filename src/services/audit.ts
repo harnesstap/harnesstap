@@ -8,9 +8,15 @@ import {
 import {
   buildAuditInstallPlan,
   loadAndEvaluateProjectPolicy,
+  loadProjectPolicy,
   PolicyError,
   type PolicyEvaluation,
 } from "./apm-policy.js";
+import {
+  buildExecutableTrustContext,
+  findRequiredExecutableViolations,
+  installedTrustReports,
+} from "./executable-trust.js";
 import {
   diffDeployedFileHashes,
   type DeployedHashIssue,
@@ -172,13 +178,38 @@ function evaluateAuditPolicy(
       mcpDependencies: manifest?.mcpDependencies,
       ...(lock ? { lock } : {}),
     });
-    return loadAndEvaluateProjectPolicy({
+    const evaluation = loadAndEvaluateProjectPolicy({
       projectRoot,
       ...(options.policy ? { policyPath: options.policy } : {}),
       ...(manifest?.policyPin ? { pin: manifest.policyPin } : {}),
       requirePolicy: options.ci === true && options.requirePolicy === true,
       plan,
     });
+    const loaded = loadProjectPolicy({
+      projectRoot,
+      ...(options.policy ? { policyPath: options.policy } : {}),
+      ...(manifest?.policyPin ? { pin: manifest.policyPin } : {}),
+      requirePolicy: options.ci === true && options.requirePolicy === true,
+    });
+    const trust = buildExecutableTrustContext({ projectRoot, loaded });
+    const reports = installedTrustReports(trust, {
+      ...(lock ? { lock } : {}),
+    });
+    const required = findRequiredExecutableViolations({
+      context: trust,
+      require: loaded.policy?.executables.require ?? [],
+      ...(lock ? { lock } : {}),
+      reports,
+    });
+    if (required.length === 0) {
+      return evaluation;
+    }
+    const violations = [...evaluation.violations, ...required];
+    return {
+      ...evaluation,
+      violations,
+      blocks: evaluation.blocks || options.ci === true,
+    };
   } catch (error) {
     if (error instanceof PolicyError) {
       return {

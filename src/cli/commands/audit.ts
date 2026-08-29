@@ -176,11 +176,11 @@ export function registerAuditCommand(root: Command): void {
   root
     .command("audit")
     .description(
-      "Scan a project for hidden Unicode, lockfile hashes, and apm-policy.yml",
+      "Scan a project for hidden Unicode, lockfile hashes, apm-policy.yml, and executable trust",
     )
     .option("--project <path>", "Project directory", ".")
     .option("--file <path>", "Scan a single file instead of the project")
-    .option("--ci", "CI gate: fail on critical Unicode, lockfile hash drift, or policy")
+    .option("--ci", "CI gate: fail on critical Unicode, lockfile hash drift, policy, or untrusted required executables")
     .option("--policy <path>", "Policy file (default: apm-policy.yml at project root)")
     .option("--require-policy", "With --ci, fail if no policy file is present")
     .option("--strip", "Remove critical and warning hidden-Unicode characters")

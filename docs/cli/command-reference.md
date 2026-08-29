@@ -177,6 +177,7 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 - With no selector, apply is the same loop as `ht install`: it reads `apm.yml`. Git entries in `dependencies.apm` resolve to an exact commit, fetch that SHA, and record `repo_url` / `resolved_commit` (plus `path` when set) in `apm.lock.yaml`. A later apply without `--update` replays the lock. See [Apply git dependencies](use/apply-git-deps.md) and the [Use ramp: install a project](use/install.md).
 - With no plugin selector, apply compiles local `.apm/` primitives (and root primitive dirs when `.apm/` is absent) into the target harness directories via the existing writers. `apm.yml` `targets` / `target` select harnesses; `compilation.target` is used when those fields are omitted. See the [Use ramp: apply to a project](use/apply.md).
 - Before writing, apply scans generated files for hidden Unicode. Critical findings block apply unless `--force` is passed; warnings are printed and apply continues. When `apm.lock.yaml` already has `local_deployed_file_hashes` and `--update` is not set, apply rehashes the generated tree and fails closed on mismatch, extra, or missing files.
+- When `executables:` is opted in (project block or non-empty policy `executables:`), unapproved dependency hooks / bin / self-defined MCP are parked. Apply still succeeds and prints `ht approve <ref>`. The lock records `exec_status`.
 
 `ht layer …` is a hidden deprecated alias for `ht plugin …` for one release; prefer `ht plugin` and top-level `ht apply`.
 
@@ -216,7 +217,7 @@ ht audit --strip --dry-run
 Key options:
 
 - `--file <path>` — scan one file
-- `--ci` — fail on critical Unicode, lockfile hash mismatch / extra / missing, or blocking policy
+- `--ci` — fail on critical Unicode, lockfile hash mismatch / extra / missing, blocking policy, or `required-executable-untrusted`
 - `--policy <path>` — policy file (default `apm-policy.yml`)
 - `--require-policy` — with `--ci`, fail if no policy file is present
 - `--strip` — remove critical and warning hidden characters (preserves emoji)
@@ -224,7 +225,40 @@ Key options:
 - `--project <path>` — project directory (default `.`)
 - `--format json`
 
-`--ci` cannot be combined with `--strip`, `--file`, or `--dry-run`. `--dry-run` requires `--strip`. `--require-policy` requires `--ci`.
+`--ci` cannot be combined with `--strip`, `--file`, or `--dry-run`. `--dry-run` requires `--strip`. `--require-policy` requires `--ci`. Required-but-untrusted executables fail `--ci` with `required-executable-untrusted`.
+
+## approve
+
+Approve executable primitives from dependency packages. Writes project `apm.yml` `executables.allow` by default.
+
+```bash
+ht approve owner/repo
+ht approve --user owner/repo
+ht approve --pending
+ht approve --all
+ht approve --recommended
+ht approve --list
+```
+
+`--user` writes `~/.harnesstap/config.jsonc` (can only narrow past an org or project deny). Grant keys are `owner/repo` or `owner/repo#version` (version-blind in v1).
+
+## deny
+
+Block executable primitives. Writes project `apm.yml` `executables.deny` by default; `--user` writes the personal store.
+
+```bash
+ht deny owner/repo
+ht deny --user owner/repo
+```
+
+## policy explain
+
+Print the effective executable-trust decision for one package: allowed or blocked per type, deciding layer, and shadowed layers.
+
+```bash
+ht policy explain owner/repo
+ht policy explain owner/repo --format json
+```
 
 ## plugin (`l`)
 
