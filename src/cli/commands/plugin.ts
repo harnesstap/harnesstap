@@ -859,7 +859,7 @@ export async function handleProjectApplyCommand(
   }
 
   const manifestForPolicy = findProjectConfig(projectRoot);
-  let executableTrust = applyExecutableTrustGate({
+  const executableTrust = applyExecutableTrustGate({
     projectRoot,
     resolution: applyBundle.resolution,
     resources: applyResources,

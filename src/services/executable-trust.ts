@@ -230,7 +230,7 @@ export function loadProjectExecutables(projectRoot: string): ProjectExecutables 
   if (!isRecord(parsed)) {
     return { present: false, allow: {}, deny: {} };
   }
-  if (!Object.prototype.hasOwnProperty.call(parsed, "executables")) {
+  if (!Object.hasOwn(parsed, "executables")) {
     return { present: false, allow: {}, deny: {} };
   }
   return parseProjectExecutables(parsed.executables);
@@ -619,11 +619,14 @@ export function writeProjectExecutableGrant(options: {
   const document = existsSync(manifestPath)
     ? readYamlMapping(manifestPath)
     : { name: "project", version: "1.0.0" };
-  const current = isRecord(document.executables) ? { ...document.executables } : {};
-  const side = isRecord(current[options.side]) ? { ...current[options.side] } : {};
+  const executablesRaw = document.executables;
+  const current: Record<string, unknown> = isRecord(executablesRaw) ? { ...executablesRaw } : {};
+  const sideRaw = current[options.side];
+  const side: Record<string, unknown> = isRecord(sideRaw) ? { ...sideRaw } : {};
   for (const ref of options.refs) {
+    const existing = side[ref];
     side[ref] = mergeGrantFlags(
-      isRecord(side[ref]) ? parseTypeFlags(side[ref], `executables.${options.side}.${ref}`) : undefined,
+      isRecord(existing) ? parseTypeFlags(existing, `executables.${options.side}.${ref}`) : undefined,
       options.types,
     );
   }
@@ -655,11 +658,14 @@ export function writeUserExecutableGrant(options: {
 }): void {
   const dir = options.harnesstapDir ?? getHarnesstapDir();
   const document = readUserConfigObject(dir);
-  const current = isRecord(document.executables) ? { ...document.executables } : {};
-  const side = isRecord(current[options.side]) ? { ...current[options.side] } : {};
+  const executablesRaw = document.executables;
+  const current: Record<string, unknown> = isRecord(executablesRaw) ? { ...executablesRaw } : {};
+  const sideRaw = current[options.side];
+  const side: Record<string, unknown> = isRecord(sideRaw) ? { ...sideRaw } : {};
   for (const ref of options.refs) {
+    const existing = side[ref];
     side[ref] = mergeGrantFlags(
-      isRecord(side[ref]) ? parseTypeFlags(side[ref], `executables.${options.side}.${ref}`) : undefined,
+      isRecord(existing) ? parseTypeFlags(existing, `executables.${options.side}.${ref}`) : undefined,
       options.types,
     );
   }
