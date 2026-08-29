@@ -43,4 +43,6 @@ A later `ht install` or `ht apply` without `--update` reuses the locked commit. 
 
 Apply deploys only lockfile-attested files. Path traversal, symlinks, and SHA-256 drift fail closed. Refresh hashes with `ht apply --update`.
 
+`apm-policy.yml` can restrict git hosts (and catalog / local sources) before apply writes. Re-check in CI with `ht audit --ci`.
+
 See also: [Install a project](./install.md), [Command reference](../command-reference.md), [Audit a project](./audit.md), [Pack a bundle](../author/pack.md).

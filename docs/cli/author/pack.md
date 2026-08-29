@@ -49,6 +49,6 @@ ht apply ./build/my-pkg
 ht apply ./dist/my-pkg-1.0.0.zip
 ```
 
-Apply rehashes every `pack.bundle_files` entry and fails closed on mismatch, extra files, missing files, or symlinks. `plugin.json` is bundle metadata and is never deployed as a harness file.
+Apply rehashes every `pack.bundle_files` entry and fails closed on mismatch, extra files, missing files, or symlinks. `plugin.json` is bundle metadata and is never deployed as a harness file. If the consumer project has `apm-policy.yml`, apply evaluates it before writing; `ht audit --ci` is the CI entry.
 
-See also: [Command reference](../command-reference.md), [Plugins](../concepts/plugins.md).
+See also: [Command reference](../command-reference.md), [Plugins](../concepts/plugins.md), [Audit a project](../use/audit.md).

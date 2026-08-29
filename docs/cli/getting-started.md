@@ -61,7 +61,7 @@ Apply a public catalog baseline in a few minutes.
    ht help
    ```
 
-When a repository has a git `origin`, `ht apply` stores a snapshot before writing files. Restore it later with `ht revert`.
+When a repository has a git `origin`, `ht apply` stores a snapshot before writing files. Restore it later with `ht revert`. `ht apply` also evaluates `apm-policy.yml` when present; use `ht audit --ci` in CI for the same policy plus Unicode/hash checks.
 
 Starter plugins such as `engineering-foundation` live in the **public cloud catalog**, not inside the npm package. To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSTAP_PUBLIC_CATALOG=0`.
 

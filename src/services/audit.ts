@@ -6,10 +6,17 @@ import {
   listContainedFiles,
 } from "../utils/path-containment.js";
 import {
+  buildAuditInstallPlan,
+  loadAndEvaluateProjectPolicy,
+  PolicyError,
+  type PolicyEvaluation,
+} from "./apm-policy.js";
+import {
   diffDeployedFileHashes,
   type DeployedHashIssue,
   readLockfile,
 } from "./lockfile.js";
+import { findProjectConfig } from "./project-config.js";
 import {
   hasCriticalUnicode,
   scanUnicodeBuffer,
@@ -45,12 +52,15 @@ export interface AuditOptions {
   ci?: boolean;
   strip?: boolean;
   dryRun?: boolean;
+  policy?: string;
+  requirePolicy?: boolean;
 }
 
 export interface AuditResult {
   findings: UnicodeScanFinding[];
   summary: Record<UnicodeScanSeverity, number>;
   integrity: { ok: boolean; issues: DeployedHashIssue[] };
+  policy: PolicyEvaluation;
   stripped: Array<{ path: string; removed: number }>;
   scannedFiles: string[];
   exitCode: number;
@@ -138,13 +148,64 @@ function integrityForLock(
   return { ok: issues.length === 0, issues };
 }
 
+function skippedPolicy(): PolicyEvaluation {
+  return {
+    status: "skipped",
+    skippedReason: "no-policy",
+    enforcement: "off",
+    warnings: [],
+    violations: [],
+    blocks: false,
+  };
+}
+
+function evaluateAuditPolicy(
+  projectRoot: string,
+  options: AuditOptions,
+): PolicyEvaluation {
+  try {
+    const manifest = findProjectConfig(projectRoot);
+    const lock = readLockfile(projectRoot);
+    const plan = buildAuditInstallPlan({
+      projectRoot,
+      apmDependencies: manifest?.apmDependencies,
+      mcpDependencies: manifest?.mcpDependencies,
+      ...(lock ? { lock } : {}),
+    });
+    return loadAndEvaluateProjectPolicy({
+      projectRoot,
+      ...(options.policy ? { policyPath: options.policy } : {}),
+      ...(manifest?.policyPin ? { pin: manifest.policyPin } : {}),
+      requirePolicy: options.ci === true && options.requirePolicy === true,
+      plan,
+    });
+  } catch (error) {
+    if (error instanceof PolicyError) {
+      return {
+        status: "failed",
+        enforcement: "block",
+        warnings: [],
+        violations: error.violations.length > 0
+          ? error.violations
+          : [{ code: "policy-parse", message: error.message }],
+        blocks: true,
+      };
+    }
+    throw error;
+  }
+}
+
 function exitCodeFor(result: {
   ci: boolean;
   strip: boolean;
   dryRun: boolean;
   findings: UnicodeScanFinding[];
   integrityOk: boolean;
+  policyBlocks: boolean;
 }): number {
+  if (result.policyBlocks) {
+    return 1;
+  }
   if (result.ci) {
     return hasCriticalUnicode(result.findings) || !result.integrityOk ? 1 : 0;
   }
@@ -169,6 +230,15 @@ export function auditProject(options: AuditOptions = {}): AuditResult {
   if (options.dryRun && !options.strip) {
     throw new AuditUsageError("--dry-run requires --strip");
   }
+  if (options.requirePolicy && !options.ci) {
+    throw new AuditUsageError("--require-policy requires --ci");
+  }
+  if (options.requirePolicy && options.file) {
+    throw new AuditUsageError("--require-policy cannot be combined with --file");
+  }
+  if (options.requirePolicy && options.strip) {
+    throw new AuditUsageError("--require-policy cannot be combined with --strip");
+  }
 
   const projectRoot = resolve(options.projectRoot ?? process.cwd());
   const scannedFiles = options.file
@@ -189,8 +259,12 @@ export function auditProject(options: AuditOptions = {}): AuditResult {
     ? integrityForLock(projectRoot)
     : { ok: true, issues: [] as DeployedHashIssue[] };
 
+  const policy = options.file
+    ? skippedPolicy()
+    : evaluateAuditPolicy(projectRoot, options);
+
   const stripped: Array<{ path: string; removed: number }> = [];
-  if (options.strip) {
+  if (options.strip && !policy.blocks) {
     for (const relativePath of scannedFiles) {
       const content = readRelativeText(projectRoot, relativePath);
       if (content === undefined) continue;
@@ -208,6 +282,7 @@ export function auditProject(options: AuditOptions = {}): AuditResult {
     findings,
     summary,
     integrity,
+    policy,
     stripped,
     scannedFiles,
     exitCode: exitCodeFor({
@@ -216,6 +291,7 @@ export function auditProject(options: AuditOptions = {}): AuditResult {
       dryRun: options.dryRun === true,
       findings,
       integrityOk: integrity.ok,
+      policyBlocks: policy.blocks,
     }),
   };
 }

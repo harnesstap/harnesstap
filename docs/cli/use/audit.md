@@ -1,15 +1,16 @@
 ---
-description: Audit a project for hidden Unicode and lockfile hash drift.
+description: Audit a project for hidden Unicode, lockfile hash drift, and apm-policy.yml.
 ---
 
 # Audit a project (Use)
 
-`ht audit` is the on-demand security check for files that agents will read. Built-in protection already runs on `ht apply` (and `ht pack`); use audit locally or in CI to re-scan a tree, inspect a file obtained outside HarnessTap, or remediate hidden characters.
+`ht audit` is the on-demand security check for files that agents will read. Built-in protection already runs on `ht apply` (and `ht pack`); use audit locally or in CI to re-scan a tree, inspect a file obtained outside HarnessTap, or remediate hidden characters. When `apm-policy.yml` is present, audit loads it and evaluates the install plan (manifest + lockfile + local tree).
 
 ```bash
 ht audit
 ht audit --file .cursorrules
 ht audit --ci --format json
+ht audit --ci --require-policy
 ht audit --strip --dry-run
 ```
 
@@ -24,13 +25,29 @@ With no flags, audit scans lockfile-recorded deployed files (`local_deployed_fil
 | Flag | Purpose |
 | ---- | ------- |
 | `--file <path>` | Scan a single file |
-| `--ci` | Fail on critical hidden Unicode or lockfile SHA-256 mismatch / extra / missing |
+| `--ci` | Fail on critical hidden Unicode, lockfile SHA-256 mismatch / extra / missing, or blocking policy |
+| `--policy <path>` | Policy file (default `apm-policy.yml` at the project root) |
+| `--require-policy` | With `--ci`, fail if no policy file is present |
 | `--strip` | Remove critical and warning characters (preserves emoji ZWJ sequences) |
 | `--dry-run` | Preview `--strip` without writing |
 | `--project <path>` | Project directory (default `.`) |
 | `--format json` | Machine-readable report |
 
-`--ci` cannot be combined with `--strip`, `--file`, or `--dry-run`. `--dry-run` requires `--strip`.
+`--ci` cannot be combined with `--strip`, `--file`, or `--dry-run`. `--dry-run` requires `--strip`. `--require-policy` requires `--ci`.
+
+## Policy
+
+`apm-policy.yml` at the project root is optional. Without it, audit still runs Unicode and path checks and reports `policy: skipped`. A pinned `policy.hash` on `apm.yml` is fail-closed: missing or mismatched policy bytes fail, including under `--ci`.
+
+Slice 1 evaluates:
+
+- **Sources** — `dependencies.allow` / `deny` against git hosts (`github.com/*`), catalog identities, and local paths
+- **Primitives** — `manifest.content_types.allow` (`skill`, `agent`, `command`, `hook`, `instruction`, `mcp`)
+- **Transitive MCP** — undeclared MCP from depth > 0 fails unless `mcp.allow` lists it or `mcp.trust_transitive: true`
+
+`enforcement: block` (and load/hash failures) fail `--ci` and abort `ht apply` before any byte is written. `enforcement: warn` reports violations without changing the exit code.
+
+See also: [Apply to a project](./apply.md).
 
 ## Exit codes
 

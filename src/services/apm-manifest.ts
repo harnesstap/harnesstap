@@ -5,6 +5,7 @@ import {
   type ParsedApmDependency,
   type ParsedMcpDependency,
 } from "./apm-dependencies.js";
+import { parseApmPolicyPin, type ApmPolicyPin } from "./apm-policy.js";
 import { inspectApmOverlay, type ApmOverlayInfo } from "./apm-overlay.js";
 import { collectApmTargetTokens, mapApmTargets } from "./apm-targets.js";
 import type { ProjectConfig } from "./project-config.js";
@@ -50,6 +51,7 @@ export interface ApmManifestFields {
   skippedTargets: string[];
   apmDependencies: ParsedApmDependency[];
   mcpDependencies: ParsedMcpDependency[];
+  policyPin?: ApmPolicyPin;
   overlay?: ApmOverlayInfo;
   compilation?: ApmCompilationConfig;
   warnings: string[];
@@ -159,6 +161,7 @@ export function extractApmManifestFields(
   }
 
   const deps = collectApmAndDevDependencies(document);
+  const policyPin = parseApmPolicyPin(document.policy);
   const vendor = htFieldsFromDocument(document);
 
   const rest: Record<string, unknown> = {};
@@ -186,6 +189,7 @@ export function extractApmManifestFields(
     skippedTargets: targetMapping.skippedTargets,
     apmDependencies: deps.apm,
     mcpDependencies: deps.mcp,
+    ...(policyPin ? { policyPin } : {}),
     ...(overlay ? { overlay } : {}),
     ...(compilation ? { compilation } : {}),
     warnings,
