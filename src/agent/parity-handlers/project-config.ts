@@ -72,6 +72,7 @@ export function summarizeConfigForJson(config: ResolvedProjectConfig) {
       source: dependency.sourceKind,
       selector: dependency.applySelector,
       ...(dependency.ref ? { ref: dependency.ref } : {}),
+      ...(dependency.path ? { path: dependency.path } : {}),
     })),
     mcp_dependencies: config.mcpDependencies.map((dependency) => ({
       name: dependency.name,

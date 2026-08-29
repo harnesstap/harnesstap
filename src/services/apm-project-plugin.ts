@@ -12,7 +12,12 @@ import {
   normalizeResourceInput,
   upsertResource,
 } from "../models/resource.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import type { McpServerMetadata } from "../types.js";
+import { importApmGitCheckout } from "./apm-git-import.js";
+import { resolveAndFetchApmGitDependency } from "./apm-git-resolve.js";
+import type { ApmGitLockFields } from "./lockfile.js";
+import { readLockfile } from "./lockfile.js";
 import { addDependency } from "./plugin-dependency.js";
 import {
   importProjectConfigEnvironments,
@@ -103,7 +108,10 @@ function attachOverlaySkills(pluginId: string, config: ResolvedProjectConfig): v
   }
 }
 
-export function materializeApmProjectPlugin(config: ResolvedProjectConfig): string {
+export function materializeApmProjectPlugin(
+  config: ResolvedProjectConfig,
+  importedGit: Map<string, { name: string; version: string }> = new Map(),
+): string {
   const preferred = config.apm_name ?? "apm-project";
   const name = allocateApmProjectPluginName(preferred);
   const plugin = ensureProjectPlugin(
@@ -113,9 +121,19 @@ export function materializeApmProjectPlugin(config: ResolvedProjectConfig): stri
   );
 
   for (const dependency of config.apmDependencies) {
-    const ref =
-      dependency.sourceKind === "git" ? dependency.originRef : dependency.applySelector;
-    addDependency(plugin.id, ref, {
+    if (dependency.sourceKind === "git") {
+      const imported = importedGit.get(gitDependencyKey(dependency.originRef, dependency.path));
+      if (!imported) {
+        throw new Error(
+          `Git dependency ${dependency.originRef} was not materialized before apply`,
+        );
+      }
+      addDependency(plugin.id, imported.name, {
+        versionConstraint: imported.version,
+      });
+      continue;
+    }
+    addDependency(plugin.id, dependency.applySelector, {
       ...(dependency.versionConstraint
         ? { versionConstraint: dependency.versionConstraint }
         : {}),
@@ -127,12 +145,59 @@ export function materializeApmProjectPlugin(config: ResolvedProjectConfig): stri
   return plugin.name;
 }
 
+function gitDependencyKey(originRef: string, path?: string): string {
+  return path ? `${originRef}#${path}` : originRef;
+}
+
+export async function materializeApmGitDependencies(
+  config: ResolvedProjectConfig,
+  options: { update?: boolean; harnesstapDir?: string } = {},
+): Promise<{ imported: Map<string, { name: string; version: string }>; gitLocks: ApmGitLockFields[] }> {
+  const imported = new Map<string, { name: string; version: string }>();
+  const gitLocks: ApmGitLockFields[] = [];
+  const gitDeps = config.apmDependencies.filter((dependency) => dependency.sourceKind === "git");
+  if (gitDeps.length === 0) {
+    return { imported, gitLocks };
+  }
+
+  const lock = options.update ? undefined : readLockfile(config.rootPath);
+  const harnesstapDir = options.harnesstapDir ?? getHarnesstapDir();
+
+  for (const dependency of gitDeps) {
+    const fetched = resolveAndFetchApmGitDependency(dependency, harnesstapDir, {
+      ...(options.update ? { update: true } : {}),
+      ...(lock ? { lock } : {}),
+    });
+    const { plugin, resolution } = await importApmGitCheckout(fetched, fetched.checkoutRoot);
+    imported.set(gitDependencyKey(dependency.originRef, dependency.path), {
+      name: plugin.name,
+      version: plugin.version,
+    });
+    gitLocks.push({
+      name: plugin.name,
+      repo_url: resolution.repoUrl,
+      resolved_commit: resolution.commit,
+      ...(resolution.resolvedRef ? { resolved_ref: resolution.resolvedRef } : {}),
+      ...(resolution.constraint ? { constraint: resolution.constraint } : {}),
+      ...(resolution.resolvedTag ? { resolved_tag: resolution.resolvedTag } : {}),
+      ...(resolution.virtualPath ? { virtual_path: resolution.virtualPath } : {}),
+    });
+  }
+
+  return { imported, gitLocks };
+}
+
 function hasManifestInstallables(config: ResolvedProjectConfig): boolean {
   return (
     config.apmDependencies.length > 0
     || config.mcpDependencies.length > 0
     || (config.overlay?.skills.length ?? 0) > 0
   );
+}
+
+export interface ManifestApplyResolution {
+  selectors: string[];
+  gitLocks: ApmGitLockFields[];
 }
 
 export async function resolveApplySelectorsFromProjectManifest(
@@ -142,8 +207,9 @@ export async function resolveApplySelectorsFromProjectManifest(
     pull?: boolean;
     account?: string;
     baseUrl?: string;
+    update?: boolean;
   } = {},
-): Promise<string[] | null> {
+): Promise<ManifestApplyResolution | null> {
   const config = findProjectConfig(projectRoot);
   if (!config) {
     return null;
@@ -154,9 +220,14 @@ export async function resolveApplySelectorsFromProjectManifest(
   }
 
   const selectors: string[] = [];
+  let gitLocks: ApmGitLockFields[] = [];
 
   if (hasManifestInstallables(config)) {
-    selectors.push(materializeApmProjectPlugin(config));
+    const git = await materializeApmGitDependencies(config, {
+      ...(options.update ? { update: true } : {}),
+    });
+    gitLocks = git.gitLocks;
+    selectors.push(materializeApmProjectPlugin(config, git.imported));
   }
 
   if (config.default_profile) {
@@ -190,5 +261,5 @@ export async function resolveApplySelectorsFromProjectManifest(
   if (selectors.length === 0) {
     return null;
   }
-  return selectors;
+  return { selectors, gitLocks };
 }

@@ -139,6 +139,7 @@ import {
   lockIsUsable,
   readLockfile,
   writeLockfile,
+  type ApmGitLockFields,
 } from "../../services/lockfile.js";
 import {
   gateDeployFiles,
@@ -390,14 +391,24 @@ export async function handleProjectApplyCommand(
   const projectRoot = resolve(opts.project);
 
   let resolvedPluginNames: string[] = pluginNames.length > 0 ? [...pluginNames] : [];
+  let manifestGitLocks: ApmGitLockFields[] = [];
   if (resolvedPluginNames.length === 0) {
-    const fromManifest = await resolveApplySelectorsFromProjectManifest(projectRoot, {
-      dryRun: opts.dryRun,
-      account: opts.account,
-      baseUrl: opts.baseUrl,
-    });
-    if (fromManifest && fromManifest.length > 0) {
-      resolvedPluginNames = fromManifest;
+    let fromManifest: Awaited<ReturnType<typeof resolveApplySelectorsFromProjectManifest>>;
+    try {
+      fromManifest = await resolveApplySelectorsFromProjectManifest(projectRoot, {
+        dryRun: opts.dryRun,
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        update: opts.update,
+      });
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    if (fromManifest && fromManifest.selectors.length > 0) {
+      resolvedPluginNames = fromManifest.selectors;
+      manifestGitLocks = fromManifest.gitLocks;
       const manifest = findProjectConfig(projectRoot);
       if (outputFormat === "human") {
         for (const warning of manifest?.warnings ?? []) {
@@ -944,6 +955,7 @@ export async function handleProjectApplyCommand(
         deployedFiles: generated.flatMap((result) =>
           result.files.map((file) => ({ path: file.path, content: file.content })),
         ),
+        ...(manifestGitLocks.length > 0 ? { gitLocks: manifestGitLocks } : {}),
       }),
     );
   }
