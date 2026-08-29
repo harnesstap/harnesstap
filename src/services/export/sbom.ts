@@ -2,6 +2,7 @@ import type { LockEntry, Lockfile } from "../lockfile.js";
 import {
   LICENSE_KIND_EXPRESSION,
   LICENSE_KIND_ID,
+  LICENSE_KIND_NAMED,
   classifyDeclaredLicense,
 } from "./license.js";
 import {

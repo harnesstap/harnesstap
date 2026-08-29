@@ -71,7 +71,7 @@ describe("SBOM export", () => {
     expect(doc.bomFormat).toBe("CycloneDX");
     expect(doc.specVersion).toBe("1.5");
     expect(doc.components.map((component) => component.purl)).toEqual([
-      "pkg:generic/zeta@sha256:" + "b".repeat(64),
+      `pkg:generic/zeta@sha256:${"b".repeat(64)}`,
       "pkg:github/acme/dual@c0ffee00",
       "pkg:github/acme/git-utils@def789ghi012",
       "pkg:github/acme/undeclared@abc123",
