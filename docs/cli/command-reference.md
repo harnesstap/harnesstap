@@ -158,13 +158,31 @@ Project onboarding from repo-root `apm.yml`. Same loop as `apply` with no plugin
 ht install
 ht install --project .
 ht install --target cursor,claude
+ht install --mcp io.github.github/github-mcp-server --target cursor
 ht install --harness claude-code,cursor
 ht install --dry-run
 ht install --update
 ht install --force
 ```
 
-Reads `dependencies.apm` / `dependencies.mcp`, compiles local `.apm/` primitives, writes `apm.lock.yaml`, and materializes the resolved target harness directories. Target resolution: `--target` / `--all` / `--harness`, then `targets:` in `apm.yml`, then project/global harness preference, then filesystem auto-detect. Declared `targets:` wins over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Same project-scope flags as apply. Does not take a plugin selector or `--global`. See the [Use ramp: install a project](use/install.md).
+Reads `dependencies.apm` / `dependencies.mcp` (including MCP Registry v0.1 identities such as `io.github.github/github-mcp-server`), compiles local `.apm/` primitives, writes `apm.lock.yaml`, and materializes the resolved target harness directories. Registry strings fetch `GET /v0.1/servers/{id}/versions/latest` from `registry.modelcontextprotocol.io` and emit the same native MCP files HT already writes. Self-defined `registry: false` entries stay inline. `--mcp <id>` appends the identity to `apm.yml` then runs install; a failed install rolls the manifest write back. Target resolution: `--target` / `--all` / `--harness`, then `targets:` in `apm.yml`, then project/global harness preference, then filesystem auto-detect. Declared `targets:` wins over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Same project-scope flags as apply. Does not take a plugin selector or `--global`. See the [Use ramp: install a project](use/install.md).
+
+```bash
+ht install --mcp io.github.github/github-mcp-server --target cursor
+```
+
+## mcp
+
+Discover and install MCP Registry v0.1 servers. Same registry and emit path as `ht install`.
+
+```bash
+ht mcp search github
+ht mcp list
+ht mcp show io.github.github/github-mcp-server
+ht mcp install io.github.github/github-mcp-server --target cursor
+```
+
+`mcp install` is an alias of `ht install --mcp`. Search/list/show call the official registry only. They do not walk `dependencies.apm` of fetched packages.
 
 ## lock export
 

@@ -14,7 +14,6 @@ import {
   upsertResource,
 } from "../models/resource.js";
 import { getHarnesstapDir } from "../db/connection.js";
-import type { McpServerMetadata } from "../types.js";
 import { importApmGitCheckout } from "./apm-git-import.js";
 import { resolveAndFetchApmGitDependency } from "./apm-git-resolve.js";
 import { readDeclaredLicense } from "./export/license.js";
@@ -28,6 +27,7 @@ import {
 } from "./project-config-use.js";
 import type { ResolvedProjectConfig } from "./project-config.js";
 import { findProjectConfig, getProfileEntry } from "./project-config.js";
+import { resolveMcpDependencies } from "./mcp-registry-resolve.js";
 
 export function allocateApmProjectPluginName(preferred: string): string {
   const existing = getPluginByName(preferred);
@@ -55,19 +55,10 @@ function ensureProjectPlugin(name: string, version: string, description: string)
   });
 }
 
-function attachMcpServers(pluginId: string, config: ResolvedProjectConfig): void {
+async function attachMcpServers(pluginId: string, config: ResolvedProjectConfig): Promise<void> {
   const namespace = config.apm_name ?? "apm";
-  for (const mcp of config.mcpDependencies) {
-    const transport: McpServerMetadata["transport"] =
-      mcp.transport ?? (mcp.url ? "http" : "stdio");
-    const metadata: McpServerMetadata = {
-      transport,
-      ...(mcp.command ? { command: mcp.command } : {}),
-      ...(mcp.args ? { args: mcp.args } : {}),
-      ...(mcp.url ? { url: mcp.url } : {}),
-      ...(mcp.env ? { env: mcp.env } : {}),
-      ...(mcp.headers ? { headers: mcp.headers } : {}),
-    };
+  const resolved = await resolveMcpDependencies(config.mcpDependencies);
+  for (const mcp of resolved) {
     const upserted = upsertResource(
       normalizeResourceInput({
         type: "mcp_server",
@@ -75,7 +66,7 @@ function attachMcpServers(pluginId: string, config: ResolvedProjectConfig): void
         namespace,
         description: mcp.registryId ?? "",
         content: "",
-        metadata,
+        metadata: mcp.metadata,
         source: "apm.yml",
         origin_kind: "manual",
         origin_ref: mcp.registryId ?? `apm.yml#mcp:${mcp.name}`,
@@ -110,10 +101,10 @@ function attachOverlayPrimitives(pluginId: string, config: ResolvedProjectConfig
   }
 }
 
-export function materializeApmProjectPlugin(
+export async function materializeApmProjectPlugin(
   config: ResolvedProjectConfig,
   importedGit: Map<string, { name: string; version: string }> = new Map(),
-): string {
+): Promise<string> {
   const preferred = config.apm_name ?? "apm-project";
   const name = allocateApmProjectPluginName(preferred);
   const plugin = ensureProjectPlugin(
@@ -142,7 +133,7 @@ export function materializeApmProjectPlugin(
     });
   }
 
-  attachMcpServers(plugin.id, config);
+  await attachMcpServers(plugin.id, config);
   attachOverlayPrimitives(plugin.id, config);
   return plugin.name;
 }
@@ -234,7 +225,7 @@ export async function resolveApplySelectorsFromProjectManifest(
       ...(options.update ? { update: true } : {}),
     });
     gitLocks = git.gitLocks;
-    selectors.push(materializeApmProjectPlugin(config, git.imported));
+    selectors.push(await materializeApmProjectPlugin(config, git.imported));
   }
 
   if (config.default_profile) {

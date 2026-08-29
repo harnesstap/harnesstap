@@ -11,6 +11,7 @@ import {
 } from "./cli/commands/plugin.js";
 import { registerApplyCommand, registerInstallCommand } from "./cli/commands/apply.js";
 import { registerCompileCommand, registerTargetsCommand } from "./cli/commands/compile.js";
+import { registerMcpCommands } from "./cli/commands/mcp.js";
 import { registerApproveCommand, registerDenyCommand } from "./cli/commands/approve.js";
 import { registerLockCommands } from "./cli/commands/lock.js";
 import { registerPolicyCommands } from "./cli/commands/policy.js";
@@ -39,6 +40,7 @@ registerDeprecatedLayerAlias(program);
 registerMarketplaceCommands(program);
 registerApplyCommand(program);
 registerInstallCommand(program);
+registerMcpCommands(program);
 registerCompileCommand(program);
 registerTargetsCommand(program);
 registerLockCommands(program);

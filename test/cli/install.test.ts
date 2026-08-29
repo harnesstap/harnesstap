@@ -125,6 +125,7 @@ Be kind.
     expect(result.stdout).toContain("--harness");
     expect(result.stdout).toContain("--target");
     expect(result.stdout).toContain("--all");
+    expect(result.stdout).toContain("--mcp");
     expect(result.stdout).not.toMatch(/^\s+--global\b/m);
   });
 });

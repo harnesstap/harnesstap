@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { resolve } from "node:path";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { isProfilePlugin } from "../../constants/profile.js";
@@ -28,9 +29,14 @@ import { ui } from "../../ui/index.js";
 import { formatCommand } from "../shared.js";
 import { CriticalUnicodeError } from "../../services/unicode-scan.js";
 import { handleProjectApplyCommand } from "./plugin.js";
+import { withMcpManifestAppend } from "../../services/apm-mcp-manifest.js";
 
 export type ApplyCommandActionOpts = ApplyCommandOpts & {
   global?: boolean;
+};
+
+export type InstallCommandActionOpts = ApplyCommandActionOpts & {
+  mcp?: string;
 };
 
 function resolveDestinationPlatforms(harnessOption?: string): string[] {
@@ -195,7 +201,7 @@ export function registerApplyCommand(root: Command): void {
 
 export async function handleInstallCommand(
   extraArgs: string[],
-  opts: ApplyCommandActionOpts,
+  opts: InstallCommandActionOpts,
 ): Promise<void> {
   if (extraArgs.length > 0) {
     process.exitCode = 1;
@@ -205,6 +211,27 @@ export async function handleInstallCommand(
         hints: [formatCommand("install"), formatCommand("apply <plugin>")],
       },
     );
+    return;
+  }
+
+  const registryId = opts.mcp?.trim();
+  if (registryId) {
+    try {
+      const result = await withMcpManifestAppend({
+        projectRoot: resolve(opts.project),
+        registryId,
+        dryRun: opts.dryRun,
+        run: () => handleApplyCommand([], opts),
+      });
+      if (opts.dryRun && result.added) {
+        ui.info(`Would add ${registryId} to apm.yml dependencies.mcp`);
+      } else if (result.added && (process.exitCode ?? 0) === 0) {
+        ui.info(`Added ${registryId} to apm.yml dependencies.mcp`);
+      }
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
     return;
   }
 
@@ -219,7 +246,11 @@ export function registerInstallCommand(root: Command): void {
     )
     .allowExcessArguments(true);
   addApplyCommandOptions(install);
-  install.action(async (opts: ApplyCommandActionOpts) => {
+  install.option(
+    "--mcp <id>",
+    "Append an MCP Registry v0.1 identity to apm.yml dependencies.mcp, then install",
+  );
+  install.action(async (opts: InstallCommandActionOpts) => {
     await handleInstallCommand(install.args, opts);
   });
 }

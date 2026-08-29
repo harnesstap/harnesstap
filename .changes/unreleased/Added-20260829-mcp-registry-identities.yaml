@@ -1,0 +1,3 @@
+kind: Added
+body: Resolve MCP Registry v0.1 identities in dependencies.mcp on ht install, and add ht install --mcp / ht mcp search|list|show|install.
+time: 2026-08-29T08:30:00Z

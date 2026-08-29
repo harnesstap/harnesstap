@@ -126,14 +126,51 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Onboard a project from apm.yml (same as apply with no plugin selector)",
     details:
-      "Reads repo-root apm.yml, resolves dependencies.apm / dependencies.mcp, compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Target resolution: --target/--all/--harness, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. Declared targets: win over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
+      "Reads repo-root apm.yml, resolves dependencies.apm / dependencies.mcp (including MCP Registry v0.1 identities such as io.github…), compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Registry strings are fetched from registry.modelcontextprotocol.io and converted to the same native MCP files HT already emits. Self-defined registry: false entries keep command/url as authored. --mcp <id> appends the identity to apm.yml then runs install; a failed install rolls the manifest write back. Target resolution: --target/--all/--harness, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. Declared targets: win over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
     examples: [
       "install",
       "install --project .",
+      "install --mcp io.github.github/github-mcp-server --target cursor",
       "install --target cursor,claude",
       "install --harness claude-code,cursor",
       "install --dry-run",
       "install --update",
+    ],
+  },
+  "mcp.search": {
+    description: "Search the official MCP Registry (v0.1)",
+    details:
+      "GET /v0.1/servers?search= against registry.modelcontextprotocol.io. This is discovery only; install still goes through ht install / ht mcp install.",
+    examples: [
+      "mcp search github",
+      "mcp search filesystem --format json",
+    ],
+  },
+  "mcp.list": {
+    description: "List servers from the official MCP Registry (v0.1)",
+    details:
+      "GET /v0.1/servers with cursor pagination. Does not install or mutate apm.yml.",
+    examples: [
+      "mcp list",
+      "mcp list --limit 10 --format json",
+    ],
+  },
+  "mcp.show": {
+    description: "Show one MCP Registry server and the native config HT would emit",
+    details:
+      "Fetches GET /v0.1/servers/{id}/versions/latest (URL-encoded). Prefers a remote HTTP/SSE endpoint when the registry document has remotes; otherwise picks npm, then oci, then pypi, then nuget. Secret values stay ${VAR} placeholders — HT does not inject a GitHub PAT.",
+    examples: [
+      "mcp show io.github.github/github-mcp-server",
+      "mcp show io.github.github/github-mcp-server --format json",
+    ],
+  },
+  "mcp.install": {
+    description: "Append an MCP Registry identity to apm.yml and run ht install",
+    details:
+      "Same as ht install --mcp <id>: writes the identity under dependencies.mcp, then runs the existing apply-from-manifest install (same --target/--all/--harness pipeline as ht compile). If install fails, the apm.yml write is rolled back. Does not walk dependencies.apm of fetched packages.",
+    examples: [
+      "mcp install io.github.github/github-mcp-server --target cursor",
+      "mcp install io.github.github/github-mcp-server --dry-run",
     ],
   },
   compile: {
