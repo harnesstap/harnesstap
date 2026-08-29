@@ -195,13 +195,16 @@ describe("CLI help and command organization", () => {
       "marketplace",
       "migrate",
       "plugin",
+      "policy",
       "profile",
       "resource",
     ]);
     expect(project).toEqual([
       "add",
       "apply",
+      "approve",
       "audit",
+      "deny",
       "history",
       "init",
       "install",

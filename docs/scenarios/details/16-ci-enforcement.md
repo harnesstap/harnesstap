@@ -17,6 +17,9 @@ harnesstap resource sync --format json --dry-run
 harnesstap audit --ci --format json
 ```
 
+When `executables:` is opted in, `--ci` also fails on `required-executable-untrusted`. Approve with `ht approve <ref>` or inspect with `ht policy explain <ref>`.
+
+
 This pairs naturally with Scenario 12. The `--dry-run` keeps CI from writing
 files, while `--strict-plugin-versions` forces failure (exit 2) on a pin
 violation. Use `status --check` exit code 1 as the "working tree changed

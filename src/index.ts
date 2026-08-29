@@ -10,6 +10,8 @@ import {
   registerPluginCommands,
 } from "./cli/commands/plugin.js";
 import { registerApplyCommand, registerInstallCommand } from "./cli/commands/apply.js";
+import { registerApproveCommand, registerDenyCommand } from "./cli/commands/approve.js";
+import { registerPolicyCommands } from "./cli/commands/policy.js";
 import { registerMigrateCommands } from "./cli/commands/migrate.js";
 import { registerProfileCommands } from "./cli/commands/profile.js";
 import { registerResourceCommands } from "./cli/commands/resource.js";
@@ -35,6 +37,9 @@ registerDeprecatedLayerAlias(program);
 registerMarketplaceCommands(program);
 registerApplyCommand(program);
 registerInstallCommand(program);
+registerApproveCommand(program);
+registerDenyCommand(program);
+registerPolicyCommands(program);
 registerPackCommand(program);
 registerAuditCommand(program);
 registerParityCommands(program);

@@ -47,6 +47,8 @@ Slice 1 evaluates:
 
 `enforcement: block` (and load/hash failures) fail `--ci` and abort `ht apply` before any byte is written. `enforcement: warn` reports violations without changing the exit code.
 
+When the executable trust gate is on, `executables.require` packages whose executables are untrusted fail `--ci` with `required-executable-untrusted`. Approve them with `ht approve <ref>` (or deny explicitly). Lockfile `exec_status` records the resolved state per dep.
+
 See also: [Apply to a project](./apply.md).
 
 ## Exit codes

@@ -49,4 +49,16 @@ Generated files are scanned for hidden Unicode before write. Critical findings b
 
 If `apm-policy.yml` is present (or `apm.yml` pins `policy.hash`), apply evaluates it against the install plan before writing harness files. `ht audit --ci` is the CI entry for the same policy plus Unicode/hash checks.
 
+## Executable trust
+
+When `apm.yml` declares `executables:` (even `{}`) or `apm-policy.yml` has a non-empty `executables:` block, hooks, `bin/` executables, and self-defined MCP from dependency packages are parked until approved. Text primitives and local `.apm/` stay deployed. Apply still succeeds and prints `ht approve <ref>`. Each locked dep records `exec_status` (`deployed` / `gated_pending_approval` / `denied` / `absent`).
+
+```bash
+ht approve owner/repo
+ht deny owner/repo
+ht policy explain owner/repo
+```
+
+`--user` writes `~/.harnesstap/config.jsonc` (can only narrow). See [Command reference](../command-reference.md#approve).
+
 See also: [Install a project](./install.md), [Command reference](../command-reference.md), [Pack a bundle](../author/pack.md), [Audit a project](./audit.md).

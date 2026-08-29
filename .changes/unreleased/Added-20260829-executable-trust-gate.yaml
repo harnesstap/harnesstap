@@ -1,0 +1,3 @@
+kind: Added
+body: Add an opt-in executable trust gate (`ht approve` / `ht deny` / `ht policy explain`) that parks unapproved dependency hooks, bin, and self-defined MCP, records lock `exec_status`, and fails `ht audit --ci` with `required-executable-untrusted`.
+time: 2026-08-29T03:20:00Z

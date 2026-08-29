@@ -31,4 +31,6 @@ ht install --force
 
 Flags match project-scope apply: `--project`, `--dry-run`, `--update`, `--force`, `--harness` (and the other apply project flags). There is no plugin selector and no `--global`.
 
+When `executables:` is opted in, unapproved executable primitives from deps are parked; install still succeeds and prints `ht approve <ref>`. See [Apply to a project](./apply.md#executable-trust).
+
 See also: [Apply to a project](./apply.md), [Apply git dependencies](./apply-git-deps.md), [Command reference](../command-reference.md).
