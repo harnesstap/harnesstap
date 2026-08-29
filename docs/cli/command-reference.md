@@ -117,7 +117,7 @@ Git-style commands for working in a project directory. Each defaults to the curr
 - `history [path]` — list snapshots for a tracked project
 - `revert [snapshot-id]` — restore files from a previous snapshot
 
-Apply plugins with top-level `apply` (not under this group). Onboard from repo-root `apm.yml` with top-level `install` (the same loop as `apply` with no plugin selector).
+Apply plugins with top-level `apply` (not under this group). Onboard from repo-root `apm.yml` with top-level `install` (the same loop as `apply` with no plugin selector). Preview resolved compile targets with `targets`; compile `.apm/` only with `compile`.
 
 ### Important options
 
@@ -157,13 +157,14 @@ Project onboarding from repo-root `apm.yml`. Same loop as `apply` with no plugin
 ```bash
 ht install
 ht install --project .
+ht install --target cursor,claude
 ht install --harness claude-code,cursor
 ht install --dry-run
 ht install --update
 ht install --force
 ```
 
-Reads `dependencies.apm` / `dependencies.mcp`, compiles local `.apm/` primitives, writes `apm.lock.yaml`, and materializes existing harness directories. Commit the lockfile plus generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Same project-scope flags as apply. Does not take a plugin selector or `--global`. See the [Use ramp: install a project](use/install.md).
+Reads `dependencies.apm` / `dependencies.mcp`, compiles local `.apm/` primitives, writes `apm.lock.yaml`, and materializes the resolved target harness directories. Target resolution: `--target` / `--all` / `--harness`, then `targets:` in `apm.yml`, then filesystem auto-detect. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Same project-scope flags as apply. Does not take a plugin selector or `--global`. See the [Use ramp: install a project](use/install.md).
 
 ## lock export
 
@@ -193,14 +194,39 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 - Default scope is the **project** (cwd / `--project`).
 - Pass `--global` to materialize into machine home paths (profile plugins also update the active profile pointer when applicable).
 - First human line reports destination (`→ project …` or `→ machine home …`).
-- Flags include `--dry-run`, `--explain`, `--update`, `--harness`, `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`, and `--force` (override critical hidden-Unicode findings).
+- Flags include `--dry-run`, `--explain`, `--update`, `--target`, `--all`, `--harness`, `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`, and `--force` (override critical hidden-Unicode findings).
 - Selectors may be local plugin names, catalog identities, a packed bundle directory, a `.zip` produced by `ht pack`, or a `.ap.json` envelope. Packed bundles with `pack.bundle_files` are rehashed and fail closed on tampering.
 - With no selector, apply is the same loop as `ht install`: it reads `apm.yml`. Git entries in `dependencies.apm` resolve to an exact commit, fetch that SHA, and record `repo_url` / `resolved_commit` (plus `path` when set) in `apm.lock.yaml`. A later apply without `--update` replays the lock. See [Apply git dependencies](use/apply-git-deps.md) and the [Use ramp: install a project](use/install.md).
-- With no plugin selector, apply compiles local `.apm/` primitives (and root primitive dirs when `.apm/` is absent) into the target harness directories via the existing writers. `apm.yml` `targets` / `target` select harnesses; `compilation.target` is used when those fields are omitted. See the [Use ramp: apply to a project](use/apply.md).
+- With no plugin selector, apply compiles local `.apm/` primitives (and root primitive dirs when `.apm/` is absent) into the resolved target harness directories via the existing writers. Resolution: `--target` / `--all` / `--harness`, then `apm.yml` `targets` / `target`, then `compilation.target`, then filesystem auto-detect. Apply-from-manifest fails closed when no target resolves. See the [Use ramp: apply to a project](use/apply.md).
 - Before writing, apply scans generated files for hidden Unicode. Critical findings block apply unless `--force` is passed; warnings are printed and apply continues. When `apm.lock.yaml` already has `local_deployed_file_hashes` and `--update` is not set, apply rehashes the generated tree and fails closed on mismatch, extra, or missing files.
 - When `executables:` is opted in (project block or non-empty policy `executables:`), unapproved dependency hooks / bin / self-defined MCP are parked. Apply still succeeds and prints `ht approve <ref>`. The lock records `exec_status`.
 
 `ht layer …` is a hidden deprecated alias for `ht plugin …` for one release; prefer `ht plugin` and top-level `ht apply`.
+
+## compile
+
+Compile local `.apm/` primitives into the resolved target harness directories. Same writers as `ht install` / `ht apply`. See the [Use ramp: compile for declared targets](use/compile.md).
+
+```bash
+ht compile
+ht compile --target cursor
+ht compile -t claude,cursor --dry-run
+ht compile --all
+```
+
+Resolution: `--target` / `--all` / `--harness`, then `targets:` in `apm.yml`, then filesystem auto-detect. When nothing resolves, compile writes nothing and exits 0. Does not resolve dependencies, rewrite the lockfile, or run policy/trust.
+
+## targets
+
+Show which APM compile targets resolve for this project, and why.
+
+```bash
+ht targets
+ht targets --json
+ht targets --all --json
+```
+
+Same resolution order as `ht compile`. `--json` emits one object per canonical target plus the resolved list. `--all` includes the `agent-skills` meta-target row.
 
 ## pack
 
@@ -367,7 +393,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `plugin edit --environment <name>` — bind a default environment to the configured plugin that `apply` resolves
 - `plugin edit --clear-environment` — clear the configured plugin default environment
 - `apply --project <path>` — target project directory (default `.`)
-- `apply --harness <slugs>` — comma-separated harness slugs
+- `apply --target <slugs>` / `--all` / `--harness <slugs>` — APM target slugs or HarnessTap harness slugs (same resolution slot)
 - `apply --dry-run` — show planned file writes only
 - `apply --explain` — print the resolution trail (selected versions and every resource decision)
 - `apply --update` — ignore `apm.lock.yaml` and re-resolve the dependency graph (including git `dependencies.apm` refs)

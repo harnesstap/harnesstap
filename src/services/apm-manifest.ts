@@ -156,7 +156,7 @@ export function extractApmManifestFields(
   warnings.push(...targetMapping.warnings);
   if (compilation?.strategy === "distributed") {
     warnings.push(
-      "apm.yml compilation.strategy is distributed; ht apply writes existing harness files (single-file root context) rather than per-directory AGENTS.md",
+      "apm.yml compilation.strategy is distributed; ht compile / ht apply write existing harness files (single-file root context) rather than per-directory AGENTS.md",
     );
   }
 

@@ -4,14 +4,15 @@ description: Apply plugins and compile local APM primitives into harness directo
 
 # Apply to a project (Use)
 
-`ht apply` resolves a plugin graph and writes harness files. With no plugin selector, it is the same loop as [`ht install`](./install.md): read `apm.yml`, resolve manifest dependencies, compile local primitives, write `apm.lock.yaml`, and materialize the target harness directories — the same writers used for library plugins, not a second output tree.
+`ht apply` resolves a plugin graph and writes harness files. With no plugin selector, it is the same loop as [`ht install`](./install.md): read `apm.yml`, resolve manifest dependencies, compile local primitives, write `apm.lock.yaml`, and materialize the **resolved** target harness directories — the same writers used for library plugins, not a second output tree.
 
-Default teammate onboarding in a repo that already has `apm.yml` is `ht install`. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on).
+Default teammate onboarding in a repo that already has `apm.yml` is `ht install`. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Preview targets with `ht targets`. Compile `.apm/` only with [`ht compile`](./compile.md).
 
 ```bash
 ht install
 ht apply
 ht apply engineering-foundation --project .
+ht apply --target cursor,claude
 ht apply --harness claude-code,cursor
 ```
 
@@ -34,14 +35,18 @@ Skill `scripts/` and `references/` ride along when the serializer emits a skill 
 
 ## Targets
 
-Harness selection is:
+Harness selection is the same for `ht compile`, `ht targets`, `ht install`, and apply-from-manifest:
 
-1. `--harness` on the command line
+1. `--target` / `--all` / `--harness` on the command line
 2. `targets` / `target` in `apm.yml`
 3. `compilation.target` when the top-level target fields are omitted
-4. Project / global harness preference, then filesystem detection
+4. Auto-detection from documented filesystem signals
 
-`compilation.exclude` skips matching source paths. `compilation.strategy: distributed` is noted and ignored — apply writes the existing single-file root context (`AGENTS.md` / `CLAUDE.md`), not per-directory compile output. There is no `ht compile` / `apm compile` command.
+`ht install` and apply-from-manifest fail closed when no target can be resolved. `ht apply <plugin>` may still fall back to project/global harness preference. `ht compile` writes nothing and exits 0 when nothing resolves.
+
+Declared `targets:` wins over machine-local folder detection so lockfile and harness ownership stay portable.
+
+`compilation.exclude` skips matching source paths. `compilation.strategy: distributed` is noted and ignored — apply/compile write the existing single-file root context (`AGENTS.md` / `CLAUDE.md`), not per-directory compile output.
 
 ## Integrity
 
@@ -61,4 +66,4 @@ ht policy explain owner/repo
 
 `--user` writes `~/.harnesstap/config.jsonc` (can only narrow). See [Command reference](../command-reference.md#approve).
 
-See also: [Install a project](./install.md), [Command reference](../command-reference.md), [Pack a bundle](../author/pack.md), [Audit a project](./audit.md).
+See also: [Install a project](./install.md), [Compile for declared targets](./compile.md), [Command reference](../command-reference.md), [Pack a bundle](../author/pack.md), [Audit a project](./audit.md).

@@ -38,7 +38,8 @@ import {
   normalizeGitUrl,
   projectNameFromUrl,
 } from "../../services/git.js";
-import { detectPlatforms } from "../../services/scanner.js";
+import { TargetFlagError } from "../../services/apm-targets.js";
+import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
 import {
   generateFiles,
   materializeFiles,
@@ -59,7 +60,6 @@ import {
 import { PROFILE_PLUGIN_TAG } from "../../constants/profile.js";
 import {
   upsertProject,
-  getProjectByLocalPath,
   getProjectByOrigin,
   applyConfiguredPluginToProject,
 } from "../../models/project.js";
@@ -76,13 +76,11 @@ import type {
 import { RESOURCE_TYPES } from "../../types.js";
 import { listAttachedPluginPins } from "../../services/plugin-composition.js";
 import {
-  getHarnessPreference,
   getProjectHarnessConfig,
 } from "../../models/harness.js";
 import {
   assertSupportedHarnessTargets,
-  parsePlatformFilter,
-  uniqueHarnessTargets,
+  collectApplyPreferenceHarnesses,
 } from "../../services/harness-targets.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import {
@@ -642,20 +640,22 @@ export async function handleProjectApplyCommand(
 
   let platforms: string[];
   try {
-    platforms = resolveApplyHarnessTargets(
-      projectRoot,
-      opts.harness,
-    );
+    platforms = resolveApplyHarnessTargets(projectRoot, opts, pluginNames.length === 0);
   } catch (err) {
-    process.exitCode = 1;
-    ui.danger(err instanceof Error ? err.message : String(err));
+    process.exitCode = err instanceof TargetFlagError ? 2 : 1;
+    ui.danger(err instanceof Error ? err.message : String(err), {
+      hints: [
+        formatCommand("targets"),
+        "Declare targets: in apm.yml or pass --target / --harness",
+      ],
+    });
     return;
   }
 
   if (platforms.length === 0) {
     process.exitCode = 1;
     ui.warn(
-      "No harness targets configured. Run harnesstap harness set or pass --harness <slugs>.",
+      "No harness targets configured. Declare targets: in apm.yml or pass --target / --harness.",
     );
     return;
   }
@@ -1544,47 +1544,23 @@ async function handlePluginEditorCommand(
 
 function resolveApplyHarnessTargets(
   projectRoot: string,
-  harnessOption?: string,
+  opts: ApplyCommandOpts,
+  fromManifest: boolean,
 ): string[] {
-  const explicitTargets = uniqueHarnessTargets(
-    parsePlatformFilter(harnessOption) ?? [],
-  );
-  if (explicitTargets.length > 0) {
-    assertSupportedHarnessTargets(explicitTargets);
-    return explicitTargets;
+  const resolved = resolveProjectCompileTargets({
+    projectRoot,
+    mode: fromManifest || opts.failClosedTargets ? "install" : "apply-plugin",
+    ...(opts.target ? { cliTarget: opts.target } : {}),
+    ...(opts.all ? { cliAll: true } : {}),
+    ...(opts.harness ? { cliHarness: opts.harness } : {}),
+    ...(!fromManifest && !opts.failClosedTargets
+      ? { preferenceHarnesses: collectApplyPreferenceHarnesses(projectRoot) }
+      : {}),
+  });
+  for (const warning of resolved.warnings) {
+    ui.warn(warning);
   }
-
-  const manifest = findProjectConfig(projectRoot);
-  if (manifest && manifest.harnessTargets.length > 0) {
-    const mapped = uniqueHarnessTargets(manifest.harnessTargets);
-    assertSupportedHarnessTargets(mapped);
-    return mapped;
-  }
-
-  const projectByPath = getProjectByLocalPath(projectRoot);
-  const projectConfig = projectByPath
-    ? getProjectHarnessConfig(projectByPath.id)
-    : undefined;
-  if (projectConfig) {
-    const preferredTargets = uniqueHarnessTargets([
-      projectConfig.main_harness,
-      ...projectConfig.alias_harnesses,
-    ]);
-    assertSupportedHarnessTargets(preferredTargets);
-    return preferredTargets;
-  }
-
-  const preference = getHarnessPreference();
-  if (preference) {
-    const preferredTargets = uniqueHarnessTargets([
-      preference.main_harness,
-      ...preference.alias_harnesses,
-    ]);
-    assertSupportedHarnessTargets(preferredTargets);
-    return preferredTargets;
-  }
-
-  return uniqueHarnessTargets(detectPlatforms(projectRoot));
+  return resolved.harnessTargets;
 }
 
 

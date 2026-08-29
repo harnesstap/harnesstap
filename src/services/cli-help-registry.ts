@@ -115,6 +115,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "Resolve a plugin's dependency graph and materialize it into the project, or into machine home with --global",
     examples: [
       "apply base",
+      "apply base --target cursor",
       "apply base --harness claude-code",
       "apply work --global",
       "apply ./build/my-pkg",
@@ -125,13 +126,39 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Onboard a project from apm.yml (same as apply with no plugin selector)",
     details:
-      "Reads repo-root apm.yml, resolves dependencies.apm / dependencies.mcp, compiles local .apm/ primitives, writes apm.lock.yaml, and materializes existing harness directories. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
+      "Reads repo-root apm.yml, resolves dependencies.apm / dependencies.mcp, compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Target resolution: --target/--all/--harness, then targets: in apm.yml, then filesystem auto-detect. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
     examples: [
       "install",
       "install --project .",
+      "install --target cursor,claude",
       "install --harness claude-code,cursor",
       "install --dry-run",
       "install --update",
+    ],
+  },
+  compile: {
+    description:
+      "Compile local .apm/ primitives into resolved target harness directories",
+    details:
+      "Reuses the same .apm/ → harness-dir writers as ht install / ht apply. Resolution order: --target / --all / --harness, then targets: in apm.yml, then filesystem auto-detect. When nothing resolves, compile writes nothing and exits 0 (documented fallback). Does not resolve dependencies, rewrite the lockfile, or run policy/trust. compilation.strategy: distributed is noted and ignored; output stays single-file root context (AGENTS.md / CLAUDE.md).",
+    examples: [
+      "compile",
+      "compile --target cursor",
+      "compile -t claude,cursor --dry-run",
+      "compile --all",
+      "compile --project . --format json",
+    ],
+  },
+  targets: {
+    description:
+      "Show which APM compile targets resolve for this project, and why",
+    details:
+      "Prints the canonical target table (or JSON) using the same resolution order as ht compile / ht install: CLI flags, then targets: in apm.yml, then filesystem auto-detect. Use this to preview auto-detection before pinning targets: for portable lockfile / harness ownership.",
+    examples: [
+      "targets",
+      "targets --json",
+      "targets --all --json",
+      "targets --project .",
     ],
   },
   "lock.export": {

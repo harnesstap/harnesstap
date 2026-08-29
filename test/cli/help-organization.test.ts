@@ -206,6 +206,7 @@ describe("CLI help and command organization", () => {
       "apply",
       "approve",
       "audit",
+      "compile",
       "deny",
       "history",
       "init",
@@ -216,6 +217,7 @@ describe("CLI help and command organization", () => {
       "revert",
       "scan",
       "status",
+      "targets",
       "use",
     ]);
   });
