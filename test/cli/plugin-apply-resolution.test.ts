@@ -330,6 +330,44 @@ dependencies:
     }
   });
 
+  it("records declared_license from the git dependency manifest", async () => {
+    const remote = createApplyGitRemote("FROM-GIT");
+    try {
+      writeFileSync(
+        join(remote.dir, "apm.yml"),
+        `name: ship-kit
+version: "1.0.0"
+license: Apache-2.0
+`,
+      );
+      gitIn(remote.dir, "add -A");
+      gitIn(remote.dir, "commit -m license");
+      writeTextFile(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: ${remote.url}
+`,
+      );
+
+      const result = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(result.exitCode ?? 0, result.stderr || result.stdout).toBe(0);
+      const lock = readFileSync(join(ctx.projectDir, "apm.lock.yaml"), "utf8");
+      expect(lock).toContain("declared_license: Apache-2.0");
+    } finally {
+      cleanupDir(remote.dir);
+    }
+  });
+
   it("fails closed when a git dependencies.apm ref cannot be resolved", async () => {
     const remote = createApplyGitRemote();
     try {

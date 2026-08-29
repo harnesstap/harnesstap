@@ -134,6 +134,18 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "install --update",
     ],
   },
+  "lock.export": {
+    description:
+      "Export a CycloneDX or SPDX SBOM inventory from the existing lockfile",
+    details:
+      "Inventory export only: reads apm.lock.yaml and serializes it. Never re-resolves, re-hashes, or touches the network. Default format is CycloneDX 1.5; --format spdx writes SPDX 2.3. This is not a security attestation — the document is unsigned and does not claim SLSA. --timestamp pins the document time; otherwise SOURCE_DATE_EPOCH, then the lockfile generated_at. Diagnostics go to stderr so stdout stays pipe-clean.",
+    examples: [
+      "lock export",
+      "lock export --format cyclonedx -o sbom.json",
+      "lock export --format spdx --timestamp 2024-06-01T00:00:00+00:00",
+      "lock export --project .",
+    ],
+  },
   pack: {
     description:
       "Pack an apm.yml project into an Agent Plugins 1.0 bundle (plugin.json + primitives + apm.lock.yaml)",

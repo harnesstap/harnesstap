@@ -45,4 +45,6 @@ Apply deploys only lockfile-attested files. Path traversal, symlinks, and SHA-25
 
 `apm-policy.yml` can restrict git hosts (and catalog / local sources) before apply writes. Re-check in CI with `ht audit --ci`.
 
+Export the recorded inventory with [`ht lock export`](./lock-export.md).
+
 See also: [Install a project](./install.md), [Command reference](../command-reference.md), [Audit a project](./audit.md), [Pack a bundle](../author/pack.md).

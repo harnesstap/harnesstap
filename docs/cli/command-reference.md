@@ -165,6 +165,27 @@ ht install --force
 
 Reads `dependencies.apm` / `dependencies.mcp`, compiles local `.apm/` primitives, writes `apm.lock.yaml`, and materializes existing harness directories. Commit the lockfile plus generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Same project-scope flags as apply. Does not take a plugin selector or `--global`. See the [Use ramp: install a project](use/install.md).
 
+## lock export
+
+Serialize `apm.lock.yaml` into a CycloneDX 1.5 (default) or SPDX 2.3 SBOM inventory. Reads the lockfile only — no re-resolve, no re-hash, no network. Not a signed attestation and not SLSA. See the [Use ramp: export a lockfile SBOM](use/lock-export.md).
+
+```bash
+ht lock export
+ht lock export --format cyclonedx -o sbom.json
+ht lock export --format spdx --timestamp 2024-06-01T00:00:00+00:00
+ht lock export --project .
+```
+
+Key options:
+
+- `-f, --format <format>` — `cyclonedx` (default) or `spdx`
+- `-o, --output <file>` — write a file instead of stdout
+- `--project <path>` — project directory (default `.`)
+- `-g, --global` — read `~/.harnesstap/apm.lock.yaml` when that file already exists
+- `--timestamp <ts>` — pin timezone-aware ISO 8601 for reproducible output (else `SOURCE_DATE_EPOCH`, then lockfile `generated_at`)
+
+Declared licenses come from lock `declared_license` (the dependency manifest `license:` recorded at apply/install). Undeclared licenses are omitted in CycloneDX and written as `NOASSERTION` in SPDX.
+
 ## apply
 
 Top-level apply resolves a plugin (and its dependency graph) and materializes it.
