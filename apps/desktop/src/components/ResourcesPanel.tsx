@@ -18,6 +18,7 @@ import {
   ResourceRowMeta,
   ResourceRowRoot,
 } from "./ui/resource-row";
+import type { ApplyPluginResult } from "../lib/api/apply-plugin";
 import { AgentApiError, fetchLibraryResources } from "../lib/agent-client";
 import {
   fetchLibraryPluginHeads,
@@ -85,6 +86,7 @@ export interface ResourcesPanelProps {
   onAddToProfile?: (resource: { type: string; name: string }) => Promise<void>;
   onImported?: (message: string) => void;
   onSuccess?: (message: string) => void;
+  onApplyResult?: (result: ApplyPluginResult) => void;
   focusPluginName?: string | null;
   onFocusPluginConsumed?: () => void;
   focusResourceSelector?: string | null;
@@ -108,6 +110,7 @@ export function ResourcesPanel({
   onAddToProfile,
   onImported,
   onSuccess,
+  onApplyResult,
   focusPluginName,
   onFocusPluginConsumed,
   focusResourceSelector,
@@ -557,6 +560,7 @@ export function ResourcesPanel({
             projectPath={resolvedProjectPath || null}
             onBusyChange={handleDetailBusy}
             onSuccess={(message) => onSuccess?.(message)}
+            onApplyResult={onApplyResult}
             onProfilesChanged={() => onProfilesChanged?.()}
             onDeleted={() => {
               reloadLibrary();

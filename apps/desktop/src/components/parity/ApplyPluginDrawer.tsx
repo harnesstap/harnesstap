@@ -30,6 +30,7 @@ export interface ApplyPluginDrawerProps {
   token: string | null;
   projectPath: string | null;
   onSuccess: (message: string) => void;
+  onApplyResult?: (result: ApplyPluginResult) => void;
   onProfilesChanged?: () => void;
   onBusyChange?: (busy: boolean) => void;
   disabled?: boolean;
@@ -48,6 +49,7 @@ export function ApplyPluginDrawer({
   token,
   projectPath,
   onSuccess,
+  onApplyResult,
   onProfilesChanged,
   onBusyChange,
   disabled,
@@ -110,6 +112,7 @@ export function ApplyPluginDrawer({
         return;
       }
       const where = scope === "home" ? "Global" : "Project";
+      onApplyResult?.(result);
       onSuccess(`Applied ${pluginName} to ${where}`);
       onProfilesChanged?.();
       onClose();

@@ -169,6 +169,85 @@ profiles:
     expect(String(result?.body.message)).toContain("missing required field name");
   });
 
+  it("GET /v1/config/raw returns apm.yml contents", async () => {
+    const dir = tempDir("ht-config-raw-get-");
+    writeStarterProjectConfig({
+      projectPath: dir,
+      defaultProfile: "dev",
+      profileNames: ["dev"],
+    });
+    const request = new Request(
+      `http://127.0.0.1/v1/config/raw?projectPath=${encodeURIComponent(dir)}`,
+      { headers: { authorization: `Bearer ${TOKEN}` } },
+    );
+    const result = await inspect(request);
+    expect(result?.status).toBe(200);
+    const body = result?.body as { path: string; contents: string; validation: { valid: boolean } };
+    expect(body.path).toContain("apm.yml");
+    expect(body.contents).toContain("name:");
+    expect(body.validation.valid).toBe(true);
+  });
+
+  it("PUT /v1/config/raw writes valid YAML and refuses invalid default_profile", async () => {
+    const dir = tempDir("ht-config-raw-put-");
+    writeStarterProjectConfig({
+      projectPath: dir,
+      defaultProfile: "dev",
+      profileNames: ["dev"],
+    });
+    const valid = `name: demo
+version: "1.0.0"
+default_profile: work
+profiles:
+  - name: work
+    source: local
+    selector: work
+`;
+    const putValid = await inspect(
+      new Request("http://127.0.0.1/v1/config/raw", {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ projectPath: dir, contents: valid }),
+      }),
+    );
+    expect(putValid?.status).toBe(200);
+    expect(putValid?.body.contents).toBe(valid);
+
+    const invalid = `name: demo
+version: "1.0.0"
+default_profile: missing
+profiles:
+  - name: work
+    source: local
+    selector: work
+`;
+    const putInvalid = await inspect(
+      new Request("http://127.0.0.1/v1/config/raw", {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ projectPath: dir, contents: invalid }),
+      }),
+    );
+    expect(putInvalid?.status).toBe(400);
+    expect(putInvalid?.body.error).toBe("invalid_config");
+    const validation = putInvalid?.body.validation as { valid: boolean; errors: string[] };
+    expect(validation.valid).toBe(false);
+    expect(validation.errors[0]).toContain("default_profile");
+    const onDisk = await inspect(
+      new Request(
+        `http://127.0.0.1/v1/config/raw?projectPath=${encodeURIComponent(dir)}`,
+        { headers: { authorization: `Bearer ${TOKEN}` } },
+      ),
+    );
+    expect((onDisk?.body as { contents: string }).contents).toBe(valid);
+  });
+
   it("returns the existing file after POST /v1/bootstrap already_existed", async () => {
     const dir = tempDir("ht-config-bootstrap-");
     writeStarterProjectConfig({

@@ -1669,6 +1669,27 @@ button:focus-visible,
   flex-wrap: wrap;
 }
 
+.pending-approvals-list {
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pending-approvals-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pending-approvals-hint {
+  margin: 0.45rem 0 0;
+}
+
 .banner.error {
   border-color: color-mix(in srgb, var(--red) 45%, var(--border));
   background: color-mix(in srgb, var(--red) 10%, var(--bg));

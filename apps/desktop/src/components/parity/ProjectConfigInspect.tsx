@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import {
+  AgentApiError,
   fetchProjectConfig,
+  fetchProjectConfigRaw,
+  putProjectConfigRaw,
   type ProjectConfigInspectPayload,
   type ProjectConfigProfile,
+  type ProjectConfigValidation,
 } from "../../lib/api/project-config";
 import { openResourcePath } from "../../lib/agent-client";
+import { ButtonSpinner } from "../ButtonSpinner";
 import { ProjectPicker } from "../ProjectPicker";
 
 export interface ProjectConfigInspectProps {
@@ -50,6 +55,15 @@ export function ProjectConfigInspect({
   const [openError, setOpenError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [payload, setPayload] = useState<ProjectConfigInspectPayload | null>(null);
+  const [draft, setDraft] = useState("");
+  const [savedContents, setSavedContents] = useState("");
+  const [rawPath, setRawPath] = useState<string | null>(null);
+  const [hasRaw, setHasRaw] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  const [paneValidation, setPaneValidation] = useState<ProjectConfigValidation | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!open || disabled) {
@@ -59,6 +73,12 @@ export function ProjectConfigInspect({
       setPayload(null);
       setLoadError(null);
       setOpenError(null);
+      setDraft("");
+      setSavedContents("");
+      setRawPath(null);
+      setHasRaw(false);
+      setSaveErrors([]);
+      setPaneValidation(null);
       setLoading(false);
       return;
     }
@@ -67,15 +87,32 @@ export function ProjectConfigInspect({
     setLoading(true);
     setLoadError(null);
     setOpenError(null);
-    void fetchProjectConfig(baseUrl, token, projectPath)
-      .then((next) => {
+    setSaveErrors([]);
+    void Promise.allSettled([
+      fetchProjectConfig(baseUrl, token, projectPath),
+      fetchProjectConfigRaw(baseUrl, token, projectPath),
+    ])
+      .then(([inspectResult, rawResult]) => {
         if (cancelled) return;
-        setPayload(next);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setPayload(null);
-        setLoadError(errorMessage(error, "Could not load project config."));
+        if (inspectResult.status === "fulfilled") {
+          setPayload(inspectResult.value);
+          setPaneValidation(inspectResult.value.validation);
+        } else {
+          setPayload(null);
+          setLoadError(errorMessage(inspectResult.reason, "Could not load project config."));
+        }
+        if (rawResult.status === "fulfilled") {
+          setDraft(rawResult.value.contents);
+          setSavedContents(rawResult.value.contents);
+          setRawPath(rawResult.value.path);
+          setHasRaw(true);
+          setPaneValidation(rawResult.value.validation);
+          if (inspectResult.status === "rejected") {
+            setLoadError(null);
+          }
+        } else if (inspectResult.status === "rejected") {
+          setHasRaw(false);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -87,22 +124,59 @@ export function ProjectConfigInspect({
   }, [open, baseUrl, token, projectPath, disabled]);
 
   const config = payload?.config;
-  const validation = payload?.validation;
+  const validation = paneValidation ?? payload?.validation;
   const profiles = config?.profiles ?? [];
-  const canOpen = Boolean(baseUrl && config && !disabled && !opening);
+  const dirty = draft !== savedContents;
+  const canOpen = Boolean(baseUrl && (rawPath || config) && !disabled && !opening);
+  const canSave = Boolean(
+    baseUrl && token && projectPath && hasRaw && dirty && !disabled && !saveBusy,
+  );
 
   async function handleOpenConfig(): Promise<void> {
-    if (!baseUrl || !config || opening) {
+    const path = rawPath ?? config?.config_path;
+    if (!baseUrl || !path || opening) {
       return;
     }
     setOpening(true);
     setOpenError(null);
     try {
-      await openResourcePath(baseUrl, token, { path: config.config_path });
+      await openResourcePath(baseUrl, token, { path });
     } catch (error: unknown) {
       setOpenError(errorMessage(error, "Could not open file in editor"));
     } finally {
       setOpening(false);
+    }
+  }
+
+  async function handleSave(): Promise<void> {
+    if (!baseUrl || !token || !projectPath || !canSave) {
+      return;
+    }
+    setSaveBusy(true);
+    setSaveErrors([]);
+    setOpenError(null);
+    try {
+      const saved = await putProjectConfigRaw(baseUrl, token, {
+        projectPath,
+        contents: draft,
+      });
+      setDraft(saved.contents);
+      setSavedContents(saved.contents);
+      setRawPath(saved.path);
+      setPaneValidation(saved.validation);
+      if (saved.config) {
+        setPayload({
+          config: saved.config,
+          validation: saved.validation,
+        });
+      }
+    } catch (error: unknown) {
+      const message = error instanceof AgentApiError
+        ? error.message
+        : errorMessage(error, "Could not save apm.yml.");
+      setSaveErrors(message.split("\n").filter((line) => line.length > 0));
+    } finally {
+      setSaveBusy(false);
     }
   }
 
@@ -129,7 +203,26 @@ export function ProjectConfigInspect({
           {loadError ?? openError}
         </div>
       ) : null}
-      {config && !loading ? (
+      {hasRaw && !loading ? (
+        <div className="form-field" data-testid="project-config-yaml">
+          <Label htmlFor="project-config-yaml">apm.yml</Label>
+          <textarea
+            id="project-config-yaml"
+            className="library-field-editor library-field-editor-content mono"
+            value={draft}
+            rows={15}
+            disabled={disabled || saveBusy}
+            spellCheck={false}
+            aria-label="apm.yml"
+            aria-invalid={saveErrors.length > 0 || validation?.valid === false}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setSaveErrors([]);
+            }}
+          />
+        </div>
+      ) : null}
+      {(config || hasRaw) && !loading ? (
         <>
           <div className="project-config-actions">
             <button
@@ -140,18 +233,38 @@ export function ProjectConfigInspect({
             >
               Open config
             </button>
+            <button
+              type="button"
+              className={["btn", "primary", saveBusy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              disabled={!canSave}
+              aria-busy={saveBusy}
+              data-testid="project-config-save"
+              onClick={() => void handleSave()}
+            >
+              {saveBusy ? <ButtonSpinner size={16} /> : null}
+              {saveBusy ? "Saving…" : "Save"}
+            </button>
           </div>
+          {saveErrors.length > 0 ? (
+            <div className="banner error" role="alert" data-testid="project-config-save-errors">
+              {saveErrors.map((item) => (
+                <div key={item}>{item}</div>
+              ))}
+            </div>
+          ) : null}
           {profiles.length === 0 ? (
             <p className="muted">No profiles configured.</p>
           ) : (
             profiles.map((profile) => {
               const environment =
-                profile.environment ?? config.default_environment ?? "";
+                profile.environment ?? config?.default_environment ?? "";
               return (
                 <article className="harness-block" key={profile.name}>
                   <h4 className="harness-header">
                     {profile.name}
-                    {profile.name === config.default_profile ? (
+                    {profile.name === config?.default_profile ? (
                       <span className="badge">default</span>
                     ) : null}
                   </h4>

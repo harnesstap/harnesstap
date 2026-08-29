@@ -13,7 +13,12 @@ import {
   type OrgExecutablePolicy,
   type PolicyLoadResult,
 } from "./apm-policy.js";
-import type { ApmGitLockFields, LockEntry, Lockfile } from "./lockfile.js";
+import {
+  readLockfile,
+  type ApmGitLockFields,
+  type LockEntry,
+  type Lockfile,
+} from "./lockfile.js";
 import { resolutionKey } from "./resolve/resource-resolution.js";
 import type { ResolutionResult, SelectedPlugin } from "./resolve/types.js";
 
@@ -92,6 +97,13 @@ export interface ExecutableTrustApplyResult {
   resources: Resource[];
   parked: Array<{ ref: string; types: ExecType[] }>;
   reports: PackageTrustReport[];
+  execStatuses: Record<string, ExecStatus>;
+}
+
+export interface ExecutableTrustResponseFields {
+  optedIn: boolean;
+  warnings: string[];
+  parked: Array<{ ref: string; types: ExecType[] }>;
   execStatuses: Record<string, ExecStatus>;
 }
 
@@ -568,6 +580,61 @@ export function formatApproveRemedy(refs: string[]): string {
     return "ht approve <PACKAGE_REF>";
   }
   return `ht approve ${refs.join(" ")}`;
+}
+
+export function formatDenyRemedy(refs: string[]): string {
+  if (refs.length === 0) {
+    return "ht deny <PACKAGE_REF>";
+  }
+  return `ht deny ${refs.join(" ")}`;
+}
+
+export function executableTrustResponseFields(
+  result: Pick<
+    ExecutableTrustApplyResult,
+    "optedIn" | "warnings" | "parked" | "execStatuses"
+  >,
+): ExecutableTrustResponseFields {
+  if (!result.optedIn) {
+    return {
+      optedIn: false,
+      warnings: result.warnings,
+      parked: [],
+      execStatuses: {},
+    };
+  }
+  return {
+    optedIn: true,
+    warnings: result.warnings,
+    parked: result.parked,
+    execStatuses: result.execStatuses,
+  };
+}
+
+export function executableTrustFieldsFromProject(
+  projectRoot: string,
+): ExecutableTrustResponseFields {
+  const context = buildExecutableTrustContext({ projectRoot });
+  if (!context.optedIn) {
+    return {
+      optedIn: false,
+      warnings: context.warnings,
+      parked: [],
+      execStatuses: {},
+    };
+  }
+  const lock = readLockfile(projectRoot);
+  const reports = installedTrustReports(context, { ...(lock ? { lock } : {}) });
+  return {
+    optedIn: true,
+    warnings: context.warnings,
+    parked: reports
+      .filter((report) => report.execStatus === "gated_pending_approval")
+      .map((report) => ({ ref: report.ref, types: report.gatedTypes })),
+    execStatuses: Object.fromEntries(
+      reports.map((report) => [report.name, report.execStatus]),
+    ),
+  };
 }
 
 function readYamlMapping(filePath: string): Record<string, unknown> {

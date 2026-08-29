@@ -95,16 +95,27 @@ describe("settings project config picker", () => {
   });
 
   test("DESIGN.md locks a Project tab directory picker", () => {
-    expect(designSource).toContain("Project tab is inspect-only");
     expect(designSource).toContain("project directory picker");
+    expect(designSource).toContain("raw `apm.yml` editor");
   });
 });
 
 describe("settings project config inspect surface", () => {
-  test("DESIGN.md locks inspect-only Project tab", () => {
-    expect(designSource).toContain("Project tab is inspect-only");
+  test("DESIGN.md locks Project tab raw apm.yml edit plus Open config", () => {
+    expect(designSource).toContain("raw `apm.yml` editor");
     expect(designSource).toContain("Open config");
     expect(designSource).toContain("profile definition list");
+    expect(designSource).not.toContain("Project tab is inspect-only");
+  });
+
+  test("edits raw apm.yml in-app and keeps Open config", () => {
+    expect(inspectSource).toContain("apm.yml");
+    expect(inspectSource).toContain("library-field-editor-content");
+    expect(inspectSource).toContain("putProjectConfigRaw");
+    expect(inspectSource).toContain("fetchProjectConfigRaw");
+    expect(inspectSource).toContain("Open config");
+    expect(inspectSource).toContain("project-config-save");
+    expect(inspectSource).not.toContain("config.toml");
   });
 
   test("does not dump config path, root, or zero counts", () => {
@@ -128,6 +139,7 @@ describe("settings project config inspect surface", () => {
     expect(inspectSource).toContain('className="btn"');
     expect(inspectSource).toContain("openResourcePath");
     expect(inspectSource).toContain("config_path");
+    expect(inspectSource).toContain("rawPath");
   });
 
   test("marks default profile with a badge not an asterisk", () => {

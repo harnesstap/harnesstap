@@ -1,3 +1,4 @@
+import type { ExecutableTrustFields } from "../pending-approvals";
 import { agentFetch, throwAgentError, AgentApiError } from "./http";
 
 export type ApplyPluginScope = "home" | "project";
@@ -20,7 +21,7 @@ export interface ApplyPluginPlatformFiles {
   skipped_files?: string[];
 }
 
-export interface ApplyPluginResult {
+export interface ApplyPluginResult extends ExecutableTrustFields {
   scope: ApplyPluginScope;
   cancelled?: boolean;
   dry_run?: boolean;
