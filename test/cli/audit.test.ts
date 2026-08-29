@@ -216,4 +216,126 @@ describe("ht audit", () => {
       await context.cleanup();
     }
   });
+
+  it("reports policy skipped when no apm-policy.yml exists", async () => {
+    const context = await createTestContext("cli-audit-policy-skip");
+    try {
+      await runCli(["init"]);
+      const result = await runCli([
+        "audit",
+        "--project",
+        context.projectDir,
+        "--format",
+        "json",
+      ]);
+      expect(result.exitCode ?? 0).toBe(0);
+      const payload = JSON.parse(result.stdout) as {
+        policy: { status: string };
+      };
+      expect(payload.policy.status).toBe("skipped");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("fails --ci --require-policy when no policy file exists", async () => {
+    const context = await createTestContext("cli-audit-require-policy");
+    try {
+      await runCli(["init"]);
+      const result = await runCli([
+        "audit",
+        "--project",
+        context.projectDir,
+        "--ci",
+        "--require-policy",
+        "--format",
+        "json",
+      ]);
+      expect(result.exitCode).toBe(1);
+      const payload = JSON.parse(result.stdout) as {
+        policy: { status: string; violations: Array<{ code: string }> };
+      };
+      expect(payload.policy.status).toBe("failed");
+      expect(payload.policy.violations.some((violation) => violation.code === "policy-required")).toBe(
+        true,
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("fails --ci when policy blocks a disallowed source", async () => {
+    const context = await createTestContext("cli-audit-policy-block");
+    try {
+      await runCli(["init"]);
+      writeTextFile(
+        join(context.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - https://gitlab.com/acme/widgets.git
+`,
+      );
+      writeTextFile(
+        join(context.projectDir, "apm-policy.yml"),
+        `name: baseline
+enforcement: block
+dependencies:
+  allow:
+    - github.com/*
+`,
+      );
+      const result = await runCli([
+        "audit",
+        "--project",
+        context.projectDir,
+        "--ci",
+        "--format",
+        "json",
+      ]);
+      expect(result.exitCode).toBe(1);
+      const payload = JSON.parse(result.stdout) as {
+        policy: { blocks: boolean; violations: Array<{ code: string }> };
+      };
+      expect(payload.policy.blocks).toBe(true);
+      expect(payload.policy.violations.some((violation) => violation.code === "source-not-allowed")).toBe(
+        true,
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("fails closed when policy.hash is pinned and the file is missing", async () => {
+    const context = await createTestContext("cli-audit-policy-pin");
+    try {
+      await runCli(["init"]);
+      writeTextFile(
+        join(context.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+policy:
+  hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+`,
+      );
+      const result = await runCli([
+        "audit",
+        "--project",
+        context.projectDir,
+        "--ci",
+        "--format",
+        "json",
+      ]);
+      expect(result.exitCode).toBe(1);
+      const payload = JSON.parse(result.stdout) as {
+        policy: { violations: Array<{ code: string }> };
+      };
+      expect(payload.policy.violations.some((violation) => violation.code === "policy-missing")).toBe(
+        true,
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

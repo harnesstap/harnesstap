@@ -203,25 +203,28 @@ Consumers install the artifact with `ht apply <dir-or-zip>`. Bundles are target-
 
 ## audit
 
-Scan a project for hidden Unicode and verify lockfile SHA-256 hashes. See the [Use ramp: audit a project](use/audit.md).
+Scan a project for hidden Unicode, verify lockfile SHA-256 hashes, and evaluate `apm-policy.yml`. See the [Use ramp: audit a project](use/audit.md).
 
 ```bash
 ht audit
 ht audit --file .cursorrules
 ht audit --ci --format json
+ht audit --ci --require-policy
 ht audit --strip --dry-run
 ```
 
 Key options:
 
 - `--file <path>` — scan one file
-- `--ci` — fail on critical Unicode or lockfile hash mismatch / extra / missing
+- `--ci` — fail on critical Unicode, lockfile hash mismatch / extra / missing, or blocking policy
+- `--policy <path>` — policy file (default `apm-policy.yml`)
+- `--require-policy` — with `--ci`, fail if no policy file is present
 - `--strip` — remove critical and warning hidden characters (preserves emoji)
 - `--dry-run` — preview `--strip`
 - `--project <path>` — project directory (default `.`)
 - `--format json`
 
-`--ci` cannot be combined with `--strip`, `--file`, or `--dry-run`. `--dry-run` requires `--strip`.
+`--ci` cannot be combined with `--strip`, `--file`, or `--dry-run`. `--dry-run` requires `--strip`. `--require-policy` requires `--ci`.
 
 ## plugin (`l`)
 

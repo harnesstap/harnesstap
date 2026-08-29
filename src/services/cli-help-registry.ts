@@ -148,13 +148,13 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   audit: {
     description:
-      "Scan a project for hidden Unicode and verify lockfile SHA-256 hashes",
+      "Scan a project for hidden Unicode, lockfile hashes, and apm-policy.yml",
     details:
-      "Default scan covers lockfile-recorded deployed files plus local primitive dirs. --ci fails on critical Unicode or hash mismatch/extra/missing. --strip removes critical and warning characters (mutually exclusive with --ci). Use --file to scan any one file.",
+      "Default scan covers lockfile-recorded deployed files plus local primitive dirs, and evaluates apm-policy.yml when present. --ci fails on critical Unicode, hash mismatch/extra/missing, or blocking policy. --require-policy with --ci fails if no policy file exists. --strip removes critical and warning characters (mutually exclusive with --ci). Use --file to scan any one file.",
     examples: [
       "audit",
       "audit --file .cursorrules",
-      "audit --ci --format json",
+      "audit --ci --require-policy --format json",
       "audit --strip --dry-run",
     ],
   },

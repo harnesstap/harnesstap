@@ -14,6 +14,7 @@ harnesstap status . --check --format json
 harnesstap plugin doctor my-setup --format json
 harnesstap apply my-setup --project . --dry-run --strict-plugin-versions --format json
 harnesstap resource sync --format json --dry-run
+harnesstap audit --ci --format json
 ```
 
 This pairs naturally with Scenario 12. The `--dry-run` keeps CI from writing

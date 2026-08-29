@@ -1,0 +1,3 @@
+kind: Added
+body: Evaluate `apm-policy.yml` before apply writes, and load it from `ht audit --ci` (sources, primitives, transitive MCP, fail-closed `policy.hash`).
+time: 2026-08-29T02:30:00Z

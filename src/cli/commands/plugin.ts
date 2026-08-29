@@ -148,6 +148,11 @@ import {
 } from "../../services/deploy-gate.js";
 import { CriticalUnicodeError } from "../../services/unicode-scan.js";
 import { resolveApplySelectorsFromProjectManifest } from "../../services/apm-project-plugin.js";
+import {
+  assertPolicyAllowsApply,
+  evaluateApplyPolicy,
+  PolicyError,
+} from "../../services/apm-policy.js";
 import { findProjectConfig } from "../../services/project-config.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
 import { substituteResourcesForApply } from "../../services/environment-var-substitution.js";
@@ -846,6 +851,42 @@ export async function handleProjectApplyCommand(
         return;
       }
     }
+  }
+
+  try {
+    const manifestForPolicy = findProjectConfig(projectRoot);
+    const policyEvaluation = evaluateApplyPolicy({
+      projectRoot,
+      resolution: applyBundle.resolution,
+      resources: applyResources,
+      apmDependencies: manifestForPolicy?.apmDependencies,
+      mcpDependencies: manifestForPolicy?.mcpDependencies,
+      gitLocks: manifestGitLocks,
+      ...(manifestForPolicy?.policyPin ? { pin: manifestForPolicy.policyPin } : {}),
+    });
+    if (outputFormat === "human") {
+      for (const warning of policyEvaluation.warnings) {
+        ui.warn(warning);
+      }
+      for (const violation of policyEvaluation.violations) {
+        if (policyEvaluation.blocks) {
+          ui.danger(violation.message);
+        } else if (policyEvaluation.enforcement !== "off") {
+          ui.warn(violation.message);
+        }
+      }
+    }
+    assertPolicyAllowsApply(policyEvaluation);
+  } catch (err) {
+    process.exitCode = 1;
+    if (err instanceof PolicyError) {
+      ui.danger(err.message, {
+        hints: ["Fix apm-policy.yml or the install plan, then re-apply"],
+      });
+      return;
+    }
+    ui.danger(err instanceof Error ? err.message : String(err));
+    return;
   }
 
   const homeRoot = resolveHomeRoot();

@@ -47,4 +47,6 @@ Harness selection is:
 
 Generated files are scanned for hidden Unicode before write. Critical findings block apply unless `--force` is passed. Deployed paths and SHA-256 digests are recorded in `apm.lock.yaml` (`local_deployed_file_hashes`). A later apply rehashes and fails closed on mismatch, extra, or missing files unless you pass `--update`. Symlinks and `..` path escapes in `.apm/` fail closed.
 
+If `apm-policy.yml` is present (or `apm.yml` pins `policy.hash`), apply evaluates it against the install plan before writing harness files. `ht audit --ci` is the CI entry for the same policy plus Unicode/hash checks.
+
 See also: [Install a project](./install.md), [Command reference](../command-reference.md), [Pack a bundle](../author/pack.md), [Audit a project](./audit.md).

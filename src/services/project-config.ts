@@ -7,6 +7,7 @@ import {
   parseApmManifestContents,
   type ApmCompilationConfig,
 } from "./apm-manifest.js";
+import type { ApmPolicyPin } from "./apm-policy.js";
 import type { ApmOverlayInfo } from "./apm-overlay.js";
 import { parseTransportToml } from "./toml/read.js";
 
@@ -41,6 +42,7 @@ export interface ResolvedProjectConfig extends ProjectConfig {
   skippedTargets: string[];
   apmDependencies: ParsedApmDependency[];
   mcpDependencies: ParsedMcpDependency[];
+  policyPin?: ApmPolicyPin;
   overlay?: ApmOverlayInfo;
   compilation?: ApmCompilationConfig;
   warnings: string[];
@@ -348,6 +350,7 @@ function parseResolvedProjectConfig(
     skippedTargets: fields.skippedTargets,
     apmDependencies: fields.apmDependencies,
     mcpDependencies: fields.mcpDependencies,
+    ...(fields.policyPin ? { policyPin: fields.policyPin } : {}),
     ...(fields.overlay ? { overlay: fields.overlay } : {}),
     ...(fields.compilation ? { compilation: fields.compilation } : {}),
     warnings: fields.warnings,

@@ -38,6 +38,11 @@ import {
 } from "../../services/lockfile.js";
 import { gateDeployFiles, LockIntegrityError } from "../../services/deploy-gate.js";
 import { CriticalUnicodeError } from "../../services/unicode-scan.js";
+import {
+  assertPolicyAllowsApply,
+  evaluateApplyPolicy,
+  PolicyError,
+} from "../../services/apm-policy.js";
 import { findProjectConfig } from "../../services/project-config.js";
 import { detectProfileOwnedOverwriteConflicts } from "../../services/profile-owned-overwrite.js";
 import { applyProfilePlugin } from "../../services/profile-apply.js";
@@ -406,6 +411,28 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
 
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({ configuredPluginIds });
   const substituted = substituteResourcesForApply(resolution.resources, resolvedEnvironment.vars);
+  const manifestForPolicy = findProjectConfig(projectRoot);
+  try {
+    assertPolicyAllowsApply(
+      evaluateApplyPolicy({
+        projectRoot,
+        resolution,
+        resources: substituted.resources,
+        apmDependencies: manifestForPolicy?.apmDependencies,
+        mcpDependencies: manifestForPolicy?.mcpDependencies,
+        gitLocks: manifestGitLocks,
+        ...(manifestForPolicy?.policyPin ? { pin: manifestForPolicy.policyPin } : {}),
+      }),
+    );
+  } catch (err) {
+    if (err instanceof PolicyError) {
+      return jsonResponse(
+        { error: "policy_blocked", message: err.message },
+        { status: 400 },
+      );
+    }
+    throw err;
+  }
   const generated = await generateFiles(substituted.resources, platforms, projectRoot, {
     claudeConfig: mergePluginsById(configuredPluginIds).claude,
     resolvedEnvironment,
@@ -547,6 +574,9 @@ function mapApplyError(error: unknown): Response {
     || error instanceof SingletonConflictError
   ) {
     return jsonResponse({ error: "apply_failed", message }, { status: 400 });
+  }
+  if (error instanceof PolicyError) {
+    return jsonResponse({ error: "policy_blocked", message }, { status: 400 });
   }
   return jsonResponse({ error: "apply_failed", message }, { status: 400 });
 }

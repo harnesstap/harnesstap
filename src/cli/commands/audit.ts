@@ -5,6 +5,7 @@ import {
   auditProject,
   type AuditResult,
 } from "../../services/audit.js";
+import type { PolicyEvaluation } from "../../services/apm-policy.js";
 import { formatUnicodeFinding } from "../../services/unicode-scan.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
@@ -16,7 +17,43 @@ export interface AuditCommandOpts {
   ci?: boolean;
   strip?: boolean;
   dryRun?: boolean;
+  policy?: string;
+  requirePolicy?: boolean;
   format?: string;
+}
+
+function printPolicy(policy: PolicyEvaluation): void {
+  if (policy.status === "skipped") {
+    ui.info("Policy: skipped (no apm-policy.yml)");
+    return;
+  }
+  const label = policy.source ?? "apm-policy.yml";
+  if (policy.warnings.length > 0) {
+    for (const warning of policy.warnings) {
+      ui.warn(warning);
+    }
+  }
+  for (const violation of policy.violations) {
+    if (policy.enforcement === "block" || policy.status === "failed") {
+      ui.danger(violation.message);
+    } else {
+      ui.warn(violation.message);
+    }
+  }
+  if (policy.status === "failed") {
+    ui.danger(`Policy ${label}: failed`);
+    return;
+  }
+  if (policy.violations.length === 0) {
+    ui.success(`Policy ${label}: ok (${policy.enforcement})`);
+    return;
+  }
+  const summary = `Policy ${label}: ${policy.violations.length} violation(s) (${policy.enforcement})`;
+  if (policy.blocks) {
+    ui.danger(summary);
+  } else {
+    ui.warn(summary);
+  }
 }
 
 function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
@@ -61,6 +98,10 @@ function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
     }
   }
 
+  if (!opts.file) {
+    printPolicy(result.policy);
+  }
+
   const { critical, warning, info } = result.summary;
   const parts = [`${critical} critical`, `${warning} warning`, `${info} info`];
   const integrityNote = opts.ci
@@ -68,8 +109,16 @@ function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
       ? "integrity ok"
       : `${result.integrity.issues.length} integrity issue(s)`
     : undefined;
-  const summary = integrityNote
-    ? `Scanned ${result.scannedFiles.length} file(s): ${parts.join(", ")}; ${integrityNote}`
+  const policyNote = opts.file
+    ? undefined
+    : result.policy.status === "skipped"
+      ? "policy skipped"
+      : result.policy.violations.length === 0
+        ? "policy ok"
+        : `${result.policy.violations.length} policy violation(s)`;
+  const extras = [integrityNote, policyNote].filter(Boolean);
+  const summary = extras.length > 0
+    ? `Scanned ${result.scannedFiles.length} file(s): ${parts.join(", ")}; ${extras.join("; ")}`
     : `Scanned ${result.scannedFiles.length} file(s): ${parts.join(", ")}`;
   if (result.exitCode === 0) {
     ui.success(summary);
@@ -90,6 +139,8 @@ export function handleAuditCommand(opts: AuditCommandOpts): void {
       ci: opts.ci,
       strip: opts.strip,
       dryRun: opts.dryRun,
+      policy: opts.policy,
+      requirePolicy: opts.requirePolicy,
     });
 
     process.exitCode = result.exitCode;
@@ -100,6 +151,7 @@ export function handleAuditCommand(opts: AuditCommandOpts): void {
         summary: result.summary,
         findings: result.findings,
         integrity: result.integrity,
+        policy: result.policy,
         stripped: result.stripped,
         scanned_files: result.scannedFiles,
         exit_code: result.exitCode,
@@ -124,11 +176,13 @@ export function registerAuditCommand(root: Command): void {
   root
     .command("audit")
     .description(
-      "Scan a project for hidden Unicode and verify lockfile SHA-256 hashes",
+      "Scan a project for hidden Unicode, lockfile hashes, and apm-policy.yml",
     )
     .option("--project <path>", "Project directory", ".")
     .option("--file <path>", "Scan a single file instead of the project")
-    .option("--ci", "CI gate: fail on critical Unicode or lockfile hash drift")
+    .option("--ci", "CI gate: fail on critical Unicode, lockfile hash drift, or policy")
+    .option("--policy <path>", "Policy file (default: apm-policy.yml at project root)")
+    .option("--require-policy", "With --ci, fail if no policy file is present")
     .option("--strip", "Remove critical and warning hidden-Unicode characters")
     .option("--dry-run", "Preview --strip without writing")
     .option("--format <mode>", "Output format: human or json", "human")
