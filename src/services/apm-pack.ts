@@ -14,6 +14,7 @@ import type { ApManifest } from "./agent-plugins/manifest.js";
 import { isValidApName, slugifyApName } from "./agent-plugins/name.js";
 import { AP_SCHEMA_URL, validateApManifest } from "./agent-plugins/validate.js";
 import { APM_LOCKFILE_FILENAME } from "./lockfile.js";
+import { skippedRootSourceWarning } from "./apm-overlay.js";
 import { findProjectConfig, type ResolvedProjectConfig } from "./project-config.js";
 import {
   hasCriticalUnicode,
@@ -206,10 +207,7 @@ function collectLocalPrimitives(
     }
     for (const dir of PLUGIN_NATIVE_DIRS) {
       if (existsSync(join(projectRoot, dir))) {
-        warnings.push(
-          `Skipping root-level ${dir}/ because .apm/ is present. ` +
-            `Move publishable files to .apm/${dir}/ or remove ${dir}/ to silence this warning.`,
-        );
+        warnings.push(skippedRootSourceWarning(dir));
       }
     }
     return;

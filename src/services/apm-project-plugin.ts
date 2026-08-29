@@ -85,21 +85,21 @@ function attachMcpServers(pluginId: string, config: ResolvedProjectConfig): void
   }
 }
 
-function attachOverlaySkills(pluginId: string, config: ResolvedProjectConfig): void {
-  const skills = config.overlay?.skills ?? [];
+function attachOverlayPrimitives(pluginId: string, config: ResolvedProjectConfig): void {
+  const primitives = config.overlay?.primitives ?? [];
   const namespace = config.apm_name ?? "apm";
-  for (const skill of skills) {
+  for (const primitive of primitives) {
     const upserted = upsertResource(
       normalizeResourceInput({
-        type: "skill",
-        name: skill.name,
+        type: primitive.type,
+        name: primitive.name,
         namespace,
-        description: skill.description,
-        content: skill.content,
-        metadata: {},
-        source: skill.skillMdRelative,
+        description: primitive.description,
+        content: primitive.content,
+        metadata: primitive.metadata,
+        source: primitive.sourceRelative,
         origin_kind: "local_snapshot",
-        origin_ref: skill.skillMdRelative,
+        origin_ref: primitive.sourceRelative,
       }),
       { policy: "overwrite" },
     );
@@ -141,7 +141,7 @@ export function materializeApmProjectPlugin(
   }
 
   attachMcpServers(plugin.id, config);
-  attachOverlaySkills(plugin.id, config);
+  attachOverlayPrimitives(plugin.id, config);
   return plugin.name;
 }
 
@@ -191,7 +191,7 @@ function hasManifestInstallables(config: ResolvedProjectConfig): boolean {
   return (
     config.apmDependencies.length > 0
     || config.mcpDependencies.length > 0
-    || (config.overlay?.skills.length ?? 0) > 0
+    || (config.overlay?.primitives.length ?? 0) > 0
   );
 }
 

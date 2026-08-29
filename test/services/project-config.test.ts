@@ -229,7 +229,7 @@ dependencies:
     }
   });
 
-  it("imports .apm/skills overlay and warns about other primitive dirs", () => {
+  it("imports .apm primitives and warns about unapplied dirs", () => {
     const root = createTempDir("project-config-overlay");
     try {
       writeTextFile(
@@ -248,6 +248,7 @@ Run the checklist.
 `,
       );
       writeTextFile(join(root, ".apm", "prompts", "draft.md"), "draft");
+      writeTextFile(join(root, ".apm", "chatmodes", "pair.md"), "pair");
       const resolved = findProjectConfig(root);
       expect(resolved?.overlay?.skills).toEqual([
         expect.objectContaining({
@@ -256,7 +257,14 @@ Run the checklist.
           skillMdRelative: ".apm/skills/ship/SKILL.md",
         }),
       ]);
-      expect(resolved?.warnings.some((warning) => warning.includes(".apm/prompts"))).toBe(true);
+      expect(resolved?.overlay?.primitives).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "skill", name: "ship" }),
+          expect.objectContaining({ type: "command", name: "draft" }),
+        ]),
+      );
+      expect(resolved?.warnings.some((warning) => warning.includes(".apm/chatmodes"))).toBe(true);
+      expect(resolved?.warnings.some((warning) => warning.includes(".apm/prompts"))).toBe(false);
     } finally {
       cleanupDir(root);
     }

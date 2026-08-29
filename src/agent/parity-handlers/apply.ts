@@ -409,6 +409,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
   const generated = await generateFiles(substituted.resources, platforms, projectRoot, {
     claudeConfig: mergePluginsById(configuredPluginIds).claude,
     resolvedEnvironment,
+    skillSourceRoot: projectRoot,
   });
 
   const generatedFiles = generated.flatMap((result) =>
