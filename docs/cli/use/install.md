@@ -33,4 +33,6 @@ Flags match project-scope apply: `--project`, `--dry-run`, `--update`, `--force`
 
 When `executables:` is opted in, unapproved executable primitives from deps are parked; install still succeeds and prints `ht approve <ref>`. See [Apply to a project](./apply.md#executable-trust).
 
+Export the recorded inventory with [`ht lock export`](./lock-export.md) (CycloneDX / SPDX from the lockfile; not an attestation).
+
 See also: [Apply to a project](./apply.md), [Apply git dependencies](./apply-git-deps.md), [Command reference](../command-reference.md).

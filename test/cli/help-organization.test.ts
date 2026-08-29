@@ -26,6 +26,7 @@ describe("CLI help and command organization", () => {
       ["migrate"],
       ["harness"],
       ["harness", "project"],
+      ["lock"],
     ];
 
     for (const args of groupedCommands) {
@@ -192,6 +193,7 @@ describe("CLI help and command organization", () => {
       "environment",
       "harness",
       "help",
+      "lock",
       "marketplace",
       "migrate",
       "plugin",

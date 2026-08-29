@@ -1,0 +1,3 @@
+kind: Added
+body: Add `ht lock export` to serialize `apm.lock.yaml` into a CycloneDX 1.5 or SPDX 2.3 SBOM inventory (no re-resolve, unsigned).
+time: 2026-08-29T05:10:00Z

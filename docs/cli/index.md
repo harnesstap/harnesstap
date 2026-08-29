@@ -20,6 +20,7 @@ HarnessTap is an agent harness configuration toolkit for Claude Code, Codex, Cur
 - [Apply to a project](./use/apply.md) — Use ramp: compile local `.apm/` primitives into harness directories
 - [Audit a project](./use/audit.md) — Use ramp: hidden-Unicode scan, lockfile hash check, `apm-policy.yml`, optional `--strip`, `required-executable-untrusted`
 - [Apply git dependencies](./use/apply-git-deps.md) — Use ramp: pull `dependencies.apm` git entries on `ht install` / `ht apply`
+- [Export a lockfile SBOM](./use/lock-export.md) — Use ramp: `ht lock export` CycloneDX / SPDX inventory from `apm.lock.yaml`
 
 ## Quick links
 

@@ -34,6 +34,8 @@ export interface LockEntry {
   virtual_path?: string;
   content_hash?: string;
   exec_status?: ExecStatus;
+  /** Manifest `license:` recorded at apply/install. Omitted when undeclared. */
+  declared_license?: string;
 }
 
 export interface LockMcpServer {
@@ -62,6 +64,7 @@ export interface ApmGitLockFields {
   constraint?: string;
   resolved_tag?: string;
   virtual_path?: string;
+  declared_license?: string;
 }
 
 export interface LockfileFromResolutionExtras {
@@ -69,6 +72,7 @@ export interface LockfileFromResolutionExtras {
   deployedFiles?: Array<{ path: string; content: string }>;
   gitLocks?: ApmGitLockFields[];
   execStatuses?: Record<string, ExecStatus>;
+  declaredLicenses?: Record<string, string>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -155,6 +159,7 @@ function mergeGitLockFields(
     constraint: extra.constraint,
     resolved_tag: extra.resolved_tag,
     virtual_path: extra.virtual_path,
+    ...(extra.declared_license ? { declared_license: extra.declared_license } : {}),
   };
 }
 
@@ -287,6 +292,9 @@ export function lockfileFromResolution(
       .filter((plugin) => plugin.depth > 0)
       .map((plugin) => {
         const integrity = pluginIntegrity(plugin.pluginId);
+        const declared =
+          extras.declaredLicenses?.[plugin.name]
+          ?? extras.gitLocks?.find((item) => item.name === plugin.name)?.declared_license;
         return mergeGitLockFields(
           {
             name: plugin.name,
@@ -300,6 +308,7 @@ export function lockfileFromResolution(
             ...(extras.execStatuses?.[plugin.name]
               ? { exec_status: extras.execStatuses[plugin.name] }
               : {}),
+            ...(declared ? { declared_license: declared } : {}),
           },
           extras.gitLocks,
         );
@@ -330,6 +339,7 @@ function serializeLockDependency(entry: LockEntry): Record<string, unknown> {
     ...(entry.virtual_path ? { virtual_path: entry.virtual_path } : {}),
     ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
     ...(entry.exec_status ? { exec_status: entry.exec_status } : {}),
+    ...(entry.declared_license ? { declared_license: entry.declared_license } : {}),
   };
 }
 
@@ -369,6 +379,7 @@ export function writeLockfile(projectRoot: string, lock: Lockfile): void {
       ...(entry.virtual_path ? { virtual_path: entry.virtual_path } : {}),
       ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
       ...(entry.exec_status ? { exec_status: entry.exec_status } : {}),
+      ...(entry.declared_license ? { declared_license: entry.declared_license } : {}),
     })),
   };
   writeFileSync(
@@ -414,6 +425,9 @@ function parseHtPluginEntry(entry: Record<string, unknown>): LockEntry {
     ...(typeof entry.virtual_path === "string" ? { virtual_path: entry.virtual_path } : {}),
     ...(typeof entry.content_hash === "string" ? { content_hash: entry.content_hash } : {}),
     ...(parseExecStatus(entry.exec_status) ? { exec_status: parseExecStatus(entry.exec_status) } : {}),
+    ...(typeof entry.declared_license === "string" && entry.declared_license.trim()
+      ? { declared_license: entry.declared_license.trim() }
+      : {}),
   };
 }
 
@@ -445,6 +459,7 @@ function parseApmDependencyEntry(entry: Record<string, unknown>): LockEntry {
     virtual_path: entry.virtual_path,
     content_hash: entry.content_hash,
     exec_status: entry.exec_status,
+    declared_license: entry.declared_license,
   });
 }
 

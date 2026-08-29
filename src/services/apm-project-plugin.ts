@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import {
   isProfilePlugin,
 } from "../constants/profile.js";
@@ -16,6 +17,7 @@ import { getHarnesstapDir } from "../db/connection.js";
 import type { McpServerMetadata } from "../types.js";
 import { importApmGitCheckout } from "./apm-git-import.js";
 import { resolveAndFetchApmGitDependency } from "./apm-git-resolve.js";
+import { readDeclaredLicense } from "./export/license.js";
 import type { ApmGitLockFields } from "./lockfile.js";
 import { readLockfile } from "./lockfile.js";
 import { addDependency } from "./plugin-dependency.js";
@@ -173,6 +175,10 @@ export async function materializeApmGitDependencies(
       name: plugin.name,
       version: plugin.version,
     });
+    const licenseRoot = resolution.virtualPath
+      ? join(fetched.checkoutRoot, resolution.virtualPath)
+      : fetched.checkoutRoot;
+    const declared_license = readDeclaredLicense(licenseRoot);
     gitLocks.push({
       name: plugin.name,
       repo_url: resolution.repoUrl,
@@ -181,6 +187,7 @@ export async function materializeApmGitDependencies(
       ...(resolution.constraint ? { constraint: resolution.constraint } : {}),
       ...(resolution.resolvedTag ? { resolved_tag: resolution.resolvedTag } : {}),
       ...(resolution.virtualPath ? { virtual_path: resolution.virtualPath } : {}),
+      ...(declared_license ? { declared_license } : {}),
     });
   }
 

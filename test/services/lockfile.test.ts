@@ -161,6 +161,21 @@ describe("lockfile", () => {
     ).toThrow(/Unsafe local_deployed_file_hashes path/);
   });
 
+  it("records declared_license from apply extras and round-trips it", async () => {
+    await buildGraph();
+    const result = resolveComposition({ rootSelectors: ["root"] });
+    writeLockfile(
+      ctx.projectDir,
+      lockfileFromResolution(result, {
+        declaredLicenses: { base: "Apache-2.0" },
+      }),
+    );
+    const lock = readLockfile(ctx.projectDir);
+    expect(lock?.plugins[0]?.declared_license).toBe("Apache-2.0");
+    const raw = readFileSync(lockfilePath(ctx.projectDir), "utf8");
+    expect(raw).toContain("declared_license: Apache-2.0");
+  });
+
   it("merges APM git identity fields onto matching lock entries", async () => {
     await buildGraph();
     const result = resolveComposition({ rootSelectors: ["root"] });
