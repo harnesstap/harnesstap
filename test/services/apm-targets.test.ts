@@ -6,7 +6,6 @@ import {
   mapApmTargets,
   resolveCompileTargets,
   TargetFlagError,
-  TargetResolutionError,
 } from "../../src/services/apm-targets.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
@@ -27,12 +26,15 @@ describe("mapApmTargets", () => {
     expect(mapped.canonicalTargets).toEqual(["cursor", "claude"]);
   });
 
-  it("expands all without antigravity or agent-skills", () => {
+  it("expands all to HT-mapped canonical targets including antigravity and kiro", () => {
     const mapped = mapApmTargets(["all"]);
     expect(mapped.harnessTargets).toContain("cursor");
     expect(mapped.harnessTargets).toContain("kiro");
-    expect(mapped.harnessTargets).not.toContain("antigravity");
+    expect(mapped.harnessTargets).toContain("antigravity");
+    expect(mapped.canonicalTargets).toContain("antigravity");
+    expect(mapped.canonicalTargets).toContain("kiro");
     expect(mapped.skippedTargets).toEqual([]);
+    expect(mapped.harnessTargets).not.toContain("agent-skills");
   });
 
   it("skips agent-skills as a non-harness meta-target", () => {
@@ -62,63 +64,69 @@ describe("detectApmTargetSignals", () => {
 });
 
 describe("resolveCompileTargets", () => {
-  it("prefers --target over declared targets and autodetect", () => {
+  it("prefers --target over declared targets, preference, and autodetect", () => {
     mkdirSync(join(root, ".cursor"), { recursive: true });
     const resolved = resolveCompileTargets({
       projectRoot: root,
-      mode: "install",
       cliTarget: "claude",
       manifestHarnessTargets: ["cursor"],
+      preferenceHarnesses: ["codex"],
     });
     expect(resolved.source).toBe("cli");
     expect(resolved.harnessTargets).toEqual(["claude-code"]);
   });
 
-  it("prefers declared targets over autodetect", () => {
+  it("prefers declared targets over preference and autodetect", () => {
     mkdirSync(join(root, ".claude"), { recursive: true });
     const resolved = resolveCompileTargets({
       projectRoot: root,
-      mode: "install",
       manifestHarnessTargets: ["cursor"],
+      preferenceHarnesses: ["claude-code"],
     });
     expect(resolved.source).toBe("manifest");
     expect(resolved.harnessTargets).toEqual(["cursor"]);
   });
 
-  it("auto-detects when nothing is declared", () => {
+  it("prefers harness preference over autodetect", () => {
     mkdirSync(join(root, ".cursor"), { recursive: true });
     const resolved = resolveCompileTargets({
       projectRoot: root,
-      mode: "install",
+      preferenceHarnesses: ["claude-code"],
+    });
+    expect(resolved.source).toBe("preference");
+    expect(resolved.harnessTargets).toEqual(["claude-code"]);
+  });
+
+  it("auto-detects APM signals when nothing is declared", () => {
+    mkdirSync(join(root, ".cursor"), { recursive: true });
+    const resolved = resolveCompileTargets({
+      projectRoot: root,
     });
     expect(resolved.source).toBe("autodetect");
     expect(resolved.harnessTargets).toEqual(["cursor"]);
   });
 
-  it("fails closed on install when no target can be resolved", () => {
-    expect(() =>
-      resolveCompileTargets({
-        projectRoot: root,
-        mode: "install",
-      }),
-    ).toThrow(TargetResolutionError);
-  });
-
-  it("returns an empty compile fallback when nothing resolves", () => {
+  it("uses HT detectPlatforms fallback after empty APM signals", () => {
     const resolved = resolveCompileTargets({
       projectRoot: root,
-      mode: "compile",
+      fallbackHarnesses: ["opencode"],
+    });
+    expect(resolved.source).toBe("autodetect");
+    expect(resolved.harnessTargets).toEqual(["opencode"]);
+  });
+
+  it("returns empty when nothing resolves", () => {
+    const resolved = resolveCompileTargets({
+      projectRoot: root,
     });
     expect(resolved.source).toBe("empty");
     expect(resolved.harnessTargets).toEqual([]);
-    expect(resolved.warnings.some((warning) => warning.includes("wrote nothing"))).toBe(true);
   });
 
   it("rejects --all together with --target", () => {
     expect(() =>
       resolveCompileTargets({
         projectRoot: root,
-        mode: "compile",
         cliAll: true,
         cliTarget: "cursor",
       }),

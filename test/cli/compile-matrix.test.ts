@@ -28,7 +28,7 @@ ${body}
 }
 
 describe("ht compile / ht targets", () => {
-  it("compiles cursor and claude from --target", async () => {
+  it("compiles cursor and claude from --target via apply-from-manifest", async () => {
     writeTextFile(
       join(ctx.projectDir, "apm.yml"),
       `name: demo
@@ -51,6 +51,10 @@ version: "1.0.0"
       readFileSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"), "utf8"),
     ).toContain("Be kind.");
     expect(readFileSync(join(ctx.projectDir, "CLAUDE.md"), "utf8")).toContain("Be kind.");
+    expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(true);
+    expect(readFileSync(join(ctx.projectDir, "apm.lock.yaml"), "utf8")).toContain(
+      "local_deployed_file_hashes",
+    );
   });
 
   it("lets declared targets win over machine-local folders", async () => {
@@ -91,7 +95,71 @@ targets: [cursor]
     expect(payload.resolved).toEqual(["cursor"]);
   });
 
-  it("writes nothing when compile cannot resolve a target", async () => {
+  it("lets declared targets win over ht init harness preference", async () => {
+    const init = await runCli(["init", "--main", "claude-code"]);
+    expect(init.exitCode ?? 0, init.stderr || init.stdout).toBe(0);
+
+    writeTextFile(
+      join(ctx.projectDir, "apm.yml"),
+      `name: demo
+version: "1.0.0"
+targets: [cursor]
+`,
+    );
+    writeInstruction(ctx.projectDir);
+
+    const compiled = await runCli([
+      "compile",
+      "--project",
+      ctx.projectDir,
+      "--no-interactive",
+    ]);
+    expect(compiled.exitCode ?? 0, compiled.stderr || compiled.stdout).toBe(0);
+    expect(
+      readFileSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"), "utf8"),
+    ).toContain("Be kind.");
+    expect(existsSync(join(ctx.projectDir, "CLAUDE.md"))).toBe(false);
+
+    const preview = await runCli(["targets", "--project", ctx.projectDir, "--json"]);
+    expect(preview.exitCode ?? 0).toBe(0);
+    const payload = JSON.parse(preview.stdout) as { source: string; resolved: string[] };
+    expect(payload.source).toBe("manifest");
+    expect(payload.resolved).toEqual(["cursor"]);
+  });
+
+  it("uses harness preference when targets: is omitted", async () => {
+    const init = await runCli(["init", "--main", "claude-code"]);
+    expect(init.exitCode ?? 0, init.stderr || init.stdout).toBe(0);
+
+    writeTextFile(
+      join(ctx.projectDir, "apm.yml"),
+      `name: demo
+version: "1.0.0"
+`,
+    );
+    writeInstruction(ctx.projectDir);
+
+    const compiled = await runCli([
+      "compile",
+      "--project",
+      ctx.projectDir,
+      "--no-interactive",
+    ]);
+    expect(compiled.exitCode ?? 0, compiled.stderr || compiled.stdout).toBe(0);
+    expect(readFileSync(join(ctx.projectDir, "CLAUDE.md"), "utf8")).toContain("Be kind.");
+    expect(existsSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"))).toBe(false);
+
+    const preview = await runCli(["targets", "--project", ctx.projectDir, "--json"]);
+    expect(preview.exitCode ?? 0).toBe(0);
+    const payload = JSON.parse(preview.stdout) as {
+      source: string;
+      harnesses: string[];
+    };
+    expect(payload.source).toBe("preference");
+    expect(payload.harnesses).toEqual(["claude-code"]);
+  });
+
+  it("fails closed when compile cannot resolve a target", async () => {
     writeTextFile(
       join(ctx.projectDir, "apm.yml"),
       `name: demo
@@ -106,11 +174,34 @@ version: "1.0.0"
       ctx.projectDir,
       "--no-interactive",
     ]);
-    expect(result.exitCode ?? 0).toBe(0);
-    expect(result.stderr + result.stdout).toContain("wrote nothing");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr + result.stdout).toContain("No harness targets configured");
     expect(existsSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"))).toBe(false);
     expect(existsSync(join(ctx.projectDir, "AGENTS.md"))).toBe(false);
     expect(existsSync(join(ctx.projectDir, "CLAUDE.md"))).toBe(false);
+  });
+
+  it("rejects a plugin selector", async () => {
+    const result = await runCli([
+      "compile",
+      "team-stack",
+      "--project",
+      ctx.projectDir,
+      "--no-interactive",
+    ]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr + result.stdout).toContain("does not take a plugin selector");
+  });
+
+  it("exposes project-scope apply flags and not --global", async () => {
+    const result = await runCli(["compile", "--help"]);
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(result.stdout).toContain("--project");
+    expect(result.stdout).toContain("--dry-run");
+    expect(result.stdout).toContain("--harness");
+    expect(result.stdout).toContain("--target");
+    expect(result.stdout).toContain("--all");
+    expect(result.stdout).not.toMatch(/^\s+--global\b/m);
   });
 });
 
@@ -131,7 +222,7 @@ version: "1.0.0"
       "--no-interactive",
     ]);
     expect(result.exitCode).toBe(1);
-    expect(result.stderr + result.stdout).toContain("No compile target could be resolved");
+    expect(result.stderr + result.stdout).toContain("No harness targets configured");
     expect(existsSync(join(ctx.projectDir, "CLAUDE.md"))).toBe(false);
   });
 

@@ -48,8 +48,9 @@ export const CANONICAL_APM_TARGETS = [
 export type CanonicalApmTarget = (typeof CANONICAL_APM_TARGETS)[number];
 
 /**
- * `--all` expansion. Matches microsoft/apm: antigravity is explicit-only
- * and agent-skills is a meta-target, so neither is included.
+ * `--all` expansion. `agent-skills` stays a skipped meta-target.
+ * `antigravity` and `kiro` are included so `--all` covers the HT-mapped
+ * canonical set beyond the original eight.
  */
 export const APM_ALL_TARGETS = [
   "copilot",
@@ -59,12 +60,12 @@ export const APM_ALL_TARGETS = [
   "opencode",
   "codex",
   "gemini",
+  "antigravity",
   "windsurf",
   "kiro",
 ] as const;
 
-export type TargetResolutionSource = "cli" | "manifest" | "autodetect" | "preference" | "empty";
-export type TargetResolutionMode = "install" | "compile" | "apply-plugin";
+export type TargetResolutionSource = "cli" | "manifest" | "preference" | "autodetect" | "empty";
 
 export interface ApmTargetMapping {
   harnessTargets: string[];
@@ -88,14 +89,15 @@ export interface TargetPreviewRow {
 
 export interface ResolveCompileTargetsInput {
   projectRoot: string;
-  mode: TargetResolutionMode;
   cliTarget?: string;
   cliAll?: boolean;
   cliHarness?: string;
   /** Already-mapped HT harness slugs from `apm.yml` `targets` / `compilation.target`. */
   manifestHarnessTargets?: string[];
-  /** HT harness slugs from project/global preference (apply-plugin fallback only). */
+  /** Project/global harness preference slugs. Used after declared targets. */
   preferenceHarnesses?: string[];
+  /** HT `detectPlatforms` slugs. Used after APM filesystem signals. */
+  fallbackHarnesses?: string[];
 }
 
 export interface ResolvedCompileTargets {
@@ -105,13 +107,6 @@ export interface ResolvedCompileTargets {
   warnings: string[];
   skippedTargets: string[];
   detectedSignals: ApmTargetSignal[];
-}
-
-export class TargetResolutionError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "TargetResolutionError";
-  }
 }
 
 export class TargetFlagError extends CliUsageError {
@@ -403,12 +398,6 @@ function fromHarnessSlugs(
   };
 }
 
-export const INSTALL_NO_TARGET_MESSAGE =
-  "No compile target could be resolved. Declare targets: in apm.yml, pass --target / --all, or add a harness config directory (.cursor/, .claude/, …).";
-
-export const COMPILE_NO_TARGET_HINT =
-  "No compile target resolved; wrote nothing. Declare targets: in apm.yml or pass --target. Auto-detection looks for harness folders such as .cursor/ or .claude/.";
-
 export function resolveCompileTargets(input: ResolveCompileTargetsInput): ResolvedCompileTargets {
   assertTargetSelectionFlags(input);
 
@@ -422,22 +411,20 @@ export function resolveCompileTargets(input: ResolveCompileTargetsInput): Resolv
     if (tokens.some((token) => normalizeApmTargetToken(token) === "all")) {
       mapped.warnings.unshift("--target all is deprecated; prefer --all");
     }
-    if (mapped.harnessTargets.length === 0 && input.mode === "install") {
-      throw new TargetResolutionError(INSTALL_NO_TARGET_MESSAGE);
-    }
     return fromMapping(mapped, "cli");
   }
 
   if (input.cliHarness?.trim()) {
     const slugs = uniqueHarnessTargets(parsePlatformFilter(input.cliHarness) ?? []);
-    if (slugs.length === 0 && input.mode === "install") {
-      throw new TargetResolutionError(INSTALL_NO_TARGET_MESSAGE);
-    }
     return fromHarnessSlugs(slugs, "cli");
   }
 
   if (input.manifestHarnessTargets && input.manifestHarnessTargets.length > 0) {
     return fromHarnessSlugs(input.manifestHarnessTargets, "manifest");
+  }
+
+  if (input.preferenceHarnesses && input.preferenceHarnesses.length > 0) {
+    return fromHarnessSlugs(input.preferenceHarnesses, "preference");
   }
 
   const detected = detectApmTargetSignals(input.projectRoot);
@@ -449,19 +436,15 @@ export function resolveCompileTargets(input: ResolveCompileTargetsInput): Resolv
     );
   }
 
-  if (input.mode === "apply-plugin" && input.preferenceHarnesses && input.preferenceHarnesses.length > 0) {
-    return fromHarnessSlugs(input.preferenceHarnesses, "preference");
-  }
-
-  if (input.mode === "install") {
-    throw new TargetResolutionError(INSTALL_NO_TARGET_MESSAGE);
+  if (input.fallbackHarnesses && input.fallbackHarnesses.length > 0) {
+    return fromHarnessSlugs(input.fallbackHarnesses, "autodetect");
   }
 
   return {
     harnessTargets: [],
     canonicalTargets: [],
     source: "empty",
-    warnings: input.mode === "compile" ? [COMPILE_NO_TARGET_HINT] : [],
+    warnings: [],
     skippedTargets: [],
     detectedSignals: [],
   };

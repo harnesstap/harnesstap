@@ -5,7 +5,6 @@ export interface ApplyCommandOpts {
   harness?: string;
   target?: string;
   all?: boolean;
-  failClosedTargets?: boolean;
   account?: string;
   baseUrl?: string;
   dryRun?: boolean;
@@ -35,7 +34,7 @@ export function addApplyCommandOptions(command: Command): Command {
     )
     .option(
       "--all",
-      "Install/apply every canonical target (not antigravity or agent-skills)",
+      "Install/apply every canonical HT-mapped target (not agent-skills)",
     )
     .option("--dry-run", "Show what would be written")
     .option("--format <mode>", "Output format: human or json", "human")

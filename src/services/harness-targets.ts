@@ -1,7 +1,7 @@
 import { getHarnessPreference, getProjectHarnessConfig } from "../models/harness.js";
 import { getProjectByLocalPath } from "../models/project.js";
 import { getAllPlatforms } from "../platforms/registry.js";
-import { detectHomePlatforms, detectPlatforms } from "./scanner.js";
+import { detectHomePlatforms } from "./scanner.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 
 export function parsePlatformFilter(platform?: string): string[] | undefined {
@@ -53,8 +53,8 @@ export function resolveScanGlobalHarnessTargets(
 }
 
 /**
- * Machine-local fallback used only by `ht apply <plugin>` after CLI flags and
- * declared `targets:` have been considered. Install/compile do not use this.
+ * Project then global harness preference slugs. Filesystem detection is a
+ * later step in `resolveCompileTargets` so declared `targets:` stay portable.
  */
 export function collectApplyPreferenceHarnesses(projectRoot: string): string[] {
   const projectByPath = getProjectByLocalPath(projectRoot);
@@ -80,5 +80,5 @@ export function collectApplyPreferenceHarnesses(projectRoot: string): string[] {
     return preferredTargets;
   }
 
-  return uniqueHarnessTargets(detectPlatforms(projectRoot));
+  return [];
 }

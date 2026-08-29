@@ -48,9 +48,7 @@ import { detectProfileOwnedOverwriteConflicts } from "../../services/profile-own
 import { applyProfilePlugin } from "../../services/profile-apply.js";
 import { withProfileApplyLock } from "../../services/profile-apply-lock.js";
 import { useProfileCommand } from "../../services/profile-commands.js";
-import { collectApplyPreferenceHarnesses } from "../../services/harness-targets.js";
 import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
-import { TargetResolutionError } from "../../services/apm-targets.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
 import type { SnapshotState } from "../../types.js";
 import {
@@ -192,15 +190,10 @@ function parseBody(body: unknown): ParsedApplyBody | Response {
 function resolveProjectHarnesses(
   projectRoot: string,
   harnessOption: string | undefined,
-  fromManifest: boolean,
 ): string[] {
   return resolveProjectCompileTargets({
     projectRoot,
-    mode: fromManifest ? "install" : "apply-plugin",
     ...(harnessOption ? { cliHarness: harnessOption } : {}),
-    ...(!fromManifest
-      ? { preferenceHarnesses: collectApplyPreferenceHarnesses(projectRoot) }
-      : {}),
   }).harnessTargets;
 }
 
@@ -373,28 +366,13 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     );
   }
 
-  let platforms: string[];
-  try {
-    platforms = resolveProjectHarnesses(
-      projectRoot,
-      parsed.harness,
-      parsed.plugins.length === 0,
-    );
-  } catch (err) {
-    if (err instanceof TargetResolutionError) {
-      return jsonResponse(
-        { error: "apply_failed", message: err.message },
-        { status: 400 },
-      );
-    }
-    throw err;
-  }
+  const platforms = resolveProjectHarnesses(projectRoot, parsed.harness);
   if (platforms.length === 0) {
     return jsonResponse(
       {
         error: "apply_failed",
         message:
-          "No compile target could be resolved. Declare targets: in apm.yml or pass harness slugs.",
+          "No harness targets configured. Declare targets: in apm.yml or pass --target / --harness.",
       },
       { status: 400 },
     );

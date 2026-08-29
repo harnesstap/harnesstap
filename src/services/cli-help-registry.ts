@@ -126,7 +126,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Onboard a project from apm.yml (same as apply with no plugin selector)",
     details:
-      "Reads repo-root apm.yml, resolves dependencies.apm / dependencies.mcp, compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Target resolution: --target/--all/--harness, then targets: in apm.yml, then filesystem auto-detect. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
+      "Reads repo-root apm.yml, resolves dependencies.apm / dependencies.mcp, compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Target resolution: --target/--all/--harness, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. Declared targets: win over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
     examples: [
       "install",
       "install --project .",
@@ -138,9 +138,9 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   compile: {
     description:
-      "Compile local .apm/ primitives into resolved target harness directories",
+      "Named apply-from-manifest entry: compile .apm/ primitives into resolved target harness directories",
     details:
-      "Reuses the same .apm/ → harness-dir writers as ht install / ht apply. Resolution order: --target / --all / --harness, then targets: in apm.yml, then filesystem auto-detect. When nothing resolves, compile writes nothing and exits 0 (documented fallback). Does not resolve dependencies, rewrite the lockfile, or run policy/trust. compilation.strategy: distributed is noted and ignored; output stays single-file root context (AGENTS.md / CLAUDE.md).",
+      "Same overlay path as ht install / ht apply with no plugin selector: existing writers, apm.lock.yaml local_deployed_file_hashes, policy, and trust. Resolution order: --target / --all / --harness, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. Declared targets: win over preference so install stays portable. Fails closed when no target resolves. Does not take a plugin selector or --global. compilation.strategy: distributed is noted and ignored; output stays single-file root context (AGENTS.md / CLAUDE.md).",
     examples: [
       "compile",
       "compile --target cursor",
@@ -151,9 +151,9 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   targets: {
     description:
-      "Show which APM compile targets resolve for this project, and why",
+      "Show which apply harness targets resolve for this project, and why",
     details:
-      "Prints the canonical target table (or JSON) using the same resolution order as ht compile / ht install: CLI flags, then targets: in apm.yml, then filesystem auto-detect. Use this to preview auto-detection before pinning targets: for portable lockfile / harness ownership.",
+      "Prints the canonical target table (or JSON) using the same resolution order as ht compile / ht install: CLI flags, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. --all includes the agent-skills meta-target row. Use this to preview the set before pinning targets: for portable lockfile / harness ownership.",
     examples: [
       "targets",
       "targets --json",

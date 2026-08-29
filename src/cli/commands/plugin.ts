@@ -78,10 +78,7 @@ import { listAttachedPluginPins } from "../../services/plugin-composition.js";
 import {
   getProjectHarnessConfig,
 } from "../../models/harness.js";
-import {
-  assertSupportedHarnessTargets,
-  collectApplyPreferenceHarnesses,
-} from "../../services/harness-targets.js";
+import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import {
   handlePluginCatalogConnectPluginCommand,
@@ -640,7 +637,7 @@ export async function handleProjectApplyCommand(
 
   let platforms: string[];
   try {
-    platforms = resolveApplyHarnessTargets(projectRoot, opts, pluginNames.length === 0);
+    platforms = resolveApplyHarnessTargets(projectRoot, opts);
   } catch (err) {
     process.exitCode = err instanceof TargetFlagError ? 2 : 1;
     ui.danger(err instanceof Error ? err.message : String(err), {
@@ -1545,17 +1542,12 @@ async function handlePluginEditorCommand(
 function resolveApplyHarnessTargets(
   projectRoot: string,
   opts: ApplyCommandOpts,
-  fromManifest: boolean,
 ): string[] {
   const resolved = resolveProjectCompileTargets({
     projectRoot,
-    mode: fromManifest || opts.failClosedTargets ? "install" : "apply-plugin",
     ...(opts.target ? { cliTarget: opts.target } : {}),
     ...(opts.all ? { cliAll: true } : {}),
     ...(opts.harness ? { cliHarness: opts.harness } : {}),
-    ...(!fromManifest && !opts.failClosedTargets
-      ? { preferenceHarnesses: collectApplyPreferenceHarnesses(projectRoot) }
-      : {}),
   });
   for (const warning of resolved.warnings) {
     ui.warn(warning);

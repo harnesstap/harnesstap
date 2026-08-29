@@ -6,7 +6,7 @@ description: Apply plugins and compile local APM primitives into harness directo
 
 `ht apply` resolves a plugin graph and writes harness files. With no plugin selector, it is the same loop as [`ht install`](./install.md): read `apm.yml`, resolve manifest dependencies, compile local primitives, write `apm.lock.yaml`, and materialize the **resolved** target harness directories — the same writers used for library plugins, not a second output tree.
 
-Default teammate onboarding in a repo that already has `apm.yml` is `ht install`. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Preview targets with `ht targets`. Compile `.apm/` only with [`ht compile`](./compile.md).
+Default teammate onboarding in a repo that already has `apm.yml` is `ht install`. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Preview targets with `ht targets`. [`ht compile`](./compile.md) is the same apply-from-manifest loop under a named entry.
 
 ```bash
 ht install
@@ -40,11 +40,12 @@ Harness selection is the same for `ht compile`, `ht targets`, `ht install`, and 
 1. `--target` / `--all` / `--harness` on the command line
 2. `targets` / `target` in `apm.yml`
 3. `compilation.target` when the top-level target fields are omitted
-4. Auto-detection from documented filesystem signals
+4. Project harness preference, then global harness preference
+5. Auto-detection from documented filesystem signals, then HT `detectPlatforms`
 
-`ht install` and apply-from-manifest fail closed when no target can be resolved. `ht apply <plugin>` may still fall back to project/global harness preference. `ht compile` writes nothing and exits 0 when nothing resolves.
+`ht compile`, `ht install`, and apply-from-manifest fail closed when no target can be resolved after that chain. `ht apply <plugin>` uses the same order.
 
-Declared `targets:` wins over machine-local folder detection so lockfile and harness ownership stay portable.
+Declared `targets:` wins over harness preference and machine-local folder detection so lockfile and harness ownership stay portable.
 
 `compilation.exclude` skips matching source paths. `compilation.strategy: distributed` is noted and ignored — apply/compile write the existing single-file root context (`AGENTS.md` / `CLAUDE.md`), not per-directory compile output.
 
