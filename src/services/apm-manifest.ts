@@ -9,6 +9,15 @@ import { inspectApmOverlay, type ApmOverlayInfo } from "./apm-overlay.js";
 import { collectApmTargetTokens, mapApmTargets } from "./apm-targets.js";
 import type { ProjectConfig } from "./project-config.js";
 
+export interface ApmCompilationConfig {
+  targetTokens: string[];
+  strategy?: string;
+  sourceAttribution?: boolean;
+  exclude: string[];
+  chatmode?: string;
+  singleFile?: boolean;
+}
+
 export const APM_MANIFEST_FILENAME = "apm.yml";
 
 const HT_TOP_LEVEL_KEYS = [
@@ -42,12 +51,38 @@ export interface ApmManifestFields {
   apmDependencies: ParsedApmDependency[];
   mcpDependencies: ParsedMcpDependency[];
   overlay?: ApmOverlayInfo;
+  compilation?: ApmCompilationConfig;
   warnings: string[];
   rest: Record<string, unknown>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+export function parseApmCompilation(value: unknown): ApmCompilationConfig | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const targetTokens = collectApmTargetTokens({
+    target: value.target,
+    targets: value.targets,
+  });
+  const exclude = Array.isArray(value.exclude)
+    ? value.exclude.filter((entry): entry is string => typeof entry === "string")
+    : typeof value.exclude === "string"
+      ? [value.exclude]
+      : [];
+  return {
+    targetTokens,
+    ...(typeof value.strategy === "string" ? { strategy: value.strategy } : {}),
+    ...(typeof value.source_attribution === "boolean"
+      ? { sourceAttribution: value.source_attribution }
+      : {}),
+    exclude,
+    ...(typeof value.chatmode === "string" ? { chatmode: value.chatmode } : {}),
+    ...(value.single_file === true ? { singleFile: true } : {}),
+  };
 }
 
 function coerceString(value: unknown): string {
@@ -111,8 +146,17 @@ export function extractApmManifestFields(
     ? descriptionRaw
     : undefined;
 
-  const targetMapping = mapApmTargets(collectApmTargetTokens(document));
+  const compilation = parseApmCompilation(document.compilation);
+  const topLevelTargets = collectApmTargetTokens(document);
+  const targetTokens =
+    topLevelTargets.length > 0 ? topLevelTargets : (compilation?.targetTokens ?? []);
+  const targetMapping = mapApmTargets(targetTokens);
   warnings.push(...targetMapping.warnings);
+  if (compilation?.strategy === "distributed") {
+    warnings.push(
+      "apm.yml compilation.strategy is distributed; ht apply writes existing harness files (single-file root context) rather than per-directory AGENTS.md",
+    );
+  }
 
   const deps = collectApmAndDevDependencies(document);
   const vendor = htFieldsFromDocument(document);
@@ -127,7 +171,7 @@ export function extractApmManifestFields(
 
   let overlay: ApmOverlayInfo | undefined;
   if (rootPath) {
-    overlay = inspectApmOverlay(rootPath);
+    overlay = inspectApmOverlay(rootPath, { exclude: compilation?.exclude ?? [] });
     if (overlay) {
       warnings.push(...overlay.warnings);
     }
@@ -143,6 +187,7 @@ export function extractApmManifestFields(
     apmDependencies: deps.apm,
     mcpDependencies: deps.mcp,
     ...(overlay ? { overlay } : {}),
+    ...(compilation ? { compilation } : {}),
     warnings,
     rest,
   };

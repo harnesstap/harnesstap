@@ -5,6 +5,7 @@ import type { ParsedApmDependency, ParsedMcpDependency } from "./apm-dependencie
 import {
   APM_MANIFEST_FILENAME,
   parseApmManifestContents,
+  type ApmCompilationConfig,
 } from "./apm-manifest.js";
 import type { ApmOverlayInfo } from "./apm-overlay.js";
 import { parseTransportToml } from "./toml/read.js";
@@ -41,6 +42,7 @@ export interface ResolvedProjectConfig extends ProjectConfig {
   apmDependencies: ParsedApmDependency[];
   mcpDependencies: ParsedMcpDependency[];
   overlay?: ApmOverlayInfo;
+  compilation?: ApmCompilationConfig;
   warnings: string[];
 }
 
@@ -347,6 +349,7 @@ function parseResolvedProjectConfig(
     apmDependencies: fields.apmDependencies,
     mcpDependencies: fields.mcpDependencies,
     ...(fields.overlay ? { overlay: fields.overlay } : {}),
+    ...(fields.compilation ? { compilation: fields.compilation } : {}),
     warnings: fields.warnings,
   };
 }
@@ -392,6 +395,7 @@ export function findProjectConfig(startPath: string): ResolvedProjectConfig | nu
     mcpDependencies: parsed.mcpDependencies,
     warnings: parsed.warnings,
     ...(parsed.overlay ? { overlay: parsed.overlay } : {}),
+    ...(parsed.compilation ? { compilation: parsed.compilation } : {}),
   };
 }
 

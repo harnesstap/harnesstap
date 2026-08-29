@@ -1,0 +1,3 @@
+kind: Added
+body: Compile local `.apm/` primitives into target harness directories on `ht apply`, honoring `targets`/`target` and `compilation` and recording deployed file hashes.
+time: 2026-08-29T00:40:00Z

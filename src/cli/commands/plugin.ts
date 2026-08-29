@@ -877,6 +877,7 @@ export async function handleProjectApplyCommand(
       {
         claudeConfig: resolvedClaude,
         resolvedEnvironment,
+        skillSourceRoot: projectRoot,
         ...(projectHarnessConfig?.cursor_skill_mode
           ? { skillCursorMode: projectHarnessConfig.cursor_skill_mode }
           : {}),
