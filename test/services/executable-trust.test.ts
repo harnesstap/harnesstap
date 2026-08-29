@@ -8,6 +8,8 @@ import {
   executableGateOptedIn,
   loadProjectExecutables,
   parseProjectExecutables,
+  executableTrustFieldsFromProject,
+  executableTrustResponseFields,
   writeProjectExecutableGrant,
   writeUserExecutableGrant,
   type ExecutableTrustContext,
@@ -265,3 +267,52 @@ describe("grant writes", () => {
     expect(raw.executables?.deny?.["evil/pkg"]?.hooks).toBe(true);
   });
 });
+
+describe("executable trust response fields", () => {
+  it("clears parked when the gate is off", () => {
+    expect(
+      executableTrustResponseFields({
+        optedIn: false,
+        warnings: ["note"],
+        parked: [{ ref: "acme/hooks", types: ["hooks"] }],
+        execStatuses: { dep: "gated_pending_approval" },
+      }),
+    ).toEqual({
+      optedIn: false,
+      warnings: ["note"],
+      parked: [],
+      execStatuses: {},
+    });
+  });
+
+  it("reads pending refs from a project lock when the gate is on", () => {
+    const dir = createTempDir("exec-project-fields-");
+    writeFileSync(
+      join(dir, "apm.yml"),
+      `name: demo
+version: "1.0.0"
+executables: {}
+`,
+      "utf8",
+    );
+    writeFileSync(
+      join(dir, "apm.lock.yaml"),
+      `lockfile_version: "1"
+plugins:
+  - name: dep-hooks
+    version: "1.0.0"
+    source: local
+    integrity: abc
+    depth: 1
+    path: [root]
+    exec_status: gated_pending_approval
+`,
+      "utf8",
+    );
+    const fields = executableTrustFieldsFromProject(dir);
+    expect(fields.optedIn).toBe(true);
+    expect(fields.parked.some((entry) => entry.ref === "dep-hooks")).toBe(true);
+    expect(fields.execStatuses["dep-hooks"]).toBe("gated_pending_approval");
+  });
+});
+

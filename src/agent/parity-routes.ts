@@ -1,5 +1,6 @@
 import { tryHandle as tryEnvironments } from "./parity-handlers/environments.js";
 import { tryHandle as tryApply } from "./parity-handlers/apply.js";
+import { tryHandle as tryApprove } from "./parity-handlers/approve.js";
 import { tryHandle as tryImport } from "./parity-handlers/import.js";
 import { tryHandle as tryProfileDelete } from "./parity-handlers/profile-delete.js";
 import { tryHandle as tryPublish } from "./parity-handlers/publish.js";
@@ -24,6 +25,7 @@ export interface ParityRouteDeps {
 const HANDLERS = [
   tryEnvironments,
   tryApply,
+  tryApprove,
   tryImport,
   tryProfileDelete,
   tryPublish,

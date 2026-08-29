@@ -314,3 +314,81 @@ describe("apply behavior", () => {
     expect(confirmed?.status).toBe(200);
   });
 });
+
+describe("apply executable trust fields", () => {
+  it("omits parked executables when the gate is off", async () => {
+    seedPluginWithInstruction("tooling");
+    writeFileSync(
+      join(ctx.projectDir, "apm.yml"),
+      `name: demo
+version: "1.0.0"
+`,
+      "utf-8",
+    );
+
+    const response = await handle(
+      applyRequest({
+        plugins: ["tooling"],
+        scope: "project",
+        projectPath: ctx.projectDir,
+        harness: "claude-code",
+      }),
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as {
+      optedIn: boolean;
+      parked: unknown[];
+    };
+    expect(body.optedIn).toBe(false);
+    expect(body.parked).toEqual([]);
+  });
+
+  it("returns parked refs when project apply gates unapproved hooks", async () => {
+    const pluginModel = await import("../../src/models/plugin-model.ts");
+    const resourceModel = await import("../../src/models/resource.ts");
+    const { addDependency } = await import("../../src/services/plugin-dependency.ts");
+    const { makeResourceInput } = await import("../helpers/resources.ts");
+
+    const dep = pluginModel.createPlugin({ name: "dep-hooks", version: "1.0.0" });
+    const hook = resourceModel.createResource(
+      makeResourceInput({
+        type: "hook",
+        name: "session-start",
+        metadata: { event: "SessionStart", script: "echo ok" },
+        content: "",
+      }),
+    );
+    pluginModel.addResourceToPlugin(dep.id, hook.id);
+    const root = pluginModel.createPlugin({ name: "root", version: "1.0.0" });
+    addDependency(root.id, "dep-hooks", { versionConstraint: "1.0.0" });
+
+    writeFileSync(
+      join(ctx.projectDir, "apm.yml"),
+      `name: demo
+version: "1.0.0"
+executables: {}
+`,
+      "utf-8",
+    );
+
+    const response = await handle(
+      applyRequest({
+        plugins: ["root"],
+        scope: "project",
+        projectPath: ctx.projectDir,
+        harness: "cursor",
+      }),
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as {
+      optedIn: boolean;
+      parked: Array<{ ref: string; types: string[] }>;
+      execStatuses: Record<string, string>;
+    };
+    expect(body.optedIn).toBe(true);
+    expect(body.parked.length).toBeGreaterThan(0);
+    expect(body.parked[0]?.types).toContain("hooks");
+    expect(Object.values(body.execStatuses)).toContain("gated_pending_approval");
+  });
+});
+

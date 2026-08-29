@@ -10,6 +10,7 @@ import {
   type SwitchProfileResult,
   type ProfileSwitchStepEvent,
 } from "../services/profile-switch.js";
+import { executableTrustFieldsFromProject } from "../services/executable-trust.js";
 import {
   createAgentSwitchSession,
   emitAgentSwitchFinal,
@@ -209,6 +210,11 @@ export async function startAgentSwitch(
         profile_name: request.profile,
       });
 
+      const trust =
+        (request.scope === "project" || request.scope === "both") && projectPath
+          ? executableTrustFieldsFromProject(projectPath)
+          : undefined;
+
       emitAgentSwitchFinal(session, {
         type: "result",
         ok: true,
@@ -218,6 +224,7 @@ export async function startAgentSwitch(
           ...(projectPath ? { project_path: projectPath } : {}),
           ...(homeResult ? { home: homeResult } : {}),
           ...(projectResult !== undefined ? { project: projectResult } : {}),
+          ...(trust ?? {}),
         },
       });
     } catch (error) {

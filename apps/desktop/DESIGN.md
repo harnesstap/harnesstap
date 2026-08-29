@@ -36,7 +36,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Labeled `btn primary` for the one accent action in a cluster; labeled `btn` for secondary. Icon-only is for header and rail chrome (workspace back, refresh, settings, History), never for Library, Sources, or Environments record actions except open-in-editor on Path, Content, and contained files. Header destinations show icon plus name.
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons.
 - Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, and history. Resource inspect is a centered, viewport-capped dialog (scrollable body, height follows content). Back (top left) and Esc leave the panel or dialog. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. The Library create-resource type picker is a centered dialog. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
-- Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab is inspect-only: project directory picker (recent + Browse), labeled Open config, profile definition list, validation/load errors only. It inspects `apm.yml`. Marketplaces and catalogs are managed in Sources, not Settings.
+- Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab: project directory picker (recent + Browse), raw `apm.yml` editor (Library Content mono chrome; save runs existing config validate and refuses on errors), labeled Open config as the external-editor escape hatch, profile definition list, validation/load errors. It reads and writes `apm.yml` only. Marketplaces and catalogs are managed in Sources, not Settings.
 
 ## Layout
 
@@ -69,7 +69,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Clicking a profile selects it; **Switch** commits. No “Both” view. Switch applies to the current view only.
 - Profiles enabled in home appear in Global; profiles in project config appear in Project; enabled in both appear in both. The init profile is named **global default** and stays Global-only. Desktop project bootstrap seeds a **project default** from that repo’s on-disk resources and does not enable the global profile in the project. Auto-seeded project defaults are project-scoped only.
 - Profile resources lists the selected profile’s composition. When that profile is also active, the list is live library state for it. Target preview is a collapsible apply-delta block in the same pane. Not-staged live resources (on disk, not in any profile) stay below that list: Plus adds one; labeled **Add all** in the Profile resources header adds every not-staged resource to the selected profile.
-- Switching: yellow panel, ordered steps, cancel disabled during apply.
+- Switching: yellow panel, ordered steps, cancel disabled during apply. After apply, switch, or Project Install, a yellow pending-approvals strip lists parked executable refs when the trust gate is on.
 - **Remove profile** is a labeled `btn` in the edit-profile header action cluster (next to Done), not icon-only. The same labeled control appears on the live-state header when a profile is selected. Confirm dialog keeps the delete-plugin checkbox.
 - Name and description are the first fields of the edit pane (not behind Metadata). Composition stays below.
 - Profile rail rows can be dragged to reorder when the filter is empty. Profile rail order is a desktop-only localStorage preference, separate for Global and Project.
@@ -77,6 +77,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 **Apply vs Sync**
 
 - Rail Apply = profile switch / re-apply.
+- Project **Install** = `ht install` (`POST /v1/apply` with `plugins: []`, project scope). Never labeled Sync or Switch. No `--global` install.
 - Library plugin Apply = `ht apply` (plugin graph). Does not use profile switch. Global apply of a profile-tagged package still records the active profile (`ht apply --global`).
 - Library **Update** = origin fetch (`plugin update` / `ht plugin update`). Replaces a syncable working head from marketplace, git, or catalog. Never labeled Sync.
 - Library Sync = `resource sync` (refresh the library copy from its install source). Never means Apply.

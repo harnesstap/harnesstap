@@ -30,6 +30,7 @@ import { ProfileDeleteControls } from "./components/parity/ProfileDeleteControls
 import { ProjectHistoryControl } from "./components/parity/ProjectHistoryControl";
 import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
+import { PendingApprovalsStrip } from "./components/PendingApprovalsStrip";
 import { MigrateExportDrawer } from "./components/MigrateExportDrawer";
 import { MigrateImportDrawer } from "./components/MigrateImportDrawer";
 import { ProjectPicker } from "./components/ProjectPicker";
@@ -75,6 +76,14 @@ import {
   saveProfileRailOrder,
 } from "./lib/profile-rail-order";
 import type { CutVersionRow } from "./lib/cut-versions-form";
+import { postApply } from "./lib/api/apply-plugin";
+import { postApprove, postDeny } from "./lib/api/approve";
+import {
+  pendingApprovalsFromTrust,
+  shouldShowPendingApprovalsStrip,
+  trustFieldsFromUnknown,
+  type ExecutableTrustFields,
+} from "./lib/pending-approvals";
 import { mergeStatusUpdate } from "./lib/status-merge";
 import type {
   CloudAuthStatus,
@@ -236,7 +245,12 @@ export function App() {
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
   const [bootstrapBusy, setBootstrapBusy] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
-  /** Project path whose `.harnesstap/config.toml` is known ready (init or already existed). */
+  const [pendingTrust, setPendingTrust] = useState<ExecutableTrustFields | null>(
+    null,
+  );
+  const [installBusy, setInstallBusy] = useState(false);
+  const [grantBusyRef, setGrantBusyRef] = useState<string | null>(null);
+  /** Project path whose `apm.yml` is known ready (init or already existed). */
   const [projectConfigReadyPath, setProjectConfigReadyPath] = useState<string | null>(
     null,
   );
@@ -270,6 +284,7 @@ export function App() {
     setProjectPath(next);
     setBootstrapError(null);
     setProjectConfigReadyPath(null);
+    setPendingTrust(null);
   }, []);
 
   useEffect(() => {
@@ -339,7 +354,7 @@ export function App() {
         : "No not-staged resources to stash";
   const projectTracked =
     status?.drift_summary.project?.status !== "na" && status?.drift_summary.project !== undefined;
-  // Config init ≠ DB tracking. Project view only needs config.toml; drift "na"
+  // Config init ≠ DB tracking. Project view only needs apm.yml; drift "na"
   // still means "never applied", not "needs init again".
   const projectReady =
     Boolean(projectPath)
@@ -1401,6 +1416,7 @@ export function App() {
               );
               return;
             }
+            setPendingTrust(trustFieldsFromUnknown(final.result));
             setSuccessMessage(
               `Applied ${targetProfile} to ${formatView(view)}`,
             );
@@ -1436,6 +1452,66 @@ export function App() {
       token,
       view,
     ],
+  );
+
+  const runProjectInstall = useCallback(async () => {
+    if (!baseUrl || !token || !projectPath) {
+      return;
+    }
+    setInstallBusy(true);
+    setSwitchError(null);
+    try {
+      const result = await postApply(baseUrl, token, {
+        plugins: [],
+        scope: "project",
+        projectPath,
+        onConflict: "replace",
+        confirmOwnedOverwrite: true,
+      });
+      setPendingTrust(trustFieldsFromUnknown(result));
+      setSuccessMessage("Installed project from apm.yml");
+      window.setTimeout(() => setSuccessMessage(null), 3000);
+      await refreshStatus("full");
+    } catch (error) {
+      setSwitchError(
+        error instanceof Error ? error.message : "Install failed",
+      );
+    } finally {
+      setInstallBusy(false);
+    }
+  }, [baseUrl, projectPath, refreshStatus, token]);
+
+  const decidePendingApproval = useCallback(
+    async (side: "allow" | "deny", ref: string) => {
+      if (!baseUrl || !token || !projectPath) {
+        return;
+      }
+      setGrantBusyRef(ref);
+      setSwitchError(null);
+      try {
+        if (side === "allow") {
+          await postApprove(baseUrl, token, { projectPath, refs: [ref] });
+        } else {
+          await postDeny(baseUrl, token, { projectPath, refs: [ref] });
+        }
+        const result = await postApply(baseUrl, token, {
+          plugins: [],
+          scope: "project",
+          projectPath,
+          onConflict: "replace",
+          confirmOwnedOverwrite: true,
+        });
+        setPendingTrust(trustFieldsFromUnknown(result));
+        await refreshStatus("full");
+      } catch (error) {
+        setSwitchError(
+          error instanceof Error ? error.message : "Could not update executable grant",
+        );
+      } finally {
+        setGrantBusyRef(null);
+      }
+    },
+    [baseUrl, projectPath, refreshStatus, token],
   );
 
   const maybeAutoReapplyAfterMutation = useCallback(
@@ -2001,6 +2077,7 @@ export function App() {
     || switching
     || pluginApplyBusy
     || bootstrapBusy
+    || installBusy
     || (view === "project" && (!projectPath || !projectReady))
     || (showReapply
       ? !activeProfile
@@ -2095,11 +2172,34 @@ export function App() {
                 onBrowse={() => void browseProject()}
               />
               {projectPath ? (
+                <button
+                  className={["btn", installBusy ? "is-busy" : ""]
+                    .filter(Boolean)
+                    .join(" ")}
+                  type="button"
+                  data-testid="project-install"
+                  onClick={() => void runProjectInstall()}
+                  disabled={
+                    !connected
+                    || !token
+                    || switching
+                    || installBusy
+                    || bootstrapBusy
+                    || !projectReady
+                  }
+                  aria-busy={installBusy}
+                  title="Install this project's apm.yml (ht install). Not a profile switch."
+                >
+                  {installBusy ? <ButtonSpinner size={16} /> : null}
+                  {installBusy ? "Installing…" : "Install"}
+                </button>
+              ) : null}
+              {projectPath ? (
                 <ProjectHistoryControl
                   baseUrl={baseUrl}
                   token={token}
                   connected={connected}
-                  switching={switching}
+                  switching={switching || installBusy}
                   projectPath={projectPath}
                   onSuccess={(message) => {
                     setSuccessMessage(message);
@@ -2431,7 +2531,7 @@ export function App() {
                   ) : view === "project" ? (
                     <>
                       Profiles listed in this project&apos;s{" "}
-                      <span className="mono">.harnesstap/config.toml</span> appear in
+                      <span className="mono">apm.yml</span> appear in
                       Project view. Global-only profiles stay in Global.
                     </>
                   ) : (
@@ -2685,6 +2785,9 @@ export function App() {
               setSuccessMessage(message);
               window.setTimeout(() => setSuccessMessage(null), 3000);
             }}
+            onApplyResult={(result) => {
+              setPendingTrust(trustFieldsFromUnknown(result));
+            }}
           />
         ) : editingProfile ? (
           <EditProfilePane
@@ -2727,6 +2830,27 @@ export function App() {
                   Dismiss
                 </button>
               </div>
+            ) : null}
+
+            {shouldShowPendingApprovalsStrip(pendingTrust) ? (
+              <PendingApprovalsStrip
+                items={pendingApprovalsFromTrust(pendingTrust)}
+                busyRef={grantBusyRef}
+                onApprove={
+                  projectPath
+                    ? (ref) => {
+                        void decidePendingApproval("allow", ref);
+                      }
+                    : undefined
+                }
+                onDeny={
+                  projectPath
+                    ? (ref) => {
+                        void decidePendingApproval("deny", ref);
+                      }
+                    : undefined
+                }
+              />
             ) : null}
 
             <div className="live-toolbar">

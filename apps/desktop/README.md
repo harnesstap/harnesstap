@@ -92,7 +92,9 @@ bun run desktop:install
 - [ ] Profiles rail lists profile-tagged plugins (default seeded on first boot)
 - [ ] Switch shows SSE steps; Cancel disabled during apply step
 - [ ] Live panel G/Y/R from `GET /v1/status`
+- [ ] After apply / switch / Project Install, a yellow strip lists parked executable refs (`ht approve` / `ht deny`)
 - [ ] Project view auto-bootstraps `apm.yml` on first use
+- [ ] Settings → Project edits raw `apm.yml` in-app; Save validates before write
 
 ## End-to-end tests (Tauri + WebdriverIO)
 

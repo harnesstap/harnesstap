@@ -68,6 +68,7 @@ import { DoctorReportDialog } from "./DoctorReportDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
 import { PluginVersionHistoryList } from "./PluginVersionHistoryList";
+import type { ApplyPluginResult } from "../lib/api/apply-plugin";
 import { ApplyPluginDrawer } from "./parity/ApplyPluginDrawer";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 
@@ -79,6 +80,7 @@ export interface PluginPackageDetailProps {
   projectPath?: string | null;
   onBusyChange?: (busy: boolean) => void;
   onSuccess: (message: string) => void;
+  onApplyResult?: (result: ApplyPluginResult) => void;
   onProfilesChanged: () => void;
   onDeleted: () => void;
   onBack: () => void;
@@ -178,6 +180,7 @@ export function PluginPackageDetail({
   projectPath = null,
   onBusyChange,
   onSuccess,
+  onApplyResult,
   onProfilesChanged,
   onDeleted,
   onBack,
@@ -1531,6 +1534,7 @@ export function PluginPackageDetail({
           disabled={disabled}
           onBusyChange={setApplyBusy}
           onSuccess={onSuccess}
+          onApplyResult={onApplyResult}
           onProfilesChanged={onProfilesChanged}
         />
       ) : null}

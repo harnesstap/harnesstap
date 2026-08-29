@@ -45,6 +45,7 @@ import {
 } from "../../services/apm-policy.js";
 import {
   applyExecutableTrustGate,
+  executableTrustResponseFields,
   overlappingDeployedHashes,
 } from "../../services/executable-trust.js";
 import { findProjectConfig } from "../../services/project-config.js";
@@ -489,6 +490,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
         platform: result.platformId,
         files: result.files.map((file) => ({ path: file.path })),
       })),
+      ...executableTrustResponseFields(executableTrust),
     });
   }
 
@@ -576,6 +578,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     project_root: projectRoot,
     platforms: platformResults,
     cancelled: false,
+    ...executableTrustResponseFields(executableTrust),
   });
 }
 

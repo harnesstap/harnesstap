@@ -480,6 +480,13 @@ export interface AgentSwitchFinalEvent {
   error?: string;
 }
 
+export interface AgentSwitchTrustResult {
+  optedIn?: boolean;
+  warnings?: string[];
+  parked?: Array<{ ref: string; types: Array<"hooks" | "bin" | "mcp"> }>;
+  execStatuses?: Record<string, string>;
+}
+
 export type AgentSwitchStreamEvent = ProfileSwitchStepEvent | AgentSwitchFinalEvent;
 
 export interface AgentHealth {

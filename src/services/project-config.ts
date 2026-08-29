@@ -320,8 +320,11 @@ export function projectConfigFromTomlDocument(document: Record<string, unknown>)
   };
 }
 
-export function parseProjectConfigFile(filePath: string, rootPath?: string): ProjectConfig {
-  const raw = readFileSync(filePath, "utf-8");
+export function parseProjectConfigContents(
+  raw: string,
+  filePath: string,
+  rootPath?: string,
+): ProjectConfig {
   const fields = parseApmManifestContents(raw, filePath, rootPath);
   const config = projectConfigFromTomlDocument(fields.vendor);
   return {
@@ -331,6 +334,20 @@ export function parseProjectConfigFile(filePath: string, rootPath?: string): Pro
     ...(fields.description ? { apm_description: fields.description } : {}),
     ...(Object.keys(fields.rest).length > 0 ? { apm_document: fields.rest } : {}),
   };
+}
+
+export function parseProjectConfigFile(filePath: string, rootPath?: string): ProjectConfig {
+  return parseProjectConfigContents(readFileSync(filePath, "utf-8"), filePath, rootPath);
+}
+
+export function locateProjectManifest(
+  startPath: string,
+): { rootPath: string; configPath: string } | null {
+  const located = locateProjectConfigFile(startPath);
+  if (!located) {
+    return null;
+  }
+  return { rootPath: located.rootPath, configPath: located.configPath };
 }
 
 function parseResolvedProjectConfig(
@@ -465,4 +482,26 @@ export function validateProjectConfig(config: ProjectConfig): ProjectConfigValid
     valid: errors.length === 0,
     errors,
   };
+}
+
+export function evaluateProjectConfigContents(
+  raw: string,
+  filePath: string,
+  rootPath: string,
+):
+  | { ok: true; config: ProjectConfig; validation: ProjectConfigValidationResult }
+  | { ok: false; errors: string[] } {
+  try {
+    const config = parseProjectConfigContents(raw, filePath, rootPath);
+    const validation = validateProjectConfig(config);
+    if (!validation.valid) {
+      return { ok: false, errors: validation.errors };
+    }
+    return { ok: true, config, validation };
+  } catch (error) {
+    return {
+      ok: false,
+      errors: [error instanceof Error ? error.message : String(error)],
+    };
+  }
 }
