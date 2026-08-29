@@ -6,7 +6,7 @@ import { parse as parseYaml } from "yaml";
 import type { ParsedApmDependency, ParsedMcpDependency } from "./apm-dependencies.js";
 import { canonicalApmRepoUrl } from "./apm-git-resolve.js";
 import { inspectApmOverlay } from "./apm-overlay.js";
-import { type LockEntry, type Lockfile, type LockMcpServer } from "./lockfile.js";
+import type { LockEntry, Lockfile, LockMcpServer } from "./lockfile.js";
 import { recoverOriginLocator } from "./plugin-origin-locator.js";
 import { getPluginById } from "../models/plugin-model.js";
 import type { DependencySourceKind, Resource, ResourceType } from "../types.js";
