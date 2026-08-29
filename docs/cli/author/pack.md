@@ -34,7 +34,7 @@ The embedded `apm.lock.yaml` carries `pack.bundle_files`: SHA-256 for every pack
 
 ## Source layout
 
-When `.apm/` exists, local primitives are taken from `.apm/agents`, `.apm/skills`, `.apm/commands`, and `.apm/hooks`. Root-level `agents/` / `skills/` / `commands/` / `hooks/` are skipped with a warning. Without `.apm/`, those root directories are pack sources. Root `.mcp.json` (or `mcp.json`) is packed as `mcp.json` regardless of layout. `ht apply` uses the same source-layout rule and compiles those primitives into the consumer's target harness directories — see [Apply to a project](../use/apply.md).
+When `.apm/` exists, local primitives are taken from `.apm/agents`, `.apm/skills`, `.apm/commands`, and `.apm/hooks`. Root-level `agents/` / `skills/` / `commands/` / `hooks/` are skipped with a warning. Without `.apm/`, those root directories are pack sources. Root `.mcp.json` (or `mcp.json`) is packed as `mcp.json` regardless of layout. `ht install` / `ht apply` use the same source-layout rule and compile those primitives into the consumer's target harness directories — see [Install a project](../use/install.md) and [Apply to a project](../use/apply.md).
 
 Dependency files are packed only from lockfile-attested `deployed_files`, never from `apm_modules`. A hash mismatch or a missing attested file fails the pack. Symlinks in the bundle fail the pack. Critical hidden-Unicode (tag characters, bidi overrides, SMP variation selectors) fails the pack; warnings are printed and packing continues.
 

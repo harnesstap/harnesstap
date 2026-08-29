@@ -117,7 +117,7 @@ Git-style commands for working in a project directory. Each defaults to the curr
 - `history [path]` — list snapshots for a tracked project
 - `revert [snapshot-id]` — restore files from a previous snapshot
 
-Apply plugins with top-level `apply` (not under this group).
+Apply plugins with top-level `apply` (not under this group). Onboard from repo-root `apm.yml` with top-level `install` (the same loop as `apply` with no plugin selector).
 
 ### Important options
 
@@ -150,6 +150,21 @@ Apply plugins with top-level `apply` (not under this group).
 - `revert` requires a snapshot ID from `history`.
 - `apply` resolves environment values through the cascade: home environment ◂ configured-plugin default (last wins).
 
+## install
+
+Project onboarding from repo-root `apm.yml`. Same loop as `apply` with no plugin selector — not a second resolver and not Microsoft's `apm` CLI.
+
+```bash
+ht install
+ht install --project .
+ht install --harness claude-code,cursor
+ht install --dry-run
+ht install --update
+ht install --force
+```
+
+Reads `dependencies.apm` / `dependencies.mcp`, compiles local `.apm/` primitives, writes `apm.lock.yaml`, and materializes existing harness directories. Commit the lockfile plus generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Same project-scope flags as apply. Does not take a plugin selector or `--global`. See the [Use ramp: install a project](use/install.md).
+
 ## apply
 
 Top-level apply resolves a plugin (and its dependency graph) and materializes it.
@@ -159,7 +174,7 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 - First human line reports destination (`→ project …` or `→ machine home …`).
 - Flags include `--dry-run`, `--explain`, `--update`, `--harness`, `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`, and `--force` (override critical hidden-Unicode findings).
 - Selectors may be local plugin names, catalog identities, a packed bundle directory, a `.zip` produced by `ht pack`, or a `.ap.json` envelope. Packed bundles with `pack.bundle_files` are rehashed and fail closed on tampering.
-- With no selector, apply reads `apm.yml`. Git entries in `dependencies.apm` resolve to an exact commit, fetch that SHA, and record `repo_url` / `resolved_commit` (plus `path` when set) in `apm.lock.yaml`. A later apply without `--update` replays the lock. See [Apply git dependencies](use/apply-git-deps.md).
+- With no selector, apply is the same loop as `ht install`: it reads `apm.yml`. Git entries in `dependencies.apm` resolve to an exact commit, fetch that SHA, and record `repo_url` / `resolved_commit` (plus `path` when set) in `apm.lock.yaml`. A later apply without `--update` replays the lock. See [Apply git dependencies](use/apply-git-deps.md) and the [Use ramp: install a project](use/install.md).
 - With no plugin selector, apply compiles local `.apm/` primitives (and root primitive dirs when `.apm/` is absent) into the target harness directories via the existing writers. `apm.yml` `targets` / `target` select harnesses; `compilation.target` is used when those fields are omitted. See the [Use ramp: apply to a project](use/apply.md).
 - Before writing, apply scans generated files for hidden Unicode. Critical findings block apply unless `--force` is passed; warnings are printed and apply continues. When `apm.lock.yaml` already has `local_deployed_file_hashes` and `--update` is not set, apply rehashes the generated tree and fails closed on mismatch, extra, or missing files.
 

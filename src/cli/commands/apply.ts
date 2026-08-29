@@ -192,3 +192,33 @@ export function registerApplyCommand(root: Command): void {
     await handleApplyCommand(plugins, opts);
   });
 }
+
+export async function handleInstallCommand(
+  extraArgs: string[],
+  opts: ApplyCommandActionOpts,
+): Promise<void> {
+  if (extraArgs.length > 0) {
+    process.exitCode = 1;
+    ui.danger(
+      "ht install does not take a plugin selector. It reads repo-root apm.yml.",
+      {
+        hints: [formatCommand("install"), formatCommand("apply <plugin>")],
+      },
+    );
+    return;
+  }
+
+  await handleApplyCommand([], opts);
+}
+
+export function registerInstallCommand(root: Command): void {
+  const install = root
+    .command("install")
+    .description(
+      "Onboard a project from apm.yml (same as apply with no plugin selector)",
+    );
+  addApplyCommandOptions(install);
+  install.action(async (opts: ApplyCommandActionOpts) => {
+    await handleInstallCommand(install.args, opts);
+  });
+}
