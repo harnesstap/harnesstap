@@ -216,7 +216,8 @@ export function registerInstallCommand(root: Command): void {
     .command("install")
     .description(
       "Onboard a project from apm.yml (same as apply with no plugin selector)",
-    );
+    )
+    .allowExcessArguments(true);
   addApplyCommandOptions(install);
   install.action(async (opts: ApplyCommandActionOpts) => {
     await handleInstallCommand(install.args, opts);
