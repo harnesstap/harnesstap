@@ -136,7 +136,11 @@ dependencies:
   apm:
     - team-stack
   mcp:
-    - io.github.modelcontextprotocol/servers/filesystem
+    - io.github.github/github-mcp-server
+    - name: filesystem
+      registry: false
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
 default_profile: dev
 environments:
   default: shared

@@ -126,7 +126,7 @@ Two common paths: adopt an existing repo, or switch your **home** harness setup 
 ht install
 ```
 
-Default onboarding in a repo that already has `apm.yml`. Same loop as `ht apply` with no plugin selector. Pin `targets:` so install/compile do not follow whichever tool folders exist on the current machine. Preview with `ht targets`; `ht compile` is the same apply-from-manifest loop under a named entry. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). See [Install a project](docs/cli/use/install.md).
+Default onboarding in a repo that already has `apm.yml`. Same loop as `ht apply` with no plugin selector. Registry identities in `dependencies.mcp` (for example `io.github.github/github-mcp-server`) resolve from the official MCP Registry into the same native MCP files HT already emits. Pin `targets:` so install/compile do not follow whichever tool folders exist on the current machine. Preview with `ht targets`; `ht compile` is the same apply-from-manifest loop under a named entry. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). See [Install a project](docs/cli/use/install.md).
 
 ### Project: scan and apply
 

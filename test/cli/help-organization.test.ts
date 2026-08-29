@@ -195,6 +195,7 @@ describe("CLI help and command organization", () => {
       "help",
       "lock",
       "marketplace",
+      "mcp",
       "migrate",
       "plugin",
       "policy",
