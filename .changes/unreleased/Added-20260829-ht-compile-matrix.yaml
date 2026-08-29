@@ -1,0 +1,3 @@
+kind: Added
+body: Add `ht compile` as a named apply-from-manifest entry, `ht targets` as the resolved-apply preview, and `--target`/`--all` APM tokens so declared `targets:` win over harness preference and folder detection.
+time: 2026-08-29T06:00:00Z

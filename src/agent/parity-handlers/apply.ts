@@ -7,12 +7,7 @@ import {
   resolvePluginSelector,
 } from "../../models/plugin-model.js";
 import {
-  getHarnessPreference,
-  getProjectHarnessConfig,
-} from "../../models/harness.js";
-import {
   applyConfiguredPluginToProject,
-  getProjectByLocalPath,
   upsertProject,
 } from "../../models/project.js";
 import { createSnapshot } from "../../models/snapshot.js";
@@ -53,12 +48,7 @@ import { detectProfileOwnedOverwriteConflicts } from "../../services/profile-own
 import { applyProfilePlugin } from "../../services/profile-apply.js";
 import { withProfileApplyLock } from "../../services/profile-apply-lock.js";
 import { useProfileCommand } from "../../services/profile-commands.js";
-import {
-  assertSupportedHarnessTargets,
-  parsePlatformFilter,
-  uniqueHarnessTargets,
-} from "../../services/harness-targets.js";
-import { detectPlatforms } from "../../services/scanner.js";
+import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
 import type { SnapshotState } from "../../types.js";
 import {
@@ -197,40 +187,14 @@ function parseBody(body: unknown): ParsedApplyBody | Response {
   };
 }
 
-function resolveProjectHarnesses(projectRoot: string, harnessOption?: string): string[] {
-  const explicit = uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
-  if (explicit.length > 0) {
-    assertSupportedHarnessTargets(explicit);
-    return explicit;
-  }
-  const manifest = findProjectConfig(projectRoot);
-  if (manifest && manifest.harnessTargets.length > 0) {
-    const mapped = uniqueHarnessTargets(manifest.harnessTargets);
-    assertSupportedHarnessTargets(mapped);
-    return mapped;
-  }
-  const projectByPath = getProjectByLocalPath(projectRoot);
-  const projectConfig = projectByPath
-    ? getProjectHarnessConfig(projectByPath.id)
-    : undefined;
-  if (projectConfig) {
-    const preferred = uniqueHarnessTargets([
-      projectConfig.main_harness,
-      ...projectConfig.alias_harnesses,
-    ]);
-    assertSupportedHarnessTargets(preferred);
-    return preferred;
-  }
-  const preference = getHarnessPreference();
-  if (preference) {
-    const preferred = uniqueHarnessTargets([
-      preference.main_harness,
-      ...preference.alias_harnesses,
-    ]);
-    assertSupportedHarnessTargets(preferred);
-    return preferred;
-  }
-  return uniqueHarnessTargets(detectPlatforms(projectRoot));
+function resolveProjectHarnesses(
+  projectRoot: string,
+  harnessOption: string | undefined,
+): string[] {
+  return resolveProjectCompileTargets({
+    projectRoot,
+    ...(harnessOption ? { cliHarness: harnessOption } : {}),
+  }).harnessTargets;
 }
 
 async function ownedOverwriteSummary(
@@ -408,7 +372,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
       {
         error: "apply_failed",
         message:
-          "No harness targets configured. Run harnesstap harness set or pass harness slugs.",
+          "No harness targets configured. Declare targets: in apm.yml or pass --target / --harness.",
       },
       { status: 400 },
     );

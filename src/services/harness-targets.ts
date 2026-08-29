@@ -1,4 +1,5 @@
-import { getHarnessPreference } from "../models/harness.js";
+import { getHarnessPreference, getProjectHarnessConfig } from "../models/harness.js";
+import { getProjectByLocalPath } from "../models/project.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { detectHomePlatforms } from "./scanner.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -49,4 +50,35 @@ export function resolveScanGlobalHarnessTargets(
   throw new Error(
     "No global harness targets configured. Run harnesstap harness set or pass --harness <slugs>.",
   );
+}
+
+/**
+ * Project then global harness preference slugs. Filesystem detection is a
+ * later step in `resolveCompileTargets` so declared `targets:` stay portable.
+ */
+export function collectApplyPreferenceHarnesses(projectRoot: string): string[] {
+  const projectByPath = getProjectByLocalPath(projectRoot);
+  const projectConfig = projectByPath
+    ? getProjectHarnessConfig(projectByPath.id)
+    : undefined;
+  if (projectConfig) {
+    const preferredTargets = uniqueHarnessTargets([
+      projectConfig.main_harness,
+      ...projectConfig.alias_harnesses,
+    ]);
+    assertSupportedHarnessTargets(preferredTargets);
+    return preferredTargets;
+  }
+
+  const preference = getHarnessPreference();
+  if (preference) {
+    const preferredTargets = uniqueHarnessTargets([
+      preference.main_harness,
+      ...preference.alias_harnesses,
+    ]);
+    assertSupportedHarnessTargets(preferredTargets);
+    return preferredTargets;
+  }
+
+  return [];
 }

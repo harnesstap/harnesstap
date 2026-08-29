@@ -84,6 +84,11 @@ const FLAG_PROVIDERS: FlagRegistry = {
   "add:create-plugin": [completeLocalPlugins],
   "add:harness": [completeHarnessSlugs],
   "add:project": [completeDirectoryPath],
+  "compile:target": [completeHarnessSlugs],
+  "compile:t": [completeHarnessSlugs],
+  "compile:harness": [completeHarnessSlugs],
+  "compile:project": [completeDirectoryPath],
+  "targets:project": [completeDirectoryPath],
   "lock export:format": [staticEnumProvider(["cyclonedx", "spdx"])],
   "lock export:f": [staticEnumProvider(["cyclonedx", "spdx"])],
   "lock export:output": [completeFilePath],
@@ -108,6 +113,8 @@ const GLOBAL_FLAG_PROVIDERS: Record<string, CompletionProvider[]> = {
   format: [staticEnumProvider(["human", "json"])],
   harness: [completeHarnessSlugs],
   h: [completeHarnessSlugs],
+  target: [completeHarnessSlugs],
+  t: [completeHarnessSlugs],
   account: [completeCloudAccounts],
 };
 
