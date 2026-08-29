@@ -121,6 +121,19 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "apply base --format json",
     ],
   },
+  install: {
+    description:
+      "Onboard a project from apm.yml (same as apply with no plugin selector)",
+    details:
+      "Reads repo-root apm.yml, resolves dependencies.apm / dependencies.mcp, compiles local .apm/ primitives, writes apm.lock.yaml, and materializes existing harness directories. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
+    examples: [
+      "install",
+      "install --project .",
+      "install --harness claude-code,cursor",
+      "install --dry-run",
+      "install --update",
+    ],
+  },
   pack: {
     description:
       "Pack an apm.yml project into an Agent Plugins 1.0 bundle (plugin.json + primitives + apm.lock.yaml)",

@@ -120,6 +120,14 @@ export PATH="$HOME/.bun/bin:$PATH"
 
 Two common paths: adopt an existing repo, or switch your **home** harness setup with a profile.
 
+### Project: onboard from `apm.yml`
+
+```bash
+ht install
+```
+
+Default onboarding in a repo that already has `apm.yml`. Same loop as `ht apply` with no plugin selector. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). See [Install a project](docs/cli/use/install.md).
+
 ### Project: scan and apply
 
 ```bash

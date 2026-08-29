@@ -204,6 +204,7 @@ describe("CLI help and command organization", () => {
       "audit",
       "history",
       "init",
+      "install",
       "mirror",
       "open",
       "pack",
@@ -229,6 +230,7 @@ describe("CLI help and command organization", () => {
     expect(help.stdout).toContain("history");
     expect(help.stdout).toContain("revert");
     expect(help.stdout).toContain("audit");
+    expect(help.stdout).toContain("install");
     expect(help.stdout).toContain("resource");
     expect(help.stdout).toContain("harness");
     expect(help.stdout).not.toContain("\n  platform");
