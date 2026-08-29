@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { cpSync, existsSync, readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
-import { writeTextFile } from "../helpers/fs.ts";
+import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 import {
   addResourceToPlugin,
   createPlugin,
@@ -254,4 +255,139 @@ dependencies:
       "resource_map_hash:",
     );
   });
+
+  it("pulls a git dependencies.apm entry on apply and replays the lock", async () => {
+    const remote = createApplyGitRemote("FROM-GIT");
+    try {
+      writeTextFile(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: ${remote.url}
+`,
+      );
+
+      const first = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(first.exitCode ?? 0).toBe(0);
+      expect(
+        readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
+      ).toContain("FROM-GIT");
+
+      const lock = readFileSync(join(ctx.projectDir, "apm.lock.yaml"), "utf8");
+      expect(lock).toContain("repo_url:");
+      expect(lock).toContain("resolved_commit:");
+      expect(lock).toContain(remote.sha);
+      expect(lock).toContain("local_deployed_file_hashes:");
+      expect(lock).toContain(".claude/skills/ship/SKILL.md");
+
+      writeApplyGitSkill(remote.dir, "FROM-GIT-NEXT");
+      gitIn(remote.dir, "add -A");
+      gitIn(remote.dir, "commit -m next");
+
+      const replay = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(replay.exitCode ?? 0).toBe(0);
+      expect(
+        readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
+      ).toContain("FROM-GIT");
+      expect(
+        readFileSync(join(ctx.projectDir, "apm.lock.yaml"), "utf8"),
+      ).toContain(remote.sha);
+
+      const updated = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+        "--update",
+      ]);
+      expect(updated.exitCode ?? 0).toBe(0);
+      expect(
+        readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
+      ).toContain("FROM-GIT-NEXT");
+      expect(
+        readFileSync(join(ctx.projectDir, "apm.lock.yaml"), "utf8"),
+      ).not.toContain(remote.sha);
+    } finally {
+      cleanupDir(remote.dir);
+    }
+  });
+
+  it("fails closed when a git dependencies.apm ref cannot be resolved", async () => {
+    const remote = createApplyGitRemote();
+    try {
+      writeTextFile(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: ${remote.url}
+      ref: does-not-exist
+`,
+      );
+
+      const result = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("does-not-exist");
+      expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(false);
+    } finally {
+      cleanupDir(remote.dir);
+    }
+  });
 });
+
+function gitIn(cwd: string, args: string): string {
+  return execSync(`git -c user.email=test@example.com -c user.name=Test ${args}`, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
+}
+
+function writeApplyGitSkill(root: string, skill: string): void {
+  mkdirSync(join(root, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(root, "skills", "ship"), { recursive: true });
+  writeFileSync(
+    join(root, ".claude-plugin", "plugin.json"),
+    JSON.stringify({ name: "ship-kit", version: "1.0.0" }),
+  );
+  writeFileSync(
+    join(root, "skills", "ship", "SKILL.md"),
+    `---\nname: ship\ndescription: Ship\n---\n# ${skill}\n`,
+  );
+}
+
+function createApplyGitRemote(skill = "FROM-GIT"): { dir: string; url: string; sha: string } {
+  const dir = createTempDir("apm-apply-git-");
+  writeApplyGitSkill(dir, skill);
+  gitIn(dir, "init");
+  gitIn(dir, "add -A");
+  gitIn(dir, "commit -m init");
+  const sha = gitIn(dir, "rev-parse HEAD");
+  return { dir, url: `file://${dir}`, sha };
+}

@@ -159,6 +159,7 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 - First human line reports destination (`→ project …` or `→ machine home …`).
 - Flags include `--dry-run`, `--explain`, `--update`, `--harness`, `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`, and `--force` (override critical hidden-Unicode findings).
 - Selectors may be local plugin names, catalog identities, a packed bundle directory, a `.zip` produced by `ht pack`, or a `.ap.json` envelope. Packed bundles with `pack.bundle_files` are rehashed and fail closed on tampering.
+- With no selector, apply reads `apm.yml`. Git entries in `dependencies.apm` resolve to an exact commit, fetch that SHA, and record `repo_url` / `resolved_commit` (plus `path` when set) in `apm.lock.yaml`. A later apply without `--update` replays the lock. See [Apply git dependencies](use/apply-git-deps.md).
 - Before writing, apply scans generated files for hidden Unicode. Critical findings block apply unless `--force` is passed; warnings are printed and apply continues. When `apm.lock.yaml` already has `local_deployed_file_hashes` and `--update` is not set, apply rehashes the generated tree and fails closed on mismatch, extra, or missing files.
 
 `ht layer …` is a hidden deprecated alias for `ht plugin …` for one release; prefer `ht plugin` and top-level `ht apply`.
@@ -295,7 +296,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `apply --harness <slugs>` — comma-separated harness slugs
 - `apply --dry-run` — show planned file writes only
 - `apply --explain` — print the resolution trail (selected versions and every resource decision)
-- `apply --update` — ignore `apm.lock.yaml` and re-resolve the dependency graph
+- `apply --update` — ignore `apm.lock.yaml` and re-resolve the dependency graph (including git `dependencies.apm` refs)
 - `apply --strict-plugin-versions` / `--ignore-plugin-versions` / `--sync-plugins`
 - `plugin why --project <path>` — project with the lockfile to inspect (default `.`)
 - `plugin why --root <plugin>` — resolve against this root instead of the lockfile root

@@ -34,6 +34,7 @@ import {
   lockedVersionsFrom,
   readLockfile,
   writeLockfile,
+  type ApmGitLockFields,
 } from "../../services/lockfile.js";
 import { gateDeployFiles, LockIntegrityError } from "../../services/deploy-gate.js";
 import { CriticalUnicodeError } from "../../services/unicode-scan.js";
@@ -320,11 +321,13 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
   }
 
   let pluginIds = parsed.plugins;
+  let manifestGitLocks: ApmGitLockFields[] = [];
   if (pluginIds.length === 0) {
     const fromManifest = await resolveApplySelectorsFromProjectManifest(projectRoot, {
       dryRun: parsed.dryRun,
+      update: parsed.update,
     });
-    if (!fromManifest || fromManifest.length === 0) {
+    if (!fromManifest || fromManifest.selectors.length === 0) {
       return jsonResponse(
         {
           error: "invalid_plugins",
@@ -334,7 +337,8 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
         { status: 400 },
       );
     }
-    pluginIds = fromManifest;
+    pluginIds = fromManifest.selectors;
+    manifestGitLocks = fromManifest.gitLocks;
   }
 
   for (const selector of pluginIds) {
@@ -457,6 +461,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
         deployedFiles: generated.flatMap((result) =>
           result.files.map((file) => ({ path: file.path, content: file.content })),
         ),
+        ...(manifestGitLocks.length > 0 ? { gitLocks: manifestGitLocks } : {}),
       }),
     );
   }

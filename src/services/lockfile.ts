@@ -7,6 +7,7 @@ import { getPluginById, getPluginResources } from "../models/plugin-model.js";
 import type { McpServerMetadata, Resource } from "../types.js";
 import { PACKAGE_VERSION } from "../version.js";
 import { recoverOriginLocator } from "./plugin-origin-locator.js";
+import { canonicalApmRepoUrl } from "./apm-git-resolve.js";
 import { resourceFingerprint, resolutionKey } from "./resolve/resource-resolution.js";
 import type { ResolutionResult, SelectedPlugin } from "./resolve/types.js";
 
@@ -27,6 +28,9 @@ export interface LockEntry {
   repo_url?: string;
   resolved_commit?: string;
   resolved_ref?: string;
+  constraint?: string;
+  resolved_tag?: string;
+  virtual_path?: string;
   content_hash?: string;
 }
 
@@ -48,9 +52,20 @@ export interface Lockfile {
   deployed_file_hashes?: Record<string, string>;
 }
 
+export interface ApmGitLockFields {
+  name: string;
+  repo_url: string;
+  resolved_commit: string;
+  resolved_ref?: string;
+  constraint?: string;
+  resolved_tag?: string;
+  virtual_path?: string;
+}
+
 export interface LockfileFromResolutionExtras {
   environment?: string;
   deployedFiles?: Array<{ path: string; content: string }>;
+  gitLocks?: ApmGitLockFields[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -108,7 +123,7 @@ function gitFieldsForPlugin(pluginId: string): Pick<
   }
   const locator = recoverOriginLocator(plugin);
   const repo_url = locator?.kind === "git"
-    ? locator.url.replace(/^https?:\/\//, "").replace(/\.git$/, "")
+    ? canonicalApmRepoUrl(locator.url)
     : plugin.origin_locator || undefined;
   const resolved_commit =
     plugin.origin_fingerprint_kind === "git_sha" && plugin.origin_fingerprint
@@ -117,6 +132,26 @@ function gitFieldsForPlugin(pluginId: string): Pick<
   return {
     ...(repo_url ? { repo_url } : {}),
     ...(resolved_commit ? { resolved_commit, resolved_ref: resolved_commit } : {}),
+  };
+}
+
+function mergeGitLockFields(
+  entry: LockEntry,
+  extras: ApmGitLockFields[] | undefined,
+): LockEntry {
+  const extra = extras?.find((item) => item.name === entry.name);
+  if (!extra) {
+    return entry;
+  }
+  return {
+    ...entry,
+    source: "git",
+    repo_url: extra.repo_url,
+    resolved_commit: extra.resolved_commit,
+    ...(extra.resolved_ref ? { resolved_ref: extra.resolved_ref } : {}),
+    ...(extra.constraint ? { constraint: extra.constraint } : {}),
+    ...(extra.resolved_tag ? { resolved_tag: extra.resolved_tag } : {}),
+    ...(extra.virtual_path ? { virtual_path: extra.virtual_path } : {}),
   };
 }
 
@@ -249,16 +284,19 @@ export function lockfileFromResolution(
       .filter((plugin) => plugin.depth > 0)
       .map((plugin) => {
         const integrity = pluginIntegrity(plugin.pluginId);
-        return {
-          name: plugin.name,
-          version: plugin.version,
-          source: lockSourceFromSelected(plugin),
-          integrity,
-          depth: plugin.depth,
-          path: plugin.path,
-          content_hash: integrity,
-          ...gitFieldsForPlugin(plugin.pluginId),
-        };
+        return mergeGitLockFields(
+          {
+            name: plugin.name,
+            version: plugin.version,
+            source: lockSourceFromSelected(plugin),
+            integrity,
+            depth: plugin.depth,
+            path: plugin.path,
+            content_hash: integrity,
+            ...gitFieldsForPlugin(plugin.pluginId),
+          },
+          extras.gitLocks,
+        );
       }),
     ...(extras.environment ? { environment: extras.environment } : {}),
     ...(mcp_servers.length > 0 ? { mcp_servers } : {}),
@@ -281,6 +319,9 @@ function serializeLockDependency(entry: LockEntry): Record<string, unknown> {
     ...(entry.repo_url ? { repo_url: entry.repo_url } : {}),
     ...(entry.resolved_commit ? { resolved_commit: entry.resolved_commit } : {}),
     ...(entry.resolved_ref ? { resolved_ref: entry.resolved_ref } : {}),
+    ...(entry.constraint ? { constraint: entry.constraint } : {}),
+    ...(entry.resolved_tag ? { resolved_tag: entry.resolved_tag } : {}),
+    ...(entry.virtual_path ? { virtual_path: entry.virtual_path } : {}),
     ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
   };
 }
@@ -315,6 +356,10 @@ export function writeLockfile(projectRoot: string, lock: Lockfile): void {
       path: entry.path,
       ...(entry.repo_url ? { repo_url: entry.repo_url } : {}),
       ...(entry.resolved_commit ? { resolved_commit: entry.resolved_commit } : {}),
+      ...(entry.resolved_ref ? { resolved_ref: entry.resolved_ref } : {}),
+      ...(entry.constraint ? { constraint: entry.constraint } : {}),
+      ...(entry.resolved_tag ? { resolved_tag: entry.resolved_tag } : {}),
+      ...(entry.virtual_path ? { virtual_path: entry.virtual_path } : {}),
       ...(entry.content_hash ? { content_hash: entry.content_hash } : {}),
     })),
   };
@@ -356,6 +401,9 @@ function parseHtPluginEntry(entry: Record<string, unknown>): LockEntry {
       ? { resolved_commit: entry.resolved_commit }
       : {}),
     ...(typeof entry.resolved_ref === "string" ? { resolved_ref: entry.resolved_ref } : {}),
+    ...(typeof entry.constraint === "string" ? { constraint: entry.constraint } : {}),
+    ...(typeof entry.resolved_tag === "string" ? { resolved_tag: entry.resolved_tag } : {}),
+    ...(typeof entry.virtual_path === "string" ? { virtual_path: entry.virtual_path } : {}),
     ...(typeof entry.content_hash === "string" ? { content_hash: entry.content_hash } : {}),
   };
 }
@@ -371,6 +419,9 @@ function parseApmDependencyEntry(entry: Record<string, unknown>): LockEntry {
     repo_url: entry.repo_url,
     resolved_commit: entry.resolved_commit,
     resolved_ref: entry.resolved_ref,
+    constraint: entry.constraint,
+    resolved_tag: entry.resolved_tag,
+    virtual_path: entry.virtual_path,
     content_hash: entry.content_hash,
   });
 }

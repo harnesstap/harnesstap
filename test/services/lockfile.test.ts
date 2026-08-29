@@ -144,4 +144,38 @@ describe("lockfile", () => {
       ),
     ).toThrow(/Unsafe local_deployed_file_hashes path/);
   });
+
+  it("merges APM git identity fields onto matching lock entries", async () => {
+    await buildGraph();
+    const result = resolveComposition({ rootSelectors: ["root"] });
+    writeLockfile(
+      ctx.projectDir,
+      lockfileFromResolution(result, {
+        gitLocks: [
+          {
+            name: "base",
+            repo_url: "github.com/acme/base",
+            resolved_commit: "a".repeat(40),
+            resolved_ref: "v1.2.3",
+            constraint: "^1.0.0",
+            resolved_tag: "v1.2.3",
+            virtual_path: "packages/ship",
+          },
+        ],
+      }),
+    );
+
+    const raw = readFileSync(lockfilePath(ctx.projectDir), "utf8");
+    expect(raw).toContain("repo_url: github.com/acme/base");
+    expect(raw).toContain(`resolved_commit: ${"a".repeat(40)}`);
+    expect(raw).toContain("virtual_path: packages/ship");
+    expect(raw).toContain("constraint: ^1.0.0");
+
+    const lock = readLockfile(ctx.projectDir);
+    const entry = lock?.plugins.find((plugin) => plugin.name === "base");
+    expect(entry?.source).toBe("git");
+    expect(entry?.repo_url).toBe("github.com/acme/base");
+    expect(entry?.resolved_commit).toBe("a".repeat(40));
+    expect(entry?.virtual_path).toBe("packages/ship");
+  });
 });

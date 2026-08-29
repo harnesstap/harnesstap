@@ -197,6 +197,7 @@ Project profiles reuse the same plugin sources as machine-wide [Profiles](./prof
 - [Resources](./resources.md) — what scan imports
 - [Profiles](./profiles.md) — machine-wide apply
 - [Portability limits](../../portability-limits.md) — cross-harness mirror caveats
+- [Apply git dependencies](../use/apply-git-deps.md) — `ht apply` pull of `dependencies.apm` git entries
 - [Command reference](../command-reference.md) — `scan`, `mirror`, `status`, `history`, `revert`, and `apply`
 - [Scenario 7](../../scenarios/details/07-preview-apply-plugin.md) — preview and apply
 - [Scenario 21](../../scenarios/details/21-detect-drift.md) — detect drift

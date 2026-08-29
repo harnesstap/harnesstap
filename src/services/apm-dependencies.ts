@@ -8,6 +8,8 @@ export interface ParsedApmDependency {
   applySelector: string;
   ref?: string;
   versionConstraint?: string;
+  /** Virtual package subpath inside the git repo (object-form `path:`). */
+  path?: string;
 }
 
 export interface ParsedMcpDependency {
@@ -55,6 +57,11 @@ function githubCloneUrl(ownerRepo: string): string {
   return `https://github.com/${trimmed}.git`;
 }
 
+/** Strip `git+` transport prefix so the value is a cloneable URL. */
+export function cloneUrlFromOrigin(originRef: string): string {
+  return originRef.startsWith("git+") ? originRef.slice(4) : originRef;
+}
+
 function parseGitShorthand(body: string, raw: string, ref?: string): ParsedApmDependency {
   const name = repoNameFromGitRef(body);
   const originRef = looksLikeHost(body.split("/")[0] ?? "")
@@ -96,6 +103,8 @@ export function parseApmDependencyString(entry: string): ParsedApmDependency {
   if (
     body.startsWith("https://")
     || body.startsWith("http://")
+    || body.startsWith("file://")
+    || body.startsWith("git://")
     || body.startsWith("git@")
     || body.startsWith("ssh://git@")
     || body.startsWith("git+")
@@ -105,7 +114,7 @@ export function parseApmDependencyString(entry: string): ParsedApmDependency {
       raw: trimmed,
       sourceKind: "git",
       name,
-      originRef: body,
+      originRef: cloneUrlFromOrigin(body),
       applySelector: name,
       ...(ref ? { ref, versionConstraint: ref } : {}),
     };
@@ -210,12 +219,15 @@ export function parseApmDependencyEntry(entry: unknown): ParsedApmDependency {
   if (typeof entry.git === "string") {
     const ref = typeof entry.ref === "string" ? entry.ref : undefined;
     const parsed = parseApmDependencyString(ref ? `${entry.git}#${ref}` : entry.git);
-    const path = typeof entry.path === "string" ? entry.path : undefined;
+    const path = typeof entry.path === "string" && entry.path.length > 0
+      ? entry.path
+      : undefined;
     return {
       ...parsed,
       raw: JSON.stringify(entry),
-      originRef: path ? `${parsed.originRef}#${path}` : parsed.originRef,
+      originRef: cloneUrlFromOrigin(parsed.originRef),
       ...(ref ? { ref, versionConstraint: ref } : {}),
+      ...(path ? { path } : {}),
     };
   }
 

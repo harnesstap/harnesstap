@@ -23,7 +23,7 @@ export interface DependencyView {
   resource: Resource;
 }
 
-const GIT_PREFIXES = ["http://", "https://", "git@", "ssh://", "git+"];
+const GIT_PREFIXES = ["http://", "https://", "file://", "git://", "git@", "ssh://", "git+"];
 
 export function parseDependencyRef(ref: string): ParsedDependencyRef {
   const trimmed = ref.trim();

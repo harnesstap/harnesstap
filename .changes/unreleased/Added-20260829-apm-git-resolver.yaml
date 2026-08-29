@@ -1,0 +1,3 @@
+kind: Added
+body: Resolve `dependencies.apm` git entries to an exact commit on apply, record them in `apm.lock.yaml`, and replay the lock unless `--update` is passed.
+time: 2026-08-29T00:10:00Z

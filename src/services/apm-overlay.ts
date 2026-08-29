@@ -68,22 +68,31 @@ function walkSkills(rootPath: string, currentDir: string, results: ApmOverlaySki
   }
 }
 
+export function collectSkillMdFiles(
+  rootPath: string,
+  skillsDirRelative: string,
+): ApmOverlaySkill[] {
+  const skillsDir = join(rootPath, skillsDirRelative);
+  if (!isDirectory(skillsDir)) {
+    return [];
+  }
+  const skills: ApmOverlaySkill[] = [];
+  for (const entry of readdirSync(skillsDir)) {
+    if (entry.startsWith(".")) {
+      continue;
+    }
+    walkSkills(rootPath, join(skillsDir, entry), skills);
+  }
+  return skills;
+}
+
 export function inspectApmOverlay(rootPath: string): ApmOverlayInfo | undefined {
   const apmDir = join(rootPath, ".apm");
   if (!isDirectory(apmDir)) {
     return undefined;
   }
 
-  const skills: ApmOverlaySkill[] = [];
-  const skillsDir = join(apmDir, "skills");
-  if (isDirectory(skillsDir)) {
-    for (const entry of readdirSync(skillsDir)) {
-      if (entry.startsWith(".")) {
-        continue;
-      }
-      walkSkills(rootPath, join(skillsDir, entry), skills);
-    }
-  }
+  const skills = collectSkillMdFiles(rootPath, ".apm/skills");
 
   const skippedKinds: string[] = [];
   const warnings: string[] = [];
