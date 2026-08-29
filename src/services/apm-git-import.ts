@@ -19,6 +19,7 @@ import {
   assertCheckoutPathSafe,
   isApmVirtualFilePath,
 } from "./apm-git-resolve.js";
+import { APM_MANIFEST_FILENAME, parseApmYamlDocument } from "./apm-manifest.js";
 import { getPluginOrigin, setPluginOrigin } from "./plugin-origin.js";
 import { isPluginInstallRoot, scanPluginSource } from "./plugin-source-import.js";
 import { persistPluginSourceScanResults } from "./scanner.js";
@@ -99,8 +100,59 @@ function assertPackageRootSafe(packageRoot: string): void {
   }
 }
 
+export function peekApmPackageIdentity(
+  packageRoot: string,
+): { name?: string; version?: string } {
+  const pluginJson = join(packageRoot, ".claude-plugin", "plugin.json");
+  if (existsSync(pluginJson) && lstatSync(pluginJson).isFile()) {
+    try {
+      const parsed: unknown = JSON.parse(readFileSync(pluginJson, "utf8"));
+      if (isRecord(parsed)) {
+        return {
+          ...(typeof parsed.name === "string" && parsed.name.trim()
+            ? { name: parsed.name.trim() }
+            : {}),
+          ...(typeof parsed.version === "string" && parsed.version.trim()
+            ? { version: parsed.version.trim() }
+            : {}),
+        };
+      }
+    } catch {
+      // Fall through to apm.yml.
+    }
+  }
+
+  const manifestPath = join(packageRoot, APM_MANIFEST_FILENAME);
+  if (!existsSync(manifestPath) || !lstatSync(manifestPath).isFile()) {
+    return {};
+  }
+  const document = parseApmYamlDocument(readFileSync(manifestPath, "utf8"), manifestPath);
+  return {
+    ...(typeof document.name === "string" && document.name.trim()
+      ? { name: document.name.trim() }
+      : {}),
+    ...(typeof document.version === "string" && document.version.trim()
+      ? { version: document.version.trim() }
+      : {}),
+  };
+}
+
+export function gitCheckoutPackageRoot(
+  resolution: ApmGitResolution,
+  checkoutRoot: string,
+): string {
+  if (resolution.virtualPath && isApmVirtualFilePath(resolution.virtualPath)) {
+    return checkoutRoot;
+  }
+  if (!resolution.virtualPath) {
+    return checkoutRoot;
+  }
+  return assertCheckoutPathSafe(checkoutRoot, resolution.virtualPath);
+}
+
 async function resourcesFromPackageRoot(
   packageRoot: string,
+  options: { allowEmpty?: boolean } = {},
 ): Promise<{ name?: string; version?: string; resources: ResourceCreateInput[] }> {
   assertPackageRootSafe(packageRoot);
 
@@ -128,6 +180,9 @@ async function resourcesFromPackageRoot(
     unique.set(`${resource.type}:${resource.name}`, resource);
   }
   if (unique.size === 0) {
+    if (options.allowEmpty) {
+      return { ...peekApmPackageIdentity(packageRoot), resources: [] };
+    }
     throw new ApmGitResolveError(
       `No supported plugin resources found in ${packageRoot} — apply aborted closed`,
     );
@@ -203,15 +258,14 @@ function upsertGitPlugin(
 export async function importApmGitCheckout(
   resolution: ApmGitResolution,
   checkoutRoot: string,
+  options: { allowEmpty?: boolean } = {},
 ): Promise<ImportedApmGitPlugin> {
   if (resolution.virtualPath && isApmVirtualFilePath(resolution.virtualPath)) {
     const file = importVirtualFile(checkoutRoot, resolution.virtualPath);
     return upsertGitPlugin(resolution, [file], resolution.name, resolution.commit.slice(0, 12));
   }
 
-  const packageRoot = resolution.virtualPath
-    ? assertCheckoutPathSafe(checkoutRoot, resolution.virtualPath)
-    : checkoutRoot;
+  const packageRoot = gitCheckoutPackageRoot(resolution, checkoutRoot);
 
   if (!existsSync(packageRoot)) {
     throw new ApmGitResolveError(
@@ -224,8 +278,52 @@ export async function importApmGitCheckout(
     );
   }
 
-  const imported = await resourcesFromPackageRoot(packageRoot);
-  const version = imported.version || resolution.commit.slice(0, 12);
-  const name = imported.name || resolution.name;
+  const imported = await resourcesFromPackageRoot(packageRoot, options);
+  const peeked = peekApmPackageIdentity(packageRoot);
+  const version = imported.version || peeked.version || resolution.commit.slice(0, 12);
+  const name = imported.name || peeked.name || resolution.name;
   return upsertGitPlugin(resolution, imported.resources, name, version);
+}
+
+export async function importApmLocalPackage(
+  packageRoot: string,
+  fallbackName: string,
+  originRef: string,
+  options: { allowEmpty?: boolean } = {},
+): Promise<Plugin> {
+  if (!existsSync(packageRoot) || !lstatSync(packageRoot).isDirectory()) {
+    throw new ApmGitResolveError(
+      `APM package path ${originRef} is missing — apply aborted closed`,
+    );
+  }
+  if (lstatSync(packageRoot).isSymbolicLink()) {
+    throw new BundleSymlinkError(originRef);
+  }
+
+  const imported = await resourcesFromPackageRoot(packageRoot, options);
+  const peeked = peekApmPackageIdentity(packageRoot);
+  const name = imported.name || peeked.name || fallbackName;
+  const version = imported.version || peeked.version || "1.0.0";
+  const existing = getPluginByName(name, version);
+  if (existing) {
+    if (getPluginOrigin(existing.id) !== "upstream") {
+      throw new ApmGitResolveError(
+        `${name}@${version} is an authored plugin; rename it or change the path dependency name.`,
+      );
+    }
+    replaceAttachments(existing.id, imported.resources, originRef);
+    stampPluginOrigin(existing.id, { locator: originRef });
+    return existing;
+  }
+
+  const plugin = createPlugin({
+    name,
+    version,
+    description: `APM path ${originRef}`,
+    origin: "upstream",
+  });
+  setPluginOrigin(plugin.id, "upstream");
+  replaceAttachments(plugin.id, imported.resources, originRef);
+  stampPluginOrigin(plugin.id, { locator: originRef });
+  return plugin;
 }

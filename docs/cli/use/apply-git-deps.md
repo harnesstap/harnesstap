@@ -43,6 +43,16 @@ A later `ht install` or `ht apply` without `--update` reuses the locked commit. 
 
 Apply deploys only lockfile-attested files. Path traversal, symlinks, and SHA-256 drift fail closed. Refresh hashes with `ht apply --update`.
 
+## Transitive `dependencies.apm`
+
+After a git, path, or catalog APM package is fetched, `ht install` / apply-from-manifest reads that package’s `apm.yml` and keeps walking `dependencies.apm` (not nested `devDependencies`). Each walked package is pinned in `apm.lock.yaml` and materialized through the same overlay and harness writers as a root dep.
+
+- **Cycles** (A → B → A), **missing** packages, and **hash mismatch** on lock replay fail closed.
+- **Name collisions:** the root manifest’s package wins; a transitive with the same plugin name is skipped.
+- Nested MCP Registry identities (`io.github…`), `ht mcp`, and `ht install --mcp` are not part of this walk.
+
+A typical APM sample that lists only a wrapper package will still install that wrapper’s `review-and-refactor` (or other) transitive.
+
 `apm-policy.yml` can restrict git hosts (and catalog / local sources) before apply writes. Re-check in CI with `ht audit --ci`.
 
 Export the recorded inventory with [`ht lock export`](./lock-export.md).

@@ -1,0 +1,3 @@
+kind: Added
+body: Walk fetched APM packages' dependencies.apm on ht install / apply, pin each in apm.lock.yaml, and fail closed on cycles, missing packages, and hash mismatch.
+time: 2026-08-29T08:20:00Z

@@ -1,7 +1,9 @@
-import { basename } from "node:path";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import {
   collectApmAndDevDependencies,
+  collectRuntimeApmDependencies,
   type ParsedApmDependency,
   type ParsedMcpDependency,
 } from "./apm-dependencies.js";
@@ -204,6 +206,19 @@ export function parseApmManifestContents(
 ): ApmManifestFields {
   const document = parseApmYamlDocument(raw, filePath);
   return extractApmManifestFields(document, filePath, rootPath);
+}
+
+/** Nested packages: `dependencies.apm` only (not `devDependencies`). */
+export function readPackageRuntimeApmDependencies(packageRoot: string): ParsedApmDependency[] {
+  const filePath = join(packageRoot, APM_MANIFEST_FILENAME);
+  if (!existsSync(filePath)) {
+    return [];
+  }
+  if (lstatSync(filePath).isSymbolicLink()) {
+    throw new Error(`Symlinks are not allowed in a bundle: ${APM_MANIFEST_FILENAME}`);
+  }
+  const document = parseApmYamlDocument(readFileSync(filePath, "utf8"), filePath);
+  return collectRuntimeApmDependencies(document);
 }
 
 function sanitizePackageName(projectPath: string): string {
