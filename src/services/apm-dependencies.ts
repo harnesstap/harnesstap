@@ -310,6 +310,13 @@ export function parseMcpDependencyList(value: unknown): ParsedMcpDependency[] {
   return value.map(parseMcpDependencyEntry);
 }
 
+export function collectRuntimeApmDependencies(
+  document: Record<string, unknown>,
+): ParsedApmDependency[] {
+  const dependencies = isRecord(document.dependencies) ? document.dependencies : {};
+  return parseApmDependencyList(dependencies.apm);
+}
+
 export function collectApmAndDevDependencies(document: Record<string, unknown>): {
   apm: ParsedApmDependency[];
   mcp: ParsedMcpDependency[];
@@ -326,4 +333,20 @@ export function collectApmAndDevDependencies(document: Record<string, unknown>):
       ...parseMcpDependencyList(devDependencies.mcp),
     ],
   };
+}
+
+export function isFilesystemApmDependency(dependency: ParsedApmDependency): boolean {
+  if (dependency.sourceKind !== "local") {
+    return false;
+  }
+  const origin = dependency.originRef;
+  return (
+    origin.startsWith("./")
+    || origin.startsWith("../")
+    || origin.startsWith("~/")
+    || origin.startsWith("/")
+    || origin.startsWith(".\\")
+    || origin.startsWith("..\\")
+    || origin.startsWith("~\\")
+  );
 }

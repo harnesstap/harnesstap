@@ -368,6 +368,248 @@ dependencies:
     }
   });
 
+  it("installs transitive dependencies.apm from a fetched git package", async () => {
+    const nested = createApplyGitRemote("FROM-TRANSITIVE");
+    const parent = createTempDir("apm-apply-git-parent-");
+    try {
+      writeFileSync(
+        join(parent, "apm.yml"),
+        `name: sample
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: ${nested.url}
+`,
+      );
+      gitIn(parent, "init");
+      gitIn(parent, "add -A");
+      gitIn(parent, "commit -m parent");
+      const parentSha = gitIn(parent, "rev-parse HEAD");
+      writeTextFile(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: file://${parent}
+`,
+      );
+
+      const result = await runCli([
+        "install",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(result.exitCode ?? 0, result.stderr || result.stdout).toBe(0);
+      expect(
+        readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
+      ).toContain("FROM-TRANSITIVE");
+      const lock = readFileSync(join(ctx.projectDir, "apm.lock.yaml"), "utf8");
+      expect(lock).toContain(nested.sha);
+      expect(lock).toContain(parentSha);
+    } finally {
+      cleanupDir(nested.dir);
+      cleanupDir(parent);
+    }
+  });
+
+  it("installs a path dependencies.apm declared by a fetched package", async () => {
+    const parent = createTempDir("apm-apply-path-parent-");
+    try {
+      writeApplyGitSkill(join(parent, "review-and-refactor"), "FROM-PATH-CHILD");
+      writeFileSync(
+        join(parent, "apm.yml"),
+        `name: sample
+version: "1.0.0"
+dependencies:
+  apm:
+    - ./review-and-refactor
+`,
+      );
+      gitIn(parent, "init");
+      gitIn(parent, "add -A");
+      gitIn(parent, "commit -m parent");
+      writeTextFile(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: file://${parent}
+`,
+      );
+
+      const result = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(result.exitCode ?? 0, result.stderr || result.stdout).toBe(0);
+      expect(
+        readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
+      ).toContain("FROM-PATH-CHILD");
+    } finally {
+      cleanupDir(parent);
+    }
+  });
+
+  it("lets the root package win on a transitive name collision", async () => {
+    const nested = createApplyGitRemote("FROM-NESTED");
+    const rootPkg = createApplyGitRemote("FROM-ROOT-PKG");
+    const parent = createTempDir("apm-apply-collision-parent-");
+    try {
+      writeFileSync(
+        join(nested.dir, ".claude-plugin", "plugin.json"),
+        JSON.stringify({ name: "ship-kit", version: "2.0.0" }),
+      );
+      gitIn(nested.dir, "add -A");
+      gitIn(nested.dir, "commit -m rename");
+      writeFileSync(
+        join(parent, "apm.yml"),
+        `name: sample
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: ${nested.url}
+`,
+      );
+      gitIn(parent, "init");
+      gitIn(parent, "add -A");
+      gitIn(parent, "commit -m parent");
+      writeTextFile(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: ${rootPkg.url}
+    - git: file://${parent}
+`,
+      );
+
+      const result = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(result.exitCode ?? 0, result.stderr || result.stdout).toBe(0);
+      expect(
+        readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
+      ).toContain("FROM-ROOT-PKG");
+      expect(
+        readFileSync(join(ctx.projectDir, ".claude/skills/ship/SKILL.md"), "utf8"),
+      ).not.toContain("FROM-NESTED");
+    } finally {
+      cleanupDir(nested.dir);
+      cleanupDir(rootPkg.dir);
+      cleanupDir(parent);
+    }
+  });
+
+  it("fails closed on a dependencies.apm cycle", async () => {
+    const a = createTempDir("apm-cycle-a-");
+    const b = createTempDir("apm-cycle-b-");
+    try {
+      writeFileSync(
+        join(a, "apm.yml"),
+        `name: pkg-a
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: file://${b}
+`,
+      );
+      writeFileSync(
+        join(b, "apm.yml"),
+        `name: pkg-b
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: file://${a}
+`,
+      );
+      gitIn(a, "init");
+      gitIn(a, "add -A");
+      gitIn(a, "commit -m a");
+      gitIn(b, "init");
+      gitIn(b, "add -A");
+      gitIn(b, "commit -m b");
+      writeTextFile(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: file://${a}
+`,
+      );
+
+      const result = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("cycle");
+      expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(false);
+    } finally {
+      cleanupDir(a);
+      cleanupDir(b);
+    }
+  });
+
+  it("fails closed when a nested dependencies.apm package is missing", async () => {
+    const parent = createTempDir("apm-missing-parent-");
+    try {
+      writeFileSync(
+        join(parent, "apm.yml"),
+        `name: sample
+version: "1.0.0"
+dependencies:
+  apm:
+    - ./does-not-exist
+`,
+      );
+      gitIn(parent, "init");
+      gitIn(parent, "add -A");
+      gitIn(parent, "commit -m parent");
+      writeTextFile(
+        join(ctx.projectDir, "apm.yml"),
+        `name: demo
+version: "1.0.0"
+dependencies:
+  apm:
+    - git: file://${parent}
+`,
+      );
+
+      const result = await runCli([
+        "apply",
+        "--project",
+        ctx.projectDir,
+        "--harness",
+        "claude-code",
+        "--no-interactive",
+      ]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("missing");
+    } finally {
+      cleanupDir(parent);
+    }
+  });
+
   it("fails closed when a git dependencies.apm ref cannot be resolved", async () => {
     const remote = createApplyGitRemote();
     try {

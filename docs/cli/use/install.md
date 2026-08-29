@@ -12,7 +12,7 @@ A teammate who has never used HarnessTap can `git clone` and run:
 ht install
 ```
 
-That reads repo-root `apm.yml`, resolves `dependencies.apm` / `dependencies.mcp` (including [MCP Registry v0.1](https://registry.modelcontextprotocol.io) identities such as `io.github.github/github-mcp-server`), compiles local `.apm/` primitives, writes `apm.lock.yaml`, and materializes the **resolved** target harness directories (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Pin `targets:` so the written set does not follow whichever tool folders exist on the current machine. Preview with `ht targets`. [`ht compile`](./compile.md) is the same apply-from-manifest loop under a named entry.
+That reads repo-root `apm.yml`, resolves `dependencies.apm` (including a fetched package’s own `dependencies.apm`) / `dependencies.mcp` (including [MCP Registry v0.1](https://registry.modelcontextprotocol.io) identities such as `io.github.github/github-mcp-server`), compiles local `.apm/` primitives, writes `apm.lock.yaml`, and materializes the **resolved** target harness directories (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Pin `targets:` so the written set does not follow whichever tool folders exist on the current machine. Preview with `ht targets`. [`ht compile`](./compile.md) is the same apply-from-manifest loop under a named entry.
 
 Commit `apm.lock.yaml` plus the generated harness output so the next clone installs the same tree.
 

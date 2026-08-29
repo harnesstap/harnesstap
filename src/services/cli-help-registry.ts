@@ -126,7 +126,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Onboard a project from apm.yml (same as apply with no plugin selector)",
     details:
-      "Reads repo-root apm.yml, resolves dependencies.apm / dependencies.mcp (including MCP Registry v0.1 identities such as io.github…), compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Registry strings are fetched from registry.modelcontextprotocol.io and converted to the same native MCP files HT already emits. Self-defined registry: false entries keep command/url as authored. --mcp <id> appends the identity to apm.yml then runs install; a failed install rolls the manifest write back. Target resolution: --target/--all/--harness, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. Declared targets: win over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
+      "Reads repo-root apm.yml, resolves dependencies.apm (including transitive dependencies.apm on fetched packages) / dependencies.mcp (including MCP Registry v0.1 identities such as io.github…), compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Registry strings are fetched from registry.modelcontextprotocol.io and converted to the same native MCP files HT already emits. Self-defined registry: false entries keep command/url as authored. --mcp <id> appends the identity to apm.yml then runs install; a failed install rolls the manifest write back. Target resolution: --target/--all/--harness, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. Declared targets: win over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
     examples: [
       "install",
       "install --project .",
@@ -167,7 +167,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   "mcp.install": {
     description: "Append an MCP Registry identity to apm.yml and run ht install",
     details:
-      "Same as ht install --mcp <id>: writes the identity under dependencies.mcp, then runs the existing apply-from-manifest install (same --target/--all/--harness pipeline as ht compile). If install fails, the apm.yml write is rolled back. Does not walk dependencies.apm of fetched packages.",
+      "Same as ht install --mcp <id>: writes the identity under dependencies.mcp, then runs the existing apply-from-manifest install (same --target/--all/--harness pipeline as ht compile, including transitive dependencies.apm). If install fails, the apm.yml write is rolled back.",
     examples: [
       "mcp install io.github.github/github-mcp-server --target cursor",
       "mcp install io.github.github/github-mcp-server --dry-run",

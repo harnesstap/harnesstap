@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import {
   isProfilePlugin,
 } from "../constants/profile.js";
@@ -13,12 +12,13 @@ import {
   normalizeResourceInput,
   upsertResource,
 } from "../models/resource.js";
-import { getHarnesstapDir } from "../db/connection.js";
-import { importApmGitCheckout } from "./apm-git-import.js";
-import { resolveAndFetchApmGitDependency } from "./apm-git-resolve.js";
-import { readDeclaredLicense } from "./export/license.js";
+import { isFilesystemApmDependency } from "./apm-dependencies.js";
+import {
+  gitDependencyKey,
+  materializeApmDependencyGraph,
+} from "./apm-graph.js";
 import type { ApmGitLockFields } from "./lockfile.js";
-import { readLockfile } from "./lockfile.js";
+import { resolveMcpDependencies } from "./mcp-registry-resolve.js";
 import { addDependency } from "./plugin-dependency.js";
 import {
   importProjectConfigEnvironments,
@@ -27,7 +27,6 @@ import {
 } from "./project-config-use.js";
 import type { ResolvedProjectConfig } from "./project-config.js";
 import { findProjectConfig, getProfileEntry } from "./project-config.js";
-import { resolveMcpDependencies } from "./mcp-registry-resolve.js";
 
 export function allocateApmProjectPluginName(preferred: string): string {
   const existing = getPluginByName(preferred);
@@ -114,11 +113,12 @@ export async function materializeApmProjectPlugin(
   );
 
   for (const dependency of config.apmDependencies) {
-    if (dependency.sourceKind === "git") {
-      const imported = importedGit.get(gitDependencyKey(dependency.originRef, dependency.path));
+    if (dependency.sourceKind === "git" || isFilesystemApmDependency(dependency)) {
+      const imported = importedGit.get(gitDependencyKey(dependency.originRef, dependency.path))
+        ?? importedGit.get(gitDependencyKey(dependency.originRef));
       if (!imported) {
         throw new Error(
-          `Git dependency ${dependency.originRef} was not materialized before apply`,
+          `APM dependency ${dependency.originRef} was not materialized before apply`,
         );
       }
       addDependency(plugin.id, imported.name, {
@@ -138,51 +138,11 @@ export async function materializeApmProjectPlugin(
   return plugin.name;
 }
 
-function gitDependencyKey(originRef: string, path?: string): string {
-  return path ? `${originRef}#${path}` : originRef;
-}
-
 export async function materializeApmGitDependencies(
   config: ResolvedProjectConfig,
   options: { update?: boolean; harnesstapDir?: string } = {},
 ): Promise<{ imported: Map<string, { name: string; version: string }>; gitLocks: ApmGitLockFields[] }> {
-  const imported = new Map<string, { name: string; version: string }>();
-  const gitLocks: ApmGitLockFields[] = [];
-  const gitDeps = config.apmDependencies.filter((dependency) => dependency.sourceKind === "git");
-  if (gitDeps.length === 0) {
-    return { imported, gitLocks };
-  }
-
-  const lock = options.update ? undefined : readLockfile(config.rootPath);
-  const harnesstapDir = options.harnesstapDir ?? getHarnesstapDir();
-
-  for (const dependency of gitDeps) {
-    const fetched = resolveAndFetchApmGitDependency(dependency, harnesstapDir, {
-      ...(options.update ? { update: true } : {}),
-      ...(lock ? { lock } : {}),
-    });
-    const { plugin, resolution } = await importApmGitCheckout(fetched, fetched.checkoutRoot);
-    imported.set(gitDependencyKey(dependency.originRef, dependency.path), {
-      name: plugin.name,
-      version: plugin.version,
-    });
-    const licenseRoot = resolution.virtualPath
-      ? join(fetched.checkoutRoot, resolution.virtualPath)
-      : fetched.checkoutRoot;
-    const declared_license = readDeclaredLicense(licenseRoot);
-    gitLocks.push({
-      name: plugin.name,
-      repo_url: resolution.repoUrl,
-      resolved_commit: resolution.commit,
-      ...(resolution.resolvedRef ? { resolved_ref: resolution.resolvedRef } : {}),
-      ...(resolution.constraint ? { constraint: resolution.constraint } : {}),
-      ...(resolution.resolvedTag ? { resolved_tag: resolution.resolvedTag } : {}),
-      ...(resolution.virtualPath ? { virtual_path: resolution.virtualPath } : {}),
-      ...(declared_license ? { declared_license } : {}),
-    });
-  }
-
-  return { imported, gitLocks };
+  return materializeApmDependencyGraph(config, options);
 }
 
 function hasManifestInstallables(config: ResolvedProjectConfig): boolean {
