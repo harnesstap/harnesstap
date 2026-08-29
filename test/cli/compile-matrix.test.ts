@@ -47,7 +47,9 @@ version: "1.0.0"
     ]);
 
     expect(result.exitCode ?? 0, result.stderr || result.stdout).toBe(0);
-    expect(readFileSync(join(ctx.projectDir, "AGENTS.md"), "utf8")).toContain("Be kind.");
+    expect(
+      readFileSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"), "utf8"),
+    ).toContain("Be kind.");
     expect(readFileSync(join(ctx.projectDir, "CLAUDE.md"), "utf8")).toContain("Be kind.");
   });
 
@@ -69,7 +71,9 @@ targets: [cursor]
       "--no-interactive",
     ]);
     expect(compiled.exitCode ?? 0, compiled.stderr || compiled.stdout).toBe(0);
-    expect(readFileSync(join(ctx.projectDir, "AGENTS.md"), "utf8")).toContain("Be kind.");
+    expect(
+      readFileSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"), "utf8"),
+    ).toContain("Be kind.");
     expect(existsSync(join(ctx.projectDir, "CLAUDE.md"))).toBe(false);
 
     const preview = await runCli([
@@ -104,6 +108,7 @@ version: "1.0.0"
     ]);
     expect(result.exitCode ?? 0).toBe(0);
     expect(result.stderr + result.stdout).toContain("wrote nothing");
+    expect(existsSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"))).toBe(false);
     expect(existsSync(join(ctx.projectDir, "AGENTS.md"))).toBe(false);
     expect(existsSync(join(ctx.projectDir, "CLAUDE.md"))).toBe(false);
   });
@@ -148,7 +153,9 @@ targets: [cursor]
       "--no-interactive",
     ]);
     expect(result.exitCode ?? 0, result.stderr || result.stdout).toBe(0);
-    expect(readFileSync(join(ctx.projectDir, "AGENTS.md"), "utf8")).toContain("Be kind.");
+    expect(
+      readFileSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"), "utf8"),
+    ).toContain("Be kind.");
     expect(existsSync(join(ctx.projectDir, "CLAUDE.md"))).toBe(false);
     expect(existsSync(join(ctx.projectDir, "apm.lock.yaml"))).toBe(true);
   });
@@ -174,5 +181,6 @@ targets: [cursor]
     expect(result.exitCode ?? 0, result.stderr || result.stdout).toBe(0);
     expect(readFileSync(join(ctx.projectDir, "CLAUDE.md"), "utf8")).toContain("Be kind.");
     expect(existsSync(join(ctx.projectDir, "AGENTS.md"))).toBe(false);
+    expect(existsSync(join(ctx.projectDir, ".cursor", "rules", "always.mdc"))).toBe(false);
   });
 });
