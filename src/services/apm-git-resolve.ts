@@ -335,11 +335,17 @@ export function resolveApmGitDependency(
   const locked = options.update ? undefined : findLockedGit(options.lock, dependency);
 
   if (locked && canReplayLock(locked, dependency, kind)) {
+    const lockedCommit = locked.resolved_commit;
+    if (!lockedCommit || !FULL_SHA.test(lockedCommit)) {
+      throw new ApmGitResolveError(
+        `Lock entry for ${dependency.originRef} is missing a resolved commit — apply aborted closed`,
+      );
+    }
     return {
       name: dependency.name,
       cloneUrl,
       repoUrl,
-      commit: locked.resolved_commit!.toLowerCase(),
+      commit: lockedCommit.toLowerCase(),
       ...(locked.resolved_ref ? { resolvedRef: locked.resolved_ref } : {}),
       ...(locked.constraint ? { constraint: locked.constraint } : {}),
       ...(locked.resolved_tag ? { resolvedTag: locked.resolved_tag } : {}),
