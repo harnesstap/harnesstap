@@ -165,7 +165,7 @@ It is **not** in the npm package. Download installers from [GitHub Releases](htt
 - **Windows:** NSIS (`.exe`) and MSI for x64 and arm64
 - **Linux:** `.AppImage`, `.deb`, and `.rpm` for x64 and arm64 (built on Ubuntu 22.04 so glibc stays compatible with Ubuntu 22.04 / Debian 12). GitHub Releases attach all three; the Linux job fails if AppImage is missing.
 
-Builds are unsigned (no Apple notarization, Windows Authenticode, or Linux package signing). macOS Gatekeeper may require **Open Anyway** under System Settings → Privacy & Security; Windows SmartScreen may warn on first launch.
+Builds are unsigned (no Apple notarization, Windows Authenticode, or Linux package signing). macOS DMGs are ad-hoc resealed so Gatekeeper does not treat a quarantined app as damaged; you may still need **Open Anyway** under System Settings → Privacy & Security. Windows SmartScreen may warn on first launch.
 
 To build from this repo:
 

@@ -251,6 +251,16 @@ jobs:
         if: ${{ !startsWith(matrix.runner, 'ubuntu-') }}
         run: bun run desktop:build
 
+      # Tauri's unsigned macOS bundle keeps a linker signature with
+      # Sealed Resources=none. Gatekeeper then reports the quarantined app
+      # as damaged. Ad-hoc reseal (--sign -) writes CodeResources; then
+      # replace the DMG so the attached artifact contains the sealed app.
+      - name: Reseal macOS app for Gatekeeper
+        if: startsWith(matrix.name, 'macos-')
+        env:
+          RESEAL_REQUIRE: "1"
+        run: bash apps/desktop/scripts/reseal-macos-app.sh
+
       # Linux: tauri.conf.json lists appimage before deb/rpm, and a single
       # `tauri build` stops at the first bundler failure. Keep the split so
       # a later AppImage-only failure is obvious and .deb/.rpm are already built.

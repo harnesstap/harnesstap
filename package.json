@@ -1,6 +1,6 @@
 {
   "name": "harnesstap",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
   "type": "module",
   "packageManager": "bun@1.3.9",
@@ -21,7 +21,7 @@
     "desktop:watch-sidecar": "bun apps/desktop/scripts/watch-sidecar.ts",
     "desktop:icons": "cd apps/desktop && bun run icons",
     "desktop:dev": "bash apps/desktop/scripts/desktop-dev.sh",
-    "desktop:build": "bun run desktop:prepare-sidecar && cd apps/desktop && bun install && bun run tauri build",
+    "desktop:build": "bun run desktop:prepare-sidecar && cd apps/desktop && bun install && bun run tauri build && bash scripts/reseal-macos-app.sh",
     "desktop:install": "bun apps/desktop/scripts/install-local.ts",
     "desktop:e2e:build": "bash apps/desktop/scripts/e2e-build.sh",
     "desktop:e2e": "bash apps/desktop/scripts/e2e-run.sh",
