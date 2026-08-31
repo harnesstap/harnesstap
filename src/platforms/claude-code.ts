@@ -8,6 +8,7 @@ import {
 } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
+import { mergeClaudeSettingsContent } from "../services/merged-host-config.js";
 import type {
   AgentMetadata,
   HookMetadata,
@@ -322,11 +323,12 @@ export class ClaudeCodeSerializer extends BaseSerializer {
 
   async serialize(
     resources: Resource[],
-    _projectRoot: string,
+    projectRoot: string,
     options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
     const target = options.target ?? "project";
+    const serializeOptions: SerializeOptions = { ...options, projectRoot };
     const targetPaths = this.getTargetPaths(target);
     const instructionsPath =
       this.toTargetRelativePath(targetPaths.instructions, target) ??
@@ -372,7 +374,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         ...this.emitSkillWithAuxiliary(
           r,
           `${skillsPath}${r.name}/SKILL.md`,
-          options,
+          serializeOptions,
         ),
       );
     }
@@ -445,9 +447,11 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         ).hooks;
       }
       if (Object.keys(settings).length > 0) {
+        const generated = JSON.stringify(settings, null, 2);
+        const existing = this.readFile(join(projectRoot, settingsPath));
         files.push({
           path: settingsPath,
-          content: JSON.stringify(settings, null, 2),
+          content: mergeClaudeSettingsContent(existing, generated),
         });
       }
     }

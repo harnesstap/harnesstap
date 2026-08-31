@@ -249,6 +249,8 @@ export interface ProfileContentsResource {
   source?: string;
   origin_kind?: string;
   origin_ref?: string;
+  /** Present on not-staged rows: add is missing from the profile; update differs on disk. */
+  not_staged_kind?: "add" | "update";
 }
 
 export interface ProfileContents {

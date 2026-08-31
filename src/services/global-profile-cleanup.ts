@@ -5,6 +5,7 @@ import {
   listGlobalApplySnapshots,
 } from "../models/global-apply-snapshot.js";
 import { getPlatform } from "../platforms/registry.js";
+import { isMergeableHostConfigPath } from "./merged-host-config.js";
 
 export function collectOtherProfilesSnapshotTrackedFiles(
   incomingProfileName: string,
@@ -194,7 +195,9 @@ export function planStaleGlobalProfileFiles(
   harnesses: string[],
 ): string[] {
   const desired = new Set(desiredFiles);
-  const stale = previousTrackedFiles.filter((filePath) => !desired.has(filePath));
+  const stale = previousTrackedFiles.filter(
+    (filePath) => !desired.has(filePath) && !isMergeableHostConfigPath(filePath),
+  );
   return expandStaleMcpConfigMirrors(
     expandStaleSkillHubMirrors(stale, desired),
     desired,

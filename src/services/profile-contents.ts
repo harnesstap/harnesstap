@@ -18,6 +18,8 @@ export interface ProfileContentsResource {
   source: string;
   origin_kind?: string;
   origin_ref?: string;
+  /** Present on not-staged rows: add is missing from the profile; update differs on disk. */
+  not_staged_kind?: "add" | "update";
 }
 
 export interface ProfileContentsPlugin {
@@ -57,6 +59,16 @@ export function toContentsResource(resource: Resource): ProfileContentsResource 
     source: resource.source,
     ...(resource.origin_kind ? { origin_kind: resource.origin_kind } : {}),
     ...(resource.origin_ref ? { origin_ref: resource.origin_ref } : {}),
+  };
+}
+
+export function toNotStagedContentsResource(
+  resource: Resource,
+  kind: "add" | "update",
+): ProfileContentsResource {
+  return {
+    ...toContentsResource(resource),
+    not_staged_kind: kind,
   };
 }
 

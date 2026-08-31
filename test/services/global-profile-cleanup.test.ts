@@ -71,6 +71,20 @@ describe("global-profile-cleanup service", () => {
     ).toEqual([".claude/skills/caveman/SKILL.md"]);
   });
 
+  it("does not plan whole-file removal of mergeable Claude settings.json", () => {
+    expect(
+      planStaleGlobalProfileFiles(
+        "/tmp",
+        [".claude/skills/kept/SKILL.md"],
+        [
+          ".claude/skills/kept/SKILL.md",
+          ".claude/settings.json",
+        ],
+        ["claude-code"],
+      ),
+    ).toEqual([]);
+  });
+
   it("expands removed MCP configs onto other harness dedicated MCP paths", () => {
     expect(
       expandStaleMcpConfigMirrors(

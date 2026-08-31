@@ -1,0 +1,5 @@
+kind: Fixed
+body: Merge Claude settings.json and subset skill snapshots on apply/preview instead of whole-file deletes, and list live modifications in Not staged with Plus overwrite and a diff icon.
+time: 2026-08-31T12:00:00Z
+custom:
+  Issue: ""

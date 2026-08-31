@@ -250,6 +250,7 @@ export async function generateFiles(
       target,
       skillCursorMode: options.skillCursorMode,
       skillSourceRoot,
+      projectRoot,
     });
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudePluginExtensions(files, claudeConfig, projectRoot);

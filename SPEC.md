@@ -428,7 +428,7 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 | `profile list` | Lists local profile plugins, then streams remote catalog plugins with `tag=profile` (same discovery model as `plugin list`). Marks the active profile from `active-profile.json`. |
 | `profile show <name>` | Same detail view as `plugin show`, plus active profile marker. |
 | `profile status` | Shows the active profile and whether global harness files match it (drift, pending apply, stack changes). `--check` exits `1` when out of sync. |
-| `profile preview <name>` | Dry-run apply delta (contents, files, install gaps) without writing. Inherited host-plugin material already deployed is not listed as stack or file changes. Host-native plugin MCP (Cursor `plugin-<name>-<name>` folders and plugin `mcp.json`) counts as present rather than a missing HarnessTap install. |
+| `profile preview <name>` | Dry-run apply delta (contents, files, install gaps) without writing. Inherited host-plugin material already deployed is not listed as stack or file changes. Host-native plugin MCP (Cursor `plugin-<name>-<name>` folders and plugin `mcp.json`) counts as present rather than a missing HarnessTap install. Shared Claude `.claude/settings.json` is merged (profile permissions/env/hooks overlay live keys); preview never treats that file as a whole-file delete. Skill files keep extra live frontmatter and body when the profile snapshot is a subset of the live SKILL.md. `not_staged` includes on-disk adds and live resources that differ from the selected profile snapshot (`not_staged_kind`: `add` \| `update`). |
 | `profile file-diff <name>` | Unified diff of a managed path: live on-disk content (`live/`) → after apply (`after-apply/`). `--format json` returns `expected` and `current` without a rendered patch. |
 | `profile use <name>` | Resolves and merges the profile stack (transitive `plugin` refs), optionally auto-pulls missing published dependencies, applies to **global** harness paths, writes `active-profile.json`, and records a global apply snapshot. If the profile plugin has `default_environment_id`, updates the home active environment pointer. |
 | `profile switch <name>` | Like `profile use`, but restores the previous active profile if the switch fails. |
@@ -754,7 +754,7 @@ When generated files already exist, `apply` uses `--on-conflict replace|skip|pro
 3. Resolve harness targets from global `harness_preferences` when `--harness` is omitted.
 4. `resolveEnvironmentCascadeForApply` with `projectRoot: homedir()`, configured plugin IDs from the merged stack.
 5. `preparePluginPinsForApply` at global/home scope.
-6. `applyToGlobal` with conflict policy; record `global_apply_snapshots`.
+6. `applyToGlobal` with conflict policy; record `global_apply_snapshots`. Claude `.claude/settings.json` is merged, not replaced: profile-managed `permissions` / `hooks` overlay, `env` keys merge, unrelated top-level settings stay. The file is never removed as a stale whole-file stack item. Skill `SKILL.md` writes merge extra live frontmatter keys and keep the live body when the generated snapshot is a subset of the live file.
 
 `profile switch` wraps the same path and restores the previous active profile if apply fails. `environment use` (optionally `--local` for session scope) remains valid for env-only switches; prefer `profile use` when changing both stack and default environment.
 

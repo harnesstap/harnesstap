@@ -20,6 +20,7 @@ import {
   filterFileChangeGroups,
   groupFileChangesByResource,
   liveMcpNamesFromHarnesses,
+  managedPathFromResourceSource,
   orderedTypeCounts,
   summarizeStackChanges,
   type ContentsDiffItem,
@@ -403,14 +404,19 @@ function UntrackedResourceRow({
   adding,
   onAdd,
   onOpenResource,
+  onDiff,
 }: {
   resource: ProfileContentsResource;
   adding: boolean;
   onAdd: () => void;
   onOpenResource?: (target: ResourceDetailTarget) => void;
+  onDiff?: (path: string) => void;
 }) {
   const selector = resource.id ?? `${resource.type}:${resource.name}`;
   const canOpen = Boolean(onOpenResource);
+  const isUpdate = resource.not_staged_kind === "update";
+  const managedPath = managedPathFromResourceSource(resource.source);
+  const canDiff = isUpdate && Boolean(onDiff && managedPath);
   return (
     <ResourceRowRoot
       hover={hoverModelFromProfileResource(resource)}
@@ -438,6 +444,22 @@ function UntrackedResourceRow({
         harnessIds={relatedHarnessesForResourceType(resource.type)}
       />
       <ResourceRowTrailing>
+        {canDiff && onDiff && managedPath ? (
+          <button
+            type="button"
+            className="icon-action file-change-diff-btn"
+            aria-label={`Show diff for ${resource.name}`}
+            title="Show how this live resource differs from the profile"
+            onClick={() => onDiff(managedPath)}
+          >
+            <Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          </button>
+        ) : null}
+        {isUpdate ? (
+          <span className="file-change-kind-badge update" title="Modified on disk">
+            <Pencil size={12} strokeWidth={2} aria-hidden />
+          </span>
+        ) : null}
         <button
           type="button"
           className={[
@@ -447,8 +469,16 @@ function UntrackedResourceRow({
           ]
             .filter(Boolean)
             .join(" ")}
-          aria-label={`Commit ${resource.name} into profile`}
-          title={`Commit ${resource.name} into profile`}
+          aria-label={
+            isUpdate
+              ? `Overwrite ${resource.name} in profile with the live version`
+              : `Commit ${resource.name} into profile`
+          }
+          title={
+            isUpdate
+              ? "Overwrite profile with the live version"
+              : `Commit ${resource.name} into profile`
+          }
           disabled={adding}
           aria-busy={adding}
           onClick={onAdd}
@@ -1721,7 +1751,9 @@ export function LiveStatePanel({
             </summary>
             <div className="contents-body">
               <p className="muted untracked-hint">
-                On disk but not in this profile — add them to include them on apply.
+                On disk but not in this profile, or live content that differs —
+                Plus adds or overwrites the selected profile. Diff shows live vs
+                after apply for modifications.
               </p>
               <ListSearchField
                 value={notStagedSearch}
@@ -1756,6 +1788,23 @@ export function LiveStatePanel({
                               }
                             }}
                             onOpenResource={openResource}
+                            onDiff={
+                              onDiffFileChange
+                                ? (path) =>
+                                    onDiffFileChange({
+                                      path,
+                                      type: "modified",
+                                      ...(resource.type && resource.name
+                                        ? {
+                                            resource: {
+                                              type: resource.type,
+                                              name: resource.name,
+                                            },
+                                          }
+                                        : {}),
+                                    })
+                                : undefined
+                            }
                           />
                         );
                       })}

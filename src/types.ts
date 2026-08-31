@@ -585,6 +585,8 @@ export interface SerializeOptions {
   skillCursorMode?: CursorSkillMode;
   /** When set, skill auxiliary files are read from this tree (scan origin). */
   skillSourceRoot?: string;
+  /** Apply/preview root; used to merge live host configs and skill files. */
+  projectRoot?: string;
 }
 
 export interface PlatformSerializer {
