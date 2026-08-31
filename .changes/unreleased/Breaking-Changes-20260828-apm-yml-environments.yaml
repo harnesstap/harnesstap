@@ -1,2 +1,0 @@
-kind: Breaking Changes
-body: Rename the `apm.yml` environment mapping from `environment` to `environments` so it matches plural `profiles` / `plugins`. `environments.default` is the active name; other keys are named environments with `values` / `secret_refs`. No fallback, migrate warning, or leftover `environment:` / `x-harnesstap` read. Lockfile bound-name field stays singular `environment`.
