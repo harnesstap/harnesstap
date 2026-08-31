@@ -61,7 +61,7 @@ export interface ProfileApplyPreview {
   scope: ProfileApplyPreviewScope;
   contents: ProfileContents | null;
   harnesses?: Record<string, HarnessLiveStatus>;
-  /** Material resources on disk not attached to any profile (not staged). */
+  /** Material resources on disk not attached to the target profile (not staged). */
   not_staged: ProfileContentsResource[];
   /** @deprecated Use not_staged. */
   untracked_resources: ProfileContentsResource[];

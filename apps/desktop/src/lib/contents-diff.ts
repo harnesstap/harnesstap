@@ -178,6 +178,11 @@ export interface DiffProfileContentsOptions {
   installedPinRefs?: ReadonlySet<string>;
   /** Profile plugin names that wrap the stack (selected / active profile). */
   ignorePluginNames?: ReadonlySet<string>;
+  /**
+   * MCP server names present in live harness config (on-disk mcp.json / native).
+   * Snapshot-only library MCP not in this set is omitted from stack removals.
+   */
+  liveMcpNames?: ReadonlySet<string>;
 }
 
 function pinIsAlreadyInstalled(
@@ -225,6 +230,14 @@ export function diffProfileContents(
     if (
       item.category === "plugin"
       && options.ignorePluginNames?.has(item.label)
+    ) {
+      return false;
+    }
+    if (
+      item.category === "resource"
+      && item.iconType === "mcp_server"
+      && options.liveMcpNames
+      && !options.liveMcpNames.has(item.label)
     ) {
       return false;
     }
@@ -642,6 +655,24 @@ export function filterFileChangeGroups(
     filtered.push(deriveFileChangeResourceGroup(group.key, group.resource, changes));
   }
   return filtered;
+}
+
+export function liveMcpNamesFromHarnesses(
+  harnesses: Record<string, HarnessLiveStatus> | null | undefined,
+): Set<string> | undefined {
+  if (!harnesses) {
+    return undefined;
+  }
+  const names = new Set<string>();
+  for (const status of Object.values(harnesses)) {
+    for (const mcp of status.mcp ?? []) {
+      if (mcp.state === "missing") {
+        continue;
+      }
+      names.add(mcp.name);
+    }
+  }
+  return names;
 }
 
 export function aggregateInstallGaps(

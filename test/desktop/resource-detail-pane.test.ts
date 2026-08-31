@@ -72,11 +72,28 @@ describe("resource inspect content preview", () => {
     expect(bodySource).toContain("<code>");
   });
 
-  test("adds open-in-editor icons on the header, path, and content", () => {
+  test("keeps open-in-editor on Path rows only, not header or Content", () => {
     expect(bodySource).toContain("ExternalLink");
     expect(bodySource).toContain("Open this file in the default editor.");
-    expect(bodySource).toContain("renderOpenInEditor");
+    const actionOpens = [
+      ...bodySource.matchAll(/action=\{renderOpenInEditor\(editorPath\)\}/g),
+    ];
+    expect(actionOpens).toHaveLength(2);
+    expect(bodySource).toContain('fieldName="Path"');
+    expect(bodySource).not.toContain("{renderOpenInEditor(editorPath)}\n                {actionButtons}");
+    const contentBlock = bodySource.slice(bodySource.indexOf('fieldName="Content"'));
+    expect(contentBlock).not.toContain("action={renderOpenInEditor(editorPath)}");
     expect(fieldRowSource).toContain("action?: ReactNode");
+  });
+
+  test("uses even field-row gap without per-row vertical margin", () => {
+    const body = cssBlock(stylesSource, ".resource-detail-body");
+    expect(body).toContain("gap: 0.75rem");
+    const libraryBody = cssBlock(stylesSource, ".library-detail-body");
+    expect(libraryBody).toContain("gap: 0.75rem");
+    const row = cssBlock(stylesSource, ".library-field-row");
+    expect(row).toContain("margin: 0");
+    expect(row).not.toContain("margin: 0.5rem 0");
   });
 
   test("DESIGN.md locks inspect as a viewport-capped dialog with a 15-line code block", () => {

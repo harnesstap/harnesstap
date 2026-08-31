@@ -772,7 +772,6 @@ export function ResourceDetailBody({
             editing={editingField === "content"}
             error={editingField === "content" ? fieldError : null}
             onStartEdit={() => void startEdit("content")}
-            action={renderOpenInEditor(editorPath)}
           >
             {renderEditor("content", true)}
           </LibraryFieldRow>
@@ -915,14 +914,7 @@ export function ResourceDetailBody({
           typeLabel={typeLabel}
           onBack={onBack}
           backDisabled={busy}
-          actions={
-            editorPath || showSync || showDelete ? (
-              <>
-                {renderOpenInEditor(editorPath)}
-                {actionButtons}
-              </>
-            ) : null
-          }
+          actions={showSync || showDelete ? actionButtons : null}
         >
           <div className="library-detail-body">{fields}</div>
         </Chrome>
@@ -949,7 +941,6 @@ export function ResourceDetailBody({
           <div className="eyebrow">Resource</div>
           <h2 id={titleId}>{nameEditor}</h2>
         </div>
-        {renderOpenInEditor(editorPath)}
       </div>
       <div className="resource-detail-body">{fields}</div>
       {showSync || showDelete ? (

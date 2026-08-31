@@ -1,0 +1,5 @@
+kind: Fixed
+body: Omit stale whole-file mcp.json snapshot MCP from Desktop apply-preview stack removals when those servers are gone from the live harness file, and show each MCP server’s live config in resource details.
+time: 2026-08-31T06:10:00Z
+custom:
+  Issue: ""

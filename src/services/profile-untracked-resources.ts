@@ -5,7 +5,7 @@ import {
   resolvePluginSelector,
   touchPluginUpdatedAt,
 } from "../models/plugin-model.js";
-import { isProfilePlugin, listProfilePlugins } from "../constants/profile.js";
+import { isProfilePlugin } from "../constants/profile.js";
 import {
   MATERIAL_RESOURCE_TYPES,
   type MaterialResourceType,
@@ -64,21 +64,6 @@ function trackedResourceKeys(profileSelector: string): Set<string> {
   );
 }
 
-/** Keys attached to any profile — used for not-staged detection. */
-function resourceKeysAttachedToAnyProfile(): Set<string> {
-  const keys = new Set<string>();
-  for (const profile of listProfilePlugins()) {
-    const profileResources = mergePluginsForApply(
-      collectProfilePluginIds(profile),
-    ).resources;
-    for (const resource of profileResources) {
-      if (isMaterialResource(resource)) {
-        keys.add(profileResourceKey(resource));
-      }
-    }
-  }
-  return keys;
-}
 
 /** Normalize on-disk / expected paths for ownership comparisons. */
 export function normalizeManagedPath(path: string, rootPath?: string): string {
@@ -106,15 +91,27 @@ function isClaudeSettingsPath(normalizedPath: string): boolean {
   return path === ".claude/settings.json" || path.endsWith("/.claude/settings.json");
 }
 
+function isMcpConfigPath(normalizedPath: string): boolean {
+  return /(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(
+    normalizedPath.replace(/^~\//, ""),
+  );
+}
+
 function isMergedContainerResource(
   resource: Pick<Resource, "type" | "source"> | Pick<ResourceCreateInput, "type" | "source">,
   rootPath: string,
 ): boolean {
+  const sourcePath = normalizeManagedPath(resource.source ?? "", rootPath);
+  if (!sourcePath) {
+    return false;
+  }
+  if (resource.type === "mcp_server") {
+    return isMcpConfigPath(sourcePath);
+  }
   if (!MERGED_CONTAINER_RESOURCE_TYPES.has(resource.type)) {
     return false;
   }
-  const sourcePath = normalizeManagedPath(resource.source ?? "", rootPath);
-  return Boolean(sourcePath) && isClaudeSettingsPath(sourcePath);
+  return isClaudeSettingsPath(sourcePath);
 }
 
 async function profileOwnedPaths(
@@ -167,7 +164,7 @@ async function notStagedFromHomeScan(
     return [];
   }
 
-  const committedKeys = resourceKeysAttachedToAnyProfile();
+  const committedKeys = trackedResourceKeys(profileSelector);
   const homeRoot = resolveHomeRoot();
   // Scan all detected harnesses unless a specific harness filter is requested.
   const scanned = await scanHomeDefaults(
@@ -220,7 +217,7 @@ async function notStagedFromProjectScan(
     return [];
   }
 
-  const committedKeys = resourceKeysAttachedToAnyProfile();
+  const committedKeys = trackedResourceKeys(profileSelector);
   const resolvedRoot = resolve(projectPath);
   const scanStatus = await assessProjectScanStatus(resolvedRoot);
   const scanned = await scanProject(resolvedRoot);
@@ -381,7 +378,7 @@ async function resolveUntrackedScanResults(input: {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
 
-  const committedKeys = resourceKeysAttachedToAnyProfile();
+  const committedKeys = trackedResourceKeys(input.profileSelector);
 
   if (input.scope === "project") {
     if (!input.projectPath) {

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
@@ -132,6 +132,47 @@ describe("agent library routes", () => {
     expect(detailBody.resource.type).toBe("instruction");
     expect(detailBody.resource.origin_kind).toBe("untracked");
     expect(detailBody.resource.content).toContain("# claude instructions");
+  });
+
+  it("returns live mcp.json config for an mcp_server with empty stored content", async () => {
+    const server = await withServer();
+    const mcpPath = join(process.env.HOME ?? "", ".cursor", "mcp.json");
+    mkdirSync(join(process.env.HOME ?? "", ".cursor"), { recursive: true });
+    writeFileSync(
+      mcpPath,
+      JSON.stringify(
+        {
+          mcpServers: {
+            "mcp-agency-sandbox-public": {
+              command: "npx",
+              args: ["-y", "agency-sandbox"],
+            },
+          },
+        },
+        null,
+        2,
+      ),
+      "utf-8",
+    );
+    createResource({
+      type: "mcp_server",
+      name: "mcp-agency-sandbox-public",
+      description: "",
+      content: "",
+      metadata: { transport: "stdio", command: "npx" },
+      source: "~/.cursor/mcp.json",
+      origin_kind: "local_snapshot",
+      origin_ref: "~/.cursor/mcp.json",
+    });
+
+    const detail = await fetch(
+      `${server.url}/v1/library/resources/${encodeURIComponent("mcp_server:mcp-agency-sandbox-public")}`,
+      { headers: { authorization: `Bearer ${server.token}` } },
+    );
+    expect(detail.status).toBe(200);
+    const detailBody = await detail.json();
+    expect(detailBody.resource.content).toContain("mcp-agency-sandbox-public");
+    expect(detailBody.resource.content).toContain("agency-sandbox");
   });
 
   it("omits plugin extras on skill detail and includes them on plugin detail", async () => {

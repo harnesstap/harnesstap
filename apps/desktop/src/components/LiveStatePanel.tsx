@@ -19,6 +19,7 @@ import {
   fileChangeAction,
   filterFileChangeGroups,
   groupFileChangesByResource,
+  liveMcpNamesFromHarnesses,
   orderedTypeCounts,
   summarizeStackChanges,
   type ContentsDiffItem,
@@ -1330,10 +1331,15 @@ export function LiveStatePanel({
     }
     return names;
   }, [selectedProfile, activeProfile]);
+  const liveMcpNames = useMemo(
+    () => liveMcpNamesFromHarnesses(applyPreview?.harnesses ?? liveHarnesses),
+    [applyPreview?.harnesses, liveHarnesses],
+  );
   const diff = diffProfileContents(targetContents, liveContents, {
     ownedResourceKeys,
     installedPinRefs,
     ignorePluginNames,
+    liveMcpNames,
   });
   const resourceStack = resolveProfileResourceStack({
     selectedProfile,
@@ -1715,7 +1721,7 @@ export function LiveStatePanel({
             </summary>
             <div className="contents-body">
               <p className="muted untracked-hint">
-                On disk but not in any profile — commit to include them on apply.
+                On disk but not in this profile — add them to include them on apply.
               </p>
               <ListSearchField
                 value={notStagedSearch}
