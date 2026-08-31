@@ -31,12 +31,15 @@ describe("desktop release version stamps", () => {
       cargoToml.indexOf("\n[", cargoToml.indexOf("[package]") + 1),
     );
     const workflow = readFileSync(join(root, ".github/workflows/changie-release-pr.yml"), "utf8");
+    const release = readFileSync(join(root, ".github/workflows/release.yml"), "utf8");
 
     expect(desktopPkg.version).toBe(version);
     expect(tauri.version).toBe(version);
     expect(packageSection).toContain(`version = "${version}"`);
     expect(cargoLock).toContain(`name = "harnesstap-desktop"\nversion = "${version}"`);
     expect(workflow).toContain("scripts/sync-desktop-version.ts");
+    expect(release).toContain("apps/desktop/scripts/reseal-macos-app.sh");
+    expect(release).toContain("startsWith(matrix.name, 'macos-')");
   });
 
   it("rewrites JSON, Cargo.toml, and Cargo.lock package versions", () => {

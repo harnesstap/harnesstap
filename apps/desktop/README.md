@@ -70,7 +70,7 @@ Linux uses Ubuntu 22.04 (the oldest GitHub-hosted image with WebKitGTK 4.1) so g
 
 Release jobs build `.deb` and `.rpm` first, then AppImage (`APPIMAGE_EXTRACT_AND_RUN=1`, `NO_STRIP=1`). GitHub-hosted Ubuntu 22.04 has no FUSE, so CI extracts linuxdeploy and the appimage plugin with `unsquashfs` and places ELF stubs at `~/.cache/tauri/linuxdeploy-${ARCH}.AppImage`. linuxdeploy's GTK plugin `ldd`s `usr/bin/ht-agent` (Bun `--compile`) and SIGABRTs if that ELF is present; wrap/GTK wrappers move `ht-agent` aside by sidecar name (system `ldd` often exits 0 on Bun standalones) and restore it next to the desktop executable. The Linux job fails if no `.AppImage` is produced.
 
-CI builds are **unsigned**. There are no Apple Developer ID / notarization, Windows Authenticode, or Linux package-signing secrets in the workflow. macOS Gatekeeper may require **Open Anyway**; Windows SmartScreen may warn; unsigned Linux packages are normal for GitHub downloads. Signing can be added later without changing this artifact matrix.
+CI builds are **unsigned**. There are no Apple Developer ID / notarization, Windows Authenticode, or Linux package-signing secrets in the workflow. macOS jobs ad-hoc reseal `HarnessTap.app` after the Tauri bundle (`codesign --force --deep --sign -`) so CodeResources exist; without that, Gatekeeper reports a quarantined app as damaged rather than offering Open Anyway. Windows SmartScreen may warn; unsigned Linux packages are normal for GitHub downloads. Signing can be added later without changing this artifact matrix.
 
 To build and install straight into `/Applications` (macOS; quits a running instance first):
 
