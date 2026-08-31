@@ -51,16 +51,17 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Bump package.json version
+      - name: Bump CLI and Desktop versions
         run: |
           LATEST_VERSION="${{ steps.latest.outputs.output }}"
           VERSION="${LATEST_VERSION#v}"
           CURRENT="$(node -p "require('./package.json').version")"
           if [ "$CURRENT" = "$VERSION" ]; then
             echo "package.json already at $VERSION"
-            exit 0
+          else
+            npm version "$VERSION" --no-git-tag-version
           fi
-          npm version "$VERSION" --no-git-tag-version
+          bun scripts/sync-desktop-version.ts "$VERSION"
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v8
