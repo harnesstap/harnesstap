@@ -491,7 +491,7 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile delete <name>` — demote a profile plugin and optionally delete the underlying plugin
 - `profile pull <selector>` — install from catalog (`plugin pull` alias; warns if not profile-tagged)
 - `profile publish <name>` — publish with profile validation warnings (`plugin publish` alias)
-- `profile preview [name]` — apply preview (home/project/both) without writing
+- `profile preview [name]` — apply preview (home/project/both) without writing. Inherited host-plugin material already on disk is omitted from stack/file deltas; host-native plugin MCP is treated as present.
 - `profile switch <name>` — switch active profile (restores the previous profile on failure; see `--help` for conflict flags)
 - `profile stash` — stash untracked on-disk resources for the active profile
 - `profile stash list` / `profile stash pop` / `profile stash apply` — list, restore-and-remove, or restore stashed profiles

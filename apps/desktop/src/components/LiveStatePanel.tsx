@@ -1293,7 +1293,48 @@ export function LiveStatePanel({
     Boolean(selectedProfile)
     && applyPreview?.profile === selectedProfile
     && !applyPreviewLoading;
-  const diff = diffProfileContents(targetContents, liveContents);
+  const installedPinRefs = useMemo(() => {
+    const refs = new Set<string>();
+    const harnesses = applyPreview?.harnesses ?? liveHarnesses;
+    if (!harnesses) {
+      return refs;
+    }
+    for (const status of Object.values(harnesses)) {
+      for (const plugin of status.plugins ?? []) {
+        if (plugin.state !== "installed") {
+          continue;
+        }
+        refs.add(plugin.id);
+        const name = plugin.id.split("@")[0]?.trim();
+        if (name) {
+          refs.add(name);
+        }
+      }
+    }
+    return refs;
+  }, [applyPreview?.harnesses, liveHarnesses]);
+  const ownedResourceKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const resource of applyPreview?.files?.owned_resources ?? []) {
+      keys.add(`${resource.type}:${resource.name}`);
+    }
+    return keys;
+  }, [applyPreview?.files?.owned_resources]);
+  const ignorePluginNames = useMemo(() => {
+    const names = new Set<string>();
+    if (selectedProfile) {
+      names.add(selectedProfile);
+    }
+    if (activeProfile) {
+      names.add(activeProfile);
+    }
+    return names;
+  }, [selectedProfile, activeProfile]);
+  const diff = diffProfileContents(targetContents, liveContents, {
+    ownedResourceKeys,
+    installedPinRefs,
+    ignorePluginNames,
+  });
   const resourceStack = resolveProfileResourceStack({
     selectedProfile,
     activeProfile,

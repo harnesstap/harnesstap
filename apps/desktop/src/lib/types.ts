@@ -247,6 +247,8 @@ export interface ProfileContentsResource {
   id?: string;
   /** On-disk path or import origin label (hover target). */
   source?: string;
+  origin_kind?: string;
+  origin_ref?: string;
 }
 
 export interface ProfileContents {
@@ -342,6 +344,7 @@ export interface ProfileApplyPreview {
     expected_count: number;
     changes: DriftFileChange[];
     root_path: string;
+    owned_resources?: Array<{ type: string; name: string }>;
   };
   relative_to_active: boolean;
   warning?: string;

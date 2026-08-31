@@ -1,0 +1,5 @@
+kind: Fixed
+body: Hide inherited host-plugin skills, agents, and commands from Desktop apply-preview stack and file changes when that plugin is already deployed.
+time: 2026-08-31T03:40:00Z
+custom:
+  Issue: ""

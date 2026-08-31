@@ -22,6 +22,11 @@ import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import {
+  collectOwnedPreviewResources,
+  expectedFileMatchesLiveForPreview,
+  omitInheritedPluginFileChanges,
+} from "./apply-preview-inherited.js";
+import {
   applyProfilePlugin,
   clearGlobalProfileApply,
   collectProfilePluginIds,
@@ -65,6 +70,8 @@ export interface ProfileApplyPreview {
     /** File changes for tracked (profile-managed) paths only. */
     changes: DriftFileChange[];
     root_path: string;
+    /** Resource identities owned by the target apply set (including inherited plugin material). */
+    owned_resources?: Array<{ type: string; name: string }>;
   };
   relative_to_active: boolean;
   warning?: string;
@@ -185,8 +192,12 @@ function compareExpectedFiles(
   expectedFiles: Array<{ path: string; content: string }>,
 ): DriftFileChange[] {
   const changes: DriftFileChange[] = [];
+  const homeRoot = resolveHomeRoot();
   for (const file of uniqueExpectedFiles(expectedFiles)) {
     const current = readRootFile(rootPath, file.path);
+    if (expectedFileMatchesLiveForPreview(homeRoot, file, current)) {
+      continue;
+    }
     if (current === null) {
       changes.push({ path: file.path, type: "deleted" });
       continue;
@@ -325,13 +336,22 @@ export function withManagedRemovals(
   return next;
 }
 
+function targetPinRefs(pluginIds?: string[]): Set<string> {
+  if (!pluginIds || pluginIds.length === 0) {
+    return new Set();
+  }
+  return new Set(
+    mergePluginsForApply(pluginIds).pluginPins.map((pin) => pin.ref),
+  );
+}
+
 function buildPreviewFileChanges(
   rootPath: string,
   expectedFiles: Array<{ path: string; content: string }>,
   removedFiles: string[] | undefined,
   pluginIds?: string[],
 ): DriftFileChange[] {
-  return withMappedResources(
+  const mapped = withMappedResources(
     withUnmanagedMergedContainers(
       rootPath,
       expectedFiles,
@@ -347,6 +367,30 @@ function buildPreviewFileChanges(
       profileManagesClaudeSettings(pluginIds),
     ),
   );
+  return omitInheritedPluginFileChanges(
+    resolveHomeRoot(),
+    mapped,
+    targetPinRefs(pluginIds),
+  );
+}
+
+function previewFilesResult(
+  rootPath: string,
+  expectedFiles: Array<{ path: string; content: string }>,
+  removedFiles: string[] | undefined,
+  pluginIds?: string[],
+): ProfileApplyPreview["files"] {
+  return {
+    expected_count: expectedFiles.length,
+    changes: buildPreviewFileChanges(
+      rootPath,
+      expectedFiles,
+      removedFiles,
+      pluginIds,
+    ),
+    root_path: rootPath,
+    owned_resources: collectOwnedPreviewResources(expectedFiles),
+  };
 }
 
 function isMaterialResource(resource: Resource): boolean {
@@ -595,16 +639,12 @@ async function previewHomeApply(
         declaredPins: [],
         declaredMcpByHarness: {},
       }),
-      files: {
-        expected_count: collected.expectedFiles.length,
-        changes: buildPreviewFileChanges(
-          collected.rootPath,
-          collected.expectedFiles,
-          collected.removedFiles,
-          collected.pluginIds,
-        ),
-        root_path: collected.rootPath,
-      },
+      files: previewFilesResult(
+        collected.rootPath,
+        collected.expectedFiles,
+        collected.removedFiles,
+        collected.pluginIds,
+      ),
     };
   }
 
@@ -620,16 +660,12 @@ async function previewHomeApply(
         ? declaredMcpNamesFromExpectedApply(collected.expectedApply)
         : {},
     }),
-    files: {
-      expected_count: collected.expectedFiles.length,
-      changes: buildPreviewFileChanges(
-        collected.rootPath,
-        collected.expectedFiles,
-        collected.removedFiles,
-        collected.pluginIds,
-      ),
-      root_path: collected.rootPath,
-    },
+    files: previewFilesResult(
+      collected.rootPath,
+      collected.expectedFiles,
+      collected.removedFiles,
+      collected.pluginIds,
+    ),
   };
 }
 
@@ -645,16 +681,12 @@ async function previewProjectApply(
   );
 
   return {
-    files: {
-      expected_count: collected.expectedFiles.length,
-      changes: buildPreviewFileChanges(
-        collected.rootPath,
-        collected.expectedFiles,
-        collected.removedFiles,
-        collected.pluginIds,
-      ),
-      root_path: collected.rootPath,
-    },
+    files: previewFilesResult(
+      collected.rootPath,
+      collected.expectedFiles,
+      collected.removedFiles,
+      collected.pluginIds,
+    ),
     ...spreadWarningFields(collected),
   };
 }
