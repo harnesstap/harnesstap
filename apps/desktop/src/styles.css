@@ -2530,7 +2530,12 @@ button:focus-visible,
 }
 
 .file-diff-backdrop {
-  z-index: 40;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  justify-items: center;
+  overflow: auto;
 }
 
 .file-diff-dialog {
@@ -2539,6 +2544,9 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  margin: auto;
+  justify-self: center;
+  align-self: center;
 }
 
 .file-diff-header {

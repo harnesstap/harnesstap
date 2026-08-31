@@ -58,10 +58,16 @@ export function applyClaudePluginExtensions(
   if (existingSettings) {
     try {
       const generated = JSON.parse(existingSettings.content) as Record<string, unknown>;
-      const merged = { ...generated, ...settings };
+      const overlay: Record<string, unknown> = { ...generated };
+      if (settings.extraKnownMarketplaces) {
+        overlay.extraKnownMarketplaces = settings.extraKnownMarketplaces;
+      }
+      if (settings.enabledPlugins) {
+        overlay.enabledPlugins = settings.enabledPlugins;
+      }
       return [
         ...withoutSettings,
-        { path: SETTINGS_PATH, content: JSON.stringify(merged, null, 2) },
+        { path: SETTINGS_PATH, content: JSON.stringify(overlay, null, 2) },
       ];
     } catch {
       return [...withoutSettings, { path: SETTINGS_PATH, content: settingsContent }];

@@ -87,6 +87,24 @@ export function inferFileChangeType(path: string): string | undefined {
   return undefined;
 }
 
+/** Normalize a library source path to a home/project-relative managed path. */
+export function managedPathFromResourceSource(
+  source: string | null | undefined,
+): string | null {
+  if (!source) {
+    return null;
+  }
+  let normalized = source.replace(/\\/g, "/");
+  if (normalized.startsWith("~/")) {
+    normalized = normalized.slice(2);
+  }
+  normalized = normalized.replace(/^\.\//, "");
+  if (!normalized.includes("/") && !normalized.endsWith(".md")) {
+    return null;
+  }
+  return normalized;
+}
+
 function pluginKey(plugin: { id: string; name: string; version: string }): string {
   return `plugin:${plugin.id}:${plugin.name}@${plugin.version}`;
 }

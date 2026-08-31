@@ -168,4 +168,11 @@ describe("Profile resources pane chrome", () => {
       "Profile resources lists the selected profile’s composition",
     );
   });
+
+  it("locks not-staged modifications and centered file diffs", () => {
+    expect(liveStateSource).toContain("not_staged_kind");
+    expect(liveStateSource).toContain("Overwrite profile with the live version");
+    expect(designSource).toContain("File apply diffs are the same centered");
+    expect(designSource).toContain("live resources that are in the profile but differ");
+  });
 });

@@ -19,12 +19,13 @@ import {
   type ProfileContents,
   type ProfileContentsResource,
   toContentsResource,
+  toNotStagedContentsResource,
 } from "./profile-contents.js";
 import type { ProfileApplyPreviewScope } from "./profile-apply-preview.js";
 import { resolveMainHarnessTarget } from "./profile-harness-sync.js";
 import { assessProjectScanStatus } from "./project-scan-status.js";
 import { generateFiles, removeGlobalMaterializedFiles } from "./applier.js";
-import { ensureLiveLibraryRef } from "./live-library-ref.js";
+import { ensureLiveLibraryRef, isLiveLibraryRef } from "./live-library-ref.js";
 import {
   persistScanResults,
   scanHomeDefaults,
@@ -50,18 +51,55 @@ function profileResourceKey(
 
 /** Keys attached to the given profile stack (including nested plugins). */
 function trackedResourceKeys(profileSelector: string): Set<string> {
+  return new Set(trackedResourceMap(profileSelector).keys());
+}
+
+function trackedResourceMap(profileSelector: string): Map<string, Resource> {
   const profilePlugin = resolvePluginSelector(profileSelector);
   if (!profilePlugin) {
-    return new Set();
+    return new Map();
   }
   const profileResources = mergePluginsForApply(
     collectProfilePluginIds(profilePlugin),
   ).resources;
-  return new Set(
-    profileResources
-      .filter(isMaterialResource)
-      .map((resource) => profileResourceKey(resource)),
-  );
+  const map = new Map<string, Resource>();
+  for (const resource of profileResources) {
+    if (!isMaterialResource(resource)) {
+      continue;
+    }
+    map.set(profileResourceKey(resource), resource);
+  }
+  return map;
+}
+
+function stripLiveMetadata(metadata: Resource["metadata"] | undefined): unknown {
+  if (!metadata || typeof metadata !== "object") {
+    return {};
+  }
+  const record = { ...(metadata as Record<string, unknown>) };
+  delete record.content_status;
+  return record;
+}
+
+function materialFingerprint(
+  resource: Pick<Resource, "description" | "content" | "metadata"> | ResourceCreateInput,
+): string {
+  const description = (resource.description ?? "").trim();
+  const content = (resource.content ?? "").replace(/\r\n/g, "\n").trim();
+  return `${description}\n${content}\n${JSON.stringify(stripLiveMetadata(resource.metadata))}`;
+}
+
+function liveDiffersFromTracked(
+  live: ResourceCreateInput,
+  tracked: Resource | undefined,
+): boolean {
+  if (!tracked) {
+    return true;
+  }
+  if (isLiveLibraryRef(tracked)) {
+    return false;
+  }
+  return materialFingerprint(live) !== materialFingerprint(tracked);
 }
 
 
@@ -164,7 +202,7 @@ async function notStagedFromHomeScan(
     return [];
   }
 
-  const committedKeys = trackedResourceKeys(profileSelector);
+  const committed = trackedResourceMap(profileSelector);
   const homeRoot = resolveHomeRoot();
   // Scan all detected harnesses unless a specific harness filter is requested.
   const scanned = await scanHomeDefaults(
@@ -187,7 +225,11 @@ async function notStagedFromHomeScan(
         continue;
       }
       const key = profileResourceKey(resource);
-      if (committedKeys.has(key) || seen.has(key)) {
+      const tracked = committed.get(key);
+      if (tracked && !liveDiffersFromTracked(resource, tracked)) {
+        continue;
+      }
+      if (seen.has(key)) {
         continue;
       }
       const sourcePath = normalizeManagedPath(resource.source ?? "", homeRoot);
@@ -195,13 +237,16 @@ async function notStagedFromHomeScan(
         sourcePath &&
         ownedPaths.has(sourcePath) &&
         !isMergedContainerResource(resource, homeRoot)
+        && !tracked
       ) {
         // Singleton file materialized by the profile (e.g. CLAUDE.md).
         continue;
       }
       seen.add(key);
       const live = ensureLiveLibraryRef(resource, homeRoot);
-      notStaged.push(toContentsResource(live));
+      notStaged.push(
+        toNotStagedContentsResource(live, tracked ? "update" : "add"),
+      );
     }
   }
 
@@ -217,7 +262,7 @@ async function notStagedFromProjectScan(
     return [];
   }
 
-  const committedKeys = trackedResourceKeys(profileSelector);
+  const committed = trackedResourceMap(profileSelector);
   const resolvedRoot = resolve(projectPath);
   const scanStatus = await assessProjectScanStatus(resolvedRoot);
   const scanned = await scanProject(resolvedRoot);
@@ -235,32 +280,39 @@ async function notStagedFromProjectScan(
     if (!isMaterialResource(resource)) {
       continue;
     }
-    const key = profileResourceKey(resource);
-    if (committedKeys.has(key) || seen.has(key)) {
-      continue;
-    }
-    const sourcePath = normalizeManagedPath(resource.source ?? "", resolvedRoot);
-    if (
-      sourcePath &&
-      ownedPaths.has(sourcePath) &&
-      !isMergedContainerResource(resource, resolvedRoot)
-    ) {
-      continue;
-    }
-    seen.add(key);
-    const live = ensureLiveLibraryRef(
-      {
-        type: resource.type,
-        name: resource.name,
-        description: resource.description,
-        content: resource.content,
-        metadata: resource.metadata,
-        source: resource.source,
-        namespace: resource.namespace,
-      },
-      resolvedRoot,
-    );
-    notStaged.push(toContentsResource(live));
+      const key = profileResourceKey(resource);
+      const tracked = committed.get(key);
+      if (tracked && !liveDiffersFromTracked(resource, tracked)) {
+        continue;
+      }
+      if (seen.has(key)) {
+        continue;
+      }
+      const sourcePath = normalizeManagedPath(resource.source ?? "", resolvedRoot);
+      if (
+        sourcePath &&
+        ownedPaths.has(sourcePath) &&
+        !isMergedContainerResource(resource, resolvedRoot)
+        && !tracked
+      ) {
+        continue;
+      }
+      seen.add(key);
+      const live = ensureLiveLibraryRef(
+        {
+          type: resource.type,
+          name: resource.name,
+          description: resource.description,
+          content: resource.content,
+          metadata: resource.metadata,
+          source: resource.source,
+          namespace: resource.namespace,
+        },
+        resolvedRoot,
+      );
+      notStaged.push(
+        toNotStagedContentsResource(live, tracked ? "update" : "add"),
+      );
   }
 
   return sortContentsResources(notStaged);
@@ -330,9 +382,7 @@ export async function addResourceToProfile(input: {
 
   const trackedKeys = trackedResourceKeys(input.profileSelector);
   const key = `${input.resourceType}:${input.resourceName}`;
-  if (trackedKeys.has(key)) {
-    throw new Error(`Resource is already in profile: ${key}`);
-  }
+  const alreadyInProfile = trackedKeys.has(key);
 
   const { originRef, scanResults } = await resolveUntrackedScanResults(input);
   const matchingResults = filterScanResultsForResource(
@@ -361,10 +411,12 @@ export async function addResourceToProfile(input: {
   }
 
   markPluginDirty(profilePlugin.id);
-  addResourceToPlugin(profilePlugin.id, resource.id);
+  if (!alreadyInProfile) {
+    addResourceToPlugin(profilePlugin.id, resource.id);
+  }
   touchPluginUpdatedAt(profilePlugin.id);
 
-  return toContentsResource(resource);
+  return toNotStagedContentsResource(resource, alreadyInProfile ? "update" : "add");
 }
 
 async function resolveUntrackedScanResults(input: {
@@ -378,7 +430,7 @@ async function resolveUntrackedScanResults(input: {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
 
-  const committedKeys = trackedResourceKeys(input.profileSelector);
+  const committed = trackedResourceMap(input.profileSelector);
 
   if (input.scope === "project") {
     if (!input.projectPath) {
@@ -396,7 +448,7 @@ async function resolveUntrackedScanResults(input: {
       originRef,
       scanResults: filterScanResultsToNotStaged(
         scanned,
-        committedKeys,
+        committed,
         ownedPaths,
         originRef,
       ),
@@ -418,7 +470,7 @@ async function resolveUntrackedScanResults(input: {
     originRef,
     scanResults: filterScanResultsToNotStaged(
       scanned,
-      committedKeys,
+      committed,
       ownedPaths,
       originRef,
     ),
@@ -479,7 +531,7 @@ export interface UntrackedStashCapture {
 
 function filterScanResultsToNotStaged(
   results: ScanResult[],
-  committedKeys: ReadonlySet<string>,
+  committed: ReadonlyMap<string, Resource>,
   ownedPaths: ReadonlySet<string>,
   rootPath: string,
 ): ScanResult[] {
@@ -489,7 +541,9 @@ function filterScanResultsToNotStaged(
       if (!isMaterialResource(resource)) {
         return false;
       }
-      if (committedKeys.has(profileResourceKey(resource))) {
+      const key = profileResourceKey(resource);
+      const tracked = committed.get(key);
+      if (tracked && !liveDiffersFromTracked(resource, tracked)) {
         return false;
       }
       const sourcePath = normalizeManagedPath(resource.source ?? "", rootPath);
@@ -497,6 +551,7 @@ function filterScanResultsToNotStaged(
         sourcePath &&
         ownedPaths.has(sourcePath) &&
         !isMergedContainerResource(resource, rootPath)
+        && !tracked
       ) {
         return false;
       }

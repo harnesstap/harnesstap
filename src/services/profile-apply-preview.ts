@@ -40,6 +40,9 @@ import {
 import { resourceKeyFromManagedPath } from "./profile-commit-resource.js";
 import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
+import {
+  isMergeableHostConfigPath,
+} from "./merged-host-config.js";
 import { detectPlatforms } from "./scanner.js";
 import {
   SingletonConflictError,
@@ -248,57 +251,18 @@ export function omitTransparentCrossHarnessAdds(
   });
 }
 
-const CLAUDE_SETTINGS_RELATIVE = ".claude/settings.json";
-const CLAUDE_MERGED_CONTAINER_RESOURCE_TYPES = new Set([
-  "permission",
-  "env_var",
-  "hook",
-]);
-
-function profileManagesClaudeSettings(pluginIds: string[] | undefined): boolean {
-  if (!pluginIds || pluginIds.length === 0) {
-    return false;
-  }
-  const merged = mergePluginsForApply(pluginIds);
-  return merged.resources.some((resource) =>
-    CLAUDE_MERGED_CONTAINER_RESOURCE_TYPES.has(resource.type),
-  );
-}
-
 /**
- * When Claude `.claude/settings.json` exists on disk but is not among expected
- * apply files, surface it as drift type `added` (on disk, not expected by the
- * profile).
+ * Claude `.claude/settings.json` is a shared host config. Apply merges
+ * profile-managed keys and never deletes the whole file, so preview must not
+ * list it as a would-delete (`added`) stack item.
  */
-function withUnmanagedMergedContainers(
-  rootPath: string,
-  expectedFiles: Array<{ path: string; content: string }>,
+function omitMergeableHostConfigRemovals(
   changes: DriftFileChange[],
-  profileManagesSettings: boolean,
 ): DriftFileChange[] {
-  const expectedNormalized = new Set(
-    expectedFiles.map((file) =>
-      file.path.replace(/\\/g, "/").replace(/^\.\//, "").replace(/^~\//, ""),
-    ),
-  );
-  const settingsAlreadyExpected = [...expectedNormalized].some(
-    (path) => path === CLAUDE_SETTINGS_RELATIVE || path.endsWith(`/${CLAUDE_SETTINGS_RELATIVE}`),
-  );
-  if (settingsAlreadyExpected || profileManagesSettings) {
-    return changes;
-  }
-  if (readRootFile(rootPath, CLAUDE_SETTINGS_RELATIVE) === null) {
-    return changes;
-  }
-  const alreadyListed = changes.some(
+  return changes.filter(
     (change) =>
-      change.path.replace(/\\/g, "/").replace(/^~\//, "") === CLAUDE_SETTINGS_RELATIVE
-      || change.path.replace(/\\/g, "/").endsWith(`/${CLAUDE_SETTINGS_RELATIVE}`),
+      !(change.type === "added" && isMergeableHostConfigPath(change.path)),
   );
-  if (alreadyListed) {
-    return changes;
-  }
-  return [...changes, { path: CLAUDE_SETTINGS_RELATIVE, type: "added" }];
 }
 
 function withMappedResources(changes: DriftFileChange[]): DriftFileChange[] {
@@ -324,7 +288,7 @@ export function withManagedRemovals(
   const seen = new Set(changes.map((change) => change.path));
   const next = [...changes];
   for (const path of removedFiles) {
-    if (seen.has(path)) {
+    if (seen.has(path) || isMergeableHostConfigPath(path)) {
       continue;
     }
     if (readRootFile(rootPath, path) === null) {
@@ -352,9 +316,7 @@ function buildPreviewFileChanges(
   pluginIds?: string[],
 ): DriftFileChange[] {
   const mapped = withMappedResources(
-    withUnmanagedMergedContainers(
-      rootPath,
-      expectedFiles,
+    omitMergeableHostConfigRemovals(
       withManagedRemovals(
         rootPath,
         omitTransparentCrossHarnessAdds(
@@ -364,7 +326,6 @@ function buildPreviewFileChanges(
         ),
         removedFiles,
       ),
-      profileManagesClaudeSettings(pluginIds),
     ),
   );
   return omitInheritedPluginFileChanges(

@@ -2,6 +2,7 @@ import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { normalizeAgentInput } from "../services/agent-bridge.js";
+import { mergeSkillMarkdown } from "../services/merge-skill-markdown.js";
 import { emitSkillAuxiliaryFiles, listSkillAuxiliaryFiles } from "../services/skill-auxiliary.js";
 import { scanSkillCommandMetadataResources } from "../services/skill-command-metadata.js";
 import { filterMcpServersForTargetPath } from "../services/mcp-target.js";
@@ -306,10 +307,15 @@ export abstract class BaseSerializer implements PlatformSerializer {
       name: resource.name,
       description: resource.description,
     };
+    const generated = this.emitFrontmatter(fm, resource.content);
+    const liveRoot = options.projectRoot;
+    const live = liveRoot
+      ? this.readFile(join(liveRoot, skillMdPath))
+      : undefined;
     const files: SerializedFile[] = [
       {
         path: skillMdPath,
-        content: this.emitFrontmatter(fm, resource.content),
+        content: mergeSkillMarkdown(live, generated),
       },
     ];
 

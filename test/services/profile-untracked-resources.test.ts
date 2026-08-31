@@ -354,6 +354,83 @@ describe("profile-untracked-resources service", () => {
       await context.cleanup();
     }
   });
+
+  it("lists on-disk skill edits as not-staged updates when the profile snapshot differs", async () => {
+    const context = await createInitializedTestContext("profile-not-staged-skill-update");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "skill",
+          name: "dolibarr-api",
+          description: "thin",
+          content: "short body",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      mkdirSync(join(context.homeDir, ".claude", "skills", "dolibarr-api"), {
+        recursive: true,
+      });
+      writeFileSync(
+        join(context.homeDir, ".claude", "skills", "dolibarr-api", "SKILL.md"),
+        [
+          "---",
+          "name: dolibarr-api",
+          "description: thin",
+          "allowed-tools: Bash",
+          "---",
+          "",
+          "short body",
+          "",
+          "# Dolibarr API operations",
+          "## Prerequisites",
+          "Need DOLIBARR_URL",
+        ].join("\n"),
+        "utf-8",
+      );
+
+      const notStaged = await detectNotStagedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+        harness: "claude-code",
+      });
+      const entry = notStaged.find(
+        (resource) => resource.type === "skill" && resource.name === "dolibarr-api",
+      );
+      expect(entry?.not_staged_kind).toBe("update");
+
+      const updated = await addResourceToProfile({
+        profileSelector: "work",
+        resourceType: "skill",
+        resourceName: "dolibarr-api",
+        scope: "home",
+        harness: "claude-code",
+      });
+      expect(updated.name).toBe("dolibarr-api");
+      const library = listResources().find(
+        (resource) =>
+          resource.type === "skill" && resource.name === "dolibarr-api",
+      );
+      expect(library?.content).toContain("# Dolibarr API operations");
+
+      const remaining = await detectNotStagedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+        harness: "claude-code",
+      });
+      expect(
+        remaining.some(
+          (resource) => resource.type === "skill" && resource.name === "dolibarr-api",
+        ),
+      ).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
 
 describe("agent profile add-resource routes", () => {

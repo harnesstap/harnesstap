@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
@@ -7,11 +7,12 @@ import {
   setPluginTags,
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { previewProfileApply } from "../../src/services/profile-apply-preview.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
 describe("previewProfileApply unmanaged settings.json", () => {
-  it("lists ~/.claude/settings.json as added when the profile does not manage it", async () => {
+  it("does not list ~/.claude/settings.json as a whole-file delete when the profile does not manage it", async () => {
     const context = await createInitializedTestContext("preview-settings-added");
     try {
       const profile = createPlugin({ name: "teads" });
@@ -23,6 +24,7 @@ describe("previewProfileApply unmanaged settings.json", () => {
         JSON.stringify(
           {
             permissions: { allow: ["Read(*)"], deny: [] },
+            model: "opus",
           },
           null,
           2,
@@ -39,16 +41,15 @@ describe("previewProfileApply unmanaged settings.json", () => {
       expect(
         preview.files.changes.some(
           (change) =>
-            change.path.replace(/\\/g, "/").endsWith(".claude/settings.json")
-            && change.type === "added",
+            change.path.replace(/\\/g, "/").endsWith(".claude/settings.json"),
         ),
-      ).toBe(true);
+      ).toBe(false);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not list settings.json as added when the profile manages it", async () => {
+  it("previews settings.json as modified (not deleted) when the profile merges keys", async () => {
     const context = await createInitializedTestContext("preview-settings-managed");
     try {
       const profile = createPlugin({ name: "managed" });
@@ -56,11 +57,11 @@ describe("previewProfileApply unmanaged settings.json", () => {
       addResourceToPlugin(
         profile.id,
         createResource({
-          type: "env_var",
-          name: "DEMO_KEY",
+          type: "hook",
+          name: "session-start",
           description: "",
           content: "",
-          metadata: { key: "DEMO_KEY", value: "x" },
+          metadata: { event: "SessionStart", script: "echo ok" },
           source: "manual",
         }).id,
       );
@@ -68,7 +69,15 @@ describe("previewProfileApply unmanaged settings.json", () => {
       mkdirSync(join(context.homeDir, ".claude"), { recursive: true });
       writeFileSync(
         join(context.homeDir, ".claude", "settings.json"),
-        JSON.stringify({ env: { DEMO_KEY: "x" }, permissions: { allow: ["Read(*)"], deny: [] } }, null, 2),
+        JSON.stringify(
+          {
+            env: { KEEP: "yes" },
+            model: "opus",
+            permissions: { allow: ["Read(*)"], deny: [] },
+          },
+          null,
+          2,
+        ),
         "utf-8",
       );
 
@@ -78,13 +87,28 @@ describe("previewProfileApply unmanaged settings.json", () => {
         harness: "claude-code",
       });
 
-      expect(
-        preview.files.changes.some(
-          (change) =>
-            change.path.replace(/\\/g, "/").endsWith(".claude/settings.json")
-            && change.type === "added",
-        ),
-      ).toBe(false);
+      const settingsChange = preview.files.changes.find((change) =>
+        change.path.replace(/\\/g, "/").endsWith(".claude/settings.json"),
+      );
+      expect(settingsChange?.type).toBe("modified");
+      expect(settingsChange?.type).not.toBe("added");
+
+      await applyProfilePlugin("managed", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+      const written = JSON.parse(
+        readFileSync(join(context.homeDir, ".claude", "settings.json"), "utf-8"),
+      ) as {
+        model: string;
+        env: { KEEP: string };
+        permissions: { allow: string[] };
+        hooks?: unknown;
+      };
+      expect(written.model).toBe("opus");
+      expect(written.env.KEEP).toBe("yes");
+      expect(written.permissions.allow).toEqual(["Read(*)"]);
+      expect(written.hooks).toBeDefined();
     } finally {
       await context.cleanup();
     }

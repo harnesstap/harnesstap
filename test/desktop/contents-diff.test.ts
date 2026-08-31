@@ -12,6 +12,7 @@ import {
   orderedTypeCounts,
   summarizeStackChanges,
   uniqueFileChanges,
+  managedPathFromResourceSource,
 } from "../../apps/desktop/src/lib/contents-diff.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
 
@@ -508,5 +509,16 @@ describe("contents-diff helpers", () => {
     expect(
       filterFileChangeGroups(groups, new Set(), "skill:ship").map((group) => group.key),
     ).toEqual(["skill:ship"]);
+  });
+});
+
+describe("managedPathFromResourceSource", () => {
+  it("strips home and tilde prefixes", () => {
+    expect(managedPathFromResourceSource("~/.claude/skills/api/SKILL.md")).toBe(
+      ".claude/skills/api/SKILL.md",
+    );
+    expect(
+      managedPathFromResourceSource(".cursor/skills/dolibarr-api/SKILL.md"),
+    ).toBe(".cursor/skills/dolibarr-api/SKILL.md");
   });
 });

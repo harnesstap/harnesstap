@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
@@ -44,6 +44,56 @@ describe("getManagedFileDiff", () => {
       expect(result.absolute_path).toBe(absolute);
       expect(result.expected).toContain("# original");
       expect(result.current).toBe(drifted);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not wipe extra live skill body when the profile snapshot is a subset", async () => {
+    const context = await createInitializedTestContext("managed-file-diff-subset");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "skill",
+          name: "dolibarr-development",
+          description: "short",
+          content: "",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      const relative = ".claude/skills/dolibarr-development/SKILL.md";
+      const absolute = join(context.homeDir, relative);
+      mkdirSync(join(context.homeDir, ".claude", "skills", "dolibarr-development"), {
+        recursive: true,
+      });
+      const live = [
+        "---",
+        "name: dolibarr-development",
+        "description: short",
+        "allowed-tools: Read",
+        "---",
+        "",
+        "# Dolibarr Developer Skill",
+        "## When to Use",
+        "Lots of live guidance.",
+      ].join("\n");
+      writeFileSync(absolute, live, "utf-8");
+
+      const result = await getManagedFileDiff({
+        profileSelector: "work",
+        path: relative,
+        scope: "home",
+        harness: "claude-code",
+      });
+
+      expect(result.expected).toContain("# Dolibarr Developer Skill");
+      expect(result.expected).toContain("Lots of live guidance.");
+      expect(result.expected).toContain("allowed-tools:");
     } finally {
       await context.cleanup();
     }
