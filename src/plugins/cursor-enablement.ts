@@ -70,6 +70,14 @@ function listMcpPluginFolderNames(homeRoot: string): string[] {
   }
 }
 
+/**
+ * Cursor-native plugin MCP identities (e.g. `plugin-slack-slack` → `slack`).
+ * These are host-provided; HarnessTap should not treat them as missing installs.
+ */
+export function listCursorNativeMcpPluginNames(homeRoot: string): Set<string> {
+  return pluginNamesFromMcpFolders(listMcpPluginFolderNames(homeRoot));
+}
+
 function resolveCursorStateDbPath(): string {
   if (process.platform === "darwin") {
     return join(

@@ -99,11 +99,33 @@ function pinKey(pin: { ref: string }): string {
   return `pin:${pin.ref}`;
 }
 
-function itemsFromContents(contents: ProfileContents | null | undefined): Map<string, ContentsDiffItem> {
+function nestedNonMcpResourceKeys(
+  contents: ProfileContents | null | undefined,
+): Set<string> {
+  const keys = new Set<string>();
+  if (!contents) {
+    return keys;
+  }
+  for (const plugin of contents.plugins ?? []) {
+    for (const resource of plugin.resources) {
+      if (resource.type === "mcp_server") {
+        continue;
+      }
+      keys.add(resourceKey(resource));
+    }
+  }
+  return keys;
+}
+
+function itemsFromContents(
+  contents: ProfileContents | null | undefined,
+): Map<string, ContentsDiffItem> {
   const items = new Map<string, ContentsDiffItem>();
   if (!contents) {
     return items;
   }
+
+  const nestedNonMcp = nestedNonMcpResourceKeys(contents);
 
   for (const plugin of contents.plugins ?? []) {
     const key = pluginKey(plugin);
@@ -119,6 +141,9 @@ function itemsFromContents(contents: ProfileContents | null | undefined): Map<st
 
   for (const resource of contents.resources ?? []) {
     const key = resourceKey(resource);
+    if (nestedNonMcp.has(key)) {
+      continue;
+    }
     items.set(key, {
       key,
       kind: "unchanged",
@@ -146,9 +171,33 @@ function itemsFromContents(contents: ProfileContents | null | undefined): Map<st
   return items;
 }
 
+export interface DiffProfileContentsOptions {
+  /** type:name keys still provided by the target apply (including inherited plugin material). */
+  ownedResourceKeys?: ReadonlySet<string>;
+  /** Host plugin pin refs (and bare names) already installed. */
+  installedPinRefs?: ReadonlySet<string>;
+  /** Profile plugin names that wrap the stack (selected / active profile). */
+  ignorePluginNames?: ReadonlySet<string>;
+}
+
+function pinIsAlreadyInstalled(
+  ref: string,
+  installedPinRefs: ReadonlySet<string> | undefined,
+): boolean {
+  if (!installedPinRefs || installedPinRefs.size === 0) {
+    return false;
+  }
+  if (installedPinRefs.has(ref)) {
+    return true;
+  }
+  const name = ref.split("@")[0]?.trim();
+  return Boolean(name && installedPinRefs.has(name));
+}
+
 export function diffProfileContents(
   target: ProfileContents | null | undefined,
   live: ProfileContents | null | undefined,
+  options: DiffProfileContentsOptions = {},
 ): ContentsDiff {
   const targetItems = itemsFromContents(target);
   const liveItems = itemsFromContents(live);
@@ -156,16 +205,65 @@ export function diffProfileContents(
   const removed: ContentsDiffItem[] = [];
   const unchanged: ContentsDiffItem[] = [];
 
+  const keepAdded = (item: ContentsDiffItem): boolean => {
+    if (
+      item.category === "plugin"
+      && options.ignorePluginNames?.has(item.label)
+    ) {
+      return false;
+    }
+    if (
+      item.category === "plugin_pin"
+      && pinIsAlreadyInstalled(item.label, options.installedPinRefs)
+    ) {
+      return false;
+    }
+    return true;
+  };
+
+  const keepRemoved = (item: ContentsDiffItem): boolean => {
+    if (
+      item.category === "plugin"
+      && options.ignorePluginNames?.has(item.label)
+    ) {
+      return false;
+    }
+    if (item.category === "resource" && item.iconType !== "mcp_server") {
+      const key = `${item.iconType}:${item.label}`;
+      if (options.ownedResourceKeys?.has(key)) {
+        return false;
+      }
+      const originRef =
+        target?.resources?.find(
+          (resource) =>
+            resource.type === item.iconType && resource.name === item.label,
+        )?.origin_ref
+        ?? live?.resources?.find(
+          (resource) =>
+            resource.type === item.iconType && resource.name === item.label,
+        )?.origin_ref;
+      if (originRef) {
+        const targetPins = new Set(
+          (target?.plugin_pins ?? []).map((pin) => pin.ref),
+        );
+        if (targetPins.has(originRef)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
   for (const [key, item] of targetItems) {
     if (liveItems.has(key)) {
       unchanged.push({ ...item, kind: "unchanged" });
-    } else {
+    } else if (keepAdded(item)) {
       added.push({ ...item, kind: "added" });
     }
   }
 
   for (const [key, item] of liveItems) {
-    if (!targetItems.has(key)) {
+    if (!targetItems.has(key) && keepRemoved(item)) {
       removed.push({ ...item, kind: "removed" });
     }
   }

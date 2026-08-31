@@ -428,6 +428,7 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 | `profile list` | Lists local profile plugins, then streams remote catalog plugins with `tag=profile` (same discovery model as `plugin list`). Marks the active profile from `active-profile.json`. |
 | `profile show <name>` | Same detail view as `plugin show`, plus active profile marker. |
 | `profile status` | Shows the active profile and whether global harness files match it (drift, pending apply, stack changes). `--check` exits `1` when out of sync. |
+| `profile preview <name>` | Dry-run apply delta (contents, files, install gaps) without writing. Inherited host-plugin material already deployed is not listed as stack or file changes. Host-native plugin MCP (Cursor `plugin-<name>-<name>` folders and plugin `mcp.json`) counts as present rather than a missing HarnessTap install. |
 | `profile file-diff <name>` | Unified diff of a managed path: live on-disk content (`live/`) → after apply (`after-apply/`). `--format json` returns `expected` and `current` without a rendered patch. |
 | `profile use <name>` | Resolves and merges the profile stack (transitive `plugin` refs), optionally auto-pulls missing published dependencies, applies to **global** harness paths, writes `active-profile.json`, and records a global apply snapshot. If the profile plugin has `default_environment_id`, updates the home active environment pointer. |
 | `profile switch <name>` | Like `profile use`, but restores the previous active profile if the switch fails. |

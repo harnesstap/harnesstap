@@ -9,6 +9,7 @@ import { listGlobalApplySnapshotInstalls } from "../models/global-apply-snapshot
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
+import { listHostNativeMcpNames } from "./host-native-mcp.js";
 import {
   detectProjectDriftFromLatest,
   type DriftFileChange,
@@ -332,7 +333,10 @@ export function buildHarnessLiveStatusMap(input: {
     }
 
     const declaredMcp = input.declaredMcpByHarness[harnessId] ?? [];
-    const liveMcp = readGlobalMcpServerNames(input.homeRoot, harnessId);
+    const liveMcp = new Set([
+      ...readGlobalMcpServerNames(input.homeRoot, harnessId),
+      ...listHostNativeMcpNames(input.homeRoot, harnessId),
+    ]);
     let plugins: HarnessPluginStatusRow[] = [];
     switch (harnessId) {
       case "claude-code":

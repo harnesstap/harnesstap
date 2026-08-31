@@ -16,6 +16,8 @@ export interface ProfileContentsResource {
   name: string;
   /** On-disk path or import origin label (hover target in desktop). */
   source: string;
+  origin_kind?: string;
+  origin_ref?: string;
 }
 
 export interface ProfileContentsPlugin {
@@ -53,6 +55,8 @@ export function toContentsResource(resource: Resource): ProfileContentsResource 
     type: resource.type,
     name: resource.name,
     source: resource.source,
+    ...(resource.origin_kind ? { origin_kind: resource.origin_kind } : {}),
+    ...(resource.origin_ref ? { origin_ref: resource.origin_ref } : {}),
   };
 }
 

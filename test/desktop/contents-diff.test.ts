@@ -65,9 +65,61 @@ describe("contents-diff helpers", () => {
     const diff = diffProfileContents(target, live);
     expect(diff.added.map((row) => row.label).sort()).toEqual(["docs", "review"]);
     expect(diff.removed.map((row) => row.label).sort()).toEqual(["legacy"]);
-    expect(diff.unchanged.map((row) => row.label).sort()).toEqual([
-      "ship",
-      "work",
+    expect(diff.unchanged.map((row) => row.label).sort()).toEqual(["work"]);
+  });
+
+  it("does not list nested plugin skills as stack adds or inherited live removals", () => {
+    const target = contents({
+      plugins: [
+        {
+          id: "teads",
+          name: "Teads (Default)",
+          version: "1.0.1",
+          resources: [
+            { type: "skill", name: "direct-skill" },
+            { type: "mcp_server", name: "docs" },
+          ],
+        },
+      ],
+      plugin_pins: [
+        { ref: "superpowers@claude-plugins-official", version_constraint: "latest" },
+      ],
+      resources: [
+        { type: "skill", name: "direct-skill" },
+        { type: "skill", name: "brainstorming", origin_kind: "marketplace_link", origin_ref: "superpowers@claude-plugins-official" },
+        { type: "mcp_server", name: "docs" },
+      ],
+    });
+    const live = contents({
+      plugins: [
+        {
+          id: "global",
+          name: "global default",
+          version: "1.0.0",
+          resources: [],
+        },
+      ],
+      plugin_pins: [],
+      resources: [
+        { type: "skill", name: "brainstorming", origin_kind: "marketplace_link", origin_ref: "superpowers@claude-plugins-official" },
+        { type: "skill", name: "legacy-local" },
+        { type: "mcp_server", name: "legacy" },
+      ],
+      mcp_servers: ["legacy"],
+    });
+
+    const diff = diffProfileContents(target, live, {
+      ownedResourceKeys: new Set(["skill:brainstorming", "skill:direct-skill"]),
+      installedPinRefs: new Set(["superpowers@claude-plugins-official", "superpowers"]),
+      ignorePluginNames: new Set(["Teads (Default)", "global default"]),
+    });
+
+    expect(diff.added.map((row) => `${row.iconType}:${row.label}`).sort()).toEqual([
+      "mcp_server:docs",
+    ]);
+    expect(diff.removed.map((row) => `${row.iconType}:${row.label}`).sort()).toEqual([
+      "mcp_server:legacy",
+      "skill:legacy-local",
     ]);
   });
 
