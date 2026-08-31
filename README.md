@@ -13,13 +13,14 @@ Use the **CLI** (`ht`) or **Desktop** — both talk to the same local library at
 <br />
 
 [![CI](https://github.com/harnesstap/harnesstap/actions/workflows/ci.yml/badge.svg)](https://github.com/harnesstap/harnesstap/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-harnesstap.com-0ea5e9)](https://harnesstap.com/docs)
 [![License](https://img.shields.io/github/license/harnesstap/harnesstap)](LICENSE)
 [![npm](https://img.shields.io/npm/v/harnesstap?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/harnesstap)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 
 <br />
 
-[Install](#install) · [Quick start](#quick-start) · [Desktop](#desktop) · [Demo](#demo) · [Supported harnesses](docs/supported-harnesses.md) · [CLI reference](docs/cli/command-reference.md)
+[Docs](https://harnesstap.com/docs) · [Install](#install) · [Quick start](#quick-start) · [Desktop](#desktop) · [Demo](#demo) · [Supported harnesses](docs/supported-harnesses.md) · [CLI reference](docs/cli/command-reference.md)
 
 <br />
 
