@@ -244,17 +244,73 @@ jobs:
       - test-cli
       - test-docs
       - desktop-typecheck
-    if: >-
-      always() &&
-      (needs.test-core.result == 'success' || needs.test-core.result == 'skipped') &&
-      (needs.test-platforms.result == 'success' || needs.test-platforms.result == 'skipped') &&
-      (needs.test-plugins.result == 'success' || needs.test-plugins.result == 'skipped') &&
-      (needs.test-services.result == 'success' || needs.test-services.result == 'skipped') &&
-      (needs.test-cli.result == 'success' || needs.test-cli.result == 'skipped') &&
-      (needs.test-docs.result == 'success' || needs.test-docs.result == 'skipped') &&
-      (needs.desktop-typecheck.result == 'success' || needs.desktop-typecheck.result == 'skipped') &&
-      (needs.test-core.result == 'success' || needs.test-platforms.result == 'success' || needs.test-plugins.result == 'success' || needs.test-services.result == 'success' || needs.test-cli.result == 'success' || needs.test-docs.result == 'success')
+    if: always()
     steps:
+      - name: Fail if required tests did not succeed
+        env:
+          DETECT_CHANGES: ${{ needs.detect-changes.result }}
+          DETECT_GLOBAL: ${{ needs.detect-changes.outputs.global }}
+          DETECT_CORE: ${{ needs.detect-changes.outputs.core }}
+          DETECT_PLATFORMS: ${{ needs.detect-changes.outputs.platforms }}
+          DETECT_PLUGINS: ${{ needs.detect-changes.outputs.plugins }}
+          DETECT_SERVICES: ${{ needs.detect-changes.outputs.services }}
+          DETECT_CLI: ${{ needs.detect-changes.outputs.cli }}
+          DETECT_DOCS: ${{ needs.detect-changes.outputs.docs }}
+          DETECT_DESKTOP: ${{ needs.detect-changes.outputs.desktop }}
+          TEST_CORE: ${{ needs.test-core.result }}
+          TEST_PLATFORMS: ${{ needs.test-platforms.result }}
+          TEST_PLUGINS: ${{ needs.test-plugins.result }}
+          TEST_SERVICES: ${{ needs.test-services.result }}
+          TEST_CLI: ${{ needs.test-cli.result }}
+          TEST_DOCS: ${{ needs.test-docs.result }}
+          DESKTOP_TYPECHECK: ${{ needs.desktop-typecheck.result }}
+        run: |
+          set -euo pipefail
+          failed=0
+          should_run() {
+            local job="$1"
+            shift
+            if [ "$DETECT_CHANGES" != "success" ]; then
+              echo "$job should have run (detect-changes=$DETECT_CHANGES)"
+              return 0
+            fi
+            local flag
+            for flag in "$@"; do
+              if [ "$flag" = "true" ]; then
+                return 0
+              fi
+            done
+            return 1
+          }
+          check_required() {
+            local job="$1"
+            local result="$2"
+            shift 2
+            if should_run "$job" "$@"; then
+              if [ "$result" != "success" ]; then
+                echo "::error::$job is required but result is $result"
+                failed=1
+              fi
+            elif [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              echo "::error::$job $result"
+              failed=1
+            fi
+          }
+          if [ "$DETECT_CHANGES" != "success" ]; then
+            echo "::error::detect-changes is required but result is $DETECT_CHANGES"
+            failed=1
+          fi
+          check_required test-core "$TEST_CORE" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_SERVICES" "$DETECT_CLI"
+          check_required test-platforms "$TEST_PLATFORMS" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_PLATFORMS" "$DETECT_SERVICES" "$DETECT_CLI"
+          check_required test-plugins "$TEST_PLUGINS" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_PLUGINS" "$DETECT_SERVICES"
+          check_required test-services "$TEST_SERVICES" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_PLATFORMS" "$DETECT_PLUGINS" "$DETECT_SERVICES" "$DETECT_CLI"
+          check_required test-cli "$TEST_CLI" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_SERVICES" "$DETECT_CLI"
+          check_required test-docs "$TEST_DOCS" "$DETECT_GLOBAL" "$DETECT_DOCS"
+          check_required desktop-typecheck "$DESKTOP_TYPECHECK" "$DETECT_DESKTOP"
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+
       - name: Check out repository
         uses: actions/checkout@v4
 

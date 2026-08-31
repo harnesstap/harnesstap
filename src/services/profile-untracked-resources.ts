@@ -419,11 +419,15 @@ export async function addResourceToProfile(input: {
   return toNotStagedContentsResource(resource, alreadyInProfile ? "update" : "add");
 }
 
+/** Not-staged lists adds and live updates; stash only captures resources not already on the profile. */
+type UntrackedScanMode = "not-staged" | "stash-untracked";
+
 async function resolveUntrackedScanResults(input: {
   profileSelector: string;
   scope: ProfileApplyPreviewScope;
   projectPath?: string;
   harness?: string;
+  mode?: UntrackedScanMode;
 }): Promise<{ originRef: string; scanResults: ScanResult[] }> {
   const profilePlugin = resolvePluginSelector(input.profileSelector);
   if (!profilePlugin || !isProfilePlugin(profilePlugin)) {
@@ -431,6 +435,7 @@ async function resolveUntrackedScanResults(input: {
   }
 
   const committed = trackedResourceMap(input.profileSelector);
+  const mode = input.mode ?? "not-staged";
 
   if (input.scope === "project") {
     if (!input.projectPath) {
@@ -451,6 +456,7 @@ async function resolveUntrackedScanResults(input: {
         committed,
         ownedPaths,
         originRef,
+        mode,
       ),
     };
   }
@@ -473,6 +479,7 @@ async function resolveUntrackedScanResults(input: {
       committed,
       ownedPaths,
       originRef,
+      mode,
     ),
   };
 }
@@ -534,6 +541,7 @@ function filterScanResultsToNotStaged(
   committed: ReadonlyMap<string, Resource>,
   ownedPaths: ReadonlySet<string>,
   rootPath: string,
+  mode: UntrackedScanMode,
 ): ScanResult[] {
   const filtered: ScanResult[] = [];
   for (const result of results) {
@@ -543,8 +551,21 @@ function filterScanResultsToNotStaged(
       }
       const key = profileResourceKey(resource);
       const tracked = committed.get(key);
-      if (tracked && !liveDiffersFromTracked(resource, tracked)) {
-        return false;
+      switch (mode) {
+        case "stash-untracked":
+          if (tracked) {
+            return false;
+          }
+          break;
+        case "not-staged":
+          if (tracked && !liveDiffersFromTracked(resource, tracked)) {
+            return false;
+          }
+          break;
+        default: {
+          const exhaustive: never = mode;
+          throw new Error(`Unhandled untracked scan mode: ${exhaustive}`);
+        }
       }
       const sourcePath = normalizeManagedPath(resource.source ?? "", rootPath);
       if (
@@ -612,6 +633,7 @@ export async function captureUntrackedResourcesForStash(input: {
     profileSelector: input.profileSelector,
     scope: "home",
     harness: input.harness,
+    mode: "stash-untracked",
   });
   if (untrackedScanResults.length === 0) {
     throw new Error("No untracked resources to stash.");
