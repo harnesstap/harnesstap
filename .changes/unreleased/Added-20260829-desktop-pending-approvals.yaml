@@ -1,3 +1,0 @@
-kind: Added
-body: Show pending executable approvals on Desktop after apply, switch, and Project Install; return parked/execStatuses/warnings from agent apply/switch; add in-app raw apm.yml edit with validate-before-save.
-time: 2026-08-29T05:20:00Z

@@ -1,2 +1,0 @@
-kind: Fixed
-body: Produce Linux AppImage desktop installers on GitHub Releases by keeping ht-agent out of linuxdeploy's GTK ldd scan by sidecar name (system ldd can succeed on Bun standalones).
