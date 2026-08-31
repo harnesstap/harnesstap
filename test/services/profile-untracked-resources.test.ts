@@ -210,7 +210,7 @@ describe("profile-untracked-resources service", () => {
     }
   });
 
-  it("treats resources attached to another profile as staged (not listed)", async () => {
+  it("offers skills attached to another profile as not staged for the current profile", async () => {
     const context = await createInitializedTestContext("profile-not-staged-other-profile");
     try {
       const profileA = createPlugin({ name: "profile-a" });
@@ -242,8 +242,74 @@ describe("profile-untracked-resources service", () => {
       });
 
       expect(notStaged.some((resource) => resource.name === "shared-skill")).toBe(
-        false,
+        true,
       );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("lists extra MCP servers from mcp.json even when the profile owns that file", async () => {
+    const context = await createInitializedTestContext("profile-not-staged-extra-mcp");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "mcp_server",
+          name: "docs",
+          description: "",
+          content: "",
+          metadata: { transport: "stdio", command: "docs-mcp" },
+          source: "manual",
+        }).id,
+      );
+
+      await applyProfilePlugin("work", {
+        harness: "cursor",
+        conflictPolicy: "replace",
+      });
+      setActiveProfileName("work");
+
+      const mcpPath = join(context.homeDir, ".cursor", "mcp.json");
+      mkdirSync(join(context.homeDir, ".cursor"), { recursive: true });
+      writeFileSync(
+        mcpPath,
+        JSON.stringify(
+          {
+            mcpServers: {
+              docs: { command: "docs-mcp" },
+              "mcp-agency-sandbox-public": {
+                command: "npx",
+                args: ["-y", "agency-sandbox"],
+              },
+            },
+          },
+          null,
+          2,
+        ),
+        "utf-8",
+      );
+
+      const notStaged = await detectNotStagedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+        harness: "cursor",
+      });
+
+      expect(
+        notStaged.some(
+          (resource) =>
+            resource.type === "mcp_server"
+            && resource.name === "mcp-agency-sandbox-public",
+        ),
+      ).toBe(true);
+      expect(
+        notStaged.some(
+          (resource) => resource.type === "mcp_server" && resource.name === "docs",
+        ),
+      ).toBe(false);
     } finally {
       await context.cleanup();
     }

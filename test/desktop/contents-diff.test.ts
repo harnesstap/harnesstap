@@ -8,6 +8,7 @@ import {
   fileChangeMatchesKindFilter,
   filterFileChangeGroups,
   groupFileChangesByResource,
+  liveMcpNamesFromHarnesses,
   orderedTypeCounts,
   summarizeStackChanges,
   uniqueFileChanges,
@@ -121,6 +122,44 @@ describe("contents-diff helpers", () => {
       "mcp_server:legacy",
       "skill:legacy-local",
     ]);
+  });
+
+  it("omits snapshot-only MCP stack removals that are gone from live harness config", () => {
+    const target = contents({
+      resources: [{ type: "mcp_server", name: "kept" }],
+      mcp_servers: ["kept"],
+    });
+    const live = contents({
+      resources: [
+        { type: "mcp_server", name: "kept" },
+        { type: "mcp_server", name: "stale-snapshot", source: "~/.cursor/mcp.json" },
+        { type: "mcp_server", name: "live-extra", source: "~/.cursor/mcp.json" },
+      ],
+      mcp_servers: ["kept", "stale-snapshot", "live-extra"],
+    });
+
+    const diff = diffProfileContents(target, live, {
+      liveMcpNames: new Set(["kept", "live-extra"]),
+    });
+
+    expect(diff.removed.map((row) => row.label).sort()).toEqual(["live-extra"]);
+  });
+
+  it("collects live MCP names from harness extra and present rows", () => {
+    expect(
+      [
+        ...liveMcpNamesFromHarnesses({
+          cursor: {
+            plugins: [],
+            mcp: [
+              { name: "kept", state: "present" },
+              { name: "gone", state: "missing" },
+              { name: "extra", state: "extra" },
+            ],
+          },
+        }) ?? [],
+      ].sort(),
+    ).toEqual(["extra", "kept"]);
   });
 
   it("orders type counts for summary strips", () => {

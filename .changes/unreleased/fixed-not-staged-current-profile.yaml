@@ -1,0 +1,5 @@
+kind: Fixed
+body: Offer on-disk skills and extra MCP servers that are not in the selected profile as not-staged so they can be added, instead of only listing them as apply removals.
+time: 2026-08-31T06:11:00Z
+custom:
+  Issue: ""

@@ -5,6 +5,7 @@ import {
   listResources,
   resolveResource,
 } from "../models/resource.js";
+import { overlayMcpServerDetail } from "../services/mcp-resource-detail.js";
 import { pluginResourceShowExtras } from "../services/plugin-resource-show.js";
 import { resourceAttacherPayload } from "../services/resource-attachers.js";
 import { readResourceContentFromPathHint } from "../services/resource-editor-path.js";
@@ -124,6 +125,10 @@ export function handleLibraryResourceDetail(
   const resource = result.resource;
   const extras = pluginResourceShowExtras(resource);
   const attachers = resourceAttacherPayload(resource.id);
+  const overlay =
+    resource.type === "mcp_server"
+      ? overlayMcpServerDetail(resource, options?.pathHint)
+      : { content: resource.content, updatedAt: resource.updated_at };
   return jsonResponse({
     resource: {
       id: resource.id,
@@ -134,9 +139,9 @@ export function handleLibraryResourceDetail(
       source: resource.source,
       origin_kind: resource.origin_kind,
       origin_ref: resource.origin_ref || null,
-      updated_at: resource.updated_at,
-      content: truncateResourceContent(resource.content, 80),
-      content_truncated: resource.content.split("\n").length > 80,
+      updated_at: overlay.updatedAt,
+      content: truncateResourceContent(overlay.content, 80),
+      content_truncated: overlay.content.split("\n").length > 80,
       ...attachers,
       ...(extras ?? {}),
     },

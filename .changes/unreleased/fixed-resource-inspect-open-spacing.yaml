@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep a single open-in-editor control on the resource Path row and even out inspect detail-row spacing.
+time: 2026-08-31T06:12:00Z
+custom:
+  Issue: ""
