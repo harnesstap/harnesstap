@@ -16,6 +16,7 @@ import {
   patchProfileMetadata,
   renameProfile,
 } from "../lib/agent-client";
+import { resourceDisplayName } from "../lib/resource-search";
 import type {
   CatalogPlugin,
   LibraryPlugin,
@@ -26,6 +27,7 @@ import type {
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 import { ProfileDeleteControls } from "./parity/ProfileDeleteControls";
+import { ResourceDetailPane } from "./ResourceDetailPane";
 
 export interface EditProfilePaneProps {
   profileName: string;
@@ -40,9 +42,8 @@ export interface EditProfilePaneProps {
     affectsApply: boolean;
   }) => void | Promise<void>;
   onDeleted?: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
-  onOpenEnvironments?: () => void;
+  onCreateEnvironment?: () => void;
   onSuccess?: (message: string) => void;
-  onRequestSignIn?: () => void;
   onRequestCut?: (name: string, version: string) => void;
 }
 
@@ -63,9 +64,8 @@ export function EditProfilePane({
   onProfileRenamed,
   onMutated,
   onDeleted,
-  onOpenEnvironments,
+  onCreateEnvironment,
   onSuccess,
-  onRequestSignIn,
   onRequestCut,
 }: EditProfilePaneProps) {
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
@@ -87,6 +87,11 @@ export function EditProfilePane({
   const [pluginsLoading, setPluginsLoading] = useState(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [pluginRef, setPluginRef] = useState("");
+  const [inspectTarget, setInspectTarget] = useState<{
+    selector: string;
+    label: string;
+    pathHint?: string | null;
+  } | null>(null);
 
   const applyDetail = (next: ProfileDetail) => {
     setDetail(next);
@@ -454,6 +459,7 @@ export function EditProfilePane({
             baseUrl={baseUrl}
             token={token}
             disabled={disabled || busy}
+            variant="icon"
             onDeleted={(result, message) => onDeleted?.(result, message)}
           />
           <button
@@ -542,24 +548,48 @@ export function EditProfilePane({
             onResourceFilter={setResourceFilter}
             selectedResourceIds={selectedResourceIds}
             onToggleResource={toggleResource}
+            onInspectResource={(resource) => {
+              setInspectTarget({
+                selector: resource.id,
+                label: resourceDisplayName(resource),
+                pathHint: resource.source,
+              });
+            }}
             disabled={controlsDisabled}
           />
           <EditProfileParitySlots
             profileName={profileName}
-            profileVersion={detail?.profile.version}
             baseUrl={baseUrl}
             token={token}
             disabled={disabled || busy}
             onMutated={() => {
               void onMutated({ profileName, affectsApply: true });
             }}
-            onOpenEnvironments={onOpenEnvironments}
-            onSuccess={onSuccess}
-            onRequestSignIn={onRequestSignIn}
-            onRequestCut={onRequestCut}
+            onCreateEnvironment={onCreateEnvironment}
           />
         </div>
       ) : null}
+      <ResourceDetailPane
+        open={Boolean(inspectTarget)}
+        target={inspectTarget}
+        baseUrl={baseUrl}
+        token={token}
+        disabled={controlsDisabled}
+        onClose={() => setInspectTarget(null)}
+        onSuccess={onSuccess}
+        onLibraryChanged={() => {
+          if (!baseUrl) {
+            return;
+          }
+          void fetchLibraryResources(baseUrl, token)
+            .then((nextResources) => {
+              setResources(nextResources);
+            })
+            .catch((loadError: unknown) => {
+              setLibraryError(errorMessage(loadError, "Could not load library"));
+            });
+        }}
+      />
     </main>
   );
 }

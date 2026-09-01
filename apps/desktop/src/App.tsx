@@ -27,6 +27,7 @@ import { EditProfilePane } from "./components/EditProfilePane";
 import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace";
 import { ParityChrome } from "./components/parity/ParityChrome";
 import { ProfileDeleteControls } from "./components/parity/ProfileDeleteControls";
+import { PublishProfileDrawer } from "./components/parity/PublishProfileDrawer";
 import { ProjectHistoryControl } from "./components/parity/ProjectHistoryControl";
 import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
@@ -236,6 +237,7 @@ export function App() {
   const [createProfileInitialSwitchAfterCreate, setCreateProfileInitialSwitchAfterCreate] =
     useState(false);
   const [stashBrowseOpen, setStashBrowseOpen] = useState(false);
+  const [environmentCreateOpen, setEnvironmentCreateOpen] = useState(false);
   const [cloudAccountOpen, setCloudAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [migrateExportOpen, setMigrateExportOpen] = useState(false);
@@ -2460,6 +2462,28 @@ export function App() {
                     <ArchiveRestore size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
                   )}
                 </button>
+                <PublishProfileDrawer
+                  profileName={editingProfile ?? selectedProfile}
+                  profileVersion={
+                    selectedProfileSummary?.version
+                    ?? ""
+                  }
+                  baseUrl={baseUrl}
+                  token={token}
+                  disabled={!connected || switching || stashBusy}
+                  triggerClassName="icon-action rail-icon-action"
+                  iconSize={RAIL_ICON_SIZE}
+                  onSuccess={(message) => {
+                    setSuccessMessage(message);
+                    window.setTimeout(() => setSuccessMessage(null), 3000);
+                  }}
+                  onRequestSignIn={() => setCloudAccountOpen(true)}
+                  onRequestCut={
+                    (editingProfile ?? selectedProfile) && baseUrl && token
+                      ? (name, version) => openCutForProfile(name, version)
+                      : undefined
+                  }
+                />
                 <button
                   className="icon-action rail-icon-action"
                   type="button"
@@ -2717,6 +2741,8 @@ export function App() {
             projectPath={view === "project" ? projectPath : null}
             disabled={switching}
             homeResetNonce={homeResetNonce}
+            autoOpenCreate={environmentCreateOpen}
+            onAutoOpenCreateConsumed={() => setEnvironmentCreateOpen(false)}
             onOpenPlugin={(pluginName) => {
               setLibraryFocusPlugin(pluginName);
               navigateToDestination("library");
@@ -2803,14 +2829,14 @@ export function App() {
             }}
             onMutated={maybeAutoReapplyAfterMutation}
             onDeleted={handleProfileDeleted}
-            onOpenEnvironments={() => {
+            onCreateEnvironment={() => {
+              setEnvironmentCreateOpen(true);
               navigateToDestination("environments");
             }}
             onSuccess={(message) => {
               setSuccessMessage(message);
               window.setTimeout(() => setSuccessMessage(null), 3000);
             }}
-            onRequestSignIn={() => setCloudAccountOpen(true)}
             onRequestCut={
               editingProfile && baseUrl && token
                 ? (name, version) => openCutForProfile(name, version)

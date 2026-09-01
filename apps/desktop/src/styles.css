@@ -2079,12 +2079,13 @@ button:focus-visible,
   cursor: not-allowed;
 }
 
-.resource-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 0.4rem;
-  align-items: center;
-  padding: 0.35rem 0.35rem;
+.resource-row-clickable {
+  cursor: pointer;
+}
+
+.resource-row-checkbox {
+  display: inline-flex;
+}
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   position: relative;
 }
@@ -2092,6 +2093,14 @@ button:focus-visible,
 .resource-row:hover,
 .resource-row:focus-within {
   background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+}
+
+.resource-row-clickable {
+  cursor: pointer;
+}
+
+.resource-row-checkbox {
+  display: inline-flex;
 }
 
 .resource-row-leading {
@@ -2940,6 +2949,14 @@ button:focus-visible,
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
+}
+
+.dialog.publish-profile-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
 }
 
 .dialog-backdrop.resource-detail-backdrop {

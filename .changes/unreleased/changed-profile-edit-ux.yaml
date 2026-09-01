@@ -1,0 +1,5 @@
+kind: Changed
+body: Update Desktop profile edit chrome — resource inspect from composition rows, publish in the Profiles rail with a catalog-picker dialog, icon Remove profile, and a None/create default-environment dropdown.
+time: 2026-09-01T04:30:00Z
+custom:
+  Issue: ""

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Plus, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -12,6 +13,12 @@ import {
   fetchProfileDefaultEnvironment,
   patchProfileDefaultEnvironment,
 } from "../../lib/api/profile-default-env";
+import {
+  DEFAULT_ENV_CREATE,
+  DEFAULT_ENV_NONE,
+  defaultEnvironmentSelectValue,
+  interpretDefaultEnvironmentChoice,
+} from "../../lib/default-environment-picker";
 import type { LibraryEnvironment } from "../../lib/types";
 
 export interface DefaultEnvironmentFieldProps {
@@ -23,7 +30,7 @@ export interface DefaultEnvironmentFieldProps {
     profileName: string;
     affectsApply: boolean;
   }) => void | Promise<void>;
-  onOpenEnvironments?: () => void;
+  onCreateEnvironment?: () => void;
 }
 
 export interface DefaultEnvironmentPickerProps {
@@ -34,7 +41,7 @@ export interface DefaultEnvironmentPickerProps {
   listError?: string | null;
   onChange: (name: string) => void;
   onClear: () => void;
-  onOpenEnvironments?: () => void;
+  onCreateEnvironment?: () => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -52,10 +59,10 @@ export function DefaultEnvironmentPicker({
   listError = null,
   onChange,
   onClear,
-  onOpenEnvironments,
+  onCreateEnvironment,
 }: DefaultEnvironmentPickerProps) {
   const empty = !listLoading && environments.length === 0;
-  const selectDisabled = disabled || listLoading || empty || Boolean(listError);
+  const selectDisabled = disabled || listLoading || Boolean(listError);
   const clearDisabled = disabled || value === null || listLoading;
 
   return (
@@ -67,46 +74,53 @@ export function DefaultEnvironmentPicker({
         </div>
       ) : null}
       <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="icon-action"
+          data-testid="default-environment-clear"
+          disabled={clearDisabled}
+          onClick={onClear}
+          aria-label="Clear"
+          title="Clear"
+        >
+          <X size={16} strokeWidth={2} aria-hidden />
+        </button>
         <Select
-          value={value ?? undefined}
-          onValueChange={onChange}
+          value={defaultEnvironmentSelectValue(value)}
+          onValueChange={(next) => {
+            const choice = interpretDefaultEnvironmentChoice(next);
+            if (choice === "create") {
+              onCreateEnvironment?.();
+              return;
+            }
+            if (choice === "none") {
+              onClear();
+              return;
+            }
+            onChange(choice.name);
+          }}
           disabled={selectDisabled}
         >
           <SelectTrigger id="profile-default-environment" className="w-full">
             <SelectValue placeholder="None" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={DEFAULT_ENV_NONE}>None</SelectItem>
             {environments.map((environment) => (
               <SelectItem key={environment.id} value={environment.name}>
                 {environment.name}
               </SelectItem>
             ))}
+            {onCreateEnvironment ? (
+              <SelectItem value={DEFAULT_ENV_CREATE}>
+                <Plus size={14} strokeWidth={2} aria-hidden />
+                Create a new environment
+              </SelectItem>
+            ) : null}
           </SelectContent>
         </Select>
-        <button
-          type="button"
-          className="text-btn"
-          disabled={clearDisabled}
-          onClick={onClear}
-        >
-          Clear
-        </button>
       </div>
       {empty ? <p className="muted">No environments yet.</p> : null}
-      {onOpenEnvironments ? (
-        <button
-          type="button"
-          className="muted"
-          disabled={disabled}
-          onClick={onOpenEnvironments}
-        >
-          Create or manage environments
-        </button>
-      ) : null}
-      <p className="muted">
-        Used on apply when this profile is the root. Does not change the home
-        active environment.
-      </p>
     </div>
   );
 }
@@ -117,7 +131,7 @@ export function DefaultEnvironmentField({
   token,
   disabled = false,
   onMutated,
-  onOpenEnvironments,
+  onCreateEnvironment,
 }: DefaultEnvironmentFieldProps) {
   const [value, setValue] = useState<string | null>(null);
   const [environments, setEnvironments] = useState<LibraryEnvironment[]>([]);
@@ -216,7 +230,7 @@ export function DefaultEnvironmentField({
         onClear={() => {
           void commit(null);
         }}
-        onOpenEnvironments={onOpenEnvironments}
+        onCreateEnvironment={onCreateEnvironment}
       />
     </section>
   );
