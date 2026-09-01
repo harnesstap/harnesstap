@@ -29,6 +29,8 @@ export interface EnvironmentsWorkspaceProps {
   disabled?: boolean;
   /** Bump while mounted to clear the name filter and deselect (header re-click). */
   homeResetNonce?: number;
+  autoOpenCreate?: boolean;
+  onAutoOpenCreateConsumed?: () => void;
   onSuccess: (message: string) => void;
   onOpenPlugin?: (pluginName: string) => void;
   canWorkspaceBack?: boolean;
@@ -43,6 +45,8 @@ export function EnvironmentsWorkspace({
   projectPath,
   disabled = false,
   homeResetNonce = 0,
+  autoOpenCreate = false,
+  onAutoOpenCreateConsumed,
   onSuccess,
   onOpenPlugin,
   canWorkspaceBack = false,
@@ -66,6 +70,16 @@ export function EnvironmentsWorkspace({
     setQuery("");
     setSelectedName(null);
   }, [homeResetNonce]);
+
+  useEffect(() => {
+    if (!autoOpenCreate) {
+      return;
+    }
+    setDrawerMode("create");
+    setEditName(undefined);
+    setDrawerOpen(true);
+    onAutoOpenCreateConsumed?.();
+  }, [autoOpenCreate, onAutoOpenCreateConsumed]);
   const [detail, setDetail] = useState<EnvironmentShowPayload | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");

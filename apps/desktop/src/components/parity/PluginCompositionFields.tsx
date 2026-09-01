@@ -46,6 +46,7 @@ export interface PluginCompositionFieldsProps {
   onResourceFilter: (value: string) => void;
   selectedResourceIds: string[];
   onToggleResource: (id: string) => void;
+  onInspectResource?: (resource: LibraryResource) => void;
   disabled: boolean;
 }
 
@@ -77,6 +78,7 @@ export function PluginCompositionFields({
   onResourceFilter,
   selectedResourceIds,
   onToggleResource,
+  onInspectResource,
   disabled,
 }: PluginCompositionFieldsProps) {
   return (
@@ -187,6 +189,7 @@ export function PluginCompositionFields({
                 selectedIds={selectedResourceIds}
                 disabled={disabled}
                 onToggle={onToggleResource}
+                onInspect={onInspectResource}
               />
             </>
           )}

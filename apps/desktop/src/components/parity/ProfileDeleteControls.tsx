@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { AgentApiError } from "../../lib/api/http";
 import {
   deleteProfile,
@@ -17,6 +18,7 @@ export interface ProfileDeleteControlsProps {
   baseUrl: string | null;
   token: string | null;
   disabled?: boolean;
+  variant?: "labeled" | "icon";
   onDeleted: (result: ProfileDeleteResult, message: string) => void;
 }
 
@@ -32,6 +34,7 @@ export function ProfileDeleteControls({
   baseUrl,
   token,
   disabled = false,
+  variant = "labeled",
   onDeleted,
 }: ProfileDeleteControlsProps) {
   const checkboxId = useId();
@@ -77,9 +80,14 @@ export function ProfileDeleteControls({
     <>
       <span className="profile-delete-control">
         <button
-          className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+          className={
+            variant === "icon"
+              ? ["icon-action", busy ? "is-busy" : ""].filter(Boolean).join(" ")
+              : ["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")
+          }
           type="button"
-          aria-label={`Remove profile ${profileName}`}
+          aria-label="Remove profile"
+          title="Remove profile"
           disabled={busy || builtinEmpty}
           onClick={() => {
             setDeletePlugin(false);
@@ -87,8 +95,13 @@ export function ProfileDeleteControls({
             setConfirmOpen(true);
           }}
         >
-          {busy ? <ButtonSpinner size={16} /> : null}
-          Remove profile
+          {busy ? (
+            <ButtonSpinner size={16} />
+          ) : variant === "icon" ? (
+            <Trash2 size={18} strokeWidth={2} aria-hidden />
+          ) : (
+            "Remove profile"
+          )}
         </button>
       </span>
       <ConfirmDialog

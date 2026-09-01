@@ -72,6 +72,7 @@ export interface ResourceSelectionListProps {
   selectedIds: string[];
   disabled: boolean;
   onToggle: (id: string) => void;
+  onInspect?: (resource: LibraryResource) => void;
 }
 
 function ResourcePickerRow({
@@ -79,41 +80,64 @@ function ResourcePickerRow({
   selected,
   disabled,
   onToggle,
+  onInspect,
   measure = false,
 }: {
   resource: LibraryResource;
   selected: boolean;
   disabled: boolean;
   onToggle?: (id: string) => void;
+  onInspect?: (resource: LibraryResource) => void;
   measure?: boolean;
 }) {
   const id = measure
     ? `resource-${resource.id}-measure`
     : `resource-${resource.id}`;
   const label = resourceDisplayName(resource);
+  const inspect =
+    measure || !onInspect
+      ? undefined
+      : () => {
+          onInspect(resource);
+        };
   return (
     <ResourceRowRoot
       hover={hoverModelFromLibraryResource(resource)}
       testId={measure ? undefined : `create-resource-${label}`}
       disabled={disabled}
+      onActivate={inspect}
     >
       <ResourceRowLeading>
-        <Checkbox
-          id={id}
-          checked={selected}
-          disabled={disabled}
-          tabIndex={measure ? -1 : undefined}
-          aria-hidden={measure || undefined}
-          onCheckedChange={
-            measure || !onToggle ? undefined : () => onToggle(resource.id)
-          }
-        />
+        <span
+          className="resource-row-checkbox"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <Checkbox
+            id={id}
+            checked={selected}
+            disabled={disabled}
+            tabIndex={measure ? -1 : undefined}
+            aria-hidden={measure || undefined}
+            onCheckedChange={
+              measure || !onToggle ? undefined : () => onToggle(resource.id)
+            }
+          />
+        </span>
       </ResourceRowLeading>
-      <ResourceRowIdentity type={resource.type} label={label} htmlFor={id}>
-        {resource.description ? (
-          <ResourceRowDescription>{resource.description}</ResourceRowDescription>
-        ) : null}
-      </ResourceRowIdentity>
+      {inspect ? (
+        <ResourceRowIdentity type={resource.type} label={label} onOpen={inspect}>
+          {resource.description ? (
+            <ResourceRowDescription>{resource.description}</ResourceRowDescription>
+          ) : null}
+        </ResourceRowIdentity>
+      ) : (
+        <ResourceRowIdentity type={resource.type} label={label} htmlFor={id}>
+          {resource.description ? (
+            <ResourceRowDescription>{resource.description}</ResourceRowDescription>
+          ) : null}
+        </ResourceRowIdentity>
+      )}
       <ResourceRowMeta
         harnessIds={relatedHarnessesForResourceType(resource.type)}
       />
@@ -128,6 +152,7 @@ export function ResourceSelectionList({
   selectedIds,
   disabled,
   onToggle,
+  onInspect,
 }: ResourceSelectionListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -243,6 +268,7 @@ export function ResourceSelectionList({
                           selected={selectedIds.includes(resource.id)}
                           disabled={disabled}
                           onToggle={onToggle}
+                          onInspect={onInspect}
                         />
                       ))}
                     </div>

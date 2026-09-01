@@ -15,6 +15,7 @@ export function ResourceRowRoot({
   children,
   disabled,
   ariaLabel,
+  onActivate,
 }: {
   hover: ResourceHoverModel;
   testId?: string;
@@ -22,14 +23,26 @@ export function ResourceRowRoot({
   children: ReactNode;
   disabled?: boolean;
   ariaLabel?: string;
+  onActivate?: () => void;
 }): ReactNode {
   return (
     <ResourceRowDisabledContext.Provider value={Boolean(disabled)}>
       <ResourceHoverCard model={hover} disabled={disabled}>
         <div
-          className={cn("resource-row", className)}
+          className={cn(
+            "resource-row",
+            onActivate ? "resource-row-clickable" : null,
+            className,
+          )}
           data-testid={testId}
           aria-label={ariaLabel}
+          onClick={
+            onActivate && !disabled
+              ? () => {
+                  onActivate();
+                }
+              : undefined
+          }
         >
           {children}
         </div>
@@ -75,7 +88,10 @@ export function ResourceRowIdentity({
         type="button"
         className="resource-name-btn"
         disabled={disabled}
-        onClick={onOpen}
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpen();
+        }}
       >
         {label}
       </button>
