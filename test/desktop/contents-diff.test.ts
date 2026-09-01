@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import {
   aggregateInstallGaps,
+  installGapRowPresentation,
+  isTargetPreviewInstallGap,
   countFileChangeKindResources,
   diffProfileContents,
   fileChangeAction,
@@ -327,6 +329,53 @@ describe("contents-diff helpers", () => {
         harnesses: ["claude-code"],
       },
     ]);
+  });
+
+  it("marks undeclared-install MCP as add and config diffs as mismatch", () => {
+    const gaps = aggregateInstallGaps({
+      cursor: {
+        plugins: [],
+        mcp: [
+          { name: "TEADS-PROD-agency", state: "missing" },
+          { name: "docs", state: "mismatch" },
+        ],
+      },
+    });
+
+    expect(gaps).toEqual([
+      {
+        key: "mcp:add:TEADS-PROD-agency",
+        label: "mcp TEADS-PROD-agency",
+        kind: "add",
+        iconType: "mcp_server",
+        harnesses: ["cursor"],
+      },
+      {
+        key: "mcp:mismatch:docs",
+        label: "mcp docs",
+        kind: "mismatch",
+        iconType: "mcp_server",
+        harnesses: ["cursor"],
+      },
+    ]);
+    expect(gaps.filter(isTargetPreviewInstallGap)).toHaveLength(2);
+    const addGap = gaps.find((row) => row.kind === "add");
+    const mismatchGap = gaps.find((row) => row.kind === "mismatch");
+    expect(addGap).toBeDefined();
+    expect(mismatchGap).toBeDefined();
+    if (!addGap || !mismatchGap) {
+      throw new Error("expected add and mismatch install gaps");
+    }
+    expect(installGapRowPresentation(addGap)).toEqual({
+      mark: "+",
+      tone: "add",
+      detail: "not installed",
+    });
+    expect(installGapRowPresentation(mismatchGap)).toEqual({
+      mark: "!",
+      tone: "update",
+      detail: "different value",
+    });
   });
 
   it("groups file changes by resource across harness paths", () => {

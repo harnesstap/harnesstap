@@ -1,0 +1,5 @@
+kind: Fixed
+body: Show a plus mark in Desktop Target preview install gaps for MCP servers that would be newly installed, and keep the warning mark when live MCP config differs from the expected install.
+time: 2026-09-01T04:20:00Z
+custom:
+  Issue: ""

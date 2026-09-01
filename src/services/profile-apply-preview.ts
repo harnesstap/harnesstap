@@ -4,7 +4,7 @@ import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js"
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
 import { resolvePluginSelector } from "../models/plugin-model.js";
-import type { Resource } from "../types.js";
+import type { McpServerMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
 import { generateFiles } from "./applier.js";
@@ -16,10 +16,10 @@ import {
 } from "./cursor-host-managed-skills.js";
 import {
   buildHarnessLiveStatusMap,
+  declaredMcpFromExpectedFiles,
   type HarnessLiveStatus,
 } from "./global-profile-status-panel.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
-import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import {
   collectOwnedPreviewResources,
@@ -142,37 +142,14 @@ function readRootFile(rootPath: string, relativePath: string): string | null {
   }
 }
 
-function declaredMcpNamesFromExpectedApply(
-  expectedApply: ApplyProfilePluginResult,
-): Record<string, string[]> {
-  const byHarness: Record<string, string[]> = {};
-
-  for (const harnessId of expectedApply.harnesses) {
-    const mcpPaths = new Set<string>();
-    if (harnessId === "cursor") {
-      mcpPaths.add(".cursor/mcp.json");
-    } else if (harnessId === "claude-code") {
-      mcpPaths.add(".mcp.json");
-    }
-
-    const names = new Set<string>();
-    for (const file of expectedApply.expected_files ?? []) {
-      if (!mcpPaths.has(file.path)) {
-        continue;
-      }
-      try {
-        const document = JSON.parse(file.content) as unknown;
-        for (const name of Object.keys(parseMcpServersDocument(document))) {
-          names.add(name);
-        }
-      } catch {
-        // skip invalid MCP config payloads
-      }
-    }
-    byHarness[harnessId] = [...names];
-  }
-
-  return byHarness;
+function declaredMcpFromExpectedApply(expectedApply: ApplyProfilePluginResult): {
+  namesByHarness: Record<string, string[]>;
+  configsByHarness: Record<string, Record<string, McpServerMetadata>>;
+} {
+  return declaredMcpFromExpectedFiles(
+    expectedApply.harnesses,
+    expectedApply.expected_files ?? [],
+  );
 }
 
 function uniqueExpectedFiles(
@@ -612,14 +589,16 @@ async function previewHomeApply(
   const declaredPins = collected.pluginIds
     ? mergePluginsForApply(collected.pluginIds).pluginPins
     : [];
+  const declaredMcp = collected.expectedApply
+    ? declaredMcpFromExpectedApply(collected.expectedApply)
+    : { namesByHarness: {}, configsByHarness: {} };
   return {
     harnesses: buildHarnessLiveStatusMap({
       depth: "full",
       homeRoot: collected.rootPath,
       declaredPins,
-      declaredMcpByHarness: collected.expectedApply
-        ? declaredMcpNamesFromExpectedApply(collected.expectedApply)
-        : {},
+      declaredMcpByHarness: declaredMcp.namesByHarness,
+      expectedMcpConfigsByHarness: declaredMcp.configsByHarness,
     }),
     files: previewFilesResult(
       collected.rootPath,
