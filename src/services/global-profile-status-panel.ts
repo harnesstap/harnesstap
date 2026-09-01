@@ -8,19 +8,23 @@ import { getPlatform } from "../platforms/registry.js";
 import { listGlobalApplySnapshotInstalls } from "../models/global-apply-snapshot.js";
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
-import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import { listHostNativeMcpNames } from "./host-native-mcp.js";
+import {
+  mcpServerMetadataEquivalent,
+  parseMcpServersDocument,
+} from "./mcp-config-bridge.js";
+import type { PluginConstraintPin } from "./plugin-apply-validation.js";
 import {
   detectProjectDriftFromLatest,
   type DriftFileChange,
   type ProjectDriftReport,
 } from "./project-drift.js";
-import type { PluginConstraintPin } from "./plugin-apply-validation.js";
+import type { McpServerMetadata } from "../types.js";
 
 export type GlobalProfileStatusDepth = "fast" | "full";
 export type PanelTrafficStatus = "green" | "yellow" | "red";
 export type HarnessPluginRowState = "installed" | "missing" | "extra";
-export type HarnessMcpRowState = "present" | "missing" | "extra";
+export type HarnessMcpRowState = "present" | "missing" | "mismatch" | "extra";
 
 export interface HarnessPluginStatusRow {
   id: string;
@@ -89,10 +93,57 @@ export function classifyGlobalDriftChanges(
   return { owned, nonOwned };
 }
 
-function readGlobalMcpServerNames(homeRoot: string, harnessId: string): Set<string> {
+function mcpManagedPathForHarness(harnessId: string): string | undefined {
+  switch (harnessId) {
+    case "cursor":
+      return ".cursor/mcp.json";
+    case "claude-code":
+      return ".mcp.json";
+    default:
+      return undefined;
+  }
+}
+
+export function declaredMcpFromExpectedFiles(
+  harnessIds: readonly string[],
+  expectedFiles: Array<{ path: string; content: string }>,
+): {
+  namesByHarness: Record<string, string[]>;
+  configsByHarness: Record<string, Record<string, McpServerMetadata>>;
+} {
+  const namesByHarness: Record<string, string[]> = {};
+  const configsByHarness: Record<string, Record<string, McpServerMetadata>> = {};
+
+  for (const harnessId of harnessIds) {
+    const mcpPath = mcpManagedPathForHarness(harnessId);
+    const configs: Record<string, McpServerMetadata> = {};
+    if (mcpPath) {
+      for (const file of expectedFiles) {
+        if (file.path !== mcpPath) {
+          continue;
+        }
+        try {
+          const document = JSON.parse(file.content) as unknown;
+          Object.assign(configs, parseMcpServersDocument(document));
+        } catch {
+          // skip invalid MCP config payloads
+        }
+      }
+    }
+    namesByHarness[harnessId] = Object.keys(configs);
+    configsByHarness[harnessId] = configs;
+  }
+
+  return { namesByHarness, configsByHarness };
+}
+
+function readGlobalMcpServers(
+  homeRoot: string,
+  harnessId: string,
+): Record<string, McpServerMetadata> {
   const platform = getPlatform(harnessId);
   if (!platform) {
-    return new Set();
+    return {};
   }
 
   const configuredPath =
@@ -101,7 +152,7 @@ function readGlobalMcpServerNames(homeRoot: string, harnessId: string): Set<stri
       : platform.globalPaths.mcp ?? platform.projectPaths.mcp;
 
   if (!configuredPath) {
-    return new Set();
+    return {};
   }
 
   const relativePath = configuredPath.startsWith("~/")
@@ -109,14 +160,14 @@ function readGlobalMcpServerNames(homeRoot: string, harnessId: string): Set<stri
     : configuredPath;
   const fullPath = join(homeRoot, relativePath);
   if (!existsSync(fullPath)) {
-    return new Set();
+    return {};
   }
 
   try {
     const document = JSON.parse(readFileSync(fullPath, "utf-8")) as unknown;
-    return new Set(Object.keys(parseMcpServersDocument(document)));
+    return parseMcpServersDocument(document);
   } catch {
-    return new Set();
+    return {};
   }
 }
 
@@ -199,12 +250,27 @@ export function buildCursorHarnessPluginRows(
 export function buildHarnessMcpRows(
   declaredNames: string[],
   liveNames: ReadonlySet<string>,
+  comparison?: {
+    expected: Record<string, McpServerMetadata>;
+    live: Record<string, McpServerMetadata>;
+  },
 ): HarnessMcpStatusRow[] {
   const declared = new Set(declaredNames);
-  const rows: HarnessMcpStatusRow[] = declaredNames.map((name) => ({
-    name,
-    state: liveNames.has(name) ? "present" : "missing",
-  }));
+  const rows: HarnessMcpStatusRow[] = declaredNames.map((name) => {
+    if (!liveNames.has(name)) {
+      return { name, state: "missing" };
+    }
+    const expected = comparison?.expected[name];
+    const live = comparison?.live[name];
+    if (
+      expected
+      && live
+      && !mcpServerMetadataEquivalent(expected, live)
+    ) {
+      return { name, state: "mismatch" };
+    }
+    return { name, state: "present" };
+  });
 
   for (const name of liveNames) {
     if (!declared.has(name)) {
@@ -323,6 +389,7 @@ export function buildHarnessLiveStatusMap(input: {
   homeRoot: string;
   declaredPins: PluginConstraintPin[];
   declaredMcpByHarness: Record<string, string[]>;
+  expectedMcpConfigsByHarness?: Record<string, Record<string, McpServerMetadata>>;
 }): Record<string, HarnessLiveStatus> {
   const harnesses: Record<string, HarnessLiveStatus> = {};
 
@@ -333,10 +400,12 @@ export function buildHarnessLiveStatusMap(input: {
     }
 
     const declaredMcp = input.declaredMcpByHarness[harnessId] ?? [];
+    const liveServers = readGlobalMcpServers(input.homeRoot, harnessId);
     const liveMcp = new Set([
-      ...readGlobalMcpServerNames(input.homeRoot, harnessId),
+      ...Object.keys(liveServers),
       ...listHostNativeMcpNames(input.homeRoot, harnessId),
     ]);
+    const expectedServers = input.expectedMcpConfigsByHarness?.[harnessId];
     let plugins: HarnessPluginStatusRow[] = [];
     switch (harnessId) {
       case "claude-code":
@@ -358,7 +427,13 @@ export function buildHarnessLiveStatusMap(input: {
 
     harnesses[harnessId] = {
       plugins,
-      mcp: buildHarnessMcpRows(declaredMcp, liveMcp),
+      mcp: buildHarnessMcpRows(
+        declaredMcp,
+        liveMcp,
+        expectedServers
+          ? { expected: expectedServers, live: liveServers }
+          : undefined,
+      ),
     };
   }
 
@@ -374,7 +449,9 @@ export function countMissingHarnessRows(harnesses: Record<string, HarnessLiveSta
 
   for (const status of Object.values(harnesses)) {
     missingPlugins += status.plugins.filter((row) => row.state === "missing").length;
-    missingMcp += status.mcp.filter((row) => row.state === "missing").length;
+    missingMcp += status.mcp.filter(
+      (row) => row.state === "missing" || row.state === "mismatch",
+    ).length;
   }
 
   return { missingPlugins, missingMcp };

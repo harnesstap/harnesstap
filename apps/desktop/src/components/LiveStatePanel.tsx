@@ -19,6 +19,8 @@ import {
   fileChangeAction,
   filterFileChangeGroups,
   groupFileChangesByResource,
+  installGapRowPresentation,
+  isTargetPreviewInstallGap,
   liveMcpNamesFromHarnesses,
   managedPathFromResourceSource,
   orderedTypeCounts,
@@ -1390,7 +1392,7 @@ export function LiveStatePanel({
   const previewHarnesses = applyPreview?.harnesses ?? liveHarnesses;
   const installGaps = aggregateInstallGaps(
     view === "home" ? previewHarnesses : undefined,
-  ).filter((row) => row.kind === "missing");
+  ).filter(isTargetPreviewInstallGap);
   const notStagedResources =
     applyPreview?.not_staged
     ?? applyPreview?.untracked_resources
@@ -1928,20 +1930,19 @@ export function LiveStatePanel({
                       ) : (
                         installGaps.map((row) => {
                           const syncAction = installGapSyncAction(row);
+                          const presentation = installGapRowPresentation(row);
                           return (
                           <div
-                            className={`diff-row ${row.kind === "missing" ? "update" : "remove"}`}
+                            className={`diff-row ${presentation.tone}`}
                             key={row.key}
                           >
                             <span className="diff-mark" aria-hidden>
-                              {row.kind === "missing" ? "!" : "·"}
+                              {presentation.mark}
                             </span>
                             <span className="diff-body">
                               <span className="diff-label">{row.label}</span>
                               <span className="diff-detail muted">
-                                {row.kind === "missing"
-                                  ? "not installed"
-                                  : "outside profile"}
+                                {presentation.detail}
                               </span>
                               <RelatedHarnessIcons harnessIds={row.harnesses} />
                             </span>

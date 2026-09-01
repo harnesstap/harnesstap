@@ -12,7 +12,6 @@ import {
   type ApplyProfilePluginResult,
 } from "./profile-apply.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
-import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
@@ -31,6 +30,7 @@ import {
   collectOwnedGlobalProfileFiles,
   computeGlobalProfilePanelStatus,
   countMissingHarnessRows,
+  declaredMcpFromExpectedFiles,
   resolveProjectDriftSummary,
   type GlobalProfileDriftSummary,
   type GlobalProfilePanelStatus,
@@ -80,37 +80,11 @@ function pluginIdsMatch(left: string[], right: string[]): boolean {
   return left.every((pluginId, index) => pluginId === right[index]);
 }
 
-function declaredMcpNamesFromExpectedApply(
-  expectedApply: ApplyProfilePluginResult,
-): Record<string, string[]> {
-  const byHarness: Record<string, string[]> = {};
-
-  for (const harnessId of expectedApply.harnesses) {
-    const mcpPaths = new Set<string>();
-    if (harnessId === "cursor") {
-      mcpPaths.add(".cursor/mcp.json");
-    } else if (harnessId === "claude-code") {
-      mcpPaths.add(".mcp.json");
-    }
-
-    const names = new Set<string>();
-    for (const file of expectedApply.expected_files ?? []) {
-      if (!mcpPaths.has(file.path)) {
-        continue;
-      }
-      try {
-        const document = JSON.parse(file.content) as unknown;
-        for (const name of Object.keys(parseMcpServersDocument(document))) {
-          names.add(name);
-        }
-      } catch {
-        // skip invalid MCP config payloads
-      }
-    }
-    byHarness[harnessId] = [...names];
-  }
-
-  return byHarness;
+function declaredMcpFromExpectedApply(expectedApply: ApplyProfilePluginResult) {
+  return declaredMcpFromExpectedFiles(
+    expectedApply.harnesses,
+    expectedApply.expected_files ?? [],
+  );
 }
 
 function declaredMcpNamesFromMergedPlugins(pluginIds: string[]): Record<string, string[]> {
@@ -148,18 +122,23 @@ function buildBaseStatusFields(input: {
     input.pluginIds && input.pluginIds.length > 0
       ? mergePluginsForApply(input.pluginIds).pluginPins
       : [];
+  const declaredFromExpected = input.expectedApply
+    ? declaredMcpFromExpectedApply(input.expectedApply)
+    : null;
   const declaredMcpByHarness =
-    input.expectedApply
-      ? declaredMcpNamesFromExpectedApply(input.expectedApply)
-      : input.pluginIds
-        ? declaredMcpNamesFromMergedPlugins(input.pluginIds)
-        : { "claude-code": [], cursor: [] };
+    declaredFromExpected?.namesByHarness
+    ?? (input.pluginIds
+      ? declaredMcpNamesFromMergedPlugins(input.pluginIds)
+      : { "claude-code": [], cursor: [] });
 
   const harnesses = buildHarnessLiveStatusMap({
     depth: input.depth,
     homeRoot,
     declaredPins,
     declaredMcpByHarness,
+    ...(declaredFromExpected
+      ? { expectedMcpConfigsByHarness: declaredFromExpected.configsByHarness }
+      : {}),
   });
   const { missingPlugins, missingMcp } =
     input.depth === "full"

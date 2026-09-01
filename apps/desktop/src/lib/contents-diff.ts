@@ -32,12 +32,20 @@ export interface ContentsDiff {
   unchanged: ContentsDiffItem[];
 }
 
+export type InstallGapKind = "add" | "mismatch" | "missing" | "outside_profile";
+
 export interface InstallGapRow {
   key: string;
   label: string;
-  kind: "missing" | "outside_profile";
+  kind: InstallGapKind;
   iconType: "plugin" | "mcp_server";
   harnesses: string[];
+}
+
+export interface InstallGapPresentation {
+  mark: "+" | "!" | "·";
+  tone: "add" | "update" | "remove";
+  detail: string;
 }
 
 const TYPE_ORDER = [
@@ -726,10 +734,25 @@ export function aggregateInstallGaps(
     }
 
     for (const mcp of status.mcp ?? []) {
-      if (mcp.state === "present") {
-        continue;
+      let kind: InstallGapKind;
+      switch (mcp.state) {
+        case "present":
+          continue;
+        case "missing":
+          kind = "add";
+          break;
+        case "mismatch":
+          kind = "mismatch";
+          break;
+        case "extra":
+          kind = "outside_profile";
+          break;
+        default: {
+          const _exhaustive: never = mcp.state;
+          void _exhaustive;
+          continue;
+        }
       }
-      const kind = mcp.state === "missing" ? "missing" : "outside_profile";
       const key = `mcp:${kind}:${mcp.name}`;
       const existing = byKey.get(key);
       if (existing) {
@@ -748,10 +771,38 @@ export function aggregateInstallGaps(
     }
   }
 
+  const kindOrder: Record<InstallGapKind, number> = {
+    add: 0,
+    mismatch: 1,
+    missing: 2,
+    outside_profile: 3,
+  };
+
   return [...byKey.values()].sort((a, b) => {
     if (a.kind !== b.kind) {
-      return a.kind === "missing" ? -1 : 1;
+      return kindOrder[a.kind] - kindOrder[b.kind];
     }
     return a.label.localeCompare(b.label);
   });
+}
+
+export function isTargetPreviewInstallGap(row: InstallGapRow): boolean {
+  return row.kind !== "outside_profile";
+}
+
+export function installGapRowPresentation(row: InstallGapRow): InstallGapPresentation {
+  switch (row.kind) {
+    case "add":
+      return { mark: "+", tone: "add", detail: "not installed" };
+    case "mismatch":
+      return { mark: "!", tone: "update", detail: "different value" };
+    case "missing":
+      return { mark: "!", tone: "update", detail: "not installed" };
+    case "outside_profile":
+      return { mark: "·", tone: "remove", detail: "outside profile" };
+    default: {
+      const _exhaustive: never = row.kind;
+      return _exhaustive;
+    }
+  }
 }

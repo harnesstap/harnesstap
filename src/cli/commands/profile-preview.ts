@@ -121,8 +121,21 @@ function printInstallGaps(preview: ProfileApplyPreview): void {
       }
     }
     for (const mcp of status.mcp) {
-      if (mcp.state === "missing") {
-        ui.dim(`mcp ${mcp.name} not installed`);
+      switch (mcp.state) {
+        case "missing":
+          ui.dim(`mcp ${mcp.name} not installed`);
+          break;
+        case "mismatch":
+          ui.dim(`mcp ${mcp.name} different value`);
+          break;
+        case "present":
+        case "extra":
+          break;
+        default: {
+          const _exhaustive: never = mcp.state;
+          void _exhaustive;
+          break;
+        }
       }
     }
   }

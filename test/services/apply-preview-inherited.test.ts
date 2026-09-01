@@ -156,4 +156,69 @@ describe("inherited plugin apply-preview file changes", () => {
       await context.cleanup();
     }
   });
+
+  it("flags profile MCP as missing when it is not installed", async () => {
+    const context = await createInitializedTestContext("preview-mcp-add-gap");
+    try {
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
+      const mcp = createResource({
+        type: "mcp_server",
+        name: "TEADS-PROD-agency",
+        description: "",
+        content: JSON.stringify({ command: "agency" }),
+        metadata: { transport: "stdio", command: "agency" },
+        source: "manual",
+      });
+      addResourceToPlugin(plugin.id, mcp.id);
+
+      const preview = await previewProfileApply({
+        profile: "work",
+        scope: "home",
+        harness: "cursor",
+      });
+
+      expect(preview.harnesses?.cursor?.mcp).toEqual([
+        { name: "TEADS-PROD-agency", state: "missing" },
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("flags live MCP as mismatch when the installed config differs", async () => {
+    const context = await createInitializedTestContext("preview-mcp-mismatch-gap");
+    try {
+      mkdirSync(join(context.homeDir, ".cursor"), { recursive: true });
+      writeTextFile(
+        join(context.homeDir, ".cursor", "mcp.json"),
+        JSON.stringify({
+          mcpServers: { docs: { command: "live-docs" } },
+        }),
+      );
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
+      const mcp = createResource({
+        type: "mcp_server",
+        name: "docs",
+        description: "",
+        content: JSON.stringify({ command: "profile-docs" }),
+        metadata: { transport: "stdio", command: "profile-docs" },
+        source: "manual",
+      });
+      addResourceToPlugin(plugin.id, mcp.id);
+
+      const preview = await previewProfileApply({
+        profile: "work",
+        scope: "home",
+        harness: "cursor",
+      });
+
+      expect(preview.harnesses?.cursor?.mcp).toEqual([
+        { name: "docs", state: "mismatch" },
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

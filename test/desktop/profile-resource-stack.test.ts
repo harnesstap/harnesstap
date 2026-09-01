@@ -175,4 +175,11 @@ describe("Profile resources pane chrome", () => {
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("live resources that are in the profile but differ");
   });
+
+  it("locks install-gap plus vs warning marks", () => {
+    expect(liveStateSource).toContain("installGapRowPresentation");
+    expect(designSource).toContain(
+      "MCP that is in the profile and not currently installed uses **+**",
+    );
+  });
 });

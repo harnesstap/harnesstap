@@ -221,7 +221,7 @@ export interface HarnessPluginStatusRow {
 
 export interface HarnessMcpStatusRow {
   name: string;
-  state: "present" | "missing" | "extra";
+  state: "present" | "missing" | "mismatch" | "extra";
 }
 
 export interface HarnessLiveStatus {
