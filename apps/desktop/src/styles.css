@@ -1784,8 +1784,14 @@ button:focus-visible,
   text-align: left;
 }
 
+.contents-header-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
 .contents-header-action {
-  margin-left: auto;
   width: 24px;
   height: 24px;
   flex-shrink: 0;
@@ -2778,11 +2784,6 @@ button:focus-visible,
   flex-direction: column;
   gap: 0.65rem;
   min-width: 0;
-}
-
-.untracked-hint {
-  margin: 0 0 0.45rem;
-  font-size: 0.82rem;
 }
 
 .live-state-columns {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import {
+  addAllNotStagedTooltip,
   aggregateInstallGaps,
   installGapRowPresentation,
   isTargetPreviewInstallGap,
+  NOT_STAGED_SECTION_HINT,
   countFileChangeKindResources,
   diffProfileContents,
   fileChangeAction,
@@ -569,5 +571,19 @@ describe("managedPathFromResourceSource", () => {
     expect(
       managedPathFromResourceSource(".cursor/skills/dolibarr-api/SKILL.md"),
     ).toBe(".cursor/skills/dolibarr-api/SKILL.md");
+  });
+});
+
+describe("not-staged header copy", () => {
+  it("includes the not-staged count in the Add all tooltip", () => {
+    expect(addAllNotStagedTooltip(0)).toBe("Add all (0)");
+    expect(addAllNotStagedTooltip(1)).toBe("Add all (1)");
+    expect(addAllNotStagedTooltip(12)).toBe("Add all (12)");
+  });
+
+  it("keeps the Not staged help tooltip wording", () => {
+    expect(NOT_STAGED_SECTION_HINT).toBe(
+      "On disk but not in this profile, or live content that differs — Plus adds or overwrites the selected profile. Diff shows live vs after apply for modifications.",
+    );
   });
 });

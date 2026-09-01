@@ -157,10 +157,16 @@ describe("Profile resources pane chrome", () => {
     );
   });
 
-  it("offers labeled Add all on Profile resources when not-staged rows exist", () => {
-    expect(liveStateSource).toContain("Add all");
+  it("offers icon Add all on Not staged with a count tooltip", () => {
+    expect(liveStateSource).not.toMatch(/Add all\s*\n?\s*<\/button>/);
     expect(liveStateSource).toContain("onAddAllResources");
+    expect(liveStateSource).toContain("addAllNotStagedTooltip");
+    expect(liveStateSource).toContain("NOT_STAGED_SECTION_HINT");
+    expect(liveStateSource).toContain("CircleHelp");
     expect(appSource).toContain("onAddAllResources");
+    expect(designSource).toContain(
+      "icon-only **Add all** in the Not staged header",
+    );
   });
 
   it("locks Profile resources as the selected profile’s composition", () => {
@@ -172,6 +178,7 @@ describe("Profile resources pane chrome", () => {
   it("locks not-staged modifications and centered file diffs", () => {
     expect(liveStateSource).toContain("not_staged_kind");
     expect(liveStateSource).toContain("Overwrite profile with the live version");
+    expect(liveStateSource).not.toContain("untracked-hint");
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("live resources that are in the profile but differ");
   });

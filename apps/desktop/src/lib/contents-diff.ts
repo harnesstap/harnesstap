@@ -48,6 +48,13 @@ export interface InstallGapPresentation {
   detail: string;
 }
 
+export const NOT_STAGED_SECTION_HINT =
+  "On disk but not in this profile, or live content that differs — Plus adds or overwrites the selected profile. Diff shows live vs after apply for modifications.";
+
+export function addAllNotStagedTooltip(count: number): string {
+  return `Add all (${count})`;
+}
+
 const TYPE_ORDER = [
   "plugin",
   "skill",

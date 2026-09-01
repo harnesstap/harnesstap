@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  CircleHelp,
   Diff,
   ExternalLink,
   Layers,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import {
+  addAllNotStagedTooltip,
   aggregateInstallGaps,
   countFileChangeKindResources,
   diffProfileContents,
@@ -23,6 +25,7 @@ import {
   isTargetPreviewInstallGap,
   liveMcpNamesFromHarnesses,
   managedPathFromResourceSource,
+  NOT_STAGED_SECTION_HINT,
   orderedTypeCounts,
   summarizeStackChanges,
   type ContentsDiffItem,
@@ -1522,32 +1525,8 @@ export function LiveStatePanel({
           <summary className="contents-header">
             <span>Profile resources</span>
             {selectedProfile && notStagedResources.length > 0 ? (
-              <span className="contents-header-toolbar">
-                <span className="contents-header-meta muted">
-                  {notStagedResources.length} not staged
-                </span>
-                {onAddAllResources ? (
-                  <button
-                    type="button"
-                    className={[
-                      "btn",
-                      addingAllResources ? "is-busy" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    disabled={addingAllResources}
-                    aria-busy={addingAllResources}
-                    aria-label={`Add all ${notStagedResources.length} not-staged resources to ${selectedProfile}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void onAddAllResources();
-                    }}
-                  >
-                    {addingAllResources ? <ButtonSpinner size={16} /> : null}
-                    Add all
-                  </button>
-                ) : null}
+              <span className="contents-header-meta muted">
+                {notStagedResources.length} not staged
               </span>
             ) : null}
           </summary>
@@ -1746,17 +1725,55 @@ export function LiveStatePanel({
             aria-label="Not staged"
           >
             <summary className="contents-header">
-              <span>Not staged</span>
-              <span className="contents-header-meta muted">
-                {notStagedResources.length} on disk
+              <span className="contents-header-title">
+                <span>Not staged</span>
+                <button
+                  type="button"
+                  className="icon-action contents-header-action"
+                  aria-label="About not staged"
+                  title={NOT_STAGED_SECTION_HINT}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  <CircleHelp size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                </button>
+              </span>
+              <span className="contents-header-toolbar">
+                <span className="contents-header-meta muted">
+                  {notStagedResources.length} on disk
+                </span>
+                {onAddAllResources && notStagedResources.length > 0 ? (
+                  <button
+                    type="button"
+                    className={[
+                      "icon-action",
+                      "contents-header-action",
+                      addingAllResources ? "is-busy" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={addingAllResources}
+                    aria-busy={addingAllResources}
+                    aria-label={addAllNotStagedTooltip(notStagedResources.length)}
+                    title={addAllNotStagedTooltip(notStagedResources.length)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void onAddAllResources();
+                    }}
+                  >
+                    {addingAllResources ? (
+                      <ButtonSpinner size={ICON_SIZE} />
+                    ) : (
+                      <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                    )}
+                  </button>
+                ) : null}
               </span>
             </summary>
             <div className="contents-body">
-              <p className="muted untracked-hint">
-                On disk but not in this profile, or live content that differs —
-                Plus adds or overwrites the selected profile. Diff shows live vs
-                after apply for modifications.
-              </p>
               <ListSearchField
                 value={notStagedSearch}
                 onChange={(value) => {
