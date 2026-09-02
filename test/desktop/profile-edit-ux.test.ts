@@ -21,6 +21,7 @@ const publishSource = readFileSync(
   "utf8",
 );
 const appSource = readFileSync(join(root, "App.tsx"), "utf8");
+const stylesSource = readFileSync(join(root, "styles.css"), "utf8");
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",
@@ -48,6 +49,15 @@ describe("profile edit resource inspect", () => {
     );
     expect(picker).toContain("onOpen={inspect}");
     expect(picker).toContain("resource-row-checkbox");
+  });
+
+  test("keeps resource-row grid rules and balanced braces in styles.css", () => {
+    const opens = stylesSource.match(/\{/g)?.length ?? 0;
+    const closes = stylesSource.match(/\}/g)?.length ?? 0;
+    expect(opens).toBe(closes);
+    expect(stylesSource).toContain(".resource-row {\n  display: grid;");
+    expect(stylesSource.match(/\.resource-row-clickable \{/g)?.length).toBe(1);
+    expect(stylesSource.match(/\.resource-row-checkbox \{/g)?.length).toBe(1);
   });
 });
 
