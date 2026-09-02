@@ -98,6 +98,7 @@ jobs:
               - 'apps/desktop/tsconfig*.json'
               - 'apps/desktop/index.html'
               - 'apps/desktop/vite.config.ts'
+              - '.github/workflows/ci.yml'
 
       - name: Resolve change flags
         id: resolve
@@ -229,6 +230,10 @@ jobs:
       - name: Typecheck desktop app
         working-directory: apps/desktop
         run: bunx tsc -p tsconfig.app.json --noEmit
+
+      - name: Compile desktop CSS with Vite
+        working-directory: apps/desktop
+        run: bunx vite build
 
       - name: Test linuxdeploy wrappers
         run: bun test apps/desktop/scripts
