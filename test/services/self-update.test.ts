@@ -267,10 +267,10 @@ describe("CLI update notice", () => {
 
   it("skips JSON output and bun tests unless explicitly enabled", () => {
     expect(shouldSkipCliUpdateNotice(["ht", "plugin", "list", "--format", "json"], {})).toBe(true);
-    expect(shouldSkipCliUpdateNotice(["ht", "plugin", "list"], { BUN_TEST: "1" })).toBe(true);
+    expect(shouldSkipCliUpdateNotice(["ht", "plugin", "list"], { NODE_ENV: "test" })).toBe(true);
     expect(
       shouldSkipCliUpdateNotice(["ht", "plugin", "list"], {
-        BUN_TEST: "1",
+        NODE_ENV: "test",
         HARNESSTAP_UPDATE_CHECK: "1",
       }),
     ).toBe(false);

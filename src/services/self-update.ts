@@ -352,7 +352,7 @@ export function shouldSkipCliUpdateNotice(
   if (env.HARNESSTAP_SKIP_UPDATE_CHECK === "1" || env.HARNESSTAP_SKIP_UPDATE_CHECK === "true") {
     return true;
   }
-  if (env.BUN_TEST && env.HARNESSTAP_UPDATE_CHECK !== "1") {
+  if (env.HARNESSTAP_UPDATE_CHECK !== "1" && (Boolean(env.BUN_TEST) || env.NODE_ENV === "test")) {
     return true;
   }
   const args = argv.slice(2);
