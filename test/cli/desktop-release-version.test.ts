@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   normalizeReleaseVersion,
@@ -30,16 +30,20 @@ describe("desktop release version stamps", () => {
       cargoToml.indexOf("[package]"),
       cargoToml.indexOf("\n[", cargoToml.indexOf("[package]") + 1),
     );
-    const workflow = readFileSync(join(root, ".github/workflows/changie-release-pr.yml"), "utf8");
+    const tagRelease = readFileSync(join(root, ".github/workflows/tag-release.yml"), "utf8");
     const release = readFileSync(join(root, ".github/workflows/release.yml"), "utf8");
 
     expect(desktopPkg.version).toBe(version);
     expect(tauri.version).toBe(version);
     expect(packageSection).toContain(`version = "${version}"`);
     expect(cargoLock).toContain(`name = "harnesstap-desktop"\nversion = "${version}"`);
-    expect(workflow).toContain("scripts/sync-desktop-version.ts");
+    expect(existsSync(join(root, ".github/workflows/changie-release-pr.yml"))).toBe(false);
+    expect(tagRelease).toContain("workflow_dispatch:");
+    expect(tagRelease).toContain("scripts/stamp-release-version.sh");
+    expect(tagRelease).toContain("scripts/tag-release-plan.sh");
     expect(release).toContain("apps/desktop/scripts/reseal-macos-app.sh");
     expect(release).toContain("startsWith(matrix.name, 'macos-')");
+    expect(release).toContain("workflows:\n      - Tag release");
   });
 
   it("rewrites JSON, Cargo.toml, and Cargo.lock package versions", () => {
