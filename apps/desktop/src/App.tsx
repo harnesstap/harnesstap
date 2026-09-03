@@ -40,6 +40,7 @@ import { SettingsDrawer } from "./components/SettingsDrawer";
 import { SourcesWorkspace } from "./components/SourcesWorkspace";
 import { StashBrowseDrawer } from "./components/StashBrowseDrawer";
 import { WorkspaceBackButton } from "./components/WorkspaceBackButton";
+import { UpdateAvailableControl } from "./components/UpdateAvailableControl";
 import {
   AgentApiError,
   bootstrapProject,
@@ -2225,6 +2226,12 @@ export function App() {
           {successMessage ? (
             <div className="success-flash">{successMessage}</div>
           ) : null}
+          <UpdateAvailableControl
+            baseUrl={baseUrl}
+            token={token}
+            connected={connected}
+            disabled={switching || migrateBusy}
+          />
           <button
             className={[
               "icon-action",

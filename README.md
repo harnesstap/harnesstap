@@ -168,6 +168,8 @@ It is **not** in the npm package. Download installers from [GitHub Releases](htt
 
 Builds are unsigned (no Apple notarization, Windows Authenticode, or Linux package signing). macOS DMGs are ad-hoc resealed so Gatekeeper does not treat a quarantined app as damaged; you may still need **Open Anyway** under System Settings → Privacy & Security. Windows SmartScreen may warn on first launch.
 
+The CLI prints a one-time notice when a newer published version exists (cached daily in `~/.harnesstap/update-check.json`). npm installs follow npm `harnesstap`; other installs follow GitHub Releases. Desktop shows an update icon and can download the matching GitHub installer for your OS/arch.
+
 To build from this repo:
 
 ```bash

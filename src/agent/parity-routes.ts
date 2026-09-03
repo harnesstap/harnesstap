@@ -17,6 +17,7 @@ import { tryHandle as tryProjectConfig } from "./parity-handlers/project-config.
 import { tryHandle as tryStashApply } from "./parity-handlers/stash-apply.js";
 import { tryHandle as tryResolveOrder } from "./parity-handlers/resolve-order.js";
 import { tryHandle as tryProfileDefaultEnv } from "./parity-handlers/profile-default-env.js";
+import { tryHandle as trySelfUpdate } from "./parity-handlers/self-update.js";
 
 export interface ParityRouteDeps {
   isAgentSwitchInProgress: () => boolean;
@@ -42,6 +43,7 @@ const HANDLERS = [
   tryStashApply,
   tryResolveOrder,
   tryProfileDefaultEnv,
+  trySelfUpdate,
 ] as const;
 
 export async function tryParityRoutes(

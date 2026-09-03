@@ -1,0 +1,5 @@
+kind: Added
+body: Detect a newer published HarnessTap version and tell the user once (CLI notice, Desktop header badge with in-app GitHub installer update).
+time: 2026-09-03T02:20:00Z
+custom:
+  Issue: ""

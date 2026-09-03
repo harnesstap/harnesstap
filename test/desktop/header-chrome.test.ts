@@ -68,6 +68,14 @@ function sliceBetween(
 }
 
 describe("desktop header chrome", () => {
+  test("exposes an Update available header icon that opens a release dialog", () => {
+    expect(appSource).toContain("UpdateAvailableControl");
+    expect(cssSource).toContain(".update-available-badge");
+    expect(cssSource).toContain("background: var(--red)");
+    expect(designSource).toContain("Update available");
+    expect(designSource).toContain("red badge");
+  });
+
   test("does not render a sidecar connected glyph", () => {
     expect(appSource).not.toContain("connection-indicator");
     expect(appSource).not.toMatch(/\bUnplug\b/);

@@ -10,6 +10,7 @@ import { CliUsageError } from "../services/cli-errors.js";
 import { PluginProvenanceError } from "../services/plugin-origin.js";
 import { isPromptCancellationError } from "../services/wizards/shared.js";
 import { takeSelectorDeprecations } from "../services/resource-selector.js";
+import { maybeNotifyCliUpdate } from "../services/self-update.js";
 import { ui } from "../ui/index.js";
 import { program } from "./program.js";
 import {
@@ -148,6 +149,7 @@ export async function runHarnesstapCli(
     for (const notice of takeSelectorDeprecations()) {
       ui.warn(notice);
     }
+    await maybeNotifyCliUpdate({ argv: effectiveArgv });
   } catch (error) {
     if (isPromptCancellationError(error)) {
       return;
