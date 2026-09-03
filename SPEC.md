@@ -261,6 +261,10 @@ Global options:
 | `--no-interactive` | Disable interactive prompts |
 | `-h, --help` | Show help (`--help --all` includes hidden aliases) |
 
+After a successful command, the CLI may print a one-time notice when a newer published version exists (`current → newer`, plus an install path). npm installs compare against the `harnesstap` package on the npm registry; GitHub/binary installs compare against the latest GitHub release. Lookups are cached in `~/.harnesstap/update-check.json` (at most once per day). The same discovered version is announced only once. Lookup failures and timeouts are silent and never fail `ht`. JSON output (`--json`, `--format json`) skips the notice.
+
+Desktop always uses GitHub release assets. When a newer Desktop version exists, the header shows an **Update available** icon (red badge). The dialog lists what’s new, links to the GitHub release, and can download/apply the matching unsigned installer for the current OS/architecture.
+
 ### Noun shorthand aliases
 
 | Full noun | Alias |
