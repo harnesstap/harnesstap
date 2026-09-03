@@ -15,8 +15,10 @@ import {
   type LibraryImportRequest,
 } from "../../lib/api/import-library";
 import { projectDisplayName } from "../../lib/recent-projects";
+import { Check, FolderDown, FolderOpen, X } from "lucide-react";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { FullScreenPanel } from "../FullScreenPanel";
+import { IconActionButton } from "../IconActionButton";
 
 export interface ImportLibraryDrawerProps {
   open: boolean;
@@ -223,6 +225,7 @@ export function ImportLibraryDrawer({
       actions={
         <>
           <button className="btn" type="button" onClick={onClose} disabled={controlsDisabled}>
+            <X size={16} aria-hidden />
             Cancel
           </button>
           {preview ? (
@@ -234,7 +237,7 @@ export function ImportLibraryDrawer({
               disabled={controlsDisabled || preview.totalImports === 0}
               aria-busy={busy}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <FolderDown size={16} aria-hidden />}
               {busy ? "Importing…" : "Import"}
             </button>
           ) : (
@@ -246,7 +249,7 @@ export function ImportLibraryDrawer({
               disabled={!canContinue || controlsDisabled}
               aria-busy={busy}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
               {busy ? "Previewing…" : "Continue"}
             </button>
           )}
@@ -306,9 +309,8 @@ export function ImportLibraryDrawer({
                   invalidatePreview();
                 }}
               />
-              <button
-                className="btn"
-                type="button"
+              <IconActionButton
+                label="Choose folder…"
                 disabled={controlsDisabled}
                 onClick={() => {
                   void openDirectoryDialog({
@@ -322,9 +324,8 @@ export function ImportLibraryDrawer({
                     }
                   });
                 }}
-              >
-                Choose folder…
-              </button>
+                icon={<FolderOpen size={16} aria-hidden />}
+              />
             </div>
           ) : null}
 

@@ -134,9 +134,8 @@ describe("settings project config inspect surface", () => {
     expect(inspectSource).not.toContain("Config is valid.");
   });
 
-  test("opens config via labeled button and openResourcePath", () => {
-    expect(inspectSource).toContain("Open config");
-    expect(inspectSource).toContain('className="btn"');
+  test("opens config via icon-only Open config and openResourcePath", () => {
+    expect(inspectSource).toContain('label="Open config"');
     expect(inspectSource).toContain("openResourcePath");
     expect(inspectSource).toContain("config_path");
     expect(inspectSource).toContain("rawPath");

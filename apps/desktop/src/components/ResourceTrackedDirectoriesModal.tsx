@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FolderOpen, Plus, Trash2, X } from "lucide-react";
+import { Check, FolderOpen, Plus, Trash2, X } from "lucide-react";
 import {
   addResourceTrackedDirectory,
   fetchResourceTrackedDirectories,
@@ -392,6 +392,7 @@ export function ResourceTrackedDirectoriesModal({
             {adding ? "Adding…" : "Add directory"}
           </button>
           <button className="btn primary" type="button" onClick={onClose}>
+            <Check size={16} aria-hidden />
             Done
           </button>
         </div>

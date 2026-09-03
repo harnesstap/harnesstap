@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Plus, Unlink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchCloudAuthStatus } from "../../lib/agent-client";
@@ -11,6 +12,7 @@ import {
 import type { CloudAuthStatus } from "../../lib/types";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { IconActionButton } from "../IconActionButton";
 
 export interface PublishCatalogsSettingsProps {
   baseUrl: string | null;
@@ -145,14 +147,12 @@ export function PublishCatalogsSettings({
                   <span className="muted"> {catalog.account}</span>
                 ) : null}
               </span>
-              <button
-                className="btn"
-                type="button"
+              <IconActionButton
+                label="Unregister"
                 disabled={controlsDisabled}
                 onClick={() => setPendingUnregister(catalog)}
-              >
-                Unregister
-              </button>
+                icon={<Unlink size={16} aria-hidden />}
+              />
             </li>
           ))}
         </ul>
@@ -184,7 +184,7 @@ export function PublishCatalogsSettings({
         onClick={() => void onRegister()}
         aria-busy={busy}
       >
-        {busy ? <ButtonSpinner size={16} /> : null}
+        {busy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
         {busy ? "Registering…" : "Register catalog"}
       </button>
       <ConfirmDialog

@@ -22,10 +22,9 @@ const designSource = readFileSync(
 );
 
 describe("plugin origin update chrome", () => {
-  test("plugin package detail has a labeled Update action", () => {
-    expect(
-      detailSource.includes(">Update<") || detailSource.includes("Update</"),
-    ).toBe(true);
+  test("plugin package detail has an icon-only Update action", () => {
+    expect(detailSource).toContain('label="Update"');
+    expect(detailSource).toContain("CloudDownload");
   });
 
   test("DESIGN.md locks Update all and origin fetch vs Sync", () => {

@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { registerCatalog } from "../lib/api/publish";
 import { connectCatalogOrgApi } from "../lib/api/sources";
 import { connectCatalogDraftIsDirty } from "../lib/sources-panels";
+import { Cloud, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -246,6 +247,7 @@ export function ConnectCatalogPanel({
             onClick={requestClose}
             disabled={controlsDisabled}
           >
+            <X size={16} aria-hidden />
             Cancel
           </button>
           <button
@@ -257,7 +259,7 @@ export function ConnectCatalogPanel({
             disabled={!canSubmit || controlsDisabled}
             aria-busy={busy}
           >
-            {busy ? <ButtonSpinner size={16} /> : null}
+            {busy ? <ButtonSpinner size={16} /> : mode === "register" ? <Plus size={16} aria-hidden /> : <Cloud size={16} aria-hidden />}
             {busy
               ? mode === "register"
                 ? "Registering…"

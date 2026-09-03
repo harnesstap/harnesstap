@@ -1,5 +1,7 @@
 import type { SourcesHit, SourcesHitGroup } from "../lib/sources-search";
 import { presenceLabel, sourcesHitUpdateBadge } from "../lib/sources-search";
+import { LogIn } from "lucide-react";
+import { IconActionButton } from "./IconActionButton";
 import { TypeIcon } from "./TypeIcon";
 
 export const CLOUD_SIGN_IN_HINT = "Sign in from the Cloud account control";
@@ -42,14 +44,13 @@ export function SourcesSignInPrompt({
     <div className="banner" role="status">
       <p>Cloud sign-in required</p>
       {onSignIn ? (
-        <button
-          type="button"
-          className="btn primary"
+        <IconActionButton
+          primary
+          label="Sign in"
           onClick={onSignIn}
           disabled={disabled}
-        >
-          Sign in
-        </button>
+          icon={<LogIn size={16} aria-hidden />}
+        />
       ) : (
         <p className="muted">{CLOUD_SIGN_IN_HINT}</p>
       )}

@@ -1,7 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Download, Library, Paperclip, Pin } from "lucide-react";
 import type { SourcesHitActions } from "../lib/sources-record-actions";
-import { ButtonSpinner } from "./ButtonSpinner";
+import { IconActionButton } from "./IconActionButton";
 import { SourcesSignInPrompt } from "./SourcesListPane";
 
 export interface SourcesRecordActionsProps {
@@ -59,48 +60,39 @@ export function SourcesRecordActions({
       ) : null}
       <div className="library-detail-actions sources-record-action-cluster">
         {actions.showPull ? (
-          <button
-            type="button"
-            className={["btn", "primary", busy ? "is-busy" : ""]
-              .filter(Boolean)
-              .join(" ")}
+          <IconActionButton
+            primary
+            busy={busy}
+            spinnerSize={14}
             disabled={controlsDisabled || (collision && !asName.trim())}
+            label="Pull"
             onClick={onPull}
-            aria-busy={busy}
-          >
-            {busy ? <ButtonSpinner size={14} /> : null}
-            Pull
-          </button>
+            icon={<Download size={16} aria-hidden />}
+          />
         ) : null}
         {actions.showPinToPlugin ? (
-          <button
-            type="button"
-            className="btn"
+          <IconActionButton
+            label="Pin to plugin"
             disabled={controlsDisabled}
             onClick={onPinToPlugin}
-          >
-            Pin to plugin
-          </button>
+            icon={<Pin size={16} aria-hidden />}
+          />
         ) : null}
         {actions.showAttachToPlugin ? (
-          <button
-            type="button"
-            className="btn"
+          <IconActionButton
+            label="Attach to plugin"
             disabled={controlsDisabled}
             onClick={onAttachToPlugin}
-          >
-            Attach to plugin
-          </button>
+            icon={<Paperclip size={16} aria-hidden />}
+          />
         ) : null}
         {actions.showOpenInLibrary ? (
-          <button
-            type="button"
-            className="btn"
+          <IconActionButton
+            label="Open in Library"
             disabled={controlsDisabled || !actions.openInLibrarySelector}
             onClick={onOpenInLibrary}
-          >
-            Open in Library
-          </button>
+            icon={<Library size={16} aria-hidden />}
+          />
         ) : null}
       </div>
     </div>

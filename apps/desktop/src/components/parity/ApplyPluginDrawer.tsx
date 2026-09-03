@@ -17,6 +17,7 @@ import {
   type ApplyPluginResult,
   type ApplyPluginScope,
 } from "../../lib/api/apply-plugin";
+import { Eye, Play, X } from "lucide-react";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { FullScreenPanel } from "../FullScreenPanel";
@@ -188,6 +189,7 @@ export function ApplyPluginDrawer({
         actions={
           <>
             <button className="btn" type="button" onClick={onClose} disabled={busy}>
+              <X size={16} aria-hidden />
               Close
             </button>
             <button
@@ -196,7 +198,7 @@ export function ApplyPluginDrawer({
               onClick={() => void onPreview()}
               disabled={!canApply || previewBusy}
             >
-              {previewBusy ? <ButtonSpinner size={16} /> : null}
+              {previewBusy ? <ButtonSpinner size={16} /> : <Eye size={16} aria-hidden />}
               Preview
             </button>
             <button
@@ -206,7 +208,7 @@ export function ApplyPluginDrawer({
               aria-busy={busy}
               onClick={() => void runApply(false)}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <Play size={16} aria-hidden />}
               {busy ? "Applying…" : "Apply"}
             </button>
           </>

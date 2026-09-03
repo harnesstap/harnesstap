@@ -133,10 +133,10 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("nextCheckedSourceIds");
   });
 
-  test("header cluster uses Add marketplace and Connect catalog", () => {
-    expect(workspaceSource).toContain("Add marketplace");
-    expect(workspaceSource).toContain("Connect catalog");
-    expect(workspaceSource).toContain('className="btn primary"');
+  test("header cluster uses icon-only Add marketplace and Connect catalog", () => {
+    expect(workspaceSource).toContain('label="Add marketplace"');
+    expect(workspaceSource).toContain('label="Connect catalog"');
+    expect(workspaceSource).toContain("IconActionButton");
   });
 
   test("places workspace back before the Sources title like Library and Environments", () => {
@@ -153,7 +153,7 @@ describe("sources workspace chrome", () => {
 
   test("plugin-detail Pin plugin still exists", () => {
     expect(pluginDetailSource).toContain("onPin={pinMarketplacePlugin}");
-    expect(compositionSource).toContain("Pin plugin");
+    expect(compositionSource).toContain('label="Pin plugin"');
   });
 
   test("keeps the marketplace panel open and shows a warning when refresh fails", () => {
@@ -270,11 +270,11 @@ describe("sources search list and preview", () => {
     expect(previewPaneSource).not.toContain("/v1/profiles/cloud/pull");
   });
 
-  test("plugin tree and preview expose labeled Pull, pin/attach, and Open in Library", () => {
-    expect(recordActionsSource).toContain("Pull");
-    expect(recordActionsSource).toContain("Pin to plugin");
-    expect(recordActionsSource).toContain("Attach to plugin");
-    expect(recordActionsSource).toContain("Open in Library");
+  test("plugin tree and preview expose icon-only Pull, pin/attach, and Open in Library", () => {
+    expect(recordActionsSource).toContain('label="Pull"');
+    expect(recordActionsSource).toContain('label="Pin to plugin"');
+    expect(recordActionsSource).toContain('label="Attach to plugin"');
+    expect(recordActionsSource).toContain('label="Open in Library"');
     expect(pluginTreeSource).toContain("SourcesRecordActions");
     expect(previewPaneSource).toContain("SourcesRecordActions");
     expect(workspaceSource).toContain("onOpenInLibrary");
@@ -381,7 +381,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(workspaceSource).toContain("PinToPluginPanel");
   });
 
-  test("DESIGN.md Sources section locks shell, re-click, cluster, and labeled record actions", () => {
+  test("DESIGN.md Sources section locks shell, re-click, cluster, and icon record actions", () => {
     const designSource = readFileSync(
       join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
       "utf8",

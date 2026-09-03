@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Info } from "lucide-react";
+import { Info, Save, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -433,6 +433,7 @@ export function SettingsDrawer({
             onClick={requestClose}
             disabled={busy}
           >
+            <X size={16} aria-hidden />
             Cancel
           </button>
           <button
@@ -444,7 +445,7 @@ export function SettingsDrawer({
             disabled={!canSave}
             aria-busy={busy}
           >
-            {busy ? <ButtonSpinner size={16} /> : null}
+            {busy ? <ButtonSpinner size={16} /> : <Save size={16} aria-hidden />}
             {busy ? "Saving…" : "Save"}
           </button>
         </>

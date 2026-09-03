@@ -10,8 +10,10 @@ import type {
   MigrateImportResult,
   MigrateScope,
 } from "../lib/types";
+import { ArrowLeft, ChevronRight, FolderDown, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
+import { IconActionButton } from "./IconActionButton";
 
 export interface MigrateImportDrawerProps {
   open: boolean;
@@ -213,6 +215,7 @@ export function MigrateImportDrawer({
               }}
               disabled={controlsDisabled}
             >
+              <ArrowLeft size={16} aria-hidden />
               Back
             </button>
           ) : (
@@ -224,6 +227,7 @@ export function MigrateImportDrawer({
             onClick={onClose}
             disabled={controlsDisabled}
           >
+            <X size={16} aria-hidden />
             Cancel
           </button>
           {step === "confirm" ? (
@@ -236,7 +240,7 @@ export function MigrateImportDrawer({
               disabled={controlsDisabled || !importPath}
               aria-busy={busy}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <FolderDown size={16} aria-hidden />}
               {busy ? "Importing…" : "Import"}
             </button>
           ) : (
@@ -249,7 +253,7 @@ export function MigrateImportDrawer({
               disabled={controlsDisabled || !canGoNext}
               aria-busy={detecting}
             >
-              {detecting ? <ButtonSpinner size={16} /> : null}
+              {detecting ? <ButtonSpinner size={16} /> : <ChevronRight size={16} aria-hidden />}
               {detecting ? "Detecting…" : "Next"}
             </button>
           )}
@@ -260,14 +264,12 @@ export function MigrateImportDrawer({
             <div className="form-field gap-2">
               <Label>Import file</Label>
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  className="btn"
-                  type="button"
+                <IconActionButton
+                  label="Choose file…"
                   onClick={() => void pickImportPath()}
                   disabled={controlsDisabled}
-                >
-                  Choose file…
-                </button>
+                  icon={<FolderDown size={16} aria-hidden />}
+                />
                 <span className="mono text-xs">
                   {importPath ?? "No file selected"}
                 </span>

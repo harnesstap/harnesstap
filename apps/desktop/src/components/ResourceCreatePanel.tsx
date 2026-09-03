@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FullScreenPanel } from "./FullScreenPanel";
@@ -304,6 +305,7 @@ export function ResourceCreatePanel({
               disabled={busy}
               onClick={requestClose}
             >
+              <X size={16} aria-hidden />
               Cancel
             </button>
             <button
@@ -316,7 +318,7 @@ export function ResourceCreatePanel({
                 void submit();
               }}
             >
-              {busy ? <ButtonSpinner size={14} /> : null}
+              {busy ? <ButtonSpinner size={14} /> : <Plus size={16} aria-hidden />}
               Create
             </button>
           </>

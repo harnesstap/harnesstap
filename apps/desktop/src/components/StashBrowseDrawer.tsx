@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArchiveRestore, FileText } from "lucide-react";
+import { ArchiveRestore, FileText, X } from "lucide-react";
 import {
   connectAgent,
   fetchProfileStash,
@@ -273,6 +273,7 @@ export function StashBrowseDrawer({
             onClick={onClose}
             disabled={stashBusy}
           >
+            <X size={16} aria-hidden />
             Close
           </button>
           <button
@@ -284,7 +285,7 @@ export function StashBrowseDrawer({
             aria-label="Restore files from the most recent stash and keep the stash entry"
             aria-busy={stashAction === "apply"}
           >
-            {stashAction === "apply" ? <ButtonSpinner size={16} /> : null}
+            {stashAction === "apply" ? <ButtonSpinner size={16} /> : <ArchiveRestore size={16} aria-hidden />}
             Apply (keep)
           </button>
           <button
@@ -296,7 +297,7 @@ export function StashBrowseDrawer({
             aria-label="Restore files from the most recent stash and remove the stash entry"
             aria-busy={stashAction === "restore"}
           >
-            {stashAction === "restore" ? <ButtonSpinner size={16} /> : null}
+            {stashAction === "restore" ? <ButtonSpinner size={16} /> : <ArchiveRestore size={16} aria-hidden />}
             Restore (drop)
           </button>
         </>

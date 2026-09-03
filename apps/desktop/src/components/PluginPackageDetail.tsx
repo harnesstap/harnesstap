@@ -10,11 +10,12 @@ import {
 } from "react";
 import {
   AlignLeft,
+  ArchiveRestore,
+  CloudDownload,
   GitFork,
   History,
   MapPin,
   Play,
-  RefreshCw,
   Scissors,
   Stethoscope,
   Tag,
@@ -70,6 +71,7 @@ import { LibraryFieldRow } from "./LibraryFieldRow";
 import { PluginVersionHistoryList } from "./PluginVersionHistoryList";
 import type { ApplyPluginResult } from "../lib/api/apply-plugin";
 import { ApplyPluginDrawer } from "./parity/ApplyPluginDrawer";
+import { IconActionButton } from "./IconActionButton";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 
 export interface PluginPackageDetailProps {
@@ -1106,130 +1108,103 @@ export function PluginPackageDetail({
     switch (action) {
       case "apply":
         return (
-          <button
+          <IconActionButton
             key="apply"
-            type="button"
-            className="btn primary"
+            primary
             data-testid="apply-package"
             disabled={actionsLocked}
             title={APPLY_TOOLTIP}
-            aria-label={APPLY_TOOLTIP}
+            label="Apply"
             onClick={() => setApplyOpen(true)}
-          >
-            <Play size={14} aria-hidden />
-            Apply
-          </button>
+            icon={<Play size={16} aria-hidden />}
+          />
         );
       case "update":
         return (
-          <button
+          <IconActionButton
             key="update"
-            type="button"
-            className="btn"
             disabled={actionsLocked}
             title={UPDATE_TOOLTIP}
-            aria-label={UPDATE_TOOLTIP}
+            label="Update"
             onClick={() => {
               void runOriginUpdate();
             }}
-          >
-            <RefreshCw size={14} aria-hidden />
-            Update</button>
+            icon={<CloudDownload size={16} aria-hidden />}
+          />
         );
       case "history":
         return (
-          <button
+          <IconActionButton
             key="history"
-            type="button"
-            className="btn"
             disabled={actionsLocked}
             title={HISTORY_TOOLTIP}
-            aria-label={HISTORY_TOOLTIP}
+            label="History"
             onClick={() => onHistoryModeChange("history")}
-          >
-            <History size={14} aria-hidden />
-            History
-          </button>
+            icon={<History size={16} aria-hidden />}
+          />
         );
       case "cut":
         return (
-          <button
+          <IconActionButton
             key="cut"
-            type="button"
-            className="btn"
             disabled={actionsLocked}
             title={CUT_TOOLTIP}
-            aria-label={CUT_TOOLTIP}
+            label="Cut version"
             onClick={() => {
               setCutVersion("");
               setCutOpen(true);
             }}
-          >
-            <Scissors size={14} aria-hidden />
-            Cut version
-          </button>
+            icon={<Scissors size={16} aria-hidden />}
+          />
         );
       case "fork":
         return (
-          <button
+          <IconActionButton
             key="fork"
-            type="button"
-            className="btn"
             disabled={actionsLocked}
             title={FORK_TOOLTIP}
-            aria-label={FORK_TOOLTIP}
+            label="Fork"
             onClick={() => {
               setForkName(`${detail.plugin.name}-fork`);
               setForkOpen(true);
             }}
-          >
-            <GitFork size={14} aria-hidden />
-            Fork
-          </button>
+            icon={<GitFork size={16} aria-hidden />}
+          />
         );
       case "doctor":
         return (
-          <button
+          <IconActionButton
             key="doctor"
-            type="button"
-            className="btn"
             disabled={actionsLocked}
             title={DOCTOR_TOOLTIP}
-            aria-label={DOCTOR_TOOLTIP}
+            label="Doctor"
             onClick={() => {
               setDoctorOpen(true);
             }}
-          >
-            <Stethoscope size={14} aria-hidden />
-            Doctor
-          </button>
+            icon={<Stethoscope size={16} aria-hidden />}
+          />
         );
       case "delete":
         return (
-          <button
+          <IconActionButton
             key="delete"
-            type="button"
-            className="btn"
             disabled={actionsLocked}
             title={DELETE_TOOLTIP}
-            aria-label={DELETE_TOOLTIP}
+            label="Delete"
             onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 size={14} aria-hidden />
-            Delete
-          </button>
+            icon={<Trash2 size={16} aria-hidden />}
+          />
         );
       case "restore":
         return (
-          <button
+          <IconActionButton
             key="restore"
-            type="button"
-            className="btn primary"
+            primary
             disabled={actionsLocked || !frozenVersion}
+            label="Restore"
             onClick={() => setRestoreOpen(true)}
-          >
-            Restore
-          </button>
+            icon={<ArchiveRestore size={16} aria-hidden />}
+          />
         );
       default: {
         const _exhaustive: never = action;

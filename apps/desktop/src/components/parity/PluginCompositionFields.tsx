@@ -11,7 +11,8 @@ import type {
   LibraryResource,
   PluginMarketplaceEntry,
 } from "../../lib/types";
-import { ButtonSpinner } from "../ButtonSpinner";
+import { Pin } from "lucide-react";
+import { IconActionButton } from "../IconActionButton";
 import {
   ResourceSelectionList,
   SelectionList,
@@ -150,16 +151,16 @@ export function PluginCompositionFields({
                   </Select>
                 )}
               </div>
-              <button
-                type="button"
-                className="btn primary"
+              <IconActionButton
+                primary
                 data-testid={pinTestId}
+                label="Pin plugin"
                 onClick={onPin}
                 disabled={pinDisabled}
-              >
-                {pinBusy ? <ButtonSpinner size={14} /> : null}
-                Pin plugin
-              </button>
+                busy={pinBusy}
+                spinnerSize={14}
+                icon={<Pin size={16} aria-hidden />}
+              />
             </div>
           )}
         </section>
