@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FolderOpen } from "lucide-react";
 import {
   filterRecentProjects,
   loadRecentProjects,
   projectDisplayName,
   type RecentProject,
 } from "../lib/recent-projects";
+import { IconActionButton } from "./IconActionButton";
 
 interface ProjectPickerProps {
   projectPath: string;
@@ -133,16 +135,14 @@ export function ProjectPicker({
             )}
           </div>
           <div className="project-picker-footer">
-            <button
-              type="button"
-              className="btn"
+            <IconActionButton
+              label="Browse…"
               onClick={() => {
                 setOpen(false);
                 onBrowse();
               }}
-            >
-              Browse…
-            </button>
+              icon={<FolderOpen size={16} aria-hidden />}
+            />
           </div>
         </div>
       ) : null}

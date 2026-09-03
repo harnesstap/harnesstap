@@ -90,10 +90,10 @@ describe("profile delete chrome", () => {
     expect(deleteSource).toContain("Also delete the plugin from the library");
   });
 
-  test("places the labeled control on the live-state header when a profile is selected", () => {
+  test("places the icon control on the live-state header when a profile is selected", () => {
     expect(liveStatusLine).toContain("ProfileDeleteControls");
     expect(liveStatusLine).toContain("selectedProfile");
-    expect(liveStatusLine).not.toContain('variant="icon"');
+    expect(liveStatusLine).toContain('variant="icon"');
   });
 
   test("sizes the labeled header button as a compact cluster control", () => {
@@ -103,11 +103,11 @@ describe("profile delete chrome", () => {
     expect(cluster).not.toContain("width: 100%");
   });
 
-  test("documents icon Remove profile in the edit header and labeled on live-state", () => {
+  test("documents icon Remove profile in the edit header and live-state", () => {
     expect(designSource).toContain("**Remove profile**");
     expect(designSource).toContain("edit-profile header");
     expect(designSource).toContain("live-state header");
     expect(designSource).toContain("delete-plugin checkbox");
-    expect(designSource).toContain("icon-only control in the edit-profile header");
+    expect(designSource).toContain("icon-only **Remove profile** control appears on the live-state header");
   });
 });

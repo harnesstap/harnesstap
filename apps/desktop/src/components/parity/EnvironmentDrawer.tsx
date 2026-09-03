@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/select";
 import { AgentApiError, fetchLibraryPlugins } from "../../lib/agent-client";
 import type { LibraryPlugin } from "../../lib/types";
+import { Check, Plus, Trash2, X } from "lucide-react";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { FullScreenPanel } from "../FullScreenPanel";
+import { IconActionButton } from "../IconActionButton";
 import { SelectionList } from "../CompositionPickers";
 import {
   canSubmitEnvironmentCreate,
@@ -307,6 +309,7 @@ export function EnvironmentDrawer({
             onClick={onClose}
             disabled={controlsDisabled}
           >
+            <X size={16} aria-hidden />
             Cancel
           </button>
           {mode === "create" ? (
@@ -317,7 +320,7 @@ export function EnvironmentDrawer({
               disabled={!canSubmit || controlsDisabled}
               aria-busy={busy}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
               {busy ? "Creating…" : "Create environment"}
             </button>
           ) : (
@@ -328,7 +331,7 @@ export function EnvironmentDrawer({
               disabled={controlsDisabled}
               aria-busy={busy}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
               {busy ? "Saving…" : "Save environment"}
             </button>
           )}
@@ -446,14 +449,12 @@ export function EnvironmentDrawer({
                           ),
                         )}
                     />
-                    <button
-                      className="btn"
-                      type="button"
+                    <IconActionButton
+                      label="Remove"
                       disabled={controlsDisabled}
                       onClick={() => setEnvVars((rows) => rows.filter((_, entryIndex) => entryIndex !== index))}
-                    >
-                      Remove
-                    </button>
+                      icon={<Trash2 size={16} aria-hidden />}
+                    />
                   </div>
                 ))}
               </RepeatableSection>
@@ -508,14 +509,12 @@ export function EnvironmentDrawer({
                           ),
                         )}
                     />
-                    <button
-                      className="btn"
-                      type="button"
+                    <IconActionButton
+                      label="Remove"
                       disabled={controlsDisabled}
                       onClick={() => setSecrets((rows) => rows.filter((_, entryIndex) => entryIndex !== index))}
-                    >
-                      Remove
-                    </button>
+                      icon={<Trash2 size={16} aria-hidden />}
+                    />
                   </div>
                 ))}
               </RepeatableSection>
@@ -560,14 +559,12 @@ export function EnvironmentDrawer({
                           ),
                         )}
                     />
-                    <button
-                      className="btn"
-                      type="button"
+                    <IconActionButton
+                      label="Remove"
                       disabled={controlsDisabled}
                       onClick={() => setModels((rows) => rows.filter((_, entryIndex) => entryIndex !== index))}
-                    >
-                      Remove
-                    </button>
+                      icon={<Trash2 size={16} aria-hidden />}
+                    />
                   </div>
                 ))}
               </RepeatableSection>
@@ -611,15 +608,13 @@ export function EnvironmentDrawer({
                           ),
                         )}
                     />
-                    <button
-                      className="btn"
-                      type="button"
+                    <IconActionButton
+                      label="Remove"
                       disabled={controlsDisabled}
                       onClick={() =>
                         setPermissions((rows) => rows.filter((_, entryIndex) => entryIndex !== index))}
-                    >
-                      Remove
-                    </button>
+                      icon={<Trash2 size={16} aria-hidden />}
+                    />
                   </div>
                 ))}
               </RepeatableSection>
@@ -647,9 +642,12 @@ function RepeatableSection({
     <section className="form-field gap-1.5">
       <div className="flex items-center justify-between">
         <h3>{title}</h3>
-        <button className="btn" type="button" onClick={onAdd} disabled={disabled}>
-          Add
-        </button>
+        <IconActionButton
+          label="Add"
+          onClick={onAdd}
+          disabled={disabled}
+          icon={<Plus size={16} aria-hidden />}
+        />
       </div>
       {children}
     </section>

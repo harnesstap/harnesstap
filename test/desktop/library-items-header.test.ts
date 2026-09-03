@@ -46,19 +46,13 @@ const headerRow = sliceBetween(
 );
 
 describe("library items header actions", () => {
-  test("clusters Create resource, Import, and Tracked directories instead of spreading them as siblings", () => {
+  test("clusters Create resource, Import, and Tracked directories as icon actions", () => {
     expect(headerRow).toContain('className="resources-panel-header-actions"');
     const clusterIdx = headerRow.indexOf("resources-panel-header-actions");
-    const createIdx = headerRow.indexOf('className="btn primary"');
-    const importIdx = headerRow.indexOf('className="btn"\n');
-    const trackedIdx = headerRow.indexOf(
-      'className="btn"\n',
-      importIdx === -1 ? 0 : importIdx + 1,
-    );
-    expect(createIdx).toBeGreaterThan(clusterIdx);
-    expect(importIdx).toBeGreaterThan(createIdx);
-    expect(trackedIdx).toBeGreaterThan(importIdx);
-    expect(headerRow.slice(clusterIdx)).not.toContain("icon-action");
+    expect(headerRow.slice(clusterIdx)).toContain("IconActionButton");
+    expect(headerRow.slice(clusterIdx)).toContain('label="Create resource"');
+    expect(headerRow.slice(clusterIdx)).toContain('label="Import"');
+    expect(headerRow.slice(clusterIdx)).toContain('label="Tracked directories"');
   });
 
   test("renders an explicit back control before the Library title", () => {
@@ -69,49 +63,37 @@ describe("library items header actions", () => {
     expect(panelSource).toContain("onWorkspaceBack");
   });
 
-  test("renders Create resource as a labeled accent primary action", () => {
+  test("renders Create resource as an accent icon-only action", () => {
     expect(headerRow).toContain('data-testid="library-create-resource"');
-    expect(headerRow).toContain('aria-label="Create resource"');
-    expect(headerRow).toContain('className="btn primary"');
-    expect(headerRow).toMatch(/<Plus[\s\S]*\/>\s*Create resource\s*</);
+    expect(headerRow).toContain('label="Create resource"');
+    expect(headerRow).toContain("primary");
     expect(headerRow).toContain("setCreateModalOpen(true)");
   });
 
-  test("renders Import as a labeled secondary action", () => {
-    expect(headerRow).toContain('aria-label="Import into library"');
-    expect(headerRow).toContain('title="Import into library"');
-    expect(headerRow).toMatch(/className="btn"\s*\n\s*aria-label="Import into library"/);
-    expect(headerRow).toMatch(/<FolderDown[\s\S]*\/>\s*Import\s*</);
+  test("renders Import as an icon-only secondary action", () => {
+    expect(headerRow).toContain('label="Import"');
+    expect(headerRow).toContain("FolderDown");
     expect(headerRow).toContain("setImportOpen(true)");
   });
 
-  test("renders Tracked directories as a labeled secondary action", () => {
-    expect(headerRow).toContain('aria-label="Tracked directories"');
-    expect(headerRow).toContain(
-      'title="Show tracked directories for resources"',
-    );
-    expect(headerRow).toMatch(/className="btn"\n/);
-    expect(headerRow).toMatch(
-      /<FolderInput[\s\S]*\/>\s*Tracked directories\s*</,
-    );
+  test("renders Tracked directories as an icon-only secondary action", () => {
+    expect(headerRow).toContain('label="Tracked directories"');
+    expect(headerRow).toContain("FolderInput");
     expect(headerRow).toContain("setTrackedDirsOpen(true)");
     expect(headerRow).not.toContain("resources-panel-tracked-dirs-btn");
   });
 
-  test("renders Update all as a labeled secondary action after Tracked directories", () => {
-    expect(headerRow).toContain("Update all");
+  test("renders Update all as an icon-only action after Tracked directories", () => {
+    expect(headerRow).toContain('label="Update all"');
     const trackedIdx = headerRow.indexOf("Tracked directories");
-    const updateAllIdx = headerRow.indexOf("Update all");
+    const updateAllIdx = headerRow.indexOf('label="Update all"');
     expect(trackedIdx).toBeGreaterThan(-1);
     expect(updateAllIdx).toBeGreaterThan(trackedIdx);
-    expect(headerRow).toMatch(
-      /className="btn"\s*\n\s*aria-label="Update all"/,
-    );
   });
 
-  test("keeps the empty-state Import into library CTA", () => {
+  test("keeps the empty-state Import into library CTA as icon-only Import", () => {
     expect(panelSource).toMatch(
-      /empty-state[\s\S]*className="btn"[\s\S]*Import into library/,
+      /empty-state[\s\S]*label="Import"/,
     );
   });
 
@@ -150,6 +132,7 @@ describe("library items header design lock", () => {
   test("documents the Library header action cluster", () => {
     expect(designSource).toContain("**Create resource** (accent");
     expect(designSource).toContain("Header cluster");
+    expect(designSource).toContain("icon-only **Create resource**");
   });
 
   test("documents workspace back before the panel title", () => {
@@ -160,7 +143,7 @@ describe("library items header design lock", () => {
 
   test("documents unified library list and detail", () => {
     expect(designSource).toContain("No Items/Packages tabs");
-    expect(designSource).toContain("Create resource (accent primary");
+    expect(designSource).toContain("Create resource opens the centered type-picker");
     expect(designSource).toContain("Sync on a library row is `resource sync`");
     expect(designSource).toContain("plugin ref");
     expect(designSource).toContain(

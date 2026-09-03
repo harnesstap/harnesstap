@@ -20,6 +20,7 @@ import type {
   ProfileCreateRequest,
   ProfileCreateSource,
 } from "../lib/types";
+import { Check, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
 import {
@@ -283,6 +284,7 @@ export function CreateProfileDrawer({
             onClick={onClose}
             disabled={controlsDisabled}
           >
+            <X size={16} aria-hidden />
             Cancel
           </button>
           {preview ? (
@@ -296,7 +298,7 @@ export function CreateProfileDrawer({
               disabled={controlsDisabled}
               aria-busy={busy}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
               {busy ? "Creating…" : "Create profile"}
             </button>
           ) : (
@@ -310,7 +312,7 @@ export function CreateProfileDrawer({
               disabled={!canContinue || controlsDisabled}
               aria-busy={busy}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
               {busy ? "Previewing…" : "Continue"}
             </button>
           )}

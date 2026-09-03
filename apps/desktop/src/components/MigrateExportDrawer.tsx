@@ -20,8 +20,10 @@ import type {
   MigrateExportResult,
   MigrateScope,
 } from "../lib/types";
+import { ArrowLeft, Check, ChevronRight, Save, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
+import { IconActionButton } from "./IconActionButton";
 
 export interface MigrateExportDrawerProps {
   open: boolean;
@@ -452,6 +454,7 @@ export function MigrateExportDrawer({
               }}
               disabled={controlsDisabled}
             >
+              <ArrowLeft size={16} aria-hidden />
               Back
             </button>
           ) : (
@@ -463,6 +466,7 @@ export function MigrateExportDrawer({
             onClick={onClose}
             disabled={controlsDisabled}
           >
+            <X size={16} aria-hidden />
             Cancel
           </button>
           {step === "confirm" ? (
@@ -475,7 +479,7 @@ export function MigrateExportDrawer({
               disabled={controlsDisabled || !exportPath}
               aria-busy={busy}
             >
-              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
               {busy ? "Exporting…" : "Export"}
             </button>
           ) : (
@@ -491,6 +495,7 @@ export function MigrateExportDrawer({
               }}
               disabled={controlsDisabled || !canGoNext}
             >
+              <ChevronRight size={16} aria-hidden />
               Next
             </button>
           )}
@@ -556,14 +561,12 @@ export function MigrateExportDrawer({
             <div className="form-field gap-2">
               <Label>Save export as</Label>
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  className="btn"
-                  type="button"
+                <IconActionButton
+                  label="Choose file…"
                   onClick={() => void pickExportPath()}
                   disabled={controlsDisabled}
-                >
-                  Choose file…
-                </button>
+                  icon={<Save size={16} aria-hidden />}
+                />
                 <span className="mono text-xs">
                   {exportPath ?? "No file selected"}
                 </span>

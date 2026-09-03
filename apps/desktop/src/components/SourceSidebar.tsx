@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FilterX } from "lucide-react";
+import { FilterX, Pencil, Trash2, Unlink, Unplug } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { sourcesSidebarChangeAction } from "../lib/sources-pane";
@@ -11,6 +11,7 @@ import {
   type SourceRow,
 } from "../lib/sources-sidebar";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { IconActionButton } from "./IconActionButton";
 
 const ACTION_ICON_SIZE = 16;
 
@@ -303,22 +304,18 @@ function SourceRowActions({
       }
       return (
         <div className="source-row-actions">
-          <button
-            type="button"
-            className="btn"
+          <IconActionButton
+            label="Edit"
             disabled={disabled}
             onClick={() => onEditMarketplace(row.label)}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="btn"
+            icon={<Pencil size={ACTION_ICON_SIZE} aria-hidden />}
+          />
+          <IconActionButton
+            label="Remove"
             disabled={disabled}
             onClick={() => onRequestRemoveMarketplace(row.label)}
-          >
-            Remove
-          </button>
+            icon={<Trash2 size={ACTION_ICON_SIZE} aria-hidden />}
+          />
         </div>
       );
     case "cloud-org":
@@ -327,27 +324,23 @@ function SourceRowActions({
       }
       return (
         <div className="source-row-actions">
-          <button
-            type="button"
-            className="btn"
+          <IconActionButton
+            label="Disconnect"
             disabled={disabled}
             onClick={() => onRequestDisconnectOrg(row.label)}
-          >
-            Disconnect
-          </button>
+            icon={<Unplug size={ACTION_ICON_SIZE} aria-hidden />}
+          />
         </div>
       );
     case "cloud-catalog":
       return (
         <div className="source-row-actions">
-          <button
-            type="button"
-            className="btn"
+          <IconActionButton
+            label="Unregister"
             disabled={disabled}
             onClick={() => onRequestUnregisterCatalog(row.label)}
-          >
-            Unregister
-          </button>
+            icon={<Unlink size={ACTION_ICON_SIZE} aria-hidden />}
+          />
         </div>
       );
     default: {

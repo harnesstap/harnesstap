@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { FolderDown, FolderInput, Plus, RefreshCw } from "lucide-react";
+import { IconActionButton } from "./IconActionButton";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -615,22 +616,18 @@ export function ResourcesPanel({
           </p>
           {libraryEmpty ? (
             <>
-              <button
-                type="button"
-                className="btn"
+              <IconActionButton
+                label="Import"
                 disabled={disabled || !baseUrl}
                 onClick={() => setImportOpen(true)}
-              >
-                Import into library
-              </button>
-              <button
-                type="button"
-                className="btn"
+                icon={<FolderDown size={16} aria-hidden />}
+              />
+              <IconActionButton
+                label="Create resource"
                 disabled={disabled || !baseUrl}
                 onClick={() => setCreateModalOpen(true)}
-              >
-                Create resource
-              </button>
+                icon={<Plus size={16} aria-hidden />}
+              />
             </>
           ) : null}
         </div>
@@ -734,45 +731,31 @@ export function ResourcesPanel({
             </div>
           </div>
           <div className="resources-panel-header-actions">
-            <button
-              type="button"
-              className="btn primary"
+            <IconActionButton
+              primary
               data-testid="library-create-resource"
-              aria-label="Create resource"
-              title="Create resource"
+              label="Create resource"
               disabled={disabled || !baseUrl}
               onClick={() => setCreateModalOpen(true)}
-            >
-              <Plus size={16} aria-hidden />
-              Create resource
-            </button>
-            <button
-              type="button"
-              className="btn"
-              aria-label="Import into library"
-              title="Import into library"
+              icon={<Plus size={16} aria-hidden />}
+            />
+            <IconActionButton
+              label="Import"
+              title="Import"
               disabled={disabled || !baseUrl}
               onClick={() => setImportOpen(true)}
-            >
-              <FolderDown size={16} aria-hidden />
-              Import
-            </button>
-            <button
-              type="button"
-              className="btn"
-              aria-label="Tracked directories"
-              title="Show tracked directories for resources"
+              icon={<FolderDown size={16} aria-hidden />}
+            />
+            <IconActionButton
+              label="Tracked directories"
+              title="Tracked directories"
               disabled={disabled || !baseUrl}
               onClick={() => setTrackedDirsOpen(true)}
-            >
-              <FolderInput size={16} aria-hidden />
-              Tracked directories
-            </button>
-            <button
-              type="button"
-              className="btn"
-              aria-label="Update all"
-              title="Update all outdated plugins from origin"
+              icon={<FolderInput size={16} aria-hidden />}
+            />
+            <IconActionButton
+              label="Update all"
+              title="Update all"
               disabled={
                 disabled
                 || !baseUrl
@@ -781,10 +764,8 @@ export function ResourcesPanel({
                 || outdatedCount === 0
               }
               onClick={() => setOriginUpdateConfirmOpen(true)}
-            >
-              <RefreshCw size={16} aria-hidden />
-              Update all
-            </button>
+              icon={<RefreshCw size={16} aria-hidden />}
+            />
           </div>
         </div>
       </div>

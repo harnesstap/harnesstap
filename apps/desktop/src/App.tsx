@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Download, FolderGit2, Globe, Library, PackageSearch, Pencil, Plus, RefreshCw, Settings, Tag, Upload, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Download, FilterX, FolderGit2, Globe, HardDriveDownload, Library, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, Upload, User, X } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import {
   pushScreenHistory,
 } from "./lib/screen-history";
 import { ButtonSpinner } from "./components/ButtonSpinner";
+import { IconActionButton } from "./components/IconActionButton";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { CutVersionsModal } from "./components/CutVersionsModal";
@@ -2175,27 +2176,21 @@ export function App() {
                 onBrowse={() => void browseProject()}
               />
               {projectPath ? (
-                <button
-                  className={["btn", installBusy ? "is-busy" : ""]
-                    .filter(Boolean)
-                    .join(" ")}
-                  type="button"
+                <IconActionButton
                   data-testid="project-install"
-                  onClick={() => void runProjectInstall()}
+                  label="Install"
+                  title="Install this project's apm.yml (ht install). Not a profile switch."
+                  busy={installBusy}
                   disabled={
                     !connected
                     || !token
                     || switching
-                    || installBusy
                     || bootstrapBusy
                     || !projectReady
                   }
-                  aria-busy={installBusy}
-                  title="Install this project's apm.yml (ht install). Not a profile switch."
-                >
-                  {installBusy ? <ButtonSpinner size={16} /> : null}
-                  {installBusy ? "Installing…" : "Install"}
-                </button>
+                  onClick={() => void runProjectInstall()}
+                  icon={<HardDriveDownload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                />
               ) : null}
               {projectPath ? (
                 <ProjectHistoryControl
@@ -2360,16 +2355,12 @@ export function App() {
             {connectionError
               ?? "Waiting for sidecar health check on 127.0.0.1:7474…"}
           </div>
-          <button
-            className={["btn", retryBusy ? "is-busy" : ""].filter(Boolean).join(" ")}
-            type="button"
+          <IconActionButton
+            label={retryBusy ? "Retrying…" : "Retry"}
+            busy={retryBusy}
             onClick={() => void retryConnection()}
-            disabled={retryBusy}
-            aria-busy={retryBusy}
-          >
-            {retryBusy ? <ButtonSpinner size={16} /> : null}
-            {retryBusy ? "Retrying…" : "Retry"}
-          </button>
+            icon={<RefreshCw size={16} strokeWidth={2} aria-hidden="true" />}
+          />
         </div>
       )}
 
@@ -2516,15 +2507,13 @@ export function App() {
               aria-label="Filter profiles by name, description, or tags"
             />
             {selectedProfile ? (
-              <button
-                className="rail-clear-button"
-                type="button"
-                onClick={clearProfileSelection}
+              <IconActionButton
+                label="Clear"
+                title="Clear"
                 disabled={switching}
-                title="Clear profile selection"
-              >
-                Clear
-              </button>
+                onClick={clearProfileSelection}
+                icon={<X size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+              />
             ) : null}
           </div>
           <div
@@ -2540,9 +2529,12 @@ export function App() {
             {profilesError && (
               <div className="empty-state">
                 <p>{profilesError}</p>
-                <button className="btn" type="button" onClick={() => void refreshProfiles()}>
-                  Retry
-                </button>
+                <IconActionButton
+                  label="Retry"
+                  disabled={switching}
+                  onClick={() => void refreshProfiles()}
+                  icon={<RefreshCw size={16} strokeWidth={2} aria-hidden="true" />}
+                />
               </div>
             )}
             {!profilesError && visibleProfiles.length === 0 && (
@@ -2572,15 +2564,14 @@ export function App() {
                     </>
                   )}
                 </p>
-                <button
-                  className="btn primary"
-                  type="button"
+                <IconActionButton
+                  primary
                   data-testid="open-create-profile"
-                  onClick={() => openCreateProfile()}
+                  label="Create profile"
                   disabled={!connected || switching}
-                >
-                  Create profile
-                </button>
+                  onClick={() => openCreateProfile()}
+                  icon={<Plus size={16} strokeWidth={2} aria-hidden="true" />}
+                />
               </div>
             )}
             {!profilesError
@@ -2592,13 +2583,11 @@ export function App() {
                   No profiles match “{profileFilter.trim()}”. Try a different
                   name, description, or tag.
                 </p>
-                <button
-                  className="btn"
-                  type="button"
+                <IconActionButton
+                  label="Clear filter"
                   onClick={() => setProfileFilter("")}
-                >
-                  Clear filter
-                </button>
+                  icon={<FilterX size={16} strokeWidth={2} aria-hidden="true" />}
+                />
               </div>
             )}
             {filteredProfiles.map((profile) => {
@@ -2717,26 +2706,28 @@ export function App() {
           </div>
           <div className="rail-controls">
             {applyHelper ? <p className="muted apply-helper">{applyHelper}</p> : null}
-            <button
-              className={["btn", "primary", switching ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              onClick={onApplyClick}
-              disabled={applyDisabled}
-              aria-busy={switching}
-              title={applyButtonTitle}
-              aria-label={
-                showReapply
-                  ? `Re-apply ${activeProfile ?? "profile"} to ${formatView(view)}`
-                  : selectedProfile
-                    ? `Apply ${selectedProfile} to ${formatView(view)}`
-                    : "Apply profile"
+            <IconActionButton
+              primary
+              className="rail-apply-action"
+              label={
+                switching
+                  ? "Applying…"
+                  : showReapply
+                    ? "Re-apply"
+                    : "Apply"
               }
-            >
-              {switching ? <ButtonSpinner size={16} /> : null}
-              {switching ? "Applying…" : showReapply ? "Re-apply" : "Apply"}
-            </button>
+              title={applyButtonTitle}
+              busy={switching}
+              disabled={applyDisabled}
+              onClick={onApplyClick}
+              icon={
+                showReapply ? (
+                  <RotateCw size={16} strokeWidth={2} aria-hidden="true" />
+                ) : (
+                  <Check size={16} strokeWidth={2} aria-hidden="true" />
+                )
+              }
+            />
           </div>
         </nav>
         ) : null}
@@ -2855,13 +2846,11 @@ export function App() {
             {bootstrapError ? (
               <div className="banner error">
                 <div>{bootstrapError}</div>
-                <button
-                  className="btn"
-                  type="button"
+                <IconActionButton
+                  label="Dismiss"
                   onClick={() => setBootstrapError(null)}
-                >
-                  Dismiss
-                </button>
+                  icon={<X size={16} strokeWidth={2} aria-hidden="true" />}
+                />
               </div>
             ) : null}
 
@@ -2982,6 +2971,7 @@ export function App() {
                         baseUrl={baseUrl}
                         token={token}
                         disabled={!connected || switching}
+                        variant="icon"
                         onDeleted={handleProfileDeleted}
                       />
                     </>
@@ -3004,25 +2994,18 @@ export function App() {
                 ) : null}
                 {homeProfilePending && selectedIsActive && activeProfile ? (
                   <div className="muted status-subline">
-                    <button
-                      type="button"
-                      className={[
-                        "status-cta",
-                        switching ? "is-busy" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      onClick={onPendingHomeApply}
-                      disabled={
-                        !connected || switching || bootstrapBusy
+                    <IconActionButton
+                      className="status-cta"
+                      label={
+                        switching
+                          ? "Applying…"
+                          : `Apply ${activeProfile} to global`
                       }
-                      aria-busy={switching}
-                    >
-                      {switching ? <ButtonSpinner size={14} /> : null}
-                      {switching
-                        ? "Applying…"
-                        : `Apply ${activeProfile} to global`}
-                    </button>
+                      busy={switching}
+                      disabled={!connected || bootstrapBusy}
+                      onClick={onPendingHomeApply}
+                      icon={<Check size={14} strokeWidth={2} aria-hidden="true" />}
+                    />
                   </div>
                 ) : null}
               </div>
@@ -3031,9 +3014,11 @@ export function App() {
             {statusError && (
               <div className="banner error">
                 <div>{statusError}</div>
-                <button className="btn" type="button" onClick={() => void refreshStatus("full")}>
-                  Retry
-                </button>
+                <IconActionButton
+                  label="Retry"
+                  onClick={() => void refreshStatus("full")}
+                  icon={<RefreshCw size={16} strokeWidth={2} aria-hidden="true" />}
+                />
               </div>
             )}
 
@@ -3063,14 +3048,12 @@ export function App() {
                   })}
                 </ol>
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-                  <button
-                    className="btn"
-                    type="button"
-                    onClick={() => void onCancelSwitch()}
+                  <IconActionButton
+                    label="Cancel"
                     disabled={isApplyStepActive(switchEvents)}
-                  >
-                    Cancel
-                  </button>
+                    onClick={() => void onCancelSwitch()}
+                    icon={<X size={16} strokeWidth={2} aria-hidden="true" />}
+                  />
                 </div>
               </section>
             ) : (
@@ -3175,13 +3158,11 @@ export function App() {
               <div className="banner error" role="alert">
                 <div>{addResourceError}</div>
                 <div className="banner-actions">
-                  <button
-                    className="btn"
-                    type="button"
+                  <IconActionButton
+                    label="Dismiss"
                     onClick={() => setAddResourceError(null)}
-                  >
-                    Dismiss
-                  </button>
+                    icon={<X size={16} strokeWidth={2} aria-hidden="true" />}
+                  />
                 </div>
               </div>
             ) : null}
@@ -3189,9 +3170,11 @@ export function App() {
             {switchError && !switching && (
               <div className="banner error">
                 <div>{switchError}</div>
-                <button className="btn" type="button" onClick={onApplyClick}>
-                  Retry
-                </button>
+                <IconActionButton
+                  label="Retry"
+                  onClick={onApplyClick}
+                  icon={<RefreshCw size={16} strokeWidth={2} aria-hidden="true" />}
+                />
               </div>
             )}
           </main>

@@ -59,7 +59,9 @@ import {
   type SourceRow,
 } from "../lib/sources-sidebar";
 import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
+import { Cloud, Store } from "lucide-react";
 import { ConnectCatalogPanel } from "./ConnectCatalogPanel";
+import { IconActionButton } from "./IconActionButton";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import { MarketplaceEditPanel } from "./MarketplaceEditPanel";
 import { PinToPluginPanel } from "./PinToPluginPanel";
@@ -1146,30 +1148,23 @@ export function SourcesWorkspace({
             </div>
           </div>
           <div className="resources-panel-header-actions">
-            <button
-              type="button"
-              className="btn primary"
-              aria-label="Add marketplace"
-              title="Add marketplace"
+            <IconActionButton
+              primary
+              label="Add marketplace"
               disabled={controlsDisabled}
               onClick={() => {
                 setMarketplaceMode("add");
                 setEditingMarketplace(null);
                 setMarketplaceOpen(true);
               }}
-            >
-              Add marketplace
-            </button>
-            <button
-              type="button"
-              className="btn"
-              aria-label="Connect catalog"
-              title="Connect catalog"
+              icon={<Store size={16} aria-hidden />}
+            />
+            <IconActionButton
+              label="Connect catalog"
               disabled={controlsDisabled}
               onClick={() => setCatalogOpen(true)}
-            >
-              Connect catalog
-            </button>
+              icon={<Cloud size={16} aria-hidden />}
+            />
           </div>
         </div>
       </div>

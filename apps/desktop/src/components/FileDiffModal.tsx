@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { X } from "lucide-react";
 import {
   AgentApiError,
   fetchProfileFileDiff,
@@ -165,6 +166,7 @@ export function FileDiffModal({
 
         <div className="dialog-actions">
           <button className="btn" type="button" onClick={onClose}>
+            <X size={16} aria-hidden />
             Close
           </button>
         </div>

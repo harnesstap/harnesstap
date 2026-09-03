@@ -162,6 +162,17 @@ button:focus-visible,
   background: var(--surface-2);
 }
 
+.icon-action.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.icon-action.primary:hover:not(:disabled) {
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 88%, #fff);
+}
+
 .icon-action:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -480,23 +491,8 @@ button:focus-visible,
   opacity: 0.5;
 }
 
-.rail-clear-button {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  padding: 0.25rem 0.35rem;
-  font-size: 11px;
-  font-weight: 600;
+.profiles-filter-row .icon-action {
   flex-shrink: 0;
-}
-
-.rail-clear-button:hover:not(:disabled) {
-  color: var(--fg);
-}
-
-.rail-clear-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .profiles-list {
@@ -583,10 +579,13 @@ button:focus-visible,
   padding: 0.75rem;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
 }
 
-.rail-controls .btn {
-  width: 100%;
+.rail-controls .icon-action.primary {
+  width: 32px;
+  height: 32px;
 }
 
 .apply-helper {
@@ -880,11 +879,16 @@ button:focus-visible,
   flex-shrink: 0;
 }
 
+.resources-panel-header-actions .btn,
+.resources-panel-header-actions .icon-action {
+  width: auto;
+  flex-shrink: 0;
+}
+
 .resources-panel-header-actions .btn {
   width: auto;
   min-height: 32px;
   padding: 0.3rem 0.6rem;
-  flex-shrink: 0;
   white-space: nowrap;
 }
 
@@ -1124,10 +1128,19 @@ button:focus-visible,
   padding-left: 1.3rem;
 }
 
-.sources-workspace .source-row-actions .btn {
+.sources-workspace .source-row-actions .btn,
+.sources-workspace .source-row-actions .icon-action {
   width: auto;
+}
+
+.sources-workspace .source-row-actions .btn {
   min-height: 24px;
   padding: 0.15rem 0.45rem;
+}
+
+.sources-workspace .source-row-actions .icon-action {
+  width: 24px;
+  height: 24px;
 }
 
 .sources-record-actions {
@@ -1469,6 +1482,16 @@ button:focus-visible,
 
 .list-truncation-sep {
   opacity: 0.55;
+}
+
+.list-truncation-controls .icon-action {
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+}
+
+.list-truncation-controls .icon-action:hover:not(:disabled) {
+  color: var(--fg);
 }
 
 .link-btn {
@@ -2357,11 +2380,15 @@ button:focus-visible,
   margin-left: auto;
 }
 
-.library-detail-actions .btn {
+.library-detail-actions .btn,
+.library-detail-actions .icon-action {
   width: auto;
+  flex-shrink: 0;
+}
+
+.library-detail-actions .btn {
   min-height: 32px;
   padding: 0.3rem 0.6rem;
-  flex-shrink: 0;
   white-space: nowrap;
 }
 

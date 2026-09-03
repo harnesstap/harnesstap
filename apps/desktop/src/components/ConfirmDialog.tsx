@@ -1,4 +1,5 @@
 import { type ReactNode, useId } from "react";
+import { Check, X } from "lucide-react";
 import {
   shouldCloseDialogOnBackdrop,
   useDialogDismiss,
@@ -94,6 +95,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={anyBusy}
           >
+            {cancelLabel ? <X size={16} aria-hidden /> : null}
             {cancelLabel}
           </button>
           {tertiaryLabel && onTertiary ? (
@@ -129,7 +131,7 @@ export function ConfirmDialog({
             aria-busy={confirmBusy}
             onClick={onConfirm}
           >
-            {confirmBusy ? <ButtonSpinner size={16} /> : null}
+            {confirmBusy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
             {confirmLabel}
           </button>
         </div>

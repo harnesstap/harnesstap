@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useState } from "react";
-import { ArrowUpCircle } from "lucide-react";
+import { ArrowUpCircle, X } from "lucide-react";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { AgentApiError } from "../lib/api/http";
 import {
@@ -136,18 +136,19 @@ export function UpdateAvailableControl({
                 onClick={() => setOpen(false)}
                 disabled={busy}
               >
+                <X size={16} aria-hidden />
                 Close
               </button>
-              <button
-                className="btn"
-                type="button"
-                onClick={() => {
+              <a
+                className="link-btn"
+                href={status.htmlUrl}
+                onClick={(event) => {
+                  event.preventDefault();
                   void openUrl(status.htmlUrl);
                 }}
-                disabled={busy}
               >
                 GitHub release
-              </button>
+              </a>
               <button
                 className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
                 type="button"
@@ -155,7 +156,7 @@ export function UpdateAvailableControl({
                 disabled={busy || !status.asset}
                 aria-busy={busy}
               >
-                {busy ? <ButtonSpinner size={16} /> : null}
+                {busy ? <ButtonSpinner size={16} /> : <ArrowUpCircle size={16} aria-hidden />}
                 {busy ? "Downloading…" : "Update"}
               </button>
             </div>

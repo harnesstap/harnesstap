@@ -6,7 +6,9 @@ import {
   revertProjectSnapshot,
   type ProjectHistorySnapshot,
 } from "../../lib/api/project-history";
+import { Undo2 } from "lucide-react";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { IconActionButton } from "../IconActionButton";
 import { FullScreenPanel } from "../FullScreenPanel";
 
 export interface ProjectHistoryDrawerProps {
@@ -227,14 +229,12 @@ export function ProjectHistoryDrawer({
                         <div>{row.label}</div>
                         <div className="mono muted">{shortenId(row.id)}</div>
                       </div>
-                      <button
-                        className="btn"
-                        type="button"
+                      <IconActionButton
+                        label="Revert"
                         disabled={revertBlocked}
                         onClick={() => setPending(row)}
-                      >
-                        Revert
-                      </button>
+                        icon={<Undo2 size={16} aria-hidden />}
+                      />
                     </li>
                   ))}
                 </ul>

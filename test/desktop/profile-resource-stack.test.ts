@@ -157,8 +157,8 @@ describe("Profile resources pane chrome", () => {
     );
   });
 
-  it("offers labeled Add all on Profile resources when not-staged rows exist", () => {
-    expect(liveStateSource).toContain("Add all");
+  it("offers icon-only Add all on Profile resources when not-staged rows exist", () => {
+    expect(liveStateSource).toContain('label="Add all"');
     expect(liveStateSource).toContain("onAddAllResources");
     expect(appSource).toContain("onAddAllResources");
   });

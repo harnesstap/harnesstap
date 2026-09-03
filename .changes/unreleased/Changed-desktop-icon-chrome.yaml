@@ -1,0 +1,5 @@
+kind: Changed
+body: Convert leftover Desktop text-only chrome buttons to icon-only controls with hover tooltips.
+time: 2026-09-03T03:30:00Z
+custom:
+  Issue: ""

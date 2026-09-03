@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { X } from "lucide-react";
 import { AgentApiError } from "../lib/agent-client";
 import {
   runLibraryPluginDoctor,
@@ -154,6 +155,7 @@ export function DoctorReportDialog({
             type="button"
             onClick={onClose}
           >
+            <X size={16} aria-hidden />
             Close
           </button>
         </div>

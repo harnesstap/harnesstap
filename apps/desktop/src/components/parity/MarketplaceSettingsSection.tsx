@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addMarketplace, fetchMarketplaces } from "../../lib/agent-client";
@@ -261,7 +261,7 @@ export function MarketplaceSettingsSection({
         }
         aria-busy={marketplaceBusy}
       >
-        {marketplaceBusy ? <ButtonSpinner size={16} /> : null}
+        {marketplaceBusy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
         {marketplaceBusy ? "Adding…" : "Add marketplace"}
       </button>
       <ConfirmDialog

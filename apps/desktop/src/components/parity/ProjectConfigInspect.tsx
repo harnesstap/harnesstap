@@ -10,7 +10,9 @@ import {
   type ProjectConfigValidation,
 } from "../../lib/api/project-config";
 import { openResourcePath } from "../../lib/agent-client";
+import { ExternalLink, Save } from "lucide-react";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { IconActionButton } from "../IconActionButton";
 import { ProjectPicker } from "../ProjectPicker";
 
 export interface ProjectConfigInspectProps {
@@ -225,14 +227,12 @@ export function ProjectConfigInspect({
       {(config || hasRaw) && !loading ? (
         <>
           <div className="project-config-actions">
-            <button
-              type="button"
-              className="btn"
+            <IconActionButton
+              label="Open config"
               disabled={!canOpen}
               onClick={() => void handleOpenConfig()}
-            >
-              Open config
-            </button>
+              icon={<ExternalLink size={16} aria-hidden />}
+            />
             <button
               type="button"
               className={["btn", "primary", saveBusy ? "is-busy" : ""]
@@ -243,7 +243,7 @@ export function ProjectConfigInspect({
               data-testid="project-config-save"
               onClick={() => void handleSave()}
             >
-              {saveBusy ? <ButtonSpinner size={16} /> : null}
+              {saveBusy ? <ButtonSpinner size={16} /> : <Save size={16} aria-hidden />}
               {saveBusy ? "Saving…" : "Save"}
             </button>
           </div>

@@ -11,6 +11,7 @@ import {
 import {
   AlignLeft,
   ArrowLeft,
+  CheckCheck,
   Clock,
   ExternalLink,
   FileCode2,
@@ -58,8 +59,8 @@ import {
 } from "../lib/resource-delete";
 import { formatOriginKindLabel } from "../lib/resource-filters";
 import type { LibraryResourceDetail } from "../lib/types";
-import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { IconActionButton } from "./IconActionButton";
 import type { LibraryDetailChromeProps } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
 import { PluginRefResourceList } from "./PluginRefResourceList";
@@ -523,43 +524,37 @@ export function ResourceDetailBody({
   const actionButtons = (
     <>
       {showSync ? (
-        <button
-          className="btn primary"
-          type="button"
+        <IconActionButton
+          primary
           disabled={actionsLocked}
           title={SYNC_TOOLTIP}
-          aria-label={SYNC_TOOLTIP}
+          label="Sync"
           onClick={() => void runSync("fail", true)}
-        >
-          {busy ? <ButtonSpinner size={14} /> : <RefreshCw size={14} aria-hidden />}
-          Sync
-        </button>
+          busy={busy}
+          spinnerSize={14}
+          icon={<RefreshCw size={16} aria-hidden />}
+        />
       ) : null}
       {showApply ? (
-        <button
-          className="btn primary"
-          type="button"
+        <IconActionButton
+          primary
           disabled={actionsLocked}
           title={APPLY_SYNC_TOOLTIP}
-          aria-label={APPLY_SYNC_TOOLTIP}
+          label="Apply sync"
           onClick={() => void runSync("fail", false)}
-        >
-          {busy ? <ButtonSpinner size={14} /> : null}
-          Apply sync
-        </button>
+          busy={busy}
+          spinnerSize={14}
+          icon={<CheckCheck size={16} aria-hidden />}
+        />
       ) : null}
       {showDelete ? (
-        <button
-          className="btn"
-          type="button"
+        <IconActionButton
           disabled={actionsLocked}
           title={DELETE_TOOLTIP}
-          aria-label={DELETE_TOOLTIP}
+          label="Delete"
           onClick={() => void openDeleteConfirm()}
-        >
-          <Trash2 size={14} aria-hidden />
-          Delete
-        </button>
+          icon={<Trash2 size={16} aria-hidden />}
+        />
       ) : null}
     </>
   );

@@ -12,6 +12,7 @@ import type {
   PluginMarketplaceEntry,
   PluginMarketplacePlatform,
 } from "../lib/types";
+import { Check, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -354,6 +355,7 @@ export function MarketplaceEditPanel({
             onClick={requestClose}
             disabled={controlsDisabled}
           >
+            <X size={16} aria-hidden />
             Cancel
           </button>
           <button
@@ -365,7 +367,7 @@ export function MarketplaceEditPanel({
             disabled={!canSubmit || controlsDisabled}
             aria-busy={busy}
           >
-            {busy ? <ButtonSpinner size={16} /> : null}
+            {busy ? <ButtonSpinner size={16} /> : mode === "add" ? <Plus size={16} aria-hidden /> : <Check size={16} aria-hidden />}
             {busy ? (mode === "add" ? "Adding…" : "Saving…") : submitLabel}
           </button>
         </div>

@@ -15,6 +15,7 @@ import {
   type CloudOrg,
 } from "../lib/api/cloud-orgs";
 import type { CloudAuthStatus, CloudPendingLogin } from "../lib/types";
+import { Copy, ExternalLink, LogIn, LogOut, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
 
@@ -393,6 +394,7 @@ export function CloudAccountDrawer({
                   onClick={() => void onOpenBrowser(pending)}
                   disabled={disabled}
                 >
+                  <ExternalLink size={16} aria-hidden />
                   Open browser
                 </button>
                 <button
@@ -401,6 +403,7 @@ export function CloudAccountDrawer({
                   onClick={() => void onCopyCode(pending.user_code)}
                   disabled={disabled}
                 >
+                  <Copy size={16} aria-hidden />
                   {copied ? "Copied" : "Copy code"}
                 </button>
                 <button
@@ -409,6 +412,7 @@ export function CloudAccountDrawer({
                   onClick={() => void onCancelLogin()}
                   disabled={disabled}
                 >
+                  <X size={16} aria-hidden />
                   Cancel
                 </button>
               </div>
@@ -461,7 +465,7 @@ export function CloudAccountDrawer({
                   disabled={controlsDisabled}
                   aria-busy={busy}
                 >
-                  {busy ? <ButtonSpinner size={16} /> : null}
+                  {busy ? <ButtonSpinner size={16} /> : <LogOut size={16} aria-hidden />}
                   {busy ? "Signing out…" : "Sign out"}
                 </button>
               </div>
@@ -487,7 +491,7 @@ export function CloudAccountDrawer({
                   disabled={controlsDisabled || !baseUrl}
                   aria-busy={busy}
                 >
-                  {busy ? <ButtonSpinner size={16} /> : null}
+                  {busy ? <ButtonSpinner size={16} /> : <LogIn size={16} aria-hidden />}
                   {busy ? "Starting…" : "Sign in to Cloud"}
                 </button>
               </div>

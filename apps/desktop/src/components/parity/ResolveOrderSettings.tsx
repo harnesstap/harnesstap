@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { postMigrateResolveOrder, type OrderMigrationReport } from "../../lib/api/resolve-order";
+import { Check, RefreshCw } from "lucide-react";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { ConfirmDialog } from "../ConfirmDialog";
 
@@ -198,7 +199,7 @@ export function ResolveOrderSettings({
           disabled={controlsDisabled}
           aria-busy={previewing}
         >
-          {previewing ? <ButtonSpinner size={16} /> : null}
+          {previewing ? <ButtonSpinner size={16} /> : <RefreshCw size={16} aria-hidden />}
           {previewing ? "Checking…" : "Check again"}
         </button>
         {previewed && pendingOverrideCount > 0 ? (
@@ -212,7 +213,7 @@ export function ResolveOrderSettings({
             disabled={!canWrite}
             aria-busy={writing}
           >
-            {writing ? <ButtonSpinner size={16} /> : null}
+            {writing ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
             {writing ? "Writing…" : "Write overrides"}
           </button>
         ) : null}

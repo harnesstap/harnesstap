@@ -1,16 +1,23 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
+  ChevronsDown,
   ChevronDown,
   ChevronRight,
   Diff,
   ExternalLink,
+  FolderCog,
   Layers,
+  ListPlus,
   Minus,
   Pencil,
   Plus,
+  RefreshCw,
   Trash2,
+  UnfoldVertical,
+  X,
 } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { IconActionButton } from "./IconActionButton";
 import {
   aggregateInstallGaps,
   countFileChangeKindResources,
@@ -123,15 +130,21 @@ function ListTruncationControls({
       <span aria-hidden className="list-truncation-sep">
         |
       </span>
-      <button type="button" className="link-btn" onClick={onMore}>
-        More
-      </button>
+      <IconActionButton
+        label="More"
+        onClick={onMore}
+        spinnerSize={ICON_SIZE}
+        icon={<ChevronsDown size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+      />
       <span aria-hidden className="list-truncation-sep">
         |
       </span>
-      <button type="button" className="link-btn" onClick={onShowAll}>
-        Show all
-      </button>
+      <IconActionButton
+        label="Show all"
+        onClick={onShowAll}
+        spinnerSize={ICON_SIZE}
+        icon={<UnfoldVertical size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+      />
     </div>
   );
 }
@@ -253,13 +266,12 @@ function ProfileStackEmptyState({
         <h2>No resources yet</h2>
       </div>
       <p className="muted">Add plugins or resources by editing this profile.</p>
-      <button
-        className="btn primary"
-        type="button"
+      <IconActionButton
+        primary
+        label="Edit profile"
         onClick={onEditProfile}
-      >
-        Edit profile
-      </button>
+        icon={<Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+      />
     </div>
   );
 }
@@ -1427,22 +1439,19 @@ export function LiveStatePanel({
           {onRetryPreview || onDismissPreviewError ? (
             <div className="banner-actions">
               {onDismissPreviewError ? (
-                <button
-                  type="button"
-                  className="btn"
+                <IconActionButton
+                  label="Dismiss"
                   onClick={onDismissPreviewError}
-                >
-                  Dismiss
-                </button>
+                  icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                />
               ) : null}
               {onRetryPreview ? (
-                <button
-                  type="button"
-                  className="btn primary"
+                <IconActionButton
+                  primary
+                  label="Retry"
                   onClick={onRetryPreview}
-                >
-                  Retry
-                </button>
+                  icon={<RefreshCw size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                />
               ) : null}
             </div>
           ) : null}
@@ -1453,13 +1462,11 @@ export function LiveStatePanel({
           <div>{resourceActionError}</div>
           {onDismissResourceActionError ? (
             <div className="banner-actions">
-              <button
-                type="button"
-                className="btn"
+              <IconActionButton
+                label="Dismiss"
                 onClick={onDismissResourceActionError}
-              >
-                Dismiss
-              </button>
+                icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
             </div>
           ) : null}
         </div>
@@ -1470,28 +1477,21 @@ export function LiveStatePanel({
           {showNotTrackedActions ? (
             <div className="banner-actions">
               {onBootstrap ? (
-                <button
-                  className={["btn", bootstrapBusy ? "is-busy" : ""]
-                    .filter(Boolean)
-                    .join(" ")}
-                  type="button"
+                <IconActionButton
+                  busy={bootstrapBusy}
+                  label={bootstrapBusy ? "Bootstrapping…" : "Bootstrap"}
                   onClick={onBootstrap}
-                  disabled={bootstrapBusy}
-                  aria-busy={bootstrapBusy}
-                >
-                  {bootstrapBusy ? <ButtonSpinner size={16} /> : null}
-                  {bootstrapBusy ? "Bootstrapping…" : "Bootstrap"}
-                </button>
+                  icon={<FolderCog size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                />
               ) : null}
               {onCreateProfileFromProject ? (
-                <button
-                  className="btn primary"
-                  type="button"
+                <IconActionButton
+                  primary
+                  label="Create profile from project"
                   onClick={onCreateProfileFromProject}
                   disabled={bootstrapBusy}
-                >
-                  Create profile from project
-                </button>
+                  icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                />
               ) : null}
             </div>
           ) : recoveryActions && onRecoveryAction ? (
@@ -1527,26 +1527,18 @@ export function LiveStatePanel({
                   {notStagedResources.length} not staged
                 </span>
                 {onAddAllResources ? (
-                  <button
-                    type="button"
-                    className={[
-                      "btn",
-                      addingAllResources ? "is-busy" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    disabled={addingAllResources}
-                    aria-busy={addingAllResources}
+                  <IconActionButton
+                    busy={addingAllResources}
+                    spinnerSize={ICON_SIZE}
+                    label="Add all"
                     aria-label={`Add all ${notStagedResources.length} not-staged resources to ${selectedProfile}`}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
                       void onAddAllResources();
                     }}
-                  >
-                    {addingAllResources ? <ButtonSpinner size={16} /> : null}
-                    Add all
-                  </button>
+                    icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                  />
                 ) : null}
               </span>
             ) : null}
@@ -1564,13 +1556,11 @@ export function LiveStatePanel({
                 {onEditProfile && (activeProfile || selectedProfile) ? (
                   <>
                     {" "}
-                    <button
-                      type="button"
-                      className="btn"
+                    <IconActionButton
+                      label="Edit profile"
                       onClick={onEditProfile}
-                    >
-                      Edit profile
-                    </button>
+                      icon={<Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                    />
                   </>
                 ) : null}
               </p>
@@ -1866,13 +1856,11 @@ export function LiveStatePanel({
                       {onEditProfile ? (
                         <>
                           {" "}
-                          <button
-                            type="button"
-                            className="btn"
+                          <IconActionButton
+                            label="Edit profile"
                             onClick={onEditProfile}
-                          >
-                            Edit profile
-                          </button>
+                            icon={<Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                          />
                         </>
                       ) : null}
                     </p>

@@ -1,5 +1,6 @@
 import { pendingApprovalCliHint, type PendingApprovalItem } from "../lib/pending-approvals";
-import { ButtonSpinner } from "./ButtonSpinner";
+import { Ban, Check } from "lucide-react";
+import { IconActionButton } from "./IconActionButton";
 
 export interface PendingApprovalsStripProps {
   items: PendingApprovalItem[];
@@ -41,28 +42,25 @@ export function PendingApprovalsStrip({
               {canDecide ? (
                 <span className="banner-actions">
                   {onDeny ? (
-                    <button
-                      type="button"
-                      className="btn"
+                    <IconActionButton
+                      label="Deny"
                       disabled={busyRef !== null}
-                      aria-busy={busyRef === item.ref}
+                      busy={busyRef === item.ref}
+                      spinnerSize={14}
                       onClick={() => onDeny(item.ref)}
-                    >
-                      {busyRef === item.ref ? <ButtonSpinner size={14} /> : null}
-                      Deny
-                    </button>
+                      icon={<Ban size={16} aria-hidden />}
+                    />
                   ) : null}
                   {onApprove ? (
-                    <button
-                      type="button"
-                      className="btn primary"
+                    <IconActionButton
+                      primary
+                      label="Approve"
                       disabled={busyRef !== null}
-                      aria-busy={busyRef === item.ref}
+                      busy={busyRef === item.ref}
+                      spinnerSize={14}
                       onClick={() => onApprove(item.ref)}
-                    >
-                      {busyRef === item.ref ? <ButtonSpinner size={14} /> : null}
-                      Approve
-                    </button>
+                      icon={<Check size={16} aria-hidden />}
+                    />
                   ) : null}
                 </span>
               ) : null}

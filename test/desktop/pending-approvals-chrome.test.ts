@@ -26,12 +26,12 @@ describe("desktop pending approvals chrome", () => {
     expect(stripSource).toContain('className="banner"');
     expect(stripSource).toContain('className="pill warn"');
     expect(stripSource).toContain("yellow");
-    expect(stripSource).toContain("Approve");
-    expect(stripSource).toContain("Deny");
+    expect(stripSource).toContain('label="Approve"');
+    expect(stripSource).toContain('label="Deny"');
     expect(stripSource).toContain("pendingApprovalCliHint");
   });
 
-  test("Project workspace has a labeled Install control that posts empty plugins", () => {
+  test("Project workspace has an icon-only Install control that posts empty plugins", () => {
     expect(appSource).toContain('data-testid="project-install"');
     expect(appSource).toContain("Installed project from apm.yml");
     expect(appSource).toContain("plugins: []");

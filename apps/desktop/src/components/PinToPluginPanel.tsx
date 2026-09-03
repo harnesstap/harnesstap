@@ -5,6 +5,7 @@ import {
   createLibraryPlugin,
   type LibraryPluginHead,
 } from "../lib/api/library-plugins";
+import { Pin, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -180,7 +181,7 @@ export function PinToPluginPanel({
                 disabled={!createName.trim() || controlsDisabled}
                 aria-busy={createBusy}
               >
-                {createBusy ? <ButtonSpinner size={16} /> : null}
+                {createBusy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
                 {createBusy ? "Creating…" : "Create plugin"}
               </button>
             </div>
@@ -236,6 +237,7 @@ export function PinToPluginPanel({
             onClick={onClose}
             disabled={controlsDisabled}
           >
+            <X size={16} aria-hidden />
             Cancel
           </button>
           <button
@@ -252,7 +254,7 @@ export function PinToPluginPanel({
             disabled={!selectedName || controlsDisabled}
             aria-busy={confirming}
           >
-            {confirming ? <ButtonSpinner size={16} /> : null}
+            {confirming ? <ButtonSpinner size={16} /> : <Pin size={16} aria-hidden />}
             {confirming ? "Working…" : confirmLabel}
           </button>
         </div>
