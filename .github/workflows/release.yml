@@ -11,8 +11,10 @@ on:
         required: false
         type: string
   # Tag release pushes tags with GITHUB_TOKEN, which does not trigger a tag-push
-  # workflow. Run after that job succeeds, and only publish when the new tag
-  # points at the triggering commit. npm OIDC still sees this workflow file
+  # workflow. Run after that job succeeds. Publish when Tag release created a
+  # tag (artifact), including a stamp commit that is a descendant of this run's
+  # head. Older Tag release runs without that artifact still publish when the
+  # tag points at the triggering commit. npm OIDC still sees this workflow file
   # (release.yml), matching the trusted publisher config — do not workflow_call
   # this from another workflow.
   workflow_run:
@@ -28,6 +30,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      actions: read
     outputs:
       skip: ${{ steps.resolve.outputs.skip }}
       tag: ${{ steps.resolve.outputs.tag }}
@@ -40,6 +43,35 @@ jobs:
 
       - name: Fetch tags
         run: git fetch origin --tags
+
+      - name: Download Tag release result
+        if: github.event_name == 'workflow_run'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: tag-release-result
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: /tmp/tag-release-result
+
+      - name: Check out tagged cut
+        if: github.event_name == 'workflow_run'
+        run: |
+          set -euo pipefail
+          RESULT="/tmp/tag-release-result/result.env"
+          if [ ! -f "$RESULT" ]; then
+            echo "No Tag release artifact; using checkout SHA."
+            exit 0
+          fi
+          CREATED="$(sed -n 's/^created=//p' "$RESULT")"
+          TAG="$(sed -n 's/^tag=//p' "$RESULT")"
+          if [ "$CREATED" != "true" ] || [ -z "$TAG" ]; then
+            echo "Tag release did not create a tag; leaving checkout as-is."
+            exit 0
+          fi
+          git fetch origin --tags
+          git checkout --force "$TAG"
+          echo "Checked out $TAG ($(git rev-parse HEAD))"
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -82,15 +114,39 @@ jobs:
               exit 0
             fi
           else
-            TAG="$LATEST"
+            CREATED=""
+            ARTIFACT_TAG=""
+            RESULT="/tmp/tag-release-result/result.env"
+            if [ -f "$RESULT" ]; then
+              CREATED="$(sed -n 's/^created=//p' "$RESULT")"
+              ARTIFACT_TAG="$(sed -n 's/^tag=//p' "$RESULT")"
+            fi
+            if [ -n "$CREATED" ] && [ "$CREATED" != "true" ]; then
+              echo "Tag release did not create a tag; skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            TAG="${ARTIFACT_TAG:-$LATEST}"
+            if [ ! -f ".changes/${TAG}.md" ]; then
+              echo "No batched changelog for $TAG; skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             if ! git rev-parse "$TAG" >/dev/null 2>&1; then
               echo "Tag $TAG does not exist; skipping."
               echo "skip=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             TAG_COMMIT="$(git rev-parse "$TAG^{commit}")"
+            TRIGGER="${{ github.event.workflow_run.head_sha }}"
             HEAD_COMMIT="$(git rev-parse HEAD)"
-            if [ "$TAG_COMMIT" != "$HEAD_COMMIT" ]; then
+            if [ -n "$CREATED" ]; then
+              if [ "$TAG_COMMIT" != "$TRIGGER" ] && ! git merge-base --is-ancestor "$TRIGGER" "$TAG_COMMIT"; then
+                echo "Tag $TAG ($TAG_COMMIT) is not this Tag release cut ($TRIGGER); skipping."
+                echo "skip=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            elif [ "$TAG_COMMIT" != "$HEAD_COMMIT" ]; then
               echo "Tag $TAG ($TAG_COMMIT) is not this commit ($HEAD_COMMIT); skipping."
               echo "skip=true" >> "$GITHUB_OUTPUT"
               exit 0

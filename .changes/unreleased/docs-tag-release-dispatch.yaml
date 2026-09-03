@@ -1,0 +1,2 @@
+kind: Docs
+body: Cut a release from Actions with Tag release dispatch instead of a hand-rolled Release PR.

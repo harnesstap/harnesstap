@@ -73,14 +73,30 @@ export function syncDesktopVersionFiles(root: string, version: string): void {
   );
 }
 
+export function stampReleaseVersionFiles(root: string, raw: string): string {
+  const version = normalizeReleaseVersion(raw);
+  const packageJson = join(root, "package.json");
+  writeFileSync(packageJson, setJsonVersion(readFileSync(packageJson, "utf8"), version));
+  syncDesktopVersionFiles(root, version);
+  return version;
+}
+
 const entry = process.argv[1];
 if (entry && fileURLToPath(import.meta.url) === entry) {
-  const raw = process.argv[2];
+  const args = process.argv.slice(2);
+  const releaseAll = args[0] === "--release";
+  const raw = releaseAll ? args[1] : args[0];
   if (!raw) {
-    console.error("Usage: bun scripts/sync-desktop-version.ts <version>");
+    console.error("Usage: bun scripts/sync-desktop-version.ts [--release] <version>");
     process.exit(1);
   }
-  const version = normalizeReleaseVersion(raw);
-  syncDesktopVersionFiles(ROOT, version);
-  console.log(`Desktop version stamps set to ${version}`);
+  const root = process.env.STAMP_RELEASE_ROOT || ROOT;
+  if (releaseAll) {
+    const version = stampReleaseVersionFiles(root, raw);
+    console.log(`Release version stamps set to ${version}`);
+  } else {
+    const version = normalizeReleaseVersion(raw);
+    syncDesktopVersionFiles(root, version);
+    console.log(`Desktop version stamps set to ${version}`);
+  }
 }
