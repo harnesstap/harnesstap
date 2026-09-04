@@ -103,17 +103,28 @@ describe("desktop icon chrome", () => {
     expect(resourceDetailSource).toMatch(/label="Write"[\s\S]*?showLabel/);
   });
 
-  test("pending library-write tooltip uses the resource type, not plugin, and does not apply", () => {
+  test("library Sync tooltip is a preview and does not install into a project", () => {
+    expect(resourceDetailSource).toContain("librarySyncPreviewTooltip");
+    expect(resourceDetailSource).toContain(
+      "Check whether this ${noun} in your library differs from the copy in the marketplace, catalog, or place you got it from.",
+    );
+    expect(resourceDetailSource).toContain("Does not change files yet.");
+    expect(resourceDetailSource).toContain("Does not install into a project.");
+    expect(resourceDetailSource).not.toContain("install source");
+    expect(resourceDetailSource).not.toContain("home harness");
+    expect(resourceDetailSource).toContain("librarySyncPreviewTooltip(detail.type)");
+  });
+
+  test("library Write tooltip saves this item’s library files only", () => {
     expect(resourceDetailSource).toContain("pendingSyncWriteTooltip");
     expect(resourceDetailSource).toContain(
-      "Overwrite this skill in the library with the pending sync.",
+      "Save this newer copy over this skill’s library files.",
     );
     expect(resourceDetailSource).toContain(
-      "does not apply a parent plugin to a project or host",
+      "only this skill in the library is updated — not the whole plugin, and not a project.",
     );
-    expect(resourceDetailSource).not.toContain(
-      "This still does not apply the plugin.",
-    );
+    expect(resourceDetailSource).not.toContain("pending sync");
+    expect(resourceDetailSource).not.toContain("a project or host");
     expect(resourceDetailSource).toContain("pendingSyncWriteTooltip(detail.type)");
   });
 

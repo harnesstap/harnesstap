@@ -27,9 +27,10 @@ describe("plugin origin update chrome", () => {
     expect(detailSource).toContain("CloudDownload");
   });
 
-  test("DESIGN.md locks Update all and origin fetch vs Sync", () => {
+  test("DESIGN.md locks Update all and plugin Update vs Sync", () => {
     expect(designSource).toContain("Update all");
-    expect(designSource).toContain("origin fetch");
+    expect(designSource).toContain("whole plugin package");
+    expect(designSource).toContain("Never labeled Sync");
   });
 
   test("ResourcesPanel assembles Update N plugins from origin confirm copy", () => {

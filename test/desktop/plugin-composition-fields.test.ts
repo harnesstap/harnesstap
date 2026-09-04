@@ -28,6 +28,27 @@ describe("plugin composition fields", () => {
     );
   });
 
+  test("package Update tooltip refreshes the whole plugin package without git jargon", () => {
+    expect(packagesSource).toContain(
+      "Refresh this whole plugin package in the library from the marketplace, catalog, or git source it came from.",
+    );
+    expect(packagesSource).toContain("use Sync on that item");
+    expect(packagesSource).toContain(
+      "It does not install the plugin into a project.",
+    );
+    expect(packagesSource).not.toContain("working head. Not resource sync.");
+    expect(packagesSource).not.toContain("from its origin");
+  });
+
+  test("package Update success and error copy omit origin jargon", () => {
+    expect(packagesSource).toContain(
+      "Updated ${detail.plugin.name} in the library",
+    );
+    expect(packagesSource).toContain("Could not update this plugin in the library");
+    expect(packagesSource).not.toContain("Updated ${detail.plugin.name} from origin");
+    expect(packagesSource).not.toContain("Could not update plugin from origin");
+  });
+
   test("package detail has no plugin rail and no default-environment Label", () => {
     expect(packagesSource).not.toContain("profiles-rail");
     expect(packagesSource).not.toContain("<Label>Default environment</Label>");
