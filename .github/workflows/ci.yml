@@ -76,6 +76,8 @@ jobs:
               - 'src/config/**'
               - 'src/constants/**'
               - 'src/utils/**'
+              - 'src/telemetry/**'
+              - 'test/telemetry/**'
             platforms:
               - 'src/platforms/**'
             plugins:
