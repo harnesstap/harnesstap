@@ -110,4 +110,18 @@ describe("desktop icon chrome", () => {
     expect(stylesSource).toContain(".icon-action.primary");
     expect(stylesSource).toContain("background: var(--accent)");
   });
+
+  test("keeps default icon-action at the 32px size token", () => {
+    expect(stylesSource).toContain("--icon-action-size: 32px");
+    const needle = "\n.icon-action {";
+    const start = stylesSource.indexOf(needle);
+    expect(start).toBeGreaterThan(-1);
+    const defaultIcon = stylesSource.slice(
+      start,
+      stylesSource.indexOf("}", start) + 1,
+    );
+    expect(defaultIcon).toContain("width: var(--icon-action-size)");
+    expect(defaultIcon).toContain("height: var(--icon-action-size)");
+    expect(defaultIcon).not.toContain("width: var(--icon-action-size-lg)");
+  });
 });

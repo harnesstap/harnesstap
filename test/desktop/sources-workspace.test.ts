@@ -137,6 +137,33 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain('label="Add marketplace"');
     expect(workspaceSource).toContain('label="Connect catalog"');
     expect(workspaceSource).toContain("IconActionButton");
+    expect(workspaceSource).not.toMatch(
+      /label="Add marketplace"[\s\S]{0,400}Add marketplace\s*</,
+    );
+    expect(workspaceSource).not.toMatch(
+      /label="Connect catalog"[\s\S]{0,400}Connect catalog\s*</,
+    );
+  });
+
+  test("Sources header actions share a larger square than default icon-action chrome", () => {
+    expect(stylesSource).toContain("--icon-action-size: 32px");
+    expect(stylesSource).toContain("--icon-action-size-lg: 40px");
+    const defaultIcon = cssBlock(stylesSource, ".icon-action");
+    expect(defaultIcon).toContain("width: var(--icon-action-size)");
+    expect(defaultIcon).toContain("height: var(--icon-action-size)");
+    const sourcesHeader = cssBlock(
+      stylesSource,
+      ".sources-workspace .resources-panel-header-actions .icon-action",
+    );
+    expect(sourcesHeader).toContain("width: var(--icon-action-size-lg)");
+    expect(sourcesHeader).toContain("height: var(--icon-action-size-lg)");
+    expect(sourcesHeader).toContain("min-width: var(--icon-action-size-lg)");
+    expect(sourcesHeader).toContain("min-height: var(--icon-action-size-lg)");
+    expect(sourcesHeader).not.toContain("width: auto");
+    expect(workspaceSource).toContain("<Store size={20}");
+    expect(workspaceSource).toContain("<Cloud size={20}");
+    expect(workspaceSource).not.toContain("<Store size={16}");
+    expect(workspaceSource).not.toContain("<Cloud size={16}");
   });
 
   test("places workspace back before the Sources title like Library and Environments", () => {
@@ -393,6 +420,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("every source checkbox checked");
     expect(designSource).toContain("Add marketplace");
     expect(designSource).toContain("Connect catalog");
+    expect(designSource).toContain("--icon-action-size-lg");
     expect(designSource).toContain("Open in Library");
     expect(designSource).toContain("Pin to plugin");
     expect(designSource).toContain("Cloud browse overlay");

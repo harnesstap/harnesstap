@@ -1157,13 +1157,13 @@ export function SourcesWorkspace({
                 setEditingMarketplace(null);
                 setMarketplaceOpen(true);
               }}
-              icon={<Store size={16} aria-hidden />}
+              icon={<Store size={20} aria-hidden />}
             />
             <IconActionButton
               label="Connect catalog"
               disabled={controlsDisabled}
               onClick={() => setCatalogOpen(true)}
-              icon={<Cloud size={16} aria-hidden />}
+              icon={<Cloud size={20} aria-hidden />}
             />
           </div>
         </div>
