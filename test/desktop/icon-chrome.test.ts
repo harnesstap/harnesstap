@@ -25,10 +25,12 @@ const stylesSource = readFileSync(
 );
 
 describe("desktop icon chrome", () => {
-  test("shares IconActionButton with title and aria-label from the original label", () => {
-    expect(iconButtonSource).toContain("aria-label={label}");
+  test("shares IconActionButton with title and optional visible label beside the icon", () => {
     expect(iconButtonSource).toContain("title={title ?? label}");
     expect(iconButtonSource).toContain("icon-action");
+    expect(iconButtonSource).toContain("showLabel");
+    expect(iconButtonSource).toContain("has-label");
+    expect(iconButtonSource).toContain("aria-label={showLabel ? undefined : label}");
   });
 
   test("converts Profiles filter Clear and Project Install to icon-only", () => {
@@ -85,14 +87,34 @@ describe("desktop icon chrome", () => {
     expect(sourceSidebarSource).toContain('label="Unregister"');
   });
 
-  test("converts library detail record actions to icon-only", () => {
+  test("labels Library record primary actions and keeps secondary record actions icon-only", () => {
     expect(pluginDetailSource).toContain('label="Apply"');
+    expect(pluginDetailSource).toContain("showLabel");
     expect(pluginDetailSource).toContain('label="Update"');
     expect(pluginDetailSource).not.toMatch(/>Update</);
+    expect(pluginDetailSource).toMatch(/case "apply":[\s\S]*?showLabel[\s\S]*?label="Apply"/);
+    expect(pluginDetailSource).toMatch(/case "restore":[\s\S]*?showLabel[\s\S]*?label="Restore"/);
     expect(resourceDetailSource).toContain('label="Sync"');
-    expect(resourceDetailSource).toContain('label="Apply sync"');
+    expect(resourceDetailSource).toContain('label="Write"');
+    expect(resourceDetailSource).not.toContain('label="Apply sync"');
     expect(resourceDetailSource).toContain("CheckCheck");
     expect(resourceDetailSource).toContain('label="Delete"');
+    expect(resourceDetailSource).toMatch(/label="Sync"[\s\S]*?showLabel/);
+    expect(resourceDetailSource).toMatch(/label="Write"[\s\S]*?showLabel/);
+  });
+
+  test("pending library-write tooltip uses the resource type, not plugin, and does not apply", () => {
+    expect(resourceDetailSource).toContain("pendingSyncWriteTooltip");
+    expect(resourceDetailSource).toContain(
+      "Overwrite this skill in the library with the pending sync.",
+    );
+    expect(resourceDetailSource).toContain(
+      "does not apply a parent plugin to a project or host",
+    );
+    expect(resourceDetailSource).not.toContain(
+      "This still does not apply the plugin.",
+    );
+    expect(resourceDetailSource).toContain("pendingSyncWriteTooltip(detail.type)");
   });
 
   test("keeps pending-approval Approve/Deny labels in tooltips", () => {
@@ -109,6 +131,8 @@ describe("desktop icon chrome", () => {
   test("styles primary icon-action for remaining accent icon CTAs", () => {
     expect(stylesSource).toContain(".icon-action.primary");
     expect(stylesSource).toContain("background: var(--accent)");
+    expect(stylesSource).toContain(".icon-action.has-label");
+    expect(stylesSource).toContain(".library-detail-actions .icon-action.has-label");
   });
 
   test("keeps default icon-action at the 32px size token", () => {

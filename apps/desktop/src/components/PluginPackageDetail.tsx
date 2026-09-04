@@ -1111,6 +1111,7 @@ export function PluginPackageDetail({
           <IconActionButton
             key="apply"
             primary
+            showLabel
             data-testid="apply-package"
             disabled={actionsLocked}
             title={APPLY_TOOLTIP}
@@ -1200,6 +1201,7 @@ export function PluginPackageDetail({
           <IconActionButton
             key="restore"
             primary
+            showLabel
             disabled={actionsLocked || !frozenVersion}
             label="Restore"
             onClick={() => setRestoreOpen(true)}
