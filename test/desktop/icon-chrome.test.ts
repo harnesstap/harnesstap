@@ -31,15 +31,25 @@ describe("desktop icon chrome", () => {
     expect(iconButtonSource).toContain("icon-action");
   });
 
-  test("converts Profiles filter Clear, rail Apply, and Project Install to icon-only", () => {
+  test("converts Profiles filter Clear and Project Install to icon-only", () => {
     expect(appSource).toContain('label="Clear"');
     expect(appSource).not.toContain("rail-clear-button");
-    expect(appSource).toContain("rail-apply-action");
-    expect(appSource).toContain('? "Re-apply"');
-    expect(appSource).toContain(': "Apply"');
     expect(appSource).toContain('data-testid="project-install"');
     expect(appSource).toContain("HardDriveDownload");
     expect(appSource).toContain('variant="icon"');
+  });
+
+  test("keeps Profiles rail Apply as a full-width labeled accent button with icon on the right", () => {
+    expect(appSource).toContain("rail-apply-action");
+    expect(appSource).toContain('"btn", "primary", "rail-apply-action"');
+    expect(appSource).toContain('? "Re-apply"');
+    expect(appSource).toContain(': "Apply"');
+    expect(appSource).toMatch(
+      /\{switching \? "Applying…" : showReapply \? "Re-apply" : "Apply"\}[\s\S]{0,400}<(RotateCw|Check) /,
+    );
+    expect(stylesSource).toContain(".rail-controls .btn");
+    expect(stylesSource).toContain("width: 100%");
+    expect(stylesSource).not.toContain(".rail-controls .icon-action.primary");
   });
 
   test("converts Profile resources Add all, More, and Show all to distinct icons", () => {
@@ -96,7 +106,7 @@ describe("desktop icon chrome", () => {
     expect(updateSource).not.toContain("GitHub release\n              </button>");
   });
 
-  test("styles primary icon-action for accent CTAs such as Apply", () => {
+  test("styles primary icon-action for remaining accent icon CTAs", () => {
     expect(stylesSource).toContain(".icon-action.primary");
     expect(stylesSource).toContain("background: var(--accent)");
   });

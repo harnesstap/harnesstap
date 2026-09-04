@@ -2706,28 +2706,25 @@ export function App() {
           </div>
           <div className="rail-controls">
             {applyHelper ? <p className="muted apply-helper">{applyHelper}</p> : null}
-            <IconActionButton
-              primary
-              className="rail-apply-action"
-              label={
-                switching
-                  ? "Applying…"
-                  : showReapply
-                    ? "Re-apply"
-                    : "Apply"
-              }
-              title={applyButtonTitle}
-              busy={switching}
-              disabled={applyDisabled}
+            <button
+              className={["btn", "primary", "rail-apply-action", switching ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
               onClick={onApplyClick}
-              icon={
-                showReapply ? (
-                  <RotateCw size={16} strokeWidth={2} aria-hidden="true" />
-                ) : (
-                  <Check size={16} strokeWidth={2} aria-hidden="true" />
-                )
-              }
-            />
+              disabled={applyDisabled}
+              aria-busy={switching}
+              title={applyButtonTitle}
+            >
+              {switching ? "Applying…" : showReapply ? "Re-apply" : "Apply"}
+              {switching ? (
+                <ButtonSpinner size={16} />
+              ) : showReapply ? (
+                <RotateCw size={16} strokeWidth={2} aria-hidden="true" />
+              ) : (
+                <Check size={16} strokeWidth={2} aria-hidden="true" />
+              )}
+            </button>
           </div>
         </nav>
         ) : null}
