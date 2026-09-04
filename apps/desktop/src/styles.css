@@ -36,6 +36,8 @@
   --input: var(--border);
   --ring: var(--accent);
   --radius: 0.25rem;
+  --icon-action-size: 32px;
+  --icon-action-size-lg: 40px;
 }
 
 @theme inline {
@@ -147,8 +149,8 @@ button:focus-visible,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--icon-action-size);
+  height: var(--icon-action-size);
   padding: 0;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -887,6 +889,13 @@ button:focus-visible,
   min-height: 32px;
   padding: 0.3rem 0.6rem;
   white-space: nowrap;
+}
+
+.sources-workspace .resources-panel-header-actions .icon-action {
+  width: var(--icon-action-size-lg);
+  height: var(--icon-action-size-lg);
+  min-width: var(--icon-action-size-lg);
+  min-height: var(--icon-action-size-lg);
 }
 
 .resources-panel-title {

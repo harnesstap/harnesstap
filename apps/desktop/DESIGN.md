@@ -27,6 +27,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Status: `--green`, `--yellow`, `--red`
 - Type: `--font`, `--mono`
 - Radius: `--radius` (`0.25rem`; tight. Pills only for small filter chips)
+- Icon chrome: `--icon-action-size` (`32px` default squares). Sources header **Add marketplace** / **Connect catalog** use `--icon-action-size-lg` (`40px`) so they match in hit target and icon scale.
 
 ## Chrome
 
@@ -103,7 +104,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - The sidebar lists HarnessTap-registered marketplaces and host-configured Claude Code marketplaces from `~/.claude/plugins/known_marketplaces.json`. Host-only rows are not editable or removable in Sources.
 - The source sidebar groups checkboxes under Local, Marketplaces, and Cloud. Empty sections are omitted. A top-level **All sources** checkbox selects or clears every source; mixed selection is indeterminate. **Clear filters** clears search and checks every source.
 - Sources re-click clears the search query, checks all sources, and returns to the list. Back/Esc: preview → plugin-tree → list (standalone preview skips the tree). Esc while a confirm is open dismisses the confirm only.
-- Header cluster (right of the Sources title): icon-only **Add marketplace** (accent) and **Connect catalog**, with those tooltips. Add marketplace is the only accent control in this cluster.
+- Header cluster (right of the Sources title): icon-only **Add marketplace** (accent) and **Connect catalog**, with those tooltips. Both are `--icon-action-size-lg` squares (not text CTAs). Add marketplace is the only accent control in this cluster.
 - Record actions on the plugin tree (preview inherits parent plugin actions) are icon-only: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Tooltips keep those labels. No Update button on Sources.
 - In-library marketplace and catalog hits show a yellow **Update available** badge (color + text) next to In library when origin check is outdated. Open in Library is the apply path. Pin stays.
 - Cloud catalog discovery lives in Sources. The Cloud browse overlay is gone; the Cloud header control is account-only.
