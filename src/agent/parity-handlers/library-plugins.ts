@@ -38,6 +38,7 @@ import {
   rollbackPluginVersion,
 } from "../../services/plugin-versioning.js";
 import { toContentsResource } from "../../services/profile-contents.js";
+import { trackPluginUsed } from "../../telemetry/index.js";
 import type { Plugin, Resource, ResourceType } from "../../types.js";
 import { requireAgentBearerAuth } from "../auth.js";
 import { jsonResponse } from "../http.js";
@@ -524,6 +525,7 @@ export async function tryHandle(
     if (!plugin) {
       return notFound(matched.selector);
     }
+    trackPluginUsed({ pluginSlug: plugin.name });
     return jsonResponse(buildPluginDetail(plugin));
   }
 

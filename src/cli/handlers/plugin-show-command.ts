@@ -10,6 +10,7 @@ import {
 } from "../../models/plugin-model.js";
 import { listAttachedPluginPins } from "../../services/plugin-composition.js";
 import { renderPluginShow } from "../../services/plugin-show-render.js";
+import { trackPluginUsed } from "../../telemetry/index.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 
@@ -26,6 +27,9 @@ export function handlePluginShowCommand(
     ui.danger(`Plugin not found: ${name}`);
     return;
   }
+  trackPluginUsed({
+    pluginSlug: plugin.name,
+  });
   const allResources = getPluginResources(plugin.id);
   const resources = allResources.filter(
     (resource) => resource.type !== "plugin",

@@ -163,6 +163,8 @@ import {
   resolveApplyPluginSource,
   type ResolveApplyPluginSourceOptions,
 } from "../../services/plugin-apply-source.js";
+import { isPluginUrl } from "../../services/plugin-source.js";
+import { trackPluginApplied, trackPluginInstalled } from "../../telemetry/index.js";
 import { PluginAmbiguityError, PluginResolveError } from "../../services/plugin-bare-name-resolve.js";
 import {
   promptMaterializationConflict,
@@ -238,7 +240,11 @@ async function resolveApplyRootSelectors(
 
   const selectors: string[] = [];
   const rootPluginIds: string[] = [];
-  for (const source of resolvedSources) {
+  for (let index = 0; index < resolvedSources.length; index++) {
+    const source = resolvedSources[index];
+    if (!source) {
+      continue;
+    }
     if (source.kind === "plugin-export") {
       if (resolvedSources.length > 1) {
         throw new Error(
@@ -261,6 +267,10 @@ async function resolveApplyRootSelectors(
         });
         const last = imported.plugins[imported.plugins.length - 1];
         if (!last) throw new Error("Bundle contains no plugins.");
+        trackPluginInstalled({
+          pluginSlug: last.plugin.name,
+          source: isPluginUrl(pluginNames[index] ?? "") ? "url" : "local",
+        });
         selectors.push(`${last.plugin.name}@${last.plugin.version}`);
         rootPluginIds.push(last.plugin.id);
       }
@@ -1155,6 +1165,11 @@ export async function handleProjectApplyCommand(
       platforms: platformResults,
     });
   }
+
+  trackPluginApplied({
+    pluginSlug: primaryPlugin.name,
+    harness: platformResults[0]?.platform,
+  });
 
   // Non-strict plugin warnings (shown after successful file writes).
   if (

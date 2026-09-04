@@ -55,6 +55,7 @@ import {
   SingletonConflictError,
   UnsatisfiableConstraintError,
 } from "../../services/resolve/types.js";
+import { trackPluginApplied } from "../../telemetry/index.js";
 
 let applyInFlight = false;
 
@@ -280,6 +281,13 @@ async function executeHomeApply(parsed: ParsedApplyBody): Promise<Response> {
       { error: "apply_failed", message: "Apply cancelled.", scope: "home", ...payload },
       { status: 400 },
     );
+  }
+
+  if (!parsed.dryRun) {
+    trackPluginApplied({
+      pluginSlug: plugin.name,
+      harness: payload.harnesses[0],
+    });
   }
 
   return jsonResponse({ scope: "home", ...payload });
@@ -532,6 +540,13 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
       platform: result.platformId,
       written_files: materialized.writtenFiles,
       skipped_files: materialized.skippedFiles,
+    });
+  }
+
+  if (!parsed.dryRun) {
+    trackPluginApplied({
+      pluginSlug: primaryPlugin.name,
+      harness: platformResults[0]?.platform,
     });
   }
 

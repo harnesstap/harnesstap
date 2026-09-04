@@ -579,6 +579,7 @@ Persistent operational state lives in SQLite at `~/.harnesstap/harnesstap.db` (o
 | Path | Purpose |
 | --- | --- |
 | `~/.harnesstap/config.jsonc` | Toolkit configuration (JSONC comments allowed) |
+| `~/.harnesstap/telemetry-state.json` | Anonymous telemetry distinct id and first-run stamps |
 | `~/.harnesstap/cloud-accounts.json` | HarnessTap Cloud accounts and tokens |
 | `~/.harnesstap/active-profile.json` | Active profile pointer (`{ "name": "<plugin-name>" }`) |
 | `~/.harnesstap/plugin-refresh-cache.json` | Internal refresh timestamps used during `resource sync` |
@@ -596,11 +597,12 @@ Example `config.jsonc`:
     "refreshMaxAgeHours": 24,
     "marketplaces": []
   },
-  "layerVersionHistoryLimit": 10
+  "layerVersionHistoryLimit": 10,
+  "telemetry": { "enabled": true }
 }
 ```
 
-Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age, registered marketplaces, and how many frozen plugin versions to retain per name.
+Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age, registered marketplaces, and how many frozen plugin versions to retain per name. Set `telemetry.enabled` to `false` or export `HARNESSTAP_TELEMETRY=0` to disable anonymous CLI/Desktop product analytics. Event names and identity join are documented for contributors in `docs/telemetry.md` (user-facing copy lives in `README.md` and `docs/`).
 
 ### Schema (logical tables)
 

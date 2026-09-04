@@ -269,6 +269,8 @@ ht plugin publish my-setup
 
 To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSTAP_PUBLIC_CATALOG=0`.
 
+CLI and Desktop send anonymous product analytics (install, Cloud connect, plugin apply) to the HarnessTap EU PostHog project. Opt out with `HARNESSTAP_TELEMETRY=0` or `"telemetry": { "enabled": false }` in `config.jsonc`. Details: [Telemetry](docs/telemetry.md).
+
 Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md).
 
 ---
@@ -290,6 +292,8 @@ See the full matrix — resource types, skill emission, plugin support, and path
 Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, profiles, tracked projects, snapshots, harness preferences). Optional settings live in `~/.harnesstap/config.jsonc`. Cloud accounts: `~/.harnesstap/cloud-accounts.json`.
 
 Override the base directory with `HARNESSTAP_HOME`.
+
+Anonymous telemetry state (distinct id and first-run stamps) lives in `~/.harnesstap/telemetry-state.json`. See [Telemetry](docs/telemetry.md).
 
 `ht init` also checks registered home folders (e.g. `~/.claude/`, `~/.codex/`) and imports supported resources it finds.
 

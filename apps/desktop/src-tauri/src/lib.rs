@@ -236,7 +236,8 @@ fn spawn_sidecar_via_shell(
         .shell()
         .sidecar("ht-agent")
         .map_err(|error| error.to_string())?
-        .env("HARNESSTAP_AGENT_PORT", "7474");
+        .env("HARNESSTAP_AGENT_PORT", "7474")
+        .env("HARNESSTAP_PRODUCT", "desktop");
     if let Ok(home) = std::env::var("HARNESSTAP_HOME") {
         sidecar = sidecar.env("HARNESSTAP_HOME", home);
     }
@@ -256,6 +257,7 @@ fn spawn_sidecar_via_process() -> Result<std::process::Child, String> {
     let path = sidecar_binary_path()?;
     let mut command = StdCommand::new(path);
     command.env("HARNESSTAP_AGENT_PORT", "7474");
+    command.env("HARNESSTAP_PRODUCT", "desktop");
     // Ensure the sidecar uses the same home resolution as the desktop shell.
     if let Ok(home) = std::env::var("HARNESSTAP_HOME") {
         command.env("HARNESSTAP_HOME", home);

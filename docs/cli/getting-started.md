@@ -104,6 +104,8 @@ After the baseline fits, build and share your own plugins.
 
 Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, tracked projects, snapshots). Optional settings live in `~/.harnesstap/config.jsonc`. Override the base directory with `HARNESSTAP_HOME`.
 
+Anonymous CLI/Desktop analytics can be disabled with `HARNESSTAP_TELEMETRY=0` or `"telemetry": { "enabled": false }` in `config.jsonc`. See [Telemetry](../telemetry.md).
+
 `init` seeds a `global default` profile plugin and writes `active-profile.json`, but does **not** run global apply automatically. Run `ht profile use "global default"` to materialize home harness files. See [Profiles](./concepts/profiles.md).
 
 ## Next steps

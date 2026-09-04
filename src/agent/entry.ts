@@ -1,6 +1,9 @@
+import { setTelemetryProduct, trackDesktopStartup } from "../telemetry/index.js";
 import { startAgentServer } from "./serve.js";
 
 if (import.meta.main) {
+  setTelemetryProduct("desktop");
+  trackDesktopStartup();
   const server = await startAgentServer();
   console.error(
     `HarnessTap agent listening on ${server.url} (token: ${server.tokenPath})`,

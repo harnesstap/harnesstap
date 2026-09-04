@@ -84,6 +84,7 @@ export function createE2EIsolation(repoRoot: string): E2EIsolation {
     HOME: home,
     HARNESSTAP_HOME: harnesstapHome,
     HARNESSTAP_E2E_PROJECT_PATH: project,
+    HARNESSTAP_TELEMETRY: "0",
   };
 
   return {
