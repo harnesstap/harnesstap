@@ -78,10 +78,20 @@ export type ResourceDetailEditingField = "name" | "description" | "content";
 
 const SYNC_TOOLTIP =
   "Update this library definition from its install source. Does not apply it to a project or your home harness.";
-const APPLY_SYNC_TOOLTIP =
-  "Write the pending sync into the library. This still does not apply the plugin.";
 const DELETE_TOOLTIP =
   "Remove this from the library, or from the library and known on-disk locations.";
+
+function pendingSyncWriteTooltip(type: string): string {
+  const kind = type.replaceAll("_", " ");
+  if (type === "skill") {
+    return "Overwrite this skill in the library with the pending sync. Updates library files only; does not apply a parent plugin to a project or host.";
+  }
+  if (type === "plugin") {
+    return "Overwrite this plugin in the library with the pending sync. Updates library files only; does not apply the plugin to a project or host.";
+  }
+  return `Overwrite this ${kind} in the library with the pending sync. Updates library files only; does not apply a parent plugin to a project or host.`;
+}
+
 const OPEN_IN_EDITOR_LABEL = "Open this file in the default editor.";
 
 export interface ResourceDetailBodyProps {
@@ -529,6 +539,7 @@ export function ResourceDetailBody({
           disabled={actionsLocked}
           title={SYNC_TOOLTIP}
           label="Sync"
+          showLabel
           onClick={() => void runSync("fail", true)}
           busy={busy}
           spinnerSize={14}
@@ -539,8 +550,9 @@ export function ResourceDetailBody({
         <IconActionButton
           primary
           disabled={actionsLocked}
-          title={APPLY_SYNC_TOOLTIP}
-          label="Apply sync"
+          title={detail ? pendingSyncWriteTooltip(detail.type) : undefined}
+          label="Write"
+          showLabel
           onClick={() => void runSync("fail", false)}
           busy={busy}
           spinnerSize={14}

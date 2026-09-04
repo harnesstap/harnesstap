@@ -149,5 +149,8 @@ describe("library items header design lock", () => {
     expect(designSource).toContain(
       "Type filters and list groups are separate",
     );
+    expect(designSource).toContain("labeled **Apply**");
+    expect(designSource).toContain("labeled **Sync**");
+    expect(designSource).toContain("labeled **Write**");
   });
 });
