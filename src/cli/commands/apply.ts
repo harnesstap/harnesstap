@@ -27,6 +27,7 @@ import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
 import { formatCommand } from "../shared.js";
+import { trackPluginApplied } from "../../telemetry/index.js";
 import { CriticalUnicodeError } from "../../services/unicode-scan.js";
 import { handleProjectApplyCommand } from "./plugin.js";
 import { withMcpManifestAppend } from "../../services/apm-mcp-manifest.js";
@@ -131,6 +132,13 @@ async function handleGlobalApplyCommand(
           `Applied to machine home, but no active profile was recorded because ${plugin.name} is not a profile plugin.`,
         ),
       );
+    }
+
+    if (!payload.cancelled && !payload.dry_run) {
+      trackPluginApplied({
+        pluginSlug: plugin.name,
+        harness: payload.harnesses[0],
+      });
     }
 
     if (outputFormat === "json") {

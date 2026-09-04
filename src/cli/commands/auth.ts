@@ -16,6 +16,15 @@ import {
 } from "../../services/cloud-client.js";
 import { ui } from "../../ui/index.js";
 import { renderWarn } from "../../ui/status.js";
+import {
+  extractCloudUserId,
+  identifyFromCloudWhoami,
+  isTelemetryEnabled,
+  shortReason,
+  trackCloudConnectFailed,
+  trackCloudConnectStarted,
+  trackCloudConnected,
+} from "../../telemetry/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
 
@@ -25,6 +34,7 @@ async function handleCloudLoginCommand(
 ): Promise<void> {
   const name = accountName ?? "default";
   const baseUrl = resolveCloudBaseUrl(opts.baseUrl);
+  trackCloudConnectStarted();
   try {
     const device = await requestDeviceCode(baseUrl);
     console.log(`Visit: ${deviceVerificationUri(baseUrl)}`);
@@ -48,9 +58,50 @@ async function handleCloudLoginCommand(
     };
     await saveCloudAccount(name, account);
     await setDefaultCloudAccount(name);
+    trackCloudConnected({ orgId: token.orgId });
     ui.success(`Saved cloud account: ${name}`);
+    void persistCloudIdentity(name, baseUrl, token, now);
   } catch (err) {
+    trackCloudConnectFailed(shortReason(err), "cloud_login_failed");
     ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function persistCloudIdentity(
+  accountName: string,
+  baseUrl: string,
+  token: {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+    orgId?: string;
+  },
+  now: number,
+): Promise<void> {
+  if (!isTelemetryEnabled()) {
+    return;
+  }
+  try {
+    const client = createCloudClient({
+      baseUrl,
+      token: {
+        access_token: token.access_token,
+        refresh_token: token.refresh_token,
+        expires_at: token.expires_in ? now + token.expires_in : undefined,
+      },
+    });
+    const whoami = await client.whoami();
+    const userId = extractCloudUserId(whoami);
+    if (userId) {
+      await updateCloudAccount(accountName, { userId });
+    }
+    identifyFromCloudWhoami({
+      orgId: token.orgId,
+      userId,
+      whoami,
+    });
+  } catch {
+    // Identify is best-effort and must not fail login.
   }
 }
 

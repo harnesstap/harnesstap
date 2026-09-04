@@ -120,3 +120,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 - Resource hover cards sit at the pointer and close when the pointer leaves.
 - Profile rail order is a desktop-only localStorage preference.
+
+## Privacy
+
+Desktop does not show a telemetry toggle. Capture is anonymous, non-blocking, and uses the same opt-out as CLI (`HARNESSTAP_TELEMETRY=0` or `telemetry.enabled` in `~/.harnesstap/config.jsonc`).

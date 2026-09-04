@@ -20,6 +20,15 @@ import {
 } from "../services/cloud-client.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
+import {
+  extractCloudUserId,
+  identifyFromCloudWhoami,
+  isTelemetryEnabled,
+  shortReason,
+  trackCloudConnectFailed,
+  trackCloudConnectStarted,
+  trackCloudConnected,
+} from "../telemetry/index.js";
 
 const DEFAULT_ACCOUNT_NAME = "default";
 
@@ -258,6 +267,32 @@ function accountFromToken(
   };
 }
 
+function identifyDesktopLogin(
+  deps: CloudAuthDeps,
+  accountName: string,
+  account: CloudAccount,
+): void {
+  if (!isTelemetryEnabled()) {
+    return;
+  }
+  void (async () => {
+    try {
+      const whoami = await deps.whoami(account, accountName);
+      const userId = extractCloudUserId(whoami, account.userId);
+      if (userId && userId !== account.userId) {
+        await deps.saveAccount(accountName, { ...account, userId });
+      }
+      identifyFromCloudWhoami({
+        orgId: account.orgId,
+        userId,
+        whoami,
+      });
+    } catch {
+      // Identify is best-effort.
+    }
+  })();
+}
+
 export function createCloudAuthHandlers(
   deps: CloudAuthDeps = createDefaultCloudAuthDeps(),
 ): CloudAuthHandlers {
@@ -277,6 +312,7 @@ export function createCloudAuthHandlers(
       }
 
       try {
+        trackCloudConnectStarted();
         const cloudBaseUrl = deps.resolveBaseUrl();
         const device = await deps.requestDeviceCode(cloudBaseUrl);
         const now = deps.now();
@@ -297,6 +333,7 @@ export function createCloudAuthHandlers(
           pendingLogin: pendingPayload(pending),
         } satisfies CloudAuthStatus);
       } catch (error) {
+        trackCloudConnectFailed(shortReason(error), "cloud_login_failed");
         return jsonResponse(
           {
             error: "cloud_login_failed",
@@ -326,6 +363,7 @@ export function createCloudAuthHandlers(
 
       if (pending.expiresAt <= deps.now()) {
         deps.setPending(null);
+        trackCloudConnectFailed("Cloud login code expired", "device_expired");
         return jsonResponse(
           {
             status: "error",
@@ -353,6 +391,7 @@ export function createCloudAuthHandlers(
 
         if (result.status === "error") {
           deps.setPending(null);
+          trackCloudConnectFailed(result.message, "cloud_login_failed");
           return jsonResponse(
             {
               status: "error",
@@ -371,12 +410,20 @@ export function createCloudAuthHandlers(
         await deps.setDefaultAccount(pending.accountName);
         deps.setPending(null);
 
+        const auth = await buildStatus(deps);
+        trackCloudConnected({
+          orgId: account.orgId,
+          userId: account.userId,
+        });
+        void identifyDesktopLogin(deps, pending.accountName, account);
+
         return jsonResponse({
           status: "complete",
-          auth: await buildStatus(deps),
+          auth,
         } satisfies CloudAuthLoginPollResult);
       } catch (error) {
         deps.setPending(null);
+        trackCloudConnectFailed(shortReason(error), "cloud_login_failed");
         return jsonResponse(
           {
             status: "error",

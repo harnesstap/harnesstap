@@ -11,6 +11,7 @@ import {
   type ResolvedRemotePluginSelector,
 } from "./plugin-selector.js";
 import { assertInstallPluginNameAvailable } from "./plugin-install-conflicts.js";
+import { trackPluginInstalled } from "../telemetry/index.js";
 
 export interface InstallPluginFromCatalogOptions {
   as?: string;
@@ -78,6 +79,10 @@ export async function installPluginFromCatalog(
     version: downloaded.version,
   });
   stampPluginOrigin(imported.id, { locator });
+  trackPluginInstalled({
+    pluginSlug: parsed.plugin_slug,
+    source: "catalog",
+  });
 
   return {
     pluginId: imported.id,

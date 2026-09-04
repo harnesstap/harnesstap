@@ -1,0 +1,5 @@
+kind: Added
+body: Emit anonymous CLI and Desktop PostHog events for install, Cloud connect, and plugin apply, with opt-out via HARNESSTAP_TELEMETRY=0.
+time: 2026-09-04T13:10:00Z
+custom:
+  Issue: ""

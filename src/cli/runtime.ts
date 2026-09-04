@@ -11,6 +11,7 @@ import { PluginProvenanceError } from "../services/plugin-origin.js";
 import { isPromptCancellationError } from "../services/wizards/shared.js";
 import { takeSelectorDeprecations } from "../services/resource-selector.js";
 import { maybeNotifyCliUpdate } from "../services/self-update.js";
+import { setTelemetryProduct, trackCliStartup } from "../telemetry/index.js";
 import { ui } from "../ui/index.js";
 import { program } from "./program.js";
 import {
@@ -139,6 +140,8 @@ export async function runHarnesstapCli(
 ): Promise<void> {
   program.name(resolveInvocationName());
   process.exitCode = 0;
+  setTelemetryProduct("cli");
+  trackCliStartup();
   if (argv.length <= 2) {
     program.outputHelp();
     return;
