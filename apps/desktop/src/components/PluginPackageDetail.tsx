@@ -107,7 +107,7 @@ type PluginEditingField =
 const APPLY_TOOLTIP =
   "Write this plugin’s graph into the selected project (or global when that screen says so).";
 const UPDATE_TOOLTIP =
-  "Fetch this plugin from its origin and replace the working head. Not resource sync.";
+  "Refresh this whole plugin package in the library from the marketplace, catalog, or git source it came from. This does not refresh a single skill or file inside the plugin — use Sync on that item. It does not install the plugin into a project.";
 const DELETE_TOOLTIP =
   "Remove this from the library. Plugins that referenced it are not edited. On-disk harness files are not deleted.";
 const CUT_TOOLTIP =
@@ -1085,16 +1085,16 @@ export function PluginPackageDetail({
       const failed = report.results.find((row) => row.status === "failed");
       if (failed) {
         setActionError(
-          failed.message ?? "Could not update plugin from origin",
+          failed.message ?? "Could not update this plugin in the library",
         );
       } else if (report.results.some((row) => row.status === "updated")) {
-        onSuccess(`Updated ${detail.plugin.name} from origin`);
+        onSuccess(`Updated ${detail.plugin.name} in the library`);
       }
       setDetailEpoch((value) => value + 1);
       onLibraryChanged?.();
     } catch (error: unknown) {
       setActionError(
-        errorMessage(error, "Could not update plugin from origin"),
+        errorMessage(error, "Could not update this plugin in the library"),
       );
     } finally {
       setBusy(false);

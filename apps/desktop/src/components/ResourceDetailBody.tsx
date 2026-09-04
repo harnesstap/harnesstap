@@ -76,20 +76,33 @@ export type ResourceDetailChrome = "dialog" | "pane";
 
 export type ResourceDetailEditingField = "name" | "description" | "content";
 
-const SYNC_TOOLTIP =
-  "Update this library definition from its install source. Does not apply it to a project or your home harness.";
 const DELETE_TOOLTIP =
   "Remove this from the library, or from the library and known on-disk locations.";
 
-function pendingSyncWriteTooltip(type: string): string {
-  const kind = type.replaceAll("_", " ");
+function libraryResourceNoun(type: string): string {
   if (type === "skill") {
-    return "Overwrite this skill in the library with the pending sync. Updates library files only; does not apply a parent plugin to a project or host.";
+    return "skill";
   }
   if (type === "plugin") {
-    return "Overwrite this plugin in the library with the pending sync. Updates library files only; does not apply the plugin to a project or host.";
+    return "plugin";
   }
-  return `Overwrite this ${kind} in the library with the pending sync. Updates library files only; does not apply a parent plugin to a project or host.`;
+  return type.replaceAll("_", " ");
+}
+
+function librarySyncPreviewTooltip(type: string): string {
+  const noun = libraryResourceNoun(type);
+  return `Check whether this ${noun} in your library differs from the copy in the marketplace, catalog, or place you got it from. Does not change files yet. Does not install into a project.`;
+}
+
+function pendingSyncWriteTooltip(type: string): string {
+  if (type === "skill") {
+    return "Save this newer copy over this skill’s library files. If the skill is part of a plugin package, only this skill in the library is updated — not the whole plugin, and not a project.";
+  }
+  if (type === "plugin") {
+    return "Save this newer copy over this plugin’s library files. Does not install it into a project.";
+  }
+  const kind = libraryResourceNoun(type);
+  return `Save this newer copy over this ${kind}’s library files. If it lives inside a plugin package, only this library entry is updated — not the whole plugin, and not a project.`;
 }
 
 const OPEN_IN_EDITOR_LABEL = "Open this file in the default editor.";
@@ -537,7 +550,7 @@ export function ResourceDetailBody({
         <IconActionButton
           primary
           disabled={actionsLocked}
-          title={SYNC_TOOLTIP}
+          title={detail ? librarySyncPreviewTooltip(detail.type) : undefined}
           label="Sync"
           showLabel
           onClick={() => void runSync("fail", true)}
