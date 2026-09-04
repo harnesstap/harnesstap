@@ -32,7 +32,7 @@
     "unlink": "bun unlink",
     "test": "bun test",
     "test:run": "bun test --dots",
-    "test:core": "bun test --dots test/models test/db test/config test/utils",
+    "test:core": "bun test --dots test/models test/db test/config test/utils test/telemetry",
     "test:platforms": "bun test --dots test/platforms",
     "test:plugins": "bun test --dots test/plugins",
     "test:services": "bun test --dots test/services test/integration",
