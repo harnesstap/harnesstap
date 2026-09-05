@@ -38,6 +38,7 @@ import { MigrateImportDrawer } from "./components/MigrateImportDrawer";
 import { ProjectPicker } from "./components/ProjectPicker";
 import { ResourcesPanel } from "./components/ResourcesPanel";
 import { SettingsDrawer } from "./components/SettingsDrawer";
+import { TelemetryConsentModal } from "./components/TelemetryConsentModal";
 import { SourcesWorkspace } from "./components/SourcesWorkspace";
 import { StashBrowseDrawer } from "./components/StashBrowseDrawer";
 import { WorkspaceBackButton } from "./components/WorkspaceBackButton";
@@ -52,6 +53,8 @@ import {
   fetchProfileStash,
   fetchProfiles,
   fetchStatus,
+  fetchTelemetryConsent,
+  saveTelemetryConsent,
   popProfileStash,
   renameProfile,
   stashActiveProfile,
@@ -67,6 +70,7 @@ import {
   rescanResourceTrackedDirectories,
   runConstraintRecoveryAction,
 } from "./lib/agent-client";
+import { shouldShowTelemetryConsentModal } from "./lib/telemetry-consent";
 import {
   loadRecentProjects,
   rememberProject,
@@ -100,6 +104,7 @@ import type {
   ProfileSwitchStepEvent,
   ProfileStashEntry,
   RecoveryAction,
+  TelemetryConsentStatus,
   ViewScope,
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
@@ -242,6 +247,10 @@ export function App() {
   const [environmentCreateOpen, setEnvironmentCreateOpen] = useState(false);
   const [cloudAccountOpen, setCloudAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [telemetryConsent, setTelemetryConsent] = useState<TelemetryConsentStatus | null>(
+    null,
+  );
+  const [telemetryConsentBusy, setTelemetryConsentBusy] = useState(false);
   const [migrateExportOpen, setMigrateExportOpen] = useState(false);
   const [migrateImportOpen, setMigrateImportOpen] = useState(false);
   const [migrateBusy, setMigrateBusy] = useState(false);
@@ -665,6 +674,40 @@ export function App() {
     [clearProfileSelection, refreshProfiles, refreshStatus],
   );
 
+  const refreshTelemetryConsent = useCallback(
+    async (agentBaseUrl: string, agentToken: string | null) => {
+      try {
+        const next = await fetchTelemetryConsent(agentBaseUrl, agentToken);
+        setTelemetryConsent(next);
+      } catch {
+        setTelemetryConsent(null);
+      }
+    },
+    [],
+  );
+
+  const answerTelemetryConsent = useCallback(
+    async (enabled: boolean) => {
+      if (!baseUrl) {
+        return;
+      }
+      setTelemetryConsentBusy(true);
+      try {
+        const next = await saveTelemetryConsent(baseUrl, token, enabled);
+        setTelemetryConsent(next);
+      } catch (error) {
+        setStatusError(
+          error instanceof Error
+            ? error.message
+            : "Could not save telemetry preference",
+        );
+      } finally {
+        setTelemetryConsentBusy(false);
+      }
+    },
+    [baseUrl, token],
+  );
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -678,6 +721,7 @@ export function App() {
         setFirstRun(Boolean(connection.health.first_run));
         setConnected(true);
         setConnectionError(null);
+        void refreshTelemetryConsent(connection.baseUrl, connection.token);
       } catch (error) {
         if (!cancelled) {
           setConnectionError(
@@ -689,7 +733,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshTelemetryConsent]);
 
   const retryConnection = useCallback(async () => {
     if (retryBusy) {
@@ -705,6 +749,7 @@ export function App() {
       setFirstRun(Boolean(connection.health.first_run));
       setConnected(true);
       setConnectionError(null);
+      void refreshTelemetryConsent(connection.baseUrl, connection.token);
     } catch (error) {
       setConnectionError(
         error instanceof Error ? error.message : "Sidecar connection failed",
@@ -712,7 +757,7 @@ export function App() {
     } finally {
       setRetryBusy(false);
     }
-  }, [retryBusy]);
+  }, [refreshTelemetryConsent, retryBusy]);
 
   // Sidecar watcher rebuilds ht-agent in place; reconnect so previews use new code.
   useEffect(() => {
@@ -733,6 +778,7 @@ export function App() {
           setFirstRun(Boolean(connection.health.first_run));
           setConnected(true);
           setConnectionError(null);
+          void refreshTelemetryConsent(connection.baseUrl, connection.token);
         } catch (error) {
           if (!cancelled) {
             setConnectionError(
@@ -755,7 +801,7 @@ export function App() {
       cancelled = true;
       unlisten?.();
     };
-  }, []);
+  }, [refreshTelemetryConsent]);
 
   useEffect(() => {
     if (!connected || !baseUrl) {
@@ -3201,6 +3247,16 @@ export function App() {
         token={token}
         onClose={() => setStashBrowseOpen(false)}
       />
+
+      {telemetryConsent ? (
+        <TelemetryConsentModal
+          open={shouldShowTelemetryConsentModal(telemetryConsent)}
+          copy={telemetryConsent.copy}
+          busy={telemetryConsentBusy}
+          onEnable={() => void answerTelemetryConsent(true)}
+          onDisable={() => void answerTelemetryConsent(false)}
+        />
+      ) : null}
 
       <SettingsDrawer
         open={settingsOpen}

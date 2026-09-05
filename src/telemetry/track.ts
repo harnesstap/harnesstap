@@ -1,7 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { getCloudAccountsPath } from "../config/cloud-accounts.js";
 import { PACKAGE_VERSION } from "../version.js";
-import { captureEvent, identifyCloudUser } from "./capture.js";
+import { captureEvent } from "./capture.js";
 import { isTelemetryEnabled } from "./config.js";
 import { detectCliInstallMethod } from "./install-method.js";
 import { extractCloudUserId } from "./sanitize.js";
@@ -10,33 +8,7 @@ import {
   resolveDistinctId,
   updateTelemetryState,
 } from "./state.js";
-import type { PluginInstallSource, TelemetryProps } from "./types.js";
-
-function peekCloudOrgId(): string | undefined {
-  try {
-    const path = getCloudAccountsPath();
-    if (!existsSync(path)) {
-      return undefined;
-    }
-    const parsed = JSON.parse(readFileSync(path, "utf-8")) as {
-      default_account?: string | null;
-      accounts?: Record<string, { orgId?: unknown }>;
-    };
-    const name = parsed.default_account;
-    if (!name || !parsed.accounts) {
-      return undefined;
-    }
-    const orgId = parsed.accounts[name]?.orgId;
-    return typeof orgId === "string" && orgId.trim() ? orgId.trim() : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function withOrgId(props: TelemetryProps, orgId?: string): TelemetryProps {
-  const resolved = orgId ?? peekCloudOrgId();
-  return resolved ? { ...props, org_id: resolved } : props;
-}
+import type { PluginInstallSource } from "./types.js";
 
 export function trackCliStartup(): void {
   try {
@@ -99,35 +71,29 @@ export function trackCloudConnectFailed(reason: string, errorCode?: string): voi
   });
 }
 
+/**
+ * Cloud user ids are personal identifiers. Consent copy promises we do not send them.
+ * Kept as a no-op so existing call sites compile without joining identity.
+ */
 export function identifyFromCloudWhoami(input: {
   orgId?: string;
   userId?: string;
   whoami?: Record<string, unknown>;
 }): string | undefined {
   try {
-    const userId = extractCloudUserId(input.whoami, input.userId);
-    if (!userId) {
-      return undefined;
-    }
-    const state = loadTelemetryState();
-    if (userId !== state.identified_distinct_id) {
-      identifyCloudUser(userId, state.distinct_id);
-      updateTelemetryState({ identified_distinct_id: userId });
-    }
-    return userId;
+    return extractCloudUserId(input.whoami, input.userId);
   } catch {
     return undefined;
   }
 }
 
-export function trackCloudConnected(input: {
+export function trackCloudConnected(_input: {
   orgId?: string;
   userId?: string;
   whoami?: Record<string, unknown>;
 }): void {
-  identifyFromCloudWhoami(input);
-  captureEvent("cloud_connected", withOrgId({}, input.orgId));
-  captureEvent("signed_in", withOrgId({}, input.orgId));
+  captureEvent("cloud_connected", {});
+  captureEvent("signed_in", {});
 }
 
 export function trackPluginInstalled(input: {
@@ -135,16 +101,9 @@ export function trackPluginInstalled(input: {
   source: PluginInstallSource;
   orgId?: string;
 }): void {
-  captureEvent(
-    "plugin_installed",
-    withOrgId(
-      {
-        plugin_slug: input.pluginSlug,
-        source: input.source,
-      },
-      input.orgId,
-    ),
-  );
+  void input.pluginSlug;
+  void input.orgId;
+  captureEvent("plugin_installed", { source: input.source });
 }
 
 export function trackPluginApplied(input: {
@@ -152,16 +111,11 @@ export function trackPluginApplied(input: {
   harness?: string;
   orgId?: string;
 }): void {
-  captureEvent(
-    "plugin_applied",
-    withOrgId(
-      {
-        plugin_slug: input.pluginSlug,
-        ...(input.harness ? { harness: input.harness } : {}),
-      },
-      input.orgId,
-    ),
-  );
+  void input.pluginSlug;
+  void input.orgId;
+  captureEvent("plugin_applied", {
+    ...(input.harness ? { harness: input.harness } : {}),
+  });
 }
 
 export function trackPluginUsed(input: {
@@ -169,16 +123,11 @@ export function trackPluginUsed(input: {
   harness?: string;
   orgId?: string;
 }): void {
-  captureEvent(
-    "plugin_used",
-    withOrgId(
-      {
-        plugin_slug: input.pluginSlug,
-        ...(input.harness ? { harness: input.harness } : {}),
-      },
-      input.orgId,
-    ),
-  );
+  void input.pluginSlug;
+  void input.orgId;
+  captureEvent("plugin_used", {
+    ...(input.harness ? { harness: input.harness } : {}),
+  });
 }
 
 export { resolveDistinctId };

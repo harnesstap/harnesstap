@@ -10,6 +10,7 @@ export interface TelemetryStateFile {
   cli_first_run_at?: string;
   desktop_installed_at?: string;
   desktop_first_open_at?: string;
+  cli_notice_shown_at?: string;
 }
 
 function statePath(harnesstapDir: string): string {
@@ -54,6 +55,9 @@ export function loadTelemetryState(
         : {}),
       ...(stringField(parsed.desktop_first_open_at)
         ? { desktop_first_open_at: stringField(parsed.desktop_first_open_at) }
+        : {}),
+      ...(stringField(parsed.cli_notice_shown_at)
+        ? { cli_notice_shown_at: stringField(parsed.cli_notice_shown_at) }
         : {}),
     };
   } catch {

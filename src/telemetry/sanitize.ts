@@ -3,6 +3,10 @@ import type { TelemetryProps } from "./types.js";
 const SECRET_KEY =
   /(token|secret|password|passwd|authorization|cookie|api[_-]?key|refresh|bearer|email)/i;
 
+/** Keys that would contradict “no personal data / no resource-related information”. */
+const BLOCKED_KEY =
+  /^(plugin_slug|org_id|path|filepath|file_path|content|contents|mcp|mcp_config)$/i;
+
 export function looksLikeEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -19,7 +23,7 @@ export function shortReason(error: unknown): string {
 export function sanitizeTelemetryProps(props: TelemetryProps): TelemetryProps {
   const next: TelemetryProps = {};
   for (const [key, value] of Object.entries(props)) {
-    if (SECRET_KEY.test(key)) {
+    if (SECRET_KEY.test(key) || BLOCKED_KEY.test(key)) {
       continue;
     }
     if (typeof value === "string") {

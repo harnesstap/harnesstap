@@ -220,11 +220,46 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
   }
 }
 
+export function readToolkitConfigRecord(
+  harnesstapDir: string,
+  path = settingsPath(harnesstapDir),
+): Record<string, unknown> {
+  if (!existsSync(path)) {
+    return {};
+  }
+  try {
+    const parsed = parseJsonc(readFileSync(path, "utf-8"));
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+export function writeToolkitConfigRecord(
+  harnesstapDir: string,
+  record: Record<string, unknown>,
+  path = settingsPath(harnesstapDir),
+): void {
+  mkdirSync(harnesstapDir, { recursive: true });
+  writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`, "utf-8");
+}
+
 export function saveSettings(
   harnesstapDir: string,
   settings: HarnesstapSettings,
 ): void {
   const path = settingsPath(harnesstapDir);
-  mkdirSync(harnesstapDir, { recursive: true });
-  writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
+  const existing = readToolkitConfigRecord(harnesstapDir, path);
+  writeToolkitConfigRecord(
+    harnesstapDir,
+    {
+      ...existing,
+      plugins: settings.plugins,
+      pluginVersionHistoryLimit: settings.pluginVersionHistoryLimit,
+    },
+    path,
+  );
 }

@@ -18,6 +18,7 @@ import type {
   HarnessSettingsPayload,
   PutHarnessSettingsInput,
   PutHarnessSettingsResult,
+  TelemetryConsentStatus,
   EnvironmentsListResult,
   LibraryPlugin,
   LibraryResource,
@@ -511,6 +512,33 @@ export async function saveHarnessSettings(
     return throwAgentError(response, "Could not save harness settings");
   }
   return (await response.json()) as PutHarnessSettingsResult;
+}
+
+export async function fetchTelemetryConsent(
+  baseUrl: string,
+  token: string | null,
+): Promise<TelemetryConsentStatus> {
+  const response = await agentFetch(baseUrl, token, "/v1/telemetry");
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load telemetry preference");
+  }
+  return (await response.json()) as TelemetryConsentStatus;
+}
+
+export async function saveTelemetryConsent(
+  baseUrl: string,
+  token: string | null,
+  enabled: boolean,
+): Promise<TelemetryConsentStatus> {
+  const response = await agentFetch(baseUrl, token, "/v1/telemetry", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not save telemetry preference");
+  }
+  return (await response.json()) as TelemetryConsentStatus;
 }
 
 export async function fetchMarketplaces(

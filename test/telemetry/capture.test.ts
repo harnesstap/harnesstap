@@ -103,13 +103,20 @@ describe("telemetry capture helper", () => {
     expect(names).toContain("cli_first_run");
     expect(names).toContain("cloud_connected");
     expect(names).toContain("signed_in");
-    expect(names).toContain("$identify");
-    expect(names).toContain("$create_alias");
+    expect(names).not.toContain("$identify");
+    expect(names).not.toContain("$create_alias");
     expect(names).toContain("cloud_connect_failed");
     expect(names).toContain("plugin_installed");
     expect(names).toContain("plugin_applied");
     expect(names).toContain("plugin_used");
     expect(names).not.toContain("library_created");
+    const pluginInstalled = sends.find((row) => row.body.event === "plugin_installed");
+    const pluginProps = pluginInstalled?.body.properties as Record<string, unknown>;
+    expect(pluginProps.plugin_slug).toBeUndefined();
+    expect(pluginProps.org_id).toBeUndefined();
+    expect(pluginProps.source).toBe("catalog");
+    const connected = sends.find((row) => row.body.event === "cloud_connected");
+    expect((connected?.body.properties as Record<string, unknown>).org_id).toBeUndefined();
   });
 
   it("does not throw when the transport fails", () => {
@@ -132,6 +139,16 @@ describe("telemetry capture helper", () => {
     expect(sends).toHaveLength(0);
   });
 
+  it("skips capture when consent is unsettled", () => {
+    delete process.env.HARNESSTAP_TELEMETRY;
+    const { sends, transport } = recordedTransport();
+    setTelemetryTransportForTests(transport);
+    expect(isTelemetryEnabled()).toBe(false);
+    trackCliStartup();
+    captureEvent("cli_first_run", { version: "1.0.0" });
+    expect(sends).toHaveLength(0);
+  });
+
   it("does not put emails into identify payloads", () => {
     expect(extractCloudUserId({ user: { id: "usr_1", email: "a@b.com" } })).toBe("usr_1");
     expect(extractCloudUserId({ user: { email: "a@b.com" } })).toBeUndefined();
@@ -140,6 +157,6 @@ describe("telemetry capture helper", () => {
     captureEvent("signed_in", { email: "a@b.com", org_id: "org_1" });
     const properties = sends[0]?.body.properties as Record<string, unknown>;
     expect(properties.email).toBeUndefined();
-    expect(properties.org_id).toBe("org_1");
+    expect(properties.org_id).toBeUndefined();
   });
 });

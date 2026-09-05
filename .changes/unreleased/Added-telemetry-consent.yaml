@@ -1,0 +1,5 @@
+kind: Added
+body: Ask for telemetry consent on first Desktop start, persist the choice in Settings, print a one-time CLI warning with opt-in/out instructions, and keep capture off until consent (env override still works).
+time: 2026-09-05T10:20:00Z
+custom:
+  Issue: ""

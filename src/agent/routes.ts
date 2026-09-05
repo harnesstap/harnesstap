@@ -34,6 +34,10 @@ import {
   handleHarnessSettingsPut,
 } from "./harness-settings-handlers.js";
 import {
+  handleTelemetryGet,
+  handleTelemetryPut,
+} from "./telemetry-handlers.js";
+import {
   handleMarketplacePluginsList,
   handleMarketplacesAdd,
   handleMarketplacesList,
@@ -588,6 +592,10 @@ export function createAgentFetchHandler(
       response = handleHarnessSettingsGet(request, token);
     } else if (method === "PUT" && url.pathname === "/v1/harness") {
       response = await handleHarnessSettingsPut(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/telemetry") {
+      response = handleTelemetryGet(request, token);
+    } else if (method === "PUT" && url.pathname === "/v1/telemetry") {
+      response = await handleTelemetryPut(request, token);
     } else if (method === "GET" && url.pathname === "/v1/marketplaces") {
       response = handleMarketplacesList(request, token);
     } else if (method === "POST" && url.pathname === "/v1/marketplaces") {
