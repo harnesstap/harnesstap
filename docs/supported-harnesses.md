@@ -1,6 +1,6 @@
 # Supported harnesses
 
-HarnessTap registers **42 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in plugins, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
+HarnessTap registers **43 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in plugins, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
 
 For portability caveats (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission, and mirror warnings), see [Portability limits](portability-limits.md).
 
@@ -53,6 +53,7 @@ All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}`
 | **copilot-cli**, **github-copilot** | Yes | No | Yes |
 | **opencode**, **goose**, **grok-build**, **antigravity**, **amazon-q**, generic | Yes | No | Yes |
 | **deepseek-harness** | Yes (`~/.dsh/cordis.patch.yml` home patch) | No | Yes |
+| **muse-code** | Yes (`~/.config/muse/settings.json` `mcp_servers`, user-settings only) | No | Yes |
 
 ## Plugin manifest layouts
 
@@ -92,7 +93,7 @@ Claude **plugin pins** and marketplace metadata (`plugin show` → `claude` bloc
 
 | Tier | Harnesses | Notes |
 | ---- | --------- | ----- |
-| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness` | Dedicated scan/serialize logic |
+| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness`, `muse-code` | Dedicated scan/serialize logic |
 | **Generic** | All other registered harnesses | Path-driven serializer driven by registry `projectPaths` / `globalPaths` |
 
 Filter native harnesses at the CLI:
@@ -162,6 +163,7 @@ Legend for the **Resources** column: `instr` instructions · `skill` skills · `
 | `cody` | Sourcegraph Cody | Generic | instr, mcp | — | — |
 | `grok-build` | Grok Build | Native | instr, skill, mcp, perm, hook, agent, cmd, model | Native skills | — |
 | `deepseek-harness` | DeepSeek Harness | Native | instr, skill, mcp, perm, hook, agent, model | Native skills | Yes |
+| `muse-code` | Muse Code | Native | instr, skill, mcp, hook | Native skills | — |
 | `amp` | Amp | Generic | instr, skill | Native skills | — |
 | `kilo` | Kilo Code | Generic | instr, skill | Native skills | — |
 | `augment` | Augment | Generic | instr, skill | Native skills | — |
@@ -202,6 +204,7 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **devin** | `AGENTS.md` (+ `AGENTS.local.md`) | `.agents/skills/` | — | — | — | — | `.devin/config.json` |
 | **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` | — | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
 | **deepseek-harness** | `AGENTS.md` (+ `CLAUDE.md`) | `.dsh/skills/` | — | `~/.dsh/cordis.patch.yml` (global) | `~/.dsh/.agent-presets/` | — | `~/.dsh/settings.yaml` |
+| **muse-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`, `.claude/CLAUDE.md`) | `.agents/skills/` | — | `~/.config/muse/settings.json` (`mcp_servers`, global only) | — | — | `~/.config/muse/settings.json` |
 | **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
 
 Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) but never imports or applies them.
@@ -257,6 +260,22 @@ DeepSeek Harness is a developer preview; the Cordis patch schema can change. Hom
 | **Agent presets** (`$DSH_HOME/.agent-presets/`) | Persona-only user presets — not a copy of shipped `standard` |
 | **Permissions** | Named presets `workspace-write` and `danger-full-access` only |
 | **Plugin install** | `dsh plugin --profile web add` (`$DSH_HOME/profiles/web/`) — web profile only |
+
+### Muse Code notes
+
+Muse Code (Meta) user settings live at `~/.config/muse/settings.json`. The file **must** include `"schema_version": 1` whenever it exists. HarnessTap merges `mcp_servers` and user `hooks` into that file and leaves model defaults, TUI, `runtime_capabilities`, telemetry, and `managed_hooks_path` alone. MCP is user-settings only — there is no documented project MCP path.
+
+Detection uses distinctive `.muse/hooks.json` and/or `~/.config/muse/` (`settings.json` or the config directory). Shared `AGENTS.md` / `.agents/skills/` alone do not count as Muse. `muse init` only writes `AGENTS.md`; a Muse-only machine is still detected from the home config directory.
+
+| Muse surface | HarnessTap support |
+| ------------ | ------------------- |
+| **AGENTS.md** (load walk: `AGENTS.md`, `CLAUDE.md`, `.agents/AGENTS.md`, `.claude/CLAUDE.md`) | `instruction` resources; apply emits `AGENTS.md` |
+| **Skills** (`<repo>/.agents/skills/`, also discovers `.claude/skills` and `.codex/skills`) | Native `skill` resources; apply writes `.agents/skills/` only (no double-emit to Claude/Codex trees) |
+| **Project hooks** (`<project>/.muse/hooks.json`) | `hook` resources |
+| **User hooks** (`hooks` in `~/.config/muse/settings.json`) | Merged into user settings |
+| **MCP** (`mcp_servers` in user settings; `stdio` / `streamable_http`) | `mcp_server` resources on **global** apply only |
+| **Memory** (`.agents/memory/`) | Skipped — not emitted day one |
+| **Workflows / observer agents** | Runtime-only — out of scope |
 
 ## Related commands
 

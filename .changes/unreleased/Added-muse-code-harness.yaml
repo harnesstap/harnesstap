@@ -1,0 +1,5 @@
+kind: Added
+body: Add a native Muse Code (Meta) harness (`muse-code`) with merge-safe user settings, `mcp_servers`, project hooks, and AGENTS.md / `.agents/skills` apply.
+time: 2026-09-05T05:40:00Z
+custom:
+  Issue: ""

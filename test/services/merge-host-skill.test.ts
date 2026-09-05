@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mergeClaudeSettingsContent } from "../../src/services/merged-host-config.ts";
+import { mergeClaudeSettingsContent, mergeMuseSettingsContent } from "../../src/services/merged-host-config.ts";
 import { mergeSkillMarkdown } from "../../src/services/merge-skill-markdown.ts";
 
 describe("mergeClaudeSettingsContent", () => {
@@ -31,6 +31,42 @@ describe("mergeClaudeSettingsContent", () => {
     expect(merged.model).toBe("opus");
     expect(merged.permissions.allow).toEqual(["Bash(*)"]);
     expect(merged.env).toEqual({ KEEP: "yes", DEMO_KEY: "new" });
+  });
+});
+
+describe("mergeMuseSettingsContent", () => {
+  it("sets schema_version and merges mcp_servers without clobbering unrelated keys", () => {
+    const live = JSON.stringify(
+      {
+        schema_version: 1,
+        telemetry: { enabled: false },
+        mcp_servers: {
+          keep: { transport: "stdio", command: "keep-mcp" },
+        },
+      },
+      null,
+      2,
+    );
+    const generated = JSON.stringify(
+      {
+        mcp_servers: {
+          docs: { transport: "stdio", command: "docs-mcp", enabled: true, mode: "required" },
+        },
+      },
+      null,
+      2,
+    );
+
+    const merged = JSON.parse(mergeMuseSettingsContent(live, generated)) as {
+      schema_version: number;
+      telemetry: { enabled: boolean };
+      mcp_servers: Record<string, { command: string }>;
+    };
+
+    expect(merged.schema_version).toBe(1);
+    expect(merged.telemetry.enabled).toBe(false);
+    expect(merged.mcp_servers.keep.command).toBe("keep-mcp");
+    expect(merged.mcp_servers.docs.command).toBe("docs-mcp");
   });
 });
 

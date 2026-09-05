@@ -391,6 +391,19 @@ const PLATFORMS: PlatformDefinition[] = [
     plugins: "~/.dsh/profiles/web/",
   }),
 
+  def("muse-code", "Muse Code", ["instructions", "skills", "mcp", "hooks"], {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills/",
+    hooks: ".muse/hooks.json",
+  }, {
+    settings: "~/.config/muse/settings.json",
+    mcp: "~/.config/muse/settings.json",
+    skills: "~/.config/muse/skills/",
+    pathAlternates: {
+      settings: ["~/.config/muse/"],
+    },
+  }),
+
   // ── .agents/ convention platforms (skills + instructions) ───────────
   ...([
     ["amp", "Amp", ".agents/skills/", "~/.config/agents/skills/"],

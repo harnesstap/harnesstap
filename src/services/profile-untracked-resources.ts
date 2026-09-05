@@ -129,6 +129,14 @@ function isClaudeSettingsPath(normalizedPath: string): boolean {
   return path === ".claude/settings.json" || path.endsWith("/.claude/settings.json");
 }
 
+function isMuseSettingsPath(normalizedPath: string): boolean {
+  const path = normalizedPath.replace(/^~\//, "");
+  return (
+    path === ".config/muse/settings.json"
+    || path.endsWith("/.config/muse/settings.json")
+  );
+}
+
 function isMcpConfigPath(normalizedPath: string): boolean {
   return /(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(
     normalizedPath.replace(/^~\//, ""),
@@ -144,12 +152,12 @@ function isMergedContainerResource(
     return false;
   }
   if (resource.type === "mcp_server") {
-    return isMcpConfigPath(sourcePath);
+    return isMcpConfigPath(sourcePath) || isMuseSettingsPath(sourcePath);
   }
   if (!MERGED_CONTAINER_RESOURCE_TYPES.has(resource.type)) {
     return false;
   }
-  return isClaudeSettingsPath(sourcePath);
+  return isClaudeSettingsPath(sourcePath) || isMuseSettingsPath(sourcePath);
 }
 
 async function profileOwnedPaths(
