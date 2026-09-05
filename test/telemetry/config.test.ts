@@ -49,6 +49,13 @@ describe("telemetry config", () => {
     expect(isTelemetryEnabled(dir)).toBe(false);
   });
 
+  it("does not capture when telemetry.enabled is unset", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-tel-cfg-"));
+    delete process.env.HARNESSTAP_TELEMETRY;
+    process.env.HARNESSTAP_POSTHOG_PROJECT_API_KEY = "phc_test";
+    expect(isTelemetryEnabled(dir)).toBe(false);
+  });
+
   it("treats an empty project API key override as disabled", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-tel-cfg-"));
     process.env.HARNESSTAP_TELEMETRY = "1";

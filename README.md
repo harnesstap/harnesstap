@@ -269,7 +269,7 @@ ht plugin publish my-setup
 
 To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSTAP_PUBLIC_CATALOG=0`.
 
-CLI and Desktop send anonymous product analytics (install, Cloud connect, plugin apply) to the HarnessTap EU PostHog project. Opt out with `HARNESSTAP_TELEMETRY=0` or `"telemetry": { "enabled": false }` in `config.jsonc`. Details: [Telemetry](docs/telemetry.md).
+CLI and Desktop can send anonymous product analytics (install, Cloud connect, plugin apply) to the HarnessTap EU PostHog project after you opt in. Desktop asks on first start. CLI prints a one-time warning with `HARNESSTAP_TELEMETRY=0` / `"telemetry": { "enabled": false }` disable instructions (and how to enable). Details: [Telemetry](docs/telemetry.md).
 
 Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md).
 

@@ -1,7 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
-import { parseJsonc } from "../config/settings.js";
+import {
+  parseJsonc,
+  readToolkitConfigRecord,
+  writeToolkitConfigRecord,
+} from "../config/settings.js";
 
 /**
  * Public PostHog project API key for EU project 190845 (client-safe `phc_` key).
@@ -15,7 +19,7 @@ export const DEFAULT_POSTHOG_HOST = "https://eu.i.posthog.com";
 const FALSEY = new Set(["0", "false", "no", "off"]);
 const TRUTHY = new Set(["1", "true", "yes", "on"]);
 
-function envFlag(name: string): boolean | undefined {
+export function telemetryEnvFlag(name = "HARNESSTAP_TELEMETRY"): boolean | undefined {
   const raw = process.env[name]?.trim().toLowerCase();
   if (!raw) {
     return undefined;
@@ -29,18 +33,21 @@ function envFlag(name: string): boolean | undefined {
   return undefined;
 }
 
-function configPath(harnesstapDir: string): string {
+export function telemetryConfigPath(harnesstapDir: string): string {
   const jsoncPath = join(harnesstapDir, "config.jsonc");
-  if (existsSync(jsoncPath) || !existsSync(join(harnesstapDir, "config.json"))) {
+  const jsonPath = join(harnesstapDir, "config.json");
+  if (existsSync(jsoncPath) || !existsSync(jsonPath)) {
     return jsoncPath;
   }
-  return join(harnesstapDir, "config.json");
+  return jsonPath;
 }
 
-function telemetryEnabledInConfig(harnesstapDir: string): boolean {
-  const path = configPath(harnesstapDir);
+export function readTelemetryConfigPreference(
+  harnesstapDir: string,
+): boolean | undefined {
+  const path = telemetryConfigPath(harnesstapDir);
   if (!existsSync(path)) {
-    return true;
+    return undefined;
   }
   try {
     const raw = parseJsonc(readFileSync(path, "utf-8")) as {
@@ -49,21 +56,54 @@ function telemetryEnabledInConfig(harnesstapDir: string): boolean {
     if (typeof raw.telemetry?.enabled === "boolean") {
       return raw.telemetry.enabled;
     }
-    return true;
+    return undefined;
   } catch {
-    return true;
+    return undefined;
   }
 }
 
+export function persistTelemetryPreference(
+  enabled: boolean,
+  harnesstapDir = getHarnesstapDir(),
+): void {
+  const path = telemetryConfigPath(harnesstapDir);
+  const existing = readToolkitConfigRecord(harnesstapDir, path);
+  const previous =
+    existing.telemetry && typeof existing.telemetry === "object"
+      ? (existing.telemetry as Record<string, unknown>)
+      : {};
+  writeToolkitConfigRecord(
+    harnesstapDir,
+    {
+      ...existing,
+      telemetry: {
+        ...previous,
+        enabled,
+      },
+    },
+    path,
+  );
+}
+
+export function isTelemetryConsentSettled(
+  harnesstapDir = getHarnesstapDir(),
+): boolean {
+  return (
+    telemetryEnvFlag() !== undefined
+    || readTelemetryConfigPreference(harnesstapDir) !== undefined
+  );
+}
+
 export function isTelemetryEnabled(harnesstapDir = getHarnesstapDir()): boolean {
-  const env = envFlag("HARNESSTAP_TELEMETRY");
+  const env = telemetryEnvFlag();
   if (env === false) {
     return false;
   }
   if (env === true) {
     return Boolean(resolvePosthogProjectApiKey());
   }
-  if (!telemetryEnabledInConfig(harnesstapDir)) {
+  const preference = readTelemetryConfigPreference(harnesstapDir);
+  if (preference !== true) {
     return false;
   }
   return Boolean(resolvePosthogProjectApiKey());

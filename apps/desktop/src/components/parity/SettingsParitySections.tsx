@@ -1,5 +1,6 @@
 import { ProjectConfigInspect } from "./ProjectConfigInspect";
 import { ResolveOrderSettings } from "./ResolveOrderSettings";
+import { TelemetrySettingsSection } from "./TelemetrySettingsSection";
 
 export type SettingsTab = "harnesses" | "project" | "advanced";
 
@@ -35,12 +36,20 @@ export function SettingsParitySections(props: {
       );
     case "advanced":
       return (
-        <ResolveOrderSettings
-          baseUrl={props.baseUrl}
-          token={props.token}
-          disabled={props.disabled}
-          onSaved={props.onSaved}
-        />
+        <>
+          <TelemetrySettingsSection
+            open={props.open}
+            baseUrl={props.baseUrl}
+            token={props.token}
+            disabled={props.disabled}
+          />
+          <ResolveOrderSettings
+            baseUrl={props.baseUrl}
+            token={props.token}
+            disabled={props.disabled}
+            onSaved={props.onSaved}
+          />
+        </>
       );
     default: {
       const neverTab: never = props.tab;

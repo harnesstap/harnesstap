@@ -123,4 +123,4 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 ## Privacy
 
-Desktop does not show a telemetry toggle. Capture is anonymous, non-blocking, and uses the same opt-out as CLI (`HARNESSTAP_TELEMETRY=0` or `telemetry.enabled` in `~/.harnesstap/config.jsonc`).
+On first Desktop start, before any capture, a blocking modal asks the user to enable or disable anonymous usage telemetry. The choice persists in `~/.harnesstap/config.jsonc` (`telemetry.enabled`) and is not shown again unless that preference is cleared. **Settings → Advanced → Telemetry** toggles the same preference. `HARNESSTAP_TELEMETRY=0` still disables capture as an override. Copy matches capture: product/version/OS, install method, Cloud connect outcomes, plugin source/harness — not personal data, plugin names, plugin contents, org ids, file paths, code, secrets, or MCP configs.

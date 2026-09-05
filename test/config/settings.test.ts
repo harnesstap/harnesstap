@@ -217,6 +217,24 @@ describe("plugins.marketplaces", () => {
     expect(json.plugins.refreshMaxAgeHours).toBe(99);
   });
 
+  it("saveSettings preserves telemetry preference", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      JSON.stringify({ telemetry: { enabled: false }, plugins: { refreshMaxAgeHours: 24 } }),
+    );
+    saveSettings(dir, {
+      plugins: {
+        refreshMaxAgeHours: 12,
+        marketplaces: [],
+      },
+      pluginVersionHistoryLimit: 10,
+    });
+    const jsonc = JSON.parse(readFileSync(join(dir, "config.jsonc"), "utf-8"));
+    expect(jsonc.telemetry).toEqual({ enabled: false });
+    expect(jsonc.plugins.refreshMaxAgeHours).toBe(12);
+  });
+
   it("trims marketplace name and url", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(

@@ -602,7 +602,7 @@ Example `config.jsonc`:
 }
 ```
 
-Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age, registered marketplaces, and how many frozen plugin versions to retain per name. Set `telemetry.enabled` to `false` or export `HARNESSTAP_TELEMETRY=0` to disable anonymous CLI/Desktop product analytics. Event names and identity join are documented for contributors in `docs/telemetry.md` (user-facing copy lives in `README.md` and `docs/`).
+Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age, registered marketplaces, and how many frozen plugin versions to retain per name. Telemetry is **off until opt-in**. Desktop asks on first start; CLI prints a one-time warning with enable/disable instructions. Set `telemetry.enabled` to `false` or export `HARNESSTAP_TELEMETRY=0` to disable; set `telemetry.enabled` to `true` or `HARNESSTAP_TELEMETRY=1` to enable. Event names are documented in `docs/telemetry.md` (user-facing copy lives in `README.md` and `docs/`).
 
 ### Schema (logical tables)
 

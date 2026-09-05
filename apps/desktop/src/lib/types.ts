@@ -501,6 +501,22 @@ export interface AgentHealth {
   first_run?: boolean;
 }
 
+export interface TelemetryConsentCopy {
+  title: string;
+  body: string;
+  tracked: string[];
+  not_tracked: string[];
+}
+
+export interface TelemetryConsentStatus {
+  enabled: boolean;
+  consented: boolean;
+  preference: boolean | null;
+  env_override: boolean | null;
+  needs_consent: boolean;
+  copy: TelemetryConsentCopy;
+}
+
 export type MaterializationStrategy = "symlink-preferred" | "copy";
 
 export interface HarnessCatalogEntry {
