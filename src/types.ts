@@ -67,6 +67,12 @@ export interface McpServerMetadata {
   connection_type?: string;
   env_file?: string;
   auth?: McpOAuthAuthMetadata;
+  /** Muse Code `mcp_servers` extra: whether the server is enabled. */
+  enabled?: boolean;
+  /** Muse Code `mcp_servers` extra: `required` (abort if down) or `optional`. */
+  mode?: string;
+  /** Muse Code stdio `framing`; invalid on `streamable_http`. */
+  framing?: string;
 }
 
 export interface PermissionMetadata {

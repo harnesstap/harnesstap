@@ -143,7 +143,24 @@ describe("platform registry", () => {
     expect(dsh?.supports.has("commands")).toBe(false);
     expect(dsh?.supports.has("rules")).toBe(false);
 
-    expect(registry.getAllPlatforms().length).toBe(42);
+    const muse = registry.getPlatform("muse-code");
+    expect(muse?.name).toBe("Muse Code");
+    expect(muse?.projectPaths.instructions).toBe("AGENTS.md");
+    expect(muse?.projectPaths.skills).toBe(".agents/skills/");
+    expect(muse?.projectPaths.hooks).toBe(".muse/hooks.json");
+    expect(muse?.projectPaths.mcp).toBeUndefined();
+    expect(muse?.globalPaths.settings).toBe("~/.config/muse/settings.json");
+    expect(muse?.globalPaths.mcp).toBe("~/.config/muse/settings.json");
+    expect(muse?.globalPaths.skills).toBe("~/.config/muse/skills/");
+    expect(muse?.globalPaths.pathAlternates?.settings).toEqual(["~/.config/muse/"]);
+    expect(muse?.supports.has("mcp")).toBe(true);
+    expect(muse?.supports.has("hooks")).toBe(true);
+    expect(muse?.supports.has("skills")).toBe(true);
+    expect(muse?.supports.has("instructions")).toBe(true);
+    expect(muse?.supports.has("agents")).toBe(false);
+    expect(muse?.supports.has("commands")).toBe(false);
+
+    expect(registry.getAllPlatforms().length).toBe(43);
   });
 
   it("detectPlatforms returns empty array (stub)", async () => {

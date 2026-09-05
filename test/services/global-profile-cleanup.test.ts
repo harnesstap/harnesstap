@@ -85,6 +85,20 @@ describe("global-profile-cleanup service", () => {
     ).toEqual([]);
   });
 
+  it("does not plan whole-file removal of mergeable Muse settings.json", () => {
+    expect(
+      planStaleGlobalProfileFiles(
+        "/tmp",
+        [".config/muse/skills/kept/SKILL.md"],
+        [
+          ".config/muse/skills/kept/SKILL.md",
+          ".config/muse/settings.json",
+        ],
+        ["muse-code"],
+      ),
+    ).toEqual([]);
+  });
+
   it("expands removed MCP configs onto other harness dedicated MCP paths", () => {
     expect(
       expandStaleMcpConfigMirrors(

@@ -129,6 +129,34 @@ describe("registry path detection", () => {
     }
   });
 
+  it("detects muse-code from .muse/hooks.json", () => {
+    const projectDir = createTempDir("muse-code-hooks");
+
+    try {
+      writeTextFile(join(projectDir, ".muse/hooks.json"), '{"hooks":{}}\n');
+
+      expect(detectPlatforms(projectDir)).toContain("muse-code");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("does not detect muse-code from AGENTS.md or .agents/skills alone", () => {
+    const projectDir = createTempDir("muse-code-shared-only");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Shared\n");
+      writeTextFile(
+        join(projectDir, ".agents/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nBody.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).not.toContain("muse-code");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("detects claude-code from CLAUDE.md alone", () => {
     const projectDir = createTempDir("claude-code-claude-md");
 

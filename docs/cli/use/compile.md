@@ -37,6 +37,6 @@ When nothing resolves after that chain, `ht compile` fails closed the same way a
 
 ## What compile does not do
 
-Compile does not take a plugin selector or `--global`. There is no `--watch` and no `--clean`. `compilation.strategy: distributed` is noted and ignored — output stays the existing single-file root context (`AGENTS.md` / `CLAUDE.md`). Use `ht harness list` for the 42-harness registry; `ht targets` is the apply-target preview.
+Compile does not take a plugin selector or `--global`. There is no `--watch` and no `--clean`. `compilation.strategy: distributed` is noted and ignored — output stays the existing single-file root context (`AGENTS.md` / `CLAUDE.md`). Use `ht harness list` for the 43-harness registry; `ht targets` is the apply-target preview.
 
 See also: [Install a project](./install.md), [Apply to a project](./apply.md), [Command reference](../command-reference.md).

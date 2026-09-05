@@ -61,7 +61,7 @@ Use the **CLI** (`ht`) or **Desktop** — both talk to the same local library at
 | **Machine transfer** | Export the local library and harness preferences for another machine |
 | **Desktop** | Browse plugins, profiles, and apply from a local app that shares the CLI library |
 
-**42 harnesses** are registered today. Native serializers: Claude Code, Cursor, Codex, Goose, OpenCode, GitHub Copilot, Copilot CLI, Gemini CLI, Grok Build, DeepSeek Harness. The rest use a path-driven serializer. Full matrix: [Supported harnesses](docs/supported-harnesses.md).
+**43 harnesses** are registered today. Native serializers: Claude Code, Cursor, Codex, Goose, OpenCode, GitHub Copilot, Copilot CLI, Gemini CLI, Grok Build, DeepSeek Harness, Muse Code. The rest use a path-driven serializer. Full matrix: [Supported harnesses](docs/supported-harnesses.md).
 
 ---
 

@@ -35,6 +35,7 @@ describe("CLI harness", () => {
         "goose",
         "grok-build",
         "deepseek-harness",
+        "muse-code",
       ]);
 
       const pluginList = await runCli(["l", "ls", "--local-only", "--format", "json"], {
