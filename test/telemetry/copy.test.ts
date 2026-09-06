@@ -16,7 +16,7 @@ describe("telemetry consent copy", () => {
     expect(copy.tracked).toEqual([...TELEMETRY_TRACKED_LINES]);
     expect(copy.not_tracked).toEqual([...TELEMETRY_NOT_TRACKED_LINES]);
     expect(joined).toContain("HarnessTap Cloud interactions");
-    expect(joined).toContain("Plugin install, apply, and view at a high level");
+    expect(joined).toContain("Plugin install, apply, and view occurences");
     expect(joined).toContain("No personal data");
     expect(joined).toContain("No resource-related information");
     expect(joined).not.toContain("install, first run, Cloud connect");
