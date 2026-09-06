@@ -3107,6 +3107,59 @@ button:focus-visible,
   padding-left: 1.1rem;
 }
 
+.dialog.telemetry-consent-dialog {
+  width: min(32rem, 100%);
+  padding: 1.25rem 1.35rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.dialog.telemetry-consent-dialog h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.telemetry-consent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.telemetry-consent-body > p {
+  margin: 0;
+}
+
+.telemetry-consent-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.telemetry-consent-section h3,
+.telemetry-consent-section h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Tailwind Preflight strips list markers; restore real bullets for consent copy. */
+.telemetry-scope-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+  list-style-position: outside;
+  color: var(--muted);
+}
+
+.telemetry-scope-list li + li {
+  margin-top: 0.28rem;
+}
+
+.dialog.telemetry-consent-dialog .dialog-actions {
+  margin-top: 0.15rem;
+}
+
 .confirm-dialog-body {
   margin: 0;
 }

@@ -1,4 +1,6 @@
+import { Check, X } from "lucide-react";
 import type { TelemetryConsentCopy } from "../lib/types";
+import { ButtonSpinner } from "./ButtonSpinner";
 
 export interface TelemetryConsentModalProps {
   open: boolean;
@@ -22,7 +24,7 @@ export function TelemetryConsentModal({
   return (
     <div className="dialog-backdrop" role="presentation">
       <div
-        className="dialog"
+        className="dialog telemetry-consent-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="telemetry-consent-title"
@@ -30,24 +32,24 @@ export function TelemetryConsentModal({
         data-testid="telemetry-consent-modal"
       >
         <h2 id="telemetry-consent-title">{copy.title}</h2>
-        <div id="telemetry-consent-body" className="confirm-dialog-body">
-          <p>{copy.body}</p>
-          <p>
-            <strong>What we track</strong>
-          </p>
-          <ul>
-            {copy.tracked.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <p>
-            <strong>What we do not track</strong>
-          </p>
-          <ul>
-            {copy.not_tracked.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
+        <div id="telemetry-consent-body" className="telemetry-consent-body">
+          <p className="muted">{copy.body}</p>
+          <section className="telemetry-consent-section">
+            <h3>What we track</h3>
+            <ul className="telemetry-scope-list">
+              {copy.tracked.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
+          <section className="telemetry-consent-section">
+            <h3>What we do not track</h3>
+            <ul className="telemetry-scope-list">
+              {copy.not_tracked.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
         </div>
         <div className="dialog-actions">
           <button
@@ -57,16 +59,19 @@ export function TelemetryConsentModal({
             data-testid="telemetry-consent-disable"
             onClick={onDisable}
           >
-            Disable telemetry
+            {busy ? <ButtonSpinner size={16} /> : <X size={16} aria-hidden />}
+            Disable
           </button>
           <button
             className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
             type="button"
             disabled={busy}
+            aria-busy={busy}
             data-testid="telemetry-consent-enable"
             onClick={onEnable}
           >
-            Enable telemetry
+            {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
+            Enable
           </button>
         </div>
       </div>
