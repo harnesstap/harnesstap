@@ -9,7 +9,7 @@ export const TELEMETRY_TRACKED_LINES = [
   "Which product you used (CLI or Desktop), version, and operating system",
   "How the CLI was installed",
   "HarnessTap Cloud interactions",
-  "Plugin install, apply, and view at a high level",
+  "Plugin install, apply, and view occurences",
 ] as const;
 
 export const TELEMETRY_NOT_TRACKED_LINES = [
