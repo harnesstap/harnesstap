@@ -19,6 +19,7 @@ describe("telemetry consent copy", () => {
     expect(joined).toContain("Plugin install, apply, and view at a high level");
     expect(joined).toContain("No personal data");
     expect(joined).toContain("No resource-related information");
+    expect(joined).not.toContain("install, first run, Cloud connect");
     expect(joined).not.toContain("error code");
     expect(joined).not.toContain("cloud_connect");
     expect(joined).not.toContain("plugin_slug");

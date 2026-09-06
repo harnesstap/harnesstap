@@ -33,7 +33,7 @@ export function TelemetryConsentModal({
       >
         <h2 id="telemetry-consent-title">{copy.title}</h2>
         <div id="telemetry-consent-body" className="telemetry-consent-body">
-          <p className="muted">{copy.body}</p>
+          <p className="telemetry-consent-intro muted">{copy.body}</p>
           <section className="telemetry-consent-section">
             <h3>What we track</h3>
             <ul className="telemetry-scope-list">
