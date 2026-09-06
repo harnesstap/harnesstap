@@ -73,6 +73,10 @@ export interface ResourceSelectionListProps {
   disabled: boolean;
   onToggle: (id: string) => void;
   onInspect?: (resource: LibraryResource) => void;
+  /** Fieldset legend. Defaults to the profile-edit “Resources” label. */
+  title?: string;
+  /** Empty copy when the library has no rows (before filtering). */
+  emptyUnfilteredLabel?: string;
 }
 
 function ResourcePickerRow({
@@ -153,6 +157,8 @@ export function ResourceSelectionList({
   disabled,
   onToggle,
   onInspect,
+  title = "Resources",
+  emptyUnfilteredLabel = "No resources available.",
 }: ResourceSelectionListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -195,10 +201,10 @@ export function ResourceSelectionList({
 
   const emptyLabel =
     resources.length === 0
-      ? "No resources available."
+      ? emptyUnfilteredLabel
       : filter.trim()
         ? "No matches."
-        : "No resources available.";
+        : emptyUnfilteredLabel;
 
   const isExpanded = (type: string): boolean => {
     const manual = manualExpanded[type];
@@ -221,7 +227,7 @@ export function ResourceSelectionList({
 
   return (
     <fieldset className="selection-list" disabled={disabled}>
-      <legend>Resources</legend>
+      <legend>{title}</legend>
       <Input
         className="selection-list-filter h-8 text-xs"
         type="search"

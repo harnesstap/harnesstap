@@ -74,6 +74,19 @@ describe("profile edit publish chrome", () => {
     expect(editSource).not.toContain("PublishProfileDrawer");
   });
 
+  test("renders Profiles header create as an accent icon-only action", () => {
+    const toolbar = sliceBetween(
+      appSource,
+      "profiles-rail-toolbar",
+      "profiles-filter-row",
+    );
+    expect(toolbar).toContain('data-testid="open-create-profile"');
+    expect(toolbar).toContain("primary");
+    expect(toolbar).toContain("IconActionButton");
+    expect(toolbar).toContain('label="Create profile"');
+    expect(designSource).toContain("then **create** (accent icon-only `+`)");
+  });
+
   test("opens a catalog-picker dialog with select-all, memory, and a disabled Publish when none are registered", () => {
     expect(publishSource).toContain("publish-profile-dialog");
     expect(publishSource).not.toContain("FullScreenPanel");

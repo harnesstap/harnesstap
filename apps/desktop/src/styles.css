@@ -4447,26 +4447,7 @@ button:focus-visible,
   font-size: 13px;
 }
 
-.resource-picker-group {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.resource-picker-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 6px;
-}
-
-.resource-picker-row:hover {
-  background: rgba(127, 127, 127, 0.12);
-}
-
-.resource-picker-empty {
-  margin: 0;
+.resource-create-compose .selection-list-rows {
+  height: min(50vh, 420px);
+  max-height: min(50vh, 420px);
 }
