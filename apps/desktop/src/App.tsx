@@ -2528,17 +2528,15 @@ export function App() {
                       : undefined
                   }
                 />
-                <button
-                  className="icon-action rail-icon-action"
-                  type="button"
+                <IconActionButton
+                  primary
+                  className="rail-icon-action"
                   data-testid="open-create-profile"
                   onClick={() => openCreateProfile()}
                   disabled={!connected || switching || stashBusy}
-                  aria-label="Create profile"
-                  title="Create profile"
-                >
-                  <Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                </button>
+                  label="Create profile"
+                  icon={<Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                />
               </div>
             </div>
           </div>

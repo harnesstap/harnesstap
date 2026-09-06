@@ -2,10 +2,12 @@ import { useMemo, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { ResourceSelectionList } from "./CompositionPickers";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { createLibraryResource } from "../lib/api/resource-create";
 import { createLibraryPlugin } from "../lib/api/library-plugins";
 import { AgentApiError } from "../lib/api/http";
+import type { LibraryResource } from "../lib/types";
 import {
   buildCreateRequestBody,
   getResourceCreateSchema,
@@ -17,13 +19,6 @@ import {
   type CreateFormValues,
   type CreateResourceType,
 } from "../lib/resource-create-schema";
-
-export interface PickerResource {
-  id: string;
-  type: string;
-  name: string;
-  namespace: string | null;
-}
 
 export interface ResourceCreateTarget {
   kind: "resource" | "plugin-package";
@@ -39,7 +34,7 @@ export interface ResourceCreatePanelProps {
   disabled?: boolean;
   /** Profile targeted by the attach-and-apply checkbox; hidden when null. */
   attachProfileName: string | null;
-  pickerResources: PickerResource[];
+  pickerResources: LibraryResource[];
   onClose: () => void;
   onCreated: (target: ResourceCreateTarget) => void;
   onAddToProfile: (resource: { type: string; name: string }) => Promise<void>;
@@ -50,7 +45,7 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-function resourceSelector(resource: PickerResource): string {
+function resourceSelector(resource: LibraryResource): string {
   return resource.namespace
     ? `${resource.name}@${resource.namespace}`
     : resource.name;
@@ -168,6 +163,7 @@ export function ResourceCreatePanel({
   const [values, setValues] = useState<CreateFormValues>(initialRef.current);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [resourceFilter, setResourceFilter] = useState("");
   const [attachChecked, setAttachChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [topError, setTopError] = useState<string | null>(null);
@@ -275,16 +271,6 @@ export function ResourceCreatePanel({
     }
   }
 
-  const pickerGroups = useMemo(() => {
-    const groups = new Map<string, PickerResource[]>();
-    for (const resource of pickerResources) {
-      const list = groups.get(resource.type) ?? [];
-      list.push(resource);
-      groups.set(resource.type, list);
-    }
-    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [pickerResources]);
-
   return (
     <>
       <FullScreenPanel
@@ -362,32 +348,18 @@ export function ResourceCreatePanel({
           })}
 
           {schema.supportsComposition ? (
-            <fieldset className="resource-create-field">
-              <legend>Compose from library</legend>
-              {pickerGroups.length === 0 ? (
-                <p className="resource-picker-empty muted">
-                  No library resources yet. The plugin can be composed later.
-                </p>
-              ) : (
-                pickerGroups.map(([groupName, group]) => (
-                  <div key={groupName}>
-                    <p className="resource-picker-group">{groupName}</p>
-                    {group.map((resource) => (
-                      <label key={resource.id} className="resource-picker-row">
-                        <input
-                          type="checkbox"
-                          data-testid={`resource-picker-row-${resource.type}-${resource.name}`}
-                          disabled={locked}
-                          checked={selectedIds.has(resource.id)}
-                          onChange={() => togglePicked(resource.id)}
-                        />
-                        <span>{resourceSelector(resource)}</span>
-                      </label>
-                    ))}
-                  </div>
-                ))
-              )}
-            </fieldset>
+            <div className="resource-create-compose">
+              <ResourceSelectionList
+                title="Compose from library"
+                emptyUnfilteredLabel="No library resources yet. The plugin can be composed later."
+                resources={pickerResources}
+                filter={resourceFilter}
+                onFilterChange={setResourceFilter}
+                selectedIds={[...selectedIds]}
+                disabled={locked}
+                onToggle={togglePicked}
+              />
+            </div>
           ) : null}
 
           {showAttachCheckbox ? (

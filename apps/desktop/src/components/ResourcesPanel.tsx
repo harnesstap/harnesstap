@@ -6,7 +6,7 @@ import { loadRecentProjects } from "../lib/recent-projects";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { PluginPackageDetail } from "./PluginPackageDetail";
-import { ResourceCreatePanel, type PickerResource } from "./ResourceCreatePanel";
+import { ResourceCreatePanel } from "./ResourceCreatePanel";
 import { ResourceDetailBody } from "./ResourceDetailBody";
 import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
@@ -275,16 +275,11 @@ export function ResourcesPanel({
     [entries],
   );
 
-  const pickerResources = useMemo<PickerResource[]>(
+  const pickerResources = useMemo<LibraryResource[]>(
     () =>
-      entries
-        .filter((entry) => entry.type !== "plugin" && entry.type !== "plugin_ref")
-        .map((entry) => ({
-          id: entry.id,
-          type: entry.type,
-          name: entry.name,
-          namespace: entry.namespace ?? null,
-        })),
+      entries.filter(
+        (entry) => entry.type !== "plugin" && entry.type !== "plugin_ref",
+      ),
     [entries],
   );
 
