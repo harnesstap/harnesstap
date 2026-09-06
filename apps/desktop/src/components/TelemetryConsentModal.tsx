@@ -56,6 +56,7 @@ export function TelemetryConsentModal({
             className="btn"
             type="button"
             disabled={busy}
+            aria-label="Disable telemetry"
             data-testid="telemetry-consent-disable"
             onClick={onDisable}
           >
@@ -67,6 +68,7 @@ export function TelemetryConsentModal({
             type="button"
             disabled={busy}
             aria-busy={busy}
+            aria-label="Enable telemetry"
             data-testid="telemetry-consent-enable"
             onClick={onEnable}
           >
