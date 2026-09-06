@@ -3107,6 +3107,79 @@ button:focus-visible,
   padding-left: 1.1rem;
 }
 
+.dialog.telemetry-consent-dialog {
+  width: min(34rem, 100%);
+  padding: 1.4rem 1.5rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.dialog.telemetry-consent-dialog h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.telemetry-consent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.telemetry-consent-intro {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.telemetry-consent-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.telemetry-consent-section h3,
+.telemetry-consent-section h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg);
+  line-height: 1.3;
+}
+
+/* Tailwind Preflight zeros list-style/padding. Draw markers so bullets always show. */
+.telemetry-scope-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.telemetry-scope-list li {
+  display: grid;
+  grid-template-columns: 1.1rem minmax(0, 1fr);
+  column-gap: 0.2rem;
+  align-items: start;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.telemetry-scope-list li::before {
+  content: "•";
+  font-weight: 700;
+  color: var(--fg);
+  line-height: 1.45;
+}
+
+.dialog.telemetry-consent-dialog .dialog-actions {
+  margin-top: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  gap: 0.6rem;
+}
+
 .confirm-dialog-body {
   margin: 0;
 }

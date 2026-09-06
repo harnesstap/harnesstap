@@ -3,18 +3,18 @@
 export const TELEMETRY_CONSENT_TITLE = "Usage telemetry";
 
 export const TELEMETRY_SCOPE_SUMMARY =
-  "HarnessTap can send anonymous product analytics to our EU PostHog project so we can see install, first run, Cloud connect, and plugin install/apply/view counts.";
+  "HarnessTap can send anonymous product analytics to our EU PostHog project so we can see how the product is used.";
 
 export const TELEMETRY_TRACKED_LINES = [
-  "Which product you used (CLI or Desktop), app version, and operating system",
-  "Install method for the CLI (for example brew, npm, or unknown)",
-  "Cloud connect started, succeeded, or failed (short error code/reason only)",
-  "That a plugin was installed, applied, or viewed, plus source (catalog, local, or URL) and harness name when known",
+  "Which product you used (CLI or Desktop), version, and operating system",
+  "How the CLI was installed",
+  "HarnessTap Cloud interactions",
+  "Plugin install, apply, and view occurences",
 ] as const;
 
 export const TELEMETRY_NOT_TRACKED_LINES = [
-  "No personal data: no names, emails, file paths, code, secrets, tokens, or MCP configs",
-  "No resource-related information: no plugin names, plugin contents, or organization ids",
+  "No personal data: names, emails, file paths, code, secrets, or MCP configs",
+  "No resource-related information: plugin names, contents, or organization ids",
 ] as const;
 
 export const TELEMETRY_CLI_DISABLE_INSTRUCTIONS =

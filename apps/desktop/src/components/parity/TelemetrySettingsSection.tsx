@@ -75,12 +75,22 @@ export function TelemetrySettingsSection({
       <p className="field-note muted">{status?.copy.body}</p>
       {status ? (
         <>
-          <p className="field-note muted">
-            <strong>What we track:</strong> {status.copy.tracked.join("; ")}.
-          </p>
-          <p className="field-note muted">
-            <strong>What we do not track:</strong> {status.copy.not_tracked.join("; ")}.
-          </p>
+          <section className="telemetry-consent-section">
+            <h4>What we track</h4>
+            <ul className="telemetry-scope-list">
+              {status.copy.tracked.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
+          <section className="telemetry-consent-section">
+            <h4>What we do not track</h4>
+            <ul className="telemetry-scope-list">
+              {status.copy.not_tracked.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
         </>
       ) : null}
       {error ? (
