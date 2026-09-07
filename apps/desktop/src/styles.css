@@ -1792,6 +1792,16 @@ button:focus-visible,
   background: color-mix(in srgb, var(--yellow) 10%, var(--surface));
 }
 
+.contents-block.not-staged-attention {
+  border-color: color-mix(in srgb, var(--yellow) 38%, var(--border));
+  border-left: 3px solid var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 6%, var(--bg));
+}
+
+.contents-block.not-staged-attention > .contents-header {
+  background: color-mix(in srgb, var(--yellow) 10%, var(--surface));
+}
+
 .contents-block > .contents-header {
   list-style: none;
   cursor: pointer;
