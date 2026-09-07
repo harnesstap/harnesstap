@@ -1,0 +1,5 @@
+kind: Added
+body: Import GitHub plugin.json packages into the library from Desktop Create (header Import) and `ht plugin add`.
+time: 2026-09-07T03:10:00Z
+custom:
+  Issue: ""

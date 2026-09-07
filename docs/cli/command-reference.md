@@ -338,6 +338,7 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin show <name>`
 - `plugin editor [name]` — open a plugin definition file in your system editor
 - `plugin search [query]` — search marketplace catalogs for plugins
+- `plugin add <ref>` — import a GitHub `plugin.json` package into the library (`https://github.com/owner/repo`, `owner/repo`, or `gh:owner/repo`)
 - `plugin add <ref> --to <plugin>` — add a dependency to a plugin (`ref`: local name, `org/catalog/name`, `name@marketplace`, or git URL)
 - `plugin edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
 - `plugin delete [name]`
@@ -394,7 +395,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `plugin search --refresh` — refresh marketplace catalogs before searching
 - `plugin search --plugin <name>` — attach the selected plugin pin to this plugin (interactive browse picker on TTY)
 - `plugin search --format json` / `--no-interactive`
-- `plugin add --to <plugin>` — required target plugin (deprecated `--layer` alias)
+- `plugin add --to <plugin>` — required when `ref` is not a GitHub plugin source (deprecated `--layer` alias)
 - `plugin add --format json`
 - `plugin edit --type <type>` — restrict tables to one attachment type
 - `plugin edit --search <query>` — pre-fill the interactive search filter

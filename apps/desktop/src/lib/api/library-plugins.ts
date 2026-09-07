@@ -135,6 +135,29 @@ export async function createLibraryPlugin(
   return body.plugin;
 }
 
+export interface LibraryGitImportResult {
+  plugin: LibraryPluginHead;
+  origin_locator: string;
+  origin_fingerprint: string;
+  created: boolean;
+}
+
+export async function importLibraryPluginFromGit(
+  baseUrl: string,
+  token: string | null,
+  source: string,
+): Promise<LibraryGitImportResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/library/plugins/import-git", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ source }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not import plugin");
+  }
+  return (await response.json()) as LibraryGitImportResult;
+}
+
 export async function patchLibraryPlugin(
   baseUrl: string,
   token: string | null,

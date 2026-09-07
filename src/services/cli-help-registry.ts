@@ -771,8 +771,12 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "plugin.add": {
-    description: "Add a dependency to a plugin",
+    description:
+      "Import a GitHub plugin.json package into the library, or add a dependency to a plugin with --to",
     examples: [
+      "plugin add DietrichGebert/ponytail",
+      "plugin add https://github.com/DietrichGebert/ponytail",
+      "plugin add gh:DietrichGebert/ponytail",
       "plugin add base --to root",
       "plugin add fmt@demo --to team-stack",
     ],

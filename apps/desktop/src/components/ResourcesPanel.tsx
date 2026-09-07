@@ -828,7 +828,14 @@ export function ResourcesPanel({
       <ResourceTypeModal
         open={createModalOpen}
         disabled={disabled || !baseUrl}
+        baseUrl={baseUrl}
+        token={token}
         onClose={() => setCreateModalOpen(false)}
+        onImported={(pluginName) => {
+          setCreateModalOpen(false);
+          setResourcesReloadKey((value) => value + 1);
+          onImported?.(`Imported ${pluginName} from GitHub`);
+        }}
         onSelect={(selected) => {
           setCreateModalOpen(false);
           setCreateType(selected);
