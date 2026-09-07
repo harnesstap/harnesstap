@@ -1,0 +1,5 @@
+kind: Changed
+body: Tint the Desktop Not staged panel with the yellow warn surface when it has on-disk rows so it does not match empty charcoal sections.
+time: 2026-09-07T03:15:00Z
+custom:
+  Issue: ""

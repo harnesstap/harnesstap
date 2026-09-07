@@ -98,4 +98,80 @@ describe("getManagedFileDiff", () => {
       await context.cleanup();
     }
   });
+
+  it("scopes mcp.json diffs to the selected server", async () => {
+    const context = await createInitializedTestContext("managed-file-diff-mcp-scope");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "mcp_server",
+          name: "alpha",
+          description: "",
+          content: "",
+          metadata: { transport: "http", url: "https://example.com/alpha-expected" },
+          source: "~/.cursor/mcp.json",
+        }).id,
+      );
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "mcp_server",
+          name: "beta",
+          description: "",
+          content: "",
+          metadata: { transport: "http", url: "https://example.com/beta-expected" },
+          source: "~/.cursor/mcp.json",
+        }).id,
+      );
+      await applyProfilePlugin("work", {
+        harness: "cursor",
+        conflictPolicy: "replace",
+      });
+
+      const relative = ".cursor/mcp.json";
+      mkdirSync(join(context.homeDir, ".cursor"), { recursive: true });
+      writeFileSync(
+        join(context.homeDir, relative),
+        `${JSON.stringify(
+          {
+            mcpServers: {
+              alpha: { url: "https://example.com/alpha-live" },
+              beta: { url: "https://example.com/beta-live" },
+            },
+          },
+          null,
+          2,
+        )}\n`,
+        "utf-8",
+      );
+
+      const full = await getManagedFileDiff({
+        profileSelector: "work",
+        path: relative,
+        scope: "home",
+        harness: "cursor",
+      });
+      expect(full.current).toContain("alpha-live");
+      expect(full.current).toContain("beta-live");
+      expect(full.expected).toContain("alpha-expected");
+      expect(full.expected).toContain("beta-expected");
+
+      const scoped = await getManagedFileDiff({
+        profileSelector: "work",
+        path: relative,
+        scope: "home",
+        harness: "cursor",
+        resource: { type: "mcp_server", name: "alpha" },
+      });
+      expect(scoped.current).toContain("alpha-live");
+      expect(scoped.current).not.toContain("beta-live");
+      expect(scoped.expected).toContain("alpha-expected");
+      expect(scoped.expected).not.toContain("beta-expected");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

@@ -14,6 +14,7 @@ import { buildUnifiedDiffLines, countUnifiedDiffChanges } from "../lib/unified-d
 export interface FileDiffModalProps {
   open: boolean;
   path: string | null;
+  resource?: { type: string; name: string } | null;
   profileName: string | null;
   scope: ViewScope;
   projectPath?: string | null;
@@ -25,6 +26,7 @@ export interface FileDiffModalProps {
 export function FileDiffModal({
   open,
   path,
+  resource = null,
   profileName,
   scope,
   projectPath,
@@ -54,6 +56,9 @@ export function FileDiffModal({
       path,
       scope,
       ...(scope === "project" && projectPath ? { projectPath } : {}),
+      ...(resource?.type && resource.name
+        ? { resource: { type: resource.type, name: resource.name } }
+        : {}),
     })
       .then((next) => {
         if (!cancelled) {
@@ -80,7 +85,7 @@ export function FileDiffModal({
     return () => {
       cancelled = true;
     };
-  }, [open, path, profileName, scope, projectPath, baseUrl, token]);
+  }, [open, path, resource?.type, resource?.name, profileName, scope, projectPath, baseUrl, token]);
 
   const lines = useMemo(() => {
     if (!diff) {
@@ -126,6 +131,9 @@ export function FileDiffModal({
             <h2 id={titleId} className="mono">
               {path}
             </h2>
+            {resource?.type === "mcp_server" && resource.name ? (
+              <p className="muted file-diff-resource">{resource.name}</p>
+            ) : null}
             {showDiffChrome ? (
               <p className="muted file-diff-legend">
                 Green = would add · Red = would remove
@@ -151,7 +159,7 @@ export function FileDiffModal({
               <div>{error}</div>
             </div>
           ) : (
-            <pre className="file-diff-content" aria-label={`Live to after-apply diff for ${path}`}>
+            <pre className="file-diff-content" aria-label={`Live to after-apply diff for ${path}${resource?.name ? ` (${resource.name})` : ""}`}>
               {lines.map((line, index) => (
                 <span
                   key={`${line.kind}-${index}`}

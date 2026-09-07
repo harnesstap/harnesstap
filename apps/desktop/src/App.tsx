@@ -3353,6 +3353,7 @@ export function App() {
       <FileDiffModal
         open={diffFileChange !== null}
         path={diffFileChange?.path ?? null}
+        resource={diffFileChange?.resource ?? null}
         profileName={selectedProfile ?? activeProfile}
         scope={view}
         projectPath={projectPath}

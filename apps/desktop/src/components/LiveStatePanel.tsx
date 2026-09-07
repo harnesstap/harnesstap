@@ -1731,7 +1731,7 @@ export function LiveStatePanel({
 
         {selectedProfile && notStagedResources.length > 0 ? (
           <details
-            className="contents-block"
+            className="contents-block not-staged-attention"
             open
             aria-label="Not staged"
           >

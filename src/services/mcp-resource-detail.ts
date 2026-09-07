@@ -9,12 +9,79 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+type McpServersWrapperKey = "mcpServers" | "mcp_servers" | "mcp";
+
+const MCP_SERVERS_WRAPPER_KEYS = [
+  "mcpServers",
+  "mcp_servers",
+  "mcp",
+] as const satisfies readonly McpServersWrapperKey[];
+
+function mcpServersWrapperKey(
+  document: Record<string, unknown>,
+): McpServersWrapperKey | null {
+  for (const key of MCP_SERVERS_WRAPPER_KEYS) {
+    if (isRecord(document[key])) {
+      return key;
+    }
+  }
+  return null;
+}
+
 function mcpServersRecord(document: unknown): Record<string, unknown> | null {
   if (!isRecord(document)) {
     return null;
   }
-  const serversRaw = document.mcpServers ?? document.mcp_servers ?? document.mcp;
+  const key = mcpServersWrapperKey(document);
+  if (!key) {
+    return null;
+  }
+  const serversRaw = document[key];
   return isRecord(serversRaw) ? serversRaw : null;
+}
+
+function formatMcpServersFragment(
+  wrapper: McpServersWrapperKey,
+  servers: Record<string, unknown>,
+): string {
+  return `${JSON.stringify({ [wrapper]: servers }, null, 2)}\n`;
+}
+
+/**
+ * Restrict an MCP config payload to one server key so live→after-apply diffs
+ * do not include sibling servers in the same file.
+ */
+export function scopeMcpConfigToServer(
+  content: string | null,
+  serverName: string,
+): string | null {
+  if (content === null) {
+    return null;
+  }
+  const name = serverName.trim();
+  if (!name) {
+    return content;
+  }
+  try {
+    const document = JSON.parse(content) as unknown;
+    if (!isRecord(document)) {
+      return content;
+    }
+    const wrapper = mcpServersWrapperKey(document);
+    if (!wrapper) {
+      return content;
+    }
+    const servers = document[wrapper];
+    if (!isRecord(servers)) {
+      return content;
+    }
+    const scoped = Object.hasOwn(servers, name)
+      ? { [name]: servers[name] }
+      : {};
+    return formatMcpServersFragment(wrapper, scoped);
+  } catch {
+    return content;
+  }
 }
 
 /** Pretty-print one server entry as an `mcpServers` document fragment. */

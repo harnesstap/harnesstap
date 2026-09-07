@@ -1,0 +1,5 @@
+kind: Fixed
+body: Scope Desktop live→after-apply diffs for a selected MCP server to that server’s mcp.json key instead of the whole file.
+time: 2026-09-07T03:10:00Z
+custom:
+  Issue: ""

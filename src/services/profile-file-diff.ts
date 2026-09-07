@@ -4,6 +4,8 @@ import {
   collectExpectedManagedFiles,
   type ProfileApplyPreviewScope,
 } from "./profile-apply-preview.js";
+import { isMcpConfigManagedPath } from "./profile-commit-resource.js";
+import { scopeMcpConfigToServer } from "./mcp-resource-detail.js";
 import { normalizeManagedPath } from "./profile-untracked-resources.js";
 
 export interface ManagedFileDiff {
@@ -32,6 +34,7 @@ export async function getManagedFileDiff(input: {
   scope: ProfileApplyPreviewScope;
   projectPath?: string;
   harness?: string;
+  resource?: { type: string; name: string };
 }): Promise<ManagedFileDiff> {
   const profile = input.profileSelector.trim();
   const requestedPath = normalizeManagedPath(input.path.trim());
@@ -61,11 +64,23 @@ export async function getManagedFileDiff(input: {
 
   const relativePath = normalizeManagedPath(match.path, collected.rootPath);
   const absolutePath = join(collected.rootPath, relativePath);
+  let expected = match.content;
+  let current = readLiveFile(absolutePath);
+
+  const resourceName = input.resource?.name.trim() ?? "";
+  if (
+    input.resource?.type === "mcp_server"
+    && resourceName
+    && isMcpConfigManagedPath(relativePath, collected.rootPath)
+  ) {
+    expected = scopeMcpConfigToServer(expected, resourceName) ?? expected;
+    current = scopeMcpConfigToServer(current, resourceName);
+  }
 
   return {
     path: relativePath,
     absolute_path: absolutePath,
-    expected: match.content,
-    current: readLiveFile(absolutePath),
+    expected,
+    current,
   };
 }

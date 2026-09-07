@@ -172,8 +172,10 @@ describe("Profile resources pane chrome", () => {
   it("locks not-staged modifications and centered file diffs", () => {
     expect(liveStateSource).toContain("not_staged_kind");
     expect(liveStateSource).toContain("Overwrite profile with the live version");
+    expect(liveStateSource).toContain("not-staged-attention");
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("live resources that are in the profile but differ");
+    expect(designSource).toContain("same `--yellow` warn surface");
   });
 
   it("locks install-gap plus vs warning marks", () => {
