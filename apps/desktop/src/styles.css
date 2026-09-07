@@ -4329,13 +4329,21 @@ button:focus-visible,
 .resource-type-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
 .resource-type-header h2 {
   margin: 0;
   font-size: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.resource-type-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }
 
 .resource-type-list {
@@ -4388,6 +4396,24 @@ button:focus-visible,
 
 .resource-type-description {
   font-size: 12px;
+}
+
+.resource-type-import {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.resource-type-import-hint {
+  font-size: 13px;
+  margin: 0;
+}
+
+.resource-type-import-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 13px;
 }
 
 .resource-create-fields {

@@ -368,7 +368,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `marketplace remove <name>` | Removes a marketplace registration. |
 | `marketplace show <name>` | Lists or interactively browses plugins from a marketplace catalog. |
 | `plugin search [query]` | Searches configured marketplace catalogs for plugins. |
-| `plugin add <ref>` | Attaches a marketplace plugin pin to a plugin (`--plugin`). |
+| `plugin add <ref>` | Without `--to`, GitHub refs (`https://github.com/owner/repo`, `owner/repo`, `gh:owner/repo`) shallow-fetch into the library as a git-origin plugin package when the repo root has `plugin.json`. Missing `plugin.json` fails closed (no loose-resource scan). With `--to`, attaches a dependency pin (local name, `org/catalog/name`, `name@marketplace`, or git URL) to that plugin. |
 
 Host install/ensure of pinned plugins still runs through providers when a profile is active or on apply/use — see [Known gaps](#known-gaps-and-non-goals).
 

@@ -38,6 +38,10 @@ import {
   rollbackPluginVersion,
 } from "../../services/plugin-versioning.js";
 import { toContentsResource } from "../../services/profile-contents.js";
+import {
+  GitPluginImportError,
+  importPluginFromGitHubRef,
+} from "../../services/plugin-git-import.js";
 import { trackPluginUsed } from "../../telemetry/index.js";
 import type { Plugin, Resource, ResourceType } from "../../types.js";
 import { requireAgentBearerAuth } from "../auth.js";
@@ -444,6 +448,52 @@ export async function tryHandle(
         {
           error: "invalid_body",
           message: error instanceof Error ? error.message : "could not create plugin",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (method === "POST" && pathname === "/v1/library/plugins/import-git") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readJsonBody(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (!isRecord(parsed.value) || typeof parsed.value.source !== "string") {
+      return jsonResponse(
+        { error: "invalid_body", message: "source is required" },
+        { status: 400 },
+      );
+    }
+    try {
+      const imported = await importPluginFromGitHubRef(parsed.value.source);
+      return jsonResponse({
+        plugin: toPluginHead(imported.plugin),
+        origin_locator: imported.origin_locator,
+        origin_fingerprint: imported.origin_fingerprint,
+        created: imported.created,
+      });
+    } catch (error) {
+      if (error instanceof GitPluginImportError) {
+        const status =
+          error.code === "name_conflict"
+            ? 409
+            : error.code === "invalid_ref" || error.code === "missing_plugin_json"
+              ? 400
+              : 502;
+        return jsonResponse(
+          { error: error.code, message: error.message },
+          { status },
+        );
+      }
+      return jsonResponse(
+        {
+          error: "import_failed",
+          message: error instanceof Error ? error.message : "could not import plugin",
         },
         { status: 400 },
       );

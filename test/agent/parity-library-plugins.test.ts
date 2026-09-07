@@ -683,3 +683,32 @@ describe("POST /v1/library/plugins", () => {
     expect(getPluginByName("plain")).toBeDefined();
   });
 });
+
+describe("POST /v1/library/plugins/import-git", () => {
+  it("returns 401 without bearer", async () => {
+    const response = await handle("POST", "/v1/library/plugins/import-git", {
+      token: null,
+      body: { source: "DietrichGebert/ponytail" },
+    });
+    expect(response.status).toBe(401);
+  });
+
+  it("returns 400 when source is missing", async () => {
+    const response = await handle("POST", "/v1/library/plugins/import-git", {
+      body: {},
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("invalid_body");
+  });
+
+  it("returns 400 for a non-GitHub source", async () => {
+    const response = await handle("POST", "/v1/library/plugins/import-git", {
+      body: { source: "alpha@local-market" },
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string; message: string };
+    expect(body.error).toBe("invalid_ref");
+    expect(body.message).toContain("GitHub");
+  });
+});

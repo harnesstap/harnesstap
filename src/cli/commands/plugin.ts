@@ -196,6 +196,11 @@ import {
   type AddPluginFromMarketplaceResult,
 } from "../../services/plugin-marketplace-add.js";
 import { addDependency } from "../../services/plugin-dependency.js";
+import {
+  GitPluginImportError,
+  importPluginFromGitHubRef,
+  isGitHubPluginRef,
+} from "../../services/plugin-git-import.js";
 import type { OutputFormat } from "../../utils/output-format.js";
 import {
   applyPluginEdit,
@@ -2353,6 +2358,52 @@ function handlePluginAddDependencyCommand(
   ui.success(`Added dependency ${ref} to plugin ${formatPluginLabel(plugin)}`);
 }
 
+async function handlePluginAddCommand(
+  ref: string,
+  opts: {
+    to?: string;
+    layer?: string;
+    format?: string;
+  } = {},
+): Promise<void> {
+  const targetName = opts.to?.trim() || opts.layer?.trim();
+  if (targetName) {
+    handlePluginAddDependencyCommand(ref, opts);
+    return;
+  }
+
+  if (isGitHubPluginRef(ref)) {
+    const imported = await importPluginFromGitHubRef(ref);
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson({
+        name: imported.plugin.name,
+        version: imported.plugin.version,
+        origin: "upstream",
+        origin_locator: imported.origin_locator,
+        origin_fingerprint: imported.origin_fingerprint,
+        created: imported.created,
+      });
+      return;
+    }
+    ui.success(
+      imported.created
+        ? `Imported plugin ${formatPluginLabel(imported.plugin)} from ${imported.origin_locator}`
+        : `Updated plugin ${formatPluginLabel(imported.plugin)} from ${imported.origin_locator}`,
+    );
+    return;
+  }
+
+  process.exitCode = 2;
+  renderCliError(
+    new CliUsageError(
+      "Plugin is required. Pass --to <plugin> to add a dependency, or a GitHub URL / owner/repo to import a plugin package.",
+      ["Run `ht plugin add --help` for usage."],
+      2,
+    ),
+  );
+}
+
 export function registerPluginCommands(root: Command): void {
   const pluginCmd = configureCommandGroup(
   root
@@ -2652,16 +2703,25 @@ pluginCmd
 
 pluginCmd
   .command("add")
-  .argument("<ref>", "Dependency ref (local name, org/catalog/name, name@marketplace, or git URL)")
-  .option("--to <plugin>", "Plugin that receives the dependency")
+  .argument(
+    "<ref>",
+    "GitHub plugin URL (owner/repo, gh:owner/repo, or https://github.com/owner/repo) to import into the library, or a dependency ref with --to",
+  )
+  .option("--to <plugin>", "Plugin that receives the dependency (skips GitHub library import)")
   .addOption(new Option("--layer <plugin>", "Deprecated alias for --to").hideHelp())
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Add a dependency to a plugin")
-  .action((ref: string, opts: { to?: string; layer?: string; format?: string }) => {
+  .description(
+    "Import a GitHub plugin.json package into the library, or add a dependency to a plugin with --to",
+  )
+  .action(async (ref: string, opts: { to?: string; layer?: string; format?: string }) => {
     try {
-      handlePluginAddDependencyCommand(ref, opts);
+      await handlePluginAddCommand(ref, opts);
     } catch (error) {
       process.exitCode = 1;
+      if (error instanceof GitPluginImportError) {
+        ui.danger(error.message);
+        return;
+      }
       renderCliError(error);
     }
   });
