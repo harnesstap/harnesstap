@@ -14,11 +14,38 @@ function parseScope(value: unknown): ProfileApplyPreviewScope | undefined {
   return undefined;
 }
 
+function parseFileDiffResource(
+  value: unknown,
+): Response | { type: string; name: string } | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    return jsonResponse(
+      { error: "invalid_resource", message: "resource must be an object" },
+      { status: 400 },
+    );
+  }
+  const type = typeof value.type === "string" ? value.type.trim() : "";
+  const name = typeof value.name === "string" ? value.name.trim() : "";
+  if (!type || !name) {
+    return jsonResponse(
+      {
+        error: "invalid_resource",
+        message: "resource.type and resource.name are required",
+      },
+      { status: 400 },
+    );
+  }
+  return { type, name };
+}
+
 function parseFileDiffBody(body: unknown): Response | {
   scope: ProfileApplyPreviewScope;
   projectPath?: string;
   harness?: string;
   path: string;
+  resource?: { type: string; name: string };
 } {
   if (!isRecord(body)) {
     return jsonResponse({ error: "invalid_body" }, { status: 400 });
@@ -66,6 +93,11 @@ function parseFileDiffBody(body: unknown): Response | {
     );
   }
 
+  const resource = parseFileDiffResource(body.resource);
+  if (resource instanceof Response) {
+    return resource;
+  }
+
   return {
     scope,
     path,
@@ -73,6 +105,7 @@ function parseFileDiffBody(body: unknown): Response | {
       ? { projectPath: projectPath.trim() }
       : {}),
     ...(harness && harness.trim() ? { harness: harness.trim() } : {}),
+    ...(resource ? { resource } : {}),
   };
 }
 

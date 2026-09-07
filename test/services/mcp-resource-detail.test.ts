@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import {
   extractMcpServerConfigFromFile,
   overlayMcpServerDetail,
+  scopeMcpConfigToServer,
 } from "../../src/services/mcp-resource-detail.ts";
 
 const tempDirs: string[] = [];
@@ -29,6 +30,35 @@ describe("mcp resource detail overlay", () => {
     expect(content).toContain('"beta"');
     expect(content).toContain("https://example.com/mcp");
     expect(content).not.toContain("alpha-mcp");
+  });
+
+  it("scopes a live mcp.json document to one server, including mcp_servers keys", () => {
+    const cursorShaped = scopeMcpConfigToServer(
+      JSON.stringify({
+        mcpServers: {
+          alpha: { command: "alpha-mcp" },
+          beta: { url: "https://example.com/mcp" },
+        },
+      }),
+      "beta",
+    );
+    expect(cursorShaped).toContain('"beta"');
+    expect(cursorShaped).toContain("https://example.com/mcp");
+    expect(cursorShaped).not.toContain("alpha-mcp");
+
+    const missing = scopeMcpConfigToServer(
+      JSON.stringify({
+        mcp_servers: {
+          alpha: { command: "alpha-mcp" },
+        },
+      }),
+      "beta",
+    );
+    expect(missing).toContain('"mcp_servers"');
+    expect(missing).not.toContain("alpha-mcp");
+    expect(missing).not.toContain('"beta"');
+
+    expect(scopeMcpConfigToServer(null, "beta")).toBeNull();
   });
 
   it("reads live mcp.json for a snapshot resource with empty content", () => {

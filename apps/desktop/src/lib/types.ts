@@ -402,6 +402,7 @@ export interface ProfileFileDiffRequest {
   projectPath?: string;
   harness?: string;
   path: string;
+  resource?: { type: string; name: string };
 }
 
 export interface ProfileFileDiffResult {
