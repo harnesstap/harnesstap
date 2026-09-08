@@ -1,0 +1,5 @@
+kind: Changed
+body: Move Desktop Add all onto the Not staged header, replace the on-disk count and help paragraph with an info tooltip, and keep the amber tint when the list is non-empty.
+time: 2026-09-08T04:45:00Z
+custom:
+  Issue: ""

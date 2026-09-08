@@ -157,9 +157,18 @@ describe("Profile resources pane chrome", () => {
     );
   });
 
-  it("offers icon-only Add all on Profile resources when not-staged rows exist", () => {
-    expect(liveStateSource).toContain('label="Add all"');
-    expect(liveStateSource).toContain("onAddAllResources");
+  it("offers icon-only Add all on the Not staged header when not-staged rows exist", () => {
+    const notStagedHeader = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Not staged"'),
+      liveStateSource.indexOf("Filter not staged (name or type:name)"),
+    );
+    const profileResourcesHeader = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Profile resources"'),
+      liveStateSource.indexOf('aria-label="Not staged"'),
+    );
+    expect(notStagedHeader).toContain('label="Add all"');
+    expect(notStagedHeader).toContain("onAddAllResources");
+    expect(profileResourcesHeader).not.toContain('label="Add all"');
     expect(appSource).toContain("onAddAllResources");
   });
 
@@ -176,6 +185,22 @@ describe("Profile resources pane chrome", () => {
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("live resources that are in the profile but differ");
     expect(designSource).toContain("same `--yellow` warn surface");
+  });
+
+  it("collapses Not staged help into a header info tooltip and omits the on-disk count", () => {
+    const notStagedHeader = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Not staged"'),
+      liveStateSource.indexOf("Filter not staged (name or type:name)"),
+    );
+    expect(liveStateSource).toContain("contents-header-info");
+    expect(liveStateSource).toContain("title={NOT_STAGED_HELP}");
+    expect(liveStateSource).toContain(
+      "On disk but not in this profile, or live content that differs — Plus adds or overwrites the selected profile. Diff shows live vs after apply for modifications.",
+    );
+    expect(notStagedHeader).not.toContain("on disk");
+    expect(liveStateSource).not.toContain("untracked-hint");
+    expect(designSource).toContain("in the Not staged panel header");
+    expect(designSource).toContain("info icon next to the **Not staged** title");
   });
 
   it("locks install-gap plus vs warning marks", () => {
