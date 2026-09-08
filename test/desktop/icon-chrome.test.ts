@@ -54,7 +54,7 @@ describe("desktop icon chrome", () => {
     expect(stylesSource).not.toContain(".rail-controls .icon-action.primary");
   });
 
-  test("converts Profile resources Add all, More, and Show all to distinct icons", () => {
+  test("converts Not staged Add all, More, and Show all to distinct icons", () => {
     expect(liveStateSource).toContain('label="Add all"');
     expect(liveStateSource).toContain("ListPlus");
     expect(liveStateSource).toContain('label="More"');

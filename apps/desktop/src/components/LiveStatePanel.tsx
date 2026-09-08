@@ -6,6 +6,7 @@ import {
   Diff,
   ExternalLink,
   FolderCog,
+  Info,
   Layers,
   ListPlus,
   Minus,
@@ -82,6 +83,8 @@ import {
 } from "./ui/resource-row";
 
 const ICON_SIZE = 14;
+const NOT_STAGED_HELP =
+  "On disk but not in this profile, or live content that differs — Plus adds or overwrites the selected profile. Diff shows live vs after apply for modifications.";
 
 function ListSearchField({
   value,
@@ -1522,24 +1525,8 @@ export function LiveStatePanel({
           <summary className="contents-header">
             <span>Profile resources</span>
             {selectedProfile && notStagedResources.length > 0 ? (
-              <span className="contents-header-toolbar">
-                <span className="contents-header-meta muted">
-                  {notStagedResources.length} not staged
-                </span>
-                {onAddAllResources ? (
-                  <IconActionButton
-                    busy={addingAllResources}
-                    spinnerSize={ICON_SIZE}
-                    label="Add all"
-                    aria-label={`Add all ${notStagedResources.length} not-staged resources to ${selectedProfile}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void onAddAllResources();
-                    }}
-                    icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-                  />
-                ) : null}
+              <span className="contents-header-meta muted">
+                {notStagedResources.length} not staged
               </span>
             ) : null}
           </summary>
@@ -1736,17 +1723,35 @@ export function LiveStatePanel({
             aria-label="Not staged"
           >
             <summary className="contents-header">
-              <span>Not staged</span>
-              <span className="contents-header-meta muted">
-                {notStagedResources.length} on disk
+              <span className="contents-header-title">
+                <span>Not staged</span>
+                <span
+                  className="contents-header-info"
+                  title={NOT_STAGED_HELP}
+                  aria-label={NOT_STAGED_HELP}
+                  role="img"
+                >
+                  <Info size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                </span>
               </span>
+              {onAddAllResources ? (
+                <span className="contents-header-toolbar">
+                  <IconActionButton
+                    busy={addingAllResources}
+                    spinnerSize={ICON_SIZE}
+                    label="Add all"
+                    aria-label={`Add all ${notStagedResources.length} not-staged resources to ${selectedProfile}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void onAddAllResources();
+                    }}
+                    icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                  />
+                </span>
+              ) : null}
             </summary>
             <div className="contents-body">
-              <p className="muted untracked-hint">
-                On disk but not in this profile, or live content that differs —
-                Plus adds or overwrites the selected profile. Diff shows live vs
-                after apply for modifications.
-              </p>
               <ListSearchField
                 value={notStagedSearch}
                 onChange={(value) => {
