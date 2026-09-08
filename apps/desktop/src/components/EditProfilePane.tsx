@@ -20,6 +20,7 @@ import {
   isCompositionPluginPackage,
   mergeCompositionMembership,
 } from "../lib/composition-membership";
+import { formatLastEditLine } from "../lib/library-timestamp";
 import { resourceDisplayName } from "../lib/resource-search";
 import type {
   CatalogPlugin,
@@ -99,6 +100,7 @@ export function EditProfilePane({
     label: string;
     pathHint?: string | null;
   } | null>(null);
+  const [clock, setClock] = useState(() => new Date());
 
   const applyDetail = (next: ProfileDetail) => {
     setDetail(next);
@@ -137,6 +139,16 @@ export function EditProfilePane({
       cancelled = true;
     };
   }, [baseUrl, profileName, token]);
+
+  useEffect(() => {
+    setClock(new Date());
+    const timer = window.setInterval(() => {
+      setClock(new Date());
+    }, 30_000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [detail?.profile.updated_at]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -237,6 +249,14 @@ export function EditProfilePane({
       cancelled = true;
     };
   }, [baseUrl, marketplaceName, token]);
+
+  const lastEditLine = useMemo(() => {
+    const updatedAt = detail?.profile.updated_at;
+    if (!updatedAt) {
+      return null;
+    }
+    return formatLastEditLine(updatedAt, { now: clock });
+  }, [clock, detail?.profile.updated_at]);
 
   const membership = useMemo(
     () =>
@@ -446,7 +466,9 @@ export function EditProfilePane({
               </span>
             ) : null}
           </h2>
-          <p className="muted">Changes save automatically.</p>
+          {lastEditLine ? (
+            <p className="muted edit-profile-last-edit">{lastEditLine}</p>
+          ) : null}
         </div>
         <div className="edit-profile-header-actions">
           {detail && onRequestCut ? (

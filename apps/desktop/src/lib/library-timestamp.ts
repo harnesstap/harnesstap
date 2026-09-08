@@ -34,3 +34,51 @@ function formatRelativeTime(date: Date, now: Date, locale?: string): string {
   }
   return formatter.format(deltaSeconds, "second");
 }
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+export function formatLocalWallClock(date: Date): string {
+  return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+}
+
+function countLabel(count: number, unit: string): string {
+  return count === 1 ? `1 ${unit} ago` : `${count} ${unit}s ago`;
+}
+
+export function formatLastEditRelative(
+  date: Date,
+  now: Date,
+): string {
+  const diffMs = Math.max(0, now.getTime() - date.getTime());
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  const year = 365 * day;
+  if (diffMs < minute) {
+    return "just now";
+  }
+  if (diffMs < hour) {
+    return countLabel(Math.floor(diffMs / minute), "minute");
+  }
+  if (diffMs < day) {
+    return countLabel(Math.floor(diffMs / hour), "hour");
+  }
+  if (diffMs < year) {
+    return countLabel(Math.floor(diffMs / day), "day");
+  }
+  return countLabel(Math.floor(diffMs / year), "year");
+}
+
+export function formatLastEditLine(
+  iso: string,
+  options?: { now?: Date },
+): string | null {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const now = options?.now ?? new Date();
+  return `Last edit ${formatLastEditRelative(date, now)} (${formatLocalWallClock(date)})`;
+}

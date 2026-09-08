@@ -47,6 +47,7 @@ export interface ProfileDetail {
     description: string;
     tags: string[];
     dirty: boolean;
+    updated_at: string;
   };
   active: boolean;
   dependencies: ProfileDetailDependency[];
@@ -114,6 +115,7 @@ export function getProfileDetail(selector: string): ProfileDetail {
       description: profile.description ?? "",
       tags: profile.tags,
       dirty: profile.dirty,
+      updated_at: profile.updated_at,
     },
     active: activeProfile === profile.name,
     dependencies,

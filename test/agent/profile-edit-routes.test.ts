@@ -66,12 +66,19 @@ describe("agent profile edit routes", () => {
     );
     expect(detailResponse.status).toBe(200);
     const detail = (await detailResponse.json()) as {
-      profile: { description: string; tags: string[]; dirty: boolean };
+      profile: {
+        description: string;
+        tags: string[];
+        dirty: boolean;
+        updated_at: string;
+      };
       resources: unknown[];
       dependencies: unknown[];
     };
     expect(detail.profile.description).toBe("before");
     expect(detail.profile.dirty).toBe(false);
+    expect(typeof detail.profile.updated_at).toBe("string");
+    expect(detail.profile.updated_at.length).toBeGreaterThan(0);
     expect(detail.resources).toEqual([]);
     expect(detail.dependencies).toEqual([]);
 
