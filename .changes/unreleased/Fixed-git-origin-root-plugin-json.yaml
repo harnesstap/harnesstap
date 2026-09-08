@@ -1,0 +1,5 @@
+kind: Fixed
+body: Prefer a git clone’s root plugin.json over nested skills/<name> directories when importing a git-origin plugin.
+time: 2026-09-08T21:31:00Z
+custom:
+  Issue: ""

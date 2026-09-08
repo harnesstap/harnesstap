@@ -115,16 +115,21 @@ function resolveCachedPluginDir(
   plugin: Plugin,
   locator: OriginLocator,
 ): string | undefined {
+  if (locator.kind === "git" && isPluginInstallRoot(cacheDir)) {
+    return cacheDir;
+  }
+
   const names = [originPluginLookupName(plugin, locator), plugin.name];
   const seen = new Set<string>();
   for (const name of names) {
     if (!name || seen.has(name)) continue;
     seen.add(name);
     const found = resolveMarketplacePluginDirectory(cacheDir, name);
-    if (found) return found;
-  }
-  if (locator.kind === "git" && isPluginInstallRoot(cacheDir)) {
-    return cacheDir;
+    if (!found) continue;
+    if (locator.kind === "git" && !isPluginInstallRoot(found)) {
+      continue;
+    }
+    return found;
   }
   return undefined;
 }
