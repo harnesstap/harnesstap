@@ -163,17 +163,22 @@ export async function attachProfilePlugin(
   return getProfileDetail(profile.name);
 }
 
-export function attachProfileResource(
+export async function attachProfileResource(
   selector: string,
   resourceId: string,
-): ProfileDetail {
+): Promise<ProfileDetail> {
   const profile = resolveProfilePlugin(selector);
   const resource = getResource(resourceId);
   if (!resource) {
     throw new Error(`Resource not found: ${resourceId}`);
   }
   if (resource.type === "plugin") {
-    throw new Error("Use plugin attachment for type \"plugin\"");
+    await addPluginAttachment({
+      plugin: profile,
+      selector: formatPluginRef(resource),
+      type: "plugin",
+    });
+    return getProfileDetail(profile.name);
   }
   const already = getPluginResources(profile.id).some(
     (entry) => entry.id === resource.id,

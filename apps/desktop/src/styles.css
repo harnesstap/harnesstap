@@ -3465,6 +3465,15 @@ button:focus-visible,
   gap: 0.65rem;
 }
 
+.compose-library-unified {
+  grid-template-columns: 1fr;
+}
+
+.compose-library-unified .selection-list-rows {
+  height: min(50vh, 420px);
+  max-height: min(50vh, 420px);
+}
+
 .selection-list-filter {
   width: 100%;
   box-sizing: border-box;

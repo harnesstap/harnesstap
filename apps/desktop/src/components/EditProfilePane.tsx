@@ -16,6 +16,10 @@ import {
   patchProfileMetadata,
   renameProfile,
 } from "../lib/agent-client";
+import {
+  isCompositionPluginPackage,
+  mergeCompositionMembership,
+} from "../lib/composition-membership";
 import { resourceDisplayName } from "../lib/resource-search";
 import type {
   CatalogPlugin,
@@ -45,6 +49,8 @@ export interface EditProfilePaneProps {
   onCreateEnvironment?: () => void;
   onSuccess?: (message: string) => void;
   onRequestCut?: (name: string, version: string) => void;
+  /** Bump after Library import so membership lists include new plugin refs. */
+  libraryReloadKey?: number;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -67,6 +73,7 @@ export function EditProfilePane({
   onCreateEnvironment,
   onSuccess,
   onRequestCut,
+  libraryReloadKey = 0,
 }: EditProfilePaneProps) {
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -161,7 +168,7 @@ export function EditProfilePane({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, token]);
+  }, [baseUrl, libraryReloadKey, token]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -231,19 +238,13 @@ export function EditProfilePane({
     };
   }, [baseUrl, marketplaceName, token]);
 
-  const pluginRows = useMemo(
+  const membership = useMemo(
     () =>
-      plugins
-        .filter(
-          (plugin) =>
-            plugin.name !== profileName && !plugin.tags.includes("profile"),
-        )
-        .map((plugin) => ({
-          id: plugin.id,
-          name: plugin.name,
-          description: plugin.description,
-        })),
-    [plugins, profileName],
+      mergeCompositionMembership(resources, plugins, {
+        excludePluginName: profileName,
+        excludeProfileTagged: true,
+      }),
+    [plugins, profileName, resources],
   );
 
   const selectedPluginIds = useMemo(() => {
@@ -268,9 +269,9 @@ export function EditProfilePane({
     [detail],
   );
 
-  const composeResources = useMemo(
-    () => resources.filter((resource) => resource.type !== "plugin"),
-    [resources],
+  const selectedMembershipIds = useMemo(
+    () => [...new Set([...selectedPluginIds, ...selectedResourceIds])],
+    [selectedPluginIds, selectedResourceIds],
   );
 
   const runMutation = async (
@@ -408,6 +409,18 @@ export function EditProfilePane({
     );
   };
 
+  const toggleMembership = (id: string) => {
+    const entry = membership.find((row) => row.id === id);
+    if (!entry) {
+      return;
+    }
+    if (isCompositionPluginPackage(entry)) {
+      togglePlugin(id);
+      return;
+    }
+    toggleResource(id);
+  };
+
   const controlsDisabled = disabled || busy || loading;
   const pluginControlsDisabled =
     controlsDisabled
@@ -540,14 +553,11 @@ export function EditProfilePane({
             pinTestId="edit-plugin-add"
             libraryLoading={libraryLoading}
             libraryError={libraryError}
-            pluginRows={pluginRows}
-            selectedPluginIds={selectedPluginIds}
-            onTogglePlugin={togglePlugin}
-            resources={composeResources}
+            resources={membership}
             resourceFilter={resourceFilter}
             onResourceFilter={setResourceFilter}
-            selectedResourceIds={selectedResourceIds}
-            onToggleResource={toggleResource}
+            selectedIds={selectedMembershipIds}
+            onToggleResource={toggleMembership}
             onInspectResource={(resource) => {
               setInspectTarget({
                 selector: resource.id,
@@ -581,8 +591,12 @@ export function EditProfilePane({
           if (!baseUrl) {
             return;
           }
-          void fetchLibraryResources(baseUrl, token)
-            .then((nextResources) => {
+          void Promise.all([
+            fetchLibraryPlugins(baseUrl, token),
+            fetchLibraryResources(baseUrl, token),
+          ])
+            .then(([nextPlugins, nextResources]) => {
+              setPlugins(nextPlugins);
               setResources(nextResources);
             })
             .catch((loadError: unknown) => {

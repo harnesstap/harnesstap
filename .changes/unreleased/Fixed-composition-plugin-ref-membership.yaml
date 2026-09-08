@@ -1,0 +1,5 @@
+kind: Fixed
+body: Show plugin refs (including git-origin imports like ponytail@ponytail) in Desktop Composition as a single full-width membership picker instead of a Plugins|Resources split that omitted them.
+time: 2026-09-08T21:50:00Z
+custom:
+  Issue: ""

@@ -24,7 +24,7 @@ describe("create plugin compose picker", () => {
     expect(createSource).toContain("onFilterChange={setResourceFilter}");
     expect(createSource).not.toContain("resource-picker-row");
     expect(createSource).not.toContain("pickerGroups");
-    expect(compositionSource).toContain('placeholder="Filter (skill:name)…"');
+    expect(compositionSource).toContain('placeholder="Filter (plugin:ponytail, skill:name)…"');
     expect(compositionSource).toContain("selection-type-count");
     expect(compositionSource).toContain("toggleGroup");
   });
@@ -37,7 +37,7 @@ describe("create plugin compose picker", () => {
 
   test("documents the shared picker and drops unused flat-list chrome", () => {
     expect(designSource).toContain(
-      "Plugin create **Compose from library** reuses the profile Resources picker",
+      "Plugin create **Compose from library** reuses the profile membership picker",
     );
     expect(stylesSource).toContain(".resource-create-compose .selection-list-rows");
     expect(stylesSource).not.toContain(".resource-picker-group");

@@ -72,7 +72,7 @@ describe("filterLibraryResourcesBySearch", () => {
       ),
     ).toEqual(["4"]);
     expect(
-      filterLibraryResourcesBySearch(withPlugin, "plugin:formatter").map(
+      filterLibraryResourcesBySearch(withPlugin, "plugin_ref:formatter").map(
         (row) => row.id,
       ),
     ).toEqual(["4"]);

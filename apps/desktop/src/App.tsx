@@ -2860,6 +2860,7 @@ export function App() {
             baseUrl={baseUrl}
             token={token}
             projectPath={view === "project" ? projectPath : null}
+            libraryReloadKey={libraryReloadKey}
             disabled={switching}
             onClose={closeEditProfile}
             onProfileRenamed={(nextName) => {

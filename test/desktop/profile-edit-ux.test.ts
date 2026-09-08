@@ -36,7 +36,13 @@ function sliceBetween(source: string, startNeedle: string, endNeedle: string): s
 }
 
 describe("profile edit resource inspect", () => {
-  test("resource rows inspect on activate without routing the checkbox through htmlFor", () => {
+  test("composition is a unified membership picker, not Plugins|Resources columns", () => {
+    expect(editSource).toContain("compose-library-unified");
+    expect(editSource).toContain("toggleMembership");
+    expect(editSource).not.toContain('title="Plugins"');
+    expect(stylesSource).toContain(".compose-library-unified");
+    expect(designSource).toContain("one full-width filter over plugin packages, plugin refs");
+  });
     expect(compositionSource).toContain("onInspect");
     expect(compositionSource).toContain("resource-row-checkbox");
     expect(compositionSource).toContain("event.stopPropagation()");
