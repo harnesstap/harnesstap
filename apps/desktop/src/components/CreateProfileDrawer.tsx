@@ -12,6 +12,10 @@ import {
   fetchLibraryResources,
   previewProfileCreate,
 } from "../lib/agent-client";
+import {
+  isCompositionPluginPackage,
+  mergeCompositionMembership,
+} from "../lib/composition-membership";
 import type {
   LibraryPlugin,
   LibraryResource,
@@ -23,10 +27,7 @@ import type {
 import { Check, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
-import {
-  ResourceSelectionList,
-  SelectionList,
-} from "./CompositionPickers";
+import { ResourceSelectionList } from "./CompositionPickers";
 
 /** Create-profile screen: compose / home / project sources. */
 interface CreateProfileDrawerProps {
@@ -158,6 +159,16 @@ export function CreateProfileDrawer({
     };
   }, [baseUrl, open, token]);
 
+  const membership = useMemo(
+    () => mergeCompositionMembership(resources, plugins),
+    [plugins, resources],
+  );
+
+  const selectedMembershipIds = useMemo(
+    () => [...pluginIds, ...resourceIds],
+    [pluginIds, resourceIds],
+  );
+
   const canContinue = useMemo(() => {
     if (!baseUrl || !token || !name.trim()) {
       return false;
@@ -224,6 +235,18 @@ export function CreateProfileDrawer({
         : [...selected, id],
     );
     invalidatePreview();
+  };
+
+  const toggleMembership = (id: string) => {
+    const entry = membership.find((row) => row.id === id);
+    if (!entry) {
+      return;
+    }
+    if (isCompositionPluginPackage(entry)) {
+      toggleSelection(id, pluginIds, setPluginIds);
+      return;
+    }
+    toggleSelection(id, resourceIds, setResourceIds);
   };
 
   const runPreview = async () => {
@@ -387,32 +410,21 @@ export function CreateProfileDrawer({
           ) : null}
 
           {source === "compose" ? (
-            <div className="compose-library">
+            <div className="compose-library compose-library-unified">
               {libraryLoading ? (
                 <p className="muted">Loading local library…</p>
               ) : libraryError ? (
                 <div className="banner error">{libraryError}</div>
               ) : (
-                <>
-                  <SelectionList
-                    title="Plugins"
-                    emptyLabel="No plugins available."
-                    rows={plugins}
-                    selectedIds={pluginIds}
-                    disabled={controlsDisabled}
-                    onToggle={(id) =>
-                      toggleSelection(id, pluginIds, setPluginIds)}
-                  />
-                  <ResourceSelectionList
-                    resources={resources}
-                    filter={resourceFilter}
-                    onFilterChange={setResourceFilter}
-                    selectedIds={resourceIds}
-                    disabled={controlsDisabled}
-                    onToggle={(id) =>
-                      toggleSelection(id, resourceIds, setResourceIds)}
-                  />
-                </>
+                <ResourceSelectionList
+                  resources={membership}
+                  filter={resourceFilter}
+                  onFilterChange={setResourceFilter}
+                  selectedIds={selectedMembershipIds}
+                  disabled={controlsDisabled}
+                  onToggle={toggleMembership}
+                  emptyUnfilteredLabel="No library items available."
+                />
               )}
             </div>
           ) : null}

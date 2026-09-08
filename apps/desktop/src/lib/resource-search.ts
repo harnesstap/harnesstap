@@ -14,11 +14,34 @@ const RESOURCE_TYPE_PREFIXES = new Set([
   "model_config",
   "plugin",
   "plugin_pin",
+  "plugin_ref",
 ]);
 
 /** Legacy `plugin_pin:` search prefix matches stored `plugin` rows. */
 function canonicalSearchType(section: string): string {
   return section === "plugin_pin" ? "plugin" : section;
+}
+
+function librarySearchType(resource: LibraryResource): string {
+  if ("listKind" in resource && resource.listKind === "plugin-package") {
+    return "plugin";
+  }
+  if (resource.type === "plugin") {
+    return "plugin_ref";
+  }
+  return resource.type;
+}
+
+function resourceMatchesTypePrefix(
+  resource: LibraryResource,
+  section: string,
+): boolean {
+  const wanted = canonicalSearchType(section);
+  const searchType = librarySearchType(resource);
+  if (wanted === "plugin") {
+    return searchType === "plugin" || searchType === "plugin_ref";
+  }
+  return searchType === wanted;
 }
 
 export function isResourceTypeSearchPrefix(section: string): boolean {
@@ -86,7 +109,7 @@ export function filterLibraryResourcesBySearch<T extends LibraryResource>(
     if (
       sectionIsResourceType &&
       parsed.section !== undefined &&
-      resource.type !== canonicalSearchType(parsed.section)
+      !resourceMatchesTypePrefix(resource, parsed.section)
     ) {
       return false;
     }
@@ -157,7 +180,16 @@ export function filterContentsResourcesBySearch(
     if (
       sectionIsResourceType &&
       parsed.section !== undefined &&
-      resource.type !== canonicalSearchType(parsed.section)
+      !resourceMatchesTypePrefix(
+        {
+          id: resource.name,
+          name: resource.name,
+          type: resource.type,
+          namespace: null,
+          description: null,
+        },
+        parsed.section,
+      )
     ) {
       return false;
     }

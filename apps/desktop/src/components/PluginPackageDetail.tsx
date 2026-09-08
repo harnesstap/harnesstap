@@ -33,6 +33,11 @@ import {
   fetchMarketplacePlugins,
   fetchMarketplaces,
 } from "../lib/agent-client";
+import {
+  compositionResourceSelector,
+  isCompositionPluginPackage,
+  mergeCompositionMembership,
+} from "../lib/composition-membership";
 import { fieldKeyAction } from "../lib/library-field-edit";
 import { validateCutRows } from "../lib/cut-versions-form";
 import {
@@ -528,16 +533,12 @@ export function PluginPackageDetail({
     };
   }, [baseUrl, marketplaceName, token]);
 
-  const pluginRows = useMemo(
+  const membership = useMemo(
     () =>
-      libraryPlugins
-        .filter((plugin) => plugin.name !== selector)
-        .map((plugin) => ({
-          id: plugin.id,
-          name: plugin.name,
-          description: plugin.description,
-        })),
-    [libraryPlugins, selector],
+      mergeCompositionMembership(resources, libraryPlugins, {
+        excludePluginName: selector,
+      }),
+    [libraryPlugins, resources, selector],
   );
 
   const selectedPluginIds = useMemo(() => {
@@ -562,9 +563,9 @@ export function PluginPackageDetail({
     [viewDetail],
   );
 
-  const composeResources = useMemo(
-    () => resources.filter((resource) => resource.type !== "plugin"),
-    [resources],
+  const selectedMembershipIds = useMemo(
+    () => [...new Set([...selectedPluginIds, ...selectedResourceIds])],
+    [selectedPluginIds, selectedResourceIds],
   );
 
   const tagOptions = useMemo(() => {
@@ -842,16 +843,29 @@ export function PluginPackageDetail({
   };
 
   const toggleResource = (resourceId: string) => {
-    const resource = resources.find((entry) => entry.id === resourceId);
-    if (!resource) {
+    const resource = membership.find((entry) => entry.id === resourceId);
+    if (!resource || isCompositionPluginPackage(resource)) {
       return;
     }
     const selected = selectedResourceIds.includes(resourceId);
+    const selectorValue = compositionResourceSelector(resource);
     void runPatch(
       selected
-        ? { remove: [{ type: resource.type, selector: resource.name }] }
-        : { add: [{ type: resource.type, selector: resource.name }] },
+        ? { remove: [{ type: resource.type, selector: selectorValue }] }
+        : { add: [{ type: resource.type, selector: selectorValue }] },
     );
+  };
+
+  const toggleMembership = (id: string) => {
+    const entry = membership.find((row) => row.id === id);
+    if (!entry) {
+      return;
+    }
+    if (isCompositionPluginPackage(entry)) {
+      togglePlugin(id);
+      return;
+    }
+    toggleResource(id);
   };
 
   const pinMarketplacePlugin = () => {
@@ -1441,14 +1455,11 @@ export function PluginPackageDetail({
         pluginSelectId="plugin-ref"
         libraryLoading={libraryLoading}
         libraryError={libraryError}
-        pluginRows={pluginRows}
-        selectedPluginIds={selectedPluginIds}
-        onTogglePlugin={togglePlugin}
-        resources={composeResources}
+        resources={membership}
         resourceFilter={resourceFilter}
         onResourceFilter={setResourceFilter}
-        selectedResourceIds={selectedResourceIds}
-        onToggleResource={toggleResource}
+        selectedIds={selectedMembershipIds}
+        onToggleResource={toggleMembership}
         disabled={pickersDisabled}
       />
     </>

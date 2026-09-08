@@ -15,11 +15,15 @@ import {
   ResourceRowRoot,
 } from "@/components/ui/resource-row";
 import { SelectionList as UiSelectionList } from "@/components/ui/selection-list";
+import {
+  compositionSearchType,
+  groupCompositionMembership,
+  isCompositionPluginPackage,
+} from "../lib/composition-membership";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import {
   filterLibraryResourcesBySearch,
-  groupLibraryResourcesByType,
   resourceDisplayName,
 } from "../lib/resource-search";
 import type { LibraryResource } from "../lib/types";
@@ -73,7 +77,7 @@ export interface ResourceSelectionListProps {
   disabled: boolean;
   onToggle: (id: string) => void;
   onInspect?: (resource: LibraryResource) => void;
-  /** Fieldset legend. Defaults to the profile-edit “Resources” label. */
+  /** Fieldset legend. Empty string hides the legend. */
   title?: string;
   /** Empty copy when the library has no rows (before filtering). */
   emptyUnfilteredLabel?: string;
@@ -98,8 +102,9 @@ function ResourcePickerRow({
     ? `resource-${resource.id}-measure`
     : `resource-${resource.id}`;
   const label = resourceDisplayName(resource);
+  const rowType = compositionSearchType(resource);
   const inspect =
-    measure || !onInspect
+    measure || !onInspect || isCompositionPluginPackage(resource)
       ? undefined
       : () => {
           onInspect(resource);
@@ -130,20 +135,20 @@ function ResourcePickerRow({
         </span>
       </ResourceRowLeading>
       {inspect ? (
-        <ResourceRowIdentity type={resource.type} label={label} onOpen={inspect}>
+        <ResourceRowIdentity type={rowType} label={label} onOpen={inspect}>
           {resource.description ? (
             <ResourceRowDescription>{resource.description}</ResourceRowDescription>
           ) : null}
         </ResourceRowIdentity>
       ) : (
-        <ResourceRowIdentity type={resource.type} label={label} htmlFor={id}>
+        <ResourceRowIdentity type={rowType} label={label} htmlFor={id}>
           {resource.description ? (
             <ResourceRowDescription>{resource.description}</ResourceRowDescription>
           ) : null}
         </ResourceRowIdentity>
       )}
       <ResourceRowMeta
-        harnessIds={relatedHarnessesForResourceType(resource.type)}
+        harnessIds={relatedHarnessesForResourceType(rowType)}
       />
     </ResourceRowRoot>
   );
@@ -157,8 +162,8 @@ export function ResourceSelectionList({
   disabled,
   onToggle,
   onInspect,
-  title = "Resources",
-  emptyUnfilteredLabel = "No resources available.",
+  title = "",
+  emptyUnfilteredLabel = "No library items available.",
 }: ResourceSelectionListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -172,7 +177,7 @@ export function ResourceSelectionList({
     [filter, resources],
   );
   const groups = useMemo(
-    () => groupLibraryResourcesByType(filteredResources),
+    () => groupCompositionMembership(filteredResources),
     [filteredResources],
   );
 
@@ -227,15 +232,15 @@ export function ResourceSelectionList({
 
   return (
     <fieldset className="selection-list" disabled={disabled}>
-      <legend>{title}</legend>
+      {title ? <legend>{title}</legend> : null}
       <Input
         className="selection-list-filter h-8 text-xs"
         type="search"
-        placeholder="Filter (skill:name)…"
+        placeholder="Filter (plugin:ponytail, skill:name)…"
         value={filter}
         onChange={(event) => onFilterChange(event.target.value)}
         disabled={disabled}
-        aria-label="Filter resources"
+        aria-label="Filter library items"
       />
       <div className="selection-list-viewport">
         <div className="selection-list-rows" ref={listRef}>
@@ -260,7 +265,7 @@ export function ResourceSelectionList({
                     <span className="selection-type-chevron" aria-hidden>
                       {expanded ? "▾" : "▸"}
                     </span>
-                    <span>{group.type}</span>
+                    <span>{group.label}</span>
                     <span className="selection-type-count">
                       {group.resources.length}
                     </span>
@@ -296,7 +301,7 @@ export function ResourceSelectionList({
                   <span className="selection-type-chevron" aria-hidden>
                     ▾
                   </span>
-                  <span>{group.type}</span>
+                  <span>{group.label}</span>
                   <span className="selection-type-count">
                     {group.resources.length}
                   </span>

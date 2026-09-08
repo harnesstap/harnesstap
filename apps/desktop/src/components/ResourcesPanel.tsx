@@ -276,10 +276,7 @@ export function ResourcesPanel({
   );
 
   const pickerResources = useMemo<LibraryResource[]>(
-    () =>
-      entries.filter(
-        (entry) => entry.type !== "plugin" && entry.type !== "plugin_ref",
-      ),
+    () => entries.filter((entry) => entry.listKind !== "plugin-package"),
     [entries],
   );
 

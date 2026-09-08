@@ -13,11 +13,7 @@ import type {
 } from "../../lib/types";
 import { Pin } from "lucide-react";
 import { IconActionButton } from "../IconActionButton";
-import {
-  ResourceSelectionList,
-  SelectionList,
-  type SelectionRow,
-} from "../CompositionPickers";
+import { ResourceSelectionList } from "../CompositionPickers";
 
 export interface PluginCompositionFieldsProps {
   showMarketplace: boolean;
@@ -39,13 +35,10 @@ export interface PluginCompositionFieldsProps {
   pinTestId?: string;
   libraryLoading: boolean;
   libraryError: string | null;
-  pluginRows: SelectionRow[];
-  selectedPluginIds: string[];
-  onTogglePlugin: (id: string) => void;
   resources: LibraryResource[];
   resourceFilter: string;
   onResourceFilter: (value: string) => void;
-  selectedResourceIds: string[];
+  selectedIds: string[];
   onToggleResource: (id: string) => void;
   onInspectResource?: (resource: LibraryResource) => void;
   disabled: boolean;
@@ -71,13 +64,10 @@ export function PluginCompositionFields({
   pinTestId,
   libraryLoading,
   libraryError,
-  pluginRows,
-  selectedPluginIds,
-  onTogglePlugin,
   resources,
   resourceFilter,
   onResourceFilter,
-  selectedResourceIds,
+  selectedIds,
   onToggleResource,
   onInspectResource,
   disabled,
@@ -168,31 +158,22 @@ export function PluginCompositionFields({
 
       <section className="edit-profile-section" aria-label="Composition">
         <h3>Composition</h3>
-        <div className="compose-library">
+        <div className="compose-library compose-library-unified">
           {libraryLoading ? (
             <p className="muted">Loading local library…</p>
           ) : libraryError ? (
             <div className="banner error">{libraryError}</div>
           ) : (
-            <>
-              <SelectionList
-                title="Plugins"
-                emptyLabel="No plugins available."
-                rows={pluginRows}
-                selectedIds={selectedPluginIds}
-                disabled={disabled}
-                onToggle={onTogglePlugin}
-              />
-              <ResourceSelectionList
-                resources={resources}
-                filter={resourceFilter}
-                onFilterChange={onResourceFilter}
-                selectedIds={selectedResourceIds}
-                disabled={disabled}
-                onToggle={onToggleResource}
-                onInspect={onInspectResource}
-              />
-            </>
+            <ResourceSelectionList
+              resources={resources}
+              filter={resourceFilter}
+              onFilterChange={onResourceFilter}
+              selectedIds={selectedIds}
+              disabled={disabled}
+              onToggle={onToggleResource}
+              onInspect={onInspectResource}
+              emptyUnfilteredLabel="No library items available."
+            />
           )}
         </div>
       </section>

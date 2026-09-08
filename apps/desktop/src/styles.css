@@ -760,9 +760,14 @@ button:focus-visible,
   text-transform: lowercase;
 }
 
-.edit-profile-title .muted {
+.edit-profile-title .muted,
+.edit-profile-last-edit {
   margin: 0.25rem 0 0;
-  font-size: 12px;
+  font-size: 13px;
+}
+
+.edit-profile-last-edit {
+  font-family: var(--mono);
 }
 
 .edit-profile-body {
@@ -3463,6 +3468,15 @@ button:focus-visible,
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.65rem;
+}
+
+.compose-library-unified {
+  grid-template-columns: 1fr;
+}
+
+.compose-library-unified .selection-list-rows {
+  height: min(50vh, 420px);
+  max-height: min(50vh, 420px);
 }
 
 .selection-list-filter {

@@ -8,6 +8,10 @@ const compositionSource = readFileSync(
   join(root, "components/CompositionPickers.tsx"),
   "utf8",
 );
+const compositionFieldsSource = readFileSync(
+  join(root, "components/parity/PluginCompositionFields.tsx"),
+  "utf8",
+);
 const paritySlotsSource = readFileSync(
   join(root, "components/parity/EditProfileParitySlots.tsx"),
   "utf8",
@@ -36,6 +40,14 @@ function sliceBetween(source: string, startNeedle: string, endNeedle: string): s
 }
 
 describe("profile edit resource inspect", () => {
+  test("composition is a unified membership picker, not Plugins|Resources columns", () => {
+    expect(compositionFieldsSource).toContain("compose-library-unified");
+    expect(editSource).toContain("toggleMembership");
+    expect(compositionFieldsSource).not.toContain('title="Plugins"');
+    expect(stylesSource).toContain(".compose-library-unified");
+    expect(designSource).toContain("one full-width filter over plugin packages, plugin refs");
+  });
+
   test("resource rows inspect on activate without routing the checkbox through htmlFor", () => {
     expect(compositionSource).toContain("onInspect");
     expect(compositionSource).toContain("resource-row-checkbox");

@@ -179,7 +179,7 @@ export async function handleProfileAttach(
 
   if (typeof resourceId === "string" && resourceId.trim()) {
     try {
-      return jsonResponse(attachProfileResource(name, resourceId.trim()));
+      return jsonResponse(await attachProfileResource(name, resourceId.trim()));
     } catch (error) {
       return profileEditErrorResponse(error);
     }

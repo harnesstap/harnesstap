@@ -15,11 +15,15 @@ const editSource = readFileSync(
 );
 
 describe("plugin composition fields", () => {
-  test("package detail and edit profile share one composition surface", () => {
+  test("package detail and edit profile share one unified membership picker", () => {
     expect(packagesSource).toContain("PluginCompositionFields");
     expect(editSource).toContain("PluginCompositionFields");
     expect(editSource).toContain('pluginRefTestId="edit-plugin-ref"');
     expect(editSource).toContain('pinTestId="edit-plugin-add"');
+    expect(editSource).toContain("mergeCompositionMembership");
+    expect(packagesSource).toContain("mergeCompositionMembership");
+    expect(editSource).not.toContain("pluginRows={pluginRows}");
+    expect(packagesSource).not.toContain("pluginRows={pluginRows}");
   });
 
   test("package apply tooltip distinguishes apply from sync", () => {

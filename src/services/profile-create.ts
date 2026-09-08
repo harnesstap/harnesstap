@@ -6,8 +6,11 @@ import {
 } from "../models/plugin-model.js";
 import { PROFILE_PLUGIN_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
 import { listResources } from "../models/resource.js";
-import type { Plugin } from "../types.js";
-import { addPluginAttachment } from "./plugin-composition.js";
+import type { Plugin, Resource } from "../types.js";
+import {
+  addPluginAttachment,
+  formatPluginRef,
+} from "./plugin-composition.js";
 import { previewPluginFromProject } from "./plugin-from-project.js";
 import {
   createProfileFromHome,
@@ -66,6 +69,7 @@ export interface ProfileCreatePreview {
 interface ComposeSelections {
   plugins: ReturnType<typeof listPlugins>;
   resourceIds: string[];
+  resourcesById: Map<string, Resource>;
 }
 
 function assertProfileNameAvailable(name: string): void {
@@ -122,7 +126,7 @@ function resolveComposeSelections(
       throw new Error(`Resource not found: ${id}`);
     }
   }
-  return { plugins, resourceIds };
+  return { plugins, resourceIds, resourcesById };
 }
 
 function assertProjectPath(projectPath: string): void {
@@ -205,7 +209,16 @@ export async function commitProfileCreate(input: ProfileCreateInput): Promise<{
         });
       }
       for (const resourceId of selections.resourceIds) {
-        addResourceToPlugin(plugin.id, resourceId);
+        const resource = selections.resourcesById.get(resourceId);
+        if (resource?.type === "plugin") {
+          await addPluginAttachment({
+            plugin,
+            selector: formatPluginRef(resource),
+            type: "plugin",
+          });
+        } else {
+          addResourceToPlugin(plugin.id, resourceId);
+        }
       }
       return {
         profile: {

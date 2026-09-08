@@ -66,12 +66,19 @@ describe("agent profile edit routes", () => {
     );
     expect(detailResponse.status).toBe(200);
     const detail = (await detailResponse.json()) as {
-      profile: { description: string; tags: string[]; dirty: boolean };
+      profile: {
+        description: string;
+        tags: string[];
+        dirty: boolean;
+        updated_at: string;
+      };
       resources: unknown[];
       dependencies: unknown[];
     };
     expect(detail.profile.description).toBe("before");
     expect(detail.profile.dirty).toBe(false);
+    expect(typeof detail.profile.updated_at).toBe("string");
+    expect(detail.profile.updated_at.length).toBeGreaterThan(0);
     expect(detail.resources).toEqual([]);
     expect(detail.dependencies).toEqual([]);
 
@@ -151,6 +158,68 @@ describe("agent profile edit routes", () => {
       dependencies: unknown[];
     };
     expect(afterDetach.dependencies).toEqual([]);
+  });
+
+  it("attaches marketplace plugin refs by resourceId", async () => {
+    const server = await withServer();
+    const profile = createPlugin({
+      name: "focus",
+      tags: ["profile"],
+    });
+    const pluginRef = createResource({
+      type: "plugin",
+      name: "ponytail",
+      namespace: "ponytail",
+      description: "Lazy senior dev mode",
+      content: "{}",
+      metadata: {
+        source_kind: "marketplace",
+        marketplace_name: "ponytail",
+      },
+      source: "test",
+      origin_kind: "marketplace_link",
+      origin_ref: "ponytail@ponytail",
+    });
+
+    const attachPluginRef = await fetch(
+      `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,
+      {
+        method: "POST",
+        headers: authHeaders(server.token),
+        body: JSON.stringify({ resourceId: pluginRef.id }),
+      },
+    );
+    expect(attachPluginRef.status).toBe(200);
+    const withPluginRef = (await attachPluginRef.json()) as {
+      resources: Array<{ id: string; name: string; type: string }>;
+      dependencies: Array<{ dependency_name: string }>;
+    };
+    expect(
+      withPluginRef.resources.some((row) => row.id === pluginRef.id)
+        || withPluginRef.dependencies.some(
+          (row) =>
+            row.dependency_name === "ponytail@ponytail"
+            || row.dependency_name === "ponytail",
+        ),
+    ).toBe(true);
+
+    const detachPluginRef = await fetch(
+      `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,
+      {
+        method: "DELETE",
+        headers: authHeaders(server.token),
+        body: JSON.stringify({ resourceId: pluginRef.id }),
+      },
+    );
+    expect(detachPluginRef.status).toBe(200);
+    const afterDetach = (await detachPluginRef.json()) as {
+      resources: Array<{ id: string }>;
+      dependencies: unknown[];
+    };
+    expect(afterDetach.dependencies).toEqual([]);
+    expect(afterDetach.resources.some((row) => row.id === pluginRef.id)).toBe(
+      false,
+    );
   });
 
   it("returns not_a_profile for plain plugins", async () => {

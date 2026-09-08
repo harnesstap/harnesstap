@@ -601,6 +601,7 @@ export interface ProfileDetail {
     description: string;
     tags: string[];
     dirty?: boolean;
+    updated_at?: string;
   };
   active: boolean;
   dependencies: ProfileDetailDependency[];
