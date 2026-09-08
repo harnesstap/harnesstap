@@ -25,6 +25,11 @@ afterEach(async () => {
   await ctx.cleanup();
 });
 
+const ponytailLayoutFixture = join(
+  import.meta.dirname,
+  "../fixtures/plugin-import/git-origin-ponytail",
+);
+
 function writePluginJsonRoot(root: string, name: string): void {
   mkdirSync(join(root, "skills", "mane"), { recursive: true });
   writeFileSync(join(root, "plugin.json"), JSON.stringify({ name, version: "0.1.0" }));
@@ -58,6 +63,18 @@ it("imports a root plugin.json package as a git-origin plugin", async () => {
   expect(stored?.origin_locator).toBe("https://github.com/DietrichGebert/ponytail.git");
   expect(stored?.origin_fingerprint).toBe("abc123def456");
   expect(getPluginResources(imported.plugin.id).some((r) => r.name === "mane")).toBe(true);
+});
+
+it("imports one git-origin plugin when skills/<name> is not an AP package", async () => {
+  const imported = await importPluginFromGitHubRef("DietrichGebert/ponytail", {
+    refreshGit: refreshFrom(ponytailLayoutFixture),
+  });
+  expect(imported.plugin.name).toBe("ponytail");
+  expect(imported.created).toBe(true);
+  expect(imported.origin_locator).toBe("https://github.com/DietrichGebert/ponytail.git");
+  const resources = getPluginResources(imported.plugin.id);
+  expect(resources.filter((r) => r.type === "skill").map((r) => r.name)).toEqual(["ponytail"]);
+  expect(getPluginByName("ponytail")?.origin).toBe("upstream");
 });
 
 it("fails closed when the clone has no plugin.json", async () => {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnesstapDir } from "../../src/db/connection.ts";
 import {
@@ -199,4 +199,36 @@ it("applies a git-origin plugin from plugin.json at the clone cache root", async
   expect(after.version).toBe("2.0.0");
   expect(after.origin_fingerprint).toBe("newsha");
   expect(getPluginResources(plugin.id).some((r) => r.name === "root-skill")).toBe(true);
+});
+
+it("applies a git-origin plugin when skills/<name> is not a nested AP package", async () => {
+  const url = "https://github.com/DietrichGebert/ponytail.git";
+  const plugin = createPlugin({ name: "ponytail", version: "0.0.1", origin: "upstream" });
+  setPluginOrigin(plugin.id, "upstream");
+  stampPluginOrigin(plugin.id, {
+    locator: url,
+    fingerprint: "oldsha",
+    fingerprintKind: "git_sha",
+  });
+  const cacheDir = gitOriginCacheDir(getHarnesstapDir(), url);
+  mkdirSync(cacheDir, { recursive: true });
+  cpSync(
+    join(import.meta.dirname, "../fixtures/plugin-import/git-origin-ponytail"),
+    cacheDir,
+    { recursive: true },
+  );
+
+  const report = await updatePluginOrigins({
+    name: "ponytail",
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "x", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results[0]?.status).toBe("updated");
+  expect(report.results[0]?.message).toBeUndefined();
+  const names = getPluginResources(plugin.id).map((r) => `${r.type}:${r.name}`);
+  expect(names).toContain("skill:ponytail");
+  expect(getPluginById(plugin.id)?.origin_fingerprint).toBe("newsha");
 });

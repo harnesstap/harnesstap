@@ -39,7 +39,7 @@ import {
   recoverOriginLocator,
   selectOriginUpdateTarget,
 } from "./plugin-origin-locator.js";
-import { scanPluginSource } from "./plugin-source-import.js";
+import { isPluginInstallRoot, scanPluginSource } from "./plugin-source-import.js";
 import { hashResourceBody } from "./resource-hash.js";
 
 export type {
@@ -151,7 +151,10 @@ async function scanOriginTree(
     }
   }
 
-  const pluginRoot = resolveMarketplacePluginDirectory(sourcePath, pluginName) ?? sourcePath;
+  const nestedRoot = resolveMarketplacePluginDirectory(sourcePath, pluginName);
+  const pluginRoot = isPluginInstallRoot(sourcePath)
+    ? sourcePath
+    : (nestedRoot ?? sourcePath);
   try {
     const scans = await scanPluginSource(pluginRoot);
     return scans.find((scan) => scan.plugin_name === pluginName) ?? scans[0];
