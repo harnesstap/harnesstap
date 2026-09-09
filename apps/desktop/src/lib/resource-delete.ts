@@ -52,6 +52,12 @@ export function resourceCanRemoveFromActiveProfile(
 
 export const RESOURCE_DELETE_LIBRARY_LABEL = "Delete from library";
 export const RESOURCE_DELETE_DISK_LABEL = "Delete from library + disk";
+export const DISK_DELETE_CONFIRM_CHECKBOX_LABEL =
+  "Disk copy differs from library — delete anyway?";
+
+function planConfirmations(plan: ResourceDeletePlan): string[] {
+  return plan.confirmations ?? [];
+}
 
 export function resourceDeleteDiskDisabled(plan: ResourceDeletePlan | null): boolean {
   if (!plan) {
@@ -60,9 +66,18 @@ export function resourceDeleteDiskDisabled(plan: ResourceDeletePlan | null): boo
   return !plan.can_delete_from_disk || plan.blockers.length > 0;
 }
 
+export function resourceDeleteDiskNeedsConfirmation(
+  plan: ResourceDeletePlan | null,
+): boolean {
+  if (!plan || resourceDeleteDiskDisabled(plan)) {
+    return false;
+  }
+  return planConfirmations(plan).length > 0;
+}
+
 const DISK_DELETE_REASON_COPY: Record<string, string> = {
   "Modified file is protected":
-    "HarnessTap will not delete this on-disk copy because it was edited outside the library.",
+    "The on-disk copy differs from the library.",
   "Path escapes declared root":
     "This path is outside the expected install root, so disk delete is blocked.",
   "Refusing to delete root directory":
@@ -71,6 +86,8 @@ const DISK_DELETE_REASON_COPY: Record<string, string> = {
     "The recorded on-disk path is missing, so disk delete cannot run.",
   "Shared file section cannot be identified":
     "This file is shared with other resources, and HarnessTap cannot safely edit only this section.",
+  "Path is not a readable file":
+    "This path is not a readable file, so disk delete is blocked.",
 };
 
 export function humanizeDiskDeleteReason(reason: string): string {
@@ -93,10 +110,36 @@ export function diskDeleteDisabledExplanation(
   return `Delete from library + disk is unavailable. ${detail} Delete from library still removes the library entry.`;
 }
 
+export function diskDeleteConfirmationExplanation(
+  plan: ResourceDeletePlan | null,
+): string | null {
+  if (!resourceDeleteDiskNeedsConfirmation(plan) || !plan) {
+    return null;
+  }
+  const reasons = [
+    ...new Set(planConfirmations(plan).map((reason) => humanizeDiskDeleteReason(reason))),
+  ];
+  const detail =
+    reasons.length > 0
+      ? reasons.join(" ")
+      : "The on-disk copy differs from the library.";
+  return `${detail} Confirm to delete the on-disk copy anyway.`;
+}
+
 export function protectedDeleteLocations(
   plan: ResourceDeletePlan,
 ): ResourceDeletePlan["locations"] {
   return plan.locations.filter((location) => location.action === "protected");
+}
+
+export function confirmableDeleteLocations(
+  plan: ResourceDeletePlan,
+): ResourceDeletePlan["locations"] {
+  return plan.locations.filter(
+    (location) =>
+      location.action !== "protected" &&
+      planConfirmations(plan).includes(location.reason),
+  );
 }
 
 export function formatResourceDeletePlanSummary(plan: ResourceDeletePlan): {
@@ -107,6 +150,7 @@ export function formatResourceDeletePlanSummary(plan: ResourceDeletePlan): {
   }>;
   emptyMessage: string | null;
   blockers: string[];
+  confirmations: string[];
 } {
   const order = ["global", "project", "source"] as const;
   const labels = {
@@ -129,6 +173,9 @@ export function formatResourceDeletePlanSummary(plan: ResourceDeletePlan): {
         ? "No on-disk locations were found for this resource."
         : null,
     blockers: plan.blockers.map((reason) => humanizeDiskDeleteReason(reason)),
+    confirmations: planConfirmations(plan).map((reason) =>
+      humanizeDiskDeleteReason(reason),
+    ),
   };
 }
 

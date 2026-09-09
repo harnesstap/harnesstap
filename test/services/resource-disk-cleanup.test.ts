@@ -4,7 +4,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createProject } from "../../src/models/project.ts";
@@ -182,7 +182,7 @@ describe("resource disk cleanup", () => {
     }
   });
 
-  it("protects a modified standalone file and blocks the plan", async () => {
+  it("lets a modified standalone file be deleted after confirmation", async () => {
     const context = await createInitializedTestContext("disk-cleanup-modified");
     try {
       const filePath = join(context.homeDir, ".cursor", "rules", "ship.mdc");
@@ -209,9 +209,15 @@ describe("resource disk cleanup", () => {
       });
 
       const plan = await planResourceDiskDeletion(resource.id);
-      expect(plan.can_delete_from_disk).toBe(false);
-      expect(plan.blockers).toContain("Modified file is protected");
-      expect(plan.locations[0]?.action).toBe("protected");
+      expect(plan.can_delete_from_disk).toBe(true);
+      expect(plan.blockers).toEqual([]);
+      expect(plan.confirmations).toContain("Modified file is protected");
+      expect(plan.locations[0]?.action).toBe("delete-file");
+      expect(plan.locations[0]?.reason).toBe("Modified file is protected");
+
+      const result = await executeResourceDiskDeletion(plan);
+      expect(result.deleted_files).toEqual([filePath]);
+      expect(existsSync(filePath)).toBe(false);
     } finally {
       await context.cleanup();
     }
@@ -322,6 +328,46 @@ describe("resource disk cleanup", () => {
       expect(plan.can_delete_from_disk).toBe(false);
       expect(plan.blockers).toContain("Path escapes declared root");
       expect(plan.locations[0]?.action).toBe("protected");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("lets a modified skill directory be deleted after confirmation", async () => {
+    const context = await createInitializedTestContext("disk-cleanup-modified-skill");
+    try {
+      const skillPath = join(context.homeDir, ".cursor", "skills", "ship", "SKILL.md");
+      mkdirSync(join(skillPath, ".."), { recursive: true });
+      writeFileSync(skillPath, "# changed on disk\n", "utf-8");
+
+      const resource = createResource({
+        type: "skill",
+        name: "ship",
+        description: "",
+        content: "# Ship",
+        metadata: {},
+        source: "manual",
+      });
+      recordResourceMaterialization({
+        resource_id: resource.id,
+        scope: "global",
+        root_path: context.homeDir,
+        platform_id: "cursor",
+        path: ".cursor/skills/ship/SKILL.md",
+        action: "delete-directory",
+        ownership_key: "skill:ship",
+        generated_hash: hashGeneratedContent("# Ship\n"),
+        managed_container: true,
+      });
+
+      const plan = await planResourceDiskDeletion(resource.id);
+      expect(plan.can_delete_from_disk).toBe(true);
+      expect(plan.confirmations).toContain("Modified file is protected");
+      expect(plan.locations[0]?.action).toBe("delete-directory");
+
+      const result = await executeResourceDiskDeletion(plan);
+      expect(result.deleted_files).toEqual([dirname(skillPath)]);
+      expect(existsSync(skillPath)).toBe(false);
     } finally {
       await context.cleanup();
     }

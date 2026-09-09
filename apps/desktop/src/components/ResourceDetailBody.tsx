@@ -48,6 +48,9 @@ import {
 } from "../lib/resource-content-preview";
 import {
   attachersFromResourceDetail,
+  confirmableDeleteLocations,
+  DISK_DELETE_CONFIRM_CHECKBOX_LABEL,
+  diskDeleteConfirmationExplanation,
   diskDeleteDisabledExplanation,
   formatResourceDeleteAttachers,
   formatResourceDeletePlanSummary,
@@ -58,9 +61,12 @@ import {
   RESOURCE_DELETE_LIBRARY_LABEL,
   resourceCanRemoveFromActiveProfile,
   resourceDeleteDiskDisabled,
+  resourceDeleteDiskNeedsConfirmation,
 } from "../lib/resource-delete";
 import { formatOriginKindLabel } from "../lib/resource-filters";
 import type { LibraryResourceDetail } from "../lib/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { IconActionButton } from "./IconActionButton";
 import type { LibraryDetailChromeProps } from "./LibraryDetailChrome";
@@ -223,6 +229,8 @@ export function ResourceDetailBody({
   const [mutating, setMutating] = useState(false);
   const [confirm, setConfirm] = useState<"delete" | "overwrite" | null>(null);
   const [deletePlan, setDeletePlan] = useState<ResourceDeletePlan | null>(null);
+  const [deleteForceChecked, setDeleteForceChecked] = useState(false);
+  const deleteForceId = useId();
   const [protectionPlan, setProtectionPlan] = useState<ResourceDeletePlan | null>(
     null,
   );
@@ -266,6 +274,7 @@ export function ResourceDetailBody({
       setLoading(false);
       setPreview(null);
       setConfirm(null);
+      setDeleteForceChecked(false);
       setEditingField(null);
       setFieldError(null);
       setOpeningPath(null);
@@ -460,6 +469,7 @@ export function ResourceDetailBody({
     try {
       const plan = await previewLibraryResourceDelete(baseUrl, token, target.selector);
       setDeletePlan(plan);
+      setDeleteForceChecked(false);
       setConfirm("delete");
     } catch (planError: unknown) {
       setActionError(errorMessage(planError, "Could not preview resource delete"));
@@ -475,13 +485,24 @@ export function ResourceDetailBody({
     setMutating(true);
     setActionError(null);
     try {
-      const result = await deleteLibraryResource(baseUrl, token, target.selector, mode);
+      const result = await deleteLibraryResource(
+        baseUrl,
+        token,
+        target.selector,
+        mode,
+        {
+          force:
+            mode === "library_and_disk" &&
+            resourceDeleteDiskNeedsConfirmation(deletePlan),
+        },
+      );
       onSuccess?.(
         formatResourceDeleteSuccess(mode, quoteResource(detail), result),
       );
       onLibraryChanged?.();
       setConfirm(null);
       setDeletePlan(null);
+      setDeleteForceChecked(false);
       onDeleted?.();
     } catch (deleteError: unknown) {
       setActionError(errorMessage(deleteError, "Could not delete resource"));
@@ -598,10 +619,15 @@ export function ResourceDetailBody({
     ? formatResourceDeletePlanSummary(deletePlan)
     : null;
   const diskDeleteDisabled = resourceDeleteDiskDisabled(deletePlan);
+  const diskDeleteNeedsConfirm = resourceDeleteDiskNeedsConfirmation(deletePlan);
   const diskDeleteHint = diskDeleteDisabledExplanation(deletePlan);
   const inspectDiskHint = diskDeleteDisabledExplanation(protectionPlan);
+  const inspectConfirmHint = diskDeleteConfirmationExplanation(protectionPlan);
   const inspectProtectedPaths = protectionPlan
     ? protectedDeleteLocations(protectionPlan)
+    : [];
+  const inspectConfirmablePaths = protectionPlan
+    ? confirmableDeleteLocations(protectionPlan)
     : [];
   const owningPlugins = deleteAttachers?.plugins ?? [];
 
@@ -775,6 +801,27 @@ export function ResourceDetailBody({
               ))}
             </p>
           ) : null}
+        </div>
+      ) : inspectConfirmHint ? (
+        <div className="resource-detail-protected" role="status">
+          <p>{inspectConfirmHint}</p>
+          {inspectConfirmablePaths.map((location) => (
+            <div
+              key={`${location.scope}:${location.path}`}
+              className="resource-detail-protected-path"
+            >
+              <p className="muted">{humanizeDiskDeleteReason(location.reason)}</p>
+              <p className="mono resource-detail-protected-path-value">
+                {location.path}
+              </p>
+              <PathAccessActions
+                path={location.path}
+                disabled={disabled || !baseUrl || loading}
+                opening={openingPath === location.path}
+                onReveal={(next) => void openContainedPath(next, true)}
+              />
+            </div>
+          ))}
         </div>
       ) : null}
       {isPluginTypeResource(detail.type) ? (
@@ -972,7 +1019,7 @@ export function ResourceDetailBody({
         confirmLabel={RESOURCE_DELETE_DISK_LABEL}
         cancelLabel="Cancel"
         confirmBusy={busy}
-        confirmDisabled={diskDeleteDisabled}
+        confirmDisabled={diskDeleteDisabled || (diskDeleteNeedsConfirm && !deleteForceChecked)}
         confirmHint={diskDeleteHint}
         secondaryLabel={RESOURCE_DELETE_LIBRARY_LABEL}
         secondaryBusy={busy}
@@ -985,6 +1032,7 @@ export function ResourceDetailBody({
           if (!busy) {
             setConfirm(null);
             setDeletePlan(null);
+            setDeleteForceChecked(false);
           }
         }}
       >
@@ -1006,6 +1054,7 @@ export function ResourceDetailBody({
                         onClick={() => {
                           setConfirm(null);
                           setDeletePlan(null);
+                          setDeleteForceChecked(false);
                           onOpenOwningPlugin(pluginName);
                         }}
                       >
@@ -1041,6 +1090,34 @@ export function ResourceDetailBody({
                 ))}
               </div>
             ))}
+            {deletePlanSummary.confirmations.length > 0 ? (
+              <div className="resource-detail-protected">
+                <p>
+                  <strong>Differs from library</strong>
+                </p>
+                {deletePlanSummary.confirmations.map((confirmation) => (
+                  <p key={confirmation}>{confirmation}</p>
+                ))}
+                {deletePlan
+                  ? confirmableDeleteLocations(deletePlan).map((location) => (
+                      <div
+                        key={`${location.scope}:${location.path}`}
+                        className="resource-detail-protected-path"
+                      >
+                        <p className="mono resource-detail-protected-path-value">
+                          {location.path}
+                        </p>
+                        <PathAccessActions
+                          path={location.path}
+                          disabled={disabled || !baseUrl || loading}
+                          opening={openingPath === location.path}
+                          onReveal={(next) => void openContainedPath(next, true)}
+                        />
+                      </div>
+                    ))
+                  : null}
+              </div>
+            ) : null}
             {deletePlanSummary.blockers.length > 0 ? (
               <div className="resource-detail-protected">
                 <p>
@@ -1069,6 +1146,19 @@ export function ResourceDetailBody({
                   : null}
               </div>
             ) : null}
+          </div>
+        ) : null}
+        {diskDeleteNeedsConfirm ? (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={deleteForceId}
+              checked={deleteForceChecked}
+              disabled={busy}
+              onCheckedChange={(value) => setDeleteForceChecked(value === true)}
+            />
+            <Label htmlFor={deleteForceId} className="font-normal text-muted-foreground">
+              {DISK_DELETE_CONFIRM_CHECKBOX_LABEL}
+            </Label>
           </div>
         ) : null}
         {confirm === "delete" && actionError ? (

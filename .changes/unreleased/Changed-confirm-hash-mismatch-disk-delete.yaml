@@ -1,0 +1,5 @@
+kind: Changed
+body: Allow Desktop library+disk delete when the on-disk copy was edited outside the library; require a confirm checkbox instead of permanently disabling it. Shared aggregate files and unmanaged paths stay hard-blocked.
+time: 2026-09-09T13:10:00Z
+custom:
+  Issue: ""
