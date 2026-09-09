@@ -34,6 +34,10 @@ const pathAccessSource = readFileSync(
   ),
   "utf8",
 );
+const designSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+  "utf8",
+);
 
 function cssBlock(source: string, selector: string): string {
   const needle = `\n${selector} {`;
@@ -90,6 +94,7 @@ describe("resource inspect content preview", () => {
     expect(pathAccessSource).toContain("REVEAL_PATH_LABEL");
     expect(pathAccessSource).toContain("FolderOpen");
     expect(pathAccessSource).toContain("Copy");
+  });
 
   test("uses even field-row gap without per-row vertical margin", () => {
     const body = cssBlock(stylesSource, ".resource-detail-body");
