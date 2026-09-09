@@ -157,7 +157,7 @@ describe("Profile resources pane chrome", () => {
     );
   });
 
-  it("offers icon-only Add all on the Not staged header when not-staged rows exist", () => {
+  it("offers labeled primary Add all on the Not staged header when not-staged rows exist", () => {
     const notStagedHeader = liveStateSource.slice(
       liveStateSource.indexOf('aria-label="Not staged"'),
       liveStateSource.indexOf("Filter not staged (name or type:name)"),
@@ -167,6 +167,9 @@ describe("Profile resources pane chrome", () => {
       liveStateSource.indexOf('aria-label="Not staged"'),
     );
     expect(notStagedHeader).toContain('label="Add all"');
+    expect(notStagedHeader).toContain("primary");
+    expect(notStagedHeader).toContain("showLabel");
+    expect(notStagedHeader).toContain("iconAfterLabel");
     expect(notStagedHeader).toContain("onAddAllResources");
     expect(profileResourcesHeader).not.toContain('label="Add all"');
     expect(appSource).toContain("onAddAllResources");

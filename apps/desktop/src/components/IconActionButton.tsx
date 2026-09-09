@@ -8,6 +8,8 @@ export interface IconActionButtonProps
   primary?: boolean;
   /** When true, render `label` beside the icon. Use for non-square primary CTAs. */
   showLabel?: boolean;
+  /** When `showLabel` is true, put the visible text to the left of the icon. */
+  iconAfterLabel?: boolean;
   busy?: boolean;
   spinnerSize?: number;
 }
@@ -18,6 +20,7 @@ export function IconActionButton({
   icon,
   primary = false,
   showLabel = false,
+  iconAfterLabel = false,
   busy = false,
   spinnerSize = 16,
   className,
@@ -44,8 +47,13 @@ export function IconActionButton({
       aria-busy={busy || undefined}
       {...props}
     >
+      {iconAfterLabel && showLabel ? (
+        <span className="icon-action-text">{label}</span>
+      ) : null}
       {busy ? <ButtonSpinner size={spinnerSize} /> : icon}
-      {showLabel ? <span className="icon-action-text">{label}</span> : null}
+      {!iconAfterLabel && showLabel ? (
+        <span className="icon-action-text">{label}</span>
+      ) : null}
     </button>
   );
 }

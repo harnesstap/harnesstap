@@ -79,8 +79,11 @@ import {
   applyProfileRailOrder,
   insertBeforeIndexForDrop,
   loadProfileRailOrder,
+  pinNameFirst,
+  resolveRailProfileSelection,
   reorderProfileNames,
   saveProfileRailOrder,
+  type ProfileSelectionIntent,
 } from "./lib/profile-rail-order";
 import type { CutVersionRow } from "./lib/cut-versions-form";
 import { postApply } from "./lib/api/apply-plugin";
@@ -208,8 +211,9 @@ export function App() {
     "open" | "add" | "drop" | null
   >(null);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
-  /** When true, keep an empty selection until the user picks a profile again. */
-  const [preferEmptySelection, setPreferEmptySelection] = useState(false);
+  /** `unset` follows the active profile on open; `user` / `empty` keep a session pick. */
+  const [profileSelectionIntent, setProfileSelectionIntent] =
+    useState<ProfileSelectionIntent>("unset");
   const [profileFilter, setProfileFilter] = useState("");
   const [profileRailOrder, setProfileRailOrder] = useState(loadProfileRailOrder);
   const [draggingProfile, setDraggingProfile] = useState<string | null>(null);
@@ -490,16 +494,19 @@ export function App() {
     const scoped = profiles.filter(
       (profile) => profile.scopes.includes(view) && profile.name !== "empty",
     );
-    const orderedNames = applyProfileRailOrder(
-      scoped.map((profile) => profile.name),
-      profileRailOrder[view],
+    const orderedNames = pinNameFirst(
+      applyProfileRailOrder(
+        scoped.map((profile) => profile.name),
+        profileRailOrder[view],
+      ),
+      status?.active_profile,
     );
     const byName = new Map(scoped.map((profile) => [profile.name, profile]));
     return orderedNames.flatMap((name) => {
       const profile = byName.get(name);
       return profile ? [profile] : [];
     });
-  }, [profileRailOrder, profiles, view]);
+  }, [profileRailOrder, profiles, status?.active_profile, view]);
 
   const filteredProfiles = useMemo(
     () => filterProfilesByQuery(visibleProfiles, profileFilter),
@@ -510,13 +517,13 @@ export function App() {
     connected && !switching && profileFilter.trim() === "";
 
   const clearProfileSelection = useCallback(() => {
-    setPreferEmptySelection(true);
+    setProfileSelectionIntent("empty");
     setSelectedProfile(null);
     setEditingProfile(null);
   }, []);
 
   const selectProfile = useCallback((name: string) => {
-    setPreferEmptySelection(false);
+    setProfileSelectionIntent("user");
     setSelectedProfile(name);
     setEditingProfile((current) => (current ? name : null));
   }, []);
@@ -641,7 +648,7 @@ export function App() {
   );
 
   const openEditProfile = useCallback((name: string) => {
-    setPreferEmptySelection(false);
+    setProfileSelectionIntent("user");
     setSelectedProfile(name);
     setWorkspaceFocus("scope");
     setEditingProfile(name);
@@ -1234,37 +1241,18 @@ export function App() {
     && status?.drift_summary.global.status === "pending";
 
   useEffect(() => {
-    if (visibleProfiles.length === 0) {
-      if (selectedProfile !== null) {
-        setSelectedProfile(null);
-      }
-      return;
-    }
-    if (selectedProfile === null) {
-      if (preferEmptySelection) {
-        return;
-      }
-      // Prefer the pending active profile so Apply + preview light up without an
-      // extra click when status already says home needs apply.
-      if (
-        homeProfilePending
-        && activeProfile
-        && visibleProfiles.some((profile) => profile.name === activeProfile)
-      ) {
-        setSelectedProfile(activeProfile);
-        return;
-      }
-      setSelectedProfile(visibleProfiles[0]?.name ?? null);
-      return;
-    }
-    if (!visibleProfiles.some((profile) => profile.name === selectedProfile)) {
-      setPreferEmptySelection(false);
-      setSelectedProfile(visibleProfiles[0]?.name ?? null);
+    const next = resolveRailProfileSelection({
+      visibleNames: visibleProfiles.map((profile) => profile.name),
+      activeName: activeProfile,
+      selectedName: selectedProfile,
+      intent: profileSelectionIntent,
+    });
+    if (next !== selectedProfile) {
+      setSelectedProfile(next);
     }
   }, [
     activeProfile,
-    homeProfilePending,
-    preferEmptySelection,
+    profileSelectionIntent,
     selectedProfile,
     visibleProfiles,
   ]);
@@ -2046,6 +2034,7 @@ export function App() {
     setRenameError(null);
     try {
       const result = await renameProfile(baseUrl, token, selectedProfile, nextName);
+      setProfileSelectionIntent("user");
       setSelectedProfile(result.name);
       renameIgnoreBlurRef.current = true;
       setRenamingProfile(false);
@@ -2864,6 +2853,7 @@ export function App() {
             disabled={switching}
             onClose={closeEditProfile}
             onProfileRenamed={(nextName) => {
+              setProfileSelectionIntent("user");
               setSelectedProfile(nextName);
               setEditingProfile(nextName);
             }}

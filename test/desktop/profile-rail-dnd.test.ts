@@ -23,6 +23,13 @@ describe("desktop profile rail drag and drop", () => {
     expect(appSource).toContain("saveProfileRailOrder");
   });
 
+  test("pins the active profile first and selects it until the user picks another", () => {
+    expect(appSource).toContain("pinNameFirst");
+    expect(appSource).toContain("resolveRailProfileSelection");
+    expect(appSource).toContain("status?.active_profile");
+    expect(appSource).toContain('useState<ProfileSelectionIntent>("unset")');
+  });
+
   test("does not enable drag while the profile filter is active", () => {
     expect(appSource).toContain("canReorderProfiles");
     expect(appSource).toMatch(/profileFilter\.trim\(\)/);
@@ -38,6 +45,9 @@ describe("desktop profile rail drag and drop", () => {
   test("DESIGN.md records desktop-only rail order", () => {
     expect(designSource).toContain(
       "Profile rail order is a desktop-only localStorage preference",
+    );
+    expect(designSource).toContain(
+      "The applied/active profile for the current view stays first in the list",
     );
   });
 });
