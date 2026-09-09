@@ -13,6 +13,7 @@ export interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmDisabled?: boolean;
+  confirmHint?: ReactNode;
   confirmBusy?: boolean;
   secondaryLabel?: string;
   secondaryBusy?: boolean;
@@ -38,6 +39,7 @@ export function ConfirmDialog({
   confirmLabel = "Continue",
   cancelLabel = "Cancel",
   confirmDisabled = false,
+  confirmHint,
   confirmBusy = false,
   secondaryLabel,
   secondaryBusy = false,
@@ -87,6 +89,11 @@ export function ConfirmDialog({
           )}
         </div>
         {children}
+        {confirmHint && confirmDisabled ? (
+          <p className="confirm-dialog-hint" role="status">
+            {confirmHint}
+          </p>
+        ) : null}
         <div className="dialog-actions">
           <button
             ref={cancelRef}
@@ -128,6 +135,11 @@ export function ConfirmDialog({
               .join(" ")}
             type="button"
             disabled={controlsDisabled}
+            title={
+              confirmDisabled && typeof confirmHint === "string"
+                ? confirmHint
+                : undefined
+            }
             aria-busy={confirmBusy}
             onClick={onConfirm}
           >

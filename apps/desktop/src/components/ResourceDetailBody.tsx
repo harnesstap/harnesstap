@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   CheckCheck,
   Clock,
-  ExternalLink,
   FileCode2,
   Folder,
   Hash,
@@ -49,9 +48,12 @@ import {
 } from "../lib/resource-content-preview";
 import {
   attachersFromResourceDetail,
+  diskDeleteDisabledExplanation,
   formatResourceDeleteAttachers,
   formatResourceDeletePlanSummary,
   formatResourceDeleteSuccess,
+  humanizeDiskDeleteReason,
+  protectedDeleteLocations,
   RESOURCE_DELETE_DISK_LABEL,
   RESOURCE_DELETE_LIBRARY_LABEL,
   resourceCanRemoveFromActiveProfile,
@@ -63,7 +65,12 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { IconActionButton } from "./IconActionButton";
 import type { LibraryDetailChromeProps } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
+import {
+  PathAccessActions,
+  REVEAL_PATH_LABEL,
+} from "./PathAccessActions";
 import { PluginRefResourceList } from "./PluginRefResourceList";
+import { TypeIcon } from "./TypeIcon";
 
 export interface ResourceDetailTarget {
   /** Prefer id when known; otherwise `type:name` (optional `@namespace`). */
@@ -105,8 +112,6 @@ function pendingSyncWriteTooltip(type: string): string {
   return `Save this newer copy over this ${kind}’s library files. If it lives inside a plugin package, only this library entry is updated — not the whole plugin, and not a project.`;
 }
 
-const OPEN_IN_EDITOR_LABEL = "Open this file in the default editor.";
-
 export interface ResourceDetailBodyProps {
   target: ResourceDetailTarget;
   baseUrl: string | null;
@@ -124,6 +129,7 @@ export interface ResourceDetailBodyProps {
   onFieldEditingChange?: (editing: boolean) => void;
   onConfirmOpenChange?: (open: boolean) => void;
   onBusyChange?: (busy: boolean) => void;
+  onOpenOwningPlugin?: (pluginName: string) => void;
 }
 
 function displayName(resource: LibraryResourceDetail): string {
@@ -204,6 +210,7 @@ export function ResourceDetailBody({
   onFieldEditingChange,
   onConfirmOpenChange,
   onBusyChange,
+  onOpenOwningPlugin,
 }: ResourceDetailBodyProps) {
   const generatedTitleId = useId();
   const titleId = titleIdProp ?? generatedTitleId;
@@ -216,6 +223,9 @@ export function ResourceDetailBody({
   const [mutating, setMutating] = useState(false);
   const [confirm, setConfirm] = useState<"delete" | "overwrite" | null>(null);
   const [deletePlan, setDeletePlan] = useState<ResourceDeletePlan | null>(null);
+  const [protectionPlan, setProtectionPlan] = useState<ResourceDeletePlan | null>(
+    null,
+  );
   const [editingField, setEditingField] = useState<ResourceDetailEditingField | null>(
     null,
   );
@@ -259,6 +269,7 @@ export function ResourceDetailBody({
       setEditingField(null);
       setFieldError(null);
       setOpeningPath(null);
+      setProtectionPlan(null);
       return;
     }
 
@@ -271,6 +282,7 @@ export function ResourceDetailBody({
     setEditingField(null);
     setFieldError(null);
     setOpeningPath(null);
+    setProtectionPlan(null);
     void fetchLibraryResourceDetail(baseUrl, token, target.selector, {
       pathHint: target.pathHint,
     })
@@ -294,6 +306,28 @@ export function ResourceDetailBody({
       cancelled = true;
     };
   }, [target.selector, target.pathHint, baseUrl, token]);
+
+  useEffect(() => {
+    if (!baseUrl || !detail || isUntrackedDetail(detail)) {
+      setProtectionPlan(null);
+      return;
+    }
+    let cancelled = false;
+    void previewLibraryResourceDelete(baseUrl, token, target.selector)
+      .then((plan) => {
+        if (!cancelled) {
+          setProtectionPlan(plan);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProtectionPlan(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token, target.selector, detail]);
 
   async function startEdit(field: ResourceDetailEditingField): Promise<void> {
     if (!detail || fieldsReadOnly) {
@@ -488,16 +522,21 @@ export function ResourceDetailBody({
     }
   }
 
-  async function openContainedPath(path: string): Promise<void> {
+  async function openContainedPath(path: string, reveal = false): Promise<void> {
     if (!baseUrl || openingPath) {
       return;
     }
     setOpeningPath(path);
     setActionError(null);
     try {
-      await openResourcePath(baseUrl, token, { path });
+      await openResourcePath(baseUrl, token, { path, reveal });
     } catch (openError: unknown) {
-      setActionError(errorMessage(openError, "Could not open file in editor"));
+      setActionError(
+        errorMessage(
+          openError,
+          reveal ? "Could not reveal path in Finder" : "Could not open file in editor",
+        ),
+      );
     } finally {
       setOpeningPath(null);
     }
@@ -510,21 +549,37 @@ export function ResourceDetailBody({
     return resource.source;
   }
 
-  function renderOpenInEditor(path: string): ReactNode {
+  function renderPathValue(path: string): ReactNode {
     if (!path) {
-      return null;
+      return undefined;
     }
     return (
       <button
         type="button"
-        className="icon-action"
-        title={OPEN_IN_EDITOR_LABEL}
-        aria-label={OPEN_IN_EDITOR_LABEL}
+        className="library-field-path-button"
+        title={REVEAL_PATH_LABEL}
+        aria-label={`${REVEAL_PATH_LABEL}: ${path}`}
         disabled={disabled || !baseUrl || loading || Boolean(openingPath)}
-        onClick={() => void openContainedPath(path)}
+        onClick={() => void openContainedPath(path, true)}
       >
-        <ExternalLink size={14} aria-hidden />
+        {path}
       </button>
+    );
+  }
+
+  function renderPathActions(path: string, showEditor: boolean): ReactNode {
+    if (!path) {
+      return null;
+    }
+    return (
+      <PathAccessActions
+        path={path}
+        disabled={disabled || !baseUrl || loading}
+        opening={openingPath === path}
+        showEditor={showEditor}
+        onReveal={(next) => void openContainedPath(next, true)}
+        onOpenEditor={(next) => void openContainedPath(next, false)}
+      />
     );
   }
 
@@ -543,6 +598,12 @@ export function ResourceDetailBody({
     ? formatResourceDeletePlanSummary(deletePlan)
     : null;
   const diskDeleteDisabled = resourceDeleteDiskDisabled(deletePlan);
+  const diskDeleteHint = diskDeleteDisabledExplanation(deletePlan);
+  const inspectDiskHint = diskDeleteDisabledExplanation(protectionPlan);
+  const inspectProtectedPaths = protectionPlan
+    ? protectedDeleteLocations(protectionPlan)
+    : [];
+  const owningPlugins = deleteAttachers?.plugins ?? [];
 
   const actionButtons = (
     <>
@@ -673,8 +734,60 @@ export function ResourceDetailBody({
       {chrome === "pane" && editingField === "name" && fieldError ? (
         <p className="library-field-error">{fieldError}</p>
       ) : null}
+      {inspectDiskHint ? (
+        <div className="resource-detail-protected" role="status">
+          <p>{inspectDiskHint}</p>
+          {inspectProtectedPaths.map((location) => (
+            <div
+              key={`${location.scope}:${location.path}`}
+              className="resource-detail-protected-path"
+            >
+              <p className="muted">{humanizeDiskDeleteReason(location.reason)}</p>
+              <p className="mono resource-detail-protected-path-value">
+                {location.path}
+              </p>
+              <PathAccessActions
+                path={location.path}
+                disabled={disabled || !baseUrl || loading}
+                opening={openingPath === location.path}
+                onReveal={(next) => void openContainedPath(next, true)}
+              />
+            </div>
+          ))}
+          {owningPlugins.length > 0 ? (
+            <p>
+              Owned by plugin{owningPlugins.length === 1 ? "" : "s"}:{" "}
+              {owningPlugins.map((pluginName, index) => (
+                <span key={pluginName}>
+                  {index > 0 ? ", " : null}
+                  {onOpenOwningPlugin ? (
+                    <button
+                      type="button"
+                      className="resource-detail-plugin-link"
+                      onClick={() => onOpenOwningPlugin(pluginName)}
+                    >
+                      {pluginName}
+                    </button>
+                  ) : (
+                    pluginName
+                  )}
+                </span>
+              ))}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {isPluginTypeResource(detail.type) ? (
         <>
+          <h3 className="library-detail-section">Details</h3>
+          <LibraryFieldRow
+            icon={<TypeIcon type={detail.type} />}
+            fieldName="Type"
+            readOnly
+            display={typeLabel}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
           <LibraryFieldRow
             icon={<MapPin size={16} aria-hidden />}
             fieldName="Origin"
@@ -699,11 +812,17 @@ export function ResourceDetailBody({
             fieldName="Path"
             readOnly
             mono
-            display={detail.install_path ?? ""}
+            display={renderPathValue(editorPath)}
             placeholder="Install path not found"
             editing={false}
             onStartEdit={() => undefined}
-            action={renderOpenInEditor(editorPath)}
+            iconButtonLabel={REVEAL_PATH_LABEL}
+            onIconClick={
+              editorPath
+                ? () => void openContainedPath(editorPath, true)
+                : undefined
+            }
+            action={renderPathActions(editorPath, false)}
           />
           <LibraryFieldRow
             icon={<Clock size={16} aria-hidden />}
@@ -723,6 +842,15 @@ export function ResourceDetailBody({
         </>
       ) : (
         <>
+          <h3 className="library-detail-section">Details</h3>
+          <LibraryFieldRow
+            icon={<TypeIcon type={detail.type} />}
+            fieldName="Type"
+            readOnly
+            display={typeLabel}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
           <LibraryFieldRow
             icon={<AlignLeft size={16} aria-hidden />}
             fieldName="Description"
@@ -750,10 +878,16 @@ export function ResourceDetailBody({
             fieldName="Path"
             readOnly
             mono
-            display={detail.source || "—"}
+            display={renderPathValue(editorPath) ?? (detail.source || "—")}
             editing={false}
             onStartEdit={() => undefined}
-            action={renderOpenInEditor(editorPath)}
+            iconButtonLabel={REVEAL_PATH_LABEL}
+            onIconClick={
+              editorPath
+                ? () => void openContainedPath(editorPath, true)
+                : undefined
+            }
+            action={renderPathActions(editorPath, true)}
           />
           <LibraryFieldRow
             icon={<MapPin size={16} aria-hidden />}
@@ -772,6 +906,7 @@ export function ResourceDetailBody({
             editing={false}
             onStartEdit={() => undefined}
           />
+          <h3 className="library-detail-section">Content</h3>
           <LibraryFieldRow
             icon={<FileCode2 size={16} aria-hidden />}
             fieldName="Content"
@@ -838,6 +973,7 @@ export function ResourceDetailBody({
         cancelLabel="Cancel"
         confirmBusy={busy}
         confirmDisabled={diskDeleteDisabled}
+        confirmHint={diskDeleteHint}
         secondaryLabel={RESOURCE_DELETE_LIBRARY_LABEL}
         secondaryBusy={busy}
         onSecondary={() => void runDelete("library")}
@@ -858,7 +994,29 @@ export function ResourceDetailBody({
               <p>{deleteAttacherCopy.profilesLine}</p>
             ) : null}
             {deleteAttacherCopy.pluginsLine ? (
-              <p>{deleteAttacherCopy.pluginsLine}</p>
+              <p>
+                Plugins:{" "}
+                {owningPlugins.map((pluginName, index) => (
+                  <span key={pluginName}>
+                    {index > 0 ? ", " : null}
+                    {onOpenOwningPlugin ? (
+                      <button
+                        type="button"
+                        className="resource-detail-plugin-link"
+                        onClick={() => {
+                          setConfirm(null);
+                          setDeletePlan(null);
+                          onOpenOwningPlugin(pluginName);
+                        }}
+                      >
+                        {pluginName}
+                      </button>
+                    ) : (
+                      pluginName
+                    )}
+                  </span>
+                ))}
+              </p>
             ) : null}
             {deleteAttacherCopy.emptyLine ? (
               <p>{deleteAttacherCopy.emptyLine}</p>
@@ -884,13 +1042,31 @@ export function ResourceDetailBody({
               </div>
             ))}
             {deletePlanSummary.blockers.length > 0 ? (
-              <div>
+              <div className="resource-detail-protected">
                 <p>
                   <strong>Protected</strong>
                 </p>
                 {deletePlanSummary.blockers.map((blocker) => (
                   <p key={blocker}>{blocker}</p>
                 ))}
+                {deletePlan
+                  ? protectedDeleteLocations(deletePlan).map((location) => (
+                      <div
+                        key={`${location.scope}:${location.path}`}
+                        className="resource-detail-protected-path"
+                      >
+                        <p className="mono resource-detail-protected-path-value">
+                          {location.path}
+                        </p>
+                        <PathAccessActions
+                          path={location.path}
+                          disabled={disabled || !baseUrl || loading}
+                          opening={openingPath === location.path}
+                          onReveal={(next) => void openContainedPath(next, true)}
+                        />
+                      </div>
+                    ))
+                  : null}
               </div>
             ) : null}
           </div>

@@ -1,27 +1,12 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, realpathSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 import { listProjects } from "../models/project.js";
 import { listResourceTrackedDirectories } from "./resource-tracked-directories.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 
-export function openPathInSystemEditor(filePath: string): void {
-  const platform = process.platform;
-  let command: string;
-  let args: string[];
-
-  if (platform === "darwin") {
-    command = "open";
-    args = [filePath];
-  } else if (platform === "win32") {
-    command = "cmd";
-    args = ["/c", "start", "", filePath];
-  } else {
-    command = "xdg-open";
-    args = [filePath];
-  }
-
+function runOpener(command: string, args: string[], filePath: string): void {
   const result = spawnSync(command, args, { stdio: "ignore" });
   if (result.error) {
     throw result.error;
@@ -29,6 +14,44 @@ export function openPathInSystemEditor(filePath: string): void {
   if (result.status !== 0) {
     throw new Error(`Failed to open ${filePath}`);
   }
+}
+
+export function openPathInSystemEditor(filePath: string): void {
+  const platform = process.platform;
+  if (platform === "darwin") {
+    runOpener("open", [filePath], filePath);
+    return;
+  }
+  if (platform === "win32") {
+    runOpener("cmd", ["/c", "start", "", filePath], filePath);
+    return;
+  }
+  runOpener("xdg-open", [filePath], filePath);
+}
+
+/** Reveal a file in Finder / Explorer, or open a directory in the file manager. */
+export function revealPathInFileManager(filePath: string): void {
+  let isDirectory = false;
+  try {
+    isDirectory = statSync(filePath).isDirectory();
+  } catch {
+    isDirectory = false;
+  }
+  if (isDirectory) {
+    openPathInSystemEditor(filePath);
+    return;
+  }
+
+  const platform = process.platform;
+  if (platform === "darwin") {
+    runOpener("open", ["-R", filePath], filePath);
+    return;
+  }
+  if (platform === "win32") {
+    runOpener("explorer", ["/select,", filePath], filePath);
+    return;
+  }
+  runOpener("xdg-open", [dirname(filePath)], filePath);
 }
 
 export function expandUserPath(candidate: string): string {

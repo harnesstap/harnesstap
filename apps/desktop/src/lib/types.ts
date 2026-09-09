@@ -418,6 +418,7 @@ export interface OpenPathRequest {
   selector?: string;
   path?: string;
   pathHint?: string | null;
+  reveal?: boolean;
   profile?: string;
   scope?: ViewScope;
   projectPath?: string;

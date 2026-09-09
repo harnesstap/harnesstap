@@ -2462,7 +2462,113 @@ button:focus-visible,
   display: inline-flex;
   color: var(--muted);
   flex-shrink: 0;
-  margin-top: 0.15rem;
+  margin-top: 1.15rem;
+}
+
+.library-field-icon.is-button {
+  margin-top: 0.85rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.library-field-icon.is-button:hover:not(:disabled),
+.library-field-icon.is-button:focus-visible {
+  color: var(--fg);
+}
+
+.library-field-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.3;
+  margin-bottom: 0.15rem;
+}
+
+.library-detail-section {
+  margin: 0.25rem 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.library-field-path-button {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent);
+  text-underline-offset: 0.15em;
+}
+
+.library-field-path-button:hover:not(:disabled),
+.library-field-path-button:focus-visible {
+  color: var(--fg);
+}
+
+.library-field-path-button:disabled {
+  cursor: default;
+  text-decoration: none;
+}
+
+.path-access-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.resource-detail-protected {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--yellow) 38%, var(--border));
+  border-left: 3px solid var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 6%, var(--bg));
+}
+
+.resource-detail-protected > p {
+  margin: 0;
+}
+
+.resource-detail-protected-path {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.resource-detail-protected-path-value {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.resource-detail-plugin-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.confirm-dialog-hint {
+  margin: 0.5rem 0 0;
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .library-field-row .library-field-value {
