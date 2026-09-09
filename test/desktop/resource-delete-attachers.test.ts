@@ -3,16 +3,20 @@ import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import type { ResourceDeletePlan } from "../../apps/desktop/src/lib/api/resource-mutate.ts";
 import {
+  diskDeleteConfirmationExplanation,
   diskDeleteDisabledExplanation,
+  DISK_DELETE_CONFIRM_CHECKBOX_LABEL,
   formatResourceDeleteAttachers,
   formatResourceDeletePlanSummary,
   formatResourceDeleteSuccess,
   humanizeDiskDeleteReason,
+  confirmableDeleteLocations,
   protectedDeleteLocations,
   RESOURCE_DELETE_DISK_LABEL,
   RESOURCE_DELETE_LIBRARY_LABEL,
   resourceCanRemoveFromActiveProfile,
   resourceDeleteDiskDisabled,
+  resourceDeleteDiskNeedsConfirmation,
   type ResourceAttachers,
 } from "../../apps/desktop/src/lib/resource-delete.ts";
 
@@ -86,6 +90,7 @@ function samplePlan(
       },
     ],
     blockers: [],
+    confirmations: [],
     can_delete_from_disk: true,
     ...overrides,
   };
@@ -148,10 +153,11 @@ describe("resource delete plan helpers", () => {
     expect(summary.emptyMessage).toBeNull();
   });
 
-  test("disables disk deletion when the plan is protected", () => {
+  test("treats hash mismatch as confirmable, not a permanent disk-delete block", () => {
     const plan = samplePlan({
-      can_delete_from_disk: false,
-      blockers: ["Modified file is protected"],
+      can_delete_from_disk: true,
+      blockers: [],
+      confirmations: ["Modified file is protected"],
       locations: [
         {
           scope: "global",
@@ -159,15 +165,46 @@ describe("resource delete plan helpers", () => {
           project_name: null,
           root_path: "/home",
           path: "/home/.cursor/rules/ship.mdc",
-          action: "protected",
+          action: "delete-file",
           ownership_key: "rule:ship",
           reason: "Modified file is protected",
         },
       ],
     });
-    expect(resourceDeleteDiskDisabled(plan)).toBe(true);
-    expect(formatResourceDeletePlanSummary(plan).blockers).toContain(
+    expect(resourceDeleteDiskDisabled(plan)).toBe(false);
+    expect(resourceDeleteDiskNeedsConfirmation(plan)).toBe(true);
+    expect(formatResourceDeletePlanSummary(plan).confirmations).toContain(
       humanizeDiskDeleteReason("Modified file is protected"),
+    );
+    expect(diskDeleteDisabledExplanation(plan)).toBeNull();
+    expect(diskDeleteConfirmationExplanation(plan)).toContain(
+      "Confirm to delete the on-disk copy anyway",
+    );
+    expect(confirmableDeleteLocations(plan)).toHaveLength(1);
+    expect(DISK_DELETE_CONFIRM_CHECKBOX_LABEL).toContain("delete anyway");
+  });
+
+  test("disables disk deletion when the plan is protected", () => {
+    const plan = samplePlan({
+      can_delete_from_disk: false,
+      blockers: ["Shared file section cannot be identified"],
+      locations: [
+        {
+          scope: "global",
+          project_id: null,
+          project_name: null,
+          root_path: "/home",
+          path: "/home/.cursor/mcp.json",
+          action: "protected",
+          ownership_key: "mcp_server:search",
+          reason: "Shared file section cannot be identified",
+        },
+      ],
+    });
+    expect(resourceDeleteDiskDisabled(plan)).toBe(true);
+    expect(resourceDeleteDiskNeedsConfirmation(plan)).toBe(false);
+    expect(formatResourceDeletePlanSummary(plan).blockers).toContain(
+      humanizeDiskDeleteReason("Shared file section cannot be identified"),
     );
     expect(diskDeleteDisabledExplanation(plan)).toContain(
       "Delete from library + disk is unavailable",
@@ -207,6 +244,9 @@ describe("resource delete confirm chrome", () => {
     expect(detailSource).toContain("removeProfileResource");
     expect(confirmSource).toContain("confirmHint");
     expect(detailSource).toContain("diskDeleteDisabledExplanation");
+    expect(detailSource).toContain("DISK_DELETE_CONFIRM_CHECKBOX_LABEL");
+    expect(detailSource).toContain("resourceDeleteDiskNeedsConfirmation");
+    expect(detailSource).toContain("force:");
     expect(detailSource).toContain("PathAccessActions");
     expect(detailSource).toContain("onOpenOwningPlugin");
   });
@@ -226,6 +266,7 @@ describe("resource delete confirm chrome", () => {
     expect(designSource).toContain("Remove from active profile");
     expect(designSource).toContain("Delete from library + disk");
     expect(designSource).toContain("Protected");
+    expect(designSource).toContain("delete anyway");
   });
 });
 
@@ -238,5 +279,7 @@ describe("resource delete documentation", () => {
     expect(specSource).toContain("library_and_disk");
     expect(specSource).toContain("delete-plan");
     expect(specSource).toContain("human-readable reason");
+    expect(specSource).toContain("confirmations");
+    expect(specSource).toContain("force: true");
   });
 });

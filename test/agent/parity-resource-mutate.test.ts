@@ -198,11 +198,13 @@ describe("tryHandle resource-mutate", () => {
       resource: { id: string };
       locations: unknown[];
       blockers: string[];
+      confirmations: string[];
       can_delete_from_disk: boolean;
     };
     expect(body.resource.id).toBe(resource.id);
     expect(Array.isArray(body.locations)).toBe(true);
     expect(Array.isArray(body.blockers)).toBe(true);
+    expect(Array.isArray(body.confirmations)).toBe(true);
   });
 
   it("GET delete-plan requires bearer auth", async () => {
@@ -295,8 +297,8 @@ describe("tryHandle resource-mutate", () => {
     expect(getResource(resource.id)).toBeUndefined();
   });
 
-  it("DELETE library_and_disk returns 409 and keeps the row when blocked", async () => {
-    const home = await withHome("parity-mutate-delete-blocked");
+  it("DELETE library_and_disk returns 409 until force when the disk copy drifted", async () => {
+    const home = await withHome("parity-mutate-delete-confirm");
     const filePath = join(home.homeDir, ".cursor", "rules", "ship.mdc");
     mkdirSync(join(filePath, ".."), { recursive: true });
     writeFileSync(filePath, "changed\n", "utf-8");
@@ -319,12 +321,49 @@ describe("tryHandle resource-mutate", () => {
       generated_hash: hashGeneratedContent("original\n"),
     });
 
+    const blocked = await handle(
+      "DELETE",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}`,
+      { body: { mode: "library_and_disk" } },
+    );
+    expect(blocked?.status).toBe(409);
+    const blockedBody = (await blocked?.json()) as { error: string };
+    expect(blockedBody.error).toBe("delete_needs_confirmation");
+    expect(existsSync(filePath)).toBe(true);
+    expect(getResource(resource.id)?.id).toBe(resource.id);
+
+    const forced = await handle(
+      "DELETE",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}`,
+      { body: { mode: "library_and_disk", force: true } },
+    );
+    expect(forced?.status).toBe(200);
+    expect(existsSync(filePath)).toBe(false);
+    expect(getResource(resource.id)).toBeUndefined();
+  });
+
+  it("DELETE library_and_disk returns 409 and keeps the row when blocked", async () => {
+    const home = await withHome("parity-mutate-delete-blocked");
+    const filePath = join(home.homeDir, "notes", "bundle.md");
+    mkdirSync(join(filePath, ".."), { recursive: true });
+    writeFileSync(filePath, "# mixed content without markers\n", "utf-8");
+    const resource = createResource({
+      type: "instruction",
+      name: "ship",
+      description: "Ship",
+      content: "# Ship",
+      metadata: {},
+      source: filePath,
+    });
+
     const response = await handle(
       "DELETE",
       `/v1/library/resources/${encodeURIComponent(resource.id)}`,
       { body: { mode: "library_and_disk" } },
     );
     expect(response?.status).toBe(409);
+    const body = (await response?.json()) as { error: string };
+    expect(body.error).toBe("delete_blocked");
     expect(existsSync(filePath)).toBe(true);
     expect(getResource(resource.id)?.id).toBe(resource.id);
   });

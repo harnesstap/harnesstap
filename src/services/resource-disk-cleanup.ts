@@ -348,6 +348,12 @@ function tryEditAggregateContent(
   }
 }
 
+export const DISK_DELETE_HASH_MISMATCH_REASON = "Modified file is protected";
+
+export function isConfirmableDiskDeleteReason(reason: string): boolean {
+  return reason === DISK_DELETE_HASH_MISMATCH_REASON;
+}
+
 function evaluateCandidate(
   candidate: Candidate,
   resource: Resource,
@@ -397,7 +403,7 @@ function evaluateCandidate(
       return {
         ...base,
         action: "protected",
-        reason: "Modified file is protected",
+        reason: "Path is not a readable file",
       };
     }
     if (candidate.generated_hash) {
@@ -405,8 +411,8 @@ function evaluateCandidate(
       if (currentHash !== candidate.generated_hash) {
         return {
           ...base,
-          action: "protected",
-          reason: "Modified file is protected",
+          action: "delete-file",
+          reason: DISK_DELETE_HASH_MISMATCH_REASON,
         };
       }
     } else if (!candidate.from_ledger) {
@@ -470,8 +476,9 @@ function evaluateCandidate(
         if (currentHash !== candidate.generated_hash) {
           return {
             ...base,
-            action: "protected",
-            reason: "Modified file is protected",
+            path: skillDir,
+            action: "delete-directory",
+            reason: DISK_DELETE_HASH_MISMATCH_REASON,
           };
         }
       }
@@ -532,6 +539,13 @@ export async function planResourceDiskDeletion(
         .map((location) => location.reason),
     ),
   ];
+  const confirmations = [
+    ...new Set(
+      locations
+        .filter((location) => isConfirmableDiskDeleteReason(location.reason))
+        .map((location) => location.reason),
+    ),
+  ];
 
   return {
     resource: {
@@ -542,9 +556,8 @@ export async function planResourceDiskDeletion(
     },
     locations,
     blockers,
-    can_delete_from_disk: blockers.length === 0 && locations.length > 0
-      ? true
-      : blockers.length === 0,
+    confirmations,
+    can_delete_from_disk: blockers.length === 0,
   };
 }
 

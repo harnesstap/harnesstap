@@ -239,6 +239,7 @@ export interface ResourceDeletePlan {
   resource: Pick<Resource, "id" | "type" | "name" | "namespace">;
   locations: ResourceDeleteLocation[];
   blockers: string[];
+  confirmations: string[];
   can_delete_from_disk: boolean;
 }
 

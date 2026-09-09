@@ -47,6 +47,7 @@ export interface ResourceDeletePlan {
   resource: ResourceSyncSummary;
   locations: ResourceDeletePlanLocation[];
   blockers: string[];
+  confirmations: string[];
   can_delete_from_disk: boolean;
 }
 
@@ -105,6 +106,7 @@ export async function deleteLibraryResource(
   token: string | null,
   selector: string,
   mode: "library" | "library_and_disk" = "library",
+  options: { force?: boolean } = {},
 ): Promise<ResourceDeleteResult> {
   const response = await agentFetch(
     baseUrl,
@@ -113,7 +115,10 @@ export async function deleteLibraryResource(
     {
       method: "DELETE",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({
+        mode,
+        ...(mode === "library_and_disk" && options.force ? { force: true } : {}),
+      }),
     },
   );
   if (!response.ok) {

@@ -320,6 +320,7 @@ async function handleDelete(
       { status: 400 },
     );
   }
+  const force = parseBool(parsedBody.body.force, false);
 
   const resolved = resolveResource(trimmed);
   if (resolved.status === "not_found") {
@@ -344,6 +345,18 @@ async function handleDelete(
           error: "delete_blocked",
           message: "Disk deletion is blocked by protected or ambiguous locations",
           blockers: plan.blockers,
+          plan,
+        },
+        { status: 409 },
+      );
+    }
+    if (plan.confirmations.length > 0 && !force) {
+      return jsonResponse(
+        {
+          error: "delete_needs_confirmation",
+          message:
+            "On-disk copy differs from the library. Pass force to delete the disk copy anyway.",
+          confirmations: plan.confirmations,
           plan,
         },
         { status: 409 },
