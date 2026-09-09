@@ -1737,10 +1737,13 @@ export function LiveStatePanel({
               {onAddAllResources ? (
                 <span className="contents-header-toolbar">
                   <IconActionButton
+                    primary
+                    showLabel
+                    iconAfterLabel
                     busy={addingAllResources}
                     spinnerSize={ICON_SIZE}
                     label="Add all"
-                    aria-label={`Add all ${notStagedResources.length} not-staged resources to ${selectedProfile}`}
+                    title={`Add all ${notStagedResources.length} not-staged resources to ${selectedProfile}`}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();

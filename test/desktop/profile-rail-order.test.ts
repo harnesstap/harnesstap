@@ -3,7 +3,9 @@ import {
   applyProfileRailOrder,
   insertBeforeIndexForDrop,
   loadProfileRailOrder,
+  pinNameFirst,
   PROFILE_RAIL_ORDER_STORAGE_KEY,
+  resolveRailProfileSelection,
   reorderProfileNames,
   saveProfileRailOrder,
 } from "../../apps/desktop/src/lib/profile-rail-order.ts";
@@ -40,6 +42,76 @@ describe("applyProfileRailOrder", () => {
       "alpha",
       "zeta",
     ]);
+  });
+});
+
+describe("pinNameFirst", () => {
+  test("moves an in-list pin to the front", () => {
+    expect(pinNameFirst(["alpha", "work", "zeta"], "work")).toEqual([
+      "work",
+      "alpha",
+      "zeta",
+    ]);
+  });
+
+  test("leaves order unchanged when the pin is missing or already first", () => {
+    expect(pinNameFirst(["alpha", "zeta"], "work")).toEqual(["alpha", "zeta"]);
+    expect(pinNameFirst(["work", "alpha"], "work")).toEqual(["work", "alpha"]);
+    expect(pinNameFirst(["alpha"], null)).toEqual(["alpha"]);
+  });
+});
+
+describe("resolveRailProfileSelection", () => {
+  test("selects the active profile when intent is unset", () => {
+    expect(
+      resolveRailProfileSelection({
+        visibleNames: ["alpha", "work"],
+        activeName: "work",
+        selectedName: null,
+        intent: "unset",
+      }),
+    ).toBe("work");
+  });
+
+  test("falls back to the first visible name when active is not in the list", () => {
+    expect(
+      resolveRailProfileSelection({
+        visibleNames: ["alpha", "beta"],
+        activeName: "work",
+        selectedName: null,
+        intent: "unset",
+      }),
+    ).toBe("alpha");
+  });
+
+  test("keeps an explicit user pick and an empty session selection", () => {
+    expect(
+      resolveRailProfileSelection({
+        visibleNames: ["alpha", "work"],
+        activeName: "work",
+        selectedName: "alpha",
+        intent: "user",
+      }),
+    ).toBe("alpha");
+    expect(
+      resolveRailProfileSelection({
+        visibleNames: ["alpha", "work"],
+        activeName: "work",
+        selectedName: null,
+        intent: "empty",
+      }),
+    ).toBeNull();
+  });
+
+  test("falls back to active when a user pick is no longer visible", () => {
+    expect(
+      resolveRailProfileSelection({
+        visibleNames: ["work", "other"],
+        activeName: "work",
+        selectedName: "gone",
+        intent: "user",
+      }),
+    ).toBe("work");
   });
 });
 

@@ -43,6 +43,52 @@ export function applyProfileRailOrder(
   return [...ordered, ...rest];
 }
 
+/** Keep `pin` first when it is in the list; otherwise leave order unchanged. */
+export function pinNameFirst(
+  names: readonly string[],
+  pin: string | null | undefined,
+): string[] {
+  if (!pin) {
+    return [...names];
+  }
+  const index = names.indexOf(pin);
+  if (index <= 0) {
+    return [...names];
+  }
+  return [pin, ...names.filter((name) => name !== pin)];
+}
+
+export type ProfileSelectionIntent = "unset" | "empty" | "user";
+
+/**
+ * Default rail selection: the applied/active profile for this view when it is
+ * visible. Keep an explicit user pick (including empty) within the session.
+ */
+export function resolveRailProfileSelection(input: {
+  visibleNames: readonly string[];
+  activeName: string | null;
+  selectedName: string | null;
+  intent: ProfileSelectionIntent;
+}): string | null {
+  if (input.visibleNames.length === 0) {
+    return null;
+  }
+  if (input.intent === "empty") {
+    return null;
+  }
+  if (
+    input.intent === "user"
+    && input.selectedName
+    && input.visibleNames.includes(input.selectedName)
+  ) {
+    return input.selectedName;
+  }
+  if (input.activeName && input.visibleNames.includes(input.activeName)) {
+    return input.activeName;
+  }
+  return input.visibleNames[0] ?? null;
+}
+
 export function reorderProfileNames(
   names: readonly string[],
   fromIndex: number,

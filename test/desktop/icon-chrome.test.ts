@@ -29,6 +29,7 @@ describe("desktop icon chrome", () => {
     expect(iconButtonSource).toContain("title={title ?? label}");
     expect(iconButtonSource).toContain("icon-action");
     expect(iconButtonSource).toContain("showLabel");
+    expect(iconButtonSource).toContain("iconAfterLabel");
     expect(iconButtonSource).toContain("has-label");
     expect(iconButtonSource).toContain("aria-label={showLabel ? undefined : label}");
   });
@@ -54,9 +55,10 @@ describe("desktop icon chrome", () => {
     expect(stylesSource).not.toContain(".rail-controls .icon-action.primary");
   });
 
-  test("converts Not staged Add all, More, and Show all to distinct icons", () => {
+  test("converts More and Show all to distinct icons and labels Not staged Add all", () => {
     expect(liveStateSource).toContain('label="Add all"');
     expect(liveStateSource).toContain("ListPlus");
+    expect(liveStateSource).toContain("iconAfterLabel");
     expect(liveStateSource).toContain('label="More"');
     expect(liveStateSource).toContain("ChevronsDown");
     expect(liveStateSource).toContain('label="Show all"');
