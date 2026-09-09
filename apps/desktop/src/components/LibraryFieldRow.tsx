@@ -12,6 +12,8 @@ export interface LibraryFieldRowProps {
   error?: string | null;
   mono?: boolean;
   action?: ReactNode;
+  iconButtonLabel?: string;
+  onIconClick?: () => void;
   children?: ReactNode;
 }
 
@@ -26,21 +28,35 @@ export function LibraryFieldRow({
   error,
   mono = false,
   action,
+  iconButtonLabel,
+  onIconClick,
   children,
 }: LibraryFieldRowProps) {
   const showPlaceholder = display == null || display === "";
+  const iconLabel = iconButtonLabel ?? fieldName;
 
   return (
     <div className="library-field-row">
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
-          <span
-            className="library-field-icon"
-            tabIndex={0}
-            aria-label={fieldName}
-          >
-            {icon}
-          </span>
+          {onIconClick ? (
+            <button
+              type="button"
+              className="library-field-icon is-button"
+              aria-label={iconLabel}
+              onClick={onIconClick}
+            >
+              {icon}
+            </button>
+          ) : (
+            <span
+              className="library-field-icon"
+              tabIndex={0}
+              aria-label={fieldName}
+            >
+              {icon}
+            </span>
+          )}
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content
@@ -57,6 +73,7 @@ export function LibraryFieldRow({
           .filter(Boolean)
           .join(" ")}
       >
+        <div className="library-field-name">{fieldName}</div>
         {editing ? (
           children
         ) : (

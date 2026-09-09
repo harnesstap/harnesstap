@@ -536,6 +536,12 @@ export function ResourcesPanel({
             titleId={detailTitleId}
             onBack={leaveToList}
             onDeleted={leaveToList}
+            onOpenOwningPlugin={(pluginName) => {
+              setPane({
+                mode: "detail",
+                target: { kind: "plugin-package", selector: pluginName },
+              });
+            }}
             onSuccess={onSuccess}
             onLibraryChanged={reloadLibrary}
             onFieldEditingChange={setFieldEditing}

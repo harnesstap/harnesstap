@@ -27,6 +27,13 @@ const stylesSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/styles.css"),
   "utf8",
 );
+const pathAccessSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/PathAccessActions.tsx",
+  ),
+  "utf8",
+);
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",
@@ -72,18 +79,21 @@ describe("resource inspect content preview", () => {
     expect(bodySource).toContain("<code>");
   });
 
-  test("keeps open-in-editor on Path rows only, not header or Content", () => {
-    expect(bodySource).toContain("ExternalLink");
-    expect(bodySource).toContain("Open this file in the default editor.");
-    const actionOpens = [
-      ...bodySource.matchAll(/action=\{renderOpenInEditor\(editorPath\)\}/g),
-    ];
-    expect(actionOpens).toHaveLength(2);
+  test("keeps path copy, Finder reveal, and open-in-editor on Path rows only", () => {
+    expect(bodySource).toContain("PathAccessActions");
+    expect(bodySource).toContain("REVEAL_PATH_LABEL");
+    expect(bodySource).toContain("renderPathActions(editorPath, true)");
+    expect(bodySource).toContain("openContainedPath(path, true)");
+    expect(bodySource).toContain("{ path, reveal }");
     expect(bodySource).toContain('fieldName="Path"');
-    expect(bodySource).not.toContain("{renderOpenInEditor(editorPath)}\n                {actionButtons}");
     const contentBlock = bodySource.slice(bodySource.indexOf('fieldName="Content"'));
-    expect(contentBlock).not.toContain("action={renderOpenInEditor(editorPath)}");
+    expect(contentBlock).not.toContain("action={renderPathActions");
     expect(fieldRowSource).toContain("action?: ReactNode");
+    expect(fieldRowSource).toContain("onIconClick");
+    expect(pathAccessSource).toContain("COPY_PATH_LABEL");
+    expect(pathAccessSource).toContain("REVEAL_PATH_LABEL");
+    expect(pathAccessSource).toContain("FolderOpen");
+    expect(pathAccessSource).toContain("Copy");
   });
 
   test("uses even field-row gap without per-row vertical margin", () => {
@@ -100,6 +110,7 @@ describe("resource inspect content preview", () => {
     expect(designSource).toContain("15-line");
     expect(designSource).toContain("code block");
     expect(designSource).toContain("open-in-editor");
+    expect(designSource).toContain("Reveal in Finder");
     expect(designSource).toContain("viewport-capped");
   });
 });

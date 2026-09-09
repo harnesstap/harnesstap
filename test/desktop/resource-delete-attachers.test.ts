@@ -3,9 +3,12 @@ import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import type { ResourceDeletePlan } from "../../apps/desktop/src/lib/api/resource-mutate.ts";
 import {
+  diskDeleteDisabledExplanation,
   formatResourceDeleteAttachers,
   formatResourceDeletePlanSummary,
   formatResourceDeleteSuccess,
+  humanizeDiskDeleteReason,
+  protectedDeleteLocations,
   RESOURCE_DELETE_DISK_LABEL,
   RESOURCE_DELETE_LIBRARY_LABEL,
   resourceCanRemoveFromActiveProfile,
@@ -164,8 +167,12 @@ describe("resource delete plan helpers", () => {
     });
     expect(resourceDeleteDiskDisabled(plan)).toBe(true);
     expect(formatResourceDeletePlanSummary(plan).blockers).toContain(
-      "Modified file is protected",
+      humanizeDiskDeleteReason("Modified file is protected"),
     );
+    expect(diskDeleteDisabledExplanation(plan)).toContain(
+      "Delete from library + disk is unavailable",
+    );
+    expect(protectedDeleteLocations(plan)).toHaveLength(1);
   });
 
   test("shows a safe empty message when no locations exist", () => {
@@ -198,8 +205,10 @@ describe("resource delete confirm chrome", () => {
     expect(detailSource).toContain("Remove from active profile");
     expect(detailSource).toContain("tertiaryLabel={canRemoveFromActive");
     expect(detailSource).toContain("removeProfileResource");
-    expect(confirmSource).toContain("tertiaryLabel");
-    expect(confirmSource).toContain("onTertiary");
+    expect(confirmSource).toContain("confirmHint");
+    expect(detailSource).toContain("diskDeleteDisabledExplanation");
+    expect(detailSource).toContain("PathAccessActions");
+    expect(detailSource).toContain("onOpenOwningPlugin");
   });
 
   test("loads the delete plan and exposes both delete modes", () => {
@@ -228,5 +237,6 @@ describe("resource delete documentation", () => {
     );
     expect(specSource).toContain("library_and_disk");
     expect(specSource).toContain("delete-plan");
+    expect(specSource).toContain("human-readable reason");
   });
 });

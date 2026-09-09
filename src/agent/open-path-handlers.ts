@@ -1,6 +1,10 @@
 import { existsSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { openPathInSystemEditor } from "../services/open-path.js";
+import {
+  openPathInSystemEditor,
+  resolveOpenableFilesystemPath,
+  revealPathInFileManager,
+} from "../services/open-path.js";
 import {
   resolveEditorPath,
   resolveResourceEditorPath,
@@ -59,6 +63,7 @@ export async function handleOpenPath(
   const selector = body.selector;
   const path = body.path;
   const pathHint = body.pathHint;
+  const reveal = body.reveal === true;
 
   if (typeof selector === "string" && selector.trim().length > 0) {
     try {
@@ -66,7 +71,11 @@ export async function handleOpenPath(
         selector: selector.trim(),
         pathHint: typeof pathHint === "string" ? pathHint : null,
       });
-      openPathInSystemEditor(resolvedPath);
+      if (reveal) {
+        revealPathInFileManager(resolvedPath);
+      } else {
+        openPathInSystemEditor(resolvedPath);
+      }
       return jsonResponse({ path: resolvedPath });
     } catch (error) {
       return jsonResponse(
@@ -81,6 +90,11 @@ export async function handleOpenPath(
 
   if (typeof path === "string" && path.trim().length > 0) {
     try {
+      if (reveal) {
+        const resolvedPath = resolveOpenableFilesystemPath(path.trim());
+        revealPathInFileManager(resolvedPath);
+        return jsonResponse({ path: resolvedPath });
+      }
       const directoryPath = resolveOpenableDirectory(path.trim());
       if (directoryPath) {
         openPathInSystemEditor(directoryPath);

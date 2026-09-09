@@ -60,6 +60,45 @@ export function resourceDeleteDiskDisabled(plan: ResourceDeletePlan | null): boo
   return !plan.can_delete_from_disk || plan.blockers.length > 0;
 }
 
+const DISK_DELETE_REASON_COPY: Record<string, string> = {
+  "Modified file is protected":
+    "HarnessTap will not delete this on-disk copy because it was edited outside the library.",
+  "Path escapes declared root":
+    "This path is outside the expected install root, so disk delete is blocked.",
+  "Refusing to delete root directory":
+    "This path is a root directory, so HarnessTap will not delete it.",
+  "Path no longer exists":
+    "The recorded on-disk path is missing, so disk delete cannot run.",
+  "Shared file section cannot be identified":
+    "This file is shared with other resources, and HarnessTap cannot safely edit only this section.",
+};
+
+export function humanizeDiskDeleteReason(reason: string): string {
+  return DISK_DELETE_REASON_COPY[reason] ?? reason;
+}
+
+export function diskDeleteDisabledExplanation(
+  plan: ResourceDeletePlan | null,
+): string | null {
+  if (!plan || !resourceDeleteDiskDisabled(plan)) {
+    return null;
+  }
+  const reasons = [
+    ...new Set(plan.blockers.map((reason) => humanizeDiskDeleteReason(reason))),
+  ];
+  const detail =
+    reasons.length > 0
+      ? reasons.join(" ")
+      : "One or more on-disk locations are protected.";
+  return `Delete from library + disk is unavailable. ${detail} Delete from library still removes the library entry.`;
+}
+
+export function protectedDeleteLocations(
+  plan: ResourceDeletePlan,
+): ResourceDeletePlan["locations"] {
+  return plan.locations.filter((location) => location.action === "protected");
+}
+
 export function formatResourceDeletePlanSummary(plan: ResourceDeletePlan): {
   groups: Array<{
     scope: "global" | "project" | "source";
@@ -89,7 +128,7 @@ export function formatResourceDeletePlanSummary(plan: ResourceDeletePlan): {
       plan.locations.length === 0
         ? "No on-disk locations were found for this resource."
         : null,
-    blockers: plan.blockers,
+    blockers: plan.blockers.map((reason) => humanizeDiskDeleteReason(reason)),
   };
 }
 
