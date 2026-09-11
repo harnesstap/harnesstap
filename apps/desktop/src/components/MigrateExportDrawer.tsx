@@ -417,9 +417,9 @@ export function MigrateExportDrawer({
   const targetSummary = () => {
     switch (scope) {
       case "plugin":
-        return selectedPlugin ?? "—";
+        return selectedPlugin ?? "-";
       case "resource":
-        return selectedResource ?? "—";
+        return selectedResource ?? "-";
       case "workspace":
         return "Entire local library";
       default: {

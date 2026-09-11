@@ -5,7 +5,7 @@ export function applyPluginDialogTitle(pluginName: string): string {
 }
 
 export function applyPluginHelperCopy(): string {
-  return "Materialize a library plugin graph without switching the active profile. Profile switch stays on Apply in the profiles list.";
+  return "Apply this plugin without switching the active profile.";
 }
 
 export function applyPluginProfileGlobalWarning(
@@ -15,7 +15,7 @@ export function applyPluginProfileGlobalWarning(
   if (!isProfile || scope !== "home") {
     return null;
   }
-  return "This plugin is tagged profile. Applying it to Global records it as the active profile (same as CLI ht apply --global). Everyday switches belong on Apply in the Global/Project rail.";
+  return "This plugin is tagged profile. Global apply records it as the active profile.";
 }
 
 export function applyPluginProjectMissing(

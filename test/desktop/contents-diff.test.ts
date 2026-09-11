@@ -21,6 +21,7 @@ import {
   profileHasComposition,
   stackChangesQuietLabel,
   targetPreviewActiveMeta,
+  targetPreviewDriftA11y,
 } from "../../apps/desktop/src/lib/contents-diff.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
 
@@ -638,32 +639,24 @@ describe("target preview quiet labels", () => {
     ).not.toContain("No changes");
   });
 
-  it("labels an active profile as drifting or gaps", () => {
+  it("labels an active profile as active without drifting or gaps words", () => {
+    expect(targetPreviewActiveMeta(true)).toBe("active");
+    expect(targetPreviewActiveMeta(false)).toBeNull();
+  });
+
+  it("puts pending counts on drift a11y, not in the identity chain", () => {
     expect(
-      targetPreviewActiveMeta({
-        relativeToActive: true,
+      targetPreviewDriftA11y({
+        notStagedCount: 2,
+        installGapCount: 1,
+        fileChangeCount: 0,
+      }),
+    ).toBe("2 not staged · 1 install gap");
+    expect(
+      targetPreviewDriftA11y({
         notStagedCount: 0,
         installGapCount: 0,
-        hasStackChanges: false,
-        hasFileChanges: false,
-      }),
-    ).toBe("active");
-    expect(
-      targetPreviewActiveMeta({
-        relativeToActive: true,
-        notStagedCount: 2,
-        installGapCount: 1,
-        hasStackChanges: false,
-        hasFileChanges: false,
-      }),
-    ).toBe("active · drifting · gaps");
-    expect(
-      targetPreviewActiveMeta({
-        relativeToActive: false,
-        notStagedCount: 2,
-        installGapCount: 1,
-        hasStackChanges: true,
-        hasFileChanges: false,
+        fileChangeCount: 0,
       }),
     ).toBeNull();
   });

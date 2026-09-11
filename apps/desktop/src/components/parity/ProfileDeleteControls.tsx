@@ -85,7 +85,7 @@ export function ProfileDeleteControls({
               .filter(Boolean)
               .join(" ")}
             label="Remove profile"
-            title="Remove profile — files on disk stay until you apply another profile."
+            title="Remove profile"
             disabled={busy || builtinEmpty}
             busy={busy}
             onClick={() => {
@@ -102,7 +102,7 @@ export function ProfileDeleteControls({
               .filter(Boolean)
               .join(" ")}
             label="Remove profile"
-            title="Remove profile — files on disk stay until you apply another profile."
+            title="Remove profile"
             disabled={busy || builtinEmpty}
             busy={busy}
             onClick={() => {

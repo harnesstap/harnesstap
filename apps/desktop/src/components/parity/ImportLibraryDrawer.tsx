@@ -379,7 +379,7 @@ export function ImportLibraryDrawer({
                   preview.items.map((item, index) => (
                     <li key={`${item.type}-${item.name}-${index}`}>
                       {kind === "add"
-                        ? `${item.name}${item.category ? ` · ${item.category}` : ""}${item.description ? ` — ${item.description}` : ""}`
+                        ? `${item.name}${item.category ? ` · ${item.category}` : ""}${item.description ? ` · ${item.description}` : ""}`
                         : `${item.type} ${item.name}`}
                     </li>
                   ))

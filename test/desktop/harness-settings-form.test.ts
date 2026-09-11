@@ -76,7 +76,7 @@ describe("genericHarnessTooltip", () => {
 
   it("appends supports list when non-empty", () => {
     expect(genericHarnessTooltip(["skills", "agents"])).toBe(
-      "Path-based mirroring (no dedicated serializer) — Supports: skills, agents",
+      "Path-based mirroring (no dedicated serializer). Supports skills, agents.",
     );
   });
 });

@@ -9,7 +9,6 @@ import {
   type Ref,
 } from "react";
 import {
-  AlignLeft,
   ArrowLeft,
   CheckCheck,
   Clock,
@@ -19,6 +18,7 @@ import {
   Link,
   MapPin,
   RefreshCw,
+  TextQuote,
   Trash2,
 } from "lucide-react";
 import {
@@ -89,8 +89,7 @@ export type ResourceDetailChrome = "dialog" | "pane";
 
 export type ResourceDetailEditingField = "name" | "description" | "content";
 
-const DELETE_TOOLTIP =
-  "Remove this from the library, or from the library and known on-disk locations.";
+const DELETE_TOOLTIP = "Remove from library";
 
 function libraryResourceNoun(type: string): string {
   if (type === "skill") {
@@ -104,18 +103,12 @@ function libraryResourceNoun(type: string): string {
 
 function librarySyncPreviewTooltip(type: string): string {
   const noun = libraryResourceNoun(type);
-  return `Check whether this ${noun} in your library differs from the copy in the marketplace, catalog, or place you got it from. Does not change files yet. Does not install into a project.`;
+  return `Compare this ${noun} with its origin`;
 }
 
 function pendingSyncWriteTooltip(type: string): string {
-  if (type === "skill") {
-    return "Save this newer copy over this skill’s library files. If the skill is part of a plugin package, only this skill in the library is updated — not the whole plugin, and not a project.";
-  }
-  if (type === "plugin") {
-    return "Save this newer copy over this plugin’s library files. Does not install it into a project.";
-  }
-  const kind = libraryResourceNoun(type);
-  return `Save this newer copy over this ${kind}’s library files. If it lives inside a plugin package, only this library entry is updated — not the whole plugin, and not a project.`;
+  const noun = libraryResourceNoun(type);
+  return `Write origin copy to this ${noun}`;
 }
 
 export interface ResourceDetailBodyProps {
@@ -899,7 +892,7 @@ export function ResourceDetailBody({
             onStartEdit={() => undefined}
           />
           <LibraryFieldRow
-            icon={<AlignLeft size={16} aria-hidden />}
+            icon={<TextQuote size={16} aria-hidden />}
             fieldName="Description"
             readOnly={fieldsReadOnly}
             display={detail.description}
@@ -925,7 +918,7 @@ export function ResourceDetailBody({
             fieldName="Path"
             readOnly
             mono
-            display={renderPathValue(editorPath) ?? (detail.source || "—")}
+            display={renderPathValue(editorPath) ?? (detail.source || "-")}
             editing={false}
             onStartEdit={() => undefined}
             iconButtonLabel={REVEAL_PATH_LABEL}
@@ -996,7 +989,7 @@ export function ResourceDetailBody({
               key={`${entry.resource.id}:${entry.reason}`}
               className="muted"
             >
-              {entry.resource.type}:{entry.resource.name} — {entry.reason}
+              {entry.resource.type}:{entry.resource.name}: {entry.reason}
             </p>
           ))}
         </div>

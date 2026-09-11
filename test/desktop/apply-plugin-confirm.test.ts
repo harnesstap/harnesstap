@@ -15,7 +15,7 @@ describe("applyPluginDialogTitle", () => {
 describe("applyPluginHelperCopy", () => {
   test("keeps apply off the profile-switch path", () => {
     expect(applyPluginHelperCopy()).toContain("without switching the active profile");
-    expect(applyPluginHelperCopy()).toContain("profiles list");
+    expect(applyPluginHelperCopy()).not.toContain("Materialize");
   });
 });
 

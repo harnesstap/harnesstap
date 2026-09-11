@@ -27,21 +27,14 @@ describe("plugin composition fields", () => {
   });
 
   test("package apply tooltip distinguishes apply from sync", () => {
-    expect(packagesSource).toContain(
-      "Write this plugin’s graph into the selected project",
-    );
+    expect(packagesSource).toContain('const APPLY_TOOLTIP = "Apply plugin graph"');
+    expect(packagesSource).not.toContain("resource sync");
   });
 
-  test("package Update tooltip refreshes the whole plugin package without git jargon", () => {
-    expect(packagesSource).toContain(
-      "Refresh this whole plugin package in the library from the marketplace, catalog, or git source it came from.",
-    );
-    expect(packagesSource).toContain("use Sync on that item");
-    expect(packagesSource).toContain(
-      "It does not install the plugin into a project.",
-    );
+  test("package Update tooltip refreshes from origin without git jargon", () => {
+    expect(packagesSource).toContain('const UPDATE_TOOLTIP = "Update from origin"');
     expect(packagesSource).not.toContain("working head. Not resource sync.");
-    expect(packagesSource).not.toContain("from its origin");
+    expect(packagesSource).not.toContain("git source");
   });
 
   test("package Update success and error copy omit origin jargon", () => {

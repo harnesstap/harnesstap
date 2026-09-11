@@ -64,6 +64,36 @@ describe("desktop icon chrome", () => {
     expect(stylesSource).not.toContain(".rail-controls .icon-action.primary");
   });
 
+  test("keeps rail Apply as the sole profile-apply CTA", () => {
+    expect(appSource).toContain("rail-apply-action");
+    expect(appSource).not.toContain("status-cta");
+    expect(appSource).not.toContain("onPendingHomeApply");
+    expect(appSource).not.toContain("homeProfilePending");
+    expect(appSource).not.toContain("Apply ${activeProfile} to global");
+    expect(designSource).toContain("sole profile-apply CTA");
+    expect(designSource).toContain("one path per action");
+  });
+
+  test("marks profile description with TextQuote field identity", () => {
+    expect(appSource).toContain("FieldIdentityIcon");
+    expect(appSource).toContain("TextQuote");
+    expect(appSource).toContain('label="Description"');
+    expect(resourceDetailSource).toContain("TextQuote");
+    expect(pluginDetailSource).toContain("TextQuote");
+    expect(designSource).toContain("**TextQuote**");
+    expect(designSource).toContain("Profile **title** stays icon-free");
+  });
+
+  test("locks Designer voice: short tooltips, no em dash UI copy", () => {
+    expect(designSource).toContain("No em dashes in Desktop system/UI strings");
+    expect(designSource).toContain("One idea per string");
+    expect(appSource).toContain('title="Refresh live status"');
+    expect(appSource).toContain('title="Install project config"');
+    expect(appSource).not.toContain("rescanning tracked directories");
+    expect(appSource).not.toContain("ht install");
+    expect(appSource).not.toContain(" — ");
+  });
+
   test("converts install-gap plugin Install to icon-only chrome", () => {
     const installGaps = liveStateSource.slice(
       liveStateSource.indexOf("Install gaps (in profile)"),
@@ -261,26 +291,17 @@ describe("desktop icon chrome", () => {
     expect(resourceDetailSource).toMatch(/label="Write"[\s\S]*?showLabel/);
   });
 
-  test("library Sync tooltip is a preview and does not install into a project", () => {
+  test("library Sync tooltip compares with origin", () => {
     expect(resourceDetailSource).toContain("librarySyncPreviewTooltip");
-    expect(resourceDetailSource).toContain(
-      "Check whether this ${noun} in your library differs from the copy in the marketplace, catalog, or place you got it from.",
-    );
-    expect(resourceDetailSource).toContain("Does not change files yet.");
-    expect(resourceDetailSource).toContain("Does not install into a project.");
+    expect(resourceDetailSource).toContain("Compare this ${noun} with its origin");
     expect(resourceDetailSource).not.toContain("install source");
     expect(resourceDetailSource).not.toContain("home harness");
     expect(resourceDetailSource).toContain("librarySyncPreviewTooltip(detail.type)");
   });
 
-  test("library Write tooltip saves this item’s library files only", () => {
+  test("library Write tooltip writes the origin copy to this item", () => {
     expect(resourceDetailSource).toContain("pendingSyncWriteTooltip");
-    expect(resourceDetailSource).toContain(
-      "Save this newer copy over this skill’s library files.",
-    );
-    expect(resourceDetailSource).toContain(
-      "only this skill in the library is updated — not the whole plugin, and not a project.",
-    );
+    expect(resourceDetailSource).toContain("Write origin copy to this ${noun}");
     expect(resourceDetailSource).not.toContain("pending sync");
     expect(resourceDetailSource).not.toContain("a project or host");
     expect(resourceDetailSource).toContain("pendingSyncWriteTooltip(detail.type)");

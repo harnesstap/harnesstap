@@ -40,6 +40,7 @@ import {
   stackChangesQuietLabel,
   summarizeStackChanges,
   targetPreviewActiveMeta,
+  targetPreviewDriftA11y,
   type ContentsDiffItem,
   type FileChangeKind,
   type FileChangeResourceGroup,
@@ -91,13 +92,11 @@ import {
 
 const ICON_SIZE = 14;
 const NOT_STAGED_HELP =
-  "On disk but not in this profile, or a live copy that differs. Add puts it in the selected profile; Diff compares live vs profile.";
+  "On disk but not in this profile, or a live copy that differs.";
 const NOT_STAGED_SUBTITLE = "On disk, not in this profile (or different).";
-const STACK_CHANGES_HELP =
-  "Plugins and resources apply would add or remove versus live.";
+const STACK_CHANGES_HELP = "What apply would add or remove.";
 const STACK_CHANGES_SUBTITLE = "What apply would add or remove.";
-const INSTALL_GAPS_HELP =
-  "Profile items missing from the live harness install, or whose installed value differs.";
+const INSTALL_GAPS_HELP = "Profile items that do not match the live install.";
 const INSTALL_GAPS_SUBTITLE = "Profile items not matching the live install.";
 
 function SectionInfo({ text }: { text: string }) {
@@ -500,7 +499,7 @@ function UntrackedResourceRow({
           <IconActionButton
             className="file-change-diff-btn"
             label={`Show diff for ${resource.name}`}
-            title="Show how this live resource differs from the profile"
+            title="Show diff"
             onClick={() => onDiff(managedPath)}
             icon={<Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
           />
@@ -762,7 +761,7 @@ function FileChangeRowActions({
         <IconActionButton
           className="file-change-diff-btn"
           label={`Show diff for ${change.path}`}
-          title="Show what apply would change"
+          title="Show diff"
           disabled={busy}
           onClick={() => onDiffFileChange(change)}
           icon={<Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
@@ -772,7 +771,7 @@ function FileChangeRowActions({
         <IconActionButton
           className="untracked-add-btn"
           label={`Commit ${change.path} into profile`}
-          title="Commit live changes into profile"
+          title="Commit into profile"
           disabled={busy}
           busy={addBusy}
           spinnerSize={ICON_SIZE}
@@ -1215,7 +1214,7 @@ function installGapSyncAction(row: InstallGapRow): RecoveryAction | null {
 
 /** Mirrors `previewProjectApply` when project drift is `na`. */
 const PROJECT_NOT_TRACKED_WARNING =
-  "Project is not tracked yet — bootstrap or apply to create a snapshot";
+  "Project is not tracked yet. Bootstrap or apply to create a snapshot.";
 
 export interface LiveStatePanelProps {
   view: ViewScope;
@@ -1422,13 +1421,14 @@ export function LiveStatePanel({
     installGapCount: installGaps.length,
     fileChangeCount,
   });
-  const activePreviewMeta = targetPreviewActiveMeta({
-    relativeToActive,
-    notStagedCount: notStagedResources.length,
-    installGapCount: installGaps.length,
-    hasStackChanges,
-    hasFileChanges,
-  });
+  const activePreviewMeta = targetPreviewActiveMeta(relativeToActive);
+  const driftA11y = relativeToActive
+    ? targetPreviewDriftA11y({
+        notStagedCount: notStagedResources.length,
+        installGapCount: installGaps.length,
+        fileChangeCount,
+      })
+    : null;
   const emptyProfileQuietState =
     !profileHasComposition(targetContents)
     && (applyPreview?.files?.expected_count ?? 0) === 0
@@ -1854,6 +1854,17 @@ export function LiveStatePanel({
               <span className="contents-header-meta muted">
                 {selectedProfile}
                 {activePreviewMeta ? ` · ${activePreviewMeta}` : ""}
+                {driftA11y ? (
+                  <ChromeTooltip content={driftA11y} side="top">
+                    <span
+                      className="target-preview-drift-glyph"
+                      role="img"
+                      aria-label={driftA11y}
+                    >
+                      <CircleAlert size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                    </span>
+                  </ChromeTooltip>
+                ) : null}
               </span>
             </summary>
             <div className="contents-body">
@@ -1886,8 +1897,8 @@ export function LiveStatePanel({
 
                   {emptyProfileQuietState ? (
                     <p className="muted">
-                      This profile has no resources yet — apply will record it as
-                      applied with no file writes.
+                      This profile has no resources yet. Apply records it with
+                      no file writes.
                     </p>
                   ) : hasStackChanges ? (
                     <details className="diff-section">
