@@ -98,20 +98,34 @@ describe("library origin filter chrome", () => {
   });
 
   test("styles ResourceTypeTabs as filled selected pills", () => {
-    const tab = cssBlock(stylesSource, ".resource-type-tab");
-    expect(tab).toContain("min-height: 32px");
-    expect(tab).toContain("border-radius: 999px");
+    expect(cssBlock(stylesSource, ".resource-type-tab")).toContain("min-height: 32px");
+    expect(cssBlock(stylesSource, ".resource-type-tab")).toContain("min-width: 32px");
+    expect(cssBlock(stylesSource, ".resource-type-tabs[data-compact=\"true\"] .resource-type-tab-face")).toContain(
+      "min-width: 32px",
+    );
     expect(cssBlock(stylesSource, '.resource-type-tab[data-state="on"]')).toContain(
       "background: var(--accent)",
     );
     expect(tabsSource).toContain("visibleResourceTypeTabs");
     expect(tabsSource).toContain("resourceTypeTabText");
+    expect(tabsSource).toContain("resourceTypeTabGlyph");
+    expect(tabsSource).toContain("RESOURCE_TYPE_TABS_WIDE_MIN_PX");
+    expect(tabsSource).toContain("hostPaneWidth");
+    expect(tabsSource).toContain("aria-label={caption}");
     expect(tabsSource).toContain("resource-type-tab-count");
     expect(tabsSource).toContain("ChromeTooltip");
+    expect(tabsSource).toContain("content={caption}");
+    expect(tabsSource).not.toContain("Sparkles");
+    expect(tabsSource).toContain("TypeIcon");
+    expect(cssBlock(stylesSource, ".resource-type-tabs")).toContain("width: 100%");
+    expect(stylesSource).toContain("@container (min-width: 900px)");
     expect(designSource).toContain("ResourceTypeTabs");
     expect(designSource).toContain("No sidebar Type chips");
     expect(designSource).toContain("Optional count in the pill");
     expect(designSource).toContain("Pills always have icons");
+    expect(designSource).toContain("host pane");
+    expect(designSource).toContain("never plugin, plugin ref, package, or instruction");
+    expect(designSource).toContain("Profile resources stay a nested plugin composition tree");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

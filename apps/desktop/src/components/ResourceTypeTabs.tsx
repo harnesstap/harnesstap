@@ -4,6 +4,8 @@ import { ToggleGroup } from "radix-ui";
 import {
   ALL_RESOURCE_TYPE_TAB,
   resolveResourceTypeTab,
+  RESOURCE_TYPE_TABS_WIDE_MIN_PX,
+  resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
   resourceTypeTabShowsCount,
@@ -13,8 +15,6 @@ import {
 import { ChromeTooltip } from "./ChromeTooltip";
 import { TypeIcon } from "./TypeIcon";
 
-const LABEL_MIN_WIDTH_PX = 900;
-
 export interface ResourceTypeTabsProps {
   counts: ReadonlyMap<string, number>;
   value: string | null;
@@ -23,10 +23,15 @@ export interface ResourceTypeTabsProps {
 }
 
 function TabGlyph({ type }: { type: string }): ReactNode {
-  if (type === ALL_RESOURCE_TYPE_TAB) {
+  if (resourceTypeTabGlyph(type) === "layout-grid") {
     return <LayoutGrid size={14} aria-hidden />;
   }
   return <TypeIcon type={type} />;
+}
+
+function hostPaneWidth(el: HTMLElement): number {
+  const host = el.parentElement ?? el;
+  return Math.max(el.getBoundingClientRect().width, host.getBoundingClientRect().width);
 }
 
 export function ResourceTypeTabs({
@@ -37,7 +42,7 @@ export function ResourceTypeTabs({
 }: ResourceTypeTabsProps): ReactNode {
   const labelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(true);
+  const [compact, setCompact] = useState(false);
   const tabs = visibleResourceTypeTabs(counts);
   const resolved = resolveResourceTypeTab(value, counts);
   const toggleValue =
@@ -49,12 +54,16 @@ export function ResourceTypeTabs({
     if (!el || typeof ResizeObserver === "undefined") {
       return;
     }
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? 0;
-      setCompact(width < LABEL_MIN_WIDTH_PX);
-    });
+    const host = el.parentElement ?? el;
+    const update = (): void => {
+      setCompact(hostPaneWidth(el) < RESOURCE_TYPE_TABS_WIDE_MIN_PX);
+    };
+    const observer = new ResizeObserver(update);
     observer.observe(el);
-    setCompact(el.clientWidth < LABEL_MIN_WIDTH_PX);
+    if (host !== el) {
+      observer.observe(host);
+    }
+    update();
     return () => observer.disconnect();
   }, []);
 
@@ -63,7 +72,11 @@ export function ResourceTypeTabs({
   }
 
   return (
-    <div ref={rootRef} className="resource-type-tabs">
+    <div
+      ref={rootRef}
+      className="resource-type-tabs"
+      data-compact={compact ? "true" : "false"}
+    >
       <span className="sr-only" id={labelId}>
         Resource type
       </span>
@@ -100,14 +113,12 @@ export function ResourceTypeTabs({
                   <span className="resource-type-tab-face">{glyph}</span>
                 </ChromeTooltip>
               ) : (
-                <>
-                  {glyph}
-                  <span className="resource-type-tab-label">{label}</span>
-                  {showCount ? (
-                    <span className="resource-type-tab-count">{count}</span>
-                  ) : null}
-                </>
+                glyph
               )}
+              <span className="resource-type-tab-label">{label}</span>
+              {showCount ? (
+                <span className="resource-type-tab-count">{count}</span>
+              ) : null}
             </ToggleGroup.Item>
           );
         })}

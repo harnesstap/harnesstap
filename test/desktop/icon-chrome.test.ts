@@ -208,8 +208,13 @@ describe("desktop icon chrome", () => {
     expect(libraryList).not.toContain("Sparkles");
     expect(libraryList).not.toContain("ResourceRowMeta");
     expect(libraryList).not.toContain("RelatedHarnessIcons");
-    expect(read("components/ResourceTypeTabs.tsx")).toContain("TypeIcon");
-    expect(read("components/ResourceTypeTabs.tsx")).not.toContain("Sparkles");
+    const typeTabsSource = read("components/ResourceTypeTabs.tsx");
+    expect(typeTabsSource).toContain("TypeIcon");
+    expect(typeTabsSource).toContain("resourceTypeTabGlyph");
+    expect(typeTabsSource).not.toContain("Sparkles");
+    expect(typeTabsSource).toContain("ChromeTooltip");
+    expect(typeTabsSource).toContain("aria-label={caption}");
+    expect(typeTabsSource).toContain("content={caption}");
     expect(liveStateSource).toContain("ResourceTypeTabs");
 
     const pluginGroup = liveStateSource.slice(
