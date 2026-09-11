@@ -5,7 +5,9 @@ import {
   groupSourceRows,
   isSourcesFilterActive,
   nextCheckedSourceIds,
+  nextCheckedSourceIdsForChild,
   sourceCheckState,
+  sourceChildChecked,
 } from "../../apps/desktop/src/lib/sources-sidebar.ts";
 
 describe("buildSourceRows", () => {
@@ -187,6 +189,40 @@ describe("nextCheckedSourceIds", () => {
   test("reselects every source from none or mixed", () => {
     expect(nextCheckedSourceIds([], rows)).toEqual(defaults);
     expect(nextCheckedSourceIds(["local"], rows)).toEqual(defaults);
+  });
+});
+
+describe("sourceChildChecked", () => {
+  test("hides child checks while All is selected", () => {
+    expect(sourceChildChecked("all", true)).toBe(false);
+    expect(sourceChildChecked("mixed", true)).toBe(true);
+    expect(sourceChildChecked("none", false)).toBe(false);
+  });
+});
+
+describe("nextCheckedSourceIdsForChild", () => {
+  const rows = buildSourceRows({
+    marketplaces: [{ name: "demo" }],
+    defaultOrg: "harnesstap-cloud",
+    connectedOrgs: ["acme"],
+    registered: [{ org: "acme", catalog: "internal" }],
+  });
+  const defaults = defaultCheckedSourceIds(rows);
+
+  test("starts a specific selection from All", () => {
+    expect(nextCheckedSourceIdsForChild(defaults, rows, "local")).toEqual([
+      "local",
+    ]);
+  });
+
+  test("toggles a child when selection is already mixed", () => {
+    expect(nextCheckedSourceIdsForChild(["local"], rows, "mkt:demo")).toEqual([
+      "local",
+      "mkt:demo",
+    ]);
+    expect(nextCheckedSourceIdsForChild(["local", "mkt:demo"], rows, "local")).toEqual([
+      "mkt:demo",
+    ]);
   });
 });
 

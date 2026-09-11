@@ -84,7 +84,7 @@ export function ProfileDeleteControls({
           <IconActionButton
             className={busy ? "is-busy" : ""}
             label="Remove profile"
-            title="Remove this profile. Harness files on disk stay until you apply another profile."
+            title="Remove profile — files on disk stay until you apply another profile."
             disabled={busy || builtinEmpty}
             busy={busy}
             onClick={() => {
@@ -99,7 +99,7 @@ export function ProfileDeleteControls({
           className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
           type="button"
           aria-label="Remove profile"
-          title="Remove this profile. Harness files on disk stay until you apply another profile."
+            title="Remove profile — files on disk stay until you apply another profile."
           disabled={busy || builtinEmpty}
           onClick={() => {
             setDeletePlugin(false);

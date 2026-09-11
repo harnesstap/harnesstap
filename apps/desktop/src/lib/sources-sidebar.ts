@@ -124,6 +124,35 @@ export function nextCheckedSourceIds(
   }
 }
 
+/**
+ * Child checks are visually off while All is selected so All is not a
+ * conflicting extra check. Clicking a child then starts a specific selection.
+ */
+export function sourceChildChecked(
+  state: SourceCheckState,
+  rowChecked: boolean,
+): boolean {
+  return state === "all" ? false : rowChecked;
+}
+
+export function nextCheckedSourceIdsForChild(
+  checkedIds: string[],
+  rows: SourceRow[],
+  childId: string,
+): string[] {
+  const state = sourceCheckState(checkedIds, rows);
+  if (state === "all") {
+    return rows.some((row) => row.id === childId) ? [childId] : [];
+  }
+  const selected = new Set(checkedIds);
+  if (selected.has(childId)) {
+    selected.delete(childId);
+  } else {
+    selected.add(childId);
+  }
+  return rows.map((row) => row.id).filter((id) => selected.has(id));
+}
+
 export type SourceSectionId = "local" | "marketplaces" | "cloud";
 
 export interface SourceSection {

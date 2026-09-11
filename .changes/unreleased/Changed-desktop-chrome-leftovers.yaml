@@ -1,0 +1,5 @@
+kind: Changed
+body: Tighten Desktop chrome leftovers (Sparkles on skills only, Not staged Add + amber, Discover All/Back/caught-up, Library type labels, File changes paths, profile tooltips). G4 ghost Add all is wontfix — Add all stays filled primary.
+time: 2026-09-11T10:55:00Z
+custom:
+  Issue: ""

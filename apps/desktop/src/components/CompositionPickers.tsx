@@ -236,7 +236,7 @@ export function ResourceSelectionList({
       <Input
         className="selection-list-filter h-8 text-xs"
         type="search"
-        placeholder="Filter (plugin:ponytail, skill:name)…"
+        placeholder="Filter by name or type"
         value={filter}
         onChange={(event) => onFilterChange(event.target.value)}
         disabled={disabled}
@@ -253,7 +253,7 @@ export function ResourceSelectionList({
                 <section
                   className={`selection-type-group${expanded ? " expanded" : ""}`}
                   key={group.type}
-                  aria-label={group.type}
+                  aria-label={group.label}
                 >
                   <button
                     className="selection-type-heading"

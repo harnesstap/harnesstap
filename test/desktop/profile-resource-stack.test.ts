@@ -184,12 +184,14 @@ describe("Profile resources pane chrome", () => {
 
   it("locks not-staged modifications and centered file diffs", () => {
     expect(liveStateSource).toContain("not_staged_kind");
-    expect(liveStateSource).toContain("Replace the profile copy with the live file");
+    expect(liveStateSource).toContain("Replace profile copy of");
     expect(liveStateSource).toContain("On disk, not in this profile");
     expect(liveStateSource).toContain("not-staged-attention");
+    expect(liveStateSource).toContain('label="Add"');
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("live resources that are in the profile but differ");
-    expect(designSource).toContain("same `--yellow` warn surface");
+    expect(designSource).toContain("`--yellow` warn surface");
+    expect(designSource).toContain("Target preview does not use that amber tint");
   });
 
   it("collapses Not staged help into a header info tooltip and omits the on-disk count", () => {

@@ -200,8 +200,8 @@ export function discoverListEmptyCopy(input: {
 }): { message: string; hint: string | null } {
   if (!input.showInLibrary) {
     return {
-      message: "Nothing left to discover.",
-      hint: "Turn on Show in library to see installed items.",
+      message: "You're caught up",
+      hint: "Nothing left to discover. Turn on Show in library to see installed items.",
     };
   }
   return {

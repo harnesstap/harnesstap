@@ -233,6 +233,8 @@ describe("header re-click home", () => {
     expect(backButtonSource).toContain('data-testid="workspace-back"');
     expect(backButtonSource).toContain("WORKSPACE_BACK_LABEL");
     expect(backButtonSource).toContain("ArrowLeft");
+    expect(backButtonSource).toContain("IconActionButton");
+    expect(backButtonSource).toContain("hidden");
   });
 
   test("DESIGN.md locks header re-click home", () => {

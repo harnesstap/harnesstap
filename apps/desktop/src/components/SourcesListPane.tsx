@@ -90,7 +90,7 @@ export function SourcesListPane({
     const empty = discoverListEmptyCopy({ query, showInLibrary });
     return (
       <div className="empty-state" data-testid="discover-empty">
-        <p className="muted">{empty.message}</p>
+        <h2>{empty.message}</h2>
         {empty.hint ? <p className="muted">{empty.hint}</p> : null}
       </div>
     );

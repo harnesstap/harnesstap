@@ -31,8 +31,25 @@ export function libraryFilterType(entry: LibraryResource): string {
   return entry.type;
 }
 
+const LIBRARY_TYPE_LABELS: Record<string, string> = {
+  plugin: "Plugins",
+  plugin_ref: "Plugin refs",
+  skill: "Skills",
+  mcp_server: "MCP",
+  instruction: "Instructions",
+  rule: "Rules",
+  agent: "Agents",
+  command: "Commands",
+  hook: "Hooks",
+  permission: "Permissions",
+  env_var: "Env vars",
+  model_config: "Model configs",
+  plugin_pin: "Plugin pins",
+};
+
+/** Human type chip / section heading (always a category name, not `plugin 1`). */
 export function libraryFilterTypeLabel(filterType: string): string {
-  return filterType === LIBRARY_FILTER_PLUGIN_REF ? "plugin ref" : filterType;
+  return LIBRARY_TYPE_LABELS[filterType] ?? filterType.replaceAll("_", " ");
 }
 
 export function groupLibraryListByFilterType(

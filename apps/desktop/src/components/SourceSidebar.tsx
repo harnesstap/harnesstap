@@ -7,6 +7,7 @@ import {
   groupSourceRows,
   isSourcesFilterActive,
   sourceCheckState,
+  sourceChildChecked,
   type SourceCheckState,
   type SourceRow,
 } from "../lib/sources-sidebar";
@@ -120,7 +121,8 @@ export function SourceSidebar({
     rows,
     showInLibrary,
   );
-  const masterChecked = sourceMasterChecked(sourceCheckState(checkedIds, rows));
+  const checkState = sourceCheckState(checkedIds, rows);
+  const masterChecked = sourceMasterChecked(checkState);
 
   const applySidebarChange = (apply: () => void): void => {
     if (sourcesSidebarChangeAction({ busy, confirmOpen }) === "block") {
@@ -167,16 +169,13 @@ export function SourceSidebar({
             }}
             disabled={controlsDisabled}
           />
-          <button
-            type="button"
-            className="icon-action resource-filter-clear"
-            aria-label="Clear filters"
-            title="Clear filters"
+          <IconActionButton
+            className="resource-filter-clear"
+            label="Clear filters"
             disabled={controlsDisabled || !dirty}
             onClick={() => applySidebarChange(() => onClear())}
-          >
-            <FilterX size={ACTION_ICON_SIZE} aria-hidden />
-          </button>
+            icon={<FilterX size={ACTION_ICON_SIZE} aria-hidden />}
+          />
         </div>
         <div className="source-row">
           <div className="source-row-check">
@@ -202,8 +201,8 @@ export function SourceSidebar({
         </div>
       ) : null}
       {rows.length > 0 ? (
-        <div className="resource-filter-section source-row-list">
-          <div className="source-row">
+        <div className="resource-filter-section source-row-list source-tree">
+          <div className="source-row source-master-row">
             <div className="source-row-check">
               <Checkbox
                 id="source-all"
@@ -223,14 +222,24 @@ export function SourceSidebar({
       {groupSourceRows(rows).map((section) => (
         <div
           key={section.id}
-          className="resource-filter-section source-row-list"
+          className={[
+            "resource-filter-section",
+            "source-row-list",
+            "source-tree-children",
+            masterChecked === true ? "is-all-selected" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         >
           <span className="resource-filter-section-label">{section.label}</span>
           {section.rows.map((row) => (
             <SourceRowItem
               key={row.id}
               row={row}
-              checked={checkedIds.includes(row.id)}
+              checked={sourceChildChecked(
+                checkState,
+                checkedIds.includes(row.id),
+              )}
               disabled={controlsDisabled}
               onToggle={() => applySidebarChange(() => onToggle(row.id))}
               onEditMarketplace={onEditMarketplace}

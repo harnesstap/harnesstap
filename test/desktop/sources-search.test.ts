@@ -742,14 +742,14 @@ describe("filterDiscoverGroups", () => {
 describe("discoverListEmptyCopy", () => {
   test("explains an empty Discover list when in-library rows are hidden", () => {
     expect(discoverListEmptyCopy({ query: "", showInLibrary: false })).toEqual({
-      message: "Nothing left to discover.",
-      hint: "Turn on Show in library to see installed items.",
+      message: "You're caught up",
+      hint: "Nothing left to discover. Turn on Show in library to see installed items.",
     });
     expect(
       discoverListEmptyCopy({ query: "ship", showInLibrary: false }),
     ).toEqual({
-      message: "Nothing left to discover.",
-      hint: "Turn on Show in library to see installed items.",
+      message: "You're caught up",
+      hint: "Nothing left to discover. Turn on Show in library to see installed items.",
     });
   });
 

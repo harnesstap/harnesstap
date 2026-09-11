@@ -98,7 +98,12 @@ describe("desktop icon chrome", () => {
     expect(notStagedRow).toContain("CircleAlert");
     expect(notStagedRow).toContain("ChromeTooltip");
     expect(notStagedRow).not.toContain("Sparkles");
-    expect(notStagedRow).not.toContain("TypeIcon");
+    expect(typeIconSource).toContain('case "instruction":\n      return <FileText');
+    expect(typeIconSource).toContain('case "plugin":\n      return <Layers');
+    expect(typeIconSource).toContain('case "plugin_ref":\n      return <Package');
+    expect(notStagedRow).toContain('label="Add"');
+    expect(notStagedRow).toContain("showLabel");
+    expect(designSource).toContain("never Not staged");
     expect(designSource).toContain("Sparkles is the **skill** type glyph only");
     expect(designSource).toContain("Agents use **Bot**");
     expect(designSource).toContain("Pencil stays profile **Edit**");
@@ -118,6 +123,17 @@ describe("desktop icon chrome", () => {
     expect(liveStateSource).toContain('label="Show all"');
     expect(liveStateSource).toContain("UnfoldVertical");
     expect(liveStateSource).not.toContain('className="link-btn"');
+    expect(liveStateSource).not.toContain("TODO(G4)");
+    expect(liveStateSource).toContain("primary={!railPrimaryIsReapply}");
+    expect(designSource).toContain("Ghost **Add all**");
+    expect(designSource).toContain("wontfix");
+    expect(liveStateSource).not.toContain("target-preview-drifted");
+    expect(liveStateSource).toContain("singletonPath");
+    expect(liveStateSource).not.toContain("expandedKeys");
+    expect(appSource).toContain('label="Account"');
+    expect(appSource).toContain('label="Export setup"');
+    expect(appSource).toContain('label="Import setup"');
+    expect(appSource).toContain("Refresh live status");
   });
 
   test("converts Library and Sources header clusters to icon-only", () => {

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
+import { IconActionButton } from "./IconActionButton";
 
 export interface LibraryDetailChromeProps {
   titleId: string;
@@ -29,11 +30,8 @@ export function LibraryDetailChrome({
   return (
     <div className="library-detail">
       <div className="library-detail-header">
-        <button
-          type="button"
-          className="icon-action"
-          aria-label={backLabel}
-          title={backLabel}
+        <IconActionButton
+          label={backLabel}
           onPointerDown={(event) => {
             if (preserveFocusOnBack) {
               event.preventDefault();
@@ -42,9 +40,8 @@ export function LibraryDetailChrome({
           }}
           onClick={onBack}
           disabled={backDisabled}
-        >
-          <ArrowLeft size={16} aria-hidden />
-        </button>
+          icon={<ArrowLeft size={16} aria-hidden />}
+        />
         <div id={titleId} className="library-detail-title">
           {title}
         </div>

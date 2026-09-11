@@ -12,6 +12,7 @@ import {
   useDialogDismiss,
 } from "../lib/dialog-dismiss";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { ChromeTooltip } from "./ChromeTooltip";
 
 const HEADER_ICON_SIZE = 18;
 
@@ -82,21 +83,24 @@ export function UpdateAvailableControl({
 
   return (
     <>
-      <button
-        className="icon-action update-available-action"
-        type="button"
-        data-testid="open-app-update"
-        onClick={() => {
-          setError(null);
-          setOpen(true);
-        }}
-        disabled={disabled || !connected}
-        aria-label={`Update available: ${status.currentVersion} to ${latest}`}
-        title={`Update available: ${status.currentVersion} → ${latest}`}
+      <ChromeTooltip
+        content={`Update available: ${status.currentVersion} → ${latest}`}
       >
-        <ArrowUpCircle size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-        <span className="update-available-badge" aria-hidden="true" />
-      </button>
+        <button
+          className="icon-action update-available-action"
+          type="button"
+          data-testid="open-app-update"
+          onClick={() => {
+            setError(null);
+            setOpen(true);
+          }}
+          disabled={disabled || !connected}
+          aria-label={`Update available: ${status.currentVersion} to ${latest}`}
+        >
+          <ArrowUpCircle size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+          <span className="update-available-badge" aria-hidden="true" />
+        </button>
+      </ChromeTooltip>
       {open ? (
         <div
           className="dialog-backdrop"
