@@ -1779,7 +1779,7 @@ export function LiveStatePanel({
                   setNotStagedSearch(value);
                   setNotStagedVisible(LIST_PAGE_SIZE);
                 }}
-                placeholder="Filter not staged (name or type:name)"
+                placeholder="Filter by name"
                 label="Filter not staged resources"
               />
               <div className="enabled-list">

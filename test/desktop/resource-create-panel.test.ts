@@ -24,7 +24,7 @@ describe("create plugin compose picker", () => {
     expect(createSource).toContain("onFilterChange={setResourceFilter}");
     expect(createSource).not.toContain("resource-picker-row");
     expect(createSource).not.toContain("pickerGroups");
-    expect(compositionSource).toContain('placeholder="Filter by name or type"');
+    expect(compositionSource).toContain('placeholder="Filter by name"');
     expect(compositionSource).toContain("ResourceTypeTabs");
     expect(compositionSource).not.toContain("selection-type-count");
     expect(compositionSource).not.toContain("toggleGroup");

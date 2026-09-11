@@ -160,7 +160,7 @@ describe("Profile resources pane chrome", () => {
   it("offers labeled Add all on the Not staged header and demotes it when Re-apply is primary", () => {
     const notStagedHeader = liveStateSource.slice(
       liveStateSource.indexOf('aria-label="Not staged"'),
-      liveStateSource.indexOf("Filter not staged (name or type:name)"),
+      liveStateSource.indexOf("placeholder=\"Filter by name\""),
     );
     const profileResourcesHeader = liveStateSource.slice(
       liveStateSource.indexOf('aria-label="Profile resources"'),
@@ -199,7 +199,7 @@ describe("Profile resources pane chrome", () => {
   it("collapses Not staged help into a header info tooltip and omits the on-disk count", () => {
     const notStagedHeader = liveStateSource.slice(
       liveStateSource.indexOf('aria-label="Not staged"'),
-      liveStateSource.indexOf("Filter not staged (name or type:name)"),
+      liveStateSource.indexOf("placeholder=\"Filter by name\""),
     );
     expect(liveStateSource).toContain("contents-header-info");
     expect(liveStateSource).toContain("text={NOT_STAGED_HELP}");

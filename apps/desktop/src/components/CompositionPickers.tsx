@@ -196,7 +196,7 @@ export function ResourceSelectionList({
       <Input
         className="selection-list-filter h-8 text-xs"
         type="search"
-        placeholder="Filter by name or type"
+        placeholder="Filter by name"
         value={filter}
         onChange={(event) => onFilterChange(event.target.value)}
         disabled={disabled}

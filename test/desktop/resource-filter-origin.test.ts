@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 
@@ -29,6 +29,18 @@ const designSource = readFileSync(
   "utf8",
 );
 
+const compositionSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/CompositionPickers.tsx",
+  ),
+  "utf8",
+);
+const liveStateSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/LiveStatePanel.tsx"),
+  "utf8",
+);
+
 function cssBlock(source: string, selector: string): string {
   const needle = `\n${selector} {`;
   const start = source.indexOf(needle);
@@ -41,10 +53,48 @@ function cssBlock(source: string, selector: string): string {
 describe("library origin filter chrome", () => {
   test("keeps name search without sidebar Type chips", () => {
     expect(sidebarSource).toContain('placeholder="Filter by name"');
+    expect(sidebarSource).toContain("Updated");
+    expect(sidebarSource).toContain("Namespace");
+    expect(sidebarSource).toContain("Origin");
     expect(sidebarSource).not.toContain("resource-filter-type-badge");
+    expect(sidebarSource).not.toContain("resource-filter-type-badges");
     expect(sidebarSource).not.toContain("libraryFilterTypeLabel");
+    expect(sidebarSource).not.toContain('aria-label="Resource type"');
+    expect(sidebarSource).not.toMatch(/section-label">Type</);
     expect(panelSource).toContain("ResourceTypeTabs");
     expect(panelSource).not.toContain("resources-type-heading");
+  });
+
+  test("ResourceTypeTabs surfaces have no leftover Type chip filter UI", () => {
+    expect(stylesSource).not.toContain("resource-filter-type-badge");
+    expect(designSource).toContain("one type control");
+    expect(designSource).toContain("Leftover TYPE chips are a bug");
+    expect(compositionSource).toContain("ResourceTypeTabs");
+    expect(compositionSource).not.toContain("selection-type-heading");
+    expect(compositionSource).not.toContain("resource-filter-type-badge");
+    expect(liveStateSource).toContain("ResourceTypeTabs");
+    expect(liveStateSource).not.toContain("resource-filter-type-badge");
+
+    const srcRoot = join(import.meta.dir, "../../apps/desktop/src");
+    const offenders: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith(".tsx") && !entry.name.endsWith(".ts")) {
+          continue;
+        }
+        const source = readFileSync(full, "utf8");
+        if (source.includes("resource-filter-type-badge")) {
+          offenders.push(full.slice(srcRoot.length + 1));
+        }
+      }
+    };
+    walk(srcRoot);
+    expect(offenders).toEqual([]);
   });
 
   test("styles ResourceTypeTabs as filled selected pills", () => {
