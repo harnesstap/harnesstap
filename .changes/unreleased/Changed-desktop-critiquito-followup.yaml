@@ -1,0 +1,5 @@
+kind: Changed
+body: Soften Desktop Not staged helper copy and keep Profiles create + visually separate from destructive-tinted Remove profile.
+time: 2026-09-11T21:58:00Z
+custom:
+  Issue: ""

@@ -1605,6 +1605,20 @@ button:focus-visible,
   align-items: flex-start;
 }
 
+.live-toolbar-remove {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.profile-remove-action {
+  color: color-mix(in srgb, var(--red) 70%, var(--muted));
+}
+
+.profile-remove-action:hover:not(:disabled) {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+}
+
 .status-line {
   display: flex;
   align-items: center;

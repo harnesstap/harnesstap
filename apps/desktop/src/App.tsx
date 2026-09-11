@@ -2933,14 +2933,6 @@ export function App() {
                           />
                         }
                       />
-                      <ProfileDeleteControls
-                        profileName={selectedProfile}
-                        baseUrl={baseUrl}
-                        token={token}
-                        disabled={!connected || switching}
-                        variant="icon"
-                        onDeleted={handleProfileDeleted}
-                      />
                     </>
                   ) : (
                     "No profile selected"
@@ -2966,6 +2958,18 @@ export function App() {
                   </div>
                 ) : null}
               </div>
+              {selectedProfile ? (
+                <div className="live-toolbar-remove">
+                  <ProfileDeleteControls
+                    profileName={selectedProfile}
+                    baseUrl={baseUrl}
+                    token={token}
+                    disabled={!connected || switching}
+                    variant="icon"
+                    onDeleted={handleProfileDeleted}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {statusError && (

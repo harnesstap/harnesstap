@@ -59,8 +59,13 @@ const editHeader = sliceBetween(
   'className="edit-profile-header-actions"',
   "edit-profile-body",
 );
-const liveStatusLine = sliceBetween(
+const liveToolbar = sliceBetween(
   appSource,
+  'className="live-toolbar"',
+  "statusError",
+);
+const liveStatusLine = sliceBetween(
+  liveToolbar,
   'className="status-line"',
   "status-subline",
 );
@@ -90,10 +95,15 @@ describe("profile delete chrome", () => {
     expect(deleteSource).toContain("Also delete the plugin from the library");
   });
 
-  test("places the icon control on the live-state header when a profile is selected", () => {
-    expect(liveStatusLine).toContain("ProfileDeleteControls");
-    expect(liveStatusLine).toContain("selectedProfile");
-    expect(liveStatusLine).toContain('variant="icon"');
+  test("places the icon control on the trailing live-toolbar, not beside rail create", () => {
+    expect(liveStatusLine).not.toContain("ProfileDeleteControls");
+    expect(liveToolbar).toContain("live-toolbar-remove");
+    expect(liveToolbar).toContain("ProfileDeleteControls");
+    expect(liveToolbar).toContain('variant="icon"');
+    expect(stylesSource).toContain(".profile-remove-action");
+    expect(stylesSource).toContain("var(--red)");
+    expect(designSource).toContain("trailing live-toolbar control");
+    expect(designSource).toContain("destructive-tinted");
   });
 
   test("sizes the labeled header button as a compact cluster control", () => {
@@ -106,9 +116,9 @@ describe("profile delete chrome", () => {
   test("documents icon Remove profile in the edit header and live-state", () => {
     expect(designSource).toContain("**Remove profile**");
     expect(designSource).toContain("edit-profile header");
-    expect(designSource).toContain("live-state header");
+    expect(designSource).toContain("edit-profile header next to Done");
     expect(designSource).toContain("delete-plugin checkbox");
-    expect(designSource).toContain("icon-only trash control in the edit-profile header");
-    expect(designSource).toContain("live-state header when a profile is selected");
+    expect(designSource).toContain("icon-only trash control");
+    expect(designSource).toContain("trailing live-toolbar control");
   });
 });

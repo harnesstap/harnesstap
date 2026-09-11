@@ -92,8 +92,8 @@ import {
 
 const ICON_SIZE = 14;
 const NOT_STAGED_HELP =
-  "On disk but not in this profile, or a live copy that differs.";
-const NOT_STAGED_SUBTITLE = "On disk, not in this profile (or different).";
+  "On disk, not in this profile. Live copies that differ show here too.";
+const NOT_STAGED_SUBTITLE = "On disk, not in this profile";
 const STACK_CHANGES_HELP = "What apply would add or remove.";
 const STACK_CHANGES_SUBTITLE = "What apply would add or remove.";
 const INSTALL_GAPS_HELP = "Profile items that do not match the live install.";
