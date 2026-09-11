@@ -1,8 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ChevronsDown,
-  ChevronDown,
-  ChevronRight,
   CircleAlert,
   CircleDashed,
   Diff,
@@ -20,7 +18,6 @@ import {
   UnfoldVertical,
   X,
 } from "lucide-react";
-import { ButtonSpinner } from "./ButtonSpinner";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { IconActionButton } from "./IconActionButton";
 import {
@@ -245,38 +242,24 @@ function ProfileResourceActions({
   return (
     <span className="enabled-row-actions">
       {canOpen && onOpenInEditor ? (
-        <button
-          type="button"
-          className="icon-action profile-resource-open-btn"
-          aria-label={`Open ${resource.name} in editor`}
+        <IconActionButton
+          className="profile-resource-open-btn"
+          label={`Open ${resource.name} in editor`}
           title="Open in default editor"
           onClick={() => onOpenInEditor(resource)}
-        >
-          <ExternalLink size={ICON_SIZE} strokeWidth={2} aria-hidden />
-        </button>
+          icon={<ExternalLink size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        />
       ) : null}
       {canRemove && onRemoveFromProfile ? (
-        <button
-          type="button"
-          className={[
-            "icon-action",
-            "profile-resource-remove-btn",
-            removing ? "is-busy" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-label={`Remove ${resource.name} from ${profileName}`}
+        <IconActionButton
+          className="profile-resource-remove-btn"
+          label={`Remove ${resource.name} from ${profileName}`}
           title="Remove from profile"
-          disabled={removing}
-          aria-busy={removing}
+          busy={removing}
+          spinnerSize={ICON_SIZE}
           onClick={() => onRemoveFromProfile(resource, pluginId)}
-        >
-          {removing ? (
-            <ButtonSpinner size={ICON_SIZE} />
-          ) : (
-            <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
-          )}
-        </button>
+          icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        />
       ) : null}
     </span>
   );
@@ -517,29 +500,24 @@ function UntrackedResourceRow({
       />
       <ResourceRowTrailing>
         {canDiff && onDiff && managedPath ? (
-          <button
-            type="button"
-            className="icon-action file-change-diff-btn"
-            aria-label={`Show diff for ${resource.name}`}
+          <IconActionButton
+            className="file-change-diff-btn"
+            label={`Show diff for ${resource.name}`}
             title="Show how this live resource differs from the profile"
             onClick={() => onDiff(managedPath)}
-          >
-            <Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />
-          </button>
+            icon={<Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
         ) : null}
         <IconActionButton
           className="untracked-add-btn"
+          showLabel
           busy={adding}
           spinnerSize={ICON_SIZE}
-          label={
+          label="Add"
+          title={
             isUpdate
               ? `Replace profile copy of ${resource.name} with the live file`
               : `Add ${resource.name} to this profile`
-          }
-          title={
-            isUpdate
-              ? "Replace the profile copy with the live file"
-              : "Add this on-disk item to the selected profile"
           }
           onClick={onAdd}
           icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
@@ -777,16 +755,9 @@ function FileChangeRowActions({
   return (
     <span className="diff-row-actions">
       {canOpen && onOpenFileChange && absolutePath ? (
-        <button
-          type="button"
-          className={[
-            "icon-action",
-            "profile-resource-open-btn",
-            openBusy ? "is-busy" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-label={
+        <IconActionButton
+          className="profile-resource-open-btn"
+          label={
             change.type === "deleted"
               ? `Open ${change.resource?.name ?? change.path} in editor`
               : `Open ${change.path} in editor`
@@ -797,77 +768,49 @@ function FileChangeRowActions({
               : "Open in default editor"
           }
           disabled={busy}
-          aria-busy={openBusy}
+          busy={openBusy}
+          spinnerSize={ICON_SIZE}
           onClick={() => void onOpenFileChange(change, absolutePath)}
-        >
-          {openBusy ? (
-            <ButtonSpinner size={ICON_SIZE} />
-          ) : (
-            <ExternalLink size={ICON_SIZE} strokeWidth={2} aria-hidden />
-          )}
-        </button>
+          icon={<ExternalLink size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        />
       ) : null}
       {canDiff && onDiffFileChange ? (
-        <button
-          type="button"
-          className="icon-action file-change-diff-btn"
-          aria-label={`Show diff for ${change.path}`}
+        <IconActionButton
+          className="file-change-diff-btn"
+          label={`Show diff for ${change.path}`}
           title="Show what apply would change"
           disabled={busy}
           onClick={() => onDiffFileChange(change)}
-        >
-          <Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />
-        </button>
+          icon={<Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        />
       ) : null}
       {canAdd && onAddFileChange ? (
-        <button
-          type="button"
-          className={[
-            "icon-action",
-            "untracked-add-btn",
-            addBusy ? "is-busy" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-label={`Commit ${change.path} into profile`}
+        <IconActionButton
+          className="untracked-add-btn"
+          label={`Commit ${change.path} into profile`}
           title="Commit live changes into profile"
           disabled={busy}
-          aria-busy={addBusy}
+          busy={addBusy}
+          spinnerSize={ICON_SIZE}
           onClick={() => void onAddFileChange(change)}
-        >
-          {addBusy ? (
-            <ButtonSpinner size={ICON_SIZE} />
-          ) : (
-            <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
-          )}
-        </button>
+          icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        />
       ) : null}
       {canDrop && onDropFileChange ? (
-        <button
-          type="button"
-          className={[
-            "icon-action",
-            "profile-resource-remove-btn",
-            dropBusy ? "is-busy" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-label={
+        <IconActionButton
+          className="profile-resource-remove-btn"
+          label={
             row.action === "update"
               ? `Restore profile version of ${change.path}`
               : `Remove ${change.path} from profile`
           }
           title={row.action === "update" ? "Restore profile version" : "Remove from profile"}
           disabled={busy}
-          aria-busy={dropBusy}
+          busy={dropBusy}
+          spinnerSize={ICON_SIZE}
           onClick={() => void onDropFileChange(change)}
-        >
-          {dropBusy ? (
-            <ButtonSpinner size={ICON_SIZE} />
-          ) : (
-            <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
-          )}
-        </button>
+          icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        />
       ) : null}
     </span>
   );
@@ -988,7 +931,6 @@ function FileChangeRows({
     () => new Set(),
   );
   const [visibleCount, setVisibleCount] = useState(LIST_PAGE_SIZE);
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
 
   const groups = groupFileChangesByResource(changes);
   const kindCounts = countFileChangeKindResources(
@@ -1069,10 +1011,10 @@ function FileChangeRows({
         />
       </div>
       {visible.map((group) => {
-        const expanded = expandedKeys.has(group.key);
         const firstChange = group.changes[0];
         const firstRow = firstChange ? rowForChange(firstChange) : null;
         const resource = group.resource;
+        const singletonPath = group.singleton ? firstChange?.path : null;
         return (
           <div className="file-change-group" key={group.key}>
             <ResourceRowRoot
@@ -1080,38 +1022,12 @@ function FileChangeRows({
               className="diff-row file-change-group-row"
               ariaLabel={fileChangeGroupAriaLabel(group)}
             >
-              {!group.singleton ? (
-                <ResourceRowLeading>
-                  <button
-                    type="button"
-                    className="file-change-expand-btn"
-                    aria-expanded={expanded}
-                    aria-label={expanded ? "Collapse file paths" : "Expand file paths"}
-                    onClick={() => {
-                      setExpandedKeys((current) => {
-                        const next = new Set(current);
-                        if (next.has(group.key)) {
-                          next.delete(group.key);
-                        } else {
-                          next.add(group.key);
-                        }
-                        return next;
-                      });
-                    }}
-                  >
-                    {expanded ? (
-                      <ChevronDown size={ICON_SIZE} strokeWidth={2} aria-hidden />
-                    ) : (
-                      <ChevronRight size={ICON_SIZE} strokeWidth={2} aria-hidden />
-                    )}
-                  </button>
-                </ResourceRowLeading>
-              ) : null}
               {resource ? (
                 onOpenResource ? (
                   <ResourceRowIdentity
                     type={resource.type}
-                    label={resource.name}
+                    label={singletonPath ?? resource.name}
+                    className={singletonPath ? "mono" : undefined}
                     onOpen={() =>
                       onOpenResource({
                         selector: `${resource.type}:${resource.name}`,
@@ -1121,7 +1037,11 @@ function FileChangeRows({
                     }
                   />
                 ) : (
-                  <ResourceRowIdentity type={resource.type} label={resource.name} />
+                  <ResourceRowIdentity
+                    type={resource.type}
+                    label={singletonPath ?? resource.name}
+                    className={singletonPath ? "mono" : undefined}
+                  />
                 )
               ) : (
                 <ResourceRowIdentity
@@ -1150,7 +1070,7 @@ function FileChangeRows({
                 ) : null}
               </ResourceRowTrailing>
             </ResourceRowRoot>
-            {!group.singleton && expanded
+            {!group.singleton
               ? group.changes.map((change, index) => {
                   const row = rowForChange(change);
                   const kind = row.action;
@@ -1789,6 +1709,8 @@ export function LiveStatePanel({
               </span>
               {onAddAllResources ? (
                 <span className="contents-header-toolbar">
+                  {/* TODO(G4): Critiquito wants Add all ghost/outline so Apply is the sole filled blue.
+                      Held until Christophe answers CoS (he previously wanted Add all primary). Do not restyle. */}
                   <IconActionButton
                     primary={!railPrimaryIsReapply}
                     showLabel
@@ -1886,7 +1808,6 @@ export function LiveStatePanel({
             className={[
               "contents-block",
               targetPreviewTone === "clean" ? "target-preview-clean" : "",
-              targetPreviewTone === "drifted" ? "target-preview-drifted" : "",
             ]
               .filter(Boolean)
               .join(" ")}
@@ -2090,31 +2011,18 @@ export function LiveStatePanel({
                         && (applyPreview.files?.changes ?? []).some(
                           (change) => fileChangeAction(change).action === "update",
                         ) ? (
-                        <button
-                          type="button"
-                          className={[
-                            "icon-action",
-                            "compare-title-action",
-                            committingManagedChanges ? "is-busy" : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          disabled={committingManagedChanges}
-                          aria-busy={committingManagedChanges}
-                          aria-label="Commit live file updates into profile"
-                          title="Commit live file updates into profile"
+                        <IconActionButton
+                          className="compare-title-action"
+                          busy={committingManagedChanges}
+                          spinnerSize={ICON_SIZE}
+                          label="Commit live file updates into profile"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             void onCommitManagedChanges();
                           }}
-                        >
-                          {committingManagedChanges ? (
-                            <ButtonSpinner size={ICON_SIZE} />
-                          ) : (
-                            <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
-                          )}
-                        </button>
+                          icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                        />
                       ) : null}
                     </summary>
                     <FileChangeRows

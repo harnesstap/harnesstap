@@ -1169,11 +1169,16 @@ button:focus-visible,
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 
-.source-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
+.source-master-row {
+  font-weight: 600;
+}
+
+.source-tree-children {
+  padding-left: 0.85rem;
+}
+
+.source-tree-children.is-all-selected .source-row-check [data-slot="checkbox"] {
+  opacity: 0.4;
 }
 
 .source-row-check {
@@ -1823,15 +1828,6 @@ button:focus-visible,
 
 .contents-block.target-preview-clean > .contents-header {
   background: color-mix(in srgb, var(--green) 8%, var(--surface));
-}
-
-.contents-block.target-preview-drifted {
-  border-color: color-mix(in srgb, var(--yellow) 38%, var(--border));
-  background: color-mix(in srgb, var(--yellow) 6%, var(--bg));
-}
-
-.contents-block.target-preview-drifted > .contents-header {
-  background: color-mix(in srgb, var(--yellow) 10%, var(--surface));
 }
 
 .contents-block.not-staged-attention {

@@ -64,9 +64,10 @@ describe("libraryFilterType", () => {
   });
 
   it("labels plugin_ref as plugin ref", () => {
-    expect(libraryFilterTypeLabel("plugin_ref")).toBe("plugin ref");
-    expect(libraryFilterTypeLabel("plugin")).toBe("plugin");
-    expect(libraryFilterTypeLabel("mcp_server")).toBe("mcp_server");
+    expect(libraryFilterTypeLabel("plugin_ref")).toBe("Plugin refs");
+    expect(libraryFilterTypeLabel("plugin")).toBe("Plugins");
+    expect(libraryFilterTypeLabel("mcp_server")).toBe("MCP");
+    expect(libraryFilterTypeLabel("skill")).toBe("Skills");
   });
 });
 
@@ -87,9 +88,9 @@ describe("groupLibraryListByFilterType", () => {
       "skill",
     ]);
     expect(groups.map((group) => group.label)).toEqual([
-      "plugin",
-      "plugin ref",
-      "skill",
+      "Plugins",
+      "Plugin refs",
+      "Skills",
     ]);
     expect(groups[0]?.resources.map((row) => row.name)).toEqual(["devx"]);
     expect(groups[1]?.resources.map((row) => row.name)).toEqual([

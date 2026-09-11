@@ -57,6 +57,7 @@ import {
   buildSourceRows,
   defaultCheckedSourceIds,
   nextCheckedSourceIds,
+  nextCheckedSourceIdsForChild,
   type SourceRow,
 } from "../lib/sources-sidebar";
 import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
@@ -807,9 +808,7 @@ export function SourcesWorkspace({
     applyListQueryOrChecks(() => {
       setChecksTouched(true);
       setCheckedIds((current) =>
-        current.includes(id)
-          ? current.filter((item) => item !== id)
-          : [...current, id],
+        nextCheckedSourceIdsForChild(current, rows, id),
       );
     });
   };
@@ -1143,6 +1142,12 @@ export function SourcesWorkspace({
         <div className="resources-panel-header-row">
           <div className="resources-panel-title-cluster">
             <WorkspaceBackButton
+              hidden={
+                !workspaceBackEnabled({
+                  hasLocalPrevious,
+                  hasWorkspacePrevious: canWorkspaceBack,
+                })
+              }
               disabled={backDisabled}
               onClick={handlePanelBack}
             />

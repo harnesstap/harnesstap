@@ -81,7 +81,7 @@ describe("groupCompositionMembership", () => {
       "agent",
       "skill",
     ]);
-    expect(groups[1]?.label).toBe("plugin ref");
+    expect(groups[1]?.label).toBe("Plugin refs");
     expect(groups[1]?.resources.map((row) => row.name)).toEqual(["ponytail"]);
   });
 });

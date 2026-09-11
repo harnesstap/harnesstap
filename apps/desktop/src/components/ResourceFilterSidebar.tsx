@@ -1,6 +1,7 @@
 import { useMemo, type Ref } from "react";
 import { FilterX } from "lucide-react";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { IconActionButton } from "./IconActionButton";
 import {
   libraryFilterType,
   libraryFilterTypeLabel,
@@ -195,7 +196,7 @@ export function ResourceFilterSidebar({
             ref={searchInputRef}
             className="resources-panel-filter"
             type="search"
-            placeholder="Filter (skill:name)…"
+            placeholder="Filter by name"
             value={state.search}
             onChange={(event) =>
               onChange({ ...state, search: event.target.value })
@@ -203,16 +204,13 @@ export function ResourceFilterSidebar({
             disabled={disabled}
             aria-label="Filter resources"
           />
-          <button
-            type="button"
-            className="icon-action resource-filter-clear"
-            aria-label="Clear filters"
-            title="Clear filters"
+          <IconActionButton
+            className="resource-filter-clear"
+            label="Clear filters"
             disabled={disabled || !dirty}
             onClick={onClear}
-          >
-            <FilterX size={16} aria-hidden />
-          </button>
+            icon={<FilterX size={16} aria-hidden />}
+          />
         </div>
       </div>
 

@@ -95,7 +95,7 @@ describe("profile edit publish chrome", () => {
     expect(toolbar).toContain('data-testid="open-create-profile"');
     expect(toolbar).toContain("primary");
     expect(toolbar).toContain("IconActionButton");
-    expect(toolbar).toContain('label="Create profile"');
+    expect(toolbar).toContain('label="Create a new profile"');
     expect(designSource).toContain("then **create** (accent icon-only `+`, tooltip **Create a new profile**)");
   });
 

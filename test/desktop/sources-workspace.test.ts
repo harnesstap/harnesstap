@@ -115,8 +115,7 @@ describe("sources workspace chrome", () => {
   test("sidebar Clear filters resets search and default-checked sources", () => {
     expect(sidebarSource).toContain("isSourcesFilterActive");
     expect(sidebarSource).toContain("onClear");
-    expect(sidebarSource).toContain('aria-label="Clear filters"');
-    expect(sidebarSource).toContain('title="Clear filters"');
+    expect(sidebarSource).toContain('label="Clear filters"');
     expect(sidebarSource).not.toContain('aria-label="Clear search"');
     expect(sidebarSource).not.toContain("query.trim() === \"\"");
     expect(workspaceSource).toContain("function resetSourcesFilters");
@@ -137,6 +136,7 @@ describe("sources workspace chrome", () => {
     expect(listPaneSource).toContain('data-testid="discover-empty"');
     expect(sourcesSearchSource).toContain("filterDiscoverGroups");
     expect(sourcesSearchSource).toContain('hit.presence !== "in_library"');
+    expect(sourcesSearchSource).toContain("You're caught up");
     expect(sourcesSearchSource).toContain("Nothing left to discover.");
   });
 
@@ -147,6 +147,9 @@ describe("sources workspace chrome", () => {
     expect(sidebarSource).toContain('"indeterminate"');
     expect(workspaceSource).toContain("onToggleAll=");
     expect(workspaceSource).toContain("nextCheckedSourceIds");
+    expect(workspaceSource).toContain("nextCheckedSourceIdsForChild");
+    expect(sidebarSource).toContain("sourceChildChecked");
+    expect(sidebarSource).toContain("source-master-row");
   });
 
   test("header cluster uses icon-only Add marketplace and Connect catalog", () => {
@@ -436,6 +439,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Clear filters");
     expect(designSource).toContain("every source checkbox checked");
     expect(designSource).toContain("Show in library");
+    expect(designSource).toContain("You're caught up");
     expect(designSource).toContain("Nothing left to discover.");
     expect(designSource).toContain("Add marketplace");
     expect(designSource).toContain("Connect catalog");

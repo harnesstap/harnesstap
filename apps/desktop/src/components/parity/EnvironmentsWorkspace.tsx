@@ -3,7 +3,7 @@ import { Check, FilterX, Pencil, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { ButtonSpinner } from "../ButtonSpinner";
+import { IconActionButton } from "../IconActionButton";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import {
   deleteEnvironment,
@@ -200,7 +200,8 @@ export function EnvironmentsWorkspace({
         <div className="resources-panel-header-row">
           <div className="resources-panel-title-cluster">
             <WorkspaceBackButton
-              disabled={controlsDisabled || !canWorkspaceBack}
+              hidden={!canWorkspaceBack}
+              disabled={controlsDisabled}
               onClick={onWorkspaceBack}
             />
             <div className="resources-panel-title">
@@ -210,20 +211,16 @@ export function EnvironmentsWorkspace({
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            className="icon-action"
-            aria-label="Create environment"
-            title="Create environment"
+          <IconActionButton
+            label="Create environment"
             disabled={controlsDisabled || !baseUrl}
             onClick={() => {
               setDrawerMode("create");
               setEditName(undefined);
               setDrawerOpen(true);
             }}
-          >
-            <Plus size={ACTION_ICON_SIZE} aria-hidden />
-          </button>
+            icon={<Plus size={ACTION_ICON_SIZE} aria-hidden />}
+          />
         </div>
       </div>
 
@@ -245,16 +242,13 @@ export function EnvironmentsWorkspace({
                 onChange={(event) => setQuery(event.target.value)}
                 disabled={controlsDisabled}
               />
-              <button
-                type="button"
-                className="icon-action resource-filter-clear"
-                aria-label="Clear filter"
-                title="Clear filter"
+              <IconActionButton
+                className="resource-filter-clear"
+                label="Clear filter"
                 disabled={controlsDisabled || query.trim() === ""}
                 onClick={() => setQuery("")}
-              >
-                <FilterX size={ACTION_ICON_SIZE} aria-hidden />
-              </button>
+                icon={<FilterX size={ACTION_ICON_SIZE} aria-hidden />}
+              />
             </div>
           </div>
           <div className="environment-list-scroll">
@@ -439,43 +433,30 @@ function EnvironmentDetail({
         </div>
         <div className="edit-profile-header-actions">
           {showApply ? (
-            <button
-              type="button"
-              className={["icon-action", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+            <IconActionButton
               data-testid="apply-environment"
-              disabled={controlsDisabled || busy}
-              aria-busy={busy}
-              aria-label={`Apply ${payload.environment.name} globally`}
+              busy={busy}
+              disabled={controlsDisabled}
+              label={`Apply ${payload.environment.name} globally`}
               title="Detected values differ from this environment"
               onClick={onApply}
-            >
-              {busy ? (
-                <ButtonSpinner size={ACTION_ICON_SIZE} />
-              ) : (
-                <Check size={ACTION_ICON_SIZE} aria-hidden />
-              )}
-            </button>
+              icon={<Check size={ACTION_ICON_SIZE} aria-hidden />}
+            />
           ) : null}
-          <button
-            type="button"
-            className="icon-action"
+          <IconActionButton
             disabled={controlsDisabled}
-            aria-label={`Edit ${payload.environment.name}`}
+            label={`Edit ${payload.environment.name}`}
             title="Edit environment"
             onClick={onEdit}
-          >
-            <Pencil size={ACTION_ICON_SIZE} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="icon-action"
+            icon={<Pencil size={ACTION_ICON_SIZE} aria-hidden />}
+          />
+          <IconActionButton
             disabled={controlsDisabled}
-            aria-label={`Delete ${payload.environment.name}`}
+            label={`Delete ${payload.environment.name}`}
             title="Delete environment"
             onClick={onDelete}
-          >
-            <Trash2 size={ACTION_ICON_SIZE} aria-hidden />
-          </button>
+            icon={<Trash2 size={ACTION_ICON_SIZE} aria-hidden />}
+          />
         </div>
       </div>
       {empty ? (

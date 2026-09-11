@@ -2354,15 +2354,13 @@ export function App() {
               setCloudAccountOpen(true);
             }}
             disabled={!connected}
-            label={
-              cloudAuth?.authenticated
-                ? `Cloud account${cloudAuth.email ? `: ${cloudAuth.email}` : ""}`
-                : "Sign in to Cloud"
-            }
+            label="Account"
             title={
               cloudAuth?.authenticated
-                ? cloudAuth.email ?? cloudAuth.orgSlug ?? "Cloud account"
-                : "Sign in to Cloud"
+                ? cloudAuth.email
+                  ? `Account (${cloudAuth.email})`
+                  : "Account"
+                : "Account"
             }
             icon={<User size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
           />
@@ -2390,7 +2388,8 @@ export function App() {
           <div className="profiles-brand">
             <div className="resources-panel-title-cluster">
               <WorkspaceBackButton
-                disabled={switching || !scopeCanGoBack}
+                hidden={!scopeCanGoBack}
+                disabled={switching}
                 onClick={() => {
                   if (editingProfile) {
                     closeEditProfile();
@@ -2403,15 +2402,13 @@ export function App() {
             </div>
             <div className="profiles-brand-actions">
               <div className="profiles-rail-toolbar">
-                <button
+                <IconActionButton
                   className={[
-                    "icon-action",
                     "rail-icon-action",
                     stashAction === "stash" ? "is-busy" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  type="button"
                   onClick={() => void onStashProfile()}
                   disabled={
                     !connected
@@ -2420,8 +2417,8 @@ export function App() {
                     || stashBusy
                     || !canStashProfile
                   }
-                  aria-busy={stashAction === "stash"}
-                  aria-label={
+                  busy={stashAction === "stash"}
+                  label={
                     canStashProfile
                       ? `Stash not-staged resources for ${activeProfile}`
                       : "Stash not-staged resources"
@@ -2431,22 +2428,17 @@ export function App() {
                       ? `Stash ${status?.untracked_resource_count ?? 0} not-staged resource${(status?.untracked_resource_count ?? 0) === 1 ? "" : "s"}`
                       : stashDisabledReason ?? "Stash not-staged resources"
                   }
-                >
-                  {stashAction === "stash" ? (
-                    <ButtonSpinner size={RAIL_ICON_SIZE} />
-                  ) : (
+                  icon={
                     <Archive size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                  )}
-                </button>
-                <button
+                  }
+                />
+                <IconActionButton
                   className={[
-                    "icon-action",
                     "rail-icon-action",
                     stashAction === "unstash" ? "is-busy" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  type="button"
                   onClick={() => void onUnstashProfile()}
                   onContextMenu={(event) => {
                     event.preventDefault();
@@ -2462,8 +2454,8 @@ export function App() {
                     || stashBusy
                     || !canUnstashProfile
                   }
-                  aria-busy={stashAction === "unstash"}
-                  aria-label={
+                  busy={stashAction === "unstash"}
+                  label={
                     canUnstashProfile && topStashEntry
                       ? `Restore stashed untracked resources from ${topStashEntry.profile_name}`
                       : "Restore stashed untracked resources"
@@ -2473,13 +2465,10 @@ export function App() {
                       ? `Restore ${topStashEntry.contents.resources.length} untracked resource${topStashEntry.contents.resources.length === 1 ? "" : "s"} · right-click to browse`
                       : "No stashed untracked resources to restore"
                   }
-                >
-                  {stashAction === "unstash" ? (
-                    <ButtonSpinner size={RAIL_ICON_SIZE} />
-                  ) : (
+                  icon={
                     <ArchiveRestore size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                  )}
-                </button>
+                  }
+                />
                 <PublishProfileDrawer
                   profileName={editingProfile ?? selectedProfile}
                   profileVersion={
@@ -2508,7 +2497,7 @@ export function App() {
                   data-testid="open-create-profile"
                   onClick={() => openCreateProfile()}
                   disabled={!connected || switching || stashBusy}
-                  label="Create profile"
+                  label="Create a new profile"
                   title="Create a new profile"
                   icon={<Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
                 />
@@ -2667,11 +2656,10 @@ export function App() {
                     {profile.name}
                     {isActive ? <span className="badge">active</span> : null}
                   </button>
-                  <button
-                    type="button"
-                    className="icon-action profile-item-action profile-item-edit"
+                  <IconActionButton
+                    className="profile-item-action profile-item-edit"
                     data-testid={`edit-profile-${profile.name}`}
-                    aria-label={`Edit ${profile.name}`}
+                    label={`Edit ${profile.name}`}
                     title={`Edit ${profile.name}`}
                     draggable={false}
                     onDragStart={(event) => {
@@ -2680,14 +2668,11 @@ export function App() {
                     }}
                     disabled={!connected || switching || stashBusy}
                     onClick={() => openEditProfile(profile.name)}
-                  >
-                    <Pencil size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                  </button>
+                    icon={<Pencil size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                  />
                   {showAddAll ? (
                     <IconActionButton
                       className="profile-item-action"
-                      aria-label={`Add all ${activeProfileUntrackedCount} not-staged items to ${profile.name}`}
-                      title={`Add all ${activeProfileUntrackedCount} not-staged items to this profile`}
                       busy={addingAllResources}
                       draggable={false}
                       onDragStart={(event) => {
@@ -2704,7 +2689,8 @@ export function App() {
                       onClick={() => {
                         void handleAddAllResources(activeProfile ?? undefined);
                       }}
-                      label={`Add all ${activeProfileUntrackedCount} not-staged items to ${profile.name}`}
+                      label={`Add not-staged items to ${profile.name}`}
+                      title={`Add ${activeProfileUntrackedCount} not-staged item${activeProfileUntrackedCount === 1 ? "" : "s"} to this profile`}
                       icon={<ListPlus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
                     />
                   ) : null}

@@ -27,6 +27,7 @@ describe("library origin filter chrome", () => {
   test("labels the plugin ref type badge explicitly", () => {
     expect(sidebarSource).toContain("libraryFilterTypeLabel(type)");
     expect(sidebarSource).toContain("libraryFilterType(resource)");
+    expect(sidebarSource).toContain('placeholder="Filter by name"');
   });
 
   test("renders origin as a radio list, not a combobox", () => {
