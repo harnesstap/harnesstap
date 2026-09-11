@@ -55,6 +55,20 @@ describe("desktop icon chrome", () => {
     expect(stylesSource).not.toContain(".rail-controls .icon-action.primary");
   });
 
+  test("converts install-gap plugin Sync to icon-only chrome", () => {
+    const installGaps = liveStateSource.slice(
+      liveStateSource.indexOf("Install gaps (in profile)"),
+      liveStateSource.indexOf("File changes"),
+    );
+    expect(installGaps).toContain("installGapSyncAction");
+    expect(installGaps).toContain("IconActionButton");
+    expect(installGaps).toContain("label={syncAction.label}");
+    expect(installGaps).toContain("RefreshCw");
+    expect(installGaps).not.toContain("showLabel");
+    expect(installGaps).not.toContain('className="btn"');
+    expect(liveStateSource).toContain("label: `Sync ${pluginName}`");
+  });
+
   test("converts More and Show all to distinct icons and labels Not staged Add all", () => {
     expect(liveStateSource).toContain('label="Add all"');
     expect(liveStateSource).toContain("ListPlus");

@@ -1944,14 +1944,19 @@ export function LiveStatePanel({
                             </span>
                             {syncAction && onRecoveryAction ? (
                               <span className="diff-row-actions">
-                                <button
-                                  type="button"
-                                  className="btn"
-                                  disabled={recoveryBusy}
+                                <IconActionButton
+                                  label={syncAction.label}
+                                  busy={recoveryBusy}
+                                  spinnerSize={ICON_SIZE}
                                   onClick={() => onRecoveryAction(syncAction)}
-                                >
-                                  {syncAction.label}
-                                </button>
+                                  icon={
+                                    <RefreshCw
+                                      size={ICON_SIZE}
+                                      strokeWidth={2}
+                                      aria-hidden
+                                    />
+                                  }
+                                />
                               </span>
                             ) : null}
                           </div>
