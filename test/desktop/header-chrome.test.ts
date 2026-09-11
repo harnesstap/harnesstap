@@ -17,6 +17,13 @@ const resourcesPanelSource = readFileSync(
   ),
   "utf8",
 );
+const sourcesWorkspaceSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/SourcesWorkspace.tsx",
+  ),
+  "utf8",
+);
 const environmentsSource = readFileSync(
   join(
     import.meta.dir,
@@ -235,6 +242,10 @@ describe("header re-click home", () => {
     expect(backButtonSource).toContain("ArrowLeft");
     expect(backButtonSource).toContain("IconActionButton");
     expect(backButtonSource).toContain("hidden");
+    expect(resourcesPanelSource).toContain("hidden={!hasLocalPrevious}");
+    expect(sourcesWorkspaceSource).toContain("hidden={!hasLocalPrevious}");
+    expect(designSource).toContain("The control is hidden when there is nowhere to go");
+    expect(designSource).toContain("list** entrypoints hide Back");
   });
 
   test("DESIGN.md locks header re-click home", () => {

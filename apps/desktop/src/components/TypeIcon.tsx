@@ -13,39 +13,44 @@ import {
   Webhook,
   Wrench,
 } from "lucide-react";
+import { resourceTypeGlyph } from "../lib/type-glyph";
 
 const ICON_SIZE = 14;
 
+export { resourceTypeGlyph } from "../lib/type-glyph";
+export type { TypeGlyph } from "../lib/type-glyph";
+
 export function TypeIcon({ type }: { type: string }): ReactNode {
-  switch (type) {
-    case "plugin":
+  const glyph = resourceTypeGlyph(type);
+  switch (glyph) {
+    case "layers":
       return <Layers size={ICON_SIZE} aria-hidden />;
-    case "plugin_ref":
+    case "package":
       return <Package size={ICON_SIZE} aria-hidden />;
-    case "skill":
+    case "sparkles":
       // Sparkles is the skill type glyph only — not status, not gaps, not agents.
       return <Sparkles size={ICON_SIZE} aria-hidden />;
-    case "mcp_server":
+    case "plug":
       return <Plug size={ICON_SIZE} aria-hidden />;
-    case "instruction":
+    case "file-text":
       return <FileText size={ICON_SIZE} aria-hidden />;
-    case "rule":
+    case "file-code":
       return <FileCode2 size={ICON_SIZE} aria-hidden />;
-    case "agent":
+    case "bot":
       return <Bot size={ICON_SIZE} aria-hidden />;
-    case "command":
+    case "terminal":
       return <Terminal size={ICON_SIZE} aria-hidden />;
-    case "hook":
+    case "webhook":
       return <Webhook size={ICON_SIZE} aria-hidden />;
-    case "permission":
+    case "shield":
       return <Shield size={ICON_SIZE} aria-hidden />;
-    case "env_var":
+    case "variable":
       return <Variable size={ICON_SIZE} aria-hidden />;
-    case "model_config":
+    case "wrench":
       return <Wrench size={ICON_SIZE} aria-hidden />;
-    case "plugin_pin":
-      return <Package size={ICON_SIZE} aria-hidden />;
-    default:
-      return <Wrench size={ICON_SIZE} aria-hidden />;
+    default: {
+      const neverGlyph: never = glyph;
+      return neverGlyph;
+    }
   }
 }
