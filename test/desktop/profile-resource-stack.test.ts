@@ -238,8 +238,10 @@ describe("Profile resources pane chrome", () => {
     );
     expect(previewBlock).toContain("TargetPreviewQuietEmpty");
     expect(previewBlock).toContain("targetPreviewQuietEmpty");
-    expect(previewBlock).toContain("no changes");
-    expect(previewBlock).toContain("target-preview-quiet-empty");
+    expect(liveStateSource).toContain("function TargetPreviewQuietEmpty");
+    expect(liveStateSource).toContain("<p>no changes</p>");
+    expect(liveStateSource).toContain("target-preview-quiet-empty");
+    expect(liveStateSource).toContain("target-preview-quiet-empty-icon");
     expect(header).toContain("Target preview");
     expect(header).not.toContain("contents-header-meta");
     expect(header).not.toContain("selectedProfile");
