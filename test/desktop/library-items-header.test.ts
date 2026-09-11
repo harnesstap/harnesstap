@@ -138,7 +138,8 @@ describe("library items header design lock", () => {
   test("documents workspace back before the panel title", () => {
     expect(designSource).toContain("Back icon to the left of the panel title");
     expect(designSource).toContain("previous screen");
-    expect(designSource).toContain("is hidden when there is no previous screen");
+    expect(designSource).toContain("is hidden when there is nowhere to go");
+    expect(designSource).toContain("list** entrypoints hide Back");
   });
 
   test("documents unified library list and detail", () => {

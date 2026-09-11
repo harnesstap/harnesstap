@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
-import { resourceTypeGlyph } from "../../apps/desktop/src/components/TypeIcon.tsx";
+import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
 
 const root = join(import.meta.dir, "../../apps/desktop/src");
 
@@ -86,9 +86,11 @@ describe("desktop icon chrome", () => {
   });
 
   test("Sparkles is the skill type glyph only; agents use Bot; gaps use status glyphs", () => {
-    expect(typeIconSource).toMatch(/case "skill":\s*return "sparkles"/);
+    const typeGlyphSource = read("lib/type-glyph.ts");
+    expect(typeGlyphSource).toMatch(/case "skill":\s*return "sparkles"/);
     expect(typeIconSource).toMatch(/case "sparkles":[\s\S]*?Sparkles/);
-    expect(typeIconSource).toMatch(/case "agent":\s*return "bot"/);
+    expect(typeGlyphSource).toMatch(/case "agent":\s*return "bot"/);
+    expect(typeIconSource).toMatch(/case "bot":[\s\S]*?Bot/);
     expect(typeIconSource).not.toMatch(/case "agent":[\s\S]*?Sparkles/);
     expect(typeModalSource).toContain("skill: Sparkles");
     expect(typeModalSource).toContain("agent: Bot");
@@ -104,7 +106,8 @@ describe("desktop icon chrome", () => {
     expect(notStagedRow).not.toContain("ResourceRowMeta");
     expect(notStagedRow).toContain('label="Add"');
     expect(notStagedRow).toContain("showLabel");
-    expect(designSource).toContain("never Not staged");
+    expect(designSource).toContain("never instruction, plugin, plugin package");
+    expect(designSource).toContain("agent, Not staged");
     expect(designSource).toContain(
       "Lucide Sparkles is the **skill** type glyph only",
     );
@@ -156,12 +159,16 @@ describe("desktop icon chrome", () => {
       "components/ResourceTypeModal.tsx",
       "components/TypeIcon.tsx",
     ]);
+    expect(read("lib/type-glyph.ts")).toMatch(/case "skill":\s*return "sparkles"/);
+    expect(read("lib/type-glyph.ts")).not.toMatch(
+      /case "(instruction|plugin|plugin_ref|plugin_pin)":\s*return "sparkles"/,
+    );
 
     const libraryList = resourcesSource.slice(
-      resourcesSource.indexOf("group.resources.map"),
+      resourcesSource.indexOf("resources-type-heading"),
       resourcesSource.indexOf("function renderMainPane"),
     );
-    expect(libraryList).toContain("TypeIcon");
+    expect(libraryList).toContain("<TypeIcon type={group.type} />");
     expect(libraryList).toContain("type={filterType}");
     expect(libraryList).not.toContain("Sparkles");
     expect(libraryList).not.toContain("ResourceRowMeta");
