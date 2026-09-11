@@ -123,7 +123,10 @@ describe("desktop icon chrome", () => {
     expect(liveStateSource).toContain('label="Show all"');
     expect(liveStateSource).toContain("UnfoldVertical");
     expect(liveStateSource).not.toContain('className="link-btn"');
-    expect(liveStateSource).toContain("TODO(G4)");
+    expect(liveStateSource).not.toContain("TODO(G4)");
+    expect(liveStateSource).toContain("primary={!railPrimaryIsReapply}");
+    expect(designSource).toContain("Ghost **Add all**");
+    expect(designSource).toContain("wontfix");
     expect(liveStateSource).not.toContain("target-preview-drifted");
     expect(liveStateSource).toContain("singletonPath");
     expect(liveStateSource).not.toContain("expandedKeys");

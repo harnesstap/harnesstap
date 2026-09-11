@@ -1709,8 +1709,6 @@ export function LiveStatePanel({
               </span>
               {onAddAllResources ? (
                 <span className="contents-header-toolbar">
-                  {/* TODO(G4): Critiquito wants Add all ghost/outline so Apply is the sole filled blue.
-                      Held until Christophe answers CoS (he previously wanted Add all primary). Do not restyle. */}
                   <IconActionButton
                     primary={!railPrimaryIsReapply}
                     showLabel
