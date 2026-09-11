@@ -122,6 +122,22 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("function resetSourcesFilters");
     expect(workspaceSource).toContain("resetSourcesFilters()");
     expect(workspaceSource).toContain("applyListQueryOrChecks(resetSourcesFilters)");
+    expect(workspaceSource).toContain("setShowInLibrary(false)");
+  });
+
+  test("sidebar Show in library is an opt-in checkbox off by default", () => {
+    expect(sidebarSource).toContain("Show in library");
+    expect(sidebarSource).toContain("id=\"source-show-in-library\"");
+    expect(workspaceSource).toContain(
+      "const [showInLibrary, setShowInLibrary] = useState(false)",
+    );
+    expect(workspaceSource).toContain("filterDiscoverGroups");
+    expect(workspaceSource).toContain("showInLibrary={showInLibrary}");
+    expect(listPaneSource).toContain("discoverListEmptyCopy");
+    expect(listPaneSource).toContain('data-testid="discover-empty"');
+    expect(sourcesSearchSource).toContain("filterDiscoverGroups");
+    expect(sourcesSearchSource).toContain('hit.presence !== "in_library"');
+    expect(sourcesSearchSource).toContain("Nothing left to discover.");
   });
 
   test("sidebar All sources checkbox selects or clears every source", () => {
@@ -166,10 +182,11 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).not.toContain("<Cloud size={16}");
   });
 
-  test("places workspace back before the Sources title like Library and Environments", () => {
+  test("places workspace back before the Discover title like Library and Environments", () => {
     expect(workspaceSource).toContain("resources-panel-title-cluster");
     expect(workspaceSource).toContain("WorkspaceBackButton");
-    expect(workspaceSource).toContain("<span>Sources</span>");
+    expect(workspaceSource).toContain("<span>Discover</span>");
+    expect(workspaceSource).toContain('aria-label="Discover"');
     expect(appSource).toContain("canWorkspaceBack={canWorkspaceBack}");
     expect(appSource).toContain("onWorkspaceBack={onWorkspaceBack}");
   });
@@ -408,16 +425,18 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(workspaceSource).toContain("PinToPluginPanel");
   });
 
-  test("DESIGN.md Sources section locks shell, re-click, cluster, and icon record actions", () => {
+  test("DESIGN.md Discover section locks shell, re-click, cluster, and icon record actions", () => {
     const designSource = readFileSync(
       join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
       "utf8",
     );
-    expect(designSource).toContain("**Sources**");
+    expect(designSource).toContain("**Discover**");
     expect(designSource).toContain("list XOR plugin-tree XOR preview");
-    expect(designSource).toContain("Sources re-click");
+    expect(designSource).toContain("Discover re-click");
     expect(designSource).toContain("Clear filters");
     expect(designSource).toContain("every source checkbox checked");
+    expect(designSource).toContain("Show in library");
+    expect(designSource).toContain("Nothing left to discover.");
     expect(designSource).toContain("Add marketplace");
     expect(designSource).toContain("Connect catalog");
     expect(designSource).toContain("--icon-action-size-lg");
@@ -425,7 +444,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Pin to plugin");
     expect(designSource).toContain("Cloud browse overlay");
     expect(designSource).toContain("Update available");
-    expect(designSource).toContain("No Update button on Sources");
+    expect(designSource).toContain("No Update button on Discover");
     expect(designSource).toContain("Local, Marketplaces, and Cloud");
     expect(designSource).toContain("All sources");
     expect(designSource).toContain("indeterminate");

@@ -24,6 +24,8 @@ export interface SourceSidebarProps {
   query: string;
   onQueryChange: (query: string) => void;
   onClear: () => void;
+  showInLibrary: boolean;
+  onShowInLibraryChange: (showInLibrary: boolean) => void;
   rows: SourceRow[];
   checkedIds: string[];
   onToggle: (id: string) => void;
@@ -90,6 +92,8 @@ export function SourceSidebar({
   query,
   onQueryChange,
   onClear,
+  showInLibrary,
+  onShowInLibraryChange,
   rows,
   checkedIds,
   onToggle,
@@ -110,7 +114,12 @@ export function SourceSidebar({
   }, [confirmOpen, onConfirmOpenChange]);
   const sidebarChange = sourcesSidebarChangeAction({ busy, confirmOpen });
   const controlsDisabled = disabled || sidebarChange === "block";
-  const dirty = isSourcesFilterActive(query, checkedIds, rows);
+  const dirty = isSourcesFilterActive(
+    query,
+    checkedIds,
+    rows,
+    showInLibrary,
+  );
   const masterChecked = sourceMasterChecked(sourceCheckState(checkedIds, rows));
 
   const applySidebarChange = (apply: () => void): void => {
@@ -143,14 +152,14 @@ export function SourceSidebar({
   };
 
   return (
-    <aside className="resource-filter-sidebar" aria-label="Sources">
+    <aside className="resource-filter-sidebar" aria-label="Discover filters">
       <div className="resource-filter-section">
         <div className="resource-filter-search-row">
           <input
             className="resources-panel-filter"
             type="search"
-            placeholder="Search sources"
-            aria-label="Search sources"
+            placeholder="Search to add"
+            aria-label="Search to add"
             value={query}
             onChange={(event) => {
               const next = event.target.value;
@@ -168,6 +177,23 @@ export function SourceSidebar({
           >
             <FilterX size={ACTION_ICON_SIZE} aria-hidden />
           </button>
+        </div>
+        <div className="source-row">
+          <div className="source-row-check">
+            <Checkbox
+              id="source-show-in-library"
+              checked={showInLibrary}
+              disabled={controlsDisabled}
+              onCheckedChange={(checked) =>
+                applySidebarChange(() =>
+                  onShowInLibraryChange(checked === true),
+                )
+              }
+            />
+            <Label htmlFor="source-show-in-library" className="font-normal">
+              Show in library
+            </Label>
+          </div>
         </div>
       </div>
       {error ? (

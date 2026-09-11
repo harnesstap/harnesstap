@@ -275,7 +275,7 @@ export function MarketplaceEditPanel({
       >
         <div className="create-profile-header">
           <div>
-            <div className="eyebrow">Sources</div>
+            <div className="eyebrow">Discover</div>
             <h2 id="marketplace-edit-title">{title}</h2>
           </div>
           <button

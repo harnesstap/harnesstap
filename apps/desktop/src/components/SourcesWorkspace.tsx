@@ -40,6 +40,7 @@ import {
   applyOriginOutdated,
   cloudHitIsInLibrary,
   cloudSelectorKey,
+  filterDiscoverGroups,
   mergeSourcesHits,
   sourcesHitFetchKey,
   type CloudPluginInput,
@@ -175,6 +176,7 @@ export function SourcesWorkspace({
   onWorkspaceBack,
 }: SourcesWorkspaceProps) {
   const [query, setQuery] = useState("");
+  const [showInLibrary, setShowInLibrary] = useState(false);
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
   const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>([]);
   const [scope, setScope] = useState<CatalogScope | null>(null);
@@ -255,6 +257,7 @@ export function SourcesWorkspace({
 
   function resetSourcesFilters(): void {
     setQuery("");
+    setShowInLibrary(false);
     setChecksTouched(false);
     setCheckedIds(defaultCheckedSourceIds(rows));
   }
@@ -525,7 +528,7 @@ export function SourcesWorkspace({
         plugins: pluginsForCloudRow(row, cloudPlugins),
       }));
 
-    return mergeSourcesHits({
+    const merged = mergeSourcesHits({
       query,
       sourceOrder,
       ...(localChecked
@@ -560,6 +563,7 @@ export function SourcesWorkspace({
         originCheckRows,
       ),
     }));
+    return filterDiscoverGroups(merged, showInLibrary);
   }, [
     checkedRows,
     cloudPlugins,
@@ -569,6 +573,7 @@ export function SourcesWorkspace({
     originCheckRows,
     pulledCloudKeys,
     query,
+    showInLibrary,
     sourceOrder,
   ]);
 
@@ -1067,6 +1072,7 @@ export function SourcesWorkspace({
             groupErrors={groupErrors}
             loading={librarySearching || cloudSearching}
             query={query}
+            showInLibrary={showInLibrary}
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
@@ -1128,7 +1134,7 @@ export function SourcesWorkspace({
   return (
     <main
       className="resources-panel sources-workspace"
-      aria-label="Sources"
+      aria-label="Discover"
       data-testid="sources-workspace"
       data-sources-pane={pane.mode}
       data-origin-update-label="Update available"
@@ -1141,9 +1147,9 @@ export function SourcesWorkspace({
               onClick={handlePanelBack}
             />
             <div className="resources-panel-title">
-              <span>Sources</span>
+              <span>Discover</span>
               <span className="muted resources-panel-scope">
-                Search local, marketplaces, and HarnessTap Cloud.
+                Find and add from local, marketplaces, and HarnessTap Cloud.
               </span>
             </div>
           </div>
@@ -1177,6 +1183,10 @@ export function SourcesWorkspace({
           }}
           onClear={() => {
             applyListQueryOrChecks(resetSourcesFilters);
+          }}
+          showInLibrary={showInLibrary}
+          onShowInLibraryChange={(next) => {
+            applyListQueryOrChecks(() => setShowInLibrary(next));
           }}
           rows={rows}
           checkedIds={checkedIds}

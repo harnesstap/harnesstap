@@ -27,31 +27,31 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Status: `--green`, `--yellow`, `--red`
 - Type: `--font`, `--mono`
 - Radius: `--radius` (`0.25rem`; tight. Pills only for small filter chips)
-- Icon chrome: `--icon-action-size` (`32px` default squares). Sources header **Add marketplace** / **Connect catalog** use `--icon-action-size-lg` (`40px`) so they match in hit target and icon scale.
+- Icon chrome: `--icon-action-size` (`32px` default squares). Discover header **Add marketplace** / **Connect catalog** use `--icon-action-size-lg` (`40px`) so they match in hit target and icon scale.
 
 ## Chrome
 
 - Harness inventories are bordered sections / definition lists, not a card mosaic.
 - Motion: status color transitions and in-progress switch-step highlight only.
 - Focus: 2px `--accent` outline, 2px offset.
-- Labeled `btn primary` for dialog confirm actions (Create, Publish, Save, Update) together with an icon. Profiles rail **Apply** / **Re-apply** is a full-width accent `btn primary` with visible text and the icon to the right of the label. Library record primary actions that are not square icon chrome show a short visible label beside the icon: plugin **Apply**, resource **Sync** / **Write**, frozen **Restore**. Not staged header **Add all** is a labeled accent `icon-action primary` with **Add all** to the left of the ListPlus icon. Other persistent page chrome — Clear, Remove, More, Show all, Install, Library/Sources header actions, Target preview install-gap plugin **Sync**, and secondary/destructive record actions — is icon-only with a hover tooltip that keeps the original label. Header destinations show icon plus name.
+- Labeled `btn primary` for dialog confirm actions (Create, Publish, Save, Update) together with an icon. Profiles rail **Apply** / **Re-apply** is a full-width accent `btn primary` with visible text and the icon to the right of the label. Library record primary actions that are not square icon chrome show a short visible label beside the icon: plugin **Apply**, resource **Sync** / **Write**, frozen **Restore**. Not staged header **Add all** is a labeled accent `icon-action primary` with **Add all** to the left of the ListPlus icon. Other persistent page chrome — Clear, Remove, More, Show all, Install, Library/Discover header actions, Target preview install-gap plugin **Sync**, and secondary/destructive record actions — is icon-only with a hover tooltip that keeps the original label. Header destinations show icon plus name.
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons.
 - Header icon-only chrome may include an **Update available** control (arrow-up icon plus a red badge). The badge is paired with the accessible name **Update available** (current → newer). Click opens a centered dialog with release notes, a GitHub release link (text link, not a chrome button), and **Update** (icon plus label; downloads the matching GitHub installer for this os/arch). The control is omitted when Desktop is current.
 - Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, and history. Resource inspect is a centered, viewport-capped dialog (scrollable body, height follows content). File apply diffs are the same centered, viewport-capped dialog (not pinned to a pane corner). Back (top left) and Esc leave the panel or dialog. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. The Library create-resource type picker is a centered dialog. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
-- Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab: project directory picker (recent + Browse), raw `apm.yml` editor (Library Content mono chrome; save runs existing config validate and refuses on errors), icon-only Open config as the external-editor escape hatch (tooltip **Open config**), profile definition list, validation/load errors. It reads and writes `apm.yml` only. Marketplaces and catalogs are managed in Sources, not Settings.
+- Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab: project directory picker (recent + Browse), raw `apm.yml` editor (Library Content mono chrome; save runs existing config validate and refuses on errors), icon-only Open config as the external-editor escape hatch (tooltip **Open config**), profile definition list, validation/load errors. It reads and writes `apm.yml` only. Marketplaces and catalogs are managed in Discover, not Settings.
 
 ## Layout
 
-Header destinations: **Library | Sources | Environments | Global | Project**. No header Plugins tab. No header Apply-plugin control.
+Header destinations: **Library | Discover | Environments | Global | Project**. No header Plugins tab. No header Apply-plugin control.
 
 | Workspace | Shell |
 | --- | --- |
 | Global / Project | Profiles rail (~220px) + live-state `main`. Below ~720px, stack rail above the pane. |
 | Library | Filter sidebar + one main pane (list **or** detail). No profile rail. No Items/Packages tabs. |
-| Sources | Source sidebar + one main pane (list **or** plugin-tree **or** preview). No profile rail. |
+| Discover | Source sidebar + one main pane (list **or** plugin-tree **or** preview). No profile rail. |
 | Environments | Full-width list + detail. No profile rail. |
 
-Landmarks: `nav` (profiles rail, scope layout only), `main` (live, library, sources, or environments).
+Landmarks: `nav` (profiles rail, scope layout only), `main` (live, library, discover, or environments).
 
 ## Interaction locks
 
@@ -59,10 +59,10 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 **Header destinations**
 
-- Re-clicking an already-active header destination (Library, Sources, Environments, Global, Project) returns that view to its entrypoint and clears its filters. Clicking a different destination only switches.
-- Back icon to the left of the panel title (Library, Sources, Environments, Profiles). Back returns to the previous screen: nested pane first (Library detail / history, Sources preview / plugin-tree, or edit-profile), then the previous header destination. The control deactivates when there is no previous screen.
+- Re-clicking an already-active header destination (Library, Discover, Environments, Global, Project) returns that view to its entrypoint and clears its filters. Clicking a different destination only switches.
+- Back icon to the left of the panel title (Library, Discover, Environments, Profiles). Back returns to the previous screen: nested pane first (Library detail / history, Discover preview / plugin-tree, or edit-profile), then the previous header destination. The control deactivates when there is no previous screen.
 - Library re-click applies default filters and returns to the list via the same path as a sidebar filter change (`applyFilterChange`).
-- Sources re-click clears the search query, checks all sources, and returns to the list. Add/edit panels stay if open. Sidebar **Clear filters** uses the same filter defaults (empty search, every source checkbox checked).
+- Discover re-click clears the search query, turns off **Show in library**, checks all sources, and returns to the list. Add/edit panels stay if open. Sidebar **Clear filters** uses the same filter defaults (empty search, **Show in library** off, every source checkbox checked).
 - Environments re-click clears the name filter and deselects. Create/edit full-screen panel stays if open.
 - Global and Project re-click clear the profile rail search and close edit-profile; the selected profile stays. Project re-click does not reopen the directory picker.
 
@@ -99,16 +99,17 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Resource detail (skill, MCP, plugin ref, and other library material): labeled **Sync** previews `resource sync` (does not change files yet); labeled **Write** saves the newer copy over this item’s library files only. If a skill lives inside a plugin package, only that skill’s library entry is updated — not the whole plugin, and not a project. Secondary **Delete** stays icon-only.
 - Delete confirm: list profiles and plugins that still attach this selector. Offer **Remove from active profile** as a tertiary action when it is enabled there. Primary action is **Delete from library + disk**; secondary is **Delete from library**. Load a delete plan before opening the dialog; group locations by global / project / source; show **Protected** blockers with the full protected path plus Copy / Reveal. Disable only the disk-inclusive action when hard blockers exist (shared aggregate files, paths outside managed roots, missing/unreadable paths), and show a visible human reason next to that control (not tooltip-only). Inspect also surfaces that reason and path access when disk delete is blocked. When the on-disk copy was edited outside the library (hash mismatch), keep disk delete enabled and require a checkbox confirm: **Disk copy differs from library — delete anyway?** Plugin names in attachers can open the owning plugin package in Library.
 
-**Sources**
+**Discover**
 
-- Source sidebar + one main pane (list XOR plugin-tree XOR preview). No profile rail. Marketplaces and catalogs are managed in Sources, not Settings.
-- The sidebar lists HarnessTap-registered marketplaces and host-configured Claude Code marketplaces from `~/.claude/plugins/known_marketplaces.json`. Host-only rows are not editable or removable in Sources.
-- The source sidebar groups checkboxes under Local, Marketplaces, and Cloud. Empty sections are omitted. A top-level **All sources** checkbox selects or clears every source; mixed selection is indeterminate. **Clear filters** clears search and checks every source.
-- Sources re-click clears the search query, checks all sources, and returns to the list. Back/Esc: preview → plugin-tree → list (standalone preview skips the tree). Esc while a confirm is open dismisses the confirm only.
-- Header cluster (right of the Sources title): icon-only **Add marketplace** (accent) and **Connect catalog**, with those tooltips. Both are `--icon-action-size-lg` squares (not text CTAs). Add marketplace is the only accent control in this cluster.
-- Record actions on the plugin tree (preview inherits parent plugin actions) are icon-only: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Tooltips keep those labels. No Update button on Sources.
-- In-library marketplace and catalog hits show a yellow **Update available** badge (color + text) next to In library when origin check is outdated. Open in Library is the apply path. Pin stays.
-- Cloud catalog discovery lives in Sources. The Cloud browse overlay is gone; the Cloud header control is account-only.
+- Source sidebar + one main pane (list XOR plugin-tree XOR preview). No profile rail. Marketplaces and catalogs are managed in Discover, not Settings.
+- The sidebar lists HarnessTap-registered marketplaces and host-configured Claude Code marketplaces from `~/.claude/plugins/known_marketplaces.json`. Host-only rows are not editable or removable in Discover.
+- The source sidebar groups checkboxes under Local, Marketplaces, and Cloud. Empty sections are omitted. A top-level **All sources** checkbox selects or clears every source; mixed selection is indeterminate. An opt-in **Show in library** checkbox (off by default) reveals hits already in the library; the default list hides those rows so Discover surfaces items to add. **Clear filters** restores empty search, **Show in library** off, and every source checkbox checked.
+- Discover re-click clears the search query, turns off **Show in library**, checks all sources, and returns to the list. Back/Esc: preview → plugin-tree → list (standalone preview skips the tree). Esc while a confirm is open dismisses the confirm only.
+- Header cluster (right of the Discover title): icon-only **Add marketplace** (accent) and **Connect catalog**, with those tooltips. Both are `--icon-action-size-lg` squares (not text CTAs). Add marketplace is the only accent control in this cluster.
+- Record actions on the plugin tree (preview inherits parent plugin actions) are icon-only: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Tooltips keep those labels. No Update button on Discover.
+- In-library marketplace and catalog hits show a yellow **Update available** badge (color + text) next to In library when origin check is outdated. Open in Library is the apply path. Pin stays. Those rows appear only when **Show in library** is on.
+- When the filtered list is empty with **Show in library** off, the main pane empty state is **Nothing left to discover.** plus a hint to turn on **Show in library**.
+- Cloud catalog discovery lives in Discover. The Cloud browse overlay is gone; the Cloud header control is account-only.
 
 **Environments**
 
