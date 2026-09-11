@@ -76,7 +76,7 @@ export const TYPE_LABELS: Record<string, { one: string; other: string }> = {
   permission: { one: "permission", other: "permissions" },
   env_var: { one: "env var", other: "env vars" },
   model_config: { one: "model config", other: "model configs" },
-  plugin_pin: { one: "plugin", other: "plugins" },
+  plugin_pin: { one: "plugin pin", other: "plugin pins" },
 };
 
 export function labelForType(type: string, count: number): string {
@@ -346,33 +346,71 @@ export function orderedTypeCounts(
   return rows;
 }
 
-export function fallbackTypeCounts(
+function nestedResourceKeys(contents: ProfileContents): Set<string> {
+  const keys = new Set<string>();
+  for (const plugin of contents.plugins ?? []) {
+    for (const resource of plugin.resources ?? []) {
+      keys.add(`${resource.type}:${resource.name}`);
+    }
+  }
+  return keys;
+}
+
+/**
+ * Top-level composition counts for the resources card: plugin packages, pins,
+ * and loose material — not nested plugin contents (those already appear inside
+ * plugin groups).
+ */
+export function compositionTypeCounts(
   contents: ProfileContents | null | undefined,
 ): Record<string, number> {
   if (!contents) {
     return {};
   }
-  if (contents.type_counts && Object.keys(contents.type_counts).length > 0) {
-    return contents.type_counts;
-  }
-
+  const nested = nestedResourceKeys(contents);
   const counts: Record<string, number> = {};
-  const plugins = contents.plugins ?? [];
-  const pluginPins = contents.plugin_pins ?? [];
-  const mcpServers = contents.mcp_servers ?? [];
-  if (plugins.length > 0) {
-    counts.plugin = plugins.length;
+  const pluginCount = contents.plugins?.length ?? 0;
+  if (pluginCount > 0) {
+    counts.plugin = pluginCount;
+  }
+  const pinCount = contents.plugin_pins?.length ?? 0;
+  if (pinCount > 0) {
+    counts.plugin_pin = pinCount;
   }
   for (const resource of contents.resources ?? []) {
+    if (nested.has(`${resource.type}:${resource.name}`)) {
+      continue;
+    }
     counts[resource.type] = (counts[resource.type] ?? 0) + 1;
   }
-  if (pluginPins.length > 0) {
-    counts.plugin_pin = pluginPins.length;
-  }
-  if (Object.keys(counts).length === 0 && mcpServers.length > 0) {
-    counts.mcp_server = mcpServers.length;
+  if (
+    Object.keys(counts).length === 0
+    && (contents.mcp_servers?.length ?? 0) > 0
+  ) {
+    counts.mcp_server = contents.mcp_servers?.length ?? 0;
   }
   return counts;
+}
+
+export function profileHasComposition(
+  contents: ProfileContents | null | undefined,
+): boolean {
+  if (!contents) {
+    return false;
+  }
+  return (
+    (contents.plugins?.length ?? 0) > 0
+    || (contents.plugin_pins?.length ?? 0) > 0
+    || (contents.resources?.length ?? 0) > 0
+    || (contents.mcp_servers?.length ?? 0) > 0
+    || (contents.stack_resource_count ?? 0) > 0
+  );
+}
+
+export function fallbackTypeCounts(
+  contents: ProfileContents | null | undefined,
+): Record<string, number> {
+  return compositionTypeCounts(contents);
 }
 
 export function typeCountsFromItems(
@@ -805,4 +843,127 @@ export function installGapRowPresentation(row: InstallGapRow): InstallGapPresent
       return _exhaustive;
     }
   }
+}
+
+export type InstallGapGroup = {
+  kind: InstallGapKind;
+  title: string;
+  rows: InstallGapRow[];
+};
+
+const INSTALL_GAP_GROUP_ORDER: InstallGapKind[] = [
+  "missing",
+  "mismatch",
+  "add",
+  "outside_profile",
+];
+
+export function installGapGroupTitle(kind: InstallGapKind): string {
+  switch (kind) {
+    case "missing":
+      return "Plugins";
+    case "mismatch":
+      return "Value diffs";
+    case "add":
+      return "Not installed";
+    case "outside_profile":
+      return "Outside profile";
+    default: {
+      const neverKind: never = kind;
+      return neverKind;
+    }
+  }
+}
+
+export function groupInstallGaps(rows: InstallGapRow[]): InstallGapGroup[] {
+  const byKind = new Map<InstallGapKind, InstallGapRow[]>();
+  for (const row of rows) {
+    const list = byKind.get(row.kind) ?? [];
+    list.push(row);
+    byKind.set(row.kind, list);
+  }
+  const groups: InstallGapGroup[] = [];
+  for (const kind of INSTALL_GAP_GROUP_ORDER) {
+    const list = byKind.get(kind);
+    if (!list || list.length === 0) {
+      continue;
+    }
+    groups.push({
+      kind,
+      title: installGapGroupTitle(kind),
+      rows: list,
+    });
+  }
+  return groups;
+}
+
+export function installGapQuietVerb(row: InstallGapRow): string | null {
+  switch (row.kind) {
+    case "missing":
+      return row.iconType === "plugin" ? null : "Apply to install";
+    case "add":
+      return "Apply to install";
+    case "mismatch":
+      return "Apply to update";
+    case "outside_profile":
+      return null;
+    default: {
+      const neverKind: never = row.kind;
+      return neverKind;
+    }
+  }
+}
+
+export function stackChangesQuietLabel(input: {
+  notStagedCount: number;
+  installGapCount: number;
+  fileChangeCount: number;
+}): string {
+  const parts: string[] = [];
+  if (input.notStagedCount > 0) {
+    parts.push(
+      `${input.notStagedCount} not staged`,
+    );
+  }
+  if (input.installGapCount > 0) {
+    parts.push(
+      `${input.installGapCount} install gap${input.installGapCount === 1 ? "" : "s"}`,
+    );
+  }
+  if (input.fileChangeCount > 0) {
+    parts.push(
+      `${input.fileChangeCount} file change${input.fileChangeCount === 1 ? "" : "s"}`,
+    );
+  }
+  if (parts.length === 0) {
+    return "No stack changes";
+  }
+  return parts.join(" · ");
+}
+
+export function targetPreviewActiveMeta(input: {
+  relativeToActive: boolean;
+  notStagedCount: number;
+  installGapCount: number;
+  hasStackChanges: boolean;
+  hasFileChanges: boolean;
+}): string | null {
+  if (!input.relativeToActive) {
+    return null;
+  }
+  const drifting =
+    input.hasStackChanges
+    || input.hasFileChanges
+    || input.notStagedCount > 0;
+  const gaps = input.installGapCount > 0;
+  if (drifting && gaps) {
+    return "active · drifting · gaps";
+  }
+  if (gaps) {
+    return "active · gaps";
+  }
+  if (drifting) {
+    return "active · drifting";
+  }
+  return "active";
 }

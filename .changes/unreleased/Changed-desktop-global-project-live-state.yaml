@@ -1,0 +1,5 @@
+kind: Changed
+body: Unify Desktop Global/Project live-state chrome (status, CTAs, install gaps, resources card, scope switch, icon tooltips).
+time: 2026-09-11T03:50:00Z
+custom:
+  Issue: ""

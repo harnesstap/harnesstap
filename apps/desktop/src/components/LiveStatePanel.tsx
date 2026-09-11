@@ -3,6 +3,8 @@ import {
   ChevronsDown,
   ChevronDown,
   ChevronRight,
+  CircleAlert,
+  CircleDashed,
   Diff,
   ExternalLink,
   FolderCog,
@@ -10,6 +12,7 @@ import {
   Layers,
   ListPlus,
   Minus,
+  PackagePlus,
   Pencil,
   Plus,
   RefreshCw,
@@ -18,21 +21,27 @@ import {
   X,
 } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { ChromeTooltip } from "./ChromeTooltip";
 import { IconActionButton } from "./IconActionButton";
 import {
   aggregateInstallGaps,
+  compositionTypeCounts,
   countFileChangeKindResources,
   diffProfileContents,
-  fallbackTypeCounts,
   fileChangeAction,
   filterFileChangeGroups,
   groupFileChangesByResource,
+  groupInstallGaps,
+  installGapQuietVerb,
   installGapRowPresentation,
   isTargetPreviewInstallGap,
   liveMcpNamesFromHarnesses,
   managedPathFromResourceSource,
   orderedTypeCounts,
+  profileHasComposition,
+  stackChangesQuietLabel,
   summarizeStackChanges,
+  targetPreviewActiveMeta,
   type ContentsDiffItem,
   type FileChangeKind,
   type FileChangeResourceGroup,
@@ -84,7 +93,28 @@ import {
 
 const ICON_SIZE = 14;
 const NOT_STAGED_HELP =
-  "On disk but not in this profile, or live content that differs — Plus adds or overwrites the selected profile. Diff shows live vs after apply for modifications.";
+  "On disk but not in this profile, or a live copy that differs. Add puts it in the selected profile; Diff compares live vs profile.";
+const NOT_STAGED_SUBTITLE = "On disk, not in this profile (or different).";
+const STACK_CHANGES_HELP =
+  "Plugins and resources apply would add or remove versus live.";
+const STACK_CHANGES_SUBTITLE = "What apply would add or remove.";
+const INSTALL_GAPS_HELP =
+  "Profile items missing from the live harness install, or whose installed value differs.";
+const INSTALL_GAPS_SUBTITLE = "Profile items not matching the live install.";
+
+function SectionInfo({ text }: { text: string }) {
+  return (
+    <ChromeTooltip content={text} side="top">
+      <span
+        className="contents-header-info"
+        aria-label={text}
+        role="img"
+      >
+        <Info size={ICON_SIZE} strokeWidth={2} aria-hidden />
+      </span>
+    </ChromeTooltip>
+  );
+}
 
 function ListSearchField({
   value,
@@ -434,6 +464,10 @@ function UntrackedResourceRow({
   const isUpdate = resource.not_staged_kind === "update";
   const managedPath = managedPathFromResourceSource(resource.source);
   const canDiff = isUpdate && Boolean(onDiff && managedPath);
+  const statusLabel = isUpdate
+    ? "Live copy differs from this profile"
+    : "On disk, not in this profile";
+  const typeLabel = resource.type.replaceAll("_", " ");
   return (
     <ResourceRowRoot
       hover={hoverModelFromProfileResource(resource)}
@@ -441,7 +475,19 @@ function UntrackedResourceRow({
       className="untracked-row"
     >
       <ResourceRowLeading>
-        <TypeIcon type={resource.type} />
+        <ChromeTooltip content={statusLabel} side="top">
+          <span
+            className="not-staged-status-glyph"
+            aria-label={statusLabel}
+            role="img"
+          >
+            {isUpdate ? (
+              <CircleAlert size={ICON_SIZE} strokeWidth={2} aria-hidden />
+            ) : (
+              <CircleDashed size={ICON_SIZE} strokeWidth={2} aria-hidden />
+            )}
+          </span>
+        </ChromeTooltip>
       </ResourceRowLeading>
       {canOpen && onOpenResource ? (
         <ResourceRowIdentity
@@ -453,9 +499,17 @@ function UntrackedResourceRow({
               pathHint: resource.source,
             })
           }
-        />
+        >
+          <ResourceRowDescription>
+            {typeLabel} · {statusLabel}
+          </ResourceRowDescription>
+        </ResourceRowIdentity>
       ) : (
-        <ResourceRowIdentity label={resource.name} />
+        <ResourceRowIdentity label={resource.name}>
+          <ResourceRowDescription>
+            {typeLabel} · {statusLabel}
+          </ResourceRowDescription>
+        </ResourceRowIdentity>
       )}
       <ResourceRowMeta
         harnessIds={relatedHarnessesForResourceType(resource.type)}
@@ -472,40 +526,23 @@ function UntrackedResourceRow({
             <Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />
           </button>
         ) : null}
-        {isUpdate ? (
-          <span className="file-change-kind-badge update" title="Modified on disk">
-            <Pencil size={12} strokeWidth={2} aria-hidden />
-          </span>
-        ) : null}
-        <button
-          type="button"
-          className={[
-            "icon-action",
-            "untracked-add-btn",
-            adding ? "is-busy" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-label={
+        <IconActionButton
+          className="untracked-add-btn"
+          busy={adding}
+          spinnerSize={ICON_SIZE}
+          label={
             isUpdate
-              ? `Overwrite ${resource.name} in profile with the live version`
-              : `Commit ${resource.name} into profile`
+              ? `Replace profile copy of ${resource.name} with the live file`
+              : `Add ${resource.name} to this profile`
           }
           title={
             isUpdate
-              ? "Overwrite profile with the live version"
-              : `Commit ${resource.name} into profile`
+              ? "Replace the profile copy with the live file"
+              : "Add this on-disk item to the selected profile"
           }
-          disabled={adding}
-          aria-busy={adding}
           onClick={onAdd}
-        >
-          {adding ? (
-            <ButtonSpinner size={ICON_SIZE} />
-          ) : (
-            <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
-          )}
-        </button>
+          icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        />
       </ResourceRowTrailing>
     </ResourceRowRoot>
   );
@@ -1212,7 +1249,7 @@ function installGapSyncAction(row: InstallGapRow): RecoveryAction | null {
   }
   return {
     id: "sync-install",
-    label: `Sync ${pluginName}`,
+    label: `Install ${pluginName}`,
     pluginName,
     sourceKind: "marketplace",
   };
@@ -1245,6 +1282,8 @@ export interface LiveStatePanelProps {
   onAddAllResources?: () => Promise<void>;
   addingResourceKey?: string | null;
   addingAllResources?: boolean;
+  /** When the rail already has Re-apply as the accent CTA, demote Add all. */
+  railPrimaryIsReapply?: boolean;
   onCommitManagedChanges?: () => Promise<void>;
   committingManagedChanges?: boolean;
   onOpenResourceInEditor?: (resource: ProfileContentsResource) => Promise<void>;
@@ -1292,6 +1331,7 @@ export function LiveStatePanel({
   onAddAllResources,
   addingResourceKey = null,
   addingAllResources = false,
+  railPrimaryIsReapply = false,
   onCommitManagedChanges,
   committingManagedChanges = false,
   onOpenResourceInEditor,
@@ -1405,9 +1445,10 @@ export function LiveStatePanel({
   const profileNameForActions = selectedProfile ?? activeProfile;
 
   const previewHarnesses = applyPreview?.harnesses ?? liveHarnesses;
-  const installGaps = aggregateInstallGaps(
-    view === "home" ? previewHarnesses : undefined,
-  ).filter(isTargetPreviewInstallGap);
+  const installGaps = aggregateInstallGaps(previewHarnesses).filter(
+    isTargetPreviewInstallGap,
+  );
+  const installGapGroups = groupInstallGaps(installGaps);
   const notStagedResources =
     applyPreview?.not_staged
     ?? applyPreview?.untracked_resources
@@ -1416,7 +1457,25 @@ export function LiveStatePanel({
     && !relativeToActive
     && (diff.added.length > 0 || diff.removed.length > 0);
   const hasFileChanges = (applyPreview?.files?.changes?.length ?? 0) > 0;
-  const hasInstallGaps = view === "home" && installGaps.length > 0;
+  const hasInstallGaps = installGaps.length > 0;
+  const fileChangeCount = applyPreview?.files?.changes?.length ?? 0;
+  const stackQuietLabel = stackChangesQuietLabel({
+    notStagedCount: notStagedResources.length,
+    installGapCount: installGaps.length,
+    fileChangeCount,
+  });
+  const activePreviewMeta = targetPreviewActiveMeta({
+    relativeToActive,
+    notStagedCount: notStagedResources.length,
+    installGapCount: installGaps.length,
+    hasStackChanges,
+    hasFileChanges,
+  });
+  const emptyProfileQuietState =
+    !profileHasComposition(targetContents)
+    && (applyPreview?.files?.expected_count ?? 0) === 0
+    && fileChangeCount === 0
+    && diff.added.length === 0;
   const targetPreviewTone =
     previewMatchesSelection && applyPreview
       ? hasStackChanges || hasFileChanges || hasInstallGaps
@@ -1560,7 +1619,7 @@ export function LiveStatePanel({
             ) : (
               <>
                 <ResourceSummaryStrip
-                  counts={fallbackTypeCounts(enabledSourceContents)}
+                  counts={compositionTypeCounts(enabledSourceContents)}
                   label="Profile resource summary"
                 />
                 <ListSearchField
@@ -1725,25 +1784,18 @@ export function LiveStatePanel({
             <summary className="contents-header">
               <span className="contents-header-title">
                 <span>Not staged</span>
-                <span
-                  className="contents-header-info"
-                  title={NOT_STAGED_HELP}
-                  aria-label={NOT_STAGED_HELP}
-                  role="img"
-                >
-                  <Info size={ICON_SIZE} strokeWidth={2} aria-hidden />
-                </span>
+                <SectionInfo text={NOT_STAGED_HELP} />
               </span>
               {onAddAllResources ? (
                 <span className="contents-header-toolbar">
                   <IconActionButton
-                    primary
+                    primary={!railPrimaryIsReapply}
                     showLabel
                     iconAfterLabel
                     busy={addingAllResources}
                     spinnerSize={ICON_SIZE}
                     label="Add all"
-                    title={`Add all ${notStagedResources.length} not-staged resources to ${selectedProfile}`}
+                    title={`Add all ${notStagedResources.length} not-staged items to ${selectedProfile}`}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -1755,6 +1807,7 @@ export function LiveStatePanel({
               ) : null}
             </summary>
             <div className="contents-body">
+              <p className="muted section-one-liner">{NOT_STAGED_SUBTITLE}</p>
               <ListSearchField
                 value={notStagedSearch}
                 onChange={(value) => {
@@ -1843,7 +1896,7 @@ export function LiveStatePanel({
               <span>Target preview</span>
               <span className="contents-header-meta muted">
                 {selectedProfile}
-                {relativeToActive ? " · already active" : ""}
+                {activePreviewMeta ? ` · ${activePreviewMeta}` : ""}
               </span>
             </summary>
             <div className="contents-body">
@@ -1855,7 +1908,7 @@ export function LiveStatePanel({
                 <div className="compare-grid">
                   {targetContents ? (
                     <ResourceSummaryStrip
-                      counts={fallbackTypeCounts(targetContents)}
+                      counts={compositionTypeCounts(targetContents)}
                       label="Target stack summary"
                     />
                   ) : (
@@ -1874,9 +1927,7 @@ export function LiveStatePanel({
                     </p>
                   )}
 
-                  {applyPreview.files?.expected_count === 0
-                    && (applyPreview.files?.changes?.length ?? 0) === 0
-                    && diff.added.length === 0 ? (
+                  {emptyProfileQuietState ? (
                     <p className="muted">
                       This profile has no resources yet — apply will record it as
                       applied with no file writes.
@@ -1884,11 +1935,15 @@ export function LiveStatePanel({
                   ) : hasStackChanges ? (
                     <details className="diff-section">
                       <summary className="compare-title">
-                        <span className="compare-title-text">Stack changes</span>
+                        <span className="compare-title-text">
+                          Stack changes
+                          <SectionInfo text={STACK_CHANGES_HELP} />
+                        </span>
                         <StackChangeSummary
                           rows={summarizeStackChanges(diff.added, diff.removed)}
                         />
                       </summary>
+                      <p className="muted section-one-liner">{STACK_CHANGES_SUBTITLE}</p>
                       {diff.added.map((item) => (
                         <DiffRow
                           key={`add-${item.key}`}
@@ -1912,28 +1967,72 @@ export function LiveStatePanel({
                       aria-disabled="true"
                     >
                       <div className="compare-title">
-                        <span className="compare-title-text">Stack changes</span>
-                        <span className="muted">No changes</span>
+                        <span className="compare-title-text">
+                          Stack changes
+                          <SectionInfo text={STACK_CHANGES_HELP} />
+                        </span>
+                        <span className="muted">{stackQuietLabel}</span>
                       </div>
+                      <p className="muted section-one-liner">{STACK_CHANGES_SUBTITLE}</p>
                     </div>
                   )}
 
-                  {view === "home" && installGaps.length > 0 ? (
+                  {installGaps.length > 0 ? (
                     <details className="diff-section" open>
-                      <summary className="compare-title">Install gaps (in profile)</summary>
+                      <summary className="compare-title">
+                        <span className="compare-title-text">
+                          Install gaps (in profile)
+                          <SectionInfo text={INSTALL_GAPS_HELP} />
+                        </span>
+                      </summary>
+                      <p className="muted section-one-liner">{INSTALL_GAPS_SUBTITLE}</p>
                       {!hasFullHarnessSnapshot && !applyPreview.harnesses ? (
                         <div className="muted">Checking live installs…</div>
                       ) : (
-                        installGaps.map((row) => {
-                          const syncAction = installGapSyncAction(row);
-                          const presentation = installGapRowPresentation(row);
-                          return (
+                        installGapGroups.map((group) => (
+                          <details
+                            className="install-gap-group"
+                            key={group.kind}
+                            open={
+                              group.kind === "missing"
+                              || group.kind === "mismatch"
+                            }
+                          >
+                            <summary className="install-gap-group-title">
+                              {group.title}
+                              <span className="muted">
+                                {group.rows.length}
+                              </span>
+                            </summary>
+                            {group.rows.map((row) => {
+                              const syncAction = installGapSyncAction(row);
+                              const presentation = installGapRowPresentation(row);
+                              const quietVerb = installGapQuietVerb(row);
+                              return (
                           <div
                             className={`diff-row ${presentation.tone}`}
                             key={row.key}
                           >
                             <span className="diff-mark" aria-hidden>
                               {presentation.mark}
+                            </span>
+                            <span
+                              className="not-staged-status-glyph"
+                              aria-hidden
+                            >
+                              {row.kind === "add" ? (
+                                <CircleDashed
+                                  size={ICON_SIZE}
+                                  strokeWidth={2}
+                                  aria-hidden
+                                />
+                              ) : (
+                                <CircleAlert
+                                  size={ICON_SIZE}
+                                  strokeWidth={2}
+                                  aria-hidden
+                                />
+                              )}
                             </span>
                             <span className="diff-body">
                               <span className="diff-label">{row.label}</span>
@@ -1950,7 +2049,7 @@ export function LiveStatePanel({
                                   spinnerSize={ICON_SIZE}
                                   onClick={() => onRecoveryAction(syncAction)}
                                   icon={
-                                    <RefreshCw
+                                    <PackagePlus
                                       size={ICON_SIZE}
                                       strokeWidth={2}
                                       aria-hidden
@@ -1958,10 +2057,16 @@ export function LiveStatePanel({
                                   }
                                 />
                               </span>
+                            ) : quietVerb ? (
+                              <span className="diff-row-actions muted">
+                                {quietVerb}
+                              </span>
                             ) : null}
                           </div>
-                          );
-                        })
+                              );
+                            })}
+                          </details>
+                        ))
                       )}
                     </details>
                   ) : null}

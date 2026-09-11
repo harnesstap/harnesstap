@@ -9,6 +9,7 @@ import {
   type ProfileDeleteResult,
 } from "../../lib/api/profile-delete";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { IconActionButton } from "../IconActionButton";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -79,15 +80,26 @@ export function ProfileDeleteControls({
   return (
     <>
       <span className="profile-delete-control">
+        {variant === "icon" ? (
+          <IconActionButton
+            className={busy ? "is-busy" : ""}
+            label="Remove profile"
+            title="Remove this profile. Harness files on disk stay until you apply another profile."
+            disabled={busy || builtinEmpty}
+            busy={busy}
+            onClick={() => {
+              setDeletePlugin(false);
+              setError(null);
+              setConfirmOpen(true);
+            }}
+            icon={<Trash2 size={18} strokeWidth={2} aria-hidden />}
+          />
+        ) : (
         <button
-          className={
-            variant === "icon"
-              ? ["icon-action", busy ? "is-busy" : ""].filter(Boolean).join(" ")
-              : ["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")
-          }
+          className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
           type="button"
           aria-label="Remove profile"
-          title="Remove profile"
+          title="Remove this profile. Harness files on disk stay until you apply another profile."
           disabled={busy || builtinEmpty}
           onClick={() => {
             setDeletePlugin(false);
@@ -97,12 +109,11 @@ export function ProfileDeleteControls({
         >
           {busy ? (
             <ButtonSpinner size={16} />
-          ) : variant === "icon" ? (
-            <Trash2 size={18} strokeWidth={2} aria-hidden />
           ) : (
             "Remove profile"
           )}
         </button>
+        )}
       </span>
       <ConfirmDialog
         open={confirmOpen}

@@ -81,10 +81,9 @@ describe("profile delete chrome", () => {
 
   test("keeps a confirm dialog and delete-plugin checkbox, with an icon variant", () => {
     expect(deleteSource).toContain('variant?: "labeled" | "icon"');
-    expect(deleteSource).toContain("icon-action");
+    expect(deleteSource).toContain("IconActionButton");
     expect(deleteSource).toContain("Trash2");
-    expect(deleteSource).toContain('aria-label="Remove profile"');
-    expect(deleteSource).toContain('title="Remove profile"');
+    expect(deleteSource).toContain('label="Remove profile"');
     expect(deleteSource).not.toContain("profile-delete-footer");
     expect(deleteSource).toContain("ConfirmDialog");
     expect(deleteSource).toContain("Also delete the plugin from the library");
@@ -108,6 +107,7 @@ describe("profile delete chrome", () => {
     expect(designSource).toContain("edit-profile header");
     expect(designSource).toContain("live-state header");
     expect(designSource).toContain("delete-plugin checkbox");
-    expect(designSource).toContain("icon-only **Remove profile** control appears on the live-state header");
+    expect(designSource).toContain("icon-only trash control in the edit-profile header");
+    expect(designSource).toContain("live-state header when a profile is selected");
   });
 });

@@ -157,7 +157,7 @@ describe("Profile resources pane chrome", () => {
     );
   });
 
-  it("offers labeled primary Add all on the Not staged header when not-staged rows exist", () => {
+  it("offers labeled Add all on the Not staged header and demotes it when Re-apply is primary", () => {
     const notStagedHeader = liveStateSource.slice(
       liveStateSource.indexOf('aria-label="Not staged"'),
       liveStateSource.indexOf("Filter not staged (name or type:name)"),
@@ -167,12 +167,13 @@ describe("Profile resources pane chrome", () => {
       liveStateSource.indexOf('aria-label="Not staged"'),
     );
     expect(notStagedHeader).toContain('label="Add all"');
-    expect(notStagedHeader).toContain("primary");
+    expect(notStagedHeader).toContain("primary={!railPrimaryIsReapply}");
     expect(notStagedHeader).toContain("showLabel");
     expect(notStagedHeader).toContain("iconAfterLabel");
     expect(notStagedHeader).toContain("onAddAllResources");
     expect(profileResourcesHeader).not.toContain('label="Add all"');
     expect(appSource).toContain("onAddAllResources");
+    expect(appSource).toContain("railPrimaryIsReapply={showReapply}");
   });
 
   it("locks Profile resources as the selected profile’s composition", () => {
@@ -183,7 +184,8 @@ describe("Profile resources pane chrome", () => {
 
   it("locks not-staged modifications and centered file diffs", () => {
     expect(liveStateSource).toContain("not_staged_kind");
-    expect(liveStateSource).toContain("Overwrite profile with the live version");
+    expect(liveStateSource).toContain("Replace the profile copy with the live file");
+    expect(liveStateSource).toContain("On disk, not in this profile");
     expect(liveStateSource).toContain("not-staged-attention");
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("live resources that are in the profile but differ");
@@ -196,10 +198,8 @@ describe("Profile resources pane chrome", () => {
       liveStateSource.indexOf("Filter not staged (name or type:name)"),
     );
     expect(liveStateSource).toContain("contents-header-info");
-    expect(liveStateSource).toContain("title={NOT_STAGED_HELP}");
-    expect(liveStateSource).toContain(
-      "On disk but not in this profile, or live content that differs — Plus adds or overwrites the selected profile. Diff shows live vs after apply for modifications.",
-    );
+    expect(liveStateSource).toContain("text={NOT_STAGED_HELP}");
+    expect(liveStateSource).toContain("NOT_STAGED_SUBTITLE");
     expect(notStagedHeader).not.toContain("on disk");
     expect(liveStateSource).not.toContain("untracked-hint");
     expect(designSource).toContain("in the Not staged panel header");
@@ -208,12 +208,20 @@ describe("Profile resources pane chrome", () => {
 
   it("locks install-gap plus vs warning marks", () => {
     expect(liveStateSource).toContain("installGapRowPresentation");
+    expect(liveStateSource).toContain("groupInstallGaps");
+    expect(liveStateSource).toContain("stackChangesQuietLabel");
+    expect(liveStateSource).toContain("targetPreviewActiveMeta");
+    expect(liveStateSource).toContain("profileHasComposition");
+    expect(liveStateSource).not.toContain("already active");
+    expect(liveStateSource).not.toContain('"No changes"');
     expect(designSource).toContain(
       "MCP that is in the profile and not currently installed uses **+**",
     );
     expect(designSource).toContain(
-      "Missing-plugin rows use icon-only **Sync**",
+      "Missing-plugin rows use icon-only **Install**",
     );
-    expect(designSource).toContain("tooltip and accessible name **Sync {plugin}**");
+    expect(designSource).toContain("tooltip and accessible name **Install {plugin}**");
+    expect(designSource).toContain("never **already active**");
+    expect(designSource).toContain("never show bare **No changes**");
   });
 });
