@@ -959,29 +959,22 @@ export function stackChangesQuietLabel(input: {
   return parts.join(" · ");
 }
 
-export function targetPreviewActiveMeta(input: {
-  relativeToActive: boolean;
+export function targetPreviewActiveMeta(relativeToActive: boolean): string | null {
+  return relativeToActive ? "active" : null;
+}
+
+/** Counts for Target preview drift a11y (icon/aria/tooltip). Never a status word in the · chain. */
+export function targetPreviewDriftA11y(input: {
   notStagedCount: number;
   installGapCount: number;
-  hasStackChanges: boolean;
-  hasFileChanges: boolean;
+  fileChangeCount: number;
 }): string | null {
-  if (!input.relativeToActive) {
+  if (
+    input.notStagedCount <= 0
+    && input.installGapCount <= 0
+    && input.fileChangeCount <= 0
+  ) {
     return null;
   }
-  const drifting =
-    input.hasStackChanges
-    || input.hasFileChanges
-    || input.notStagedCount > 0;
-  const gaps = input.installGapCount > 0;
-  if (drifting && gaps) {
-    return "active · drifting · gaps";
-  }
-  if (gaps) {
-    return "active · gaps";
-  }
-  if (drifting) {
-    return "active · drifting";
-  }
-  return "active";
+  return stackChangesQuietLabel(input);
 }

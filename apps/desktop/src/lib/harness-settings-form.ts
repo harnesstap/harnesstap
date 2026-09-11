@@ -18,7 +18,7 @@ export function genericHarnessTooltip(supports: string[]): string {
   if (supports.length === 0) {
     return GENERIC_HARNESS_BASE;
   }
-  return `${GENERIC_HARNESS_BASE} — Supports: ${supports.join(", ")}`;
+  return `${GENERIC_HARNESS_BASE}. Supports ${supports.join(", ")}.`;
 }
 
 export interface HarnessSettingsDraft {

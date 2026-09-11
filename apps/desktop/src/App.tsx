@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Download, FilterX, FolderGit2, Globe, HardDriveDownload, Library, ListPlus, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, Upload, User, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Download, FilterX, FolderGit2, Globe, HardDriveDownload, Library, ListPlus, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, TextQuote, Upload, User, X } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import {
   pushScreenHistory,
 } from "./lib/screen-history";
 import { ButtonSpinner } from "./components/ButtonSpinner";
+import { FieldIdentityIcon } from "./components/FieldIdentityIcon";
 import { IconActionButton } from "./components/IconActionButton";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { ConfirmDialog } from "./components/ConfirmDialog";
@@ -194,7 +195,6 @@ export function App() {
   const [status, setStatus] = useState<GlobalProfileStatus | null>(null);
   const [hasFullHarnessSnapshot, setHasFullHarnessSnapshot] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [applyPreview, setApplyPreview] = useState<ProfileApplyPreview | null>(null);
   const [applyPreviewError, setApplyPreviewError] = useState<string | null>(null);
   const [applyPreviewLoading, setApplyPreviewLoading] = useState(false);
@@ -396,7 +396,6 @@ export function App() {
           setHasFullHarnessSnapshot(true);
         }
         setStatusError(null);
-        setLastUpdated(new Date().toLocaleTimeString());
         return true;
       } catch (error) {
         setStatusError(
@@ -870,7 +869,7 @@ export function App() {
     baseUrl,
     projectPath,
     selectedProfile,
-    // Intentionally omit status.as_of — fast polls refresh it every few seconds
+    // Intentionally omit status.as_of. Fast polls refresh it every few seconds
     // and were re-triggering this effect (panel loading flash / twitch).
     // Post-switch refresh is covered by `switching` flipping back to false.
     switching,
@@ -1235,11 +1234,6 @@ export function App() {
     view,
   ]);
 
-  const homeProfilePending =
-    view === "home"
-    && Boolean(activeProfile)
-    && status?.drift_summary.global.status === "pending";
-
   useEffect(() => {
     const next = resolveRailProfileSelection({
       visibleNames: visibleProfiles.map((profile) => profile.name),
@@ -1318,7 +1312,7 @@ export function App() {
       return "Select a profile to apply";
     }
     if (showReapply) {
-      return `Drift on ${formatView(view)} · re-apply to restore saved state`;
+      return "Re-apply to restore saved state";
     }
     if (selectedProfile === activeProfile && status?.applied) {
       return `Already applied to ${formatView(view)}`;
@@ -1334,19 +1328,15 @@ export function App() {
   ]);
   const applyButtonTitle = useMemo(() => {
     if (showReapply && activeProfile) {
-      return [
-        `Re-apply ${activeProfile} to ${formatView(view)}.`,
-        "Overwrites modified harness files, recreates missing ones, and removes extras so disk matches the saved profile.",
-        "Hand edits in those paths cannot be restored.",
-      ].join(" ");
+      return `Re-apply ${activeProfile}`;
     }
     if (!selectedProfile) {
-      return "Select a profile to apply";
+      return "Select a profile";
     }
     if (selectedProfile === activeProfile && status?.applied) {
-      return `Already applied to ${formatView(view)}. Choose another profile, or wait until drift appears to re-apply.`;
+      return `Already applied to ${formatView(view)}`;
     }
-    return `Apply ${selectedProfile} to ${formatView(view)}. Writes the profile's saved harness files onto disk for this scope.`;
+    return `Apply ${selectedProfile}`;
   }, [
     activeProfile,
     selectedProfile,
@@ -1991,14 +1981,6 @@ export function App() {
     setCreateProfileOpen(true);
   };
 
-  const onPendingHomeApply = () => {
-    if (!activeProfile) {
-      return;
-    }
-    selectProfile(activeProfile);
-    void runSwitch(false, activeProfile);
-  };
-
   const beginRenameSelectedProfile = () => {
     if (!selectedProfile || !connected || switching || renameBusy) {
       return;
@@ -2047,7 +2029,7 @@ export function App() {
         setRenameError("A profile with this name already exists.");
       } else if (error instanceof AgentApiError && error.code === "not_found") {
         setRenameError(
-          "Rename is unavailable — restart the desktop app to reload the sidecar.",
+          "Rename is unavailable. Restart Desktop to reload the sidecar.",
         );
       } else {
         setRenameError(
@@ -2215,7 +2197,7 @@ export function App() {
                 <IconActionButton
                   data-testid="project-install"
                   label="Install"
-                  title="Install this project's apm.yml (ht install). Not a profile switch."
+                  title="Install project config"
                   busy={installBusy}
                   disabled={
                     !connected
@@ -2282,13 +2264,7 @@ export function App() {
                   ? "Refreshing"
                   : "Refresh live status"
             }
-            title={
-              refreshPhase === "loading"
-                ? "Refreshing live status and rescanning tracked directories…"
-                : lastUpdated
-                  ? `Refresh live status. Last updated: ${lastUpdated}`
-                  : "Refresh live status"
-            }
+            title="Refresh live status"
             icon={
               refreshPhase === "success" ? (
                 <Check size={HEADER_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
@@ -2971,32 +2947,22 @@ export function App() {
                   )}
                 </div>
                 {selectedProfile ? (
-                  <div
-                    className="muted status-subline status-description"
-                    title={selectedProfileSummary?.description ?? undefined}
-                  >
-                    {selectedProfileSummary?.description?.trim() || "\u00A0"}
+                  <div className="muted status-subline status-description">
+                    <FieldIdentityIcon
+                      label="Description"
+                      icon={<TextQuote size={14} strokeWidth={2} aria-hidden="true" />}
+                    />
+                    <span
+                      className="status-description-text"
+                      title={selectedProfileSummary?.description ?? undefined}
+                    >
+                      {selectedProfileSummary?.description?.trim() || "\u00A0"}
+                    </span>
                   </div>
                 ) : null}
                 {renameError ? (
                   <div className="muted status-subline status-rename-error">
                     {renameError}
-                  </div>
-                ) : null}
-                {homeProfilePending && selectedIsActive && activeProfile ? (
-                  <div className="muted status-subline">
-                    <IconActionButton
-                      className="status-cta"
-                      label={
-                        switching
-                          ? "Applying…"
-                          : `Apply ${activeProfile} to global`
-                      }
-                      busy={switching}
-                      disabled={!connected || bootstrapBusy}
-                      onClick={onPendingHomeApply}
-                      icon={<Check size={14} strokeWidth={2} aria-hidden="true" />}
-                    />
                   </div>
                 ) : null}
               </div>
@@ -3033,7 +2999,7 @@ export function App() {
                         }
                       >
                         {SWITCH_STEP_LABELS[step]}
-                        {state === "failed" ? " — failed" : ""}
+                        {state === "failed" ? " (failed)" : ""}
                       </li>
                     );
                   })}

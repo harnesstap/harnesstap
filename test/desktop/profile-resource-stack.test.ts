@@ -228,5 +228,10 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain("installGapStatusLabel");
     expect(liveStateSource).toContain("not-staged-status-glyph");
     expect(designSource).toContain("status glyph, not Sparkles");
+    expect(liveStateSource).toContain("targetPreviewDriftA11y");
+    expect(liveStateSource).toContain("target-preview-drift-glyph");
+    expect(liveStateSource).not.toContain("active · drifting");
+    expect(designSource).toContain("**{name} · active**");
+    expect(designSource).toContain("never **· drifting**");
   });
 });

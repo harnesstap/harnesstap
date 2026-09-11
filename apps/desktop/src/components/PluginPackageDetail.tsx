@@ -9,7 +9,6 @@ import {
   type Ref,
 } from "react";
 import {
-  AlignLeft,
   ArchiveRestore,
   CloudDownload,
   GitFork,
@@ -19,6 +18,7 @@ import {
   Scissors,
   Stethoscope,
   Tag,
+  TextQuote,
   Trash2,
   Variable,
 } from "lucide-react";
@@ -109,22 +109,15 @@ type PluginEditingField =
   | "tags"
   | "default_environment";
 
-const APPLY_TOOLTIP =
-  "Write this plugin’s graph into the selected project (or global when that screen says so).";
-const UPDATE_TOOLTIP =
-  "Refresh this whole plugin package in the library from the marketplace, catalog, or git source it came from. This does not refresh a single skill or file inside the plugin — use Sync on that item. It does not install the plugin into a project.";
-const DELETE_TOOLTIP =
-  "Remove this from the library. Plugins that referenced it are not edited. On-disk harness files are not deleted.";
-const CUT_TOOLTIP =
-  "Freeze this working head as an immutable version and start a new dirty head.";
-const FORK_TOOLTIP =
-  "Copy this catalog or upstream plugin into a new local authored plugin you can edit.";
-const DOCTOR_TOOLTIP =
-  "Run health checks on this plugin’s composition and pins.";
-const HISTORY_TOOLTIP =
-  "Browse frozen versions. Restore copies one onto the working head and does not apply.";
+const APPLY_TOOLTIP = "Apply plugin graph";
+const UPDATE_TOOLTIP = "Update from origin";
+const DELETE_TOOLTIP = "Remove from library";
+const CUT_TOOLTIP = "Cut a new version";
+const FORK_TOOLTIP = "Fork to edit locally";
+const DOCTOR_TOOLTIP = "Run Doctor";
+const HISTORY_TOOLTIP = "Browse versions";
 const FROZEN_BANNER =
-  "Frozen version — read-only. Restore copies this snapshot onto the working head.";
+  "Frozen version (read-only). Restore copies it onto the working head.";
 const NONE_ENV = "";
 
 function originArticle(origin: PluginOrigin): string {
@@ -1331,7 +1324,7 @@ export function PluginPackageDetail({
         </div>
       ) : null}
       <LibraryFieldRow
-        icon={<AlignLeft size={16} aria-hidden />}
+        icon={<TextQuote size={16} aria-hidden />}
         fieldName="Description"
         readOnly={fieldsReadOnly}
         display={record.plugin.description}

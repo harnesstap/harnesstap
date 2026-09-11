@@ -1671,41 +1671,30 @@ button:focus-visible,
 }
 
 .status-description {
-  /* Override .status-subline flex so ellipsis + reserved height stay stable. */
-  display: block;
+  /* Override .status-subline wrap so ellipsis + reserved height stay stable. */
+  flex-wrap: nowrap;
   max-width: 40rem;
   line-height: 1.35;
   min-height: calc(1.35em);
+}
+
+.status-description-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.status-cta {
-  appearance: none;
+.field-identity-icon {
   display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  font-size: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.status-cta:disabled {
   color: var(--muted);
-  text-decoration: none;
-  cursor: not-allowed;
+  flex-shrink: 0;
+  line-height: 0;
+  cursor: help;
 }
 
-.status-cta.is-busy:disabled {
-  cursor: wait;
-  opacity: 1;
+.field-identity-icon svg {
+  display: block;
 }
 
 .muted {
@@ -1893,6 +1882,16 @@ button:focus-visible,
   font-size: 0.8rem;
   overflow-wrap: anywhere;
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.target-preview-drift-glyph {
+  display: inline-flex;
+  color: var(--muted);
+  line-height: 0;
+  cursor: help;
 }
 
 .contents-header-toolbar {

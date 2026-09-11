@@ -281,8 +281,8 @@ export function StashBrowseDrawer({
             type="button"
             onClick={() => void onApplyKeep()}
             disabled={mutateDisabled}
-            title="Restore files from the most recent stash and keep the stash entry"
-            aria-label="Restore files from the most recent stash and keep the stash entry"
+            title="Restore files and keep the stash"
+            aria-label="Restore files and keep the stash"
             aria-busy={stashAction === "apply"}
           >
             {stashAction === "apply" ? <ButtonSpinner size={16} /> : <ArchiveRestore size={16} aria-hidden />}
@@ -293,8 +293,8 @@ export function StashBrowseDrawer({
             type="button"
             onClick={() => void onRestoreDrop()}
             disabled={mutateDisabled}
-            title="Restore files from the most recent stash and remove the stash entry"
-            aria-label="Restore files from the most recent stash and remove the stash entry"
+            title="Restore files and drop the stash"
+            aria-label="Restore files and drop the stash"
             aria-busy={stashAction === "restore"}
           >
             {stashAction === "restore" ? <ButtonSpinner size={16} /> : <ArchiveRestore size={16} aria-hidden />}

@@ -158,7 +158,7 @@ export function ResolveOrderSettings({
         closer to the one you applied. Older applies used last-in-stack instead.
         This compares recorded project apply snapshots to current resolution
         and can write resource overrides so those older winners stay. It only
-        updates plugin override records — harness files are unchanged until
+        updates plugin override records. Harness files stay unchanged until
         you apply again.
       </p>
       {error ? (

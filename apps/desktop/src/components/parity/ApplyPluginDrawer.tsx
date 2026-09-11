@@ -267,22 +267,22 @@ export function ApplyPluginDrawer({
               <p className="muted">
                 Preview: {profilePreview.files.expected_count} expected files,{" "}
                 {profilePreview.files.changes.length} changes
-                {profilePreview.warning ? ` — ${profilePreview.warning}` : ""}.
+                {profilePreview.warning ? `. ${profilePreview.warning}` : ""}.
               </p>
             ) : null}
             {dryRunPreview ? (
               <p className="muted">
                 Preview: {(dryRunPreview.plugins ?? [pluginName]).join(", ")}
                 {dryRunPreview.platforms
-                  ? ` — ${dryRunPreview.platforms
+                  ? `. ${dryRunPreview.platforms
                       .map((row) => `${row.platform} (${row.files?.length ?? 0})`)
                       .join(", ")}`
                   : ""}
                 {dryRunPreview.harnesses?.length
-                  ? ` — ${dryRunPreview.harnesses.join(", ")}`
+                  ? `. ${dryRunPreview.harnesses.join(", ")}`
                   : ""}
                 {dryRunPreview.files?.length
-                  ? ` — ${dryRunPreview.files.length} files`
+                  ? `. ${dryRunPreview.files.length} files`
                   : ""}
               </p>
             ) : null}

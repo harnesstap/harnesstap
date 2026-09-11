@@ -53,7 +53,7 @@ export function resourceCanRemoveFromActiveProfile(
 export const RESOURCE_DELETE_LIBRARY_LABEL = "Delete from library";
 export const RESOURCE_DELETE_DISK_LABEL = "Delete from library + disk";
 export const DISK_DELETE_CONFIRM_CHECKBOX_LABEL =
-  "Disk copy differs from library — delete anyway?";
+  "Disk copy differs from library. Delete anyway?";
 
 function planConfirmations(plan: ResourceDeletePlan): string[] {
   return plan.confirmations ?? [];

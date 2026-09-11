@@ -181,7 +181,7 @@ describe("resource delete plan helpers", () => {
       "Confirm to delete the on-disk copy anyway",
     );
     expect(confirmableDeleteLocations(plan)).toHaveLength(1);
-    expect(DISK_DELETE_CONFIRM_CHECKBOX_LABEL).toContain("delete anyway");
+    expect(DISK_DELETE_CONFIRM_CHECKBOX_LABEL).toContain("Delete anyway");
   });
 
   test("disables disk deletion when the plan is protected", () => {
@@ -266,7 +266,7 @@ describe("resource delete confirm chrome", () => {
     expect(designSource).toContain("Remove from active profile");
     expect(designSource).toContain("Delete from library + disk");
     expect(designSource).toContain("Protected");
-    expect(designSource).toContain("delete anyway");
+    expect(designSource).toContain("Delete anyway");
   });
 });
 
