@@ -65,6 +65,10 @@ import {
   LIST_PAGE_SIZE,
   nextVisibleCount,
 } from "../lib/resource-search";
+import {
+  countResourceTypeTabs,
+  resolveResourceTypeTab,
+} from "../lib/resource-type-tabs";
 import type {
   DriftFileChange,
   HarnessLiveStatus,
@@ -76,6 +80,7 @@ import type {
   ViewScope,
 } from "../lib/types";
 import { RelatedHarnessIcons } from "./HarnessIcons";
+import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import {
   ResourceDetailPane,
   type ResourceDetailTarget,
@@ -474,6 +479,7 @@ function UntrackedResourceRow({
       </ResourceRowLeading>
       {canOpen && onOpenResource ? (
         <ResourceRowIdentity
+          type={resource.type}
           label={resource.name}
           onOpen={() =>
             onOpenResource({
@@ -488,7 +494,7 @@ function UntrackedResourceRow({
           </ResourceRowDescription>
         </ResourceRowIdentity>
       ) : (
-        <ResourceRowIdentity label={resource.name}>
+        <ResourceRowIdentity type={resource.type} label={resource.name}>
           <ResourceRowDescription>
             {typeLabel} · {statusLabel}
           </ResourceRowDescription>
@@ -1316,6 +1322,7 @@ export function LiveStatePanel({
     LIST_PAGE_SIZE,
   );
   const [notStagedSearch, setNotStagedSearch] = useState("");
+  const [notStagedType, setNotStagedType] = useState<string | null>(null);
   const [notStagedVisible, setNotStagedVisible] = useState(LIST_PAGE_SIZE);
   const openResource = (target: ResourceDetailTarget) => {
     setDetailTarget(target);
@@ -1783,9 +1790,28 @@ export function LiveStatePanel({
                       notStagedSearch,
                     ),
                   );
-                  const visible = filtered.slice(0, notStagedVisible);
+                  const typeCounts = countResourceTypeTabs(
+                    filtered.map((resource) => resource.type),
+                  );
+                  const typeTab = resolveResourceTypeTab(
+                    notStagedType,
+                    typeCounts,
+                  );
+                  const typed =
+                    typeTab === null
+                      ? filtered
+                      : filtered.filter((resource) => resource.type === typeTab);
+                  const visible = typed.slice(0, notStagedVisible);
                   return (
                     <>
+                      <ResourceTypeTabs
+                        counts={typeCounts}
+                        value={typeTab}
+                        onChange={(next) => {
+                          setNotStagedType(next);
+                          setNotStagedVisible(LIST_PAGE_SIZE);
+                        }}
+                      />
                       {visible.map((resource) => {
                         const key = `${resource.type}:${resource.name}`;
                         return (
@@ -1821,13 +1847,13 @@ export function LiveStatePanel({
                       })}
                       <ListTruncationControls
                         visible={visible.length}
-                        total={filtered.length}
+                        total={typed.length}
                         onMore={() =>
                           setNotStagedVisible((current) =>
-                            nextVisibleCount(current, filtered.length),
+                            nextVisibleCount(current, typed.length),
                           )
                         }
-                        onShowAll={() => setNotStagedVisible(filtered.length)}
+                        onShowAll={() => setNotStagedVisible(typed.length)}
                       />
                     </>
                   );

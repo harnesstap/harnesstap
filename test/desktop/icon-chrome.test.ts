@@ -131,6 +131,7 @@ describe("desktop icon chrome", () => {
     expect(notStagedRow).toContain("CircleDashed");
     expect(notStagedRow).toContain("CircleAlert");
     expect(notStagedRow).toContain("ChromeTooltip");
+    expect(notStagedRow).toContain("type={resource.type}");
     expect(notStagedRow).not.toContain("Sparkles");
     expect(notStagedRow).not.toContain("RelatedHarnessIcons");
     expect(notStagedRow).not.toContain("ResourceRowMeta");
@@ -198,14 +199,18 @@ describe("desktop icon chrome", () => {
     );
 
     const libraryList = resourcesSource.slice(
-      resourcesSource.indexOf("resources-type-heading"),
+      resourcesSource.indexOf("ResourceTypeTabs"),
       resourcesSource.indexOf("function renderMainPane"),
     );
-    expect(libraryList).toContain("<TypeIcon type={group.type} />");
+    expect(libraryList).toContain("ResourceTypeTabs");
     expect(libraryList).toContain("type={filterType}");
+    expect(libraryList).not.toContain("resources-type-heading");
     expect(libraryList).not.toContain("Sparkles");
     expect(libraryList).not.toContain("ResourceRowMeta");
     expect(libraryList).not.toContain("RelatedHarnessIcons");
+    expect(read("components/ResourceTypeTabs.tsx")).toContain("TypeIcon");
+    expect(read("components/ResourceTypeTabs.tsx")).not.toContain("Sparkles");
+    expect(liveStateSource).toContain("ResourceTypeTabs");
 
     const pluginGroup = liveStateSource.slice(
       liveStateSource.indexOf("function EnabledPluginGroup"),

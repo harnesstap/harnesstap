@@ -9,6 +9,17 @@ const sidebarSource = readFileSync(
   ),
   "utf8",
 );
+const tabsSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/ResourceTypeTabs.tsx",
+  ),
+  "utf8",
+);
+const panelSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/ResourcesPanel.tsx"),
+  "utf8",
+);
 const stylesSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/styles.css"),
   "utf8",
@@ -28,27 +39,25 @@ function cssBlock(source: string, selector: string): string {
 }
 
 describe("library origin filter chrome", () => {
-  test("labels the plugin ref type badge explicitly", () => {
-    expect(sidebarSource).toContain("libraryFilterTypeLabel(type)");
-    expect(sidebarSource).toContain("libraryFilterType(resource)");
+  test("keeps name search without sidebar Type chips", () => {
     expect(sidebarSource).toContain('placeholder="Filter by name"');
+    expect(sidebarSource).not.toContain("resource-filter-type-badge");
+    expect(sidebarSource).not.toContain("libraryFilterTypeLabel");
+    expect(panelSource).toContain("ResourceTypeTabs");
+    expect(panelSource).not.toContain("resources-type-heading");
   });
 
-  test("omits zero-count type chips unless that type is selected", () => {
-    expect(sidebarSource).toContain("if (count === 0 && !on)");
-    expect(sidebarSource).toContain("return null;");
-    expect(sidebarSource).not.toContain("empty:not(.on)");
-  });
-
-  test("styles type chips as compact outline pills", () => {
-    const chips = cssBlock(stylesSource, ".resource-filter-type-badge");
-    expect(chips).toContain("background: transparent");
-    expect(chips).toContain("font-size: 10px");
-    expect(chips).toContain("padding: 0.05rem 0.32rem");
-    expect(cssBlock(stylesSource, ".resource-filter-type-badge.on")).toContain(
-      "color-mix(in srgb, var(--accent) 8%, transparent)",
+  test("styles ResourceTypeTabs as filled selected pills", () => {
+    const tab = cssBlock(stylesSource, ".resource-type-tab");
+    expect(tab).toContain("min-height: 32px");
+    expect(tab).toContain("border-radius: 999px");
+    expect(cssBlock(stylesSource, '.resource-type-tab[data-state="on"]')).toContain(
+      "background: var(--accent)",
     );
-    expect(designSource).toContain("compact outline pills");
+    expect(tabsSource).toContain("visibleResourceTypeTabs");
+    expect(tabsSource).toContain("ChromeTooltip");
+    expect(designSource).toContain("ResourceTypeTabs");
+    expect(designSource).toContain("No sidebar Type chips");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

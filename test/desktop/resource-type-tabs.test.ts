@@ -1,0 +1,72 @@
+import { describe, expect, it } from "bun:test";
+import {
+  ALL_RESOURCE_TYPE_TAB,
+  countResourceTypeTabs,
+  resolveResourceTypeTab,
+  resourceTypeTabLabel,
+  visibleResourceTypeTabs,
+} from "../../apps/desktop/src/lib/resource-type-tabs.ts";
+import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
+
+describe("resourceTypeTabLabel", () => {
+  it("uses short Desktop labels", () => {
+    expect(resourceTypeTabLabel("all")).toBe("All");
+    expect(resourceTypeTabLabel("plugin")).toBe("Plugins");
+    expect(resourceTypeTabLabel("mcp_server")).toBe("MCPs");
+    expect(resourceTypeTabLabel("skill")).toBe("Skills");
+    expect(resourceTypeTabLabel("agent")).toBe("Subagents");
+    expect(resourceTypeTabLabel("model_config")).toBe("Model config");
+    expect(resourceTypeTabLabel("plugin_ref")).toBe("Plugin refs");
+  });
+});
+
+describe("visibleResourceTypeTabs", () => {
+  it("hides empty types and All when only one type is present", () => {
+    const counts = countResourceTypeTabs(["skill", "skill"]);
+    expect(visibleResourceTypeTabs(counts)).toEqual(["skill"]);
+  });
+
+  it("shows All only when two or more types are present", () => {
+    const counts = countResourceTypeTabs(["skill", "plugin", "skill"]);
+    expect(visibleResourceTypeTabs(counts)).toEqual([
+      ALL_RESOURCE_TYPE_TAB,
+      "plugin",
+      "skill",
+    ]);
+  });
+
+  it("follows designer order and appends unknown types last", () => {
+    const counts = countResourceTypeTabs([
+      "instruction",
+      "custom_kind",
+      "plugin",
+      "mcp_server",
+    ]);
+    expect(visibleResourceTypeTabs(counts)).toEqual([
+      ALL_RESOURCE_TYPE_TAB,
+      "plugin",
+      "mcp_server",
+      "instruction",
+      "custom_kind",
+    ]);
+  });
+});
+
+describe("resolveResourceTypeTab", () => {
+  it("falls back to All when the selected type is empty", () => {
+    const counts = countResourceTypeTabs(["skill", "plugin"]);
+    expect(resolveResourceTypeTab("rule", counts)).toBeNull();
+    expect(resolveResourceTypeTab("skill", counts)).toBe("skill");
+    expect(resolveResourceTypeTab(null, counts)).toBeNull();
+  });
+});
+
+describe("typed row glyphs", () => {
+  it("keeps Sparkles as the skill glyph only", () => {
+    expect(resourceTypeGlyph("skill")).toBe("sparkles");
+    expect(resourceTypeGlyph("agent")).toBe("bot");
+    expect(resourceTypeGlyph("plugin")).toBe("layers");
+    expect(resourceTypeGlyph("instruction")).toBe("file-text");
+    expect(resourceTypeGlyph("mcp_server")).not.toBe("sparkles");
+  });
+});

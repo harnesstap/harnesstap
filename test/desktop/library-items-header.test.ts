@@ -148,7 +148,7 @@ describe("library items header design lock", () => {
     expect(designSource).toContain("Sync on a library row is `resource sync`");
     expect(designSource).toContain("plugin ref");
     expect(designSource).toContain(
-      "Type filters and list groups are separate",
+      "ResourceTypeTabs filters a flat list",
     );
     expect(designSource).toContain("labeled **Apply**");
     expect(designSource).toContain("labeled **Sync**");
