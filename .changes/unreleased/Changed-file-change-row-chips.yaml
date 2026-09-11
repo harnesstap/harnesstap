@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop File changes rows use a padded kind chip plus icon actions (gap, no smashed “Apply to write”); missing-file chips tooltip that Apply will write them.
+time: 2026-09-11T21:05:00Z
+custom:
+  Issue: ""

@@ -729,13 +729,6 @@ function FileChangeRowActions({
   const canAdd = row.canAdd && Boolean(onAddFileChange);
   const canDrop = row.canDrop && Boolean(onDropFileChange);
   if (!canOpen && !canDiff && !canAdd && !canDrop) {
-    if (row.action === "add") {
-      return (
-        <span className="muted" title="Apply writes this missing file">
-          Apply to write
-        </span>
-      );
-    }
     return null;
   }
 
@@ -816,6 +809,63 @@ const FILE_CHANGE_KIND_BADGES: Array<{
   { kind: "remove", label: "Removed", Icon: Minus },
   { kind: "update", label: "Modified", Icon: Pencil },
 ];
+const FILE_CHANGE_ADD_CHIP_TOOLTIP = "Will be written when you Apply";
+
+function fileChangeKindChipTooltip(kind: FileChangeKind): string | undefined {
+  switch (kind) {
+    case "add":
+      return FILE_CHANGE_ADD_CHIP_TOOLTIP;
+    case "remove":
+    case "update":
+      return undefined;
+    default: {
+      const neverKind: never = kind;
+      return neverKind;
+    }
+  }
+}
+
+function fileChangeKindBadge(kind: FileChangeKind): (typeof FILE_CHANGE_KIND_BADGES)[number] {
+  switch (kind) {
+    case "add":
+    case "remove":
+    case "update":
+      return FILE_CHANGE_KIND_BADGES.find((badge) => badge.kind === kind)!;
+    default: {
+      const neverKind: never = kind;
+      return neverKind;
+    }
+  }
+}
+
+function FileChangeKindChip({
+  kind,
+  count,
+}: {
+  kind: FileChangeKind;
+  count: number;
+}): ReactNode {
+  const meta = fileChangeKindBadge(kind);
+  const tooltip = fileChangeKindChipTooltip(kind);
+  const Icon = meta.Icon;
+  const chip = (
+    <span
+      className={`file-change-group-count ${fileChangeKindClass(kind)}`}
+      aria-label={tooltip ?? `${meta.label} ${count}`}
+    >
+      <Icon size={ICON_SIZE} strokeWidth={2} aria-hidden />
+      <span>{count}</span>
+    </span>
+  );
+  if (!tooltip) {
+    return chip;
+  }
+  return (
+    <ChromeTooltip content={tooltip} side="top">
+      {chip}
+    </ChromeTooltip>
+  );
+}
 
 function fileChangeKindClass(kind: FileChangeKind): FileChangeKind {
   switch (kind) {
@@ -877,18 +927,13 @@ function FileChangeGroupCounts({
 }): ReactNode {
   const counts = groupKindCounts(group);
   return (
-    <span className="file-change-group-counts" aria-hidden>
-      {FILE_CHANGE_KIND_BADGES.map(({ kind, Icon }) => {
+    <span className="file-change-group-counts">
+      {FILE_CHANGE_KIND_BADGES.map(({ kind }) => {
         const count = counts[kind];
         if (count === 0) {
           return null;
         }
-        return (
-          <span key={kind} className={`file-change-group-count ${kind}`}>
-            <Icon size={ICON_SIZE} strokeWidth={2} />
-            <span>{count}</span>
-          </span>
-        );
+        return <FileChangeKindChip key={kind} kind={kind} count={count} />;
       })}
     </span>
   );
@@ -1085,6 +1130,7 @@ function FileChangeRows({
                         harnessIds={change.platform ? [change.platform] : []}
                       />
                       <ResourceRowTrailing>
+                        <FileChangeKindChip kind={kind} count={1} />
                         <FileChangeRowActions
                           change={change}
                           row={row}

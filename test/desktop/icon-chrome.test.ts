@@ -304,6 +304,33 @@ describe("desktop icon chrome", () => {
     expect(stylesSource).toContain(".library-detail-actions .icon-action.has-label");
   });
 
+  test("file change rows use a kind chip plus icon actions, not Apply to write", () => {
+    const fileChanges = liveStateSource.slice(
+      liveStateSource.indexOf("function FileChangeRowActions"),
+      liveStateSource.indexOf("function FileChangeRows"),
+    );
+    expect(fileChanges).not.toContain("Apply to write");
+    expect(fileChanges).toContain("Will be written when you Apply");
+    expect(fileChanges).toContain("function FileChangeKindChip");
+    expect(liveStateSource).toContain("<FileChangeKindChip kind={kind} count={1} />");
+    expect(stylesSource).toContain(".resource-row-trailing {");
+    expect(stylesSource).toContain(".file-change-group-count {");
+    const countChip = stylesSource.slice(
+      stylesSource.indexOf(".file-change-group-count {"),
+      stylesSource.indexOf("}", stylesSource.indexOf(".file-change-group-count {")) + 1,
+    );
+    expect(countChip).toContain("padding: 0.15rem 0.5rem 0.15rem 0.4rem");
+    const trailing = stylesSource.slice(
+      stylesSource.indexOf(".resource-row-trailing {"),
+      stylesSource.indexOf("}", stylesSource.indexOf(".resource-row-trailing {")) + 1,
+    );
+    expect(trailing).toContain("display: inline-flex");
+    expect(trailing).toContain("gap: 0.4rem");
+    expect(designSource).toContain("Will be written when you Apply");
+    expect(designSource).toContain("[path] … [kind chip] [icon actions]");
+    expect(designSource).not.toContain("+1Apply to write");
+  });
+
   test("keeps default icon-action at the 32px size token", () => {
     expect(stylesSource).toContain("--icon-action-size: 32px");
     const needle = "\n.icon-action {";
