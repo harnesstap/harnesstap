@@ -6,6 +6,7 @@ import {
   projectDisplayName,
   type RecentProject,
 } from "../lib/recent-projects";
+import { compactHomePath } from "../lib/compact-path";
 import { IconActionButton } from "./IconActionButton";
 
 interface ProjectPickerProps {
@@ -127,7 +128,7 @@ export function ProjectPicker({
                       {projectDisplayName(row.path)}
                     </span>
                     <span className="project-picker-item-path mono muted">
-                      {row.path}
+                      {compactHomePath(row.path)}
                     </span>
                   </button>
                 );

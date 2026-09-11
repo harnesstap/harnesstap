@@ -9,7 +9,13 @@ function read(rel: string): string {
 }
 
 const appSource = read("App.tsx");
+const typeIconSource = read("components/TypeIcon.tsx");
+const typeModalSource = read("components/ResourceTypeModal.tsx");
 const liveStateSource = read("components/LiveStatePanel.tsx");
+const designSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+  "utf8",
+);
 const resourcesSource = read("components/ResourcesPanel.tsx");
 const sourcesWorkspaceSource = read("components/SourcesWorkspace.tsx");
 const recordActionsSource = read("components/SourcesRecordActions.tsx");
@@ -26,7 +32,9 @@ const stylesSource = readFileSync(
 
 describe("desktop icon chrome", () => {
   test("shares IconActionButton with title and optional visible label beside the icon", () => {
-    expect(iconButtonSource).toContain("title={title ?? label}");
+    expect(iconButtonSource).toContain("ChromeTooltip");
+    expect(iconButtonSource).toContain("title ?? label");
+    expect(iconButtonSource).not.toContain("title={title ?? label}");
     expect(iconButtonSource).toContain("icon-action");
     expect(iconButtonSource).toContain("showLabel");
     expect(iconButtonSource).toContain("iconAfterLabel");
@@ -55,18 +63,50 @@ describe("desktop icon chrome", () => {
     expect(stylesSource).not.toContain(".rail-controls .icon-action.primary");
   });
 
-  test("converts install-gap plugin Sync to icon-only chrome", () => {
+  test("converts install-gap plugin Install to icon-only chrome", () => {
     const installGaps = liveStateSource.slice(
       liveStateSource.indexOf("Install gaps (in profile)"),
       liveStateSource.indexOf("File changes"),
     );
     expect(installGaps).toContain("installGapSyncAction");
+    expect(installGaps).toContain("installGapGroups.map");
     expect(installGaps).toContain("IconActionButton");
     expect(installGaps).toContain("label={syncAction.label}");
-    expect(installGaps).toContain("RefreshCw");
+    expect(installGaps).toContain("PackagePlus");
+    expect(installGaps).toContain("installGapQuietVerb");
     expect(installGaps).not.toContain("showLabel");
     expect(installGaps).not.toContain('className="btn"');
-    expect(liveStateSource).toContain("label: `Sync ${pluginName}`");
+    expect(installGaps).not.toContain("Sparkles");
+    expect(installGaps).toContain("installGapStatusLabel");
+    expect(installGaps).toContain("CircleDashed");
+    expect(installGaps).toContain("CircleAlert");
+    expect(installGaps).toContain("ChromeTooltip");
+    expect(liveStateSource).toContain("label: `Install ${pluginName}`");
+  });
+
+  test("Sparkles is the skill type glyph only; agents use Bot; gaps use status glyphs", () => {
+    expect(typeIconSource).toMatch(/case "skill":[\s\S]*?Sparkles/);
+    expect(typeIconSource).toMatch(/case "agent":[\s\S]*?Bot/);
+    expect(typeIconSource).not.toMatch(/case "agent":[\s\S]*?Sparkles/);
+    expect(typeModalSource).toContain("skill: Sparkles");
+    expect(typeModalSource).toContain("agent: Bot");
+    const notStagedRow = liveStateSource.slice(
+      liveStateSource.indexOf("function UntrackedResourceRow"),
+      liveStateSource.indexOf("function EnabledResourceRow"),
+    );
+    expect(notStagedRow).toContain("CircleDashed");
+    expect(notStagedRow).toContain("CircleAlert");
+    expect(notStagedRow).toContain("ChromeTooltip");
+    expect(notStagedRow).not.toContain("Sparkles");
+    expect(notStagedRow).not.toContain("TypeIcon");
+    expect(designSource).toContain("Sparkles is the **skill** type glyph only");
+    expect(designSource).toContain("Agents use **Bot**");
+    expect(designSource).toContain("Pencil stays profile **Edit**");
+    expect(designSource).toContain("the Settings gear stays Settings");
+    expect(appSource).toContain("profile-item-edit");
+    expect(appSource).toContain("<Pencil size={RAIL_ICON_SIZE}");
+    expect(appSource).toContain('label="Settings"');
+    expect(appSource).toContain("<Settings size={HEADER_ICON_SIZE}");
   });
 
   test("converts More and Show all to distinct icons and labels Not staged Add all", () => {

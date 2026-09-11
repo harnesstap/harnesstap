@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Download, FilterX, FolderGit2, Globe, HardDriveDownload, Library, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, Upload, User, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Download, FilterX, FolderGit2, Globe, HardDriveDownload, Library, ListPlus, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, Upload, User, X } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -2131,7 +2131,7 @@ export function App() {
           <h1>HarnessTap</h1>
         </div>
         <div className="header-focus" role="group" aria-label="Workspace">
-          <div className="header-focus-controls">
+          <div className="header-focus-controls" role="navigation" aria-label="Destinations">
             <button
               type="button"
               className={`header-focus-btn labeled${workspaceFocus === "library" ? " on" : ""}`}
@@ -2161,20 +2161,23 @@ export function App() {
               }}
               switching={switching}
             />
+          </div>
+          <div className="header-scope">
+            <span className="header-scope-label" id="header-scope-label">
+              Scope
+            </span>
             <div
               className="header-focus-segment"
               role="group"
-              aria-label="Scope"
+              aria-labelledby="header-scope-label"
             >
               <button
                 type="button"
-                className={
-                  workspaceFocus === "scope" && view === "home" ? "on" : ""
-                }
+                className={view === "home" ? "on" : ""}
                 data-testid="view-home"
                 onClick={() => onHeaderDestinationClick("home")}
                 disabled={switching || bootstrapBusy}
-                aria-label="Global"
+                aria-label="Global scope"
                 title="Global"
               >
                 <Globe size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
@@ -2182,13 +2185,11 @@ export function App() {
               </button>
               <button
                 type="button"
-                className={
-                  workspaceFocus === "scope" && view === "project" ? "on" : ""
-                }
+                className={view === "project" ? "on" : ""}
                 data-testid="view-project"
                 onClick={() => onHeaderDestinationClick("project")}
                 disabled={switching || bootstrapBusy}
-                aria-label="Project"
+                aria-label="Project scope"
                 title={
                   !projectPath
                     ? "Choose a project directory"
@@ -2262,49 +2263,46 @@ export function App() {
             connected={connected}
             disabled={switching || migrateBusy}
           />
-          <button
+          <IconActionButton
             className={[
-              "icon-action",
               "refresh-action",
               refreshPhase === "loading" ? "is-loading" : "",
               refreshPhase === "success" ? "is-success" : "",
             ]
               .filter(Boolean)
               .join(" ")}
-            type="button"
             data-testid="header-refresh"
             onClick={() => void onRefreshClick()}
             disabled={!connected || switching || refreshPhase === "loading"}
-            aria-busy={refreshPhase === "loading"}
-            aria-label={
+            busy={refreshPhase === "loading"}
+            label={
               refreshPhase === "success"
                 ? "Refreshed"
                 : refreshPhase === "loading"
                   ? "Refreshing"
-                  : "Refresh live status and rescan tracked directories"
+                  : "Refresh live status"
             }
             title={
               refreshPhase === "loading"
                 ? "Refreshing live status and rescanning tracked directories…"
                 : lastUpdated
-                  ? `Refresh live status and rescan tracked directories. Last updated: ${lastUpdated}`
-                  : "Refresh live status and rescan tracked directories"
+                  ? `Refresh live status. Last updated: ${lastUpdated}`
+                  : "Refresh live status"
             }
-          >
-            {refreshPhase === "success" ? (
-              <Check size={HEADER_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
-            ) : (
-              <RefreshCw
-                className="refresh-spinner"
-                size={HEADER_ICON_SIZE}
-                strokeWidth={2}
-                aria-hidden="true"
-              />
-            )}
-          </button>
-          <button
-            className="icon-action"
-            type="button"
+            icon={
+              refreshPhase === "success" ? (
+                <Check size={HEADER_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
+              ) : (
+                <RefreshCw
+                  className="refresh-spinner"
+                  size={HEADER_ICON_SIZE}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              )
+            }
+          />
+          <IconActionButton
             data-testid="open-migrate-export"
             onClick={() => {
               setCreateProfileOpen(false);
@@ -2315,14 +2313,10 @@ export function App() {
               setMigrateExportOpen(true);
             }}
             disabled={!connected || switching || migrateBusy}
-            aria-label="Export"
-            title="Export"
-          >
-            <Upload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-          </button>
-          <button
-            className="icon-action"
-            type="button"
+            label="Export setup"
+            icon={<Upload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+          />
+          <IconActionButton
             data-testid="open-migrate-import"
             onClick={() => {
               setCreateProfileOpen(false);
@@ -2333,14 +2327,10 @@ export function App() {
               setMigrateImportOpen(true);
             }}
             disabled={!connected || switching || migrateBusy}
-            aria-label="Import"
-            title="Import"
-          >
-            <Download size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-          </button>
-          <button
-            className="icon-action"
-            type="button"
+            label="Import setup"
+            icon={<Download size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+          />
+          <IconActionButton
             data-testid="open-settings"
             onClick={() => {
               setCloudAccountOpen(false);
@@ -2349,26 +2339,22 @@ export function App() {
               setSettingsOpen(true);
             }}
             disabled={!connected}
-            aria-label="Settings"
-            title="Settings"
-          >
-            <Settings size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-          </button>
-          <button
+            label="Settings"
+            icon={<Settings size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+          />
+          <IconActionButton
             className={[
-              "icon-action",
               "account-action",
               cloudAuth?.authenticated ? "is-signed-in" : "",
             ]
               .filter(Boolean)
               .join(" ")}
-            type="button"
             onClick={() => {
               setSettingsOpen(false);
               setCloudAccountOpen(true);
             }}
             disabled={!connected}
-            aria-label={
+            label={
               cloudAuth?.authenticated
                 ? `Cloud account${cloudAuth.email ? `: ${cloudAuth.email}` : ""}`
                 : "Sign in to Cloud"
@@ -2378,9 +2364,8 @@ export function App() {
                 ? cloudAuth.email ?? cloudAuth.orgSlug ?? "Cloud account"
                 : "Sign in to Cloud"
             }
-          >
-            <User size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-          </button>
+            icon={<User size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+          />
         </div>
       </header>
 
@@ -2524,6 +2509,7 @@ export function App() {
                   onClick={() => openCreateProfile()}
                   disabled={!connected || switching || stashBusy}
                   label="Create profile"
+                  title="Create a new profile"
                   icon={<Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
                 />
               </div>
@@ -2698,18 +2684,11 @@ export function App() {
                     <Pencil size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
                   </button>
                   {showAddAll ? (
-                    <button
-                      type="button"
-                      className={[
-                        "icon-action",
-                        "profile-item-action",
-                        addingAllResources ? "is-busy" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      aria-label={`Commit ${activeProfileUntrackedCount} not-staged resources into profile`}
-                      title={`Commit all ${activeProfileUntrackedCount} not-staged resources into profile`}
-                      aria-busy={addingAllResources}
+                    <IconActionButton
+                      className="profile-item-action"
+                      aria-label={`Add all ${activeProfileUntrackedCount} not-staged items to ${profile.name}`}
+                      title={`Add all ${activeProfileUntrackedCount} not-staged items to this profile`}
+                      busy={addingAllResources}
                       draggable={false}
                       onDragStart={(event) => {
                         event.preventDefault();
@@ -2725,13 +2704,9 @@ export function App() {
                       onClick={() => {
                         void handleAddAllResources(activeProfile ?? undefined);
                       }}
-                    >
-                      {addingAllResources ? (
-                        <ButtonSpinner size={RAIL_ICON_SIZE} />
-                      ) : (
-                        <Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                      )}
-                    </button>
+                      label={`Add all ${activeProfileUntrackedCount} not-staged items to ${profile.name}`}
+                      icon={<ListPlus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                    />
                   ) : null}
                 </div>
               );
@@ -2960,19 +2935,16 @@ export function App() {
                           {tag}
                         </span>
                       ))}
-                      <button
-                        type="button"
-                        className="icon-action status-edit-action"
+                      <IconActionButton
+                        className="status-edit-action"
                         onClick={() => openEditProfile(selectedProfile)}
                         disabled={!connected || switching}
-                        aria-label={`Edit ${selectedProfile}`}
+                        label={`Edit ${selectedProfile}`}
                         title="Edit profile"
-                      >
-                        <Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-action status-edit-action"
+                        icon={<Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                      />
+                      <IconActionButton
+                        className="status-edit-action"
                         onClick={() =>
                           openCutForProfile(
                             selectedProfile,
@@ -2985,19 +2957,20 @@ export function App() {
                           || switching
                           || !selectedProfileSummary?.version
                         }
-                        aria-label={`Cut version for ${selectedProfile}`}
+                        label={`Cut version for ${selectedProfile}`}
                         title={
                           selectedProfileSummary?.dirty
                             ? "Cut unpublished edits to a new version"
                             : "Cut a new version (fork current state)"
                         }
-                      >
-                        <Tag
-                          size={HEADER_ICON_SIZE}
-                          strokeWidth={2}
-                          aria-hidden="true"
-                        />
-                      </button>
+                        icon={
+                          <Tag
+                            size={HEADER_ICON_SIZE}
+                            strokeWidth={2}
+                            aria-hidden="true"
+                          />
+                        }
+                      />
                       <ProfileDeleteControls
                         profileName={selectedProfile}
                         baseUrl={baseUrl}
@@ -3124,6 +3097,7 @@ export function App() {
                 }
                 addingResourceKey={addingResourceKey}
                 addingAllResources={addingAllResources}
+                railPrimaryIsReapply={showReapply}
                 onCommitManagedChanges={
                   connected && token && !switching
                     ? handleCommitManagedChanges

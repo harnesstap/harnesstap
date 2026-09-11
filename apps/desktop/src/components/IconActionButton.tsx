@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { ChromeTooltip } from "./ChromeTooltip";
 
 export interface IconActionButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -29,7 +30,9 @@ export function IconActionButton({
   type = "button",
   ...props
 }: IconActionButtonProps) {
-  return (
+  const tooltip = title ?? label;
+  const isDisabled = Boolean(disabled || busy);
+  const button = (
     <button
       type={type}
       className={[
@@ -42,8 +45,7 @@ export function IconActionButton({
         .filter(Boolean)
         .join(" ")}
       aria-label={showLabel ? undefined : label}
-      title={title ?? label}
-      disabled={disabled || busy}
+      disabled={isDisabled}
       aria-busy={busy || undefined}
       {...props}
     >
@@ -55,5 +57,19 @@ export function IconActionButton({
         <span className="icon-action-text">{label}</span>
       ) : null}
     </button>
+  );
+
+  if (showLabel && !title) {
+    return button;
+  }
+
+  return (
+    <ChromeTooltip content={tooltip}>
+      {isDisabled ? (
+        <span className="icon-action-tooltip-host">{button}</span>
+      ) : (
+        button
+      )}
+    </ChromeTooltip>
   );
 }

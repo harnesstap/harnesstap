@@ -104,10 +104,11 @@ describe("desktop header chrome", () => {
     expect(parityIdx).toBeGreaterThan(sourcesIdx);
   });
 
-  test("DESIGN.md lists Discover in header destinations and the layout table", () => {
+  test("DESIGN.md lists inventories as destinations and Global/Project as Scope", () => {
     expect(designSource).toContain(
-      "Header destinations: **Library | Discover | Environments | Global | Project**",
+      "Header destinations (equal-weight primary nav): **Library | Discover | Environments**",
     );
+    expect(designSource).toContain("quieter **Scope** segmented switch");
     expect(designSource).toMatch(/\|\s*Discover\s*\|/);
   });
 
@@ -134,8 +135,13 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");
     expect(cssSource).toContain(".header-focus-btn.labeled");
-    expect(designSource).toContain("Header destinations: **Library | Discover | Environments | Global | Project**");
+    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Environments**");
     expect(designSource).toContain("Header destinations show icon plus name");
+    expect(appSource).toContain("header-scope");
+    expect(appSource).toContain('id="header-scope-label"');
+    expect(appSource).toContain("Export setup");
+    expect(appSource).toContain("Import setup");
+    expect(appSource).toContain("Refresh live status");
   });
 
   test("refreshes live status after package Apply and shows success in the header", () => {

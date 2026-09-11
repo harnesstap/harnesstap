@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   aggregateInstallGaps,
   installGapRowPresentation,
+  installGapStatusLabel,
   isTargetPreviewInstallGap,
   countFileChangeKindResources,
   diffProfileContents,
@@ -15,6 +16,11 @@ import {
   summarizeStackChanges,
   uniqueFileChanges,
   managedPathFromResourceSource,
+  compositionTypeCounts,
+  groupInstallGaps,
+  profileHasComposition,
+  stackChangesQuietLabel,
+  targetPreviewActiveMeta,
 } from "../../apps/desktop/src/lib/contents-diff.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
 
@@ -173,7 +179,7 @@ describe("contents-diff helpers", () => {
         plugin: 2,
         plugin_pin: 1,
       }).map((row) => `${row.count} ${row.label}`),
-    ).toEqual(["2 plugins", "5 skills", "10 MCP", "1 plugin"]);
+    ).toEqual(["2 plugins", "5 skills", "10 MCP", "1 plugin pin"]);
   });
 
   it("summarizes stack changes with add/remove/mixed tones", () => {
@@ -376,6 +382,10 @@ describe("contents-diff helpers", () => {
       tone: "update",
       detail: "different value",
     });
+    expect(installGapStatusLabel(addGap)).toBe("In this profile, not installed");
+    expect(installGapStatusLabel(mismatchGap)).toBe(
+      "Live install differs from this profile",
+    );
   });
 
   it("groups file changes by resource across harness paths", () => {
@@ -569,5 +579,123 @@ describe("managedPathFromResourceSource", () => {
     expect(
       managedPathFromResourceSource(".cursor/skills/dolibarr-api/SKILL.md"),
     ).toBe(".cursor/skills/dolibarr-api/SKILL.md");
+  });
+});
+
+describe("compositionTypeCounts", () => {
+  it("counts plugin packages plus loose material, not nested plugin contents", () => {
+    const stacked = contents({
+      plugins: [
+        {
+          id: "l1",
+          name: "work",
+          version: "1.0.0",
+          resources: [
+            { type: "skill", name: "ship" },
+            { type: "instruction", name: "readme" },
+          ],
+        },
+      ],
+      resources: [
+        { type: "skill", name: "ship" },
+        { type: "instruction", name: "readme" },
+        { type: "skill", name: "extra" },
+      ],
+      type_counts: { plugin: 1, skill: 2, instruction: 1 },
+      stack_resource_count: 3,
+    });
+    expect(compositionTypeCounts(stacked)).toEqual({
+      plugin: 1,
+      skill: 1,
+    });
+    expect(profileHasComposition(stacked)).toBe(true);
+    expect(profileHasComposition(contents({ plugins: [], resources: [], plugin_pins: [], mcp_servers: [], stack_resource_count: 0, type_counts: {} }))).toBe(false);
+  });
+});
+
+describe("target preview quiet labels", () => {
+  it("never returns bare No changes when not-staged or gaps are pending", () => {
+    expect(
+      stackChangesQuietLabel({
+        notStagedCount: 0,
+        installGapCount: 0,
+        fileChangeCount: 0,
+      }),
+    ).toBe("No stack changes");
+    expect(
+      stackChangesQuietLabel({
+        notStagedCount: 3,
+        installGapCount: 2,
+        fileChangeCount: 0,
+      }),
+    ).toBe("3 not staged · 2 install gaps");
+    expect(
+      stackChangesQuietLabel({
+        notStagedCount: 1,
+        installGapCount: 0,
+        fileChangeCount: 0,
+      }),
+    ).not.toContain("No changes");
+  });
+
+  it("labels an active profile as drifting or gaps", () => {
+    expect(
+      targetPreviewActiveMeta({
+        relativeToActive: true,
+        notStagedCount: 0,
+        installGapCount: 0,
+        hasStackChanges: false,
+        hasFileChanges: false,
+      }),
+    ).toBe("active");
+    expect(
+      targetPreviewActiveMeta({
+        relativeToActive: true,
+        notStagedCount: 2,
+        installGapCount: 1,
+        hasStackChanges: false,
+        hasFileChanges: false,
+      }),
+    ).toBe("active · drifting · gaps");
+    expect(
+      targetPreviewActiveMeta({
+        relativeToActive: false,
+        notStagedCount: 2,
+        installGapCount: 1,
+        hasStackChanges: true,
+        hasFileChanges: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("groups install gaps with plugins and value diffs first", () => {
+    const groups = groupInstallGaps([
+      {
+        key: "mcp:add:docs",
+        label: "mcp docs",
+        kind: "add",
+        iconType: "mcp_server",
+        harnesses: ["cursor"],
+      },
+      {
+        key: "plugin:missing:demo",
+        label: "plugin demo",
+        kind: "missing",
+        iconType: "plugin",
+        harnesses: ["cursor"],
+      },
+      {
+        key: "mcp:mismatch:search",
+        label: "mcp search",
+        kind: "mismatch",
+        iconType: "mcp_server",
+        harnesses: ["cursor"],
+      },
+    ]);
+    expect(groups.map((group) => group.kind)).toEqual([
+      "missing",
+      "mismatch",
+      "add",
+    ]);
   });
 });

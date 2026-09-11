@@ -96,7 +96,7 @@ describe("profile edit publish chrome", () => {
     expect(toolbar).toContain("primary");
     expect(toolbar).toContain("IconActionButton");
     expect(toolbar).toContain('label="Create profile"');
-    expect(designSource).toContain("then **create** (accent icon-only `+`)");
+    expect(designSource).toContain("then **create** (accent icon-only `+`, tooltip **Create a new profile**)");
   });
 
   test("opens a catalog-picker dialog with select-all, memory, and a disabled Publish when none are registered", () => {

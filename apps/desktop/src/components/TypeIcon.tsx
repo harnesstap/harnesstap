@@ -23,6 +23,7 @@ export function TypeIcon({ type }: { type: string }): ReactNode {
     case "plugin_ref":
       return <Package size={ICON_SIZE} aria-hidden />;
     case "skill":
+      // Sparkles is the skill type glyph only — not status, not gaps, not agents.
       return <Sparkles size={ICON_SIZE} aria-hidden />;
     case "mcp_server":
       return <Plug size={ICON_SIZE} aria-hidden />;

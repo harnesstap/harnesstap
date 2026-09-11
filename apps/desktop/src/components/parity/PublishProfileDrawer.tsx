@@ -25,6 +25,7 @@ import {
   useDialogDismiss,
 } from "../../lib/dialog-dismiss";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { IconActionButton } from "../IconActionButton";
 
 export interface PublishProfileDrawerProps {
   profileName?: string | null;
@@ -197,16 +198,13 @@ export function PublishProfileDrawer({
 
   if (!profileName) {
     return (
-      <button
-        type="button"
+      <IconActionButton
         className={triggerClassName}
         data-testid="publish-profile-trigger"
         disabled
-        aria-label="Publish"
-        title="Publish"
-      >
-        <Upload size={iconSize} strokeWidth={2} aria-hidden />
-      </button>
+        label="Publish"
+        icon={<Upload size={iconSize} strokeWidth={2} aria-hidden />}
+      />
     );
   }
 
@@ -272,17 +270,14 @@ export function PublishProfileDrawer({
 
   return (
     <>
-      <button
-        type="button"
+      <IconActionButton
         className={triggerClassName}
         data-testid="publish-profile-trigger"
         onClick={() => setOpen(true)}
         disabled={triggerDisabled}
-        aria-label="Publish"
-        title="Publish"
-      >
-        <Upload size={iconSize} strokeWidth={2} aria-hidden />
-      </button>
+        label="Publish"
+        icon={<Upload size={iconSize} strokeWidth={2} aria-hidden />}
+      />
       {open ? (
         <div
           className="dialog-backdrop"
