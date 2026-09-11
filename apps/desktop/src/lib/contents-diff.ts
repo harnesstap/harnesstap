@@ -845,6 +845,24 @@ export function installGapRowPresentation(row: InstallGapRow): InstallGapPresent
   }
 }
 
+/** Tooltip / accessible name for the install-gap status glyph (not Sparkles). */
+export function installGapStatusLabel(row: InstallGapRow): string {
+  switch (row.kind) {
+    case "add":
+      return "In this profile, not installed";
+    case "mismatch":
+      return "Live install differs from this profile";
+    case "missing":
+      return "In this profile, not installed";
+    case "outside_profile":
+      return "Installed, outside this profile";
+    default: {
+      const neverKind: never = row.kind;
+      return neverKind;
+    }
+  }
+}
+
 export type InstallGapGroup = {
   kind: InstallGapKind;
   title: string;

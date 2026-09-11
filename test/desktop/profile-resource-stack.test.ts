@@ -223,5 +223,8 @@ describe("Profile resources pane chrome", () => {
     expect(designSource).toContain("tooltip and accessible name **Install {plugin}**");
     expect(designSource).toContain("never **already active**");
     expect(designSource).toContain("never show bare **No changes**");
+    expect(liveStateSource).toContain("installGapStatusLabel");
+    expect(liveStateSource).toContain("not-staged-status-glyph");
+    expect(designSource).toContain("status glyph, not Sparkles");
   });
 });

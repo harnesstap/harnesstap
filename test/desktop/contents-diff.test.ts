@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   aggregateInstallGaps,
   installGapRowPresentation,
+  installGapStatusLabel,
   isTargetPreviewInstallGap,
   countFileChangeKindResources,
   diffProfileContents,
@@ -381,6 +382,10 @@ describe("contents-diff helpers", () => {
       tone: "update",
       detail: "different value",
     });
+    expect(installGapStatusLabel(addGap)).toBe("In this profile, not installed");
+    expect(installGapStatusLabel(mismatchGap)).toBe(
+      "Live install differs from this profile",
+    );
   });
 
   it("groups file changes by resource across harness paths", () => {

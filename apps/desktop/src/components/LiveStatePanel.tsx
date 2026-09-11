@@ -34,6 +34,7 @@ import {
   groupInstallGaps,
   installGapQuietVerb,
   installGapRowPresentation,
+  installGapStatusLabel,
   isTargetPreviewInstallGap,
   liveMcpNamesFromHarnesses,
   managedPathFromResourceSource,
@@ -2008,6 +2009,7 @@ export function LiveStatePanel({
                               const syncAction = installGapSyncAction(row);
                               const presentation = installGapRowPresentation(row);
                               const quietVerb = installGapQuietVerb(row);
+                              const statusLabel = installGapStatusLabel(row);
                               return (
                           <div
                             className={`diff-row ${presentation.tone}`}
@@ -2016,24 +2018,27 @@ export function LiveStatePanel({
                             <span className="diff-mark" aria-hidden>
                               {presentation.mark}
                             </span>
-                            <span
-                              className="not-staged-status-glyph"
-                              aria-hidden
-                            >
-                              {row.kind === "add" ? (
-                                <CircleDashed
-                                  size={ICON_SIZE}
-                                  strokeWidth={2}
-                                  aria-hidden
-                                />
-                              ) : (
-                                <CircleAlert
-                                  size={ICON_SIZE}
-                                  strokeWidth={2}
-                                  aria-hidden
-                                />
-                              )}
-                            </span>
+                            <ChromeTooltip content={statusLabel} side="top">
+                              <span
+                                className="not-staged-status-glyph"
+                                aria-label={statusLabel}
+                                role="img"
+                              >
+                                {row.kind === "add" ? (
+                                  <CircleDashed
+                                    size={ICON_SIZE}
+                                    strokeWidth={2}
+                                    aria-hidden
+                                  />
+                                ) : (
+                                  <CircleAlert
+                                    size={ICON_SIZE}
+                                    strokeWidth={2}
+                                    aria-hidden
+                                  />
+                                )}
+                              </span>
+                            </ChromeTooltip>
                             <span className="diff-body">
                               <span className="diff-label">{row.label}</span>
                               <span className="diff-detail muted">
