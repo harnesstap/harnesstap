@@ -185,7 +185,9 @@ describe("Profile resources pane chrome", () => {
   it("locks not-staged modifications and centered file diffs", () => {
     expect(liveStateSource).toContain("not_staged_kind");
     expect(liveStateSource).toContain("Replace profile copy of");
-    expect(liveStateSource).toContain("On disk, not in this profile");
+    expect(liveStateSource).toContain('const NOT_STAGED_SUBTITLE = "On disk, not in this profile"');
+    expect(liveStateSource).not.toContain("(or different)");
+    expect(designSource).toContain("On disk, not in this profile");
     expect(liveStateSource).toContain("not-staged-attention");
     expect(liveStateSource).toContain('label="Add"');
     expect(designSource).toContain("File apply diffs are the same centered");

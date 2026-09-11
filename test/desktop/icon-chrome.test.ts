@@ -149,6 +149,7 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain('label="Settings"');
     expect(appSource).toContain("<Settings size={HEADER_ICON_SIZE}");
     expect(appSource).toContain("profile-create-action");
+    expect(appSource).toContain("live-toolbar-remove");
     expect(appSource).not.toMatch(/profiles-rail-toolbar[\s\S]*?Trash2/);
   });
 
