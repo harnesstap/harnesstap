@@ -213,11 +213,7 @@ describe("Profile resources pane chrome", () => {
   it("locks install-gap plus vs warning marks", () => {
     expect(liveStateSource).toContain("installGapRowPresentation");
     expect(liveStateSource).toContain("groupInstallGaps");
-    expect(liveStateSource).toContain("stackChangesQuietLabel");
-    expect(liveStateSource).toContain("targetPreviewActiveMeta");
-    expect(liveStateSource).toContain("profileHasComposition");
     expect(liveStateSource).not.toContain("already active");
-    expect(liveStateSource).not.toContain('"No changes"');
     expect(designSource).toContain(
       "MCP that is in the profile and not currently installed uses **+**",
     );
@@ -225,15 +221,35 @@ describe("Profile resources pane chrome", () => {
       "Missing-plugin rows use icon-only **Install**",
     );
     expect(designSource).toContain("tooltip and accessible name **Install {plugin}**");
-    expect(designSource).toContain("never **already active**");
-    expect(designSource).toContain("never show bare **No changes**");
     expect(liveStateSource).toContain("installGapStatusLabel");
     expect(liveStateSource).toContain("not-staged-status-glyph");
     expect(designSource).toContain("status glyph, not Sparkles");
-    expect(liveStateSource).toContain("targetPreviewDriftA11y");
-    expect(liveStateSource).toContain("target-preview-drift-glyph");
     expect(liveStateSource).not.toContain("active · drifting");
-    expect(designSource).toContain("**{name} · active**");
-    expect(designSource).toContain("never **· drifting**");
+  });
+
+  it("uses a quiet empty Target preview without header profile name or empty panels", () => {
+    const previewBlock = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Target preview"'),
+      liveStateSource.indexOf("<ResourceDetailPane"),
+    );
+    const header = previewBlock.slice(
+      previewBlock.indexOf("<summary"),
+      previewBlock.indexOf("</summary>"),
+    );
+    expect(previewBlock).toContain("TargetPreviewQuietEmpty");
+    expect(previewBlock).toContain("targetPreviewQuietEmpty");
+    expect(previewBlock).toContain("no changes");
+    expect(previewBlock).toContain("target-preview-quiet-empty");
+    expect(header).toContain("Target preview");
+    expect(header).not.toContain("contents-header-meta");
+    expect(header).not.toContain("selectedProfile");
+    expect(previewBlock).not.toContain("No stack changes");
+    expect(previewBlock).not.toContain("No file changes vs live target");
+    expect(previewBlock).not.toContain("is-disabled");
+    expect(liveStateSource).not.toContain("target-preview-drift-glyph");
+    expect(designSource).toContain("chevron only");
+    expect(designSource).toContain("**no changes**");
+    expect(designSource).toContain("deactivated grey, not accent");
+    expect(designSource).toContain("Stack and file panels appear only when they have rows");
   });
 });

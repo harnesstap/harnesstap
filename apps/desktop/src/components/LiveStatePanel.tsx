@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
+  Check,
   ChevronsDown,
   CircleAlert,
   CircleDashed,
@@ -36,11 +37,7 @@ import {
   liveMcpNamesFromHarnesses,
   managedPathFromResourceSource,
   orderedTypeCounts,
-  profileHasComposition,
-  stackChangesQuietLabel,
   summarizeStackChanges,
-  targetPreviewActiveMeta,
-  targetPreviewDriftA11y,
   type ContentsDiffItem,
   type FileChangeKind,
   type FileChangeResourceGroup,
@@ -288,6 +285,20 @@ function ProfileStackEmptyState({
         onClick={onEditProfile}
         icon={<Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />}
       />
+    </div>
+  );
+}
+
+function TargetPreviewQuietEmpty() {
+  return (
+    <div className="target-preview-quiet-empty" role="status">
+      <Check
+        className="target-preview-quiet-empty-icon"
+        size={40}
+        strokeWidth={1.75}
+        aria-hidden
+      />
+      <p>no changes</p>
     </div>
   );
 }
@@ -1415,25 +1426,11 @@ export function LiveStatePanel({
     && (diff.added.length > 0 || diff.removed.length > 0);
   const hasFileChanges = (applyPreview?.files?.changes?.length ?? 0) > 0;
   const hasInstallGaps = installGaps.length > 0;
-  const fileChangeCount = applyPreview?.files?.changes?.length ?? 0;
-  const stackQuietLabel = stackChangesQuietLabel({
-    notStagedCount: notStagedResources.length,
-    installGapCount: installGaps.length,
-    fileChangeCount,
-  });
-  const activePreviewMeta = targetPreviewActiveMeta(relativeToActive);
-  const driftA11y = relativeToActive
-    ? targetPreviewDriftA11y({
-        notStagedCount: notStagedResources.length,
-        installGapCount: installGaps.length,
-        fileChangeCount,
-      })
-    : null;
-  const emptyProfileQuietState =
-    !profileHasComposition(targetContents)
-    && (applyPreview?.files?.expected_count ?? 0) === 0
-    && fileChangeCount === 0
-    && diff.added.length === 0;
+  const targetPreviewQuietEmpty = Boolean(applyPreview)
+    && Boolean(targetContents)
+    && !hasStackChanges
+    && !hasFileChanges
+    && !hasInstallGaps;
   const targetPreviewTone =
     previewMatchesSelection && applyPreview
       ? hasStackChanges || hasFileChanges || hasInstallGaps
@@ -1851,27 +1848,14 @@ export function LiveStatePanel({
           >
             <summary className="contents-header">
               <span>Target preview</span>
-              <span className="contents-header-meta muted">
-                {selectedProfile}
-                {activePreviewMeta ? ` · ${activePreviewMeta}` : ""}
-                {driftA11y ? (
-                  <ChromeTooltip content={driftA11y} side="top">
-                    <span
-                      className="target-preview-drift-glyph"
-                      role="img"
-                      aria-label={driftA11y}
-                    >
-                      <CircleAlert size={ICON_SIZE} strokeWidth={2} aria-hidden />
-                    </span>
-                  </ChromeTooltip>
-                ) : null}
-              </span>
             </summary>
             <div className="contents-body">
               {applyPreviewLoading && !applyPreview ? (
                 <p className="muted">
                   Comparing {selectedProfile} to live {formatView(view).toLowerCase()} state…
                 </p>
+              ) : applyPreview && targetPreviewQuietEmpty ? (
+                <TargetPreviewQuietEmpty />
               ) : applyPreview ? (
                 <div className="compare-grid">
                   {targetContents ? (
@@ -1895,12 +1879,7 @@ export function LiveStatePanel({
                     </p>
                   )}
 
-                  {emptyProfileQuietState ? (
-                    <p className="muted">
-                      This profile has no resources yet. Apply records it with
-                      no file writes.
-                    </p>
-                  ) : hasStackChanges ? (
+                  {hasStackChanges ? (
                     <details className="diff-section">
                       <summary className="compare-title">
                         <span className="compare-title-text">
@@ -1929,21 +1908,7 @@ export function LiveStatePanel({
                         />
                       ))}
                     </details>
-                  ) : (
-                    <div
-                      className="diff-section is-disabled"
-                      aria-disabled="true"
-                    >
-                      <div className="compare-title">
-                        <span className="compare-title-text">
-                          Stack changes
-                          <SectionInfo text={STACK_CHANGES_HELP} />
-                        </span>
-                        <span className="muted">{stackQuietLabel}</span>
-                      </div>
-                      <p className="muted section-one-liner">{STACK_CHANGES_SUBTITLE}</p>
-                    </div>
-                  )}
+                  ) : null}
 
                   {installGaps.length > 0 ? (
                     <details className="diff-section" open>
@@ -2043,15 +2008,14 @@ export function LiveStatePanel({
                     </details>
                   ) : null}
 
+                  {hasFileChanges ? (
                   <details className="diff-section">
                     <summary className="compare-title">
                       <span className="compare-title-text">
                         File changes
                         {(applyPreview.files?.expected_count ?? 0) > 0
                           ? ` · ${(applyPreview.files?.changes?.length ?? 0)} would change · ${applyPreview.files?.expected_count ?? 0} managed`
-                          : (applyPreview.files?.changes?.length ?? 0) > 0
-                            ? ` · ${applyPreview.files?.changes?.length ?? 0} would change`
-                            : ""}
+                          : ` · ${applyPreview.files?.changes?.length ?? 0} would change`}
                       </span>
                       {onCommitManagedChanges
                         && (applyPreview.files?.changes ?? []).some(
@@ -2084,6 +2048,7 @@ export function LiveStatePanel({
                       onOpenResource={openResource}
                     />
                   </details>
+                  ) : null}
                 </div>
               ) : (
                 <p className="muted">No preview available.</p>
