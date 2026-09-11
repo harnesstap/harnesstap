@@ -1,3 +1,5 @@
+import { resourceTypeGlyph, type TypeGlyph } from "./type-glyph";
+
 /** Canonical type-tab order for Library and other typed inventories. */
 export const RESOURCE_TYPE_TAB_ORDER = [
   "plugin",
@@ -17,6 +19,22 @@ export const RESOURCE_TYPE_TAB_ORDER = [
 export type ResourceTypeTabId = (typeof RESOURCE_TYPE_TAB_ORDER)[number];
 
 export const ALL_RESOURCE_TYPE_TAB = "all";
+
+/** Host pane width at or above this shows icon+label; narrower is icon-only. */
+export const RESOURCE_TYPE_TABS_WIDE_MIN_PX = 900;
+
+export type ResourceTypeTabGlyph = TypeGlyph | "layout-grid";
+
+/**
+ * Tab glyph ids. Sparkles is skill only; plugins use Layers, plugin refs
+ * Package, instructions FileText.
+ */
+export function resourceTypeTabGlyph(type: string): ResourceTypeTabGlyph {
+  if (type === ALL_RESOURCE_TYPE_TAB) {
+    return "layout-grid";
+  }
+  return resourceTypeGlyph(type);
+}
 
 const KNOWN_TAB_TYPES = new Set<string>(RESOURCE_TYPE_TAB_ORDER);
 

@@ -3,6 +3,9 @@ import {
   ALL_RESOURCE_TYPE_TAB,
   countResourceTypeTabs,
   resolveResourceTypeTab,
+  RESOURCE_TYPE_TAB_ORDER,
+  RESOURCE_TYPE_TABS_WIDE_MIN_PX,
+  resourceTypeTabGlyph,
   resourceTypeTabLabel,
   resourceTypeTabShowsCount,
   resourceTypeTabText,
@@ -12,6 +15,7 @@ import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
 
 describe("resourceTypeTabLabel", () => {
   it("uses short Desktop labels", () => {
+    expect(RESOURCE_TYPE_TABS_WIDE_MIN_PX).toBe(900);
     expect(resourceTypeTabLabel("all")).toBe("All");
     expect(resourceTypeTabLabel("plugin")).toBe("Plugins");
     expect(resourceTypeTabLabel("mcp_server")).toBe("MCPs");
@@ -81,11 +85,24 @@ describe("resolveResourceTypeTab", () => {
 });
 
 describe("typed row glyphs", () => {
-  it("keeps Sparkles as the skill glyph only", () => {
+  it("keeps Sparkles as the skill glyph only on tabs and rows", () => {
+    expect(resourceTypeTabGlyph(ALL_RESOURCE_TYPE_TAB)).toBe("layout-grid");
+    expect(resourceTypeTabGlyph("skill")).toBe("sparkles");
     expect(resourceTypeGlyph("skill")).toBe("sparkles");
+    expect(resourceTypeTabGlyph("plugin")).toBe("layers");
+    expect(resourceTypeTabGlyph("plugin_ref")).toBe("package");
+    expect(resourceTypeTabGlyph("plugin_pin")).toBe("package");
+    expect(resourceTypeTabGlyph("instruction")).toBe("file-text");
     expect(resourceTypeGlyph("agent")).toBe("bot");
-    expect(resourceTypeGlyph("plugin")).toBe("layers");
-    expect(resourceTypeGlyph("instruction")).toBe("file-text");
     expect(resourceTypeGlyph("mcp_server")).not.toBe("sparkles");
+
+    for (const type of RESOURCE_TYPE_TAB_ORDER) {
+      if (type === "skill") {
+        expect(resourceTypeTabGlyph(type)).toBe("sparkles");
+        continue;
+      }
+      expect(resourceTypeTabGlyph(type)).not.toBe("sparkles");
+      expect(resourceTypeGlyph(type)).not.toBe("sparkles");
+    }
   });
 });
