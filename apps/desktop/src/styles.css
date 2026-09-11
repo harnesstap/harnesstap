@@ -987,6 +987,92 @@ button:focus-visible,
   padding: 0.5rem 0.75rem 0.85rem;
 }
 
+.resource-type-tabs {
+  container-type: inline-size;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 0.5rem;
+  background: var(--bg);
+}
+
+.resource-type-tabs-scroller {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0.15rem 0.85rem;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 0.85rem,
+    #000 calc(100% - 0.85rem),
+    transparent
+  );
+}
+
+.resource-type-tabs-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.resource-type-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.resource-type-tab:hover {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--fg) 28%, var(--border));
+}
+
+.resource-type-tab[data-state="on"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--primary-foreground);
+}
+
+.resource-type-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.resource-type-tab-label {
+  white-space: nowrap;
+}
+
+.resource-type-tab-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.resource-type-tab-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selection-list .resource-type-tabs,
+.contents-block .resource-type-tabs {
+  position: static;
+  background: transparent;
+}
+
 .resources-type-group {
   margin-bottom: 0.85rem;
 }
@@ -1258,35 +1344,6 @@ button:focus-visible,
 
 .resource-filter-option input {
   margin-top: 0.15rem;
-}
-
-.resource-filter-type-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-}
-
-.resource-filter-type-badge {
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: transparent;
-  color: var(--muted);
-  border-radius: 999px;
-  padding: 0.05rem 0.32rem;
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.resource-filter-type-badge.on {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--fg);
-}
-
-.resource-filter-type-badge:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .resource-filter-updated-segment {

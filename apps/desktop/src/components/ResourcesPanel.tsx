@@ -8,10 +8,10 @@ import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { PluginPackageDetail } from "./PluginPackageDetail";
 import { ResourceCreatePanel } from "./ResourceCreatePanel";
 import { ResourceDetailBody } from "./ResourceDetailBody";
-import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
 import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
-import { TypeIcon } from "./TypeIcon";
+import { ResourceTypeModal } from "./ResourceTypeModal";
+import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import {
   ResourceRowDescription,
@@ -29,7 +29,6 @@ import {
   postPluginOriginUpdate,
 } from "../lib/api/plugin-origin-update";
 import {
-  groupLibraryListByFilterType,
   libraryFilterType,
   libraryRowBadge,
   libraryRowUpdateBadge,
@@ -57,6 +56,10 @@ import {
 } from "../lib/resource-filters";
 import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import { resourceDisplayName } from "../lib/resource-search";
+import {
+  countResourceTypeTabs,
+  resolveResourceTypeTab,
+} from "../lib/resource-type-tabs";
 import { workspaceBackEnabled } from "../lib/screen-history";
 import type { LibraryResource } from "../lib/types";
 
@@ -278,13 +281,27 @@ export function ResourcesPanel({
     [entries],
   );
 
+  const typeFacetEntries = useMemo(
+    () => applyLibraryResourceFilters(entries, { ...filterState, type: null }),
+    [entries, filterState],
+  );
+  const typeCounts = useMemo(
+    () => countResourceTypeTabs(typeFacetEntries.map((entry) => libraryFilterType(entry))),
+    [typeFacetEntries],
+  );
+  const typeTab = resolveResourceTypeTab(filterState.type, typeCounts);
+
   const filteredEntries = useMemo(
-    () => applyLibraryResourceFilters(entries, filterState),
-    [filterState, entries],
+    () =>
+      applyLibraryResourceFilters(entries, { ...filterState, type: typeTab }),
+    [filterState, entries, typeTab],
   );
 
-  const groups = useMemo(
-    () => groupLibraryListByFilterType(filteredEntries),
+  const listRows = useMemo(
+    () =>
+      [...filteredEntries].sort((left, right) =>
+        resourceDisplayName(left).localeCompare(resourceDisplayName(right)),
+      ),
     [filteredEntries],
   );
 
@@ -600,7 +617,7 @@ export function ResourcesPanel({
     if (loading) {
       return <p className="muted">Loading resources…</p>;
     }
-    if (filteredEntries.length === 0) {
+    if (listRows.length === 0) {
       return (
         <div className="empty-state">
           <p className="muted">
@@ -629,19 +646,16 @@ export function ResourcesPanel({
         </div>
       );
     }
-    return groups.map((group) => (
-      <section
-        className="resources-type-group"
-        key={group.type}
-        aria-label={group.label}
-      >
-        <h3 className="resources-type-heading">
-          <TypeIcon type={group.type} />
-          <span>{group.label}</span>
-          <span className="muted">{group.resources.length}</span>
-        </h3>
+    return (
+      <>
+        <ResourceTypeTabs
+          counts={typeCounts}
+          value={typeTab}
+          disabled={disabled}
+          onChange={(next) => applyFilterChange({ ...filterState, type: next })}
+        />
         <ul className="resources-list">
-          {group.resources.map((entry) => {
+          {listRows.map((entry) => {
             const label = resourceDisplayName(entry);
             const badge = libraryRowBadge(entry);
             const updateBadge = libraryRowUpdateBadge(entry);
@@ -674,8 +688,8 @@ export function ResourcesPanel({
             );
           })}
         </ul>
-      </section>
-    ));
+      </>
+    );
   }
 
   function renderMainPane(): ReactNode {

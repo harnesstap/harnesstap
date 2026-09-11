@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,7 +11,6 @@ import {
 import { SelectionList as UiSelectionList } from "@/components/ui/selection-list";
 import {
   compositionSearchType,
-  groupCompositionMembership,
   isCompositionPluginPackage,
 } from "../lib/composition-membership";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
@@ -26,7 +19,12 @@ import {
   filterLibraryResourcesBySearch,
   resourceDisplayName,
 } from "../lib/resource-search";
+import {
+  countResourceTypeTabs,
+  resolveResourceTypeTab,
+} from "../lib/resource-type-tabs";
 import type { LibraryResource } from "../lib/types";
+import { ResourceTypeTabs } from "./ResourceTypeTabs";
 
 export interface SelectionRow {
   id: string;
@@ -89,22 +87,18 @@ function ResourcePickerRow({
   disabled,
   onToggle,
   onInspect,
-  measure = false,
 }: {
   resource: LibraryResource;
   selected: boolean;
   disabled: boolean;
   onToggle?: (id: string) => void;
   onInspect?: (resource: LibraryResource) => void;
-  measure?: boolean;
 }) {
-  const id = measure
-    ? `resource-${resource.id}-measure`
-    : `resource-${resource.id}`;
+  const id = `resource-${resource.id}`;
   const label = resourceDisplayName(resource);
   const rowType = compositionSearchType(resource);
   const inspect =
-    measure || !onInspect || isCompositionPluginPackage(resource)
+    !onInspect || isCompositionPluginPackage(resource)
       ? undefined
       : () => {
           onInspect(resource);
@@ -112,7 +106,7 @@ function ResourcePickerRow({
   return (
     <ResourceRowRoot
       hover={hoverModelFromLibraryResource(resource)}
-      testId={measure ? undefined : `create-resource-${label}`}
+      testId={`create-resource-${label}`}
       disabled={disabled}
       onActivate={inspect}
     >
@@ -126,10 +120,8 @@ function ResourcePickerRow({
             id={id}
             checked={selected}
             disabled={disabled}
-            tabIndex={measure ? -1 : undefined}
-            aria-hidden={measure || undefined}
             onCheckedChange={
-              measure || !onToggle ? undefined : () => onToggle(resource.id)
+              !onToggle ? undefined : () => onToggle(resource.id)
             }
           />
         </span>
@@ -165,44 +157,31 @@ export function ResourceSelectionList({
   title = "",
   emptyUnfilteredLabel = "No library items available.",
 }: ResourceSelectionListProps) {
-  const listRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const [autoExpandAll, setAutoExpandAll] = useState(false);
-  const [manualExpanded, setManualExpanded] = useState<
-    Record<string, boolean>
-  >({});
+  const [typeTab, setTypeTab] = useState<string | null>(null);
 
   const filteredResources = useMemo(
     () => filterLibraryResourcesBySearch(resources, filter),
     [filter, resources],
   );
-  const groups = useMemo(
-    () => groupCompositionMembership(filteredResources),
+  const typeCounts = useMemo(
+    () =>
+      countResourceTypeTabs(
+        filteredResources.map((resource) => compositionSearchType(resource)),
+      ),
     [filteredResources],
   );
-
-  useEffect(() => {
-    setManualExpanded({});
-  }, [filter, resources]);
-
-  useLayoutEffect(() => {
-    const list = listRef.current;
-    const measure = measureRef.current;
-    if (!list || !measure || filteredResources.length === 0) {
-      setAutoExpandAll(false);
-      return;
-    }
-
-    const updateAutoExpand = () => {
-      setAutoExpandAll(measure.scrollHeight <= list.clientHeight);
-    };
-
-    updateAutoExpand();
-    const observer = new ResizeObserver(updateAutoExpand);
-    observer.observe(list);
-    observer.observe(measure);
-    return () => observer.disconnect();
-  }, [filteredResources, groups]);
+  const effectiveType = resolveResourceTypeTab(typeTab, typeCounts);
+  const visibleResources = useMemo(() => {
+    const rows =
+      effectiveType === null
+        ? filteredResources
+        : filteredResources.filter(
+            (resource) => compositionSearchType(resource) === effectiveType,
+          );
+    return [...rows].sort((left, right) =>
+      resourceDisplayName(left).localeCompare(resourceDisplayName(right)),
+    );
+  }, [effectiveType, filteredResources]);
 
   const emptyLabel =
     resources.length === 0
@@ -211,116 +190,41 @@ export function ResourceSelectionList({
         ? "No matches."
         : emptyUnfilteredLabel;
 
-  const isExpanded = (type: string): boolean => {
-    const manual = manualExpanded[type];
-    if (manual !== undefined) {
-      return manual;
-    }
-    return autoExpandAll;
-  };
-
-  const toggleGroup = (type: string) => {
-    setManualExpanded((current) => {
-      const currentlyExpanded =
-        current[type] !== undefined ? current[type] : autoExpandAll;
-      return {
-        ...current,
-        [type]: !currentlyExpanded,
-      };
-    });
-  };
-
   return (
     <fieldset className="selection-list" disabled={disabled}>
       {title ? <legend>{title}</legend> : null}
       <Input
         className="selection-list-filter h-8 text-xs"
         type="search"
-        placeholder="Filter by name or type"
+        placeholder="Filter by name"
         value={filter}
         onChange={(event) => onFilterChange(event.target.value)}
         disabled={disabled}
         aria-label="Filter library items"
       />
+      <ResourceTypeTabs
+        counts={typeCounts}
+        value={effectiveType}
+        disabled={disabled}
+        onChange={setTypeTab}
+      />
       <div className="selection-list-viewport">
-        <div className="selection-list-rows" ref={listRef}>
-          {filteredResources.length === 0 ? (
+        <div className="selection-list-rows">
+          {visibleResources.length === 0 ? (
             <p className="muted">{emptyLabel}</p>
           ) : (
-            groups.map((group) => {
-              const expanded = isExpanded(group.type);
-              return (
-                <section
-                  className={`selection-type-group${expanded ? " expanded" : ""}`}
-                  key={group.type}
-                  aria-label={group.label}
-                >
-                  <button
-                    className="selection-type-heading"
-                    type="button"
-                    aria-expanded={expanded}
-                    onClick={() => toggleGroup(group.type)}
-                    disabled={disabled}
-                  >
-                    <span className="selection-type-chevron" aria-hidden>
-                      {expanded ? "▾" : "▸"}
-                    </span>
-                    <span>{group.label}</span>
-                    <span className="selection-type-count">
-                      {group.resources.length}
-                    </span>
-                  </button>
-                  {expanded ? (
-                    <div className="selection-type-body">
-                      {group.resources.map((resource) => (
-                        <ResourcePickerRow
-                          key={resource.id}
-                          resource={resource}
-                          selected={selectedIds.includes(resource.id)}
-                          disabled={disabled}
-                          onToggle={onToggle}
-                          onInspect={onInspect}
-                        />
-                      ))}
-                    </div>
-                  ) : null}
-                </section>
-              );
-            })
+            visibleResources.map((resource) => (
+              <ResourcePickerRow
+                key={resource.id}
+                resource={resource}
+                selected={selectedIds.includes(resource.id)}
+                disabled={disabled}
+                onToggle={onToggle}
+                onInspect={onInspect}
+              />
+            ))
           )}
         </div>
-        {filteredResources.length > 0 ? (
-          <div
-            className="selection-list-rows selection-list-rows-measure"
-            ref={measureRef}
-            aria-hidden
-          >
-            {groups.map((group) => (
-              <section className="selection-type-group expanded" key={group.type}>
-                <div className="selection-type-heading">
-                  <span className="selection-type-chevron" aria-hidden>
-                    ▾
-                  </span>
-                  <span>{group.label}</span>
-                  <span className="selection-type-count">
-                    {group.resources.length}
-                  </span>
-                </div>
-                <div className="selection-type-body">
-                  {group.resources.map((resource) => (
-                    <ResourcePickerRow
-                      key={resource.id}
-                      resource={resource}
-                      selected={false}
-                      disabled
-                      measure
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        ) : null}
       </div>
     </fieldset>
   );

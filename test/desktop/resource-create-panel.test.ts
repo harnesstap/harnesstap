@@ -24,9 +24,10 @@ describe("create plugin compose picker", () => {
     expect(createSource).toContain("onFilterChange={setResourceFilter}");
     expect(createSource).not.toContain("resource-picker-row");
     expect(createSource).not.toContain("pickerGroups");
-    expect(compositionSource).toContain('placeholder="Filter by name or type"');
-    expect(compositionSource).toContain("selection-type-count");
-    expect(compositionSource).toContain("toggleGroup");
+    expect(compositionSource).toContain('placeholder="Filter by name"');
+    expect(compositionSource).toContain("ResourceTypeTabs");
+    expect(compositionSource).not.toContain("selection-type-count");
+    expect(compositionSource).not.toContain("toggleGroup");
   });
 
   test("keeps compose selection wired to plugin create attachments", () => {
@@ -39,6 +40,7 @@ describe("create plugin compose picker", () => {
     expect(designSource).toContain(
       "Plugin create **Compose from library** reuses the profile membership picker",
     );
+    expect(designSource).toContain("ResourceTypeTabs + flat list");
     expect(stylesSource).toContain(".resource-create-compose .selection-list-rows");
     expect(stylesSource).not.toContain(".resource-picker-group");
     expect(stylesSource).not.toContain(".resource-picker-row");
