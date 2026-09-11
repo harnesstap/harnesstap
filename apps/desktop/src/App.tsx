@@ -2693,7 +2693,6 @@ export function App() {
                       title={`Add ${activeProfileUntrackedCount} not-staged item${activeProfileUntrackedCount === 1 ? "" : "s"} to this profile`}
                       icon={<ListPlus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
                     />
-                    />
                   ) : null}
                 </div>
               );
