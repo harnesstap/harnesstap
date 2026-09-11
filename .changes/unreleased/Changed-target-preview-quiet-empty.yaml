@@ -1,0 +1,5 @@
+kind: Changed
+body: Quiet Desktop Target preview when there is nothing to apply. Header is the title only. Empty stack and file chrome is a muted checkmark and "no changes".
+time: 2026-09-11T22:55:00Z
+custom:
+  Issue: ""
