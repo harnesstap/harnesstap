@@ -92,23 +92,23 @@ describe("desktop header chrome", () => {
     expect(appSource).not.toContain('setWorkspaceFocus("plugins")');
   });
 
-  test("exposes Sources as a workspace destination after Library", () => {
-    expect(appSource).toContain('aria-label="Sources"');
+  test("exposes Discover as a workspace destination after Library", () => {
+    expect(appSource).toContain('aria-label="Discover"');
     expect(appSource).toContain('onHeaderDestinationClick("sources")');
     expect(appSource).toContain('setWorkspaceFocus("sources")');
     const libraryIdx = appSource.indexOf('aria-label="Library"');
-    const sourcesIdx = appSource.indexOf('aria-label="Sources"');
+    const sourcesIdx = appSource.indexOf('aria-label="Discover"');
     const parityIdx = appSource.indexOf("<ParityChrome");
     expect(libraryIdx).toBeGreaterThan(-1);
     expect(sourcesIdx).toBeGreaterThan(libraryIdx);
     expect(parityIdx).toBeGreaterThan(sourcesIdx);
   });
 
-  test("DESIGN.md lists Sources in header destinations and the layout table", () => {
+  test("DESIGN.md lists Discover in header destinations and the layout table", () => {
     expect(designSource).toContain(
-      "Header destinations: **Library | Sources | Environments | Global | Project**",
+      "Header destinations: **Library | Discover | Environments | Global | Project**",
     );
-    expect(designSource).toMatch(/\|\s*Sources\s*\|/);
+    expect(designSource).toMatch(/\|\s*Discover\s*\|/);
   });
 
   test("SettingsParitySections no longer renders marketplace or publish catalog sections", () => {
@@ -125,16 +125,16 @@ describe("desktop header chrome", () => {
     expect(paritySource).toContain('aria-label="Environments"');
   });
 
-  test("labels header destinations Library, Sources, Environments, Global, and Project", () => {
+  test("labels header destinations Library, Discover, Environments, Global, and Project", () => {
     expect(appSource).toMatch(/<Library[\s\S]*\/>\s*Library\s*</);
-    expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*Sources\s*</);
+    expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*Discover\s*</);
     expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*Environments\s*</);
     expect(appSource).toMatch(/<Globe[\s\S]*\/>\s*Global\s*</);
     expect(appSource).toMatch(/<FolderGit2[\s\S]*\/>\s*Project\s*</);
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");
     expect(cssSource).toContain(".header-focus-btn.labeled");
-    expect(designSource).toContain("Header destinations: **Library | Sources | Environments | Global | Project**");
+    expect(designSource).toContain("Header destinations: **Library | Discover | Environments | Global | Project**");
     expect(designSource).toContain("Header destinations show icon plus name");
   });
 
@@ -159,7 +159,7 @@ describe("header re-click home", () => {
     expect(appSource).toContain("onHeaderDestinationClick(\"environments\")");
   });
 
-  test("Library, Sources, and Environments re-click bump homeResetNonce", () => {
+  test("Library, Discover, and Environments re-click bump homeResetNonce", () => {
     expect(appSource).toContain("setHomeResetNonce");
     expect(appSource).toContain("homeResetNonce={homeResetNonce}");
     const resetBlock = sliceBetween(

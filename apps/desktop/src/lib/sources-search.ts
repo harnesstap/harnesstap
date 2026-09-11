@@ -181,6 +181,35 @@ export function presenceLabel(presence: Presence): string {
   }
 }
 
+export function filterDiscoverGroups(
+  groups: SourcesHitGroup[],
+  showInLibrary: boolean,
+): SourcesHitGroup[] {
+  if (showInLibrary) {
+    return groups;
+  }
+  return groups.map((group) => ({
+    ...group,
+    hits: group.hits.filter((hit) => hit.presence !== "in_library"),
+  }));
+}
+
+export function discoverListEmptyCopy(input: {
+  query: string;
+  showInLibrary: boolean;
+}): { message: string; hint: string | null } {
+  if (!input.showInLibrary) {
+    return {
+      message: "Nothing left to discover.",
+      hint: "Turn on Show in library to see installed items.",
+    };
+  }
+  return {
+    message: input.query.trim() ? "No hits yet." : "Search to add",
+    hint: null,
+  };
+}
+
 export function isStandaloneResourceType(type: string): boolean {
   return type !== "plugin" && type !== "plugin_pin";
 }

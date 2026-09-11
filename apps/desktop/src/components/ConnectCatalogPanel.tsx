@@ -154,7 +154,7 @@ export function ConnectCatalogPanel({
       >
         <div className="create-profile-header">
           <div>
-            <div className="eyebrow">Sources</div>
+            <div className="eyebrow">Discover</div>
             <h2 id="connect-catalog-title">Connect catalog</h2>
           </div>
           <button

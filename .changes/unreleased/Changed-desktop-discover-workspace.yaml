@@ -1,0 +1,5 @@
+kind: Changed
+body: Rename the Desktop Sources workspace to Discover, hide in-library hits by default, and add an opt-in Show in library filter with an empty state when nothing is left to add.
+time: 2026-09-11T03:40:00Z
+custom:
+  Issue: ""

@@ -5,6 +5,8 @@ import {
   isStandaloneResourceType,
   matchQuery,
   mergeSourcesHits,
+  filterDiscoverGroups,
+  discoverListEmptyCopy,
   presenceForCloud,
   presenceForMarketplace,
   sourcesHitFetchKey,
@@ -682,5 +684,85 @@ describe("applyOriginOutdated", () => {
     ]);
     expect(hits[0]?.presence).toBe("remote_only");
     expect(hits[0]?.originOutdated).toBeUndefined();
+  });
+});
+
+describe("filterDiscoverGroups", () => {
+  const groups = mergeSourcesHits({
+    sourceOrder: ["local", "mkt:teads"],
+    local: {
+      sourceId: "local",
+      sourceLabel: "Local",
+      heads: [{ name: "devx", version: "1.0.0" }],
+      resources: [],
+    },
+    marketplaces: [
+      {
+        sourceId: "mkt:teads",
+        sourceLabel: "teads",
+        marketplaceName: "teads",
+        plugins: [
+          { name: "ship", version: "2.0.0" },
+          { name: "already", version: "1.0.0" },
+        ],
+      },
+    ],
+    libraryResources: [
+      {
+        name: "already@teads",
+        type: "plugin",
+        origin_kind: "marketplace_link",
+      },
+    ],
+  });
+
+  test("hides in-library hits by default", () => {
+    const filtered = filterDiscoverGroups(groups, false);
+    expect(filtered.find((group) => group.sourceId === "local")?.hits).toEqual(
+      [],
+    );
+    expect(
+      filtered
+        .find((group) => group.sourceId === "mkt:teads")
+        ?.hits.map((hit) => hit.name),
+    ).toEqual(["ship"]);
+  });
+
+  test("keeps in-library hits when Show in library is on", () => {
+    const shown = filterDiscoverGroups(groups, true);
+    expect(shown).toEqual(groups);
+    expect(
+      shown.find((group) => group.sourceId === "mkt:teads")?.hits.map(
+        (hit) => hit.presence,
+      ),
+    ).toEqual(["remote_only", "in_library"]);
+  });
+});
+
+describe("discoverListEmptyCopy", () => {
+  test("explains an empty Discover list when in-library rows are hidden", () => {
+    expect(discoverListEmptyCopy({ query: "", showInLibrary: false })).toEqual({
+      message: "Nothing left to discover.",
+      hint: "Turn on Show in library to see installed items.",
+    });
+    expect(
+      discoverListEmptyCopy({ query: "ship", showInLibrary: false }),
+    ).toEqual({
+      message: "Nothing left to discover.",
+      hint: "Turn on Show in library to see installed items.",
+    });
+  });
+
+  test("keeps search empty copy when showing in-library hits", () => {
+    expect(discoverListEmptyCopy({ query: "", showInLibrary: true })).toEqual({
+      message: "Search to add",
+      hint: null,
+    });
+    expect(
+      discoverListEmptyCopy({ query: "missing", showInLibrary: true }),
+    ).toEqual({
+      message: "No hits yet.",
+      hint: null,
+    });
   });
 });

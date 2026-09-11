@@ -1,5 +1,10 @@
-import type { SourcesHit, SourcesHitGroup } from "../lib/sources-search";
-import { presenceLabel, sourcesHitUpdateBadge } from "../lib/sources-search";
+import {
+  discoverListEmptyCopy,
+  presenceLabel,
+  sourcesHitUpdateBadge,
+  type SourcesHit,
+  type SourcesHitGroup,
+} from "../lib/sources-search";
 import { LogIn } from "lucide-react";
 import { IconActionButton } from "./IconActionButton";
 import { TypeIcon } from "./TypeIcon";
@@ -16,6 +21,7 @@ export interface SourcesListPaneProps {
   groupErrors: Record<string, SourcesGroupError>;
   loading: boolean;
   query: string;
+  showInLibrary?: boolean;
   disabled?: boolean;
   onOpenHit: (hit: SourcesHit) => void;
   onSignIn?: () => void;
@@ -63,6 +69,7 @@ export function SourcesListPane({
   groupErrors,
   loading,
   query,
+  showInLibrary = false,
   disabled = false,
   onOpenHit,
   onSignIn,
@@ -80,11 +87,11 @@ export function SourcesListPane({
   }
 
   if (visible.length === 0) {
+    const empty = discoverListEmptyCopy({ query, showInLibrary });
     return (
-      <div className="empty-state">
-        <p className="muted">
-          {query.trim() ? "No hits yet." : "Search sources"}
-        </p>
+      <div className="empty-state" data-testid="discover-empty">
+        <p className="muted">{empty.message}</p>
+        {empty.hint ? <p className="muted">{empty.hint}</p> : null}
       </div>
     );
   }

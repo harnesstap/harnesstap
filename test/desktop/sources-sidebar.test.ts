@@ -142,6 +142,11 @@ describe("isSourcesFilterActive", () => {
       ),
     ).toBe(true);
   });
+
+  test("is active when Show in library is on even if other filters stay default", () => {
+    expect(isSourcesFilterActive("", defaults, rows, true)).toBe(true);
+    expect(isSourcesFilterActive("", defaults, rows, false)).toBe(false);
+  });
 });
 
 describe("sourceCheckState", () => {

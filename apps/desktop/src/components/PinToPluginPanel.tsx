@@ -141,7 +141,7 @@ export function PinToPluginPanel({
       >
         <div className="create-profile-header">
           <div>
-            <div className="eyebrow">Sources</div>
+            <div className="eyebrow">Discover</div>
             <h2 id="pin-to-plugin-title">{title}</h2>
           </div>
           <button
