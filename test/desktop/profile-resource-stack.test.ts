@@ -211,5 +211,9 @@ describe("Profile resources pane chrome", () => {
     expect(designSource).toContain(
       "MCP that is in the profile and not currently installed uses **+**",
     );
+    expect(designSource).toContain(
+      "Missing-plugin rows use icon-only **Sync**",
+    );
+    expect(designSource).toContain("tooltip and accessible name **Sync {plugin}**");
   });
 });
