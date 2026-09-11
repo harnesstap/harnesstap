@@ -222,7 +222,7 @@ export function SourcesWorkspace({
   const [originCheckRows, setOriginCheckRows] = useState<
     PluginOriginCheckRow[]
   >([]);
-  const [librarySearching, setLibrarySearching] = useState(false);
+  const [librarySearching, setLibrarySearching] = useState(true);
   const [cloudSearching, setCloudSearching] = useState(false);
   const [activeHit, setActiveHit] = useState<SourcesHit | null>(null);
   const [treeFiles, setTreeFiles] = useState<SourcesTreeFile[]>([]);
@@ -1157,6 +1157,7 @@ export function SourcesWorkspace({
             <IconActionButton
               primary
               label="Add marketplace"
+              title="Add marketplace"
               disabled={controlsDisabled}
               onClick={() => {
                 setMarketplaceMode("add");
@@ -1167,6 +1168,7 @@ export function SourcesWorkspace({
             />
             <IconActionButton
               label="Connect catalog"
+              title="Connect catalog"
               disabled={controlsDisabled}
               onClick={() => setCatalogOpen(true)}
               icon={<Cloud size={20} aria-hidden />}

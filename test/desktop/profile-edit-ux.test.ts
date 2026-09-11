@@ -96,7 +96,12 @@ describe("profile edit publish chrome", () => {
     expect(toolbar).toContain("primary");
     expect(toolbar).toContain("IconActionButton");
     expect(toolbar).toContain('label="Create a new profile"');
+    expect(toolbar).toContain("profile-create-action");
+    expect(toolbar).toContain("<Plus ");
+    expect(toolbar).not.toContain("Trash2");
+    expect(toolbar).not.toContain("Remove profile");
     expect(designSource).toContain("then **create** (accent icon-only `+`, tooltip **Create a new profile**)");
+    expect(designSource).toContain("Create vs remove must not be confused");
   });
 
   test("opens a catalog-picker dialog with select-all, memory, and a disabled Publish when none are registered", () => {

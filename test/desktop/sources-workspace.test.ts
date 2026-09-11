@@ -134,10 +134,17 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("showInLibrary={showInLibrary}");
     expect(listPaneSource).toContain("discoverListEmptyCopy");
     expect(listPaneSource).toContain('data-testid="discover-empty"');
+    expect(listPaneSource).toContain('className="empty-state discover-empty"');
+    expect(listPaneSource).toContain('role="status"');
+    expect(workspaceSource).toContain(
+      "const [librarySearching, setLibrarySearching] = useState(true)",
+    );
     expect(sourcesSearchSource).toContain("filterDiscoverGroups");
     expect(sourcesSearchSource).toContain('hit.presence !== "in_library"');
     expect(sourcesSearchSource).toContain("You're caught up");
     expect(sourcesSearchSource).toContain("Nothing left to discover.");
+    expect(stylesSource).toContain(".sources-workspace .discover-empty");
+    expect(stylesSource).toContain("min-height: 12rem");
   });
 
   test("sidebar All sources checkbox selects or clears every source", () => {
@@ -154,7 +161,9 @@ describe("sources workspace chrome", () => {
 
   test("header cluster uses icon-only Add marketplace and Connect catalog", () => {
     expect(workspaceSource).toContain('label="Add marketplace"');
+    expect(workspaceSource).toContain('title="Add marketplace"');
     expect(workspaceSource).toContain('label="Connect catalog"');
+    expect(workspaceSource).toContain('title="Connect catalog"');
     expect(workspaceSource).toContain("IconActionButton");
     expect(workspaceSource).not.toMatch(
       /label="Add marketplace"[\s\S]{0,400}Add marketplace\s*</,
@@ -441,6 +450,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Show in library");
     expect(designSource).toContain("You're caught up");
     expect(designSource).toContain("Nothing left to discover.");
+    expect(designSource).toContain("discover-empty");
     expect(designSource).toContain("Add marketplace");
     expect(designSource).toContain("Connect catalog");
     expect(designSource).toContain("--icon-action-size-lg");

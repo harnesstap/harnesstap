@@ -13,6 +13,10 @@ const stylesSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/styles.css"),
   "utf8",
 );
+const designSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+  "utf8",
+);
 
 function cssBlock(source: string, selector: string): string {
   const needle = `\n${selector} {`;
@@ -28,6 +32,23 @@ describe("library origin filter chrome", () => {
     expect(sidebarSource).toContain("libraryFilterTypeLabel(type)");
     expect(sidebarSource).toContain("libraryFilterType(resource)");
     expect(sidebarSource).toContain('placeholder="Filter by name"');
+  });
+
+  test("omits zero-count type chips unless that type is selected", () => {
+    expect(sidebarSource).toContain("if (count === 0 && !on)");
+    expect(sidebarSource).toContain("return null;");
+    expect(sidebarSource).not.toContain("empty:not(.on)");
+  });
+
+  test("styles type chips as compact outline pills", () => {
+    const chips = cssBlock(stylesSource, ".resource-filter-type-badge");
+    expect(chips).toContain("background: transparent");
+    expect(chips).toContain("font-size: 10px");
+    expect(chips).toContain("padding: 0.05rem 0.32rem");
+    expect(cssBlock(stylesSource, ".resource-filter-type-badge.on")).toContain(
+      "color-mix(in srgb, var(--accent) 8%, transparent)",
+    );
+    expect(designSource).toContain("compact outline pills");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

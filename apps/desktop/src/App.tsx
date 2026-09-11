@@ -2493,7 +2493,7 @@ export function App() {
                 />
                 <IconActionButton
                   primary
-                  className="rail-icon-action"
+                  className="rail-icon-action profile-create-action"
                   data-testid="open-create-profile"
                   onClick={() => openCreateProfile()}
                   disabled={!connected || switching || stashBusy}

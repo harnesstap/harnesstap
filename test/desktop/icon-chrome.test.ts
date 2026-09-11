@@ -118,6 +118,8 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain("<Pencil size={RAIL_ICON_SIZE}");
     expect(appSource).toContain('label="Settings"');
     expect(appSource).toContain("<Settings size={HEADER_ICON_SIZE}");
+    expect(appSource).toContain("profile-create-action");
+    expect(appSource).not.toMatch(/profiles-rail-toolbar[\s\S]*?Trash2/);
   });
 
   test("instruction, plugin, and package rows never map to or render Sparkles", () => {
@@ -213,6 +215,11 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain('label="Export setup"');
     expect(appSource).toContain('label="Import setup"');
     expect(appSource).toContain("Refresh live status");
+    expect(appSource).toContain('label="Settings"');
+    expect(iconButtonSource).toContain("ChromeTooltip");
+    expect(iconButtonSource).toContain("aria-label={showLabel ? undefined : label}");
+    expect(stylesSource).toMatch(/\.chrome-tooltip \{\n  z-index: 80;/);
+    expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
   });
 
   test("converts Library and Sources header clusters to icon-only", () => {
