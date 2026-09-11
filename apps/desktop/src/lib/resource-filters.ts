@@ -1,21 +1,9 @@
 import { libraryFilterType } from "./library-list";
 import { filterLibraryResourcesBySearch } from "./resource-search";
+import { RESOURCE_TYPE_TAB_ORDER } from "./resource-type-tabs";
 import type { LibraryResource } from "./types";
 
-export const LISTABLE_FILTER_RESOURCE_TYPES = [
-  "instruction",
-  "skill",
-  "rule",
-  "mcp_server",
-  "permission",
-  "hook",
-  "agent",
-  "command",
-  "env_var",
-  "model_config",
-  "plugin",
-  "plugin_ref",
-] as const;
+export const LISTABLE_FILTER_RESOURCE_TYPES = RESOURCE_TYPE_TAB_ORDER;
 
 export type UpdatedPreset = "all" | "1d" | "7d" | "30d" | "90d" | "custom";
 

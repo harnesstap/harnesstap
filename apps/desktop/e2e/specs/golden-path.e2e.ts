@@ -25,19 +25,17 @@ async function clickTestId(id: string): Promise<void> {
   await el.click();
 }
 
-async function expandSelectionTypeGroups(): Promise<void> {
-  const headings = await $$(".selection-type-heading");
-  for (const heading of headings) {
-    if (await heading.isDisplayed()) {
-      await heading.click();
-    }
+async function ensureAllTypesVisible(): Promise<void> {
+  const allTab = await $('[data-testid="resource-type-tab-all"]');
+  if ((await allTab.isExisting()) && (await allTab.isDisplayed())) {
+    await allTab.click();
   }
 }
 
 async function toggleCreateResource(name: string): Promise<void> {
   let row = await $(byTestId(`create-resource-${name}`));
   if (!(await row.isExisting()) || !(await row.isDisplayed())) {
-    await expandSelectionTypeGroups();
+    await ensureAllTypesVisible();
     row = await $(byTestId(`create-resource-${name}`));
   }
   await row.waitForDisplayed();

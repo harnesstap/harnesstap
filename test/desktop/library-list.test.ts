@@ -66,8 +66,9 @@ describe("libraryFilterType", () => {
   it("labels plugin_ref as plugin ref", () => {
     expect(libraryFilterTypeLabel("plugin_ref")).toBe("Plugin refs");
     expect(libraryFilterTypeLabel("plugin")).toBe("Plugins");
-    expect(libraryFilterTypeLabel("mcp_server")).toBe("MCP");
+    expect(libraryFilterTypeLabel("mcp_server")).toBe("MCPs");
     expect(libraryFilterTypeLabel("skill")).toBe("Skills");
+    expect(libraryFilterTypeLabel("agent")).toBe("Subagents");
   });
 });
 

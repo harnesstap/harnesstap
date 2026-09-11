@@ -60,9 +60,9 @@ describe("LISTABLE_FILTER_RESOURCE_TYPES", () => {
   it("includes plugin and plugin_ref, excludes plugin_pin", () => {
     expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("plugin");
     expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("plugin_ref");
-    expect(LISTABLE_FILTER_RESOURCE_TYPES.indexOf("plugin_ref")).toBe(
-      LISTABLE_FILTER_RESOURCE_TYPES.indexOf("plugin") + 1,
-    );
+    expect(LISTABLE_FILTER_RESOURCE_TYPES[0]).toBe("plugin");
+    expect(LISTABLE_FILTER_RESOURCE_TYPES[1]).toBe("mcp_server");
+    expect(LISTABLE_FILTER_RESOURCE_TYPES.at(-1)).toBe("plugin_ref");
     expect(LISTABLE_FILTER_RESOURCE_TYPES).not.toContain("plugin_pin");
     expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("skill");
   });

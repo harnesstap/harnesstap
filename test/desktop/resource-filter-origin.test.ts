@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 
@@ -9,12 +9,35 @@ const sidebarSource = readFileSync(
   ),
   "utf8",
 );
+const tabsSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/ResourceTypeTabs.tsx",
+  ),
+  "utf8",
+);
+const panelSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/ResourcesPanel.tsx"),
+  "utf8",
+);
 const stylesSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/styles.css"),
   "utf8",
 );
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+  "utf8",
+);
+
+const compositionSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/CompositionPickers.tsx",
+  ),
+  "utf8",
+);
+const liveStateSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/LiveStatePanel.tsx"),
   "utf8",
 );
 
@@ -28,27 +51,67 @@ function cssBlock(source: string, selector: string): string {
 }
 
 describe("library origin filter chrome", () => {
-  test("labels the plugin ref type badge explicitly", () => {
-    expect(sidebarSource).toContain("libraryFilterTypeLabel(type)");
-    expect(sidebarSource).toContain("libraryFilterType(resource)");
+  test("keeps name search without sidebar Type chips", () => {
     expect(sidebarSource).toContain('placeholder="Filter by name"');
+    expect(sidebarSource).toContain("Updated");
+    expect(sidebarSource).toContain("Namespace");
+    expect(sidebarSource).toContain("Origin");
+    expect(sidebarSource).not.toContain("resource-filter-type-badge");
+    expect(sidebarSource).not.toContain("resource-filter-type-badges");
+    expect(sidebarSource).not.toContain("libraryFilterTypeLabel");
+    expect(sidebarSource).not.toContain('aria-label="Resource type"');
+    expect(sidebarSource).not.toMatch(/section-label">Type</);
+    expect(panelSource).toContain("ResourceTypeTabs");
+    expect(panelSource).not.toContain("resources-type-heading");
   });
 
-  test("omits zero-count type chips unless that type is selected", () => {
-    expect(sidebarSource).toContain("if (count === 0 && !on)");
-    expect(sidebarSource).toContain("return null;");
-    expect(sidebarSource).not.toContain("empty:not(.on)");
+  test("ResourceTypeTabs surfaces have no leftover Type chip filter UI", () => {
+    expect(stylesSource).not.toContain("resource-filter-type-badge");
+    expect(designSource).toContain("one type control");
+    expect(designSource).toContain("Leftover TYPE chips are a bug");
+    expect(compositionSource).toContain("ResourceTypeTabs");
+    expect(compositionSource).not.toContain("selection-type-heading");
+    expect(compositionSource).not.toContain("resource-filter-type-badge");
+    expect(liveStateSource).toContain("ResourceTypeTabs");
+    expect(liveStateSource).not.toContain("resource-filter-type-badge");
+
+    const srcRoot = join(import.meta.dir, "../../apps/desktop/src");
+    const offenders: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith(".tsx") && !entry.name.endsWith(".ts")) {
+          continue;
+        }
+        const source = readFileSync(full, "utf8");
+        if (source.includes("resource-filter-type-badge")) {
+          offenders.push(full.slice(srcRoot.length + 1));
+        }
+      }
+    };
+    walk(srcRoot);
+    expect(offenders).toEqual([]);
   });
 
-  test("styles type chips as compact outline pills", () => {
-    const chips = cssBlock(stylesSource, ".resource-filter-type-badge");
-    expect(chips).toContain("background: transparent");
-    expect(chips).toContain("font-size: 10px");
-    expect(chips).toContain("padding: 0.05rem 0.32rem");
-    expect(cssBlock(stylesSource, ".resource-filter-type-badge.on")).toContain(
-      "color-mix(in srgb, var(--accent) 8%, transparent)",
+  test("styles ResourceTypeTabs as filled selected pills", () => {
+    const tab = cssBlock(stylesSource, ".resource-type-tab");
+    expect(tab).toContain("min-height: 32px");
+    expect(tab).toContain("border-radius: 999px");
+    expect(cssBlock(stylesSource, '.resource-type-tab[data-state="on"]')).toContain(
+      "background: var(--accent)",
     );
-    expect(designSource).toContain("compact outline pills");
+    expect(tabsSource).toContain("visibleResourceTypeTabs");
+    expect(tabsSource).toContain("resourceTypeTabText");
+    expect(tabsSource).toContain("resource-type-tab-count");
+    expect(tabsSource).toContain("ChromeTooltip");
+    expect(designSource).toContain("ResourceTypeTabs");
+    expect(designSource).toContain("No sidebar Type chips");
+    expect(designSource).toContain("Optional count in the pill");
+    expect(designSource).toContain("Pills always have icons");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

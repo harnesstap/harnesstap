@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Library (and matching typed lists) use presence-filtered ResourceTypeTabs instead of section headers and sidebar Type chips, with optional counts in the pills.
+time: 2026-09-11T22:45:00Z
+custom:
+  Issue: ""
