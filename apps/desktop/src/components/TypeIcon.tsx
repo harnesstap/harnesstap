@@ -16,36 +16,85 @@ import {
 
 const ICON_SIZE = 14;
 
-export function TypeIcon({ type }: { type: string }): ReactNode {
+/** Stable glyph ids for tests and TypeIcon. Lucide Sparkles is `sparkles` only. */
+export type TypeGlyph =
+  | "layers"
+  | "package"
+  | "sparkles"
+  | "plug"
+  | "file-text"
+  | "file-code"
+  | "bot"
+  | "terminal"
+  | "webhook"
+  | "shield"
+  | "variable"
+  | "wrench";
+
+/** Map a resource/filter type to its type glyph. Sparkles is skill only. */
+export function resourceTypeGlyph(type: string): TypeGlyph {
   switch (type) {
     case "plugin":
-      return <Layers size={ICON_SIZE} aria-hidden />;
+      return "layers";
     case "plugin_ref":
-      return <Package size={ICON_SIZE} aria-hidden />;
+    case "plugin_pin":
+      return "package";
     case "skill":
+      return "sparkles";
+    case "mcp_server":
+      return "plug";
+    case "instruction":
+      return "file-text";
+    case "rule":
+      return "file-code";
+    case "agent":
+      return "bot";
+    case "command":
+      return "terminal";
+    case "hook":
+      return "webhook";
+    case "permission":
+      return "shield";
+    case "env_var":
+      return "variable";
+    case "model_config":
+      return "wrench";
+    default:
+      return "wrench";
+  }
+}
+
+export function TypeIcon({ type }: { type: string }): ReactNode {
+  const glyph = resourceTypeGlyph(type);
+  switch (glyph) {
+    case "layers":
+      return <Layers size={ICON_SIZE} aria-hidden />;
+    case "package":
+      return <Package size={ICON_SIZE} aria-hidden />;
+    case "sparkles":
       // Sparkles is the skill type glyph only — not status, not gaps, not agents.
       return <Sparkles size={ICON_SIZE} aria-hidden />;
-    case "mcp_server":
+    case "plug":
       return <Plug size={ICON_SIZE} aria-hidden />;
-    case "instruction":
+    case "file-text":
       return <FileText size={ICON_SIZE} aria-hidden />;
-    case "rule":
+    case "file-code":
       return <FileCode2 size={ICON_SIZE} aria-hidden />;
-    case "agent":
+    case "bot":
       return <Bot size={ICON_SIZE} aria-hidden />;
-    case "command":
+    case "terminal":
       return <Terminal size={ICON_SIZE} aria-hidden />;
-    case "hook":
+    case "webhook":
       return <Webhook size={ICON_SIZE} aria-hidden />;
-    case "permission":
+    case "shield":
       return <Shield size={ICON_SIZE} aria-hidden />;
-    case "env_var":
+    case "variable":
       return <Variable size={ICON_SIZE} aria-hidden />;
-    case "model_config":
+    case "wrench":
       return <Wrench size={ICON_SIZE} aria-hidden />;
-    case "plugin_pin":
-      return <Package size={ICON_SIZE} aria-hidden />;
-    default:
-      return <Wrench size={ICON_SIZE} aria-hidden />;
+    default: {
+      const neverGlyph: never = glyph;
+      return neverGlyph;
+    }
   }
 }

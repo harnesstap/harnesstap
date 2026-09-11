@@ -1142,12 +1142,7 @@ export function SourcesWorkspace({
         <div className="resources-panel-header-row">
           <div className="resources-panel-title-cluster">
             <WorkspaceBackButton
-              hidden={
-                !workspaceBackEnabled({
-                  hasLocalPrevious,
-                  hasWorkspacePrevious: canWorkspaceBack,
-                })
-              }
+              hidden={!hasLocalPrevious}
               disabled={backDisabled}
               onClick={handlePanelBack}
             />

@@ -495,9 +495,6 @@ function UntrackedResourceRow({
           </ResourceRowDescription>
         </ResourceRowIdentity>
       )}
-      <ResourceRowMeta
-        harnessIds={relatedHarnessesForResourceType(resource.type)}
-      />
       <ResourceRowTrailing>
         {canDiff && onDiff && managedPath ? (
           <IconActionButton
@@ -559,9 +556,6 @@ function EnabledResourceRow({
       ) : (
         <ResourceRowIdentity label={item.label} />
       )}
-      <ResourceRowMeta
-        harnessIds={relatedHarnessesForResourceType(item.iconType)}
-      />
       {item.detail ? (
         <ResourceRowTrailing>
           <span className="enabled-detail muted">{item.detail}</span>
@@ -598,9 +592,6 @@ function EnabledPluginGroup({
         </span>
         <span className="enabled-label">{plugin.name}</span>
         <span className="enabled-trailing">
-          <RelatedHarnessIcons
-            harnessIds={relatedHarnessesForResourceType("plugin")}
-          />
           <span className="enabled-detail muted">
             @{plugin.version}
             {resourceCount > 0

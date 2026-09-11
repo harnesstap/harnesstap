@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { resourceTypeGlyph } from "../../apps/desktop/src/components/TypeIcon.tsx";
 
 const root = join(import.meta.dir, "../../apps/desktop/src");
 
@@ -85,8 +86,9 @@ describe("desktop icon chrome", () => {
   });
 
   test("Sparkles is the skill type glyph only; agents use Bot; gaps use status glyphs", () => {
-    expect(typeIconSource).toMatch(/case "skill":[\s\S]*?Sparkles/);
-    expect(typeIconSource).toMatch(/case "agent":[\s\S]*?Bot/);
+    expect(typeIconSource).toMatch(/case "skill":\s*return "sparkles"/);
+    expect(typeIconSource).toMatch(/case "sparkles":[\s\S]*?Sparkles/);
+    expect(typeIconSource).toMatch(/case "agent":\s*return "bot"/);
     expect(typeIconSource).not.toMatch(/case "agent":[\s\S]*?Sparkles/);
     expect(typeModalSource).toContain("skill: Sparkles");
     expect(typeModalSource).toContain("agent: Bot");
@@ -98,13 +100,14 @@ describe("desktop icon chrome", () => {
     expect(notStagedRow).toContain("CircleAlert");
     expect(notStagedRow).toContain("ChromeTooltip");
     expect(notStagedRow).not.toContain("Sparkles");
-    expect(typeIconSource).toContain('case "instruction":\n      return <FileText');
-    expect(typeIconSource).toContain('case "plugin":\n      return <Layers');
-    expect(typeIconSource).toContain('case "plugin_ref":\n      return <Package');
+    expect(notStagedRow).not.toContain("RelatedHarnessIcons");
+    expect(notStagedRow).not.toContain("ResourceRowMeta");
     expect(notStagedRow).toContain('label="Add"');
     expect(notStagedRow).toContain("showLabel");
     expect(designSource).toContain("never Not staged");
-    expect(designSource).toContain("Sparkles is the **skill** type glyph only");
+    expect(designSource).toContain(
+      "Lucide Sparkles is the **skill** type glyph only",
+    );
     expect(designSource).toContain("Agents use **Bot**");
     expect(designSource).toContain("Pencil stays profile **Edit**");
     expect(designSource).toContain("the Settings gear stays Settings");
@@ -112,6 +115,75 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain("<Pencil size={RAIL_ICON_SIZE}");
     expect(appSource).toContain('label="Settings"');
     expect(appSource).toContain("<Settings size={HEADER_ICON_SIZE}");
+  });
+
+  test("instruction, plugin, and package rows never map to or render Sparkles", () => {
+    expect(resourceTypeGlyph("skill")).toBe("sparkles");
+    for (const type of [
+      "instruction",
+      "plugin",
+      "plugin_ref",
+      "plugin_pin",
+      "agent",
+      "mcp_server",
+      "rule",
+    ] as const) {
+      expect(resourceTypeGlyph(type)).not.toBe("sparkles");
+    }
+    expect(resourceTypeGlyph("plugin")).toBe("layers");
+    expect(resourceTypeGlyph("plugin_ref")).toBe("package");
+    expect(resourceTypeGlyph("instruction")).toBe("file-text");
+
+    const sparklesImportFiles: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith(".tsx") && !entry.name.endsWith(".ts")) {
+          continue;
+        }
+        const source = readFileSync(full, "utf8");
+        if (/import\s*\{[^}]*\bSparkles\b/.test(source)) {
+          sparklesImportFiles.push(full.slice(root.length + 1));
+        }
+      }
+    };
+    walk(root);
+    expect(sparklesImportFiles.sort()).toEqual([
+      "components/ResourceTypeModal.tsx",
+      "components/TypeIcon.tsx",
+    ]);
+
+    const libraryList = resourcesSource.slice(
+      resourcesSource.indexOf("group.resources.map"),
+      resourcesSource.indexOf("function renderMainPane"),
+    );
+    expect(libraryList).toContain("TypeIcon");
+    expect(libraryList).toContain("type={filterType}");
+    expect(libraryList).not.toContain("Sparkles");
+    expect(libraryList).not.toContain("ResourceRowMeta");
+    expect(libraryList).not.toContain("RelatedHarnessIcons");
+
+    const pluginGroup = liveStateSource.slice(
+      liveStateSource.indexOf("function EnabledPluginGroup"),
+      liveStateSource.indexOf("function pinIdentityKey"),
+    );
+    expect(pluginGroup).toContain('<TypeIcon type="plugin"');
+    expect(pluginGroup).not.toContain("Sparkles");
+    const pluginSummary = pluginGroup.slice(
+      pluginGroup.indexOf("enabled-plugin-summary"),
+      pluginGroup.indexOf("enabled-plugin-body"),
+    );
+    expect(pluginSummary).not.toContain("RelatedHarnessIcons");
+    expect(pluginSummary).not.toContain("Sparkles");
+
+    expect(typeModalSource).toMatch(/plugin:\s*Package/);
+    expect(typeModalSource).toMatch(/instruction:\s*BookOpen/);
+    expect(typeModalSource).not.toMatch(/plugin:\s*Sparkles/);
+    expect(typeModalSource).not.toMatch(/instruction:\s*Sparkles/);
   });
 
   test("converts More and Show all to distinct icons and labels Not staged Add all", () => {

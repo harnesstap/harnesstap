@@ -16,7 +16,6 @@ import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import {
   ResourceRowDescription,
   ResourceRowIdentity,
-  ResourceRowMeta,
   ResourceRowRoot,
 } from "./ui/resource-row";
 import type { ApplyPluginResult } from "../lib/api/apply-plugin";
@@ -29,7 +28,6 @@ import {
   fetchPluginOriginCheck,
   postPluginOriginUpdate,
 } from "../lib/api/plugin-origin-update";
-import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
   groupLibraryListByFilterType,
   libraryFilterType,
@@ -671,11 +669,6 @@ export function ResourcesPanel({
                       </ResourceRowDescription>
                     ) : null}
                   </ResourceRowIdentity>
-                  <ResourceRowMeta
-                    harnessIds={relatedHarnessesForResourceType(
-                      filterType,
-                    )}
-                  />
                 </ResourceRowRoot>
               </li>
             );
@@ -718,12 +711,7 @@ export function ResourcesPanel({
         <div className="resources-panel-header-row">
           <div className="resources-panel-title-cluster">
             <WorkspaceBackButton
-              hidden={
-                !workspaceBackEnabled({
-                  hasLocalPrevious,
-                  hasWorkspacePrevious: canWorkspaceBack,
-                })
-              }
+              hidden={!hasLocalPrevious}
               disabled={backDisabled}
               onClick={handlePanelBack}
             />
