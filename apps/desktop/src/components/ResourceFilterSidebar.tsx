@@ -229,11 +229,14 @@ export function ResourceFilterSidebar({
           {LISTABLE_FILTER_RESOURCE_TYPES.map((type) => {
             const count = counts.get(type) ?? 0;
             const on = state.type === type;
+            if (count === 0 && !on) {
+              return null;
+            }
             return (
               <button
                 key={type}
                 type="button"
-                className={`resource-filter-type-badge${on ? " on" : ""}${count === 0 ? " empty" : ""}`}
+                className={`resource-filter-type-badge${on ? " on" : ""}`}
                 aria-pressed={on}
                 disabled={disabled}
                 onClick={() => onChange({ ...state, type })}

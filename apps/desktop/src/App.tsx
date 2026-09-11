@@ -2493,7 +2493,7 @@ export function App() {
                 />
                 <IconActionButton
                   primary
-                  className="rail-icon-action"
+                  className="rail-icon-action profile-create-action"
                   data-testid="open-create-profile"
                   onClick={() => openCreateProfile()}
                   disabled={!connected || switching || stashBusy}
@@ -2692,6 +2692,7 @@ export function App() {
                       label={`Add not-staged items to ${profile.name}`}
                       title={`Add ${activeProfileUntrackedCount} not-staged item${activeProfileUntrackedCount === 1 ? "" : "s"} to this profile`}
                       icon={<ListPlus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                    />
                     />
                   ) : null}
                 </div>

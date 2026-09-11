@@ -149,6 +149,9 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain("Export setup");
     expect(appSource).toContain("Import setup");
     expect(appSource).toContain("Refresh live status");
+    expect(appSource).toContain('label="Settings"');
+    expect(appSource).toContain('label="Account"');
+    expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
   });
 
   test("refreshes live status after package Apply and shows success in the header", () => {

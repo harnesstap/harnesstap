@@ -8,7 +8,6 @@ import {
   shouldShowProfileDeleteControls,
   type ProfileDeleteResult,
 } from "../../lib/api/profile-delete";
-import { ButtonSpinner } from "../ButtonSpinner";
 import { IconActionButton } from "../IconActionButton";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -82,7 +81,9 @@ export function ProfileDeleteControls({
       <span className="profile-delete-control">
         {variant === "icon" ? (
           <IconActionButton
-            className={busy ? "is-busy" : ""}
+            className={["profile-remove-action", busy ? "is-busy" : ""]
+              .filter(Boolean)
+              .join(" ")}
             label="Remove profile"
             title="Remove profile — files on disk stay until you apply another profile."
             disabled={busy || builtinEmpty}
@@ -95,24 +96,22 @@ export function ProfileDeleteControls({
             icon={<Trash2 size={18} strokeWidth={2} aria-hidden />}
           />
         ) : (
-        <button
-          className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-          type="button"
-          aria-label="Remove profile"
+          <IconActionButton
+            showLabel
+            className={["profile-remove-action", busy ? "is-busy" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            label="Remove profile"
             title="Remove profile — files on disk stay until you apply another profile."
-          disabled={busy || builtinEmpty}
-          onClick={() => {
-            setDeletePlugin(false);
-            setError(null);
-            setConfirmOpen(true);
-          }}
-        >
-          {busy ? (
-            <ButtonSpinner size={16} />
-          ) : (
-            "Remove profile"
-          )}
-        </button>
+            disabled={busy || builtinEmpty}
+            busy={busy}
+            onClick={() => {
+              setDeletePlugin(false);
+              setError(null);
+              setConfirmOpen(true);
+            }}
+            icon={<Trash2 size={16} strokeWidth={2} aria-hidden />}
+          />
         )}
       </span>
       <ConfirmDialog

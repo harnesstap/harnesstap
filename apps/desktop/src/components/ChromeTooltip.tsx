@@ -18,6 +18,7 @@ export function ChromeTooltip({
           className="chrome-tooltip"
           side={side}
           sideOffset={4}
+          collisionPadding={8}
         >
           {content}
         </Tooltip.Content>

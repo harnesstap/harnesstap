@@ -89,7 +89,11 @@ export function SourcesListPane({
   if (visible.length === 0) {
     const empty = discoverListEmptyCopy({ query, showInLibrary });
     return (
-      <div className="empty-state" data-testid="discover-empty">
+      <div
+        className="empty-state discover-empty"
+        data-testid="discover-empty"
+        role="status"
+      >
         <h2>{empty.message}</h2>
         {empty.hint ? <p className="muted">{empty.hint}</p> : null}
       </div>

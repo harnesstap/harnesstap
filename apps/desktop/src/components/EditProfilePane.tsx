@@ -29,6 +29,7 @@ import type {
   PluginMarketplaceEntry,
   ProfileDetail,
 } from "../lib/types";
+import { IconActionButton } from "./IconActionButton";
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 import { ProfileDeleteControls } from "./parity/ProfileDeleteControls";
@@ -472,22 +473,19 @@ export function EditProfilePane({
         </div>
         <div className="edit-profile-header-actions">
           {detail && onRequestCut ? (
-            <button
-              type="button"
-              className="icon-action"
-              onClick={() =>
-                onRequestCut(detail.profile.name, detail.profile.version)
-              }
-              disabled={controlsDisabled}
-              aria-label="Cut version"
+            <IconActionButton
+              label="Cut version"
               title={
                 detail.profile.dirty
                   ? "Cut unpublished edits to a new version"
                   : "Cut a new version (fork current state)"
               }
-            >
-              <Tag size={18} strokeWidth={2} aria-hidden />
-            </button>
+              disabled={controlsDisabled}
+              onClick={() =>
+                onRequestCut(detail.profile.name, detail.profile.version)
+              }
+              icon={<Tag size={18} strokeWidth={2} aria-hidden />}
+            />
           ) : null}
           <ProfileDeleteControls
             profileName={profileName}
@@ -497,16 +495,13 @@ export function EditProfilePane({
             variant="icon"
             onDeleted={(result, message) => onDeleted?.(result, message)}
           />
-          <button
-          type="button"
-          className="icon-action"
-          onClick={onClose}
-          disabled={busy}
-          aria-label="Done editing"
-          title="Done"
-        >
-          <X size={18} strokeWidth={2} aria-hidden />
-        </button>
+          <IconActionButton
+            label="Done editing"
+            title="Done"
+            disabled={busy}
+            onClick={onClose}
+            icon={<X size={18} strokeWidth={2} aria-hidden />}
+          />
         </div>
       </div>
 

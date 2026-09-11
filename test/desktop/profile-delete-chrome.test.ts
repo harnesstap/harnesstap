@@ -68,7 +68,7 @@ const liveStatusLine = sliceBetween(
 describe("profile delete chrome", () => {
   test("places Remove profile in the edit-pane header next to Done", () => {
     const deleteIdx = editHeader.indexOf("ProfileDeleteControls");
-    const doneIdx = editHeader.indexOf('aria-label="Done editing"');
+    const doneIdx = editHeader.indexOf('label="Done editing"');
     expect(deleteIdx).toBeGreaterThan(-1);
     expect(doneIdx).toBeGreaterThan(deleteIdx);
     expect(editHeader).toContain('variant="icon"');
@@ -84,6 +84,7 @@ describe("profile delete chrome", () => {
     expect(deleteSource).toContain("IconActionButton");
     expect(deleteSource).toContain("Trash2");
     expect(deleteSource).toContain('label="Remove profile"');
+    expect(deleteSource).toContain("profile-remove-action");
     expect(deleteSource).not.toContain("profile-delete-footer");
     expect(deleteSource).toContain("ConfirmDialog");
     expect(deleteSource).toContain("Also delete the plugin from the library");
@@ -96,7 +97,7 @@ describe("profile delete chrome", () => {
   });
 
   test("sizes the labeled header button as a compact cluster control", () => {
-    const cluster = cssBlock(stylesSource, ".profile-delete-control .btn");
+    const cluster = cssBlock(stylesSource, ".profile-delete-control .icon-action.has-label");
     expect(cluster).toContain("width: auto");
     expect(cluster).toContain("min-height: 32px");
     expect(cluster).not.toContain("width: 100%");
