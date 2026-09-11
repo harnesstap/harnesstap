@@ -4,6 +4,8 @@ import {
   countResourceTypeTabs,
   resolveResourceTypeTab,
   resourceTypeTabLabel,
+  resourceTypeTabShowsCount,
+  resourceTypeTabText,
   visibleResourceTypeTabs,
 } from "../../apps/desktop/src/lib/resource-type-tabs.ts";
 import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
@@ -49,6 +51,23 @@ describe("visibleResourceTypeTabs", () => {
       "instruction",
       "custom_kind",
     ]);
+  });
+});
+
+describe("resourceTypeTabText", () => {
+  it("adds a count when comparing types or a lone type has more than one item", () => {
+    const mixed = countResourceTypeTabs(["skill", "skill", "plugin"]);
+    expect(resourceTypeTabShowsCount(mixed)).toBe(true);
+    expect(resourceTypeTabText("skill", mixed)).toBe("Skills 2");
+    expect(resourceTypeTabText("plugin", mixed)).toBe("Plugins 1");
+    expect(resourceTypeTabText("all", mixed)).toBe("All 3");
+
+    const manySkills = countResourceTypeTabs(["skill", "skill"]);
+    expect(resourceTypeTabText("skill", manySkills)).toBe("Skills 2");
+
+    const one = countResourceTypeTabs(["skill"]);
+    expect(resourceTypeTabShowsCount(one)).toBe(false);
+    expect(resourceTypeTabText("skill", one)).toBe("Skills");
   });
 });
 

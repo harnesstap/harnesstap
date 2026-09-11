@@ -55,9 +55,13 @@ describe("library origin filter chrome", () => {
       "background: var(--accent)",
     );
     expect(tabsSource).toContain("visibleResourceTypeTabs");
+    expect(tabsSource).toContain("resourceTypeTabText");
+    expect(tabsSource).toContain("resource-type-tab-count");
     expect(tabsSource).toContain("ChromeTooltip");
     expect(designSource).toContain("ResourceTypeTabs");
     expect(designSource).toContain("No sidebar Type chips");
+    expect(designSource).toContain("Optional count in the pill");
+    expect(designSource).toContain("Pills always have icons");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

@@ -4,7 +4,10 @@ import { ToggleGroup } from "radix-ui";
 import {
   ALL_RESOURCE_TYPE_TAB,
   resolveResourceTypeTab,
+  resourceTypeTabItemCount,
   resourceTypeTabLabel,
+  resourceTypeTabShowsCount,
+  resourceTypeTabText,
   visibleResourceTypeTabs,
 } from "../lib/resource-type-tabs";
 import { ChromeTooltip } from "./ChromeTooltip";
@@ -79,6 +82,9 @@ export function ResourceTypeTabs({
       >
         {tabs.map((type) => {
           const label = resourceTypeTabLabel(type);
+          const caption = resourceTypeTabText(type, counts);
+          const showCount = resourceTypeTabShowsCount(counts);
+          const count = resourceTypeTabItemCount(type, counts);
           const glyph = <TabGlyph type={type} />;
           return (
             <ToggleGroup.Item
@@ -86,17 +92,20 @@ export function ResourceTypeTabs({
               value={type}
               className="resource-type-tab"
               data-testid={`resource-type-tab-${type}`}
-              aria-label={label}
+              aria-label={caption}
               disabled={disabled}
             >
               {compact ? (
-                <ChromeTooltip content={label}>
+                <ChromeTooltip content={caption}>
                   <span className="resource-type-tab-face">{glyph}</span>
                 </ChromeTooltip>
               ) : (
                 <>
                   {glyph}
                   <span className="resource-type-tab-label">{label}</span>
+                  {showCount ? (
+                    <span className="resource-type-tab-count">{count}</span>
+                  ) : null}
                 </>
               )}
             </ToggleGroup.Item>

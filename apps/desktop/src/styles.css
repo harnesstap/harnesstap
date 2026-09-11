@@ -1054,6 +1054,13 @@ button:focus-visible,
   white-space: nowrap;
 }
 
+.resource-type-tab-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .resource-type-tab-face {
   display: inline-flex;
   align-items: center;

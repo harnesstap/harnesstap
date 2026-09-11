@@ -100,3 +100,40 @@ export function resolveResourceTypeTab(
   const visible = visibleResourceTypeTabs(counts);
   return visible.includes(selected) ? selected : null;
 }
+
+export function resourceTypeTabItemCount(
+  type: string,
+  counts: ReadonlyMap<string, number>,
+): number {
+  if (type === ALL_RESOURCE_TYPE_TAB) {
+    let total = 0;
+    for (const n of counts.values()) {
+      total += n;
+    }
+    return total;
+  }
+  return counts.get(type) ?? 0;
+}
+
+/** Show counts when comparing types, or when a lone type has more than one item. */
+export function resourceTypeTabShowsCount(
+  counts: ReadonlyMap<string, number>,
+): boolean {
+  const present = [...counts.values()].filter((n) => n > 0);
+  if (present.length >= 2) {
+    return true;
+  }
+  return (present[0] ?? 0) > 1;
+}
+
+/** Visible / tooltip copy. Optional count: `Skills 12`. */
+export function resourceTypeTabText(
+  type: string,
+  counts: ReadonlyMap<string, number>,
+): string {
+  const label = resourceTypeTabLabel(type);
+  if (!resourceTypeTabShowsCount(counts)) {
+    return label;
+  }
+  return `${label} ${resourceTypeTabItemCount(type, counts)}`;
+}
