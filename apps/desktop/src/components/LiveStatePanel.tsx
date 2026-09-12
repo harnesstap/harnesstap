@@ -1781,6 +1781,7 @@ export function LiveStatePanel({
                     const typeTab = resolveResourceTypeTab(
                       profileResourceType,
                       typeCounts,
+                      { includeAll: false },
                     );
                     const typed =
                       typeTab === null
@@ -1790,6 +1791,7 @@ export function LiveStatePanel({
                     return (
                       <>
                         <ResourceTypeTabs
+                          includeAll={false}
                           counts={typeCounts}
                           value={typeTab}
                           onChange={(next) => {

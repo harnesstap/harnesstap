@@ -223,6 +223,7 @@ describe("desktop icon chrome", () => {
       liveStateSource.indexOf('aria-label="Not staged"'),
     );
     expect(profileResources).toContain("ResourceTypeTabs");
+    expect(profileResources).toContain("includeAll={false}");
     expect(profileResources).toContain("ProfileResourceListItem");
     expect(profileResources).not.toContain("EnabledPluginGroup");
     expect(profileResources).not.toContain("enabled-plugin-summary");
