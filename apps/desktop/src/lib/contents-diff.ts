@@ -91,10 +91,56 @@ export function labelForType(type: string, count: number): string {
   return count === 1 ? type : `${type}s`;
 }
 
+const INSTRUCTION_FILE_NAMES = new Set(
+  [
+    "CLAUDE.md",
+    "AGENTS.md",
+    "AGENTS.local.md",
+    "AGENT.md",
+    "GEMINI.md",
+    "AmazonQ.md",
+    "CONVENTIONS.md",
+    "JULES.md",
+    ".windsurfrules",
+    ".cursorrules",
+    ".goosehints",
+    ".rules",
+    "copilot-instructions.md",
+  ].map((name) => name.toLowerCase()),
+);
+
+function fileChangePathBasename(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? path : path.slice(slash + 1);
+}
+
+/**
+ * Map a File changes path to a resource type when apply preview omits
+ * `resource` metadata (instruction files are often path-only).
+ */
 export function inferFileChangeType(path: string): string | undefined {
   const normalized = path.replace(/\\/g, "/");
   if (/(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(normalized)) {
     return "mcp_server";
+  }
+  if (/(^|\/)skills\/[^/]+\/SKILL\.md$/i.test(normalized)) {
+    return "skill";
+  }
+  if (/(^|\/)agents\/[^/]+\.md$/i.test(normalized)) {
+    return "agent";
+  }
+  if (/(^|\/)commands?\/[^/]+\.md$/i.test(normalized)) {
+    return "command";
+  }
+  if (/(^|\/)rules\/[^/]+\.(md|mdc)$/i.test(normalized)) {
+    return "rule";
+  }
+  if (/(^|\/)hooks\/[^/]+$/i.test(normalized)) {
+    return "hook";
+  }
+  const base = fileChangePathBasename(normalized).toLowerCase();
+  if (INSTRUCTION_FILE_NAMES.has(base)) {
+    return "instruction";
   }
   return undefined;
 }
@@ -810,6 +856,7 @@ function addPendingApplyTypeKey(
 /**
  * Pending apply resource-type counts for Target preview chrome.
  * Unique keys across stack, files, and in-profile install gaps (not inventory).
+ * File changes contribute even when `resource` is omitted, via path mapping.
  */
 export function countPendingApplyResourceTypes(input: {
   added: ContentsDiffItem[];
