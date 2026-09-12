@@ -146,6 +146,25 @@ describe("library origin filter chrome", () => {
     expect(designSource).toContain("host pane");
     expect(designSource).toContain("never plugin, plugin ref, package, or instruction");
     expect(designSource).toContain("Profile resources use the same ResourceTypeTabs over a flat list");
+    expect(designSource).toContain("Profile resources omits All");
+  });
+
+  test("Library keeps the All tab; Profile resources omits it", () => {
+    expect(tabsSource).toContain("includeAll = true");
+    expect(panelSource).toContain("<ResourceTypeTabs");
+    expect(panelSource).not.toContain("includeAll={false}");
+    expect(compositionSource).toContain("<ResourceTypeTabs");
+    expect(compositionSource).not.toContain("includeAll={false}");
+    const profileResources = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Profile resources"'),
+      liveStateSource.indexOf('aria-label="Not staged"'),
+    );
+    const notStaged = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Not staged"'),
+    );
+    expect(profileResources).toContain("includeAll={false}");
+    expect(notStaged).toContain("<ResourceTypeTabs");
+    expect(notStaged).not.toContain("includeAll={false}");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

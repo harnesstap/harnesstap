@@ -22,6 +22,8 @@ export interface ResourceTypeTabsProps {
   value: string | null;
   onChange: (next: string | null) => void;
   disabled?: boolean;
+  /** Profile resources omits All; Library / Not staged / compose keep it. */
+  includeAll?: boolean;
 }
 
 function TabGlyph({ type }: { type: string }): ReactNode {
@@ -41,15 +43,19 @@ export function ResourceTypeTabs({
   value,
   onChange,
   disabled = false,
+  includeAll = true,
 }: ResourceTypeTabsProps): ReactNode {
   const labelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
-  const tabs = visibleResourceTypeTabs(counts);
-  const resolved = resolveResourceTypeTab(value, counts);
+  const tabOptions = { includeAll };
+  const tabs = visibleResourceTypeTabs(counts, tabOptions);
+  const resolved = resolveResourceTypeTab(value, counts, tabOptions);
   const toggleValue =
     resolved
-    ?? (tabs.includes(ALL_RESOURCE_TYPE_TAB) ? ALL_RESOURCE_TYPE_TAB : (tabs[0] ?? ALL_RESOURCE_TYPE_TAB));
+    ?? (includeAll && tabs.includes(ALL_RESOURCE_TYPE_TAB)
+      ? ALL_RESOURCE_TYPE_TAB
+      : (tabs[0] ?? ALL_RESOURCE_TYPE_TAB));
 
   useEffect(() => {
     const el = rootRef.current;
@@ -92,7 +98,11 @@ export function ResourceTypeTabs({
           if (!next) {
             return;
           }
-          onChange(next === ALL_RESOURCE_TYPE_TAB ? null : next);
+          if (next === ALL_RESOURCE_TYPE_TAB) {
+            onChange(includeAll ? null : (tabs[0] ?? null));
+            return;
+          }
+          onChange(next);
         }}
       >
         {tabs.map((type) => {

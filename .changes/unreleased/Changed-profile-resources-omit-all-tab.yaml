@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Profile resources ResourceTypeTabs omits the All tab and selects the first present type when the last selection is gone.
+time: 2026-09-12T09:10:00Z
+custom:
+  Issue: ""

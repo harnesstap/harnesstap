@@ -59,6 +59,14 @@ describe("visibleResourceTypeTabs", () => {
       "custom_kind",
     ]);
   });
+
+  it("omits All when includeAll is false", () => {
+    const counts = countResourceTypeTabs(["skill", "plugin", "skill"]);
+    expect(visibleResourceTypeTabs(counts, { includeAll: false })).toEqual([
+      "plugin",
+      "skill",
+    ]);
+  });
 });
 
 describe("resourceTypeTabText", () => {
@@ -127,6 +135,19 @@ describe("resolveResourceTypeTab", () => {
     expect(resolveResourceTypeTab("rule", counts)).toBeNull();
     expect(resolveResourceTypeTab("skill", counts)).toBe("skill");
     expect(resolveResourceTypeTab(null, counts)).toBeNull();
+    expect(resolveResourceTypeTab(ALL_RESOURCE_TYPE_TAB, counts)).toBeNull();
+  });
+
+  it("keeps a valid type and otherwise selects the first present type when All is hidden", () => {
+    const counts = countResourceTypeTabs(["skill", "plugin"]);
+    const noAll = { includeAll: false } as const;
+    expect(resolveResourceTypeTab("skill", counts, noAll)).toBe("skill");
+    expect(resolveResourceTypeTab("plugin", counts, noAll)).toBe("plugin");
+    expect(resolveResourceTypeTab("rule", counts, noAll)).toBe("plugin");
+    expect(resolveResourceTypeTab(null, counts, noAll)).toBe("plugin");
+    expect(resolveResourceTypeTab(ALL_RESOURCE_TYPE_TAB, counts, noAll)).toBe(
+      "plugin",
+    );
   });
 });
 

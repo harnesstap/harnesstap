@@ -194,6 +194,7 @@ describe("Profile resources pane chrome", () => {
       liveStateSource.indexOf('aria-label="Not staged"'),
     );
     expect(profileResources).toContain("ResourceTypeTabs");
+    expect(profileResources).toContain("includeAll={false}");
     expect(profileResources).toContain("countResourceTypeTabs");
     expect(profileResources).toContain("ProfileResourceListItem");
     expect(liveStateSource).toContain("flattenProfileResourceList");
@@ -205,6 +206,7 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain("pluginId={row.pluginId}");
     expect(liveStateSource).toContain("in {pluginName}");
     expect(designSource).toContain("detach `pluginId`");
+    expect(designSource).toContain("Profile resources omits All");
   });
 
   it("locks not-staged modifications and centered file diffs", () => {

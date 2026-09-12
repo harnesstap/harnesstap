@@ -84,13 +84,16 @@ export function countResourceTypeTabs(
   return counts;
 }
 
-/**
- * Presence-filtered tabs: hide empty types. Show All only when at least two
- * types are present.
- */
-export function visibleResourceTypeTabs(
-  counts: ReadonlyMap<string, number>,
-): string[] {
+export type ResourceTypeTabOptions = {
+  /** When false, omit the All tab even if several types are present. Default true. */
+  includeAll?: boolean;
+};
+
+function includeAllTab(options?: ResourceTypeTabOptions): boolean {
+  return options?.includeAll !== false;
+}
+
+function presentResourceTypeTabs(counts: ReadonlyMap<string, number>): string[] {
   const present: string[] = [];
   for (const type of RESOURCE_TYPE_TAB_ORDER) {
     if ((counts.get(type) ?? 0) > 0) {
@@ -101,22 +104,47 @@ export function visibleResourceTypeTabs(
     .filter((type) => !KNOWN_TAB_TYPES.has(type) && (counts.get(type) ?? 0) > 0)
     .sort((left, right) => left.localeCompare(right));
   present.push(...extras);
-  if (present.length >= 2) {
+  return present;
+}
+
+/**
+ * Presence-filtered tabs: hide empty types. Show All only when at least two
+ * types are present, unless `includeAll` is false.
+ */
+export function visibleResourceTypeTabs(
+  counts: ReadonlyMap<string, number>,
+  options?: ResourceTypeTabOptions,
+): string[] {
+  const present = presentResourceTypeTabs(counts);
+  if (includeAllTab(options) && present.length >= 2) {
     return [ALL_RESOURCE_TYPE_TAB, ...present];
   }
   return present;
 }
 
-/** Selected type, or null (All / the full present set) when the tab is gone. */
+/**
+ * Selected type, or null (All / the full present set) when the All tab applies.
+ * When All is hidden, never stay on `all`: keep a still-present type, else the
+ * first presence-filtered type.
+ */
 export function resolveResourceTypeTab(
   selected: string | null,
   counts: ReadonlyMap<string, number>,
+  options?: ResourceTypeTabOptions,
 ): string | null {
-  if (selected === null || selected === ALL_RESOURCE_TYPE_TAB) {
-    return null;
+  const visible = visibleResourceTypeTabs(counts, options);
+  const present = visible.filter((type) => type !== ALL_RESOURCE_TYPE_TAB);
+  if (
+    selected !== null &&
+    selected !== ALL_RESOURCE_TYPE_TAB &&
+    visible.includes(selected)
+  ) {
+    return selected;
   }
-  const visible = visibleResourceTypeTabs(counts);
-  return visible.includes(selected) ? selected : null;
+  if (!includeAllTab(options)) {
+    return present[0] ?? null;
+  }
+  return null;
 }
 
 export function resourceTypeTabItemCount(
