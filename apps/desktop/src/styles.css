@@ -1543,6 +1543,15 @@ button:focus-visible,
   opacity: 0.55;
 }
 
+.file-change-kind-badge.static {
+  cursor: default;
+}
+
+.diff-section > .compare-title .file-change-kind-badges {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .file-change-group {
   display: flex;
   flex-direction: column;
