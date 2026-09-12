@@ -16,6 +16,7 @@ import {
   orderedTypeCounts,
   summarizeStackChanges,
   uniqueFileChanges,
+  inferFileChangeType,
   managedPathFromResourceSource,
   compositionTypeCounts,
   filterProfileResourceList,
@@ -361,6 +362,31 @@ describe("contents-diff helpers", () => {
       mcp_server: 2,
       instruction: 1,
       plugin: 1,
+    });
+  });
+
+  it("counts instruction types from File changes paths without resource metadata", () => {
+    expect(inferFileChangeType(".claude/CLAUDE.md")).toBe("instruction");
+    expect(inferFileChangeType(".codex/AGENTS.md")).toBe("instruction");
+    expect(
+      Object.fromEntries(
+        countPendingApplyResourceTypes({
+          added: [],
+          removed: [],
+          fileChanges: [
+            { path: ".claude/CLAUDE.md", type: "deleted" },
+            { path: ".codex/AGENTS.md", type: "modified" },
+            {
+              path: ".claude/skills/ship/SKILL.md",
+              type: "deleted",
+            },
+          ],
+          installGaps: [],
+        }),
+      ),
+    ).toEqual({
+      instruction: 2,
+      skill: 1,
     });
   });
 
