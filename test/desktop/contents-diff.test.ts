@@ -737,6 +737,55 @@ describe("flattenProfileResourceList", () => {
       filterProfileResourceList(rows, "skill:ship").map((row) => row.key),
     ).toEqual(["resource:l1:skill:ship"]);
   });
+
+  it("omits the selected profile’s own identity as a plugin/resource row", () => {
+    const stacked = contents({
+      plugins: [
+        {
+          id: "default",
+          name: "default",
+          version: "1.0.0",
+          resources: [{ type: "skill", name: "ship" }],
+        },
+        {
+          id: "teads",
+          name: "Teads (Default)",
+          version: "1.0.1",
+          resources: [{ type: "mcp_server", name: "slack" }],
+        },
+      ],
+      resources: [
+        { type: "skill", name: "ship" },
+        { type: "mcp_server", name: "slack" },
+        { type: "plugin", name: "default", id: "default" },
+        { type: "skill", name: "extra" },
+      ],
+      plugin_pins: [{ ref: "slack@claude-plugins", version_constraint: "latest" }],
+      type_counts: { plugin: 2, skill: 2, mcp_server: 1, plugin_pin: 1 },
+      stack_resource_count: 4,
+    });
+    const rows = flattenProfileResourceList(stacked, { selectedProfile: "default" });
+    const pluginRows = rows.filter((row) => row.kind === "plugin");
+    expect(pluginRows.map((row) => row.plugin.name)).toEqual(["Teads (Default)"]);
+    expect(rows.some((row) => row.kind === "plugin" && row.plugin.id === "default")).toBe(
+      false,
+    );
+    expect(
+      rows.some(
+        (row) =>
+          row.kind === "resource"
+          && row.resource.type === "plugin"
+          && (row.resource.name === "default" || row.resource.id === "default"),
+      ),
+    ).toBe(false);
+    expect(rows.map((row) => row.key)).toEqual([
+      "resource:default:skill:ship",
+      "plugin:teads",
+      "resource:teads:mcp_server:slack",
+      "pin:slack@claude-plugins",
+      "resource:skill:extra",
+    ]);
+  });
 });
 
 describe("compositionTypeCounts", () => {

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop Profile resources omits the selected profile’s own identity as a plugin/resource row, listing membership and nested contents only.
+time: 2026-09-12T15:45:00Z
+custom:
+  Issue: ""
