@@ -1795,7 +1795,7 @@ export function LiveStatePanel({
                       <>
                         <ResourceTypeTabs
                           includeAll={false}
-                          density="compact"
+                          density="pills"
                           counts={typeCounts}
                           value={typeTab}
                           onChange={(next) => {

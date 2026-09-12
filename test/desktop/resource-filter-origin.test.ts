@@ -190,8 +190,8 @@ describe("library origin filter chrome", () => {
       liveStateSource.indexOf('aria-label="Not staged"'),
     );
     expect(notStaged).toContain('density="pills"');
-    expect(profileResources).toContain('density="compact"');
-    expect(profileResources).not.toContain('density="pills"');
+    expect(profileResources).toContain('density="pills"');
+    expect(profileResources).not.toContain('density="compact"');
     const typeBadges = liveStateSource.slice(
       liveStateSource.indexOf("function TargetPreviewTypeBadges"),
       liveStateSource.indexOf("function stackChangeToneIcon"),
@@ -204,6 +204,11 @@ describe("library origin filter chrome", () => {
     expect(designSource).toContain("**pills**");
     expect(designSource).toContain("**compact**");
     expect(designSource).toContain("Default pills density");
+    expect(designSource).toContain("Library, Profile resources, Not staged");
+    expect(designSource).toContain("not Profile resources");
+    expect(designSource).toContain(
+      "at pills density (icon, then count, then type text; wrap; never compact)",
+    );
   });
 
   test("Library keeps the All tab; Profile resources omits it", () => {

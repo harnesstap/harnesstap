@@ -23,10 +23,10 @@ export interface ResourceTypeTabsProps {
   /** Profile resources omits All; Library / Not staged / compose keep it. */
   includeAll?: boolean;
   /**
-   * Default `pills` (Library, Global/Project type filters): icon, count,
-   * type text; wrap; never icon-only.
-   * `compact` (Profile resources / tight chrome only): circular icon,
-   * corner count badge, pluralized tooltip.
+   * Default `pills` (Library, Profile resources, Global/Project type filters):
+   * icon, count, type text; wrap; never icon-only.
+   * `compact` stays in the API for true tight chrome if ever needed:
+   * circular icon, corner count badge, pluralized tooltip.
    */
   density?: ResourceTypeTabDensity;
 }

@@ -22,7 +22,7 @@ export const ALL_RESOURCE_TYPE_TAB = "all";
 
 /**
  * Default `pills`: icon, count, type text; wrap; never icon-only.
- * `compact`: circular icon + corner badge + pluralized tooltip (tight chrome).
+ * `compact`: circular icon + corner badge + pluralized tooltip (tight chrome only).
  */
 export type ResourceTypeTabDensity = "pills" | "compact";
 
