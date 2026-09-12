@@ -285,7 +285,17 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain('ariaLabel="Pending apply diff"');
     expect(designSource).toContain("no info icon");
     expect(designSource).toContain("apply-diff icon badges");
+    expect(designSource).toContain("including **0**");
     expect(designSource).toContain("no **N would change · N managed**");
+    expect(designSource).toContain("Stack changes has no info icon");
+    const stackTitle = previewBlock.slice(
+      previewBlock.indexOf("Stack changes"),
+      previewBlock.indexOf("STACK_CHANGES_SUBTITLE"),
+    );
+    expect(stackTitle).not.toContain("SectionInfo");
+    expect(stackTitle).not.toContain("contents-header-info");
+    expect(liveStateSource).toContain("apply-diff-kind-badges");
+    expect(liveStateSource).toContain("FileChangeKindBadgeMark");
     expect(previewBlock).not.toContain("No stack changes");
     expect(previewBlock).not.toContain("No file changes vs live target");
     expect(previewBlock).not.toContain("is-disabled");

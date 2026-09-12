@@ -1529,6 +1529,31 @@ button:focus-visible,
   color: var(--yellow);
 }
 
+.apply-diff-kind-badge {
+  border-color: color-mix(in srgb, currentColor 50%, var(--border));
+  background: color-mix(in srgb, currentColor 12%, var(--bg));
+  font-variant-numeric: tabular-nums;
+}
+
+.apply-diff-kind-badge.static {
+  cursor: default;
+}
+
+.apply-diff-kind-badge:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.file-change-kind-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0.7rem;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .file-change-kind-badge.on {
   border-color: currentColor;
   background: color-mix(in srgb, currentColor 16%, var(--surface));
@@ -1539,12 +1564,13 @@ button:focus-visible,
   cursor: not-allowed;
 }
 
-.file-change-kind-badge.empty:not(.on) {
-  opacity: 0.55;
+.file-change-kind-badge.apply-diff-kind-badge:disabled {
+  opacity: 1;
+  cursor: default;
 }
 
-.file-change-kind-badge.static {
-  cursor: default;
+.file-change-kind-badge.empty:not(.on) {
+  opacity: 0.55;
 }
 
 .diff-section > .compare-title .file-change-kind-badges {

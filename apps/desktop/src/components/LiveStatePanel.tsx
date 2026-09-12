@@ -98,7 +98,6 @@ const ICON_SIZE = 14;
 const NOT_STAGED_HELP =
   "On disk, not in this profile. Live copies that differ show here too.";
 const NOT_STAGED_SUBTITLE = "On disk, not in this profile";
-const STACK_CHANGES_HELP = "What apply would add or remove.";
 const STACK_CHANGES_SUBTITLE = "What apply would add or remove.";
 const INSTALL_GAPS_HELP = "Profile items that do not match the live install.";
 const INSTALL_GAPS_SUBTITLE = "Profile items not matching the live install.";
@@ -295,81 +294,95 @@ const FILE_CHANGE_KIND_BADGES: Array<{
   { kind: "update", label: "Modified", Icon: Pencil },
 ];
 
+function FileChangeKindBadgeMark({ kind }: { kind: FileChangeKind }): ReactNode {
+  switch (kind) {
+    case "add":
+      return (
+        <span className="file-change-kind-mark" aria-hidden>
+          +
+        </span>
+      );
+    case "remove":
+      return (
+        <span className="file-change-kind-mark" aria-hidden>
+          −
+        </span>
+      );
+    case "update":
+      return <Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />;
+    default: {
+      const neverKind: never = kind;
+      return neverKind;
+    }
+  }
+}
+
 function FileChangeKindBadges({
   counts,
   interactive,
   selected,
   onToggle,
-  hideEmpty,
   ariaLabel,
 }: {
   counts: Record<FileChangeKind, number>;
   interactive: boolean;
   selected?: ReadonlySet<FileChangeKind>;
   onToggle?: (kind: FileChangeKind) => void;
-  hideEmpty?: boolean;
   ariaLabel: string;
 }): ReactNode {
-  const badges = FILE_CHANGE_KIND_BADGES.flatMap(({ kind, label, Icon }) => {
-    const count = counts[kind];
-    if (hideEmpty && count === 0) {
-      return [];
-    }
-    const on = selected?.has(kind) ?? false;
-    const className = [
-      "file-change-kind-badge",
-      kind,
-      on ? "on" : "",
-      count === 0 ? "empty" : "",
-      interactive ? "" : "static",
-    ]
-      .filter(Boolean)
-      .join(" ");
-    const aria = interactive
-      ? `Filter ${label.toLowerCase()} (${count})`
-      : `${count} ${label.toLowerCase()}`;
-    const inner = (
-      <>
-        <Icon size={ICON_SIZE} strokeWidth={2} aria-hidden />
-        <span>{count}</span>
-      </>
-    );
-    if (!interactive) {
-      return [
-        <span key={kind} className={className} aria-label={aria}>
-          {inner}
-        </span>,
-      ];
-    }
-    return [
-      <button
-        key={kind}
-        type="button"
-        className={className}
-        aria-pressed={on}
-        aria-label={aria}
-        title={label}
-        disabled={count === 0}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          onToggle?.(kind);
-        }}
-      >
-        {inner}
-      </button>,
-    ];
-  });
-  if (badges.length === 0) {
-    return null;
-  }
   return (
     <div
-      className="file-change-kind-badges"
+      className="file-change-kind-badges apply-diff-kind-badges"
       role="group"
       aria-label={ariaLabel}
     >
-      {badges}
+      {FILE_CHANGE_KIND_BADGES.map(({ kind, label }) => {
+        const count = counts[kind];
+        const on = selected?.has(kind) ?? false;
+        const className = [
+          "file-change-kind-badge",
+          "apply-diff-kind-badge",
+          kind,
+          on ? "on" : "",
+          interactive ? "" : "static",
+        ]
+          .filter(Boolean)
+          .join(" ");
+        const aria = interactive
+          ? `Filter ${label.toLowerCase()} (${count})`
+          : `${count} ${label.toLowerCase()}`;
+        const inner = (
+          <>
+            <FileChangeKindBadgeMark kind={kind} />
+            <span>{count}</span>
+          </>
+        );
+        if (!interactive) {
+          return (
+            <span key={kind} className={className} aria-label={aria}>
+              {inner}
+            </span>
+          );
+        }
+        return (
+          <button
+            key={kind}
+            type="button"
+            className={className}
+            aria-pressed={on}
+            aria-label={aria}
+            title={label}
+            disabled={count === 0}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onToggle?.(kind);
+            }}
+          >
+            {inner}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -383,7 +396,6 @@ function TargetPreviewDiffBadges({
     <FileChangeKindBadges
       counts={counts}
       interactive={false}
-      hideEmpty
       ariaLabel="Pending apply diff"
     />
   );
@@ -1958,7 +1970,6 @@ export function LiveStatePanel({
                       <summary className="compare-title">
                         <span className="compare-title-text">
                           Stack changes
-                          <SectionInfo text={STACK_CHANGES_HELP} />
                         </span>
                         <StackChangeSummary
                           rows={summarizeStackChanges(diff.added, diff.removed)}
