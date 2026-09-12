@@ -8,8 +8,10 @@ import {
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
+  resourceTypeTabShowsCompactBadge,
   resourceTypeTabShowsCount,
   resourceTypeTabText,
+  resourceTypeTabTooltip,
   visibleResourceTypeTabs,
 } from "../lib/resource-type-tabs";
 import { ChromeTooltip } from "./ChromeTooltip";
@@ -95,10 +97,26 @@ export function ResourceTypeTabs({
       >
         {tabs.map((type) => {
           const label = resourceTypeTabLabel(type);
-          const caption = resourceTypeTabText(type, counts);
+          const caption = compact
+            ? resourceTypeTabTooltip(type, counts)
+            : resourceTypeTabText(type, counts);
           const showCount = resourceTypeTabShowsCount(counts);
           const count = resourceTypeTabItemCount(type, counts);
+          const showBadge = resourceTypeTabShowsCompactBadge(count);
           const glyph = <TabGlyph type={type} />;
+          const face = (
+            <span className="resource-type-tab-face">
+              {glyph}
+              {showBadge ? (
+                <span
+                  className="resource-type-tab-badge"
+                  data-testid={`resource-type-tab-badge-${type}`}
+                >
+                  {count}
+                </span>
+              ) : null}
+            </span>
+          );
           return (
             <ToggleGroup.Item
               key={type}
@@ -109,11 +127,9 @@ export function ResourceTypeTabs({
               disabled={disabled}
             >
               {compact ? (
-                <ChromeTooltip content={caption}>
-                  <span className="resource-type-tab-face">{glyph}</span>
-                </ChromeTooltip>
+                <ChromeTooltip content={caption}>{face}</ChromeTooltip>
               ) : (
-                glyph
+                face
               )}
               <span className="resource-type-tab-label">{label}</span>
               {showCount ? (
