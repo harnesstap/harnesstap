@@ -1010,8 +1010,8 @@ button:focus-visible,
   right: -2px;
   z-index: 1;
   box-sizing: border-box;
-  min-width: 13px;
-  height: 13px;
+  min-width: 14px;
+  height: 14px;
   padding: 0 3px;
   border-radius: 999px;
   background: var(--surface-2);
@@ -1019,7 +1019,7 @@ button:focus-visible,
   font-family: var(--mono);
   font-size: 9px;
   font-weight: 600;
-  line-height: 13px;
+  line-height: 14px;
   text-align: center;
   pointer-events: none;
 }
