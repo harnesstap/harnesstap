@@ -343,7 +343,7 @@ describe("Profile resources pane chrome", () => {
     expect(typeBadges).toContain("visibleResourceTypeTabs");
     expect(typeBadges).toContain("apply-diff-type-badge");
     expect(typeBadges).toContain("apply-diff-type-badge-label");
-    expect(typeBadges).toContain('data-density="labeled"');
+    expect(typeBadges).toContain('data-density="pills"');
     expect(typeBadges).toContain("resourceTypeTabLabel(type)");
     expect(typeBadges).not.toContain("ChromeTooltip");
     expect(typeBadges).not.toContain("FileChangeKindBadgeMark");

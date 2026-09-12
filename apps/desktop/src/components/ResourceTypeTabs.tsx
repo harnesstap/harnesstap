@@ -1,16 +1,13 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { LayoutGrid } from "lucide-react";
 import { ToggleGroup } from "radix-ui";
 import {
   ALL_RESOURCE_TYPE_TAB,
   resolveResourceTypeTab,
-  RESOURCE_TYPE_TABS_WIDE_MIN_PX,
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
   resourceTypeTabShowsCompactBadge,
-  resourceTypeTabShowsCount,
-  resourceTypeTabText,
   resourceTypeTabTooltip,
   visibleResourceTypeTabs,
   type ResourceTypeTabDensity,
@@ -26,9 +23,10 @@ export interface ResourceTypeTabsProps {
   /** Profile resources omits All; Library / Not staged / compose keep it. */
   includeAll?: boolean;
   /**
-   * `labeled` (Library, Not staged, compose, Global/Project type filters):
-   * always icon, count, type text; wrap; never icon-only.
-   * `compact` (Profile resources): may collapse to icon-only with a count badge.
+   * Default `pills` (Library, Global/Project type filters): icon, count,
+   * type text; wrap; never icon-only.
+   * `compact` (Profile resources / tight chrome only): circular icon,
+   * corner count badge, pluralized tooltip.
    */
   density?: ResourceTypeTabDensity;
 }
@@ -40,23 +38,17 @@ function TabGlyph({ type }: { type: string }): ReactNode {
   return <TypeIcon type={type} />;
 }
 
-function hostPaneWidth(el: HTMLElement): number {
-  const host = el.parentElement ?? el;
-  return Math.max(el.getBoundingClientRect().width, host.getBoundingClientRect().width);
-}
-
 export function ResourceTypeTabs({
   counts,
   value,
   onChange,
   disabled = false,
   includeAll = true,
-  density = "labeled",
+  density = "pills",
 }: ResourceTypeTabsProps): ReactNode {
   const labelId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const labeled = density === "labeled";
-  const [compact, setCompact] = useState(!labeled);
+  const pills = density === "pills";
+  const compact = density === "compact";
   const tabOptions = { includeAll };
   const tabs = visibleResourceTypeTabs(counts, tabOptions);
   const resolved = resolveResourceTypeTab(value, counts, tabOptions);
@@ -66,35 +58,12 @@ export function ResourceTypeTabs({
       ? ALL_RESOURCE_TYPE_TAB
       : (tabs[0] ?? ALL_RESOURCE_TYPE_TAB));
 
-  useEffect(() => {
-    if (labeled) {
-      setCompact(false);
-      return;
-    }
-    const el = rootRef.current;
-    if (!el || typeof ResizeObserver === "undefined") {
-      return;
-    }
-    const host = el.parentElement ?? el;
-    const update = (): void => {
-      setCompact(hostPaneWidth(el) < RESOURCE_TYPE_TABS_WIDE_MIN_PX);
-    };
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    if (host !== el) {
-      observer.observe(host);
-    }
-    update();
-    return () => observer.disconnect();
-  }, [labeled]);
-
   if (tabs.length === 0) {
     return null;
   }
 
   return (
     <div
-      ref={rootRef}
       className="resource-type-tabs"
       data-density={density}
       data-compact={compact ? "true" : "false"}
@@ -122,11 +91,8 @@ export function ResourceTypeTabs({
         {tabs.map((type) => {
           const label = resourceTypeTabLabel(type);
           const count = resourceTypeTabItemCount(type, counts);
-          const caption = labeled || compact
-            ? resourceTypeTabTooltip(type, counts)
-            : resourceTypeTabText(type, counts);
-          const showCount = labeled || resourceTypeTabShowsCount(counts);
-          const showBadge = !labeled && resourceTypeTabShowsCompactBadge(count);
+          const caption = resourceTypeTabTooltip(type, counts);
+          const showBadge = compact && resourceTypeTabShowsCompactBadge(count);
           const glyph = <TabGlyph type={type} />;
           const face = (
             <span className="resource-type-tab-face">
@@ -155,19 +121,12 @@ export function ResourceTypeTabs({
               ) : (
                 face
               )}
-              {labeled ? (
+              {pills ? (
                 <>
                   <span className="resource-type-tab-count">{count}</span>
                   <span className="resource-type-tab-label">{label}</span>
                 </>
-              ) : (
-                <>
-                  <span className="resource-type-tab-label">{label}</span>
-                  {showCount ? (
-                    <span className="resource-type-tab-count">{count}</span>
-                  ) : null}
-                </>
-              )}
+              ) : null}
             </ToggleGroup.Item>
           );
         })}

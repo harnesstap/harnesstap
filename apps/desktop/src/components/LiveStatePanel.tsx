@@ -411,7 +411,7 @@ function TargetPreviewTypeBadges({
   return (
     <div
       className="file-change-kind-badges apply-diff-type-badges"
-      data-density="labeled"
+      data-density="pills"
       role="group"
       aria-label="Pending apply resource types"
     >
@@ -1911,7 +1911,7 @@ export function LiveStatePanel({
                   return (
                     <>
                       <ResourceTypeTabs
-                        density="labeled"
+                        density="pills"
                         counts={typeCounts}
                         value={typeTab}
                         onChange={(next) => {

@@ -4,11 +4,10 @@ import {
   countResourceTypeTabs,
   resolveResourceTypeTab,
   RESOURCE_TYPE_TAB_ORDER,
-  RESOURCE_TYPE_TABS_WIDE_MIN_PX,
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
-  resourceTypeTabLabeledText,
+  resourceTypeTabPillsText,
   resourceTypeTabShowsCompactBadge,
   resourceTypeTabShowsCount,
   resourceTypeTabText,
@@ -19,7 +18,6 @@ import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
 
 describe("resourceTypeTabLabel", () => {
   it("uses short Desktop labels", () => {
-    expect(RESOURCE_TYPE_TABS_WIDE_MIN_PX).toBe(900);
     expect(resourceTypeTabLabel("all")).toBe("All");
     expect(resourceTypeTabLabel("plugin")).toBe("Plugins");
     expect(resourceTypeTabLabel("mcp_server")).toBe("MCPs");
@@ -87,15 +85,15 @@ describe("resourceTypeTabText", () => {
   });
 });
 
-describe("resourceTypeTabLabeledText", () => {
+describe("resourceTypeTabPillsText", () => {
   it("puts count before the type text", () => {
     const mixed = countResourceTypeTabs(["skill", "plugin", "plugin"]);
-    expect(resourceTypeTabLabeledText("skill", mixed)).toBe("1 Skills");
-    expect(resourceTypeTabLabeledText("plugin", mixed)).toBe("2 Plugins");
-    expect(resourceTypeTabLabeledText("all", mixed)).toBe("3 All");
+    expect(resourceTypeTabPillsText("skill", mixed)).toBe("1 Skills");
+    expect(resourceTypeTabPillsText("plugin", mixed)).toBe("2 Plugins");
+    expect(resourceTypeTabPillsText("all", mixed)).toBe("3 All");
 
     const one = countResourceTypeTabs(["skill"]);
-    expect(resourceTypeTabLabeledText("skill", one)).toBe("1 Skills");
+    expect(resourceTypeTabPillsText("skill", one)).toBe("1 Skills");
   });
 });
 
