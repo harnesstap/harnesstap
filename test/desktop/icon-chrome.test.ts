@@ -95,9 +95,10 @@ describe("desktop icon chrome", () => {
   });
 
   test("converts install-gap plugin Install to icon-only chrome", () => {
+    const installStart = liveStateSource.indexOf("Install gaps (in profile)");
     const installGaps = liveStateSource.slice(
-      liveStateSource.indexOf("Install gaps (in profile)"),
-      liveStateSource.indexOf("File changes"),
+      installStart,
+      liveStateSource.indexOf("<FileChangesSection", installStart),
     );
     expect(installGaps).toContain("installGapSyncAction");
     expect(installGaps).toContain("installGapGroups.map");
@@ -366,6 +367,28 @@ describe("desktop icon chrome", () => {
     expect(designSource).toContain("Will be written when you Apply");
     expect(designSource).toContain("[path] … [kind chip] [icon actions]");
     expect(designSource).not.toContain("+1Apply to write");
+    expect(liveStateSource).toContain("FileChangesSection");
+    expect(liveStateSource).toContain("function FileChangeKindBadges");
+    const fileChangesHeader = liveStateSource.slice(
+      liveStateSource.indexOf("function FileChangesSection"),
+      liveStateSource.indexOf("<FileChangeRows"),
+    );
+    expect(fileChangesHeader).toContain("File changes");
+    expect(fileChangesHeader).toContain("FileChangeKindBadges");
+    expect(fileChangesHeader).toContain("ChromeTooltip");
+    expect(fileChangesHeader).toContain("managedCount");
+    expect(fileChangesHeader).not.toContain("would change");
+    expect(fileChangesHeader).not.toContain("N managed");
+    expect(liveStateSource).toContain("function FileChangeKindBadgeMark");
+    expect(liveStateSource).toContain("apply-diff-kind-badge");
+    expect(stylesSource).toContain(".apply-diff-kind-badge");
+    expect(stylesSource).toContain(".file-change-kind-mark");
+    const fileChangeList = liveStateSource.slice(
+      liveStateSource.indexOf("function FileChangeRows"),
+      liveStateSource.indexOf("function FileChangesSection"),
+    );
+    expect(fileChangeList).not.toContain("file-change-kind-badges");
+    expect(fileChangeList).toContain("Filter file changes");
   });
 
   test("keeps default icon-action at the 32px size token", () => {

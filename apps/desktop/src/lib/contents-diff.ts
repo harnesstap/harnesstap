@@ -790,6 +790,70 @@ export function countFileChangeKindResources(
   };
 }
 
+/**
+ * Pending apply/diff kind counts for Target preview chrome.
+ * Unique keys across stack, files, and in-profile install gaps (not inventory).
+ */
+export function countPendingApplyKinds(input: {
+  added: ContentsDiffItem[];
+  removed: ContentsDiffItem[];
+  fileChanges: DriftFileChange[];
+  installGaps: InstallGapRow[];
+}): Record<FileChangeKind, number> {
+  const add = new Set<string>();
+  const remove = new Set<string>();
+  const update = new Set<string>();
+
+  for (const item of input.added) {
+    add.add(item.key);
+  }
+  for (const item of input.removed) {
+    remove.add(item.key);
+  }
+  for (const change of uniqueFileChanges(input.fileChanges)) {
+    const key = fileChangeResourceKey(change);
+    const kind = fileChangeAction(change).action;
+    switch (kind) {
+      case "add":
+        add.add(key);
+        break;
+      case "remove":
+        remove.add(key);
+        break;
+      case "update":
+        update.add(key);
+        break;
+      default: {
+        const neverKind: never = kind;
+        return neverKind;
+      }
+    }
+  }
+  for (const gap of input.installGaps) {
+    switch (gap.kind) {
+      case "add":
+      case "missing":
+        add.add(gap.key);
+        break;
+      case "mismatch":
+        update.add(gap.key);
+        break;
+      case "outside_profile":
+        break;
+      default: {
+        const neverKind: never = gap.kind;
+        return neverKind;
+      }
+    }
+  }
+
+  return {
+    add: add.size,
+    remove: remove.size,
+    update: update.size,
+  };
+}
+
 export function fileChangeMatchesKindFilter(
   change: DriftFileChange,
   selected: ReadonlySet<FileChangeKind>,

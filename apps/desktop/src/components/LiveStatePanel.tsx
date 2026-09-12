@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Check,
   ChevronsDown,
@@ -23,8 +23,8 @@ import { ChromeTooltip } from "./ChromeTooltip";
 import { IconActionButton } from "./IconActionButton";
 import {
   aggregateInstallGaps,
-  compositionTypeCounts,
   countFileChangeKindResources,
+  countPendingApplyKinds,
   diffProfileContents,
   fileChangeAction,
   filterFileChangeGroups,
@@ -38,7 +38,6 @@ import {
   isTargetPreviewInstallGap,
   liveMcpNamesFromHarnesses,
   managedPathFromResourceSource,
-  orderedTypeCounts,
   summarizeStackChanges,
   type ContentsDiffItem,
   type FileChangeKind,
@@ -99,7 +98,6 @@ const ICON_SIZE = 14;
 const NOT_STAGED_HELP =
   "On disk, not in this profile. Live copies that differ show here too.";
 const NOT_STAGED_SUBTITLE = "On disk, not in this profile";
-const STACK_CHANGES_HELP = "What apply would add or remove.";
 const STACK_CHANGES_SUBTITLE = "What apply would add or remove.";
 const INSTALL_GAPS_HELP = "Profile items that do not match the live install.";
 const INSTALL_GAPS_SUBTITLE = "Profile items not matching the live install.";
@@ -286,31 +284,126 @@ function TargetPreviewQuietEmpty() {
   );
 }
 
-function ResourceSummaryStrip({
-  counts,
-  label,
-}: {
-  counts: Record<string, number>;
+const FILE_CHANGE_KIND_BADGES: Array<{
+  kind: FileChangeKind;
   label: string;
-}) {
-  const rows = orderedTypeCounts(counts);
-  if (rows.length === 0) {
-    return (
-      <div className="resource-summary" aria-label={label}>
-        <span className="muted">Empty stack</span>
-      </div>
+  Icon: typeof Plus;
+}> = [
+  { kind: "add", label: "Added", Icon: Plus },
+  { kind: "remove", label: "Removed", Icon: Minus },
+  { kind: "update", label: "Modified", Icon: Pencil },
+];
+
+function FileChangeKindBadgeMark({ kind }: { kind: FileChangeKind }): ReactNode {
+  switch (kind) {
+    case "add":
+      return (
+        <span className="file-change-kind-mark" aria-hidden>
+          +
+        </span>
+      );
+    case "remove":
+      return (
+        <span className="file-change-kind-mark" aria-hidden>
+          −
+        </span>
+      );
+    case "update":
+      return <Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />;
+    default: {
+      const neverKind: never = kind;
+      return neverKind;
+    }
+  }
+}
+
+function FileChangeKindBadges({
+  counts,
+  interactive,
+  selected,
+  onToggle,
+  ariaLabel,
+}: {
+  counts: Record<FileChangeKind, number>;
+  interactive: boolean;
+  selected?: ReadonlySet<FileChangeKind>;
+  onToggle?: (kind: FileChangeKind) => void;
+  ariaLabel: string;
+}): ReactNode {
+  const badges = FILE_CHANGE_KIND_BADGES.flatMap(({ kind, label }) => {
+    const count = counts[kind];
+    if (count <= 0) {
+      return [];
+    }
+    const on = selected?.has(kind) ?? false;
+    const className = [
+      "file-change-kind-badge",
+      "apply-diff-kind-badge",
+      kind,
+      on ? "on" : "",
+      interactive ? "" : "static",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const aria = interactive
+      ? `Filter ${label.toLowerCase()} (${count})`
+      : `${count} ${label.toLowerCase()}`;
+    const inner = (
+      <>
+        <FileChangeKindBadgeMark kind={kind} />
+        <span>{count}</span>
+      </>
     );
+    if (!interactive) {
+      return [
+        <span key={kind} className={className} aria-label={aria}>
+          {inner}
+        </span>,
+      ];
+    }
+    return [
+      <button
+        key={kind}
+        type="button"
+        className={className}
+        aria-pressed={on}
+        aria-label={aria}
+        title={label}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onToggle?.(kind);
+        }}
+      >
+        {inner}
+      </button>,
+    ];
+  });
+  if (badges.length === 0) {
+    return null;
   }
   return (
-    <div className="resource-summary" aria-label={label}>
-      {rows.map((row) => (
-        <span className="resource-stat" key={row.type} title={`${row.count} ${row.label}`}>
-          <TypeIcon type={row.type} />
-          <strong>{row.count}</strong>
-          <span>{row.label}</span>
-        </span>
-      ))}
+    <div
+      className="file-change-kind-badges apply-diff-kind-badges"
+      role="group"
+      aria-label={ariaLabel}
+    >
+      {badges}
     </div>
+  );
+}
+
+function TargetPreviewDiffBadges({
+  counts,
+}: {
+  counts: Record<FileChangeKind, number>;
+}): ReactNode {
+  return (
+    <FileChangeKindBadges
+      counts={counts}
+      interactive={false}
+      ariaLabel="Pending apply diff"
+    />
   );
 }
 
@@ -820,15 +913,6 @@ function FileChangeRowActions({
   );
 }
 
-const FILE_CHANGE_KIND_BADGES: Array<{
-  kind: FileChangeKind;
-  label: string;
-  Icon: typeof Plus;
-}> = [
-  { kind: "add", label: "Added", Icon: Plus },
-  { kind: "remove", label: "Removed", Icon: Minus },
-  { kind: "update", label: "Modified", Icon: Pencil },
-];
 const FILE_CHANGE_ADD_CHIP_TOOLTIP = "Will be written when you Apply";
 
 function fileChangeKindChipTooltip(kind: FileChangeKind): string | undefined {
@@ -963,6 +1047,7 @@ function FileChangeRows({
   changes,
   filesRootPath,
   profileResourceKeys,
+  kindFilter,
   fileChangeBusyPath = null,
   fileChangeBusyAction = null,
   onOpenFileChange,
@@ -974,6 +1059,7 @@ function FileChangeRows({
   changes: DriftFileChange[];
   filesRootPath?: string | null;
   profileResourceKeys: Set<string>;
+  kindFilter: ReadonlySet<FileChangeKind>;
   fileChangeBusyPath?: string | null;
   fileChangeBusyAction?: "open" | "add" | "drop" | null;
   onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
@@ -983,15 +1069,13 @@ function FileChangeRows({
   onOpenResource?: (target: ResourceDetailTarget) => void;
 }) {
   const [search, setSearch] = useState("");
-  const [kindFilter, setKindFilter] = useState<Set<FileChangeKind>>(
-    () => new Set(),
-  );
   const [visibleCount, setVisibleCount] = useState(LIST_PAGE_SIZE);
 
+  useEffect(() => {
+    setVisibleCount(LIST_PAGE_SIZE);
+  }, [kindFilter]);
+
   const groups = groupFileChangesByResource(changes);
-  const kindCounts = countFileChangeKindResources(
-    groups.flatMap((group) => group.changes),
-  );
 
   if (groups.length === 0) {
     return <div className="muted">No file changes vs live target</div>;
@@ -1013,49 +1097,6 @@ function FileChangeRows({
   return (
     <div className="file-change-list">
       <div className="file-change-filters">
-        <div
-          className="file-change-kind-badges"
-          role="group"
-          aria-label="Filter file changes by kind"
-        >
-          {FILE_CHANGE_KIND_BADGES.map(({ kind, label, Icon }) => {
-            const count = kindCounts[kind];
-            const on = kindFilter.has(kind);
-            return (
-              <button
-                key={kind}
-                type="button"
-                className={[
-                  "file-change-kind-badge",
-                  kind,
-                  on ? "on" : "",
-                  count === 0 ? "empty" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                aria-pressed={on}
-                aria-label={`Filter ${label.toLowerCase()} (${count})`}
-                title={label}
-                disabled={count === 0}
-                onClick={() => {
-                  setKindFilter((current) => {
-                    const next = new Set(current);
-                    if (next.has(kind)) {
-                      next.delete(kind);
-                    } else {
-                      next.add(kind);
-                    }
-                    return next;
-                  });
-                  setVisibleCount(LIST_PAGE_SIZE);
-                }}
-              >
-                <Icon size={ICON_SIZE} strokeWidth={2} aria-hidden />
-                <span>{count}</span>
-              </button>
-            );
-          })}
-        </div>
         <ListSearchField
           value={search}
           onChange={(value) => {
@@ -1180,6 +1221,104 @@ function FileChangeRows({
         onShowAll={() => setVisibleCount(filteredGroups.length)}
       />
     </div>
+  );
+}
+
+function FileChangesSection({
+  changes,
+  filesRootPath,
+  profileResourceKeys,
+  managedCount = 0,
+  fileChangeBusyPath = null,
+  fileChangeBusyAction = null,
+  committingManagedChanges,
+  onCommitManagedChanges,
+  onOpenFileChange,
+  onDiffFileChange,
+  onAddFileChange,
+  onDropFileChange,
+  onOpenResource,
+}: {
+  changes: DriftFileChange[];
+  filesRootPath?: string | null;
+  profileResourceKeys: Set<string>;
+  managedCount?: number;
+  fileChangeBusyPath?: string | null;
+  fileChangeBusyAction?: "open" | "add" | "drop" | null;
+  committingManagedChanges?: boolean;
+  onCommitManagedChanges?: () => void | Promise<void>;
+  onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
+  onDiffFileChange?: (change: DriftFileChange) => void;
+  onAddFileChange?: (change: DriftFileChange) => Promise<void>;
+  onDropFileChange?: (change: DriftFileChange) => Promise<void>;
+  onOpenResource?: (target: ResourceDetailTarget) => void;
+}) {
+  const [kindFilter, setKindFilter] = useState<Set<FileChangeKind>>(
+    () => new Set(),
+  );
+  const kindCounts = countFileChangeKindResources(changes);
+  const showCommit =
+    Boolean(onCommitManagedChanges)
+    && changes.some((change) => fileChangeAction(change).action === "update");
+
+  return (
+    <details className="diff-section">
+      <summary className="compare-title">
+        <span className="compare-title-text">
+          {managedCount > 0 ? (
+            <ChromeTooltip content={`${managedCount} managed`} side="top">
+              <span>File changes</span>
+            </ChromeTooltip>
+          ) : (
+            "File changes"
+          )}
+        </span>
+        <FileChangeKindBadges
+          counts={kindCounts}
+          interactive
+          selected={kindFilter}
+          onToggle={(kind) => {
+            setKindFilter((current) => {
+              const next = new Set(current);
+              if (next.has(kind)) {
+                next.delete(kind);
+              } else {
+                next.add(kind);
+              }
+              return next;
+            });
+          }}
+          ariaLabel="Filter file changes by kind"
+        />
+        {showCommit && onCommitManagedChanges ? (
+          <IconActionButton
+            className="compare-title-action"
+            busy={committingManagedChanges}
+            spinnerSize={ICON_SIZE}
+            label="Commit live file updates into profile"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void onCommitManagedChanges();
+            }}
+            icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
+      </summary>
+      <FileChangeRows
+        changes={changes}
+        filesRootPath={filesRootPath}
+        profileResourceKeys={profileResourceKeys}
+        kindFilter={kindFilter}
+        fileChangeBusyPath={fileChangeBusyPath}
+        fileChangeBusyAction={fileChangeBusyAction}
+        onOpenFileChange={onOpenFileChange}
+        onDiffFileChange={onDiffFileChange}
+        onAddFileChange={onAddFileChange}
+        onDropFileChange={onDropFileChange}
+        onOpenResource={onOpenResource}
+      />
+    </details>
   );
 }
 
@@ -1446,6 +1585,12 @@ export function LiveStatePanel({
     && (diff.added.length > 0 || diff.removed.length > 0);
   const hasFileChanges = (applyPreview?.files?.changes?.length ?? 0) > 0;
   const hasInstallGaps = installGaps.length > 0;
+  const pendingKindCounts = countPendingApplyKinds({
+    added: hasStackChanges ? diff.added : [],
+    removed: hasStackChanges ? diff.removed : [],
+    fileChanges: applyPreview?.files?.changes ?? [],
+    installGaps,
+  });
   const targetPreviewQuietEmpty = Boolean(applyPreview)
     && Boolean(targetContents)
     && !hasStackChanges
@@ -1819,10 +1964,7 @@ export function LiveStatePanel({
               ) : applyPreview ? (
                 <div className="compare-grid">
                   {targetContents ? (
-                    <ResourceSummaryStrip
-                      counts={compositionTypeCounts(targetContents)}
-                      label="Target stack summary"
-                    />
+                    <TargetPreviewDiffBadges counts={pendingKindCounts} />
                   ) : (
                     <p className="muted">
                       Could not resolve target profile contents.
@@ -1844,7 +1986,6 @@ export function LiveStatePanel({
                       <summary className="compare-title">
                         <span className="compare-title-text">
                           Stack changes
-                          <SectionInfo text={STACK_CHANGES_HELP} />
                         </span>
                         <StackChangeSummary
                           rows={summarizeStackChanges(diff.added, diff.removed)}
@@ -1969,45 +2110,21 @@ export function LiveStatePanel({
                   ) : null}
 
                   {hasFileChanges ? (
-                  <details className="diff-section">
-                    <summary className="compare-title">
-                      <span className="compare-title-text">
-                        File changes
-                        {(applyPreview.files?.expected_count ?? 0) > 0
-                          ? ` · ${(applyPreview.files?.changes?.length ?? 0)} would change · ${applyPreview.files?.expected_count ?? 0} managed`
-                          : ` · ${applyPreview.files?.changes?.length ?? 0} would change`}
-                      </span>
-                      {onCommitManagedChanges
-                        && (applyPreview.files?.changes ?? []).some(
-                          (change) => fileChangeAction(change).action === "update",
-                        ) ? (
-                        <IconActionButton
-                          className="compare-title-action"
-                          busy={committingManagedChanges}
-                          spinnerSize={ICON_SIZE}
-                          label="Commit live file updates into profile"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            void onCommitManagedChanges();
-                          }}
-                          icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-                        />
-                      ) : null}
-                    </summary>
-                    <FileChangeRows
-                      changes={applyPreview.files?.changes ?? []}
-                      filesRootPath={filesRootPath ?? applyPreview.files?.root_path ?? null}
-                      profileResourceKeys={profileResourceKeys}
-                      fileChangeBusyPath={fileChangeBusyPath}
-                      fileChangeBusyAction={fileChangeBusyAction}
-                      onOpenFileChange={onOpenFileChange}
-                      onDiffFileChange={onDiffFileChange}
-                      onAddFileChange={onAddFileChange}
-                      onDropFileChange={onDropFileChange}
-                      onOpenResource={openResource}
-                    />
-                  </details>
+                  <FileChangesSection
+                    changes={applyPreview.files?.changes ?? []}
+                    filesRootPath={filesRootPath ?? applyPreview.files?.root_path ?? null}
+                    profileResourceKeys={profileResourceKeys}
+                    managedCount={applyPreview.files?.expected_count ?? 0}
+                    fileChangeBusyPath={fileChangeBusyPath}
+                    fileChangeBusyAction={fileChangeBusyAction}
+                    committingManagedChanges={committingManagedChanges}
+                    onCommitManagedChanges={onCommitManagedChanges}
+                    onOpenFileChange={onOpenFileChange}
+                    onDiffFileChange={onDiffFileChange}
+                    onAddFileChange={onAddFileChange}
+                    onDropFileChange={onDropFileChange}
+                    onOpenResource={openResource}
+                  />
                   ) : null}
                 </div>
               ) : (

@@ -5,6 +5,7 @@ import {
   installGapStatusLabel,
   isTargetPreviewInstallGap,
   countFileChangeKindResources,
+  countPendingApplyKinds,
   diffProfileContents,
   fileChangeAction,
   fileChangeDestinationSummary,
@@ -284,6 +285,59 @@ describe("contents-diff helpers", () => {
       add: 1,
       remove: 1,
       update: 1,
+    });
+  });
+
+  it("counts pending apply kinds from stack, files, and install gaps", () => {
+    expect(
+      countPendingApplyKinds({
+        added: [
+          {
+            key: "skill:new",
+            kind: "added",
+            category: "resource",
+            iconType: "skill",
+            label: "new",
+          },
+        ],
+        removed: [
+          {
+            key: "skill:old",
+            kind: "removed",
+            category: "resource",
+            iconType: "skill",
+            label: "old",
+          },
+        ],
+        fileChanges: uniqueFileChanges([
+          {
+            path: ".claude/skills/new/SKILL.md",
+            type: "deleted",
+            resource: { type: "skill", name: "new" },
+          },
+          { path: ".cursor/mcp.json", type: "modified" },
+        ]),
+        installGaps: [
+          {
+            key: "plugin:missing:demo@demo",
+            label: "plugin demo@demo",
+            kind: "missing",
+            iconType: "plugin",
+            harnesses: ["cursor"],
+          },
+          {
+            key: "mcp:mismatch:docs",
+            label: "mcp docs",
+            kind: "mismatch",
+            iconType: "mcp_server",
+            harnesses: ["cursor"],
+          },
+        ],
+      }),
+    ).toEqual({
+      add: 2,
+      remove: 1,
+      update: 2,
     });
   });
 

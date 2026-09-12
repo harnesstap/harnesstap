@@ -270,6 +270,37 @@ describe("Profile resources pane chrome", () => {
     expect(header).toContain("Target preview");
     expect(header).not.toContain("contents-header-meta");
     expect(header).not.toContain("selectedProfile");
+    expect(header).not.toContain("contents-header-info");
+    expect(header).not.toContain("SectionInfo");
+    expect(header).not.toContain(">active<");
+    expect(previewBlock).not.toContain("targetPreviewActiveMeta");
+    expect(previewBlock).not.toContain("ResourceSummaryStrip");
+    expect(previewBlock).not.toContain("compositionTypeCounts");
+    expect(previewBlock).not.toContain("Target stack summary");
+    expect(previewBlock).toContain("TargetPreviewDiffBadges");
+    expect(liveStateSource).toContain("countPendingApplyKinds");
+    expect(previewBlock).toContain("FileChangesSection");
+    expect(previewBlock).not.toContain("would change");
+    expect(previewBlock).not.toContain("N managed");
+    expect(liveStateSource).not.toContain("would change ·");
+    expect(liveStateSource).toContain('ariaLabel="Pending apply diff"');
+    expect(designSource).toContain("no info icon");
+    expect(designSource).toContain("apply-diff icon badges");
+    expect(designSource).toContain("non-zero counts only");
+    expect(designSource).not.toContain("including **0**");
+    expect(designSource).toContain("no **N would change · N managed**");
+    expect(designSource).toContain("Managed count is a File changes title tooltip");
+    expect(liveStateSource).toContain("if (count <= 0)");
+    expect(liveStateSource).toContain("content={`${managedCount} managed`}");
+    expect(designSource).toContain("Stack changes has no info icon");
+    const stackTitle = previewBlock.slice(
+      previewBlock.indexOf("Stack changes"),
+      previewBlock.indexOf("STACK_CHANGES_SUBTITLE"),
+    );
+    expect(stackTitle).not.toContain("SectionInfo");
+    expect(stackTitle).not.toContain("contents-header-info");
+    expect(liveStateSource).toContain("apply-diff-kind-badges");
+    expect(liveStateSource).toContain("FileChangeKindBadgeMark");
     expect(previewBlock).not.toContain("No stack changes");
     expect(previewBlock).not.toContain("No file changes vs live target");
     expect(previewBlock).not.toContain("is-disabled");
