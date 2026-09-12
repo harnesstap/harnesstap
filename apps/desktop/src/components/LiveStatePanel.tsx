@@ -24,7 +24,7 @@ import { IconActionButton } from "./IconActionButton";
 import {
   aggregateInstallGaps,
   countFileChangeKindResources,
-  countPendingApplyKinds,
+  countPendingApplyResourceTypes,
   diffProfileContents,
   fileChangeAction,
   filterFileChangeGroups,
@@ -36,6 +36,7 @@ import {
   installGapRowPresentation,
   installGapStatusLabel,
   isTargetPreviewInstallGap,
+  labelForType,
   liveMcpNamesFromHarnesses,
   managedPathFromResourceSource,
   summarizeStackChanges,
@@ -65,8 +66,11 @@ import {
   nextVisibleCount,
 } from "../lib/resource-search";
 import {
+  ALL_RESOURCE_TYPE_TAB,
   countResourceTypeTabs,
   resolveResourceTypeTab,
+  resourceTypeTabLabel,
+  visibleResourceTypeTabs,
 } from "../lib/resource-type-tabs";
 import type {
   DriftFileChange,
@@ -393,17 +397,39 @@ function FileChangeKindBadges({
   );
 }
 
-function TargetPreviewDiffBadges({
+function TargetPreviewTypeBadges({
   counts,
 }: {
-  counts: Record<FileChangeKind, number>;
+  counts: ReadonlyMap<string, number>;
 }): ReactNode {
+  const types = visibleResourceTypeTabs(counts).filter(
+    (type) => type !== ALL_RESOURCE_TYPE_TAB,
+  );
+  if (types.length === 0) {
+    return null;
+  }
   return (
-    <FileChangeKindBadges
-      counts={counts}
-      interactive={false}
-      ariaLabel="Pending apply diff"
-    />
+    <div
+      className="file-change-kind-badges apply-diff-type-badges"
+      role="group"
+      aria-label="Pending apply resource types"
+    >
+      {types.map((type) => {
+        const count = counts.get(type) ?? 0;
+        const label = `${count} ${labelForType(type, count)}`;
+        return (
+          <ChromeTooltip key={type} content={resourceTypeTabLabel(type)} side="top">
+            <span
+              className="file-change-kind-badge apply-diff-type-badge static"
+              aria-label={label}
+            >
+              <TypeIcon type={type} />
+              <span>{count}</span>
+            </span>
+          </ChromeTooltip>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1585,7 +1611,7 @@ export function LiveStatePanel({
     && (diff.added.length > 0 || diff.removed.length > 0);
   const hasFileChanges = (applyPreview?.files?.changes?.length ?? 0) > 0;
   const hasInstallGaps = installGaps.length > 0;
-  const pendingKindCounts = countPendingApplyKinds({
+  const pendingTypeCounts = countPendingApplyResourceTypes({
     added: hasStackChanges ? diff.added : [],
     removed: hasStackChanges ? diff.removed : [],
     fileChanges: applyPreview?.files?.changes ?? [],
@@ -1964,7 +1990,7 @@ export function LiveStatePanel({
               ) : applyPreview ? (
                 <div className="compare-grid">
                   {targetContents ? (
-                    <TargetPreviewDiffBadges counts={pendingKindCounts} />
+                    <TargetPreviewTypeBadges counts={pendingTypeCounts} />
                   ) : (
                     <p className="muted">
                       Could not resolve target profile contents.

@@ -5,7 +5,7 @@ import {
   installGapStatusLabel,
   isTargetPreviewInstallGap,
   countFileChangeKindResources,
-  countPendingApplyKinds,
+  countPendingApplyResourceTypes,
   diffProfileContents,
   fileChangeAction,
   fileChangeDestinationSummary,
@@ -288,56 +288,79 @@ describe("contents-diff helpers", () => {
     });
   });
 
-  it("counts pending apply kinds from stack, files, and install gaps", () => {
+  it("counts unique pending apply resource types from stack, files, and install gaps", () => {
     expect(
-      countPendingApplyKinds({
-        added: [
-          {
-            key: "skill:new",
-            kind: "added",
-            category: "resource",
-            iconType: "skill",
-            label: "new",
-          },
-        ],
-        removed: [
-          {
-            key: "skill:old",
-            kind: "removed",
-            category: "resource",
-            iconType: "skill",
-            label: "old",
-          },
-        ],
-        fileChanges: uniqueFileChanges([
-          {
-            path: ".claude/skills/new/SKILL.md",
-            type: "deleted",
-            resource: { type: "skill", name: "new" },
-          },
-          { path: ".cursor/mcp.json", type: "modified" },
-        ]),
-        installGaps: [
-          {
-            key: "plugin:missing:demo@demo",
-            label: "plugin demo@demo",
-            kind: "missing",
-            iconType: "plugin",
-            harnesses: ["cursor"],
-          },
-          {
-            key: "mcp:mismatch:docs",
-            label: "mcp docs",
-            kind: "mismatch",
-            iconType: "mcp_server",
-            harnesses: ["cursor"],
-          },
-        ],
-      }),
+      Object.fromEntries(
+        countPendingApplyResourceTypes({
+          added: [
+            {
+              key: "skill:new",
+              kind: "added",
+              category: "resource",
+              iconType: "skill",
+              label: "new",
+            },
+            {
+              key: "agent:helper",
+              kind: "added",
+              category: "resource",
+              iconType: "agent",
+              label: "helper",
+            },
+          ],
+          removed: [
+            {
+              key: "skill:old",
+              kind: "removed",
+              category: "resource",
+              iconType: "skill",
+              label: "old",
+            },
+          ],
+          fileChanges: uniqueFileChanges([
+            {
+              path: ".claude/skills/new/SKILL.md",
+              type: "deleted",
+              resource: { type: "skill", name: "new" },
+            },
+            { path: ".cursor/mcp.json", type: "modified" },
+            {
+              path: ".claude/CLAUDE.md",
+              type: "deleted",
+              resource: { type: "instruction", name: "CLAUDE.md" },
+            },
+          ]),
+          installGaps: [
+            {
+              key: "plugin:missing:demo@demo",
+              label: "plugin demo@demo",
+              kind: "missing",
+              iconType: "plugin",
+              harnesses: ["cursor"],
+            },
+            {
+              key: "mcp:mismatch:docs",
+              label: "mcp docs",
+              kind: "mismatch",
+              iconType: "mcp_server",
+              harnesses: ["cursor"],
+            },
+            {
+              key: "plugin:outside_profile:extra@x",
+              label: "plugin extra@x",
+              kind: "outside_profile",
+              iconType: "plugin",
+              harnesses: ["cursor"],
+            },
+          ],
+        }),
+      ),
     ).toEqual({
-      add: 2,
-      remove: 1,
-      update: 2,
+      skill: 2,
+      agent: 1,
+      mcp_server: 2,
+      instruction: 1,
+      plugin: 1,
     });
   });
 

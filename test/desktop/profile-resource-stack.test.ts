@@ -277,16 +277,20 @@ describe("Profile resources pane chrome", () => {
     expect(previewBlock).not.toContain("ResourceSummaryStrip");
     expect(previewBlock).not.toContain("compositionTypeCounts");
     expect(previewBlock).not.toContain("Target stack summary");
-    expect(previewBlock).toContain("TargetPreviewDiffBadges");
-    expect(liveStateSource).toContain("countPendingApplyKinds");
+    expect(previewBlock).toContain("TargetPreviewTypeBadges");
+    expect(liveStateSource).toContain("countPendingApplyResourceTypes");
     expect(previewBlock).toContain("FileChangesSection");
     expect(previewBlock).not.toContain("would change");
     expect(previewBlock).not.toContain("N managed");
     expect(liveStateSource).not.toContain("would change ·");
-    expect(liveStateSource).toContain('ariaLabel="Pending apply diff"');
+    expect(liveStateSource).toContain('aria-label="Pending apply resource types"');
+    expect(liveStateSource).not.toContain('ariaLabel="Pending apply diff"');
     expect(designSource).toContain("no info icon");
-    expect(designSource).toContain("apply-diff icon badges");
-    expect(designSource).toContain("non-zero counts only");
+    expect(designSource).toContain("**resource-type** badges");
+    expect(designSource).toContain("Not +/−/edit at the Target preview top");
+    expect(designSource).toContain("**change-kind** badges");
+    expect(designSource).toContain("The two rows mean different things");
+    expect(designSource).toContain("hide zeros");
     expect(designSource).not.toContain("including **0**");
     expect(designSource).toContain("no **N would change · N managed**");
     expect(designSource).toContain("Managed count is a File changes title tooltip");
@@ -309,5 +313,45 @@ describe("Profile resources pane chrome", () => {
     expect(designSource).toContain("**no changes**");
     expect(designSource).toContain("deactivated grey, not accent");
     expect(designSource).toContain("Stack and file panels appear only when they have rows");
+  });
+
+  it("uses type glyphs at Target preview top and +/-/edit on File changes", () => {
+    const typeBadges = liveStateSource.slice(
+      liveStateSource.indexOf("function TargetPreviewTypeBadges"),
+      liveStateSource.indexOf("function stackChangeToneIcon"),
+    );
+    const kindBadges = liveStateSource.slice(
+      liveStateSource.indexOf("function FileChangeKindBadges"),
+      liveStateSource.indexOf("function TargetPreviewTypeBadges"),
+    );
+    const fileChangesHeader = liveStateSource.slice(
+      liveStateSource.indexOf("function FileChangesSection"),
+      liveStateSource.indexOf("<FileChangeRows"),
+    );
+    const previewBlock = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Target preview"'),
+      liveStateSource.indexOf("<ResourceDetailPane"),
+    );
+
+    expect(previewBlock).toContain("TargetPreviewTypeBadges");
+    expect(previewBlock).not.toContain("FileChangeKindBadges");
+    expect(previewBlock).not.toContain("FileChangeKindBadgeMark");
+    expect(typeBadges).toContain("<TypeIcon type={type} />");
+    expect(typeBadges).toContain("visibleResourceTypeTabs");
+    expect(typeBadges).toContain("apply-diff-type-badge");
+    expect(typeBadges).not.toContain("FileChangeKindBadgeMark");
+    expect(typeBadges).not.toContain("FILE_CHANGE_KIND_BADGES");
+    expect(typeBadges).not.toContain('kind: "add"');
+    expect(kindBadges).toContain("FileChangeKindBadgeMark");
+    expect(kindBadges).toContain("if (count <= 0)");
+    expect(kindBadges).toContain("FILE_CHANGE_KIND_BADGES");
+    expect(fileChangesHeader).toContain("FileChangeKindBadges");
+    expect(fileChangesHeader).not.toContain("TypeIcon");
+    expect(fileChangesHeader).not.toContain("TargetPreviewTypeBadges");
+    expect(designSource).toContain("same map as ResourceTypeTabs");
+    expect(designSource).toContain("Sparkles skill");
+    expect(designSource).toContain("Bot agent");
+    expect(designSource).toContain("Layers plugin");
+    expect(designSource).toContain("FileText instruction");
   });
 });

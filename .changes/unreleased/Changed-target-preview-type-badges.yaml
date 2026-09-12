@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Target preview top badges are per resource type (TypeIcon glyphs, same map as ResourceTypeTabs); File changes header stays add/delete/modify with zeros hidden.
+time: 2026-09-12T03:50:00Z
+custom:
+  Issue: ""
