@@ -479,27 +479,79 @@ export type ProfileResourceListRow =
       pluginName?: string;
     };
 
+export interface FlattenProfileResourceListOptions {
+  /** Selected profile name; omit that profile’s own plugin/package self-ref. */
+  selectedProfile?: string | null;
+}
+
+function selectedProfileIdentity(
+  selectedProfile: string | null | undefined,
+): string {
+  return selectedProfile?.trim() ?? "";
+}
+
+function isSelectedProfileSelfRef(
+  selected: string,
+  identity: { id?: string; name?: string },
+): boolean {
+  if (!selected) {
+    return false;
+  }
+  return identity.name === selected || identity.id === selected;
+}
+
+function isSelectedProfileResourceSelfRef(
+  selected: string,
+  resource: ProfileContentsResource,
+): boolean {
+  if (!selected) {
+    return false;
+  }
+  if (resource.type !== "plugin" && resource.type !== "plugin_pin") {
+    return false;
+  }
+  return isSelectedProfileSelfRef(selected, resource);
+}
+
+function isSelectedProfilePinSelfRef(
+  selected: string,
+  ref: string,
+): boolean {
+  if (!selected) {
+    return false;
+  }
+  return ref === selected;
+}
+
 /**
  * Flat Profile resources inventory: plugin packages, nested plugin contents
  * (with membership), pins, then loose material. Nested contents are not
- * repeated as loose rows.
+ * repeated as loose rows. The selected profile’s own identity is omitted.
  */
 export function flattenProfileResourceList(
   contents: ProfileContents | null | undefined,
+  options: FlattenProfileResourceListOptions = {},
 ): ProfileResourceListRow[] {
   if (!contents) {
     return [];
   }
+  const selected = selectedProfileIdentity(options.selectedProfile);
   const nested = nestedResourceKeys(contents);
   const rows: ProfileResourceListRow[] = [];
   for (const plugin of contents.plugins ?? []) {
-    rows.push({
-      kind: "plugin",
-      key: `plugin:${plugin.id}`,
-      type: "plugin",
-      plugin,
-    });
+    const omitPackage = isSelectedProfileSelfRef(selected, plugin);
+    if (!omitPackage) {
+      rows.push({
+        kind: "plugin",
+        key: `plugin:${plugin.id}`,
+        type: "plugin",
+        plugin,
+      });
+    }
     for (const resource of plugin.resources ?? []) {
+      if (isSelectedProfileResourceSelfRef(selected, resource)) {
+        continue;
+      }
       rows.push({
         kind: "resource",
         key: `resource:${plugin.id}:${resource.type}:${resource.name}`,
@@ -511,6 +563,9 @@ export function flattenProfileResourceList(
     }
   }
   for (const pin of contents.plugin_pins ?? []) {
+    if (isSelectedProfilePinSelfRef(selected, pin.ref)) {
+      continue;
+    }
     rows.push({
       kind: "pin",
       key: `pin:${pin.ref}`,
@@ -520,6 +575,9 @@ export function flattenProfileResourceList(
   }
   for (const resource of contents.resources ?? []) {
     if (nested.has(`${resource.type}:${resource.name}`)) {
+      continue;
+    }
+    if (isSelectedProfileResourceSelfRef(selected, resource)) {
       continue;
     }
     rows.push({

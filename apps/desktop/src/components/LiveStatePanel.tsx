@@ -1589,10 +1589,12 @@ export function LiveStatePanel({
   const profileResourceRows = useMemo(
     () =>
       filterProfileResourceList(
-        flattenProfileResourceList(enabledSourceContents),
+        flattenProfileResourceList(enabledSourceContents, {
+          selectedProfile,
+        }),
         profileResourceSearch,
       ),
-    [enabledSourceContents, profileResourceSearch],
+    [enabledSourceContents, profileResourceSearch, selectedProfile],
   );
 
   const profileNameForActions = selectedProfile ?? activeProfile;
