@@ -790,53 +790,54 @@ export function countFileChangeKindResources(
   };
 }
 
+function pendingFileChangeType(change: DriftFileChange): string | null {
+  return change.resource?.type ?? inferFileChangeType(change.path) ?? null;
+}
+
+function addPendingApplyTypeKey(
+  keys: Map<string, Set<string>>,
+  type: string,
+  key: string,
+): void {
+  let set = keys.get(type);
+  if (!set) {
+    set = new Set();
+    keys.set(type, set);
+  }
+  set.add(key);
+}
+
 /**
- * Pending apply/diff kind counts for Target preview chrome.
+ * Pending apply resource-type counts for Target preview chrome.
  * Unique keys across stack, files, and in-profile install gaps (not inventory).
  */
-export function countPendingApplyKinds(input: {
+export function countPendingApplyResourceTypes(input: {
   added: ContentsDiffItem[];
   removed: ContentsDiffItem[];
   fileChanges: DriftFileChange[];
   installGaps: InstallGapRow[];
-}): Record<FileChangeKind, number> {
-  const add = new Set<string>();
-  const remove = new Set<string>();
-  const update = new Set<string>();
+}): Map<string, number> {
+  const keys = new Map<string, Set<string>>();
 
   for (const item of input.added) {
-    add.add(item.key);
+    addPendingApplyTypeKey(keys, item.iconType, item.key);
   }
   for (const item of input.removed) {
-    remove.add(item.key);
+    addPendingApplyTypeKey(keys, item.iconType, item.key);
   }
   for (const change of uniqueFileChanges(input.fileChanges)) {
-    const key = fileChangeResourceKey(change);
-    const kind = fileChangeAction(change).action;
-    switch (kind) {
-      case "add":
-        add.add(key);
-        break;
-      case "remove":
-        remove.add(key);
-        break;
-      case "update":
-        update.add(key);
-        break;
-      default: {
-        const neverKind: never = kind;
-        return neverKind;
-      }
+    const type = pendingFileChangeType(change);
+    if (type === null) {
+      continue;
     }
+    addPendingApplyTypeKey(keys, type, fileChangeResourceKey(change));
   }
   for (const gap of input.installGaps) {
     switch (gap.kind) {
       case "add":
       case "missing":
-        add.add(gap.key);
-        break;
       case "mismatch":
-        update.add(gap.key);
+        addPendingApplyTypeKey(keys, gap.iconType, gap.key);
         break;
       case "outside_profile":
         break;
@@ -847,11 +848,13 @@ export function countPendingApplyKinds(input: {
     }
   }
 
-  return {
-    add: add.size,
-    remove: remove.size,
-    update: update.size,
-  };
+  const counts = new Map<string, number>();
+  for (const [type, set] of keys) {
+    if (set.size > 0) {
+      counts.set(type, set.size);
+    }
+  }
+  return counts;
 }
 
 export function fileChangeMatchesKindFilter(

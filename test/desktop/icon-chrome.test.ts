@@ -375,12 +375,17 @@ describe("desktop icon chrome", () => {
     );
     expect(fileChangesHeader).toContain("File changes");
     expect(fileChangesHeader).toContain("FileChangeKindBadges");
+    expect(fileChangesHeader).not.toContain("TypeIcon");
     expect(fileChangesHeader).toContain("ChromeTooltip");
     expect(fileChangesHeader).toContain("managedCount");
     expect(fileChangesHeader).not.toContain("would change");
     expect(fileChangesHeader).not.toContain("N managed");
     expect(liveStateSource).toContain("function FileChangeKindBadgeMark");
+    expect(liveStateSource).toContain("if (count <= 0)");
     expect(liveStateSource).toContain("apply-diff-kind-badge");
+    expect(liveStateSource).toContain("function TargetPreviewTypeBadges");
+    expect(liveStateSource).toContain("apply-diff-type-badge");
+    expect(stylesSource).toContain(".apply-diff-type-badge");
     expect(stylesSource).toContain(".apply-diff-kind-badge");
     expect(stylesSource).toContain(".file-change-kind-mark");
     const fileChangeList = liveStateSource.slice(
