@@ -1795,7 +1795,6 @@ export function LiveStatePanel({
                       <>
                         <ResourceTypeTabs
                           includeAll={false}
-                          density="pills"
                           counts={typeCounts}
                           value={typeTab}
                           onChange={(next) => {
@@ -1913,7 +1912,6 @@ export function LiveStatePanel({
                   return (
                     <>
                       <ResourceTypeTabs
-                        density="pills"
                         counts={typeCounts}
                         value={typeTab}
                         onChange={(next) => {

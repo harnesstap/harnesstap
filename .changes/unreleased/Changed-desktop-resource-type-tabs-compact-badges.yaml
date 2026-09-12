@@ -1,5 +1,5 @@
 kind: Changed
-body: Desktop ResourceTypeTabs compact (icon-only) density shows a numeric count badge and pluralized tooltips, without stacking a badge on wide pill counts.
+body: Desktop ResourceTypeTabs aria-labels use short pluralized copy (`1 skill` / `3 skills`).
 time: 2026-09-12T08:20:00Z
 custom:
   Issue: ""

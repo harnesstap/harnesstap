@@ -20,12 +20,6 @@ export type ResourceTypeTabId = (typeof RESOURCE_TYPE_TAB_ORDER)[number];
 
 export const ALL_RESOURCE_TYPE_TAB = "all";
 
-/**
- * Default `pills`: icon, count, type text; wrap; never icon-only.
- * `compact`: circular icon + corner badge + pluralized tooltip (tight chrome only).
- */
-export type ResourceTypeTabDensity = "pills" | "compact";
-
 export type ResourceTypeTabGlyph = TypeGlyph | "layout-grid";
 
 /**
@@ -164,30 +158,7 @@ export function resourceTypeTabItemCount(
   return counts.get(type) ?? 0;
 }
 
-/** Show counts when comparing types, or when a lone type has more than one item. */
-export function resourceTypeTabShowsCount(
-  counts: ReadonlyMap<string, number>,
-): boolean {
-  const present = [...counts.values()].filter((n) => n > 0);
-  if (present.length >= 2) {
-    return true;
-  }
-  return (present[0] ?? 0) > 1;
-}
-
-/** Optional count after the label (`Skills 12`) for compact-wide leftover copy. */
-export function resourceTypeTabText(
-  type: string,
-  counts: ReadonlyMap<string, number>,
-): string {
-  const label = resourceTypeTabLabel(type);
-  if (!resourceTypeTabShowsCount(counts)) {
-    return label;
-  }
-  return `${label} ${resourceTypeTabItemCount(type, counts)}`;
-}
-
-/** Pills density visible copy: count then type text (`1 Skills`, `2 Plugins`). */
+/** Visible pill copy: count then type text (`1 Skills`, `2 Plugins`). */
 export function resourceTypeTabPillsText(
   type: string,
   counts: ReadonlyMap<string, number>,
@@ -196,12 +167,7 @@ export function resourceTypeTabPillsText(
   return `${count} ${resourceTypeTabLabel(type)}`;
 }
 
-/** Compact count badge: hide zeros. All uses the total across types. */
-export function resourceTypeTabShowsCompactBadge(count: number): boolean {
-  return count > 0;
-}
-
-/** Singular/plural unit for compact tooltips (`skill` / `skills`). */
+/** Singular/plural unit for aria-labels (`skill` / `skills`). */
 export function resourceTypeTabUnit(type: string, count: number): string {
   const plural = count !== 1;
   switch (type) {
@@ -239,8 +205,8 @@ export function resourceTypeTabUnit(type: string, count: number): string {
 }
 
 /**
- * Compact tooltip / aria-label. Matches the badge: `12 resources`,
- * `1 skill` / `3 skills`. Falls back to the type label when the count is 0.
+ * Accessible name: `12 resources`, `1 skill` / `3 skills`. Falls back to
+ * the type label when the count is 0.
  */
 export function resourceTypeTabTooltip(
   type: string,

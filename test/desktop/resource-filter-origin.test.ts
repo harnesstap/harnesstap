@@ -100,88 +100,53 @@ describe("library origin filter chrome", () => {
   test("styles ResourceTypeTabs as filled selected pills", () => {
     expect(cssBlock(stylesSource, ".resource-type-tab")).toContain("min-height: 32px");
     expect(cssBlock(stylesSource, ".resource-type-tab")).toContain("min-width: 32px");
-    expect(cssBlock(stylesSource, ".resource-type-tabs[data-compact=\"true\"] .resource-type-tab-face")).toContain(
-      "min-width: 32px",
-    );
     expect(cssBlock(stylesSource, '.resource-type-tab[data-state="on"]')).toContain(
       "background: var(--accent)",
     );
     expect(tabsSource).toContain("visibleResourceTypeTabs");
     expect(tabsSource).toContain("resourceTypeTabTooltip");
-    expect(tabsSource).toContain("resourceTypeTabShowsCompactBadge");
     expect(tabsSource).toContain("resourceTypeTabGlyph");
     expect(tabsSource).not.toContain("RESOURCE_TYPE_TABS_WIDE_MIN_PX");
     expect(tabsSource).not.toContain("hostPaneWidth");
-    expect(tabsSource).toContain('density = "pills"');
-    expect(tabsSource).toContain("data-density={density}");
+    expect(tabsSource).not.toContain("density");
+    expect(tabsSource).not.toContain("compact");
+    expect(tabsSource).not.toContain("resource-type-tab-badge");
+    expect(tabsSource).not.toContain("ChromeTooltip");
     expect(tabsSource).toContain("aria-label={caption}");
     expect(tabsSource).toContain("resource-type-tab-count");
-    expect(tabsSource).toContain("resource-type-tab-badge");
-    expect(tabsSource).toContain("ChromeTooltip");
-    expect(tabsSource).toContain("content={caption}");
     expect(tabsSource).not.toContain("Sparkles");
     expect(tabsSource).toContain("TypeIcon");
     expect(cssBlock(stylesSource, ".resource-type-tabs")).toContain("width: 100%");
-    expect(cssBlock(stylesSource, ".resource-type-tab-badge")).toContain("color: var(--muted)");
-    expect(cssBlock(stylesSource, ".resource-type-tab-badge")).toContain("display: none");
-    expect(
-      cssBlock(stylesSource, '.resource-type-tabs[data-compact="true"] .resource-type-tab-badge'),
-    ).toContain("display: inline-flex");
-    expect(
-      cssBlock(stylesSource, '.resource-type-tab[data-state="on"] .resource-type-tab-badge'),
-    ).toContain("background: var(--primary-foreground)");
-    expect(
-      cssBlock(stylesSource, '.resource-type-tab[data-state="on"] .resource-type-tab-badge'),
-    ).toContain("color: var(--accent)");
-    expect(
-      cssBlock(stylesSource, '.resource-type-tab[data-state="on"] .resource-type-tab-badge'),
-    ).not.toContain("display: none");
+    expect(cssBlock(stylesSource, ".resource-type-tabs-scroller")).toContain("flex-wrap: wrap");
+    expect(cssBlock(stylesSource, ".resource-type-tabs-scroller")).not.toContain("overflow-x: auto");
+    expect(stylesSource).not.toContain("data-compact");
+    expect(stylesSource).not.toContain("resource-type-tab-badge");
     expect(stylesSource).not.toContain("@container (min-width: 900px)");
-    expect(
-      cssBlock(stylesSource, '.resource-type-tabs[data-density="pills"] .resource-type-tabs-scroller'),
-    ).toContain("flex-wrap: wrap");
-    expect(
-      cssBlock(stylesSource, '.resource-type-tabs[data-density="pills"] .resource-type-tabs-scroller'),
-    ).not.toContain("overflow-x: auto");
     expect(designSource).toContain("ResourceTypeTabs");
     expect(designSource).toContain("No sidebar Type chips");
-    expect(designSource).toContain("Two densities via `density`");
-    expect(designSource).toContain('(`pills` | `compact`)');
+    expect(designSource).toContain("One density: pills everywhere");
     expect(designSource).toContain("never collapse to icon-only");
-    expect(designSource).toContain("Prefer **pills** unless the shell is clearly narrow");
     expect(designSource).toContain("1 Skills");
     expect(designSource).toContain("2 Plugins");
-    expect(designSource).toContain("Compact count badge");
     expect(designSource).toContain("1 skill");
-    expect(designSource).toContain("badge-only");
     expect(designSource).toContain("Pills always have icons");
-    expect(designSource).toContain("crush the list");
+    expect(designSource).toContain("No compact circular type filters");
     expect(designSource).toContain("never plugin, plugin ref, package, or instruction");
     expect(designSource).toContain("Profile resources use the same ResourceTypeTabs over a flat list");
     expect(designSource).toContain("Profile resources omits All");
   });
 
-  test("pills density keeps icon, count, and type text without icon-only collapse", () => {
-    expect(tabsSource).toContain('density = "pills"');
-    expect(tabsSource).toContain("const pills = density === \"pills\"");
-    expect(tabsSource).toContain("const compact = density === \"compact\"");
+  test("pills keep icon, count, and type text without icon-only collapse", () => {
+    expect(tabsSource).toContain("resource-type-tab-count");
+    expect(tabsSource).toContain("resource-type-tab-label");
     expect(tabsSource).not.toContain("ResizeObserver");
     expect(tabsSource.indexOf("resource-type-tab-count")).toBeLessThan(
       tabsSource.lastIndexOf("resource-type-tab-label"),
     );
-    const pillsStart = tabsSource.indexOf("{pills ? (");
-    expect(pillsStart).toBeGreaterThan(-1);
-    const pillsBranch = tabsSource.slice(
-      pillsStart,
-      tabsSource.indexOf(") : null}", pillsStart),
-    );
-    expect(pillsBranch.indexOf("resource-type-tab-count")).toBeLessThan(
-      pillsBranch.indexOf("resource-type-tab-label"),
-    );
-    expect(pillsBranch).toContain("resource-type-tab-count");
-    expect(pillsBranch).toContain("resource-type-tab-label");
-    expect(panelSource).toContain('density="pills"');
-    expect(compositionSource).toContain('density="pills"');
+    expect(panelSource).toContain("<ResourceTypeTabs");
+    expect(panelSource).not.toContain("density=");
+    expect(compositionSource).toContain("<ResourceTypeTabs");
+    expect(compositionSource).not.toContain("density=");
     const profileResources = liveStateSource.slice(
       liveStateSource.indexOf('aria-label="Profile resources"'),
       liveStateSource.indexOf('aria-label="Not staged"'),
@@ -189,9 +154,12 @@ describe("library origin filter chrome", () => {
     const notStaged = liveStateSource.slice(
       liveStateSource.indexOf('aria-label="Not staged"'),
     );
-    expect(notStaged).toContain('density="pills"');
-    expect(profileResources).toContain('density="pills"');
+    expect(notStaged).toContain("<ResourceTypeTabs");
+    expect(notStaged).not.toContain('density="compact"');
+    expect(notStaged).not.toContain('density="pills"');
+    expect(profileResources).toContain("<ResourceTypeTabs");
     expect(profileResources).not.toContain('density="compact"');
+    expect(profileResources).not.toContain('density="pills"');
     const typeBadges = liveStateSource.slice(
       liveStateSource.indexOf("function TargetPreviewTypeBadges"),
       liveStateSource.indexOf("function stackChangeToneIcon"),
@@ -201,13 +169,11 @@ describe("library origin filter chrome", () => {
     expect(typeBadges).toContain("resourceTypeTabLabel(type)");
     expect(typeBadges).toContain("resourceTypeTabTooltip");
     expect(typeBadges).not.toContain("ChromeTooltip");
-    expect(designSource).toContain("**pills**");
-    expect(designSource).toContain("**compact**");
-    expect(designSource).toContain("Default pills density");
+    expect(designSource).toContain("pills everywhere");
+    expect(designSource).not.toContain("Two densities via `density`");
     expect(designSource).toContain("Library, Profile resources, Not staged");
-    expect(designSource).toContain("not Profile resources");
     expect(designSource).toContain(
-      "at pills density (icon, then count, then type text; wrap; never compact)",
+      "pills: icon, then count, then type text; wrap",
     );
   });
 
@@ -226,7 +192,6 @@ describe("library origin filter chrome", () => {
     );
     expect(profileResources).toContain("includeAll={false}");
     expect(notStaged).toContain("<ResourceTypeTabs");
-    expect(notStaged).toContain('density="pills"');
     expect(notStaged).not.toContain("includeAll={false}");
   });
 

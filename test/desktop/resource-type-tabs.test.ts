@@ -8,9 +8,6 @@ import {
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
   resourceTypeTabPillsText,
-  resourceTypeTabShowsCompactBadge,
-  resourceTypeTabShowsCount,
-  resourceTypeTabText,
   resourceTypeTabTooltip,
   visibleResourceTypeTabs,
 } from "../../apps/desktop/src/lib/resource-type-tabs.ts";
@@ -68,23 +65,6 @@ describe("visibleResourceTypeTabs", () => {
   });
 });
 
-describe("resourceTypeTabText", () => {
-  it("adds a count when comparing types or a lone type has more than one item", () => {
-    const mixed = countResourceTypeTabs(["skill", "skill", "plugin"]);
-    expect(resourceTypeTabShowsCount(mixed)).toBe(true);
-    expect(resourceTypeTabText("skill", mixed)).toBe("Skills 2");
-    expect(resourceTypeTabText("plugin", mixed)).toBe("Plugins 1");
-    expect(resourceTypeTabText("all", mixed)).toBe("All 3");
-
-    const manySkills = countResourceTypeTabs(["skill", "skill"]);
-    expect(resourceTypeTabText("skill", manySkills)).toBe("Skills 2");
-
-    const one = countResourceTypeTabs(["skill"]);
-    expect(resourceTypeTabShowsCount(one)).toBe(false);
-    expect(resourceTypeTabText("skill", one)).toBe("Skills");
-  });
-});
-
 describe("resourceTypeTabPillsText", () => {
   it("puts count before the type text", () => {
     const mixed = countResourceTypeTabs(["skill", "plugin", "plugin"]);
@@ -97,13 +77,7 @@ describe("resourceTypeTabPillsText", () => {
   });
 });
 
-describe("compact count badges and tooltips", () => {
-  it("hides the compact badge when the count is 0", () => {
-    expect(resourceTypeTabShowsCompactBadge(0)).toBe(false);
-    expect(resourceTypeTabShowsCompactBadge(1)).toBe(true);
-    expect(resourceTypeTabShowsCompactBadge(12)).toBe(true);
-  });
-
+describe("resource type tab aria-labels", () => {
   it("uses All as the total across types", () => {
     const mixed = countResourceTypeTabs(["skill", "skill", "plugin"]);
     expect(resourceTypeTabItemCount("all", mixed)).toBe(3);
@@ -111,7 +85,7 @@ describe("compact count badges and tooltips", () => {
     expect(resourceTypeTabTooltip("all", mixed)).toBe("3 resources");
   });
 
-  it("uses short pluralized tooltip copy matching the badge", () => {
+  it("uses short pluralized copy", () => {
     const mixed = countResourceTypeTabs([
       "skill",
       "plugin",
