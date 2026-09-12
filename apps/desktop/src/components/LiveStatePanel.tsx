@@ -36,7 +36,6 @@ import {
   installGapRowPresentation,
   installGapStatusLabel,
   isTargetPreviewInstallGap,
-  labelForType,
   liveMcpNamesFromHarnesses,
   managedPathFromResourceSource,
   summarizeStackChanges,
@@ -70,6 +69,7 @@ import {
   countResourceTypeTabs,
   resolveResourceTypeTab,
   resourceTypeTabLabel,
+  resourceTypeTabTooltip,
   visibleResourceTypeTabs,
 } from "../lib/resource-type-tabs";
 import type {
@@ -411,22 +411,23 @@ function TargetPreviewTypeBadges({
   return (
     <div
       className="file-change-kind-badges apply-diff-type-badges"
+      data-density="pills"
       role="group"
       aria-label="Pending apply resource types"
     >
       {types.map((type) => {
         const count = counts.get(type) ?? 0;
-        const label = `${count} ${labelForType(type, count)}`;
+        const caption = resourceTypeTabTooltip(type, counts);
         return (
-          <ChromeTooltip key={type} content={resourceTypeTabLabel(type)} side="top">
-            <span
-              className="file-change-kind-badge apply-diff-type-badge static"
-              aria-label={label}
-            >
-              <TypeIcon type={type} />
-              <span>{count}</span>
-            </span>
-          </ChromeTooltip>
+          <span
+            key={type}
+            className="file-change-kind-badge apply-diff-type-badge static"
+            aria-label={caption}
+          >
+            <TypeIcon type={type} />
+            <span>{count}</span>
+            <span className="apply-diff-type-badge-label">{resourceTypeTabLabel(type)}</span>
+          </span>
         );
       })}
     </div>
@@ -1794,6 +1795,7 @@ export function LiveStatePanel({
                       <>
                         <ResourceTypeTabs
                           includeAll={false}
+                          density="compact"
                           counts={typeCounts}
                           value={typeTab}
                           onChange={(next) => {
@@ -1911,6 +1913,7 @@ export function LiveStatePanel({
                   return (
                     <>
                       <ResourceTypeTabs
+                        density="pills"
                         counts={typeCounts}
                         value={typeTab}
                         onChange={(next) => {

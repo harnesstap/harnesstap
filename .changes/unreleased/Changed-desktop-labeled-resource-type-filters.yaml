@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop ResourceTypeTabs default to pills density (icon, count, type text, wrap) for Library and Global/Project filters. Compact circular badges stay on Profile resources when pills would crush the list.
+time: 2026-09-12T15:50:00Z
+custom:
+  Issue: ""

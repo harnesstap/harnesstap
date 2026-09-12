@@ -20,8 +20,11 @@ export type ResourceTypeTabId = (typeof RESOURCE_TYPE_TAB_ORDER)[number];
 
 export const ALL_RESOURCE_TYPE_TAB = "all";
 
-/** Host pane width at or above this shows icon+label; narrower is icon-only. */
-export const RESOURCE_TYPE_TABS_WIDE_MIN_PX = 900;
+/**
+ * Default `pills`: icon, count, type text; wrap; never icon-only.
+ * `compact`: circular icon + corner badge + pluralized tooltip (tight chrome).
+ */
+export type ResourceTypeTabDensity = "pills" | "compact";
 
 export type ResourceTypeTabGlyph = TypeGlyph | "layout-grid";
 
@@ -172,7 +175,7 @@ export function resourceTypeTabShowsCount(
   return (present[0] ?? 0) > 1;
 }
 
-/** Visible / tooltip copy. Optional count: `Skills 12`. */
+/** Optional count after the label (`Skills 12`) for compact-wide leftover copy. */
 export function resourceTypeTabText(
   type: string,
   counts: ReadonlyMap<string, number>,
@@ -182,6 +185,15 @@ export function resourceTypeTabText(
     return label;
   }
   return `${label} ${resourceTypeTabItemCount(type, counts)}`;
+}
+
+/** Pills density visible copy: count then type text (`1 Skills`, `2 Plugins`). */
+export function resourceTypeTabPillsText(
+  type: string,
+  counts: ReadonlyMap<string, number>,
+): string {
+  const count = resourceTypeTabItemCount(type, counts);
+  return `${count} ${resourceTypeTabLabel(type)}`;
 }
 
 /** Compact count badge: hide zeros. All uses the total across types. */

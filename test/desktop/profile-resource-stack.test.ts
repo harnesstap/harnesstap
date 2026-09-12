@@ -195,6 +195,7 @@ describe("Profile resources pane chrome", () => {
     );
     expect(profileResources).toContain("ResourceTypeTabs");
     expect(profileResources).toContain("includeAll={false}");
+    expect(profileResources).toContain('density="compact"');
     expect(profileResources).toContain("countResourceTypeTabs");
     expect(profileResources).toContain("ProfileResourceListItem");
     expect(liveStateSource).toContain("flattenProfileResourceList");
@@ -345,6 +346,10 @@ describe("Profile resources pane chrome", () => {
     expect(typeBadges).toContain("<TypeIcon type={type} />");
     expect(typeBadges).toContain("visibleResourceTypeTabs");
     expect(typeBadges).toContain("apply-diff-type-badge");
+    expect(typeBadges).toContain("apply-diff-type-badge-label");
+    expect(typeBadges).toContain('data-density="pills"');
+    expect(typeBadges).toContain("resourceTypeTabLabel(type)");
+    expect(typeBadges).not.toContain("ChromeTooltip");
     expect(typeBadges).not.toContain("FileChangeKindBadgeMark");
     expect(typeBadges).not.toContain("FILE_CHANGE_KIND_BADGES");
     expect(typeBadges).not.toContain('kind: "add"');

@@ -1035,18 +1035,20 @@ button:focus-visible,
   color: var(--accent);
 }
 
-@container (min-width: 900px) {
-  .resource-type-tabs[data-compact="true"] .resource-type-tab-label,
-  .resource-type-tabs[data-compact="true"] .resource-type-tab-count,
-  .resource-type-tab-label,
-  .resource-type-tab-count {
-    display: inline;
-  }
+.resource-type-tabs[data-density="pills"] .resource-type-tabs-scroller {
+  flex-wrap: wrap;
+  overflow: visible;
+  mask-image: none;
+  row-gap: 0.35rem;
+}
 
-  .resource-type-tabs[data-compact="true"] .resource-type-tab-badge,
-  .resource-type-tab-badge {
-    display: none;
-  }
+.resource-type-tabs[data-density="pills"] .resource-type-tab-badge {
+  display: none;
+}
+
+.resource-type-tabs[data-density="pills"] .resource-type-tab-label,
+.resource-type-tabs[data-density="pills"] .resource-type-tab-count {
+  display: inline;
 }
 
 .resource-type-tabs-scroller {
