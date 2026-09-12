@@ -125,7 +125,7 @@ describe("library origin filter chrome", () => {
     expect(designSource).toContain("Pills always have icons");
     expect(designSource).toContain("host pane");
     expect(designSource).toContain("never plugin, plugin ref, package, or instruction");
-    expect(designSource).toContain("Profile resources stay a nested plugin composition tree");
+    expect(designSource).toContain("Profile resources use the same ResourceTypeTabs over a flat list");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

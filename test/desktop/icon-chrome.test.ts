@@ -217,18 +217,23 @@ describe("desktop icon chrome", () => {
     expect(typeTabsSource).toContain("content={caption}");
     expect(liveStateSource).toContain("ResourceTypeTabs");
 
-    const pluginGroup = liveStateSource.slice(
-      liveStateSource.indexOf("function EnabledPluginGroup"),
-      liveStateSource.indexOf("function pinIdentityKey"),
+    const profileResources = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Profile resources"'),
+      liveStateSource.indexOf('aria-label="Not staged"'),
     );
-    expect(pluginGroup).toContain('<TypeIcon type="plugin"');
-    expect(pluginGroup).not.toContain("Sparkles");
-    const pluginSummary = pluginGroup.slice(
-      pluginGroup.indexOf("enabled-plugin-summary"),
-      pluginGroup.indexOf("enabled-plugin-body"),
+    expect(profileResources).toContain("ResourceTypeTabs");
+    expect(profileResources).toContain("ProfileResourceListItem");
+    expect(profileResources).not.toContain("EnabledPluginGroup");
+    expect(profileResources).not.toContain("enabled-plugin-summary");
+    expect(profileResources).not.toContain("Sparkles");
+    expect(profileResources).not.toContain("resources-type-heading");
+    const pluginPackageRow = liveStateSource.slice(
+      liveStateSource.indexOf("function ProfilePluginPackageRow"),
+      liveStateSource.indexOf("function ProfileMembershipResourceRow"),
     );
-    expect(pluginSummary).not.toContain("RelatedHarnessIcons");
-    expect(pluginSummary).not.toContain("Sparkles");
+    expect(pluginPackageRow).toContain('<TypeIcon type="plugin"');
+    expect(pluginPackageRow).not.toContain("RelatedHarnessIcons");
+    expect(pluginPackageRow).not.toContain("Sparkles");
 
     expect(typeModalSource).toMatch(/plugin:\s*Package/);
     expect(typeModalSource).toMatch(/instruction:\s*BookOpen/);

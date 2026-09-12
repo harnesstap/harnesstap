@@ -1,5 +1,6 @@
 import { DESKTOP_HARNESS_IDS, harnessDisplayName } from "./harness-meta";
 import {
+  filterContentsResourcesBySearch,
   isResourceTypeSearchPrefix,
   matchesListSearchQuery,
   parseListSearchQuery,
@@ -8,6 +9,9 @@ import type {
   DriftFileChange,
   HarnessLiveStatus,
   ProfileContents,
+  ProfileContentsPin,
+  ProfileContentsPlugin,
+  ProfileContentsResource,
 } from "./types";
 
 export type ContentsDiffKind = "added" | "removed" | "unchanged";
@@ -357,9 +361,9 @@ function nestedResourceKeys(contents: ProfileContents): Set<string> {
 }
 
 /**
- * Top-level composition counts for the resources card: plugin packages, pins,
- * and loose material — not nested plugin contents (those already appear inside
- * plugin groups).
+ * Top-level composition counts for Target preview: plugin packages, pins,
+ * and loose material — not nested plugin contents (those already belong to
+ * a package row).
  */
 export function compositionTypeCounts(
   contents: ProfileContents | null | undefined,
@@ -405,6 +409,133 @@ export function profileHasComposition(
     || (contents.mcp_servers?.length ?? 0) > 0
     || (contents.stack_resource_count ?? 0) > 0
   );
+}
+
+export type ProfileResourceListRow =
+  | {
+      kind: "plugin";
+      key: string;
+      type: "plugin";
+      plugin: ProfileContentsPlugin;
+    }
+  | {
+      kind: "pin";
+      key: string;
+      type: "plugin_pin";
+      pin: ProfileContentsPin;
+    }
+  | {
+      kind: "resource";
+      key: string;
+      type: string;
+      resource: ProfileContentsResource;
+      pluginId?: string;
+      pluginName?: string;
+    };
+
+/**
+ * Flat Profile resources inventory: plugin packages, nested plugin contents
+ * (with membership), pins, then loose material. Nested contents are not
+ * repeated as loose rows.
+ */
+export function flattenProfileResourceList(
+  contents: ProfileContents | null | undefined,
+): ProfileResourceListRow[] {
+  if (!contents) {
+    return [];
+  }
+  const nested = nestedResourceKeys(contents);
+  const rows: ProfileResourceListRow[] = [];
+  for (const plugin of contents.plugins ?? []) {
+    rows.push({
+      kind: "plugin",
+      key: `plugin:${plugin.id}`,
+      type: "plugin",
+      plugin,
+    });
+    for (const resource of plugin.resources ?? []) {
+      rows.push({
+        kind: "resource",
+        key: `resource:${plugin.id}:${resource.type}:${resource.name}`,
+        type: resource.type,
+        resource,
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+      });
+    }
+  }
+  for (const pin of contents.plugin_pins ?? []) {
+    rows.push({
+      kind: "pin",
+      key: `pin:${pin.ref}`,
+      type: "plugin_pin",
+      pin,
+    });
+  }
+  for (const resource of contents.resources ?? []) {
+    if (nested.has(`${resource.type}:${resource.name}`)) {
+      continue;
+    }
+    rows.push({
+      kind: "resource",
+      key: `resource:${resource.type}:${resource.name}`,
+      type: resource.type,
+      resource,
+    });
+  }
+  return rows;
+}
+
+function profileListRowMatchesSearch(
+  row: ProfileResourceListRow,
+  search: string,
+): boolean {
+  switch (row.kind) {
+    case "plugin":
+      return (
+        filterContentsResourcesBySearch(
+          [
+            {
+              id: row.plugin.id,
+              type: "plugin",
+              name: row.plugin.name,
+              source: row.plugin.id,
+            },
+          ],
+          search,
+        ).length > 0
+      );
+    case "pin":
+      return (
+        filterContentsResourcesBySearch(
+          [
+            {
+              id: row.pin.ref,
+              type: "plugin_pin",
+              name: row.pin.ref,
+              source: row.pin.version_constraint ?? "",
+            },
+          ],
+          search,
+        ).length > 0
+      );
+    case "resource":
+      return filterContentsResourcesBySearch([row.resource], search).length > 0;
+    default: {
+      const neverRow: never = row;
+      return neverRow;
+    }
+  }
+}
+
+export function filterProfileResourceList(
+  rows: ProfileResourceListRow[],
+  search: string,
+): ProfileResourceListRow[] {
+  if (!search.trim()) {
+    return rows;
+  }
+  return rows.filter((row) => profileListRowMatchesSearch(row, search));
 }
 
 export function fallbackTypeCounts(

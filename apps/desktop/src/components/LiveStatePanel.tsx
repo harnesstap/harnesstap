@@ -28,6 +28,8 @@ import {
   diffProfileContents,
   fileChangeAction,
   filterFileChangeGroups,
+  filterProfileResourceList,
+  flattenProfileResourceList,
   groupFileChangesByResource,
   groupInstallGaps,
   installGapQuietVerb,
@@ -42,6 +44,7 @@ import {
   type FileChangeKind,
   type FileChangeResourceGroup,
   type InstallGapRow,
+  type ProfileResourceListRow,
   type StackChangeSummaryRow,
   type StackChangeTone,
 } from "../lib/contents-diff";
@@ -189,31 +192,6 @@ function resourceDetailTarget(
     label: resource.name,
     pathHint: resource.source,
   };
-}
-
-function ResourceNameButton({
-  label,
-  path,
-  className,
-  onOpen,
-}: {
-  label: string;
-  path?: string | null;
-  className?: string;
-  onOpen: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={["resource-name-btn", "enabled-label", className]
-        .filter(Boolean)
-        .join(" ")}
-      title={path || undefined}
-      onClick={onOpen}
-    >
-      {label}
-    </button>
-  );
 }
 
 function ProfileResourceActions({
@@ -581,15 +559,97 @@ function EnabledResourceRow({
   );
 }
 
-function EnabledPluginGroup({
+function ProfilePluginPackageRow({
   plugin,
+}: {
+  plugin: ProfileContentsPlugin;
+}) {
+  return (
+    <ResourceRowRoot
+      hover={{
+        type: "plugin",
+        name: plugin.name,
+        harnessIds: [...relatedHarnessesForResourceType("plugin")],
+        extra: [],
+      }}
+      testId={`resource-row-${plugin.name}`}
+    >
+      <ResourceRowLeading>
+        <TypeIcon type="plugin" />
+      </ResourceRowLeading>
+      <ResourceRowIdentity label={plugin.name} />
+      <ResourceRowTrailing>
+        <span className="enabled-detail muted">@{plugin.version}</span>
+      </ResourceRowTrailing>
+    </ResourceRowRoot>
+  );
+}
+
+function ProfileMembershipResourceRow({
+  resource,
+  pluginId,
+  pluginName,
+  profileName,
+  removing,
+  onOpenResource,
+  onOpenInEditor,
+  onRemoveFromProfile,
+}: {
+  resource: ProfileContentsResource;
+  pluginId?: string;
+  pluginName?: string;
+  profileName: string | null;
+  removing: boolean;
+  onOpenResource: (target: ResourceDetailTarget) => void;
+  onOpenInEditor?: (resource: ProfileContentsResource) => void;
+  onRemoveFromProfile?: (
+    resource: ProfileContentsResource,
+    pluginId?: string,
+  ) => void;
+}) {
+  const nested = Boolean(pluginId);
+  return (
+    <ResourceRowRoot
+      hover={hoverModelFromProfileResource(resource)}
+      testId={`resource-row-${resource.name}`}
+    >
+      <ResourceRowLeading>
+        <TypeIcon type={resource.type} />
+      </ResourceRowLeading>
+      <ResourceRowIdentity
+        label={resource.name}
+        onOpen={() => onOpenResource(resourceDetailTarget(resource))}
+      />
+      {pluginName || nested ? (
+        <ResourceRowTrailing>
+          {pluginName ? (
+            <span className="enabled-detail muted">in {pluginName}</span>
+          ) : null}
+          {nested ? (
+            <ProfileResourceActions
+              resource={resource}
+              pluginId={pluginId}
+              profileName={profileName}
+              removing={removing}
+              onOpenInEditor={onOpenInEditor}
+              onRemoveFromProfile={onRemoveFromProfile}
+            />
+          ) : null}
+        </ResourceRowTrailing>
+      ) : null}
+    </ResourceRowRoot>
+  );
+}
+
+function ProfileResourceListItem({
+  row,
   profileName,
   removingResourceKey,
   onOpenResource,
   onOpenInEditor,
   onRemoveFromProfile,
 }: {
-  plugin: ProfileContentsPlugin;
+  row: ProfileResourceListRow;
   profileName: string | null;
   removingResourceKey: string | null;
   onOpenResource: (target: ResourceDetailTarget) => void;
@@ -599,69 +659,53 @@ function EnabledPluginGroup({
     pluginId?: string,
   ) => void;
 }) {
-  const resourceCount = plugin.resources?.length ?? 0;
-  return (
-    <details className="enabled-plugin">
-      <summary className="enabled-plugin-summary">
-        <span className="enabled-type">
-          <TypeIcon type="plugin" />
-        </span>
-        <span className="enabled-label">{plugin.name}</span>
-        <span className="enabled-trailing">
-          <span className="enabled-detail muted">
-            @{plugin.version}
-            {resourceCount > 0
-              ? ` · ${resourceCount} resource${resourceCount === 1 ? "" : "s"}`
-              : ""}
-          </span>
-        </span>
-      </summary>
-      <div className="enabled-plugin-body">
-        {resourceCount === 0 ? (
-          <div className="muted enabled-plugin-empty">No resources in this plugin</div>
-        ) : (
-          (plugin.resources ?? []).map((resource) => {
-            const resourceKey = `${resource.type}:${resource.name}`;
-            const typeLabel = resource.type.replaceAll("_", " ");
-            return (
-              <div
-                className="enabled-row enabled-nested-row"
-                key={resourceKey}
-                data-testid={`resource-row-${resource.name}`}
-              >
-                <span className="enabled-type" title={typeLabel}>
-                  <TypeIcon type={resource.type} />
-                  <span className="sr-only">{typeLabel}</span>
-                </span>
-                <ResourceNameButton
-                  label={resource.name}
-                  path={resource.source}
-                  onOpen={() => onOpenResource(resourceDetailTarget(resource))}
-                />
-                <span className="enabled-trailing">
-                  <RelatedHarnessIcons
-                    harnessIds={relatedHarnessesForResourceType(resource.type)}
-                  />
-                  <ProfileResourceActions
-                    resource={resource}
-                    pluginId={plugin.id}
-                    profileName={profileName}
-                    removing={removingResourceKey === resourceKey}
-                    onOpenInEditor={onOpenInEditor}
-                    onRemoveFromProfile={onRemoveFromProfile}
-                  />
-                </span>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </details>
-  );
-}
-
-function pinIdentityKey(pin: { ref: string }): string {
-  return `pin:${pin.ref}`;
+  switch (row.kind) {
+    case "plugin":
+      return <ProfilePluginPackageRow plugin={row.plugin} />;
+    case "pin":
+      return (
+        <EnabledResourceRow
+          item={{
+            key: row.key,
+            kind: "unchanged",
+            category: "plugin_pin",
+            iconType: "plugin_pin",
+            label: row.pin.ref,
+            detail: row.pin.version_constraint
+              ? `@${row.pin.version_constraint}`
+              : undefined,
+          }}
+        />
+      );
+    case "resource": {
+      if (row.pluginId) {
+        return (
+          <ProfileMembershipResourceRow
+            resource={row.resource}
+            pluginId={row.pluginId}
+            pluginName={row.pluginName}
+            profileName={profileName}
+            removing={
+              removingResourceKey === `${row.resource.type}:${row.resource.name}`
+            }
+            onOpenResource={onOpenResource}
+            onOpenInEditor={onOpenInEditor}
+            onRemoveFromProfile={onRemoveFromProfile}
+          />
+        );
+      }
+      return (
+        <EnabledResourceRow
+          item={contentsResourceAsItem(row.resource)}
+          onOpenResource={onOpenResource}
+        />
+      );
+    }
+    default: {
+      const neverRow: never = row;
+      return neverRow;
+    }
+  }
 }
 
 function dedupeContentsResources(
@@ -678,46 +722,6 @@ function dedupeContentsResources(
     deduped.push(resource);
   }
   return deduped;
-}
-
-function matchesPluginSearch(
-  plugin: ProfileContentsPlugin,
-  search: string,
-): boolean {
-  if (!search.trim()) {
-    return true;
-  }
-  return filterContentsResourcesBySearch(
-    [
-      {
-        id: plugin.id,
-        type: "plugin",
-        name: plugin.name,
-        source: plugin.id,
-      },
-    ],
-    search,
-  ).length > 0;
-}
-
-function matchesPinSearch(
-  pin: { ref: string; version_constraint?: string },
-  search: string,
-): boolean {
-  if (!search.trim()) {
-    return true;
-  }
-  return filterContentsResourcesBySearch(
-    [
-      {
-        id: pin.ref,
-        type: "plugin_pin",
-        name: pin.ref,
-        source: pin.version_constraint ?? "",
-      },
-    ],
-    search,
-  ).length > 0;
 }
 
 function FileChangeRowActions({
@@ -1329,6 +1333,9 @@ export function LiveStatePanel({
     null,
   );
   const [profileResourceSearch, setProfileResourceSearch] = useState("");
+  const [profileResourceType, setProfileResourceType] = useState<string | null>(
+    null,
+  );
   const [profileResourceVisible, setProfileResourceVisible] = useState(
     LIST_PAGE_SIZE,
   );
@@ -1412,10 +1419,16 @@ export function LiveStatePanel({
     targetContents,
   });
   const enabledSourceContents = resourceStack.contents;
-  const enabledPlugins = enabledSourceContents?.plugins ?? [];
-  const enabledPins = enabledSourceContents?.plugin_pins ?? [];
   const profileStackEmpty =
     resourceStack.kind !== "loading" && !profileStackHasList(enabledSourceContents);
+  const profileResourceRows = useMemo(
+    () =>
+      filterProfileResourceList(
+        flattenProfileResourceList(enabledSourceContents),
+        profileResourceSearch,
+      ),
+    [enabledSourceContents, profileResourceSearch],
+  );
 
   const profileNameForActions = selectedProfile ?? activeProfile;
 
@@ -1580,10 +1593,6 @@ export function LiveStatePanel({
               )
             ) : (
               <>
-                <ResourceSummaryStrip
-                  counts={compositionTypeCounts(enabledSourceContents)}
-                  label="Profile resource summary"
-                />
                 <ListSearchField
                   value={profileResourceSearch}
                   onChange={(value) => {
@@ -1595,83 +1604,32 @@ export function LiveStatePanel({
                 />
                 <div className="enabled-list">
                   {(() => {
-                    const filteredPlugins = enabledPlugins
-                      .map((plugin) => ({
-                        ...plugin,
-                        resources: dedupeContentsResources(
-                          filterContentsResourcesBySearch(
-                            plugin.resources,
-                            profileResourceSearch,
-                          ),
-                        ),
-                      }))
-                      .filter(
-                        (plugin) =>
-                          plugin.resources.length > 0
-                          || matchesPluginSearch(plugin, profileResourceSearch),
-                      );
-                    const filteredPins = enabledPins.filter((pin) =>
-                      matchesPinSearch(pin, profileResourceSearch),
+                    const typeCounts = countResourceTypeTabs(
+                      profileResourceRows.map((row) => row.type),
                     );
-                    const nestedResourceKeys = new Set<string>();
-                    for (const plugin of enabledPlugins) {
-                      for (const resource of plugin.resources) {
-                        nestedResourceKeys.add(`${resource.type}:${resource.name}`);
-                      }
-                    }
-                    const filteredLoose = dedupeContentsResources(
-                      filterContentsResourcesBySearch(
-                        (enabledSourceContents?.resources ?? []).filter(
-                          (resource) =>
-                            !nestedResourceKeys.has(
-                              `${resource.type}:${resource.name}`,
-                            ),
-                        ),
-                        profileResourceSearch,
-                      ),
+                    const typeTab = resolveResourceTypeTab(
+                      profileResourceType,
+                      typeCounts,
                     );
-                    const totalResourceRows = filteredPlugins.reduce(
-                      (sum, plugin) => sum + plugin.resources.length,
-                      0,
-                    ) + filteredPins.length + filteredLoose.length;
-
-                    let remaining = profileResourceVisible;
-                    const truncatedPlugins: ProfileContentsPlugin[] = [];
-                    for (const plugin of filteredPlugins) {
-                      if (remaining <= 0) {
-                        break;
-                      }
-                      if (plugin.resources.length === 0) {
-                        truncatedPlugins.push(plugin);
-                        remaining -= 1;
-                        continue;
-                      }
-                      const take = plugin.resources.slice(0, remaining);
-                      remaining -= take.length;
-                      truncatedPlugins.push({ ...plugin, resources: take });
-                    }
-                    const pinSlice =
-                      remaining > 0
-                        ? filteredPins.slice(0, remaining)
-                        : [];
-                    remaining -= pinSlice.length;
-                    const looseSlice =
-                      remaining > 0
-                        ? filteredLoose.slice(0, remaining)
-                        : [];
-                    const visibleResourceRows =
-                      truncatedPlugins.reduce(
-                        (sum, plugin) =>
-                          sum + Math.max(plugin.resources.length, plugin.resources.length === 0 ? 1 : 0),
-                        0,
-                      ) + pinSlice.length + looseSlice.length;
-
+                    const typed =
+                      typeTab === null
+                        ? profileResourceRows
+                        : profileResourceRows.filter((row) => row.type === typeTab);
+                    const visible = typed.slice(0, profileResourceVisible);
                     return (
                       <>
-                        {truncatedPlugins.map((plugin) => (
-                          <EnabledPluginGroup
-                            key={plugin.id}
-                            plugin={plugin}
+                        <ResourceTypeTabs
+                          counts={typeCounts}
+                          value={typeTab}
+                          onChange={(next) => {
+                            setProfileResourceType(next);
+                            setProfileResourceVisible(LIST_PAGE_SIZE);
+                          }}
+                        />
+                        {visible.map((row) => (
+                          <ProfileResourceListItem
+                            key={row.key}
+                            row={row}
                             profileName={profileNameForActions}
                             removingResourceKey={removingResourceKey}
                             onOpenResource={openResource}
@@ -1694,39 +1652,15 @@ export function LiveStatePanel({
                             }
                           />
                         ))}
-                        {pinSlice.map((pin) => (
-                          <EnabledResourceRow
-                            key={pinIdentityKey(pin)}
-                            item={{
-                              key: pinIdentityKey(pin),
-                              kind: "unchanged",
-                              category: "plugin_pin",
-                              iconType: "plugin_pin",
-                              label: pin.ref,
-                              detail: pin.version_constraint
-                                ? `@${pin.version_constraint}`
-                                : undefined,
-                            }}
-                          />
-                        ))}
-                        {looseSlice.map((resource) => (
-                          <EnabledResourceRow
-                            key={contentsResourceAsItem(resource).key}
-                            item={contentsResourceAsItem(resource)}
-                            onOpenResource={openResource}
-                          />
-                        ))}
                         <ListTruncationControls
-                          visible={visibleResourceRows}
-                          total={totalResourceRows}
+                          visible={visible.length}
+                          total={typed.length}
                           onMore={() =>
                             setProfileResourceVisible((current) =>
-                              nextVisibleCount(current, totalResourceRows),
+                              nextVisibleCount(current, typed.length),
                             )
                           }
-                          onShowAll={() =>
-                            setProfileResourceVisible(totalResourceRows)
-                          }
+                          onShowAll={() => setProfileResourceVisible(typed.length)}
                         />
                       </>
                     );
