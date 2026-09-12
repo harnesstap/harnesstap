@@ -198,6 +198,10 @@ describe("Profile resources pane chrome", () => {
     expect(profileResources).toContain("countResourceTypeTabs");
     expect(profileResources).toContain("ProfileResourceListItem");
     expect(liveStateSource).toContain("flattenProfileResourceList");
+    expect(liveStateSource).toContain("selectedProfile");
+    expect(liveStateSource).toMatch(
+      /flattenProfileResourceList\(\s*enabledSourceContents,\s*\{\s*selectedProfile/,
+    );
     expect(profileResources).not.toContain("EnabledPluginGroup");
     expect(profileResources).not.toContain("enabled-plugin-summary");
     expect(profileResources).not.toContain("resources-type-heading");
