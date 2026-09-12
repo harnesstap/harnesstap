@@ -17,6 +17,8 @@ import {
   uniqueFileChanges,
   managedPathFromResourceSource,
   compositionTypeCounts,
+  filterProfileResourceList,
+  flattenProfileResourceList,
   groupInstallGaps,
   profileHasComposition,
   stackChangesQuietLabel,
@@ -580,6 +582,57 @@ describe("managedPathFromResourceSource", () => {
     expect(
       managedPathFromResourceSource(".cursor/skills/dolibarr-api/SKILL.md"),
     ).toBe(".cursor/skills/dolibarr-api/SKILL.md");
+  });
+});
+
+describe("flattenProfileResourceList", () => {
+  it("lists plugin packages, nested contents, pins, and loose material without duplicating nested rows", () => {
+    const stacked = contents({
+      plugins: [
+        {
+          id: "l1",
+          name: "work",
+          version: "1.0.0",
+          resources: [
+            { type: "skill", name: "ship" },
+            { type: "instruction", name: "readme" },
+          ],
+        },
+      ],
+      resources: [
+        { type: "skill", name: "ship" },
+        { type: "instruction", name: "readme" },
+        { type: "skill", name: "extra" },
+      ],
+      plugin_pins: [{ ref: "slack@claude-plugins", version_constraint: "latest" }],
+      type_counts: { plugin: 1, skill: 2, instruction: 1, plugin_pin: 1 },
+      stack_resource_count: 3,
+    });
+    const rows = flattenProfileResourceList(stacked);
+    expect(rows.map((row) => [row.kind, row.type, row.key])).toEqual([
+      ["plugin", "plugin", "plugin:l1"],
+      ["resource", "skill", "resource:l1:skill:ship"],
+      ["resource", "instruction", "resource:l1:instruction:readme"],
+      ["pin", "plugin_pin", "pin:slack@claude-plugins"],
+      ["resource", "skill", "resource:skill:extra"],
+    ]);
+    const nestedSkill = rows.find((row) => row.key === "resource:l1:skill:ship");
+    expect(nestedSkill?.kind).toBe("resource");
+    if (nestedSkill?.kind === "resource") {
+      expect(nestedSkill.pluginId).toBe("l1");
+      expect(nestedSkill.pluginName).toBe("work");
+    }
+    const types = rows.map((row) => row.type);
+    expect(types.filter((type) => type === "skill")).toEqual(["skill", "skill"]);
+    expect(filterProfileResourceList(rows, "extra").map((row) => row.key)).toEqual([
+      "resource:skill:extra",
+    ]);
+    expect(filterProfileResourceList(rows, "work").map((row) => row.key)).toEqual([
+      "plugin:l1",
+    ]);
+    expect(
+      filterProfileResourceList(rows, "skill:ship").map((row) => row.key),
+    ).toEqual(["resource:l1:skill:ship"]);
   });
 });
 

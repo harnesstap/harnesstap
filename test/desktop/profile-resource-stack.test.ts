@@ -180,6 +180,31 @@ describe("Profile resources pane chrome", () => {
     expect(designSource).toContain(
       "Profile resources lists the selected profile’s composition",
     );
+    expect(designSource).toContain(
+      "ResourceTypeTabs filter that inventory as a flat list",
+    );
+    expect(designSource).not.toContain(
+      "Profile resources stay a nested plugin composition tree",
+    );
+  });
+
+  it("uses ResourceTypeTabs over a flat list and keeps plugin membership on nested rows", () => {
+    const profileResources = liveStateSource.slice(
+      liveStateSource.indexOf('aria-label="Profile resources"'),
+      liveStateSource.indexOf('aria-label="Not staged"'),
+    );
+    expect(profileResources).toContain("ResourceTypeTabs");
+    expect(profileResources).toContain("countResourceTypeTabs");
+    expect(profileResources).toContain("ProfileResourceListItem");
+    expect(liveStateSource).toContain("flattenProfileResourceList");
+    expect(profileResources).not.toContain("EnabledPluginGroup");
+    expect(profileResources).not.toContain("enabled-plugin-summary");
+    expect(profileResources).not.toContain("resources-type-heading");
+    expect(profileResources).not.toContain("resource-filter-type-badge");
+    expect(profileResources).not.toContain("Sparkles");
+    expect(liveStateSource).toContain("pluginId={row.pluginId}");
+    expect(liveStateSource).toContain("in {pluginName}");
+    expect(designSource).toContain("detach `pluginId`");
   });
 
   it("locks not-staged modifications and centered file diffs", () => {

@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Profile resources uses presence-filtered ResourceTypeTabs over a flat list, matching Library and Not staged, while nested plugin contents keep membership for detach.
+time: 2026-09-12T02:20:00Z
+custom:
+  Issue: ""
