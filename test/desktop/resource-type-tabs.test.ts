@@ -6,9 +6,12 @@ import {
   RESOURCE_TYPE_TAB_ORDER,
   RESOURCE_TYPE_TABS_WIDE_MIN_PX,
   resourceTypeTabGlyph,
+  resourceTypeTabItemCount,
   resourceTypeTabLabel,
+  resourceTypeTabShowsCompactBadge,
   resourceTypeTabShowsCount,
   resourceTypeTabText,
+  resourceTypeTabTooltip,
   visibleResourceTypeTabs,
 } from "../../apps/desktop/src/lib/resource-type-tabs.ts";
 import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
@@ -72,6 +75,49 @@ describe("resourceTypeTabText", () => {
     const one = countResourceTypeTabs(["skill"]);
     expect(resourceTypeTabShowsCount(one)).toBe(false);
     expect(resourceTypeTabText("skill", one)).toBe("Skills");
+  });
+});
+
+describe("compact count badges and tooltips", () => {
+  it("hides the compact badge when the count is 0", () => {
+    expect(resourceTypeTabShowsCompactBadge(0)).toBe(false);
+    expect(resourceTypeTabShowsCompactBadge(1)).toBe(true);
+    expect(resourceTypeTabShowsCompactBadge(12)).toBe(true);
+  });
+
+  it("uses All as the total across types", () => {
+    const mixed = countResourceTypeTabs(["skill", "skill", "plugin"]);
+    expect(resourceTypeTabItemCount("all", mixed)).toBe(3);
+    expect(resourceTypeTabItemCount("skill", mixed)).toBe(2);
+    expect(resourceTypeTabTooltip("all", mixed)).toBe("3 resources");
+  });
+
+  it("uses short pluralized tooltip copy matching the badge", () => {
+    const mixed = countResourceTypeTabs([
+      "skill",
+      "plugin",
+      "plugin",
+      "plugin",
+      "mcp_server",
+      "agent",
+      "rule",
+      "command",
+      "hook",
+      "instruction",
+    ]);
+    expect(resourceTypeTabTooltip("skill", mixed)).toBe("1 skill");
+    expect(resourceTypeTabTooltip("plugin", mixed)).toBe("3 plugins");
+    expect(resourceTypeTabTooltip("mcp_server", mixed)).toBe("1 MCP");
+    expect(resourceTypeTabTooltip("agent", mixed)).toBe("1 subagent");
+    expect(resourceTypeTabTooltip("rule", mixed)).toBe("1 rule");
+    expect(resourceTypeTabTooltip("command", mixed)).toBe("1 command");
+    expect(resourceTypeTabTooltip("hook", mixed)).toBe("1 hook");
+    expect(resourceTypeTabTooltip("instruction", mixed)).toBe("1 instruction");
+    expect(resourceTypeTabTooltip("all", mixed)).toBe("10 resources");
+
+    const skills = countResourceTypeTabs(["skill", "skill", "skill"]);
+    expect(resourceTypeTabTooltip("skill", skills)).toBe("3 skills");
+    expect(resourceTypeTabTooltip("all", new Map([["skill", 0]]))).toBe("All");
   });
 });
 

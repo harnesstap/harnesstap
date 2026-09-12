@@ -155,3 +155,60 @@ export function resourceTypeTabText(
   }
   return `${label} ${resourceTypeTabItemCount(type, counts)}`;
 }
+
+/** Compact count badge: hide zeros. All uses the total across types. */
+export function resourceTypeTabShowsCompactBadge(count: number): boolean {
+  return count > 0;
+}
+
+/** Singular/plural unit for compact tooltips (`skill` / `skills`). */
+export function resourceTypeTabUnit(type: string, count: number): string {
+  const plural = count !== 1;
+  switch (type) {
+    case ALL_RESOURCE_TYPE_TAB:
+      return plural ? "resources" : "resource";
+    case "plugin":
+      return plural ? "plugins" : "plugin";
+    case "mcp_server":
+      return plural ? "MCPs" : "MCP";
+    case "skill":
+      return plural ? "skills" : "skill";
+    case "agent":
+      return plural ? "subagents" : "subagent";
+    case "rule":
+      return plural ? "rules" : "rule";
+    case "command":
+      return plural ? "commands" : "command";
+    case "hook":
+      return plural ? "hooks" : "hook";
+    case "instruction":
+      return plural ? "instructions" : "instruction";
+    case "permission":
+      return plural ? "permissions" : "permission";
+    case "env_var":
+      return plural ? "env vars" : "env var";
+    case "model_config":
+      return plural ? "model configs" : "model config";
+    case "plugin_ref":
+      return plural ? "plugin refs" : "plugin ref";
+    case "plugin_pin":
+      return plural ? "plugin pins" : "plugin pin";
+    default:
+      return plural ? `${type.replaceAll("_", " ")}s` : type.replaceAll("_", " ");
+  }
+}
+
+/**
+ * Compact tooltip / aria-label. Matches the badge: `12 resources`,
+ * `1 skill` / `3 skills`. Falls back to the type label when the count is 0.
+ */
+export function resourceTypeTabTooltip(
+  type: string,
+  counts: ReadonlyMap<string, number>,
+): string {
+  const count = resourceTypeTabItemCount(type, counts);
+  if (count <= 0) {
+    return resourceTypeTabLabel(type);
+  }
+  return `${count} ${resourceTypeTabUnit(type, count)}`;
+}

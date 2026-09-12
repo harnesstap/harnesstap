@@ -108,20 +108,40 @@ describe("library origin filter chrome", () => {
     );
     expect(tabsSource).toContain("visibleResourceTypeTabs");
     expect(tabsSource).toContain("resourceTypeTabText");
+    expect(tabsSource).toContain("resourceTypeTabTooltip");
+    expect(tabsSource).toContain("resourceTypeTabShowsCompactBadge");
     expect(tabsSource).toContain("resourceTypeTabGlyph");
     expect(tabsSource).toContain("RESOURCE_TYPE_TABS_WIDE_MIN_PX");
     expect(tabsSource).toContain("hostPaneWidth");
     expect(tabsSource).toContain("aria-label={caption}");
     expect(tabsSource).toContain("resource-type-tab-count");
+    expect(tabsSource).toContain("resource-type-tab-badge");
     expect(tabsSource).toContain("ChromeTooltip");
     expect(tabsSource).toContain("content={caption}");
     expect(tabsSource).not.toContain("Sparkles");
     expect(tabsSource).toContain("TypeIcon");
     expect(cssBlock(stylesSource, ".resource-type-tabs")).toContain("width: 100%");
+    expect(cssBlock(stylesSource, ".resource-type-tab-badge")).toContain("color: var(--muted)");
+    expect(cssBlock(stylesSource, ".resource-type-tab-badge")).toContain("display: none");
+    expect(
+      cssBlock(stylesSource, '.resource-type-tabs[data-compact="true"] .resource-type-tab-badge'),
+    ).toContain("display: inline-flex");
+    expect(
+      cssBlock(stylesSource, '.resource-type-tab[data-state="on"] .resource-type-tab-badge'),
+    ).toContain("background: var(--primary-foreground)");
+    expect(
+      cssBlock(stylesSource, '.resource-type-tab[data-state="on"] .resource-type-tab-badge'),
+    ).toContain("color: var(--accent)");
+    expect(
+      cssBlock(stylesSource, '.resource-type-tab[data-state="on"] .resource-type-tab-badge'),
+    ).not.toContain("display: none");
     expect(stylesSource).toContain("@container (min-width: 900px)");
     expect(designSource).toContain("ResourceTypeTabs");
     expect(designSource).toContain("No sidebar Type chips");
     expect(designSource).toContain("Optional count in the pill");
+    expect(designSource).toContain("Compact count badge");
+    expect(designSource).toContain("1 skill");
+    expect(designSource).toContain("badge-only");
     expect(designSource).toContain("Pills always have icons");
     expect(designSource).toContain("host pane");
     expect(designSource).toContain("never plugin, plugin ref, package, or instruction");
