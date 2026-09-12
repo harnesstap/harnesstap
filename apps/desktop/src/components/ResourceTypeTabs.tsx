@@ -7,12 +7,9 @@ import {
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
-  resourceTypeTabShowsCompactBadge,
   resourceTypeTabTooltip,
   visibleResourceTypeTabs,
-  type ResourceTypeTabDensity,
 } from "../lib/resource-type-tabs";
-import { ChromeTooltip } from "./ChromeTooltip";
 import { TypeIcon } from "./TypeIcon";
 
 export interface ResourceTypeTabsProps {
@@ -22,13 +19,6 @@ export interface ResourceTypeTabsProps {
   disabled?: boolean;
   /** Profile resources omits All; Library / Not staged / compose keep it. */
   includeAll?: boolean;
-  /**
-   * Default `pills` (Library, Global/Project type filters): icon, count,
-   * type text; wrap; never icon-only.
-   * `compact` (Profile resources / tight chrome only): circular icon,
-   * corner count badge, pluralized tooltip.
-   */
-  density?: ResourceTypeTabDensity;
 }
 
 function TabGlyph({ type }: { type: string }): ReactNode {
@@ -44,11 +34,8 @@ export function ResourceTypeTabs({
   onChange,
   disabled = false,
   includeAll = true,
-  density = "pills",
 }: ResourceTypeTabsProps): ReactNode {
   const labelId = useId();
-  const pills = density === "pills";
-  const compact = density === "compact";
   const tabOptions = { includeAll };
   const tabs = visibleResourceTypeTabs(counts, tabOptions);
   const resolved = resolveResourceTypeTab(value, counts, tabOptions);
@@ -63,11 +50,7 @@ export function ResourceTypeTabs({
   }
 
   return (
-    <div
-      className="resource-type-tabs"
-      data-density={density}
-      data-compact={compact ? "true" : "false"}
-    >
+    <div className="resource-type-tabs">
       <span className="sr-only" id={labelId}>
         Resource type
       </span>
@@ -92,21 +75,6 @@ export function ResourceTypeTabs({
           const label = resourceTypeTabLabel(type);
           const count = resourceTypeTabItemCount(type, counts);
           const caption = resourceTypeTabTooltip(type, counts);
-          const showBadge = compact && resourceTypeTabShowsCompactBadge(count);
-          const glyph = <TabGlyph type={type} />;
-          const face = (
-            <span className="resource-type-tab-face">
-              {glyph}
-              {showBadge ? (
-                <span
-                  className="resource-type-tab-badge"
-                  data-testid={`resource-type-tab-badge-${type}`}
-                >
-                  {count}
-                </span>
-              ) : null}
-            </span>
-          );
           return (
             <ToggleGroup.Item
               key={type}
@@ -116,17 +84,11 @@ export function ResourceTypeTabs({
               aria-label={caption}
               disabled={disabled}
             >
-              {compact ? (
-                <ChromeTooltip content={caption}>{face}</ChromeTooltip>
-              ) : (
-                face
-              )}
-              {pills ? (
-                <>
-                  <span className="resource-type-tab-count">{count}</span>
-                  <span className="resource-type-tab-label">{label}</span>
-                </>
-              ) : null}
+              <span className="resource-type-tab-face">
+                <TabGlyph type={type} />
+              </span>
+              <span className="resource-type-tab-count">{count}</span>
+              <span className="resource-type-tab-label">{label}</span>
             </ToggleGroup.Item>
           );
         })}

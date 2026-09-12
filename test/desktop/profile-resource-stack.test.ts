@@ -195,7 +195,7 @@ describe("Profile resources pane chrome", () => {
     );
     expect(profileResources).toContain("ResourceTypeTabs");
     expect(profileResources).toContain("includeAll={false}");
-    expect(profileResources).toContain('density="compact"');
+    expect(profileResources).not.toContain("density=");
     expect(profileResources).toContain("countResourceTypeTabs");
     expect(profileResources).toContain("ProfileResourceListItem");
     expect(liveStateSource).toContain("flattenProfileResourceList");

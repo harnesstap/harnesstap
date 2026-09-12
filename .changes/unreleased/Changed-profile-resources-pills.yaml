@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop ResourceTypeTabs is pills only (icon, count, type text, wrap) on Library, Profile resources, Not staged, compose, and other typed lists. Compact circular type filters are removed.
+time: 2026-09-12T16:55:00Z
+custom:
+  Issue: ""

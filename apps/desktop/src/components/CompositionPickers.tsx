@@ -203,7 +203,6 @@ export function ResourceSelectionList({
         aria-label="Filter library items"
       />
       <ResourceTypeTabs
-        density="pills"
         counts={typeCounts}
         value={effectiveType}
         disabled={disabled}
