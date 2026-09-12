@@ -13,6 +13,7 @@ import {
   resourceTypeTabText,
   resourceTypeTabTooltip,
   visibleResourceTypeTabs,
+  type ResourceTypeTabDensity,
 } from "../lib/resource-type-tabs";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { TypeIcon } from "./TypeIcon";
@@ -24,6 +25,12 @@ export interface ResourceTypeTabsProps {
   disabled?: boolean;
   /** Profile resources omits All; Library / Not staged / compose keep it. */
   includeAll?: boolean;
+  /**
+   * `labeled` (Library, Not staged, compose, Global/Project type filters):
+   * always icon, count, type text; wrap; never icon-only.
+   * `compact` (Profile resources): may collapse to icon-only with a count badge.
+   */
+  density?: ResourceTypeTabDensity;
 }
 
 function TabGlyph({ type }: { type: string }): ReactNode {
@@ -44,10 +51,12 @@ export function ResourceTypeTabs({
   onChange,
   disabled = false,
   includeAll = true,
+  density = "labeled",
 }: ResourceTypeTabsProps): ReactNode {
   const labelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(false);
+  const labeled = density === "labeled";
+  const [compact, setCompact] = useState(!labeled);
   const tabOptions = { includeAll };
   const tabs = visibleResourceTypeTabs(counts, tabOptions);
   const resolved = resolveResourceTypeTab(value, counts, tabOptions);
@@ -58,6 +67,10 @@ export function ResourceTypeTabs({
       : (tabs[0] ?? ALL_RESOURCE_TYPE_TAB));
 
   useEffect(() => {
+    if (labeled) {
+      setCompact(false);
+      return;
+    }
     const el = rootRef.current;
     if (!el || typeof ResizeObserver === "undefined") {
       return;
@@ -73,7 +86,7 @@ export function ResourceTypeTabs({
     }
     update();
     return () => observer.disconnect();
-  }, []);
+  }, [labeled]);
 
   if (tabs.length === 0) {
     return null;
@@ -83,6 +96,7 @@ export function ResourceTypeTabs({
     <div
       ref={rootRef}
       className="resource-type-tabs"
+      data-density={density}
       data-compact={compact ? "true" : "false"}
     >
       <span className="sr-only" id={labelId}>
@@ -107,12 +121,12 @@ export function ResourceTypeTabs({
       >
         {tabs.map((type) => {
           const label = resourceTypeTabLabel(type);
-          const caption = compact
+          const count = resourceTypeTabItemCount(type, counts);
+          const caption = labeled || compact
             ? resourceTypeTabTooltip(type, counts)
             : resourceTypeTabText(type, counts);
-          const showCount = resourceTypeTabShowsCount(counts);
-          const count = resourceTypeTabItemCount(type, counts);
-          const showBadge = resourceTypeTabShowsCompactBadge(count);
+          const showCount = labeled || resourceTypeTabShowsCount(counts);
+          const showBadge = !labeled && resourceTypeTabShowsCompactBadge(count);
           const glyph = <TabGlyph type={type} />;
           const face = (
             <span className="resource-type-tab-face">
@@ -141,10 +155,19 @@ export function ResourceTypeTabs({
               ) : (
                 face
               )}
-              <span className="resource-type-tab-label">{label}</span>
-              {showCount ? (
-                <span className="resource-type-tab-count">{count}</span>
-              ) : null}
+              {labeled ? (
+                <>
+                  <span className="resource-type-tab-count">{count}</span>
+                  <span className="resource-type-tab-label">{label}</span>
+                </>
+              ) : (
+                <>
+                  <span className="resource-type-tab-label">{label}</span>
+                  {showCount ? (
+                    <span className="resource-type-tab-count">{count}</span>
+                  ) : null}
+                </>
+              )}
             </ToggleGroup.Item>
           );
         })}

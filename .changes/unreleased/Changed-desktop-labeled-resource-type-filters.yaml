@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Global/Project resource-type filters use labeled ResourceTypeTabs density (icon, count, type text, wrap) instead of icon-only collapse. Profile resources stay compact.
+time: 2026-09-12T15:45:00Z
+custom:
+  Issue: ""

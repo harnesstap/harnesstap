@@ -8,6 +8,7 @@ import {
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
+  resourceTypeTabLabeledText,
   resourceTypeTabShowsCompactBadge,
   resourceTypeTabShowsCount,
   resourceTypeTabText,
@@ -83,6 +84,18 @@ describe("resourceTypeTabText", () => {
     const one = countResourceTypeTabs(["skill"]);
     expect(resourceTypeTabShowsCount(one)).toBe(false);
     expect(resourceTypeTabText("skill", one)).toBe("Skills");
+  });
+});
+
+describe("resourceTypeTabLabeledText", () => {
+  it("puts count before the type text", () => {
+    const mixed = countResourceTypeTabs(["skill", "plugin", "plugin"]);
+    expect(resourceTypeTabLabeledText("skill", mixed)).toBe("1 Skills");
+    expect(resourceTypeTabLabeledText("plugin", mixed)).toBe("2 Plugins");
+    expect(resourceTypeTabLabeledText("all", mixed)).toBe("3 All");
+
+    const one = countResourceTypeTabs(["skill"]);
+    expect(resourceTypeTabLabeledText("skill", one)).toBe("1 Skills");
   });
 });
 

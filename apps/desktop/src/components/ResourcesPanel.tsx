@@ -649,6 +649,7 @@ export function ResourcesPanel({
     return (
       <>
         <ResourceTypeTabs
+          density="labeled"
           counts={typeCounts}
           value={typeTab}
           disabled={disabled}

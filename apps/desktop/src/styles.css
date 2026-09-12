@@ -1049,6 +1049,22 @@ button:focus-visible,
   }
 }
 
+.resource-type-tabs[data-density="labeled"] .resource-type-tabs-scroller {
+  flex-wrap: wrap;
+  overflow: visible;
+  mask-image: none;
+  row-gap: 0.35rem;
+}
+
+.resource-type-tabs[data-density="labeled"] .resource-type-tab-badge {
+  display: none;
+}
+
+.resource-type-tabs[data-density="labeled"] .resource-type-tab-label,
+.resource-type-tabs[data-density="labeled"] .resource-type-tab-count {
+  display: inline;
+}
+
 .resource-type-tabs-scroller {
   display: flex;
   gap: 0.35rem;

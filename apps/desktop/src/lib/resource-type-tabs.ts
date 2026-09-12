@@ -20,8 +20,11 @@ export type ResourceTypeTabId = (typeof RESOURCE_TYPE_TAB_ORDER)[number];
 
 export const ALL_RESOURCE_TYPE_TAB = "all";
 
-/** Host pane width at or above this shows icon+label; narrower is icon-only. */
+/** Compact density: host pane width at or above this shows icon+label; narrower is icon-only. */
 export const RESOURCE_TYPE_TABS_WIDE_MIN_PX = 900;
+
+/** `labeled` always shows icon+count+label and wraps. `compact` may collapse to icon-only. */
+export type ResourceTypeTabDensity = "compact" | "labeled";
 
 export type ResourceTypeTabGlyph = TypeGlyph | "layout-grid";
 
@@ -172,7 +175,7 @@ export function resourceTypeTabShowsCount(
   return (present[0] ?? 0) > 1;
 }
 
-/** Visible / tooltip copy. Optional count: `Skills 12`. */
+/** Compact-wide copy. Optional count after the label: `Skills 12`. */
 export function resourceTypeTabText(
   type: string,
   counts: ReadonlyMap<string, number>,
@@ -182,6 +185,15 @@ export function resourceTypeTabText(
     return label;
   }
   return `${label} ${resourceTypeTabItemCount(type, counts)}`;
+}
+
+/** Labeled density visible copy: count then type text (`1 Skills`, `2 Plugins`). */
+export function resourceTypeTabLabeledText(
+  type: string,
+  counts: ReadonlyMap<string, number>,
+): string {
+  const count = resourceTypeTabItemCount(type, counts);
+  return `${count} ${resourceTypeTabLabel(type)}`;
 }
 
 /** Compact count badge: hide zeros. All uses the total across types. */
