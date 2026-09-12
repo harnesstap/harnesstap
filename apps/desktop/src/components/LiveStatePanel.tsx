@@ -330,59 +330,65 @@ function FileChangeKindBadges({
   onToggle?: (kind: FileChangeKind) => void;
   ariaLabel: string;
 }): ReactNode {
+  const badges = FILE_CHANGE_KIND_BADGES.flatMap(({ kind, label }) => {
+    const count = counts[kind];
+    if (count <= 0) {
+      return [];
+    }
+    const on = selected?.has(kind) ?? false;
+    const className = [
+      "file-change-kind-badge",
+      "apply-diff-kind-badge",
+      kind,
+      on ? "on" : "",
+      interactive ? "" : "static",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const aria = interactive
+      ? `Filter ${label.toLowerCase()} (${count})`
+      : `${count} ${label.toLowerCase()}`;
+    const inner = (
+      <>
+        <FileChangeKindBadgeMark kind={kind} />
+        <span>{count}</span>
+      </>
+    );
+    if (!interactive) {
+      return [
+        <span key={kind} className={className} aria-label={aria}>
+          {inner}
+        </span>,
+      ];
+    }
+    return [
+      <button
+        key={kind}
+        type="button"
+        className={className}
+        aria-pressed={on}
+        aria-label={aria}
+        title={label}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onToggle?.(kind);
+        }}
+      >
+        {inner}
+      </button>,
+    ];
+  });
+  if (badges.length === 0) {
+    return null;
+  }
   return (
     <div
       className="file-change-kind-badges apply-diff-kind-badges"
       role="group"
       aria-label={ariaLabel}
     >
-      {FILE_CHANGE_KIND_BADGES.map(({ kind, label }) => {
-        const count = counts[kind];
-        const on = selected?.has(kind) ?? false;
-        const className = [
-          "file-change-kind-badge",
-          "apply-diff-kind-badge",
-          kind,
-          on ? "on" : "",
-          interactive ? "" : "static",
-        ]
-          .filter(Boolean)
-          .join(" ");
-        const aria = interactive
-          ? `Filter ${label.toLowerCase()} (${count})`
-          : `${count} ${label.toLowerCase()}`;
-        const inner = (
-          <>
-            <FileChangeKindBadgeMark kind={kind} />
-            <span>{count}</span>
-          </>
-        );
-        if (!interactive) {
-          return (
-            <span key={kind} className={className} aria-label={aria}>
-              {inner}
-            </span>
-          );
-        }
-        return (
-          <button
-            key={kind}
-            type="button"
-            className={className}
-            aria-pressed={on}
-            aria-label={aria}
-            title={label}
-            disabled={count === 0}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onToggle?.(kind);
-            }}
-          >
-            {inner}
-          </button>
-        );
-      })}
+      {badges}
     </div>
   );
 }
@@ -1222,6 +1228,7 @@ function FileChangesSection({
   changes,
   filesRootPath,
   profileResourceKeys,
+  managedCount = 0,
   fileChangeBusyPath = null,
   fileChangeBusyAction = null,
   committingManagedChanges,
@@ -1235,6 +1242,7 @@ function FileChangesSection({
   changes: DriftFileChange[];
   filesRootPath?: string | null;
   profileResourceKeys: Set<string>;
+  managedCount?: number;
   fileChangeBusyPath?: string | null;
   fileChangeBusyAction?: "open" | "add" | "drop" | null;
   committingManagedChanges?: boolean;
@@ -1256,7 +1264,15 @@ function FileChangesSection({
   return (
     <details className="diff-section">
       <summary className="compare-title">
-        <span className="compare-title-text">File changes</span>
+        <span className="compare-title-text">
+          {managedCount > 0 ? (
+            <ChromeTooltip content={`${managedCount} managed`} side="top">
+              <span>File changes</span>
+            </ChromeTooltip>
+          ) : (
+            "File changes"
+          )}
+        </span>
         <FileChangeKindBadges
           counts={kindCounts}
           interactive
@@ -2098,6 +2114,7 @@ export function LiveStatePanel({
                     changes={applyPreview.files?.changes ?? []}
                     filesRootPath={filesRootPath ?? applyPreview.files?.root_path ?? null}
                     profileResourceKeys={profileResourceKeys}
+                    managedCount={applyPreview.files?.expected_count ?? 0}
                     fileChangeBusyPath={fileChangeBusyPath}
                     fileChangeBusyAction={fileChangeBusyAction}
                     committingManagedChanges={committingManagedChanges}

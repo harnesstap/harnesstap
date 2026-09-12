@@ -281,12 +281,17 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain("countPendingApplyKinds");
     expect(previewBlock).toContain("FileChangesSection");
     expect(previewBlock).not.toContain("would change");
-    expect(previewBlock).not.toContain(" managed");
+    expect(previewBlock).not.toContain("N managed");
+    expect(liveStateSource).not.toContain("would change ·");
     expect(liveStateSource).toContain('ariaLabel="Pending apply diff"');
     expect(designSource).toContain("no info icon");
     expect(designSource).toContain("apply-diff icon badges");
-    expect(designSource).toContain("including **0**");
+    expect(designSource).toContain("non-zero counts only");
+    expect(designSource).not.toContain("including **0**");
     expect(designSource).toContain("no **N would change · N managed**");
+    expect(designSource).toContain("Managed count is a File changes title tooltip");
+    expect(liveStateSource).toContain("if (count <= 0)");
+    expect(liveStateSource).toContain("content={`${managedCount} managed`}");
     expect(designSource).toContain("Stack changes has no info icon");
     const stackTitle = previewBlock.slice(
       previewBlock.indexOf("Stack changes"),

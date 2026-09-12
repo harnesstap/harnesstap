@@ -1,5 +1,5 @@
 kind: Changed
-body: Desktop Target preview shows green + / red − / yellow pencil apply-diff badges (counts including 0), drops header active and info chrome plus the Stack changes info icon, and moves file kind badges into the File changes header.
+body: Desktop Target preview replaces type counts with green + / red − / yellow pencil apply-diff badges (non-zero only), drops header active and info chrome plus the Stack changes info icon, and moves file kind badges into the File changes header with managed count as a tooltip.
 time: 2026-09-12T02:40:00Z
 custom:
   Issue: ""
