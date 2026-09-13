@@ -247,10 +247,13 @@ describe("uniqueLibraryInUseProjectPaths", () => {
 describe("library in-use chrome", () => {
   it("documents the four leading marks", () => {
     expect(designSource).toContain("InUseMark");
-    expect(designSource).toContain("lead with at most one **InUseMark**");
-    expect(designSource).toContain("lead with at most one InUseMark");
+    expect(designSource).toContain("always reserve a leading **InUseMark** column");
+    expect(designSource).toContain("always reserve a leading InUseMark column");
+    expect(designSource).toContain("empty spacer of the same width");
+    expect(designSource).toContain("~10px glyph");
     expect(designSource).not.toContain("rows trail at most one **InUseMark**");
     expect(designSource).not.toContain("rows trail at most one InUseMark");
+    expect(designSource).not.toContain("Unused: nothing");
     expect(designSource).toContain("**In 1 project** / **In N projects**");
     expect(designSource).toContain("**On Global · in N projects**");
     expect(designSource).toContain("No unused-only filter yet");
@@ -262,11 +265,15 @@ describe("library in-use chrome", () => {
     expect(panelSource).toContain("ResourceRowLeading");
     expect(panelSource).not.toContain("ResourceRowTrailing");
     expect(panelSource).toContain("libraryInUseForEntry");
+    expect(panelSource).not.toContain("inUseKind === \"none\"");
     expect(markSource).toContain("export function InUseMark");
     expect(markSource).toContain("ChromeTooltip");
-    expect(markSource).toContain("size={14}");
-    expect(markSource).toContain("strokeWidth={1.75}");
-    expect(markSource).toContain("w-3.5 h-3.5 rounded-full");
+    expect(markSource).toContain("in-use-mark-spacer");
+    expect(markSource).toContain('data-kind="none"');
+    expect(markSource).toContain("size={10}");
+    expect(markSource).toContain("strokeWidth={1.5}");
+    expect(markSource).not.toContain("size={14}");
+    expect(markSource).not.toContain("w-3.5 h-3.5");
     expect(markSource).toContain("in-use-mark-both");
     expect(markSource).toContain("in-use-mark-both-fill");
     expect(markSource).not.toContain("Sparkles");
@@ -274,11 +281,12 @@ describe("library in-use chrome", () => {
     expect(markSource).not.toContain("Globe");
     expect(markSource).not.toContain("CircleDot");
     expect(markSource).not.toContain("IconActionButton");
+    expect(stylesSource).toContain("--in-use-glyph: 10px");
+    expect(stylesSource).toContain("--in-use-fill: 6px");
     expect(stylesSource).toContain("width: 20px");
     expect(stylesSource).toContain("height: 20px");
-    expect(stylesSource).toContain("width: 14px");
-    expect(stylesSource).toContain("width: 10px");
+    expect(stylesSource).toContain("min-width: 20px");
     expect(stylesSource).toContain("#22c55e");
-    expect(stylesSource).toContain("border: 1.75px solid var(--muted)");
+    expect(stylesSource).toContain("border: 1.5px solid var(--muted)");
   });
 });

@@ -16,8 +16,8 @@ function InUseMarkGlyph({
     case "project":
       return (
         <Circle
-          size={14}
-          strokeWidth={1.75}
+          size={10}
+          strokeWidth={1.5}
           fill="none"
           aria-hidden
         />
@@ -25,7 +25,7 @@ function InUseMarkGlyph({
     case "global":
       return (
         <span
-          className="in-use-mark-global w-3.5 h-3.5 rounded-full"
+          className="in-use-mark-global"
           aria-hidden
         />
       );
@@ -42,7 +42,7 @@ function InUseMarkGlyph({
   }
 }
 
-/** Leading Library membership glyph. Unused renders nothing. */
+/** Leading Library membership glyph. Unused renders a same-width spacer. */
 export function InUseMark({
   membership,
 }: {
@@ -51,7 +51,14 @@ export function InUseMark({
   const kind = libraryInUseKind(membership);
   const tooltip = libraryInUseTooltip(membership);
   if (kind === "none" || !tooltip) {
-    return null;
+    return (
+      <span
+        className="in-use-mark in-use-mark-spacer"
+        data-testid="library-in-use"
+        data-kind="none"
+        aria-hidden
+      />
+    );
   }
   return (
     <ChromeTooltip content={tooltip}>
