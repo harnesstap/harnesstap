@@ -245,17 +245,20 @@ describe("uniqueLibraryInUseProjectPaths", () => {
 });
 
 describe("library in-use chrome", () => {
-  it("documents the four trailing marks", () => {
+  it("documents the four leading marks", () => {
     expect(designSource).toContain("InUseMark");
+    expect(designSource).toContain("lead with at most one");
+    expect(designSource).not.toContain("trail at most one **InUseMark**");
     expect(designSource).toContain("**In 1 project** / **In N projects**");
     expect(designSource).toContain("**On Global · in N projects**");
     expect(designSource).toContain("No unused-only filter yet");
   });
 
-  it("wires one InUseMark onto Library list trailing chrome", () => {
+  it("wires one InUseMark onto Library list leading chrome", () => {
     expect(panelSource).toContain("InUseMark");
     expect(panelSource).not.toContain("LibraryInUseMark");
-    expect(panelSource).toContain("ResourceRowTrailing");
+    expect(panelSource).toContain("ResourceRowLeading");
+    expect(panelSource).not.toContain("ResourceRowTrailing");
     expect(panelSource).toContain("libraryInUseForEntry");
     expect(markSource).toContain("export function InUseMark");
     expect(markSource).toContain("ChromeTooltip");

@@ -16,8 +16,8 @@ import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import {
   ResourceRowDescription,
   ResourceRowIdentity,
+  ResourceRowLeading,
   ResourceRowRoot,
-  ResourceRowTrailing,
 } from "./ui/resource-row";
 import { InUseMark } from "./InUseMark";
 import type { ApplyPluginResult } from "../lib/api/apply-plugin";
@@ -751,6 +751,11 @@ export function ResourcesPanel({
                   testId={`resource-row-${label}`}
                   disabled={disabled}
                 >
+                  {inUseKind === "none" ? null : (
+                    <ResourceRowLeading>
+                      <InUseMark membership={inUse} />
+                    </ResourceRowLeading>
+                  )}
                   <ResourceRowIdentity
                     type={filterType}
                     label={label}
@@ -767,11 +772,6 @@ export function ResourcesPanel({
                       </ResourceRowDescription>
                     ) : null}
                   </ResourceRowIdentity>
-                  {inUseKind === "none" ? null : (
-                    <ResourceRowTrailing>
-                      <InUseMark membership={inUse} />
-                    </ResourceRowTrailing>
-                  )}
                 </ResourceRowRoot>
               </li>
             );
