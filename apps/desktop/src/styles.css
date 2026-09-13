@@ -2372,6 +2372,11 @@ button:focus-visible,
   grid-column: 1;
 }
 
+.resource-row-leading:has(.in-use-mark) {
+  width: 20px;
+  min-width: 20px;
+}
+
 .resource-row-identity {
   display: flex;
   flex-direction: column;
@@ -2398,6 +2403,8 @@ button:focus-visible,
 
 .in-use-mark {
   --in-use-global: #22c55e;
+  --in-use-glyph: 10px;
+  --in-use-fill: 6px;
   appearance: none;
   border: 0;
   margin: 0;
@@ -2413,8 +2420,16 @@ button:focus-visible,
   cursor: default;
 }
 
+.in-use-mark-spacer {
+  pointer-events: none;
+  cursor: default;
+}
+
 .in-use-mark-global {
   display: block;
+  width: var(--in-use-glyph);
+  height: var(--in-use-glyph);
+  border-radius: 50%;
   background: var(--in-use-global);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--in-use-global) 58%, #14532d);
 }
@@ -2422,10 +2437,10 @@ button:focus-visible,
 .in-use-mark-both {
   position: relative;
   display: block;
-  width: 14px;
-  height: 14px;
+  width: var(--in-use-glyph);
+  height: var(--in-use-glyph);
   box-sizing: border-box;
-  border: 1.75px solid var(--muted);
+  border: 1.5px solid var(--muted);
   border-radius: 50%;
 }
 
@@ -2433,8 +2448,8 @@ button:focus-visible,
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 10px;
-  height: 10px;
+  width: var(--in-use-fill);
+  height: var(--in-use-fill);
   border-radius: 50%;
   background: var(--in-use-global);
   transform: translate(-50%, -50%);

@@ -1,0 +1,5 @@
+kind: Changed
+body: Reserve a fixed Library InUseMark leading column (unused spacer) and shrink the membership glyphs.
+time: 2026-09-13T03:45:00Z
+custom:
+  Issue: ""

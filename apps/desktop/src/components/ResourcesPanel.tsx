@@ -46,7 +46,6 @@ import {
   indexLibraryInUse,
   libraryInUseCompositionsFromDetails,
   libraryInUseForEntry,
-  libraryInUseKind,
   libraryInUseProfilesFromSummaries,
   libraryInUseProjectBindingsFromListings,
   uniqueLibraryInUseProjectPaths,
@@ -743,7 +742,6 @@ export function ResourcesPanel({
             const updateBadge = libraryRowUpdateBadge(entry);
             const filterType = libraryFilterType(entry);
             const inUse = libraryInUseForEntry(entry, inUseIndex);
-            const inUseKind = libraryInUseKind(inUse);
             return (
               <li className="resources-list-item" key={entry.id}>
                 <ResourceRowRoot
@@ -751,11 +749,9 @@ export function ResourcesPanel({
                   testId={`resource-row-${label}`}
                   disabled={disabled}
                 >
-                  {inUseKind === "none" ? null : (
-                    <ResourceRowLeading>
-                      <InUseMark membership={inUse} />
-                    </ResourceRowLeading>
-                  )}
+                  <ResourceRowLeading>
+                    <InUseMark membership={inUse} />
+                  </ResourceRowLeading>
                   <ResourceRowIdentity
                     type={filterType}
                     label={label}
