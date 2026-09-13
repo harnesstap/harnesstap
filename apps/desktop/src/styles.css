@@ -2396,6 +2396,37 @@ button:focus-visible,
   flex-shrink: 0;
 }
 
+.library-in-use-action.icon-action {
+  --library-in-use-size: 0.75rem;
+}
+
+.library-in-use-mark {
+  display: block;
+  width: var(--library-in-use-size, 0.75rem);
+  height: var(--library-in-use-size, 0.75rem);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.library-in-use-mark[data-kind="project"] {
+  border: 2px solid var(--muted);
+  background: transparent;
+}
+
+.library-in-use-mark[data-kind="global"] {
+  border: 2px solid var(--accent);
+  background: var(--accent);
+}
+
+.library-in-use-mark[data-kind="both"] {
+  border: 2px solid var(--accent);
+  background: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 3.5px var(--muted);
+}
+}
+
 .resource-row-trailing .diff-row-actions {
   margin-left: 0;
 }

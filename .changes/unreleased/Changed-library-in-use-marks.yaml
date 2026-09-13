@@ -1,0 +1,5 @@
+kind: Changed
+body: Show Library list in-use marks for unused, project-only, Global-only, and both, with short tooltips.
+time: 2026-09-13T00:25:00Z
+custom:
+  Issue: ""

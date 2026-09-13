@@ -17,9 +17,16 @@ import {
   ResourceRowDescription,
   ResourceRowIdentity,
   ResourceRowRoot,
+  ResourceRowTrailing,
 } from "./ui/resource-row";
+import { LibraryInUseMark } from "./LibraryInUseMark";
 import type { ApplyPluginResult } from "../lib/api/apply-plugin";
-import { AgentApiError, fetchLibraryResources } from "../lib/agent-client";
+import {
+  AgentApiError,
+  fetchLibraryResources,
+  fetchProfileDetail,
+  fetchProfiles,
+} from "../lib/agent-client";
 import {
   fetchLibraryPluginHeads,
   type LibraryPluginHead,
@@ -35,6 +42,16 @@ import {
   mergeLibraryList,
   type LibraryListEntry,
 } from "../lib/library-list";
+import {
+  indexLibraryInUse,
+  libraryInUseCompositionsFromDetails,
+  libraryInUseForEntry,
+  libraryInUseKind,
+  libraryInUseProfilesFromSummaries,
+  libraryInUseProjectBindingsFromListings,
+  uniqueLibraryInUseProjectPaths,
+  type LibraryInUseMembership,
+} from "../lib/library-in-use";
 import {
   escapeAction,
   libraryPaneHasPrevious,
@@ -61,7 +78,7 @@ import {
   resolveResourceTypeTab,
 } from "../lib/resource-type-tabs";
 import { workspaceBackEnabled } from "../lib/screen-history";
-import type { LibraryResource } from "../lib/types";
+import type { LibraryResource, ProfileDetail, ProfileSummary } from "../lib/types";
 
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof AgentApiError) {
@@ -130,6 +147,9 @@ export function ResourcesPanel({
   const [actionError, setActionError] = useState<string | null>(null);
   const [originOutdatedIds, setOriginOutdatedIds] = useState<Set<string>>(
     () => new Set(),
+  );
+  const [inUseIndex, setInUseIndex] = useState<Map<string, LibraryInUseMembership>>(
+    () => new Map(),
   );
   const [originUpdateBusy, setOriginUpdateBusy] = useState(false);
   const [originUpdateConfirmOpen, setOriginUpdateConfirmOpen] = useState(false);
@@ -202,6 +222,68 @@ export function ResourcesPanel({
       cancelled = true;
     };
   }, [baseUrl, token, resourcesReloadKey, reloadKey]);
+
+  useEffect(() => {
+    if (!baseUrl) {
+      setInUseIndex(new Map());
+      return;
+    }
+    let cancelled = false;
+    const projectPaths = uniqueLibraryInUseProjectPaths(
+      resolvedProjectPath,
+      loadRecentProjects().map((row) => row.path),
+    );
+    void (async () => {
+      try {
+        const homeSummaries = await fetchProfiles(baseUrl);
+        const listings: Array<{ path: string; profiles: ProfileSummary[] }> = [];
+        for (const path of projectPaths) {
+          listings.push({
+            path,
+            profiles: await fetchProfiles(baseUrl, path),
+          });
+        }
+        const profiles = libraryInUseProfilesFromSummaries([
+          ...homeSummaries,
+          ...listings.flatMap((listing) => listing.profiles),
+        ]);
+        const names = [...new Set(profiles.map((profile) => profile.name))];
+        const details: Array<{ profileName: string; detail: ProfileDetail }> = [];
+        const loaded = await Promise.all(
+          names.map(async (name) => {
+            try {
+              const detail = await fetchProfileDetail(baseUrl, token, name);
+              return { profileName: name, detail };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        for (const row of loaded) {
+          if (row) {
+            details.push(row);
+          }
+        }
+        if (cancelled) {
+          return;
+        }
+        setInUseIndex(
+          indexLibraryInUse({
+            profiles,
+            compositions: libraryInUseCompositionsFromDetails(details),
+            projectBindings: libraryInUseProjectBindingsFromListings(listings),
+          }),
+        );
+      } catch {
+        if (!cancelled) {
+          setInUseIndex(new Map());
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token, resolvedProjectPath, resourcesReloadKey, reloadKey]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -660,6 +742,8 @@ export function ResourcesPanel({
             const badge = libraryRowBadge(entry);
             const updateBadge = libraryRowUpdateBadge(entry);
             const filterType = libraryFilterType(entry);
+            const inUse = libraryInUseForEntry(entry, inUseIndex);
+            const inUseKind = libraryInUseKind(inUse);
             return (
               <li className="resources-list-item" key={entry.id}>
                 <ResourceRowRoot
@@ -683,6 +767,11 @@ export function ResourcesPanel({
                       </ResourceRowDescription>
                     ) : null}
                   </ResourceRowIdentity>
+                  {inUseKind === "none" ? null : (
+                    <ResourceRowTrailing>
+                      <LibraryInUseMark membership={inUse} />
+                    </ResourceRowTrailing>
+                  )}
                 </ResourceRowRoot>
               </li>
             );
