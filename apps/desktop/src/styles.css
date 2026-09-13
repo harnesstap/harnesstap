@@ -2425,7 +2425,6 @@ button:focus-visible,
     0 0 0 2px var(--bg),
     0 0 0 3.5px var(--muted);
 }
-}
 
 .resource-row-trailing .diff-row-actions {
   margin-left: 0;
