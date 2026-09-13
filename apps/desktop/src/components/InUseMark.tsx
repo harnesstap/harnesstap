@@ -42,7 +42,7 @@ function InUseMarkGlyph({
   }
 }
 
-/** Trailing Library membership glyph. Unused renders nothing. */
+/** Leading Library membership glyph. Unused renders nothing. */
 export function InUseMark({
   membership,
 }: {
