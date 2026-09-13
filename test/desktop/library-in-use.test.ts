@@ -24,10 +24,14 @@ const panelSource = readFileSync(
   ),
   "utf8",
 );
+const stylesSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
+  "utf8",
+);
 const markSource = readFileSync(
   join(
     import.meta.dir,
-    "../../apps/desktop/src/components/LibraryInUseMark.tsx",
+    "../../apps/desktop/src/components/InUseMark.tsx",
   ),
   "utf8",
 );
@@ -242,17 +246,34 @@ describe("uniqueLibraryInUseProjectPaths", () => {
 
 describe("library in-use chrome", () => {
   it("documents the four trailing marks", () => {
-    expect(designSource).toContain("Library list rows trail an in-use mark");
+    expect(designSource).toContain("InUseMark");
     expect(designSource).toContain("**In 1 project** / **In N projects**");
     expect(designSource).toContain("**On Global · in N projects**");
     expect(designSource).toContain("No unused-only filter yet");
   });
 
-  it("wires IconActionButton marks onto Library list trailing chrome", () => {
-    expect(panelSource).toContain("LibraryInUseMark");
+  it("wires one InUseMark onto Library list trailing chrome", () => {
+    expect(panelSource).toContain("InUseMark");
+    expect(panelSource).not.toContain("LibraryInUseMark");
     expect(panelSource).toContain("ResourceRowTrailing");
     expect(panelSource).toContain("libraryInUseForEntry");
-    expect(markSource).toContain("IconActionButton");
-    expect(markSource).toContain("library-in-use-mark");
+    expect(markSource).toContain("export function InUseMark");
+    expect(markSource).toContain("ChromeTooltip");
+    expect(markSource).toContain("size={14}");
+    expect(markSource).toContain("strokeWidth={1.75}");
+    expect(markSource).toContain("w-3.5 h-3.5 rounded-full");
+    expect(markSource).toContain("in-use-mark-both");
+    expect(markSource).toContain("in-use-mark-both-fill");
+    expect(markSource).not.toContain("Sparkles");
+    expect(markSource).not.toContain("Check");
+    expect(markSource).not.toContain("Globe");
+    expect(markSource).not.toContain("CircleDot");
+    expect(markSource).not.toContain("IconActionButton");
+    expect(stylesSource).toContain("width: 20px");
+    expect(stylesSource).toContain("height: 20px");
+    expect(stylesSource).toContain("width: 14px");
+    expect(stylesSource).toContain("width: 10px");
+    expect(stylesSource).toContain("#22c55e");
+    expect(stylesSource).toContain("border: 1.75px solid var(--muted)");
   });
 });

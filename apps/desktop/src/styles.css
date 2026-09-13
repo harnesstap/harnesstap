@@ -2396,34 +2396,48 @@ button:focus-visible,
   flex-shrink: 0;
 }
 
-.library-in-use-action.icon-action {
-  --library-in-use-size: 0.75rem;
-}
-
-.library-in-use-mark {
-  display: block;
-  width: var(--library-in-use-size, 0.75rem);
-  height: var(--library-in-use-size, 0.75rem);
-  border-radius: 50%;
-  box-sizing: border-box;
-}
-
-.library-in-use-mark[data-kind="project"] {
-  border: 2px solid var(--muted);
+.in-use-mark {
+  --in-use-global: #22c55e;
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   background: transparent;
+  color: var(--muted);
+  cursor: default;
 }
 
-.library-in-use-mark[data-kind="global"] {
-  border: 2px solid var(--accent);
-  background: var(--accent);
+.in-use-mark-global {
+  display: block;
+  background: var(--in-use-global);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--in-use-global) 58%, #14532d);
 }
 
-.library-in-use-mark[data-kind="both"] {
-  border: 2px solid var(--accent);
-  background: var(--accent);
-  box-shadow:
-    0 0 0 2px var(--bg),
-    0 0 0 3.5px var(--muted);
+.in-use-mark-both {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 1.75px solid var(--muted);
+  border-radius: 50%;
+}
+
+.in-use-mark-both-fill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--in-use-global);
+  transform: translate(-50%, -50%);
 }
 
 .resource-row-trailing .diff-row-actions {

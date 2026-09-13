@@ -19,7 +19,7 @@ import {
   ResourceRowRoot,
   ResourceRowTrailing,
 } from "./ui/resource-row";
-import { LibraryInUseMark } from "./LibraryInUseMark";
+import { InUseMark } from "./InUseMark";
 import type { ApplyPluginResult } from "../lib/api/apply-plugin";
 import {
   AgentApiError,
@@ -769,7 +769,7 @@ export function ResourcesPanel({
                   </ResourceRowIdentity>
                   {inUseKind === "none" ? null : (
                     <ResourceRowTrailing>
-                      <LibraryInUseMark membership={inUse} />
+                      <InUseMark membership={inUse} />
                     </ResourceRowTrailing>
                   )}
                 </ResourceRowRoot>
