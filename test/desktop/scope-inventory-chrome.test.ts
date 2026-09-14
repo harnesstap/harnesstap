@@ -176,4 +176,19 @@ describe("Global/Project scope inventory chrome", () => {
     expect(fabBlock).not.toContain("position: sticky;");
     expect(designSource).toContain("over scrolling content");
   });
+
+  it("opens inventory plugin package rows in Library plugin details by name", () => {
+    expect(liveStateSource).toContain("profileInventoryOpenTarget");
+    expect(liveStateSource).toContain("onOpenPlugin?.(target.name)");
+    expect(liveStateSource).not.toMatch(
+      /InventoryRow[\s\S]{0,400}onOpen=\{\(\) => onOpenResource\(resourceDetailTarget\(item\.resource\)\)\}/,
+    );
+    const livePanel = appSource.slice(appSource.indexOf("<LiveStatePanel"));
+    expect(livePanel).toContain("onOpenPlugin={(pluginName) => {");
+    expect(livePanel).toContain("setLibraryFocusPlugin(pluginName)");
+    expect(livePanel).toContain('navigateToDestination("library")');
+    expect(designSource).toContain(
+      "Clicking a plugin package membership row opens Library plugin details",
+    );
+  });
 });

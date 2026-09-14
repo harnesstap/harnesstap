@@ -57,6 +57,59 @@ export function groupCompositionMembership(
     }));
 }
 
+/** Rows already attached to a plugin or profile (ids from membership). */
+export function filterCompositionMembers(
+  catalog: readonly LibraryResource[],
+  selectedIds: readonly string[],
+): LibraryResource[] {
+  const selected = new Set(selectedIds);
+  return catalog.filter((row) => selected.has(row.id));
+}
+
+/** Membership rows for plugin details, including attachments missing from the catalog. */
+export function pluginDetailCompositionEntries(
+  catalog: readonly LibraryResource[],
+  selectedIds: readonly string[],
+  detailResources: ReadonlyArray<{
+    id: string;
+    type: string;
+    name: string;
+    source: string;
+  }>,
+): LibraryResource[] {
+  const members = filterCompositionMembers(catalog, selectedIds);
+  const seen = new Set(members.map((row) => row.id));
+  const extras: LibraryResource[] = [];
+  for (const row of detailResources) {
+    if (seen.has(row.id)) {
+      continue;
+    }
+    extras.push({
+      id: row.id,
+      name: row.name,
+      type: row.type,
+      namespace: null,
+      description: null,
+      source: row.source,
+    });
+    seen.add(row.id);
+  }
+  return [...members, ...extras];
+}
+
+/** Exclude keys for the add-from-library checklist (`type:name` and `type:id`). */
+export function compositionExcludeKeys(
+  entries: readonly LibraryResource[],
+): Set<string> {
+  const keys = new Set<string>();
+  for (const entry of entries) {
+    const type = compositionSearchType(entry);
+    keys.add(`${type}:${entry.name}`);
+    keys.add(`${type}:${entry.id}`);
+  }
+  return keys;
+}
+
 export function mergeCompositionMembership(
   resources: LibraryResource[],
   plugins: CompositionPlugin[],

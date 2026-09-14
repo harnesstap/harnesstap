@@ -32,6 +32,28 @@ export interface ProfileInventoryItem {
   driftChange?: DriftFileChange;
 }
 
+export type ProfileInventoryOpenTarget =
+  | { kind: "plugin-package"; name: string }
+  | { kind: "resource"; resource: ProfileContentsResource };
+
+/**
+ * Plugin package membership rows belong in Library plugin details (by name).
+ * Their `resource.id` is the plugin ULID, not a library resource id.
+ */
+export function profileInventoryOpenTarget(
+  item: Pick<ProfileInventoryItem, "type" | "label" | "pluginId" | "resource">,
+): ProfileInventoryOpenTarget {
+  const isPluginPackage =
+    item.type === "plugin"
+    && item.resource.type === "plugin"
+    && !item.pluginId;
+  if (isPluginPackage) {
+    const name = item.resource.name.trim() || item.label.trim();
+    return { kind: "plugin-package", name };
+  }
+  return { kind: "resource", resource: item.resource };
+}
+
 export interface PartitionProfileInventoryInput {
   profileRows: ProfileResourceListRow[];
   liveRows: ProfileResourceListRow[];

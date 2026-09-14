@@ -82,8 +82,9 @@ describe("resource inspect content preview", () => {
   test("keeps path copy, Finder reveal, and open-in-editor on Path rows only", () => {
     expect(bodySource).toContain("PathAccessActions");
     expect(bodySource).toContain("REVEAL_PATH_LABEL");
-    expect(bodySource).toContain("renderPathActions(editorPath, true)");
-    expect(bodySource).toContain("openContainedPath(path, true)");
+    expect(bodySource).toContain("renderPathActions(actionPath, true, true)");
+    expect(bodySource).toContain("openContainedPath(next, true)");
+    expect(bodySource).toContain("openCurrentResource(true)");
     expect(bodySource).toContain("{ path, reveal }");
     expect(bodySource).toContain('fieldName="Path"');
     const contentBlock = bodySource.slice(bodySource.indexOf('fieldName="Content"'));

@@ -361,6 +361,38 @@ developer_instructions = "Design contracts."
     expect(entries[0]?.resources.some((r) => r.type === "hook")).toBe(true);
   });
 
+  it("scans .mcp.json servers from a Claude plugin root", async () => {
+    const pluginRoot = createTempDir("plugin-source-mcp-json");
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ name: "context7", version: "1.0.0" }),
+      );
+      writeTextFile(
+        join(pluginRoot, ".mcp.json"),
+        JSON.stringify({
+          mcpServers: {
+            context7: {
+              type: "http",
+              url: "https://mcp.context7.com/mcp",
+            },
+          },
+        }),
+      );
+      const entries = await scanPluginSource(pluginRoot);
+      expect(entries[0]?.resources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "mcp_server",
+            name: "context7",
+          }),
+        ]),
+      );
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
   it("rejects imported agent names that escape the target directory", async () => {
     const pluginRoot = createTempDir("plugin-source-agent-traversal");
 

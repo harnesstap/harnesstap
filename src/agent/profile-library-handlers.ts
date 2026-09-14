@@ -8,7 +8,10 @@ import {
 import { overlayMcpServerDetail } from "../services/mcp-resource-detail.js";
 import { pluginResourceShowExtras } from "../services/plugin-resource-show.js";
 import { resourceAttacherPayload } from "../services/resource-attachers.js";
-import { readResourceContentFromPathHint } from "../services/resource-editor-path.js";
+import {
+  readResourceContentFromPathHint,
+  resolveExistingResourceFilesystemPath,
+} from "../services/resource-editor-path.js";
 import { truncateResourceContent } from "../services/resource-show.js";
 import { parseUntrackedResourceSelector } from "../services/untracked-resource.js";
 import { MATERIAL_RESOURCE_TYPES, type MaterialResourceType } from "../types.js";
@@ -76,6 +79,7 @@ export function handleLibraryResourceDetail(
           source: pathHint,
           origin_kind: "untracked",
           origin_ref: onDisk.path,
+          filesystem_path: onDisk.path,
           updated_at: onDisk.updatedAt,
           content,
           content_truncated: onDisk.content.split("\n").length > 80,
@@ -129,6 +133,9 @@ export function handleLibraryResourceDetail(
     resource.type === "mcp_server"
       ? overlayMcpServerDetail(resource, options?.pathHint)
       : { content: resource.content, updatedAt: resource.updated_at };
+  const filesystemPath =
+    extras?.install_path ??
+    resolveExistingResourceFilesystemPath(resource, options?.pathHint);
   return jsonResponse({
     resource: {
       id: resource.id,
@@ -139,6 +146,7 @@ export function handleLibraryResourceDetail(
       source: resource.source,
       origin_kind: resource.origin_kind,
       origin_ref: resource.origin_ref || null,
+      filesystem_path: filesystemPath,
       updated_at: overlay.updatedAt,
       content: truncateResourceContent(overlay.content, 80),
       content_truncated: overlay.content.split("\n").length > 80,

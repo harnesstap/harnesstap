@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -42,6 +43,8 @@ export interface PluginCompositionFieldsProps {
   onToggleResource: (id: string) => void;
   onInspectResource?: (resource: LibraryResource) => void;
   disabled: boolean;
+  emptyUnfilteredLabel?: string;
+  footer?: ReactNode;
 }
 
 export function PluginCompositionFields({
@@ -71,6 +74,8 @@ export function PluginCompositionFields({
   onToggleResource,
   onInspectResource,
   disabled,
+  emptyUnfilteredLabel = "No library items available.",
+  footer,
 }: PluginCompositionFieldsProps) {
   return (
     <>
@@ -158,23 +163,26 @@ export function PluginCompositionFields({
 
       <section className="edit-profile-section" aria-label="Composition">
         <h3>Composition</h3>
-        <div className="compose-library compose-library-unified">
-          {libraryLoading ? (
-            <p className="muted">Loading local library…</p>
-          ) : libraryError ? (
-            <div className="banner error">{libraryError}</div>
-          ) : (
-            <ResourceSelectionList
-              resources={resources}
-              filter={resourceFilter}
-              onFilterChange={onResourceFilter}
-              selectedIds={selectedIds}
-              disabled={disabled}
-              onToggle={onToggleResource}
-              onInspect={onInspectResource}
-              emptyUnfilteredLabel="No library items available."
-            />
-          )}
+        <div className="plugin-composition-pane">
+          <div className="compose-library compose-library-unified">
+            {libraryLoading ? (
+              <p className="muted">Loading local library…</p>
+            ) : libraryError ? (
+              <div className="banner error">{libraryError}</div>
+            ) : (
+              <ResourceSelectionList
+                resources={resources}
+                filter={resourceFilter}
+                onFilterChange={onResourceFilter}
+                selectedIds={selectedIds}
+                disabled={disabled}
+                onToggle={onToggleResource}
+                onInspect={onInspectResource}
+                emptyUnfilteredLabel={emptyUnfilteredLabel}
+              />
+            )}
+          </div>
+          {footer}
         </div>
       </section>
     </>

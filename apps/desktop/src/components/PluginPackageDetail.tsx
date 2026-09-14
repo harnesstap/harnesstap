@@ -15,6 +15,7 @@ import {
   History,
   MapPin,
   Play,
+  Plus,
   Scissors,
   Stethoscope,
   Tag,
@@ -34,9 +35,11 @@ import {
   fetchMarketplaces,
 } from "../lib/agent-client";
 import {
+  compositionExcludeKeys,
   compositionResourceSelector,
   isCompositionPluginPackage,
   mergeCompositionMembership,
+  pluginDetailCompositionEntries,
 } from "../lib/composition-membership";
 import { fieldKeyAction } from "../lib/library-field-edit";
 import { validateCutRows } from "../lib/cut-versions-form";
@@ -69,6 +72,7 @@ import type {
   LibraryResource,
   PluginMarketplaceEntry,
 } from "../lib/types";
+import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DoctorReportDialog } from "./DoctorReportDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
@@ -78,6 +82,10 @@ import type { ApplyPluginResult } from "../lib/api/apply-plugin";
 import { ApplyPluginDrawer } from "./parity/ApplyPluginDrawer";
 import { IconActionButton } from "./IconActionButton";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
+import {
+  ScopeAddToProfileModal,
+  type ScopeLibraryPick,
+} from "./ScopeAddToProfileModal";
 
 export interface PluginPackageDetailProps {
   selector: string;
@@ -204,6 +212,7 @@ export function PluginPackageDetail({
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [resourceFilter, setResourceFilter] = useState("");
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [libraryEpoch, setLibraryEpoch] = useState(0);
 
   const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>([]);
@@ -561,6 +570,21 @@ export function PluginPackageDetail({
     [selectedPluginIds, selectedResourceIds],
   );
 
+  const compositionMembers = useMemo(
+    () =>
+      pluginDetailCompositionEntries(
+        membership,
+        selectedMembershipIds,
+        viewDetail?.resources ?? [],
+      ),
+    [membership, selectedMembershipIds, viewDetail],
+  );
+
+  const compositionAddExcludeKeys = useMemo(
+    () => compositionExcludeKeys(compositionMembers),
+    [compositionMembers],
+  );
+
   const tagOptions = useMemo(() => {
     const tags = new Set<string>();
     for (const plugin of libraryPlugins) {
@@ -859,6 +883,49 @@ export function PluginPackageDetail({
       return;
     }
     toggleResource(id);
+  };
+
+  const addLibraryItems = async (items: ScopeLibraryPick[]) => {
+    if (!baseUrl || !selector || busy || pickersDisabled) {
+      return;
+    }
+    const add: Array<{ type: string; selector: string }> = [];
+    for (const item of items) {
+      const entry = membership.find((row) => row.id === item.id);
+      if (!entry) {
+        continue;
+      }
+      if (isCompositionPluginPackage(entry)) {
+        add.push({ type: "plugin", selector: entry.name });
+        continue;
+      }
+      add.push({
+        type: entry.type,
+        selector: compositionResourceSelector(entry),
+      });
+    }
+    if (add.length === 0) {
+      return;
+    }
+    setBusy(true);
+    setDetailError(null);
+    try {
+      const next = await patchLibraryPluginAttachments(
+        baseUrl,
+        token,
+        selector,
+        { add },
+      );
+      setDetail(next);
+      onSuccess(`Updated plugin ${next.plugin.name}`);
+      refreshAfterMutation();
+    } catch (error: unknown) {
+      const message = errorMessage(error, "Could not update plugin composition");
+      setDetailError(message);
+      throw error instanceof Error ? error : new Error(message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const pinMarketplacePlugin = () => {
@@ -1448,12 +1515,27 @@ export function PluginPackageDetail({
         pluginSelectId="plugin-ref"
         libraryLoading={libraryLoading}
         libraryError={libraryError}
-        resources={membership}
+        resources={compositionMembers}
         resourceFilter={resourceFilter}
         onResourceFilter={setResourceFilter}
         selectedIds={selectedMembershipIds}
         onToggleResource={toggleMembership}
         disabled={pickersDisabled}
+        emptyUnfilteredLabel="Nothing in this plugin yet."
+        footer={
+          <ChromeTooltip content="Add to plugin">
+            <button
+              type="button"
+              className="scope-inventory-fab icon-action primary"
+              data-testid="plugin-composition-fab"
+              aria-label="Add to plugin"
+              disabled={pickersDisabled}
+              onClick={() => setAddModalOpen(true)}
+            >
+              <Plus size={20} strokeWidth={2} aria-hidden />
+            </button>
+          </ChromeTooltip>
+        }
       />
     </>
     );
@@ -1501,6 +1583,18 @@ export function PluginPackageDetail({
         onClose={closeDoctor}
         onBusyChange={setDoctorBusy}
         onSuccess={onSuccess}
+      />
+
+      <ScopeAddToProfileModal
+        open={addModalOpen}
+        disabled={pickersDisabled}
+        baseUrl={baseUrl}
+        token={token}
+        profileKeys={compositionAddExcludeKeys}
+        title="Add to plugin"
+        addErrorFallback="Could not add to plugin"
+        onClose={() => setAddModalOpen(false)}
+        onAdd={addLibraryItems}
       />
 
       {detail ? (

@@ -7,6 +7,7 @@ import {
   filterProfileInventoryItems,
   inventoryMembershipCaption,
   partitionProfileInventory,
+  profileInventoryOpenTarget,
 } from "../../apps/desktop/src/lib/profile-inventory.ts";
 import {
   resourceTypeTabItemCount,
@@ -354,5 +355,51 @@ describe("inventoryMembershipCaption", () => {
     expect(inventoryMembershipCaption("global default", "global default")).toBeNull();
     expect(inventoryMembershipCaption("design-doc", "global default")).toBe("in design-doc");
     expect(inventoryMembershipCaption(undefined, "global default")).toBeNull();
+  });
+});
+
+describe("profileInventoryOpenTarget", () => {
+  it("opens plugin package membership by name, not the plugin ULID", () => {
+    const target = profileInventoryOpenTarget({
+      type: "plugin",
+      label: "devx",
+      resource: {
+        type: "plugin",
+        name: "devx",
+        id: "01KZQS7T5K5WS4XM692C5GV8JC",
+        source: "01KZQS7T5K5WS4XM692C5GV8JC",
+      },
+    });
+    expect(target).toEqual({ kind: "plugin-package", name: "devx" });
+  });
+
+  it("keeps nested plugin contents and other rows as library resources", () => {
+    const nested = profileInventoryOpenTarget({
+      type: "skill",
+      label: "ship",
+      pluginId: "01KZQS7T5K5WS4XM692C5GV8JC",
+      resource: {
+        type: "skill",
+        name: "ship",
+        id: "skill-id",
+        source: "skills/ship/SKILL.md",
+      },
+    });
+    expect(nested.kind).toBe("resource");
+    if (nested.kind === "resource") {
+      expect(nested.resource.id).toBe("skill-id");
+    }
+
+    const pin = profileInventoryOpenTarget({
+      type: "plugin_pin",
+      label: "devx@1",
+      resource: {
+        type: "plugin_pin",
+        name: "devx",
+        id: "devx@1",
+        source: "^1.0.0",
+      },
+    });
+    expect(pin.kind).toBe("resource");
   });
 });

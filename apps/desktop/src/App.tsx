@@ -3129,6 +3129,10 @@ export function App() {
               <LiveStatePanel
                 view={view}
                 formatView={formatView}
+                onOpenPlugin={(pluginName) => {
+                  setLibraryFocusPlugin(pluginName);
+                  navigateToDestination("library");
+                }}
                 selectedProfile={selectedProfile}
                 activeProfile={activeProfile}
                 liveContents={status?.contents}

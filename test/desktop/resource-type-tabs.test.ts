@@ -4,6 +4,7 @@ import {
   countResourceTypeTabs,
   resolveResourceTypeTab,
   RESOURCE_TYPE_TAB_ORDER,
+  resourceTypeTabEmptyDisabled,
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
@@ -150,6 +151,19 @@ describe("resource type tab aria-labels", () => {
     expect(resourceTypeTabTooltip("skill", counts, { emptyMode: "disable" })).toBe(
       "1 skill",
     );
+  });
+});
+
+describe("resourceTypeTabEmptyDisabled", () => {
+  it("never empty-disables a type with count > 0", () => {
+    const counts = countResourceTypeTabs(["skill", "skill", "plugin"]);
+    expect(resourceTypeTabEmptyDisabled("skill", counts)).toBe(false);
+    expect(resourceTypeTabEmptyDisabled("plugin", counts)).toBe(false);
+    expect(resourceTypeTabEmptyDisabled(ALL_RESOURCE_TYPE_TAB, counts)).toBe(
+      false,
+    );
+    expect(resourceTypeTabEmptyDisabled("command", counts)).toBe(true);
+    expect(resourceTypeTabItemCount("skill", counts)).toBe(2);
   });
 });
 
