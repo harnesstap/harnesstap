@@ -1,0 +1,5 @@
+kind: Fixed
+body: Open profile inventory plugin package rows in Library plugin details by name instead of looking up the plugin ULID as a library resource.
+time: 2026-09-14T07:40:00Z
+custom:
+  Issue: ""
