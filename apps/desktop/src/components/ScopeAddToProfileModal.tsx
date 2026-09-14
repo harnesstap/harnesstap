@@ -64,6 +64,8 @@ export function ScopeAddToProfileModal({
   baseUrl,
   token,
   profileKeys,
+  title = "Add to profile",
+  addErrorFallback = "Could not add to profile",
   onClose,
   onAdd,
   onCreate,
@@ -73,9 +75,11 @@ export function ScopeAddToProfileModal({
   baseUrl: string | null;
   token: string | null;
   profileKeys: ReadonlySet<string>;
+  title?: string;
+  addErrorFallback?: string;
   onClose: () => void;
   onAdd: (items: ScopeLibraryPick[]) => Promise<void>;
-  onCreate: () => void;
+  onCreate?: () => void;
 }) {
   const titleId = useId();
   const closeRef = useDialogDismiss(open, onClose, disabled);
@@ -188,16 +192,18 @@ export function ScopeAddToProfileModal({
         aria-labelledby={titleId}
       >
         <div className="dialog-header">
-          <h2 id={titleId}>Add to profile</h2>
+          <h2 id={titleId}>{title}</h2>
           <div className="dialog-header-actions">
-            <IconActionButton
-              primary
-              showLabel
-              label="Create"
-              disabled={controlsDisabled}
-              onClick={onCreate}
-              icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-            />
+            {onCreate ? (
+              <IconActionButton
+                primary
+                showLabel
+                label="Create"
+                disabled={controlsDisabled}
+                onClick={onCreate}
+                icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
+            ) : null}
             <IconActionButton
               label="Close"
               disabled={controlsDisabled}
@@ -314,7 +320,7 @@ export function ScopeAddToProfileModal({
                 })
                 .catch((caught) => {
                   setError(
-                    caught instanceof Error ? caught.message : "Could not add to profile",
+                    caught instanceof Error ? caught.message : addErrorFallback,
                   );
                 })
                 .finally(() => {

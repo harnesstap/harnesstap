@@ -13,6 +13,20 @@ const editSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/EditProfilePane.tsx"),
   "utf8",
 );
+const pickersSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/CompositionPickers.tsx",
+  ),
+  "utf8",
+);
+const tabsSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/ResourceTypeTabs.tsx",
+  ),
+  "utf8",
+);
 
 describe("plugin composition fields", () => {
   test("package detail and edit profile share one unified membership picker", () => {
@@ -71,5 +85,29 @@ describe("plugin composition fields", () => {
     );
     expect(commitCurrent).toContain("fieldError");
     expect(commitCurrent).toContain("commitEnvironment");
+  });
+
+  test("package detail composition lists plugin members and keeps an add FAB", () => {
+    expect(packagesSource).toContain("filterCompositionMembers");
+    expect(packagesSource).toContain("resources={compositionMembers}");
+    expect(packagesSource).not.toContain("resources={membership}");
+    expect(packagesSource).toContain('data-testid="plugin-composition-fab"');
+    expect(packagesSource).toContain('aria-label="Add to plugin"');
+    expect(packagesSource).toContain('title="Add to plugin"');
+    expect(packagesSource).toContain("ScopeAddToProfileModal");
+    expect(editSource).toContain("resources={membership}");
+    expect(editSource).not.toContain("plugin-composition-fab");
+  });
+
+  test("type tabs with a positive count are not disabled", () => {
+    expect(pickersSource).not.toContain(
+      '<fieldset className="selection-list" disabled={disabled}>',
+    );
+    expect(pickersSource).not.toMatch(
+      /<ResourceTypeTabs[\s\S]{0,160}disabled=\{disabled\}/,
+    );
+    expect(tabsSource).toContain("resourceTypeTabEmptyDisabled");
+    expect(tabsSource).toContain("const itemDisabled = empty;");
+    expect(tabsSource).not.toContain("const itemDisabled = disabled || empty");
   });
 });

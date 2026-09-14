@@ -4,6 +4,7 @@ import {
   countResourceTypeTabs,
   resolveResourceTypeTab,
   RESOURCE_TYPE_TAB_ORDER,
+  resourceTypeTabEmptyDisabled,
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
@@ -153,7 +154,18 @@ describe("resource type tab aria-labels", () => {
   });
 });
 
-describe("typeTabAttentionTooltip", () => {
+describe("resourceTypeTabEmptyDisabled", () => {
+  it("never empty-disables a type with count > 0", () => {
+    const counts = countResourceTypeTabs(["skill", "skill", "plugin"]);
+    expect(resourceTypeTabEmptyDisabled("skill", counts)).toBe(false);
+    expect(resourceTypeTabEmptyDisabled("plugin", counts)).toBe(false);
+    expect(resourceTypeTabEmptyDisabled(ALL_RESOURCE_TYPE_TAB, counts)).toBe(
+      false,
+    );
+    expect(resourceTypeTabEmptyDisabled("command", counts)).toBe(true);
+    expect(resourceTypeTabItemCount("skill", counts)).toBe(2);
+  });
+});
   it("prefers N to add · M inactive", () => {
     expect(typeTabAttentionTooltip({ toAdd: 2, inactive: 3 })).toBe("2 to add · 3 inactive");
     expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 0 })).toBe("1 to add");

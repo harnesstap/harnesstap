@@ -4,6 +4,7 @@ import { ToggleGroup } from "radix-ui";
 import {
   ALL_RESOURCE_TYPE_TAB,
   resolveResourceTypeTab,
+  resourceTypeTabEmptyDisabled,
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
@@ -122,8 +123,8 @@ export function ResourceTypeTabs({
           const label = resourceTypeTabLabel(type);
           const count = resourceTypeTabItemCount(type, counts);
           const caption = resourceTypeTabTooltip(type, counts, tabOptions);
-          const empty = type !== ALL_RESOURCE_TYPE_TAB && count <= 0;
-          const itemDisabled = disabled || empty;
+          const empty = resourceTypeTabEmptyDisabled(type, counts);
+          const itemDisabled = empty;
           const review = empty ? null : typeTabAttentionTooltip(attention?.get(type));
           const ariaLabel = review ? `${caption}. ${review}` : caption;
           const compact = resolvedDensity === "compact";

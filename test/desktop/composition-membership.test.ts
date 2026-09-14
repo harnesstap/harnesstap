@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import {
   compareCompositionGroupTypes,
+  compositionExcludeKeys,
+  filterCompositionMembers,
   groupCompositionMembership,
   mergeCompositionMembership,
 } from "../../apps/desktop/src/lib/composition-membership.ts";
@@ -91,5 +93,32 @@ describe("compareCompositionGroupTypes", () => {
     expect(compareCompositionGroupTypes("plugin", "skill")).toBeLessThan(0);
     expect(compareCompositionGroupTypes("plugin_ref", "agent")).toBeLessThan(0);
     expect(compareCompositionGroupTypes("plugin", "plugin_ref")).toBeLessThan(0);
+  });
+});
+
+describe("filterCompositionMembers", () => {
+  it("keeps only ids that belong to the plugin", () => {
+    const catalog = mergeCompositionMembership(
+      [
+        resource({ id: "skill-1", type: "skill", name: "ship" }),
+        resource({ id: "skill-2", type: "skill", name: "global-only" }),
+        resource({
+          id: "ref-1",
+          type: "plugin",
+          name: "ponytail",
+          namespace: "ponytail",
+        }),
+      ],
+      plugins,
+      { excludePluginName: "focus" },
+    );
+    const members = filterCompositionMembers(catalog, ["skill-1", "pkg-1"]);
+    expect(members.map((row) => row.id).sort()).toEqual(["pkg-1", "skill-1"]);
+    expect(members.some((row) => row.name === "global-only")).toBe(false);
+    expect(members.some((row) => row.name === "ponytail")).toBe(false);
+    const keys = compositionExcludeKeys(members);
+    expect(keys.has("skill:ship")).toBe(true);
+    expect(keys.has("plugin:superpowers")).toBe(true);
+    expect(keys.has("skill:global-only")).toBe(false);
   });
 });

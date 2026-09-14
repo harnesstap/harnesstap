@@ -57,6 +57,28 @@ export function groupCompositionMembership(
     }));
 }
 
+/** Rows already attached to a plugin or profile (ids from membership). */
+export function filterCompositionMembers(
+  catalog: readonly LibraryResource[],
+  selectedIds: readonly string[],
+): LibraryResource[] {
+  const selected = new Set(selectedIds);
+  return catalog.filter((row) => selected.has(row.id));
+}
+
+/** Exclude keys for the add-from-library checklist (`type:name` and `type:id`). */
+export function compositionExcludeKeys(
+  entries: readonly LibraryResource[],
+): Set<string> {
+  const keys = new Set<string>();
+  for (const entry of entries) {
+    const type = compositionSearchType(entry);
+    keys.add(`${type}:${entry.name}`);
+    keys.add(`${type}:${entry.id}`);
+  }
+  return keys;
+}
+
 export function mergeCompositionMembership(
   resources: LibraryResource[],
   plugins: CompositionPlugin[],

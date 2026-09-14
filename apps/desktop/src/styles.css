@@ -1803,6 +1803,11 @@ button:focus-visible,
   gap: 0.65rem;
 }
 
+.plugin-composition-pane {
+  position: relative;
+  min-width: 0;
+}
+
 .scope-inventory-fab {
   position: absolute;
   right: 0.75rem;
