@@ -1,6 +1,7 @@
 import { filterContentsResourcesBySearch } from "./resource-search";
 import {
   ALL_RESOURCE_TYPE_TAB,
+  countResourceTypeTabs,
   foldResourceTypeTab,
   type TypeTabAttention,
 } from "./resource-type-tabs";
@@ -202,6 +203,13 @@ export function filterProfileInventoryItems(
     ).map((resource) => membershipKey(resource)),
   );
   return typed.filter((item) => matched.has(membershipKey(item.resource)));
+}
+
+/** Type-tab counts for the same item set as the inventory list (search-scoped). */
+export function countInventoryTypeTabs(
+  items: ProfileInventoryItem[],
+): Map<string, number> {
+  return countResourceTypeTabs(items.map((item) => item.type));
 }
 
 export function collectTypeTabAttention(

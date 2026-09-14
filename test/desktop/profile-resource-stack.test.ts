@@ -180,7 +180,7 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain("ResourceTypeTabs");
     expect(liveStateSource).toContain("includeAll={true}");
     expect(liveStateSource).toContain("emptyMode=\"disable\"");
-    expect(liveStateSource).toContain("countResourceTypeTabs");
+    expect(liveStateSource).toContain("countInventoryTypeTabs");
     expect(liveStateSource).toContain("flattenProfileResourceList");
     expect(liveStateSource).toContain("selectedProfile");
     expect(liveStateSource).toMatch(

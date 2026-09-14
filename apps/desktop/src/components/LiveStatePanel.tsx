@@ -67,7 +67,6 @@ import {
 } from "../lib/resource-search";
 import {
   ALL_RESOURCE_TYPE_TAB,
-  countResourceTypeTabs,
   resolveResourceTypeTab,
   resourceTypeTabLabel,
   resourceTypeTabTooltip,
@@ -101,6 +100,7 @@ import {
 import {
   PROFILE_INVENTORY_SECTION_ORDER,
   collectTypeTabAttention,
+  countInventoryTypeTabs,
   filterProfileInventoryItems,
   partitionProfileInventory,
   type ProfileInventoryItem,
@@ -1791,7 +1791,7 @@ export function LiveStatePanel({
     [inventoryItems, inventorySearch],
   );
   const inventoryTypeCounts = useMemo(
-    () => countResourceTypeTabs(searchFilteredInventory.map((item) => item.type)),
+    () => countInventoryTypeTabs(searchFilteredInventory),
     [searchFilteredInventory],
   );
   const inventoryAttention = useMemo(
