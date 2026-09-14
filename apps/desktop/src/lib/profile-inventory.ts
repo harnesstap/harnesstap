@@ -1,5 +1,9 @@
 import { filterContentsResourcesBySearch } from "./resource-search";
-import { foldResourceTypeTab } from "./resource-type-tabs";
+import {
+  ALL_RESOURCE_TYPE_TAB,
+  foldResourceTypeTab,
+  type TypeTabAttention,
+} from "./resource-type-tabs";
 import type { ProfileResourceListRow } from "./contents-diff";
 import type {
   DriftFileChange,
@@ -198,4 +202,30 @@ export function filterProfileInventoryItems(
     ).map((resource) => membershipKey(resource)),
   );
   return typed.filter((item) => matched.has(membershipKey(item.resource)));
+}
+
+export function collectTypeTabAttention(
+  items: ProfileInventoryItem[],
+): Map<string, TypeTabAttention> {
+  const byType = new Map<string, TypeTabAttention>();
+  const all: TypeTabAttention = { toAdd: 0, inactive: 0 };
+  for (const item of items) {
+    if (item.section !== "not_in_profile" && item.section !== "inactive") {
+      continue;
+    }
+    const type = foldResourceTypeTab(item.type);
+    const bucket = byType.get(type) ?? { toAdd: 0, inactive: 0 };
+    if (item.section === "not_in_profile") {
+      bucket.toAdd += 1;
+      all.toAdd += 1;
+    } else {
+      bucket.inactive += 1;
+      all.inactive += 1;
+    }
+    byType.set(type, bucket);
+  }
+  if (all.toAdd > 0 || all.inactive > 0) {
+    byType.set(ALL_RESOURCE_TYPE_TAB, all);
+  }
+  return byType;
 }

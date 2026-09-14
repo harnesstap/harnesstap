@@ -279,3 +279,28 @@ export function resourceTypeTabTooltip(
   }
   return `${count} ${resourceTypeTabUnit(type, count)}`;
 }
+
+export interface TypeTabAttention {
+  toAdd: number;
+  inactive: number;
+}
+
+/** `N to add · M inactive` when those buckets have rows. */
+export function typeTabAttentionTooltip(
+  attention: TypeTabAttention | undefined,
+): string | null {
+  if (!attention) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (attention.toAdd > 0) {
+    parts.push(`${attention.toAdd} to add`);
+  }
+  if (attention.inactive > 0) {
+    parts.push(`${attention.inactive} inactive`);
+  }
+  if (parts.length === 0) {
+    return null;
+  }
+  return parts.join(" · ");
+}

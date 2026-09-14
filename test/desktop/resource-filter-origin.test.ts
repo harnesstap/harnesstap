@@ -112,7 +112,7 @@ describe("library origin filter chrome", () => {
     expect(tabsSource).not.toContain("compact");
     expect(tabsSource).not.toContain("resource-type-tab-badge");
     expect(tabsSource).toContain("ChromeTooltip");
-    expect(tabsSource).toContain("aria-label={caption}");
+    expect(tabsSource).toContain("aria-label={ariaLabel}");
     expect(tabsSource).toContain("resource-type-tab-count");
     expect(tabsSource).not.toContain("Sparkles");
     expect(tabsSource).toContain("TypeIcon");

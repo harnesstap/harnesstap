@@ -22,6 +22,10 @@ const stylesSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/styles.css"),
   "utf8",
 );
+const tabsSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/ResourceTypeTabs.tsx"),
+  "utf8",
+);
 
 describe("Global/Project scope inventory chrome", () => {
   it("kills the two-column cockpit and keeps rail Apply as the sole Apply CTA", () => {
@@ -55,11 +59,19 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain('label="Filter resources"');
     expect(liveStateSource).toContain("emptyMode=\"disable\"");
     expect(liveStateSource).toContain("includeAll={true}");
+    expect(liveStateSource).toContain("attention={inventoryAttention}");
+    expect(liveStateSource).toContain("collectTypeTabAttention");
+    expect(liveStateSource).toContain("searchFilteredInventory");
+    expect(tabsSource).toContain("resource-type-tab-attention");
+    expect(stylesSource).toContain(".resource-type-tab-attention");
+    expect(stylesSource).not.toContain("resource-type-tab-attention-fill");
     expect(liveStateSource).not.toContain('aria-label="Profile resources"');
     expect(liveStateSource).not.toContain('aria-label="Not staged"');
     expect(designSource).toContain("No <type> found");
     expect(designSource).toContain("Plugin pins share the **Plugins** tab");
     expect(designSource).toContain("Plugin refs hide when empty");
+    expect(designSource).toContain("amber attention dot");
+    expect(designSource).toContain("N to add · M inactive");
   });
 
   it("renders Not in profile, Inactive, then Active with filtered section actions", () => {

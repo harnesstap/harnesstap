@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { flattenProfileResourceList } from "../../apps/desktop/src/lib/contents-diff.ts";
 import {
   PROFILE_INVENTORY_SECTION_ORDER,
+  collectTypeTabAttention,
   filterProfileInventoryItems,
   partitionProfileInventory,
 } from "../../apps/desktop/src/lib/profile-inventory.ts";
@@ -153,5 +154,58 @@ describe("filterProfileInventoryItems", () => {
       filterProfileInventoryItems(all, "", "plugin").map((row) => row.type).sort(),
     ).toEqual(["plugin", "plugin_pin"]);
     expect(filterProfileInventoryItems(all, "", "plugin_pin")).toEqual([]);
+  });
+});
+
+describe("collectTypeTabAttention", () => {
+  it("counts Not in profile and Inactive, not drifted Active, and honors search", () => {
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(
+        contents({
+          resources: [
+            { type: "skill", name: "ship", source: "skills/ship/SKILL.md" },
+            { type: "rule", name: "quiet" },
+          ],
+        }),
+        {},
+      ),
+      liveRows: flattenProfileResourceList(
+        contents({
+          resources: [
+            { type: "skill", name: "ship", source: "skills/ship/SKILL.md" },
+            { type: "command", name: "extra" },
+          ],
+        }),
+        {},
+      ),
+      notStaged: [
+        { type: "command", name: "extra", not_staged_kind: "add" },
+        {
+          type: "skill",
+          name: "ship",
+          source: "skills/ship/SKILL.md",
+          not_staged_kind: "update",
+        },
+      ],
+      fileChanges: [
+        {
+          path: "skills/ship/SKILL.md",
+          type: "modified",
+          resource: { type: "skill", name: "ship" },
+        },
+      ],
+    });
+    const all = [...parts.notInProfile, ...parts.inactive, ...parts.active];
+    const attention = collectTypeTabAttention(all);
+    expect(attention.get("command")).toEqual({ toAdd: 1, inactive: 0 });
+    expect(attention.get("rule")).toEqual({ toAdd: 0, inactive: 1 });
+    expect(attention.get("skill")).toBeUndefined();
+    expect(attention.get("all")).toEqual({ toAdd: 1, inactive: 1 });
+
+    const searched = filterProfileInventoryItems(all, "quiet", null);
+    const filteredAttention = collectTypeTabAttention(searched);
+    expect(filteredAttention.get("all")).toEqual({ toAdd: 0, inactive: 1 });
+    expect(filteredAttention.get("rule")).toEqual({ toAdd: 0, inactive: 1 });
+    expect(filteredAttention.get("command")).toBeUndefined();
   });
 });

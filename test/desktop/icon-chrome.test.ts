@@ -214,7 +214,7 @@ describe("desktop icon chrome", () => {
     expect(typeTabsSource).toContain("resourceTypeTabGlyph");
     expect(typeTabsSource).not.toContain("Sparkles");
     expect(typeTabsSource).toContain("ChromeTooltip");
-    expect(typeTabsSource).toContain("aria-label={caption}");
+    expect(typeTabsSource).toContain("aria-label={ariaLabel}");
     expect(liveStateSource).toContain("ResourceTypeTabs");
 
     expect(liveStateSource).toContain("ResourceTypeTabs");
