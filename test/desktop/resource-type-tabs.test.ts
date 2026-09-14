@@ -71,7 +71,25 @@ describe("visibleResourceTypeTabs", () => {
     expect(tabs).toContain("skill");
     expect(tabs).toContain("plugin");
     expect(tabs).toContain("command");
+    expect(tabs).not.toContain("plugin_ref");
+    expect(tabs).not.toContain("plugin_pin");
     expect(resourceTypeTabItemCount("plugin", counts)).toBe(0);
+  });
+
+  it("folds plugin pins into Plugins and hides empty plugin refs", () => {
+    const pinsOnly = countResourceTypeTabs(["plugin_pin", "plugin_pin", "skill"]);
+    expect(pinsOnly.get("plugin")).toBe(2);
+    expect(pinsOnly.has("plugin_pin")).toBe(false);
+    expect(resourceTypeTabPillsText("plugin", pinsOnly)).toBe("2 Plugins");
+    const disabled = visibleResourceTypeTabs(pinsOnly, { emptyMode: "disable" });
+    expect(disabled).toContain("plugin");
+    expect(disabled).not.toContain("plugin_pin");
+    expect(disabled).not.toContain("plugin_ref");
+
+    const withRefs = countResourceTypeTabs(["skill", "plugin_ref"]);
+    expect(visibleResourceTypeTabs(withRefs, { emptyMode: "disable" })).toContain(
+      "plugin_ref",
+    );
   });
 });
 

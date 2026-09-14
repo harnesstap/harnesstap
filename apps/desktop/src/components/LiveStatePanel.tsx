@@ -2161,6 +2161,7 @@ export function LiveStatePanel({
         )
       ) : (
         <div className="scope-inventory-pane">
+          <div className="scope-inventory-scroll">
           {!activeProfile && !selectedProfile ? (
             <p className="muted">No profile selected.</p>
           ) : resourceStack.kind === "loading" ? (
@@ -2328,6 +2329,7 @@ export function LiveStatePanel({
               </div>
             </>
           )}
+          </div>
           <button
             type="button"
             className="scope-inventory-fab icon-action primary"

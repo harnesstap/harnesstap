@@ -1,4 +1,5 @@
 import { filterContentsResourcesBySearch } from "./resource-search";
+import { foldResourceTypeTab } from "./resource-type-tabs";
 import type { ProfileResourceListRow } from "./contents-diff";
 import type {
   DriftFileChange,
@@ -184,7 +185,9 @@ export function filterProfileInventoryItems(
   typeTab: string | null,
 ): ProfileInventoryItem[] {
   const typed =
-    typeTab === null ? items : items.filter((item) => item.type === typeTab);
+    typeTab === null
+      ? items
+      : items.filter((item) => foldResourceTypeTab(item.type) === typeTab);
   if (!search.trim()) {
     return typed;
   }

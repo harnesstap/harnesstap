@@ -129,4 +129,29 @@ describe("filterProfileInventoryItems", () => {
       filterProfileInventoryItems(all, "a", "skill").map((row) => row.resource.name),
     ).toEqual(["beta", "alpha"]);
   });
+
+  it("includes plugin pins on the Plugins tab", () => {
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(
+        contents({
+          plugins: [{ id: "pkg", name: "pkg", version: "1.0.0" }],
+          plugin_pins: [{ ref: "slack@claude-plugins", version_constraint: "latest" }],
+          resources: [{ type: "skill", name: "ship" }],
+        }),
+        {},
+      ),
+      liveRows: flattenProfileResourceList(
+        contents({
+          plugins: [{ id: "pkg", name: "pkg", version: "1.0.0" }],
+        }),
+        {},
+      ),
+      notStaged: [],
+    });
+    const all = [...parts.notInProfile, ...parts.inactive, ...parts.active];
+    expect(
+      filterProfileInventoryItems(all, "", "plugin").map((row) => row.type).sort(),
+    ).toEqual(["plugin", "plugin_pin"]);
+    expect(filterProfileInventoryItems(all, "", "plugin_pin")).toEqual([]);
+  });
 });
