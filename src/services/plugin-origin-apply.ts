@@ -115,7 +115,7 @@ function walkNamedPluginInstallRoot(
   if (depth > PLUGIN_ROOT_WALK_MAX_DEPTH || !isDirectory(dir)) {
     return undefined;
   }
-  let entries: ReturnType<typeof readdirSync>;
+  let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {
