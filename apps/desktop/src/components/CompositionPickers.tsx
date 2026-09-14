@@ -191,7 +191,7 @@ export function ResourceSelectionList({
         : emptyUnfilteredLabel;
 
   return (
-    <fieldset className="selection-list" disabled={disabled}>
+    <fieldset className="selection-list">
       {title ? <legend>{title}</legend> : null}
       <Input
         className="selection-list-filter h-8 text-xs"
@@ -199,13 +199,11 @@ export function ResourceSelectionList({
         placeholder="Filter by name"
         value={filter}
         onChange={(event) => onFilterChange(event.target.value)}
-        disabled={disabled}
         aria-label="Filter library items"
       />
       <ResourceTypeTabs
         counts={typeCounts}
         value={effectiveType}
-        disabled={disabled}
         onChange={setTypeTab}
       />
       <div className="selection-list-viewport">

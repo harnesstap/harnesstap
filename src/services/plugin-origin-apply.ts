@@ -73,10 +73,20 @@ export function resolveMarketplacePluginDirectory(
   pluginName: string,
 ): string | undefined {
   const underPlugins = join(cacheDir, "plugins", pluginName);
-  if (isDirectory(underPlugins)) return underPlugins;
+  if (isDirectory(underPlugins) && isPluginInstallRoot(underPlugins)) {
+    return underPlugins;
+  }
+  if (isDirectory(underPlugins)) {
+    return underPlugins;
+  }
 
   const atRoot = join(cacheDir, pluginName);
-  if (isDirectory(atRoot)) return atRoot;
+  if (isDirectory(atRoot) && isPluginInstallRoot(atRoot)) {
+    return atRoot;
+  }
+  if (isDirectory(atRoot)) {
+    return atRoot;
+  }
 
   if (!isDirectory(cacheDir)) return undefined;
 
@@ -85,7 +95,52 @@ export function resolveMarketplacePluginDirectory(
       continue;
     }
     const nested = join(cacheDir, entry.name, pluginName);
+    if (isDirectory(nested) && isPluginInstallRoot(nested)) {
+      return nested;
+    }
     if (isDirectory(nested)) return nested;
+  }
+
+  return walkNamedPluginInstallRoot(cacheDir, pluginName, 0);
+}
+
+const PLUGIN_ROOT_WALK_SKIP = new Set([".git", "node_modules", ".hg"]);
+const PLUGIN_ROOT_WALK_MAX_DEPTH = 6;
+
+function walkNamedPluginInstallRoot(
+  dir: string,
+  pluginName: string,
+  depth: number,
+): string | undefined {
+  if (depth > PLUGIN_ROOT_WALK_MAX_DEPTH || !isDirectory(dir)) {
+    return undefined;
+  }
+  try {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || PLUGIN_ROOT_WALK_SKIP.has(entry.name)) {
+        continue;
+      }
+      const child = join(dir, entry.name);
+      if (entry.name === pluginName && isPluginInstallRoot(child)) {
+        return child;
+      }
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || PLUGIN_ROOT_WALK_SKIP.has(entry.name)) {
+        continue;
+      }
+      const found = walkNamedPluginInstallRoot(
+        join(dir, entry.name),
+        pluginName,
+        depth + 1,
+      );
+      if (found) {
+        return found;
+      }
+    }
+  } catch {
+    return undefined;
   }
   return undefined;
 }
@@ -143,6 +198,14 @@ function remainingAttachers(resourceId: string): number {
     .prepare("SELECT COUNT(*) AS n FROM plugin_resources WHERE resource_id = ?")
     .get(resourceId) as { n: number };
   return row.n;
+}
+
+export function attachScannedOriginResources(
+  pluginId: string,
+  resources: ResourceCreateInput[],
+  locatorStr: string,
+): void {
+  replacePluginAttachments(pluginId, resources, locatorStr);
 }
 
 function replacePluginAttachments(
