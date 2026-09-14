@@ -3,9 +3,16 @@ import { flattenProfileResourceList } from "../../apps/desktop/src/lib/contents-
 import {
   PROFILE_INVENTORY_SECTION_ORDER,
   collectTypeTabAttention,
+  countInventoryTypeTabs,
   filterProfileInventoryItems,
   partitionProfileInventory,
 } from "../../apps/desktop/src/lib/profile-inventory.ts";
+import {
+  resourceTypeTabItemCount,
+  resourceTypeTabPillsText,
+  resourceTypeTabTooltip,
+  visibleResourceTypeTabs,
+} from "../../apps/desktop/src/lib/resource-type-tabs.ts";
 import type {
   DriftFileChange,
   ProfileContents,
@@ -154,6 +161,58 @@ describe("filterProfileInventoryItems", () => {
       filterProfileInventoryItems(all, "", "plugin").map((row) => row.type).sort(),
     ).toEqual(["plugin", "plugin_pin"]);
     expect(filterProfileInventoryItems(all, "", "plugin_pin")).toEqual([]);
+  });
+
+  it("keeps type-tab counts on the same search scope as the list", () => {
+    const pins = [
+      { ref: "other/alpha", version_constraint: "1" },
+      { ref: "other/bravo", version_constraint: "1" },
+      { ref: "other/charlie", version_constraint: "1" },
+      { ref: "claude-plugins/devx", version_constraint: "1" },
+    ];
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(
+        contents({
+          plugin_pins: pins,
+          resources: [{ type: "skill", name: "ship" }],
+        }),
+        {},
+      ),
+      liveRows: flattenProfileResourceList(
+        contents({
+          plugin_pins: pins,
+          resources: [{ type: "skill", name: "ship" }],
+        }),
+        {},
+      ),
+      notStaged: [{ type: "command", name: "extra", not_staged_kind: "add" }],
+    });
+    const all = [...parts.notInProfile, ...parts.inactive, ...parts.active];
+    const unfiltered = countInventoryTypeTabs(all);
+    expect(resourceTypeTabItemCount("plugin", unfiltered)).toBe(4);
+    expect(resourceTypeTabPillsText("plugin", unfiltered)).toBe("4 Plugins");
+    expect(resourceTypeTabItemCount("all", unfiltered)).toBe(6);
+
+    const searched = filterProfileInventoryItems(all, "Devx", null);
+    expect(searched.map((row) => row.resource.name)).toEqual([
+      "claude-plugins/devx",
+    ]);
+    const counts = countInventoryTypeTabs(searched);
+    expect(resourceTypeTabItemCount("plugin", counts)).toBe(1);
+    expect(resourceTypeTabItemCount("skill", counts)).toBe(0);
+    expect(resourceTypeTabItemCount("command", counts)).toBe(0);
+    expect(resourceTypeTabItemCount("all", counts)).toBe(1);
+    expect(resourceTypeTabPillsText("plugin", counts)).toBe("1 Plugins");
+    const disableOpts = { includeAll: true, emptyMode: "disable" as const };
+    expect(resourceTypeTabTooltip("skill", counts, disableOpts)).toBe(
+      "No Skills found",
+    );
+    const tabs = visibleResourceTypeTabs(counts, disableOpts);
+    expect(tabs).toContain("plugin");
+    expect(tabs).toContain("skill");
+    expect(tabs).not.toContain("plugin_ref");
+    expect(tabs).not.toContain("plugin_pin");
+    expect(collectTypeTabAttention(searched).size).toBe(0);
   });
 });
 

@@ -62,12 +62,15 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("attention={inventoryAttention}");
     expect(liveStateSource).toContain("collectTypeTabAttention");
     expect(liveStateSource).toContain("searchFilteredInventory");
+    expect(liveStateSource).toContain("countInventoryTypeTabs(searchFilteredInventory)");
+    expect(liveStateSource).not.toContain("countInventoryTypeTabs(inventoryItems)");
+    expect(liveStateSource).not.toContain("countResourceTypeTabs(inventoryItems");
     expect(tabsSource).toContain("resource-type-tab-attention");
     expect(stylesSource).toContain(".resource-type-tab-attention");
     expect(stylesSource).not.toContain("resource-type-tab-attention-fill");
     expect(liveStateSource).not.toContain('aria-label="Profile resources"');
     expect(liveStateSource).not.toContain('aria-label="Not staged"');
-    expect(designSource).toContain("No <type> found");
+    expect(designSource).toContain("filters type-tab counts, attention dots, and every section");
     expect(designSource).toContain("Plugin pins share the **Plugins** tab");
     expect(designSource).toContain("Plugin refs hide when empty");
     expect(designSource).toContain("amber attention dot");
