@@ -134,7 +134,7 @@ describe("library origin filter chrome", () => {
     expect(designSource).toContain("ResourceTypeTabs");
     expect(designSource).toContain("No sidebar Type chips");
     expect(designSource).toContain("pills everywhere");
-    expect(designSource).toContain("compact single-row chips");
+    expect(designSource).toContain("The Add to profile modal uses the same wrapping pills");
     expect(designSource).toContain("never collapse to icon-only");
     expect(designSource).toContain("1 Skills");
     expect(designSource).toContain("2 Plugins");
@@ -172,7 +172,7 @@ describe("library origin filter chrome", () => {
     expect(typeBadges).toContain("resourceTypeTabTooltip");
     expect(typeBadges).not.toContain("ChromeTooltip");
     expect(designSource).toContain("pills everywhere");
-    expect(designSource).toContain("compact single-row chips");
+    expect(designSource).toContain("The Add to profile modal uses the same wrapping pills");
     expect(designSource).not.toContain("Two densities via `density`");
     expect(designSource).toContain("Library, Global/Project inventory");
   });

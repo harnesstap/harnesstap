@@ -1896,10 +1896,12 @@ button:focus-visible,
 
 .scope-add-modal {
   width: min(40rem, calc(100vw - 2rem));
-  max-height: min(36rem, calc(100vh - 2rem));
+  height: min(48rem, calc(100vh - 2rem));
+  max-height: min(48rem, calc(100vh - 2rem));
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  overflow: hidden;
 }
 
 .scope-add-modal .dialog-header {
@@ -1908,6 +1910,7 @@ button:focus-visible,
   flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .scope-add-modal .dialog-header h2 {
@@ -1916,9 +1919,22 @@ button:focus-visible,
   min-width: 0;
 }
 
+.scope-add-modal .list-search,
+.scope-add-modal .resource-type-tabs,
+.scope-add-modal .banner,
+.scope-add-modal .dialog-actions {
+  flex-shrink: 0;
+}
+
+.scope-add-modal .dialog-actions {
+  margin-top: auto;
+}
+
 .scope-add-modal-list {
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .dialog-header-actions {
