@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Diff, Download, FilterX, FolderGit2, Globe, HardDriveDownload, Library, ListPlus, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, TextQuote, Upload, User, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Download, FileDiff, FilterX, FolderGit2, Globe, HardDriveDownload, Library, ListPlus, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, TextQuote, Upload, User, X } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -2926,7 +2926,7 @@ export function App() {
             ) : null}
 
             <div className="live-toolbar">
-              <div>
+              <div className="live-toolbar-identity">
                 <div className="status-line" aria-live="polite">
                   {selectedProfile ? (
                     <>
@@ -2978,67 +2978,6 @@ export function App() {
                           {tag}
                         </span>
                       ))}
-                      <IconActionButton
-                        className="status-edit-action"
-                        onClick={() => {
-                          if (inventoryEditMode) {
-                            setInventoryEditMode(false);
-                            return;
-                          }
-                          setInventoryEditMode(true);
-                          setPreviewChanges(false);
-                        }}
-                        disabled={!connected || switching}
-                        label={inventoryEditMode ? "Done" : `Edit ${selectedProfile}`}
-                        title={inventoryEditMode ? "Done" : "Edit profile"}
-                        icon={
-                          inventoryEditMode ? (
-                            <Check size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                          ) : (
-                            <Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                          )
-                        }
-                      />
-                      <IconActionButton
-                        className="status-edit-action"
-                        onClick={() => {
-                          setPreviewChanges((value) => !value);
-                          setInventoryEditMode(false);
-                        }}
-                        disabled={!connected || switching}
-                        label="Preview changes"
-                        title="Preview changes"
-                        aria-pressed={previewChanges}
-                        icon={<Diff size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                      />
-                      <IconActionButton
-                        className="status-edit-action"
-                        onClick={() =>
-                          openCutForProfile(
-                            selectedProfile,
-                            selectedProfileSummary?.version ?? "",
-                          )
-                        }
-                        disabled={
-                          !connected
-                          || !token
-                          || switching
-                          || !selectedProfileSummary?.version
-                        }
-                        label={`Cut version for ${selectedProfile}`}
-                        title={
-                          selectedProfileSummary?.dirty
-                            ? "Cut unpublished edits to a new version"
-                            : "Cut a new version (fork current state)"
-                        }
-                        icon={
-                          <Tag
-                            size={HEADER_ICON_SIZE}
-                            strokeWidth={2}
-                            aria-hidden="true"
-                          />
-                        }
-                      />
                     </>
                   ) : (
                     "No profile selected"
@@ -3065,15 +3004,78 @@ export function App() {
                 ) : null}
               </div>
               {selectedProfile ? (
-                <div className="live-toolbar-remove">
-                  <ProfileDeleteControls
-                    profileName={selectedProfile}
-                    baseUrl={baseUrl}
-                    token={token}
+                <div className="live-toolbar-actions">
+                  <IconActionButton
+                    className="status-edit-action"
+                    onClick={() => {
+                      if (inventoryEditMode) {
+                        setInventoryEditMode(false);
+                        return;
+                      }
+                      setInventoryEditMode(true);
+                      setPreviewChanges(false);
+                    }}
                     disabled={!connected || switching}
-                    variant="icon"
-                    onDeleted={handleProfileDeleted}
+                    label={inventoryEditMode ? "Done" : "Edit"}
+                    title={inventoryEditMode ? "Done" : "Edit"}
+                    icon={
+                      inventoryEditMode ? (
+                        <Check size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                      ) : (
+                        <Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                      )
+                    }
                   />
+                  <IconActionButton
+                    className="status-edit-action"
+                    onClick={() => {
+                      setPreviewChanges((value) => !value);
+                      setInventoryEditMode(false);
+                    }}
+                    disabled={!connected || switching}
+                    label="Preview changes"
+                    title="Preview changes"
+                    aria-pressed={previewChanges}
+                    icon={<FileDiff size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                  />
+                  <IconActionButton
+                    className="status-edit-action"
+                    onClick={() =>
+                      openCutForProfile(
+                        selectedProfile,
+                        selectedProfileSummary?.version ?? "",
+                      )
+                    }
+                    disabled={
+                      !connected
+                      || !token
+                      || switching
+                      || !selectedProfileSummary?.version
+                    }
+                    label={`Cut version for ${selectedProfile}`}
+                    title={
+                      selectedProfileSummary?.dirty
+                        ? "Cut unpublished edits to a new version"
+                        : "Cut a new version (fork current state)"
+                    }
+                    icon={
+                      <Tag
+                        size={HEADER_ICON_SIZE}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                    }
+                  />
+                  <div className="live-toolbar-remove">
+                    <ProfileDeleteControls
+                      profileName={selectedProfile}
+                      baseUrl={baseUrl}
+                      token={token}
+                      disabled={!connected || switching}
+                      variant="icon"
+                      onDeleted={handleProfileDeleted}
+                    />
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -3171,6 +3173,7 @@ export function App() {
                 addingAllResources={addingAllResources}
                 activatingResources={activatingResources}
                 previewChanges={previewChanges}
+                onClosePreview={() => setPreviewChanges(false)}
                 editMode={inventoryEditMode}
                 railPrimaryIsReapply={showReapply}
                 onCommitManagedChanges={

@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   fetchLibraryPlugins,
   fetchLibraryResources,
@@ -23,6 +24,7 @@ import {
   shouldCloseDialogOnBackdrop,
   useDialogDismiss,
 } from "../lib/dialog-dismiss";
+import { ButtonSpinner } from "./ButtonSpinner";
 import { IconActionButton } from "./IconActionButton";
 import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import {
@@ -41,6 +43,22 @@ export type ScopeLibraryPick = {
   type: string;
 };
 
+function pickFromEntry(entry: LibraryResource): ScopeLibraryPick {
+  return isCompositionPluginPackage(entry)
+    ? {
+        kind: "plugin",
+        id: entry.id,
+        name: entry.name,
+        type: "plugin",
+      }
+    : {
+        kind: "resource",
+        id: entry.id,
+        name: entry.name,
+        type: entry.type,
+      };
+}
+
 export function ScopeAddToProfileModal({
   open,
   disabled = false,
@@ -48,7 +66,7 @@ export function ScopeAddToProfileModal({
   token,
   profileKeys,
   onClose,
-  onPick,
+  onAdd,
   onCreate,
 }: {
   open: boolean;
@@ -57,7 +75,7 @@ export function ScopeAddToProfileModal({
   token: string | null;
   profileKeys: ReadonlySet<string>;
   onClose: () => void;
-  onPick: (item: ScopeLibraryPick) => Promise<void>;
+  onAdd: (items: ScopeLibraryPick[]) => Promise<void>;
   onCreate: () => void;
 }) {
   const titleId = useId();
@@ -68,13 +86,16 @@ export function ScopeAddToProfileModal({
   const [plugins, setPlugins] = useState<LibraryPlugin[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setSearch("");
       setTypeTab(null);
       setError(null);
+      setSelectedIds(new Set());
+      setAdding(false);
       return;
     }
     if (!baseUrl) {
@@ -144,6 +165,9 @@ export function ScopeAddToProfileModal({
     );
   }, [resolvedType, searched]);
 
+  const selectedCount = visible.filter((entry) => selectedIds.has(entry.id)).length;
+  const controlsDisabled = disabled || adding;
+
   if (!open) {
     return null;
   }
@@ -153,7 +177,7 @@ export function ScopeAddToProfileModal({
       className="dialog-backdrop"
       role="presentation"
       onClick={(event) => {
-        if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget, disabled)) {
+        if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget, controlsDisabled)) {
           onClose();
         }
       }}
@@ -171,13 +195,13 @@ export function ScopeAddToProfileModal({
               primary
               showLabel
               label="Create"
-              disabled={disabled}
+              disabled={controlsDisabled}
               onClick={onCreate}
               icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
             />
             <IconActionButton
               label="Close"
-              disabled={disabled}
+              disabled={controlsDisabled}
               onClick={onClose}
               icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
             />
@@ -199,7 +223,7 @@ export function ScopeAddToProfileModal({
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Filter by name"
             aria-label="Filter library items"
-            disabled={disabled || loading}
+            disabled={controlsDisabled || loading}
           />
         </label>
         <ResourceTypeTabs
@@ -208,7 +232,7 @@ export function ScopeAddToProfileModal({
           includeAll
           emptyMode="disable"
           wide
-          disabled={disabled || loading}
+          disabled={controlsDisabled || loading}
           onChange={setTypeTab}
         />
         {error ? (
@@ -224,19 +248,8 @@ export function ScopeAddToProfileModal({
           ) : (
             visible.map((entry) => {
               const type = libraryFilterType(entry);
-              const pick: ScopeLibraryPick = isCompositionPluginPackage(entry)
-                ? {
-                    kind: "plugin",
-                    id: entry.id,
-                    name: entry.name,
-                    type: "plugin",
-                  }
-                : {
-                    kind: "resource",
-                    id: entry.id,
-                    name: entry.name,
-                    type: entry.type,
-                  };
+              const checkboxId = `scope-add-${entry.id}`;
+              const checked = selectedIds.has(entry.id);
               return (
                 <ResourceRowRoot
                   key={entry.id}
@@ -244,24 +257,73 @@ export function ScopeAddToProfileModal({
                   testId={`scope-add-row-${entry.name}`}
                 >
                   <ResourceRowLeading>
+                    <Checkbox
+                      id={checkboxId}
+                      checked={checked}
+                      disabled={controlsDisabled}
+                      onCheckedChange={() => {
+                        setSelectedIds((current) => {
+                          const next = new Set(current);
+                          if (next.has(entry.id)) {
+                            next.delete(entry.id);
+                          } else {
+                            next.add(entry.id);
+                          }
+                          return next;
+                        });
+                      }}
+                    />
                     <TypeIcon type={type} />
                   </ResourceRowLeading>
-                  <ResourceRowIdentity label={resourceDisplayName(entry)} />
-                  <IconActionButton
-                    showLabel
-                    busy={busyId === entry.id}
-                    disabled={disabled}
-                    label="Add"
-                    onClick={() => {
-                      setBusyId(entry.id);
-                      void onPick(pick).finally(() => setBusyId(null));
-                    }}
-                    icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                  <ResourceRowIdentity
+                    label={resourceDisplayName(entry)}
+                    htmlFor={checkboxId}
                   />
                 </ResourceRowRoot>
               );
             })
           )}
+        </div>
+        <div className="dialog-actions">
+          <button
+            className="btn"
+            type="button"
+            onClick={onClose}
+            disabled={adding}
+          >
+            <X size={16} aria-hidden />
+            Cancel
+          </button>
+          <button
+            className={["btn", "primary", adding ? "is-busy" : ""].filter(Boolean).join(" ")}
+            type="button"
+            disabled={controlsDisabled || selectedCount < 1}
+            aria-busy={adding}
+            onClick={() => {
+              const picks = visible
+                .filter((entry) => selectedIds.has(entry.id))
+                .map(pickFromEntry);
+              if (picks.length < 1) {
+                return;
+              }
+              setAdding(true);
+              void onAdd(picks)
+                .then(() => {
+                  onClose();
+                })
+                .catch((caught) => {
+                  setError(
+                    caught instanceof Error ? caught.message : "Could not add to profile",
+                  );
+                })
+                .finally(() => {
+                  setAdding(false);
+                });
+            }}
+          >
+            {adding ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
+            Add
+          </button>
         </div>
       </div>
     </div>

@@ -3,9 +3,12 @@ import {
   Check,
   ChevronsDown,
   CircleAlert,
+  CircleCheck,
   CircleDashed,
+  CirclePause,
   Diff,
   ExternalLink,
+  FileDiff,
   FolderCog,
   Info,
   ListPlus,
@@ -20,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { ChromeTooltip } from "./ChromeTooltip";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { IconActionButton } from "./IconActionButton";
 import {
   aggregateInstallGaps,
@@ -99,6 +103,7 @@ import {
   filterProfileInventoryItems,
   partitionProfileInventory,
   type ProfileInventoryItem,
+  type ProfileInventorySectionId,
 } from "../lib/profile-inventory";
 import { ScopeAddToProfileModal } from "./ScopeAddToProfileModal";
 import { ResourceTypeModal } from "./ResourceTypeModal";
@@ -809,7 +814,7 @@ function ProfileResourceListItem({
 void UntrackedResourceRow;
 void ProfileResourceListItem;
 
-function inventorySectionTitle(section: ProfileInventoryItem["section"]): string {
+function inventorySectionTitle(section: ProfileInventorySectionId): string {
   switch (section) {
     case "not_in_profile":
       return "Not in profile";
@@ -819,6 +824,36 @@ function inventorySectionTitle(section: ProfileInventoryItem["section"]): string
       return "Active";
     default: {
       const neverSection: never = section;
+      return neverSection;
+    }
+  }
+}
+
+function inventorySectionGlyph(section: ProfileInventorySectionId): ReactNode {
+  switch (section) {
+    case "not_in_profile":
+      return <CircleDashed size={ICON_SIZE} strokeWidth={2} aria-hidden />;
+    case "inactive":
+      return <CirclePause size={ICON_SIZE} strokeWidth={2} aria-hidden />;
+    case "active":
+      return <CircleCheck size={ICON_SIZE} strokeWidth={2} aria-hidden />;
+    default: {
+      const neverSection: never = section;
+      return neverSection;
+    }
+  }
+}
+
+function inventoryStatusLabel(item: ProfileInventoryItem): string {
+  switch (item.section) {
+    case "not_in_profile":
+      return "Not in profile";
+    case "inactive":
+      return "Inactive";
+    case "active":
+      return item.drifted ? "Active, differs from disk" : "Active";
+    default: {
+      const neverSection: never = item.section;
       return neverSection;
     }
   }
@@ -848,6 +883,7 @@ function InventoryRow({
   onRemoveFromProfile?: () => void;
 }) {
   const inProfile = item.section !== "not_in_profile";
+  const statusLabel = inventoryStatusLabel(item);
   return (
     <ResourceRowRoot
       hover={hoverModelFromProfileResource(item.resource)}
@@ -859,7 +895,15 @@ function InventoryRow({
       }
     >
       <ResourceRowLeading>
-        <TypeIcon type={item.type} />
+        <ChromeTooltip content={statusLabel} side="top">
+          <span
+            className="inventory-status-glyph"
+            aria-label={statusLabel}
+            role="img"
+          >
+            {inventorySectionGlyph(item.section)}
+          </span>
+        </ChromeTooltip>
       </ResourceRowLeading>
       <ResourceRowIdentity
         type={item.type}
@@ -874,10 +918,10 @@ function InventoryRow({
         {item.drifted && onDiff ? (
           <IconActionButton
             className="file-change-diff-btn"
-            label={`Show changes for ${item.label}`}
-            title="Show changes"
+            label={`View changes for ${item.label}`}
+            title="View changes"
             onClick={onDiff}
-            icon={<Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+            icon={<FileDiff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
           />
         ) : null}
         {editMode && inProfile && onRemoveFromProfile ? (
@@ -891,7 +935,7 @@ function InventoryRow({
             icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
           />
         ) : null}
-        {!editMode && item.section === "not_in_profile" && onAdd ? (
+        {item.section === "not_in_profile" && onAdd ? (
           <IconActionButton
             className="untracked-add-btn"
             showLabel
@@ -1528,6 +1572,7 @@ export interface LiveStatePanelProps {
   addingAllResources?: boolean;
   activatingResources?: boolean;
   previewChanges?: boolean;
+  onClosePreview?: () => void;
   editMode?: boolean;
   /** When the rail already has Re-apply as the accent CTA, demote Add all. */
   railPrimaryIsReapply?: boolean;
@@ -1582,6 +1627,7 @@ export function LiveStatePanel({
   addingAllResources = false,
   activatingResources = false,
   previewChanges = false,
+  onClosePreview,
   editMode = false,
   railPrimaryIsReapply = false,
   onCommitManagedChanges,
@@ -1612,6 +1658,11 @@ export function LiveStatePanel({
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createType, setCreateType] = useState<CreateResourceType | null>(null);
   const [pickerResources, setPickerResources] = useState<LibraryResource[]>([]);
+  const [pendingRemove, setPendingRemove] = useState<{
+    resource: ProfileContentsResource;
+    pluginId?: string;
+    label: string;
+  } | null>(null);
   const openResource = (target: ResourceDetailTarget) => {
     setDetailTarget(target);
   };
@@ -1916,6 +1967,16 @@ export function LiveStatePanel({
           >
             <div className="contents-header">
               <span>Target preview</span>
+              {onClosePreview ? (
+                <span className="contents-header-toolbar">
+                  <IconActionButton
+                    label="Close preview"
+                    title="Close preview"
+                    onClick={onClosePreview}
+                    icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                  />
+                </span>
+              ) : null}
             </div>
             <div className="contents-body">
               {applyPreviewLoading && !applyPreview ? (
@@ -2141,16 +2202,16 @@ export function LiveStatePanel({
                   return (
                     <section
                       key={section}
-                      className={
-                        section === "not_in_profile"
-                          ? "contents-block not-staged-attention"
-                          : "contents-block"
-                      }
+                      className="contents-block inventory-section"
                       aria-label={title}
                     >
                       <header className="contents-header">
-                        <span className="contents-header-title">
+                        <span className="contents-header-title inventory-section-label">
+                          <span className="inventory-status-glyph" aria-hidden>
+                            {inventorySectionGlyph(section)}
+                          </span>
                           <span>{title}</span>
+                          <span className="inventory-section-count">{rows.length}</span>
                         </span>
                         {!editMode && canAddAll ? (
                           <span className="contents-header-toolbar">
@@ -2236,10 +2297,11 @@ export function LiveStatePanel({
                               onRemoveFromProfile={
                                 onRemoveResourceFromProfile
                                   ? () => {
-                                      void onRemoveResourceFromProfile(
-                                        item.resource,
-                                        item.pluginId,
-                                      );
+                                      setPendingRemove({
+                                        resource: item.resource,
+                                        pluginId: item.pluginId,
+                                        label: item.label,
+                                      });
                                     }
                                   : undefined
                               }
@@ -2294,8 +2356,11 @@ export function LiveStatePanel({
         token={token}
         profileKeys={profileMembershipKeys}
         onClose={() => setAddModalOpen(false)}
-        onPick={async (item) => {
-          if (onAttachLibraryItem) {
+        onAdd={async (items) => {
+          if (!onAttachLibraryItem) {
+            return;
+          }
+          for (const item of items) {
             await onAttachLibraryItem(item);
           }
         }}
@@ -2345,6 +2410,32 @@ export function LiveStatePanel({
           onSuccess={onSuccess}
         />
       ) : null}
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        title="Remove from profile"
+        description={
+          pendingRemove
+            ? `Remove ${pendingRemove.label} from ${profileNameForActions}?`
+            : ""
+        }
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        confirmBusy={Boolean(
+          pendingRemove
+          && removingResourceKey
+          === `${pendingRemove.resource.type}:${pendingRemove.resource.name}`,
+        )}
+        onCancel={() => setPendingRemove(null)}
+        onConfirm={() => {
+          if (!pendingRemove || !onRemoveResourceFromProfile) {
+            return;
+          }
+          void onRemoveResourceFromProfile(
+            pendingRemove.resource,
+            pendingRemove.pluginId,
+          ).finally(() => setPendingRemove(null));
+        }}
+      />
     </>
   );
 }

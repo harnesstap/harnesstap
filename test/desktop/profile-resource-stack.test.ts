@@ -196,7 +196,8 @@ describe("Profile resources pane chrome", () => {
 
   it("locks drifted Active rows and centered file diffs", () => {
     expect(liveStateSource).toContain("inventory-row-drifted");
-    expect(liveStateSource).toContain("not-staged-attention");
+    expect(liveStateSource).toContain('title="View changes"');
+    expect(liveStateSource).toContain("FileDiff");
     expect(liveStateSource).toContain('label="Add"');
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("If the live copy differs");
@@ -234,6 +235,7 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain("target-preview-quiet-empty");
     expect(liveStateSource).toContain("target-preview-quiet-empty-icon");
     expect(header).toContain("Target preview");
+    expect(header).toContain('label="Close preview"');
     expect(header).not.toContain("contents-header-meta");
     expect(header).not.toContain("selectedProfile");
     expect(header).not.toContain("contents-header-info");

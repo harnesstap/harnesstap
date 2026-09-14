@@ -31,12 +31,17 @@ describe("Global/Project scope inventory chrome", () => {
 
   it("swaps main content to Target preview from Preview changes", () => {
     expect(appSource).toContain('label="Preview changes"');
+    expect(appSource).toContain("FileDiff");
+    expect(appSource).not.toMatch(/label="Preview changes"[\s\S]{0,200}<Eye /);
     expect(liveStateSource).toContain("previewChanges");
+    expect(liveStateSource).toContain("onClosePreview");
+    expect(liveStateSource).toContain('label="Close preview"');
     expect(liveStateSource).toContain('aria-label="Target preview"');
     expect(liveStateSource).not.toMatch(
       /<details[\s\S]{0,80}aria-label="Target preview"/,
     );
     expect(designSource).toContain("swaps main content");
+    expect(designSource).toContain("FileDiff");
     expect(designSource).not.toContain(
       "Target preview is a collapsible apply-delta block in the same pane",
     );
@@ -57,7 +62,11 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("Active");
     expect(liveStateSource).toContain("inventorySectionTitle");
     expect(liveStateSource).toContain("PROFILE_INVENTORY_SECTION_ORDER");
-    expect(liveStateSource).toContain("PROFILE_INVENTORY_SECTION_ORDER.map");
+    expect(liveStateSource).toContain("CircleDashed");
+    expect(liveStateSource).toContain("CirclePause");
+    expect(liveStateSource).toContain("CircleCheck");
+    expect(liveStateSource).toContain("inventory-section-count");
+    expect(liveStateSource).toContain('title="View changes"');
     expect(liveStateSource).toContain('label="Add all"');
     expect(liveStateSource).toContain('label="Activate all"');
     expect(liveStateSource).toContain('label="Add"');
@@ -68,9 +77,12 @@ describe("Global/Project scope inventory chrome", () => {
 
   it("enters edit mode from the header pencil and exits with Done", () => {
     expect(appSource).toContain("inventoryEditMode");
-    expect(appSource).toContain('? "Done"');
+    expect(appSource).toContain("live-toolbar-identity");
+    expect(appSource).toContain("live-toolbar-actions");
+    expect(appSource).toContain('label={inventoryEditMode ? "Done" : "Edit"}');
     expect(liveStateSource).toContain("editMode");
     expect(liveStateSource).toContain("profile-resource-remove-btn");
+    expect(liveStateSource).toContain("Remove from profile");
     expect(appSource).not.toMatch(
       /status-edit-action[\s\S]{0,200}openEditProfile\(selectedProfile\)/,
     );
@@ -81,6 +93,11 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain('aria-label="Add to profile"');
     expect(liveStateSource).toContain("ScopeAddToProfileModal");
     expect(addModalSource).toContain('label="Create"');
+    expect(addModalSource).toContain("Checkbox");
+    expect(addModalSource).toContain("dialog-actions");
+    expect(addModalSource).toContain("selectedCount < 1");
+    expect(addModalSource).toMatch(/\n\s*Add\n\s*<\/button>/);
+    expect(addModalSource).toContain("Cancel");
     expect(liveStateSource).toContain("ResourceTypeModal");
     expect(liveStateSource).toContain("ResourceCreatePanel");
     expect(designSource).toContain("Library create flow");
