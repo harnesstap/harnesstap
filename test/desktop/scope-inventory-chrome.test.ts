@@ -152,10 +152,32 @@ describe("Global/Project scope inventory chrome", () => {
     expect(headerBlock).not.toContain("flex-direction: column;");
     expect(designSource).toContain("checkbox | type icon | name");
     expect(designSource).toContain("same header row");
-    expect(addModalSource).toContain('density="compact"');
+    expect(addModalSource).not.toContain('density="compact"');
+    expect(addModalSource).not.toContain("density=");
+    expect(addModalSource).not.toContain("resource-type-tabs-compact");
     expect(addModalSource).not.toContain("wide");
     expect(liveStateSource).toMatch(/scope-inventory-pane[\s\S]*\bwide\b/);
-    expect(designSource).toContain("density=\"compact\"");
+    expect(designSource).toContain("Do not pass `density=\"compact\"`");
+    expect(designSource).toContain("wrapping Library-style ResourceTypeTabs");
+    expect(designSource).toContain("taller fixed-height dialog");
+    const modalStart = stylesSource.indexOf("\n.scope-add-modal {");
+    expect(modalStart).toBeGreaterThan(-1);
+    const modalBlock = stylesSource.slice(
+      modalStart,
+      stylesSource.indexOf("}", modalStart) + 1,
+    );
+    expect(modalBlock).toContain("height: min(48rem, calc(100vh - 2rem));");
+    expect(modalBlock).toContain("max-height: min(48rem, calc(100vh - 2rem));");
+    expect(modalBlock).toContain("overflow: hidden;");
+    expect(modalBlock).not.toContain("height: auto;");
+    const listStart = stylesSource.indexOf("\n.scope-add-modal-list {");
+    expect(listStart).toBeGreaterThan(-1);
+    const listBlock = stylesSource.slice(
+      listStart,
+      stylesSource.indexOf("}", listStart) + 1,
+    );
+    expect(listBlock).toContain("flex: 1 1 auto;");
+    expect(listBlock).toContain("overflow-y: auto;");
     expect(addModalSource).toContain("dialog-actions");
     expect(addModalSource).toContain("selectedCount < 1");
     expect(addModalSource).toMatch(/\n\s*Add\n\s*<\/button>/);

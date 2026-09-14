@@ -29,7 +29,7 @@ export interface ResourceTypeTabsProps {
   emptyMode?: ResourceTypeTabEmptyMode;
   /** Inventory wide pills. Prefer `density`. */
   wide?: boolean;
-  /** `compact` is Add to profile modal only (single row, icon+count). */
+  /** `compact` hides type text on a nowrap chip row. Do not use on Add to profile. */
   density?: ResourceTypeTabDensity;
   /** Not in profile / Inactive attention. Do not pass disk-diff. */
   attention?: ReadonlyMap<string, TypeTabAttention>;
