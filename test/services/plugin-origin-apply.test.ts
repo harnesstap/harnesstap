@@ -58,6 +58,17 @@ it("resolves plugins/<name>, root <name>, and one-level nested <child>/<name>", 
   expect(resolveMarketplacePluginDirectory(nested, "missing")).toBeUndefined();
 });
 
+it("resolves nested plugins/claude/<name> install roots", () => {
+  const cache = join(ctx.rootDir, "claude-nested-cache");
+  const pluginRoot = join(cache, "plugins", "claude", "context7");
+  mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
+  writeFileSync(
+    join(pluginRoot, ".claude-plugin", "plugin.json"),
+    JSON.stringify({ name: "context7", version: "1.0.0" }),
+  );
+  expect(resolveMarketplacePluginDirectory(cache, "context7")).toBe(pluginRoot);
+});
+
 it("detaches disappeared type:name without deleting rows still attached elsewhere", async () => {
   const plugin = createPlugin({ name: "demo", version: "1.0.0", origin: "upstream" });
   setPluginOrigin(plugin.id, "upstream");

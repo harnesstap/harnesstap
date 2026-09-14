@@ -20,6 +20,7 @@ import {
   PluginAttachmentHintError,
   validatePluginAttachmentType,
 } from "../../services/plugin-composition.js";
+import { ensureUpstreamPluginResources } from "../../services/plugin-package-hydrate.js";
 import { runPluginDoctor } from "../../services/plugin-doctor.js";
 import {
   applyPluginEditScripting,
@@ -167,6 +168,7 @@ export function toPluginHead(plugin: {
 }
 
 export function buildPluginDetail(plugin: Plugin) {
+  const attached = ensureUpstreamPluginResources(plugin);
   return {
     plugin: {
       id: plugin.id,
@@ -185,7 +187,7 @@ export function buildPluginDetail(plugin: Plugin) {
       order: dep.order,
       resource_id: pluginRefResourceId(plugin.id, dep.dependency_name),
     })),
-    resources: editableDirectResources(getPluginResources(plugin.id)).map(
+    resources: editableDirectResources(attached).map(
       (resource) => toContentsResource(resource),
     ),
   };

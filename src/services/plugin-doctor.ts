@@ -1,4 +1,5 @@
-import { getPlugin, getPluginResources } from "../models/plugin-model.js";
+import { getPlugin } from "../models/plugin-model.js";
+import { ensureUpstreamPluginResources } from "./plugin-package-hydrate.js";
 import { dependenciesFromResources } from "./plugin-dependency.js";
 import { duplicateResourcesCheck } from "./plugin-doctor/checks/duplicate-resources.js";
 import { emptyContentCheck } from "./plugin-doctor/checks/empty-content.js";
@@ -27,7 +28,7 @@ function createPluginDoctorContext(nameOrId: string): PluginDoctorContext {
     throw new Error(`Plugin not found: ${nameOrId}`);
   }
 
-  const resources = getPluginResources(plugin.id);
+  const resources = ensureUpstreamPluginResources(plugin);
   return {
     plugin,
     resources,

@@ -103,6 +103,7 @@ import {
   countInventoryTypeTabs,
   filterProfileInventoryItems,
   partitionProfileInventory,
+  profileInventoryOpenTarget,
   type ProfileInventoryItem,
   type ProfileInventorySectionId,
 } from "../lib/profile-inventory";
@@ -869,6 +870,7 @@ function InventoryRow({
   onAdd,
   onActivate,
   onOpenResource,
+  onOpenPlugin,
   onDiff,
   onRemoveFromProfile,
 }: {
@@ -880,6 +882,7 @@ function InventoryRow({
   onAdd?: () => void;
   onActivate?: () => void;
   onOpenResource: (target: ResourceDetailTarget) => void;
+  onOpenPlugin?: (pluginName: string) => void;
   onDiff?: () => void;
   onRemoveFromProfile?: () => void;
 }) {
@@ -911,7 +914,16 @@ function InventoryRow({
       </ResourceRowLeading>
       <ResourceRowIdentity
         label={item.label}
-        onOpen={() => onOpenResource(resourceDetailTarget(item.resource))}
+        onOpen={() => {
+          const target = profileInventoryOpenTarget(item);
+          if (target.kind === "plugin-package") {
+            if (target.name) {
+              onOpenPlugin?.(target.name);
+            }
+            return;
+          }
+          onOpenResource(resourceDetailTarget(target.resource));
+        }}
       >
         {item.pluginName ? (
           <ResourceRowDescription>in {item.pluginName}</ResourceRowDescription>
@@ -1607,6 +1619,7 @@ export interface LiveStatePanelProps {
   recoveryBusy?: boolean;
   onSuccess?: (message: string) => void;
   onLibraryChanged?: () => void;
+  onOpenPlugin?: (pluginName: string) => void;
 }
 
 export function LiveStatePanel({
@@ -1656,6 +1669,7 @@ export function LiveStatePanel({
   recoveryBusy = false,
   onSuccess,
   onLibraryChanged,
+  onOpenPlugin,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
@@ -2296,6 +2310,7 @@ export function LiveStatePanel({
                                   : undefined
                               }
                               onOpenResource={openResource}
+                              onOpenPlugin={onOpenPlugin}
                               onDiff={
                                 item.drifted && onDiffFileChange
                                   ? () => {

@@ -201,6 +201,20 @@ export function resolveResourceTypeTab(
   return null;
 }
 
+/**
+ * Empty/disabled styling for a type pill. Count > 0 is never empty-disabled.
+ * A parent `disabled` on the tab group is separate (loading / whole-control lock).
+ */
+export function resourceTypeTabEmptyDisabled(
+  type: string,
+  counts: ReadonlyMap<string, number>,
+): boolean {
+  if (type === ALL_RESOURCE_TYPE_TAB) {
+    return false;
+  }
+  return resourceTypeTabItemCount(type, counts) <= 0;
+}
+
 export function resourceTypeTabItemCount(
   type: string,
   counts: ReadonlyMap<string, number>,
