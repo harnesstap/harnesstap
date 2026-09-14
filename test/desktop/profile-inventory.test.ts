@@ -5,6 +5,7 @@ import {
   collectTypeTabAttention,
   countInventoryTypeTabs,
   filterProfileInventoryItems,
+  inventoryMembershipCaption,
   partitionProfileInventory,
 } from "../../apps/desktop/src/lib/profile-inventory.ts";
 import {
@@ -60,6 +61,85 @@ describe("partitionProfileInventory", () => {
     ],
     type_counts: { skill: 1, command: 1 },
     stack_resource_count: 2,
+  });
+
+  it("lists the design-doc plugin, not its nested skill, unless that skill is only on the profile", () => {
+    const profile = contents({
+      plugins: [
+        {
+          id: "global-default",
+          name: "global default",
+          version: "1.0.0",
+          resources: [
+            { type: "skill", name: "design-doc" },
+            { type: "skill", name: "my-notes" },
+          ],
+        },
+        {
+          id: "design-doc",
+          name: "design-doc",
+          version: "1.2.0",
+          resources: [{ type: "skill", name: "design-doc" }],
+        },
+      ],
+      resources: [
+        { type: "skill", name: "design-doc" },
+        { type: "skill", name: "my-notes" },
+      ],
+      type_counts: { plugin: 2, skill: 2 },
+      stack_resource_count: 2,
+    });
+    const live = contents({
+      plugins: [
+        {
+          id: "design-doc",
+          name: "design-doc",
+          version: "1.2.0",
+          resources: [{ type: "skill", name: "design-doc" }],
+        },
+      ],
+      resources: [{ type: "skill", name: "design-doc" }],
+      type_counts: { plugin: 1, skill: 1 },
+      stack_resource_count: 1,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(profile, {
+        selectedProfile: "global default",
+      }),
+      liveRows: flattenProfileResourceList(live, {
+        selectedProfile: "global default",
+      }),
+      notStaged: [
+        {
+          type: "skill",
+          name: "design-doc",
+          not_staged_kind: "add",
+        },
+        {
+          type: "command",
+          name: "extra",
+          not_staged_kind: "add",
+        },
+      ],
+    });
+    const all = [...parts.notInProfile, ...parts.inactive, ...parts.active];
+    expect(all.map((row) => [row.type, row.resource.name])).toEqual([
+      ["command", "extra"],
+      ["plugin", "design-doc"],
+      ["skill", "my-notes"],
+    ]);
+    expect(filterProfileInventoryItems(all, "", "skill").map((row) => row.resource.name))
+      .toEqual(["my-notes"]);
+    expect(filterProfileInventoryItems(all, "", "plugin").map((row) => row.resource.name))
+      .toEqual(["design-doc"]);
+    const counts = countInventoryTypeTabs(all);
+    expect(resourceTypeTabItemCount("skill", counts)).toBe(1);
+    expect(resourceTypeTabItemCount("plugin", counts)).toBe(1);
+    expect(resourceTypeTabPillsText("skill", counts)).toBe("1 Skills");
+    expect(parts.notInProfile.map((row) => row.resource.name)).toEqual(["extra"]);
+    expect(parts.active.map((row) => row.resource.name)).toEqual(["design-doc"]);
+    expect(parts.inactive.map((row) => row.resource.name)).toEqual(["my-notes"]);
+    expect(all.every((row) => row.pluginName === undefined)).toBe(true);
   });
 
   it("splits harness extras, in-profile-off, and in-profile-on", () => {
@@ -266,5 +346,13 @@ describe("collectTypeTabAttention", () => {
     expect(filteredAttention.get("all")).toEqual({ toAdd: 0, inactive: 1 });
     expect(filteredAttention.get("rule")).toEqual({ toAdd: 0, inactive: 1 });
     expect(filteredAttention.get("command")).toBeUndefined();
+  });
+});
+
+describe("inventoryMembershipCaption", () => {
+  it("hides in {this profile} and keeps a nested plugin owner", () => {
+    expect(inventoryMembershipCaption("global default", "global default")).toBeNull();
+    expect(inventoryMembershipCaption("design-doc", "global default")).toBe("in design-doc");
+    expect(inventoryMembershipCaption(undefined, "global default")).toBeNull();
   });
 });

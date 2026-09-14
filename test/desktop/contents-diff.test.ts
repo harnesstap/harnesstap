@@ -689,7 +689,7 @@ describe("managedPathFromResourceSource", () => {
 });
 
 describe("flattenProfileResourceList", () => {
-  it("lists plugin packages, nested contents, pins, and loose material without duplicating nested rows", () => {
+  it("lists plugin packages, pins, and loose material without nested plugin contents", () => {
     const stacked = contents({
       plugins: [
         {
@@ -714,28 +714,19 @@ describe("flattenProfileResourceList", () => {
     const rows = flattenProfileResourceList(stacked);
     expect(rows.map((row) => [row.kind, row.type, row.key])).toEqual([
       ["plugin", "plugin", "plugin:l1"],
-      ["resource", "skill", "resource:l1:skill:ship"],
-      ["resource", "instruction", "resource:l1:instruction:readme"],
       ["pin", "plugin_pin", "pin:slack@claude-plugins"],
       ["resource", "skill", "resource:skill:extra"],
     ]);
-    const nestedSkill = rows.find((row) => row.key === "resource:l1:skill:ship");
-    expect(nestedSkill?.kind).toBe("resource");
-    if (nestedSkill?.kind === "resource") {
-      expect(nestedSkill.pluginId).toBe("l1");
-      expect(nestedSkill.pluginName).toBe("work");
-    }
-    const types = rows.map((row) => row.type);
-    expect(types.filter((type) => type === "skill")).toEqual(["skill", "skill"]);
+    expect(rows.some((row) => row.kind === "resource" && row.resource.name === "ship")).toBe(
+      false,
+    );
     expect(filterProfileResourceList(rows, "extra").map((row) => row.key)).toEqual([
       "resource:skill:extra",
     ]);
     expect(filterProfileResourceList(rows, "work").map((row) => row.key)).toEqual([
       "plugin:l1",
     ]);
-    expect(
-      filterProfileResourceList(rows, "skill:ship").map((row) => row.key),
-    ).toEqual(["resource:l1:skill:ship"]);
+    expect(filterProfileResourceList(rows, "skill:ship").map((row) => row.key)).toEqual([]);
   });
 
   it("omits the selected profile’s own identity as a plugin/resource row", () => {
@@ -779,12 +770,14 @@ describe("flattenProfileResourceList", () => {
       ),
     ).toBe(false);
     expect(rows.map((row) => row.key)).toEqual([
-      "resource:default:skill:ship",
       "plugin:teads",
-      "resource:teads:mcp_server:slack",
       "pin:slack@claude-plugins",
+      "resource:skill:ship",
       "resource:skill:extra",
     ]);
+    expect(
+      rows.some((row) => row.kind === "resource" && row.resource.name === "slack"),
+    ).toBe(false);
   });
 });
 

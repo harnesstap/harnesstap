@@ -523,10 +523,18 @@ function isSelectedProfilePinSelfRef(
   return ref === selected;
 }
 
+function resourceMembershipKey(
+  resource: Pick<ProfileContentsResource, "type" | "name">,
+): string {
+  return `${resource.type}:${resource.name}`;
+}
+
 /**
- * Flat Profile resources inventory: plugin packages, nested plugin contents
- * (with membership), pins, then loose material. Nested contents are not
- * repeated as loose rows. The selected profile’s own identity is omitted.
+ * Direct profile memberships for Global/Project inventory: plugin packages,
+ * pins, and profile-level material. Nested plugin contents stay off this list
+ * (plugin details Composition is the place for those). The selected profile’s
+ * own identity is omitted. A resource that also lives inside an attached
+ * plugin is treated as transitive, even if the profile plugin lists it too.
  */
 export function flattenProfileResourceList(
   contents: ProfileContents | null | undefined,
@@ -536,31 +544,45 @@ export function flattenProfileResourceList(
     return [];
   }
   const selected = selectedProfileIdentity(options.selectedProfile);
-  const nested = nestedResourceKeys(contents);
-  const rows: ProfileResourceListRow[] = [];
+  const nestedInAttached = new Set<string>();
   for (const plugin of contents.plugins ?? []) {
-    const omitPackage = isSelectedProfileSelfRef(selected, plugin);
-    if (!omitPackage) {
-      rows.push({
-        kind: "plugin",
-        key: `plugin:${plugin.id}`,
-        type: "plugin",
-        plugin,
-      });
+    if (isSelectedProfileSelfRef(selected, plugin)) {
+      continue;
     }
     for (const resource of plugin.resources ?? []) {
-      if (isSelectedProfileResourceSelfRef(selected, resource)) {
-        continue;
-      }
-      rows.push({
-        kind: "resource",
-        key: `resource:${plugin.id}:${resource.type}:${resource.name}`,
-        type: resource.type,
-        resource,
-        pluginId: plugin.id,
-        pluginName: plugin.name,
-      });
+      nestedInAttached.add(resourceMembershipKey(resource));
     }
+  }
+
+  const rows: ProfileResourceListRow[] = [];
+  const emittedResources = new Set<string>();
+  const emitResource = (resource: ProfileContentsResource) => {
+    if (isSelectedProfileResourceSelfRef(selected, resource)) {
+      return;
+    }
+    const key = resourceMembershipKey(resource);
+    if (nestedInAttached.has(key) || emittedResources.has(key)) {
+      return;
+    }
+    emittedResources.add(key);
+    rows.push({
+      kind: "resource",
+      key: `resource:${resource.type}:${resource.name}`,
+      type: resource.type,
+      resource,
+    });
+  };
+
+  for (const plugin of contents.plugins ?? []) {
+    if (isSelectedProfileSelfRef(selected, plugin)) {
+      continue;
+    }
+    rows.push({
+      kind: "plugin",
+      key: `plugin:${plugin.id}`,
+      type: "plugin",
+      plugin,
+    });
   }
   for (const pin of contents.plugin_pins ?? []) {
     if (isSelectedProfilePinSelfRef(selected, pin.ref)) {
@@ -573,19 +595,16 @@ export function flattenProfileResourceList(
       pin,
     });
   }
+  for (const plugin of contents.plugins ?? []) {
+    if (!isSelectedProfileSelfRef(selected, plugin)) {
+      continue;
+    }
+    for (const resource of plugin.resources ?? []) {
+      emitResource(resource);
+    }
+  }
   for (const resource of contents.resources ?? []) {
-    if (nested.has(`${resource.type}:${resource.name}`)) {
-      continue;
-    }
-    if (isSelectedProfileResourceSelfRef(selected, resource)) {
-      continue;
-    }
-    rows.push({
-      kind: "resource",
-      key: `resource:${resource.type}:${resource.name}`,
-      type: resource.type,
-      resource,
-    });
+    emitResource(resource);
   }
   return rows;
 }

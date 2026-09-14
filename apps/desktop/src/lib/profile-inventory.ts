@@ -99,6 +99,22 @@ function collectKeys(rows: ProfileResourceListRow[]): Set<string> {
   return keys;
 }
 
+/** Direct rows plus nested contents of attached plugins (coverage, not listing). */
+export function coveredProfileMembershipKeys(
+  rows: ProfileResourceListRow[],
+): Set<string> {
+  const keys = collectKeys(rows);
+  for (const row of rows) {
+    if (row.kind !== "plugin") {
+      continue;
+    }
+    for (const resource of row.plugin.resources ?? []) {
+      keys.add(membershipKey(resource));
+    }
+  }
+  return keys;
+}
+
 function fileChangeForResource(
   resource: ProfileContentsResource,
   fileChanges: DriftFileChange[],
@@ -123,7 +139,7 @@ export function partitionProfileInventory(
   active: ProfileInventoryItem[];
 } {
   const liveKeys = collectKeys(input.liveRows);
-  const profileKeys = collectKeys(input.profileRows);
+  const coveredKeys = coveredProfileMembershipKeys(input.profileRows);
   const fileChanges = input.fileChanges ?? [];
   const driftedKeys = new Set<string>();
   const notInProfile: ProfileInventoryItem[] = [];
@@ -134,7 +150,7 @@ export function partitionProfileInventory(
       driftedKeys.add(key);
       continue;
     }
-    if (profileKeys.has(key)) {
+    if (coveredKeys.has(key)) {
       continue;
     }
     notInProfile.push({
@@ -182,6 +198,22 @@ export function partitionProfileInventory(
   }
 
   return { notInProfile, inactive, active };
+}
+
+/** Inventory row caption. Omit when the owner is the profile already on screen. */
+export function inventoryMembershipCaption(
+  pluginName: string | undefined,
+  profileName: string | null | undefined,
+): string | null {
+  const owner = pluginName?.trim();
+  if (!owner) {
+    return null;
+  }
+  const profile = profileName?.trim();
+  if (profile && owner === profile) {
+    return null;
+  }
+  return `in ${owner}`;
 }
 
 export function filterProfileInventoryItems(
