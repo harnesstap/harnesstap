@@ -92,6 +92,7 @@ export interface LibraryResourceDetail {
   source: string;
   origin_kind: string;
   origin_ref: string | null;
+  filesystem_path?: string | null;
   updated_at: string;
   content: string;
   content_truncated: boolean;

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Resolve marketplace and plugin-relative resource paths before Desktop open, reveal, and copy-path actions.
+time: 2026-09-14T06:45:00Z
+custom:
+  Issue: ""

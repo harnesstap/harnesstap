@@ -43,6 +43,11 @@ import {
   pluginRefShowsMarketplaceUrl,
 } from "../lib/plugin-ref-detail";
 import {
+  resourceOpenPath,
+  resourceOpenUsesSelector,
+  resourcePathDisplay,
+} from "../lib/resource-open-path";
+import {
   RESOURCE_CONTENT_PREVIEW_LINES,
   previewResourceContent,
 } from "../lib/resource-content-preview";
@@ -556,15 +561,44 @@ export function ResourceDetailBody({
     }
   }
 
-  function editorPathFor(resource: LibraryResourceDetail): string {
-    if (isPluginTypeResource(resource.type)) {
-      return resource.install_path ?? "";
+  async function openCurrentResource(reveal: boolean): Promise<void> {
+    if (!baseUrl || !detail || openingPath) {
+      return;
     }
-    return resource.source;
+    const actionPath = resourceOpenPath(detail);
+    const trackingPath = actionPath || resourcePathDisplay(detail);
+    if (!trackingPath && !resourceOpenUsesSelector(detail)) {
+      return;
+    }
+    setOpeningPath(trackingPath);
+    setActionError(null);
+    try {
+      if (resourceOpenUsesSelector(detail)) {
+        await openResourcePath(baseUrl, token, {
+          selector: target.selector,
+          pathHint: actionPath || detail.source || target.pathHint,
+          reveal,
+        });
+      } else {
+        if (!actionPath) {
+          throw new Error("Install path not found");
+        }
+        await openResourcePath(baseUrl, token, { path: actionPath, reveal });
+      }
+    } catch (openError: unknown) {
+      setActionError(
+        errorMessage(
+          openError,
+          reveal ? "Could not reveal path in Finder" : "Could not open file in editor",
+        ),
+      );
+    } finally {
+      setOpeningPath(null);
+    }
   }
 
-  function renderPathValue(path: string): ReactNode {
-    if (!path) {
+  function renderPathValue(display: string, canReveal: boolean): ReactNode {
+    if (!display) {
       return undefined;
     }
     return (
@@ -572,32 +606,53 @@ export function ResourceDetailBody({
         type="button"
         className="library-field-path-button"
         title={REVEAL_PATH_LABEL}
-        aria-label={`${REVEAL_PATH_LABEL}: ${path}`}
-        disabled={disabled || !baseUrl || loading || Boolean(openingPath)}
-        onClick={() => void openContainedPath(path, true)}
+        aria-label={`${REVEAL_PATH_LABEL}: ${display}`}
+        disabled={disabled || !baseUrl || loading || Boolean(openingPath) || !canReveal}
+        onClick={() => void openCurrentResource(true)}
       >
-        {path}
+        {display}
       </button>
     );
   }
 
-  function renderPathActions(path: string, showEditor: boolean): ReactNode {
+  function renderPathActions(
+    path: string,
+    showEditor: boolean,
+    currentResource = false,
+  ): ReactNode {
     if (!path) {
       return null;
     }
     return (
       <PathAccessActions
         path={path}
-        disabled={disabled || !baseUrl || loading}
+        disabled={disabled || !baseUrl || loading || (currentResource && !canOpenCurrent)}
         opening={openingPath === path}
         showEditor={showEditor}
-        onReveal={(next) => void openContainedPath(next, true)}
-        onOpenEditor={(next) => void openContainedPath(next, false)}
+        onReveal={(next) => {
+          if (currentResource) {
+            void openCurrentResource(true);
+            return;
+          }
+          void openContainedPath(next, true);
+        }}
+        onOpenEditor={(next) => {
+          if (currentResource) {
+            void openCurrentResource(false);
+            return;
+          }
+          void openContainedPath(next, false);
+        }}
       />
     );
   }
 
-  const editorPath = detail ? editorPathFor(detail) : "";
+  const displayPath = detail ? resourcePathDisplay(detail) : "";
+  const actionPath = detail ? resourceOpenPath(detail) : "";
+  const canOpenCurrent = Boolean(
+    detail &&
+      (actionPath || (resourceOpenUsesSelector(detail) && target.selector)),
+  );
   const showSync = Boolean(detail && !isUntrackedDetail(detail) && isSyncableDetail(detail));
   const showDelete = Boolean(detail && !isUntrackedDetail(detail));
   const showApply = Boolean(preview && preview.updated.length > 0);
@@ -852,17 +907,15 @@ export function ResourceDetailBody({
             fieldName="Path"
             readOnly
             mono
-            display={renderPathValue(editorPath)}
+            display={renderPathValue(displayPath, canOpenCurrent)}
             placeholder="Install path not found"
             editing={false}
             onStartEdit={() => undefined}
             iconButtonLabel={REVEAL_PATH_LABEL}
             onIconClick={
-              editorPath
-                ? () => void openContainedPath(editorPath, true)
-                : undefined
+              canOpenCurrent ? () => void openCurrentResource(true) : undefined
             }
-            action={renderPathActions(editorPath, false)}
+            action={renderPathActions(actionPath, false, true)}
           />
           <LibraryFieldRow
             icon={<Clock size={16} aria-hidden />}
@@ -918,16 +971,14 @@ export function ResourceDetailBody({
             fieldName="Path"
             readOnly
             mono
-            display={renderPathValue(editorPath) ?? (detail.source || "-")}
+            display={renderPathValue(displayPath, canOpenCurrent) ?? (detail.source || "-")}
             editing={false}
             onStartEdit={() => undefined}
             iconButtonLabel={REVEAL_PATH_LABEL}
             onIconClick={
-              editorPath
-                ? () => void openContainedPath(editorPath, true)
-                : undefined
+              canOpenCurrent ? () => void openCurrentResource(true) : undefined
             }
-            action={renderPathActions(editorPath, true)}
+            action={renderPathActions(actionPath, true, true)}
           />
           <LibraryFieldRow
             icon={<MapPin size={16} aria-hidden />}

@@ -81,6 +81,7 @@ describe("agent library routes", () => {
     const detailBody = await detail.json();
     expect(detailBody.resource.name).toBe("ship");
     expect(detailBody.resource.source).toBe("manual");
+    expect(detailBody.resource.filesystem_path).toBeNull();
     expect(detailBody.resource.content).toContain("# ship");
     expect(detailBody.resource.attached_profiles).toEqual([]);
     expect(detailBody.resource.attached_plugins).toEqual([]);
@@ -131,6 +132,7 @@ describe("agent library routes", () => {
     expect(detailBody.resource.name).toBe("claude-instructions");
     expect(detailBody.resource.type).toBe("instruction");
     expect(detailBody.resource.origin_kind).toBe("untracked");
+    expect(detailBody.resource.filesystem_path).toBe(filePath);
     expect(detailBody.resource.content).toContain("# claude instructions");
   });
 
