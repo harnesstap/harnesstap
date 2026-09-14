@@ -1,0 +1,5 @@
+kind: Changed
+body: Fold plugin pins into the Desktop Plugins tab, hide empty plugin-ref tabs, and overlay the add FAB.
+time: 2026-09-14T03:20:00Z
+custom:
+  Issue: ""

@@ -18,6 +18,10 @@ const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",
 );
+const stylesSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
+  "utf8",
+);
 
 describe("Global/Project scope inventory chrome", () => {
   it("kills the two-column cockpit and keeps rail Apply as the sole Apply CTA", () => {
@@ -54,6 +58,8 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).not.toContain('aria-label="Profile resources"');
     expect(liveStateSource).not.toContain('aria-label="Not staged"');
     expect(designSource).toContain("No <type> found");
+    expect(designSource).toContain("Plugin pins share the **Plugins** tab");
+    expect(designSource).toContain("Plugin refs hide when empty");
   });
 
   it("renders Not in profile, Inactive, then Active with filtered section actions", () => {
@@ -101,5 +107,17 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("ResourceTypeModal");
     expect(liveStateSource).toContain("ResourceCreatePanel");
     expect(designSource).toContain("Library create flow");
+    expect(liveStateSource).toContain("scope-inventory-scroll");
+    const fabStart = stylesSource.indexOf("\n.scope-inventory-fab {");
+    expect(fabStart).toBeGreaterThan(-1);
+    const fabBlock = stylesSource.slice(
+      fabStart,
+      stylesSource.indexOf("}", fabStart) + 1,
+    );
+    expect(fabBlock).toContain("position: absolute;");
+    expect(fabBlock).toContain("right: 0.75rem;");
+    expect(fabBlock).toContain("bottom: 0.75rem;");
+    expect(fabBlock).not.toContain("position: sticky;");
+    expect(designSource).toContain("over scrolling content");
   });
 });
