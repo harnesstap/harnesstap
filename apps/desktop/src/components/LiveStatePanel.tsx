@@ -101,7 +101,9 @@ import {
   PROFILE_INVENTORY_SECTION_ORDER,
   collectTypeTabAttention,
   countInventoryTypeTabs,
+  coveredProfileMembershipKeys,
   filterProfileInventoryItems,
+  inventoryMembershipCaption,
   partitionProfileInventory,
   profileInventoryOpenTarget,
   type ProfileInventoryItem,
@@ -713,6 +715,7 @@ function ProfileMembershipResourceRow({
   ) => void;
 }) {
   const nested = Boolean(pluginId);
+  const membershipCaption = inventoryMembershipCaption(pluginName, profileName);
   return (
     <ResourceRowRoot
       hover={hoverModelFromProfileResource(resource)}
@@ -725,10 +728,10 @@ function ProfileMembershipResourceRow({
         label={resource.name}
         onOpen={() => onOpenResource(resourceDetailTarget(resource))}
       />
-      {pluginName || nested ? (
+      {membershipCaption || nested ? (
         <ResourceRowTrailing>
-          {pluginName ? (
-            <span className="enabled-detail muted">in {pluginName}</span>
+          {membershipCaption ? (
+            <span className="enabled-detail muted">{membershipCaption}</span>
           ) : null}
           {nested ? (
             <ProfileResourceActions
@@ -888,6 +891,7 @@ function InventoryRow({
 }) {
   const inProfile = item.section !== "not_in_profile";
   const statusLabel = inventoryStatusLabel(item);
+  const membershipCaption = inventoryMembershipCaption(item.pluginName, profileName);
   return (
     <ResourceRowRoot
       hover={hoverModelFromProfileResource(item.resource)}
@@ -925,8 +929,8 @@ function InventoryRow({
           onOpenResource(resourceDetailTarget(target.resource));
         }}
       >
-        {item.pluginName ? (
-          <ResourceRowDescription>in {item.pluginName}</ResourceRowDescription>
+        {membershipCaption ? (
+          <ResourceRowDescription>{membershipCaption}</ResourceRowDescription>
         ) : null}
       </ResourceRowIdentity>
       <ResourceRowTrailing>
@@ -1841,28 +1845,10 @@ export function LiveStatePanel({
       active: filteredInventory.filter((item) => item.section === "active"),
     };
   }, [filteredInventory]);
-  const profileMembershipKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const row of profileResourceRows) {
-      switch (row.kind) {
-        case "plugin":
-          keys.add(`plugin:${row.plugin.name}`);
-          keys.add(`plugin:${row.plugin.id}`);
-          break;
-        case "pin":
-          keys.add(`plugin_pin:${row.pin.ref}`);
-          break;
-        case "resource":
-          keys.add(`${row.resource.type}:${row.resource.name}`);
-          break;
-        default: {
-          const neverRow: never = row;
-          void neverRow;
-        }
-      }
-    }
-    return keys;
-  }, [profileResourceRows]);
+  const profileMembershipKeys = useMemo(
+    () => coveredProfileMembershipKeys(profileResourceRows),
+    [profileResourceRows],
+  );
 
   const profileNameForActions = selectedProfile ?? activeProfile;
 

@@ -176,7 +176,7 @@ describe("Profile resources pane chrome", () => {
     );
   });
 
-  it("uses ResourceTypeTabs over a flat list and keeps plugin membership on nested rows", () => {
+  it("uses ResourceTypeTabs over a flat list of direct memberships", () => {
     expect(liveStateSource).toContain("ResourceTypeTabs");
     expect(liveStateSource).toContain("includeAll={true}");
     expect(liveStateSource).toContain("emptyMode=\"disable\"");
@@ -190,8 +190,10 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).not.toContain("enabled-plugin-summary");
     expect(liveStateSource).not.toContain("resources-type-heading");
     expect(liveStateSource).not.toContain("resource-filter-type-badge");
-    expect(liveStateSource).toContain("in {item.pluginName}");
-    expect(designSource).toContain("detach `pluginId`");
+    expect(designSource).toContain("direct memberships only");
+    expect(designSource).toContain("Nested plugin contents stay on plugin details Composition");
+    expect(designSource).toContain("in {this profile}");
+    expect(liveStateSource).toContain("inventoryMembershipCaption");
   });
 
   it("locks drifted Active rows and centered file diffs", () => {
