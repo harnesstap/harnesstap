@@ -111,7 +111,7 @@ describe("library origin filter chrome", () => {
     expect(tabsSource).not.toContain("density");
     expect(tabsSource).not.toContain("compact");
     expect(tabsSource).not.toContain("resource-type-tab-badge");
-    expect(tabsSource).not.toContain("ChromeTooltip");
+    expect(tabsSource).toContain("ChromeTooltip");
     expect(tabsSource).toContain("aria-label={caption}");
     expect(tabsSource).toContain("resource-type-tab-count");
     expect(tabsSource).not.toContain("Sparkles");
@@ -132,8 +132,8 @@ describe("library origin filter chrome", () => {
     expect(designSource).toContain("Pills always have icons");
     expect(designSource).toContain("No compact circular type filters");
     expect(designSource).toContain("never plugin, plugin ref, package, or instruction");
-    expect(designSource).toContain("Profile resources use the same ResourceTypeTabs over a flat list");
-    expect(designSource).toContain("Profile resources omits All");
+    expect(designSource).toContain("Global/Project inventory uses the same ResourceTypeTabs");
+    expect(designSource).toContain("That inventory keeps All");
   });
 
   test("pills keep icon, count, and type text without icon-only collapse", () => {
@@ -147,19 +147,11 @@ describe("library origin filter chrome", () => {
     expect(panelSource).not.toContain("density=");
     expect(compositionSource).toContain("<ResourceTypeTabs");
     expect(compositionSource).not.toContain("density=");
-    const profileResources = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Profile resources"'),
-      liveStateSource.indexOf('aria-label="Not staged"'),
+    const inventory = liveStateSource.slice(
+      liveStateSource.indexOf("scope-inventory-pane"),
     );
-    const notStaged = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Not staged"'),
-    );
-    expect(notStaged).toContain("<ResourceTypeTabs");
-    expect(notStaged).not.toContain('density="compact"');
-    expect(notStaged).not.toContain('density="pills"');
-    expect(profileResources).toContain("<ResourceTypeTabs");
-    expect(profileResources).not.toContain('density="compact"');
-    expect(profileResources).not.toContain('density="pills"');
+    expect(inventory).toContain("<ResourceTypeTabs");
+    expect(inventory).not.toContain('density="compact"');
     const typeBadges = liveStateSource.slice(
       liveStateSource.indexOf("function TargetPreviewTypeBadges"),
       liveStateSource.indexOf("function stackChangeToneIcon"),
@@ -171,28 +163,17 @@ describe("library origin filter chrome", () => {
     expect(typeBadges).not.toContain("ChromeTooltip");
     expect(designSource).toContain("pills everywhere");
     expect(designSource).not.toContain("Two densities via `density`");
-    expect(designSource).toContain("Library, Profile resources, Not staged");
-    expect(designSource).toContain(
-      "pills: icon, then count, then type text; wrap",
-    );
+    expect(designSource).toContain("Library, Global/Project inventory");
   });
 
-  test("Library keeps the All tab; Profile resources omits it", () => {
+  test("Library keeps the All tab; Global/Project inventory keeps All with empty types disabled", () => {
     expect(tabsSource).toContain("includeAll = true");
     expect(panelSource).toContain("<ResourceTypeTabs");
     expect(panelSource).not.toContain("includeAll={false}");
     expect(compositionSource).toContain("<ResourceTypeTabs");
     expect(compositionSource).not.toContain("includeAll={false}");
-    const profileResources = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Profile resources"'),
-      liveStateSource.indexOf('aria-label="Not staged"'),
-    );
-    const notStaged = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Not staged"'),
-    );
-    expect(profileResources).toContain("includeAll={false}");
-    expect(notStaged).toContain("<ResourceTypeTabs");
-    expect(notStaged).not.toContain("includeAll={false}");
+    expect(liveStateSource).toContain("includeAll={true}");
+    expect(liveStateSource).toContain("emptyMode=\"disable\"");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

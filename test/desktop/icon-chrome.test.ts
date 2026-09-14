@@ -213,21 +213,16 @@ describe("desktop icon chrome", () => {
     expect(typeTabsSource).toContain("TypeIcon");
     expect(typeTabsSource).toContain("resourceTypeTabGlyph");
     expect(typeTabsSource).not.toContain("Sparkles");
-    expect(typeTabsSource).not.toContain("ChromeTooltip");
+    expect(typeTabsSource).toContain("ChromeTooltip");
     expect(typeTabsSource).toContain("aria-label={caption}");
     expect(liveStateSource).toContain("ResourceTypeTabs");
 
-    const profileResources = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Profile resources"'),
-      liveStateSource.indexOf('aria-label="Not staged"'),
-    );
-    expect(profileResources).toContain("ResourceTypeTabs");
-    expect(profileResources).toContain("includeAll={false}");
-    expect(profileResources).toContain("ProfileResourceListItem");
-    expect(profileResources).not.toContain("EnabledPluginGroup");
-    expect(profileResources).not.toContain("enabled-plugin-summary");
-    expect(profileResources).not.toContain("Sparkles");
-    expect(profileResources).not.toContain("resources-type-heading");
+    expect(liveStateSource).toContain("ResourceTypeTabs");
+    expect(liveStateSource).toContain("includeAll={true}");
+    expect(liveStateSource).not.toContain("EnabledPluginGroup");
+    expect(liveStateSource).not.toContain("enabled-plugin-summary");
+    expect(liveStateSource).not.toContain("Sparkles");
+    expect(liveStateSource).not.toContain("resources-type-heading");
     const pluginPackageRow = liveStateSource.slice(
       liveStateSource.indexOf("function ProfilePluginPackageRow"),
       liveStateSource.indexOf("function ProfileMembershipResourceRow"),
@@ -242,7 +237,7 @@ describe("desktop icon chrome", () => {
     expect(typeModalSource).not.toMatch(/instruction:\s*Sparkles/);
   });
 
-  test("converts More and Show all to distinct icons and labels Not staged Add all", () => {
+  test("converts More and Show all to distinct icons and labels Add all", () => {
     expect(liveStateSource).toContain('label="Add all"');
     expect(liveStateSource).toContain("ListPlus");
     expect(liveStateSource).toContain("iconAfterLabel");

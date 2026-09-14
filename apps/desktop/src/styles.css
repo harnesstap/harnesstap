@@ -1041,6 +1041,22 @@ button:focus-visible,
   cursor: not-allowed;
 }
 
+.resource-type-tab:disabled .resource-type-tab-disabled-host {
+  pointer-events: auto;
+}
+
+.resource-type-tabs-wide .resource-type-tab {
+  padding: 0 0.9rem;
+  min-height: 36px;
+  gap: 0.4rem;
+}
+
+.resource-type-tab-disabled-host {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .resource-type-tab-label {
   white-space: nowrap;
 }
@@ -1697,9 +1713,93 @@ button:focus-visible,
   align-items: flex-start;
 }
 
-.live-toolbar-remove {
-  margin-left: auto;
+.live-toolbar-identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.live-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   flex-shrink: 0;
+  margin-left: auto;
+}
+
+.live-toolbar-remove {
+  flex-shrink: 0;
+}
+
+.scope-inventory-pane {
+  position: relative;
+  min-width: 0;
+}
+
+.scope-inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.scope-inventory-fab {
+  position: sticky;
+  bottom: 0.75rem;
+  margin-left: auto;
+  display: flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  border-radius: 999px;
+}
+
+.inventory-section-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.inventory-section-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.inventory-status-glyph {
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.scope-inventory-list .contents-header {
+  background: transparent;
+  font-weight: 500;
+}
+
+.scope-add-modal {
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: min(36rem, calc(100vh - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.scope-add-modal-list {
+  min-height: 0;
+  overflow: auto;
+}
+
+.dialog-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.status-edit-action[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-2));
+  color: var(--fg);
 }
 
 .profile-remove-action {
