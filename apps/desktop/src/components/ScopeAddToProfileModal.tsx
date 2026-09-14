@@ -230,7 +230,7 @@ export function ScopeAddToProfileModal({
           value={resolvedType}
           includeAll
           emptyMode="disable"
-          wide
+          density="compact"
           disabled={controlsDisabled || loading}
           onChange={setTypeTab}
         />

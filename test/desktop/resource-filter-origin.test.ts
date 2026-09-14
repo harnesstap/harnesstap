@@ -108,8 +108,8 @@ describe("library origin filter chrome", () => {
     expect(tabsSource).toContain("resourceTypeTabGlyph");
     expect(tabsSource).not.toContain("RESOURCE_TYPE_TABS_WIDE_MIN_PX");
     expect(tabsSource).not.toContain("hostPaneWidth");
-    expect(tabsSource).not.toContain("density");
-    expect(tabsSource).not.toContain("compact");
+    expect(tabsSource).toContain("ResourceTypeTabDensity");
+    expect(tabsSource).toContain('"compact"');
     expect(tabsSource).not.toContain("resource-type-tab-badge");
     expect(tabsSource).toContain("ChromeTooltip");
     expect(tabsSource).toContain("aria-label={ariaLabel}");
@@ -119,12 +119,22 @@ describe("library origin filter chrome", () => {
     expect(cssBlock(stylesSource, ".resource-type-tabs")).toContain("width: 100%");
     expect(cssBlock(stylesSource, ".resource-type-tabs-scroller")).toContain("flex-wrap: wrap");
     expect(cssBlock(stylesSource, ".resource-type-tabs-scroller")).not.toContain("overflow-x: auto");
+    expect(cssBlock(stylesSource, ".resource-type-tabs-compact .resource-type-tabs-scroller")).toContain(
+      "flex-wrap: nowrap",
+    );
+    expect(cssBlock(stylesSource, ".resource-type-tabs-compact .resource-type-tabs-scroller")).toContain(
+      "overflow-x: auto",
+    );
+    expect(cssBlock(stylesSource, ".resource-type-tabs-compact .resource-type-tab-label")).toContain(
+      "display: none",
+    );
     expect(stylesSource).not.toContain("data-compact");
     expect(stylesSource).not.toContain("resource-type-tab-badge");
     expect(stylesSource).not.toContain("@container (min-width: 900px)");
     expect(designSource).toContain("ResourceTypeTabs");
     expect(designSource).toContain("No sidebar Type chips");
-    expect(designSource).toContain("One density: pills everywhere");
+    expect(designSource).toContain("pills everywhere");
+    expect(designSource).toContain("compact single-row chips");
     expect(designSource).toContain("never collapse to icon-only");
     expect(designSource).toContain("1 Skills");
     expect(designSource).toContain("2 Plugins");
@@ -162,6 +172,7 @@ describe("library origin filter chrome", () => {
     expect(typeBadges).toContain("resourceTypeTabTooltip");
     expect(typeBadges).not.toContain("ChromeTooltip");
     expect(designSource).toContain("pills everywhere");
+    expect(designSource).toContain("compact single-row chips");
     expect(designSource).not.toContain("Two densities via `density`");
     expect(designSource).toContain("Library, Global/Project inventory");
   });

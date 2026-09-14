@@ -1,5 +1,5 @@
 kind: Changed
-body: Fold plugin pins into the Desktop Plugins tab, hide empty plugin-ref tabs, overlay the add FAB, add type-tab attention dots, scope tab counts to search, and fix Add to profile modal header and checklist rows.
+body: Fold plugin pins into the Desktop Plugins tab, hide empty plugin-ref tabs, overlay the add FAB, add type-tab attention dots, scope tab counts to search, fix Add to profile modal header and checklist rows, and use compact single-row type chips in that modal.
 time: 2026-09-14T03:25:00Z
 custom:
   Issue: ""
