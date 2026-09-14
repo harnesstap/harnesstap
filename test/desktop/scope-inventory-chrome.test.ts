@@ -104,6 +104,25 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("editMode");
     expect(liveStateSource).toContain("profile-resource-remove-btn");
     expect(liveStateSource).toContain("Remove from profile");
+    expect(liveStateSource).toContain("inventory-row-lead");
+    expect(liveStateSource).toContain("inventory-row-remove-slot");
+    expect(liveStateSource).toContain("inventory-row-remove-placeholder");
+    expect(liveStateSource).toContain("inventory-row-icon");
+    expect(stylesSource).toContain(".inventory-row-lead");
+    expect(stylesSource).toContain(".inventory-row-remove-slot");
+    expect(stylesSource).toContain("width: var(--icon-action-size)");
+    const leadStart = stylesSource.indexOf("\n.inventory-row-lead {");
+    expect(leadStart).toBeGreaterThan(-1);
+    const leadBlock = stylesSource.slice(
+      leadStart,
+      stylesSource.indexOf("}", leadStart) + 1,
+    );
+    expect(leadBlock).toContain("display: inline-flex;");
+    expect(leadBlock).toContain("align-items: center;");
+    expect(leadBlock).not.toContain("flex-direction: column;");
+    expect(stylesSource).toContain(".resource-row.inventory-row");
+    expect(designSource).toContain("trash-width trailing slot");
+    expect(designSource).toContain("status · type icon · name");
     expect(appSource).not.toMatch(
       /status-edit-action[\s\S]{0,200}openEditProfile\(selectedProfile\)/,
     );

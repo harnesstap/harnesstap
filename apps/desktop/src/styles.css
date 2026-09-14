@@ -1833,8 +1833,55 @@ button:focus-visible,
 }
 
 .inventory-status-glyph {
-  display: inline-flex;
   color: var(--muted);
+}
+
+.inventory-row-lead {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 14px;
+}
+
+.resource-row.inventory-row {
+  align-items: start;
+}
+
+.inventory-row .resource-row-identity-main {
+  min-height: 14px;
+}
+
+.inventory-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.inventory-row-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.inventory-row-remove-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-action-size);
+  min-width: var(--icon-action-size);
+  height: var(--icon-action-size);
+  flex-shrink: 0;
+}
+
+.inventory-row-remove-placeholder {
+  display: block;
+  width: var(--icon-action-size);
+  height: var(--icon-action-size);
+  pointer-events: none;
 }
 
 .scope-inventory-list .contents-header {

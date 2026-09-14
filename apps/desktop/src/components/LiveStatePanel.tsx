@@ -895,19 +895,21 @@ function InventoryRow({
           : "inventory-row"
       }
     >
-      <ResourceRowLeading>
+      <ResourceRowLeading className="inventory-row-lead">
         <ChromeTooltip content={statusLabel} side="top">
           <span
-            className="inventory-status-glyph"
+            className="inventory-row-icon inventory-status-glyph"
             aria-label={statusLabel}
             role="img"
           >
             {inventorySectionGlyph(item.section)}
           </span>
         </ChromeTooltip>
+        <span className="inventory-row-icon" aria-hidden>
+          <TypeIcon type={item.type} />
+        </span>
       </ResourceRowLeading>
       <ResourceRowIdentity
-        type={item.type}
         label={item.label}
         onOpen={() => onOpenResource(resourceDetailTarget(item.resource))}
       >
@@ -925,16 +927,22 @@ function InventoryRow({
             icon={<FileDiff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
           />
         ) : null}
-        {editMode && inProfile && onRemoveFromProfile ? (
-          <IconActionButton
-            className="profile-resource-remove-btn"
-            label={`Remove ${item.label} from ${profileName}`}
-            title="Remove from profile"
-            busy={removing}
-            spinnerSize={ICON_SIZE}
-            onClick={onRemoveFromProfile}
-            icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-          />
+        {inProfile ? (
+          <span className="inventory-row-remove-slot">
+            {editMode && onRemoveFromProfile ? (
+              <IconActionButton
+                className="profile-resource-remove-btn"
+                label={`Remove ${item.label} from ${profileName}`}
+                title="Remove from profile"
+                busy={removing}
+                spinnerSize={ICON_SIZE}
+                onClick={onRemoveFromProfile}
+                icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
+            ) : (
+              <span className="inventory-row-remove-placeholder" aria-hidden />
+            )}
+          </span>
         ) : null}
         {item.section === "not_in_profile" && onAdd ? (
           <IconActionButton
