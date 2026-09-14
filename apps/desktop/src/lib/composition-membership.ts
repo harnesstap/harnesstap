@@ -66,6 +66,37 @@ export function filterCompositionMembers(
   return catalog.filter((row) => selected.has(row.id));
 }
 
+/** Membership rows for plugin details, including attachments missing from the catalog. */
+export function pluginDetailCompositionEntries(
+  catalog: readonly LibraryResource[],
+  selectedIds: readonly string[],
+  detailResources: ReadonlyArray<{
+    id: string;
+    type: string;
+    name: string;
+    source: string;
+  }>,
+): LibraryResource[] {
+  const members = filterCompositionMembers(catalog, selectedIds);
+  const seen = new Set(members.map((row) => row.id));
+  const extras: LibraryResource[] = [];
+  for (const row of detailResources) {
+    if (seen.has(row.id)) {
+      continue;
+    }
+    extras.push({
+      id: row.id,
+      name: row.name,
+      type: row.type,
+      namespace: null,
+      description: null,
+      source: row.source,
+    });
+    seen.add(row.id);
+  }
+  return [...members, ...extras];
+}
+
 /** Exclude keys for the add-from-library checklist (`type:name` and `type:id`). */
 export function compositionExcludeKeys(
   entries: readonly LibraryResource[],

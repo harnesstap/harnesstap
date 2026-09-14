@@ -88,7 +88,7 @@ describe("plugin composition fields", () => {
   });
 
   test("package detail composition lists plugin members and keeps an add FAB", () => {
-    expect(packagesSource).toContain("filterCompositionMembers");
+    expect(packagesSource).toContain("pluginDetailCompositionEntries");
     expect(packagesSource).toContain("resources={compositionMembers}");
     expect(packagesSource).not.toContain("resources={membership}");
     expect(packagesSource).toContain('data-testid="plugin-composition-fab"');

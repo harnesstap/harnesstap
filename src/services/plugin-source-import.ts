@@ -6,6 +6,7 @@ import { normalizeAgentInput } from "./agent-bridge.js";
 import { collectHookEntries } from "./hook-serialization.js";
 import { scanSkillCommandMetadataResources } from "./skill-command-metadata.js";
 import { listSkillAuxiliaryFiles } from "./skill-auxiliary.js";
+import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import type {
   ResourceCreateInput,
   AgentMetadata,
@@ -772,6 +773,49 @@ function scanAllManifestHooks(
   return resources;
 }
 
+function scanMcpServers(
+  rootPath: string,
+  metadata: {
+    importedAt: string;
+    sourceKind: ImportedSourceKind;
+    sourceLabel: string;
+    pluginName: string;
+    pluginVersion?: string;
+    sourcePluginKind: PluginSourceRootKind;
+  },
+): ResourceInput[] {
+  const resources: ResourceInput[] = [];
+  for (const relative of [".mcp.json", "mcp.json"]) {
+    const mcpPath = join(rootPath, relative);
+    const document = readJson<unknown>(mcpPath);
+    if (document === null) {
+      continue;
+    }
+    const servers = parseMcpServersDocument(document);
+    const provenance = buildProvenance({
+      ...metadata,
+      relativePath: relativePath(rootPath, mcpPath),
+    });
+    for (const [name, serverMetadata] of Object.entries(servers)) {
+      resources.push({
+        type: "mcp_server",
+        name: assertSafeImportedResourceName(name, mcpPath),
+        description: "",
+        content: "",
+        source: provenance.relative_path,
+        metadata: {
+          ...serverMetadata,
+          imported_from: provenance,
+        },
+      });
+    }
+    if (resources.length > 0) {
+      break;
+    }
+  }
+  return resources;
+}
+
 const REPO_MARKETPLACE_MANIFESTS = [
   ".claude-plugin/marketplace.json",
   ".cursor-plugin/marketplace.json",
@@ -882,6 +926,14 @@ function scanPluginRootAt(
       pluginVersion,
       sourcePluginKind,
     }),
+    ...scanMcpServers(rootPath, {
+      importedAt,
+      sourceKind,
+      sourceLabel,
+      pluginName,
+      pluginVersion,
+      sourcePluginKind,
+    }),
   ];
 
   return {
@@ -941,9 +993,7 @@ export async function scanPluginSourceForMerge(
   }
 }
 
-export async function scanPluginSource(
-  sourcePath: string,
-): Promise<PluginSourceScanResult[]> {
+export function scanPluginSourceSync(sourcePath: string): PluginSourceScanResult[] {
   if (existsSync(sourcePath) && isDirectory(sourcePath)) {
     return [scanPluginRoot(sourcePath)];
   }
@@ -968,4 +1018,10 @@ export async function scanPluginSource(
       marketplaceManifestPath: sourcePath,
     });
   });
+}
+
+export async function scanPluginSource(
+  sourcePath: string,
+): Promise<PluginSourceScanResult[]> {
+  return scanPluginSourceSync(sourcePath);
 }

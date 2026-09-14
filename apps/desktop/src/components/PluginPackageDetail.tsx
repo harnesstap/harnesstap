@@ -37,9 +37,9 @@ import {
 import {
   compositionExcludeKeys,
   compositionResourceSelector,
-  filterCompositionMembers,
   isCompositionPluginPackage,
   mergeCompositionMembership,
+  pluginDetailCompositionEntries,
 } from "../lib/composition-membership";
 import { fieldKeyAction } from "../lib/library-field-edit";
 import { validateCutRows } from "../lib/cut-versions-form";
@@ -571,8 +571,13 @@ export function PluginPackageDetail({
   );
 
   const compositionMembers = useMemo(
-    () => filterCompositionMembers(membership, selectedMembershipIds),
-    [membership, selectedMembershipIds],
+    () =>
+      pluginDetailCompositionEntries(
+        membership,
+        selectedMembershipIds,
+        viewDetail?.resources ?? [],
+      ),
+    [membership, selectedMembershipIds, viewDetail],
   );
 
   const compositionAddExcludeKeys = useMemo(

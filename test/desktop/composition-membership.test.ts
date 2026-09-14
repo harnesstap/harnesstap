@@ -5,6 +5,7 @@ import {
   filterCompositionMembers,
   groupCompositionMembership,
   mergeCompositionMembership,
+  pluginDetailCompositionEntries,
 } from "../../apps/desktop/src/lib/composition-membership.ts";
 import type { LibraryPlugin, LibraryResource } from "../../apps/desktop/src/lib/types.ts";
 
@@ -120,5 +121,20 @@ describe("filterCompositionMembers", () => {
     expect(keys.has("skill:ship")).toBe(true);
     expect(keys.has("plugin:superpowers")).toBe(true);
     expect(keys.has("skill:global-only")).toBe(false);
+  });
+});
+
+describe("pluginDetailCompositionEntries", () => {
+  it("keeps plugin attachments that are not in the library catalog", () => {
+    const catalog = mergeCompositionMembership(
+      [resource({ id: "skill-1", type: "skill", name: "ship" })],
+      [],
+    );
+    const members = pluginDetailCompositionEntries(catalog, ["skill-1"], [
+      { id: "skill-1", type: "skill", name: "ship", source: "skills/ship/SKILL.md" },
+      { id: "mcp-1", type: "mcp_server", name: "context7", source: ".mcp.json" },
+    ]);
+    expect(members.map((row) => row.id).sort()).toEqual(["mcp-1", "skill-1"]);
+    expect(members.find((row) => row.id === "mcp-1")?.type).toBe("mcp_server");
   });
 });

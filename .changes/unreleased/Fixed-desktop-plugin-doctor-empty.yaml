@@ -1,0 +1,5 @@
+kind: Fixed
+body: Stop Doctor empty-plugin false positives on upstream packages with on-disk resources (nested plugins/claude layouts and .mcp.json), and hydrate plugin details Composition from that same package tree.
+time: 2026-09-14T07:15:00Z
+custom:
+  Issue: ""
