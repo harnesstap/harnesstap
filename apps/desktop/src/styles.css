@@ -1823,6 +1823,20 @@ button:focus-visible,
   gap: 0.65rem;
 }
 
+.scope-add-modal .dialog-header {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scope-add-modal .dialog-header h2 {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .scope-add-modal-list {
   min-height: 0;
   overflow: auto;
@@ -1830,7 +1844,10 @@ button:focus-visible,
 
 .dialog-header-actions {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
+  flex: 0 0 auto;
   gap: 0.4rem;
 }
 

@@ -115,6 +115,24 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("ScopeAddToProfileModal");
     expect(addModalSource).toContain('label="Create"');
     expect(addModalSource).toContain("Checkbox");
+    expect(addModalSource).toContain("dialog-header-actions");
+    expect(addModalSource).toContain("type={type}");
+    expect(addModalSource).toContain("resource-row-checkbox");
+    expect(addModalSource).not.toMatch(
+      /ResourceRowLeading[\s\S]{0,400}<TypeIcon/,
+    );
+    const headerStart = stylesSource.indexOf("\n.scope-add-modal .dialog-header {");
+    expect(headerStart).toBeGreaterThan(-1);
+    const headerBlock = stylesSource.slice(
+      headerStart,
+      stylesSource.indexOf("}", headerStart) + 1,
+    );
+    expect(headerBlock).toContain("display: flex;");
+    expect(headerBlock).toContain("flex-direction: row;");
+    expect(headerBlock).toContain("align-items: center;");
+    expect(headerBlock).not.toContain("flex-direction: column;");
+    expect(designSource).toContain("checkbox | type icon | name");
+    expect(designSource).toContain("same header row");
     expect(addModalSource).toContain("dialog-actions");
     expect(addModalSource).toContain("selectedCount < 1");
     expect(addModalSource).toMatch(/\n\s*Add\n\s*<\/button>/);
