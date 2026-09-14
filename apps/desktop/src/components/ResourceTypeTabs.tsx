@@ -16,6 +16,8 @@ import {
 import { ChromeTooltip } from "./ChromeTooltip";
 import { TypeIcon } from "./TypeIcon";
 
+export type ResourceTypeTabDensity = "default" | "wide" | "compact";
+
 export interface ResourceTypeTabsProps {
   counts: ReadonlyMap<string, number>;
   value: string | null;
@@ -24,7 +26,10 @@ export interface ResourceTypeTabsProps {
   /** Profile resources omits All; Library / Not staged / compose keep it. */
   includeAll?: boolean;
   emptyMode?: ResourceTypeTabEmptyMode;
+  /** Inventory wide pills. Prefer `density`. */
   wide?: boolean;
+  /** `compact` is Add to profile modal only (single row, icon+count). */
+  density?: ResourceTypeTabDensity;
   /** Not in profile / Inactive attention. Do not pass disk-diff. */
   attention?: ReadonlyMap<string, TypeTabAttention>;
 }
@@ -36,6 +41,31 @@ function TabGlyph({ type }: { type: string }): ReactNode {
   return <TypeIcon type={type} />;
 }
 
+function resolveTabDensity(
+  density: ResourceTypeTabDensity | undefined,
+  wide: boolean,
+): ResourceTypeTabDensity {
+  if (density) {
+    return density;
+  }
+  return wide ? "wide" : "default";
+}
+
+function densityClassName(density: ResourceTypeTabDensity): string {
+  switch (density) {
+    case "default":
+      return "";
+    case "wide":
+      return "resource-type-tabs-wide";
+    case "compact":
+      return "resource-type-tabs-compact";
+    default: {
+      const neverDensity: never = density;
+      return neverDensity;
+    }
+  }
+}
+
 export function ResourceTypeTabs({
   counts,
   value,
@@ -44,12 +74,14 @@ export function ResourceTypeTabs({
   includeAll = true,
   emptyMode = "hide",
   wide = false,
+  density,
   attention,
 }: ResourceTypeTabsProps): ReactNode {
   const labelId = useId();
   const tabOptions = { includeAll, emptyMode };
   const tabs = visibleResourceTypeTabs(counts, tabOptions);
   const resolved = resolveResourceTypeTab(value, counts, tabOptions);
+  const resolvedDensity = resolveTabDensity(density, wide);
   const toggleValue =
     resolved
     ?? (includeAll && tabs.includes(ALL_RESOURCE_TYPE_TAB)
@@ -61,9 +93,10 @@ export function ResourceTypeTabs({
   }
 
   return (
-    <div className={["resource-type-tabs", wide ? "resource-type-tabs-wide" : ""]
-      .filter(Boolean)
-      .join(" ")}
+    <div
+      className={["resource-type-tabs", densityClassName(resolvedDensity)]
+        .filter(Boolean)
+        .join(" ")}
     >
       <span className="sr-only" id={labelId}>
         Resource type
@@ -93,6 +126,7 @@ export function ResourceTypeTabs({
           const itemDisabled = disabled || empty;
           const review = empty ? null : typeTabAttentionTooltip(attention?.get(type));
           const ariaLabel = review ? `${caption}. ${review}` : caption;
+          const compact = resolvedDensity === "compact";
           const face = (
             <>
               <span className="resource-type-tab-face">
@@ -105,7 +139,9 @@ export function ResourceTypeTabs({
               <span className="resource-type-tab-label">{label}</span>
             </>
           );
-          const tooltip = review ?? (empty ? caption : null);
+          const tooltip = compact
+            ? ariaLabel
+            : review ?? (empty ? caption : null);
           const inner = tooltip ? (
             <ChromeTooltip content={tooltip} side="top">
               <span

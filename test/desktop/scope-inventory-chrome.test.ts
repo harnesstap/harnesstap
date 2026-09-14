@@ -133,6 +133,10 @@ describe("Global/Project scope inventory chrome", () => {
     expect(headerBlock).not.toContain("flex-direction: column;");
     expect(designSource).toContain("checkbox | type icon | name");
     expect(designSource).toContain("same header row");
+    expect(addModalSource).toContain('density="compact"');
+    expect(addModalSource).not.toContain("wide");
+    expect(liveStateSource).toMatch(/scope-inventory-pane[\s\S]*\bwide\b/);
+    expect(designSource).toContain("density=\"compact\"");
     expect(addModalSource).toContain("dialog-actions");
     expect(addModalSource).toContain("selectedCount < 1");
     expect(addModalSource).toMatch(/\n\s*Add\n\s*<\/button>/);
