@@ -115,33 +115,32 @@ function walkNamedPluginInstallRoot(
   if (depth > PLUGIN_ROOT_WALK_MAX_DEPTH || !isDirectory(dir)) {
     return undefined;
   }
-  let entries;
   try {
-    entries = readdirSync(dir, { withFileTypes: true });
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || PLUGIN_ROOT_WALK_SKIP.has(entry.name)) {
+        continue;
+      }
+      const child = join(dir, entry.name);
+      if (entry.name === pluginName && isPluginInstallRoot(child)) {
+        return child;
+      }
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || PLUGIN_ROOT_WALK_SKIP.has(entry.name)) {
+        continue;
+      }
+      const found = walkNamedPluginInstallRoot(
+        join(dir, entry.name),
+        pluginName,
+        depth + 1,
+      );
+      if (found) {
+        return found;
+      }
+    }
   } catch {
     return undefined;
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory() || PLUGIN_ROOT_WALK_SKIP.has(entry.name)) {
-      continue;
-    }
-    const child = join(dir, entry.name);
-    if (entry.name === pluginName && isPluginInstallRoot(child)) {
-      return child;
-    }
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory() || PLUGIN_ROOT_WALK_SKIP.has(entry.name)) {
-      continue;
-    }
-    const found = walkNamedPluginInstallRoot(
-      join(dir, entry.name),
-      pluginName,
-      depth + 1,
-    );
-    if (found) {
-      return found;
-    }
   }
   return undefined;
 }
