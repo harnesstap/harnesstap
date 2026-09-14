@@ -32,7 +32,6 @@ import {
   ResourceRowLeading,
   ResourceRowRoot,
 } from "./ui/resource-row";
-import { TypeIcon } from "./TypeIcon";
 
 const ICON_SIZE = 14;
 
@@ -231,7 +230,7 @@ export function ScopeAddToProfileModal({
           value={resolvedType}
           includeAll
           emptyMode="disable"
-          wide
+          density="compact"
           disabled={controlsDisabled || loading}
           onChange={setTypeTab}
         />
@@ -257,25 +256,27 @@ export function ScopeAddToProfileModal({
                   testId={`scope-add-row-${entry.name}`}
                 >
                   <ResourceRowLeading>
-                    <Checkbox
-                      id={checkboxId}
-                      checked={checked}
-                      disabled={controlsDisabled}
-                      onCheckedChange={() => {
-                        setSelectedIds((current) => {
-                          const next = new Set(current);
-                          if (next.has(entry.id)) {
-                            next.delete(entry.id);
-                          } else {
-                            next.add(entry.id);
-                          }
-                          return next;
-                        });
-                      }}
-                    />
-                    <TypeIcon type={type} />
+                    <span className="resource-row-checkbox">
+                      <Checkbox
+                        id={checkboxId}
+                        checked={checked}
+                        disabled={controlsDisabled}
+                        onCheckedChange={() => {
+                          setSelectedIds((current) => {
+                            const next = new Set(current);
+                            if (next.has(entry.id)) {
+                              next.delete(entry.id);
+                            } else {
+                              next.add(entry.id);
+                            }
+                            return next;
+                          });
+                        }}
+                      />
+                    </span>
                   </ResourceRowLeading>
                   <ResourceRowIdentity
+                    type={type}
                     label={resourceDisplayName(entry)}
                     htmlFor={checkboxId}
                   />

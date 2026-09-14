@@ -1,4 +1,10 @@
 import { filterContentsResourcesBySearch } from "./resource-search";
+import {
+  ALL_RESOURCE_TYPE_TAB,
+  countResourceTypeTabs,
+  foldResourceTypeTab,
+  type TypeTabAttention,
+} from "./resource-type-tabs";
 import type { ProfileResourceListRow } from "./contents-diff";
 import type {
   DriftFileChange,
@@ -184,7 +190,9 @@ export function filterProfileInventoryItems(
   typeTab: string | null,
 ): ProfileInventoryItem[] {
   const typed =
-    typeTab === null ? items : items.filter((item) => item.type === typeTab);
+    typeTab === null
+      ? items
+      : items.filter((item) => foldResourceTypeTab(item.type) === typeTab);
   if (!search.trim()) {
     return typed;
   }
@@ -195,4 +203,37 @@ export function filterProfileInventoryItems(
     ).map((resource) => membershipKey(resource)),
   );
   return typed.filter((item) => matched.has(membershipKey(item.resource)));
+}
+
+/** Type-tab counts for the same item set as the inventory list (search-scoped). */
+export function countInventoryTypeTabs(
+  items: ProfileInventoryItem[],
+): Map<string, number> {
+  return countResourceTypeTabs(items.map((item) => item.type));
+}
+
+export function collectTypeTabAttention(
+  items: ProfileInventoryItem[],
+): Map<string, TypeTabAttention> {
+  const byType = new Map<string, TypeTabAttention>();
+  const all: TypeTabAttention = { toAdd: 0, inactive: 0 };
+  for (const item of items) {
+    if (item.section !== "not_in_profile" && item.section !== "inactive") {
+      continue;
+    }
+    const type = foldResourceTypeTab(item.type);
+    const bucket = byType.get(type) ?? { toAdd: 0, inactive: 0 };
+    if (item.section === "not_in_profile") {
+      bucket.toAdd += 1;
+      all.toAdd += 1;
+    } else {
+      bucket.inactive += 1;
+      all.inactive += 1;
+    }
+    byType.set(type, bucket);
+  }
+  if (all.toAdd > 0 || all.inactive > 0) {
+    byType.set(ALL_RESOURCE_TYPE_TAB, all);
+  }
+  return byType;
 }

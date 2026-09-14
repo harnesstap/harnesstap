@@ -35,6 +35,30 @@ export function resourceTypeTabGlyph(type: string): ResourceTypeTabGlyph {
 
 const KNOWN_TAB_TYPES = new Set<string>(RESOURCE_TYPE_TAB_ORDER);
 
+/** Pin rows share the Plugins tab. */
+const RESOURCE_TYPE_TAB_FOLD: Record<string, string> = {
+  plugin_pin: "plugin",
+};
+
+/**
+ * Alias / junk tabs. Hide entirely when empty, even if `emptyMode` is disable.
+ * Real resource types stay visible and disabled on Global/Project inventory.
+ */
+const RESOURCE_TYPE_TAB_HIDE_WHEN_EMPTY = new Set(["plugin_ref"]);
+
+/** Fold pin (and other aliases) into the tab they belong to. */
+export function foldResourceTypeTab(type: string): string {
+  return RESOURCE_TYPE_TAB_FOLD[type] ?? type;
+}
+
+function tabHasItems(type: string, counts: ReadonlyMap<string, number>): boolean {
+  return (counts.get(type) ?? 0) > 0;
+}
+
+function keepEmptyDisabledTab(type: string): boolean {
+  return KNOWN_TAB_TYPES.has(type) && !RESOURCE_TYPE_TAB_HIDE_WHEN_EMPTY.has(type);
+}
+
 /** Short human labels for type tabs (Desktop voice). */
 export function resourceTypeTabLabel(type: string): string {
   switch (type) {
@@ -76,7 +100,8 @@ export function countResourceTypeTabs(
 ): Map<string, number> {
   const counts = new Map<string, number>();
   for (const type of types) {
-    counts.set(type, (counts.get(type) ?? 0) + 1);
+    const folded = foldResourceTypeTab(type);
+    counts.set(folded, (counts.get(folded) ?? 0) + 1);
   }
   return counts;
 }
@@ -101,17 +126,20 @@ function emptyMode(options?: ResourceTypeTabOptions): ResourceTypeTabEmptyMode {
   return options?.emptyMode ?? "hide";
 }
 
+function extraPresentTabs(counts: ReadonlyMap<string, number>): string[] {
+  return [...counts.keys()]
+    .filter((type) => !KNOWN_TAB_TYPES.has(type) && tabHasItems(type, counts))
+    .sort((left, right) => left.localeCompare(right));
+}
+
 function presentResourceTypeTabs(counts: ReadonlyMap<string, number>): string[] {
   const present: string[] = [];
   for (const type of RESOURCE_TYPE_TAB_ORDER) {
-    if ((counts.get(type) ?? 0) > 0) {
+    if (tabHasItems(type, counts)) {
       present.push(type);
     }
   }
-  const extras = [...counts.keys()]
-    .filter((type) => !KNOWN_TAB_TYPES.has(type) && (counts.get(type) ?? 0) > 0)
-    .sort((left, right) => left.localeCompare(right));
-  present.push(...extras);
+  present.push(...extraPresentTabs(counts));
   return present;
 }
 
@@ -125,10 +153,12 @@ export function visibleResourceTypeTabs(
   options?: ResourceTypeTabOptions,
 ): string[] {
   if (emptyMode(options) === "disable") {
-    const extras = [...counts.keys()]
-      .filter((type) => !KNOWN_TAB_TYPES.has(type) && (counts.get(type) ?? 0) > 0)
-      .sort((left, right) => left.localeCompare(right));
-    const tabs = [...RESOURCE_TYPE_TAB_ORDER, ...extras];
+    const tabs = [
+      ...RESOURCE_TYPE_TAB_ORDER.filter(
+        (type) => tabHasItems(type, counts) || keepEmptyDisabledTab(type),
+      ),
+      ...extraPresentTabs(counts),
+    ];
     if (includeAllTab(options)) {
       return [ALL_RESOURCE_TYPE_TAB, ...tabs];
     }
@@ -248,4 +278,29 @@ export function resourceTypeTabTooltip(
     return resourceTypeTabLabel(type);
   }
   return `${count} ${resourceTypeTabUnit(type, count)}`;
+}
+
+export interface TypeTabAttention {
+  toAdd: number;
+  inactive: number;
+}
+
+/** `N to add · M inactive` when those buckets have rows. */
+export function typeTabAttentionTooltip(
+  attention: TypeTabAttention | undefined,
+): string | null {
+  if (!attention) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (attention.toAdd > 0) {
+    parts.push(`${attention.toAdd} to add`);
+  }
+  if (attention.inactive > 0) {
+    parts.push(`${attention.inactive} inactive`);
+  }
+  if (parts.length === 0) {
+    return null;
+  }
+  return parts.join(" · ");
 }

@@ -67,7 +67,6 @@ import {
 } from "../lib/resource-search";
 import {
   ALL_RESOURCE_TYPE_TAB,
-  countResourceTypeTabs,
   resolveResourceTypeTab,
   resourceTypeTabLabel,
   resourceTypeTabTooltip,
@@ -100,6 +99,8 @@ import {
 } from "./ui/resource-row";
 import {
   PROFILE_INVENTORY_SECTION_ORDER,
+  collectTypeTabAttention,
+  countInventoryTypeTabs,
   filterProfileInventoryItems,
   partitionProfileInventory,
   type ProfileInventoryItem,
@@ -894,19 +895,21 @@ function InventoryRow({
           : "inventory-row"
       }
     >
-      <ResourceRowLeading>
+      <ResourceRowLeading className="inventory-row-lead">
         <ChromeTooltip content={statusLabel} side="top">
           <span
-            className="inventory-status-glyph"
+            className="inventory-row-icon inventory-status-glyph"
             aria-label={statusLabel}
             role="img"
           >
             {inventorySectionGlyph(item.section)}
           </span>
         </ChromeTooltip>
+        <span className="inventory-row-icon" aria-hidden>
+          <TypeIcon type={item.type} />
+        </span>
       </ResourceRowLeading>
       <ResourceRowIdentity
-        type={item.type}
         label={item.label}
         onOpen={() => onOpenResource(resourceDetailTarget(item.resource))}
       >
@@ -924,16 +927,22 @@ function InventoryRow({
             icon={<FileDiff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
           />
         ) : null}
-        {editMode && inProfile && onRemoveFromProfile ? (
-          <IconActionButton
-            className="profile-resource-remove-btn"
-            label={`Remove ${item.label} from ${profileName}`}
-            title="Remove from profile"
-            busy={removing}
-            spinnerSize={ICON_SIZE}
-            onClick={onRemoveFromProfile}
-            icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-          />
+        {inProfile ? (
+          <span className="inventory-row-remove-slot">
+            {editMode && onRemoveFromProfile ? (
+              <IconActionButton
+                className="profile-resource-remove-btn"
+                label={`Remove ${item.label} from ${profileName}`}
+                title="Remove from profile"
+                busy={removing}
+                spinnerSize={ICON_SIZE}
+                onClick={onRemoveFromProfile}
+                icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
+            ) : (
+              <span className="inventory-row-remove-placeholder" aria-hidden />
+            )}
+          </span>
         ) : null}
         {item.section === "not_in_profile" && onAdd ? (
           <IconActionButton
@@ -1781,14 +1790,22 @@ export function LiveStatePanel({
     ],
     [inventoryParts],
   );
-  const inventoryTypeCounts = useMemo(
-    () => countResourceTypeTabs(inventoryItems.map((item) => item.type)),
-    [inventoryItems],
-  );
   const inventoryTabOptions = {
     includeAll: true,
     emptyMode: "disable" as const,
   };
+  const searchFilteredInventory = useMemo(
+    () => filterProfileInventoryItems(inventoryItems, inventorySearch, null),
+    [inventoryItems, inventorySearch],
+  );
+  const inventoryTypeCounts = useMemo(
+    () => countInventoryTypeTabs(searchFilteredInventory),
+    [searchFilteredInventory],
+  );
+  const inventoryAttention = useMemo(
+    () => collectTypeTabAttention(searchFilteredInventory),
+    [searchFilteredInventory],
+  );
   const inventoryTypeTab = resolveResourceTypeTab(
     inventoryType,
     inventoryTypeCounts,
@@ -1797,11 +1814,11 @@ export function LiveStatePanel({
   const filteredInventory = useMemo(
     () =>
       filterProfileInventoryItems(
-        inventoryItems,
-        inventorySearch,
+        searchFilteredInventory,
+        "",
         inventoryTypeTab,
       ),
-    [inventoryItems, inventorySearch, inventoryTypeTab],
+    [inventoryTypeTab, searchFilteredInventory],
   );
   const filteredBySection = useMemo(() => {
     return {
@@ -2161,6 +2178,7 @@ export function LiveStatePanel({
         )
       ) : (
         <div className="scope-inventory-pane">
+          <div className="scope-inventory-scroll">
           {!activeProfile && !selectedProfile ? (
             <p className="muted">No profile selected.</p>
           ) : resourceStack.kind === "loading" ? (
@@ -2181,6 +2199,7 @@ export function LiveStatePanel({
                 emptyMode="disable"
                 wide
                 counts={inventoryTypeCounts}
+                attention={inventoryAttention}
                 value={inventoryTypeTab}
                 onChange={(next) => {
                   setInventoryType(next);
@@ -2328,6 +2347,7 @@ export function LiveStatePanel({
               </div>
             </>
           )}
+          </div>
           <button
             type="button"
             className="scope-inventory-fab icon-action primary"

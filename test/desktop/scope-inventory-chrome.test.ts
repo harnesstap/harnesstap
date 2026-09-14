@@ -18,6 +18,14 @@ const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",
 );
+const stylesSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
+  "utf8",
+);
+const tabsSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/ResourceTypeTabs.tsx"),
+  "utf8",
+);
 
 describe("Global/Project scope inventory chrome", () => {
   it("kills the two-column cockpit and keeps rail Apply as the sole Apply CTA", () => {
@@ -51,9 +59,22 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain('label="Filter resources"');
     expect(liveStateSource).toContain("emptyMode=\"disable\"");
     expect(liveStateSource).toContain("includeAll={true}");
+    expect(liveStateSource).toContain("attention={inventoryAttention}");
+    expect(liveStateSource).toContain("collectTypeTabAttention");
+    expect(liveStateSource).toContain("searchFilteredInventory");
+    expect(liveStateSource).toContain("countInventoryTypeTabs(searchFilteredInventory)");
+    expect(liveStateSource).not.toContain("countInventoryTypeTabs(inventoryItems)");
+    expect(liveStateSource).not.toContain("countResourceTypeTabs(inventoryItems");
+    expect(tabsSource).toContain("resource-type-tab-attention");
+    expect(stylesSource).toContain(".resource-type-tab-attention");
+    expect(stylesSource).not.toContain("resource-type-tab-attention-fill");
     expect(liveStateSource).not.toContain('aria-label="Profile resources"');
     expect(liveStateSource).not.toContain('aria-label="Not staged"');
-    expect(designSource).toContain("No <type> found");
+    expect(designSource).toContain("filters type-tab counts, attention dots, and every section");
+    expect(designSource).toContain("Plugin pins share the **Plugins** tab");
+    expect(designSource).toContain("Plugin refs hide when empty");
+    expect(designSource).toContain("amber attention dot");
+    expect(designSource).toContain("N to add · M inactive");
   });
 
   it("renders Not in profile, Inactive, then Active with filtered section actions", () => {
@@ -83,6 +104,25 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("editMode");
     expect(liveStateSource).toContain("profile-resource-remove-btn");
     expect(liveStateSource).toContain("Remove from profile");
+    expect(liveStateSource).toContain("inventory-row-lead");
+    expect(liveStateSource).toContain("inventory-row-remove-slot");
+    expect(liveStateSource).toContain("inventory-row-remove-placeholder");
+    expect(liveStateSource).toContain("inventory-row-icon");
+    expect(stylesSource).toContain(".inventory-row-lead");
+    expect(stylesSource).toContain(".inventory-row-remove-slot");
+    expect(stylesSource).toContain("width: var(--icon-action-size)");
+    const leadStart = stylesSource.indexOf("\n.inventory-row-lead {");
+    expect(leadStart).toBeGreaterThan(-1);
+    const leadBlock = stylesSource.slice(
+      leadStart,
+      stylesSource.indexOf("}", leadStart) + 1,
+    );
+    expect(leadBlock).toContain("display: inline-flex;");
+    expect(leadBlock).toContain("align-items: center;");
+    expect(leadBlock).not.toContain("flex-direction: column;");
+    expect(stylesSource).toContain(".resource-row.inventory-row");
+    expect(designSource).toContain("trash-width trailing slot");
+    expect(designSource).toContain("status · type icon · name");
     expect(appSource).not.toMatch(
       /status-edit-action[\s\S]{0,200}openEditProfile\(selectedProfile\)/,
     );
@@ -94,6 +134,28 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("ScopeAddToProfileModal");
     expect(addModalSource).toContain('label="Create"');
     expect(addModalSource).toContain("Checkbox");
+    expect(addModalSource).toContain("dialog-header-actions");
+    expect(addModalSource).toContain("type={type}");
+    expect(addModalSource).toContain("resource-row-checkbox");
+    expect(addModalSource).not.toMatch(
+      /ResourceRowLeading[\s\S]{0,400}<TypeIcon/,
+    );
+    const headerStart = stylesSource.indexOf("\n.scope-add-modal .dialog-header {");
+    expect(headerStart).toBeGreaterThan(-1);
+    const headerBlock = stylesSource.slice(
+      headerStart,
+      stylesSource.indexOf("}", headerStart) + 1,
+    );
+    expect(headerBlock).toContain("display: flex;");
+    expect(headerBlock).toContain("flex-direction: row;");
+    expect(headerBlock).toContain("align-items: center;");
+    expect(headerBlock).not.toContain("flex-direction: column;");
+    expect(designSource).toContain("checkbox | type icon | name");
+    expect(designSource).toContain("same header row");
+    expect(addModalSource).toContain('density="compact"');
+    expect(addModalSource).not.toContain("wide");
+    expect(liveStateSource).toMatch(/scope-inventory-pane[\s\S]*\bwide\b/);
+    expect(designSource).toContain("density=\"compact\"");
     expect(addModalSource).toContain("dialog-actions");
     expect(addModalSource).toContain("selectedCount < 1");
     expect(addModalSource).toMatch(/\n\s*Add\n\s*<\/button>/);
@@ -101,5 +163,17 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("ResourceTypeModal");
     expect(liveStateSource).toContain("ResourceCreatePanel");
     expect(designSource).toContain("Library create flow");
+    expect(liveStateSource).toContain("scope-inventory-scroll");
+    const fabStart = stylesSource.indexOf("\n.scope-inventory-fab {");
+    expect(fabStart).toBeGreaterThan(-1);
+    const fabBlock = stylesSource.slice(
+      fabStart,
+      stylesSource.indexOf("}", fabStart) + 1,
+    );
+    expect(fabBlock).toContain("position: absolute;");
+    expect(fabBlock).toContain("right: 0.75rem;");
+    expect(fabBlock).toContain("bottom: 0.75rem;");
+    expect(fabBlock).not.toContain("position: sticky;");
+    expect(designSource).toContain("over scrolling content");
   });
 });
