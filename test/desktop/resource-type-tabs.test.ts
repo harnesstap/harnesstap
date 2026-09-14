@@ -166,6 +166,8 @@ describe("resourceTypeTabEmptyDisabled", () => {
     expect(resourceTypeTabItemCount("skill", counts)).toBe(2);
   });
 });
+
+describe("typeTabAttentionTooltip", () => {
   it("prefers N to add · M inactive", () => {
     expect(typeTabAttentionTooltip({ toAdd: 2, inactive: 3 })).toBe("2 to add · 3 inactive");
     expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 0 })).toBe("1 to add");
