@@ -100,6 +100,7 @@ import {
 } from "./ui/resource-row";
 import {
   PROFILE_INVENTORY_SECTION_ORDER,
+  collectTypeTabAttention,
   filterProfileInventoryItems,
   partitionProfileInventory,
   type ProfileInventoryItem,
@@ -1781,14 +1782,22 @@ export function LiveStatePanel({
     ],
     [inventoryParts],
   );
-  const inventoryTypeCounts = useMemo(
-    () => countResourceTypeTabs(inventoryItems.map((item) => item.type)),
-    [inventoryItems],
-  );
   const inventoryTabOptions = {
     includeAll: true,
     emptyMode: "disable" as const,
   };
+  const searchFilteredInventory = useMemo(
+    () => filterProfileInventoryItems(inventoryItems, inventorySearch, null),
+    [inventoryItems, inventorySearch],
+  );
+  const inventoryTypeCounts = useMemo(
+    () => countResourceTypeTabs(searchFilteredInventory.map((item) => item.type)),
+    [searchFilteredInventory],
+  );
+  const inventoryAttention = useMemo(
+    () => collectTypeTabAttention(searchFilteredInventory),
+    [searchFilteredInventory],
+  );
   const inventoryTypeTab = resolveResourceTypeTab(
     inventoryType,
     inventoryTypeCounts,
@@ -1797,11 +1806,11 @@ export function LiveStatePanel({
   const filteredInventory = useMemo(
     () =>
       filterProfileInventoryItems(
-        inventoryItems,
-        inventorySearch,
+        searchFilteredInventory,
+        "",
         inventoryTypeTab,
       ),
-    [inventoryItems, inventorySearch, inventoryTypeTab],
+    [inventoryTypeTab, searchFilteredInventory],
   );
   const filteredBySection = useMemo(() => {
     return {
@@ -2182,6 +2191,7 @@ export function LiveStatePanel({
                 emptyMode="disable"
                 wide
                 counts={inventoryTypeCounts}
+                attention={inventoryAttention}
                 value={inventoryTypeTab}
                 onChange={(next) => {
                   setInventoryType(next);

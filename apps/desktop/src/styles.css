@@ -1068,6 +1068,27 @@ button:focus-visible,
   white-space: nowrap;
 }
 
+.resource-type-tab-host {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.resource-type-tab-attention {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--yellow);
+  box-shadow: 0 0 0 1px var(--bg);
+}
+
+.resource-type-tab[data-state="on"] .resource-type-tab-attention {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 .resource-type-tab-face {
   display: inline-flex;
   align-items: center;

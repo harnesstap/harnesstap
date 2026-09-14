@@ -9,6 +9,7 @@ import {
   resourceTypeTabLabel,
   resourceTypeTabPillsText,
   resourceTypeTabTooltip,
+  typeTabAttentionTooltip,
   visibleResourceTypeTabs,
 } from "../../apps/desktop/src/lib/resource-type-tabs.ts";
 import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
@@ -149,6 +150,16 @@ describe("resource type tab aria-labels", () => {
     expect(resourceTypeTabTooltip("skill", counts, { emptyMode: "disable" })).toBe(
       "1 skill",
     );
+  });
+});
+
+describe("typeTabAttentionTooltip", () => {
+  it("prefers N to add · M inactive", () => {
+    expect(typeTabAttentionTooltip({ toAdd: 2, inactive: 3 })).toBe("2 to add · 3 inactive");
+    expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 0 })).toBe("1 to add");
+    expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 4 })).toBe("4 inactive");
+    expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 0 })).toBeNull();
+    expect(typeTabAttentionTooltip(undefined)).toBeNull();
   });
 });
 
