@@ -1041,6 +1041,22 @@ button:focus-visible,
   cursor: not-allowed;
 }
 
+.resource-type-tab:disabled .resource-type-tab-disabled-host {
+  pointer-events: auto;
+}
+
+.resource-type-tabs-wide .resource-type-tab {
+  padding: 0 0.9rem;
+  min-height: 36px;
+  gap: 0.4rem;
+}
+
+.resource-type-tab-disabled-host {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .resource-type-tab-label {
   white-space: nowrap;
 }
@@ -1700,6 +1716,58 @@ button:focus-visible,
 .live-toolbar-remove {
   margin-left: auto;
   flex-shrink: 0;
+}
+
+.scope-inventory-pane {
+  position: relative;
+  min-width: 0;
+}
+
+.scope-inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.scope-inventory-fab {
+  position: sticky;
+  bottom: 0.75rem;
+  margin-left: auto;
+  display: flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  border-radius: 999px;
+}
+
+.inventory-row-drifted {
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
+  box-shadow: inset 3px 0 0 var(--yellow);
+}
+
+.scope-add-modal {
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: min(36rem, calc(100vh - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.scope-add-modal-list {
+  min-height: 0;
+  overflow: auto;
+}
+
+.dialog-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.status-edit-action[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-2));
+  color: var(--fg);
 }
 
 .profile-remove-action {

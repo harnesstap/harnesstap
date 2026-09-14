@@ -8,12 +8,12 @@ import {
   ExternalLink,
   FolderCog,
   Info,
-  Layers,
   ListPlus,
   Minus,
   PackagePlus,
   Pencil,
   Plus,
+  Power,
   RefreshCw,
   Trash2,
   UnfoldVertical,
@@ -28,7 +28,6 @@ import {
   diffProfileContents,
   fileChangeAction,
   filterFileChangeGroups,
-  filterProfileResourceList,
   flattenProfileResourceList,
   groupFileChangesByResource,
   groupInstallGaps,
@@ -49,7 +48,6 @@ import {
 } from "../lib/contents-diff";
 import { fileChangeRowActions } from "../lib/file-change-actions";
 import {
-  profileStackHasList,
   resolveProfileResourceStack,
 } from "../lib/profile-resource-stack";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
@@ -60,7 +58,6 @@ import {
   hoverModelFromProfileResource,
 } from "../lib/resource-hover";
 import {
-  filterContentsResourcesBySearch,
   LIST_PAGE_SIZE,
   nextVisibleCount,
 } from "../lib/resource-search";
@@ -97,11 +94,20 @@ import {
   ResourceRowRoot,
   ResourceRowTrailing,
 } from "./ui/resource-row";
+import {
+  PROFILE_INVENTORY_SECTION_ORDER,
+  filterProfileInventoryItems,
+  partitionProfileInventory,
+  type ProfileInventoryItem,
+} from "../lib/profile-inventory";
+import { ScopeAddToProfileModal } from "./ScopeAddToProfileModal";
+import { ResourceTypeModal } from "./ResourceTypeModal";
+import { ResourceCreatePanel } from "./ResourceCreatePanel";
+import type { CreateResourceType } from "../lib/resource-create-schema";
+import { fetchLibraryResources } from "../lib/agent-client";
+import type { LibraryResource } from "../lib/types";
 
 const ICON_SIZE = 14;
-const NOT_STAGED_HELP =
-  "On disk, not in this profile. Live copies that differ show here too.";
-const NOT_STAGED_SUBTITLE = "On disk, not in this profile";
 const STACK_CHANGES_SUBTITLE = "What apply would add or remove.";
 const INSTALL_GAPS_HELP = "Profile items that do not match the live install.";
 const INSTALL_GAPS_SUBTITLE = "Profile items not matching the live install.";
@@ -243,34 +249,6 @@ function ProfileResourceActions({
         />
       ) : null}
     </span>
-  );
-}
-
-type ProfileStackEmptyStateProps = {
-  onEditProfile: () => void;
-};
-
-function ProfileStackEmptyState({
-  onEditProfile,
-}: ProfileStackEmptyStateProps) {
-  return (
-    <div
-      className="empty-state profile-stack-empty"
-      role="status"
-      aria-label="No resources yet"
-    >
-      <div className="profile-stack-empty-heading">
-        <Layers size={ICON_SIZE} className="profile-stack-empty-icon" aria-hidden />
-        <h2>No resources yet</h2>
-      </div>
-      <p className="muted">Add plugins or resources by editing this profile.</p>
-      <IconActionButton
-        primary
-        label="Edit profile"
-        onClick={onEditProfile}
-        icon={<Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-      />
-    </div>
   );
 }
 
@@ -828,6 +806,119 @@ function ProfileResourceListItem({
   }
 }
 
+void UntrackedResourceRow;
+void ProfileResourceListItem;
+
+function inventorySectionTitle(section: ProfileInventoryItem["section"]): string {
+  switch (section) {
+    case "not_in_profile":
+      return "Not in profile";
+    case "inactive":
+      return "Inactive";
+    case "active":
+      return "Active";
+    default: {
+      const neverSection: never = section;
+      return neverSection;
+    }
+  }
+}
+
+function InventoryRow({
+  item,
+  editMode,
+  profileName,
+  adding,
+  removing,
+  onAdd,
+  onActivate,
+  onOpenResource,
+  onDiff,
+  onRemoveFromProfile,
+}: {
+  item: ProfileInventoryItem;
+  editMode: boolean;
+  profileName: string | null;
+  adding: boolean;
+  removing: boolean;
+  onAdd?: () => void;
+  onActivate?: () => void;
+  onOpenResource: (target: ResourceDetailTarget) => void;
+  onDiff?: () => void;
+  onRemoveFromProfile?: () => void;
+}) {
+  const inProfile = item.section !== "not_in_profile";
+  return (
+    <ResourceRowRoot
+      hover={hoverModelFromProfileResource(item.resource)}
+      testId={`resource-row-${item.resource.name}`}
+      className={
+        item.section === "active" && item.drifted
+          ? "inventory-row inventory-row-drifted"
+          : "inventory-row"
+      }
+    >
+      <ResourceRowLeading>
+        <TypeIcon type={item.type} />
+      </ResourceRowLeading>
+      <ResourceRowIdentity
+        type={item.type}
+        label={item.label}
+        onOpen={() => onOpenResource(resourceDetailTarget(item.resource))}
+      >
+        {item.pluginName ? (
+          <ResourceRowDescription>in {item.pluginName}</ResourceRowDescription>
+        ) : null}
+      </ResourceRowIdentity>
+      <ResourceRowTrailing>
+        {item.drifted && onDiff ? (
+          <IconActionButton
+            className="file-change-diff-btn"
+            label={`Show changes for ${item.label}`}
+            title="Show changes"
+            onClick={onDiff}
+            icon={<Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
+        {editMode && inProfile && onRemoveFromProfile ? (
+          <IconActionButton
+            className="profile-resource-remove-btn"
+            label={`Remove ${item.label} from ${profileName}`}
+            title="Remove from profile"
+            busy={removing}
+            spinnerSize={ICON_SIZE}
+            onClick={onRemoveFromProfile}
+            icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
+        {!editMode && item.section === "not_in_profile" && onAdd ? (
+          <IconActionButton
+            className="untracked-add-btn"
+            showLabel
+            busy={adding}
+            spinnerSize={ICON_SIZE}
+            label="Add"
+            title={`Add ${item.label} to this profile`}
+            onClick={onAdd}
+            icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
+        {!editMode && item.section === "inactive" && onActivate ? (
+          <IconActionButton
+            showLabel
+            busy={adding}
+            spinnerSize={ICON_SIZE}
+            label="Activate"
+            title={`Activate ${item.label}`}
+            onClick={onActivate}
+            icon={<Power size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
+      </ResourceRowTrailing>
+    </ResourceRowRoot>
+  );
+}
+
 function dedupeContentsResources(
   resources: ProfileContentsResource[],
 ): ProfileContentsResource[] {
@@ -843,6 +934,8 @@ function dedupeContentsResources(
   }
   return deduped;
 }
+
+void dedupeContentsResources;
 
 function FileChangeRowActions({
   change,
@@ -1423,9 +1516,19 @@ export interface LiveStatePanelProps {
   onCreateProfileFromProject?: () => void;
   onEditProfile?: () => void;
   onAddResource?: (resource: ProfileContentsResource) => Promise<void>;
-  onAddAllResources?: () => Promise<void>;
+  onAddAllResources?: (resources: ProfileContentsResource[]) => Promise<void>;
+  onActivateResources?: (resources: ProfileContentsResource[]) => Promise<void>;
+  onAttachLibraryItem?: (item: {
+    kind: "plugin" | "resource";
+    id: string;
+    name: string;
+    type: string;
+  }) => Promise<void>;
   addingResourceKey?: string | null;
   addingAllResources?: boolean;
+  activatingResources?: boolean;
+  previewChanges?: boolean;
+  editMode?: boolean;
   /** When the rail already has Re-apply as the accent CTA, demote Add all. */
   railPrimaryIsReapply?: boolean;
   onCommitManagedChanges?: () => Promise<void>;
@@ -1473,12 +1576,16 @@ export function LiveStatePanel({
   onEditProfile,
   onAddResource,
   onAddAllResources,
+  onActivateResources,
+  onAttachLibraryItem,
   addingResourceKey = null,
   addingAllResources = false,
+  activatingResources = false,
+  previewChanges = false,
+  editMode = false,
   railPrimaryIsReapply = false,
   onCommitManagedChanges,
   committingManagedChanges = false,
-  onOpenResourceInEditor,
   onRemoveResourceFromProfile,
   removingResourceKey = null,
   onOpenFileChange,
@@ -1498,16 +1605,13 @@ export function LiveStatePanel({
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
   );
-  const [profileResourceSearch, setProfileResourceSearch] = useState("");
-  const [profileResourceType, setProfileResourceType] = useState<string | null>(
-    null,
-  );
-  const [profileResourceVisible, setProfileResourceVisible] = useState(
-    LIST_PAGE_SIZE,
-  );
-  const [notStagedSearch, setNotStagedSearch] = useState("");
-  const [notStagedType, setNotStagedType] = useState<string | null>(null);
-  const [notStagedVisible, setNotStagedVisible] = useState(LIST_PAGE_SIZE);
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryType, setInventoryType] = useState<string | null>(null);
+  const [inventoryVisible, setInventoryVisible] = useState(LIST_PAGE_SIZE);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createType, setCreateType] = useState<CreateResourceType | null>(null);
+  const [pickerResources, setPickerResources] = useState<LibraryResource[]>([]);
   const openResource = (target: ResourceDetailTarget) => {
     setDetailTarget(target);
   };
@@ -1585,18 +1689,98 @@ export function LiveStatePanel({
     targetContents,
   });
   const enabledSourceContents = resourceStack.contents;
-  const profileStackEmpty =
-    resourceStack.kind !== "loading" && !profileStackHasList(enabledSourceContents);
   const profileResourceRows = useMemo(
     () =>
-      filterProfileResourceList(
-        flattenProfileResourceList(enabledSourceContents, {
-          selectedProfile,
-        }),
-        profileResourceSearch,
-      ),
-    [enabledSourceContents, profileResourceSearch, selectedProfile],
+      flattenProfileResourceList(enabledSourceContents, {
+        selectedProfile,
+      }),
+    [enabledSourceContents, selectedProfile],
   );
+  const liveResourceRows = useMemo(
+    () =>
+      flattenProfileResourceList(liveContents ?? null, {
+        selectedProfile,
+      }),
+    [liveContents, selectedProfile],
+  );
+  const notStagedResources =
+    applyPreview?.not_staged
+    ?? applyPreview?.untracked_resources
+    ?? [];
+  const inventoryParts = useMemo(
+    () =>
+      partitionProfileInventory({
+        profileRows: profileResourceRows,
+        liveRows: liveResourceRows,
+        notStaged: notStagedResources,
+        fileChanges: applyPreview?.files?.changes ?? [],
+      }),
+    [
+      applyPreview?.files?.changes,
+      liveResourceRows,
+      notStagedResources,
+      profileResourceRows,
+    ],
+  );
+  const inventoryItems = useMemo(
+    () => [
+      ...inventoryParts.notInProfile,
+      ...inventoryParts.inactive,
+      ...inventoryParts.active,
+    ],
+    [inventoryParts],
+  );
+  const inventoryTypeCounts = useMemo(
+    () => countResourceTypeTabs(inventoryItems.map((item) => item.type)),
+    [inventoryItems],
+  );
+  const inventoryTabOptions = {
+    includeAll: true,
+    emptyMode: "disable" as const,
+  };
+  const inventoryTypeTab = resolveResourceTypeTab(
+    inventoryType,
+    inventoryTypeCounts,
+    inventoryTabOptions,
+  );
+  const filteredInventory = useMemo(
+    () =>
+      filterProfileInventoryItems(
+        inventoryItems,
+        inventorySearch,
+        inventoryTypeTab,
+      ),
+    [inventoryItems, inventorySearch, inventoryTypeTab],
+  );
+  const filteredBySection = useMemo(() => {
+    return {
+      not_in_profile: filteredInventory.filter((item) => item.section === "not_in_profile"),
+      inactive: filteredInventory.filter((item) => item.section === "inactive"),
+      active: filteredInventory.filter((item) => item.section === "active"),
+    };
+  }, [filteredInventory]);
+  const profileMembershipKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of profileResourceRows) {
+      switch (row.kind) {
+        case "plugin":
+          keys.add(`plugin:${row.plugin.name}`);
+          keys.add(`plugin:${row.plugin.id}`);
+          break;
+        case "pin":
+          keys.add(`plugin_pin:${row.pin.ref}`);
+          break;
+        case "resource":
+          keys.add(`${row.resource.type}:${row.resource.name}`);
+          break;
+        default: {
+          const neverRow: never = row;
+          void neverRow;
+        }
+      }
+    }
+    return keys;
+  }, [profileResourceRows]);
 
   const profileNameForActions = selectedProfile ?? activeProfile;
 
@@ -1605,10 +1789,6 @@ export function LiveStatePanel({
     isTargetPreviewInstallGap,
   );
   const installGapGroups = groupInstallGaps(installGaps);
-  const notStagedResources =
-    applyPreview?.not_staged
-    ?? applyPreview?.untracked_resources
-    ?? [];
   const hasStackChanges = Boolean(selectedProfile)
     && !relativeToActive
     && (diff.added.length > 0 || diff.removed.length > 0);
@@ -1723,268 +1903,20 @@ export function LiveStatePanel({
         </div>
       ) : null}
 
-      <div className="live-state-columns">
-        <div className="live-state-left-stack">
-        <details
-          className="contents-block"
-          open
-          aria-label="Profile resources"
-        >
-          <summary className="contents-header">
-            <span>Profile resources</span>
-            {selectedProfile && notStagedResources.length > 0 ? (
-              <span className="contents-header-meta muted">
-                {notStagedResources.length} not staged
-              </span>
-            ) : null}
-          </summary>
-          <div className="contents-body">
-            {!activeProfile && !selectedProfile ? (
-              <p className="muted">No active profile to inspect.</p>
-            ) : resourceStack.kind === "loading" ? (
-              <p className="muted">Loading profile resources…</p>
-            ) : !enabledSourceContents ? (
-              <p className="muted">
-                {activeProfile || selectedProfile
-                  ? "Could not resolve profile contents."
-                  : "No profile resources yet."}
-                {onEditProfile && (activeProfile || selectedProfile) ? (
-                  <>
-                    {" "}
-                    <IconActionButton
-                      label="Edit profile"
-                      onClick={onEditProfile}
-                      icon={<Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-                    />
-                  </>
-                ) : null}
-              </p>
-            ) : profileStackEmpty ? (
-              onEditProfile ? (
-                <ProfileStackEmptyState onEditProfile={onEditProfile} />
-              ) : (
-                <p className="muted">Add plugins or resources from your library.</p>
-              )
-            ) : (
-              <>
-                <ListSearchField
-                  value={profileResourceSearch}
-                  onChange={(value) => {
-                    setProfileResourceSearch(value);
-                    setProfileResourceVisible(LIST_PAGE_SIZE);
-                  }}
-                  placeholder="Filter resources (name or type:name)"
-                  label="Filter profile resources"
-                />
-                <div className="enabled-list">
-                  {(() => {
-                    const typeCounts = countResourceTypeTabs(
-                      profileResourceRows.map((row) => row.type),
-                    );
-                    const typeTab = resolveResourceTypeTab(
-                      profileResourceType,
-                      typeCounts,
-                      { includeAll: false },
-                    );
-                    const typed =
-                      typeTab === null
-                        ? profileResourceRows
-                        : profileResourceRows.filter((row) => row.type === typeTab);
-                    const visible = typed.slice(0, profileResourceVisible);
-                    return (
-                      <>
-                        <ResourceTypeTabs
-                          includeAll={false}
-                          counts={typeCounts}
-                          value={typeTab}
-                          onChange={(next) => {
-                            setProfileResourceType(next);
-                            setProfileResourceVisible(LIST_PAGE_SIZE);
-                          }}
-                        />
-                        {visible.map((row) => (
-                          <ProfileResourceListItem
-                            key={row.key}
-                            row={row}
-                            profileName={profileNameForActions}
-                            removingResourceKey={removingResourceKey}
-                            onOpenResource={openResource}
-                            onOpenInEditor={
-                              onOpenResourceInEditor
-                                ? (resource) => {
-                                    void onOpenResourceInEditor(resource);
-                                  }
-                                : undefined
-                            }
-                            onRemoveFromProfile={
-                              onRemoveResourceFromProfile
-                                ? (resource, pluginId) => {
-                                    void onRemoveResourceFromProfile(
-                                      resource,
-                                      pluginId,
-                                    );
-                                  }
-                                : undefined
-                            }
-                          />
-                        ))}
-                        <ListTruncationControls
-                          visible={visible.length}
-                          total={typed.length}
-                          onMore={() =>
-                            setProfileResourceVisible((current) =>
-                              nextVisibleCount(current, typed.length),
-                            )
-                          }
-                          onShowAll={() => setProfileResourceVisible(typed.length)}
-                        />
-                      </>
-                    );
-                  })()}
-                </div>
-              </>
-            )}
-          </div>
-        </details>
-
-        {selectedProfile && notStagedResources.length > 0 ? (
-          <details
-            className="contents-block not-staged-attention"
-            open
-            aria-label="Not staged"
-          >
-            <summary className="contents-header">
-              <span className="contents-header-title">
-                <span>Not staged</span>
-                <SectionInfo text={NOT_STAGED_HELP} />
-              </span>
-              {onAddAllResources ? (
-                <span className="contents-header-toolbar">
-                  <IconActionButton
-                    primary={!railPrimaryIsReapply}
-                    showLabel
-                    iconAfterLabel
-                    busy={addingAllResources}
-                    spinnerSize={ICON_SIZE}
-                    label="Add all"
-                    title={`Add all ${notStagedResources.length} not-staged items to ${selectedProfile}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void onAddAllResources();
-                    }}
-                    icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-                  />
-                </span>
-              ) : null}
-            </summary>
-            <div className="contents-body">
-              <p className="muted section-one-liner">{NOT_STAGED_SUBTITLE}</p>
-              <ListSearchField
-                value={notStagedSearch}
-                onChange={(value) => {
-                  setNotStagedSearch(value);
-                  setNotStagedVisible(LIST_PAGE_SIZE);
-                }}
-                placeholder="Filter by name"
-                label="Filter not staged resources"
-              />
-              <div className="enabled-list">
-                {(() => {
-                  const filtered = dedupeContentsResources(
-                    filterContentsResourcesBySearch(
-                      notStagedResources,
-                      notStagedSearch,
-                    ),
-                  );
-                  const typeCounts = countResourceTypeTabs(
-                    filtered.map((resource) => resource.type),
-                  );
-                  const typeTab = resolveResourceTypeTab(
-                    notStagedType,
-                    typeCounts,
-                  );
-                  const typed =
-                    typeTab === null
-                      ? filtered
-                      : filtered.filter((resource) => resource.type === typeTab);
-                  const visible = typed.slice(0, notStagedVisible);
-                  return (
-                    <>
-                      <ResourceTypeTabs
-                        counts={typeCounts}
-                        value={typeTab}
-                        onChange={(next) => {
-                          setNotStagedType(next);
-                          setNotStagedVisible(LIST_PAGE_SIZE);
-                        }}
-                      />
-                      {visible.map((resource) => {
-                        const key = `${resource.type}:${resource.name}`;
-                        return (
-                          <UntrackedResourceRow
-                            key={key}
-                            resource={resource}
-                            adding={addingResourceKey === key}
-                            onAdd={() => {
-                              if (onAddResource) {
-                                void onAddResource(resource);
-                              }
-                            }}
-                            onOpenResource={openResource}
-                            onDiff={
-                              onDiffFileChange
-                                ? (path) =>
-                                    onDiffFileChange({
-                                      path,
-                                      type: "modified",
-                                      ...(resource.type && resource.name
-                                        ? {
-                                            resource: {
-                                              type: resource.type,
-                                              name: resource.name,
-                                            },
-                                          }
-                                        : {}),
-                                    })
-                                : undefined
-                            }
-                          />
-                        );
-                      })}
-                      <ListTruncationControls
-                        visible={visible.length}
-                        total={typed.length}
-                        onMore={() =>
-                          setNotStagedVisible((current) =>
-                            nextVisibleCount(current, typed.length),
-                          )
-                        }
-                        onShowAll={() => setNotStagedVisible(typed.length)}
-                      />
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </details>
-        ) : null}
-        </div>
-
-        {selectedProfile ? (
-          <details
+      {previewChanges ? (
+        selectedProfile ? (
+          <div
             className={[
-              "contents-block",
+              "contents-block scope-preview-pane",
               targetPreviewTone === "clean" ? "target-preview-clean" : "",
             ]
               .filter(Boolean)
               .join(" ")}
-            open
             aria-label="Target preview"
           >
-            <summary className="contents-header">
+            <div className="contents-header">
               <span>Target preview</span>
-            </summary>
+            </div>
             <div className="contents-body">
               {applyPreviewLoading && !applyPreview ? (
                 <p className="muted">
@@ -2162,10 +2094,190 @@ export function LiveStatePanel({
                 <p className="muted">No preview available.</p>
               )}
             </div>
-          </details>
-        ) : null}
-      </div>
-
+          </div>
+        ) : (
+          <p className="muted">No profile selected.</p>
+        )
+      ) : (
+        <div className="scope-inventory-pane">
+          {!activeProfile && !selectedProfile ? (
+            <p className="muted">No profile selected.</p>
+          ) : resourceStack.kind === "loading" ? (
+            <p className="muted">Loading profile resources…</p>
+          ) : (
+            <>
+              <ListSearchField
+                value={inventorySearch}
+                onChange={(value) => {
+                  setInventorySearch(value);
+                  setInventoryVisible(LIST_PAGE_SIZE);
+                }}
+                placeholder="Filter resources"
+                label="Filter resources"
+              />
+              <ResourceTypeTabs
+                includeAll={true}
+                emptyMode="disable"
+                wide
+                counts={inventoryTypeCounts}
+                value={inventoryTypeTab}
+                onChange={(next) => {
+                  setInventoryType(next);
+                  setInventoryVisible(LIST_PAGE_SIZE);
+                }}
+              />
+              <div className="enabled-list scope-inventory-list">
+                {PROFILE_INVENTORY_SECTION_ORDER.map((section) => {
+                  const rows = filteredBySection[section];
+                  if (rows.length === 0) {
+                    return null;
+                  }
+                  const visible = rows.slice(0, inventoryVisible);
+                  const title = inventorySectionTitle(section);
+                  const canAddAll =
+                    section === "not_in_profile" && Boolean(onAddAllResources);
+                  const canActivateAll =
+                    section === "inactive" && Boolean(onActivateResources);
+                  return (
+                    <section
+                      key={section}
+                      className={
+                        section === "not_in_profile"
+                          ? "contents-block not-staged-attention"
+                          : "contents-block"
+                      }
+                      aria-label={title}
+                    >
+                      <header className="contents-header">
+                        <span className="contents-header-title">
+                          <span>{title}</span>
+                        </span>
+                        {!editMode && canAddAll ? (
+                          <span className="contents-header-toolbar">
+                            <IconActionButton
+                              primary={!railPrimaryIsReapply}
+                              showLabel
+                              iconAfterLabel
+                              busy={addingAllResources}
+                              spinnerSize={ICON_SIZE}
+                              label="Add all"
+                              title={`Add all ${rows.length} items to ${selectedProfile}`}
+                              onClick={() => {
+                                void onAddAllResources?.(
+                                  rows.map((row) => row.resource),
+                                );
+                              }}
+                              icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                            />
+                          </span>
+                        ) : null}
+                        {!editMode && canActivateAll ? (
+                          <span className="contents-header-toolbar">
+                            <IconActionButton
+                              showLabel
+                              iconAfterLabel
+                              busy={activatingResources}
+                              spinnerSize={ICON_SIZE}
+                              label="Activate all"
+                              title={`Activate ${rows.length} items`}
+                              onClick={() => {
+                                void onActivateResources?.(
+                                  rows.map((row) => row.resource),
+                                );
+                              }}
+                              icon={<Power size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                            />
+                          </span>
+                        ) : null}
+                      </header>
+                      <div className="contents-body">
+                        {visible.map((item) => {
+                          const key = `${item.resource.type}:${item.resource.name}`;
+                          return (
+                            <InventoryRow
+                              key={item.key}
+                              item={item}
+                              editMode={editMode}
+                              profileName={profileNameForActions}
+                              adding={addingResourceKey === key}
+                              removing={removingResourceKey === key}
+                              onAdd={
+                                onAddResource
+                                  ? () => {
+                                      void onAddResource(item.resource);
+                                    }
+                                  : undefined
+                              }
+                              onActivate={
+                                onActivateResources
+                                  ? () => {
+                                      void onActivateResources([item.resource]);
+                                    }
+                                  : undefined
+                              }
+                              onOpenResource={openResource}
+                              onDiff={
+                                item.drifted && onDiffFileChange
+                                  ? () => {
+                                      const change = item.driftChange ?? {
+                                        path: item.resource.source ?? "",
+                                        type: "modified" as const,
+                                        resource: {
+                                          type: item.resource.type,
+                                          name: item.resource.name,
+                                        },
+                                      };
+                                      if (change.path) {
+                                        onDiffFileChange(change);
+                                      }
+                                    }
+                                  : undefined
+                              }
+                              onRemoveFromProfile={
+                                onRemoveResourceFromProfile
+                                  ? () => {
+                                      void onRemoveResourceFromProfile(
+                                        item.resource,
+                                        item.pluginId,
+                                      );
+                                    }
+                                  : undefined
+                              }
+                            />
+                          );
+                        })}
+                        <ListTruncationControls
+                          visible={visible.length}
+                          total={rows.length}
+                          onMore={() =>
+                            setInventoryVisible((current) =>
+                              nextVisibleCount(current, rows.length),
+                            )
+                          }
+                          onShowAll={() => setInventoryVisible(rows.length)}
+                        />
+                      </div>
+                    </section>
+                  );
+                })}
+                {filteredInventory.length === 0 ? (
+                  <p className="muted">No matching resources.</p>
+                ) : null}
+              </div>
+            </>
+          )}
+          <button
+            type="button"
+            className="scope-inventory-fab icon-action primary"
+            data-testid="scope-inventory-fab"
+            aria-label="Add to profile"
+            disabled={!selectedProfile}
+            onClick={() => setAddModalOpen(true)}
+          >
+            <Plus size={20} strokeWidth={2} aria-hidden />
+          </button>
+        </div>
+      )}
       <ResourceDetailPane
         open={detailTarget !== null}
         target={detailTarget}
@@ -2175,6 +2287,64 @@ export function LiveStatePanel({
         onSuccess={onSuccess}
         onLibraryChanged={onLibraryChanged}
       />
+      <ScopeAddToProfileModal
+        open={addModalOpen}
+        disabled={!selectedProfile}
+        baseUrl={baseUrl}
+        token={token}
+        profileKeys={profileMembershipKeys}
+        onClose={() => setAddModalOpen(false)}
+        onPick={async (item) => {
+          if (onAttachLibraryItem) {
+            await onAttachLibraryItem(item);
+          }
+        }}
+        onCreate={() => {
+          setAddModalOpen(false);
+          setCreateModalOpen(true);
+        }}
+      />
+      <ResourceTypeModal
+        open={createModalOpen}
+        disabled={!baseUrl}
+        baseUrl={baseUrl}
+        token={token}
+        onClose={() => setCreateModalOpen(false)}
+        onImported={(pluginName) => {
+          setCreateModalOpen(false);
+          onLibraryChanged?.();
+          onSuccess?.(`Imported ${pluginName} from GitHub`);
+        }}
+        onSelect={(selected) => {
+          setCreateModalOpen(false);
+          setCreateType(selected);
+          if (baseUrl) {
+            void fetchLibraryResources(baseUrl, token).then(setPickerResources);
+          }
+        }}
+      />
+      {createType ? (
+        <ResourceCreatePanel
+          key={createType}
+          titleId="scope-resource-create-title"
+          type={createType}
+          baseUrl={baseUrl}
+          token={token}
+          attachProfileName={selectedProfile}
+          pickerResources={pickerResources}
+          onClose={() => setCreateType(null)}
+          onCreated={() => {
+            setCreateType(null);
+            onLibraryChanged?.();
+          }}
+          onAddToProfile={
+            onAddResource
+              ? (resource) => onAddResource(resource)
+              : async () => {}
+          }
+          onSuccess={onSuccess}
+        />
+      ) : null}
     </>
   );
 }

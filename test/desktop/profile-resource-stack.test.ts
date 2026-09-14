@@ -157,89 +157,50 @@ describe("Profile resources pane chrome", () => {
     );
   });
 
-  it("offers labeled Add all on the Not staged header and demotes it when Re-apply is primary", () => {
-    const notStagedHeader = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Not staged"'),
-      liveStateSource.indexOf("placeholder=\"Filter by name\""),
-    );
-    const profileResourcesHeader = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Profile resources"'),
-      liveStateSource.indexOf('aria-label="Not staged"'),
-    );
-    expect(notStagedHeader).toContain('label="Add all"');
-    expect(notStagedHeader).toContain("primary={!railPrimaryIsReapply}");
-    expect(notStagedHeader).toContain("showLabel");
-    expect(notStagedHeader).toContain("iconAfterLabel");
-    expect(notStagedHeader).toContain("onAddAllResources");
-    expect(profileResourcesHeader).not.toContain('label="Add all"');
+  it("offers labeled Add all on Not in profile and demotes it when Re-apply is primary", () => {
+    expect(liveStateSource).toContain("Not in profile");
+    expect(liveStateSource).toContain('label="Add all"');
+    expect(liveStateSource).toContain("primary={!railPrimaryIsReapply}");
+    expect(liveStateSource).toContain("showLabel");
+    expect(liveStateSource).toContain("iconAfterLabel");
+    expect(liveStateSource).toContain("onAddAllResources");
     expect(appSource).toContain("onAddAllResources");
     expect(appSource).toContain("railPrimaryIsReapply={showReapply}");
   });
 
-  it("locks Profile resources as the selected profile’s composition", () => {
-    expect(designSource).toContain(
-      "Profile resources lists the selected profile’s composition",
-    );
-    expect(designSource).toContain(
-      "ResourceTypeTabs filter that inventory as a flat list",
-    );
+  it("locks the selected profile’s composition as a shared Global/Project inventory", () => {
+    expect(designSource).toContain("Global and Project share one live-state component");
+    expect(designSource).toContain("Not in profile → Inactive → Active");
     expect(designSource).not.toContain(
       "Profile resources stay a nested plugin composition tree",
     );
   });
 
   it("uses ResourceTypeTabs over a flat list and keeps plugin membership on nested rows", () => {
-    const profileResources = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Profile resources"'),
-      liveStateSource.indexOf('aria-label="Not staged"'),
-    );
-    expect(profileResources).toContain("ResourceTypeTabs");
-    expect(profileResources).toContain("includeAll={false}");
-    expect(profileResources).not.toContain("density=");
-    expect(profileResources).toContain("countResourceTypeTabs");
-    expect(profileResources).toContain("ProfileResourceListItem");
+    expect(liveStateSource).toContain("ResourceTypeTabs");
+    expect(liveStateSource).toContain("includeAll={true}");
+    expect(liveStateSource).toContain("emptyMode=\"disable\"");
+    expect(liveStateSource).toContain("countResourceTypeTabs");
     expect(liveStateSource).toContain("flattenProfileResourceList");
     expect(liveStateSource).toContain("selectedProfile");
     expect(liveStateSource).toMatch(
       /flattenProfileResourceList\(\s*enabledSourceContents,\s*\{\s*selectedProfile/,
     );
-    expect(profileResources).not.toContain("EnabledPluginGroup");
-    expect(profileResources).not.toContain("enabled-plugin-summary");
-    expect(profileResources).not.toContain("resources-type-heading");
-    expect(profileResources).not.toContain("resource-filter-type-badge");
-    expect(profileResources).not.toContain("Sparkles");
-    expect(liveStateSource).toContain("pluginId={row.pluginId}");
-    expect(liveStateSource).toContain("in {pluginName}");
+    expect(liveStateSource).not.toContain("EnabledPluginGroup");
+    expect(liveStateSource).not.toContain("enabled-plugin-summary");
+    expect(liveStateSource).not.toContain("resources-type-heading");
+    expect(liveStateSource).not.toContain("resource-filter-type-badge");
+    expect(liveStateSource).toContain("in {item.pluginName}");
     expect(designSource).toContain("detach `pluginId`");
-    expect(designSource).toContain("Profile resources omits All");
   });
 
-  it("locks not-staged modifications and centered file diffs", () => {
-    expect(liveStateSource).toContain("not_staged_kind");
-    expect(liveStateSource).toContain("Replace profile copy of");
-    expect(liveStateSource).toContain('const NOT_STAGED_SUBTITLE = "On disk, not in this profile"');
-    expect(liveStateSource).not.toContain("(or different)");
-    expect(designSource).toContain("On disk, not in this profile");
+  it("locks drifted Active rows and centered file diffs", () => {
+    expect(liveStateSource).toContain("inventory-row-drifted");
     expect(liveStateSource).toContain("not-staged-attention");
     expect(liveStateSource).toContain('label="Add"');
     expect(designSource).toContain("File apply diffs are the same centered");
-    expect(designSource).toContain("live resources that are in the profile but differ");
-    expect(designSource).toContain("`--yellow` warn surface");
-    expect(designSource).toContain("Target preview does not use that amber tint");
-  });
-
-  it("collapses Not staged help into a header info tooltip and omits the on-disk count", () => {
-    const notStagedHeader = liveStateSource.slice(
-      liveStateSource.indexOf('aria-label="Not staged"'),
-      liveStateSource.indexOf("placeholder=\"Filter by name\""),
-    );
-    expect(liveStateSource).toContain("contents-header-info");
-    expect(liveStateSource).toContain("text={NOT_STAGED_HELP}");
-    expect(liveStateSource).toContain("NOT_STAGED_SUBTITLE");
-    expect(notStagedHeader).not.toContain("on disk");
-    expect(liveStateSource).not.toContain("untracked-hint");
-    expect(designSource).toContain("in the Not staged panel header");
-    expect(designSource).toContain("info icon next to the **Not staged** title");
+    expect(designSource).toContain("If the live copy differs");
+    expect(designSource).toContain("Target preview does not use the Not in profile amber tint");
   });
 
   it("locks install-gap plus vs warning marks", () => {
@@ -254,8 +215,6 @@ describe("Profile resources pane chrome", () => {
     );
     expect(designSource).toContain("tooltip and accessible name **Install {plugin}**");
     expect(liveStateSource).toContain("installGapStatusLabel");
-    expect(liveStateSource).toContain("not-staged-status-glyph");
-    expect(designSource).toContain("status glyph, not Sparkles");
     expect(liveStateSource).not.toContain("active · drifting");
   });
 
@@ -265,8 +224,8 @@ describe("Profile resources pane chrome", () => {
       liveStateSource.indexOf("<ResourceDetailPane"),
     );
     const header = previewBlock.slice(
-      previewBlock.indexOf("<summary"),
-      previewBlock.indexOf("</summary>"),
+      previewBlock.indexOf("contents-header"),
+      previewBlock.indexOf("contents-body"),
     );
     expect(previewBlock).toContain("TargetPreviewQuietEmpty");
     expect(previewBlock).toContain("targetPreviewQuietEmpty");
@@ -316,7 +275,7 @@ describe("Profile resources pane chrome", () => {
     expect(previewBlock).not.toContain("No file changes vs live target");
     expect(previewBlock).not.toContain("is-disabled");
     expect(liveStateSource).not.toContain("target-preview-drift-glyph");
-    expect(designSource).toContain("chevron only");
+    expect(designSource).toContain("no chevron");
     expect(designSource).toContain("**no changes**");
     expect(designSource).toContain("deactivated grey, not accent");
     expect(designSource).toContain("Stack and file panels appear only when they have rows");

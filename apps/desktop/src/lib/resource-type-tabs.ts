@@ -81,13 +81,24 @@ export function countResourceTypeTabs(
   return counts;
 }
 
+export type ResourceTypeTabEmptyMode = "hide" | "disable";
+
 export type ResourceTypeTabOptions = {
   /** When false, omit the All tab even if several types are present. Default true. */
   includeAll?: boolean;
+  /**
+   * hide (default): presence-filter empty types.
+   * disable: keep empty types visible and disabled (`No <type> found`).
+   */
+  emptyMode?: ResourceTypeTabEmptyMode;
 };
 
 function includeAllTab(options?: ResourceTypeTabOptions): boolean {
   return options?.includeAll !== false;
+}
+
+function emptyMode(options?: ResourceTypeTabOptions): ResourceTypeTabEmptyMode {
+  return options?.emptyMode ?? "hide";
 }
 
 function presentResourceTypeTabs(counts: ReadonlyMap<string, number>): string[] {
@@ -107,11 +118,22 @@ function presentResourceTypeTabs(counts: ReadonlyMap<string, number>): string[] 
 /**
  * Presence-filtered tabs: hide empty types. Show All only when at least two
  * types are present, unless `includeAll` is false.
+ * `emptyMode: "disable"` keeps every canonical type visible (plus All).
  */
 export function visibleResourceTypeTabs(
   counts: ReadonlyMap<string, number>,
   options?: ResourceTypeTabOptions,
 ): string[] {
+  if (emptyMode(options) === "disable") {
+    const extras = [...counts.keys()]
+      .filter((type) => !KNOWN_TAB_TYPES.has(type) && (counts.get(type) ?? 0) > 0)
+      .sort((left, right) => left.localeCompare(right));
+    const tabs = [...RESOURCE_TYPE_TAB_ORDER, ...extras];
+    if (includeAllTab(options)) {
+      return [ALL_RESOURCE_TYPE_TAB, ...tabs];
+    }
+    return tabs;
+  }
   const present = presentResourceTypeTabs(counts);
   if (includeAllTab(options) && present.length >= 2) {
     return [ALL_RESOURCE_TYPE_TAB, ...present];
@@ -131,10 +153,15 @@ export function resolveResourceTypeTab(
 ): string | null {
   const visible = visibleResourceTypeTabs(counts, options);
   const present = visible.filter((type) => type !== ALL_RESOURCE_TYPE_TAB);
+  const selectedHasItems =
+    selected !== null
+    && selected !== ALL_RESOURCE_TYPE_TAB
+    && (counts.get(selected) ?? 0) > 0;
   if (
     selected !== null &&
     selected !== ALL_RESOURCE_TYPE_TAB &&
     visible.includes(selected)
+    && (emptyMode(options) !== "disable" || selectedHasItems)
   ) {
     return selected;
   }
@@ -211,9 +238,13 @@ export function resourceTypeTabUnit(type: string, count: number): string {
 export function resourceTypeTabTooltip(
   type: string,
   counts: ReadonlyMap<string, number>,
+  options?: ResourceTypeTabOptions,
 ): string {
   const count = resourceTypeTabItemCount(type, counts);
   if (count <= 0) {
+    if (emptyMode(options) === "disable" && type !== ALL_RESOURCE_TYPE_TAB) {
+      return `No ${resourceTypeTabLabel(type)} found`;
+    }
     return resourceTypeTabLabel(type);
   }
   return `${count} ${resourceTypeTabUnit(type, count)}`;

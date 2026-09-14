@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Download, FilterX, FolderGit2, Globe, HardDriveDownload, Library, ListPlus, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, TextQuote, Upload, User, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Diff, Download, FilterX, FolderGit2, Globe, HardDriveDownload, Library, ListPlus, PackageSearch, Pencil, Plus, RefreshCw, RotateCw, Settings, Tag, TextQuote, Upload, User, X } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -63,6 +63,7 @@ import {
   subscribeSwitchEvents,
   addAllProfileResources,
   addProfileResource,
+  attachProfileComposition,
   commitProfileResource,
   cutProfile,
   openResourcePath,
@@ -204,6 +205,9 @@ export function App() {
   const [committingManagedChanges, setCommittingManagedChanges] = useState(false);
   const [removingResourceKey, setRemovingResourceKey] = useState<string | null>(null);
   const [addingAllResources, setAddingAllResources] = useState(false);
+  const [activatingResources, setActivatingResources] = useState(false);
+  const [previewChanges, setPreviewChanges] = useState(false);
+  const [inventoryEditMode, setInventoryEditMode] = useState(false);
   const [addResourceError, setAddResourceError] = useState<string | null>(null);
   const [resourceActionError, setResourceActionError] = useState<string | null>(null);
   const [fileChangeBusyPath, setFileChangeBusyPath] = useState<string | null>(null);
@@ -525,6 +529,8 @@ export function App() {
     setProfileSelectionIntent("user");
     setSelectedProfile(name);
     setEditingProfile((current) => (current ? name : null));
+    setInventoryEditMode(false);
+    setPreviewChanges(false);
   }, []);
 
   const persistProfileRailOrder = useCallback(
@@ -1191,7 +1197,10 @@ export function App() {
     [executeDropFileChange],
   );
 
-  const handleAddAllResources = useCallback(async (profileName?: string) => {
+  const handleAddAllResources = useCallback(async (
+    profileName?: string,
+    resources?: Array<{ type: string; name: string }>,
+  ) => {
     const targetProfile = profileName ?? selectedProfile ?? activeProfile;
     if (!baseUrl || !targetProfile || addingAllResources) {
       return;
@@ -1199,10 +1208,21 @@ export function App() {
     setAddingAllResources(true);
     setAddResourceError(null);
     try {
-      await addAllProfileResources(baseUrl, token, targetProfile, {
-        scope: view,
-        ...(view === "project" && projectPath ? { projectPath } : {}),
-      });
+      if (resources && resources.length > 0) {
+        for (const resource of resources) {
+          await addProfileResource(baseUrl, token, targetProfile, {
+            resourceType: resource.type,
+            resourceName: resource.name,
+            scope: view,
+            ...(view === "project" && projectPath ? { projectPath } : {}),
+          });
+        }
+      } else {
+        await addAllProfileResources(baseUrl, token, targetProfile, {
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+      }
       const previewProfile =
         selectedProfile === targetProfile ? targetProfile : selectedProfile;
       if (previewProfile) {
@@ -1482,6 +1502,28 @@ export function App() {
     ],
   );
 
+  const handleActivateResources = useCallback(async () => {
+    if (!selectedProfile || selectedProfile !== activeProfile || activatingResources) {
+      return;
+    }
+    setActivatingResources(true);
+    setAddResourceError(null);
+    try {
+      await runSwitch(true, selectedProfile);
+    } catch (error) {
+      setAddResourceError(
+        error instanceof Error ? error.message : "Could not activate resources",
+      );
+    } finally {
+      setActivatingResources(false);
+    }
+  }, [
+    activatingResources,
+    activeProfile,
+    runSwitch,
+    selectedProfile,
+  ]);
+
   const runProjectInstall = useCallback(async () => {
     if (!baseUrl || !token || !projectPath) {
       return;
@@ -1572,6 +1614,45 @@ export function App() {
       status?.drift_summary.global.status,
       status?.drift_summary.project?.status,
       view,
+    ],
+  );
+
+  const handleAttachLibraryItem = useCallback(
+    async (item: {
+      kind: "plugin" | "resource";
+      id: string;
+      name: string;
+      type: string;
+    }) => {
+      if (!baseUrl || !selectedProfile) {
+        return;
+      }
+      setAddResourceError(null);
+      try {
+        await attachProfileComposition(
+          baseUrl,
+          token,
+          selectedProfile,
+          item.kind === "plugin" ? { pluginId: item.id } : { resourceId: item.id },
+        );
+        await refreshProfilePreview();
+        await maybeAutoReapplyAfterMutation({
+          profileName: selectedProfile,
+          affectsApply: true,
+        });
+      } catch (error) {
+        setAddResourceError(
+          error instanceof Error ? error.message : "Could not add library item to profile",
+        );
+        throw error;
+      }
+    },
+    [
+      baseUrl,
+      maybeAutoReapplyAfterMutation,
+      refreshProfilePreview,
+      selectedProfile,
+      token,
     ],
   );
 
@@ -2899,11 +2980,36 @@ export function App() {
                       ))}
                       <IconActionButton
                         className="status-edit-action"
-                        onClick={() => openEditProfile(selectedProfile)}
+                        onClick={() => {
+                          if (inventoryEditMode) {
+                            setInventoryEditMode(false);
+                            return;
+                          }
+                          setInventoryEditMode(true);
+                          setPreviewChanges(false);
+                        }}
                         disabled={!connected || switching}
-                        label={`Edit ${selectedProfile}`}
-                        title="Edit profile"
-                        icon={<Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                        label={inventoryEditMode ? "Done" : `Edit ${selectedProfile}`}
+                        title={inventoryEditMode ? "Done" : "Edit profile"}
+                        icon={
+                          inventoryEditMode ? (
+                            <Check size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                          ) : (
+                            <Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                          )
+                        }
+                      />
+                      <IconActionButton
+                        className="status-edit-action"
+                        onClick={() => {
+                          setPreviewChanges((value) => !value);
+                          setInventoryEditMode(false);
+                        }}
+                        disabled={!connected || switching}
+                        label="Preview changes"
+                        title="Preview changes"
+                        aria-pressed={previewChanges}
+                        icon={<Diff size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
                       />
                       <IconActionButton
                         className="status-edit-action"
@@ -3048,11 +3154,24 @@ export function App() {
                 onAddResource={handleAddResource}
                 onAddAllResources={
                   connected && token && !switching
-                    ? () => handleAddAllResources()
+                    ? (resources) => handleAddAllResources(undefined, resources)
+                    : undefined
+                }
+                onActivateResources={
+                  connected && token && !switching
+                    ? () => handleActivateResources()
+                    : undefined
+                }
+                onAttachLibraryItem={
+                  connected && token && !switching
+                    ? handleAttachLibraryItem
                     : undefined
                 }
                 addingResourceKey={addingResourceKey}
                 addingAllResources={addingAllResources}
+                activatingResources={activatingResources}
+                previewChanges={previewChanges}
+                editMode={inventoryEditMode}
                 railPrimaryIsReapply={showReapply}
                 onCommitManagedChanges={
                   connected && token && !switching

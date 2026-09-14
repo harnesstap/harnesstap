@@ -63,6 +63,16 @@ describe("visibleResourceTypeTabs", () => {
       "skill",
     ]);
   });
+
+  it("keeps empty types when emptyMode is disable", () => {
+    const counts = countResourceTypeTabs(["skill"]);
+    const tabs = visibleResourceTypeTabs(counts, { emptyMode: "disable" });
+    expect(tabs[0]).toBe(ALL_RESOURCE_TYPE_TAB);
+    expect(tabs).toContain("skill");
+    expect(tabs).toContain("plugin");
+    expect(tabs).toContain("command");
+    expect(resourceTypeTabItemCount("plugin", counts)).toBe(0);
+  });
 });
 
 describe("resourceTypeTabPillsText", () => {
@@ -111,6 +121,16 @@ describe("resource type tab aria-labels", () => {
     const skills = countResourceTypeTabs(["skill", "skill", "skill"]);
     expect(resourceTypeTabTooltip("skill", skills)).toBe("3 skills");
     expect(resourceTypeTabTooltip("all", new Map([["skill", 0]]))).toBe("All");
+  });
+
+  it("uses No <type> found for empty disabled tabs", () => {
+    const counts = countResourceTypeTabs(["skill"]);
+    expect(resourceTypeTabTooltip("plugin", counts, { emptyMode: "disable" })).toBe(
+      "No Plugins found",
+    );
+    expect(resourceTypeTabTooltip("skill", counts, { emptyMode: "disable" })).toBe(
+      "1 skill",
+    );
   });
 });
 

@@ -9,7 +9,9 @@ import {
   resourceTypeTabLabel,
   resourceTypeTabTooltip,
   visibleResourceTypeTabs,
+  type ResourceTypeTabEmptyMode,
 } from "../lib/resource-type-tabs";
+import { ChromeTooltip } from "./ChromeTooltip";
 import { TypeIcon } from "./TypeIcon";
 
 export interface ResourceTypeTabsProps {
@@ -19,6 +21,8 @@ export interface ResourceTypeTabsProps {
   disabled?: boolean;
   /** Profile resources omits All; Library / Not staged / compose keep it. */
   includeAll?: boolean;
+  emptyMode?: ResourceTypeTabEmptyMode;
+  wide?: boolean;
 }
 
 function TabGlyph({ type }: { type: string }): ReactNode {
@@ -34,9 +38,11 @@ export function ResourceTypeTabs({
   onChange,
   disabled = false,
   includeAll = true,
+  emptyMode = "hide",
+  wide = false,
 }: ResourceTypeTabsProps): ReactNode {
   const labelId = useId();
-  const tabOptions = { includeAll };
+  const tabOptions = { includeAll, emptyMode };
   const tabs = visibleResourceTypeTabs(counts, tabOptions);
   const resolved = resolveResourceTypeTab(value, counts, tabOptions);
   const toggleValue =
@@ -50,7 +56,10 @@ export function ResourceTypeTabs({
   }
 
   return (
-    <div className="resource-type-tabs">
+    <div className={["resource-type-tabs", wide ? "resource-type-tabs-wide" : ""]
+      .filter(Boolean)
+      .join(" ")}
+    >
       <span className="sr-only" id={labelId}>
         Resource type
       </span>
@@ -74,7 +83,18 @@ export function ResourceTypeTabs({
         {tabs.map((type) => {
           const label = resourceTypeTabLabel(type);
           const count = resourceTypeTabItemCount(type, counts);
-          const caption = resourceTypeTabTooltip(type, counts);
+          const caption = resourceTypeTabTooltip(type, counts, tabOptions);
+          const empty = type !== ALL_RESOURCE_TYPE_TAB && count <= 0;
+          const itemDisabled = disabled || empty;
+          const face = (
+            <>
+              <span className="resource-type-tab-face">
+                <TabGlyph type={type} />
+              </span>
+              <span className="resource-type-tab-count">{count}</span>
+              <span className="resource-type-tab-label">{label}</span>
+            </>
+          );
           return (
             <ToggleGroup.Item
               key={type}
@@ -82,13 +102,15 @@ export function ResourceTypeTabs({
               className="resource-type-tab"
               data-testid={`resource-type-tab-${type}`}
               aria-label={caption}
-              disabled={disabled}
+              disabled={itemDisabled}
             >
-              <span className="resource-type-tab-face">
-                <TabGlyph type={type} />
-              </span>
-              <span className="resource-type-tab-count">{count}</span>
-              <span className="resource-type-tab-label">{label}</span>
+              {empty ? (
+                <ChromeTooltip content={caption} side="top">
+                  <span className="resource-type-tab-disabled-host">{face}</span>
+                </ChromeTooltip>
+              ) : (
+                face
+              )}
             </ToggleGroup.Item>
           );
         })}
