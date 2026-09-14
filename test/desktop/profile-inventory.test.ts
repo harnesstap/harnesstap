@@ -125,8 +125,8 @@ describe("partitionProfileInventory", () => {
     const all = [...parts.notInProfile, ...parts.inactive, ...parts.active];
     expect(all.map((row) => [row.type, row.resource.name])).toEqual([
       ["command", "extra"],
-      ["plugin", "design-doc"],
       ["skill", "my-notes"],
+      ["plugin", "design-doc"],
     ]);
     expect(filterProfileInventoryItems(all, "", "skill").map((row) => row.resource.name))
       .toEqual(["my-notes"]);
