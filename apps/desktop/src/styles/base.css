@@ -1,0 +1,92 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  /* Keep the webview viewport pinned; scroll only inside app panes. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* WebKit/Tauri UA stylesheet centers <summary>; keep panel titles left-aligned. */
+summary {
+  text-align: left;
+}
+
+/* Scrollbars: dark and thin on every scrolling pane. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Focus: one ring recipe; filled accent controls flip it so it stays visible. */
+button:focus-visible,
+[tabindex="0"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="option"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.primary:focus-visible,
+.btn.primary:focus-visible,
+.icon-action.primary:focus-visible {
+  box-shadow: var(--focus-ring-on-accent);
+}
+
+/* Pressed: instant, physical, tiny. */
+button:active:not(:disabled) {
+  transform: translateY(0.5px);
+  transition: transform var(--duration-instant) var(--ease-out);
+}
+
+.icon-action:active:not(:disabled):not(.primary) {
+  background: var(--surface-selected);
+}
+
+.btn:active:not(:disabled) {
+  filter: brightness(0.94);
+}

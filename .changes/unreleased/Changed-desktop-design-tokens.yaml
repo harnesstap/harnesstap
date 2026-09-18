@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop styles now use a token system (spacing, type scale, surface states, focus rings, elevation, z-index, motion) split across `src/styles/`; metadata text is at least 13px, focus rings are visible on filled accent buttons, buttons have pressed states, and scrollbars match the dark theme.
+time: 2026-09-18T22:05:00Z
+custom:
+  Issue: ""

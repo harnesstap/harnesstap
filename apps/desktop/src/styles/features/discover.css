@@ -1,0 +1,142 @@
+/* Discover: sources sidebar, hits, plugin tree, preview; also .marketplace-* rows (shared with Cloud account). */
+
+.sources-workspace .resources-panel-header-actions .icon-action {
+  width: var(--icon-action-size-lg);
+  height: var(--icon-action-size-lg);
+  min-width: var(--icon-action-size-lg);
+  min-height: var(--icon-action-size-lg);
+}
+
+.source-master-row {
+  font-weight: 600;
+}
+
+.source-tree-children {
+  padding-left: 0.85rem;
+}
+
+.source-tree-children.is-all-selected .source-row-check [data-slot="checkbox"] {
+  opacity: 0.4;
+}
+
+.source-row-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.source-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding-left: 1.3rem;
+}
+
+.sources-workspace .source-row-actions .btn,
+.sources-workspace .source-row-actions .icon-action {
+  width: auto;
+}
+
+.sources-workspace .source-row-actions .btn {
+  min-height: 24px;
+  padding: 0.15rem 0.45rem;
+}
+
+.sources-workspace .source-row-actions .icon-action {
+  width: 24px;
+  height: 24px;
+}
+
+.sources-record-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.sources-record-action-cluster {
+  margin-left: 0;
+}
+
+.sources-pin-plugin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sources-hit {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sources-hit:disabled {
+  cursor: not-allowed;
+}
+
+.sources-tree-file {
+  min-width: 0;
+  text-align: left;
+}
+
+.sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sources-workspace .resources-panel-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.sources-workspace .discover-empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 12rem;
+  padding: 2rem 1.25rem;
+}
+
+.sources-workspace .discover-empty h2 {
+  font-size: var(--text-title);
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.sources-workspace .discover-empty p {
+  margin: 0;
+  max-width: 22rem;
+}
+
+.marketplace-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.marketplace-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+}
+
+.marketplace-row-name {
+  font-weight: 500;
+}
+
+.marketplace-row-url,
+.marketplace-row-platforms {
+  font-size: var(--text-body);
+}

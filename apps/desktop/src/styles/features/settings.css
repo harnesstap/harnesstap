@@ -1,0 +1,338 @@
+/* Settings, harness blocks, telemetry, cloud account, migrate; also .kv and .drawer (shared with Environments detail). */
+
+.harness-icon-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  height: 1.3em;
+}
+
+.harness-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  line-height: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.harness-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.harness-icon:hover {
+  color: var(--fg);
+}
+
+.harness-block {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.harness-header {
+  padding: 0.45rem 0.6rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.harness-body {
+  padding: 0.45rem 0.6rem;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+  gap: 0.5rem;
+}
+
+.drawer {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.drawer summary {
+  padding: 0.45rem 0.6rem;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.drawer summary::-webkit-details-marker {
+  display: none;
+}
+
+.drawer-body {
+  padding: 0 0.6rem 0.55rem;
+  border-top: 1px solid var(--border);
+}
+
+.cloud-browse-body {
+  min-height: 0;
+}
+
+.cloud-browser {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.85fr) minmax(0, 1.15fr);
+  min-height: 300px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.cloud-results {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.cloud-list-message {
+  margin: 0;
+  padding: 0.75rem;
+  font-size: var(--text-meta);
+}
+
+.cloud-result {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  padding: 0.65rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cloud-result:hover,
+.cloud-result.selected {
+  background: var(--surface-selected);
+}
+
+.cloud-result.selected {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.cloud-result small {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: var(--text-meta);
+}
+
+.cloud-result strong,
+.cloud-preview h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.cloud-kind-pill {
+  font-weight: 500;
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cloud-preview {
+  padding: 1rem;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.cloud-preview h3,
+.cloud-auth-state h3 {
+  margin: 0.2rem 0 0;
+  font-size: var(--text-value);
+}
+
+.cloud-preview p {
+  overflow-wrap: anywhere;
+}
+
+.cloud-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cloud-auth-state {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.cloud-auth-state p {
+  margin-bottom: 0;
+}
+
+.cloud-auth-state .cloud-account-actions {
+  margin-top: 0.85rem;
+}
+
+.cloud-account-body {
+  gap: 1rem;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.settings-section h3 {
+  margin: 0;
+  font-size: var(--text-value);
+}
+
+.settings-section .project-picker {
+  flex: none;
+  width: 100%;
+}
+
+.settings-section .project-config-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.settings-tabs button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-meta);
+  padding: 0.35rem 0.65rem;
+  border-radius: 2px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.settings-tabs button:hover:not(:disabled):not([aria-selected="true"]) {
+  background: var(--surface-hover);
+  color: var(--fg);
+}
+
+.settings-tabs button[aria-selected="true"] {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.settings-tabs button:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+.settings-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.settings-show-all,
+.settings-override-toggle {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.settings-alias-list .selection-list-rows {
+  height: auto;
+  max-height: 180px;
+}
+
+.harness-generic-info {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  cursor: help;
+}
+
+.harness-generic-info svg {
+  display: block;
+}
+
+.cloud-account-summary h3,
+.cloud-login-pending h3 {
+  margin: 0.2rem 0 0.5rem;
+  font-size: var(--text-title);
+}
+
+.cloud-account-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0.75rem 0 0;
+  font-size: var(--text-meta);
+}
+
+.cloud-account-meta dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.cloud-account-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.cloud-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.cloud-user-code {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: var(--text-display);
+  letter-spacing: 0.12em;
+  text-align: center;
+  font-weight: 700;
+}
+
+.cloud-login-waiting {
+  margin: 0.75rem 0 0;
+  font-size: var(--text-meta);
+}
+
+.cloud-browse-body .banner .btn {
+  width: auto;
+}
+
+@media (max-width: 720px) {
+  .cloud-results {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    max-height: 220px;
+  }
+}

@@ -14,12 +14,16 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 
 - UI: **IBM Plex Sans** (fallback: `"Segoe UI", sans-serif`)
 - Mono (paths, versions, timestamps, content, counts): **IBM Plex Mono** (fallback: `ui-monospace, monospace`)
-- Primary copy ≥16px; dense metadata 13px with contrast ≥4.5:1
-- Title sans; field values 16px sans; path / version / content / timestamps mono 13px
+- Type scale is the `--text-*` tokens; no `font-size` literals outside `tokens.css`
+- `--text-micro` 12px only for uppercase eyebrows and mono counts in pills
+- Dense metadata (mono paths, timestamps, hints) `--text-meta` 13px with contrast ≥4.5:1
+- Body (list rows, controls, form labels) `--text-body` 14px
+- Field values and primary copy `--text-value` 16px sans; path / version / content / timestamps mono 13px
+- Titles: workspace, pane, and dialog titles `--text-title` 18px; full-screen panel titles `--text-display` 22px
 
 ## Tokens
 
-`:root` in `styles.css` is the source of truth. Do not invent extra palette roles. Do not reuse `--accent` or `--muted` as shadcn surface tokens.
+`:root` in `src/styles/tokens.css` is the source of truth. Do not invent extra palette roles. Do not reuse `--accent` or `--muted` as shadcn surface tokens. The tiers below are not palette roles. `styles.css` is an `@import` index; feature CSS lives under `src/styles/` and `scripts/check-css-tokens.ts` fails preflight on new hex, `rgba()`, `font-size`, or `z-index` literals outside `tokens.css` and `base.css` (the InUseMark Global fill `#22c55e` is the one allowed exception).
 
 - Surfaces: `--bg`, `--surface`, `--surface-2`, `--border`
 - Text: `--fg`, `--muted`
@@ -27,6 +31,16 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Status: `--green`, `--yellow`, `--red`
 - Type: `--font`, `--mono`
 - Radius: `--radius` (`0.25rem`; tight. Pills only for small filter chips and ResourceTypeTabs)
+- Spacing (4px base): `--space-1` .. `--space-8`
+- Type scale: `--text-micro` / `--text-meta` / `--text-body` / `--text-value` / `--text-title` / `--text-display`; `--leading-tight`, `--leading-body`, `--tracking-eyebrow`
+- Surface states: `--surface-hover`, `--surface-selected`, `--surface-accent-tint`
+- Border tiers: `--border-subtle`, `--border-strong`
+- Status tints (banner and row backgrounds): `--tint-green`, `--tint-yellow`, `--tint-red`
+- Focus: `--focus-ring`; `--focus-ring-on-accent` on filled accent controls
+- Elevation: `--shadow-1` / `--shadow-2` / `--shadow-3` (shadcn `shadow-sm/md/lg` map to these), `--scrim` for dialog backdrops
+- Z-index: `--z-sticky` < `--z-fab` < `--z-menu` < `--z-panel` < `--z-dialog` < `--z-popover` < `--z-toast` < `--z-tooltip`
+- Motion: `--duration-instant` / `-fast` / `-base` / `-slow` / `-skeleton`; `--ease-out`, `--ease-in`, `--ease-in-out`
+- Misc: `--opacity-disabled`, `--scrollbar-thumb`, `--scrollbar-thumb-hover`
 - ResourceTypeTabs: presence-filtered pill/segmented type switcher (selected filled `--accent`, others muted outline). Hide empty types on Library, compose, Target preview type badges, and other inventories unless noted. Global/Project scope inventory shows every real resource type (wide icon+text pills). Empty real types stay visible and disabled with tooltip `No <type> found`. Plugin pins share the **Plugins** tab (not a separate pin tab). Plugin refs and other alias types hide entirely when empty. Show **All** only when two or more types are present, or always on the Global/Project inventory. Pills always have icons. Library, Global/Project inventory, compose, Target preview type badges, and other type filters stay pills everywhere: icon, then count, then type text (`1 Skills`, `2 Plugins`); prefer one line; wrap over multiple lines when they do not fit; never collapse to icon-only. No compact circular type filters. The Add to profile modal collapses those pills to one row (types with count > 0). Trailing text `N more` expands to wrapping icon, then count, then type text; `Less` collapses. Hide `N more` / `Less` when every present type already fits or there is nothing extra to show. Do not pass `density="compact"` or hide type text. The modal height is fixed; the checklist scrolls. **All** is the total of present types. `aria-label` uses short pluralized copy: `12 resources`, `1 skill` / `3 skills`, same singular/plural for Plugins, MCPs, Subagents, Rules, Commands, Hooks, and Instructions. Hit target ≥32px. Overflow wraps. Icons use `TypeIcon` / `resourceTypeGlyph` / `resourceTypeTabGlyph`. Sparkles is **skill** only — never plugin, plugin ref, package, or instruction tabs or rows. Plugin packages use **Layers**; plugin refs use **Package**; instructions use **FileText**. All uses LayoutGrid. Short labels: Plugins, MCPs, Skills, Subagents, Rules, Commands, Hooks, Instructions, Permissions, Env vars, Model config, Plugin refs. Lean: one type control. ResourceTypeTabs is the only type filter on those surfaces. Never pair it with sidebar Type chips. Leftover TYPE chips are a bug. Global/Project inventory uses the same ResourceTypeTabs over Not in profile, Inactive, and Active. That inventory keeps All.
 - Icon chrome: `--icon-action-size` (`32px` default squares). Discover header **Add marketplace** / **Connect catalog** use `--icon-action-size-lg` (`40px`) so they match in hit target and icon scale.
 
@@ -34,7 +48,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 
 - Harness inventories are bordered sections / definition lists, not a card mosaic.
 - Motion: status color transitions and in-progress switch-step highlight only.
-- Focus: 2px `--accent` outline, 2px offset.
+- Interactive states: hover `--surface-hover`, pressed 80ms translate/brightness, focus `--focus-ring` (`--focus-ring-on-accent` on filled accent), disabled `--opacity-disabled`. Scrollbars are dark and thin.
 - Labeled `btn primary` for dialog confirm actions (Create, Publish, Save, Update) together with an icon. Profiles rail **Apply** / **Re-apply** is a full-width accent `btn primary` with visible text and the icon to the right of the label. Library record primary actions that are not square icon chrome show a short visible label beside the icon: plugin **Apply**, resource **Sync** / **Write**, frozen **Restore**. Not in profile header **Add all** is a labeled `icon-action` with **Add all** to the left of the ListPlus icon; it is accent (`primary`) only when the rail is not already showing **Re-apply** (exactly one blue primary CTA in that chrome). Ghost **Add all** so Apply is the sole filled blue (Critiquito G4) is wontfix: **Add all** stays filled primary. Not in profile row **Add** is a labeled verb; drifted Active **View changes** is icon-only `FileDiff` with a tooltip. Other persistent page chrome — Clear, Remove, More, Show all, Install, Library/Discover header actions, Target preview install-gap plugin **Install**, and secondary/destructive record actions — is icon-only with a Radix tooltip plus `aria-label` (not a bare `title`). Header destinations show icon plus name. Header utility icons: RefreshCw **Refresh live status**; Upload **Export setup**; Download **Import setup**; Settings; Account — each icon-only with a Radix tooltip plus `aria-label`. Discover header **Add marketplace** / **Connect catalog** the same. Lucide Sparkles is the **skill** type glyph only (`TypeIcon` / create-type picker / `resourceTypeGlyph("skill")` in `type-glyph.ts`) — never instruction, plugin, plugin package, plugin ref, agent, Not staged, Install gaps, or generic trailing chrome. Agents use **Bot**. Plugin packages use the plugin type glyph (`Layers`). Not staged and Install gaps use a neutral status glyph (`CircleDashed` / `CircleAlert`) plus tooltip or text, not Sparkles. Library list rows and profile package / not-staged identity rows do not trail related-harness marks (Claude’s asterisk mark is not a type glyph); harness marks stay on the hover card. Library list rows always reserve a leading InUseMark column (shape, not color-only; Radix tooltip on used states; unused is a same-width spacer). Pencil stays profile **Edit**; the Settings gear stays Settings.
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons. File change trailing chrome is the same: kind chip then icon actions as separate flex items, never flush against trailing copy.
 - Header icon-only chrome may include an **Update available** control (arrow-up icon plus a red badge). The badge is paired with the accessible name **Update available** (current → newer). Click opens a centered dialog with release notes, a GitHub release link (text link, not a chrome button), and **Update** (icon plus label; downloads the matching GitHub installer for this os/arch). The control is omitted when Desktop is current.
