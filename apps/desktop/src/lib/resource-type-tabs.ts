@@ -229,6 +229,57 @@ export function resourceTypeTabItemCount(
   return counts.get(type) ?? 0;
 }
 
+export const TYPE_TABS_LESS_LABEL = "Less";
+
+/** Trailing overflow control. `1 more` / `3 more`, never the total. */
+export function typeTabsMoreLabel(hiddenCount: number): string {
+  return `${hiddenCount} more`;
+}
+
+export type CollapsedTypeTabFit = {
+  visibleCount: number;
+  hiddenCount: number;
+};
+
+/**
+ * How many full pills fit on one row, leaving room for a trailing more
+ * control when anything would wrap.
+ */
+export function collapsedTypeTabFit({
+  itemWidths,
+  containerWidth,
+  moreWidth,
+  gap,
+}: {
+  itemWidths: readonly number[];
+  containerWidth: number;
+  moreWidth: number;
+  gap: number;
+}): CollapsedTypeTabFit {
+  const count = itemWidths.length;
+  if (count === 0) {
+    return { visibleCount: 0, hiddenCount: 0 };
+  }
+  const allWidth =
+    itemWidths.reduce((sum, width) => sum + width, 0) + gap * (count - 1);
+  if (allWidth <= containerWidth) {
+    return { visibleCount: count, hiddenCount: 0 };
+  }
+  for (let visibleCount = count - 1; visibleCount >= 0; visibleCount -= 1) {
+    const itemsWidth =
+      visibleCount === 0
+        ? 0
+        : itemWidths.slice(0, visibleCount).reduce((sum, width) => sum + width, 0)
+          + gap * Math.max(visibleCount - 1, 0);
+    const used =
+      visibleCount === 0 ? moreWidth : itemsWidth + gap + moreWidth;
+    if (used <= containerWidth) {
+      return { visibleCount, hiddenCount: count - visibleCount };
+    }
+  }
+  return { visibleCount: 0, hiddenCount: count };
+}
+
 /** Visible pill copy: count then type text (`1 Skills`, `2 Plugins`). */
 export function resourceTypeTabPillsText(
   type: string,

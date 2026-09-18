@@ -1006,6 +1006,57 @@ button:focus-visible,
   padding: 0.15rem 0.85rem;
 }
 
+.resource-type-tabs-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.resource-type-tabs-collapsed .resource-type-tabs-row,
+.resource-type-tabs-collapsed .resource-type-tabs-scroller {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.resource-type-tabs-collapsed .resource-type-tabs-scroller {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 0;
+}
+
+.resource-type-tabs-more {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.resource-type-tabs-more:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.resource-type-tabs-more:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.resource-type-tabs-more-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .resource-type-tab {
   display: inline-flex;
   align-items: center;

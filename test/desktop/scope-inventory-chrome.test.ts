@@ -156,9 +156,21 @@ describe("Global/Project scope inventory chrome", () => {
     expect(addModalSource).not.toContain("density=");
     expect(addModalSource).not.toContain("resource-type-tabs-compact");
     expect(addModalSource).not.toContain("wide");
+    expect(addModalSource).toContain('overflow="collapse"');
+    expect(addModalSource).toContain('emptyMode="hide"');
+    expect(tabsSource).toContain('overflow = "wrap"');
+    expect(tabsSource).toContain("collapsedTypeTabFit");
+    expect(tabsSource).toContain("typeTabsMoreLabel");
+    expect(tabsSource).toContain("TYPE_TABS_LESS_LABEL");
+    expect(tabsSource).toContain("resource-type-tabs-more");
+    expect(tabsSource).toContain("resource-type-tab-count");
+    expect(tabsSource).toContain("resource-type-tab-label");
+    expect(tabsSource).not.toContain('density="compact"');
     expect(liveStateSource).toMatch(/scope-inventory-pane[\s\S]*\bwide\b/);
     expect(designSource).toContain("Do not pass `density=\"compact\"`");
-    expect(designSource).toContain("wrapping Library-style ResourceTypeTabs");
+    expect(designSource).toContain("collapsed to one row");
+    expect(designSource).toContain("`N more`");
+    expect(designSource).toContain("`Less`");
     expect(designSource).toContain("taller fixed-height dialog");
     const modalStart = stylesSource.indexOf("\n.scope-add-modal {");
     expect(modalStart).toBeGreaterThan(-1);
@@ -178,6 +190,25 @@ describe("Global/Project scope inventory chrome", () => {
     );
     expect(listBlock).toContain("flex: 1 1 auto;");
     expect(listBlock).toContain("overflow-y: auto;");
+    const collapsedStart = stylesSource.indexOf(
+      "\n.resource-type-tabs-collapsed .resource-type-tabs-scroller {",
+    );
+    expect(collapsedStart).toBeGreaterThan(-1);
+    const collapsedBlock = stylesSource.slice(
+      collapsedStart,
+      stylesSource.indexOf("}", collapsedStart) + 1,
+    );
+    expect(collapsedBlock).toContain("flex-wrap: nowrap");
+    expect(collapsedBlock).toContain("overflow: hidden");
+    expect(collapsedBlock).not.toContain("display: none");
+    const moreStart = stylesSource.indexOf("\n.resource-type-tabs-more {");
+    expect(moreStart).toBeGreaterThan(-1);
+    const moreBlock = stylesSource.slice(
+      moreStart,
+      stylesSource.indexOf("}", moreStart) + 1,
+    );
+    expect(moreBlock).not.toContain("min-width: 32px");
+    expect(moreBlock).toContain("background: transparent");
     expect(addModalSource).toContain("dialog-actions");
     expect(addModalSource).toContain("selectedCount < 1");
     expect(addModalSource).toMatch(/\n\s*Add\n\s*<\/button>/);
