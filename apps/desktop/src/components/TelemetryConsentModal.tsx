@@ -1,8 +1,12 @@
+import { useRef } from "react";
 import { Check, X } from "lucide-react";
 import type { TelemetryConsentCopy } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { Presence } from "./motion/Presence";
 import { motionClass } from "./motion/motion-utils";
+import { useOverlayLayer } from "../state/overlay-stack";
+
+function noop(): void {}
 
 export interface TelemetryConsentModalProps {
   open: boolean;
@@ -19,6 +23,15 @@ export function TelemetryConsentModal({
   onEnable,
   onDisable,
 }: TelemetryConsentModalProps) {
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  // Not dismissable: still a layer so it traps focus and swallows Esc.
+  const layerRef = useOverlayLayer<HTMLDivElement>({
+    open,
+    onClose: noop,
+    closeDisabled: true,
+    initialFocusRef: primaryRef,
+  });
+
   return (
     <Presence
       open={open}
@@ -29,6 +42,7 @@ export function TelemetryConsentModal({
     >
       {(state) => (
         <div
+          ref={layerRef}
           className={motionClass("dialog telemetry-consent-dialog", "m-fade", state)}
           role="dialog"
           aria-modal="true"
@@ -69,6 +83,7 @@ export function TelemetryConsentModal({
               Disable
             </button>
             <button
+              ref={primaryRef}
               className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
               type="button"
               disabled={busy}

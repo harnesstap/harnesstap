@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FolderOpen } from "lucide-react";
+import { useOverlayLayer } from "../state/overlay-stack";
 import {
   filterRecentProjects,
   loadRecentProjects,
@@ -55,20 +56,19 @@ export function ProjectPicker({
         setOpen(false);
       }
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        setOpen(false);
-      }
-    };
     window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown, true);
     return () => {
       window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown, true);
     };
   }, [open]);
+
+  // Popover layer: Esc closes it, Tab is not trapped, focus returns to the trigger.
+  useOverlayLayer({
+    open,
+    onClose: () => setOpen(false),
+    initialFocusRef: filterRef,
+    trapFocus: false,
+  });
 
   const label = projectPath
     ? projectDisplayName(projectPath)

@@ -154,6 +154,7 @@ export async function connectAgent(options?: {
 export async function fetchProfiles(
   baseUrl: string,
   projectPath?: string,
+  init?: { signal?: AbortSignal },
 ): Promise<ProfileSummary[]> {
   const params = new URLSearchParams();
   if (projectPath) {
@@ -162,6 +163,7 @@ export async function fetchProfiles(
   const query = params.toString();
   const response = await fetch(
     `${baseUrl}/v1/profiles${query ? `?${query}` : ""}`,
+    { signal: init?.signal },
   );
   if (!response.ok) {
     throw new AgentApiError("Could not list profiles", response.status);
@@ -178,8 +180,11 @@ export async function fetchProfiles(
 export async function fetchProfileStash(
   baseUrl: string,
   token: string | null,
+  init?: { signal?: AbortSignal },
 ): Promise<ProfileStashListResult> {
-  const response = await agentFetch(baseUrl, token, "/v1/profiles/stash");
+  const response = await agentFetch(baseUrl, token, "/v1/profiles/stash", {
+    signal: init?.signal,
+  });
   if (!response.ok) {
     throw new AgentApiError("Could not list stashed profiles", response.status);
   }
@@ -832,12 +837,15 @@ export async function fetchStatus(
   baseUrl: string,
   depth: GlobalProfileStatusDepth,
   projectPath?: string,
+  init?: { signal?: AbortSignal },
 ): Promise<GlobalProfileStatus> {
   const params = new URLSearchParams({ depth });
   if (projectPath) {
     params.set("projectPath", projectPath);
   }
-  const response = await fetch(`${baseUrl}/v1/status?${params.toString()}`);
+  const response = await fetch(`${baseUrl}/v1/status?${params.toString()}`, {
+    signal: init?.signal,
+  });
   if (!response.ok) {
     throw new AgentApiError("Could not read live status", response.status);
   }
@@ -848,11 +856,13 @@ export async function fetchApplyPreview(
   baseUrl: string,
   token: string | null,
   body: ProfileApplyPreviewRequest,
+  init?: { signal?: AbortSignal },
 ): Promise<ProfileApplyPreview> {
   const response = await agentFetch(baseUrl, token, "/v1/profiles/apply-preview", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal: init?.signal,
   });
   if (!response.ok) {
     return throwAgentError(response, "Could not preview profile apply");
@@ -1098,6 +1108,9 @@ function isFinalEvent(event: AgentSwitchStreamEvent): event is AgentSwitchFinalE
   return "type" in event && event.type === "result";
 }
 
+/** Backoff between EventSource reconnect attempts before the stream is given up. */
+export const SWITCH_EVENTS_RETRY_DELAYS_MS: readonly number[] = [500, 1500];
+
 export function subscribeSwitchEvents(
   baseUrl: string,
   switchId: string,
@@ -1105,25 +1118,56 @@ export function subscribeSwitchEvents(
   onComplete: (final: AgentSwitchFinalEvent) => void,
   onError: (message: string) => void,
 ): () => void {
-  const source = new EventSource(`${baseUrl}/v1/switch/${switchId}/events`);
-  source.onmessage = (message) => {
-    try {
-      const parsed = JSON.parse(message.data) as AgentSwitchStreamEvent;
-      if (isFinalEvent(parsed)) {
-        source.close();
-        onComplete(parsed);
+  let source: EventSource | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let attempt = 0;
+  let settled = false;
+
+  const open = () => {
+    source = new EventSource(`${baseUrl}/v1/switch/${switchId}/events`);
+    source.onmessage = (message) => {
+      try {
+        const parsed = JSON.parse(message.data) as AgentSwitchStreamEvent;
+        if (isFinalEvent(parsed)) {
+          settled = true;
+          source?.close();
+          onComplete(parsed);
+          return;
+        }
+        onEvent(parsed);
+      } catch {
+        // ignore malformed events
+      }
+    };
+    source.onerror = () => {
+      source?.close();
+      if (settled) {
         return;
       }
-      onEvent(parsed);
-    } catch {
-      // ignore malformed events
+      const delay = SWITCH_EVENTS_RETRY_DELAYS_MS[attempt];
+      if (delay === undefined) {
+        settled = true;
+        onError("Lost connection to switch progress stream");
+        return;
+      }
+      attempt += 1;
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        if (!settled) {
+          open();
+        }
+      }, delay);
+    };
+  };
+
+  open();
+  return () => {
+    settled = true;
+    if (retryTimer !== null) {
+      clearTimeout(retryTimer);
     }
+    source?.close();
   };
-  source.onerror = () => {
-    source.close();
-    onError("Lost connection to switch progress stream");
-  };
-  return () => source.close();
 }
 
 export async function cancelSwitch(

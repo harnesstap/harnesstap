@@ -1,16 +1,14 @@
+import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const liveStateSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/LiveStatePanel.tsx"),
   "utf8",
 );
-const appSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
-  "utf8",
-);
+const appSource = readDesktopShellSource();
 const addModalSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/ScopeAddToProfileModal.tsx"),
   "utf8",
@@ -98,7 +96,7 @@ describe("Global/Project scope inventory chrome", () => {
     expect(appSource).toContain("inventoryEditMode");
     expect(appSource).toContain("live-toolbar-identity");
     expect(appSource).toContain("live-toolbar-actions");
-    expect(appSource).toContain('label={inventoryEditMode ? "Done" : "Edit"}');
+    expect(appSource).toMatch(/label=\{(?:ctrl\.)?inventoryEditMode \? "Done" : "Edit"\}/);
     expect(liveStateSource).toContain("editMode");
     expect(liveStateSource).toContain("profile-resource-remove-btn");
     expect(liveStateSource).toContain("Remove from profile");
@@ -235,9 +233,13 @@ describe("Global/Project scope inventory chrome", () => {
       /InventoryRow[\s\S]{0,400}onOpen=\{\(\) => onOpenResource\(resourceDetailTarget\(item\.resource\)\)\}/,
     );
     const livePanel = appSource.slice(appSource.indexOf("<LiveStatePanel"));
-    expect(livePanel).toContain("onOpenPlugin={(pluginName) => {");
-    expect(livePanel).toContain("setLibraryFocusPlugin(pluginName)");
-    expect(livePanel).toContain('navigateToDestination("library")');
+    expect(livePanel).toContain("onOpenPlugin={onOpenPlugin}");
+    const openPluginInLibrary = appSource.slice(
+      appSource.indexOf("const openPluginInLibrary = useCallback("),
+    );
+    expect(openPluginInLibrary).toContain("(pluginName: string) => {");
+    expect(openPluginInLibrary).toContain("setLibraryFocusPlugin(pluginName)");
+    expect(appSource).toContain('const goToLibrary = useCallback(() => nav.go("library")');
     expect(designSource).toContain(
       "Clicking a plugin package membership row opens Library plugin details",
     );

@@ -72,6 +72,7 @@ import { SourcesListPane, type SourcesGroupError } from "./SourcesListPane";
 import { SourcesPluginTree, type SourcesTreeFile } from "./SourcesPluginTree";
 import { SourcesPreviewPane } from "./SourcesPreviewPane";
 import type { SourcesRecordActionsProps } from "./SourcesRecordActions";
+import { useEscapeWhenNoLayer } from "../state/overlay-stack";
 
 const FALLBACK_DEFAULT_ORG = "harnesstap-cloud";
 const SEARCH_DEBOUNCE_MS = 250;
@@ -732,34 +733,10 @@ export function SourcesWorkspace({
     };
   }, [baseUrl, pane.mode, paneHitId, paneFilePath, openFetchKey, token]);
 
-  useEffect(() => {
-    const overlayOpen = marketplaceOpen || catalogOpen || pinOpen;
-    if (!sourcesPaneHasPrevious(pane) && !overlayOpen) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      if (pinOpen) {
-        event.preventDefault();
-        setPinOpen(false);
-        return;
-      }
-      if (marketplaceOpen) {
-        event.preventDefault();
-        setMarketplaceOpen(false);
-        setEditingMarketplace(null);
-        return;
-      }
-      if (catalogOpen) {
-        event.preventDefault();
-        setCatalogOpen(false);
-        return;
-      }
-      if (!sourcesPaneHasPrevious(pane)) {
-        return;
-      }
+  // Pin / marketplace / catalog panels register their own overlay layers and
+  // close themselves on Esc; this only handles Back when nothing is open.
+  useEscapeWhenNoLayer(
+    (event: KeyboardEvent) => {
       const action = sourcesEscapeAction({
         confirmOpen: sidebarConfirmOpen,
       });
@@ -775,10 +752,9 @@ export function SourcesWorkspace({
           return neverAction;
         }
       }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [catalogOpen, marketplaceOpen, pane, pinOpen, sidebarConfirmOpen]);
+    },
+    sourcesPaneHasPrevious(pane),
+  );
 
   const applyListQueryOrChecks = (apply: () => void): void => {
     const current = paneRef.current;

@@ -1,6 +1,6 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
-import { shouldCloseDialogOnKey } from "../lib/dialog-dismiss";
+import { useOverlayLayer } from "../state/overlay-stack";
 
 export interface FullScreenPanelProps {
   titleId: string;
@@ -29,20 +29,15 @@ export function FullScreenPanel({
   actions,
   children,
 }: FullScreenPanelProps) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!shouldCloseDialogOnKey(event.key, closeDisabled)) {
-        return;
-      }
-      event.preventDefault();
-      onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeDisabled, onClose]);
+  const layerRef = useOverlayLayer<HTMLDivElement>({
+    open: true,
+    onClose,
+    closeDisabled,
+  });
 
   return (
     <div
+      ref={layerRef}
       className="full-screen-panel m-panel-in"
       role="dialog"
       aria-modal="true"

@@ -12,6 +12,7 @@ import { ButtonSpinner } from "./ButtonSpinner";
 import { RelatedHarnessIcons } from "./HarnessIcons";
 import { Presence } from "./motion/Presence";
 import { motionClass } from "./motion/motion-utils";
+import { useOverlayLayer } from "../state/overlay-stack";
 
 interface ResourceTrackedDirectoriesModalProps {
   open: boolean;
@@ -80,19 +81,10 @@ export function ResourceTrackedDirectoriesModal({
     void reload();
   }, [isOpen, reload]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, onClose]);
+  const layerRef = useOverlayLayer<HTMLDivElement>({
+    open: isOpen,
+    onClose,
+  });
 
   useEffect(() => {
     if (!isOpen) {
@@ -186,6 +178,7 @@ export function ResourceTrackedDirectoriesModal({
     >
       {(state) => (
         <div
+          ref={layerRef}
           className={motionClass("dialog resource-tracked-dirs-dialog", "m-rise", state)}
           role="dialog"
           aria-modal="true"

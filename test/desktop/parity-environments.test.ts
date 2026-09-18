@@ -1,13 +1,14 @@
+import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
 import {
   canSubmitEnvironmentCreate,
+  type EnvironmentListRow,
   environmentApplyAvailable,
   environmentDeleteNeedsForce,
   filterEnvironmentsByQuery,
-  type EnvironmentListRow,
 } from "../../apps/desktop/src/lib/api/environments.ts";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const workspaceSource = readFileSync(
@@ -18,10 +19,7 @@ const workspaceSource = readFileSync(
   "utf8",
 );
 const stylesSource = readDesktopCss();
-const appSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
-  "utf8",
-);
+const appSource = readDesktopShellSource();
 
 const rows: EnvironmentListRow[] = [
   {
@@ -80,7 +78,7 @@ describe("environments workspace chrome", () => {
 
   it("opens a library plugin detail without a Packages tab", () => {
     expect(appSource).toContain("setLibraryFocusPlugin");
-    expect(appSource).toContain('setWorkspaceFocus("library")');
+    expect(appSource).toContain('nav.go("library")');
     expect(appSource).not.toContain('setLibraryTab("packages")');
   });
 
