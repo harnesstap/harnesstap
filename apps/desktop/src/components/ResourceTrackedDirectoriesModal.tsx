@@ -10,6 +10,8 @@ import {
 import type { ResourceTrackedDirectoryEntry } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { RelatedHarnessIcons } from "./HarnessIcons";
+import { Presence } from "./motion/Presence";
+import { motionClass } from "./motion/motion-utils";
 
 interface ResourceTrackedDirectoriesModalProps {
   open: boolean;
@@ -169,12 +171,11 @@ export function ResourceTrackedDirectoriesModal({
     }
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div
+    <Presence
+      open={isOpen}
+      enter="m-scrim-in"
+      exit="m-scrim-out"
       className="dialog-backdrop resource-tracked-dirs-backdrop"
       role="presentation"
       onClick={(event) => {
@@ -183,220 +184,222 @@ export function ResourceTrackedDirectoriesModal({
         }
       }}
     >
-      <div
-        className="dialog resource-tracked-dirs-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <div className="resource-tracked-dirs-header">
-          <div>
-            <h2 id={titleId}>Tracked directories</h2>
-            <p className="muted resource-tracked-dirs-subtitle">
-              Directories HarnessTap scans to import resources into the library.
-            </p>
+      {(state) => (
+        <div
+          className={motionClass("dialog resource-tracked-dirs-dialog", "m-rise", state)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+        >
+          <div className="resource-tracked-dirs-header">
+            <div>
+              <h2 id={titleId}>Tracked directories</h2>
+              <p className="muted resource-tracked-dirs-subtitle">
+                Directories HarnessTap scans to import resources into the library.
+              </p>
+            </div>
+            <button
+              ref={closeRef}
+              type="button"
+              className="icon-action"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              <X size={16} aria-hidden />
+            </button>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            className="icon-action"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <X size={16} aria-hidden />
-          </button>
-        </div>
-
-        {error ? (
-          <div className="banner error resource-tracked-dirs-error">{error}</div>
-        ) : null}
-
-        <div className="resource-tracked-dirs-body">
-          {loading ? (
-            <p className="muted">Loading tracked directories…</p>
-          ) : directories.length === 0 ? (
-            <p className="muted">No tracked directories yet.</p>
-          ) : (
-            <ul className="resource-tracked-dirs-list">
-              {directories.map((entry) => {
-                const hasFolders = entry.folders.length > 0;
-                const openBusy = openingPath === entry.path;
-                const removeBusy = busyPath === entry.path;
-                const actions = (
-                  <div className="resource-tracked-dirs-item-actions">
-                    <button
-                      type="button"
-                      className={[
-                        "icon-action",
-                        "resource-tracked-dirs-open",
-                        openBusy ? "is-busy" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      aria-label={`Open ${entry.path} in file manager`}
-                      title="Open folder"
-                      disabled={disabled || Boolean(openingPath)}
-                      aria-busy={openBusy}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        void handleOpenFolder(entry.path);
-                      }}
-                    >
-                      {openBusy ? (
-                        <ButtonSpinner size={14} />
-                      ) : (
-                        <FolderOpen size={14} aria-hidden />
-                      )}
-                    </button>
-                    {entry.removable ? (
+  
+          {error ? (
+            <div className="banner error resource-tracked-dirs-error">{error}</div>
+          ) : null}
+  
+          <div className="resource-tracked-dirs-body">
+            {loading ? (
+              <p className="muted">Loading tracked directories…</p>
+            ) : directories.length === 0 ? (
+              <p className="muted">No tracked directories yet.</p>
+            ) : (
+              <ul className="resource-tracked-dirs-list">
+                {directories.map((entry) => {
+                  const hasFolders = entry.folders.length > 0;
+                  const openBusy = openingPath === entry.path;
+                  const removeBusy = busyPath === entry.path;
+                  const actions = (
+                    <div className="resource-tracked-dirs-item-actions">
                       <button
                         type="button"
                         className={[
                           "icon-action",
-                          "resource-tracked-dirs-remove",
-                          removeBusy ? "is-busy" : "",
+                          "resource-tracked-dirs-open",
+                          openBusy ? "is-busy" : "",
                         ]
                           .filter(Boolean)
                           .join(" ")}
-                        aria-label={`Remove ${entry.path}`}
-                        title="Stop tracking this directory"
-                        disabled={disabled || busyPath === entry.path}
-                        aria-busy={removeBusy}
+                        aria-label={`Open ${entry.path} in file manager`}
+                        title="Open folder"
+                        disabled={disabled || Boolean(openingPath)}
+                        aria-busy={openBusy}
                         onClick={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
-                          void handleRemoveDirectory(entry.path);
+                          void handleOpenFolder(entry.path);
                         }}
                       >
-                        {removeBusy ? (
+                        {openBusy ? (
                           <ButtonSpinner size={14} />
                         ) : (
-                          <Trash2 size={14} aria-hidden />
+                          <FolderOpen size={14} aria-hidden />
                         )}
                       </button>
-                    ) : null}
-                  </div>
-                );
-
-                const main = (
-                  <div className="resource-tracked-dirs-item-main">
-                    <div className="resource-tracked-dirs-item-title">
-                      <span>{entry.label}</span>
-                      <RelatedHarnessIcons harnessIds={entry.platform_ids} />
-                      <span className="resource-tracked-dirs-kind muted">
-                        {kindLabel(entry.kind)}
-                      </span>
+                      {entry.removable ? (
+                        <button
+                          type="button"
+                          className={[
+                            "icon-action",
+                            "resource-tracked-dirs-remove",
+                            removeBusy ? "is-busy" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          aria-label={`Remove ${entry.path}`}
+                          title="Stop tracking this directory"
+                          disabled={disabled || busyPath === entry.path}
+                          aria-busy={removeBusy}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void handleRemoveDirectory(entry.path);
+                          }}
+                        >
+                          {removeBusy ? (
+                            <ButtonSpinner size={14} />
+                          ) : (
+                            <Trash2 size={14} aria-hidden />
+                          )}
+                        </button>
+                      ) : null}
                     </div>
-                    <span className="mono resource-tracked-dirs-path muted">
-                      {entry.display_path ?? entry.path}
-                    </span>
-                    <div className="resource-tracked-dirs-meta muted">
-                      {entry.resource_count}{" "}
-                      {entry.resource_count === 1 ? "resource" : "resources"}
-                      {entry.platform_ids.length > 0
-                        ? ` · ${entry.platform_ids.join(", ")}`
-                        : null}
-                      {hasFolders
-                        ? ` · ${entry.folders.length} ${
-                            entry.folders.length === 1 ? "folder" : "folders"
-                          }`
-                        : null}
-                    </div>
-                  </div>
-                );
-
-                if (!hasFolders) {
-                  return (
-                    <li className="resource-tracked-dirs-item" key={entry.path}>
-                      {main}
-                      {actions}
-                    </li>
                   );
-                }
-
-                return (
-                  <li
-                    className="resource-tracked-dirs-item resource-tracked-dirs-item-expandable"
-                    key={entry.path}
-                  >
-                    <details className="resource-tracked-dirs-details">
-                      <summary className="resource-tracked-dirs-summary">
+  
+                  const main = (
+                    <div className="resource-tracked-dirs-item-main">
+                      <div className="resource-tracked-dirs-item-title">
+                        <span>{entry.label}</span>
+                        <RelatedHarnessIcons harnessIds={entry.platform_ids} />
+                        <span className="resource-tracked-dirs-kind muted">
+                          {kindLabel(entry.kind)}
+                        </span>
+                      </div>
+                      <span className="mono resource-tracked-dirs-path muted">
+                        {entry.display_path ?? entry.path}
+                      </span>
+                      <div className="resource-tracked-dirs-meta muted">
+                        {entry.resource_count}{" "}
+                        {entry.resource_count === 1 ? "resource" : "resources"}
+                        {entry.platform_ids.length > 0
+                          ? ` · ${entry.platform_ids.join(", ")}`
+                          : null}
+                        {hasFolders
+                          ? ` · ${entry.folders.length} ${
+                              entry.folders.length === 1 ? "folder" : "folders"
+                            }`
+                          : null}
+                      </div>
+                    </div>
+                  );
+  
+                  if (!hasFolders) {
+                    return (
+                      <li className="resource-tracked-dirs-item" key={entry.path}>
                         {main}
                         {actions}
-                      </summary>
-                      <ul className="resource-tracked-dirs-folders">
-                        {entry.folders.map((folder) => {
-                          const folderOpenBusy = openingPath === folder.path;
-                          return (
-                            <li
-                              className="resource-tracked-dirs-folder"
-                              key={folder.path}
-                            >
-                              <div className="resource-tracked-dirs-folder-main">
-                                <div className="resource-tracked-dirs-folder-label">
-                                  <span>{folder.label}</span>
-                                  <RelatedHarnessIcons harnessIds={folder.platform_ids} />
-                                </div>
-                                <span className="mono resource-tracked-dirs-path muted">
-                                  {folder.path}
-                                </span>
-                                {folder.platform_ids.length > 0 ? (
-                                  <span className="resource-tracked-dirs-meta muted">
-                                    {folder.platform_ids.join(", ")}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <button
-                                type="button"
-                                className={[
-                                  "icon-action",
-                                  "resource-tracked-dirs-open",
-                                  folderOpenBusy ? "is-busy" : "",
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")}
-                                aria-label={`Open ${folder.path} in file manager`}
-                                title="Open folder"
-                                disabled={disabled || Boolean(openingPath)}
-                                aria-busy={folderOpenBusy}
-                                onClick={() => void handleOpenFolder(folder.path)}
+                      </li>
+                    );
+                  }
+  
+                  return (
+                    <li
+                      className="resource-tracked-dirs-item resource-tracked-dirs-item-expandable"
+                      key={entry.path}
+                    >
+                      <details className="resource-tracked-dirs-details">
+                        <summary className="resource-tracked-dirs-summary">
+                          {main}
+                          {actions}
+                        </summary>
+                        <ul className="resource-tracked-dirs-folders">
+                          {entry.folders.map((folder) => {
+                            const folderOpenBusy = openingPath === folder.path;
+                            return (
+                              <li
+                                className="resource-tracked-dirs-folder"
+                                key={folder.path}
                               >
-                                {folderOpenBusy ? (
-                                  <ButtonSpinner size={14} />
-                                ) : (
-                                  <FolderOpen size={14} aria-hidden />
-                                )}
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </details>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                                <div className="resource-tracked-dirs-folder-main">
+                                  <div className="resource-tracked-dirs-folder-label">
+                                    <span>{folder.label}</span>
+                                    <RelatedHarnessIcons harnessIds={folder.platform_ids} />
+                                  </div>
+                                  <span className="mono resource-tracked-dirs-path muted">
+                                    {folder.path}
+                                  </span>
+                                  {folder.platform_ids.length > 0 ? (
+                                    <span className="resource-tracked-dirs-meta muted">
+                                      {folder.platform_ids.join(", ")}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  className={[
+                                    "icon-action",
+                                    "resource-tracked-dirs-open",
+                                    folderOpenBusy ? "is-busy" : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                  aria-label={`Open ${folder.path} in file manager`}
+                                  title="Open folder"
+                                  disabled={disabled || Boolean(openingPath)}
+                                  aria-busy={folderOpenBusy}
+                                  onClick={() => void handleOpenFolder(folder.path)}
+                                >
+                                  {folderOpenBusy ? (
+                                    <ButtonSpinner size={14} />
+                                  ) : (
+                                    <FolderOpen size={14} aria-hidden />
+                                  )}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </details>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+  
+          <div className="dialog-actions resource-tracked-dirs-actions">
+            <button
+              className={["btn", adding ? "is-busy" : ""].filter(Boolean).join(" ")}
+              type="button"
+              disabled={disabled || !baseUrl || adding}
+              aria-busy={adding}
+              onClick={() => void handleAddDirectory()}
+            >
+              {adding ? <ButtonSpinner size={14} /> : <Plus size={14} aria-hidden />}
+              {adding ? "Adding…" : "Add directory"}
+            </button>
+            <button className="btn primary" type="button" onClick={onClose}>
+              <Check size={16} aria-hidden />
+              Done
+            </button>
+          </div>
         </div>
-
-        <div className="dialog-actions resource-tracked-dirs-actions">
-          <button
-            className={["btn", adding ? "is-busy" : ""].filter(Boolean).join(" ")}
-            type="button"
-            disabled={disabled || !baseUrl || adding}
-            aria-busy={adding}
-            onClick={() => void handleAddDirectory()}
-          >
-            {adding ? <ButtonSpinner size={14} /> : <Plus size={14} aria-hidden />}
-            {adding ? "Adding…" : "Add directory"}
-          </button>
-          <button className="btn primary" type="button" onClick={onClose}>
-            <Check size={16} aria-hidden />
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </Presence>
   );
 }

@@ -1387,6 +1387,21 @@
   padding-left: 1.1rem;
 }
 
+/* Status color changes ease (m-status recipe): switch steps, inventory rows and
+   their status glyphs, and the amber attention section header. */
+.steps li,
+.inventory-row-drifted,
+.inventory-status-glyph,
+.not-staged-status-glyph,
+.contents-block,
+.contents-block > .contents-header {
+  transition:
+    color var(--duration-base) var(--ease-in-out),
+    background-color var(--duration-base) var(--ease-in-out),
+    border-color var(--duration-base) var(--ease-in-out),
+    box-shadow var(--duration-base) var(--ease-in-out);
+}
+
 .steps li.cur {
   color: var(--yellow);
   font-weight: 600;
