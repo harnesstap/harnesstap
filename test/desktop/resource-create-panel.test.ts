@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const root = join(import.meta.dir, "../../apps/desktop/src");
 const createSource = readFileSync(
@@ -11,7 +12,7 @@ const compositionSource = readFileSync(
   join(root, "components/CompositionPickers.tsx"),
   "utf8",
 );
-const stylesSource = readFileSync(join(root, "styles.css"), "utf8");
+const stylesSource = readDesktopCss();
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",

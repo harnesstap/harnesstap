@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
+import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const root = join(import.meta.dir, "../../apps/desktop/src");
 
@@ -26,10 +27,7 @@ const resourceDetailSource = read("components/ResourceDetailBody.tsx");
 const pendingSource = read("components/PendingApprovalsStrip.tsx");
 const updateSource = read("components/UpdateAvailableControl.tsx");
 const iconButtonSource = read("components/IconActionButton.tsx");
-const stylesSource = readFileSync(
-  join(root, "styles.css"),
-  "utf8",
-);
+const stylesSource = readDesktopCss();
 
 describe("desktop icon chrome", () => {
   test("shares IconActionButton with title and optional visible label beside the icon", () => {
@@ -260,7 +258,7 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain('label="Settings"');
     expect(iconButtonSource).toContain("ChromeTooltip");
     expect(iconButtonSource).toContain("aria-label={showLabel ? undefined : label}");
-    expect(stylesSource).toMatch(/\.chrome-tooltip \{\n  z-index: 80;/);
+    expect(stylesSource).toMatch(/\.chrome-tooltip \{\n  z-index: var\(--z-tooltip\);/);
     expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
   });
 

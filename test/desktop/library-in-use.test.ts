@@ -12,6 +12,7 @@ import {
 } from "../../apps/desktop/src/lib/library-in-use.ts";
 import type { LibraryListEntry } from "../../apps/desktop/src/lib/library-list.ts";
 import type { ProfileDetail } from "../../apps/desktop/src/lib/types.ts";
+import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
@@ -24,10 +25,7 @@ const panelSource = readFileSync(
   ),
   "utf8",
 );
-const stylesSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
-  "utf8",
-);
+const stylesSource = readDesktopCss();
 const markSource = readFileSync(
   join(
     import.meta.dir,

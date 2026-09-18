@@ -8,6 +8,7 @@ import {
   filterEnvironmentsByQuery,
   type EnvironmentListRow,
 } from "../../apps/desktop/src/lib/api/environments.ts";
+import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const workspaceSource = readFileSync(
   join(
@@ -16,10 +17,7 @@ const workspaceSource = readFileSync(
   ),
   "utf8",
 );
-const stylesSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
-  "utf8",
-);
+const stylesSource = readDesktopCss();
 const appSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
   "utf8",
