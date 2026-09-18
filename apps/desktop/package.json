@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "icons": "bash scripts/generate-icons.sh",
-    "prepare-sidecar": "bash scripts/prepare-sidecar.sh"
+    "prepare-sidecar": "bash scripts/prepare-sidecar.sh",
+    "shots": "node scripts/ui-shots.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
@@ -37,6 +38,7 @@
     "@wdio/tauri-plugin": "^1.0.0",
     "@wdio/tauri-service": "^1.3.0",
     "expect-webdriverio": "^6.0.1",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.0",
     "vite": "^6.3.5"
