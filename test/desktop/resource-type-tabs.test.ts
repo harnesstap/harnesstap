@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   ALL_RESOURCE_TYPE_TAB,
+  collapsedTypeTabFit,
   countResourceTypeTabs,
   resolveResourceTypeTab,
   RESOURCE_TYPE_TAB_ORDER,
@@ -10,7 +11,9 @@ import {
   resourceTypeTabLabel,
   resourceTypeTabPillsText,
   resourceTypeTabTooltip,
+  TYPE_TABS_LESS_LABEL,
   typeTabAttentionTooltip,
+  typeTabsMoreLabel,
   visibleResourceTypeTabs,
 } from "../../apps/desktop/src/lib/resource-type-tabs.ts";
 import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
@@ -174,6 +177,57 @@ describe("typeTabAttentionTooltip", () => {
     expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 4 })).toBe("4 inactive");
     expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 0 })).toBeNull();
     expect(typeTabAttentionTooltip(undefined)).toBeNull();
+  });
+});
+
+describe("collapsedTypeTabFit", () => {
+  it("shows every pill when they fit on one row without a more control", () => {
+    expect(
+      collapsedTypeTabFit({
+        itemWidths: [80, 80, 80],
+        containerWidth: 300,
+        moreWidth: 56,
+        gap: 6,
+      }),
+    ).toEqual({ visibleCount: 3, hiddenCount: 0 });
+  });
+
+  it("counts hidden pills as N more, not the total", () => {
+    expect(
+      collapsedTypeTabFit({
+        itemWidths: [90, 90, 90, 90, 90],
+        containerWidth: 280,
+        moreWidth: 56,
+        gap: 6,
+      }),
+    ).toEqual({ visibleCount: 2, hiddenCount: 3 });
+  });
+
+  it("hides the more control when there is nothing extra to show", () => {
+    expect(
+      collapsedTypeTabFit({
+        itemWidths: [120],
+        containerWidth: 200,
+        moreWidth: 56,
+        gap: 6,
+      }),
+    ).toEqual({ visibleCount: 1, hiddenCount: 0 });
+    expect(
+      collapsedTypeTabFit({
+        itemWidths: [],
+        containerWidth: 200,
+        moreWidth: 56,
+        gap: 6,
+      }),
+    ).toEqual({ visibleCount: 0, hiddenCount: 0 });
+  });
+});
+
+describe("typeTabsMoreLabel", () => {
+  it("pluralizes N more and keeps Less exact", () => {
+    expect(typeTabsMoreLabel(1)).toBe("1 more");
+    expect(typeTabsMoreLabel(3)).toBe("3 more");
+    expect(TYPE_TABS_LESS_LABEL).toBe("Less");
   });
 });
 

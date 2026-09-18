@@ -156,7 +156,7 @@ export function ScopeAddToProfileModal({
       countResourceTypeTabs(searched.map((entry) => libraryFilterType(entry))),
     [searched],
   );
-  const tabOptions = { emptyMode: "disable" as const };
+  const tabOptions = { emptyMode: "hide" as const };
   const resolvedType = resolveResourceTypeTab(typeTab, typeCounts, tabOptions);
   const visible = useMemo(() => {
     const rows =
@@ -235,7 +235,8 @@ export function ScopeAddToProfileModal({
           counts={typeCounts}
           value={resolvedType}
           includeAll
-          emptyMode="disable"
+          emptyMode="hide"
+          overflow="collapse"
           disabled={controlsDisabled || loading}
           onChange={setTypeTab}
         />

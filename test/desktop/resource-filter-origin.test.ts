@@ -134,7 +134,7 @@ describe("library origin filter chrome", () => {
     expect(designSource).toContain("ResourceTypeTabs");
     expect(designSource).toContain("No sidebar Type chips");
     expect(designSource).toContain("pills everywhere");
-    expect(designSource).toContain("The Add to profile modal uses the same wrapping pills");
+    expect(designSource).toContain("The Add to profile modal collapses those pills to one row");
     expect(designSource).toContain("never collapse to icon-only");
     expect(designSource).toContain("1 Skills");
     expect(designSource).toContain("2 Plugins");
@@ -149,7 +149,9 @@ describe("library origin filter chrome", () => {
   test("pills keep icon, count, and type text without icon-only collapse", () => {
     expect(tabsSource).toContain("resource-type-tab-count");
     expect(tabsSource).toContain("resource-type-tab-label");
-    expect(tabsSource).not.toContain("ResizeObserver");
+    expect(tabsSource).toContain("ResizeObserver");
+    expect(tabsSource).toContain("typeTabsMoreLabel");
+    expect(tabsSource).toContain('overflow = "wrap"');
     expect(tabsSource.indexOf("resource-type-tab-count")).toBeLessThan(
       tabsSource.lastIndexOf("resource-type-tab-label"),
     );
@@ -172,7 +174,7 @@ describe("library origin filter chrome", () => {
     expect(typeBadges).toContain("resourceTypeTabTooltip");
     expect(typeBadges).not.toContain("ChromeTooltip");
     expect(designSource).toContain("pills everywhere");
-    expect(designSource).toContain("The Add to profile modal uses the same wrapping pills");
+    expect(designSource).toContain("The Add to profile modal collapses those pills to one row");
     expect(designSource).not.toContain("Two densities via `density`");
     expect(designSource).toContain("Library, Global/Project inventory");
   });
