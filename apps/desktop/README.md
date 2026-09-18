@@ -1,6 +1,6 @@
 # HarnessTap Desktop
 
-Tauri 2 desktop app for the profile control plane. Visual language: [DESIGN.md](./DESIGN.md).
+Tauri 2 desktop app for the profile control plane. Visual language: [DESIGN.md](./DESIGN.md). Planned UI/UX refresh: [docs/ux-refresh-design.md](./docs/ux-refresh-design.md).
 
 ## Prerequisites
 
