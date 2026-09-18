@@ -77,6 +77,7 @@ import {
   resolveResourceTypeTab,
 } from "../lib/resource-type-tabs";
 import { workspaceBackEnabled } from "../lib/screen-history";
+import { useEscapeWhenNoLayer } from "../state/overlay-stack";
 import type { LibraryResource, ProfileDetail, ProfileSummary } from "../lib/types";
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -474,14 +475,9 @@ export function ResourcesPanel({
     applyFilterChangeRef.current(defaultResourceFilterState());
   }, [homeResetNonce]);
 
-  useEffect(() => {
-    if (pane.mode !== "detail") {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
+  // Back on Esc while no dialog is open; open layers take Esc first.
+  useEscapeWhenNoLayer(
+    (event: KeyboardEvent) => {
       const current = paneRef.current;
       if (current.mode !== "detail") {
         return;
@@ -536,10 +532,9 @@ export function ResourcesPanel({
           return _exhaustive;
         }
       }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pane.mode, fieldEditing, paneConfirmOpen, detailBusy, pluginHistoryMode]);
+    },
+    pane.mode === "detail",
+  );
 
   function openLibraryRow(entry: LibraryListEntry): void {
     const label = resourceDisplayName(entry);

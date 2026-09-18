@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop shell state moved into an agent session hook, a polled status store that keeps last-good values while refreshing, destination-only navigation history, one overlay layer stack for Esc and focus, and bottom-right toasts in place of header success flashes.
+time: 2026-09-18T22:30:00Z
+custom:
+  Issue: ""

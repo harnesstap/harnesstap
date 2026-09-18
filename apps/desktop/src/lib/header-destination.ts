@@ -1,43 +1,64 @@
-import type { ViewScope } from "./types";
+import type { Scope } from "./api/scope";
 
+/** Workspaces the header navigates between. Scope is orthogonal (see `Scope`). */
+export type Destination = "library" | "discover" | "environments" | "scope";
+
+/** Everything clickable in the header nav: destinations plus the scope segment. */
 export type HeaderDestination =
   | "library"
-  | "sources"
+  | "discover"
   | "environments"
-  | "home"
+  | "global"
   | "project";
 
-export type HeaderWorkspaceFocus =
-  | "library"
-  | "sources"
-  | "scope"
-  | "environments";
+/** @deprecated Use `Destination`. */
+export type HeaderWorkspaceFocus = Destination;
 
 export function activeHeaderDestination(
-  workspaceFocus: HeaderWorkspaceFocus,
-  view: ViewScope,
+  destination: Destination,
+  scope: Scope,
 ): HeaderDestination {
-  switch (workspaceFocus) {
+  switch (destination) {
     case "library":
       return "library";
-    case "sources":
-      return "sources";
+    case "discover":
+      return "discover";
     case "environments":
       return "environments";
     case "scope":
-      switch (view) {
-        case "home":
-          return "home";
+      switch (scope) {
+        case "global":
+          return "global";
         case "project":
           return "project";
         default: {
-          const neverView: never = view;
-          return neverView;
+          const neverScope: never = scope;
+          return neverScope;
         }
       }
     default: {
-      const neverFocus: never = workspaceFocus;
-      return neverFocus;
+      const neverDestination: never = destination;
+      return neverDestination;
+    }
+  }
+}
+
+/** Split a header click into the destination it targets and, for the scope segment, the scope. */
+export function headerDestinationTarget(
+  clicked: HeaderDestination,
+): { destination: Destination; scope: Scope | null } {
+  switch (clicked) {
+    case "library":
+    case "discover":
+    case "environments":
+      return { destination: clicked, scope: null };
+    case "global":
+      return { destination: "scope", scope: "global" };
+    case "project":
+      return { destination: "scope", scope: "project" };
+    default: {
+      const neverClicked: never = clicked;
+      return neverClicked;
     }
   }
 }

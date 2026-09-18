@@ -129,7 +129,7 @@ describe("Golden path", () => {
   });
 
   it("refreshes and shows global user resources", async () => {
-    await clickTestId("view-home");
+    await clickTestId("view-global");
     await clickTestId("header-refresh");
     await assertResourceRows(USER_RESOURCE_NAMES);
   });

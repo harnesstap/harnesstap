@@ -3,6 +3,7 @@ import {
   ResourceDetailBody,
   type ResourceDetailTarget,
 } from "./ResourceDetailBody";
+import { useOverlayLayer } from "../state/overlay-stack";
 
 export type { ResourceDetailTarget };
 
@@ -33,23 +34,14 @@ export function ResourceDetailPane({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      if (busy || confirmOpen || fieldEditing) {
-        return;
-      }
-      event.preventDefault();
-      onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose, busy, confirmOpen, fieldEditing]);
+  // Nested confirms register their own layer above this one; field editors
+  // handle Esc on the input, so the layer stays put while editing.
+  const layerRef = useOverlayLayer<HTMLDivElement>({
+    open,
+    onClose,
+    closeDisabled: busy || confirmOpen || fieldEditing,
+    initialFocusRef: closeRef,
+  });
 
   useEffect(() => {
     if (!open) {
@@ -69,6 +61,7 @@ export function ResourceDetailPane({
       role="presentation"
     >
       <div
+        ref={layerRef}
         className="dialog resource-detail-dialog"
         role="dialog"
         aria-modal="true"
