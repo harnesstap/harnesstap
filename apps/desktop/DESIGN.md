@@ -14,6 +14,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 
 - UI: **IBM Plex Sans** (fallback: `"Segoe UI", sans-serif`)
 - Mono (paths, versions, timestamps, content, counts): **IBM Plex Mono** (fallback: `ui-monospace, monospace`)
+- Both faces ship inside the app (`@fontsource/ibm-plex-sans` 400/500/600 and `@fontsource/ibm-plex-mono` 400/500, latin and latin-ext subsets, imported in `main.tsx`). No runtime font CDN: the fallbacks are for missing glyphs only, never the first paint.
 - Primary copy ≥16px; dense metadata 13px with contrast ≥4.5:1
 - Title sans; field values 16px sans; path / version / content / timestamps mono 13px
 
