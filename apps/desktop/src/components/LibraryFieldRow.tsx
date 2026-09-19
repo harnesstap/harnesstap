@@ -49,11 +49,7 @@ export function LibraryFieldRow({
               {icon}
             </button>
           ) : (
-            <span
-              className="library-field-icon"
-              tabIndex={0}
-              aria-label={fieldName}
-            >
+            <span className="library-field-icon" role="img" aria-label={fieldName}>
               {icon}
             </span>
           )}
