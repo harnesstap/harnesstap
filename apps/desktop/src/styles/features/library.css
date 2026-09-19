@@ -746,13 +746,6 @@
   line-height: 1.35;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .resource-hover-card {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
 .library-detail-header {
   display: flex;
   align-items: center;

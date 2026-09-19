@@ -10,6 +10,8 @@ import {
 } from "../lib/dialog-dismiss";
 import type { ProfileFileDiffResult, ViewScope } from "../lib/types";
 import { buildUnifiedDiffLines, countUnifiedDiffChanges } from "../lib/unified-diff";
+import { Presence } from "./motion/Presence";
+import { motionClass } from "./motion/motion-utils";
 
 export interface FileDiffModalProps {
   open: boolean;
@@ -96,13 +98,13 @@ export function FileDiffModal({
 
   const changeCounts = useMemo(() => countUnifiedDiffChanges(lines), [lines]);
   const showDiffChrome = !loading && !error && diff !== null;
-
-  if (!open || !path) {
-    return null;
-  }
+  const shownPath = path ?? "";
 
   return (
-    <div
+    <Presence
+      open={open && path !== null}
+      enter="m-scrim-in"
+      exit="m-scrim-out"
       className="dialog-backdrop file-diff-backdrop"
       role="presentation"
       onClick={(event) => {
@@ -111,74 +113,76 @@ export function FileDiffModal({
         }
       }}
     >
-      <div
-        className="dialog file-diff-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <div className="file-diff-header">
-          <div>
-            <div className="file-diff-header-row">
-              <div className="eyebrow">Live → after apply</div>
+      {(state) => (
+        <div
+          className={motionClass("dialog file-diff-dialog", "m-rise", state)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+        >
+          <div className="file-diff-header">
+            <div>
+              <div className="file-diff-header-row">
+                <div className="eyebrow">Live → after apply</div>
+                {showDiffChrome ? (
+                  <span className="file-diff-counts mono" aria-label="Change counts">
+                    <span className="file-diff-count-add">+{changeCounts.added}</span>
+                    <span className="file-diff-count-remove">−{changeCounts.removed}</span>
+                  </span>
+                ) : null}
+              </div>
+              <h2 id={titleId} className="mono">
+                {shownPath}
+              </h2>
+              {resource?.type === "mcp_server" && resource.name ? (
+                <p className="muted file-diff-resource">{resource.name}</p>
+              ) : null}
               {showDiffChrome ? (
-                <span className="file-diff-counts mono" aria-label="Change counts">
-                  <span className="file-diff-count-add">+{changeCounts.added}</span>
-                  <span className="file-diff-count-remove">−{changeCounts.removed}</span>
-                </span>
+                <p className="muted file-diff-legend">
+                  Green = would add · Red = would remove
+                </p>
               ) : null}
             </div>
-            <h2 id={titleId} className="mono">
-              {path}
-            </h2>
-            {resource?.type === "mcp_server" && resource.name ? (
-              <p className="muted file-diff-resource">{resource.name}</p>
-            ) : null}
-            {showDiffChrome ? (
-              <p className="muted file-diff-legend">
-                Green = would add · Red = would remove
-              </p>
-            ) : null}
+            <button
+              ref={closeRef}
+              className="icon-btn"
+              type="button"
+              aria-label="Close file diff"
+              onClick={onClose}
+            >
+              ×
+            </button>
           </div>
-          <button
-            ref={closeRef}
-            className="icon-btn"
-            type="button"
-            aria-label="Close file diff"
-            onClick={onClose}
-          >
-            ×
-          </button>
+  
+          <div className="file-diff-body">
+            {loading ? (
+              <p className="muted">Loading diff…</p>
+            ) : error ? (
+              <div className="banner error" role="alert">
+                <div>{error}</div>
+              </div>
+            ) : (
+              <pre className="file-diff-content" aria-label={`Live to after-apply diff for ${shownPath}${resource?.name ? ` (${resource.name})` : ""}`}>
+                {lines.map((line, index) => (
+                  <span
+                    key={`${line.kind}-${index}`}
+                    className={`file-diff-line file-diff-line-${line.kind}`}
+                  >
+                    {line.text || " "}
+                  </span>
+                ))}
+              </pre>
+            )}
+          </div>
+  
+          <div className="dialog-actions">
+            <button className="btn" type="button" onClick={onClose}>
+              <X size={16} aria-hidden />
+              Close
+            </button>
+          </div>
         </div>
-
-        <div className="file-diff-body">
-          {loading ? (
-            <p className="muted">Loading diff…</p>
-          ) : error ? (
-            <div className="banner error" role="alert">
-              <div>{error}</div>
-            </div>
-          ) : (
-            <pre className="file-diff-content" aria-label={`Live to after-apply diff for ${path}${resource?.name ? ` (${resource.name})` : ""}`}>
-              {lines.map((line, index) => (
-                <span
-                  key={`${line.kind}-${index}`}
-                  className={`file-diff-line file-diff-line-${line.kind}`}
-                >
-                  {line.text || " "}
-                </span>
-              ))}
-            </pre>
-          )}
-        </div>
-
-        <div className="dialog-actions">
-          <button className="btn" type="button" onClick={onClose}>
-            <X size={16} aria-hidden />
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </Presence>
   );
 }

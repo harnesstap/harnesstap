@@ -26,6 +26,8 @@ import {
 } from "../lib/dialog-dismiss";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { IconActionButton } from "./IconActionButton";
+import { Presence } from "./motion/Presence";
+import { motionClass } from "./motion/motion-utils";
 import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import {
   ResourceRowIdentity,
@@ -171,12 +173,11 @@ export function ScopeAddToProfileModal({
   const selectedCount = visible.filter((entry) => selectedIds.has(entry.id)).length;
   const controlsDisabled = disabled || adding;
 
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div
+    <Presence
+      open={open}
+      enter="m-scrim-in"
+      exit="m-scrim-out"
       className="dialog-backdrop"
       role="presentation"
       onClick={(event) => {
@@ -185,154 +186,156 @@ export function ScopeAddToProfileModal({
         }
       }}
     >
-      <div
-        className="dialog scope-add-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <div className="dialog-header">
-          <h2 id={titleId}>{title}</h2>
-          <div className="dialog-header-actions">
-            {onCreate ? (
+      {(state) => (
+        <div
+          className={motionClass("dialog scope-add-modal", "m-rise", state)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+        >
+          <div className="dialog-header">
+            <h2 id={titleId}>{title}</h2>
+            <div className="dialog-header-actions">
+              {onCreate ? (
+                <IconActionButton
+                  primary
+                  showLabel
+                  label="Create"
+                  disabled={controlsDisabled}
+                  onClick={onCreate}
+                  icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                />
+              ) : null}
               <IconActionButton
-                primary
-                showLabel
-                label="Create"
+                label="Close"
                 disabled={controlsDisabled}
-                onClick={onCreate}
-                icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+                onClick={onClose}
+                icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
               />
-            ) : null}
-            <IconActionButton
-              label="Close"
-              disabled={controlsDisabled}
+            </div>
+            <button
+              ref={closeRef}
+              type="button"
+              className="sr-only"
               onClick={onClose}
-              icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-            />
+            >
+              Close
+            </button>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            className="sr-only"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-        <label className="list-search">
-          <span className="sr-only">Filter library items</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Filter by name"
-            aria-label="Filter library items"
+          <label className="list-search">
+            <span className="sr-only">Filter library items</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Filter by name"
+              aria-label="Filter library items"
+              disabled={controlsDisabled || loading}
+            />
+          </label>
+          <ResourceTypeTabs
+            counts={typeCounts}
+            value={resolvedType}
+            includeAll
+            emptyMode="hide"
+            overflow="collapse"
             disabled={controlsDisabled || loading}
+            onChange={setTypeTab}
           />
-        </label>
-        <ResourceTypeTabs
-          counts={typeCounts}
-          value={resolvedType}
-          includeAll
-          emptyMode="hide"
-          overflow="collapse"
-          disabled={controlsDisabled || loading}
-          onChange={setTypeTab}
-        />
-        {error ? (
-          <p className="banner error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="scope-add-modal-list">
-          {loading ? (
-            <p className="muted">Loading library…</p>
-          ) : visible.length === 0 ? (
-            <p className="muted">No matches.</p>
-          ) : (
-            visible.map((entry) => {
-              const type = libraryFilterType(entry);
-              const checkboxId = `scope-add-${entry.id}`;
-              const checked = selectedIds.has(entry.id);
-              return (
-                <ResourceRowRoot
-                  key={entry.id}
-                  hover={hoverModelFromLibraryResource(entry)}
-                  testId={`scope-add-row-${entry.name}`}
-                >
-                  <ResourceRowLeading>
-                    <span className="resource-row-checkbox">
-                      <Checkbox
-                        id={checkboxId}
-                        checked={checked}
-                        disabled={controlsDisabled}
-                        onCheckedChange={() => {
-                          setSelectedIds((current) => {
-                            const next = new Set(current);
-                            if (next.has(entry.id)) {
-                              next.delete(entry.id);
-                            } else {
-                              next.add(entry.id);
-                            }
-                            return next;
-                          });
-                        }}
-                      />
-                    </span>
-                  </ResourceRowLeading>
-                  <ResourceRowIdentity
-                    type={type}
-                    label={resourceDisplayName(entry)}
-                    htmlFor={checkboxId}
-                  />
-                </ResourceRowRoot>
-              );
-            })
-          )}
+          {error ? (
+            <p className="banner error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <div className="scope-add-modal-list">
+            {loading ? (
+              <p className="muted">Loading library…</p>
+            ) : visible.length === 0 ? (
+              <p className="muted">No matches.</p>
+            ) : (
+              visible.map((entry) => {
+                const type = libraryFilterType(entry);
+                const checkboxId = `scope-add-${entry.id}`;
+                const checked = selectedIds.has(entry.id);
+                return (
+                  <ResourceRowRoot
+                    key={entry.id}
+                    hover={hoverModelFromLibraryResource(entry)}
+                    testId={`scope-add-row-${entry.name}`}
+                  >
+                    <ResourceRowLeading>
+                      <span className="resource-row-checkbox">
+                        <Checkbox
+                          id={checkboxId}
+                          checked={checked}
+                          disabled={controlsDisabled}
+                          onCheckedChange={() => {
+                            setSelectedIds((current) => {
+                              const next = new Set(current);
+                              if (next.has(entry.id)) {
+                                next.delete(entry.id);
+                              } else {
+                                next.add(entry.id);
+                              }
+                              return next;
+                            });
+                          }}
+                        />
+                      </span>
+                    </ResourceRowLeading>
+                    <ResourceRowIdentity
+                      type={type}
+                      label={resourceDisplayName(entry)}
+                      htmlFor={checkboxId}
+                    />
+                  </ResourceRowRoot>
+                );
+              })
+            )}
+          </div>
+          <div className="dialog-actions">
+            <button
+              className="btn"
+              type="button"
+              onClick={onClose}
+              disabled={adding}
+            >
+              <X size={16} aria-hidden />
+              Cancel
+            </button>
+            <button
+              className={["btn", "primary", adding ? "is-busy" : ""].filter(Boolean).join(" ")}
+              type="button"
+              disabled={controlsDisabled || selectedCount < 1}
+              aria-busy={adding}
+              onClick={() => {
+                const picks = visible
+                  .filter((entry) => selectedIds.has(entry.id))
+                  .map(pickFromEntry);
+                if (picks.length < 1) {
+                  return;
+                }
+                setAdding(true);
+                void onAdd(picks)
+                  .then(() => {
+                    onClose();
+                  })
+                  .catch((caught) => {
+                    setError(
+                      caught instanceof Error ? caught.message : addErrorFallback,
+                    );
+                  })
+                  .finally(() => {
+                    setAdding(false);
+                  });
+              }}
+            >
+              {adding ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
+              Add
+            </button>
+          </div>
         </div>
-        <div className="dialog-actions">
-          <button
-            className="btn"
-            type="button"
-            onClick={onClose}
-            disabled={adding}
-          >
-            <X size={16} aria-hidden />
-            Cancel
-          </button>
-          <button
-            className={["btn", "primary", adding ? "is-busy" : ""].filter(Boolean).join(" ")}
-            type="button"
-            disabled={controlsDisabled || selectedCount < 1}
-            aria-busy={adding}
-            onClick={() => {
-              const picks = visible
-                .filter((entry) => selectedIds.has(entry.id))
-                .map(pickFromEntry);
-              if (picks.length < 1) {
-                return;
-              }
-              setAdding(true);
-              void onAdd(picks)
-                .then(() => {
-                  onClose();
-                })
-                .catch((caught) => {
-                  setError(
-                    caught instanceof Error ? caught.message : addErrorFallback,
-                  );
-                })
-                .finally(() => {
-                  setAdding(false);
-                });
-            }}
-          >
-            {adding ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
-            Add
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </Presence>
   );
 }
