@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop bundles IBM Plex Sans and IBM Plex Mono instead of loading them from Google Fonts, so the UI renders in its own typeface offline and without a first-paint font swap.
+time: 2026-09-18T21:40:00Z
+custom:
+  Issue: ""
