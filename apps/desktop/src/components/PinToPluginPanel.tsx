@@ -7,7 +7,7 @@ import {
 } from "../lib/api/library-plugins";
 import { Pin, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
-import { useOverlayLayer } from "../state/overlay-stack";
+import { FullScreenPanel } from "./FullScreenPanel";
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -22,6 +22,7 @@ export interface PinToPluginPanelProps {
   token: string | null;
   disabled?: boolean;
   confirming?: boolean;
+  error?: string | null;
   onClose: () => void;
   onConfirm: (pluginName: string) => void | Promise<void>;
   onCreated?: (plugin: LibraryPluginHead) => void;
@@ -36,6 +37,7 @@ export function PinToPluginPanel({
   token,
   disabled = false,
   confirming = false,
+  error = null,
   onClose,
   onConfirm,
   onCreated,
@@ -77,20 +79,28 @@ export function PinToPluginPanel({
     return authored.filter((head) => head.name.toLowerCase().includes(needle));
   }, [authored, query]);
 
-  const layerRef = useOverlayLayer<HTMLDivElement>({
-    open,
-    onClose,
-    closeDisabled: confirming || createBusy,
-  });
-
   if (!open) {
     return null;
   }
 
   const controlsDisabled = disabled || confirming || createBusy || !baseUrl;
-  const title = mode === "attach" ? "Attach to plugin" : "Pin to plugin";
-  const confirmLabel = mode === "attach" ? "Attach" : "Pin";
-  const showCreate = authored.length === 0;
+  const title = "Pin to plugin";
+  let confirmLabel: string;
+  let bodyHint: string;
+  switch (mode) {
+    case "attach":
+      confirmLabel = "Attach";
+      bodyHint = "Attach this resource into one of your plugins.";
+      break;
+    case "pin":
+      confirmLabel = "Pin";
+      bodyHint = "Link into an authored plugin.";
+      break;
+    default: {
+      const neverMode: never = mode;
+      return neverMode;
+    }
+  }
 
   const onCreate = async () => {
     const name = createName.trim();
@@ -113,114 +123,17 @@ export function PinToPluginPanel({
   };
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        ref={layerRef}
-        className="dialog create-profile-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pin-to-plugin-title"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Discover</div>
-            <h2 id="pin-to-plugin-title">{title}</h2>
-          </div>
-          <button
-            className="icon-btn"
-            type="button"
-            aria-label="Close pin to plugin drawer"
-            onClick={onClose}
-            disabled={controlsDisabled}
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="create-profile-body">
-          {showCreate ? (
-            <div className="form-field gap-1.5">
-              <Label htmlFor="pin-to-plugin-create-name">Create plugin</Label>
-              <Input
-                id="pin-to-plugin-create-name"
-                value={createName}
-                onChange={(event) => setCreateName(event.target.value)}
-                placeholder="my-plugin"
-                disabled={controlsDisabled}
-                autoFocus
-              />
-              {createError ? (
-                <div className="banner error" role="alert">
-                  {createError}
-                </div>
-              ) : null}
-              <button
-                className={["btn", "primary", createBusy ? "is-busy" : ""]
-                  .filter(Boolean)
-                  .join(" ")}
-                type="button"
-                onClick={() => void onCreate()}
-                disabled={!createName.trim() || controlsDisabled}
-                aria-busy={createBusy}
-              >
-                {createBusy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
-                {createBusy ? "Creating…" : "Create plugin"}
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="form-field gap-1.5">
-                <Label htmlFor="pin-to-plugin-search">Search plugins</Label>
-                <Input
-                  id="pin-to-plugin-search"
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Filter authored plugins"
-                  disabled={controlsDisabled}
-                  autoFocus
-                />
-              </div>
-              {filtered.length === 0 ? (
-                <p className="muted">No matching authored plugins.</p>
-              ) : (
-                <ul className="sources-pin-plugin-list">
-                  {filtered.map((head) => (
-                    <li key={head.id}>
-                      <label
-                        className={`resource-filter-option${
-                          selectedName === head.name ? " selected" : ""
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="pin-to-plugin-target"
-                          checked={selectedName === head.name}
-                          disabled={controlsDisabled}
-                          onChange={() => setSelectedName(head.name)}
-                        />
-                        <span>{head.name}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-          {selectedName && showCreate ? (
-            <p className="muted">Selected {selectedName}.</p>
-          ) : null}
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
+    <FullScreenPanel
+      titleId="pin-to-plugin-title"
+      title={title}
+      eyebrow="Discover"
+      subtitle={bodyHint}
+      closeLabel="Close pin to plugin"
+      closeDisabled={controlsDisabled}
+      onClose={onClose}
+      testId="pin-to-plugin-panel"
+      actions={
+        <>
           <button
             className="btn"
             type="button"
@@ -247,8 +160,88 @@ export function PinToPluginPanel({
             {confirming ? <ButtonSpinner size={16} /> : <Pin size={16} aria-hidden />}
             {confirming ? "Working…" : confirmLabel}
           </button>
+        </>
+      }
+    >
+      {error ? (
+        <div className="banner error" role="alert">
+          {error}
         </div>
+      ) : null}
+      {authored.length > 0 ? (
+        <>
+          <div className="form-field gap-1.5">
+            <Label htmlFor="pin-to-plugin-search">Search plugins</Label>
+            <Input
+              id="pin-to-plugin-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Filter authored plugins"
+              disabled={controlsDisabled}
+              autoFocus
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <p className="muted">No matching authored plugins.</p>
+          ) : (
+            <ul className="sources-pin-plugin-list">
+              {filtered.map((head) => (
+                <li key={head.id}>
+                  <label
+                    className={`resource-filter-option${
+                      selectedName === head.name ? " selected" : ""
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="pin-to-plugin-target"
+                      checked={selectedName === head.name}
+                      disabled={controlsDisabled}
+                      onChange={() => setSelectedName(head.name)}
+                    />
+                    <span>{head.name}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <p className="muted">No authored plugins yet. Create one below.</p>
+      )}
+      <div className="form-field gap-1.5 sources-pin-create">
+        <Label htmlFor="pin-to-plugin-create-name">Create plugin</Label>
+        <Input
+          id="pin-to-plugin-create-name"
+          value={createName}
+          onChange={(event) => setCreateName(event.target.value)}
+          placeholder="my-plugin"
+          disabled={controlsDisabled}
+          autoFocus={authored.length === 0}
+        />
+        {createError ? (
+          <div className="banner error" role="alert">
+            {createError}
+          </div>
+        ) : null}
+        <button
+          className={["btn", createBusy ? "is-busy" : ""]
+            .filter(Boolean)
+            .join(" ")}
+          type="button"
+          data-testid="pin-create-plugin"
+          onClick={() => void onCreate()}
+          disabled={!createName.trim() || controlsDisabled}
+          aria-busy={createBusy}
+        >
+          {createBusy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
+          {createBusy ? "Creating…" : "Create plugin"}
+        </button>
       </div>
-    </div>
+      {selectedName ? (
+        <p className="muted">Selected {selectedName}.</p>
+      ) : null}
+    </FullScreenPanel>
   );
 }

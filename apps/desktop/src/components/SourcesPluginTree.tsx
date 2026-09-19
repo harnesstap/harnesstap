@@ -1,7 +1,7 @@
 import { AlignLeft, FileCode2, Package } from "lucide-react";
 import type { SourcesHit } from "../lib/sources-search";
 import { presenceLabel } from "../lib/sources-search";
-import { LibraryDetailChrome } from "./LibraryDetailChrome";
+import { DiscoverDetailChrome } from "./discover/DiscoverDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
 import {
   SourcesOriginUpdateBadge,
@@ -24,7 +24,6 @@ export interface SourcesPluginTreeProps {
   error: string | null;
   authRequired: boolean;
   disabled?: boolean;
-  onBack: () => void;
   onOpenFile: (path: string) => void;
   onSignIn?: () => void;
   recordActions?: SourcesRecordActionsProps;
@@ -37,18 +36,16 @@ export function SourcesPluginTree({
   error,
   authRequired,
   disabled = false,
-  onBack,
   onOpenFile,
   onSignIn,
   recordActions,
 }: SourcesPluginTreeProps) {
+  const showFiles = loading || files.length > 0;
   return (
-    <LibraryDetailChrome
+    <DiscoverDetailChrome
       titleId="sources-plugin-tree-title"
       title={hit.name}
       typeLabel="plugin"
-      onBack={onBack}
-      backLabel="Back to sources list"
     >
       <div className="sources-plugin-tree">
         <LibraryFieldRow
@@ -93,31 +90,31 @@ export function SourcesPluginTree({
             {error}
           </div>
         ) : null}
-        <section className="library-contained-resources" aria-label="Contained files">
-          <h3 className="library-contained-heading">Contained files</h3>
-          {loading ? (
-            <p className="muted">Loading files…</p>
-          ) : files.length === 0 && !error && !authRequired ? (
-            <p className="muted">No contained files.</p>
-          ) : (
-            files.map((file) => (
-              <div key={file.path} className="library-contained-row">
-                <span className="library-contained-type">
-                  <FileCode2 size={14} aria-hidden />
-                </span>
-                <button
-                  type="button"
-                  className="resource-name-btn sources-tree-file"
-                  disabled={disabled}
-                  onClick={() => onOpenFile(file.path)}
-                >
-                  <span className="library-contained-path mono">{file.label}</span>
-                </button>
-              </div>
-            ))
-          )}
-        </section>
+        {showFiles ? (
+          <section className="library-contained-resources" aria-label="Contained files">
+            <h3 className="library-contained-heading">Contained files</h3>
+            {loading ? (
+              <p className="muted">Loading files…</p>
+            ) : (
+              files.map((file) => (
+                <div key={file.path} className="library-contained-row">
+                  <span className="library-contained-type">
+                    <FileCode2 size={14} aria-hidden />
+                  </span>
+                  <button
+                    type="button"
+                    className="resource-name-btn sources-tree-file"
+                    disabled={disabled}
+                    onClick={() => onOpenFile(file.path)}
+                  >
+                    <span className="library-contained-path mono">{file.label}</span>
+                  </button>
+                </div>
+              ))
+            )}
+          </section>
+        ) : null}
       </div>
-    </LibraryDetailChrome>
+    </DiscoverDetailChrome>
   );
 }

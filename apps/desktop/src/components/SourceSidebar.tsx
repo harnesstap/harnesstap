@@ -3,6 +3,8 @@ import { FilterX, Pencil, Trash2, Unlink, Unplug } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { sourcesSidebarChangeAction } from "../lib/sources-pane";
+import { ButtonSpinner } from "./ButtonSpinner";
+import { Banner } from "./shell/Banner";
 import {
   groupSourceRows,
   isSourcesFilterActive,
@@ -34,6 +36,9 @@ export interface SourceSidebarProps {
   disabled?: boolean;
   busy?: boolean;
   error?: string | null;
+  originCheckError?: string | null;
+  onRetryOriginCheck?: () => void;
+  refreshing?: boolean;
   onEditMarketplace: (name: string) => void;
   onRemoveMarketplace: (name: string) => void;
   onDisconnectOrg: (org: string) => void;
@@ -102,6 +107,9 @@ export function SourceSidebar({
   disabled = false,
   busy = false,
   error,
+  originCheckError,
+  onRetryOriginCheck,
+  refreshing = false,
   onEditMarketplace,
   onRemoveMarketplace,
   onDisconnectOrg,
@@ -169,6 +177,15 @@ export function SourceSidebar({
             }}
             disabled={controlsDisabled}
           />
+          {refreshing ? (
+            <span
+              className="sources-sidebar-refresh"
+              aria-label="Refreshing sources"
+              role="status"
+            >
+              <ButtonSpinner size={14} />
+            </span>
+          ) : null}
           <IconActionButton
             className="resource-filter-clear"
             label="Clear filters"
@@ -200,6 +217,14 @@ export function SourceSidebar({
           {error}
         </div>
       ) : null}
+      {originCheckError ? (
+        <Banner
+          tone="error"
+          message={originCheckError}
+          onRetry={onRetryOriginCheck}
+          testId="sources-origin-check-error"
+        />
+      ) : null}
       {rows.length > 0 ? (
         <div className="resource-filter-section source-row-list source-tree">
           <div className="source-row source-master-row">
@@ -222,14 +247,7 @@ export function SourceSidebar({
       {groupSourceRows(rows).map((section) => (
         <div
           key={section.id}
-          className={[
-            "resource-filter-section",
-            "source-row-list",
-            "source-tree-children",
-            masterChecked === true ? "is-all-selected" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          className="resource-filter-section source-row-list source-tree-children"
         >
           <span className="resource-filter-section-label">{section.label}</span>
           {section.rows.map((row) => (

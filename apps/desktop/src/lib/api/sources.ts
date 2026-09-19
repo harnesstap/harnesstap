@@ -3,6 +3,10 @@ import type {
   PluginMarketplacePlatform,
 } from "../types";
 import { AgentApiError, agentFetch, throwAgentError } from "./http";
+import {
+  createLibraryPlugin,
+  patchLibraryPluginAttachments,
+} from "./library-plugins";
 import type { PublishCatalogRef } from "./publish";
 
 export interface CatalogScope {
@@ -232,4 +236,28 @@ export async function pullCatalogPlugin(
     return throwAgentError(response, "Could not pull catalog plugin");
   }
   return (await response.json()) as CatalogPluginPullResult;
+}
+
+export interface MarketplacePluginInstallResult {
+  plugin: { name: string; id: string };
+}
+
+/** Copy a marketplace package into the Library as its own plugin (not a pin onto a host). */
+export async function addMarketplacePluginToLibrary(
+  baseUrl: string,
+  token: string | null,
+  input: { marketplace: string; plugin: string; as?: string },
+): Promise<MarketplacePluginInstallResult> {
+  const name = input.as?.trim() || input.plugin;
+  const created = await createLibraryPlugin(baseUrl, token, { name });
+  await patchLibraryPluginAttachments(baseUrl, token, created.name, {
+    add: [
+      {
+        type: "plugin",
+        selector: `${input.plugin}@${input.marketplace}`,
+        sync: true,
+      },
+    ],
+  });
+  return { plugin: { name: created.name, id: created.id } };
 }
