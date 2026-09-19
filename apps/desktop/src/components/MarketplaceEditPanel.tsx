@@ -15,7 +15,7 @@ import type {
 import { Check, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { useOverlayLayer } from "../state/overlay-stack";
+import { FullScreenPanel } from "./FullScreenPanel";
 
 const MARKETPLACE_PLATFORMS: PluginMarketplacePlatform[] = [
   "claude-code",
@@ -121,12 +121,6 @@ export function MarketplaceEditPanel({
     setWarning(null);
     setDiscardOpen(false);
   }, [open, mode, entry]);
-
-  const layerRef = useOverlayLayer<HTMLDivElement>({
-    open,
-    onClose,
-    closeDisabled: busy,
-  });
 
   if (!open) {
     return null;
@@ -247,39 +241,41 @@ export function MarketplaceEditPanel({
   const submitLabel = mode === "add" ? "Add marketplace" : "Save marketplace";
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          requestClose();
-        }
-      }}
-    >
-      <div
-        ref={layerRef}
-        className="dialog create-profile-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="marketplace-edit-title"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Discover</div>
-            <h2 id="marketplace-edit-title">{title}</h2>
-          </div>
+    <>
+    <FullScreenPanel
+      titleId="marketplace-edit-title"
+      title={title}
+      eyebrow="Discover"
+      closeLabel={mode === "add" ? "Close add marketplace" : "Close edit marketplace"}
+      closeDisabled={controlsDisabled}
+      onClose={requestClose}
+      testId="marketplace-edit-panel"
+      actions={
+        <>
           <button
-            className="icon-btn"
+            className="btn"
             type="button"
-            aria-label="Close marketplace drawer"
             onClick={requestClose}
             disabled={controlsDisabled}
           >
-            ×
+            <X size={16} aria-hidden />
+            Cancel
           </button>
-        </div>
-
-        <div className="create-profile-body">
+          <button
+            className={["btn", "primary", busy ? "is-busy" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            onClick={() => void onSubmit()}
+            disabled={!canSubmit || controlsDisabled}
+            aria-busy={busy}
+          >
+            {busy ? <ButtonSpinner size={16} /> : mode === "add" ? <Plus size={16} aria-hidden /> : <Check size={16} aria-hidden />}
+            {busy ? (mode === "add" ? "Adding…" : "Saving…") : submitLabel}
+          </button>
+        </>
+      }
+    >
           {error ? (
             <div className="banner error" role="alert">
               {error}
@@ -336,32 +332,7 @@ export function MarketplaceEditPanel({
               </div>
             ))}
           </fieldset>
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          <button
-            className="btn"
-            type="button"
-            onClick={requestClose}
-            disabled={controlsDisabled}
-          >
-            <X size={16} aria-hidden />
-            Cancel
-          </button>
-          <button
-            className={["btn", "primary", busy ? "is-busy" : ""]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            onClick={() => void onSubmit()}
-            disabled={!canSubmit || controlsDisabled}
-            aria-busy={busy}
-          >
-            {busy ? <ButtonSpinner size={16} /> : mode === "add" ? <Plus size={16} aria-hidden /> : <Check size={16} aria-hidden />}
-            {busy ? (mode === "add" ? "Adding…" : "Saving…") : submitLabel}
-          </button>
-        </div>
-      </div>
+    </FullScreenPanel>
       <ConfirmDialog
         open={discardOpen}
         title="Discard changes?"
@@ -373,6 +344,6 @@ export function MarketplaceEditPanel({
         }}
         onCancel={() => setDiscardOpen(false)}
       />
-    </div>
+    </>
   );
 }

@@ -7,7 +7,7 @@ import { connectCatalogDraftIsDirty } from "../lib/sources-panels";
 import { Cloud, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { useOverlayLayer } from "../state/overlay-stack";
+import { FullScreenPanel } from "./FullScreenPanel";
 
 type ConnectCatalogMode = "register" | "org";
 
@@ -52,12 +52,6 @@ export function ConnectCatalogPanel({
     setError(null);
     setDiscardOpen(false);
   }, [open]);
-
-  const layerRef = useOverlayLayer<HTMLDivElement>({
-    open,
-    onClose,
-    closeDisabled: busy,
-  });
 
   if (!open) {
     return null;
@@ -126,140 +120,123 @@ export function ConnectCatalogPanel({
   };
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          requestClose();
+    <>
+      <FullScreenPanel
+        titleId="connect-catalog-title"
+        title="Connect catalog"
+        eyebrow="Discover"
+        closeLabel="Close connect catalog"
+        closeDisabled={controlsDisabled}
+        onClose={requestClose}
+        testId="connect-catalog-panel"
+        actions={
+          <>
+            <button
+              className="btn"
+              type="button"
+              onClick={requestClose}
+              disabled={controlsDisabled}
+            >
+              <X size={16} aria-hidden />
+              Cancel
+            </button>
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              onClick={() => void onSubmit()}
+              disabled={!canSubmit || controlsDisabled}
+              aria-busy={busy}
+            >
+              {busy ? (
+                <ButtonSpinner size={16} />
+              ) : mode === "register" ? (
+                <Plus size={16} aria-hidden />
+              ) : (
+                <Cloud size={16} aria-hidden />
+              )}
+              {busy
+                ? mode === "register"
+                  ? "Registering…"
+                  : "Connecting…"
+                : mode === "register"
+                  ? "Register catalog"
+                  : "Connect org"}
+            </button>
+          </>
         }
-      }}
-    >
-      <div
-        ref={layerRef}
-        className="dialog create-profile-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="connect-catalog-title"
       >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Discover</div>
-            <h2 id="connect-catalog-title">Connect catalog</h2>
+        {error ? (
+          <div className="banner error" role="alert">
+            {error}
           </div>
-          <button
-            className="icon-btn"
-            type="button"
-            aria-label="Close connect catalog drawer"
-            onClick={requestClose}
-            disabled={controlsDisabled}
+        ) : null}
+        <fieldset className="resource-filter-section">
+          <legend className="p-0 text-xs font-semibold">How to connect</legend>
+          <label
+            className={`resource-filter-option${mode === "register" ? " selected" : ""}`}
           >
-            ×
-          </button>
-        </div>
-
-        <div className="create-profile-body">
-          {error ? (
-            <div className="banner error" role="alert">
-              {error}
-            </div>
-          ) : null}
-          <fieldset className="resource-filter-section">
-            <legend className="p-0 text-xs font-semibold">How to connect</legend>
-            <label
-              className={`resource-filter-option${mode === "register" ? " selected" : ""}`}
-            >
-              <input
-                type="radio"
-                name="connect-catalog-mode"
-                checked={mode === "register"}
-                disabled={controlsDisabled}
-                onChange={() => setMode("register")}
-              />
-              <span>Register publish catalog</span>
-            </label>
-            <label
-              className={`resource-filter-option${mode === "org" ? " selected" : ""}`}
-            >
-              <input
-                type="radio"
-                name="connect-catalog-mode"
-                checked={mode === "org"}
-                disabled={controlsDisabled}
-                onChange={() => setMode("org")}
-              />
-              <span>Connect org</span>
-            </label>
-          </fieldset>
-          {mode === "register" ? (
-            <>
-              <div className="form-field gap-1.5">
-                <Label htmlFor="connect-catalog-selector">Catalog</Label>
-                <Input
-                  id="connect-catalog-selector"
-                  value={selector}
-                  onChange={(event) => setSelector(event.target.value)}
-                  placeholder="acme/internal"
-                  disabled={controlsDisabled}
-                />
-              </div>
-              <div className="form-field gap-1.5">
-                <Label htmlFor="connect-catalog-account">
-                  Account <span className="muted">(optional)</span>
-                </Label>
-                <Input
-                  id="connect-catalog-account"
-                  value={account}
-                  onChange={(event) => setAccount(event.target.value)}
-                  placeholder="default"
-                  disabled={controlsDisabled}
-                />
-              </div>
-            </>
-          ) : (
+            <input
+              type="radio"
+              name="connect-catalog-mode"
+              checked={mode === "register"}
+              disabled={controlsDisabled}
+              onChange={() => setMode("register")}
+            />
+            <span>Register publish catalog</span>
+          </label>
+          <label
+            className={`resource-filter-option${mode === "org" ? " selected" : ""}`}
+          >
+            <input
+              type="radio"
+              name="connect-catalog-mode"
+              checked={mode === "org"}
+              disabled={controlsDisabled}
+              onChange={() => setMode("org")}
+            />
+            <span>Connect org</span>
+          </label>
+        </fieldset>
+        {mode === "register" ? (
+          <>
             <div className="form-field gap-1.5">
-              <Label htmlFor="connect-catalog-org">Org</Label>
+              <Label htmlFor="connect-catalog-selector">Catalog</Label>
               <Input
-                id="connect-catalog-org"
-                value={org}
-                onChange={(event) => setOrg(event.target.value)}
-                placeholder="acme"
+                id="connect-catalog-selector"
+                value={selector}
+                onChange={(event) => setSelector(event.target.value)}
+                placeholder="acme/internal"
                 disabled={controlsDisabled}
               />
             </div>
-          )}
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          <button
-            className="btn"
-            type="button"
-            onClick={requestClose}
-            disabled={controlsDisabled}
-          >
-            <X size={16} aria-hidden />
-            Cancel
-          </button>
-          <button
-            className={["btn", "primary", busy ? "is-busy" : ""]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            onClick={() => void onSubmit()}
-            disabled={!canSubmit || controlsDisabled}
-            aria-busy={busy}
-          >
-            {busy ? <ButtonSpinner size={16} /> : mode === "register" ? <Plus size={16} aria-hidden /> : <Cloud size={16} aria-hidden />}
-            {busy
-              ? mode === "register"
-                ? "Registering…"
-                : "Connecting…"
-              : mode === "register"
-                ? "Register catalog"
-                : "Connect org"}
-          </button>
-        </div>
-      </div>
+            <div className="form-field gap-1.5">
+              <Label htmlFor="connect-catalog-account">
+                Account <span className="muted">(optional)</span>
+              </Label>
+              <Input
+                id="connect-catalog-account"
+                value={account}
+                onChange={(event) => setAccount(event.target.value)}
+                placeholder="default"
+                disabled={controlsDisabled}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="form-field gap-1.5">
+            <Label htmlFor="connect-catalog-org">Org</Label>
+            <Input
+              id="connect-catalog-org"
+              value={org}
+              onChange={(event) => setOrg(event.target.value)}
+              placeholder="acme"
+              disabled={controlsDisabled}
+            />
+          </div>
+        )}
+      </FullScreenPanel>
       <ConfirmDialog
         open={discardOpen}
         title="Discard changes?"
@@ -271,6 +248,6 @@ export function ConnectCatalogPanel({
         }}
         onCancel={() => setDiscardOpen(false)}
       />
-    </div>
+    </>
   );
 }

@@ -7,6 +7,8 @@ import {
   mergeSourcesHits,
   filterDiscoverGroups,
   discoverListEmptyCopy,
+  discoverListIsSearching,
+  discoverSourcesRefreshing,
   presenceForCloud,
   presenceForMarketplace,
   sourcesHitFetchKey,
@@ -744,25 +746,75 @@ describe("discoverListEmptyCopy", () => {
     expect(discoverListEmptyCopy({ query: "", showInLibrary: false })).toEqual({
       message: "You're caught up",
       hint: "Nothing left to discover. Turn on Show in library.",
-    });
-    expect(
-      discoverListEmptyCopy({ query: "ship", showInLibrary: false }),
-    ).toEqual({
-      message: "You're caught up",
-      hint: "Nothing left to discover. Turn on Show in library.",
+      clearSearch: false,
     });
   });
 
-  test("keeps search empty copy when showing in-library hits", () => {
-    expect(discoverListEmptyCopy({ query: "", showInLibrary: true })).toEqual({
-      message: "Search to add",
+  test("uses No results plus Clear search for a query miss", () => {
+    expect(
+      discoverListEmptyCopy({ query: "ship", showInLibrary: false }),
+    ).toEqual({
+      message: 'No results for "ship"',
       hint: null,
+      clearSearch: true,
     });
     expect(
       discoverListEmptyCopy({ query: "missing", showInLibrary: true }),
     ).toEqual({
-      message: "No hits yet.",
+      message: 'No results for "missing"',
       hint: null,
+      clearSearch: true,
     });
+  });
+
+  test("keeps search empty copy when showing in-library hits with no query", () => {
+    expect(discoverListEmptyCopy({ query: "", showInLibrary: true })).toEqual({
+      message: "Search to add",
+      hint: null,
+      clearSearch: false,
+    });
+  });
+});
+
+describe("discoverListIsSearching", () => {
+  test("is true only when checked sources have never fetched and the list is empty", () => {
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["local"],
+        fetchedIds: new Set(),
+        visibleCount: 0,
+      }),
+    ).toBe(true);
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["local"],
+        fetchedIds: new Set(["local"]),
+        visibleCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["local"],
+        fetchedIds: new Set(),
+        visibleCount: 3,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("discoverSourcesRefreshing", () => {
+  test("is true when an already-fetched source is in flight again", () => {
+    expect(
+      discoverSourcesRefreshing({
+        fetchedIds: new Set(["local"]),
+        inflightIds: new Set(["local"]),
+      }),
+    ).toBe(true);
+    expect(
+      discoverSourcesRefreshing({
+        fetchedIds: new Set(),
+        inflightIds: new Set(["local"]),
+      }),
+    ).toBe(false);
   });
 });

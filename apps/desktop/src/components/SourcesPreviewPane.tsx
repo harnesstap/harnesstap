@@ -1,7 +1,7 @@
 import { AlignLeft, FileCode2, Folder, Package } from "lucide-react";
 import type { SourcesHit } from "../lib/sources-search";
 import { presenceLabel } from "../lib/sources-search";
-import { LibraryDetailChrome } from "./LibraryDetailChrome";
+import { DiscoverDetailChrome } from "./discover/DiscoverDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
 import {
   SourcesOriginUpdateBadge,
@@ -20,7 +20,6 @@ export interface SourcesPreviewPaneProps {
   error: string | null;
   authRequired: boolean;
   disabled?: boolean;
-  onBack: () => void;
   onSignIn?: () => void;
   recordActions?: SourcesRecordActionsProps;
 }
@@ -33,18 +32,14 @@ export function SourcesPreviewPane({
   error,
   authRequired,
   disabled = false,
-  onBack,
   onSignIn,
   recordActions,
 }: SourcesPreviewPaneProps) {
-  const fromPlugin = filePath !== undefined;
   return (
-    <LibraryDetailChrome
+    <DiscoverDetailChrome
       titleId="sources-preview-title"
       title={filePath ?? hit.name}
       typeLabel={hit.typeLabel}
-      onBack={onBack}
-      backLabel={fromPlugin ? "Back to plugin" : "Back to sources list"}
     >
       <div className="sources-preview">
         <LibraryFieldRow
@@ -112,6 +107,6 @@ export function SourcesPreviewPane({
           />
         )}
       </div>
-    </LibraryDetailChrome>
+    </DiscoverDetailChrome>
   );
 }

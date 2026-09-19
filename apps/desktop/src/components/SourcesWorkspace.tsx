@@ -21,6 +21,7 @@ import {
   isCloudAuthError,
   isCloudAuthMessage,
   isNameCollisionError,
+  addMarketplacePluginToLibrary,
   pullCatalogPlugin,
   searchCatalogPlugins,
   type CatalogPluginSearchHit,
@@ -40,7 +41,10 @@ import {
   applyOriginOutdated,
   cloudHitIsInLibrary,
   cloudSelectorKey,
+  discoverListIsSearching,
+  discoverSourcesRefreshing,
   filterDiscoverGroups,
+  marketplaceHitKey,
   mergeSourcesHits,
   sourcesHitFetchKey,
   type CloudPluginInput,
@@ -72,6 +76,7 @@ import { SourcesListPane, type SourcesGroupError } from "./SourcesListPane";
 import { SourcesPluginTree, type SourcesTreeFile } from "./SourcesPluginTree";
 import { SourcesPreviewPane } from "./SourcesPreviewPane";
 import type { SourcesRecordActionsProps } from "./SourcesRecordActions";
+import { Crossfade } from "./motion/Crossfade";
 import { useEscapeWhenNoLayer } from "../state/overlay-stack";
 
 const FALLBACK_DEFAULT_ORG = "harnesstap-cloud";
@@ -194,7 +199,10 @@ export function SourcesWorkspace({
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [pinMode, setPinMode] = useState<"pin" | "attach">("pin");
+  const [pinHit, setPinHit] = useState<SourcesHit | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [originCheckError, setOriginCheckError] = useState<string | null>(null);
   const [actionAuthRequired, setActionAuthRequired] = useState(false);
   const [pullCollision, setPullCollision] = useState(false);
   const [pullAsName, setPullAsName] = useState("");
@@ -220,11 +228,18 @@ export function SourcesWorkspace({
   const [pulledCloudKeys, setPulledCloudKeys] = useState<Set<string>>(
     () => new Set(),
   );
+  const [addedMarketplaceKeys, setAddedMarketplaceKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [originCheckRows, setOriginCheckRows] = useState<
     PluginOriginCheckRow[]
   >([]);
-  const [librarySearching, setLibrarySearching] = useState(true);
-  const [cloudSearching, setCloudSearching] = useState(false);
+  const [fetchedSourceIds, setFetchedSourceIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [inflightSourceIds, setInflightSourceIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [activeHit, setActiveHit] = useState<SourcesHit | null>(null);
   const [treeFiles, setTreeFiles] = useState<SourcesTreeFile[]>([]);
   const [treeLoading, setTreeLoading] = useState(false);
@@ -322,8 +337,8 @@ export function SourcesWorkspace({
       setCloudErrors([]);
       setCloudRequestError(null);
       setCloudAuthRequired(false);
-      setLibrarySearching(false);
-      setCloudSearching(false);
+      setFetchedSourceIds(new Set());
+      setInflightSourceIds(new Set());
       return;
     }
 
@@ -332,7 +347,33 @@ export function SourcesWorkspace({
     const marketplaceRows = checkedRows.filter(
       (row) => row.kind === "marketplace",
     );
-    setLibrarySearching(true);
+    const libraryIds = ["local", ...marketplaceRows.map((row) => row.id)];
+    setInflightSourceIds((current) => {
+      const next = new Set(current);
+      for (const id of libraryIds) {
+        next.add(id);
+      }
+      return next;
+    });
+    const markFetched = (ids: string[]) => {
+      if (cancelled) {
+        return;
+      }
+      setFetchedSourceIds((current) => {
+        const next = new Set(current);
+        for (const id of ids) {
+          next.add(id);
+        }
+        return next;
+      });
+      setInflightSourceIds((current) => {
+        const next = new Set(current);
+        for (const id of ids) {
+          next.delete(id);
+        }
+        return next;
+      });
+    };
     const pending: Promise<void>[] = [
       Promise.all([
         fetchLibraryPluginHeads(baseUrl, token),
@@ -357,6 +398,9 @@ export function SourcesWorkspace({
           } else {
             setLocalError(null);
           }
+        })
+        .finally(() => {
+          markFetched(["local"]);
         }),
     ];
 
@@ -388,6 +432,7 @@ export function SourcesWorkspace({
                 error: null,
               },
             }));
+            markFetched([row.id]);
           })
           .catch((loadError: unknown) => {
             if (cancelled) {
@@ -400,15 +445,12 @@ export function SourcesWorkspace({
                 error: errorMessage(loadError, `Could not load ${row.label}.`),
               },
             }));
+            markFetched([row.id]);
           }),
       );
     }
 
-    void Promise.allSettled(pending).then(() => {
-      if (!cancelled) {
-        setLibrarySearching(false);
-      }
-    });
+    void Promise.allSettled(pending);
 
     return () => {
       cancelled = true;
@@ -427,7 +469,15 @@ export function SourcesWorkspace({
       setCloudErrors([]);
       setCloudRequestError(null);
       setCloudAuthRequired(false);
-      setCloudSearching(false);
+      setInflightSourceIds((current) => {
+        const next = new Set(current);
+        for (const id of [...current]) {
+          if (id.startsWith("org:") || id.startsWith("cat:")) {
+            next.delete(id);
+          }
+        }
+        return next;
+      });
       return;
     }
 
@@ -436,8 +486,15 @@ export function SourcesWorkspace({
     }
 
     let cancelled = false;
+    const cloudIds = cloudRows.map((row) => row.id);
+    setInflightSourceIds((current) => {
+      const next = new Set(current);
+      for (const id of cloudIds) {
+        next.add(id);
+      }
+      return next;
+    });
     const timer = window.setTimeout(() => {
-      setCloudSearching(true);
       const orgs = cloudRows
         .filter((row) => row.kind === "cloud-org")
         .map((row) => row.label);
@@ -470,15 +527,36 @@ export function SourcesWorkspace({
           setCloudAuthRequired(isCloudAuthError(loadError));
         })
         .finally(() => {
-          if (!cancelled) {
-            setCloudSearching(false);
+          if (cancelled) {
+            return;
           }
+          setFetchedSourceIds((current) => {
+            const next = new Set(current);
+            for (const id of cloudIds) {
+              next.add(id);
+            }
+            return next;
+          });
+          setInflightSourceIds((current) => {
+            const next = new Set(current);
+            for (const id of cloudIds) {
+              next.delete(id);
+            }
+            return next;
+          });
         });
     }, SEARCH_DEBOUNCE_MS);
 
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      setInflightSourceIds((current) => {
+        const next = new Set(current);
+        for (const id of cloudIds) {
+          next.delete(id);
+        }
+        return next;
+      });
     };
   }, [baseUrl, token, query, checkedRows, cloudAuthenticated]);
 
@@ -492,12 +570,13 @@ export function SourcesWorkspace({
       .then((report) => {
         if (!cancelled) {
           setOriginCheckRows(report.results);
+          setOriginCheckError(null);
         }
       })
       .catch((checkError: unknown) => {
         if (!cancelled) {
           setOriginCheckRows([]);
-          setActionError(
+          setOriginCheckError(
             errorMessage(checkError, "Could not check plugins against origin"),
           );
         }
@@ -552,15 +631,22 @@ export function SourcesWorkspace({
       hits: applyOriginOutdated(
         group.hits.map((hit) => {
           const identity = hit.identity.cloud;
-          if (!identity) {
-            return hit;
+          if (identity) {
+            return {
+              ...hit,
+              presence: cloudHitIsInLibrary(identity, localHeads, [
+                ...pulledCloudKeys,
+              ]),
+            };
           }
-          return {
-            ...hit,
-            presence: cloudHitIsInLibrary(identity, localHeads, [
-              ...pulledCloudKeys,
-            ]),
-          };
+          const marketplace = hit.identity.marketplace;
+          if (
+            marketplace
+            && addedMarketplaceKeys.has(marketplaceHitKey(marketplace))
+          ) {
+            return { ...hit, presence: "in_library" as const };
+          }
+          return hit;
         }),
         originCheckRows,
       ),
@@ -574,6 +660,7 @@ export function SourcesWorkspace({
     marketplaceHits,
     originCheckRows,
     pulledCloudKeys,
+    addedMarketplaceKeys,
     query,
     showInLibrary,
     sourceOrder,
@@ -890,38 +977,60 @@ export function SourcesWorkspace({
     setActionError(errorMessage(installError, fallback));
   };
 
-  const runPull = async (hit: SourcesHit): Promise<string | null> => {
+  const runAddToLibrary = async (hit: SourcesHit): Promise<string | null> => {
     if (!baseUrl) {
       return null;
     }
-    const selector = cloudSelectorForHit(hit);
-    if (!selector) {
-      setActionError("Missing catalog selector.");
-      return null;
-    }
     const as = pullCollision ? pullAsName.trim() : "";
-    const result = await pullCatalogPlugin(baseUrl, token, {
-      selector,
-      ...(as ? { as } : {}),
-    });
-    setInstallByHit((current) => ({
-      ...current,
-      [hit.id]: { ...current[hit.id], pulledName: result.plugin.name },
-    }));
-    const identity = hit.identity.cloud;
-    if (identity) {
+    if (hit.identity.cloud) {
+      const cloud = hit.identity.cloud;
+      const selector = cloudSelectorForHit(hit);
+      if (!selector) {
+        setActionError("Missing catalog selector.");
+        return null;
+      }
+      const result = await pullCatalogPlugin(baseUrl, token, {
+        selector,
+        ...(as ? { as } : {}),
+      });
+      setInstallByHit((current) => ({
+        ...current,
+        [hit.id]: { ...current[hit.id], pulledName: result.plugin.name },
+      }));
       setPulledCloudKeys((current) => {
         const next = new Set(current);
-        next.add(cloudSelectorKey(identity));
+        next.add(cloudSelectorKey(cloud));
         return next;
       });
+      setPullCollision(false);
+      setPullAsName("");
+      return result.plugin.name;
     }
-    setPullCollision(false);
-    setPullAsName("");
-    return result.plugin.name;
+    if (hit.identity.marketplace) {
+      const marketplace = hit.identity.marketplace;
+      const result = await addMarketplacePluginToLibrary(baseUrl, token, {
+        marketplace: marketplace.marketplace,
+        plugin: marketplace.plugin,
+        ...(as ? { as } : {}),
+      });
+      setInstallByHit((current) => ({
+        ...current,
+        [hit.id]: { ...current[hit.id], addedName: result.plugin.name },
+      }));
+      setAddedMarketplaceKeys((current) => {
+        const next = new Set(current);
+        next.add(marketplaceHitKey(marketplace));
+        return next;
+      });
+      setPullCollision(false);
+      setPullAsName("");
+      return result.plugin.name;
+    }
+    setActionError("This item is already in your Library.");
+    return null;
   };
 
-  const onPull = async (hit: SourcesHit) => {
+  const onAddToLibrary = async (hit: SourcesHit) => {
     if (!baseUrl || busy) {
       return;
     }
@@ -929,24 +1038,25 @@ export function SourcesWorkspace({
     setActionError(null);
     setActionAuthRequired(false);
     try {
-      const name = await runPull(hit);
+      const name = await runAddToLibrary(hit);
       if (name) {
-        onSuccess?.(`Pulled ${name}.`);
+        onSuccess?.(`Added ${name} to Library.`);
         refresh();
       }
-    } catch (pullError: unknown) {
-      applyInstallError(pullError, "Could not pull plugin.");
+    } catch (addError: unknown) {
+      applyInstallError(addError, "Could not add to Library.");
     } finally {
       setBusy(false);
     }
   };
 
   const onPinConfirm = async (targetName: string) => {
-    const hit = resolvedHitRef.current;
+    const hit = pinHit ?? resolvedHitRef.current;
     if (!baseUrl || !hit || busy) {
       return;
     }
     setBusy(true);
+    setPinError(null);
     setActionError(null);
     setActionAuthRequired(false);
     try {
@@ -955,9 +1065,9 @@ export function SourcesWorkspace({
         && hit.presence === "remote_only"
         && !installByHit[hit.id]?.pulledName
       ) {
-        const pulled = await runPull(hit);
+        const pulled = await runAddToLibrary(hit);
         if (!pulled) {
-          setPinOpen(false);
+          setPinError("Could not add to Library.");
           return;
         }
       }
@@ -969,15 +1079,17 @@ export function SourcesWorkspace({
         [hit.id]: { ...current[hit.id], pinnedTargetName: targetName },
       }));
       setPinOpen(false);
+      setPinHit(null);
       onSuccess?.(
         hit.kind === "standalone"
           ? `Attached to ${targetName}.`
           : `Pinned to ${targetName}.`,
       );
       refresh();
-    } catch (pinError: unknown) {
-      setPinOpen(false);
-      applyInstallError(pinError, "Could not update plugin.");
+    } catch (confirmError: unknown) {
+      const message = errorMessage(confirmError, "Could not update plugin.");
+      setPinError(message);
+      applyInstallError(confirmError, "Could not update plugin.");
     } finally {
       setBusy(false);
     }
@@ -995,15 +1107,12 @@ export function SourcesWorkspace({
       asName: pullAsName,
       onAsNameChange: setPullAsName,
       onSignIn,
-      onPull: () => void onPull(hit),
+      onAddToLibrary: () => void onAddToLibrary(hit),
       onPinToPlugin: () => {
         resetActionState();
-        setPinMode("pin");
-        setPinOpen(true);
-      },
-      onAttachToPlugin: () => {
-        resetActionState();
-        setPinMode("attach");
+        setPinError(null);
+        setPinHit(hit);
+        setPinMode(hit.kind === "standalone" ? "attach" : "pin");
         setPinOpen(true);
       },
       onOpenInLibrary: () => {
@@ -1026,6 +1135,20 @@ export function SourcesWorkspace({
     })
     || (hasLocalPrevious && (busy || sidebarConfirmOpen));
 
+  const visibleHitCount = groups.reduce(
+    (sum, group) => sum + group.hits.length,
+    0,
+  );
+  const listSearching = discoverListIsSearching({
+    checkedIds: checkedRows.map((row) => row.id),
+    fetchedIds: fetchedSourceIds,
+    visibleCount: visibleHitCount,
+  });
+  const sidebarRefreshing = discoverSourcesRefreshing({
+    fetchedIds: fetchedSourceIds,
+    inflightIds: inflightSourceIds,
+  });
+
   function handlePanelBack(): void {
     const current = paneRef.current;
     if (sourcesPaneHasPrevious(current)) {
@@ -1045,12 +1168,16 @@ export function SourcesWorkspace({
           <SourcesListPane
             groups={groups}
             groupErrors={groupErrors}
-            loading={librarySearching || cloudSearching}
+            loading={listSearching}
             query={query}
             showInLibrary={showInLibrary}
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
+            onClearSearch={() => {
+              applyListQueryOrChecks(() => setQuery(""));
+            }}
+            recordActions={recordActionsProps}
           />
         );
       case "plugin-tree":
@@ -1070,7 +1197,6 @@ export function SourcesWorkspace({
             authRequired={treeAuthRequired}
             disabled={controlsDisabled}
             recordActions={recordActionsProps(resolvedHit)}
-            onBack={() => setPane(popSourcesPane(pane))}
             onOpenFile={(filePath) => {
               setPane({ mode: "preview", hitId: resolvedHit.id, filePath });
             }}
@@ -1095,7 +1221,6 @@ export function SourcesWorkspace({
             authRequired={previewAuthRequired}
             disabled={controlsDisabled}
             recordActions={recordActionsProps(resolvedHit)}
-            onBack={() => setPane(popSourcesPane(pane))}
             onSignIn={onSignIn}
           />
         );
@@ -1173,6 +1298,9 @@ export function SourcesWorkspace({
           disabled={controlsDisabled}
           busy={busy}
           error={error}
+          originCheckError={originCheckError}
+          onRetryOriginCheck={refresh}
+          refreshing={sidebarRefreshing}
           onConfirmOpenChange={setSidebarConfirmOpen}
           onEditMarketplace={(name) => {
             const entry = marketplaces.find((item) => item.name === name) ?? null;
@@ -1187,7 +1315,11 @@ export function SourcesWorkspace({
           onDisconnectOrg={(org) => void onDisconnectOrg(org)}
           onUnregisterCatalog={(selector) => void onUnregisterCatalog(selector)}
         />
-        <div className="resources-panel-body">{renderMainPane()}</div>
+        <div className="resources-panel-body">
+          <Crossfade activeKey={pane.mode} className="sources-pane-crossfade">
+            {renderMainPane()}
+          </Crossfade>
+        </div>
       </div>
 
       <MarketplaceEditPanel
@@ -1222,12 +1354,20 @@ export function SourcesWorkspace({
         open={pinOpen}
         mode={pinMode}
         heads={localHeads}
-        excludeName={resolvedHit?.identity.localPluginName}
+        excludeName={
+          pinHit?.identity.localPluginName
+          ?? resolvedHit?.identity.localPluginName
+        }
         baseUrl={baseUrl}
         token={token}
         disabled={controlsDisabled}
         confirming={busy}
-        onClose={() => setPinOpen(false)}
+        error={pinError}
+        onClose={() => {
+          setPinOpen(false);
+          setPinHit(null);
+          setPinError(null);
+        }}
         onConfirm={(pluginName) => void onPinConfirm(pluginName)}
         onCreated={(plugin) => {
           setLocalHeads((current) => {

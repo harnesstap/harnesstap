@@ -58,32 +58,32 @@ function standaloneHit(): SourcesHit {
 }
 
 describe("sourcesHitActions", () => {
-  test("Cloud remote-only shows Pull and Pin, Open in Library after pull", () => {
+  test("Cloud remote-only shows Add to Library and Pin, Open in Library after add", () => {
     const remote = sourcesHitActions(cloudHit("remote_only"));
-    expect(remote.showPull).toBe(true);
+    expect(remote.showAddToLibrary).toBe(true);
     expect(remote.showPinToPlugin).toBe(true);
-    expect(remote.showAttachToPlugin).toBe(false);
     expect(remote.showOpenInLibrary).toBe(false);
     expect(remote.openInLibrarySelector).toBeNull();
 
     const pulled = sourcesHitActions(cloudHit("remote_only"), {
       pulledName: "focus-copy",
     });
+    expect(pulled.showAddToLibrary).toBe(false);
     expect(pulled.showOpenInLibrary).toBe(true);
     expect(pulled.openInLibrarySelector).toBe("focus-copy");
   });
 
-  test("Cloud in-library hides Pull and opens the catalog plugin name", () => {
+  test("Cloud in-library hides Add to Library and opens the catalog plugin name", () => {
     const actions = sourcesHitActions(cloudHit("in_library"));
-    expect(actions.showPull).toBe(false);
+    expect(actions.showAddToLibrary).toBe(false);
     expect(actions.showPinToPlugin).toBe(true);
     expect(actions.showOpenInLibrary).toBe(true);
     expect(actions.openInLibrarySelector).toBe("focus");
   });
 
-  test("Marketplace pin uses name@marketplace with sync, Open in Library is the target plugin", () => {
+  test("Marketplace Add to Library uses name@marketplace with sync, Open in Library after add", () => {
     const before = sourcesHitActions(marketplaceHit());
-    expect(before.showPull).toBe(false);
+    expect(before.showAddToLibrary).toBe(true);
     expect(before.showPinToPlugin).toBe(true);
     expect(before.showOpenInLibrary).toBe(false);
     expect(sourcesAttachmentAdd(marketplaceHit())).toEqual({
@@ -93,17 +93,17 @@ describe("sourcesHitActions", () => {
     });
 
     const after = sourcesHitActions(marketplaceHit(), {
-      pinnedTargetName: "authored-app",
+      addedName: "demo",
     });
+    expect(after.showAddToLibrary).toBe(false);
     expect(after.showOpenInLibrary).toBe(true);
-    expect(after.openInLibrarySelector).toBe("authored-app");
+    expect(after.openInLibrarySelector).toBe("demo");
   });
 
-  test("Local plugin attaches as a nested plugin ref", () => {
+  test("Local plugin pins as a nested plugin ref", () => {
     const actions = sourcesHitActions(localPluginHit());
-    expect(actions.showPull).toBe(false);
+    expect(actions.showAddToLibrary).toBe(false);
     expect(actions.showPinToPlugin).toBe(true);
-    expect(actions.showAttachToPlugin).toBe(false);
     expect(actions.showOpenInLibrary).toBe(true);
     expect(actions.openInLibrarySelector).toBe("team");
     expect(sourcesAttachmentAdd(localPluginHit())).toEqual({
@@ -112,11 +112,10 @@ describe("sourcesHitActions", () => {
     });
   });
 
-  test("Local standalone attaches the resource selector", () => {
+  test("Local standalone folds Attach into Pin", () => {
     const actions = sourcesHitActions(standaloneHit());
-    expect(actions.showPull).toBe(false);
-    expect(actions.showPinToPlugin).toBe(false);
-    expect(actions.showAttachToPlugin).toBe(true);
+    expect(actions.showAddToLibrary).toBe(false);
+    expect(actions.showPinToPlugin).toBe(true);
     expect(actions.showOpenInLibrary).toBe(true);
     expect(actions.openInLibrarySelector).toBe("skill:hello@ns");
     expect(sourcesAttachmentAdd(standaloneHit())).toEqual({

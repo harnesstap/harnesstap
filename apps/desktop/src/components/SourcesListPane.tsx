@@ -1,13 +1,25 @@
 import {
+  ResourceRowDescription,
+  ResourceRowIdentity,
+  ResourceRowLeading,
+  ResourceRowRoot,
+  ResourceRowTrailing,
+} from "@/components/ui/resource-row";
+import {
   discoverListEmptyCopy,
+  hoverModelFromSourcesHit,
   presenceLabel,
   sourcesHitUpdateBadge,
   type SourcesHit,
   type SourcesHitGroup,
 } from "../lib/sources-search";
+import { InUseMark } from "./InUseMark";
 import { LogIn } from "lucide-react";
 import { IconActionButton } from "./IconActionButton";
-import { TypeIcon } from "./TypeIcon";
+import {
+  SourcesRecordActions,
+  type SourcesRecordActionsProps,
+} from "./SourcesRecordActions";
 
 export const CLOUD_SIGN_IN_HINT = "Sign in from the Cloud account control";
 
@@ -25,6 +37,8 @@ export interface SourcesListPaneProps {
   disabled?: boolean;
   onOpenHit: (hit: SourcesHit) => void;
   onSignIn?: () => void;
+  onClearSearch?: () => void;
+  recordActions?: (hit: SourcesHit) => SourcesRecordActionsProps;
 }
 
 export function SourcesOriginUpdateBadge({ hit }: { hit: SourcesHit }) {
@@ -52,6 +66,7 @@ export function SourcesSignInPrompt({
       {onSignIn ? (
         <IconActionButton
           primary
+          showLabel
           label="Sign in"
           onClick={onSignIn}
           disabled={disabled}
@@ -73,6 +88,8 @@ export function SourcesListPane({
   disabled = false,
   onOpenHit,
   onSignIn,
+  onClearSearch,
+  recordActions,
 }: SourcesListPaneProps) {
   const visible = groups.filter(
     (group) => group.hits.length > 0 || groupErrors[group.sourceId] !== undefined,
@@ -96,6 +113,16 @@ export function SourcesListPane({
       >
         <h2>{empty.message}</h2>
         {empty.hint ? <p className="muted">{empty.hint}</p> : null}
+        {empty.clearSearch && onClearSearch ? (
+          <button
+            className="btn"
+            type="button"
+            onClick={onClearSearch}
+            disabled={disabled}
+          >
+            Clear search
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -124,36 +151,50 @@ export function SourcesListPane({
               )
             ) : null}
             <ul className="resources-list">
-              {group.hits.map((hit) => (
-                <li className="resources-list-item" key={hit.id}>
-                  <button
-                    type="button"
-                    className="resource-row sources-hit"
-                    data-testid={`sources-hit-${hit.id}`}
-                    disabled={disabled}
-                    onClick={() => onOpenHit(hit)}
-                  >
-                    <span className="resource-row-identity">
-                      <span className="resource-row-identity-main">
-                        <TypeIcon
-                          type={hit.kind === "plugin" ? "plugin" : hit.typeLabel}
-                        />
-                        <span className="resource-row-name">{hit.name}</span>
-                      </span>
-                      <span className="resource-row-desc muted">
-                        <span className="badge" data-testid="sources-presence">
-                          {presenceLabel(hit.presence)}
-                        </span>
-                        <SourcesOriginUpdateBadge hit={hit} />
-                        {hit.version || hit.typeLabel
-                          ? ` · ${hit.version ?? hit.typeLabel}`
-                          : null}
-                        {hit.description ? ` · ${hit.description}` : null}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {group.hits.map((hit) => {
+                const inLibrary = hit.presence === "in_library";
+                const actions = recordActions?.(hit);
+                return (
+                  <li className="resources-list-item" key={hit.id}>
+                    <ResourceRowRoot
+                      hover={hoverModelFromSourcesHit(hit)}
+                      testId={`sources-hit-${hit.id}`}
+                      className="sources-hit"
+                      disabled={disabled}
+                      onActivate={() => onOpenHit(hit)}
+                    >
+                      {inLibrary ? (
+                        <ResourceRowLeading>
+                          <InUseMark
+                            membership={{ onGlobal: false, projectCount: 0 }}
+                          />
+                        </ResourceRowLeading>
+                      ) : null}
+                      <ResourceRowIdentity
+                        type={hit.kind === "plugin" ? "plugin" : hit.typeLabel}
+                        label={hit.name}
+                        onOpen={() => onOpenHit(hit)}
+                      >
+                        <ResourceRowDescription>
+                          <span className="badge" data-testid="sources-presence">
+                            {presenceLabel(hit.presence)}
+                          </span>
+                          <SourcesOriginUpdateBadge hit={hit} />
+                          {hit.version || hit.typeLabel
+                            ? ` · ${hit.version ?? hit.typeLabel}`
+                            : null}
+                          {hit.description ? ` · ${hit.description}` : null}
+                        </ResourceRowDescription>
+                      </ResourceRowIdentity>
+                      {actions ? (
+                        <ResourceRowTrailing>
+                          <SourcesRecordActions {...actions} variant="list" />
+                        </ResourceRowTrailing>
+                      ) : null}
+                    </ResourceRowRoot>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         );
