@@ -57,6 +57,7 @@ export interface AppOverlaysProps {
   onSelectProject: (path: string) => void;
   onBrowseProject: () => void;
   onCloudAuthChange: (next: CloudAuthStatus | null) => void;
+  onTelemetryConsentChange?: (next: TelemetryConsentStatus) => void;
   migrateBusy: boolean;
   onMigrateBusyChange: (busy: boolean) => void;
   onLibraryChanged: () => void;
@@ -74,6 +75,7 @@ export function AppOverlays({
   onSelectProject,
   onBrowseProject,
   onCloudAuthChange,
+  onTelemetryConsentChange,
   onMigrateBusyChange,
   onLibraryChanged,
 }: AppOverlaysProps) {
@@ -123,6 +125,7 @@ export function AppOverlays({
         onClose={() => overlays.closeOverlay("settings")}
         onSelectProject={onSelectProject}
         onBrowseProject={onBrowseProject}
+        onTelemetryConsentChange={onTelemetryConsentChange}
         onSaved={() => {
           toast({ tone: "success", title: "Settings saved" });
           void statusStore.refreshStatus("full", projectPath);

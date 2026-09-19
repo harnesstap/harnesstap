@@ -14,6 +14,7 @@ export interface TelemetrySettingsSectionProps {
   baseUrl: string | null;
   token: string | null;
   disabled?: boolean;
+  onConsentChange?: (next: TelemetryConsentStatus) => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -25,6 +26,7 @@ export function TelemetrySettingsSection({
   baseUrl,
   token,
   disabled = false,
+  onConsentChange,
 }: TelemetrySettingsSectionProps) {
   const [status, setStatus] = useState<TelemetryConsentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +57,7 @@ export function TelemetrySettingsSection({
     try {
       const next = await saveTelemetryConsent(baseUrl, token, enabled);
       setStatus(next);
+      onConsentChange?.(next);
       setError(null);
     } catch (saveError) {
       setError(errorMessage(saveError, "Could not save telemetry preference."));
@@ -71,6 +74,7 @@ export function TelemetrySettingsSection({
     try {
       const next = await resetTelemetryConsent(baseUrl, token);
       setStatus(next);
+      onConsentChange?.(next);
       setError(null);
       toast({ tone: "success", title: "Telemetry choice reset" });
     } catch (resetError) {

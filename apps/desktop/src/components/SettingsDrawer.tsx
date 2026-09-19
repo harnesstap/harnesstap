@@ -32,6 +32,7 @@ import type {
   HarnessSettingsPayload,
   MaterializationStrategy,
   PutHarnessSettingsInput,
+  TelemetryConsentStatus,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -50,6 +51,7 @@ export interface SettingsDrawerProps {
   onSaved?: () => void;
   onSelectProject: (path: string) => void;
   onBrowseProject: () => void;
+  onTelemetryConsentChange?: (next: TelemetryConsentStatus) => void;
 }
 
 const EMPTY_DRAFT: HarnessSettingsDraft = {
@@ -119,6 +121,7 @@ export function SettingsDrawer({
   onSaved,
   onSelectProject,
   onBrowseProject,
+  onTelemetryConsentChange,
 }: SettingsDrawerProps) {
   const [harnesses, setHarnesses] = useState<HarnessCatalogEntry[]>([]);
   const [projectAvailable, setProjectAvailable] = useState(false);
@@ -664,6 +667,7 @@ export function SettingsDrawer({
               onSelectProject={onSelectProject}
               onBrowseProject={onBrowseProject}
               onProjectDirtyChange={setProjectDirty}
+              onTelemetryConsentChange={onTelemetryConsentChange}
             />
           </div>
           </div>
