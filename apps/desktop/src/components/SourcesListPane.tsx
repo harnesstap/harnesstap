@@ -16,7 +16,6 @@ import {
 import { InUseMark } from "./InUseMark";
 import { LogIn } from "lucide-react";
 import { IconActionButton } from "./IconActionButton";
-import { TypeIcon } from "./TypeIcon";
 import { Skeleton } from "./shell/Skeleton";
 import {
   SourcesRecordActions,
