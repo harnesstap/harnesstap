@@ -6,6 +6,12 @@ import {
   detectMigrateImportScope,
   migrateImport,
 } from "../lib/agent-client";
+import {
+  migrateImportSteps,
+  migrateStepCopy,
+  migrateStepPosition,
+  type MigrateImportStep,
+} from "../lib/migrate-defaults";
 import type {
   MigrateImportResult,
   MigrateScope,
@@ -14,6 +20,7 @@ import { ArrowLeft, ChevronRight, FolderDown, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { IconActionButton } from "./IconActionButton";
+import { Presence } from "./motion/Presence";
 
 export interface MigrateImportDrawerProps {
   open: boolean;
@@ -25,7 +32,7 @@ export interface MigrateImportDrawerProps {
   onBusyChange?: (busy: boolean) => void;
 }
 
-type ImportStep = "path" | "scope" | "confirm";
+type ImportStep = MigrateImportStep;
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -42,21 +49,6 @@ function scopeLabel(scope: MigrateScope): string {
     default: {
       const neverScope: never = scope;
       return neverScope;
-    }
-  }
-}
-
-function stepTitle(step: ImportStep): string {
-  switch (step) {
-    case "path":
-      return "Choose import file";
-    case "scope":
-      return "Import scope";
-    case "confirm":
-      return "Confirm import";
-    default: {
-      const neverStep: never = step;
-      return neverStep;
     }
   }
 }
@@ -183,19 +175,18 @@ export function MigrateImportDrawer({
     }
   };
 
-  if (!open) {
-    return null;
-  }
-
   const controlsDisabled = disabled || busy || detecting;
+  const importSteps = migrateImportSteps();
+  const stepMeta = migrateStepPosition(importSteps, step);
   const showBack = previousStep(step) !== null;
 
   return (
+    <Presence open={open} exit="m-panel-out">
     <FullScreenPanel
       titleId="migrate-import-title"
       title="Import"
       eyebrow="Migrate"
-      subtitle={stepTitle(step)}
+      subtitle={migrateStepCopy(stepMeta.current, stepMeta.total)}
       closeLabel="Close import"
       closeDisabled={controlsDisabled}
       onClose={onClose}
@@ -347,5 +338,6 @@ export function MigrateImportDrawer({
 
           {error ? <div className="banner error">{error}</div> : null}
     </FullScreenPanel>
+    </Presence>
   );
 }

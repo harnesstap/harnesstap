@@ -41,6 +41,21 @@ export interface ProjectConfigRawPayload {
   config?: ProjectConfigJson;
 }
 
+/** Parse a 1-based line number from validator or YAML parser messages. */
+export function parseValidationLineNumber(message: string): number | null {
+  const lineMatch = message.match(/line\s+(\d+)/i);
+  if (lineMatch) {
+    const line = Number(lineMatch[1]);
+    return Number.isInteger(line) && line > 0 ? line : null;
+  }
+  const fileLineMatch = message.match(/:(\d+):(\d+)/);
+  if (fileLineMatch) {
+    const line = Number(fileLineMatch[1]);
+    return Number.isInteger(line) && line > 0 ? line : null;
+  }
+  return null;
+}
+
 export async function fetchProjectConfig(
   baseUrl: string,
   token: string | null,

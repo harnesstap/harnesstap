@@ -32,10 +32,13 @@ import type {
   HarnessSettingsPayload,
   MaterializationStrategy,
   PutHarnessSettingsInput,
+  TelemetryConsentStatus,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { HarnessIcon } from "./HarnessIcons";
+import { Presence } from "./motion/Presence";
 
 export interface SettingsDrawerProps {
   open: boolean;
@@ -48,6 +51,7 @@ export interface SettingsDrawerProps {
   onSaved?: () => void;
   onSelectProject: (path: string) => void;
   onBrowseProject: () => void;
+  onTelemetryConsentChange?: (next: TelemetryConsentStatus) => void;
 }
 
 const EMPTY_DRAFT: HarnessSettingsDraft = {
@@ -117,6 +121,7 @@ export function SettingsDrawer({
   onSaved,
   onSelectProject,
   onBrowseProject,
+  onTelemetryConsentChange,
 }: SettingsDrawerProps) {
   const [harnesses, setHarnesses] = useState<HarnessCatalogEntry[]>([]);
   const [projectAvailable, setProjectAvailable] = useState(false);
@@ -131,33 +136,13 @@ export function SettingsDrawer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [projectDirty, setProjectDirty] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const onSavedRef = useRef(onSaved);
   onSavedRef.current = onSaved;
   const saveGenerationRef = useRef(0);
-  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearSuccessTimer = useCallback(() => {
-    if (successTimerRef.current !== null) {
-      clearTimeout(successTimerRef.current);
-      successTimerRef.current = null;
-    }
-  }, []);
-
-  const flashSuccess = useCallback(
-    (message: string) => {
-      clearSuccessTimer();
-      setSuccess(message);
-      successTimerRef.current = setTimeout(() => {
-        setSuccess(null);
-        successTimerRef.current = null;
-      }, 3000);
-    },
-    [clearSuccessTimer],
-  );
 
   const resetLocal = useCallback(() => {
-    clearSuccessTimer();
     setHarnesses([]);
     setProjectAvailable(false);
     setProjectReason(null);
@@ -169,30 +154,43 @@ export function SettingsDrawer({
     setTab("harnesses");
     setError(null);
     setWarning(null);
-    setSuccess(null);
-  }, [clearSuccessTimer]);
+    setProjectDirty(false);
+    setDiscardOpen(false);
+  }, []);
+
+  const dirty = useMemo(
+    () => isHarnessSettingsDirty(baseline, draft),
+    [baseline, draft],
+  );
+  const closeIsDirty = dirty || projectDirty;
+
+  const finishClose = useCallback(() => {
+    saveGenerationRef.current += 1;
+    setDiscardOpen(false);
+    onClose();
+  }, [onClose]);
 
   const requestClose = useCallback(() => {
     if (busy) {
       return;
     }
-    saveGenerationRef.current += 1;
-    onClose();
-  }, [busy, onClose]);
+    if (closeIsDirty) {
+      setDiscardOpen(true);
+      return;
+    }
+    finishClose();
+  }, [busy, closeIsDirty, finishClose]);
 
   useEffect(() => {
     if (!open) {
       saveGenerationRef.current += 1;
       setBusy(false);
-      clearSuccessTimer();
-      setSuccess(null);
+      setDiscardOpen(false);
       return;
     }
     const loadGeneration = ++saveGenerationRef.current;
     setError(null);
     setWarning(null);
-    setSuccess(null);
-    clearSuccessTimer();
     setShowAllHarnesses(false);
     if (!baseUrl) {
       resetLocal();
@@ -228,25 +226,13 @@ export function SettingsDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, baseUrl, token, projectPath, resetLocal, clearSuccessTimer]);
+  }, [open, baseUrl, token, projectPath, resetLocal]);
 
   useEffect(() => {
     if (open) {
       setTab("harnesses");
     }
   }, [open]);
-
-  useEffect(
-    () => () => {
-      clearSuccessTimer();
-    },
-    [clearSuccessTimer],
-  );
-
-  const dirty = useMemo(
-    () => isHarnessSettingsDirty(baseline, draft),
-    [baseline, draft],
-  );
 
   const globalSelectedIds = useMemo(
     () => [draft.globalMain, ...draft.globalAliases].filter(Boolean),
@@ -341,8 +327,6 @@ export function SettingsDrawer({
     setBusy(true);
     setError(null);
     setWarning(null);
-    setSuccess(null);
-    clearSuccessTimer();
     const body: PutHarnessSettingsInput = {
       global: {
         main_harness: draft.globalMain,
@@ -395,14 +379,11 @@ export function SettingsDrawer({
       }
       setBaseline(next);
       setDraft(next);
-      flashSuccess("Settings saved.");
       onSavedRef.current?.();
     } catch (saveError) {
       if (generation !== saveGenerationRef.current) {
         return;
       }
-      setSuccess(null);
-      clearSuccessTimer();
       setError(errorMessage(saveError, "Could not save harness settings."));
     } finally {
       if (generation === saveGenerationRef.current) {
@@ -411,11 +392,8 @@ export function SettingsDrawer({
     }
   };
 
-  if (!open) {
-    return null;
-  }
-
   return (
+    <Presence open={open} exit="m-panel-out">
     <FullScreenPanel
       titleId="settings-drawer-title"
       title="Settings"
@@ -426,29 +404,32 @@ export function SettingsDrawer({
       testId="settings-drawer"
       bodyClassName="cloud-account-body"
       actions={
-        <>
-          <button
-            className="btn"
-            type="button"
-            onClick={requestClose}
-            disabled={busy}
-          >
-            <X size={16} aria-hidden />
-            Cancel
-          </button>
-          <button
-            className={["btn", "primary", busy ? "is-busy" : ""]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            onClick={() => void onSave()}
-            disabled={!canSave}
-            aria-busy={busy}
-          >
-            {busy ? <ButtonSpinner size={16} /> : <Save size={16} aria-hidden />}
-            {busy ? "Saving…" : "Save"}
-          </button>
-        </>
+        tab === "harnesses" ? (
+          <>
+            <button
+              className="btn"
+              type="button"
+              onClick={requestClose}
+              disabled={busy}
+            >
+              <X size={16} aria-hidden />
+              Cancel
+            </button>
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              data-testid="settings-harness-save"
+              onClick={() => void onSave()}
+              disabled={!canSave}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : <Save size={16} aria-hidden />}
+              {busy ? "Saving…" : "Save"}
+            </button>
+          </>
+        ) : undefined
       }
     >
           {error ? (
@@ -459,11 +440,6 @@ export function SettingsDrawer({
           {warning ? (
             <div className="banner" role="status">
               {warning}
-            </div>
-          ) : null}
-          {success ? (
-            <div className="success-flash" role="status">
-              {success}
             </div>
           ) : null}
 
@@ -530,7 +506,7 @@ export function SettingsDrawer({
                   selectedIds={draft.globalAliases}
                   disabled={controlsDisabled}
                   className="settings-alias-list"
-                  listClassName="settings-alias-list-rows max-h-[180px] h-auto"
+                  listClassName="settings-alias-list-rows"
                   onToggle={(id) =>
                     setDraft((prev) => ({
                       ...prev,
@@ -627,7 +603,7 @@ export function SettingsDrawer({
                             selectedIds={draft.projectAliases}
                             disabled={controlsDisabled}
                             className="settings-alias-list"
-                            listClassName="settings-alias-list-rows max-h-[180px] h-auto"
+                            listClassName="settings-alias-list-rows"
                             onToggle={(id) =>
                               setDraft((prev) => ({
                                 ...prev,
@@ -678,7 +654,8 @@ export function SettingsDrawer({
                 </section>
               ) : null}
             </>
-          ) : (
+          ) : null}
+          <div hidden={tab === "harnesses"}>
             <SettingsParitySections
               tab={tab}
               open={open}
@@ -689,9 +666,21 @@ export function SettingsDrawer({
               onSaved={onSaved}
               onSelectProject={onSelectProject}
               onBrowseProject={onBrowseProject}
+              onProjectDirtyChange={setProjectDirty}
+              onTelemetryConsentChange={onTelemetryConsentChange}
             />
-          )}
+          </div>
           </div>
     </FullScreenPanel>
+    <ConfirmDialog
+      open={discardOpen}
+      title="Discard changes?"
+      description="You have unsaved settings. Close anyway?"
+      confirmLabel="Discard"
+      cancelLabel="Keep editing"
+      onConfirm={finishClose}
+      onCancel={() => setDiscardOpen(false)}
+    />
+    </Presence>
   );
 }

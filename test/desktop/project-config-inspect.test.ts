@@ -1,19 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseValidationLineNumber } from "../../apps/desktop/src/lib/api/project-config.ts";
 import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 
 const inspectSource = readFileSync(
   join(
     import.meta.dir,
-    "../../apps/desktop/src/components/parity/ProjectConfigInspect.tsx",
+    "../../apps/desktop/src/components/settings/ProjectConfigInspect.tsx",
   ),
   "utf8",
 );
 const sectionsSource = readFileSync(
   join(
     import.meta.dir,
-    "../../apps/desktop/src/components/parity/SettingsParitySections.tsx",
+    "../../apps/desktop/src/components/settings/SettingsParitySections.tsx",
   ),
   "utf8",
 );
@@ -113,7 +114,7 @@ describe("settings project config inspect surface", () => {
 
   test("edits raw apm.yml in-app and keeps Open config", () => {
     expect(inspectSource).toContain("apm.yml");
-    expect(inspectSource).toContain("library-field-editor-content");
+    expect(inspectSource).toContain("apm-yml-editor");
     expect(inspectSource).toContain("putProjectConfigRaw");
     expect(inspectSource).toContain("fetchProjectConfigRaw");
     expect(inspectSource).toContain("Open config");
@@ -154,5 +155,28 @@ describe("settings project config inspect surface", () => {
     expect(inspectSource).toContain("harness-block");
     expect(inspectSource).toContain("resource-detail-kv");
     expect(inspectSource).not.toContain("<table");
+  });
+
+  test("footer Save only on Harnesses and dirty close confirms discard", () => {
+    expect(settingsSource).toContain('tab === "harnesses"');
+    expect(settingsSource).toContain("settings-harness-save");
+    expect(settingsSource).toContain("Discard changes?");
+    expect(inspectSource).toContain("project-config-save");
+    expect(inspectSource).toContain("parseValidationLineNumber");
+    expect(inspectSource).toContain("apm-yml-gutter");
+  });
+
+  test("Reset telemetry choice syncs shell consent so the modal can reopen", () => {
+    expect(sectionsSource).toContain("onTelemetryConsentChange");
+    expect(settingsSource).toContain("onTelemetryConsentChange");
+    expect(appSource).toContain("onTelemetryConsentChange={telemetry.sync}");
+    expect(sectionsSource).toContain("onConsentChange={props.onTelemetryConsentChange}");
+  });
+});
+
+describe("parseValidationLineNumber", () => {
+  test("reads line numbers from YAML parser messages", () => {
+    expect(parseValidationLineNumber("bad indentation at line 5, column 3:")).toBe(5);
+    expect(parseValidationLineNumber("default_profile references unknown profile")).toBe(null);
   });
 });

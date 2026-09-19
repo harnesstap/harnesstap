@@ -331,6 +331,7 @@ export function App() {
           telemetryConsent={telemetry.consent}
           telemetryConsentBusy={telemetry.busy}
           onAnswerTelemetryConsent={(enabled) => void telemetry.answer(enabled)}
+          onTelemetryConsentChange={telemetry.sync}
           onSelectProject={selectProject}
           onBrowseProject={() => void browseProject()}
           onCloudAuthChange={cloud.setCloudAuth}

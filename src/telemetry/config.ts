@@ -85,6 +85,24 @@ export function persistTelemetryPreference(
   );
 }
 
+export function clearTelemetryPreference(harnesstapDir = getHarnesstapDir()): void {
+  const path = telemetryConfigPath(harnesstapDir);
+  const existing = readToolkitConfigRecord(harnesstapDir, path);
+  const previous =
+    existing.telemetry && typeof existing.telemetry === "object"
+      ? { ...(existing.telemetry as Record<string, unknown>) }
+      : {};
+  delete previous.enabled;
+  writeToolkitConfigRecord(
+    harnesstapDir,
+    {
+      ...existing,
+      telemetry: previous,
+    },
+    path,
+  );
+}
+
 export function isTelemetryConsentSettled(
   harnesstapDir = getHarnesstapDir(),
 ): boolean {

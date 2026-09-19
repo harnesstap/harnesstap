@@ -12,6 +12,10 @@ import {
 import {
   defaultMigrateExportFilename,
   formatResourceSelector,
+  migrateExportSteps,
+  migrateStepCopy,
+  migrateStepPosition,
+  type MigrateExportStep,
 } from "../lib/migrate-defaults";
 import { filterLibraryResourcesBySearch } from "../lib/resource-search";
 import type {
@@ -24,6 +28,7 @@ import { ArrowLeft, Check, ChevronRight, Save, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { IconActionButton } from "./IconActionButton";
+import { Presence } from "./motion/Presence";
 
 export interface MigrateExportDrawerProps {
   open: boolean;
@@ -35,7 +40,7 @@ export interface MigrateExportDrawerProps {
   onBusyChange?: (busy: boolean) => void;
 }
 
-type ExportStep = "scope" | "target" | "options" | "path" | "confirm";
+type ExportStep = MigrateExportStep;
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -52,71 +57,6 @@ function scopeLabel(scope: MigrateScope): string {
     default: {
       const neverScope: never = scope;
       return neverScope;
-    }
-  }
-}
-
-function stepAfterScope(scope: MigrateScope): ExportStep {
-  return scope === "workspace" ? "options" : "target";
-}
-
-function stepAfterTarget(scope: MigrateScope): ExportStep {
-  return scope === "workspace" || scope === "plugin" ? "options" : "path";
-}
-
-function previousStep(step: ExportStep, scope: MigrateScope): ExportStep | null {
-  switch (step) {
-    case "scope":
-      return null;
-    case "target":
-      return "scope";
-    case "options":
-      return scope === "workspace" ? "scope" : "target";
-    case "path":
-      return scope === "workspace" || scope === "plugin" ? "options" : "target";
-    case "confirm":
-      return "path";
-    default: {
-      const neverStep: never = step;
-      return neverStep;
-    }
-  }
-}
-
-function nextStep(step: ExportStep, scope: MigrateScope): ExportStep | null {
-  switch (step) {
-    case "scope":
-      return stepAfterScope(scope);
-    case "target":
-      return stepAfterTarget(scope);
-    case "options":
-      return "path";
-    case "path":
-      return "confirm";
-    case "confirm":
-      return null;
-    default: {
-      const neverStep: never = step;
-      return neverStep;
-    }
-  }
-}
-
-function stepTitle(step: ExportStep): string {
-  switch (step) {
-    case "scope":
-      return "What to export";
-    case "target":
-      return "Choose export target";
-    case "options":
-      return "Export options";
-    case "path":
-      return "Output file";
-    case "confirm":
-      return "Confirm export";
-    default: {
-      const neverStep: never = step;
-      return neverStep;
     }
   }
 }
@@ -312,12 +252,12 @@ export function MigrateExportDrawer({
     }
   };
 
-  if (!open) {
-    return null;
-  }
-
+  const exportSteps = migrateExportSteps(scope);
+  const stepMeta = migrateStepPosition(exportSteps, step);
+  const previous = exportSteps[stepMeta.current - 2];
+  const next = exportSteps[stepMeta.current];
   const controlsDisabled = disabled || busy;
-  const showBack = previousStep(step, scope) !== null;
+  const showBack = previous !== undefined;
 
   const renderTargetStep = () => {
     if (libraryLoading) {
@@ -430,11 +370,12 @@ export function MigrateExportDrawer({
   };
 
   return (
+    <Presence open={open} exit="m-panel-out">
     <FullScreenPanel
       titleId="migrate-export-title"
       title="Export"
       eyebrow="Migrate"
-      subtitle={stepTitle(step)}
+      subtitle={migrateStepCopy(stepMeta.current, stepMeta.total)}
       closeLabel="Close export"
       closeDisabled={controlsDisabled}
       onClose={onClose}
@@ -446,9 +387,8 @@ export function MigrateExportDrawer({
               className="btn"
               type="button"
               onClick={() => {
-                const prev = previousStep(step, scope);
-                if (prev) {
-                  setStep(prev);
+                if (previous) {
+                  setStep(previous);
                   setError(null);
                 }
               }}
@@ -487,7 +427,6 @@ export function MigrateExportDrawer({
               className="btn primary"
               type="button"
               onClick={() => {
-                const next = nextStep(step, scope);
                 if (next) {
                   setStep(next);
                   setError(null);
@@ -606,5 +545,6 @@ export function MigrateExportDrawer({
 
           {error ? <div className="banner error">{error}</div> : null}
     </FullScreenPanel>
+    </Presence>
   );
 }

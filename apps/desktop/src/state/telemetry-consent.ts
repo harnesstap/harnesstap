@@ -8,6 +8,7 @@ export interface TelemetryConsentState {
   consent: TelemetryConsentStatus | null;
   busy: boolean;
   answer: (enabled: boolean) => Promise<void>;
+  sync: (next: TelemetryConsentStatus) => void;
 }
 
 /** Loads the consent record on every (re)connect and saves the user's answer. */
@@ -57,5 +58,9 @@ export function useTelemetryConsent(client: AgentClient | null): TelemetryConsen
     [client],
   );
 
-  return { consent, busy, answer };
+  const sync = useCallback((next: TelemetryConsentStatus) => {
+    setConsent(next);
+  }, []);
+
+  return { consent, busy, answer, sync };
 }
