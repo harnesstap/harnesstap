@@ -67,7 +67,7 @@ export function LibraryFieldRow({
             {icon}
           </button>
         ) : (
-          <span className="library-field-icon" aria-label={fieldName}>
+          <span className="library-field-icon" role="img" aria-label={fieldName}>
             {icon}
           </span>
         )}

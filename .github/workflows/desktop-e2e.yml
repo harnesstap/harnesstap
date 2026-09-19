@@ -34,3 +34,46 @@ jobs:
         with:
           name: desktop-e2e-artifacts
           path: apps/desktop/e2e/artifacts/
+
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.9"
+      - name: Install JS deps and Chromium
+        run: |
+          bun install
+          cd apps/desktop && bun install
+          cd apps/desktop && bunx playwright install --with-deps chromium
+      - name: Start demo agent and Vite
+        run: |
+          HT_DEMO_ROOT=/tmp/htdemo HARNESSTAP_AGENT_PORT=7474 \
+            bash apps/desktop/scripts/demo-home.sh &
+          for i in $(seq 1 40); do
+            curl -sf http://127.0.0.1:7474/v1/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:7474/v1/health
+          cd apps/desktop && VITE_AGENT_URL=http://127.0.0.1:7474 \
+            bunx vite --host 127.0.0.1 --port 5173 --strictPort &
+          for i in $(seq 1 40); do
+            curl -sf http://127.0.0.1:5173/ >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:5173/ >/dev/null
+      - name: Shots, compare, axe, reduced motion, trace
+        env:
+          SHOTS_BASE_URL: http://127.0.0.1:5173/
+          SHOTS_AGENT_PORT: "7474"
+          SHOTS_TOKEN_PATH: /tmp/htdemo/home/.harnesstap/agent-token
+          SHOTS_PROJECT_PATH: /tmp/htdemo/project
+        run: bun run desktop:check
+      - name: Upload visual artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-visual-artifacts
+          path: apps/desktop/e2e/artifacts/

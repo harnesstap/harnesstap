@@ -14,17 +14,25 @@
 // Flags:
 //   --viewports 1440x900,960x640
 //   --reduced-motion
-import { existsSync } from "node:fs";
+//   --compare
+//   --update-baselines
+//   --axe
+//   --trace
+import { existsSync, copyFileSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import AxeBuilder from "@axe-core/playwright";
+import { baselinePathFor, compareShot } from "./visual-compare.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SHIM_PATH = path.join(SCRIPT_DIR, "tauri-shim.js");
 const DEFAULT_OUT = path.resolve(SCRIPT_DIR, "..", "e2e", "artifacts", "shots");
+const DEFAULT_BASELINES = path.resolve(SCRIPT_DIR, "..", "e2e", "visual");
 const T = 4000;
 const SETTLE_MS = 600;
+const FRAME_BUDGET_MS = 32;
 
 function parseArgs(argv) {
   const options = {
@@ -33,11 +41,23 @@ function parseArgs(argv) {
       { width: 960, height: 640 },
     ],
     reducedMotion: false,
+    compare: false,
+    updateBaselines: false,
+    axe: false,
+    trace: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--reduced-motion") {
       options.reducedMotion = true;
+    } else if (arg === "--compare") {
+      options.compare = true;
+    } else if (arg === "--update-baselines") {
+      options.updateBaselines = true;
+    } else if (arg === "--axe") {
+      options.axe = true;
+    } else if (arg === "--trace") {
+      options.trace = true;
     } else if (arg === "--viewports") {
       options.viewports = parseViewports(argv[++i]);
     } else if (arg.startsWith("--viewports=")) {
@@ -261,6 +281,70 @@ async function waitForConnected(page) {
   });
 }
 
+async function countAnimations(page) {
+  return page.evaluate(() => document.getAnimations().length);
+}
+
+async function runAxe(page, tag, screenName, report) {
+  const results = await new AxeBuilder({ page })
+    .disableRules(["color-contrast"])
+    .analyze();
+  const blocking = results.violations.filter(
+    (item) => item.impact === "serious" || item.impact === "critical",
+  );
+  for (const item of blocking) {
+    const nodes = item.nodes.map((node) => node.target.join(" ")).join("; ");
+    report.axeFailures.push(`[${tag}] ${screenName}: ${item.id} (${item.impact}) ${nodes}`);
+  }
+}
+
+async function longestFrameMs(page, action) {
+  await page.evaluate(() => {
+    window.__htFrames = [];
+    window.__htLast = 0;
+    const tick = (now) => {
+      if (window.__htLast) {
+        window.__htFrames.push(now - window.__htLast);
+      }
+      window.__htLast = now;
+      window.__htRafId = requestAnimationFrame(tick);
+    };
+    window.__htRafId = requestAnimationFrame(tick);
+  });
+  await action();
+  await page.waitForTimeout(400);
+  return page.evaluate(() => {
+    cancelAnimationFrame(window.__htRafId);
+    const frames = window.__htFrames ?? [];
+    return frames.reduce((max, ms) => (ms > max ? ms : max), 0);
+  });
+}
+
+async function runMotionTrace(page, tag, report) {
+  const overlayMs = await longestFrameMs(page, async () => {
+    await page.keyboard.press("Control+k").catch(() => {});
+    await page.waitForTimeout(250);
+    await page.keyboard.press("Escape").catch(() => {});
+  });
+  const scrollMs = await longestFrameMs(page, async () => {
+    await page.locator("main").first().evaluate((node) => {
+      node.scrollTop = Math.min(node.scrollHeight, 2400);
+    }).catch(() => {});
+  });
+  for (const [label, ms] of [
+    ["overlay", overlayMs],
+    ["list-scroll", scrollMs],
+  ]) {
+    if (ms > FRAME_BUDGET_MS) {
+      report.traceFailures.push(
+        `[${tag}] ${label}: longest frame ${ms.toFixed(1)}ms > ${FRAME_BUDGET_MS}ms`,
+      );
+    } else {
+      console.log(`ok   trace ${label} (${tag}) ${ms.toFixed(1)}ms`);
+    }
+  }
+}
+
 async function walkViewport(browser, viewport, config, report) {
   const { width, height } = viewport;
   const tag = `${width}x${height}`;
@@ -300,6 +384,17 @@ async function walkViewport(browser, viewport, config, report) {
     try {
       await screen.run(page);
       await settle(page);
+      if (config.reducedMotion) {
+        const running = await countAnimations(page);
+        if (running > 0) {
+          report.motionFailures.push(
+            `[${tag}] ${screen.name}: ${running} animation(s) still running`,
+          );
+        }
+      }
+      if (config.axe) {
+        await runAxe(page, tag, screen.name, report);
+      }
       await page.screenshot({ path: file, fullPage: false });
       report.written.push(file);
       console.log(`ok   ${path.relative(process.cwd(), file)}`);
@@ -310,6 +405,15 @@ async function walkViewport(browser, viewport, config, report) {
     }
     if (screen.after) {
       await screen.after(page).catch(() => {});
+    }
+  }
+
+  if (config.trace) {
+    try {
+      await runMotionTrace(page, tag, report);
+    } catch (error) {
+      const message = error instanceof Error ? error.message.split("\n")[0] : String(error);
+      report.traceFailures.push(`[${tag}] ${message}`);
     }
   }
 
@@ -324,13 +428,30 @@ async function run() {
     tokenPath: process.env.SHOTS_TOKEN_PATH ?? "/tmp/htdemo/home/.harnesstap/agent-token",
     projectPath: process.env.SHOTS_PROJECT_PATH ?? "/tmp/htdemo/project",
     outDir: process.env.SHOTS_OUT ? path.resolve(process.env.SHOTS_OUT) : DEFAULT_OUT,
+    baselineDir: process.env.SHOTS_BASELINES
+      ? path.resolve(process.env.SHOTS_BASELINES)
+      : DEFAULT_BASELINES,
     reducedMotion: args.reducedMotion,
+    compare: args.compare,
+    updateBaselines: args.updateBaselines,
+    axe: args.axe,
+    trace: args.trace,
     token: null,
   };
   config.token = await readToken(config.tokenPath);
   await mkdir(config.outDir, { recursive: true });
+  await mkdir(config.baselineDir, { recursive: true });
 
-  const report = { written: [], stepFailures: [], pageErrors: [], consoleErrors: [] };
+  const report = {
+    written: [],
+    stepFailures: [],
+    pageErrors: [],
+    consoleErrors: [],
+    compareFailures: [],
+    axeFailures: [],
+    motionFailures: [],
+    traceFailures: [],
+  };
   const browser = await chromium.launch(launchOptions());
   try {
     for (const viewport of args.viewports) {
@@ -340,12 +461,44 @@ async function run() {
     await browser.close();
   }
 
+  if (config.updateBaselines) {
+    for (const file of report.written) {
+      copyFileSync(file, baselinePathFor(file, config.baselineDir));
+    }
+    console.log(`shots: updated ${report.written.length} baselines in ${config.baselineDir}`);
+  }
+
+  if (config.compare) {
+    for (const file of report.written) {
+      const baseline = baselinePathFor(file, config.baselineDir);
+      const diffPath = path.join(config.outDir, `diff-${path.basename(file)}`);
+      const result = compareShot(file, baseline, { diffPath });
+      if (!result.ok) {
+        report.compareFailures.push(
+          `${path.basename(file)}: ${result.reason ?? "mismatch"}`,
+        );
+      }
+    }
+  }
+
   console.log("");
   console.log(`shots: ${report.written.length} screenshots in ${config.outDir}`);
-  if (report.stepFailures.length) {
-    console.log(`shots: ${report.stepFailures.length} step failure(s)`);
-    for (const line of report.stepFailures) {
-      console.log(`  ${line}`);
+  const groups = [
+    ["step", report.stepFailures],
+    ["compare", report.compareFailures],
+    ["axe", report.axeFailures],
+    ["reduced-motion", report.motionFailures],
+    ["trace", report.traceFailures],
+    ["pageerror", report.pageErrors],
+  ];
+  let failed = false;
+  for (const [label, lines] of groups) {
+    if (lines.length) {
+      failed = true;
+      console.log(`shots: ${lines.length} ${label} failure(s)`);
+      for (const line of lines) {
+        console.log(`  ${line}`);
+      }
     }
   }
   if (report.consoleErrors.length) {
@@ -354,14 +507,11 @@ async function run() {
       console.log(`  ${line}`);
     }
   }
-  if (report.pageErrors.length) {
-    console.log(`shots: ${report.pageErrors.length} pageerror(s)`);
-    for (const line of report.pageErrors) {
-      console.log(`  ${line}`);
-    }
-    process.exitCode = 1;
-  } else {
+  if (report.pageErrors.length === 0) {
     console.log("shots: 0 pageerrors");
+  }
+  if (failed) {
+    process.exitCode = 1;
   }
 }
 
