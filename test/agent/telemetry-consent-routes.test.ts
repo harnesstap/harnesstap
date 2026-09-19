@@ -109,4 +109,28 @@ describe("agent telemetry consent routes", () => {
     expect((await disable.json()).preference).toBe(false);
     expect(TELEMETRY_CLI_DISABLE_INSTRUCTIONS).toContain("HARNESSTAP_TELEMETRY=0");
   });
+
+  it("PUT enabled null clears the stored choice", async () => {
+    const { server } = await withServer();
+    await fetch(`${server.url}/v1/telemetry`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ enabled: true }),
+    });
+    const reset = await fetch(`${server.url}/v1/telemetry`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ enabled: null }),
+    });
+    expect(reset.status).toBe(200);
+    const body = await reset.json();
+    expect(body.needs_consent).toBe(true);
+    expect(body.preference).toBe(null);
+  });
 });

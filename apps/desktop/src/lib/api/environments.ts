@@ -86,6 +86,35 @@ export function environmentApplyAvailable(payload: {
   return payload.has_detected_drift === true;
 }
 
+/** Keys that look like secrets: `*_KEY`, `*TOKEN*`, or `*SECRET*`. */
+export function isSecretLikeEnvKey(key: string): boolean {
+  const upper = key.toUpperCase();
+  return /_KEY$/.test(upper) || upper.includes("TOKEN") || upper.includes("SECRET");
+}
+
+export function formatEnvironmentClipboard(payload: EnvironmentShowPayload): string {
+  const lines: string[] = [];
+  for (const [key, value] of Object.entries(payload.values.env_vars)) {
+    lines.push(`${key}=${value}`);
+  }
+  for (const [key, secret] of Object.entries(payload.secret_refs)) {
+    lines.push(`${key}=${secret.provider}:${secret.ref}`);
+  }
+  return lines.join("\n");
+}
+
+export function collectEnvVarMap(
+  rows: Array<{ key: string; value: string }>,
+): Record<string, string> {
+  const env_vars: Record<string, string> = {};
+  for (const row of rows) {
+    if (row.key.trim()) {
+      env_vars[row.key.trim()] = row.value;
+    }
+  }
+  return env_vars;
+}
+
 export function canSubmitEnvironmentCreate(input: {
   name: string;
   mode: EnvironmentCreateMode;

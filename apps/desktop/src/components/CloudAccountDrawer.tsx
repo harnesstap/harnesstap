@@ -18,6 +18,7 @@ import type { CloudAuthStatus, CloudPendingLogin } from "../lib/types";
 import { Copy, ExternalLink, LogIn, LogOut, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
+import { Presence } from "./motion/Presence";
 
 interface CloudAccountDrawerProps {
   open: boolean;
@@ -351,15 +352,12 @@ export function CloudAccountDrawer({
     }
   };
 
-  if (!open) {
-    return null;
-  }
-
   const controlsDisabled = disabled || busy || loading;
   const pending = status?.pendingLogin;
   const authenticated = status?.authenticated === true;
 
   return (
+    <Presence open={open} exit="m-panel-out">
     <FullScreenPanel
       titleId="cloud-account-title"
       title="Account"
@@ -416,7 +414,10 @@ export function CloudAccountDrawer({
                   Cancel
                 </button>
               </div>
-              <p className="muted cloud-login-waiting">Waiting for approval…</p>
+              <p className="muted cloud-login-waiting">
+                <ButtonSpinner size={16} />
+                Waiting for approval…
+              </p>
             </div>
           ) : authenticated ? (
             <div className="cloud-account-summary">
@@ -475,7 +476,7 @@ export function CloudAccountDrawer({
               <h3>Sign in to Cloud</h3>
               <p className="muted">
                 Connect your HarnessTap Cloud account to browse and pull shared
-                profiles from this desktop app.
+                plugins and catalogs from this desktop app.
               </p>
               <div className="cloud-account-actions">
                 <button
@@ -498,5 +499,6 @@ export function CloudAccountDrawer({
             </div>
           )}
     </FullScreenPanel>
+    </Presence>
   );
 }

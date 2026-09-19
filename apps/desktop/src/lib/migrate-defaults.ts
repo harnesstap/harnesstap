@@ -1,5 +1,42 @@
 import type { MigrateScope } from "./types";
 
+export type MigrateExportStep = "scope" | "target" | "options" | "path" | "confirm";
+export type MigrateImportStep = "path" | "scope" | "confirm";
+
+export function migrateExportSteps(scope: MigrateScope): readonly MigrateExportStep[] {
+  switch (scope) {
+    case "workspace":
+      return ["scope", "options", "path", "confirm"];
+    case "plugin":
+      return ["scope", "target", "options", "path", "confirm"];
+    case "resource":
+      return ["scope", "target", "path", "confirm"];
+    default: {
+      const neverScope: never = scope;
+      return neverScope;
+    }
+  }
+}
+
+export function migrateImportSteps(): readonly MigrateImportStep[] {
+  return ["path", "scope", "confirm"];
+}
+
+export function migrateStepCopy(current: number, total: number): string {
+  return `Step ${current} of ${total}`;
+}
+
+export function migrateStepPosition<T extends string>(
+  steps: readonly T[],
+  step: T,
+): { current: number; total: number } {
+  const index = steps.indexOf(step);
+  return {
+    current: index >= 0 ? index + 1 : 1,
+    total: steps.length,
+  };
+}
+
 export function defaultMigrateExportFilename(input: {
   scope: MigrateScope;
   plugin?: string;

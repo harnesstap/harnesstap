@@ -26,7 +26,7 @@ const sourcesWorkspaceSource = readFileSync(
 const environmentsSource = readFileSync(
   join(
     import.meta.dir,
-    "../../apps/desktop/src/components/parity/EnvironmentsWorkspace.tsx",
+    "../../apps/desktop/src/components/environments/EnvironmentsWorkspace.tsx",
   ),
   "utf8",
 );
@@ -52,7 +52,7 @@ const cssSource = readDesktopCss();
 const settingsTabsSource = readFileSync(
   join(
     import.meta.dir,
-    "../../apps/desktop/src/components/parity/SettingsParitySections.tsx",
+    "../../apps/desktop/src/components/settings/SettingsParitySections.tsx",
   ),
   "utf8",
 );
@@ -303,7 +303,9 @@ describe("desktop full-screen panels", () => {
     expect(settingsTabsSource).toContain('label: "Advanced"');
     expect(settingsTabsSource).not.toContain('label: "Marketplaces"');
     expect(settingsTabsSource).not.toContain('label: "Publish catalogs"');
+    expect(settingsTabsSource).toContain("CheckForUpdatesSettings");
     expect(designSource).toContain("Harnesses | Project | Advanced");
+    expect(designSource).toContain("Footer **Save** / **Cancel** appear only on **Harnesses**");
   });
 });
 
