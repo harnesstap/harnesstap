@@ -469,17 +469,7 @@ function ShortcutCheatSheet({
           aria-modal="true"
           aria-labelledby={titleId}
         >
-          <div className="dialog-header-actions">
-            <h2 id={titleId}>Keyboard shortcuts</h2>
-            <button
-              ref={closeRef}
-              type="button"
-              className="btn"
-              onClick={onClose}
-            >
-              Close
-            </button>
-          </div>
+          <h2 id={titleId}>Keyboard shortcuts</h2>
           <table className="shortcut-cheat-sheet-table">
             <caption className="sr-only">Desktop keyboard shortcuts</caption>
             <thead>
@@ -501,6 +491,16 @@ function ShortcutCheatSheet({
               ))}
             </tbody>
           </table>
+          <div className="dialog-actions">
+            <button
+              ref={closeRef}
+              type="button"
+              className="btn"
+              onClick={onClose}
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </Presence>
