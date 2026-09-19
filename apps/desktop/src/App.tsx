@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { Tooltip } from "radix-ui";
 import { AppHeader } from "./components/shell/AppHeader";
 import { AppOverlays } from "./components/shell/AppOverlays";
-import { Banner } from "./components/shell/Banner";
+import { ConnectSplash, ReconnectBanner } from "./components/shell/ConnectSplash";
 import { ScopeWorkspace } from "./components/shell/ScopeWorkspace";
 import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace";
 import { ResourcesPanel } from "./components/ResourcesPanel";
@@ -190,6 +190,22 @@ export function App() {
     [overlays.openOverlay],
   );
   const scopedProjectPath = nav.scope === "project" ? projectPath : null;
+  const shellDisconnected = session.phase !== "connected";
+
+  if (!client) {
+    return (
+      <Tooltip.Provider delayDuration={400}>
+        <div className="app-shell">
+          <ConnectSplash
+            phase={session.phase}
+            error={session.error}
+            retryBusy={session.retryBusy}
+            onRetry={() => void session.retry()}
+          />
+        </div>
+      </Tooltip.Provider>
+    );
+  }
 
   return (
     <Tooltip.Provider delayDuration={400}>
@@ -219,22 +235,21 @@ export function App() {
         />
 
         {!connected && (
-          <Banner
-            tone="error"
-            className="connection-banner"
-            message={
-              session.error
-                ?? "Waiting for sidecar health check on 127.0.0.1:7474…"
-            }
-            onRetry={() => void session.retry()}
+          <ReconnectBanner
             retryBusy={session.retryBusy}
+            onRetry={() => void session.retry()}
           />
         )}
 
-        <div className={`layout${nav.destination === "scope" ? "" : " resources-focus"}`}>
+        <div
+          className={`layout${nav.destination === "scope" ? "" : " resources-focus"}${
+            shellDisconnected ? " is-disconnected" : ""
+          }`}
+        >
           {nav.destination === "scope" ? (
             <ScopeWorkspace
               ctrl={ctrl}
+              disconnected={shellDisconnected}
               hasHistory={nav.hasHistory}
               onBack={nav.back}
               libraryReloadKey={libraryReloadKey}
@@ -257,6 +272,7 @@ export function App() {
               token={client?.token ?? null}
               projectPath={scopedProjectPath}
               disabled={switching}
+              disconnected={shellDisconnected}
               homeResetNonce={nav.resetNonce}
               autoOpenCreate={environmentCreateOpen}
               onAutoOpenCreateConsumed={onEnvironmentCreateConsumed}
@@ -270,6 +286,7 @@ export function App() {
               baseUrl={client?.baseUrl ?? null}
               token={client?.token ?? null}
               disabled={switching}
+              disconnected={shellDisconnected}
               homeResetNonce={nav.resetNonce}
               cloudAuthenticated={Boolean(cloud.cloudAuth?.authenticated)}
               onSignIn={openCloudAccount}
@@ -284,6 +301,7 @@ export function App() {
               token={client?.token ?? null}
               reloadKey={libraryReloadKey}
               disabled={switching}
+              disconnected={shellDisconnected}
               homeResetNonce={nav.resetNonce}
               projectPath={scopedProjectPath}
               selectedProfile={selectedProfile}

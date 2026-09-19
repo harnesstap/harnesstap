@@ -1,3 +1,4 @@
+import { CheckForUpdatesSection } from "../UpdateAvailableControl";
 import { ProjectConfigInspect } from "./ProjectConfigInspect";
 import { ResolveOrderSettings } from "./ResolveOrderSettings";
 import { TelemetrySettingsSection } from "./TelemetrySettingsSection";
@@ -38,6 +39,12 @@ export function SettingsParitySections(props: {
       return (
         <>
           <TelemetrySettingsSection
+            open={props.open}
+            baseUrl={props.baseUrl}
+            token={props.token}
+            disabled={props.disabled}
+          />
+          <CheckForUpdatesSection
             open={props.open}
             baseUrl={props.baseUrl}
             token={props.token}
