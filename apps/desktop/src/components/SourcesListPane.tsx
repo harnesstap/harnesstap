@@ -8,6 +8,7 @@ import {
 import { LogIn } from "lucide-react";
 import { IconActionButton } from "./IconActionButton";
 import { TypeIcon } from "./TypeIcon";
+import { Skeleton } from "./shell/Skeleton";
 
 export const CLOUD_SIGN_IN_HINT = "Sign in from the Cloud account control";
 
@@ -79,11 +80,7 @@ export function SourcesListPane({
   );
 
   if (loading && visible.length === 0) {
-    return (
-      <div className="empty-state">
-        <p className="muted">Searching…</p>
-      </div>
-    );
+    return <Skeleton lines={4} />;
   }
 
   if (visible.length === 0) {

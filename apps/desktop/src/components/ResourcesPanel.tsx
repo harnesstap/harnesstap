@@ -13,6 +13,7 @@ import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesMod
 import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
+import { SkeletonRow } from "./shell/Skeleton";
 import {
   ResourceRowDescription,
   ResourceRowIdentity,
@@ -115,6 +116,7 @@ export interface ResourcesPanelProps {
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
   autoOpenTrackedDirectories?: boolean;
+  disconnected?: boolean;
 }
 
 export function ResourcesPanel({
@@ -139,6 +141,7 @@ export function ResourcesPanel({
   canWorkspaceBack = false,
   onWorkspaceBack,
   autoOpenTrackedDirectories = false,
+  disconnected = false,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
@@ -690,8 +693,8 @@ export function ResourcesPanel({
         </div>
       );
     }
-    if (loading) {
-      return <p className="muted">Loading resources…</p>;
+    if (loading && resources.length === 0 && plugins.length === 0) {
+      return <SkeletonRow count={8} height={40} />;
     }
     if (listRows.length === 0) {
       return (
@@ -797,7 +800,9 @@ export function ResourcesPanel({
 
   return (
     <main
-      className="resources-panel"
+      className={["resources-panel", disconnected ? "is-disconnected" : ""]
+        .filter(Boolean)
+        .join(" ")}
       aria-label="Library"
       data-library-pane={pane.mode}
     >

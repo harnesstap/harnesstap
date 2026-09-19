@@ -163,6 +163,7 @@ export interface SourcesWorkspaceProps {
   cloudAuthenticated?: boolean;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
+  disconnected?: boolean;
 }
 
 export function SourcesWorkspace({
@@ -176,6 +177,7 @@ export function SourcesWorkspace({
   cloudAuthenticated = false,
   canWorkspaceBack = false,
   onWorkspaceBack,
+  disconnected = false,
 }: SourcesWorkspaceProps) {
   const [query, setQuery] = useState("");
   const [showInLibrary, setShowInLibrary] = useState(false);
@@ -1108,7 +1110,9 @@ export function SourcesWorkspace({
 
   return (
     <main
-      className="resources-panel sources-workspace"
+      className={["resources-panel", "sources-workspace", disconnected ? "is-disconnected" : ""]
+        .filter(Boolean)
+        .join(" ")}
       aria-label="Discover"
       data-testid="sources-workspace"
       data-sources-pane={pane.mode}

@@ -1411,6 +1411,17 @@
   color: var(--muted);
 }
 
+.steps li.failed {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .profile-stack-empty {
   padding: 0.75rem;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
   Check,
   Download,
@@ -19,13 +19,49 @@ import type { AgentClient } from "../../state/agent-session";
 import type { Destination, Scope } from "../../state/navigation";
 import { statusStore } from "../../state/status-store";
 import { toast } from "../../state/toast-store";
+import { ChromeTooltip } from "../ChromeTooltip";
 import { IconActionButton } from "../IconActionButton";
 import { ParityChrome } from "../parity/ParityChrome";
 import { ProjectHistoryControl } from "../parity/ProjectHistoryControl";
 import { ProjectPicker } from "../ProjectPicker";
 import { UpdateAvailableControl } from "../UpdateAvailableControl";
+import { HeaderMoreMenu } from "./HeaderMoreMenu";
 
 const HEADER_ICON_SIZE = 18;
+export const HEADER_UTILITIES_COLLAPSE_PX = 1100;
+export const HEADER_DEST_ICONS_PX = 960;
+
+function useElementWidth(ref: RefObject<HTMLElement | null>): number {
+  const [width, setWidth] = useState(() =>
+    typeof window === "undefined" ? 1440 : window.innerWidth,
+  );
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      const box = entries[0]?.borderBoxSize?.[0];
+      const next = typeof box?.inlineSize === "number"
+        ? box.inlineSize
+        : entries[0]?.contentRect.width;
+      if (typeof next === "number") {
+        setWidth(next);
+      }
+    });
+    observer.observe(node);
+    setWidth(node.getBoundingClientRect().width);
+    return () => observer.disconnect();
+  }, [ref]);
+  return width;
+}
+
+function maybeTooltip(enabled: boolean, content: string, child: ReactNode): ReactNode {
+  if (!enabled) {
+    return child;
+  }
+  return <ChromeTooltip content={content}>{child}</ChromeTooltip>;
+}
 
 export interface AppHeaderProps {
   client: AgentClient | null;
@@ -77,6 +113,10 @@ export function AppHeader({
 }: AppHeaderProps) {
   const baseUrl = client?.baseUrl ?? null;
   const token = client?.token ?? null;
+  const headerRef = useRef<HTMLElement>(null);
+  const headerWidth = useElementWidth(headerRef);
+  const collapseUtilities = headerWidth < HEADER_UTILITIES_COLLAPSE_PX;
+  const iconDestinations = headerWidth <= HEADER_DEST_ICONS_PX;
   const [refreshPhase, setRefreshPhase] = useState<"idle" | "loading" | "success">("idle");
   const refreshFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -121,13 +161,33 @@ export function AppHeader({
     }, 1200);
   }, [client, onLibraryChanged, projectPath, refreshPhase]);
 
+  const projectTooltip = !projectPath
+    ? "Choose a project directory"
+    : !projectReady
+      ? "Sets up this repo as a HarnessTap project on first use"
+      : "Project";
+  const accountTooltip = cloudAuth?.authenticated && cloudAuth.email
+    ? `Account (${cloudAuth.email})`
+    : "Account";
+
   return (
-    <header className="app-header">
+    <header
+      ref={headerRef}
+      className={[
+        "app-header",
+        collapseUtilities ? "is-compact-utilities" : "",
+        iconDestinations ? "is-compact-dest" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="app-header-brand">
         <h1>HarnessTap</h1>
       </div>
-      <div className="header-focus" role="group" aria-label="Workspace">
-        <div className="header-focus-controls" role="navigation" aria-label="Destinations">
+      <div className="header-focus-controls" role="navigation" aria-label="Destinations">
+        {maybeTooltip(
+          iconDestinations,
+          "Library",
           <button
             type="button"
             className={`header-focus-btn labeled${destination === "library" ? " on" : ""}`}
@@ -135,11 +195,14 @@ export function AppHeader({
             disabled={switching}
             aria-label="Library"
             aria-current={destination === "library" ? "page" : undefined}
-            title="Library"
           >
             <Library size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-            Library
-          </button>
+            <span className="header-focus-label">Library</span>
+          </button>,
+        )}
+        {maybeTooltip(
+          iconDestinations,
+          "Discover",
           <button
             type="button"
             className={`header-focus-btn labeled${destination === "discover" ? " on" : ""}`}
@@ -147,28 +210,32 @@ export function AppHeader({
             disabled={switching}
             aria-label="Discover"
             aria-current={destination === "discover" ? "page" : undefined}
-            title="Discover"
           >
             <PackageSearch size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-            Discover
-          </button>
-          <ParityChrome
-            workspaceFocus={destination}
-            onWorkspaceFocus={() => {
-              onDestinationClick("environments");
-            }}
-            switching={switching}
-          />
-        </div>
-        <div className="header-scope">
-          <span className="header-scope-label" id="header-scope-label">
-            Scope
-          </span>
-          <div
-            className="header-focus-segment"
-            role="group"
-            aria-labelledby="header-scope-label"
-          >
+            <span className="header-focus-label">Discover</span>
+          </button>,
+        )}
+        <ParityChrome
+          workspaceFocus={destination}
+          iconOnly={iconDestinations}
+          onWorkspaceFocus={() => {
+            onDestinationClick("environments");
+          }}
+          switching={switching}
+        />
+      </div>
+      <div className="header-scope">
+        <span className="header-scope-label" id="header-scope-label">
+          Scope
+        </span>
+        <div
+          className="header-focus-segment"
+          role="group"
+          aria-labelledby="header-scope-label"
+        >
+          {maybeTooltip(
+            iconDestinations,
+            "Global",
             <button
               type="button"
               className={scope === "global" ? "on" : ""}
@@ -177,11 +244,14 @@ export function AppHeader({
               disabled={switching || bootstrapBusy}
               aria-label="Global scope"
               aria-pressed={scope === "global"}
-              title="Global"
             >
               <Globe size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-              Global
-            </button>
+              <span className="header-focus-label">Global</span>
+            </button>,
+          )}
+          {maybeTooltip(
+            iconDestinations || projectTooltip !== "Project",
+            projectTooltip,
             <button
               type="button"
               className={scope === "project" ? "on" : ""}
@@ -190,64 +260,59 @@ export function AppHeader({
               disabled={switching || bootstrapBusy}
               aria-label="Project scope"
               aria-pressed={scope === "project"}
-              title={
-                !projectPath
-                  ? "Choose a project directory"
-                  : !projectReady
-                    ? "Sets up this repo as a HarnessTap project on first use"
-                    : "Project"
-              }
             >
               <FolderGit2 size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-              Project
-            </button>
-          </div>
+              <span className="header-focus-label">Project</span>
+            </button>,
+          )}
         </div>
-        {destination === "scope" && scope === "project" ? (
-          <div className="header-project-row">
-            <ProjectPicker
-              projectPath={projectPath}
-              disabled={switching}
-              onSelect={onSelectProject}
-              onBrowse={onBrowseProject}
-            />
-            {projectPath ? (
-              <IconActionButton
-                data-testid="project-install"
-                label="Install"
-                title="Install project config"
-                busy={installBusy}
-                disabled={!connected || !token || switching || bootstrapBusy || !projectReady}
-                onClick={onProjectInstall}
-                icon={<HardDriveDownload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-              />
-            ) : null}
-            {projectPath ? (
-              <ProjectHistoryControl
-                baseUrl={baseUrl}
-                token={token}
-                connected={connected}
-                switching={switching || installBusy}
-                projectPath={projectPath}
-                onSuccess={(message) => toast({ tone: "success", title: message })}
-                onProfilesChanged={onProfilesChanged}
-              />
-            ) : null}
-          </div>
-        ) : (
-          <div className="header-focus-spacer" aria-hidden />
-        )}
       </div>
+      {destination === "scope" && scope === "project" ? (
+        <div className="header-project-cluster">
+          <ProjectPicker
+            projectPath={projectPath}
+            disabled={switching}
+            onSelect={onSelectProject}
+            onBrowse={onBrowseProject}
+          />
+          {projectPath ? (
+            <IconActionButton
+              data-testid="project-install"
+              label="Install"
+              title="Install project config"
+              busy={installBusy}
+              disabled={!connected || !token || switching || bootstrapBusy || !projectReady}
+              onClick={onProjectInstall}
+              icon={<HardDriveDownload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+            />
+          ) : null}
+          {projectPath ? (
+            <ProjectHistoryControl
+              baseUrl={baseUrl}
+              token={token}
+              connected={connected}
+              switching={switching || installBusy}
+              projectPath={projectPath}
+              onSuccess={(message) => toast({ tone: "success", title: message })}
+              onProfilesChanged={onProfilesChanged}
+            />
+          ) : null}
+        </div>
+      ) : (
+        <div className="header-project-cluster header-focus-spacer" aria-hidden />
+      )}
       <div
         className="header-status"
         data-testid={connected ? "agent-connected" : undefined}
       >
-        <UpdateAvailableControl
-          baseUrl={baseUrl}
-          token={token}
-          connected={connected}
-          disabled={switching || migrateBusy}
-        />
+        <span className="header-utility-optional">
+          <UpdateAvailableControl
+            baseUrl={baseUrl}
+            token={token}
+            connected={connected}
+            disabled={switching || migrateBusy}
+          />
+        </span>
         <IconActionButton
           className={[
             "refresh-action",
@@ -281,20 +346,24 @@ export function AppHeader({
             )
           }
         />
-        <IconActionButton
-          data-testid="open-migrate-export"
-          onClick={onOpenMigrateExport}
-          disabled={!connected || switching || migrateBusy}
-          label="Export setup"
-          icon={<Upload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-        />
-        <IconActionButton
-          data-testid="open-migrate-import"
-          onClick={onOpenMigrateImport}
-          disabled={!connected || switching || migrateBusy}
-          label="Import setup"
-          icon={<Download size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-        />
+        <span className="header-utility-optional">
+          <IconActionButton
+            data-testid="open-migrate-export"
+            onClick={onOpenMigrateExport}
+            disabled={!connected || switching || migrateBusy}
+            label="Export setup"
+            icon={<Upload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+          />
+        </span>
+        <span className="header-utility-optional">
+          <IconActionButton
+            data-testid="open-migrate-import"
+            onClick={onOpenMigrateImport}
+            disabled={!connected || switching || migrateBusy}
+            label="Import setup"
+            icon={<Download size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+          />
+        </span>
         <IconActionButton
           data-testid="open-settings"
           onClick={onOpenSettings}
@@ -302,22 +371,57 @@ export function AppHeader({
           label="Settings"
           icon={<Settings size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
         />
-        <IconActionButton
-          className={["account-action", cloudAuth?.authenticated ? "is-signed-in" : ""]
-            .filter(Boolean)
-            .join(" ")}
-          onClick={onOpenAccount}
-          disabled={!connected}
-          label="Account"
-          title={
-            cloudAuth?.authenticated
-              ? cloudAuth.email
-                ? `Account (${cloudAuth.email})`
-                : "Account"
-              : "Account"
-          }
-          icon={<User size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-        />
+        <span className="header-utility-optional">
+          <IconActionButton
+            className={["account-action", cloudAuth?.authenticated ? "is-signed-in" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            onClick={onOpenAccount}
+            disabled={!connected}
+            label="Account"
+            title={accountTooltip}
+            icon={<User size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+          />
+        </span>
+        <span className="header-more-wrap">
+          <HeaderMoreMenu
+            disabled={switching}
+            items={[
+              {
+                id: "export",
+                label: "Export setup",
+                icon: <Upload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />,
+                disabled: !connected || switching || migrateBusy,
+                onSelect: onOpenMigrateExport,
+                testId: "open-migrate-export-more",
+              },
+              {
+                id: "import",
+                label: "Import setup",
+                icon: <Download size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />,
+                disabled: !connected || switching || migrateBusy,
+                onSelect: onOpenMigrateImport,
+                testId: "open-migrate-import-more",
+              },
+              {
+                id: "account",
+                label: accountTooltip,
+                icon: <User size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />,
+                disabled: !connected,
+                onSelect: onOpenAccount,
+                testId: "open-account-more",
+              },
+            ]}
+          >
+            <UpdateAvailableControl
+              baseUrl={baseUrl}
+              token={token}
+              connected={connected}
+              disabled={switching || migrateBusy}
+              variant="menuitem"
+            />
+          </HeaderMoreMenu>
+        </span>
       </div>
     </header>
   );

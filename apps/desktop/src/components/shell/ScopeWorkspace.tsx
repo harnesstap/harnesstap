@@ -1,4 +1,4 @@
-import { Check, FileDiff, Pencil, Tag, TextQuote, X } from "lucide-react";
+import { Check, CircleX, FileDiff, Pencil, Tag, TextQuote, X } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
@@ -17,6 +17,7 @@ import { toast } from "../../state/toast-store";
 import { EditProfilePane } from "../EditProfilePane";
 import { FieldIdentityIcon } from "../FieldIdentityIcon";
 import { IconActionButton } from "../IconActionButton";
+import { ButtonSpinner } from "../ButtonSpinner";
 import { LiveStatePanel } from "../LiveStatePanel";
 import { PendingApprovalsStrip } from "../PendingApprovalsStrip";
 import { ProfileDeleteControls } from "../parity/ProfileDeleteControls";
@@ -42,6 +43,25 @@ export function stepState(
   return "pending";
 }
 
+export function switchStepClassName(
+  state: ReturnType<typeof stepState>,
+): string {
+  switch (state) {
+    case "current":
+      return "cur m-status";
+    case "done":
+      return "done m-status";
+    case "failed":
+      return "failed m-status";
+    case "pending":
+      return "m-status";
+    default: {
+      const neverState: never = state;
+      return neverState;
+    }
+  }
+}
+
 export function isApplyStepActive(events: ProfileSwitchStepEvent[]): boolean {
   return events.some(
     (event) =>
@@ -52,6 +72,7 @@ export function isApplyStepActive(events: ProfileSwitchStepEvent[]): boolean {
 
 export interface ScopeWorkspaceProps {
   ctrl: ScopeController;
+  disconnected?: boolean;
   hasHistory: boolean;
   onBack: () => void;
   libraryReloadKey: number;
@@ -69,6 +90,7 @@ export interface ScopeWorkspaceProps {
 /** Profiles rail plus the live-state pane (or the profile editor) for the selected scope. */
 export function ScopeWorkspace({
   ctrl,
+  disconnected = false,
   hasHistory,
   onBack,
   libraryReloadKey,
@@ -143,7 +165,12 @@ export function ScopeWorkspace({
           }
         />
       ) : (
-        <main className="live-pane" aria-label="Live state">
+        <main
+          className={["live-pane", disconnected ? "is-disconnected" : ""]
+            .filter(Boolean)
+            .join(" ")}
+          aria-label="Live state"
+        >
           {bootstrapError ? (
             <Banner tone="error" message={bootstrapError} onDismiss={onDismissBootstrapError} />
           ) : null}
@@ -323,20 +350,18 @@ export function ScopeWorkspace({
                 {orderedSwitchSteps(view).map((step) => {
                   const state = stepState(step, ctrl.switchEvents);
                   return (
-                    <li
-                      key={step}
-                      className={
-                        state === "current"
-                          ? "cur"
-                          : state === "done"
-                            ? "done"
-                            : state === "failed"
-                              ? "cur"
-                              : ""
-                      }
-                    >
-                      {SWITCH_STEP_LABELS[step]}
-                      {state === "failed" ? " (failed)" : ""}
+                    <li key={step} className={switchStepClassName(state)}>
+                      {state === "done" ? (
+                        <Check size={14} strokeWidth={2} aria-hidden="true" />
+                      ) : null}
+                      {state === "current" ? <ButtonSpinner size={14} /> : null}
+                      {state === "failed" ? (
+                        <CircleX size={14} strokeWidth={2} aria-hidden="true" />
+                      ) : null}
+                      <span>
+                        {SWITCH_STEP_LABELS[step]}
+                        {state === "failed" ? " failed" : ""}
+                      </span>
                     </li>
                   );
                 })}
