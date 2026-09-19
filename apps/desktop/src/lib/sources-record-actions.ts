@@ -3,16 +3,21 @@ import type { SourcesHit } from "./sources-search";
 
 export interface SourcesInstallState {
   pulledName?: string;
+  addedName?: string;
   pinnedTargetName?: string;
 }
 
 export interface SourcesHitActions {
-  showPull: boolean;
+  showAddToLibrary: boolean;
   showPinToPlugin: boolean;
-  showAttachToPlugin: boolean;
   showOpenInLibrary: boolean;
   openInLibrarySelector: string | null;
 }
+
+export const DISCOVER_ACTION_HELPER =
+  "Add copies it into your Library. Pin links it into one of your plugins.";
+
+export const PIN_TO_PLUGIN_TOOLTIP = "Link into an authored plugin";
 
 export function cloudAttachSelector(hit: SourcesHit): string | null {
   const identity = hit.identity.cloud;
@@ -48,6 +53,10 @@ export function sourcesAttachmentAdd(hit: SourcesHit): LibraryPluginAttachmentAd
   throw new Error("Cannot attach this Sources hit");
 }
 
+function libraryNameFromState(state: SourcesInstallState): string | null {
+  return state.addedName ?? state.pulledName ?? state.pinnedTargetName ?? null;
+}
+
 export function sourcesHitActions(
   hit: SourcesHit,
   state: SourcesInstallState = {},
@@ -56,9 +65,8 @@ export function sourcesHitActions(
     case "standalone": {
       const selector = hit.identity.localSelector ?? null;
       return {
-        showPull: false,
-        showPinToPlugin: false,
-        showAttachToPlugin: true,
+        showAddToLibrary: false,
+        showPinToPlugin: true,
         showOpenInLibrary: Boolean(selector),
         openInLibrarySelector: selector,
       };
@@ -72,24 +80,23 @@ export function sourcesHitActions(
   }
 
   if (hit.identity.marketplace) {
-    const target = state.pinnedTargetName;
+    const added = libraryNameFromState(state);
+    const inLibrary = hit.presence === "in_library" || Boolean(added);
     return {
-      showPull: false,
+      showAddToLibrary: !inLibrary,
       showPinToPlugin: true,
-      showAttachToPlugin: false,
-      showOpenInLibrary: Boolean(target),
-      openInLibrarySelector: target ?? null,
+      showOpenInLibrary: inLibrary,
+      openInLibrarySelector: added ?? hit.identity.marketplace.plugin,
     };
   }
 
   if (hit.identity.cloud) {
-    const pulledName = state.pulledName;
-    const inLibrary = hit.presence === "in_library";
-    const openSelector = pulledName ?? (inLibrary ? hit.identity.cloud.name : null);
+    const added = libraryNameFromState(state);
+    const inLibrary = hit.presence === "in_library" || Boolean(added);
+    const openSelector = added ?? (inLibrary ? hit.identity.cloud.name : null);
     return {
-      showPull: !inLibrary && !pulledName,
+      showAddToLibrary: !inLibrary,
       showPinToPlugin: true,
-      showAttachToPlugin: false,
       showOpenInLibrary: Boolean(openSelector),
       openInLibrarySelector: openSelector,
     };
@@ -97,9 +104,8 @@ export function sourcesHitActions(
 
   const localName = hit.identity.localPluginName ?? null;
   return {
-    showPull: false,
+    showAddToLibrary: false,
     showPinToPlugin: true,
-    showAttachToPlugin: false,
     showOpenInLibrary: Boolean(localName),
     openInLibrarySelector: localName,
   };

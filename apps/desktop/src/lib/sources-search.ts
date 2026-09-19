@@ -1,4 +1,6 @@
 import type { PluginOriginCheckRow } from "./api/plugin-origin-update";
+import { relatedHarnessesForResourceType } from "./harness-meta";
+import type { ResourceHoverModel } from "./resource-hover";
 
 export type SourceKind = "local" | "marketplace" | "cloud-org" | "cloud-catalog";
 export type Presence = "in_library" | "remote_only";
@@ -197,17 +199,59 @@ export function filterDiscoverGroups(
 export function discoverListEmptyCopy(input: {
   query: string;
   showInLibrary: boolean;
-}): { message: string; hint: string | null } {
+}): { message: string; hint: string | null; clearSearch: boolean } {
+  const query = input.query.trim();
+  if (query) {
+    return {
+      message: `No results for "${query}"`,
+      hint: null,
+      clearSearch: true,
+    };
+  }
   if (!input.showInLibrary) {
     return {
       message: "You're caught up",
       hint: "Nothing left to discover. Turn on Show in library.",
+      clearSearch: false,
     };
   }
   return {
-    message: input.query.trim() ? "No hits yet." : "Search to add",
+    message: "Search to add",
     hint: null,
+    clearSearch: false,
   };
+}
+
+/** Searching… only when checked sources have never completed a fetch and the list is empty. */
+export function discoverListIsSearching(input: {
+  checkedIds: readonly string[];
+  fetchedIds: ReadonlySet<string>;
+  visibleCount: number;
+}): boolean {
+  if (input.visibleCount > 0) {
+    return false;
+  }
+  return input.checkedIds.some((id) => !input.fetchedIds.has(id));
+}
+
+/** Sidebar spinner for a refetch of sources that already have a first result. */
+export function discoverSourcesRefreshing(input: {
+  fetchedIds: ReadonlySet<string>;
+  inflightIds: ReadonlySet<string>;
+}): boolean {
+  for (const id of input.inflightIds) {
+    if (input.fetchedIds.has(id)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function marketplaceHitKey(identity: {
+  marketplace: string;
+  plugin: string;
+}): string {
+  return `${identity.plugin}@${identity.marketplace}`;
 }
 
 export function isStandaloneResourceType(type: string): boolean {
@@ -494,6 +538,22 @@ function cloudPluginHit(
     sourceLabel: source.sourceLabel,
     presence: presenceForCloud(identity, heads),
     identity: { cloud: identity },
+  };
+}
+
+export function hoverModelFromSourcesHit(hit: SourcesHit): ResourceHoverModel {
+  const type = hit.kind === "plugin" ? "plugin" : hit.typeLabel;
+  const originKind = hit.identity.marketplace
+    ? "marketplace"
+    : hit.identity.cloud
+      ? "catalog"
+      : undefined;
+  return {
+    type,
+    name: hit.name,
+    harnessIds: [...relatedHarnessesForResourceType(type)],
+    extra: [],
+    ...(originKind ? { originKind } : {}),
   };
 }
 

@@ -130,11 +130,13 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("showInLibrary={showInLibrary}");
     expect(listPaneSource).toContain("discoverListEmptyCopy");
     expect(listPaneSource).toContain('data-testid="discover-empty"');
+    expect(listPaneSource).toContain("Clear search");
     expect(listPaneSource).toContain('className="empty-state discover-empty"');
     expect(listPaneSource).toContain('role="status"');
     expect(workspaceSource).toContain(
-      "const [librarySearching, setLibrarySearching] = useState(true)",
+      "const [fetchedSourceIds, setFetchedSourceIds] = useState<Set<string>>(",
     );
+    expect(workspaceSource).toContain("discoverListIsSearching");
     expect(sourcesSearchSource).toContain("filterDiscoverGroups");
     expect(sourcesSearchSource).toContain('hit.presence !== "in_library"');
     expect(sourcesSearchSource).toContain("You're caught up");
@@ -241,10 +243,13 @@ describe("sources workspace chrome", () => {
     );
   });
 
-  test("sources centered dialogs pin the close control in the header row", () => {
-    const header = cssBlock(stylesSource, ".create-profile-header");
-    expect(header).toContain("display: flex");
-    expect(header).toContain("justify-content: space-between");
+  test("Discover overlays are full-screen panels, not centered create-profile dialogs", () => {
+    expect(marketplacePanelSource).toContain("FullScreenPanel");
+    expect(catalogPanelSource).toContain("FullScreenPanel");
+    expect(marketplacePanelSource).not.toContain("drawer");
+    expect(catalogPanelSource).not.toContain("drawer");
+    expect(marketplacePanelSource).not.toContain("create-profile-dialog");
+    expect(catalogPanelSource).not.toContain("create-profile-dialog");
   });
 });
 
@@ -268,8 +273,11 @@ describe("sources search list and preview", () => {
     expect(workspaceSource).toContain("sourcesEscapeAction");
     expect(workspaceSource).toContain("sourcesSidebarChangeAction");
     expect(workspaceSource).toContain("useEscapeWhenNoLayer(");
-    expect(pluginTreeSource).toContain("onBack");
-    expect(previewPaneSource).toContain("onBack");
+    expect(workspaceSource).toContain("Crossfade");
+    expect(pluginTreeSource).not.toContain("onBack");
+    expect(previewPaneSource).not.toContain("onBack");
+    expect(pluginTreeSource).not.toContain("LibraryDetailChrome");
+    expect(previewPaneSource).not.toContain("LibraryDetailChrome");
   });
 
   test("searches Cloud catalogs via GET /v1/catalogs/plugins, not profiles/cloud/pull", () => {
@@ -288,8 +296,8 @@ describe("sources search list and preview", () => {
     expect(sourcesApiSource).toContain("AgentApiError");
     expect(workspaceSource).toContain("isCloudAuthError");
     expect(workspaceSource).toContain("isCloudAuthError(installError)");
-    expect(workspaceSource).toContain("applyInstallError(pullError");
-    expect(workspaceSource).toContain("applyInstallError(pinError");
+    expect(workspaceSource).toContain("applyInstallError(addError");
+    expect(workspaceSource).toContain("applyInstallError(confirmError");
     expect(recordActionsSource).toContain("SourcesSignInPrompt");
     expect(appSource).toContain("onSignIn=");
     expect(appSource).toContain('overlays.openOverlay("cloudAccount")');
@@ -317,18 +325,22 @@ describe("sources search list and preview", () => {
     expect(sourcesApiSource).toContain("/v1/catalogs/plugins/pull");
     expect(sourcesApiSource).not.toContain("/v1/profiles/cloud/pull");
     expect(workspaceSource).toContain("pullCatalogPlugin");
+    expect(workspaceSource).toContain("addMarketplacePluginToLibrary");
     expect(workspaceSource).not.toContain("/v1/profiles/cloud/pull");
     expect(pluginTreeSource).not.toContain("/v1/profiles/cloud/pull");
     expect(previewPaneSource).not.toContain("/v1/profiles/cloud/pull");
   });
 
-  test("plugin tree and preview expose icon-only Pull, pin/attach, and Open in Library", () => {
-    expect(recordActionsSource).toContain('label="Pull"');
+  test("plugin tree and preview expose labeled Add to Library, pin, and Open in Library", () => {
+    expect(recordActionsSource).toContain('label="Add to Library"');
     expect(recordActionsSource).toContain('label="Pin to plugin"');
-    expect(recordActionsSource).toContain('label="Attach to plugin"');
+    expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
+    expect(recordActionsSource).toContain("discover-action-helper");
     expect(pluginTreeSource).toContain("SourcesRecordActions");
     expect(previewPaneSource).toContain("SourcesRecordActions");
+    expect(listPaneSource).toContain("ResourceRowRoot");
+    expect(listPaneSource).toContain("InUseMark");
     expect(workspaceSource).toContain("onOpenInLibrary");
     expect(appSource).toContain("onOpenInLibrary=");
     expect(appSource).toContain("setLibraryFocusPlugin");
@@ -361,15 +373,16 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(workspaceSource).not.toContain(
       "sidebarConfirmOpen || marketplaceOpen || catalogOpen || pinOpen",
     );
-    expect(workspaceSource).toContain("onClose={() => setPinOpen(false)}");
+    expect(workspaceSource).toContain("setPinOpen(false)");
     // The panel is its own overlay layer: Esc reaches it, not the list pane.
-    expect(pinPanelSource).toContain("useOverlayLayer<HTMLDivElement>({");
+    expect(pinPanelSource).toContain("FullScreenPanel");
+    expect(pinPanelSource).not.toContain("drawer");
     expect(pinPanelSource).not.toContain('addEventListener("keydown"');
   });
 
   test("Esc closes marketplace and catalog panels without treating them as confirmOpen", () => {
-    expect(marketplacePanelSource).toContain("useOverlayLayer<HTMLDivElement>({");
-    expect(catalogPanelSource).toContain("useOverlayLayer<HTMLDivElement>({");
+    expect(marketplacePanelSource).toContain("FullScreenPanel");
+    expect(catalogPanelSource).toContain("FullScreenPanel");
     expect(marketplacePanelSource).not.toContain('addEventListener("keydown"');
     expect(catalogPanelSource).not.toContain('addEventListener("keydown"');
     expect(workspaceSource).toContain("setMarketplaceOpen(false)");
@@ -402,19 +415,16 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(workspaceSource).toContain("pulledCloudKeys");
   });
 
-  test("pin/attach failure closes the panel and surfaces actionError on the tree", () => {
+  test("pin/attach failure keeps the panel open and shows the error inline", () => {
     const pinConfirm = workspaceSource.slice(
       workspaceSource.indexOf("const onPinConfirm"),
       workspaceSource.indexOf("const recordActionsProps"),
     );
-    expect(pinConfirm).toContain("setPinOpen(false)");
-    expect(pinConfirm).toContain("setActionError");
-    const catchBlock = pinConfirm.slice(pinConfirm.indexOf("catch (pinError"));
-    expect(catchBlock).toContain("setPinOpen(false)");
+    expect(pinConfirm).toContain("setPinError");
+    const catchBlock = pinConfirm.slice(pinConfirm.indexOf("catch (confirmError"));
+    expect(catchBlock).toContain("setPinError");
     expect(catchBlock).toContain("Could not update plugin.");
-    expect(catchBlock.indexOf("setPinOpen(false)")).toBeLessThan(
-      catchBlock.indexOf("applyInstallError"),
-    );
+    expect(catchBlock).not.toContain("setPinOpen(false)");
   });
 
   test("PinToPluginPanel lists authored heads only and can create a plugin", () => {
@@ -429,6 +439,8 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(pinPanelSource).toContain('origin === "authored"');
     expect(pinPanelSource).toContain("Create plugin");
     expect(pinPanelSource).toContain("createLibraryPlugin");
+    expect(pinPanelSource).toContain("authored.length > 0");
+    expect(pinPanelSource).toContain("sources-pin-create");
     expect(pinPanelSource).not.toContain('origin === "upstream"');
     expect(pinPanelSource).not.toContain('origin === "catalog"');
     expect(workspaceSource).toContain("PinToPluginPanel");
@@ -451,8 +463,14 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Add marketplace");
     expect(designSource).toContain("Connect catalog");
     expect(designSource).toContain("--icon-action-size-lg");
-    expect(designSource).toContain("Open in Library");
+    expect(designSource).toContain("Add to Library");
     expect(designSource).toContain("Pin to plugin");
+    expect(designSource).toContain("Create plugin");
+    expect(designSource).toContain("No results for");
+    expect(designSource).toContain("Clear search");
+    expect(designSource).toContain("full-screen panels");
+    expect(designSource).toContain("ResourceRowRoot");
+    expect(designSource).toContain("InUseMark");
     expect(designSource).toContain("Cloud browse overlay");
     expect(designSource).toContain("Update available");
     expect(designSource).toContain("No Update button on Discover");
@@ -475,6 +493,7 @@ describe("sources origin update badges", () => {
     expect(listPaneSource).toContain("pill warn");
     expect(recordActionsSource).not.toContain("showUpdate");
     expect(recordActionsSource).toContain("Pin to plugin");
+    expect(recordActionsSource).toContain("Add to Library");
   });
 
   test("clears origin check rows when origin check fails", () => {
@@ -487,5 +506,7 @@ describe("sources origin update badges", () => {
       originCheck.indexOf("});", catchStart) + 3,
     );
     expect(catchBody).toContain("setOriginCheckRows([])");
+    expect(catchBody).toContain("setOriginCheckError");
+    expect(catchBody).not.toContain("setActionError");
   });
 });

@@ -275,10 +275,11 @@ describe("desktop icon chrome", () => {
     expect(sourcesWorkspaceSource).toContain("Cloud");
   });
 
-  test("converts Sources record and sidebar row actions to icon-only", () => {
-    expect(recordActionsSource).toContain('label="Pull"');
+  test("Sources record actions label Add to Library and keep Pin icon-only", () => {
+    expect(recordActionsSource).toContain('label="Add to Library"');
+    expect(recordActionsSource).toContain("showLabel");
     expect(recordActionsSource).toContain('label="Pin to plugin"');
-    expect(recordActionsSource).toContain('label="Attach to plugin"');
+    expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
     expect(sourceSidebarSource).toContain('label="Edit"');
     expect(sourceSidebarSource).toContain('label="Remove"');
