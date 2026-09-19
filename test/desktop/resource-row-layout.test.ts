@@ -20,7 +20,7 @@ const addModalSource = readFileSync(
 const stylesSource = readDesktopCss();
 
 function cssBlock(source: string, selector: string): string {
-  const start = source.indexOf(`${selector} {`);
+  const start = source.indexOf(`\n${selector} {`);
   expect(start).toBeGreaterThan(-1);
   const end = source.indexOf("\n}", start);
   expect(end).toBeGreaterThan(start);
@@ -48,11 +48,14 @@ describe("resource row layout", () => {
     expect(virtualInner).toContain("height: auto;");
     expect(virtualInner).not.toMatch(/height:\s*100%/);
 
-    expect(stylesSource).not.toMatch(
-      /\.resource-row\.inventory-row \{[^}]*height:\s*calc\([^}]*\}/,
-    );
-    const inventory = cssBlock(stylesSource, ".resource-row.inventory-row");
-    expect(inventory).toContain("height: auto;");
+    const inventoryBlocks = [
+      ...stylesSource.matchAll(/\.resource-row\.inventory-row \{[^}]+\}/g),
+    ].map((match) => match[0]);
+    expect(inventoryBlocks.length).toBeGreaterThan(0);
+    for (const block of inventoryBlocks) {
+      expect(block).toContain("height: auto;");
+      expect(block).not.toMatch(/^\s*height:\s*calc/m);
+    }
   });
 
   it("measures Library, inventory, and add-to-profile virtual rows", () => {
