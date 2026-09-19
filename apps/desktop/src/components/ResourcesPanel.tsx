@@ -16,13 +16,6 @@ import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { SkeletonRow } from "./shell/Skeleton";
-import {
-  ResourceRowDescription,
-  ResourceRowIdentity,
-  ResourceRowLeading,
-  ResourceRowRoot,
-} from "./ui/resource-row";
-import { InUseMark } from "./InUseMark";
 import type { ApplyPluginResult } from "../lib/api/apply-plugin";
 import {
   AgentApiError,
