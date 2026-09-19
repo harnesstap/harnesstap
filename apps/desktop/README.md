@@ -75,6 +75,19 @@ Knobs: `SHOTS_BASE_URL` (default `http://127.0.0.1:5173/`), `SHOTS_AGENT_PORT`, 
 
 `?` lists the same table in-app. Workspace-specific actions (Create resource, Apply, Add marketplace, and so on) appear under **Actions on this screen** in the palette.
 
+## Visual regression (web mode)
+
+With a running Vite server and `ht-agent` (`apps/desktop/scripts/demo-home.sh`):
+
+```bash
+bun run desktop:shots
+bun run desktop:check
+```
+
+`scripts/ui-shots.mjs` shims Tauri IPC, walks Global/Project, Library, Discover, Environments, Settings, and Export/Import/Account at 1440×900 and 960×640, and writes PNGs to `e2e/artifacts/shots/` (gitignored). `--compare` diffs those against committed baselines in `e2e/visual/` (`pixelmatch`, 0.2% pixels). `--axe` fails on axe-core `serious` / `critical`. `--reduced-motion` asserts `document.getAnimations().length === 0` after each screen. `--trace` records rAF frame times for palette open/close and a list scroll and fails if any frame exceeds 32ms. `--update-baselines` copies the latest shots into `e2e/visual/`.
+
+`bun run desktop:check` is shots + compare + axe + reduced-motion + trace. Nightly: `.github/workflows/desktop-e2e.yml` `visual` job (web mode, no Tauri).
+
 ## Build packaged app
 
 ```bash

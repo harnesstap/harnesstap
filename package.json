@@ -27,6 +27,7 @@
     "desktop:e2e": "bash apps/desktop/scripts/e2e-run.sh",
     "desktop:demo-agent": "bash apps/desktop/scripts/demo-home.sh",
     "desktop:shots": "cd apps/desktop && bun run shots",
+    "desktop:check": "bash apps/desktop/scripts/desktop-check.sh",
     "dev": "tsup --watch",
     "start": "bun src/index.ts",
     "start:dist": "node dist/index.js",
