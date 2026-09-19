@@ -1,3 +1,4 @@
+import type { TelemetryConsentStatus } from "../../lib/types";
 import { CheckForUpdatesSettings } from "./CheckForUpdatesSettings";
 import { ProjectConfigInspect } from "./ProjectConfigInspect";
 import { ResolveOrderSettings } from "./ResolveOrderSettings";
@@ -22,6 +23,7 @@ export function SettingsParitySections(props: {
   onSelectProject: (path: string) => void;
   onBrowseProject: () => void;
   onProjectDirtyChange?: (dirty: boolean) => void;
+  onTelemetryConsentChange?: (next: TelemetryConsentStatus) => void;
 }) {
   return (
     <>
@@ -48,6 +50,7 @@ export function SettingsParitySections(props: {
           baseUrl={props.baseUrl}
           token={props.token}
           disabled={props.disabled}
+          onConsentChange={props.onTelemetryConsentChange}
         />
         <ResolveOrderSettings
           baseUrl={props.baseUrl}

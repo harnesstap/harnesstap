@@ -165,6 +165,13 @@ describe("settings project config inspect surface", () => {
     expect(inspectSource).toContain("parseValidationLineNumber");
     expect(inspectSource).toContain("apm-yml-gutter");
   });
+
+  test("Reset telemetry choice syncs shell consent so the modal can reopen", () => {
+    expect(sectionsSource).toContain("onTelemetryConsentChange");
+    expect(settingsSource).toContain("onTelemetryConsentChange");
+    expect(appSource).toContain("onTelemetryConsentChange={telemetry.sync}");
+    expect(sectionsSource).toContain("onConsentChange={props.onTelemetryConsentChange}");
+  });
 });
 
 describe("parseValidationLineNumber", () => {
