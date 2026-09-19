@@ -1,0 +1,420 @@
+/* Create flows: profile create dialog, selection lists / compose picker (shared with Settings and edit profile), conflict policy, and the Library create-resource block. */
+
+.selection-list .resource-type-tabs,
+.contents-block .resource-type-tabs {
+  position: static;
+  background: transparent;
+}
+
+.create-profile-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: min(90vh, 40rem);
+  overflow: hidden;
+}
+
+.create-profile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.create-profile-header h2 {
+  margin: 0;
+}
+
+.create-profile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+  margin-top: 0.75rem;
+  overflow-y: auto;
+}
+
+.selection-list,
+.conflict-policy {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.selection-list > legend,
+.conflict-policy > legend {
+  padding: 0;
+  margin-bottom: 0.35rem;
+  font-size: var(--text-meta);
+  font-weight: 600;
+}
+
+.selection-row > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.selection-row strong {
+  font-size: var(--text-meta);
+}
+
+.selection-row small {
+  color: var(--muted);
+  font-size: var(--text-meta);
+  font-weight: 400;
+}
+
+.field-note {
+  margin: -0.5rem 0 0;
+  font-size: var(--text-meta);
+}
+
+.compose-library {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.compose-library-unified {
+  grid-template-columns: 1fr;
+}
+
+.compose-library-unified .selection-list-rows {
+  height: min(50vh, 420px);
+  max-height: min(50vh, 420px);
+}
+
+.selection-list-filter {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.4rem 0.55rem;
+  min-height: 32px;
+  font-size: var(--text-meta);
+}
+
+.selection-list-filter:focus {
+  border-color: var(--accent);
+}
+
+.selection-list-viewport {
+  position: relative;
+}
+
+.selection-list-rows {
+  height: 210px;
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.selection-list-rows-measure {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1; /* token-lint: allow */ /* hidden measure clone sits under the rows */
+  border: 0;
+}
+
+.selection-list-rows > p {
+  margin: 0;
+  padding: 0.7rem;
+  font-size: var(--text-meta);
+}
+
+.selection-type-group {
+  border-bottom: 1px solid var(--border);
+}
+
+.selection-type-group:last-child {
+  border-bottom: 0;
+}
+
+.selection-type-heading {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  border: 0;
+  background: var(--bg);
+  font: inherit;
+  font-size: var(--text-meta);
+  font-weight: 600;
+  text-transform: lowercase;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.selection-type-heading:disabled {
+  cursor: default;
+}
+
+.selection-type-chevron {
+  display: inline-flex;
+  width: 0.75rem;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.selection-type-count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.selection-type-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.selection-row {
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.selection-type-body .selection-row:last-child,
+.selection-row:last-child {
+  border-bottom: 0;
+}
+
+/* Radix Checkbox uses button[data-state], not input:checked */
+.selection-row:has([data-state="checked"]),
+.resource-row:has([data-state="checked"]) {
+  background: var(--surface-accent-tint);
+}
+
+.create-preview {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  font-size: var(--text-meta);
+}
+
+.preview-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preview-count strong {
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: var(--text-value);
+}
+
+.conflict-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--yellow);
+}
+
+.conflict-policy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+@media (max-width: 720px) {
+  .compose-library,
+  .cloud-browser {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Library create-resource ─────────────────────────────────────── */
+.resource-type-dialog {
+  width: min(480px, calc(100vw - 48px));
+  max-height: min(640px, calc(100vh - 96px));
+  overflow-y: auto;
+}
+
+.resource-type-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.resource-type-header h2 {
+  margin: 0;
+  font-size: var(--text-value);
+  flex: 1;
+  min-width: 0;
+}
+
+.resource-type-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.resource-type-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resource-type-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.resource-type-option:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.resource-type-option:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: default;
+}
+
+.resource-type-option svg {
+  flex-shrink: 0;
+}
+
+.resource-type-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.resource-type-title {
+  font-weight: 600;
+}
+
+.resource-type-description {
+  font-size: var(--text-meta);
+}
+
+.resource-type-import {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.resource-type-import-hint {
+  font-size: var(--text-meta);
+  margin: 0;
+}
+
+.resource-type-import-error {
+  margin: 0;
+  color: var(--red);
+  font-size: var(--text-meta);
+}
+
+.resource-create-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 720px;
+}
+
+.resource-create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resource-create-field > label {
+  font-weight: 600;
+  font-size: var(--text-meta);
+}
+
+.resource-create-input,
+.resource-create-textarea,
+.resource-create-select {
+  font: inherit;
+  color: inherit;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+}
+
+.resource-create-textarea {
+  min-height: 120px;
+  resize: vertical;
+  font-family: ui-monospace, monospace;
+}
+
+.resource-create-input[aria-invalid="true"],
+.resource-create-textarea[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.resource-create-error {
+  color: var(--red);
+  font-size: var(--text-meta);
+  margin: 0;
+}
+
+.resource-create-banner {
+  margin-bottom: 16px;
+}
+
+.resource-create-checkline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-meta);
+}
+
+.resource-create-compose .selection-list-rows {
+  height: min(50vh, 420px);
+  max-height: min(50vh, 420px);
+}

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const modalSource = readFileSync(
   join(
@@ -9,10 +10,7 @@ const modalSource = readFileSync(
   ),
   "utf8",
 );
-const stylesSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
-  "utf8",
-);
+const stylesSource = readDesktopCss();
 
 function sliceBetween(
   source: string,
@@ -122,7 +120,7 @@ describe("tracked directories nested folder icons", () => {
     expect(label).toContain("align-items: center");
     expect(label).toContain("flex-wrap: wrap");
     expect(label).toContain("gap: 0.45rem");
-    expect(label).toContain("font-size: 12px");
+    expect(label).toContain("font-size: var(--text-meta)");
     expect(label).toContain("font-weight: 600");
   });
 });

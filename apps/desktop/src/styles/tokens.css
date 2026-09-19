@@ -1,0 +1,134 @@
+:root {
+  --bg: #0f1419;
+  --surface: #161b22;
+  --surface-2: #1c2330;
+  --border: #2a3340;
+  --fg: #e8eef5;
+  --muted: #8b9aab;
+  /* Hexes match the Flow Split brand mark (violet #8b5cf6, blue #3b82f6, teal #14b8a6). Keep CLI and Desktop in sync. */
+  --accent: #3b82f6;
+  --green: #14b8a6;
+  --yellow: #e6b84d;
+  --red: #e85d5d;
+  --font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* shadcn / Tailwind theme bridge (dark-only).
+     App --accent/--muted are brand blue and muted text; do not repurpose them
+     as shadcn surface tokens — bg-muted/bg-accent map via @theme inline below. */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--surface);
+  --card-foreground: var(--fg);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--fg);
+  --primary: var(--accent);
+  --primary-foreground: #f5f8ff;
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--fg);
+  --muted-foreground: var(--muted);
+  --accent-foreground: var(--fg);
+  --destructive: var(--red);
+  --destructive-foreground: #fff5f5;
+  --input: var(--border);
+  --ring: var(--accent);
+  --radius: 0.25rem;
+  --icon-action-size: 32px;
+  --icon-action-size-lg: 40px;
+
+  /* spacing (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* type */
+  --text-micro: 12px;   /* eyebrows, pill counts only */
+  --text-meta: 13px;    /* dense metadata, mono paths, timestamps */
+  --text-body: 14px;    /* list rows, controls, form labels */
+  --text-value: 16px;   /* field values, primary copy */
+  --text-title: 18px;   /* pane titles */
+  --text-display: 22px; /* full-screen panel titles */
+  --leading-tight: 1.2;
+  --leading-body: 1.45;
+  --tracking-eyebrow: 0.08em;
+
+  /* surfaces and borders */
+  --surface-hover: color-mix(in srgb, var(--surface-2) 70%, var(--fg) 4%);
+  --surface-selected: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  --surface-accent-tint: color-mix(in srgb, var(--accent) 8%, transparent);
+  --border-subtle: color-mix(in srgb, var(--border) 60%, transparent);
+  --border-strong: color-mix(in srgb, var(--border) 100%, var(--fg) 10%);
+
+  /* status tints (bg for banners/rows) */
+  --tint-green: color-mix(in srgb, var(--green) 12%, transparent);
+  --tint-yellow: color-mix(in srgb, var(--yellow) 12%, transparent);
+  --tint-red: color-mix(in srgb, var(--red) 12%, transparent);
+
+  /* focus */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  --focus-ring-on-accent: 0 0 0 2px var(--accent), 0 0 0 4px var(--fg);
+
+  /* elevation */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-2: 0 6px 20px rgb(0 0 0 / 0.40);
+  --shadow-3: 0 16px 48px rgb(0 0 0 / 0.55);
+  --scrim: rgb(6 9 13 / 0.6);
+
+  /* z-index */
+  --z-sticky: 10;
+  --z-fab: 20;
+  --z-menu: 30;
+  --z-panel: 40;
+  --z-dialog: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+
+  /* motion */
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+  --duration-skeleton: 1200ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* misc */
+  --opacity-disabled: 0.45;
+  --scrollbar-thumb: color-mix(in srgb, var(--muted) 35%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--surface);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --shadow-lg: var(--shadow-3);
+}

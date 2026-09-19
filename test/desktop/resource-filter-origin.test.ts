@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const sidebarSource = readFileSync(
   join(
@@ -20,10 +21,7 @@ const panelSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/ResourcesPanel.tsx"),
   "utf8",
 );
-const stylesSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
-  "utf8",
-);
+const stylesSource = readDesktopCss();
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",

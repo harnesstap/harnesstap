@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const paneSource = readFileSync(
   join(
@@ -23,10 +24,7 @@ const fieldRowSource = readFileSync(
   ),
   "utf8",
 );
-const stylesSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
-  "utf8",
-);
+const stylesSource = readDesktopCss();
 const pathAccessSource = readFileSync(
   join(
     import.meta.dir,

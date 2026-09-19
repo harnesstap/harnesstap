@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const appSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
@@ -49,10 +50,7 @@ const settingsSource = readFileSync(
   ),
   "utf8",
 );
-const cssSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
-  "utf8",
-);
+const cssSource = readDesktopCss();
 const settingsTabsSource = readFileSync(
   join(
     import.meta.dir,
