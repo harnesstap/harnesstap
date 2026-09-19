@@ -3,6 +3,7 @@ import { Check, Copy, Eye, EyeOff, FilterX, Pencil, Plus, Trash2 } from "lucide-
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import {
@@ -20,6 +21,7 @@ import {
 } from "../../lib/api/environments";
 import { toast } from "../../state/toast-store";
 import { useRegisterCommands } from "../../state/command-registry";
+import { noResultsTitle } from "../../lib/empty-copy";
 import { EnvironmentDrawer } from "./EnvironmentDrawer";
 
 const ACTION_ICON_SIZE = 16;
@@ -329,11 +331,33 @@ export function EnvironmentsWorkspace({
                 ))}
               </ul>
             ) : filtered.length === 0 ? (
-              <p className="muted">
-                {rows.length === 0
-                  ? "No environments yet."
-                  : "No matches."}
-              </p>
+              rows.length === 0 ? (
+                <EmptyState
+                  title="No environments yet"
+                  body="Create one to reuse env vars, secrets, and models."
+                  action={{
+                    label: "Create environment",
+                    primary: true,
+                    disabled: controlsDisabled || !baseUrl,
+                    onClick: () => {
+                      setDrawerMode("create");
+                      setEditName(undefined);
+                      setDrawerOpen(true);
+                    },
+                    icon: <Plus size={ACTION_ICON_SIZE} aria-hidden />,
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  title={noResultsTitle(query)}
+                  body="Clear the filter to see every environment."
+                  action={{
+                    label: "Clear filter",
+                    onClick: () => setQuery(""),
+                    icon: <FilterX size={ACTION_ICON_SIZE} aria-hidden />,
+                  }}
+                />
+              )
             ) : (
               <ul className="resources-list">
                 {filtered.map((row) => {

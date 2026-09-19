@@ -746,32 +746,29 @@ describe("discoverListEmptyCopy", () => {
     expect(discoverListEmptyCopy({ query: "", showInLibrary: false })).toEqual({
       message: "You're caught up",
       hint: "Nothing left to discover. Turn on Show in library.",
-      clearSearch: false,
+      action: "show-library",
     });
-  });
-
-  test("uses No results plus Clear search for a query miss", () => {
     expect(
       discoverListEmptyCopy({ query: "ship", showInLibrary: false }),
     ).toEqual({
       message: 'No results for "ship"',
-      hint: null,
-      clearSearch: true,
+      hint: "Clear search to see items still to add.",
+      action: "clear-search",
+    });
+  });
+
+  test("keeps search empty copy when showing in-library hits", () => {
+    expect(discoverListEmptyCopy({ query: "", showInLibrary: true })).toEqual({
+      message: "Search to add",
+      hint: "Type a name to search sources.",
+      action: null,
     });
     expect(
       discoverListEmptyCopy({ query: "missing", showInLibrary: true }),
     ).toEqual({
       message: 'No results for "missing"',
-      hint: null,
-      clearSearch: true,
-    });
-  });
-
-  test("keeps search empty copy when showing in-library hits with no query", () => {
-    expect(discoverListEmptyCopy({ query: "", showInLibrary: true })).toEqual({
-      message: "Search to add",
-      hint: null,
-      clearSearch: false,
+      hint: "Clear search to see items still to add.",
+      action: "clear-search",
     });
   });
 });

@@ -15,6 +15,7 @@ import {
   type CloudOrg,
 } from "../lib/api/cloud-orgs";
 import type { CloudAuthStatus, CloudPendingLogin } from "../lib/types";
+import { noResultsTitle } from "../lib/empty-copy";
 import { Copy, ExternalLink, LogIn, LogOut, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
@@ -85,7 +86,7 @@ function OrganizationsList({
       ) : orgs.length === 0 ? (
         <p className="muted">No organizations.</p>
       ) : visible.length === 0 ? (
-        <p className="muted">No matching organizations.</p>
+        <p className="muted">{noResultsTitle(orgQuery)}</p>
       ) : (
         <ul className="marketplace-list">
           {visible.map((org) => {

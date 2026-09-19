@@ -7,6 +7,7 @@ import {
   type ProjectHistorySnapshot,
 } from "../../lib/api/project-history";
 import { Undo2 } from "lucide-react";
+import { noResultsTitle } from "../../lib/empty-copy";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { IconActionButton } from "../IconActionButton";
 import { FullScreenPanel } from "../FullScreenPanel";
@@ -219,7 +220,7 @@ export function ProjectHistoryDrawer({
                   </p>
                 ) : null}
                 {!loading && snapshots.length > 0 && filtered.length === 0 ? (
-                  <p className="muted">No matches.</p>
+                  <p className="muted">{noResultsTitle(filter)}</p>
                 ) : null}
                 <ul className="stash-bundle-list">
                   {filtered.map((row) => (
