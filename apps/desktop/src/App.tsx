@@ -3,7 +3,9 @@ import { Tooltip } from "radix-ui";
 import { AppHeader } from "./components/shell/AppHeader";
 import { AppOverlays } from "./components/shell/AppOverlays";
 import { ConnectSplash, ReconnectBanner } from "./components/shell/ConnectSplash";
+import { CommandPaletteHost } from "./components/shell/CommandPalette";
 import { ScopeWorkspace } from "./components/shell/ScopeWorkspace";
+import { CommandRegistryProvider } from "./state/command-registry";
 import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace";
 import { ResourcesPanel } from "./components/ResourcesPanel";
 import { SourcesWorkspace } from "./components/SourcesWorkspace";
@@ -209,6 +211,7 @@ export function App() {
 
   return (
     <Tooltip.Provider delayDuration={400}>
+      <CommandRegistryProvider>
       <div className="app-shell">
         <AppHeader
           client={client}
@@ -339,7 +342,16 @@ export function App() {
           onMigrateBusyChange={setMigrateBusy}
           onLibraryChanged={onLibraryChanged}
         />
+        <CommandPaletteHost
+          nav={nav}
+          overlays={overlays}
+          ctrl={ctrl}
+          onSelectScope={onSelectScope}
+          onSelectProject={selectProject}
+          ensureProjectReady={project.ensureProjectReady}
+        />
       </div>
+      </CommandRegistryProvider>
     </Tooltip.Provider>
   );
 }

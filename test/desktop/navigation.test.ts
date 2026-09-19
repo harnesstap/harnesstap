@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  destinationForNumberKey,
   initialNavigationState,
   type NavigationAction,
   type NavigationState,
@@ -63,5 +64,12 @@ describe("navigation history", () => {
     expect(run([{ type: "go", destination: "environments" }], nested).nestedDepth).toBe(0);
     expect(run([{ type: "back" }], nested).nestedDepth).toBe(0);
     expect(run([{ type: "reset-current" }], nested).resetNonce).toBe(1);
+  });
+
+  it("maps ⌘/Ctrl+1..3 keys to destinations", () => {
+    expect(destinationForNumberKey("1")).toBe("library");
+    expect(destinationForNumberKey("2")).toBe("discover");
+    expect(destinationForNumberKey("3")).toBe("environments");
+    expect(destinationForNumberKey("4")).toBe(null);
   });
 });

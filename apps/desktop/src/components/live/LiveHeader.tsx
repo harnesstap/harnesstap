@@ -24,6 +24,7 @@ export function ListSearchField({
       <input
         type="search"
         value={value}
+        data-workspace-filter=""
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={label}

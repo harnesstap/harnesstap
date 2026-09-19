@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { FolderDown, FolderInput, FilterX, Plus, RefreshCw } from "lucide-react";
 import { IconActionButton } from "./IconActionButton";
+import { useRegisterCommands } from "../state/command-registry";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -185,6 +186,36 @@ export function ResourcesPanel({
   );
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createType, setCreateType] = useState<CreateResourceType | null>(null);
+  const libraryCommandsLocked = disabled || !baseUrl;
+  useRegisterCommands(
+    "library",
+    useMemo(
+      () => [
+        {
+          id: "library-create",
+          section: "actions" as const,
+          label: "Create resource",
+          disabled: libraryCommandsLocked,
+          run: () => setCreateModalOpen(true),
+        },
+        {
+          id: "library-import",
+          section: "actions" as const,
+          label: "Import",
+          disabled: libraryCommandsLocked,
+          run: () => setImportOpen(true),
+        },
+        {
+          id: "library-tracked-dirs",
+          section: "actions" as const,
+          label: "Tracked directories",
+          disabled: libraryCommandsLocked,
+          run: () => setTrackedDirsOpen(true),
+        },
+      ],
+      [libraryCommandsLocked],
+    ),
+  );
   const paneRef = useRef(pane);
   paneRef.current = pane;
   const resolvedProjectPath =

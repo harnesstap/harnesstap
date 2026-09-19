@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Check, FileDiff, Pencil, Plus, Tag, TextQuote } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
@@ -8,6 +8,7 @@ import {
 import { scopeStatusLine } from "../../lib/reapply";
 import { type ProfileCreateSource } from "../../lib/types";
 import type { ScopeController } from "../../state/scope-controller";
+import { useRegisterCommands } from "../../state/command-registry";
 import { useStatusStore } from "../../state/status-store";
 import { toast } from "../../state/toast-store";
 import { EditProfilePane } from "../EditProfilePane";
@@ -82,6 +83,43 @@ export function ScopeWorkspace({
   const selectedProfileMetaTags =
     selectedProfileSummary?.tags.filter((tag) => tag !== "profile") ?? [];
   const editCloseGuardRef = useRef<(() => boolean) | null>(null);
+  useRegisterCommands(
+    "scope",
+    useMemo(
+      () => [
+        {
+          id: "scope-create-profile",
+          section: "actions" as const,
+          label: "Create profile",
+          run: () => onOpenCreateProfile("compose", true),
+        },
+        {
+          id: "scope-preview",
+          section: "actions" as const,
+          label: "Preview changes",
+          disabled: !selectedProfile,
+          run: () => ctrl.setPreviewChanges(true),
+        },
+        {
+          id: "scope-edit-profile",
+          section: "actions" as const,
+          label: "Edit profile",
+          disabled: !selectedProfile,
+          run: () => {
+            if (selectedProfile) {
+              ctrl.openEditProfile(selectedProfile);
+            }
+          },
+        },
+      ],
+      [
+        ctrl.openEditProfile,
+        ctrl.setPreviewChanges,
+        onOpenCreateProfile,
+        selectedProfile,
+      ],
+    ),
+  );
 
   return (
     <>

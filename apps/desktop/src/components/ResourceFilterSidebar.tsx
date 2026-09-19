@@ -207,6 +207,7 @@ export function ResourceFilterSidebar({
             type="search"
             placeholder="Filter by name"
             value={searchInput}
+            data-workspace-filter=""
             onChange={(event) => setSearchInput(event.target.value)}
             disabled={disabled}
             aria-label="Filter resources"
