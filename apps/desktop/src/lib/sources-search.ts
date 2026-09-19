@@ -1,4 +1,5 @@
 import type { PluginOriginCheckRow } from "./api/plugin-origin-update";
+import { noResultsTitle } from "./empty-copy";
 import { relatedHarnessesForResourceType } from "./harness-meta";
 import type { ResourceHoverModel } from "./resource-hover";
 
@@ -199,26 +200,26 @@ export function filterDiscoverGroups(
 export function discoverListEmptyCopy(input: {
   query: string;
   showInLibrary: boolean;
-}): { message: string; hint: string | null; clearSearch: boolean } {
-  const query = input.query.trim();
-  if (query) {
+}): { message: string; hint: string | null; action: "clear-search" | "show-library" | null } {
+  const trimmed = input.query.trim();
+  if (trimmed.length > 0) {
     return {
-      message: `No results for "${query}"`,
-      hint: null,
-      clearSearch: true,
+      message: noResultsTitle(trimmed),
+      hint: "Clear search to see items still to add.",
+      action: "clear-search",
     };
   }
   if (!input.showInLibrary) {
     return {
       message: "You're caught up",
       hint: "Nothing left to discover. Turn on Show in library.",
-      clearSearch: false,
+      action: "show-library",
     };
   }
   return {
     message: "Search to add",
-    hint: null,
-    clearSearch: false,
+    hint: "Type a name to search sources.",
+    action: null,
   };
 }
 

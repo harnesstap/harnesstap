@@ -18,7 +18,9 @@ import {
 } from "../../lib/profile-rail-order";
 import type { ProfileCreateSource } from "../../lib/types";
 import type { ScopeController } from "../../state/scope-controller";
+import { noResultsTitle } from "../../lib/empty-copy";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
 import { PublishProfileDrawer } from "../parity/PublishProfileDrawer";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
@@ -318,28 +320,29 @@ export function ProfilesRail({
         onDrop={onProfileListDrop}
       >
         {profilesError && (
-          <div className="empty-state">
-            <p>{profilesError}</p>
-            <IconActionButton
-              label="Retry"
-              disabled={switching}
-              onClick={() => void ctrl.refreshProfiles()}
-              icon={<RefreshCw size={16} strokeWidth={2} aria-hidden="true" />}
-            />
-          </div>
+          <EmptyState
+            title="Could not load profiles"
+            body={profilesError}
+            action={{
+              label: "Retry",
+              disabled: switching,
+              onClick: () => void ctrl.refreshProfiles(),
+              icon: <RefreshCw size={16} strokeWidth={2} aria-hidden="true" />,
+            }}
+          />
         )}
         {showRailSkeleton ? <SkeletonRow count={6} height={40} /> : null}
         {!showRailSkeleton && !profilesError && visibleProfiles.length === 0 && (
-          <div className="empty-state">
-            <h2>
-              {profiles.length === 0
+          <EmptyState
+            title={
+              profiles.length === 0
                 ? "No profiles yet"
                 : scope === "project"
                   ? "No project profiles"
-                  : "No global profiles"}
-            </h2>
-            <p className="muted">
-              {profiles.length === 0 ? (
+                  : "No global profiles"
+            }
+            body={
+              profiles.length === 0 ? (
                 <>Create a profile to apply harness files.</>
               ) : scope === "project" ? (
                 <>
@@ -352,8 +355,9 @@ export function ProfilesRail({
                   Local profile plugins appear in Global. Switch to Project for
                   profiles enabled in the current project.
                 </>
-              )}
-            </p>
+              )
+            }
+          >
             <IconActionButton
               primary
               data-testid="open-create-profile"
@@ -362,21 +366,18 @@ export function ProfilesRail({
               onClick={() => onOpenCreateProfile()}
               icon={<Plus size={16} strokeWidth={2} aria-hidden="true" />}
             />
-          </div>
+          </EmptyState>
         )}
         {!profilesError && visibleProfiles.length > 0 && filteredProfiles.length === 0 && (
-          <div className="empty-state">
-            <h2>No matching profiles</h2>
-            <p className="muted">
-              No profiles match “{profileFilter.trim()}”. Try a different name,
-              description, or tag.
-            </p>
-            <IconActionButton
-              label="Clear filter"
-              onClick={() => setProfileFilter("")}
-              icon={<FilterX size={16} strokeWidth={2} aria-hidden="true" />}
-            />
-          </div>
+          <EmptyState
+            title={noResultsTitle(profileFilter)}
+            body="Try a different name, description, or tag."
+            action={{
+              label: "Clear filter",
+              onClick: () => setProfileFilter(""),
+              icon: <FilterX size={16} strokeWidth={2} aria-hidden="true" />,
+            }}
+          />
         )}
         {filteredProfiles.map((profile) => {
           const isActive = profile.name === activeProfile;

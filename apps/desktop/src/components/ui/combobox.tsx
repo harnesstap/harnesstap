@@ -22,6 +22,7 @@ import {
   filterComboboxOptions,
   type ComboboxOption,
 } from "@/lib/combobox";
+import { noResultsTitle } from "@/lib/empty-copy";
 
 export type { ComboboxOption };
 
@@ -42,7 +43,7 @@ export function Combobox({
   options,
   disabled = false,
   placeholder,
-  emptyLabel = "No matches.",
+  emptyLabel,
   allowCustom = false,
   onValueChange,
 }: ComboboxProps) {
@@ -309,7 +310,9 @@ export function Combobox({
         }}
       >
         {visible.length === 0 ? (
-          <p className="px-2 py-1.5 text-muted-foreground">{emptyLabel}</p>
+          <p className="px-2 py-1.5 text-muted-foreground">
+            {emptyLabel ?? noResultsTitle(query)}
+          </p>
         ) : (
           <ul id={listId} role="listbox" className="max-h-56 overflow-auto">
             {visible.map((option, index) => {

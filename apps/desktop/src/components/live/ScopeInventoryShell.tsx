@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type RefObject } from "react";
-import { Plus } from "lucide-react";
+import { FilterX, Plus } from "lucide-react";
 import {
   MUTATION_CHUNK_SIZE,
   PROFILE_INVENTORY_SECTION_ORDER,
@@ -11,7 +11,9 @@ import {
 } from "../../lib/profile-inventory";
 import type { ProfileContentsResource } from "../../lib/types";
 import { toast } from "../../state/toast-store";
+import { noResultsTitle } from "../../lib/empty-copy";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { EmptyState } from "../EmptyState";
 import { InventorySection } from "./InventorySection";
 import { LiveHeader } from "./LiveHeader";
 import type { TypeTabAttention } from "../../lib/resource-type-tabs";
@@ -355,7 +357,19 @@ export function ScopeInventoryShell({
             );
           })}
           {displayed.length === 0 ? (
-            <p className="muted">No matching resources.</p>
+            <EmptyState
+              title={noResultsTitle(search)}
+              body="Clear the filter to see every resource."
+              action={
+                search.trim()
+                  ? {
+                      label: "Clear filter",
+                      onClick: () => onSearch(""),
+                      icon: <FilterX size={16} aria-hidden />,
+                    }
+                  : undefined
+              }
+            />
           ) : null}
         </div>
       </div>

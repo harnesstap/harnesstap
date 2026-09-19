@@ -604,6 +604,10 @@
   border-radius: 999px;
 }
 
+.scope-inventory-fab:hover:not(:disabled) {
+  box-shadow: var(--shadow-2);
+}
+
 .inventory-section-label {
   font-size: var(--text-meta);
   font-weight: 500;

@@ -8,6 +8,7 @@ import {
   type RecentProject,
 } from "../lib/recent-projects";
 import { compactHomePath } from "../lib/compact-path";
+import { noResultsTitle } from "../lib/empty-copy";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
 
@@ -113,7 +114,7 @@ export function ProjectPicker({
             <div className="project-picker-empty muted">
               {recent.length === 0
                 ? "No recent projects yet."
-                : "No matches."}
+                : noResultsTitle(filter)}
             </div>
           ) : (
             filtered.map((row) => {
