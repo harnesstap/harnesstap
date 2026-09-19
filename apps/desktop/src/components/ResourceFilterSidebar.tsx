@@ -1,6 +1,13 @@
-import { useMemo, type Ref } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { FilterX } from "lucide-react";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { IconActionButton } from "./IconActionButton";
 import {
   buildNamespaceFacetOptions,
@@ -25,8 +32,8 @@ export interface ResourceFilterSidebarProps {
   searchInputRef?: Ref<HTMLInputElement>;
 }
 
-const UPDATED_SEGMENT_PRESETS: Array<{
-  id: Exclude<UpdatedPreset, "custom">;
+const UPDATED_PRESETS: Array<{
+  id: UpdatedPreset;
   label: string;
 }> = [
   { id: "all", label: "All time" },
@@ -34,6 +41,7 @@ const UPDATED_SEGMENT_PRESETS: Array<{
   { id: "7d", label: "7d" },
   { id: "30d", label: "30d" },
   { id: "90d", label: "90d" },
+  { id: "custom", label: "Custom" },
 ];
 
 const CUSTOM_DATE_RANGE_HINT_ID = "resource-filter-custom-date-hint";
@@ -118,7 +126,7 @@ function FilterCombobox({
 }) {
   return (
     <div className="resource-filter-section">
-      <label className="resource-filter-section-label" htmlFor={id}>
+      <label className="eyebrow" htmlFor={id}>
         {label}
       </label>
       <Combobox
@@ -141,6 +149,8 @@ export function ResourceFilterSidebar({
   disabled = false,
   searchInputRef,
 }: ResourceFilterSidebarProps) {
+  const [searchInput, setSearchInput] = useState(state.search);
+  const deferredSearch = useDeferredValue(searchInput);
   const namespaceOptions = useMemo((): ComboboxOption[] => {
     const facets = withCurrentNamespaceOption(
       buildNamespaceFacetOptions(resources),
@@ -173,6 +183,20 @@ export function ResourceFilterSidebar({
   const customInvalid =
     state.updated.preset === "custom" && !isUpdatedFilterValid(state.updated);
 
+  useEffect(() => {
+    setSearchInput(state.search);
+  }, [state.search]);
+
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  useEffect(() => {
+    if (deferredSearch === stateRef.current.search) {
+      return;
+    }
+    onChange({ ...stateRef.current, search: deferredSearch });
+  }, [deferredSearch, onChange]);
+
   return (
     <aside className="resource-filter-sidebar" aria-label="Resource filters">
       <div className="resource-filter-section">
@@ -182,10 +206,8 @@ export function ResourceFilterSidebar({
             className="resources-panel-filter"
             type="search"
             placeholder="Filter by name"
-            value={state.search}
-            onChange={(event) =>
-              onChange({ ...state, search: event.target.value })
-            }
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
             disabled={disabled}
             aria-label="Filter resources"
           />
@@ -200,46 +222,35 @@ export function ResourceFilterSidebar({
       </div>
 
       <div className="resource-filter-section">
-        <span className="resource-filter-section-label">Updated</span>
-        <div
-          className="segment resource-filter-updated-segment"
-          role="group"
-          aria-label="Updated at"
-        >
-          {UPDATED_SEGMENT_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className={state.updated.preset === preset.id ? "on" : undefined}
-              aria-pressed={state.updated.preset === preset.id}
-              disabled={disabled}
-              onClick={() =>
-                onChange({
-                  ...state,
-                  updated: { preset: preset.id, from: null, to: null },
-                })
-              }
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          className={`link-btn resource-filter-updated-custom${
-            state.updated.preset === "custom" ? " on" : ""
-          }`}
-          aria-pressed={state.updated.preset === "custom"}
+        <span className="eyebrow">Updated</span>
+        <Select
+          value={state.updated.preset}
           disabled={disabled}
-          onClick={() =>
+          onValueChange={(value) => {
+            const preset = value as UpdatedPreset;
             onChange({
               ...state,
-              updated: { ...state.updated, preset: "custom" },
-            })
-          }
+              updated:
+                preset === "custom"
+                  ? { ...state.updated, preset }
+                  : { preset, from: null, to: null },
+            });
+          }}
         >
-          Custom
-        </button>
+          <SelectTrigger
+            className="resource-filter-updated-select"
+            aria-label="Updated at"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {UPDATED_PRESETS.map((preset) => (
+              <SelectItem key={preset.id} value={preset.id}>
+                {preset.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {state.updated.preset === "custom" ? (
           <div className="resource-filter-custom-dates">
             <label>
@@ -311,7 +322,7 @@ export function ResourceFilterSidebar({
       />
 
       <fieldset className="resource-filter-section">
-        <legend className="resource-filter-section-label">Origin</legend>
+        <legend className="eyebrow">Origin</legend>
         <label
           className={`resource-filter-option${state.originKind === null ? " selected" : ""}`}
         >

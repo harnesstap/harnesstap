@@ -105,6 +105,15 @@ describe("resource inspect content preview", () => {
     expect(row).not.toContain("margin: 0.5rem 0");
   });
 
+  test("field rows expose a Pencil edit trigger and skip the delete-plan banner", () => {
+    expect(fieldRowSource).toContain('label="Edit"');
+    expect(fieldRowSource).toContain("Pencil");
+    expect(fieldRowSource).toContain("library-field-edit-trigger");
+    expect(bodySource).not.toContain("Delete from library + disk is unavailable");
+    expect(bodySource).toContain('label="Disk delete blocked"');
+    expect(bodySource).toContain("onRegisterCancelFieldEdit");
+  });
+
   test("DESIGN.md locks inspect as a viewport-capped dialog with a 15-line code block", () => {
     expect(designSource).toContain("15-line");
     expect(designSource).toContain("code block");

@@ -25,6 +25,13 @@ const panelSource = readFileSync(
   ),
   "utf8",
 );
+const listSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/library/LibraryResourceList.tsx",
+  ),
+  "utf8",
+);
 const stylesSource = readDesktopCss();
 const markSource = readFileSync(
   join(
@@ -258,12 +265,13 @@ describe("library in-use chrome", () => {
   });
 
   it("wires one InUseMark onto Library list leading chrome", () => {
-    expect(panelSource).toContain("InUseMark");
-    expect(panelSource).not.toContain("LibraryInUseMark");
-    expect(panelSource).toContain("ResourceRowLeading");
-    expect(panelSource).not.toContain("ResourceRowTrailing");
-    expect(panelSource).toContain("libraryInUseForEntry");
-    expect(panelSource).not.toContain("inUseKind === \"none\"");
+    expect(listSource).toContain("InUseMark");
+    expect(listSource).not.toContain("LibraryInUseMark");
+    expect(listSource).toContain("ResourceRowLeading");
+    expect(listSource).not.toContain("ResourceRowTrailing");
+    expect(listSource).toContain("libraryInUseForEntry");
+    expect(panelSource).toContain("LibraryResourceList");
+    expect(listSource).not.toContain("inUseKind === \"none\"");
     expect(markSource).toContain("export function InUseMark");
     expect(markSource).toContain("ChromeTooltip");
     expect(markSource).toContain("in-use-mark-spacer");

@@ -1,10 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { FolderDown, FolderInput, Plus, RefreshCw } from "lucide-react";
+import { FolderDown, FolderInput, FilterX, Plus, RefreshCw } from "lucide-react";
 import { IconActionButton } from "./IconActionButton";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
+import { LibraryResourceList } from "./library/LibraryResourceList";
 import { PluginPackageDetail } from "./PluginPackageDetail";
 import { ResourceCreatePanel } from "./ResourceCreatePanel";
 import { ResourceDetailBody } from "./ResourceDetailBody";
@@ -13,6 +14,7 @@ import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesMod
 import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
+import { ButtonSpinner } from "./ButtonSpinner";
 import { SkeletonRow } from "./shell/Skeleton";
 import {
   ResourceRowDescription,
@@ -37,16 +39,19 @@ import {
   postPluginOriginUpdate,
 } from "../lib/api/plugin-origin-update";
 import {
+  groupScopedLibraryRows,
   libraryFilterType,
-  libraryRowBadge,
-  libraryRowUpdateBadge,
+  libraryRowSelector,
   mergeLibraryList,
   type LibraryListEntry,
 } from "../lib/library-list";
 import {
+  hasSeenTrackedDirsIntro,
+  markTrackedDirsIntroSeen,
+} from "../lib/library-tracked-dirs";
+import {
   indexLibraryInUse,
   libraryInUseCompositionsFromDetails,
-  libraryInUseForEntry,
   libraryInUseProfilesFromSummaries,
   libraryInUseProjectBindingsFromListings,
   uniqueLibraryInUseProjectPaths,
@@ -71,7 +76,6 @@ import {
   resetResourceFilterState,
   type ResourceFilterState,
 } from "../lib/resource-filters";
-import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import { resourceDisplayName } from "../lib/resource-search";
 import {
   countResourceTypeTabs,
@@ -146,6 +150,7 @@ export function ResourcesPanel({
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [originOutdatedIds, setOriginOutdatedIds] = useState<Set<string>>(
@@ -159,12 +164,19 @@ export function ResourcesPanel({
   const [filterState, setFilterState] = useState<ResourceFilterState>(
     defaultResourceFilterState,
   );
-  const [trackedDirsOpen, setTrackedDirsOpen] = useState(autoOpenTrackedDirectories);
+  const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
+  const trackedDirsIntroAttempted = useRef(false);
 
   useEffect(() => {
-    if (autoOpenTrackedDirectories) {
-      setTrackedDirsOpen(true);
+    if (!autoOpenTrackedDirectories || trackedDirsIntroAttempted.current) {
+      return;
     }
+    trackedDirsIntroAttempted.current = true;
+    if (hasSeenTrackedDirsIntro()) {
+      return;
+    }
+    markTrackedDirsIntroSeen();
+    setTrackedDirsOpen(true);
   }, [autoOpenTrackedDirectories]);
   const [fieldEditing, setFieldEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -187,6 +199,11 @@ export function ResourcesPanel({
     || loadRecentProjects()[0]?.path
     || "";
   const filterRef = useRef<HTMLInputElement>(null);
+  const hasRowsRef = useRef(false);
+  const seenRowIdsRef = useRef<Set<string>>(new Set());
+  const cancelFieldEditRef = useRef<(() => void) | null>(null);
+  const [lastSelector, setLastSelector] = useState<string | null>(null);
+  const [enteringIds, setEnteringIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     if (!baseUrl) {
@@ -195,7 +212,11 @@ export function ResourcesPanel({
       return;
     }
     let cancelled = false;
-    setLoading(true);
+    if (hasRowsRef.current) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     void Promise.all([
       fetchLibraryResources(baseUrl, token),
@@ -205,6 +226,8 @@ export function ResourcesPanel({
         if (!cancelled) {
           setResources(nextResources);
           setPlugins(nextPlugins);
+          hasRowsRef.current =
+            nextResources.length > 0 || nextPlugins.length > 0;
         }
       })
       .catch((loadError: unknown) => {
@@ -219,6 +242,7 @@ export function ResourcesPanel({
       .finally(() => {
         if (!cancelled) {
           setLoading(false);
+          setRefreshing(false);
         }
       });
     return () => {
@@ -328,6 +352,7 @@ export function ResourcesPanel({
     if (!focusPluginName) {
       return;
     }
+    setLastSelector(focusPluginName);
     setPane({
       mode: "detail",
       target: { kind: "plugin-package", selector: focusPluginName },
@@ -341,6 +366,7 @@ export function ResourcesPanel({
     if (!focusResourceSelector) {
       return;
     }
+    setLastSelector(focusResourceSelector);
     setPane({
       mode: "detail",
       target: {
@@ -384,11 +410,26 @@ export function ResourcesPanel({
 
   const listRows = useMemo(
     () =>
-      [...filteredEntries].sort((left, right) =>
-        resourceDisplayName(left).localeCompare(resourceDisplayName(right)),
+      groupScopedLibraryRows(
+        [...filteredEntries].sort((left, right) =>
+          resourceDisplayName(left).localeCompare(resourceDisplayName(right)),
+        ),
+        resourceDisplayName,
       ),
     [filteredEntries],
   );
+
+  useEffect(() => {
+    const seen = seenRowIdsRef.current;
+    const nextEntering = new Set<string>();
+    for (const row of listRows) {
+      if (seen.size > 0 && !seen.has(row.id)) {
+        nextEntering.add(row.id);
+      }
+      seen.add(row.id);
+    }
+    setEnteringIds(nextEntering);
+  }, [listRows]);
 
   const libraryEmpty = resources.length === 0 && plugins.length === 0;
   const paneConfirmOpen = confirmOpen || originUpdateConfirmOpen;
@@ -494,6 +535,9 @@ export function ResourcesPanel({
         });
         switch (nested) {
           case "cancel-field":
+            event.preventDefault();
+            cancelFieldEditRef.current?.();
+            return;
           case "dismiss-confirm":
           case "noop":
             return;
@@ -524,6 +568,9 @@ export function ResourcesPanel({
       });
       switch (action) {
         case "cancel-field":
+          event.preventDefault();
+          cancelFieldEditRef.current?.();
+          return;
         case "dismiss-confirm":
           return;
         case "leave-pane":
@@ -541,6 +588,7 @@ export function ResourcesPanel({
 
   function openLibraryRow(entry: LibraryListEntry): void {
     const label = resourceDisplayName(entry);
+    setLastSelector(libraryRowSelector(entry));
     switch (entry.listKind) {
       case "plugin-package":
         setPane({
@@ -639,8 +687,12 @@ export function ResourcesPanel({
             onSuccess={onSuccess}
             onLibraryChanged={reloadLibrary}
             onFieldEditingChange={setFieldEditing}
+            onRegisterCancelFieldEdit={(cancel) => {
+              cancelFieldEditRef.current = cancel;
+            }}
             onConfirmOpenChange={setConfirmOpen}
             onBusyChange={handleDetailBusy}
+            showBack={false}
           />
         );
       case "plugin-package":
@@ -668,10 +720,14 @@ export function ResourcesPanel({
               reloadLibrary();
             }}
             onFieldEditingChange={setFieldEditing}
+            onRegisterCancelFieldEdit={(cancel) => {
+              cancelFieldEditRef.current = cancel;
+            }}
             onConfirmOpenChange={setConfirmOpen}
             onLibraryChanged={reloadLibrary}
             historyMode={pluginHistoryMode}
             frozenVersion={pluginFrozenVersion}
+            showBack={false}
             onHistoryModeChange={(mode, nextFrozenVersion) => {
               setPluginHistoryMode(mode);
               setPluginFrozenVersion(nextFrozenVersion ?? null);
@@ -693,17 +749,19 @@ export function ResourcesPanel({
         </div>
       );
     }
-    if (loading && resources.length === 0 && plugins.length === 0) {
+    if (loading && listRows.length === 0) {
       return <SkeletonRow count={8} height={40} />;
     }
     if (listRows.length === 0) {
+      const query = filterState.search.trim();
+      const filterMiss = isResourceFilterStateActive(filterState);
       return (
         <div className="empty-state">
           <p className="muted">
             {libraryEmpty
               ? "No registered resources yet. Import items or create a resource."
-              : isResourceFilterStateActive(filterState)
-                ? "No matches."
+              : filterMiss
+                ? `No matches for "${query}"`
                 : "No resources to show."}
           </p>
           {libraryEmpty ? (
@@ -721,6 +779,14 @@ export function ResourcesPanel({
                 icon={<Plus size={16} aria-hidden />}
               />
             </>
+          ) : filterMiss ? (
+            <IconActionButton
+              showLabel
+              label="Clear filters"
+              disabled={disabled}
+              onClick={() => applyFilterChange(resetResourceFilterState())}
+              icon={<FilterX size={16} aria-hidden />}
+            />
           ) : null}
         </div>
       );
@@ -731,46 +797,17 @@ export function ResourcesPanel({
           counts={typeCounts}
           value={typeTab}
           disabled={disabled}
+          overflow="collapse"
           onChange={(next) => applyFilterChange({ ...filterState, type: next })}
         />
-        <ul className="resources-list">
-          {listRows.map((entry) => {
-            const label = resourceDisplayName(entry);
-            const badge = libraryRowBadge(entry);
-            const updateBadge = libraryRowUpdateBadge(entry);
-            const filterType = libraryFilterType(entry);
-            const inUse = libraryInUseForEntry(entry, inUseIndex);
-            return (
-              <li className="resources-list-item" key={entry.id}>
-                <ResourceRowRoot
-                  hover={hoverModelFromLibraryResource(entry)}
-                  testId={`resource-row-${label}`}
-                  disabled={disabled}
-                >
-                  <ResourceRowLeading>
-                    <InUseMark membership={inUse} />
-                  </ResourceRowLeading>
-                  <ResourceRowIdentity
-                    type={filterType}
-                    label={label}
-                    onOpen={() => openLibraryRow(entry)}
-                  >
-                    {updateBadge ? (
-                      <span className="pill warn">{updateBadge}</span>
-                    ) : null}
-                    {badge || entry.description ? (
-                      <ResourceRowDescription>
-                        {badge}
-                        {badge && entry.description ? " · " : null}
-                        {entry.description}
-                      </ResourceRowDescription>
-                    ) : null}
-                  </ResourceRowIdentity>
-                </ResourceRowRoot>
-              </li>
-            );
-          })}
-        </ul>
+        <LibraryResourceList
+          rows={listRows}
+          inUseIndex={inUseIndex}
+          disabled={disabled}
+          lastSelector={lastSelector}
+          enteringIds={enteringIds}
+          onOpen={openLibraryRow}
+        />
       </>
     );
   }
@@ -795,7 +832,7 @@ export function ResourcesPanel({
       hasLocalPrevious,
       hasWorkspacePrevious: canWorkspaceBack,
     })
-    || (hasLocalPrevious && (detailBusy || confirmOpen));
+    || (hasLocalPrevious && confirmOpen);
   const count = outdatedCount;
 
   return (
@@ -804,7 +841,9 @@ export function ResourcesPanel({
         .filter(Boolean)
         .join(" ")}
       aria-label="Library"
+      aria-busy={refreshing || undefined}
       data-library-pane={pane.mode}
+      data-refreshing={refreshing ? "true" : undefined}
     >
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
@@ -815,7 +854,14 @@ export function ResourcesPanel({
               onClick={handlePanelBack}
             />
             <div className="resources-panel-title">
-              <span>Library</span>
+              <span>
+                Library
+                {refreshing ? (
+                  <span className="resources-panel-refreshing" aria-hidden>
+                    <ButtonSpinner size={14} />
+                  </span>
+                ) : null}
+              </span>
               <span className="muted resources-panel-scope">
                 All registered resources and plugins
               </span>

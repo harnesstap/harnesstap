@@ -67,9 +67,7 @@ describe("plugin-ref detail helpers", () => {
   });
 
   it("exports the empty-state copy from the spec", () => {
-    expect(PLUGIN_REF_EMPTY_RESOURCES_COPY).toBe(
-      "Sync to load resources from the install tree.",
-    );
+    expect(PLUGIN_REF_EMPTY_RESOURCES_COPY).toBe("Nothing loaded yet.");
   });
 
   it("shows marketplace URL only for marketplace plugin refs with a URL", () => {

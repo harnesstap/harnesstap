@@ -1,4 +1,10 @@
-import { createContext, useContext, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  type FocusEventHandler,
+  type KeyboardEventHandler,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
 import type { ResourceHoverModel } from "../../lib/resource-hover";
 import { RelatedHarnessIcons } from "../HarnessIcons";
@@ -16,6 +22,13 @@ export function ResourceRowRoot({
   disabled,
   ariaLabel,
   onActivate,
+  role,
+  tabIndex,
+  id,
+  "aria-selected": ariaSelected,
+  "aria-current": ariaCurrent,
+  onKeyDown,
+  onFocus,
 }: {
   hover: ResourceHoverModel;
   testId?: string;
@@ -24,6 +37,13 @@ export function ResourceRowRoot({
   disabled?: boolean;
   ariaLabel?: string;
   onActivate?: () => void;
+  role?: "option" | "listitem";
+  tabIndex?: number;
+  id?: string;
+  "aria-selected"?: boolean;
+  "aria-current"?: "true" | undefined;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  onFocus?: FocusEventHandler<HTMLDivElement>;
 }): ReactNode {
   return (
     <ResourceRowDisabledContext.Provider value={Boolean(disabled)}>
@@ -34,11 +54,25 @@ export function ResourceRowRoot({
             onActivate ? "resource-row-clickable" : null,
             className,
           )}
+          id={id}
+          role={role}
+          tabIndex={tabIndex}
           data-testid={testId}
           aria-label={ariaLabel}
+          aria-selected={ariaSelected}
+          aria-current={ariaCurrent}
+          onFocus={onFocus}
+          onKeyDown={onKeyDown}
           onClick={
             onActivate && !disabled
-              ? () => {
+              ? (event) => {
+                  if (
+                    event.target instanceof HTMLElement
+                    && event.target.closest("button, a, input, textarea, select")
+                    && event.currentTarget !== event.target
+                  ) {
+                    return;
+                  }
                   onActivate();
                 }
               : undefined
@@ -66,6 +100,7 @@ type ResourceRowIdentityProps = {
   label: string;
   children?: ReactNode;
   className?: string;
+  accessory?: ReactNode;
 } & (
   | { onOpen: () => void; htmlFor?: never }
   | { htmlFor: string; onOpen?: never }
@@ -79,6 +114,7 @@ export function ResourceRowIdentity({
   onOpen,
   children,
   className,
+  accessory,
 }: ResourceRowIdentityProps): ReactNode {
   const disabled = useContext(ResourceRowDisabledContext);
   let name: ReactNode;
@@ -111,6 +147,7 @@ export function ResourceRowIdentity({
       <div className="resource-row-identity-main">
         {type ? <TypeIcon type={type} /> : null}
         {name}
+        {accessory}
       </div>
       {children}
     </div>
@@ -154,4 +191,13 @@ export function ResourceRowTrailing({
   return (
     <div className={cn("resource-row-trailing", className)}>{children}</div>
   );
+}
+
+/** Mono `@<profile>` chip for scoped library copies grouped under a base row. */
+export function ResourceRowScopeChip({
+  profile,
+}: {
+  profile: string;
+}): ReactNode {
+  return <span className="resource-row-scope-chip mono">@{profile}</span>;
 }

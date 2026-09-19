@@ -15,8 +15,10 @@ import {
   FileCode2,
   Folder,
   Hash,
+  Info,
   Link,
   MapPin,
+  Pencil,
   RefreshCw,
   TextQuote,
   Trash2,
@@ -55,12 +57,10 @@ import {
   attachersFromResourceDetail,
   confirmableDeleteLocations,
   DISK_DELETE_CONFIRM_CHECKBOX_LABEL,
-  diskDeleteConfirmationExplanation,
   diskDeleteDisabledExplanation,
   formatResourceDeleteAttachers,
   formatResourceDeletePlanSummary,
   formatResourceDeleteSuccess,
-  humanizeDiskDeleteReason,
   protectedDeleteLocations,
   RESOURCE_DELETE_DISK_LABEL,
   RESOURCE_DELETE_LIBRARY_LABEL,
@@ -131,9 +131,11 @@ export interface ResourceDetailBodyProps {
   closeRef?: Ref<HTMLButtonElement>;
   onClose?: () => void;
   onFieldEditingChange?: (editing: boolean) => void;
+  onRegisterCancelFieldEdit?: (cancel: (() => void) | null) => void;
   onConfirmOpenChange?: (open: boolean) => void;
   onBusyChange?: (busy: boolean) => void;
   onOpenOwningPlugin?: (pluginName: string) => void;
+  showBack?: boolean;
 }
 
 function displayName(resource: LibraryResourceDetail): string {
@@ -212,9 +214,11 @@ export function ResourceDetailBody({
   closeRef,
   onClose,
   onFieldEditingChange,
+  onRegisterCancelFieldEdit,
   onConfirmOpenChange,
   onBusyChange,
   onOpenOwningPlugin,
+  showBack = true,
 }: ResourceDetailBodyProps) {
   const generatedTitleId = useId();
   const titleId = titleIdProp ?? generatedTitleId;
@@ -241,7 +245,7 @@ export function ResourceDetailBody({
   const [openingPath, setOpeningPath] = useState<string | null>(null);
 
   const busy = mutating;
-  const actionsLocked = disabled || !baseUrl || loading || busy;
+  const chromeLocked = disabled || !baseUrl || loading;
   const untracked = detail ? isUntrackedDetail(detail) : true;
   const fieldsReadOnly = untracked || disabled || !baseUrl;
   const typeLabel = detail ? detail.type.replaceAll("_", " ") : "";
@@ -249,6 +253,17 @@ export function ResourceDetailBody({
   useEffect(() => {
     onFieldEditingChange?.(editingField !== null);
   }, [editingField, onFieldEditingChange]);
+
+  useEffect(() => {
+    onRegisterCancelFieldEdit?.(() => {
+      setEditingField(null);
+      setDraft("");
+      setFieldError(null);
+    });
+    return () => {
+      onRegisterCancelFieldEdit?.(null);
+    };
+  }, [onRegisterCancelFieldEdit]);
 
   useEffect(() => {
     onConfirmOpenChange?.(confirm !== null);
@@ -670,13 +685,6 @@ export function ResourceDetailBody({
   const diskDeleteNeedsConfirm = resourceDeleteDiskNeedsConfirmation(deletePlan);
   const diskDeleteHint = diskDeleteDisabledExplanation(deletePlan);
   const inspectDiskHint = diskDeleteDisabledExplanation(protectionPlan);
-  const inspectConfirmHint = diskDeleteConfirmationExplanation(protectionPlan);
-  const inspectProtectedPaths = protectionPlan
-    ? protectedDeleteLocations(protectionPlan)
-    : [];
-  const inspectConfirmablePaths = protectionPlan
-    ? confirmableDeleteLocations(protectionPlan)
-    : [];
   const owningPlugins = deleteAttachers?.plugins ?? [];
 
   const actionButtons = (
@@ -684,7 +692,7 @@ export function ResourceDetailBody({
       {showSync ? (
         <IconActionButton
           primary
-          disabled={actionsLocked}
+          disabled={chromeLocked || busy}
           title={detail ? librarySyncPreviewTooltip(detail.type) : undefined}
           label="Sync"
           showLabel
@@ -697,7 +705,7 @@ export function ResourceDetailBody({
       {showApply ? (
         <IconActionButton
           primary
-          disabled={actionsLocked}
+          disabled={chromeLocked || busy}
           title={detail ? pendingSyncWriteTooltip(detail.type) : undefined}
           label="Write"
           showLabel
@@ -707,9 +715,16 @@ export function ResourceDetailBody({
           icon={<CheckCheck size={16} aria-hidden />}
         />
       ) : null}
+      {showDelete && inspectDiskHint ? (
+        <IconActionButton
+          disabled={chromeLocked}
+          label="Disk delete blocked"
+          icon={<Info size={16} aria-hidden />}
+        />
+      ) : null}
       {showDelete ? (
         <IconActionButton
-          disabled={actionsLocked}
+          disabled={chromeLocked || busy}
           title={DELETE_TOOLTIP}
           label="Delete"
           onClick={() => void openDeleteConfirm()}
@@ -734,6 +749,23 @@ export function ResourceDetailBody({
       />
     ) : (
       <span
+        className={
+          chrome === "pane" && !fieldsReadOnly
+            ? "library-detail-title-display"
+            : undefined
+        }
+        tabIndex={chrome === "pane" && !fieldsReadOnly ? 0 : undefined}
+        onClick={() => {
+          if (chrome === "pane" && !fieldsReadOnly) {
+            void startEdit("name");
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && chrome === "pane" && !fieldsReadOnly) {
+            event.preventDefault();
+            void startEdit("name");
+          }
+        }}
         onDoubleClick={() => {
           if (chrome === "pane") {
             void startEdit("name");
@@ -745,6 +777,18 @@ export function ResourceDetailBody({
             ? detail.name
             : displayName(detail)
           : target.label}
+        {chrome === "pane" && !fieldsReadOnly ? (
+          <IconActionButton
+            className="library-field-edit-trigger"
+            label="Edit"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void startEdit("name");
+            }}
+            icon={<Pencil size={14} aria-hidden />}
+          />
+        ) : null}
       </span>
     );
 
@@ -767,7 +811,6 @@ export function ResourceDetailBody({
           disabled={busy}
           rows={field === "content" ? 12 : 4}
           onChange={(event) => setDraft(event.target.value)}
-          onBlur={(event) => void commitField(field, event.target.value)}
           onKeyDown={(event) => onEditorKeyDown(field, event)}
         />
       );
@@ -807,70 +850,6 @@ export function ResourceDetailBody({
       ) : null}
       {chrome === "pane" && editingField === "name" && fieldError ? (
         <p className="library-field-error">{fieldError}</p>
-      ) : null}
-      {inspectDiskHint ? (
-        <div className="resource-detail-protected" role="status">
-          <p>{inspectDiskHint}</p>
-          {inspectProtectedPaths.map((location) => (
-            <div
-              key={`${location.scope}:${location.path}`}
-              className="resource-detail-protected-path"
-            >
-              <p className="muted">{humanizeDiskDeleteReason(location.reason)}</p>
-              <p className="mono resource-detail-protected-path-value">
-                {location.path}
-              </p>
-              <PathAccessActions
-                path={location.path}
-                disabled={disabled || !baseUrl || loading}
-                opening={openingPath === location.path}
-                onReveal={(next) => void openContainedPath(next, true)}
-              />
-            </div>
-          ))}
-          {owningPlugins.length > 0 ? (
-            <p>
-              Owned by plugin{owningPlugins.length === 1 ? "" : "s"}:{" "}
-              {owningPlugins.map((pluginName, index) => (
-                <span key={pluginName}>
-                  {index > 0 ? ", " : null}
-                  {onOpenOwningPlugin ? (
-                    <button
-                      type="button"
-                      className="resource-detail-plugin-link"
-                      onClick={() => onOpenOwningPlugin(pluginName)}
-                    >
-                      {pluginName}
-                    </button>
-                  ) : (
-                    pluginName
-                  )}
-                </span>
-              ))}
-            </p>
-          ) : null}
-        </div>
-      ) : inspectConfirmHint ? (
-        <div className="resource-detail-protected" role="status">
-          <p>{inspectConfirmHint}</p>
-          {inspectConfirmablePaths.map((location) => (
-            <div
-              key={`${location.scope}:${location.path}`}
-              className="resource-detail-protected-path"
-            >
-              <p className="muted">{humanizeDiskDeleteReason(location.reason)}</p>
-              <p className="mono resource-detail-protected-path-value">
-                {location.path}
-              </p>
-              <PathAccessActions
-                path={location.path}
-                disabled={disabled || !baseUrl || loading}
-                opening={openingPath === location.path}
-                onReveal={(next) => void openContainedPath(next, true)}
-              />
-            </div>
-          ))}
-        </div>
       ) : null}
       {isPluginTypeResource(detail.type) ? (
         <>
@@ -931,6 +910,8 @@ export function ResourceDetailBody({
             openingPath={openingPath}
             disabled={disabled || !baseUrl || loading}
             onOpen={(path) => void openContainedPath(path)}
+            onSync={showSync ? () => void runSync("fail", true) : undefined}
+            syncBusy={busy}
           />
         </>
       ) : (
@@ -952,7 +933,10 @@ export function ResourceDetailBody({
             placeholder="No description"
             editing={editingField === "description"}
             error={editingField === "description" ? fieldError : null}
+            multiline={descriptionMultiline}
             onStartEdit={() => void startEdit("description")}
+            onCommit={() => void commitField("description", draft)}
+            onCancel={cancelEdit}
           >
             {renderEditor("description", descriptionMultiline)}
           </LibraryFieldRow>
@@ -1017,7 +1001,10 @@ export function ResourceDetailBody({
             placeholder="No content"
             editing={editingField === "content"}
             error={editingField === "content" ? fieldError : null}
+            multiline
             onStartEdit={() => void startEdit("content")}
+            onCommit={() => void commitField("content", draft)}
+            onCancel={cancelEdit}
           >
             {renderEditor("content", true)}
           </LibraryFieldRow>
@@ -1243,7 +1230,8 @@ export function ResourceDetailBody({
           title={nameEditor}
           typeLabel={typeLabel}
           onBack={onBack}
-          backDisabled={busy}
+          showBack={showBack}
+          backDisabled={confirm !== null}
           actions={showSync || showDelete ? actionButtons : null}
         >
           <div className="library-detail-body">{fields}</div>
