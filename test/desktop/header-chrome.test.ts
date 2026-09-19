@@ -130,11 +130,11 @@ describe("desktop header chrome", () => {
   });
 
   test("labels header destinations Library, Discover, Environments, Global, and Project", () => {
-    expect(appSource).toMatch(/<Library[\s\S]*\/>\s*Library\s*</);
-    expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*Discover\s*</);
-    expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*Environments\s*</);
-    expect(appSource).toMatch(/<Globe[\s\S]*\/>\s*Global\s*</);
-    expect(appSource).toMatch(/<FolderGit2[\s\S]*\/>\s*Project\s*</);
+    expect(appSource).toMatch(/<Library[\s\S]*\/>\s*<span className="header-focus-label">Library<\/span>/);
+    expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*<span className="header-focus-label">Discover<\/span>/);
+    expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*<span className="header-focus-label">Environments<\/span>/);
+    expect(appSource).toMatch(/<Globe[\s\S]*\/>\s*<span className="header-focus-label">Global<\/span>/);
+    expect(appSource).toMatch(/<FolderGit2[\s\S]*\/>\s*<span className="header-focus-label">Project<\/span>/);
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");
     expect(cssSource).toContain(".header-focus-btn.labeled");
@@ -148,6 +148,15 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain('label="Settings"');
     expect(appSource).toContain('label="Account"');
     expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
+    expect(appSource).toContain('aria-current={destination === "library" ? "page" : undefined}');
+    expect(appSource).toContain("aria-pressed={scope === \"global\"}");
+    expect(appSource).toContain("HeaderMoreMenu");
+    expect(appSource).not.toContain('title="Library"');
+    expect(appSource).not.toContain('title="Discover"');
+    expect(paritySource).not.toContain('title="Environments"');
+    expect(cssSource).toContain("container-type: inline-size");
+    expect(cssSource).toContain("minmax(180px, 1fr)");
+    expect(designSource).toContain("Window minimum size is 960×600");
   });
 
   test("refreshes live status after package Apply and reports success as a toast", () => {

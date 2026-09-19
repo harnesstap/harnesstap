@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { IconActionButton } from "../IconActionButton";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
+import { SkeletonRow } from "../shell/Skeleton";
 import {
   deleteEnvironment,
   environmentApplyAvailable,
@@ -35,6 +36,7 @@ export interface EnvironmentsWorkspaceProps {
   onOpenPlugin?: (pluginName: string) => void;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
+  disconnected?: boolean;
 }
 
 export function EnvironmentsWorkspace({
@@ -51,12 +53,15 @@ export function EnvironmentsWorkspace({
   onOpenPlugin,
   canWorkspaceBack = false,
   onWorkspaceBack,
+  disconnected = false,
 }: EnvironmentsWorkspaceProps) {
   const connected = connectedProp ?? Boolean(baseUrl && token);
   const switching = switchingProp ?? disabled;
   const controlsDisabled = switching || !connected || disabled;
 
   const [rows, setRows] = useState<EnvironmentListRow[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const listLoadedRef = useRef(false);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
@@ -97,9 +102,14 @@ export function EnvironmentsWorkspace({
   useEffect(() => {
     if (!baseUrl) {
       setRows([]);
+      listLoadedRef.current = false;
+      setListLoading(false);
       return;
     }
     let cancelled = false;
+    if (!listLoadedRef.current) {
+      setListLoading(true);
+    }
     void listEnvironments(baseUrl, token)
       .then((nextRows) => {
         if (cancelled) {
@@ -107,6 +117,7 @@ export function EnvironmentsWorkspace({
         }
         setRows(nextRows);
         setError(null);
+        listLoadedRef.current = true;
       })
       .catch((loadError: unknown) => {
         if (!cancelled) {
@@ -115,6 +126,12 @@ export function EnvironmentsWorkspace({
               ? loadError.message
               : "Could not load environments",
           );
+          listLoadedRef.current = true;
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setListLoading(false);
         }
       });
     return () => {
@@ -195,7 +212,12 @@ export function EnvironmentsWorkspace({
   };
 
   return (
-    <main className="resources-panel" aria-label="Environments">
+    <main
+      className={["resources-panel", disconnected ? "is-disconnected" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="Environments"
+    >
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
           <div className="resources-panel-title-cluster">
@@ -252,7 +274,9 @@ export function EnvironmentsWorkspace({
             </div>
           </div>
           <div className="environment-list-scroll">
-            {filtered.length === 0 ? (
+            {listLoading && rows.length === 0 ? (
+              <SkeletonRow count={6} height={40} />
+            ) : filtered.length === 0 ? (
               <p className="muted">
                 {rows.length === 0
                   ? "No environments yet."

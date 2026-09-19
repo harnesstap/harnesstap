@@ -141,6 +141,18 @@ export async function waitForHealth(
   throw new Error(lastError);
 }
 
+/** One-shot health probe used after the first successful connect. */
+export async function probeHealth(
+  baseUrl: string,
+  init?: { signal?: AbortSignal },
+): Promise<AgentHealth> {
+  const response = await fetch(`${baseUrl}/v1/health`, { signal: init?.signal });
+  if (!response.ok) {
+    throw new Error(`Health check failed (${response.status}) on ${baseUrl}`);
+  }
+  return (await response.json()) as AgentHealth;
+}
+
 export async function connectAgent(options?: {
   restart?: boolean;
 }): Promise<{

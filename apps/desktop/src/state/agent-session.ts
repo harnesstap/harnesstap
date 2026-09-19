@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { connectAgent, hasTauriRuntime } from "../lib/agent-client";
+import { connectAgent, hasTauriRuntime, probeHealth } from "../lib/agent-client";
 
 export type AgentPhase = "connecting" | "connected" | "disconnected";
+
+export const HEALTH_POLL_MS = 2000;
+export const RECONNECT_POLL_MS = 500;
 
 /** Bound connection handle. A new object is produced on every (re)connect. */
 export interface AgentClient {
@@ -28,9 +31,30 @@ interface ConnectionState {
   firstRun: boolean;
 }
 
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = window.setTimeout(resolve, ms);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 /**
  * Owns the sidecar connection: initial connect, manual retry (restart), and
  * reconnect after the dev watcher rebuilds `ht-agent` (`sidecar-reloaded`).
+ * After the first successful connect, a failed health probe dims the shell
+ * instead of returning to the splash.
  */
 export function useAgentSession(): AgentSession {
   const [connection, setConnection] = useState<ConnectionState | null>(null);
@@ -97,6 +121,81 @@ export function useAgentSession(): AgentSession {
       setRetryBusy(false);
     }
   }, [applyConnection]);
+
+  // After the first connect, probe health so killing the agent dims the shell.
+  useEffect(() => {
+    if (phase !== "connected" || !connection) {
+      return;
+    }
+    const controller = new AbortController();
+    const markDisconnected = (probeError: unknown) => {
+      if (controller.signal.aborted || isAbortError(probeError)) {
+        return;
+      }
+      setError(
+        probeError instanceof Error ? probeError.message : "Sidecar connection failed",
+      );
+      setPhase("disconnected");
+    };
+    void probeHealth(connection.client.baseUrl, { signal: controller.signal })
+      .then(() => {
+        if (!controller.signal.aborted) {
+          setError(null);
+        }
+      })
+      .catch(markDisconnected);
+    const timer = window.setInterval(() => {
+      void probeHealth(connection.client.baseUrl, { signal: controller.signal })
+        .then(() => {
+          if (!controller.signal.aborted) {
+            setError(null);
+          }
+        })
+        .catch(markDisconnected);
+    }, HEALTH_POLL_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [connection, phase]);
+
+  // Later disconnects: keep last-good client and wait for health to return.
+  useEffect(() => {
+    if (phase !== "disconnected" || !connection) {
+      return;
+    }
+    const controller = new AbortController();
+    void (async () => {
+      while (!controller.signal.aborted) {
+        try {
+          const health = await probeHealth(connection.client.baseUrl, {
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) {
+            return;
+          }
+          applyConnection({
+            baseUrl: connection.client.baseUrl,
+            token: connection.client.token,
+            health,
+          });
+          return;
+        } catch (reconnectError) {
+          if (controller.signal.aborted || isAbortError(reconnectError)) {
+            return;
+          }
+          try {
+            await sleep(RECONNECT_POLL_MS, controller.signal);
+          } catch {
+            return;
+          }
+        }
+      }
+    })();
+    return () => {
+      controller.abort();
+    };
+  }, [applyConnection, connection, phase]);
 
   // Sidecar watcher rebuilds ht-agent in place; reconnect so previews use new code.
   useEffect(() => {

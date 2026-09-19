@@ -89,6 +89,7 @@ import {
   type ResourceDetailTarget,
 } from "./ResourceDetailPane";
 import { TypeIcon } from "./TypeIcon";
+import { SkeletonRow } from "./shell/Skeleton";
 import {
   ResourceRowDescription,
   ResourceRowIdentity,
@@ -2185,7 +2186,7 @@ export function LiveStatePanel({
           {!activeProfile && !selectedProfile ? (
             <p className="muted">No profile selected.</p>
           ) : resourceStack.kind === "loading" ? (
-            <p className="muted">Loading profile resources…</p>
+            <SkeletonRow count={8} height={40} />
           ) : (
             <>
               <ListSearchField
