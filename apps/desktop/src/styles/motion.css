@@ -204,15 +204,13 @@
   }
 }
 
-/* Nothing here awaits transitionend, so transitions are removed outright:
-   Chrome keeps sub-frame (0.01ms) transitions in document.getAnimations(),
-   which would defeat the "no element animates" audit. */
+/* Nothing here awaits transitionend, so animations and transitions are
+   removed outright under reduced motion so document.getAnimations() is empty. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+    animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
   }

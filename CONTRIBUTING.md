@@ -33,6 +33,7 @@ Common development commands:
 | Command | Purpose |
 | --- | --- |
 | `bun run preflight` | CI-equivalent lint + typecheck + tests + build |
+| `bun run desktop:check` | Desktop web-mode screenshots, visual compare, axe, reduced-motion, motion trace |
 | `bun run test:run` | Run the full test suite with dot output |
 | `bun run typecheck` | Run TypeScript-only validation |
 | `bun run start -- <args>` | Run the grouped CLI from source |
