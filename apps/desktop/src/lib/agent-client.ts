@@ -72,6 +72,15 @@ export {
   throwAgentError,
 } from "./api/http";
 
+/**
+ * True when running inside the Tauri webview. In a plain browser (web-only
+ * dev, Playwright screenshot walk) `invoke`/`listen` throw, so callers skip
+ * native commands and rely on VITE_AGENT_URL / VITE_AGENT_PORT instead.
+ */
+export function hasTauriRuntime(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
 async function readToken(): Promise<string | null> {
   try {
     return await invoke<string | null>("read_agent_token");
@@ -88,6 +97,14 @@ function resolveBaseUrl(port?: number): string {
   return `http://127.0.0.1:${resolvedPort}`;
 }
 
+async function readNativeSidecarPort(): Promise<number | null> {
+  try {
+    return await invoke<number | null>("get_sidecar_port");
+  } catch {
+    return null;
+  }
+}
+
 export async function waitForHealth(
   preferredPort?: number,
   maxAttempts = 40,
@@ -96,7 +113,7 @@ export async function waitForHealth(
   let lastError = "Sidecar not reachable";
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const portFromNative = await invoke<number | null>("get_sidecar_port");
+      const portFromNative = await readNativeSidecarPort();
       const candidates = [
         preferredPort,
         portFromNative ?? undefined,
@@ -137,7 +154,9 @@ export async function connectAgent(options?: {
       ? await invoke<number>("restart_sidecar")
       : await invoke<number>("start_sidecar");
   } catch (error) {
-    if (!import.meta.env.VITE_AGENT_URL) {
+    // Without a Tauri runtime there is no sidecar to spawn; the agent is
+    // started manually and discovered through VITE_AGENT_URL / port probing.
+    if (hasTauriRuntime() && !import.meta.env.VITE_AGENT_URL) {
       throw error;
     }
   }

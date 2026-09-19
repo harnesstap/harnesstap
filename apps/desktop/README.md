@@ -33,17 +33,31 @@ The app spawns the bundled `ht-agent` sidecar, waits for `GET /v1/health`, then 
 
 ### Web-only dev (no Tauri shell)
 
-```bash
-cd apps/desktop && bun install && bun run dev
-```
+Runs the UI in a normal browser against a manually started agent. Useful for fast visual iteration and for the screenshot walk below; no Rust toolchain needed.
 
-In another terminal, start the agent manually:
+Terminal 1 — agent with an isolated demo `HOME` and project built from `test/fixtures` (root `/tmp/htdemo`, override with `HT_DEMO_ROOT`; port via `HARNESSTAP_AGENT_PORT`):
 
 ```bash
-bun src/agent/entry.ts
+bun run desktop:demo-agent
 ```
 
-Set `VITE_AGENT_URL=http://127.0.0.1:7474` and `VITE_AGENT_TOKEN=$(cat ~/.harnesstap/agent-token)` when testing mutating routes in the browser.
+Terminal 2 — Vite, pointed at that agent:
+
+```bash
+cd apps/desktop && VITE_AGENT_URL=http://127.0.0.1:7474 VITE_AGENT_TOKEN=$(cat /tmp/htdemo/home/.harnesstap/agent-token) bun run dev
+```
+
+Open the printed URL in Chrome. Without a Tauri runtime the UI skips `start_sidecar` and probes `VITE_AGENT_URL` / `VITE_AGENT_PORT` / 7474+ for `GET /v1/health`. Native commands are unavailable in the browser: the folder picker and “open in editor” do nothing, and `sidecar-reloaded` is not delivered.
+
+Terminal 3 — screenshot walk (Playwright + system Chrome):
+
+```bash
+bun run desktop:shots
+```
+
+`scripts/ui-shots.mjs` installs `scripts/tauri-shim.js` via `addInitScript`, which fakes `window.__TAURI_INTERNALS__` so `invoke`/`listen`/`open` resolve instead of throwing (the folder dialog returns the demo project path, `read_agent_token` returns the demo token). It then walks Global/Project scope, Library list/detail/create picker, Discover list/tree, Environments, the Settings tabs, and the Export/Import/Account overlays at 1440×900 and 960×640, writing PNGs to `e2e/artifacts/shots/` (gitignored). Exit code is 1 if any `pageerror` fired.
+
+Knobs: `SHOTS_BASE_URL` (default `http://127.0.0.1:5173/`), `SHOTS_AGENT_PORT`, `SHOTS_TOKEN_PATH`, `SHOTS_PROJECT_PATH`, `SHOTS_OUT`, `SHOTS_CHROME_CHANNEL=chrome` or `SHOTS_CHROME_PATH=/usr/bin/google-chrome-stable` (falls back to Playwright's bundled Chromium; `bunx playwright install chromium` if neither is available), `--viewports 1440x900,960x640`, `--reduced-motion`.
 
 ## Build packaged app
 

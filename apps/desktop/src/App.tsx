@@ -55,6 +55,7 @@ import {
   fetchProfiles,
   fetchStatus,
   fetchTelemetryConsent,
+  hasTauriRuntime,
   saveTelemetryConsent,
   popProfileStash,
   renameProfile,
@@ -773,6 +774,9 @@ export function App() {
 
   // Sidecar watcher rebuilds ht-agent in place; reconnect so previews use new code.
   useEffect(() => {
+    if (!hasTauriRuntime()) {
+      return;
+    }
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     void listen<number>("sidecar-reloaded", () => {
