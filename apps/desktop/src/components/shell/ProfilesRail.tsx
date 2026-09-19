@@ -22,6 +22,8 @@ import { IconActionButton } from "../IconActionButton";
 import { PublishProfileDrawer } from "../parity/PublishProfileDrawer";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import { toast } from "../../state/toast-store";
+import { useStatusStore } from "../../state/status-store";
+import { SkeletonRow } from "./Skeleton";
 
 const RAIL_ICON_SIZE = 15;
 
@@ -71,6 +73,10 @@ export function ProfilesRail({
   } = ctrl;
   const token = client?.token ?? null;
   const topStashEntry = stashEntries[0];
+  const profilesRefreshing = useStatusStore((state) => state.profilesRefreshing);
+  const hasStatus = useStatusStore((state) => state.status !== null);
+  const showRailSkeleton =
+    profiles.length === 0 && !profilesError && (profilesRefreshing || !hasStatus);
 
   const [draggingProfile, setDraggingProfile] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<
@@ -323,7 +329,8 @@ export function ProfilesRail({
             />
           </div>
         )}
-        {!profilesError && visibleProfiles.length === 0 && (
+        {showRailSkeleton ? <SkeletonRow count={6} height={40} /> : null}
+        {!showRailSkeleton && !profilesError && visibleProfiles.length === 0 && (
           <div className="empty-state">
             <h2>
               {profiles.length === 0

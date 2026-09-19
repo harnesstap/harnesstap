@@ -59,6 +59,10 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 
 ## Layout
 
+Window minimum size is 960×600. Header grid is brand, destinations, scope, project cluster (flex 1, min 180px), then utilities. Brand text never clips. Below 1100px, Export, Import, Account, and Update collapse into a More menu (Ellipsis); Refresh and Settings stay. Below 960px, destinations are icon-only with tooltips (hit ≥32px) and the Scope label hides.
+
+First connect shows a centered splash (brand, indeterminate bar, Starting the agent…). Later disconnects keep the last-good shell dimmed with a Reconnecting banner that offers Retry after 5s. First loads use skeletons (rail, inventory, Library, Discover, Environments). A failed switch step is red with a failed suffix, not the in-progress highlight.
+
 Header destinations (equal-weight primary nav): **Library | Discover | Environments**. **Global | Project** is not a destination peer: it is a quieter **Scope** segmented switch after the destinations (visible **Scope** label). Scope stays ambient for the profiles rail and apply when an inventory is selected (Global/Project remain highlighted from `view`, not only when the live-state workspace is open). Project picker, Install, and History appear only when Project is the selected scope and the live-state workspace is showing. No header Plugins tab. No header Apply-plugin control. No live-state header Apply icon (sidebar rail **Apply** / **Re-apply** is the only profile-apply path).
 
 | Workspace | Shell |

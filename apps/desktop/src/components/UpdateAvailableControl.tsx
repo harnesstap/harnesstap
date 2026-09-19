@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ArrowUpCircle, X } from "lucide-react";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { AgentApiError } from "../lib/api/http";
@@ -11,6 +11,7 @@ import {
   shouldCloseDialogOnBackdrop,
   useDialogDismiss,
 } from "../lib/dialog-dismiss";
+import { toast } from "../state/toast-store";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { Presence } from "./motion/Presence";
@@ -18,11 +19,48 @@ import { motionClass } from "./motion/motion-utils";
 
 const HEADER_ICON_SIZE = 18;
 
+let cachedStatus: DesktopUpdateStatus | null = null;
+const updateListeners = new Set<() => void>();
+
+function emitUpdateStatus(): void {
+  for (const listener of updateListeners) {
+    listener();
+  }
+}
+
+export async function refreshDesktopUpdateStatus(
+  baseUrl: string,
+  token: string | null,
+): Promise<{ status: DesktopUpdateStatus | null; failed: boolean }> {
+  try {
+    cachedStatus = await fetchDesktopUpdateStatus(baseUrl, token);
+    emitUpdateStatus();
+    return { status: cachedStatus, failed: false };
+  } catch {
+    emitUpdateStatus();
+    return { status: cachedStatus, failed: true };
+  }
+}
+
+export function useDesktopUpdateStatus(): DesktopUpdateStatus | null {
+  return useSyncExternalStore(
+    (listener) => {
+      updateListeners.add(listener);
+      return () => {
+        updateListeners.delete(listener);
+      };
+    },
+    () => cachedStatus,
+    () => cachedStatus,
+  );
+}
+
 export interface UpdateAvailableControlProps {
   baseUrl: string | null;
   token: string | null;
   connected: boolean;
   disabled?: boolean;
+  variant?: "icon" | "menuitem";
 }
 
 function errorMessage(error: unknown): string {
@@ -37,9 +75,10 @@ export function UpdateAvailableControl({
   token,
   connected,
   disabled = false,
+  variant = "icon",
 }: UpdateAvailableControlProps) {
   const titleId = useId();
-  const [status, setStatus] = useState<DesktopUpdateStatus | null>(null);
+  const status = useDesktopUpdateStatus();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,15 +86,9 @@ export function UpdateAvailableControl({
 
   const refreshStatus = useCallback(async () => {
     if (!baseUrl || !connected) {
-      setStatus(null);
       return;
     }
-    try {
-      const next = await fetchDesktopUpdateStatus(baseUrl, token);
-      setStatus(next);
-    } catch {
-      setStatus(null);
-    }
+    await refreshDesktopUpdateStatus(baseUrl, token);
   }, [baseUrl, connected, token]);
 
   useEffect(() => {
@@ -82,27 +115,56 @@ export function UpdateAvailableControl({
   }
 
   const latest = status.latestVersion ?? "newer";
+  const openDialog = () => {
+    setError(null);
+    setOpen(true);
+  };
+
+  let trigger: ReactNode;
+  switch (variant) {
+    case "menuitem":
+      trigger = (
+        <button
+          type="button"
+          role="menuitem"
+          className="header-more-item"
+          data-testid="open-app-update-more"
+          onClick={openDialog}
+          disabled={disabled || !connected}
+        >
+          <ArrowUpCircle size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+          Update available
+        </button>
+      );
+      break;
+    case "icon":
+      trigger = (
+        <ChromeTooltip
+          content={`Update available: ${status.currentVersion} → ${latest}`}
+        >
+          <button
+            className="icon-action update-available-action"
+            type="button"
+            data-testid="open-app-update"
+            onClick={openDialog}
+            disabled={disabled || !connected}
+            aria-label={`Update available: ${status.currentVersion} to ${latest}`}
+          >
+            <ArrowUpCircle size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+            <span className="update-available-badge" aria-hidden="true" />
+          </button>
+        </ChromeTooltip>
+      );
+      break;
+    default: {
+      const neverVariant: never = variant;
+      return neverVariant;
+    }
+  }
 
   return (
     <>
-      <ChromeTooltip
-        content={`Update available: ${status.currentVersion} → ${latest}`}
-      >
-        <button
-          className="icon-action update-available-action"
-          type="button"
-          data-testid="open-app-update"
-          onClick={() => {
-            setError(null);
-            setOpen(true);
-          }}
-          disabled={disabled || !connected}
-          aria-label={`Update available: ${status.currentVersion} to ${latest}`}
-        >
-          <ArrowUpCircle size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-          <span className="update-available-badge" aria-hidden="true" />
-        </button>
-      </ChromeTooltip>
+      {trigger}
       <Presence
         open={open}
         enter="m-scrim-in"
@@ -173,5 +235,64 @@ export function UpdateAvailableControl({
         )}
       </Presence>
     </>
+  );
+}
+
+export interface CheckForUpdatesSectionProps {
+  open: boolean;
+  baseUrl: string | null;
+  token: string | null;
+  disabled?: boolean;
+}
+
+/** Settings → Advanced: re-run the Desktop update check and toast the result. */
+export function CheckForUpdatesSection({
+  open,
+  baseUrl,
+  token,
+  disabled = false,
+}: CheckForUpdatesSectionProps) {
+  const [busy, setBusy] = useState(false);
+
+  const onCheck = async () => {
+    if (!baseUrl) {
+      return;
+    }
+    setBusy(true);
+    const { status, failed } = await refreshDesktopUpdateStatus(baseUrl, token);
+    setBusy(false);
+    if (failed) {
+      toast({ tone: "error", title: "Could not check for updates" });
+      return;
+    }
+    if (!status) {
+      return;
+    }
+    if (status.updateAvailable) {
+      const latest = status.latestVersion ?? "newer";
+      toast({ tone: "info", title: `Update available: v${latest}` });
+      return;
+    }
+    toast({ tone: "success", title: `Desktop is up to date (v${status.currentVersion})` });
+  };
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <section className="settings-section" data-testid="check-for-updates">
+      <h3>Updates</h3>
+      <button
+        type="button"
+        className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+        disabled={disabled || busy || !baseUrl}
+        onClick={() => void onCheck()}
+        aria-busy={busy}
+      >
+        {busy ? <ButtonSpinner size={16} /> : null}
+        Check for updates
+      </button>
+    </section>
   );
 }
