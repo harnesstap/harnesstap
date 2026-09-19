@@ -5,8 +5,9 @@ import {
   type SourcesHit,
   type SourcesHitGroup,
 } from "../lib/sources-search";
-import { LogIn } from "lucide-react";
+import { FilterX, Library, LogIn } from "lucide-react";
 import { IconActionButton } from "./IconActionButton";
+import { EmptyState } from "./EmptyState";
 import { TypeIcon } from "./TypeIcon";
 
 export const CLOUD_SIGN_IN_HINT = "Sign in from the Cloud account control";
@@ -25,6 +26,8 @@ export interface SourcesListPaneProps {
   disabled?: boolean;
   onOpenHit: (hit: SourcesHit) => void;
   onSignIn?: () => void;
+  onClearQuery?: () => void;
+  onShowInLibrary?: () => void;
 }
 
 export function SourcesOriginUpdateBadge({ hit }: { hit: SourcesHit }) {
@@ -73,6 +76,8 @@ export function SourcesListPane({
   disabled = false,
   onOpenHit,
   onSignIn,
+  onClearQuery,
+  onShowInLibrary,
 }: SourcesListPaneProps) {
   const visible = groups.filter(
     (group) => group.hits.length > 0 || groupErrors[group.sourceId] !== undefined,
@@ -88,15 +93,28 @@ export function SourcesListPane({
 
   if (visible.length === 0) {
     const empty = discoverListEmptyCopy({ query, showInLibrary });
+    const action =
+      empty.action === "clear-search" && onClearQuery
+        ? {
+            label: "Clear search",
+            onClick: onClearQuery,
+            icon: <FilterX size={16} aria-hidden />,
+          }
+        : empty.action === "show-library" && onShowInLibrary
+          ? {
+              label: "Show in library",
+              onClick: onShowInLibrary,
+              icon: <Library size={16} aria-hidden />,
+            }
+          : undefined;
     return (
-      <div
-        className="empty-state discover-empty"
-        data-testid="discover-empty"
-        role="status"
-      >
-        <h2>{empty.message}</h2>
-        {empty.hint ? <p className="muted">{empty.hint}</p> : null}
-      </div>
+      <EmptyState
+        className="discover-empty"
+        testId="discover-empty"
+        title={empty.message}
+        body={empty.hint}
+        action={action}
+      />
     );
   }
 

@@ -1,9 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { FolderDown, FolderInput, Plus, RefreshCw } from "lucide-react";
+import { FolderDown, FolderInput, FilterX, Plus, RefreshCw } from "lucide-react";
+import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
 import { useRegisterCommands } from "../state/command-registry";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
+import { noResultsTitle } from "../lib/empty-copy";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { PluginPackageDetail } from "./PluginPackageDetail";
@@ -716,41 +718,62 @@ export function ResourcesPanel({
   function renderList(): ReactNode {
     if (error) {
       return (
-        <div className="empty-state">
-          <p>{error}</p>
-        </div>
+        <EmptyState
+          title="Could not load the library"
+          body={error}
+          action={{
+            label: "Retry",
+            onClick: () => reloadLibrary(),
+            icon: <RefreshCw size={16} aria-hidden />,
+          }}
+        />
       );
     }
     if (loading) {
       return <p className="muted">Loading resources…</p>;
     }
     if (listRows.length === 0) {
+      if (libraryEmpty) {
+        return (
+          <EmptyState
+            title="Nothing in the library yet"
+            body="Import items or create a resource."
+            action={{
+              label: "Create resource",
+              primary: true,
+              disabled: disabled || !baseUrl,
+              onClick: () => setCreateModalOpen(true),
+              icon: <Plus size={16} aria-hidden />,
+            }}
+          >
+            <IconActionButton
+              label="Import"
+              showLabel
+              disabled={disabled || !baseUrl}
+              onClick={() => setImportOpen(true)}
+              icon={<FolderDown size={16} aria-hidden />}
+            />
+          </EmptyState>
+        );
+      }
+      if (isResourceFilterStateActive(filterState)) {
+        return (
+          <EmptyState
+            title={noResultsTitle(filterState.search)}
+            body="Clear filters to see everything."
+            action={{
+              label: "Clear filters",
+              onClick: () => applyFilterChange(resetResourceFilterState()),
+              icon: <FilterX size={16} aria-hidden />,
+            }}
+          />
+        );
+      }
       return (
-        <div className="empty-state">
-          <p className="muted">
-            {libraryEmpty
-              ? "No registered resources yet. Import items or create a resource."
-              : isResourceFilterStateActive(filterState)
-                ? "No matches."
-                : "No resources to show."}
-          </p>
-          {libraryEmpty ? (
-            <>
-              <IconActionButton
-                label="Import"
-                disabled={disabled || !baseUrl}
-                onClick={() => setImportOpen(true)}
-                icon={<FolderDown size={16} aria-hidden />}
-              />
-              <IconActionButton
-                label="Create resource"
-                disabled={disabled || !baseUrl}
-                onClick={() => setCreateModalOpen(true)}
-                icon={<Plus size={16} aria-hidden />}
-              />
-            </>
-          ) : null}
-        </div>
+        <EmptyState
+          title="No resources to show"
+          body="Try another type tab."
+        />
       );
     }
     return (

@@ -90,9 +90,8 @@ describe("library items header actions", () => {
   });
 
   test("keeps the empty-state Import into library CTA as icon-only Import", () => {
-    expect(panelSource).toMatch(
-      /empty-state[\s\S]*label="Import"/,
-    );
+    expect(panelSource).toContain("<EmptyState");
+    expect(panelSource).toMatch(/label="Create resource"[\s\S]*label="Import"/);
   });
 
   test("auto-opens tracked directories after first-run bootstrap", () => {

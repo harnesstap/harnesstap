@@ -6,6 +6,7 @@ import {
   type LibraryPluginHead,
 } from "../lib/api/library-plugins";
 import { Pin, Plus, X } from "lucide-react";
+import { noResultsTitle } from "../lib/empty-copy";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { useOverlayLayer } from "../state/overlay-stack";
 
@@ -190,7 +191,11 @@ export function PinToPluginPanel({
                 />
               </div>
               {filtered.length === 0 ? (
-                <p className="muted">No matching authored plugins.</p>
+                <p className="muted">
+                  {query.trim()
+                    ? noResultsTitle(query)
+                    : "No authored plugins yet."}
+                </p>
               ) : (
                 <ul className="sources-pin-plugin-list">
                   {filtered.map((head) => (
