@@ -37,9 +37,9 @@ export async function handleTelemetryPut(
   }
 
   const enabled = (body as { enabled?: unknown }).enabled;
-  if (typeof enabled !== "boolean") {
+  if (enabled !== null && typeof enabled !== "boolean") {
     return jsonResponse(
-      { error: "invalid_enabled", message: "enabled must be a boolean" },
+      { error: "invalid_enabled", message: "enabled must be a boolean or null" },
       { status: 400 },
     );
   }

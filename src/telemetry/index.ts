@@ -14,6 +14,7 @@ export {
   isTelemetryConsentSettled,
   isTelemetryEnabled,
   persistTelemetryPreference,
+  clearTelemetryPreference,
   readTelemetryConfigPreference,
   resolvePosthogCaptureUrl,
   resolvePosthogHost,

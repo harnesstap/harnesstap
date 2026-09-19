@@ -1,5 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { compactHomePath } from "../../lib/compact-path";
+import { openResourcePath } from "../../lib/agent-client";
 import { formatScope } from "../../lib/api/scope";
 import { shouldShowTelemetryConsentModal } from "../../lib/telemetry-consent";
 import type {
@@ -26,28 +28,17 @@ import { TelemetryConsentModal } from "../TelemetryConsentModal";
 import { ToastRegion } from "./ToastRegion";
 
 export function describeExport(result: MigrateExportResult): string {
-  switch (result.scope) {
-    case "workspace":
-      return `Exported ${result.plugin_count} plugin${result.plugin_count === 1 ? "" : "s"}`;
-    case "plugin":
-      return `Exported ${result.plugins.length} plugin${result.plugins.length === 1 ? "" : "s"}`;
-    case "resource":
-      return `Exported ${result.resource}`;
-    default: {
-      const neverResult: never = result;
-      return neverResult;
-    }
-  }
+  return `Exported to ${compactHomePath(result.output, 80)}`;
 }
 
 export function describeImport(result: MigrateImportResult): string {
   switch (result.scope) {
     case "workspace":
-      return `Imported ${result.plugins_imported} plugin${result.plugins_imported === 1 ? "" : "s"} and ${result.environments_imported} environment${result.environments_imported === 1 ? "" : "s"}`;
+      return `Imported ${result.plugins_imported} plugin${result.plugins_imported === 1 ? "" : "s"}, ${result.environments_imported} environment${result.environments_imported === 1 ? "" : "s"}`;
     case "plugin":
-      return `Imported ${result.plugin} (${result.resources_imported} resource${result.resources_imported === 1 ? "" : "s"})`;
+      return `Imported ${result.resources_imported} resource${result.resources_imported === 1 ? "" : "s"}, ${result.plugins.length} plugin${result.plugins.length === 1 ? "" : "s"}`;
     case "resource":
-      return `Imported ${result.resource} (${result.action})`;
+      return "Imported 1 resource";
     default: {
       const neverResult: never = result;
       return neverResult;
@@ -160,7 +151,22 @@ export function AppOverlays({
         }}
         onExported={(result) => {
           onMigrateBusyChange(false);
-          toast({ tone: "success", title: describeExport(result), detail: result.output });
+          const path = result.output;
+          toast({
+            tone: "success",
+            title: describeExport(result),
+            action: client
+              ? {
+                  label: "Reveal",
+                  onClick: () => {
+                    void openResourcePath(client.baseUrl, client.token, {
+                      path,
+                      reveal: true,
+                    });
+                  },
+                }
+              : undefined,
+          });
         }}
       />
       <MigrateImportDrawer

@@ -7,6 +7,8 @@ import {
   environmentApplyAvailable,
   environmentDeleteNeedsForce,
   filterEnvironmentsByQuery,
+  formatEnvironmentClipboard,
+  isSecretLikeEnvKey,
 } from "../../apps/desktop/src/lib/api/environments.ts";
 import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
@@ -14,7 +16,14 @@ import { readDesktopCss } from "./helpers/desktop-css.ts";
 const workspaceSource = readFileSync(
   join(
     import.meta.dir,
-    "../../apps/desktop/src/components/parity/EnvironmentsWorkspace.tsx",
+    "../../apps/desktop/src/components/environments/EnvironmentsWorkspace.tsx",
+  ),
+  "utf8",
+);
+const drawerSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/environments/EnvironmentDrawer.tsx",
   ),
   "utf8",
 );
@@ -118,13 +127,34 @@ describe("environments workspace chrome", () => {
     expect(workspaceSource).toContain("onWorkspaceBack");
   });
 
-  it("puts the name filter in the list sidebar, not the panel header", () => {
-    const layoutPos = workspaceSource.indexOf("resources-panel-layout");
-    const filterPos = workspaceSource.indexOf('aria-label="Filter environments"');
-    expect(layoutPos).toBeGreaterThan(-1);
-    expect(filterPos).toBeGreaterThan(layoutPos);
-    expect(workspaceSource).toContain('aria-label="Environment list"');
-    expect(stylesSource).toContain(".environment-list-sidebar");
+  it("hides Back at the list entrypoint and makes Create accent", () => {
+    expect(workspaceSource).toContain("<WorkspaceBackButton");
+    expect(workspaceSource).toContain("hidden");
+    expect(workspaceSource).not.toContain("hidden={!canWorkspaceBack}");
+    expect(workspaceSource).toContain('label="Create environment"');
+    expect(workspaceSource).toContain("primary");
+  });
+
+  it("shows skeleton rows on first load and clears detail when switching", () => {
+    expect(workspaceSource).toContain("listLoading");
+    expect(workspaceSource).toContain("SkeletonRow");
+    expect(workspaceSource).toContain("m-skeleton");
+    expect(workspaceSource).toContain("selectEnvironment");
+    expect(workspaceSource).toContain("setDetail(null)");
+  });
+
+  it("copies values and masks secret-like keys", () => {
+    expect(workspaceSource).toContain('label="Copy all"');
+    expect(workspaceSource).toContain("isSecretLikeEnvKey");
+    expect(workspaceSource).toContain("formatEnvironmentClipboard");
+  });
+
+  it("includes create values and lands on detail", () => {
+    expect(drawerSource).toContain("An environment with this name already exists.");
+    expect(drawerSource).not.toContain("A environment with this name already exists.");
+    expect(drawerSource).toContain("Secret refs can be added after you create this environment.");
+    expect(drawerSource).toContain('title="Values"');
+    expect(drawerSource).toContain("onSaved(`Created environment");
   });
 });
 
@@ -184,5 +214,37 @@ describe("canSubmitEnvironmentCreate", () => {
         plugins: ["needs-region"],
       }),
     ).toBe(true);
+  });
+});
+
+describe("isSecretLikeEnvKey", () => {
+  it("matches *_KEY, *TOKEN*, and *SECRET*", () => {
+    expect(isSecretLikeEnvKey("OPENAI_API_KEY")).toBe(true);
+    expect(isSecretLikeEnvKey("AUTH_TOKEN")).toBe(true);
+    expect(isSecretLikeEnvKey("DB_SECRET")).toBe(true);
+    expect(isSecretLikeEnvKey("REGION")).toBe(false);
+  });
+});
+
+describe("formatEnvironmentClipboard", () => {
+  it("formats env vars as KEY=value lines", () => {
+    expect(
+      formatEnvironmentClipboard({
+        environment: {
+          id: "1",
+          name: "dev",
+          description: "",
+          created_at: "",
+          updated_at: "",
+        },
+        values: {
+          env_vars: { REGION: "us-west" },
+          model_configs: [],
+          permissions: [],
+        },
+        secret_refs: { API_KEY: { provider: "env", ref: "API_KEY" } },
+        references: { plugins: [] },
+      }),
+    ).toBe("REGION=us-west\nAPI_KEY=env:API_KEY");
   });
 });

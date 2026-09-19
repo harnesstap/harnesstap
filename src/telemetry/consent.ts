@@ -1,6 +1,7 @@
 import { getHarnesstapDir } from "../db/connection.js";
 import { telemetryConsentCopy } from "./copy.js";
 import {
+  clearTelemetryPreference,
   isTelemetryEnabled,
   persistTelemetryPreference,
   readTelemetryConfigPreference,
@@ -34,9 +35,13 @@ export function getTelemetryConsentStatus(
 }
 
 export function setTelemetryConsent(
-  enabled: boolean,
+  enabled: boolean | null,
   harnesstapDir = getHarnesstapDir(),
 ): TelemetryConsentStatus {
-  persistTelemetryPreference(enabled, harnesstapDir);
+  if (enabled === null) {
+    clearTelemetryPreference(harnesstapDir);
+  } else {
+    persistTelemetryPreference(enabled, harnesstapDir);
+  }
   return getTelemetryConsentStatus(harnesstapDir);
 }

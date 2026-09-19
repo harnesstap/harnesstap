@@ -55,7 +55,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Header icon-only chrome may include an **Update available** control (arrow-up icon plus a red badge). The badge is paired with the accessible name **Update available** (current → newer). Click opens a centered dialog with release notes, a GitHub release link (text link, not a chrome button), and **Update** (icon plus label; downloads the matching GitHub installer for this os/arch). The control is omitted when Desktop is current.
 - Overlays register in one layer stack: Esc and focus trap apply to the top layer only; focus returns to the opener. Popovers (project picker) join the stack for Esc but do not trap Tab. The telemetry consent modal joins the stack with close disabled so it traps focus without dismissing.
 - Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, and history. Resource inspect is a centered, viewport-capped dialog (scrollable body, height follows content). File apply diffs are the same centered, viewport-capped dialog (not pinned to a pane corner). Back (top left) and Esc leave the panel or dialog. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. The Library create-resource type picker is a centered dialog. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
-- Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab: project directory picker (recent + Browse), raw `apm.yml` editor (Library Content mono chrome; save runs existing config validate and refuses on errors), icon-only Open config as the external-editor escape hatch (tooltip **Open config**), profile definition list, validation/load errors. It reads and writes `apm.yml` only. Marketplaces and catalogs are managed in Discover, not Settings.
+- Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Footer **Save** / **Cancel** appear only on **Harnesses**. Project and Advanced save inline. Back, Esc, and Cancel confirm discard when the Harnesses draft or the Project `apm.yml` editor is dirty. Harness alias rows are left-aligned `[icon] [name] …… [checkbox]`, 40px tall; the list height follows content up to 320px. Project tab: project directory picker (recent + Browse), raw `apm.yml` editor with a line-number gutter, mono `--text-meta`, and inline error markers when validator messages include line numbers (save runs existing config validate and refuses on errors), icon-only Open config as the external-editor escape hatch (tooltip **Open config**), profile definition list, validation/load errors. It reads and writes `apm.yml` only. Marketplaces and catalogs are managed in Discover, not Settings. Advanced includes labeled **Check for updates** and **Reset telemetry choice**.
 
 ## Layout
 
@@ -98,7 +98,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 **Header destinations**
 
 - Re-clicking an already-active header destination (Library, Discover, Environments) returns that view to its entrypoint and clears its filters. Clicking a different destination only switches. Scope (Global | Project) is a separate control: it does not sit in the destination peer row. Re-clicking the current scope while live-state is open clears the profile rail search and closes edit-profile; the selected profile stays. Project re-click does not reopen the directory picker.
-- Back icon to the left of the panel title (Library, Discover, Environments, Profiles). Back returns to the previous screen: nested pane first (Library detail / history, Discover preview / plugin-tree, or edit-profile), then the previous header destination. The control is hidden when there is nowhere to go. Library and Discover **list** entrypoints hide Back even if another destination is in history — switch workspaces from the header; Back appears only for a nested pane.
+- Back icon to the left of the panel title (Library, Discover, Environments, Profiles). Back returns to the previous screen: nested pane first (Library detail / history, Discover preview / plugin-tree, or edit-profile), then the previous header destination. The control is hidden when there is nowhere to go. Library, Discover, and Environments **list** entrypoints hide Back even if another destination is in history. Switch workspaces from the header; Back appears only for a nested pane.
 - Library re-click applies default filters and returns to the list via the same path as a sidebar filter change (`applyFilterChange`).
 - Discover re-click clears the search query, turns off **Show in library**, checks all sources, and returns to the list. Add/edit panels stay if open. Sidebar **Clear filters** uses the same filter defaults (empty search, **Show in library** off, every source checkbox checked).
 - Environments re-click clears the name filter and deselects. Create/edit full-screen panel stays if open.
@@ -151,13 +151,19 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Record actions on the plugin tree (preview inherits parent plugin actions) are icon-only: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Tooltips keep those labels. No Update button on Discover.
 - In-library marketplace and catalog hits show a yellow **Update available** badge (color + text) next to In library when origin check is outdated. Open in Library is the apply path. Pin stays. Those rows appear only when **Show in library** is on.
 - When the filtered list is empty with **Show in library** off, the main pane shows a visible empty state (`discover-empty`): heading **You're caught up** plus hint **Nothing left to discover. Turn on Show in library.** Do not flash that copy before the first source fetch finishes (show Searching…).
-- Cloud catalog discovery lives in Discover. The Cloud browse overlay is gone; the Cloud header control is account-only.
+- Cloud catalog discovery lives in Discover. The Cloud browse overlay is gone; the Cloud header control is account-only. Waiting for approval shows a spinner next to **Waiting for approval…**. Sign-in copy talks about plugins and catalogs, not profiles.
 
 **Environments**
 
 - Globally active environment is a list-row `active` badge, not a header status marker.
 - Name filter lives in the list sidebar. **Clear filter** clears that query. Sidebar inventory is values and secrets only. Plugins that default to this environment appear in detail as “Plugins referencing this environment” and open that plugin’s Library detail.
-- Detail: keyed definition list + harness blocks. Apply / edit / delete are icon-actions in the detail header. Apply (`environment use`) only when process env drifted from this environment.
+- List first load uses skeleton rows. Selecting another environment shows a skeleton immediately (never the previous environment's values). A same-environment refresh may dim the current detail.
+- Create is accent (`primary`). The list entrypoint hides Back. Create includes key/value rows and a Secrets hint; after create, land on detail.
+- Detail: keyed definition list + harness blocks. Apply / edit / delete / **Copy all** are icon-actions in the detail header. Apply (`environment use`) only when process env drifted from this environment. Values whose keys match `*_KEY`, `*TOKEN*`, or `*SECRET*` have a mask toggle.
+
+**Migrate**
+
+- Import and Export use a quiet **Step N of M** subtitle. Step body content is a centered 640px column. Success is a toast: export includes the output path and **Reveal**; import summarizes counts.
 
 **Lists**
 

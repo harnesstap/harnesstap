@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 const source = readFileSync(
   join(
     import.meta.dir,
-    "../../apps/desktop/src/components/parity/ResolveOrderSettings.tsx",
+    "../../apps/desktop/src/components/settings/ResolveOrderSettings.tsx",
   ),
   "utf8",
 );
