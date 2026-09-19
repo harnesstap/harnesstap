@@ -39,6 +39,7 @@ export interface EnvironmentsWorkspaceProps {
   onOpenPlugin?: (pluginName: string) => void;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
+  disconnected?: boolean;
 }
 
 export function EnvironmentsWorkspace({
@@ -55,6 +56,7 @@ export function EnvironmentsWorkspace({
   onOpenPlugin,
   canWorkspaceBack: _canWorkspaceBack = false,
   onWorkspaceBack,
+  disconnected = false,
 }: EnvironmentsWorkspaceProps) {
   const connected = connectedProp ?? Boolean(baseUrl && token);
   const switching = switchingProp ?? disabled;
@@ -233,7 +235,12 @@ export function EnvironmentsWorkspace({
   };
 
   return (
-    <main className="resources-panel" aria-label="Environments">
+    <main
+      className={["resources-panel", disconnected ? "is-disconnected" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="Environments"
+    >
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
           <div className="resources-panel-title-cluster">
