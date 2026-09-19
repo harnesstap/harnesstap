@@ -12,6 +12,7 @@ import {
 } from "../lib/composition-membership";
 import { libraryFilterType } from "../lib/library-list";
 import { hoverModelFromLibraryResource } from "../lib/resource-hover";
+import { resourceRowVirtualStyle } from "../lib/resource-row-virtual";
 import {
   filterLibraryResourcesBySearch,
   resourceDisplayName,
@@ -289,14 +290,7 @@ export function ScopeAddToProfileModal({
                       className="scope-add-virtual-row"
                       data-index={virtualRow.index}
                       ref={listVirtualizer.measureElement}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        height: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
+                      style={resourceRowVirtualStyle(virtualRow.start)}
                     >
                       <ResourceRowRoot
                         hover={hoverModelFromLibraryResource(entry)}

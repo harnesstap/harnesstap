@@ -110,6 +110,7 @@ export function libraryRowUpdateBadge(entry: LibraryListEntry): string | null {
   return null;
 }
 
+/** Virtualizer estimates only. Measured row height can grow when copy wraps. */
 export const LIBRARY_ROW_HEIGHT = 44;
 export const LIBRARY_ROW_HEIGHT_WITH_SUBTITLE = 56;
 

@@ -6,11 +6,12 @@ import {
   type ProfileInventoryItem,
   type ProfileInventorySectionId,
 } from "../../lib/profile-inventory";
-import { Collapse } from "../motion/Collapse";
+import { resourceRowVirtualStyle } from "../../lib/resource-row-virtual";
 import { IconActionButton } from "../IconActionButton";
+import { Collapse } from "../motion/Collapse";
+import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { InventoryRow } from "./InventoryRow";
 import { ICON_SIZE } from "./shared";
-import type { ResourceDetailTarget } from "../ResourceDetailPane";
 
 export function inventorySectionTitle(section: ProfileInventorySectionId): string {
   switch (section) {
@@ -194,14 +195,7 @@ export function InventorySection({
                 className="inventory-virtual-row m-fade-in"
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: `${virtualRow.size}px`,
-                  transform: `translateY(${virtualRow.start - scrollMargin}px)`,
-                }}
+                style={resourceRowVirtualStyle(virtualRow.start, scrollMargin)}
               >
                 <InventoryRow
                   item={item}
