@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
+  applyCtaHelper,
+  scopeStatusLine,
   shouldAutoReapply,
   shouldShowReapply,
 } from "../../apps/desktop/src/lib/reapply.ts";
@@ -115,5 +117,73 @@ describe("shouldAutoReapply", () => {
         preexistingProjectDriftStatus: "clean",
       }),
     ).toBe(true);
+  });
+});
+
+describe("scopeStatusLine", () => {
+  test("describes selected vs active vs drifted in one sentence", () => {
+    expect(
+      scopeStatusLine({
+        selectedProfile: "work",
+        activeProfile: "home",
+        applied: true,
+        fileChangeCount: 0,
+      }),
+    ).toEqual({ kind: "selected_not_applied", text: "Selected · not applied" });
+    expect(
+      scopeStatusLine({
+        selectedProfile: "work",
+        activeProfile: "work",
+        applied: true,
+        fileChangeCount: 0,
+      }),
+    ).toEqual({ kind: "active_applied", text: "Active · applied" });
+    expect(
+      scopeStatusLine({
+        selectedProfile: "work",
+        activeProfile: "work",
+        applied: true,
+        fileChangeCount: 3,
+      }),
+    ).toEqual({
+      kind: "active_differ",
+      text: "Active · 3 files differ",
+      fileCount: 3,
+    });
+  });
+});
+
+describe("applyCtaHelper", () => {
+  test("shows preview helper, up to date, and nothing to apply", () => {
+    expect(
+      applyCtaHelper({
+        selectedProfile: "work",
+        activeProfile: "home",
+        applied: true,
+        showReapply: false,
+        changeCount: 2,
+        switching: false,
+      }).label,
+    ).toBe("2 changes · Preview");
+    expect(
+      applyCtaHelper({
+        selectedProfile: "work",
+        activeProfile: "work",
+        applied: true,
+        showReapply: false,
+        changeCount: 0,
+        switching: false,
+      }).label,
+    ).toBe("Up to date");
+    expect(
+      applyCtaHelper({
+        selectedProfile: null,
+        activeProfile: null,
+        applied: false,
+        showReapply: false,
+        changeCount: 0,
+        switching: false,
+      }).label,
+    ).toBe("Nothing to apply");
   });
 });

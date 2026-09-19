@@ -1,0 +1,5 @@
+kind: Changed
+body: Sticky profile selection, apply overlay strip, and virtualized Global/Project inventory with optimistic add and remove.
+time: 2026-09-19T00:30:00Z
+custom:
+  Issue: ""

@@ -158,3 +158,22 @@ describe("profile edit default environment chrome", () => {
     );
   });
 });
+
+describe("profile edit save and discard", () => {
+  test("tracks dirty name fields with explicit Save and Discard", () => {
+    expect(editSource).toContain("edit-profile-footer");
+    expect(editSource).toContain("Discard");
+    expect(editSource).toContain("Save");
+    expect(editSource).toContain("requestClose");
+    expect(editSource).toContain("Discard edits?");
+    expect(editSource).toContain('tone="destructive"');
+    expect(editSource).toContain("Undo");
+  });
+
+  test("points marketplace empty copy at Discover", () => {
+    expect(compositionFieldsSource).toContain(
+      "No marketplaces registered. Add one in Discover.",
+    );
+    expect(compositionFieldsSource).not.toContain("Add one in Settings.");
+  });
+});

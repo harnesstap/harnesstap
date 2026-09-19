@@ -6,7 +6,7 @@ import {
   resolveProfileResourceStack,
 } from "../../apps/desktop/src/lib/profile-resource-stack.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
-import { readDesktopShellSource } from "../helpers/desktop-shell-source";
+import { readDesktopShellSource, readLiveInventorySource } from "../helpers/desktop-shell-source";
 
 function contents(
   overrides: Partial<ProfileContents> = {},
@@ -138,10 +138,7 @@ describe("resolveProfileResourceStack", () => {
 });
 
 describe("Profile resources pane chrome", () => {
-  const liveStateSource = readFileSync(
-    join(import.meta.dir, "../../apps/desktop/src/components/LiveStatePanel.tsx"),
-    "utf8",
-  );
+  const liveStateSource = readLiveInventorySource();
   const appSource = readDesktopShellSource();
   const designSource = readFileSync(
     join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
@@ -158,7 +155,7 @@ describe("Profile resources pane chrome", () => {
   it("offers labeled Add all on Not in profile and demotes it when Re-apply is primary", () => {
     expect(liveStateSource).toContain("Not in profile");
     expect(liveStateSource).toContain('label="Add all"');
-    expect(liveStateSource).toContain("primary={!railPrimaryIsReapply}");
+    expect(liveStateSource).toContain("addAllPrimary={!railPrimaryIsReapply}");
     expect(liveStateSource).toContain("showLabel");
     expect(liveStateSource).toContain("iconAfterLabel");
     expect(liveStateSource).toContain("onAddAllResources");
@@ -177,7 +174,7 @@ describe("Profile resources pane chrome", () => {
   it("uses ResourceTypeTabs over a flat list of direct memberships", () => {
     expect(liveStateSource).toContain("ResourceTypeTabs");
     expect(liveStateSource).toContain("includeAll={true}");
-    expect(liveStateSource).toContain("emptyMode=\"disable\"");
+    expect(liveStateSource).toContain("emptyMode=\"hide\"");
     expect(liveStateSource).toContain("countInventoryTypeTabs");
     expect(liveStateSource).toContain("flattenProfileResourceList");
     expect(liveStateSource).toContain("selectedProfile");
