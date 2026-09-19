@@ -54,7 +54,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons. File change trailing chrome is the same: kind chip then icon actions as separate flex items, never flush against trailing copy.
 - Header icon-only chrome may include an **Update available** control (arrow-up icon plus a red badge). The badge is paired with the accessible name **Update available** (current → newer). Click opens a centered dialog with release notes, a GitHub release link (text link, not a chrome button), and **Update** (icon plus label; downloads the matching GitHub installer for this os/arch). The control is omitted when Desktop is current.
 - Overlays register in one layer stack: Esc and focus trap apply to the top layer only; focus returns to the opener. Popovers (project picker) join the stack for Esc but do not trap Tab. The telemetry consent modal joins the stack with close disabled so it traps focus without dismissing.
-- Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, and history. Resource inspect is a centered, viewport-capped dialog (scrollable body, height follows content). File apply diffs are the same centered, viewport-capped dialog (not pinned to a pane corner). Back (top left) and Esc leave the panel or dialog. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. The Library create-resource type picker is a centered dialog. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
+- Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, and history. Resource inspect is a centered, viewport-capped dialog (scrollable body, height follows content). File apply diffs are the same centered, viewport-capped dialog (not pinned to a pane corner). The command palette (`⌘/Ctrl+K`) and the keyboard cheat sheet (`?`) are centered dialogs. Back (top left) and Esc leave the panel or dialog. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. The Library create-resource type picker is a centered dialog. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
 - Settings: labeled tabs **Harnesses | Project | Advanced**. One tab visible at a time. Project tab: project directory picker (recent + Browse), raw `apm.yml` editor (Library Content mono chrome; save runs existing config validate and refuses on errors), icon-only Open config as the external-editor escape hatch (tooltip **Open config**), profile definition list, validation/load errors. It reads and writes `apm.yml` only. Marketplaces and catalogs are managed in Discover, not Settings.
 
 ## Layout
@@ -103,6 +103,12 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Discover re-click clears the search query, turns off **Show in library**, checks all sources, and returns to the list. Add/edit panels stay if open. Sidebar **Clear filters** uses the same filter defaults (empty search, **Show in library** off, every source checkbox checked).
 - Environments re-click clears the name filter and deselects. Create/edit full-screen panel stays if open.
 - Global and Project re-click clear the profile rail search and close edit-profile; the selected profile stays. Project re-click does not reopen the directory picker.
+
+**Keyboard**
+
+- `⌘/Ctrl+K` opens the command palette (destinations, profiles, settings, account, actions on the current screen, recent projects). `⌘/Ctrl+1..3` jump to Library / Discover / Environments. `[` / `]` switch scope. `/` focuses the current workspace filter. `?` opens the shortcut cheat sheet. `Esc` dismisses the top overlay layer, else Back.
+- Shortcuts with a modifier work while typing. `[`, `]`, `/`, and `?` do not.
+- Row lists (Library, inventory, Discover, Environments, command palette) share the listbox recipe: `role="listbox"` / `option`, Arrow/Home/End, Enter activates. Typeahead is first-letter prefix, wrapping once.
 
 **Scope (Global / Project)**
 
@@ -163,6 +169,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 - Resource hover cards sit at the pointer and close when the pointer leaves.
 - Profile rail order is a desktop-only localStorage preference.
+- Shared listbox keyboard lives in `src/lib/listbox-nav.ts`. The command palette uses it; Library / inventory / Discover / Environments adopt the same recipe.
 
 ## Privacy
 

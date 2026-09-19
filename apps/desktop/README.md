@@ -45,6 +45,22 @@ bun src/agent/entry.ts
 
 Set `VITE_AGENT_URL=http://127.0.0.1:7474` and `VITE_AGENT_TOKEN=$(cat ~/.harnesstap/agent-token)` when testing mutating routes in the browser.
 
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `⌘/Ctrl+K` | Command palette |
+| `⌘/Ctrl+1` | Go to Library |
+| `⌘/Ctrl+2` | Go to Discover |
+| `⌘/Ctrl+3` | Go to Environments |
+| `[` | Switch to Global |
+| `]` | Switch to Project |
+| `/` | Focus the current workspace filter |
+| `?` | Keyboard shortcuts |
+| `Esc` | Dismiss the top overlay, else Back |
+
+`?` lists the same table in-app. Workspace-specific actions (Create resource, Apply, Add marketplace, and so on) appear under **Actions on this screen** in the palette.
+
 ## Build packaged app
 
 ```bash

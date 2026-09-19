@@ -163,6 +163,7 @@ export function SourceSidebar({
             placeholder="Search to add"
             aria-label="Search to add"
             value={query}
+            data-workspace-filter=""
             onChange={(event) => {
               const next = event.target.value;
               applySidebarChange(() => onQueryChange(next));

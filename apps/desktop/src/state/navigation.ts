@@ -10,6 +10,20 @@ import {
 export type { Destination } from "../lib/header-destination";
 export type { Scope } from "../lib/api/scope";
 
+/** ⌘/Ctrl+1..3. Other keys return null. */
+export function destinationForNumberKey(key: string): Destination | null {
+  switch (key) {
+    case "1":
+      return "library";
+    case "2":
+      return "discover";
+    case "3":
+      return "environments";
+    default:
+      return null;
+  }
+}
+
 export interface NavigationState {
   destination: Destination;
   scope: Scope;

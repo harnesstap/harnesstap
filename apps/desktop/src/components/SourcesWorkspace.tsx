@@ -29,6 +29,7 @@ import {
 } from "../lib/api/sources";
 import { fetchPluginOriginCheck, type PluginOriginCheckRow } from "../lib/api/plugin-origin-update";
 import { workspaceBackEnabled } from "../lib/screen-history";
+import { useRegisterCommands } from "../state/command-registry";
 import {
   popSourcesPane,
   sourcesEscapeAction,
@@ -192,6 +193,33 @@ export function SourcesWorkspace({
   const [editingMarketplace, setEditingMarketplace] =
     useState<PluginMarketplaceEntry | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const discoverCommandsLocked = disabled || !baseUrl;
+  useRegisterCommands(
+    "discover",
+    useMemo(
+      () => [
+        {
+          id: "discover-add-marketplace",
+          section: "actions" as const,
+          label: "Add marketplace",
+          disabled: discoverCommandsLocked,
+          run: () => {
+            setMarketplaceMode("add");
+            setEditingMarketplace(null);
+            setMarketplaceOpen(true);
+          },
+        },
+        {
+          id: "discover-connect-catalog",
+          section: "actions" as const,
+          label: "Connect catalog",
+          disabled: discoverCommandsLocked,
+          run: () => setCatalogOpen(true),
+        },
+      ],
+      [discoverCommandsLocked],
+    ),
+  );
   const [pinOpen, setPinOpen] = useState(false);
   const [pinMode, setPinMode] = useState<"pin" | "attach">("pin");
   const [actionError, setActionError] = useState<string | null>(null);

@@ -140,11 +140,13 @@ function ListSearchField({
   onChange,
   placeholder,
   label,
+  workspaceFilter = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   label: string;
+  workspaceFilter?: boolean;
 }) {
   return (
     <label className="list-search">
@@ -155,6 +157,7 @@ function ListSearchField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
+        data-workspace-filter={workspaceFilter ? "" : undefined}
       />
     </label>
   );
@@ -2190,6 +2193,7 @@ export function LiveStatePanel({
             <>
               <ListSearchField
                 value={inventorySearch}
+                workspaceFilter
                 onChange={(value) => {
                   setInventorySearch(value);
                   setInventoryVisible(LIST_PAGE_SIZE);

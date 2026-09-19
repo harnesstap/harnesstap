@@ -183,6 +183,7 @@ export function ResourceFilterSidebar({
             type="search"
             placeholder="Filter by name"
             value={state.search}
+            data-workspace-filter=""
             onChange={(event) =>
               onChange({ ...state, search: event.target.value })
             }

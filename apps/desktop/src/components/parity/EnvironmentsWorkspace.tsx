@@ -17,6 +17,7 @@ import {
   type EnvironmentShowPayload,
 } from "../../lib/api/environments";
 import { EnvironmentDrawer } from "./EnvironmentDrawer";
+import { useRegisterCommands } from "../../state/command-registry";
 
 const ACTION_ICON_SIZE = 16;
 
@@ -89,6 +90,25 @@ export function EnvironmentsWorkspace({
   const [forceChecked, setForceChecked] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  useRegisterCommands(
+    "environments",
+    useMemo(
+      () => [
+        {
+          id: "environments-create",
+          section: "actions" as const,
+          label: "Create environment",
+          disabled: controlsDisabled || !baseUrl,
+          run: () => {
+            setDrawerMode("create");
+            setEditName(undefined);
+            setDrawerOpen(true);
+          },
+        },
+      ],
+      [baseUrl, controlsDisabled],
+    ),
+  );
 
   const refresh = useCallback(() => {
     setReloadKey((value) => value + 1);
@@ -239,6 +259,7 @@ export function EnvironmentsWorkspace({
                 placeholder="Filter environments"
                 aria-label="Filter environments"
                 value={query}
+                data-workspace-filter=""
                 onChange={(event) => setQuery(event.target.value)}
                 disabled={controlsDisabled}
               />
