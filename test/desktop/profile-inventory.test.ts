@@ -2,12 +2,16 @@ import { describe, expect, it } from "bun:test";
 import { flattenProfileResourceList } from "../../apps/desktop/src/lib/contents-diff.ts";
 import {
   PROFILE_INVENTORY_SECTION_ORDER,
+  applyOptimisticInventoryMoves,
   collectTypeTabAttention,
   countInventoryTypeTabs,
+  emptyInventoryTypeTabs,
+  emptyTypesPillLabel,
   filterProfileInventoryItems,
   inventoryMembershipCaption,
   partitionProfileInventory,
   profileInventoryOpenTarget,
+  settleInChunks,
 } from "../../apps/desktop/src/lib/profile-inventory.ts";
 import {
   resourceTypeTabItemCount,
@@ -401,5 +405,58 @@ describe("profileInventoryOpenTarget", () => {
       },
     });
     expect(pin.kind).toBe("resource");
+  });
+});
+
+describe("empty inventory type pills", () => {
+  it("lists zero-count real types and formats +N empty", () => {
+    const counts = new Map([
+      ["plugin", 2],
+      ["skill", 0],
+      ["mcp_server", 0],
+    ]);
+    const empty = emptyInventoryTypeTabs(counts);
+    expect(empty).toContain("skill");
+    expect(empty).toContain("mcp_server");
+    expect(empty).not.toContain("plugin");
+    expect(empty).not.toContain("plugin_ref");
+    expect(emptyTypesPillLabel(empty.length)).toBe(`+${empty.length} empty`);
+  });
+});
+
+describe("optimistic inventory moves", () => {
+  it("relocates a row by membership key", () => {
+    const item = {
+      section: "not_in_profile" as const,
+      key: "k",
+      type: "skill",
+      label: "ship",
+      resource: { type: "skill", name: "ship" },
+      drifted: false,
+    };
+    const moved = applyOptimisticInventoryMoves(
+      [item],
+      new Map([["skill:ship", "inactive"]]),
+    );
+    expect(moved[0]?.section).toBe("inactive");
+  });
+});
+
+describe("settleInChunks", () => {
+  it("runs workers in chunks of four and reports progress", async () => {
+    const seen: number[] = [];
+    const results = await settleInChunks(
+      [1, 2, 3, 4, 5],
+      4,
+      async (value) => {
+        seen.push(value);
+      },
+      (done) => {
+        seen.push(done + 100);
+      },
+    );
+    expect(results).toHaveLength(5);
+    expect(seen.filter((value) => value < 100)).toEqual([1, 2, 3, 4, 5]);
+    expect(seen.filter((value) => value >= 100)).toEqual([104, 105]);
   });
 });

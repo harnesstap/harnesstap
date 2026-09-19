@@ -31,11 +31,22 @@ describe("desktop profile rail drag and drop", () => {
     expect(appSource).toMatch(/profileFilter\.trim\(\)/);
   });
 
-  test("marks dragging and drop-target rows in CSS with accent", () => {
+  test("marks dragging and drop-target rows in CSS with a 2px accent line", () => {
     expect(cssSource).toContain(".profile-item.dragging");
     expect(cssSource).toContain(".profile-item.drop-target-before");
     expect(cssSource).toContain(".profile-item.drop-target-after");
-    expect(cssSource).toContain("var(--accent)");
+    expect(cssSource).toContain("0 -2px 0 var(--accent)");
+    expect(cssSource).toContain("0 2px 0 var(--accent)");
+  });
+
+  test("exposes a GripVertical handle and Alt arrow keyboard reorder", () => {
+    expect(appSource).toContain("GripVertical");
+    expect(appSource).toContain("profile-item-handle");
+    expect(appSource).toContain("moveNameByDelta");
+    expect(appSource).toContain("ArrowUp");
+    expect(appSource).toContain("ArrowDown");
+    expect(designSource).toContain("GripVertical");
+    expect(designSource).toContain("Alt+↑/↓");
   });
 
   test("DESIGN.md records desktop-only rail order", () => {

@@ -3,6 +3,7 @@ import {
   applyProfileRailOrder,
   insertBeforeIndexForDrop,
   loadProfileRailOrder,
+  moveNameByDelta,
   pinNameFirst,
   PROFILE_RAIL_ORDER_STORAGE_KEY,
   resolveRailProfileSelection,
@@ -84,7 +85,7 @@ describe("resolveRailProfileSelection", () => {
     ).toBe("alpha");
   });
 
-  test("keeps an explicit user pick and an empty session selection", () => {
+  test("keeps an explicit user pick; empty intent falls back to active then first", () => {
     expect(
       resolveRailProfileSelection({
         visibleNames: ["alpha", "work"],
@@ -100,7 +101,7 @@ describe("resolveRailProfileSelection", () => {
         selectedName: null,
         intent: "empty",
       }),
-    ).toBeNull();
+    ).toBe("work");
   });
 
   test("falls back to active when a user pick is no longer visible", () => {
@@ -141,6 +142,18 @@ describe("insertBeforeIndexForDrop", () => {
 
   test("inserts after the target on the lower half", () => {
     expect(insertBeforeIndexForDrop(2, true)).toBe(3);
+  });
+});
+
+describe("moveNameByDelta", () => {
+  test("moves a focused row up or down by one slot", () => {
+    expect(moveNameByDelta(["a", "b", "c"], "b", -1)).toEqual(["b", "a", "c"]);
+    expect(moveNameByDelta(["a", "b", "c"], "b", 1)).toEqual(["a", "c", "b"]);
+  });
+
+  test("no-ops at the ends", () => {
+    expect(moveNameByDelta(["a", "b", "c"], "a", -1)).toEqual(["a", "b", "c"]);
+    expect(moveNameByDelta(["a", "b", "c"], "c", 1)).toEqual(["a", "b", "c"]);
   });
 });
 

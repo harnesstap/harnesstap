@@ -88,7 +88,7 @@ export function PluginCompositionFields({
             <div className="banner error">{marketplaceError}</div>
           ) : marketplaces.length === 0 ? (
             <p className="muted">
-              No marketplaces registered. Add one in Settings.
+              No marketplaces registered. Add one in Discover.
             </p>
           ) : (
             <div className="edit-plugin-pin">

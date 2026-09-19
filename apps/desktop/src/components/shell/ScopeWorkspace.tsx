@@ -1,16 +1,12 @@
-import { Check, FileDiff, Pencil, Tag, TextQuote, X } from "lucide-react";
+import { useRef } from "react";
+import { Check, FileDiff, Pencil, Plus, Tag, TextQuote } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
   shouldShowPendingApprovalsStrip,
 } from "../../lib/pending-approvals";
-import {
-  orderedSwitchSteps,
-  SWITCH_STEP_LABELS,
-  type ProfileCreateSource,
-  type ProfileSwitchStep,
-  type ProfileSwitchStepEvent,
-} from "../../lib/types";
+import { scopeStatusLine } from "../../lib/reapply";
+import { type ProfileCreateSource } from "../../lib/types";
 import type { ScopeController } from "../../state/scope-controller";
 import { useStatusStore } from "../../state/status-store";
 import { toast } from "../../state/toast-store";
@@ -18,6 +14,8 @@ import { EditProfilePane } from "../EditProfilePane";
 import { FieldIdentityIcon } from "../FieldIdentityIcon";
 import { IconActionButton } from "../IconActionButton";
 import { LiveStatePanel } from "../LiveStatePanel";
+import { ApplyProgressStrip, isApplyStepActive, stepState } from "../live/ApplyProgressStrip";
+import { Collapse } from "../motion/Collapse";
 import { PendingApprovalsStrip } from "../PendingApprovalsStrip";
 import { ProfileDeleteControls } from "../parity/ProfileDeleteControls";
 import { Banner } from "./Banner";
@@ -25,30 +23,7 @@ import { ProfilesRail } from "./ProfilesRail";
 
 const HEADER_ICON_SIZE = 18;
 
-export function stepState(
-  step: ProfileSwitchStep,
-  events: ProfileSwitchStepEvent[],
-): "pending" | "current" | "done" | "failed" {
-  const related = events.filter((event) => event.step === step);
-  if (related.some((event) => event.status === "failed")) {
-    return "failed";
-  }
-  if (related.some((event) => event.status === "completed")) {
-    return "done";
-  }
-  if (related.some((event) => event.status === "started")) {
-    return "current";
-  }
-  return "pending";
-}
-
-export function isApplyStepActive(events: ProfileSwitchStepEvent[]): boolean {
-  return events.some(
-    (event) =>
-      (event.step === "apply_home" || event.step === "apply_project")
-      && event.status === "started",
-  );
-}
+export { isApplyStepActive, stepState };
 
 export interface ScopeWorkspaceProps {
   ctrl: ScopeController;
@@ -90,7 +65,6 @@ export function ScopeWorkspace({
     view,
     selectedProfile,
     selectedProfileSummary,
-    selectedIsActive,
     editingProfile,
     activeProfile,
     projectPath,
@@ -105,6 +79,7 @@ export function ScopeWorkspace({
   const actionsEnabled = connected && Boolean(token) && !switching;
   const selectedProfileMetaTags =
     selectedProfileSummary?.tags.filter((tag) => tag !== "profile") ?? [];
+  const editCloseGuardRef = useRef<(() => boolean) | null>(null);
 
   return (
     <>
@@ -113,6 +88,9 @@ export function ScopeWorkspace({
         canGoBack={scopeCanGoBack}
         onBack={() => {
           if (editingProfile) {
+            if (editCloseGuardRef.current && !editCloseGuardRef.current()) {
+              return;
+            }
             ctrl.closeEditProfile();
             return;
           }
@@ -136,6 +114,9 @@ export function ScopeWorkspace({
           onDeleted={ctrl.handleProfileDeleted}
           onCreateEnvironment={onCreateEnvironment}
           onSuccess={(message) => toast({ tone: "success", title: message })}
+          onRegisterCloseGuard={(guard) => {
+            editCloseGuardRef.current = guard;
+          }}
           onRequestCut={
             editingProfile && client && token
               ? (name, version) => ctrl.openCutForProfile(name, version)
@@ -208,7 +189,6 @@ export function ScopeWorkspace({
                         {selectedProfile}
                       </button>
                     )}
-                    {selectedIsActive ? <span className="badge">active</span> : null}
                     {selectedProfileSummary?.version ? (
                       <span className="badge badge-meta">
                         v{selectedProfileSummary.version}
@@ -225,6 +205,38 @@ export function ScopeWorkspace({
                   "No profile selected"
                 )}
               </div>
+              {selectedProfile ? (() => {
+                const line = scopeStatusLine({
+                  selectedProfile,
+                  activeProfile,
+                  applied: ctrl.applied,
+                  fileChangeCount: applyPreview?.files.changes.length ?? 0,
+                });
+                if (line.kind === "none") {
+                  return null;
+                }
+                return (
+                  <div className="muted status-subline status-apply-line" data-testid="scope-status-line">
+                    {line.kind === "active_differ" ? (
+                      <>
+                        {line.text}{" "}
+                        <button
+                          type="button"
+                          className="status-view-changes"
+                          onClick={() => {
+                            ctrl.setPreviewChanges(true);
+                            ctrl.setInventoryEditMode(false);
+                          }}
+                        >
+                          View changes
+                        </button>
+                      </>
+                    ) : (
+                      line.text
+                    )}
+                  </div>
+                );
+              })() : null}
               {selectedProfile ? (
                 <div className="muted status-subline status-description">
                   <FieldIdentityIcon
@@ -316,47 +328,49 @@ export function ScopeWorkspace({
             />
           )}
 
-          {switching ? (
-            <section aria-label="Apply progress">
-              <h2 style={{ margin: 0, fontSize: "0.95rem" }}>Applying…</h2>
-              <ol className="steps">
-                {orderedSwitchSteps(view).map((step) => {
-                  const state = stepState(step, ctrl.switchEvents);
-                  return (
-                    <li
-                      key={step}
-                      className={
-                        state === "current"
-                          ? "cur"
-                          : state === "done"
-                            ? "done"
-                            : state === "failed"
-                              ? "cur"
-                              : ""
-                      }
-                    >
-                      {SWITCH_STEP_LABELS[step]}
-                      {state === "failed" ? " (failed)" : ""}
-                    </li>
-                  );
-                })}
-              </ol>
-              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-                <IconActionButton
-                  label="Cancel"
-                  disabled={isApplyStepActive(ctrl.switchEvents)}
-                  onClick={() => void ctrl.onCancelSwitch()}
-                  icon={<X size={16} strokeWidth={2} aria-hidden="true" />}
-                />
-              </div>
-            </section>
+          {ctrl.visibleProfiles.length === 0 && !ctrl.profilesError ? (
+            <div className="scope-first-run" data-testid="scope-first-run">
+              <h2>Create your first profile</h2>
+              <p className="muted">
+                Profiles group the skills, plugins, and rules you apply to this
+                {scope === "project" ? " project" : " machine"}.
+              </p>
+              <button
+                type="button"
+                className="btn primary"
+                data-testid="open-create-profile"
+                disabled={!connected}
+                onClick={() => onOpenCreateProfile("compose")}
+              >
+                <Plus size={16} strokeWidth={2} aria-hidden="true" />
+                Create profile
+              </button>
+            </div>
           ) : (
+            <>
+          <Collapse open={ctrl.switching || ctrl.switchSuccessHold}>
+            <ApplyProgressStrip
+              scope={view}
+              events={ctrl.switchEvents}
+              label={ctrl.switchProgressLabel ?? "Applying…"}
+              success={ctrl.switchSuccessHold && !ctrl.switching}
+              onCancel={() => void ctrl.onCancelSwitch()}
+            />
+          </Collapse>
+          <div
+            className={
+              ctrl.switching || ctrl.switchSuccessHold
+                ? "scope-inventory-locked"
+                : undefined
+            }
+          >
             <LiveStatePanel
               view={view}
               formatView={formatView}
               onOpenPlugin={onOpenPlugin}
               selectedProfile={selectedProfile}
               activeProfile={activeProfile}
+              applied={ctrl.applied}
               liveContents={status?.contents}
               applyPreview={applyPreview}
               applyPreviewLoading={preview.refreshing && !applyPreview}
@@ -369,6 +383,7 @@ export function ScopeWorkspace({
               baseUrl={baseUrl}
               token={token}
               bootstrapBusy={bootstrapBusy}
+              projectReady={ctrl.projectReady}
               onBootstrap={onBootstrap}
               onCreateProfileFromProject={() => {
                 onOpenCreateProfile("project", true);
@@ -377,6 +392,16 @@ export function ScopeWorkspace({
                 selectedProfile ? () => ctrl.openEditProfile(selectedProfile) : undefined
               }
               onAddResource={ctrl.handleAddResource}
+              onAfterAdds={
+                selectedProfile
+                  ? (addedName) =>
+                      ctrl.maybeAutoReapplyAfterMutation({
+                        profileName: selectedProfile,
+                        affectsApply: true,
+                        addedName,
+                      })
+                  : undefined
+              }
               onAddAllResources={
                 actionsEnabled
                   ? (resources) => ctrl.handleAddAllResources(undefined, resources)
@@ -426,6 +451,8 @@ export function ScopeWorkspace({
               onSuccess={(message) => toast({ tone: "success", title: message })}
               onLibraryChanged={ctrl.onLibraryChanged}
             />
+          </div>
+            </>
           )}
 
           {ctrl.addResourceError && !switching ? (

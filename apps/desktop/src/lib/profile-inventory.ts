@@ -3,6 +3,8 @@ import {
   ALL_RESOURCE_TYPE_TAB,
   countResourceTypeTabs,
   foldResourceTypeTab,
+  RESOURCE_TYPE_TAB_ORDER,
+  resourceTypeTabLabel,
   type TypeTabAttention,
 } from "./resource-type-tabs";
 import type { ProfileResourceListRow } from "./contents-diff";
@@ -16,6 +18,12 @@ export const PROFILE_INVENTORY_SECTION_ORDER = [
   "inactive",
   "active",
 ] as const;
+
+/** Fixed row height for virtualization (type icon + name + action). */
+export const INVENTORY_ROW_HEIGHT_PX = 40;
+
+/** Parallel Add all / Activate all workers per tick. */
+export const MUTATION_CHUNK_SIZE = 4;
 
 export type ProfileInventorySectionId =
   (typeof PROFILE_INVENTORY_SECTION_ORDER)[number];
@@ -61,7 +69,9 @@ export interface PartitionProfileInventoryInput {
   fileChanges?: DriftFileChange[];
 }
 
-function membershipKey(resource: Pick<ProfileContentsResource, "type" | "name">): string {
+export function membershipKey(
+  resource: Pick<ProfileContentsResource, "type" | "name">,
+): string {
   return `${resource.type}:${resource.name}`;
 }
 
@@ -290,4 +300,55 @@ export function collectTypeTabAttention(
     byType.set(ALL_RESOURCE_TYPE_TAB, all);
   }
   return byType;
+}
+
+/** Canonical real types with a zero count (plugin refs stay hidden). */
+export function emptyInventoryTypeTabs(
+  counts: ReadonlyMap<string, number>,
+): string[] {
+  return RESOURCE_TYPE_TAB_ORDER.filter((type) => {
+    if (type === "plugin_ref") {
+      return false;
+    }
+    return (counts.get(type) ?? 0) <= 0;
+  });
+}
+
+export function emptyTypesPillLabel(count: number): string {
+  return `+${count} empty`;
+}
+
+export function emptyTypesPillTooltip(types: readonly string[]): string {
+  return types.map((type) => resourceTypeTabLabel(type)).join(", ");
+}
+
+export function applyOptimisticInventoryMoves(
+  items: ProfileInventoryItem[],
+  moves: ReadonlyMap<string, ProfileInventorySectionId>,
+): ProfileInventoryItem[] {
+  return items.map((item) => {
+    const next = moves.get(membershipKey(item.resource));
+    if (!next || next === item.section) {
+      return item;
+    }
+    return { ...item, section: next };
+  });
+}
+
+export async function settleInChunks<T>(
+  items: readonly T[],
+  chunkSize: number,
+  worker: (item: T) => Promise<void>,
+  onProgress?: (done: number, total: number) => void,
+): Promise<PromiseSettledResult<void>[]> {
+  const results: PromiseSettledResult<void>[] = [];
+  const total = items.length;
+  const size = Math.max(1, chunkSize);
+  for (let index = 0; index < items.length; index += size) {
+    const chunk = items.slice(index, index + size);
+    const settled = await Promise.allSettled(chunk.map((item) => worker(item)));
+    results.push(...settled);
+    onProgress?.(results.length, total);
+  }
+  return results;
 }

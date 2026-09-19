@@ -4,7 +4,7 @@ import {
   ArchiveRestore,
   Check,
   FilterX,
-  ListPlus,
+  GripVertical,
   Pencil,
   Plus,
   RefreshCw,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import {
   insertBeforeIndexForDrop,
+  moveNameByDelta,
   reorderProfileNames,
 } from "../../lib/profile-rail-order";
 import type { ProfileCreateSource } from "../../lib/types";
@@ -66,8 +67,6 @@ export function ProfilesRail({
     canUnstashProfile,
     stashDisabledReason,
     untrackedCount,
-    activeProfileUntrackedCount,
-    addingAllResources,
   } = ctrl;
   const token = client?.token ?? null;
   const topStashEntry = stashEntries[0];
@@ -295,12 +294,12 @@ export function ProfilesRail({
           disabled={!connected || switching || visibleProfiles.length === 0}
           aria-label="Filter profiles by name, description, or tags"
         />
-        {selectedProfile ? (
+        {profileFilter.trim() ? (
           <IconActionButton
             label="Clear"
             title="Clear"
             disabled={switching}
-            onClick={ctrl.clearProfileSelection}
+            onClick={ctrl.clearProfileFilter}
             icon={<X size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
           />
         ) : null}
@@ -334,7 +333,7 @@ export function ProfilesRail({
             </h2>
             <p className="muted">
               {profiles.length === 0 ? (
-                <>Waiting for the sidecar to seed a default profile…</>
+                <>Create a profile to apply harness files.</>
               ) : scope === "project" ? (
                 <>
                   Profiles listed in this project&apos;s{" "}
@@ -375,7 +374,6 @@ export function ProfilesRail({
         {filteredProfiles.map((profile) => {
           const isActive = profile.name === activeProfile;
           const isSelected = profile.name === selectedProfile;
-          const showAddAll = isActive && activeProfileUntrackedCount > 0;
           const isDragging = draggingProfile === profile.name;
           const isDropBefore =
             dropTarget !== "end" && dropTarget?.name === profile.name && !dropTarget.placeAfter;
@@ -396,11 +394,32 @@ export function ProfilesRail({
                 .join(" ")}
               draggable={canReorderProfiles}
               aria-grabbed={isDragging}
+              tabIndex={canReorderProfiles ? 0 : undefined}
               onDragStart={(event) => onProfileDragStart(event, profile.name)}
               onDragOver={(event) => onProfileRowDragOver(event, profile.name)}
               onDrop={(event) => onProfileRowDrop(event, profile.name)}
               onDragEnd={onProfileDragEnd}
+              onKeyDown={(event) => {
+                if (!canReorderProfiles) {
+                  return;
+                }
+                if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+                  event.preventDefault();
+                  const names = visibleProfiles.map((entry) => entry.name);
+                  const next = moveNameByDelta(
+                    names,
+                    profile.name,
+                    event.key === "ArrowUp" ? -1 : 1,
+                  );
+                  if (next.some((name, index) => name !== names[index])) {
+                    persistRailOrder(next);
+                  }
+                }
+              }}
             >
+              <span className="profile-item-handle" aria-hidden>
+                <GripVertical size={RAIL_ICON_SIZE} strokeWidth={2} />
+              </span>
               <button
                 type="button"
                 className="profile-item-main"
@@ -413,10 +432,6 @@ export function ProfilesRail({
                 onClick={() => {
                   if (skipProfileClickRef.current) {
                     skipProfileClickRef.current = false;
-                    return;
-                  }
-                  if (isSelected) {
-                    ctrl.clearProfileSelection();
                     return;
                   }
                   ctrl.selectProfile(profile.name);
@@ -440,32 +455,27 @@ export function ProfilesRail({
                 onClick={() => ctrl.openEditProfile(profile.name)}
                 icon={<Pencil size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
               />
-              {showAddAll ? (
-                <IconActionButton
-                  className="profile-item-action"
-                  busy={addingAllResources}
-                  draggable={false}
-                  onDragStart={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  disabled={
-                    !connected || !token || switching || addingAllResources || stashBusy
-                  }
-                  onClick={() => {
-                    void ctrl.handleAddAllResources(activeProfile ?? undefined);
-                  }}
-                  label={`Add not-staged items to ${profile.name}`}
-                  title={`Add ${activeProfileUntrackedCount} not-staged item${activeProfileUntrackedCount === 1 ? "" : "s"} to this profile`}
-                  icon={<ListPlus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                />
-              ) : null}
             </div>
           );
         })}
       </div>
       <div className="rail-controls">
-        {ctrl.applyHelper ? <p className="muted apply-helper">{ctrl.applyHelper}</p> : null}
+        {ctrl.applyHelperState.kind === "changes" ? (
+          <p className="muted apply-helper">
+            {ctrl.applyHelperState.changeCount}{" "}
+            {ctrl.applyHelperState.changeCount === 1 ? "change" : "changes"}
+            {" · "}
+            <button
+              type="button"
+              className="apply-helper-preview"
+              onClick={() => ctrl.setPreviewChanges(true)}
+            >
+              Preview
+            </button>
+          </p>
+        ) : ctrl.applyHelper ? (
+          <p className="muted apply-helper">{ctrl.applyHelper}</p>
+        ) : null}
         <button
           className={["btn", "primary", "rail-apply-action", switching ? "is-busy" : ""]
             .filter(Boolean)

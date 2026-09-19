@@ -93,8 +93,20 @@
   pointer-events: none;
 }
 
+.profile-item-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-action-size);
+  color: var(--muted);
+  opacity: 0;
+  flex-shrink: 0;
+}
+
 .profile-item:hover .profile-item-edit,
-.profile-item:focus-within .profile-item-edit {
+.profile-item:focus-within .profile-item-edit,
+.profile-item:hover .profile-item-handle,
+.profile-item:focus-within .profile-item-handle {
   opacity: 1;
   pointer-events: auto;
 }
@@ -118,11 +130,11 @@
 }
 
 .profile-item.drop-target-before {
-  box-shadow: inset 0 2px 0 var(--accent);
+  box-shadow: 0 -2px 0 var(--accent);
 }
 
 .profile-item.drop-target-after {
-  box-shadow: inset 0 -2px 0 var(--accent);
+  box-shadow: 0 2px 0 var(--accent);
 }
 
 .profiles-list.drop-target-end {
@@ -148,6 +160,19 @@
 .apply-helper {
   margin: 0 0 0.5rem;
   font-size: var(--text-meta);
+}
+
+.apply-helper-preview,
+.status-view-changes {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 .live-pane {
@@ -533,7 +558,8 @@
   flex-shrink: 0;
 }
 
-.live-pane > .scope-inventory-pane {
+.live-pane > .scope-inventory-pane,
+.live-pane > .scope-inventory-locked {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
@@ -543,13 +569,19 @@
 
 .scope-inventory-pane {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .scope-inventory-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  padding-bottom: calc(var(--space-8) * 2 + var(--space-2));
 }
 
 .scope-inventory-list {
@@ -642,8 +674,8 @@
 
 .scope-add-modal {
   width: min(40rem, calc(100vw - 2rem));
-  height: min(48rem, calc(100vh - 2rem));
-  max-height: min(48rem, calc(100vh - 2rem));
+  height: auto;
+  max-height: 70vh;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -1590,4 +1622,142 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.apply-progress-strip {
+  background: var(--tint-yellow);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.apply-progress-strip-success {
+  background: var(--tint-green);
+}
+
+.apply-progress-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.apply-progress-strip-head h2 {
+  margin: 0;
+  font-size: var(--text-body);
+}
+
+.apply-progress-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.apply-progress-steps li.failed {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.scope-inventory-locked {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.scope-inventory-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.resource-type-tab-empty-pill {
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  background: transparent;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 999px;
+  font-size: var(--text-micro);
+  font-family: var(--mono);
+}
+
+.resource-row.inventory-row {
+  height: calc(var(--space-8) + var(--space-2));
+  min-height: calc(var(--space-8) + var(--space-2));
+  align-items: center;
+}
+
+.inventory-row .resource-row-name {
+  text-decoration: none;
+}
+
+.inventory-row:hover {
+  background: var(--surface-hover);
+}
+
+.inventory-section-virtual {
+  position: relative;
+  width: 100%;
+}
+
+.inventory-section-hint,
+.inventory-batch-progress {
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-2);
+  font-size: var(--text-meta);
+}
+
+.edit-profile-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.edit-profile-footer .btn {
+  width: auto;
+}
+
+.btn.destructive {
+  background: var(--red);
+  border-color: transparent;
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+
+.btn.destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red) 88%, var(--fg));
+}
+
+.scope-first-run {
+  max-width: 20rem;
+  margin: var(--space-8) auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.scope-first-run h2 {
+  margin: 0;
+  font-size: var(--text-title);
+}
+
+.scope-first-run .btn {
+  width: auto;
+}
+
+.scope-add-modal-virtual {
+  position: relative;
+  width: 100%;
+}
+
+.status-apply-line {
+  font-weight: 500;
 }

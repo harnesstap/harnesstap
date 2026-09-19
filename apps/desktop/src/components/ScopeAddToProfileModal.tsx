@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Check, Plus, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -71,6 +72,7 @@ export function ScopeAddToProfileModal({
   onClose,
   onAdd,
   onCreate,
+  excludeProfileName = null,
 }: {
   open: boolean;
   disabled?: boolean;
@@ -82,6 +84,7 @@ export function ScopeAddToProfileModal({
   onClose: () => void;
   onAdd: (items: ScopeLibraryPick[]) => Promise<void>;
   onCreate?: () => void;
+  excludeProfileName?: string | null;
 }) {
   const titleId = useId();
   const closeRef = useDialogDismiss(open, onClose, disabled);
@@ -93,6 +96,8 @@ export function ScopeAddToProfileModal({
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [adding, setAdding] = useState(false);
+  const deferredSearch = useDeferredValue(search);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
@@ -143,15 +148,21 @@ export function ScopeAddToProfileModal({
   const available = useMemo(
     () =>
       entries.filter((entry) => {
+        if (
+          excludeProfileName
+          && (entry.name === excludeProfileName || entry.id === excludeProfileName)
+        ) {
+          return false;
+        }
         const type = libraryFilterType(entry);
         const key = `${type}:${entry.name}`;
         return !profileKeys.has(key) && !profileKeys.has(`${type}:${entry.id}`);
       }),
-    [entries, profileKeys],
+    [entries, excludeProfileName, profileKeys],
   );
   const searched = useMemo(
-    () => filterLibraryResourcesBySearch(available, search),
-    [available, search],
+    () => filterLibraryResourcesBySearch(available, deferredSearch),
+    [available, deferredSearch],
   );
   const typeCounts = useMemo(
     () =>
@@ -172,6 +183,12 @@ export function ScopeAddToProfileModal({
 
   const selectedCount = visible.filter((entry) => selectedIds.has(entry.id)).length;
   const controlsDisabled = disabled || adding;
+  const listVirtualizer = useVirtualizer({
+    count: visible.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 40,
+    overscan: 8,
+  });
 
   return (
     <Presence
@@ -247,50 +264,73 @@ export function ScopeAddToProfileModal({
               {error}
             </p>
           ) : null}
-          <div className="scope-add-modal-list">
+          <div ref={listRef} className="scope-add-modal-list">
             {loading ? (
               <p className="muted">Loading library…</p>
             ) : visible.length === 0 ? (
               <p className="muted">No matches.</p>
             ) : (
-              visible.map((entry) => {
-                const type = libraryFilterType(entry);
-                const checkboxId = `scope-add-${entry.id}`;
-                const checked = selectedIds.has(entry.id);
-                return (
-                  <ResourceRowRoot
-                    key={entry.id}
-                    hover={hoverModelFromLibraryResource(entry)}
-                    testId={`scope-add-row-${entry.name}`}
-                  >
-                    <ResourceRowLeading>
-                      <span className="resource-row-checkbox">
-                        <Checkbox
-                          id={checkboxId}
-                          checked={checked}
-                          disabled={controlsDisabled}
-                          onCheckedChange={() => {
-                            setSelectedIds((current) => {
-                              const next = new Set(current);
-                              if (next.has(entry.id)) {
-                                next.delete(entry.id);
-                              } else {
-                                next.add(entry.id);
-                              }
-                              return next;
-                            });
-                          }}
+              <div
+                className="scope-add-modal-virtual"
+                style={{ height: `${listVirtualizer.getTotalSize()}px` }}
+              >
+                {listVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const entry = visible[virtualRow.index];
+                  if (!entry) {
+                    return null;
+                  }
+                  const type = libraryFilterType(entry);
+                  const checkboxId = `scope-add-${entry.id}`;
+                  const checked = selectedIds.has(entry.id);
+                  return (
+                    <div
+                      key={entry.id}
+                      className="scope-add-virtual-row"
+                      data-index={virtualRow.index}
+                      ref={listVirtualizer.measureElement}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <ResourceRowRoot
+                        hover={hoverModelFromLibraryResource(entry)}
+                        testId={`scope-add-row-${entry.name}`}
+                      >
+                        <ResourceRowLeading>
+                          <span className="resource-row-checkbox">
+                            <Checkbox
+                              id={checkboxId}
+                              checked={checked}
+                              disabled={controlsDisabled}
+                              onCheckedChange={() => {
+                                setSelectedIds((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(entry.id)) {
+                                    next.delete(entry.id);
+                                  } else {
+                                    next.add(entry.id);
+                                  }
+                                  return next;
+                                });
+                              }}
+                            />
+                          </span>
+                        </ResourceRowLeading>
+                        <ResourceRowIdentity
+                          type={type}
+                          label={resourceDisplayName(entry)}
+                          htmlFor={checkboxId}
                         />
-                      </span>
-                    </ResourceRowLeading>
-                    <ResourceRowIdentity
-                      type={type}
-                      label={resourceDisplayName(entry)}
-                      htmlFor={checkboxId}
-                    />
-                  </ResourceRowRoot>
-                );
-              })
+                      </ResourceRowRoot>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
           <div className="dialog-actions">

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { readLiveInventorySource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const sidebarSource = readFileSync(
@@ -34,10 +35,7 @@ const compositionSource = readFileSync(
   ),
   "utf8",
 );
-const liveStateSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/components/LiveStatePanel.tsx"),
-  "utf8",
-);
+const liveStateSource = readLiveInventorySource();
 
 function cssBlock(source: string, selector: string): string {
   const needle = `\n${selector} {`;
@@ -157,11 +155,8 @@ describe("library origin filter chrome", () => {
     expect(panelSource).not.toContain("density=");
     expect(compositionSource).toContain("<ResourceTypeTabs");
     expect(compositionSource).not.toContain("density=");
-    const inventory = liveStateSource.slice(
-      liveStateSource.indexOf("scope-inventory-pane"),
-    );
-    expect(inventory).toContain("<ResourceTypeTabs");
-    expect(inventory).not.toContain('density="compact"');
+    expect(liveStateSource).toContain("<ResourceTypeTabs");
+    expect(liveStateSource).not.toContain('density="compact"');
     const typeBadges = liveStateSource.slice(
       liveStateSource.indexOf("function TargetPreviewTypeBadges"),
       liveStateSource.indexOf("function stackChangeToneIcon"),
@@ -177,14 +172,14 @@ describe("library origin filter chrome", () => {
     expect(designSource).toContain("Library, Global/Project inventory");
   });
 
-  test("Library keeps the All tab; Global/Project inventory keeps All with empty types disabled", () => {
+  test("Library keeps the All tab; Global/Project inventory keeps All with empty types in a trailing pill", () => {
     expect(tabsSource).toContain("includeAll = true");
     expect(panelSource).toContain("<ResourceTypeTabs");
     expect(panelSource).not.toContain("includeAll={false}");
     expect(compositionSource).toContain("<ResourceTypeTabs");
     expect(compositionSource).not.toContain("includeAll={false}");
     expect(liveStateSource).toContain("includeAll={true}");
-    expect(liveStateSource).toContain("emptyMode=\"disable\"");
+    expect(liveStateSource).toContain("emptyMode=\"hide\"");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

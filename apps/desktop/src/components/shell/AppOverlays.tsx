@@ -235,7 +235,8 @@ export function AppOverlays({
             snapshot. Continuing will overwrite those owned keys.
           </p>
         }
-        confirmLabel={showReapply ? "Re-apply anyway" : "Switch anyway"}
+        confirmLabel={showReapply ? "Re-apply anyway" : "Apply anyway"}
+        tone="destructive"
         onConfirm={ctrl.onConfirmOverwrite}
         onCancel={() => ctrl.setOverwriteDialog(false)}
       >

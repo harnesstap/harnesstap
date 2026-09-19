@@ -23,3 +23,11 @@ export function readDesktopShellSource(): string {
     readDir(join(DESKTOP_SRC, "state")),
   ].join("\n");
 }
+
+/** Live-state panel plus the WP6 `components/live` split. */
+export function readLiveInventorySource(): string {
+  return [
+    readFileSync(join(DESKTOP_SRC, "components/LiveStatePanel.tsx"), "utf8"),
+    readDir(join(DESKTOP_SRC, "components/live")),
+  ].join("\n");
+}

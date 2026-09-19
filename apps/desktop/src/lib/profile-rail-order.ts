@@ -62,7 +62,9 @@ export type ProfileSelectionIntent = "unset" | "empty" | "user";
 
 /**
  * Default rail selection: the applied/active profile for this view when it is
- * visible. Keep an explicit user pick (including empty) within the session.
+ * visible. Keep an explicit user pick. There is always a selected profile when
+ * the rail is non-empty (fallback: active, then first). `empty` is treated as
+ * unset so re-click cannot clear selection.
  */
 export function resolveRailProfileSelection(input: {
   visibleNames: readonly string[];
@@ -71,9 +73,6 @@ export function resolveRailProfileSelection(input: {
   intent: ProfileSelectionIntent;
 }): string | null {
   if (input.visibleNames.length === 0) {
-    return null;
-  }
-  if (input.intent === "empty") {
     return null;
   }
   if (
@@ -87,6 +86,24 @@ export function resolveRailProfileSelection(input: {
     return input.activeName;
   }
   return input.visibleNames[0] ?? null;
+}
+
+/** Move a focused row up or down by one slot. No-op at the ends. */
+export function moveNameByDelta(
+  names: readonly string[],
+  name: string,
+  delta: -1 | 1,
+): string[] {
+  const fromIndex = names.indexOf(name);
+  if (fromIndex < 0) {
+    return [...names];
+  }
+  const destIndex = fromIndex + delta;
+  if (destIndex < 0 || destIndex >= names.length) {
+    return [...names];
+  }
+  const insertBeforeIndex = delta < 0 ? destIndex : destIndex + 1;
+  return reorderProfileNames(names, fromIndex, insertBeforeIndex);
 }
 
 export function reorderProfileNames(

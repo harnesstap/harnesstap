@@ -33,7 +33,13 @@ import {
   saveProfileRailOrder,
   type ProfileSelectionIntent,
 } from "../lib/profile-rail-order";
-import { shouldAutoReapply, shouldShowReapply } from "../lib/reapply";
+import {
+  APPLY_SUCCESS_HOLD_MS,
+  applyCtaHelper,
+  applyPreviewChangeCount,
+  shouldAutoReapply,
+  shouldShowReapply,
+} from "../lib/reapply";
 import type {
   DriftFileChange,
   GlobalProfileStatus,
@@ -148,6 +154,8 @@ export function useScopeController(input: ScopeControllerInput) {
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
 
   const [switching, setSwitching] = useState(false);
+  const [switchSuccessHold, setSwitchSuccessHold] = useState(false);
+  const [switchProgressLabel, setSwitchProgressLabel] = useState<string | null>(null);
   const [switchEvents, setSwitchEvents] = useState<ProfileSwitchStepEvent[]>([]);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [switchId, setSwitchId] = useState<string | null>(null);
@@ -283,10 +291,8 @@ export function useScopeController(input: ScopeControllerInput) {
     [view],
   );
 
-  const clearProfileSelection = useCallback(() => {
-    setProfileSelectionIntent("empty");
-    setSelectedProfile(null);
-    setEditingProfile(null);
+  const clearProfileFilter = useCallback(() => {
+    setProfileFilter("");
   }, []);
 
   const selectProfile = useCallback((name: string) => {
@@ -327,7 +333,9 @@ export function useScopeController(input: ScopeControllerInput) {
 
   const handleProfileDeleted = useCallback(
     (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => {
-      clearProfileSelection();
+      setProfileSelectionIntent("unset");
+      setSelectedProfile(null);
+      setEditingProfile(null);
       void refreshProfiles();
       void refreshStatus("full");
       if (message) {
@@ -341,16 +349,22 @@ export function useScopeController(input: ScopeControllerInput) {
         });
       }
     },
-    [clearProfileSelection, refreshProfiles, refreshStatus],
+    [refreshProfiles, refreshStatus],
   );
 
   const runSwitch = useCallback(
-    async (confirmOwnedOverwrite = false, requestedProfile?: string) => {
+    async (
+      confirmOwnedOverwrite = false,
+      requestedProfile?: string,
+      options?: { progressLabel?: string; successToast?: string },
+    ) => {
       const targetProfile = requestedProfile ?? selectedProfile;
       if (!client || !targetProfile || !client.token) {
         return;
       }
       setSwitching(true);
+      setSwitchSuccessHold(false);
+      setSwitchProgressLabel(options?.progressLabel ?? null);
       setSwitchEvents([]);
       setSwitchError(null);
       try {
@@ -371,25 +385,37 @@ export function useScopeController(input: ScopeControllerInput) {
             setSwitchId(null);
             await refreshStatus("full");
             if (!final.ok) {
+              setSwitchSuccessHold(false);
+              setSwitchProgressLabel(null);
               setSwitchError(
                 final.cancelled ? "Switch cancelled" : final.error ?? "Switch failed",
               );
               return;
             }
             setPendingTrust(trustFieldsFromUnknown(final.result));
+            setSwitchSuccessHold(true);
             toast({
               tone: "success",
-              title: `Applied ${targetProfile} to ${formatScope(scope)}`,
+              title:
+                options?.successToast
+                ?? `Applied ${targetProfile} to ${formatScope(scope)}`,
             });
+            window.setTimeout(() => {
+              setSwitchSuccessHold(false);
+              setSwitchProgressLabel(null);
+            }, APPLY_SUCCESS_HOLD_MS);
           },
           (message) => {
             setSwitching(false);
             setSwitchId(null);
+            setSwitchSuccessHold(false);
+            setSwitchProgressLabel(null);
             setSwitchError(message);
           },
         );
       } catch (error) {
         setSwitching(false);
+        setSwitchProgressLabel(null);
         if (
           error instanceof AgentApiError
           && error.code === "owned_overwrite_confirmation_required"
@@ -466,7 +492,11 @@ export function useScopeController(input: ScopeControllerInput) {
   );
 
   const maybeAutoReapplyAfterMutation = useCallback(
-    async (mutation: { profileName: string; affectsApply: boolean }) => {
+    async (mutation: {
+      profileName: string;
+      affectsApply: boolean;
+      addedName?: string;
+    }) => {
       const shouldReapply = shouldAutoReapply(
         autoReapplyInput(mutation.profileName, mutation.affectsApply),
       );
@@ -476,7 +506,12 @@ export function useScopeController(input: ScopeControllerInput) {
         await refreshStatus("full");
       }
       if (shouldReapply) {
-        await runSwitch(true, mutation.profileName);
+        await runSwitch(true, mutation.profileName, {
+          progressLabel: "Applying to match profile",
+          successToast: mutation.addedName
+            ? `Added ${mutation.addedName} and applied`
+            : undefined,
+        });
       }
     },
     [autoReapplyInput, refreshProfiles, refreshStatus, runSwitch, selectedProfile],
@@ -784,6 +819,7 @@ export function useScopeController(input: ScopeControllerInput) {
       await runSwitch(true, selectedProfile);
     } catch (error) {
       setAddResourceError(messageOf(error, "Could not activate resources"));
+      throw error;
     } finally {
       setActivatingResources(false);
     }
@@ -806,6 +842,7 @@ export function useScopeController(input: ScopeControllerInput) {
         await maybeAutoReapplyAfterMutation({
           profileName: selectedProfile,
           affectsApply: true,
+          addedName: item.name,
         });
       } catch (error) {
         setAddResourceError(messageOf(error, "Could not add library item to profile"));
@@ -816,15 +853,16 @@ export function useScopeController(input: ScopeControllerInput) {
   );
 
   const handleAddResource = useCallback(
-    async (resource: ProfileContentsResource, profileOverride?: string) => {
+    async (
+      resource: ProfileContentsResource,
+      profileOverride?: string,
+      options?: { skipAutoReapply?: boolean },
+    ) => {
       const profileName = profileOverride ?? selectedProfile;
       if (!client || !profileName) {
         return;
       }
       const key = `${resource.type}:${resource.name}`;
-      if (addingResourceKey) {
-        return;
-      }
       const reapplyInput = autoReapplyInput(profileName, true);
       setAddingResourceKey(key);
       setAddResourceError(null);
@@ -836,21 +874,25 @@ export function useScopeController(input: ScopeControllerInput) {
           withScope({ resourceType: resource.type, resourceName: resource.name }),
         );
         await loadPreviewFor(profileName);
+        if (options?.skipAutoReapply) {
+          return;
+        }
         if (shouldAutoReapply(reapplyInput)) {
-          await runSwitch(true, profileName);
+          await runSwitch(true, profileName, {
+            progressLabel: "Applying to match profile",
+            successToast: `Added ${resource.name} and applied`,
+          });
         } else if (profileName === reapplyInput.activeProfile) {
           await refreshStatus("full");
         }
       } catch (error) {
         setAddResourceError(messageOf(error, "Could not add resource to profile"));
-        if (profileOverride !== undefined) {
-          throw error;
-        }
+        throw error;
       } finally {
         setAddingResourceKey(null);
       }
     },
-    [addingResourceKey, autoReapplyInput, client, loadPreviewFor, refreshStatus, runSwitch, selectedProfile, withScope],
+    [autoReapplyInput, client, loadPreviewFor, refreshStatus, runSwitch, selectedProfile, withScope],
   );
 
   const handleRemoveResourceFromProfile = useCallback(
@@ -876,6 +918,7 @@ export function useScopeController(input: ScopeControllerInput) {
         }
       } catch (error) {
         setResourceActionError(messageOf(error, "Could not remove resource from profile"));
+        throw error;
       } finally {
         setRemovingResourceKey(null);
       }
@@ -1161,34 +1204,32 @@ export function useScopeController(input: ScopeControllerInput) {
         ? undefined
         : "No not-staged resources to stash";
 
-  const applyHelper = useMemo(() => {
-    if (switching) {
-      return null;
-    }
-    if (!selectedProfile) {
-      return "Select a profile to apply";
-    }
-    if (showReapply) {
-      return "Re-apply to restore saved state";
-    }
-    if (selectedProfile === activeProfile && applied) {
-      return `Already applied to ${formatScope(scope)}`;
-    }
-    return null;
-  }, [activeProfile, applied, scope, selectedProfile, showReapply, switching]);
+  const applyHelperState = useMemo(
+    () =>
+      applyCtaHelper({
+        selectedProfile,
+        activeProfile,
+        applied,
+        showReapply,
+        changeCount: applyPreviewChangeCount(applyPreview),
+        switching,
+      }),
+    [activeProfile, applied, applyPreview, selectedProfile, showReapply, switching],
+  );
+  const applyHelper = applyHelperState.label;
 
   const applyButtonTitle = useMemo(() => {
     if (showReapply && activeProfile) {
       return `Re-apply ${activeProfile}`;
     }
     if (!selectedProfile) {
-      return "Select a profile";
+      return "Nothing to apply";
     }
-    if (selectedProfile === activeProfile && applied) {
-      return `Already applied to ${formatScope(scope)}`;
+    if (selectedProfile === activeProfile && applied && !showReapply) {
+      return "Up to date";
     }
     return `Apply ${selectedProfile}`;
-  }, [activeProfile, applied, scope, selectedProfile, showReapply]);
+  }, [activeProfile, applied, selectedProfile, showReapply]);
 
   const applyDisabled =
     !connected
@@ -1197,9 +1238,8 @@ export function useScopeController(input: ScopeControllerInput) {
     || bootstrapBusy
     || installBusy
     || (scope === "project" && (!projectPath || !projectReady))
-    || (showReapply
-      ? !activeProfile
-      : !selectedProfile || (selectedProfile === activeProfile && applied));
+    || !selectedProfile
+    || (selectedProfile === activeProfile && applied && !showReapply);
 
   const retryPreview = useCallback(() => setPreviewRetryKey((value) => value + 1), []);
   const dismissPreviewError = useCallback(() => {
@@ -1216,6 +1256,7 @@ export function useScopeController(input: ScopeControllerInput) {
     client,
     connected,
     projectPath,
+    projectReady,
     // status slice
     activeProfile,
     applied,
@@ -1238,7 +1279,7 @@ export function useScopeController(input: ScopeControllerInput) {
     selectedProfileSummary,
     selectedIsActive,
     selectProfile,
-    clearProfileSelection,
+    clearProfileFilter,
     renameSelected,
     profileFilter,
     setProfileFilter,
@@ -1256,11 +1297,14 @@ export function useScopeController(input: ScopeControllerInput) {
     activeProfileUntrackedCount,
     // apply
     switching,
+    switchSuccessHold,
+    switchProgressLabel,
     switchEvents,
     switchError,
     setSwitchError,
     showReapply,
     applyHelper,
+    applyHelperState,
     applyButtonTitle,
     applyDisabled,
     onApplyClick,
