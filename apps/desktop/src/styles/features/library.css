@@ -660,7 +660,7 @@
   box-sizing: border-box;
   height: auto;
   min-height: calc(var(--space-8) + var(--space-2));
-  padding: 0.35rem 0.35rem;
+  padding: var(--space-3) 0.35rem;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   position: relative;
 }

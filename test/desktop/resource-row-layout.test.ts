@@ -39,6 +39,7 @@ describe("resource row layout", () => {
     const row = cssBlock(stylesSource, ".resource-row");
     expect(row).toContain("height: auto;");
     expect(row).toContain("min-height: calc(var(--space-8) + var(--space-2));");
+    expect(row).toContain("padding: var(--space-3) 0.35rem;");
     expect(row).not.toMatch(/height:\s*100%/);
 
     const virtualInner = cssBlock(
@@ -58,16 +59,18 @@ describe("resource row layout", () => {
     }
   });
 
-  it("measures Library, inventory, and add-to-profile virtual rows", () => {
-    for (const source of [
-      libraryListSource,
-      inventorySectionSource,
-      addModalSource,
-    ]) {
+  it("measures LibraryResourceList virtual rows, not only inventory or add-to-profile", () => {
+    expect(libraryListSource).toContain("useVirtualizer");
+    expect(libraryListSource).toContain("ref={virtualizer.measureElement}");
+    expect(libraryListSource).toContain("data-index={virtualRow.index}");
+    expect(libraryListSource).toContain("resourceRowVirtualStyle(virtualRow.start)");
+    expect(libraryListSource).not.toContain("height: `${virtualRow.size}px`");
+    expect(libraryListSource).not.toContain("height,");
+
+    for (const source of [inventorySectionSource, addModalSource]) {
       expect(source).toContain("measureElement");
       expect(source).toContain("resourceRowVirtualStyle");
       expect(source).not.toContain("height: `${virtualRow.size}px`");
     }
-    expect(libraryListSource).not.toContain("height,");
   });
 });

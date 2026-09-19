@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop list rows use more vertical padding so separators are easier to scan.
+time: 2026-09-19T06:22:00Z
+custom:
+  Issue: ""
