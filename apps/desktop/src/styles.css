@@ -1057,6 +1057,14 @@ button:focus-visible,
   pointer-events: none;
 }
 
+.resource-type-tabs-expanded .resource-type-tabs-less {
+  display: block;
+  margin-left: auto;
+  margin-top: 0.45rem;
+  margin-bottom: 0.4rem;
+  padding: 0.15rem 0.85rem 0.2rem 0;
+}
+
 .resource-type-tab {
   display: inline-flex;
   align-items: center;
