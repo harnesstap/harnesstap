@@ -138,7 +138,7 @@ describe("libraryRowUpdateBadge", () => {
 });
 
 describe("library row geometry", () => {
-  it("uses 44px rows and 56px when a subtitle exists", () => {
+  it("estimates 56px rows and 72px when a subtitle exists", () => {
     const entries = mergeLibraryList(
       [resource({ id: "s1", type: "skill", name: "ship" })],
       [pluginHead],

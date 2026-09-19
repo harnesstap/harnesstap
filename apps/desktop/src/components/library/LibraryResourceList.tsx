@@ -38,6 +38,7 @@ import {
   nextLibraryListIndex,
 } from "../../lib/library-list-nav";
 import { hoverModelFromLibraryResource } from "../../lib/resource-hover";
+import { resourceRowVirtualStyle } from "../../lib/resource-row-virtual";
 import { resourceDisplayName } from "../../lib/resource-search";
 
 export interface LibraryResourceListProps {
@@ -200,11 +201,10 @@ export function LibraryResourceList({
           return (
             <div
               key={entry.id}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
               className="resources-list-virtual-item"
-              style={{
-                height,
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
+              style={resourceRowVirtualStyle(virtualRow.start)}
             >
               <ResourceRowRoot
                 id={`${listId}-option-${virtualRow.index}`}

@@ -1701,9 +1701,8 @@
 }
 
 .resource-row.inventory-row {
-  height: calc(var(--space-8) + var(--space-2));
   min-height: calc(var(--space-8) + var(--space-2));
-  align-items: center;
+  height: auto;
 }
 
 .inventory-row .resource-row-name {

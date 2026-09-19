@@ -361,7 +361,7 @@
 }
 
 .resources-list-virtual-item .resource-row {
-  height: 100%;
+  height: auto;
   box-sizing: border-box;
 }
 
@@ -569,6 +569,7 @@
 
 .resource-row.inventory-row {
   align-items: start;
+  height: auto;
 }
 
 .resource-summary {
@@ -655,8 +656,11 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 0.4rem;
-  align-items: center;
-  padding: 0.35rem 0.35rem;
+  align-items: start;
+  box-sizing: border-box;
+  height: auto;
+  min-height: calc(var(--space-8) + var(--space-2));
+  padding: var(--space-3) 0.35rem;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   position: relative;
 }
@@ -773,6 +777,8 @@
 
 .resource-row-desc {
   font-size: var(--text-meta);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .resource-hover-cursor-anchor {

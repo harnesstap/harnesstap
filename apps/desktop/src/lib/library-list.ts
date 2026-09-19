@@ -110,8 +110,9 @@ export function libraryRowUpdateBadge(entry: LibraryListEntry): string | null {
   return null;
 }
 
-export const LIBRARY_ROW_HEIGHT = 44;
-export const LIBRARY_ROW_HEIGHT_WITH_SUBTITLE = 56;
+/** Virtualizer estimates only. Measured row height can grow when copy wraps. */
+export const LIBRARY_ROW_HEIGHT = 56;
+export const LIBRARY_ROW_HEIGHT_WITH_SUBTITLE = 72;
 
 /** Stable id used for listbox options, last-opened restore, and detail open. */
 export function libraryRowSelector(entry: LibraryListEntry): string {
