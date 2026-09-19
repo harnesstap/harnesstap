@@ -9,6 +9,7 @@ import {
   Diff,
   ExternalLink,
   FileDiff,
+  FilterX,
   FolderCog,
   Info,
   ListPlus,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
 import {
   aggregateInstallGaps,
@@ -51,6 +53,7 @@ import {
   type StackChangeTone,
 } from "../lib/contents-diff";
 import { fileChangeRowActions } from "../lib/file-change-actions";
+import { noResultsTitle } from "../lib/empty-copy";
 import {
   resolveProfileResourceStack,
 } from "../lib/profile-resource-stack";
@@ -2350,7 +2353,19 @@ export function LiveStatePanel({
                   );
                 })}
                 {filteredInventory.length === 0 ? (
-                  <p className="muted">No matching resources.</p>
+                  <EmptyState
+                    title={noResultsTitle(inventorySearch)}
+                    body="Clear the filter to see every resource."
+                    action={
+                      inventorySearch.trim()
+                        ? {
+                            label: "Clear filter",
+                            onClick: () => setInventorySearch(""),
+                            icon: <FilterX size={16} aria-hidden />,
+                          }
+                        : undefined
+                    }
+                  />
                 ) : null}
               </div>
             </>

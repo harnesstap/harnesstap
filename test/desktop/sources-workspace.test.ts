@@ -129,9 +129,10 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("filterDiscoverGroups");
     expect(workspaceSource).toContain("showInLibrary={showInLibrary}");
     expect(listPaneSource).toContain("discoverListEmptyCopy");
-    expect(listPaneSource).toContain('data-testid="discover-empty"');
-    expect(listPaneSource).toContain('className="empty-state discover-empty"');
-    expect(listPaneSource).toContain('role="status"');
+    expect(listPaneSource).toContain('testId="discover-empty"');
+    expect(listPaneSource).toContain('className="discover-empty"');
+    expect(listPaneSource).toContain("EmptyState");
+    expect(listPaneSource).toContain("Clear search");
     expect(workspaceSource).toContain(
       "const [librarySearching, setLibrarySearching] = useState(true)",
     );

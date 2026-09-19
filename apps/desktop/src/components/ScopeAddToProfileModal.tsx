@@ -24,6 +24,7 @@ import {
   shouldCloseDialogOnBackdrop,
   useDialogDismiss,
 } from "../lib/dialog-dismiss";
+import { noResultsTitle } from "../lib/empty-copy";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
@@ -251,7 +252,7 @@ export function ScopeAddToProfileModal({
             {loading ? (
               <p className="muted">Loading library…</p>
             ) : visible.length === 0 ? (
-              <p className="muted">No matches.</p>
+              <p className="muted">{noResultsTitle(search)}</p>
             ) : (
               visible.map((entry) => {
                 const type = libraryFilterType(entry);

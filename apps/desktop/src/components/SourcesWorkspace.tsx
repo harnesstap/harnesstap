@@ -28,7 +28,7 @@ import {
   type SourcePreviewResult,
 } from "../lib/api/sources";
 import { fetchPluginOriginCheck, type PluginOriginCheckRow } from "../lib/api/plugin-origin-update";
-import { workspaceBackEnabled } from "../lib/screen-history";
+import { workspaceBackEnabled, WORKSPACE_BACK_LABEL } from "../lib/screen-history";
 import { useRegisterCommands } from "../state/command-registry";
 import {
   popSourcesPane,
@@ -62,8 +62,9 @@ import {
   type SourceRow,
 } from "../lib/sources-sidebar";
 import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
-import { Cloud, Store } from "lucide-react";
+import { Cloud, Store, ArrowLeft } from "lucide-react";
 import { ConnectCatalogPanel } from "./ConnectCatalogPanel";
+import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import { MarketplaceEditPanel } from "./MarketplaceEditPanel";
@@ -1079,14 +1080,24 @@ export function SourcesWorkspace({
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
+            onClearQuery={() => applyListQueryOrChecks(() => setQuery(""))}
+            onShowInLibrary={() =>
+              applyListQueryOrChecks(() => setShowInLibrary(true))
+            }
           />
         );
       case "plugin-tree":
         if (!resolvedHit) {
           return (
-            <div className="empty-state">
-              <p className="muted">Plugin is no longer in the search results.</p>
-            </div>
+            <EmptyState
+              title="Plugin is no longer in the search results"
+              body="Go back to the Discover list."
+              action={{
+                label: WORKSPACE_BACK_LABEL,
+                onClick: () => setPane(popSourcesPane(pane)),
+                icon: <ArrowLeft size={16} aria-hidden />,
+              }}
+            />
           );
         }
         return (
@@ -1108,9 +1119,15 @@ export function SourcesWorkspace({
       case "preview":
         if (!resolvedHit) {
           return (
-            <div className="empty-state">
-              <p className="muted">Item is no longer in the search results.</p>
-            </div>
+            <EmptyState
+              title="Item is no longer in the search results"
+              body="Go back to the Discover list."
+              action={{
+                label: WORKSPACE_BACK_LABEL,
+                onClick: () => setPane(popSourcesPane(pane)),
+                icon: <ArrowLeft size={16} aria-hidden />,
+              }}
+            />
           );
         }
         return (

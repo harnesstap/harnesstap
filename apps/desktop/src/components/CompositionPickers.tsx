@@ -24,6 +24,7 @@ import {
   resolveResourceTypeTab,
 } from "../lib/resource-type-tabs";
 import type { LibraryResource } from "../lib/types";
+import { noResultsTitle } from "../lib/empty-copy";
 import { ResourceTypeTabs } from "./ResourceTypeTabs";
 
 export interface SelectionRow {
@@ -187,7 +188,7 @@ export function ResourceSelectionList({
     resources.length === 0
       ? emptyUnfilteredLabel
       : filter.trim()
-        ? "No matches."
+        ? noResultsTitle(filter)
         : emptyUnfilteredLabel;
 
   return (

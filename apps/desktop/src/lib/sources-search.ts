@@ -1,4 +1,5 @@
 import type { PluginOriginCheckRow } from "./api/plugin-origin-update";
+import { noResultsTitle } from "./empty-copy";
 
 export type SourceKind = "local" | "marketplace" | "cloud-org" | "cloud-catalog";
 export type Presence = "in_library" | "remote_only";
@@ -197,16 +198,26 @@ export function filterDiscoverGroups(
 export function discoverListEmptyCopy(input: {
   query: string;
   showInLibrary: boolean;
-}): { message: string; hint: string | null } {
+}): { message: string; hint: string | null; action: "clear-search" | "show-library" | null } {
+  const trimmed = input.query.trim();
+  if (trimmed.length > 0) {
+    return {
+      message: noResultsTitle(trimmed),
+      hint: "Clear search to see items still to add.",
+      action: "clear-search",
+    };
+  }
   if (!input.showInLibrary) {
     return {
       message: "You're caught up",
       hint: "Nothing left to discover. Turn on Show in library.",
+      action: "show-library",
     };
   }
   return {
-    message: input.query.trim() ? "No hits yet." : "Search to add",
-    hint: null,
+    message: "Search to add",
+    hint: "Type a name to search sources.",
+    action: null,
   };
 }
 

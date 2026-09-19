@@ -83,6 +83,13 @@ button:active:not(:disabled) {
   transition: transform var(--duration-instant) var(--ease-out);
 }
 
+.resource-row:active,
+.profile-item:active,
+.project-picker-item:active,
+.command-palette-item:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+
 .icon-action:active:not(:disabled):not(.primary) {
   background: var(--surface-selected);
 }

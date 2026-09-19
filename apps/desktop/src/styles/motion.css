@@ -86,6 +86,11 @@
     to { background-position: -200% 0; }
   }
 
+  @keyframes m-draw-in {
+    from { stroke-dashoffset: 48; }
+    to { stroke-dashoffset: 0; }
+  }
+
   /* Enter / exit recipes. `both` keeps the first frame before the animation
      starts and the last frame after it ends, so Presence can unmount late. */
   .m-fade-in {
@@ -129,7 +134,8 @@
   }
 
   /* State recipes. */
-  .m-status {
+  .m-status,
+  .pill {
     transition:
       color var(--duration-base) var(--ease-in-out),
       background-color var(--duration-base) var(--ease-in-out),
@@ -176,14 +182,25 @@
   [data-slot="select-content"][data-state="open"],
   [data-slot="popover-content"][data-state="open"],
   .resource-hover-card[data-state="delayed-open"],
-  .resource-hover-card[data-state="instant-open"] {
+  .resource-hover-card[data-state="instant-open"],
+  .chrome-tooltip[data-state="delayed-open"],
+  .chrome-tooltip[data-state="instant-open"],
+  .library-field-tooltip[data-state="delayed-open"],
+  .library-field-tooltip[data-state="instant-open"] {
     animation: m-scale-in var(--duration-fast) var(--ease-out) both;
   }
 
   [data-slot="select-content"][data-state="closed"],
   [data-slot="popover-content"][data-state="closed"],
-  .resource-hover-card[data-state="closed"] {
+  .resource-hover-card[data-state="closed"],
+  .chrome-tooltip[data-state="closed"],
+  .library-field-tooltip[data-state="closed"] {
     animation: m-scale-out var(--duration-fast) var(--ease-in) both;
+  }
+
+  .toast.success .toast-icon svg {
+    stroke-dasharray: 48;
+    animation: m-draw-in var(--duration-slow) var(--ease-out) both;
   }
 }
 

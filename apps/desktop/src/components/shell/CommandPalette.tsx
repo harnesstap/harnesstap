@@ -20,6 +20,7 @@ import {
   type Command,
   type ShortcutId,
 } from "../../lib/commands";
+import { noResultsTitle } from "../../lib/empty-copy";
 import { isListboxNavKey, nextListboxIndex } from "../../lib/listbox-nav";
 import { loadRecentProjects, projectDisplayName } from "../../lib/recent-projects";
 import {
@@ -385,7 +386,7 @@ function CommandPalette({
             aria-label="Commands"
           >
             {visible.length === 0 ? (
-              <p className="command-palette-empty">{`No results for "${query.trim()}"`}</p>
+              <p className="command-palette-empty">{noResultsTitle(query)}</p>
             ) : (
               groups.map((group) => (
                 <div key={group.section} className="command-palette-group">
