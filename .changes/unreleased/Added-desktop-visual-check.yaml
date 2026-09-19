@@ -1,0 +1,5 @@
+kind: Added
+body: Desktop web-mode visual compare, axe, reduced-motion, and motion-trace checks (`bun run desktop:check`).
+time: 2026-09-19T02:40:00Z
+custom:
+  Issue: ""

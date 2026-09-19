@@ -20,7 +20,7 @@ function toneIcon(tone: ToastTone) {
 export function ToastRegion() {
   const toasts = useToasts();
   return (
-    <div className="toast-region" aria-live="polite" aria-label="Notifications">
+    <div className="toast-region" role="region" aria-label="Notifications" aria-live="polite">
       {toasts.map((item) => (
         <div
           key={item.id}
