@@ -153,7 +153,7 @@ describe("library origin filter chrome", () => {
     expect(tabsSource.indexOf("resource-type-tab-count")).toBeLessThan(
       tabsSource.lastIndexOf("resource-type-tab-label"),
     );
-    expect(panelSource).toContain("<ResourceTypeTabs");
+    expect(panelSource).toContain("overflow=\"collapse\"");
     expect(panelSource).not.toContain("density=");
     expect(compositionSource).toContain("<ResourceTypeTabs");
     expect(compositionSource).not.toContain("density=");
@@ -192,6 +192,14 @@ describe("library origin filter chrome", () => {
     expect(sidebarSource).toContain('type="radio"');
     expect(sidebarSource).toContain('id="resource-filter-namespace"');
     expect(sidebarSource).not.toContain('id="resource-filter-origin"');
+  });
+
+  test("uses a Select for Updated so labels stay on one line", () => {
+    expect(sidebarSource).toContain('from "@/components/ui/select"');
+    expect(sidebarSource).toContain("resource-filter-updated-select");
+    expect(sidebarSource).toContain("All time");
+    expect(sidebarSource).toContain("useDeferredValue");
+    expect(sidebarSource).not.toContain("resource-filter-updated-segment");
   });
 
   test("styles origin radio options as selectable rows", () => {

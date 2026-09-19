@@ -1,9 +1,10 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, RefreshCw } from "lucide-react";
 import {
   PLUGIN_REF_EMPTY_RESOURCES_COPY,
   groupContainedResources,
 } from "../lib/plugin-ref-detail";
 import type { PluginContainedResource } from "../lib/types";
+import { IconActionButton } from "./IconActionButton";
 import { TypeIcon } from "./TypeIcon";
 
 const OPEN_LABEL = "Open this file in the default editor.";
@@ -13,6 +14,8 @@ export interface PluginRefResourceListProps {
   openingPath: string | null;
   disabled?: boolean;
   onOpen: (path: string) => void;
+  onSync?: () => void;
+  syncBusy?: boolean;
 }
 
 export function PluginRefResourceList({
@@ -20,6 +23,8 @@ export function PluginRefResourceList({
   openingPath,
   disabled = false,
   onOpen,
+  onSync,
+  syncBusy = false,
 }: PluginRefResourceListProps) {
   const rows = resources ?? [];
   const groups = groupContainedResources(rows);
@@ -28,7 +33,20 @@ export function PluginRefResourceList({
     <section className="library-contained-resources" aria-label="Resources">
       <h3 className="library-contained-heading">Resources</h3>
       {groups.length === 0 ? (
-        <p className="muted">{PLUGIN_REF_EMPTY_RESOURCES_COPY}</p>
+        <div className="library-contained-empty">
+          <p className="muted">{PLUGIN_REF_EMPTY_RESOURCES_COPY}</p>
+          {onSync ? (
+            <IconActionButton
+              primary
+              showLabel
+              label="Sync"
+              disabled={disabled}
+              busy={syncBusy}
+              onClick={onSync}
+              icon={<RefreshCw size={16} aria-hidden />}
+            />
+          ) : null}
+        </div>
       ) : (
         groups.map((group) => (
           <div key={group.type} className="library-contained-group">

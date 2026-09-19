@@ -11,6 +11,8 @@ export interface LibraryDetailChromeProps {
   preserveFocusOnBack?: boolean;
   backDisabled?: boolean;
   backLabel?: string;
+  /** Workspace hosts pass false so the shell Back is the only one. Default true. */
+  showBack?: boolean;
   actions?: ReactNode;
   children?: ReactNode;
 }
@@ -24,24 +26,27 @@ export function LibraryDetailChrome({
   preserveFocusOnBack = false,
   backDisabled = false,
   backLabel = "Back to library list",
+  showBack = true,
   actions,
   children,
 }: LibraryDetailChromeProps) {
   return (
     <div className="library-detail">
       <div className="library-detail-header">
-        <IconActionButton
-          label={backLabel}
-          onPointerDown={(event) => {
-            if (preserveFocusOnBack) {
-              event.preventDefault();
-            }
-            onBackPointerDown?.();
-          }}
-          onClick={onBack}
-          disabled={backDisabled}
-          icon={<ArrowLeft size={16} aria-hidden />}
-        />
+        {showBack ? (
+          <IconActionButton
+            label={backLabel}
+            onPointerDown={(event) => {
+              if (preserveFocusOnBack) {
+                event.preventDefault();
+              }
+              onBackPointerDown?.();
+            }}
+            onClick={onBack}
+            disabled={backDisabled}
+            icon={<ArrowLeft size={16} aria-hidden />}
+          />
+        ) : null}
         <div id={titleId} className="library-detail-title">
           {title}
         </div>

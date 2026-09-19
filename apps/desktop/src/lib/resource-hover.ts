@@ -14,7 +14,7 @@ import type {
 } from "./types";
 
 export type ResourceHoverExtra = {
-  kind: "destinations";
+  kind: "destinations" | "note";
   text: string;
 };
 

@@ -403,6 +403,11 @@
   margin: 0;
 }
 
+.resource-create-help {
+  margin: 0;
+  font-size: var(--text-meta);
+}
+
 .resource-create-banner {
   margin-bottom: 16px;
 }

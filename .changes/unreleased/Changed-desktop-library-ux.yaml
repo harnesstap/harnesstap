@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Library keeps the list while reloading, virtualizes rows, and adds keyboard activation, scoped grouping, field-edit pencils, and quieter delete and filter-empty states.
+time: 2026-09-19T00:30:00Z
+custom:
+  Issue: ""
