@@ -4,8 +4,7 @@ import {
 } from "./resource-filters";
 import type { PluginContainedResource } from "./types";
 
-export const PLUGIN_REF_EMPTY_RESOURCES_COPY =
-  "Sync to load resources from the install tree.";
+export const PLUGIN_REF_EMPTY_RESOURCES_COPY = "Nothing loaded yet.";
 
 export function isPluginTypeResource(type: string): boolean {
   return type === "plugin";

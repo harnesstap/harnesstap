@@ -122,8 +122,9 @@ describe("desktop icon chrome", () => {
     expect(typeGlyphSource).toMatch(/case "agent":\s*return "bot"/);
     expect(typeIconSource).toMatch(/case "bot":[\s\S]*?Bot/);
     expect(typeIconSource).not.toMatch(/case "agent":[\s\S]*?Sparkles/);
-    expect(typeModalSource).toContain("skill: Sparkles");
-    expect(typeModalSource).toContain("agent: Bot");
+    expect(typeModalSource).toContain("<TypeIcon type={type} />");
+    expect(typeModalSource).not.toContain("Sparkles");
+    expect(typeModalSource).not.toContain("Bot");
     const notStagedRow = liveStateSource.slice(
       liveStateSource.indexOf("function UntrackedResourceRow"),
       liveStateSource.indexOf("function EnabledResourceRow"),
@@ -190,7 +191,6 @@ describe("desktop icon chrome", () => {
     };
     walk(root);
     expect(sparklesImportFiles.sort()).toEqual([
-      "components/ResourceTypeModal.tsx",
       "components/TypeIcon.tsx",
     ]);
     expect(read("lib/type-glyph.ts")).toMatch(/case "skill":\s*return "sparkles"/);
@@ -198,11 +198,8 @@ describe("desktop icon chrome", () => {
       /case "(instruction|plugin|plugin_ref|plugin_pin)":\s*return "sparkles"/,
     );
 
-    const libraryList = resourcesSource.slice(
-      resourcesSource.indexOf("ResourceTypeTabs"),
-      resourcesSource.indexOf("function renderMainPane"),
-    );
-    expect(libraryList).toContain("ResourceTypeTabs");
+    const libraryList = read("components/library/LibraryResourceList.tsx");
+    expect(resourcesSource).toContain("ResourceTypeTabs");
     expect(libraryList).toContain("type={filterType}");
     expect(libraryList).not.toContain("resources-type-heading");
     expect(libraryList).not.toContain("Sparkles");
@@ -230,8 +227,10 @@ describe("desktop icon chrome", () => {
     expect(pluginPackageRow).not.toContain("RelatedHarnessIcons");
     expect(pluginPackageRow).not.toContain("Sparkles");
 
-    expect(typeModalSource).toMatch(/plugin:\s*Package/);
-    expect(typeModalSource).toMatch(/instruction:\s*BookOpen/);
+    expect(typeModalSource).toContain("TypeIcon");
+    expect(typeModalSource).toContain("<TypeIcon type={type} />");
+    expect(typeModalSource).not.toMatch(/plugin:\s*Package/);
+    expect(typeModalSource).not.toMatch(/instruction:\s*BookOpen/);
     expect(typeModalSource).not.toMatch(/plugin:\s*Sparkles/);
     expect(typeModalSource).not.toMatch(/instruction:\s*Sparkles/);
   });

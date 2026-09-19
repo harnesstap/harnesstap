@@ -1,5 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ResourceSelectionList } from "./CompositionPickers";
@@ -19,6 +30,7 @@ import {
   type CreateFormValues,
   type CreateResourceType,
 } from "../lib/resource-create-schema";
+import { toast } from "../state/toast-store";
 
 export interface ResourceCreateTarget {
   kind: "resource" | "plugin-package";
@@ -73,7 +85,7 @@ function FieldControl({
   const testId = `resource-create-field-${spec.key}`;
   if (spec.kind === "textarea") {
     return (
-      <textarea
+      <Textarea
         id={id}
         className="resource-create-textarea"
         data-testid={testId}
@@ -89,39 +101,44 @@ function FieldControl({
   }
   if (spec.kind === "select") {
     return (
-      <select
-        id={id}
-        className="resource-create-select"
-        data-testid={testId}
-        aria-label={spec.label}
-        disabled={locked}
+      <Select
         value={String(value)}
-        onBlur={onTouch}
-        onChange={(event) => {
+        disabled={locked}
+        onValueChange={(next) => {
           onTouch();
-          onChange(event.target.value);
+          onChange(next);
         }}
       >
-        {(spec.options ?? []).map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger
+          id={id}
+          className="resource-create-select"
+          data-testid={testId}
+          aria-label={spec.label}
+          aria-invalid={invalid || undefined}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(spec.options ?? []).map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     );
   }
   if (spec.kind === "checkbox") {
     return (
       <span className="resource-create-checkline">
-        <input
-          type="checkbox"
+        <Checkbox
           data-testid={testId}
           aria-label={spec.label}
           disabled={locked}
           checked={value === true}
-          onChange={(event) => {
+          onCheckedChange={(next) => {
             onTouch();
-            onChange(event.target.checked);
+            onChange(next === true);
           }}
         />
         <span>{spec.placeholder ?? spec.label}</span>
@@ -129,7 +146,7 @@ function FieldControl({
     );
   }
   return (
-    <input
+    <Input
       id={id}
       className="resource-create-input"
       data-testid={testId}
@@ -259,6 +276,7 @@ export function ResourceCreatePanel({
           );
         }
       }
+      toast({ tone: "success", title: `Created ${name}` });
       onCreated(target);
     } catch (error: unknown) {
       if (error instanceof AgentApiError && error.code === "resource_conflict") {
@@ -316,6 +334,7 @@ export function ResourceCreatePanel({
           </div>
         ) : null}
         <div className="resource-create-fields">
+          <p className="muted resource-create-help">{schema.description}</p>
           {visibleFields(schema, values).map((spec) => {
             const error = spec.key === "name" && nameServerError
               ? nameServerError
@@ -364,14 +383,13 @@ export function ResourceCreatePanel({
 
           {showAttachCheckbox ? (
             <span className="resource-create-checkline">
-              <input
-                type="checkbox"
+              <Checkbox
                 data-testid="resource-create-attach-profile"
                 disabled={locked}
                 checked={attachChecked}
-                onChange={(event) => setAttachChecked(event.target.checked)}
+                onCheckedChange={(next) => setAttachChecked(next === true)}
               />
-              <span>Add to {attachProfileName} and apply</span>
+              <Label>Add to {attachProfileName} and apply</Label>
             </span>
           ) : null}
         </div>

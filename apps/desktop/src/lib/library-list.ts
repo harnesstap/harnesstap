@@ -109,3 +109,100 @@ export function libraryRowUpdateBadge(entry: LibraryListEntry): string | null {
   }
   return null;
 }
+
+export const LIBRARY_ROW_HEIGHT = 44;
+export const LIBRARY_ROW_HEIGHT_WITH_SUBTITLE = 56;
+
+/** Stable id used for listbox options, last-opened restore, and detail open. */
+export function libraryRowSelector(entry: LibraryListEntry): string {
+  switch (entry.listKind) {
+    case "plugin-package":
+      return entry.name;
+    case "resource":
+      return entry.id;
+    default: {
+      const neverKind: never = entry.listKind;
+      return neverKind;
+    }
+  }
+}
+
+export function libraryRowHasSubtitle(entry: LibraryListEntry): boolean {
+  return Boolean(libraryRowBadge(entry) || entry.description);
+}
+
+export function libraryRowHeight(entry: LibraryListEntry): number {
+  return libraryRowHasSubtitle(entry)
+    ? LIBRARY_ROW_HEIGHT_WITH_SUBTITLE
+    : LIBRARY_ROW_HEIGHT;
+}
+
+export type LibraryScopeName = {
+  base: string;
+  profile: string | null;
+};
+
+/** Split `<base>@<profile>` display names. No `@` means the whole string is the base. */
+export function parseLibraryScopeName(displayName: string): LibraryScopeName {
+  const at = displayName.lastIndexOf("@");
+  if (at <= 0 || at === displayName.length - 1) {
+    return { base: displayName, profile: null };
+  }
+  return {
+    base: displayName.slice(0, at),
+    profile: displayName.slice(at + 1),
+  };
+}
+
+export type ScopedLibraryRow<T> = T & { scopedProfile: string | null };
+
+/**
+ * Indent `<base>@<profile>` copies under `<base>` when that base row exists.
+ * Rows with no matching base stay ungrouped.
+ */
+export function groupScopedLibraryRows<T>(
+  rows: readonly T[],
+  displayNameOf: (row: T) => string,
+): Array<ScopedLibraryRow<T>> {
+  const bases = new Set<string>();
+  for (const row of rows) {
+    const parsed = parseLibraryScopeName(displayNameOf(row));
+    if (parsed.profile === null) {
+      bases.add(parsed.base);
+    }
+  }
+  const decorated: Array<ScopedLibraryRow<T>> = rows.map((row) => {
+    const parsed = parseLibraryScopeName(displayNameOf(row));
+    const scopedProfile =
+      parsed.profile !== null && bases.has(parsed.base) ? parsed.profile : null;
+    return { ...row, scopedProfile };
+  });
+  decorated.sort((left, right) => {
+    const leftName = displayNameOf(left);
+    const rightName = displayNameOf(right);
+    const leftParsed = parseLibraryScopeName(leftName);
+    const rightParsed = parseLibraryScopeName(rightName);
+    const leftKey = leftParsed.profile !== null && bases.has(leftParsed.base)
+      ? leftParsed.base
+      : leftName;
+    const rightKey = rightParsed.profile !== null && bases.has(rightParsed.base)
+      ? rightParsed.base
+      : rightName;
+    const byBase = leftKey.localeCompare(rightKey);
+    if (byBase !== 0) {
+      return byBase;
+    }
+    if (left.scopedProfile === null && right.scopedProfile !== null) {
+      return -1;
+    }
+    if (left.scopedProfile !== null && right.scopedProfile === null) {
+      return 1;
+    }
+    return (left.scopedProfile ?? "").localeCompare(right.scopedProfile ?? "");
+  });
+  return decorated;
+}
+
+export function scopedCopyHoverText(profile: string): string {
+  return `Scoped copy in ${profile}`;
+}

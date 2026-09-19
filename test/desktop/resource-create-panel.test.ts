@@ -37,6 +37,16 @@ describe("create plugin compose picker", () => {
     expect(createSource).toContain("createLibraryPlugin");
   });
 
+  test("uses ui form controls, schema helper text, and a Created toast", () => {
+    expect(createSource).toContain('from "@/components/ui/input"');
+    expect(createSource).toContain('from "@/components/ui/textarea"');
+    expect(createSource).toContain('from "@/components/ui/select"');
+    expect(createSource).toContain('from "@/components/ui/checkbox"');
+    expect(createSource).toContain("schema.description");
+    expect(createSource).toContain("Created ${name}");
+    expect(createSource).toContain("toast(");
+  });
+
   test("documents the shared picker and drops unused flat-list chrome", () => {
     expect(designSource).toContain(
       "Plugin create **Compose from library** reuses the profile membership picker",

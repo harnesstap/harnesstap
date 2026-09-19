@@ -47,6 +47,8 @@ function ExtraHoverIcon({ extra }: { extra: ResourceHoverExtra }): ReactNode {
   switch (extra.kind) {
     case "destinations":
       return <Folder size={ICON_SIZE} aria-hidden />;
+    case "note":
+      return <FileText size={ICON_SIZE} aria-hidden />;
     default: {
       const neverKind: never = extra.kind;
       return neverKind;

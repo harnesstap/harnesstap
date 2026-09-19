@@ -2,11 +2,18 @@ import { describe, expect, it } from "bun:test";
 import type { LibraryPluginHead } from "../../apps/desktop/src/lib/api/library-plugins.ts";
 import {
   groupLibraryListByFilterType,
+  groupScopedLibraryRows,
   libraryFilterType,
   libraryFilterTypeLabel,
+  LIBRARY_ROW_HEIGHT,
+  LIBRARY_ROW_HEIGHT_WITH_SUBTITLE,
   libraryRowBadge,
+  libraryRowHeight,
+  libraryRowSelector,
   libraryRowUpdateBadge,
   mergeLibraryList,
+  parseLibraryScopeName,
+  scopedCopyHoverText,
   type LibraryListEntry,
   type LibraryListKind,
 } from "../../apps/desktop/src/lib/library-list.ts";
@@ -130,3 +137,56 @@ describe("libraryRowUpdateBadge", () => {
   });
 });
 
+describe("library row geometry", () => {
+  it("uses 44px rows and 56px when a subtitle exists", () => {
+    const entries = mergeLibraryList(
+      [resource({ id: "s1", type: "skill", name: "ship" })],
+      [pluginHead],
+    );
+    const skill = entryOfKind(entries, "resource");
+    expect(libraryRowHeight(skill)).toBe(LIBRARY_ROW_HEIGHT);
+    expect(libraryRowHeight(entryOfKind(entries, "plugin-package"))).toBe(
+      LIBRARY_ROW_HEIGHT_WITH_SUBTITLE,
+    );
+    expect(libraryRowSelector(entryOfKind(entries, "plugin-package"))).toBe(
+      "devx",
+    );
+    expect(libraryRowSelector(skill)).toBe("s1");
+  });
+});
+
+describe("scoped library rows", () => {
+  it("parses <base>@<profile> names", () => {
+    expect(parseLibraryScopeName("api")).toEqual({
+      base: "api",
+      profile: null,
+    });
+    expect(parseLibraryScopeName("api@project default")).toEqual({
+      base: "api",
+      profile: "project default",
+    });
+    expect(parseLibraryScopeName("@orphan")).toEqual({
+      base: "@orphan",
+      profile: null,
+    });
+  });
+
+  it("indents scoped copies only when the base row exists", () => {
+    const grouped = groupScopedLibraryRows(
+      [
+        { name: "api" },
+        { name: "api@project default" },
+        { name: "solo@other" },
+      ],
+      (row) => row.name,
+    );
+    expect(grouped.map((row) => [row.name, row.scopedProfile])).toEqual([
+      ["api", null],
+      ["api@project default", "project default"],
+      ["solo@other", null],
+    ]);
+    expect(scopedCopyHoverText("project default")).toBe(
+      "Scoped copy in project default",
+    );
+  });
+});

@@ -55,7 +55,7 @@ describe("library items header actions", () => {
 
   test("renders an explicit back control before the Library title", () => {
     const backIdx = headerRow.indexOf("WorkspaceBackButton");
-    const titleIdx = headerRow.indexOf(">Library<");
+    const titleIdx = headerRow.indexOf("Library");
     expect(backIdx).toBeGreaterThan(-1);
     expect(titleIdx).toBeGreaterThan(backIdx);
     expect(panelSource).toContain("onWorkspaceBack");
@@ -97,6 +97,16 @@ describe("library items header actions", () => {
 
   test("auto-opens tracked directories after first-run bootstrap", () => {
     expect(panelSource).toContain("autoOpenTrackedDirectories");
+    expect(panelSource).toContain("hasSeenTrackedDirsIntro");
+    expect(panelSource).toContain("markTrackedDirsIntroSeen");
+  });
+
+  test("reloads without replacing existing rows with Loading", () => {
+    expect(panelSource).toContain("setRefreshing(true)");
+    expect(panelSource).toContain("hasRowsRef.current");
+    expect(panelSource).toContain("LibraryResourceList");
+    expect(panelSource).toContain("No matches for");
+    expect(panelSource).toContain('showBack={false}');
   });
 });
 

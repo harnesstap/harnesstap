@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
-import { Tooltip } from "radix-ui";
+import type { KeyboardEvent, ReactNode } from "react";
+import { Pencil } from "lucide-react";
+import { ChromeTooltip } from "./ChromeTooltip";
+import { IconActionButton } from "./IconActionButton";
 
 export interface LibraryFieldRowProps {
   icon: ReactNode;
@@ -9,11 +11,15 @@ export interface LibraryFieldRowProps {
   placeholder?: string;
   editing: boolean;
   onStartEdit: () => void;
+  onCommit?: () => void;
+  onCancel?: () => void;
   error?: string | null;
   mono?: boolean;
   action?: ReactNode;
   iconButtonLabel?: string;
   onIconClick?: () => void;
+  /** Explicit Save/Cancel under the editor; blur does not commit. */
+  multiline?: boolean;
   children?: ReactNode;
 }
 
@@ -25,49 +31,47 @@ export function LibraryFieldRow({
   placeholder,
   editing,
   onStartEdit,
+  onCommit,
+  onCancel,
   error,
   mono = false,
   action,
   iconButtonLabel,
   onIconClick,
+  multiline = false,
   children,
 }: LibraryFieldRowProps) {
   const showPlaceholder = display == null || display === "";
   const iconLabel = iconButtonLabel ?? fieldName;
 
+  function handleDisplayKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (readOnly || editing) {
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      onStartEdit();
+    }
+  }
+
   return (
     <div className="library-field-row">
-      <Tooltip.Root>
-        <Tooltip.Trigger asChild>
-          {onIconClick ? (
-            <button
-              type="button"
-              className="library-field-icon is-button"
-              aria-label={iconLabel}
-              onClick={onIconClick}
-            >
-              {icon}
-            </button>
-          ) : (
-            <span
-              className="library-field-icon"
-              tabIndex={0}
-              aria-label={fieldName}
-            >
-              {icon}
-            </span>
-          )}
-        </Tooltip.Trigger>
-        <Tooltip.Portal>
-          <Tooltip.Content
-            className="library-field-tooltip"
-            side="top"
-            sideOffset={4}
+      <ChromeTooltip content={fieldName} side="top">
+        {onIconClick ? (
+          <button
+            type="button"
+            className="library-field-icon is-button"
+            aria-label={iconLabel}
+            onClick={onIconClick}
           >
-            {fieldName}
-          </Tooltip.Content>
-        </Tooltip.Portal>
-      </Tooltip.Root>
+            {icon}
+          </button>
+        ) : (
+          <span className="library-field-icon" aria-label={fieldName}>
+            {icon}
+          </span>
+        )}
+      </ChromeTooltip>
       <div
         className={["library-field-value", mono ? "mono" : ""]
           .filter(Boolean)
@@ -75,7 +79,23 @@ export function LibraryFieldRow({
       >
         <div className="library-field-name">{fieldName}</div>
         {editing ? (
-          children
+          <>
+            {children}
+            {multiline ? (
+              <div className="library-field-edit-actions">
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={onCommit}
+                >
+                  Save
+                </button>
+                <button type="button" className="btn" onClick={onCancel}>
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+          </>
         ) : (
           <div
             className={
@@ -83,6 +103,13 @@ export function LibraryFieldRow({
                 ? "library-field-display"
                 : "library-field-display is-editable"
             }
+            tabIndex={readOnly ? undefined : 0}
+            onClick={() => {
+              if (!readOnly) {
+                onStartEdit();
+              }
+            }}
+            onKeyDown={handleDisplayKeyDown}
             onDoubleClick={() => {
               if (!readOnly) {
                 onStartEdit();
@@ -93,6 +120,18 @@ export function LibraryFieldRow({
               <span className="muted">{placeholder}</span>
             ) : (
               display
+            )}
+            {readOnly ? null : (
+              <IconActionButton
+                className="library-field-edit-trigger"
+                label="Edit"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onStartEdit();
+                }}
+                icon={<Pencil size={14} aria-hidden />}
+              />
             )}
           </div>
         )}

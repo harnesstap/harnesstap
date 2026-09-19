@@ -180,7 +180,7 @@ export function ResourceTypeTabs({
     return () => {
       observer.disconnect();
     };
-  }, [collapse, tabMeasureKey]);
+  }, [collapse, hiddenCount, tabMeasureKey]);
 
   if (tabs.length === 0) {
     return null;
@@ -295,7 +295,7 @@ export function ResourceTypeTabs({
           className="resource-type-tabs-more resource-type-tabs-more-measure"
           aria-hidden
         >
-          {typeTabsMoreLabel(99)}
+          {typeTabsMoreLabel(Math.max(hiddenCount, 1))}
         </span>
       ) : null}
       {collapse ? (

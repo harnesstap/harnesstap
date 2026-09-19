@@ -1,20 +1,5 @@
-import { useEffect, useId, useRef, useState } from "react";
-import {
-  Bot,
-  BookOpen,
-  FolderDown,
-  KeyRound,
-  Package,
-  Plug,
-  ScrollText,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  SquareTerminal,
-  Webhook,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { FolderDown, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { importLibraryPluginFromGit } from "../lib/api/library-plugins";
@@ -26,23 +11,10 @@ import {
 } from "../lib/resource-create-schema";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { IconActionButton } from "./IconActionButton";
+import { TypeIcon } from "./TypeIcon";
 import { Presence } from "./motion/Presence";
 import { motionClass } from "./motion/motion-utils";
 import { useOverlayLayer } from "../state/overlay-stack";
-
-const TYPE_ICONS: Record<CreateResourceType, LucideIcon> = {
-  plugin: Package,
-  instruction: BookOpen,
-  skill: Sparkles,
-  rule: ScrollText,
-  mcp_server: Plug,
-  permission: ShieldCheck,
-  hook: Webhook,
-  agent: Bot,
-  command: SquareTerminal,
-  env_var: KeyRound,
-  model_config: SlidersHorizontal,
-};
 
 export interface ResourceTypeModalProps {
   open: boolean;
@@ -74,7 +46,6 @@ export function ResourceTypeModal({
 }: ResourceTypeModalProps) {
   const titleId = useId();
   const sourceId = useId();
-  const closeRef = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<"pick" | "import">("pick");
   const [source, setSource] = useState("");
   const [busy, setBusy] = useState(false);
@@ -112,10 +83,12 @@ export function ResourceTypeModal({
         document.getElementById(sourceId)?.focus();
         return;
       }
-      closeRef.current?.focus();
+      layerRef.current
+        ?.querySelector<HTMLButtonElement>("[data-testid='resource-type-close']")
+        ?.focus();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [open, mode, sourceId]);
+  }, [open, mode, sourceId, layerRef]);
 
   const leave = () => {
     if (busy) {
@@ -187,17 +160,14 @@ export function ResourceTypeModal({
                   icon={<FolderDown size={16} aria-hidden />}
                 />
               ) : null}
-              <button
-                ref={closeRef}
-                type="button"
-                className="icon-action"
-                aria-label={mode === "import" ? "Close import" : "Close type picker"}
+              <IconActionButton
+                data-testid="resource-type-close"
+                label={mode === "import" ? "Close import" : "Close type picker"}
                 title="Close"
                 disabled={busy}
                 onClick={leave}
-              >
-                <X size={16} aria-hidden />
-              </button>
+                icon={<X size={16} aria-hidden />}
+              />
             </div>
           </div>
           {mode === "import" ? (
@@ -260,7 +230,6 @@ export function ResourceTypeModal({
             <ul className="resource-type-list">
               {CREATE_RESOURCE_TYPES.map((type) => {
                 const schema = getResourceCreateSchema(type);
-                const Icon = TYPE_ICONS[type];
                 return (
                   <li key={type}>
                     <button
@@ -270,7 +239,7 @@ export function ResourceTypeModal({
                       disabled={disabled}
                       onClick={() => onSelect(type)}
                     >
-                      <Icon size={16} aria-hidden />
+                      <TypeIcon type={type} />
                       <span className="resource-type-copy">
                         <span className="resource-type-title">{schema.title}</span>
                         <span className="resource-type-description muted">

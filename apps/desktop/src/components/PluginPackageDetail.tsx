@@ -14,6 +14,7 @@ import {
   GitFork,
   History,
   MapPin,
+  Pencil,
   Play,
   Plus,
   Scissors,
@@ -86,6 +87,7 @@ import {
   ScopeAddToProfileModal,
   type ScopeLibraryPick,
 } from "./ScopeAddToProfileModal";
+import { toast } from "../state/toast-store";
 
 export interface PluginPackageDetailProps {
   selector: string;
@@ -101,10 +103,12 @@ export interface PluginPackageDetailProps {
   onBack: () => void;
   onNameCommit: (name: string) => Promise<void>;
   onFieldEditingChange: (editing: boolean) => void;
+  onRegisterCancelFieldEdit?: (cancel: (() => void) | null) => void;
   onConfirmOpenChange?: (open: boolean) => void;
   onLibraryChanged?: () => void;
   historyMode?: PluginDetailMode;
   frozenVersion?: string | null;
+  showBack?: boolean;
   onHistoryModeChange: (
     mode: PluginDetailMode,
     frozenVersion?: string | null,
@@ -194,10 +198,12 @@ export function PluginPackageDetail({
   onBack,
   onNameCommit,
   onFieldEditingChange,
+  onRegisterCancelFieldEdit,
   onConfirmOpenChange,
   onLibraryChanged,
   historyMode = "head",
   frozenVersion = null,
+  showBack = true,
   onHistoryModeChange,
 }: PluginPackageDetailProps) {
   const titleId = useId();
@@ -257,18 +263,43 @@ export function PluginPackageDetail({
   const [actionError, setActionError] = useState<string | null>(null);
   const [descriptionMultiline, setDescriptionMultiline] = useState(false);
 
-  const anyBusy = busy || doctorBusy || confirmBusy || applyBusy || rollbackBusy;
-  const actionsLocked = disabled || !baseUrl || detailLoading || anyBusy || doctorOpen;
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [optimisticMembership, setOptimisticMembership] = useState<string[] | null>(
+    null,
+  );
+
+  const confirmOpen =
+    applyOpen ||
+    cutOpen ||
+    deleteOpen ||
+    forkOpen ||
+    restoreOpen ||
+    doctorOpen;
+  const anyBusy = busy || doctorBusy || confirmBusy || applyBusy || rollbackBusy || updateBusy;
+  const chromeLocked = disabled || !baseUrl || detailLoading;
   const authored = detail?.plugin.origin === "authored";
   const fieldsReadOnly =
     !authored || disabled || !baseUrl || historyMode !== "head";
-  const pickersDisabled = actionsLocked || !authored || historyMode !== "head";
+  const pickersDisabled = chromeLocked || !authored || historyMode !== "head";
   const viewDetail =
     historyMode === "frozen" && frozenDetail ? frozenDetail : detail;
 
   useEffect(() => {
     onFieldEditingChange(editingField !== null);
   }, [editingField, onFieldEditingChange]);
+
+  useEffect(() => {
+    onRegisterCancelFieldEdit?.(() => {
+      setEditingField(null);
+      setDraft("");
+      setDraftTags(detail?.plugin.tags ?? []);
+      setDraftEnvId(detail?.plugin.default_environment_id ?? null);
+      setFieldError(null);
+    });
+    return () => {
+      onRegisterCancelFieldEdit?.(null);
+    };
+  }, [detail, onRegisterCancelFieldEdit]);
 
   useEffect(() => {
     onConfirmOpenChange?.(
@@ -292,6 +323,10 @@ export function PluginPackageDetail({
   useEffect(() => {
     onBusyChange?.(anyBusy);
   }, [anyBusy, onBusyChange]);
+
+  useEffect(() => {
+    setOptimisticMembership(null);
+  }, [selector]);
 
   useEffect(() => {
     if (editingField) {
@@ -565,10 +600,11 @@ export function PluginPackageDetail({
     [viewDetail],
   );
 
-  const selectedMembershipIds = useMemo(
+  const serverMembershipIds = useMemo(
     () => [...new Set([...selectedPluginIds, ...selectedResourceIds])],
     [selectedPluginIds, selectedResourceIds],
   );
+  const selectedMembershipIds = optimisticMembership ?? serverMembershipIds;
 
   const compositionMembers = useMemo(
     () =>
@@ -846,43 +882,55 @@ export function PluginPackageDetail({
     }
   };
 
-  const togglePlugin = (pluginId: string) => {
-    const plugin = libraryPlugins.find((entry) => entry.id === pluginId);
-    if (!plugin) {
-      return;
-    }
-    const selected = selectedPluginIds.includes(pluginId);
-    void runPatch(
-      selected
-        ? { remove: [{ type: "plugin", selector: plugin.name }] }
-        : { add: [{ type: "plugin", selector: plugin.name }] },
-    );
-  };
-
-  const toggleResource = (resourceId: string) => {
-    const resource = membership.find((entry) => entry.id === resourceId);
-    if (!resource || isCompositionPluginPackage(resource)) {
-      return;
-    }
-    const selected = selectedResourceIds.includes(resourceId);
-    const selectorValue = compositionResourceSelector(resource);
-    void runPatch(
-      selected
-        ? { remove: [{ type: resource.type, selector: selectorValue }] }
-        : { add: [{ type: resource.type, selector: selectorValue }] },
-    );
-  };
-
   const toggleMembership = (id: string) => {
     const entry = membership.find((row) => row.id === id);
-    if (!entry) {
+    if (!entry || pickersDisabled || !baseUrl || !selector) {
       return;
     }
+    const selected = selectedMembershipIds.includes(id);
+    let body: Parameters<typeof patchLibraryPluginAttachments>[3];
     if (isCompositionPluginPackage(entry)) {
-      togglePlugin(id);
-      return;
+      const plugin = libraryPlugins.find((row) => row.id === id);
+      if (!plugin) {
+        return;
+      }
+      body = selected
+        ? { remove: [{ type: "plugin", selector: plugin.name }] }
+        : { add: [{ type: "plugin", selector: plugin.name }] };
+    } else {
+      const selectorValue = compositionResourceSelector(entry);
+      body = selected
+        ? { remove: [{ type: entry.type, selector: selectorValue }] }
+        : { add: [{ type: entry.type, selector: selectorValue }] };
     }
-    toggleResource(id);
+    const previous = selectedMembershipIds;
+    const nextIds = selected
+      ? selectedMembershipIds.filter((entryId) => entryId !== id)
+      : [...selectedMembershipIds, id];
+    setOptimisticMembership(nextIds);
+    setDetailError(null);
+    void patchLibraryPluginAttachments(baseUrl, token, selector, body)
+      .then((next) => {
+        setDetail(next);
+        setOptimisticMembership(null);
+        onSuccess(`Updated plugin ${next.plugin.name}`);
+        refreshAfterMutation();
+      })
+      .catch((error: unknown) => {
+        setOptimisticMembership(previous);
+        const message = errorMessage(
+          error,
+          "Could not update plugin composition",
+        );
+        toast({
+          tone: "error",
+          title: message,
+          action: {
+            label: "Retry",
+            onClick: () => toggleMembership(id),
+          },
+        });
+      });
   };
 
   const addLibraryItems = async (items: ScopeLibraryPick[]) => {
@@ -1096,13 +1144,40 @@ export function PluginPackageDetail({
     ) : (
       <>
         <span
+          className={
+            !fieldsReadOnly ? "library-detail-title-display" : undefined
+          }
+          tabIndex={!fieldsReadOnly ? 0 : undefined}
+          onClick={() => {
+            if (!fieldsReadOnly) {
+              void startEdit("name");
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !fieldsReadOnly) {
+              event.preventDefault();
+              void startEdit("name");
+            }
+          }}
           onDoubleClick={() => {
-            if (authored && historyMode === "head") {
+            if (!fieldsReadOnly) {
               void startEdit("name");
             }
           }}
         >
           {detail?.plugin.name ?? selector}
+          {fieldsReadOnly ? null : (
+            <IconActionButton
+              className="library-field-edit-trigger"
+              label="Edit"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void startEdit("name");
+              }}
+              icon={<Pencil size={14} aria-hidden />}
+            />
+          )}
         </span>
         {versionSuffix ? (
           <span className="mono library-detail-version">{versionSuffix}</span>
@@ -1122,9 +1197,6 @@ export function PluginPackageDetail({
           disabled={anyBusy}
           rows={4}
           onChange={(event) => setDraft(event.target.value)}
-          onBlur={(event) =>
-            void commitTextField("description", event.target.value)
-          }
           onKeyDown={(event) => onEditorKeyDown("description", event)}
         />
       );
@@ -1147,10 +1219,10 @@ export function PluginPackageDetail({
   }
 
   async function runOriginUpdate(): Promise<void> {
-    if (!baseUrl || !detail || actionsLocked) {
+    if (!baseUrl || !detail || chromeLocked || updateBusy) {
       return;
     }
-    setBusy(true);
+    setUpdateBusy(true);
     setActionError(null);
     try {
       const report = await postPluginOriginUpdate(baseUrl, token, {
@@ -1171,7 +1243,7 @@ export function PluginPackageDetail({
         errorMessage(error, "Could not update this plugin in the library"),
       );
     } finally {
-      setBusy(false);
+      setUpdateBusy(false);
     }
   }
 
@@ -1179,6 +1251,7 @@ export function PluginPackageDetail({
     if (!detail) {
       return null;
     }
+    const clusterLocked = chromeLocked || confirmOpen;
     switch (action) {
       case "apply":
         return (
@@ -1187,7 +1260,8 @@ export function PluginPackageDetail({
             primary
             showLabel
             data-testid="apply-package"
-            disabled={actionsLocked}
+            disabled={clusterLocked || applyBusy}
+            busy={applyBusy}
             title={APPLY_TOOLTIP}
             label="Apply"
             onClick={() => setApplyOpen(true)}
@@ -1198,7 +1272,8 @@ export function PluginPackageDetail({
         return (
           <IconActionButton
             key="update"
-            disabled={actionsLocked}
+            disabled={clusterLocked || updateBusy}
+            busy={updateBusy}
             title={UPDATE_TOOLTIP}
             label="Update"
             onClick={() => {
@@ -1211,7 +1286,7 @@ export function PluginPackageDetail({
         return (
           <IconActionButton
             key="history"
-            disabled={actionsLocked}
+            disabled={clusterLocked}
             title={HISTORY_TOOLTIP}
             label="History"
             onClick={() => onHistoryModeChange("history")}
@@ -1222,7 +1297,7 @@ export function PluginPackageDetail({
         return (
           <IconActionButton
             key="cut"
-            disabled={actionsLocked}
+            disabled={clusterLocked}
             title={CUT_TOOLTIP}
             label="Cut version"
             onClick={() => {
@@ -1236,7 +1311,7 @@ export function PluginPackageDetail({
         return (
           <IconActionButton
             key="fork"
-            disabled={actionsLocked}
+            disabled={clusterLocked}
             title={FORK_TOOLTIP}
             label="Fork"
             onClick={() => {
@@ -1250,7 +1325,8 @@ export function PluginPackageDetail({
         return (
           <IconActionButton
             key="doctor"
-            disabled={actionsLocked}
+            disabled={clusterLocked || doctorBusy}
+            busy={doctorBusy}
             title={DOCTOR_TOOLTIP}
             label="Doctor"
             onClick={() => {
@@ -1263,7 +1339,7 @@ export function PluginPackageDetail({
         return (
           <IconActionButton
             key="delete"
-            disabled={actionsLocked}
+            disabled={clusterLocked || anyBusy}
             title={DELETE_TOOLTIP}
             label="Delete"
             onClick={() => setDeleteOpen(true)}
@@ -1276,7 +1352,7 @@ export function PluginPackageDetail({
             key="restore"
             primary
             showLabel
-            disabled={actionsLocked || !frozenVersion}
+            disabled={clusterLocked || !frozenVersion}
             label="Restore"
             onClick={() => setRestoreOpen(true)}
             icon={<ArchiveRestore size={16} aria-hidden />}
@@ -1398,7 +1474,10 @@ export function PluginPackageDetail({
         placeholder="No description"
         editing={editingField === "description"}
         error={editingField === "description" ? fieldError : null}
+        multiline={descriptionMultiline}
         onStartEdit={() => void startEdit("description")}
+        onCommit={() => void commitTextField("description", draft)}
+        onCancel={cancelEdit}
       >
         {renderDescriptionEditor()}
       </LibraryFieldRow>
@@ -1567,7 +1646,8 @@ export function PluginPackageDetail({
         title={nameEditor}
         typeLabel="plugin"
         onBack={handleChromeBack}
-        backDisabled={anyBusy}
+        showBack={showBack}
+        backDisabled={confirmOpen}
         backLabel={pluginHistoryBackLabel(historyMode)}
         actions={actionButtons}
       >
