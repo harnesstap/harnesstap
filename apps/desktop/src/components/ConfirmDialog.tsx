@@ -1,5 +1,5 @@
 import { type ReactNode, useId } from "react";
-import { Check, X } from "lucide-react";
+import { Check, Trash2, X } from "lucide-react";
 import {
   shouldCloseDialogOnBackdrop,
   useDialogDismiss,
@@ -28,6 +28,7 @@ export interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   children?: ReactNode;
+  tone?: "default" | "destructive";
 }
 
 /**
@@ -54,6 +55,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   children,
+  tone = "default",
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
@@ -132,7 +134,11 @@ export function ConfirmDialog({
               </button>
             ) : null}
             <button
-              className={["btn", "primary", confirmBusy ? "is-busy" : ""]
+              className={[
+                "btn",
+                tone === "destructive" ? "destructive" : "primary",
+                confirmBusy ? "is-busy" : "",
+              ]
                 .filter(Boolean)
                 .join(" ")}
               type="button"
@@ -145,7 +151,13 @@ export function ConfirmDialog({
               aria-busy={confirmBusy}
               onClick={onConfirm}
             >
-              {confirmBusy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
+              {confirmBusy ? (
+                <ButtonSpinner size={16} />
+              ) : tone === "destructive" ? (
+                <Trash2 size={16} aria-hidden />
+              ) : (
+                <Check size={16} aria-hidden />
+              )}
               {confirmLabel}
             </button>
           </div>

@@ -3,27 +3,21 @@ import {
   Check,
   ChevronsDown,
   CircleAlert,
-  CircleCheck,
   CircleDashed,
-  CirclePause,
   Diff,
   ExternalLink,
-  FileDiff,
   FolderCog,
   Info,
-  ListPlus,
   Minus,
   PackagePlus,
   Pencil,
   Plus,
-  Power,
   RefreshCw,
   Trash2,
   UnfoldVertical,
   X,
 } from "lucide-react";
 import { ChromeTooltip } from "./ChromeTooltip";
-import { ConfirmDialog } from "./ConfirmDialog";
 import { IconActionButton } from "./IconActionButton";
 import {
   aggregateInstallGaps,
@@ -83,7 +77,6 @@ import type {
   ViewScope,
 } from "../lib/types";
 import { RelatedHarnessIcons } from "./HarnessIcons";
-import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import {
   ResourceDetailPane,
   type ResourceDetailTarget,
@@ -99,17 +92,14 @@ import {
   ResourceRowTrailing,
 } from "./ui/resource-row";
 import {
-  PROFILE_INVENTORY_SECTION_ORDER,
   collectTypeTabAttention,
   countInventoryTypeTabs,
   coveredProfileMembershipKeys,
   filterProfileInventoryItems,
   inventoryMembershipCaption,
   partitionProfileInventory,
-  profileInventoryOpenTarget,
-  type ProfileInventoryItem,
-  type ProfileInventorySectionId,
 } from "../lib/profile-inventory";
+import { ScopeInventoryShell } from "./live/ScopeInventoryShell";
 import { ScopeAddToProfileModal } from "./ScopeAddToProfileModal";
 import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceCreatePanel } from "./ResourceCreatePanel";
@@ -820,175 +810,6 @@ function ProfileResourceListItem({
 void UntrackedResourceRow;
 void ProfileResourceListItem;
 
-function inventorySectionTitle(section: ProfileInventorySectionId): string {
-  switch (section) {
-    case "not_in_profile":
-      return "Not in profile";
-    case "inactive":
-      return "Inactive";
-    case "active":
-      return "Active";
-    default: {
-      const neverSection: never = section;
-      return neverSection;
-    }
-  }
-}
-
-function inventorySectionGlyph(section: ProfileInventorySectionId): ReactNode {
-  switch (section) {
-    case "not_in_profile":
-      return <CircleDashed size={ICON_SIZE} strokeWidth={2} aria-hidden />;
-    case "inactive":
-      return <CirclePause size={ICON_SIZE} strokeWidth={2} aria-hidden />;
-    case "active":
-      return <CircleCheck size={ICON_SIZE} strokeWidth={2} aria-hidden />;
-    default: {
-      const neverSection: never = section;
-      return neverSection;
-    }
-  }
-}
-
-function inventoryStatusLabel(item: ProfileInventoryItem): string {
-  switch (item.section) {
-    case "not_in_profile":
-      return "Not in profile";
-    case "inactive":
-      return "Inactive";
-    case "active":
-      return item.drifted ? "Active, differs from disk" : "Active";
-    default: {
-      const neverSection: never = item.section;
-      return neverSection;
-    }
-  }
-}
-
-function InventoryRow({
-  item,
-  editMode,
-  profileName,
-  adding,
-  removing,
-  onAdd,
-  onActivate,
-  onOpenResource,
-  onOpenPlugin,
-  onDiff,
-  onRemoveFromProfile,
-}: {
-  item: ProfileInventoryItem;
-  editMode: boolean;
-  profileName: string | null;
-  adding: boolean;
-  removing: boolean;
-  onAdd?: () => void;
-  onActivate?: () => void;
-  onOpenResource: (target: ResourceDetailTarget) => void;
-  onOpenPlugin?: (pluginName: string) => void;
-  onDiff?: () => void;
-  onRemoveFromProfile?: () => void;
-}) {
-  const inProfile = item.section !== "not_in_profile";
-  const statusLabel = inventoryStatusLabel(item);
-  const membershipCaption = inventoryMembershipCaption(item.pluginName, profileName);
-  return (
-    <ResourceRowRoot
-      hover={hoverModelFromProfileResource(item.resource)}
-      testId={`resource-row-${item.resource.name}`}
-      className={
-        item.section === "active" && item.drifted
-          ? "inventory-row inventory-row-drifted"
-          : "inventory-row"
-      }
-    >
-      <ResourceRowLeading className="inventory-row-lead">
-        <ChromeTooltip content={statusLabel} side="top">
-          <span
-            className="inventory-row-icon inventory-status-glyph"
-            aria-label={statusLabel}
-            role="img"
-          >
-            {inventorySectionGlyph(item.section)}
-          </span>
-        </ChromeTooltip>
-        <span className="inventory-row-icon" aria-hidden>
-          <TypeIcon type={item.type} />
-        </span>
-      </ResourceRowLeading>
-      <ResourceRowIdentity
-        label={item.label}
-        onOpen={() => {
-          const target = profileInventoryOpenTarget(item);
-          if (target.kind === "plugin-package") {
-            if (target.name) {
-              onOpenPlugin?.(target.name);
-            }
-            return;
-          }
-          onOpenResource(resourceDetailTarget(target.resource));
-        }}
-      >
-        {membershipCaption ? (
-          <ResourceRowDescription>{membershipCaption}</ResourceRowDescription>
-        ) : null}
-      </ResourceRowIdentity>
-      <ResourceRowTrailing>
-        {item.drifted && onDiff ? (
-          <IconActionButton
-            className="file-change-diff-btn"
-            label={`View changes for ${item.label}`}
-            title="View changes"
-            onClick={onDiff}
-            icon={<FileDiff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-          />
-        ) : null}
-        {inProfile ? (
-          <span className="inventory-row-remove-slot">
-            {editMode && onRemoveFromProfile ? (
-              <IconActionButton
-                className="profile-resource-remove-btn"
-                label={`Remove ${item.label} from ${profileName}`}
-                title="Remove from profile"
-                busy={removing}
-                spinnerSize={ICON_SIZE}
-                onClick={onRemoveFromProfile}
-                icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-              />
-            ) : (
-              <span className="inventory-row-remove-placeholder" aria-hidden />
-            )}
-          </span>
-        ) : null}
-        {item.section === "not_in_profile" && onAdd ? (
-          <IconActionButton
-            className="untracked-add-btn"
-            showLabel
-            busy={adding}
-            spinnerSize={ICON_SIZE}
-            label="Add"
-            title={`Add ${item.label} to this profile`}
-            onClick={onAdd}
-            icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-          />
-        ) : null}
-        {!editMode && item.section === "inactive" && onActivate ? (
-          <IconActionButton
-            showLabel
-            busy={adding}
-            spinnerSize={ICON_SIZE}
-            label="Activate"
-            title={`Activate ${item.label}`}
-            onClick={onActivate}
-            icon={<Power size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-          />
-        ) : null}
-      </ResourceRowTrailing>
-    </ResourceRowRoot>
-  );
-}
-
 function dedupeContentsResources(
   resources: ProfileContentsResource[],
 ): ProfileContentsResource[] {
@@ -1571,6 +1392,7 @@ export interface LiveStatePanelProps {
   formatView: (view: ViewScope) => string;
   selectedProfile: string | null;
   activeProfile: string | null;
+  applied?: boolean;
   liveContents: ProfileContents | null | undefined;
   applyPreview: ProfileApplyPreview | null;
   /** First load only (no previous preview to show). */
@@ -1585,12 +1407,19 @@ export interface LiveStatePanelProps {
   baseUrl: string | null;
   token: string | null;
   bootstrapBusy?: boolean;
+  /** When false in project scope, show the bootstrap banner without waiting on preview. */
+  projectReady?: boolean;
   onBootstrap?: () => void;
   onCreateProfileFromProject?: () => void;
   onEditProfile?: () => void;
-  onAddResource?: (resource: ProfileContentsResource) => Promise<void>;
+  onAddResource?: (
+    resource: ProfileContentsResource,
+    profileOverride?: string,
+    options?: { skipAutoReapply?: boolean },
+  ) => Promise<void>;
   onAddAllResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onActivateResources?: (resources: ProfileContentsResource[]) => Promise<void>;
+  onAfterAdds?: (addedName: string) => Promise<void>;
   onAttachLibraryItem?: (item: {
     kind: "plugin" | "resource";
     id: string;
@@ -1635,6 +1464,7 @@ export function LiveStatePanel({
   formatView,
   selectedProfile,
   activeProfile,
+  applied: appliedProp = false,
   liveContents,
   applyPreview,
   applyPreviewLoading,
@@ -1646,14 +1476,14 @@ export function LiveStatePanel({
   baseUrl,
   token,
   bootstrapBusy = false,
+  projectReady = true,
   onBootstrap,
   onCreateProfileFromProject,
   onEditProfile,
   onAddResource,
-  onAddAllResources,
   onActivateResources,
+  onAfterAdds,
   onAttachLibraryItem,
-  addingResourceKey = null,
   addingAllResources = false,
   activatingResources = false,
   previewChanges = false,
@@ -1663,7 +1493,6 @@ export function LiveStatePanel({
   onCommitManagedChanges,
   committingManagedChanges = false,
   onRemoveResourceFromProfile,
-  removingResourceKey = null,
   onOpenFileChange,
   onDiffFileChange,
   onAddFileChange,
@@ -1684,16 +1513,10 @@ export function LiveStatePanel({
   );
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryType, setInventoryType] = useState<string | null>(null);
-  const [inventoryVisible, setInventoryVisible] = useState(LIST_PAGE_SIZE);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createType, setCreateType] = useState<CreateResourceType | null>(null);
   const [pickerResources, setPickerResources] = useState<LibraryResource[]>([]);
-  const [pendingRemove, setPendingRemove] = useState<{
-    resource: ProfileContentsResource;
-    pluginId?: string;
-    label: string;
-  } | null>(null);
   const openResource = (target: ResourceDetailTarget) => {
     setDetailTarget(target);
   };
@@ -1812,9 +1635,10 @@ export function LiveStatePanel({
     ],
     [inventoryParts],
   );
+  const selectedIsActive = Boolean(selectedProfile && selectedProfile === activeProfile);
   const inventoryTabOptions = {
     includeAll: true,
-    emptyMode: "disable" as const,
+    emptyMode: "hide" as const,
   };
   const searchFilteredInventory = useMemo(
     () => filterProfileInventoryItems(inventoryItems, inventorySearch, null),
@@ -1842,19 +1666,10 @@ export function LiveStatePanel({
       ),
     [inventoryTypeTab, searchFilteredInventory],
   );
-  const filteredBySection = useMemo(() => {
-    return {
-      not_in_profile: filteredInventory.filter((item) => item.section === "not_in_profile"),
-      inactive: filteredInventory.filter((item) => item.section === "inactive"),
-      active: filteredInventory.filter((item) => item.section === "active"),
-    };
-  }, [filteredInventory]);
   const profileMembershipKeys = useMemo(
     () => coveredProfileMembershipKeys(profileResourceRows),
     [profileResourceRows],
   );
-
-  const profileNameForActions = selectedProfile ?? activeProfile;
 
   const previewHarnesses = applyPreview?.harnesses ?? liveHarnesses;
   const installGaps = aggregateInstallGaps(previewHarnesses).filter(
@@ -1886,9 +1701,16 @@ export function LiveStatePanel({
 
   const previewWarning = applyPreview?.warning ?? null;
   const showPreviewError = Boolean(selectedProfile && applyPreviewError);
-  const showNotTrackedActions =
-    previewWarning === PROJECT_NOT_TRACKED_WARNING
-    && Boolean(onBootstrap || onCreateProfileFromProject);
+  const showBootstrapBanner =
+    view === "project"
+    && Boolean(onBootstrap || onCreateProfileFromProject)
+    && (!projectReady || previewWarning === PROJECT_NOT_TRACKED_WARNING);
+  const showNotTrackedActions = showBootstrapBanner;
+  const inactiveHeaderHint = !selectedIsActive
+    ? "Applies when you Apply this profile"
+    : view === "project" && !appliedProp
+      ? "Found on disk. Apply to track these with this profile."
+      : null;
   const recoveryActions =
     !showNotTrackedActions && applyPreview?.recovery_actions?.length
       ? expandRecoveryActions(applyPreview.recovery_actions)
@@ -1932,6 +1754,30 @@ export function LiveStatePanel({
               />
             </div>
           ) : null}
+        </div>
+      ) : null}
+      {showBootstrapBanner && !previewWarning ? (
+        <div className="banner" role="status">
+          <div>This project has no apm.yml yet. Bootstrap to track harness files.</div>
+          <div className="banner-actions">
+            {onBootstrap ? (
+              <IconActionButton
+                busy={bootstrapBusy}
+                label={bootstrapBusy ? "Bootstrapping…" : "Bootstrap"}
+                onClick={onBootstrap}
+                icon={<FolderCog size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
+            ) : null}
+            {onCreateProfileFromProject ? (
+              <IconActionButton
+                primary
+                label="Create profile from project"
+                onClick={onCreateProfileFromProject}
+                disabled={bootstrapBusy}
+                icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
+            ) : null}
+          </div>
         </div>
       ) : null}
       {previewWarning ? (
@@ -2181,189 +2027,57 @@ export function LiveStatePanel({
           <p className="muted">No profile selected.</p>
         )
       ) : (
-        <div className="scope-inventory-pane">
-          <div className="scope-inventory-scroll">
-          {!activeProfile && !selectedProfile ? (
-            <p className="muted">No profile selected.</p>
+        !activeProfile && !selectedProfile ? (
+          <p className="muted">No profile selected.</p>
           ) : resourceStack.kind === "loading" ? (
             <SkeletonRow count={8} height={40} />
-          ) : (
-            <>
-              <ListSearchField
-                value={inventorySearch}
-                onChange={(value) => {
-                  setInventorySearch(value);
-                  setInventoryVisible(LIST_PAGE_SIZE);
-                }}
-                placeholder="Filter resources"
-                label="Filter resources"
-              />
-              <ResourceTypeTabs
-                includeAll={true}
-                emptyMode="disable"
-                wide
-                counts={inventoryTypeCounts}
-                attention={inventoryAttention}
-                value={inventoryTypeTab}
-                onChange={(next) => {
-                  setInventoryType(next);
-                  setInventoryVisible(LIST_PAGE_SIZE);
-                }}
-              />
-              <div className="enabled-list scope-inventory-list">
-                {PROFILE_INVENTORY_SECTION_ORDER.map((section) => {
-                  const rows = filteredBySection[section];
-                  if (rows.length === 0) {
-                    return null;
+        ) : (
+          <ScopeInventoryShell
+            search={inventorySearch}
+            onSearch={setInventorySearch}
+            typeCounts={inventoryTypeCounts}
+            attention={inventoryAttention}
+            typeTab={inventoryTypeTab}
+            onTypeTab={setInventoryType}
+            items={filteredInventory}
+            selectedProfile={selectedProfile}
+            selectedIsActive={selectedIsActive}
+            editMode={editMode}
+            railPrimaryIsReapply={railPrimaryIsReapply}
+            inactiveHeaderHint={inactiveHeaderHint}
+            onAddResource={onAddResource}
+            onActivateResources={onActivateResources}
+            onAfterAdds={onAfterAdds}
+            onOpenResource={openResource}
+            onOpenPlugin={onOpenPlugin}
+            onDiff={
+              onDiffFileChange
+                ? (item) => {
+                    const change = item.driftChange ?? {
+                      path: item.resource.source ?? "",
+                      type: "modified" as const,
+                      resource: {
+                        type: item.resource.type,
+                        name: item.resource.name,
+                      },
+                    };
+                    if (change.path) {
+                      onDiffFileChange(change);
+                    }
                   }
-                  const visible = rows.slice(0, inventoryVisible);
-                  const title = inventorySectionTitle(section);
-                  const canAddAll =
-                    section === "not_in_profile" && Boolean(onAddAllResources);
-                  const canActivateAll =
-                    section === "inactive" && Boolean(onActivateResources);
-                  return (
-                    <section
-                      key={section}
-                      className="contents-block inventory-section"
-                      aria-label={title}
-                    >
-                      <header className="contents-header">
-                        <span className="contents-header-title inventory-section-label">
-                          <span className="inventory-status-glyph" aria-hidden>
-                            {inventorySectionGlyph(section)}
-                          </span>
-                          <span>{title}</span>
-                          <span className="inventory-section-count">{rows.length}</span>
-                        </span>
-                        {!editMode && canAddAll ? (
-                          <span className="contents-header-toolbar">
-                            <IconActionButton
-                              primary={!railPrimaryIsReapply}
-                              showLabel
-                              iconAfterLabel
-                              busy={addingAllResources}
-                              spinnerSize={ICON_SIZE}
-                              label="Add all"
-                              title={`Add all ${rows.length} items to ${selectedProfile}`}
-                              onClick={() => {
-                                void onAddAllResources?.(
-                                  rows.map((row) => row.resource),
-                                );
-                              }}
-                              icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-                            />
-                          </span>
-                        ) : null}
-                        {!editMode && canActivateAll ? (
-                          <span className="contents-header-toolbar">
-                            <IconActionButton
-                              showLabel
-                              iconAfterLabel
-                              busy={activatingResources}
-                              spinnerSize={ICON_SIZE}
-                              label="Activate all"
-                              title={`Activate ${rows.length} items`}
-                              onClick={() => {
-                                void onActivateResources?.(
-                                  rows.map((row) => row.resource),
-                                );
-                              }}
-                              icon={<Power size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-                            />
-                          </span>
-                        ) : null}
-                      </header>
-                      <div className="contents-body">
-                        {visible.map((item) => {
-                          const key = `${item.resource.type}:${item.resource.name}`;
-                          return (
-                            <InventoryRow
-                              key={item.key}
-                              item={item}
-                              editMode={editMode}
-                              profileName={profileNameForActions}
-                              adding={addingResourceKey === key}
-                              removing={removingResourceKey === key}
-                              onAdd={
-                                onAddResource
-                                  ? () => {
-                                      void onAddResource(item.resource);
-                                    }
-                                  : undefined
-                              }
-                              onActivate={
-                                onActivateResources
-                                  ? () => {
-                                      void onActivateResources([item.resource]);
-                                    }
-                                  : undefined
-                              }
-                              onOpenResource={openResource}
-                              onOpenPlugin={onOpenPlugin}
-                              onDiff={
-                                item.drifted && onDiffFileChange
-                                  ? () => {
-                                      const change = item.driftChange ?? {
-                                        path: item.resource.source ?? "",
-                                        type: "modified" as const,
-                                        resource: {
-                                          type: item.resource.type,
-                                          name: item.resource.name,
-                                        },
-                                      };
-                                      if (change.path) {
-                                        onDiffFileChange(change);
-                                      }
-                                    }
-                                  : undefined
-                              }
-                              onRemoveFromProfile={
-                                onRemoveResourceFromProfile
-                                  ? () => {
-                                      setPendingRemove({
-                                        resource: item.resource,
-                                        pluginId: item.pluginId,
-                                        label: item.label,
-                                      });
-                                    }
-                                  : undefined
-                              }
-                            />
-                          );
-                        })}
-                        <ListTruncationControls
-                          visible={visible.length}
-                          total={rows.length}
-                          onMore={() =>
-                            setInventoryVisible((current) =>
-                              nextVisibleCount(current, rows.length),
-                            )
-                          }
-                          onShowAll={() => setInventoryVisible(rows.length)}
-                        />
-                      </div>
-                    </section>
-                  );
-                })}
-                {filteredInventory.length === 0 ? (
-                  <p className="muted">No matching resources.</p>
-                ) : null}
-              </div>
-            </>
-          )}
-          </div>
-          <button
-            type="button"
-            className="scope-inventory-fab icon-action primary"
-            data-testid="scope-inventory-fab"
-            aria-label="Add to profile"
-            disabled={!selectedProfile}
-            onClick={() => setAddModalOpen(true)}
-          >
-            <Plus size={20} strokeWidth={2} aria-hidden />
-          </button>
-        </div>
+                : undefined
+            }
+            onRemoveFromProfile={
+              onRemoveResourceFromProfile
+                ? (item) =>
+                    onRemoveResourceFromProfile(item.resource, item.pluginId)
+                : undefined
+            }
+            onOpenAddModal={() => setAddModalOpen(true)}
+            addingAllResources={addingAllResources}
+            activatingResources={activatingResources}
+          />
+        )
       )}
       <ResourceDetailPane
         open={detailTarget !== null}
@@ -2380,6 +2094,7 @@ export function LiveStatePanel({
         baseUrl={baseUrl}
         token={token}
         profileKeys={profileMembershipKeys}
+        excludeProfileName={selectedProfile}
         onClose={() => setAddModalOpen(false)}
         onAdd={async (items) => {
           if (!onAttachLibraryItem) {
@@ -2435,32 +2150,6 @@ export function LiveStatePanel({
           onSuccess={onSuccess}
         />
       ) : null}
-      <ConfirmDialog
-        open={pendingRemove !== null}
-        title="Remove from profile"
-        description={
-          pendingRemove
-            ? `Remove ${pendingRemove.label} from ${profileNameForActions}?`
-            : ""
-        }
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
-        confirmBusy={Boolean(
-          pendingRemove
-          && removingResourceKey
-          === `${pendingRemove.resource.type}:${pendingRemove.resource.name}`,
-        )}
-        onCancel={() => setPendingRemove(null)}
-        onConfirm={() => {
-          if (!pendingRemove || !onRemoveResourceFromProfile) {
-            return;
-          }
-          void onRemoveResourceFromProfile(
-            pendingRemove.resource,
-            pendingRemove.pluginId,
-          ).finally(() => setPendingRemove(null));
-        }}
-      />
     </>
   );
 }

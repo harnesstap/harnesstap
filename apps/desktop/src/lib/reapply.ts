@@ -1,4 +1,90 @@
-import type { ViewScope } from "./types";
+import type { ProfileApplyPreview, ViewScope } from "./types";
+
+/** Green hold on the apply strip before it collapses. */
+export const APPLY_SUCCESS_HOLD_MS = 1500;
+
+export function applyPreviewChangeCount(
+  preview: ProfileApplyPreview | null | undefined,
+): number {
+  return preview?.files.changes.length ?? 0;
+}
+
+export type ScopeStatusLine =
+  | { kind: "none" }
+  | { kind: "selected_not_applied"; text: "Selected · not applied" }
+  | { kind: "active_applied"; text: "Active · applied" }
+  | { kind: "active_differ"; text: string; fileCount: number };
+
+/** One status sentence under the selected profile name. */
+export function scopeStatusLine(input: {
+  selectedProfile: string | null;
+  activeProfile: string | null;
+  applied: boolean;
+  fileChangeCount: number;
+}): ScopeStatusLine {
+  if (!input.selectedProfile) {
+    return { kind: "none" };
+  }
+  const isActive = input.selectedProfile === input.activeProfile;
+  if (!isActive || !input.applied) {
+    return { kind: "selected_not_applied", text: "Selected · not applied" };
+  }
+  if (input.fileChangeCount > 0) {
+    const n = input.fileChangeCount;
+    return {
+      kind: "active_differ",
+      text: `Active · ${n} file${n === 1 ? "" : "s"} differ`,
+      fileCount: n,
+    };
+  }
+  return { kind: "active_applied", text: "Active · applied" };
+}
+
+export type ApplyHelperKind =
+  | "none"
+  | "changes"
+  | "up_to_date"
+  | "nothing"
+  | "reapply";
+
+export interface ApplyCtaHelper {
+  kind: ApplyHelperKind;
+  label: string | null;
+  changeCount: number;
+}
+
+/** Copy under the rail Apply button. */
+export function applyCtaHelper(input: {
+  selectedProfile: string | null;
+  activeProfile: string | null;
+  applied: boolean;
+  showReapply: boolean;
+  changeCount: number;
+  switching: boolean;
+}): ApplyCtaHelper {
+  const changeCount = input.changeCount;
+  if (input.switching) {
+    return { kind: "none", label: null, changeCount };
+  }
+  if (!input.selectedProfile) {
+    return { kind: "nothing", label: "Nothing to apply", changeCount };
+  }
+  if (input.showReapply) {
+    return { kind: "reapply", label: "Re-apply to restore saved state", changeCount };
+  }
+  const isActive = input.selectedProfile === input.activeProfile;
+  if (isActive && input.applied) {
+    return { kind: "up_to_date", label: "Up to date", changeCount };
+  }
+  if (!isActive && changeCount > 0) {
+    return {
+      kind: "changes",
+      label: `${changeCount} change${changeCount === 1 ? "" : "s"} · Preview`,
+      changeCount,
+    };
+  }
+  return { kind: "none", label: null, changeCount };
+}
 
 function scopeHasDrift(input: {
   view: ViewScope;

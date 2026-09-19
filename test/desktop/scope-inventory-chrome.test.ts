@@ -1,13 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readDesktopShellSource } from "../helpers/desktop-shell-source";
+import { readDesktopShellSource, readLiveInventorySource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
-const liveStateSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/components/LiveStatePanel.tsx"),
-  "utf8",
-);
+const liveStateSource = readLiveInventorySource();
 const appSource = readDesktopShellSource();
 const addModalSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/ScopeAddToProfileModal.tsx"),
@@ -51,11 +48,15 @@ describe("Global/Project scope inventory chrome", () => {
     );
   });
 
-  it("uses one full-span search and wide type tabs with empty types disabled", () => {
+  it("uses one full-span search and wide type tabs with empty types in a trailing pill", () => {
     expect(liveStateSource).toContain('label="Filter resources"');
-    expect(liveStateSource).toContain("emptyMode=\"disable\"");
+    expect(liveStateSource).toContain('emptyMode="hide"');
     expect(liveStateSource).toContain("includeAll={true}");
-    expect(liveStateSource).toContain("attention={inventoryAttention}");
+    expect(liveStateSource).toContain("emptyInventoryTypeTabs");
+    expect(liveStateSource).toContain("resource-type-tab-empty");
+    expect(liveStateSource).toContain("emptyTypesPillLabel");
+    expect(designSource).toContain("`+N empty`");
+    expect(liveStateSource).toContain("attention={attention}");
     expect(liveStateSource).toContain("collectTypeTabAttention");
     expect(liveStateSource).toContain("searchFilteredInventory");
     expect(liveStateSource).toContain("countInventoryTypeTabs(searchFilteredInventory)");
@@ -88,7 +89,7 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain('label="Activate all"');
     expect(liveStateSource).toContain('label="Add"');
     expect(liveStateSource).toContain('label="Activate"');
-    expect(liveStateSource).toContain("primary={!railPrimaryIsReapply}");
+    expect(liveStateSource).toContain("addAllPrimary={!railPrimaryIsReapply}");
     expect(designSource).toContain("Ghost **Add all**");
   });
 
@@ -118,7 +119,7 @@ describe("Global/Project scope inventory chrome", () => {
     expect(leadBlock).not.toContain("flex-direction: column;");
     expect(stylesSource).toContain(".resource-row.inventory-row");
     expect(designSource).toContain("trash-width trailing slot");
-    expect(designSource).toContain("status · type icon · name");
+    expect(designSource).toContain("[type icon] [name]");
     expect(appSource).not.toMatch(
       /status-edit-action[\s\S]{0,200}openEditProfile\(selectedProfile\)/,
     );
@@ -165,24 +166,24 @@ describe("Global/Project scope inventory chrome", () => {
     expect(tabsSource).toContain("resource-type-tab-count");
     expect(tabsSource).toContain("resource-type-tab-label");
     expect(tabsSource).not.toContain('density="compact"');
-    expect(liveStateSource).toMatch(/scope-inventory-pane[\s\S]*\bwide\b/);
+    expect(liveStateSource).toContain("scope-inventory-pane");
+    expect(liveStateSource).toMatch(/\bwide\b/);
     expect(designSource).toContain("Do not pass `density=\"compact\"`");
     expect(designSource).toContain("collapsed to one row");
     expect(designSource).toContain("`N more`");
     expect(designSource).toContain("`Less`");
     expect(designSource).toContain("end of the collapsed row");
     expect(designSource).toContain("right-aligned below the wrapping pills");
-    expect(designSource).toContain("taller fixed-height dialog");
+    expect(designSource).toContain("height follows content up to 70vh");
     const modalStart = stylesSource.indexOf("\n.scope-add-modal {");
     expect(modalStart).toBeGreaterThan(-1);
     const modalBlock = stylesSource.slice(
       modalStart,
       stylesSource.indexOf("}", modalStart) + 1,
     );
-    expect(modalBlock).toContain("height: min(48rem, calc(100vh - 2rem));");
-    expect(modalBlock).toContain("max-height: min(48rem, calc(100vh - 2rem));");
+    expect(modalBlock).toContain("height: auto;");
+    expect(modalBlock).toContain("max-height: 70vh;");
     expect(modalBlock).toContain("overflow: hidden;");
-    expect(modalBlock).not.toContain("height: auto;");
     const listStart = stylesSource.indexOf("\n.scope-add-modal-list {");
     expect(listStart).toBeGreaterThan(-1);
     const listBlock = stylesSource.slice(
@@ -261,5 +262,18 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain(
       "Clicking a plugin package membership row opens Library plugin details",
     );
+  });
+
+  it("keeps a selected profile on re-click and overlays apply progress over inventory", () => {
+    expect(appSource).toContain("ctrl.selectProfile(profile.name)");
+    expect(appSource).not.toMatch(
+      /selectProfile[\s\S]{0,200}setSelectedProfile\(null\)/,
+    );
+    expect(appSource).toContain("ApplyProgressStrip");
+    expect(appSource).toContain("scope-inventory-locked");
+    expect(appSource).toContain("switchSuccessHold");
+    expect(appSource).toContain("Applying to match profile");
+    expect(designSource).toContain("Re-clicking the selected profile keeps it selected");
+    expect(designSource).toContain("overlay strip");
   });
 });

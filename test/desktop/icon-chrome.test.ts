@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
-import { readDesktopShellSource } from "../helpers/desktop-shell-source";
+import { readDesktopShellSource, readLiveInventorySource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const root = join(import.meta.dir, "../../apps/desktop/src");
@@ -14,7 +14,7 @@ function read(rel: string): string {
 const appSource = readDesktopShellSource();
 const typeIconSource = read("components/TypeIcon.tsx");
 const typeModalSource = read("components/ResourceTypeModal.tsx");
-const liveStateSource = read("components/LiveStatePanel.tsx");
+const liveStateSource = readLiveInventorySource();
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",
@@ -245,7 +245,7 @@ describe("desktop icon chrome", () => {
     expect(liveStateSource).toContain("UnfoldVertical");
     expect(liveStateSource).not.toContain('className="link-btn"');
     expect(liveStateSource).not.toContain("TODO(G4)");
-    expect(liveStateSource).toContain("primary={!railPrimaryIsReapply}");
+    expect(liveStateSource).toContain("addAllPrimary={!railPrimaryIsReapply}");
     expect(designSource).toContain("Ghost **Add all**");
     expect(designSource).toContain("wontfix");
     expect(liveStateSource).not.toContain("target-preview-drifted");

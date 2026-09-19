@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Tag, X } from "lucide-react";
+import { Check, Tag, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,10 +30,13 @@ import type {
   ProfileDetail,
 } from "../lib/types";
 import { IconActionButton } from "./IconActionButton";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 import { ProfileDeleteControls } from "./parity/ProfileDeleteControls";
 import { ResourceDetailPane } from "./ResourceDetailPane";
+import { toast } from "../state/toast-store";
+import { useEscapeWhenNoLayer } from "../state/overlay-stack";
 
 export interface EditProfilePaneProps {
   profileName: string;
@@ -53,6 +56,7 @@ export interface EditProfilePaneProps {
   onRequestCut?: (name: string, version: string) => void;
   /** Bump after Library import so membership lists include new plugin refs. */
   libraryReloadKey?: number;
+  onRegisterCloseGuard?: (guard: (() => boolean) | null) => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -76,6 +80,7 @@ export function EditProfilePane({
   onSuccess,
   onRequestCut,
   libraryReloadKey = 0,
+  onRegisterCloseGuard,
 }: EditProfilePaneProps) {
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -102,6 +107,7 @@ export function EditProfilePane({
     pathHint?: string | null;
   } | null>(null);
   const [clock, setClock] = useState(() => new Date());
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   const applyDetail = (next: ProfileDetail) => {
     setDetail(next);
@@ -300,7 +306,7 @@ export function EditProfilePane({
     options: { affectsApply: boolean; nextName?: string },
   ) => {
     if (busy || disabled || !baseUrl) {
-      return;
+      return false;
     }
     setBusy(true);
     setError(null);
@@ -315,62 +321,81 @@ export function EditProfilePane({
       });
     } catch (mutationError) {
       setError(errorMessage(mutationError, "Could not save profile change"));
+      return false;
     } finally {
       setBusy(false);
     }
+    return true;
   };
 
-  const commitName = () => {
+  const parsedTags = tagsDraft
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  const savedTags = detail?.profile.tags.filter((tag) => tag !== "profile") ?? [];
+  const dirty = Boolean(detail)
+    && (
+      nameDraft.trim() !== profileName
+      || descriptionDraft !== (detail?.profile.description ?? "")
+      || parsedTags.join("\0") !== savedTags.join("\0")
+    );
+
+  const requestClose = () => {
+    if (dirty) {
+      setDiscardOpen(true);
+      return false;
+    }
+    onClose();
+    return true;
+  };
+
+  useEffect(() => {
+    onRegisterCloseGuard?.(() => requestClose());
+    return () => onRegisterCloseGuard?.(null);
+  });
+
+  useEscapeWhenNoLayer((event) => {
+    event.preventDefault();
+    requestClose();
+  });
+
+  const saveMetadata = () => {
+    if (!detail || !baseUrl || !dirty) {
+      return;
+    }
     const nextName = nameDraft.trim();
-    if (!nextName || nextName === profileName || !baseUrl) {
-      setNameDraft(profileName);
+    if (!nextName) {
+      setError("Name is required");
       return;
     }
     void runMutation(
       async () => {
-        const result = await renameProfile(baseUrl, token, profileName, nextName);
-        onProfileRenamed(result.name);
-        return fetchProfileDetail(baseUrl, token, result.name);
+        let currentName = profileName;
+        if (nextName !== profileName) {
+          const result = await renameProfile(baseUrl, token, profileName, nextName);
+          onProfileRenamed(result.name);
+          currentName = result.name;
+        }
+        const tagsChanged = parsedTags.join("\0") !== savedTags.join("\0");
+        const descriptionChanged = descriptionDraft !== detail.profile.description;
+        if (descriptionChanged || tagsChanged) {
+          return patchProfileMetadata(baseUrl, token, currentName, {
+            ...(descriptionChanged ? { description: descriptionDraft } : {}),
+            ...(tagsChanged ? { tags: parsedTags } : {}),
+          });
+        }
+        return fetchProfileDetail(baseUrl, token, currentName);
       },
-      { affectsApply: true, nextName },
+      { affectsApply: nextName !== profileName, nextName: nextName !== profileName ? nextName : undefined },
     );
   };
 
-  const commitDescription = () => {
-    if (!detail || !baseUrl) {
+  const discardMetadata = () => {
+    if (!detail) {
       return;
     }
-    if (descriptionDraft === detail.profile.description) {
-      return;
-    }
-    void runMutation(
-      () =>
-        patchProfileMetadata(baseUrl, token, profileName, {
-          description: descriptionDraft,
-        }),
-      { affectsApply: false },
-    );
-  };
-
-  const commitTags = () => {
-    if (!detail || !baseUrl) {
-      return;
-    }
-    const tags = tagsDraft
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-    const current = detail.profile.tags.filter((tag) => tag !== "profile");
-    if (
-      tags.length === current.length
-      && tags.every((tag, index) => tag === current[index])
-    ) {
-      return;
-    }
-    void runMutation(
-      () => patchProfileMetadata(baseUrl, token, profileName, { tags }),
-      { affectsApply: false },
-    );
+    applyDetail(detail);
+    setDiscardOpen(false);
   };
 
   const togglePlugin = (pluginId: string) => {
@@ -382,7 +407,7 @@ export function EditProfilePane({
     if (!plugin) {
       return;
     }
-    void runMutation(
+    return runMutation(
       () =>
         selected
           ? detachProfileComposition(baseUrl, token, profileName, {
@@ -417,7 +442,7 @@ export function EditProfilePane({
       return;
     }
     const selected = selectedResourceIds.includes(resourceId);
-    void runMutation(
+    return runMutation(
       () =>
         selected
           ? detachProfileComposition(baseUrl, token, profileName, {
@@ -435,11 +460,27 @@ export function EditProfilePane({
     if (!entry) {
       return;
     }
-    if (isCompositionPluginPackage(entry)) {
-      togglePlugin(id);
+    const wasSelected = selectedMembershipIds.includes(id);
+    const label = resourceDisplayName(entry);
+    const result = isCompositionPluginPackage(entry)
+      ? togglePlugin(id)
+      : toggleResource(id);
+    if (!result) {
       return;
     }
-    toggleResource(id);
+    void result.then((ok) => {
+      if (!ok) {
+        return;
+      }
+      toast({
+        tone: "success",
+        title: wasSelected ? `Removed ${label}` : `Added ${label}`,
+        action: {
+          label: "Undo",
+          onClick: () => toggleMembership(id),
+        },
+      });
+    });
   };
 
   const controlsDisabled = disabled || busy || loading;
@@ -499,7 +540,9 @@ export function EditProfilePane({
             label="Done editing"
             title="Done"
             disabled={busy}
-            onClick={onClose}
+            onClick={() => {
+              requestClose();
+            }}
             icon={<X size={18} strokeWidth={2} aria-hidden />}
           />
         </div>
@@ -517,13 +560,6 @@ export function EditProfilePane({
                 id="edit-profile-name"
                 value={nameDraft}
                 onChange={(event) => setNameDraft(event.target.value)}
-                onBlur={commitName}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    commitName();
-                  }
-                }}
                 disabled={controlsDisabled}
               />
             </div>
@@ -533,7 +569,6 @@ export function EditProfilePane({
                 id="edit-profile-description"
                 value={descriptionDraft}
                 onChange={(event) => setDescriptionDraft(event.target.value)}
-                onBlur={commitDescription}
                 disabled={controlsDisabled}
                 rows={3}
               />
@@ -544,7 +579,6 @@ export function EditProfilePane({
                 id="edit-profile-tags"
                 value={tagsDraft}
                 onChange={(event) => setTagsDraft(event.target.value)}
-                onBlur={commitTags}
                 disabled={controlsDisabled}
                 placeholder="comma-separated (profile tag kept automatically)"
               />
@@ -594,6 +628,26 @@ export function EditProfilePane({
             }}
             onCreateEnvironment={onCreateEnvironment}
           />
+          <div className="edit-profile-footer">
+            <button
+              type="button"
+              className="btn"
+              disabled={controlsDisabled || !dirty}
+              onClick={discardMetadata}
+            >
+              <X size={16} aria-hidden />
+              Discard
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={controlsDisabled || !dirty}
+              onClick={saveMetadata}
+            >
+              <Check size={16} aria-hidden />
+              Save
+            </button>
+          </div>
         </div>
       ) : null}
       <ResourceDetailPane
@@ -620,6 +674,19 @@ export function EditProfilePane({
               setLibraryError(errorMessage(loadError, "Could not load library"));
             });
         }}
+      />
+      <ConfirmDialog
+        open={discardOpen}
+        title="Discard edits?"
+        description="Name, description, and tags have unsaved changes."
+        confirmLabel="Discard"
+        tone="destructive"
+        onConfirm={() => {
+          discardMetadata();
+          setDiscardOpen(false);
+          onClose();
+        }}
+        onCancel={() => setDiscardOpen(false)}
       />
     </main>
   );
