@@ -13,4 +13,5 @@
 @import "./styles/features/environments.css";
 @import "./styles/features/settings.css";
 @import "./styles/features/dialogs.css";
+@import "./styles/features/commands.css";
 @import "./styles/features/create.css";

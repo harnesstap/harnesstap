@@ -59,6 +59,22 @@ bun run desktop:shots
 
 Knobs: `SHOTS_BASE_URL` (default `http://127.0.0.1:5173/`), `SHOTS_AGENT_PORT`, `SHOTS_TOKEN_PATH`, `SHOTS_PROJECT_PATH`, `SHOTS_OUT`, `SHOTS_CHROME_CHANNEL=chrome` or `SHOTS_CHROME_PATH=/usr/bin/google-chrome-stable` (falls back to Playwright's bundled Chromium; `bunx playwright install chromium` if neither is available), `--viewports 1440x900,960x640`, `--reduced-motion`.
 
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `⌘/Ctrl+K` | Command palette |
+| `⌘/Ctrl+1` | Go to Library |
+| `⌘/Ctrl+2` | Go to Discover |
+| `⌘/Ctrl+3` | Go to Environments |
+| `[` | Switch to Global |
+| `]` | Switch to Project |
+| `/` | Focus the current workspace filter |
+| `?` | Keyboard shortcuts |
+| `Esc` | Dismiss the top overlay, else Back |
+
+`?` lists the same table in-app. Workspace-specific actions (Create resource, Apply, Add marketplace, and so on) appear under **Actions on this screen** in the palette.
+
 ## Build packaged app
 
 ```bash
