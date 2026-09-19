@@ -1,12 +1,10 @@
+import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, test } from "bun:test";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
-const appSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
-  "utf8",
-);
+const appSource = readDesktopShellSource();
 const workspaceSource = readFileSync(
   join(
     import.meta.dir,
@@ -99,7 +97,7 @@ function cssBlock(source: string, selector: string): string {
 describe("sources workspace chrome", () => {
   test("SourcesWorkspace is rendered from App when workspaceFocus is sources", () => {
     expect(appSource).toContain("SourcesWorkspace");
-    expect(appSource).toContain('workspaceFocus === "sources"');
+    expect(appSource).toContain('nav.destination === "discover"');
     expect(workspaceSource).toContain("export function SourcesWorkspace");
     expect(workspaceSource).toContain("homeResetNonce");
   });
@@ -197,8 +195,8 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("WorkspaceBackButton");
     expect(workspaceSource).toContain("<span>Discover</span>");
     expect(workspaceSource).toContain('aria-label="Discover"');
-    expect(appSource).toContain("canWorkspaceBack={canWorkspaceBack}");
-    expect(appSource).toContain("onWorkspaceBack={onWorkspaceBack}");
+    expect(appSource).toContain("canWorkspaceBack={nav.hasHistory}");
+    expect(appSource).toContain("onWorkspaceBack={nav.back}");
   });
 
   test("marks the sources shell for tests", () => {
@@ -269,7 +267,7 @@ describe("sources search list and preview", () => {
     expect(workspaceSource).toContain("popSourcesPane");
     expect(workspaceSource).toContain("sourcesEscapeAction");
     expect(workspaceSource).toContain("sourcesSidebarChangeAction");
-    expect(workspaceSource).toContain('"Escape"');
+    expect(workspaceSource).toContain("useEscapeWhenNoLayer(");
     expect(pluginTreeSource).toContain("onBack");
     expect(previewPaneSource).toContain("onBack");
   });
@@ -294,7 +292,7 @@ describe("sources search list and preview", () => {
     expect(workspaceSource).toContain("applyInstallError(pinError");
     expect(recordActionsSource).toContain("SourcesSignInPrompt");
     expect(appSource).toContain("onSignIn=");
-    expect(appSource).toContain("setCloudAccountOpen(true)");
+    expect(appSource).toContain('overlays.openOverlay("cloudAccount")');
     const signInCopy =
       listPaneSource.includes("Sign in from the Cloud account control")
       || pluginTreeSource.includes("Sign in from the Cloud account control")
@@ -363,29 +361,30 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(workspaceSource).not.toContain(
       "sidebarConfirmOpen || marketplaceOpen || catalogOpen || pinOpen",
     );
-    expect(workspaceSource).toContain("if (pinOpen)");
-    expect(workspaceSource).toContain("setPinOpen(false)");
-    expect(pinPanelSource).toContain('"Escape"');
+    expect(workspaceSource).toContain("onClose={() => setPinOpen(false)}");
+    // The panel is its own overlay layer: Esc reaches it, not the list pane.
+    expect(pinPanelSource).toContain("useOverlayLayer<HTMLDivElement>({");
+    expect(pinPanelSource).not.toContain('addEventListener("keydown"');
   });
 
   test("Esc closes marketplace and catalog panels without treating them as confirmOpen", () => {
-    expect(marketplacePanelSource).toContain('"Escape"');
-    expect(catalogPanelSource).toContain('"Escape"');
-    expect(workspaceSource).toContain("if (marketplaceOpen)");
+    expect(marketplacePanelSource).toContain("useOverlayLayer<HTMLDivElement>({");
+    expect(catalogPanelSource).toContain("useOverlayLayer<HTMLDivElement>({");
+    expect(marketplacePanelSource).not.toContain('addEventListener("keydown"');
+    expect(catalogPanelSource).not.toContain('addEventListener("keydown"');
     expect(workspaceSource).toContain("setMarketplaceOpen(false)");
-    expect(workspaceSource).toContain("if (catalogOpen)");
-    expect(workspaceSource).toContain("setCatalogOpen(false)");
+    expect(workspaceSource).toContain("setEditingMarketplace(null)");
+    expect(workspaceSource).toContain("onClose={() => setCatalogOpen(false)}");
     expect(workspaceSource).not.toContain(
       "sidebarConfirmOpen || marketplaceOpen || catalogOpen",
     );
     expect(workspaceSource).toContain("confirmOpen: sidebarConfirmOpen");
   });
 
-  test("registers Esc on the list pane when overlay panels are open", () => {
-    expect(workspaceSource).toContain("sourcesPaneHasPrevious(pane)");
-    expect(workspaceSource).toContain(
-      "marketplaceOpen || catalogOpen || pinOpen",
-    );
+  test("Back on Esc only fires on the list pane while no overlay layer is open", () => {
+    expect(workspaceSource).toContain("useEscapeWhenNoLayer(");
+    expect(workspaceSource).toContain("sourcesPaneHasPrevious(pane),");
+    expect(workspaceSource).not.toContain('addEventListener("keydown"');
   });
 
   test("retries Cloud search after sign-in", () => {

@@ -1,11 +1,12 @@
+import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
 import {
   profileStackHasList,
   resolveProfileResourceStack,
 } from "../../apps/desktop/src/lib/profile-resource-stack.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 
 function contents(
   overrides: Partial<ProfileContents> = {},
@@ -141,10 +142,7 @@ describe("Profile resources pane chrome", () => {
     join(import.meta.dir, "../../apps/desktop/src/components/LiveStatePanel.tsx"),
     "utf8",
   );
-  const appSource = readFileSync(
-    join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
-    "utf8",
-  );
+  const appSource = readDesktopShellSource();
   const designSource = readFileSync(
     join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
     "utf8",
@@ -165,7 +163,7 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain("iconAfterLabel");
     expect(liveStateSource).toContain("onAddAllResources");
     expect(appSource).toContain("onAddAllResources");
-    expect(appSource).toContain("railPrimaryIsReapply={showReapply}");
+    expect(appSource).toContain("railPrimaryIsReapply={ctrl.showReapply}");
   });
 
   it("locks the selected profile’s composition as a shared Global/Project inventory", () => {

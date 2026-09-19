@@ -3,39 +3,39 @@ import {
   canPopScreenHistory,
   popScreenHistory,
   pushScreenHistory,
-  workspaceBackEnabled,
   WORKSPACE_BACK_LABEL,
+  workspaceBackEnabled,
 } from "../../apps/desktop/src/lib/screen-history.ts";
 
 describe("screen history", () => {
   test("pushing a different destination records the current screen", () => {
-    expect(pushScreenHistory([], "home", "library")).toEqual(["home"]);
-    expect(pushScreenHistory(["home"], "library", "environments")).toEqual([
-      "home",
+    expect(pushScreenHistory([], "scope", "library")).toEqual(["scope"]);
+    expect(pushScreenHistory(["scope"], "library", "environments")).toEqual([
+      "scope",
       "library",
     ]);
   });
 
   test("pushing the current destination does not grow the stack", () => {
-    expect(pushScreenHistory(["home"], "library", "library")).toEqual(["home"]);
-    expect(pushScreenHistory([], "home", "home")).toEqual([]);
+    expect(pushScreenHistory(["scope"], "library", "library")).toEqual(["scope"]);
+    expect(pushScreenHistory([], "scope", "scope")).toEqual([]);
   });
 
   test("pop returns the previous screen and shortens the stack", () => {
-    expect(popScreenHistory(["home", "library"])).toEqual({
-      stack: ["home"],
+    expect(popScreenHistory(["scope", "library"])).toEqual({
+      stack: ["scope"],
       previous: "library",
     });
-    expect(popScreenHistory(["home"])).toEqual({
+    expect(popScreenHistory(["scope"])).toEqual({
       stack: [],
-      previous: "home",
+      previous: "scope",
     });
   });
 
   test("pop of an empty stack has no previous screen", () => {
     expect(popScreenHistory([])).toEqual({ stack: [], previous: null });
     expect(canPopScreenHistory([])).toBe(false);
-    expect(canPopScreenHistory(["home"])).toBe(true);
+    expect(canPopScreenHistory(["scope"])).toBe(true);
   });
 });
 

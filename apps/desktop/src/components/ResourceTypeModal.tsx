@@ -28,6 +28,7 @@ import { ButtonSpinner } from "./ButtonSpinner";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
 import { motionClass } from "./motion/motion-utils";
+import { useOverlayLayer } from "../state/overlay-stack";
 
 const TYPE_ICONS: Record<CreateResourceType, LucideIcon> = {
   plugin: Package,
@@ -89,28 +90,18 @@ export function ResourceTypeModal({
     setError(null);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      event.preventDefault();
-      if (busy) {
-        return;
-      }
+  const layerRef = useOverlayLayer<HTMLDivElement>({
+    open,
+    onClose: () => {
       if (mode === "import") {
         setMode("pick");
         setError(null);
         return;
       }
       onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose, mode, busy]);
+    },
+    closeDisabled: busy,
+  });
 
   useEffect(() => {
     if (!open) {
@@ -170,6 +161,7 @@ export function ResourceTypeModal({
     >
       {(state) => (
         <div
+          ref={layerRef}
           className={motionClass("dialog resource-type-dialog", "m-rise", state)}
           role="dialog"
           aria-modal="true"

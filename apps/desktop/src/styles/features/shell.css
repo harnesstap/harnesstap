@@ -118,3 +118,98 @@
   background: var(--red);
   box-shadow: 0 0 0 2px var(--bg);
 }
+
+.connection-banner {
+  margin: var(--space-3) var(--space-4);
+}
+
+/* Toasts: bottom-right, above the inventory FAB. */
+.toast-region {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--space-4) + 3rem);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(360px, calc(100vw - 2 * var(--space-4)));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--fg);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-body);
+  pointer-events: auto;
+}
+
+.toast.success {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--border));
+  background: color-mix(in srgb, var(--green) 12%, var(--surface-2));
+}
+
+.toast.error {
+  border-color: color-mix(in srgb, var(--red) 45%, var(--border));
+  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+}
+
+.toast.info {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+}
+
+.toast-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.toast.success .toast-icon {
+  color: var(--green);
+}
+
+.toast.error .toast-icon {
+  color: var(--red);
+}
+
+.toast.info .toast-icon {
+  color: var(--accent);
+}
+
+.toast-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.toast-title {
+  overflow-wrap: anywhere;
+}
+
+.toast-detail {
+  font-size: var(--text-meta);
+  overflow-wrap: anywhere;
+}
+
+.toast-action {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.55rem;
+  font-size: var(--text-meta);
+}
+
+.toast-close {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+}

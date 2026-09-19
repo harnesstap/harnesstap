@@ -1,7 +1,8 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const root = join(import.meta.dir, "../../apps/desktop/src");
@@ -10,7 +11,7 @@ function read(rel: string): string {
   return readFileSync(join(root, rel), "utf8");
 }
 
-const appSource = read("App.tsx");
+const appSource = readDesktopShellSource();
 const typeIconSource = read("components/TypeIcon.tsx");
 const typeModalSource = read("components/ResourceTypeModal.tsx");
 const liveStateSource = read("components/LiveStatePanel.tsx");
@@ -55,7 +56,7 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain('? "Re-apply"');
     expect(appSource).toContain(': "Apply"');
     expect(appSource).toMatch(
-      /\{switching \? "Applying…" : showReapply \? "Re-apply" : "Apply"\}[\s\S]{0,400}<(RotateCw|Check) /,
+      /\{switching \? "Applying…" : (?:ctrl\.)?showReapply \? "Re-apply" : "Apply"\}[\s\S]{0,400}<(RotateCw|Check) /,
     );
     expect(stylesSource).toContain(".rail-controls .btn");
     expect(stylesSource).toContain("width: 100%");
@@ -258,7 +259,7 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain('label="Settings"');
     expect(iconButtonSource).toContain("ChromeTooltip");
     expect(iconButtonSource).toContain("aria-label={showLabel ? undefined : label}");
-    expect(stylesSource).toMatch(/\.chrome-tooltip \{\n  z-index: var\(--z-tooltip\);/);
+    expect(stylesSource).toMatch(/\.chrome-tooltip \{\n {2}z-index: var\(--z-tooltip\);/);
     expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
   });
 

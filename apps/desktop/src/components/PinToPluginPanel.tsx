@@ -7,6 +7,7 @@ import {
 } from "../lib/api/library-plugins";
 import { Pin, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { useOverlayLayer } from "../state/overlay-stack";
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -76,23 +77,11 @@ export function PinToPluginPanel({
     return authored.filter((head) => head.name.toLowerCase().includes(needle));
   }, [authored, query]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      if (confirming || createBusy) {
-        return;
-      }
-      event.preventDefault();
-      onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirming, createBusy, onClose, open]);
+  const layerRef = useOverlayLayer<HTMLDivElement>({
+    open,
+    onClose,
+    closeDisabled: confirming || createBusy,
+  });
 
   if (!open) {
     return null;
@@ -134,6 +123,7 @@ export function PinToPluginPanel({
       }}
     >
       <div
+        ref={layerRef}
         className="dialog create-profile-dialog"
         role="dialog"
         aria-modal="true"

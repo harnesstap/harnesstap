@@ -1,11 +1,9 @@
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, test } from "bun:test";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 
-const appSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
-  "utf8",
-);
+const appSource = readDesktopShellSource();
 const stripSource = readFileSync(
   join(
     import.meta.dir,

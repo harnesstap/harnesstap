@@ -1,6 +1,7 @@
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, test } from "bun:test";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const editSource = readFileSync(
@@ -21,10 +22,7 @@ const deleteSource = readFileSync(
   ),
   "utf8",
 );
-const appSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
-  "utf8",
-);
+const appSource = readDesktopShellSource();
 const stylesSource = readDesktopCss();
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),

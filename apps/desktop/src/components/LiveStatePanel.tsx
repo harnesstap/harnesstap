@@ -1572,7 +1572,10 @@ export interface LiveStatePanelProps {
   activeProfile: string | null;
   liveContents: ProfileContents | null | undefined;
   applyPreview: ProfileApplyPreview | null;
+  /** First load only (no previous preview to show). */
   applyPreviewLoading: boolean;
+  /** A newer preview is loading while the previous one stays on screen. */
+  previewRefreshing?: boolean;
   applyPreviewError: string | null;
   onRetryPreview?: () => void;
   onDismissPreviewError?: () => void;

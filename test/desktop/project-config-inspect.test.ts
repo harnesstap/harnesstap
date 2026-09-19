@@ -1,6 +1,7 @@
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, test } from "bun:test";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 
 const inspectSource = readFileSync(
   join(
@@ -30,10 +31,7 @@ const pickerSource = readFileSync(
   ),
   "utf8",
 );
-const appSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
-  "utf8",
-);
+const appSource = readDesktopShellSource();
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",
@@ -67,8 +65,11 @@ describe("settings project config picker", () => {
   });
 
   test("Escape closes the open picker without dismissing the settings panel", () => {
-    expect(pickerSource).toContain('event.stopImmediatePropagation()');
-    expect(pickerSource).toContain("addEventListener(\"keydown\", onKeyDown, true)");
+    // The picker registers as the top overlay layer while open, so the shared
+    // stack routes Escape to it (and not to the settings panel underneath).
+    expect(pickerSource).toContain("useOverlayLayer({");
+    expect(pickerSource).toContain("onClose: () => setOpen(false)");
+    expect(pickerSource).not.toContain('addEventListener("keydown"');
   });
 
   test("settings inspect uses the selected project even outside Project workspace", () => {
@@ -78,11 +79,13 @@ describe("settings project config picker", () => {
       "<CloudAccountDrawer",
     );
     expect(settingsCall).toContain(
-      'projectPath={view === "project" ? projectPath : null}',
+      'projectPath={scope === "project" ? projectPath : null}',
     );
     expect(settingsCall).toContain("inspectProjectPath={projectPath || null}");
-    expect(settingsCall).toContain("onSelectProject={selectProject}");
-    expect(settingsCall).toContain("onBrowseProject={() => void browseProject()}");
+    expect(settingsCall).toContain("onSelectProject={onSelectProject}");
+    expect(settingsCall).toContain("onBrowseProject={onBrowseProject}");
+    expect(appSource).toContain("onSelectProject={selectProject}");
+    expect(appSource).toContain("onBrowseProject={() => void browseProject()}");
   });
 
   test("Settings wires inspect path and picker callbacks into the Project tab", () => {

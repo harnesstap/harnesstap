@@ -15,6 +15,7 @@ import type {
 import { Check, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { useOverlayLayer } from "../state/overlay-stack";
 
 const MARKETPLACE_PLATFORMS: PluginMarketplacePlatform[] = [
   "claude-code",
@@ -121,23 +122,11 @@ export function MarketplaceEditPanel({
     setDiscardOpen(false);
   }, [open, mode, entry]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      if (busy) {
-        return;
-      }
-      event.preventDefault();
-      onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, onClose, open]);
+  const layerRef = useOverlayLayer<HTMLDivElement>({
+    open,
+    onClose,
+    closeDisabled: busy,
+  });
 
   if (!open) {
     return null;
@@ -268,6 +257,7 @@ export function MarketplaceEditPanel({
       }}
     >
       <div
+        ref={layerRef}
         className="dialog create-profile-dialog"
         role="dialog"
         aria-modal="true"

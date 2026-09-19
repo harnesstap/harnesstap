@@ -1,12 +1,10 @@
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, test } from "bun:test";
+import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
-const appSource = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
-  "utf8",
-);
+const appSource = readDesktopShellSource();
 const paritySource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/parity/ParityChrome.tsx"),
   "utf8",
@@ -92,15 +90,15 @@ describe("desktop header chrome", () => {
 
   test("exposes Library instead of Resources as a workspace destination", () => {
     expect(appSource).toContain('aria-label="Library"');
-    expect(appSource).toContain('setWorkspaceFocus("library")');
+    expect(appSource).toContain('nav.go("library")');
     expect(appSource).not.toContain('setWorkspaceFocus("resources")');
     expect(appSource).not.toContain('setWorkspaceFocus("plugins")');
   });
 
   test("exposes Discover as a workspace destination after Library", () => {
     expect(appSource).toContain('aria-label="Discover"');
-    expect(appSource).toContain('onHeaderDestinationClick("sources")');
-    expect(appSource).toContain('setWorkspaceFocus("sources")');
+    expect(appSource).toContain('onDestinationClick("discover")');
+    expect(appSource).toContain('nav.destination === "discover"');
     const libraryIdx = appSource.indexOf('aria-label="Library"');
     const sourcesIdx = appSource.indexOf('aria-label="Discover"');
     const parityIdx = appSource.indexOf("<ParityChrome");
@@ -152,12 +150,13 @@ describe("desktop header chrome", () => {
     expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
   });
 
-  test("refreshes live status after package Apply and shows success in the header", () => {
+  test("refreshes live status after package Apply and reports success as a toast", () => {
     const refreshOnProfiles =
-      appSource.match(/void refreshProfiles\(\);\s*void refreshStatus\("full"\);/g) ?? [];
+      appSource.match(/(?:void|await) refreshProfiles\(\);\s*(?:void|await) refreshStatus\("full"\);/g) ?? [];
     expect(refreshOnProfiles.length).toBeGreaterThanOrEqual(2);
     expect(appSource).toContain("header-status");
-    expect(appSource).toContain("success-flash");
+    expect(appSource).not.toContain("success-flash");
+    expect(appSource).toContain('toast({ tone: "success", title: message })');
   });
 });
 
@@ -166,36 +165,36 @@ describe("header re-click home", () => {
     expect(appSource).toContain("activeHeaderDestination");
     expect(appSource).toContain("headerClickIntent");
     expect(appSource).toContain("onHeaderDestinationClick");
-    expect(appSource).toContain('onClick={() => onHeaderDestinationClick("library")}');
-    expect(appSource).toContain('onClick={() => onHeaderDestinationClick("sources")}');
-    expect(appSource).toContain('onClick={() => onHeaderDestinationClick("home")}');
-    expect(appSource).toContain('onClick={() => onHeaderDestinationClick("project")}');
-    expect(appSource).toContain("onHeaderDestinationClick(\"environments\")");
+    expect(appSource).toContain('onClick={() => onDestinationClick("library")}');
+    expect(appSource).toContain('onClick={() => onDestinationClick("discover")}');
+    expect(appSource).toContain('onClick={() => onDestinationClick("global")}');
+    expect(appSource).toContain('onClick={() => onDestinationClick("project")}');
+    expect(appSource).toContain("onDestinationClick(\"environments\")");
   });
 
-  test("Library, Discover, and Environments re-click bump homeResetNonce", () => {
-    expect(appSource).toContain("setHomeResetNonce");
-    expect(appSource).toContain("homeResetNonce={homeResetNonce}");
+  test("Library, Discover, and Environments re-click bump the navigation resetNonce", () => {
+    expect(appSource).toContain("nav.resetCurrent()");
+    expect(appSource).toContain("homeResetNonce={nav.resetNonce}");
     const resetBlock = sliceBetween(
       appSource,
-      'headerClickIntent(activeDestination, clicked) === "reset"',
-      "setWorkspaceFocus(\"library\")",
+      'headerClickIntent(active, clicked) === "reset"',
+      "headerDestinationTarget(clicked)",
     );
     expect(resetBlock).toContain('case "library"');
-    expect(resetBlock).toContain('case "sources"');
+    expect(resetBlock).toContain('case "discover"');
     expect(resetBlock).toContain('case "environments"');
   });
 
   test("Global and Project re-click clear profile search and close edit without changing selection", () => {
     const resetBlock = sliceBetween(
       appSource,
-      'headerClickIntent(activeDestination, clicked) === "reset"',
-      "navigateToDestination(clicked)",
+      'headerClickIntent(active, clicked) === "reset"',
+      "headerDestinationTarget(clicked)",
     );
-    expect(resetBlock).toContain('setProfileFilter("")');
-    expect(resetBlock).toContain("setEditingProfile(null)");
+    expect(resetBlock).toContain('ctrl.setProfileFilter("")');
+    expect(resetBlock).toContain("ctrl.closeEditProfile()");
     expect(resetBlock).not.toContain("setSelectedProfile");
-    expect(resetBlock).not.toContain("onSelectView");
+    expect(resetBlock).not.toContain("setScope");
     expect(resetBlock).not.toContain("directory: true");
   });
 
@@ -235,8 +234,8 @@ describe("header re-click home", () => {
     expect(appSource).toContain("pushScreenHistory");
     expect(appSource).toContain("popScreenHistory");
     expect(appSource).toContain("canPopScreenHistory");
-    expect(appSource).toContain("onWorkspaceBack");
-    expect(appSource).toContain("canWorkspaceBack");
+    expect(appSource).toContain("onWorkspaceBack={nav.back}");
+    expect(appSource).toContain("canWorkspaceBack={nav.hasHistory}");
     expect(appSource).toContain("WorkspaceBackButton");
     expect(backButtonSource).toContain('data-testid="workspace-back"');
     expect(backButtonSource).toContain("WORKSPACE_BACK_LABEL");

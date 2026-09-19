@@ -1,12 +1,12 @@
-import type { HeaderDestination } from "./header-destination";
+import type { Destination } from "./header-destination";
 
 export const WORKSPACE_BACK_LABEL = "Back";
 
 export function pushScreenHistory(
-  stack: readonly HeaderDestination[],
-  current: HeaderDestination,
-  next: HeaderDestination,
-): HeaderDestination[] {
+  stack: readonly Destination[],
+  current: Destination,
+  next: Destination,
+): Destination[] {
   if (current === next) {
     return [...stack];
   }
@@ -14,10 +14,10 @@ export function pushScreenHistory(
 }
 
 export function popScreenHistory(
-  stack: readonly HeaderDestination[],
+  stack: readonly Destination[],
 ): {
-  stack: HeaderDestination[];
-  previous: HeaderDestination | null;
+  stack: Destination[];
+  previous: Destination | null;
 } {
   if (stack.length === 0) {
     return { stack: [], previous: null };
@@ -30,7 +30,7 @@ export function popScreenHistory(
 }
 
 export function canPopScreenHistory(
-  stack: readonly HeaderDestination[],
+  stack: readonly Destination[],
 ): boolean {
   return stack.length > 0;
 }
