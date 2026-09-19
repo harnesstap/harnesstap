@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop web-only dev mode (`bun run dev` with `VITE_AGENT_URL`) connects to a manually started agent again instead of waiting forever on the sidecar health check; added `desktop:demo-agent` and `desktop:shots` scripts for a fixture-backed agent and a Playwright screenshot walk.
+time: 2026-09-18T21:50:00Z
+custom:
+  Issue: ""

@@ -42,7 +42,8 @@ export interface ResourceTypeTabsProps {
   /** `compact` hides type text on a nowrap chip row. Do not use on Add to profile. */
   density?: ResourceTypeTabDensity;
   /**
-   * `collapse` is Add to profile / Add to plugin: one row, then `N more` / `Less`.
+   * `collapse` is Add to profile / Add to plugin: one row with trailing `N more`.
+   * Expanded `Less` sits below the wrapping pills, right-aligned.
    * Library and Global/Project inventory stay `wrap`.
    */
   overflow?: ResourceTypeTabOverflow;
@@ -264,7 +265,12 @@ export function ResourceTypeTabs({
   const overflowControl = showOverflowControl ? (
     <button
       type="button"
-      className="resource-type-tabs-more"
+      className={[
+        "resource-type-tabs-more",
+        expanded ? "resource-type-tabs-less" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       disabled={disabled}
       aria-expanded={expanded}
       onClick={() => {
@@ -299,10 +305,13 @@ export function ResourceTypeTabs({
         </span>
       ) : null}
       {collapse ? (
-        <div className="resource-type-tabs-row">
-          {scroller}
-          {overflowControl}
-        </div>
+        <>
+          <div className="resource-type-tabs-row">
+            {scroller}
+            {expanded ? null : overflowControl}
+          </div>
+          {expanded ? overflowControl : null}
+        </>
       ) : (
         scroller
       )}

@@ -161,6 +161,9 @@ describe("Global/Project scope inventory chrome", () => {
     expect(tabsSource).toContain("typeTabsMoreLabel");
     expect(tabsSource).toContain("TYPE_TABS_LESS_LABEL");
     expect(tabsSource).toContain("resource-type-tabs-more");
+    expect(tabsSource).toContain("resource-type-tabs-less");
+    expect(tabsSource).toContain("{expanded ? null : overflowControl}");
+    expect(tabsSource).toContain("{expanded ? overflowControl : null}");
     expect(tabsSource).toContain("resource-type-tab-count");
     expect(tabsSource).toContain("resource-type-tab-label");
     expect(tabsSource).not.toContain('density="compact"');
@@ -169,6 +172,8 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("collapsed to one row");
     expect(designSource).toContain("`N more`");
     expect(designSource).toContain("`Less`");
+    expect(designSource).toContain("end of the collapsed row");
+    expect(designSource).toContain("right-aligned below the wrapping pills");
     expect(designSource).toContain("taller fixed-height dialog");
     const modalStart = stylesSource.indexOf("\n.scope-add-modal {");
     expect(modalStart).toBeGreaterThan(-1);
@@ -207,6 +212,19 @@ describe("Global/Project scope inventory chrome", () => {
     );
     expect(moreBlock).not.toContain("min-width: 32px");
     expect(moreBlock).toContain("background: transparent");
+    expect(moreBlock).not.toContain("margin-left: auto");
+    const lessStart = stylesSource.indexOf(
+      "\n.resource-type-tabs-expanded .resource-type-tabs-less {",
+    );
+    expect(lessStart).toBeGreaterThan(-1);
+    const lessBlock = stylesSource.slice(
+      lessStart,
+      stylesSource.indexOf("}", lessStart) + 1,
+    );
+    expect(lessBlock).toContain("margin-left: auto");
+    expect(lessBlock).toContain("margin-top:");
+    expect(lessBlock).toContain("margin-bottom:");
+    expect(lessBlock).toContain("padding:");
     expect(addModalSource).toContain("dialog-actions");
     expect(addModalSource).toContain("selectedCount < 1");
     expect(addModalSource).toMatch(/\n\s*Add\n\s*<\/button>/);
