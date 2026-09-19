@@ -13,13 +13,10 @@ export interface SkeletonRowProps {
 export function Skeleton({ lines = 3 }: SkeletonProps) {
   const items = Array.from({ length: Math.max(0, lines) }, (_, index) => index);
   return (
-    <div className="skeleton-block">
-      <div aria-hidden="true">
-        {items.map((index) => (
-          <div key={index} className="skeleton-line m-skeleton" />
-        ))}
-      </div>
-      <span className="sr-only">Loading…</span>
+    <div className="skeleton-block" role="status" aria-label="Loading">
+      {items.map((index) => (
+        <div key={index} className="skeleton-line m-skeleton" aria-hidden="true" />
+      ))}
     </div>
   );
 }
@@ -29,13 +26,10 @@ export function SkeletonRow({ count = 8, height = 40 }: SkeletonRowProps) {
   const items = Array.from({ length: Math.max(0, count) }, (_, index) => index);
   const style: CSSProperties = { height };
   return (
-    <div className="skeleton-rows">
-      <div aria-hidden="true">
-        {items.map((index) => (
-          <div key={index} className="skeleton-row m-skeleton" style={style} />
-        ))}
-      </div>
-      <span className="sr-only">Loading…</span>
+    <div className="skeleton-rows" role="status" aria-label="Loading">
+      {items.map((index) => (
+        <div key={index} className="skeleton-row m-skeleton" style={style} aria-hidden="true" />
+      ))}
     </div>
   );
 }

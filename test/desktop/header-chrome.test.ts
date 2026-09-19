@@ -159,6 +159,22 @@ describe("desktop header chrome", () => {
     expect(designSource).toContain("Window minimum size is 960×600");
   });
 
+  test("first-load skeletons are separate rows with a column gap", () => {
+    const skeletonSource = readFileSync(
+      join(
+        import.meta.dir,
+        "../../apps/desktop/src/components/shell/Skeleton.tsx",
+      ),
+      "utf8",
+    );
+    expect(skeletonSource).toContain("className=\"skeleton-rows\"");
+    expect(skeletonSource).not.toContain("<div aria-hidden=\"true\">");
+    expect(skeletonSource).toContain("className=\"skeleton-row m-skeleton\"");
+    expect(cssSource).toContain(".skeleton-rows {");
+    expect(cssSource).toContain("gap: var(--space-2)");
+    expect(resourcesPanelSource).toContain("<SkeletonRow count={8} height={40} />");
+  });
+
   test("refreshes live status after package Apply and reports success as a toast", () => {
     const refreshOnProfiles =
       appSource.match(/(?:void|await) refreshProfiles\(\);\s*(?:void|await) refreshStatus\("full"\);/g) ?? [];
