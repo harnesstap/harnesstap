@@ -1,8 +1,8 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @import "./styles/tokens.css";
 @import "./styles/base.css";
+@import "./styles/motion.css";
 @import "./styles/primitives.css";
 @import "./styles/layout.css";
 

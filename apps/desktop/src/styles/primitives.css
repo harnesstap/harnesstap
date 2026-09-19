@@ -450,3 +450,25 @@
   color: var(--green);
   font-size: var(--text-meta);
 }
+
+/* Banners and the header success flash rise in on mount (m-rise recipe). */
+.banner,
+.success-flash {
+  animation: m-rise-in var(--duration-base) var(--ease-out) both;
+}
+
+/* Pressable chrome: hover and pressed color changes ease (m-pressable recipe). */
+.icon-action,
+.btn,
+.icon-btn,
+.segment button,
+.resource-type-tab,
+.profile-item,
+.resource-row,
+.project-picker-item {
+  transition:
+    transform var(--duration-instant) var(--ease-out),
+    background-color var(--duration-instant) var(--ease-out),
+    color var(--duration-instant) var(--ease-out),
+    border-color var(--duration-instant) var(--ease-out);
+}

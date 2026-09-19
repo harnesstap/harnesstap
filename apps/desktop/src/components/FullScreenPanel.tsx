@@ -43,7 +43,7 @@ export function FullScreenPanel({
 
   return (
     <div
-      className="full-screen-panel"
+      className="full-screen-panel m-panel-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}

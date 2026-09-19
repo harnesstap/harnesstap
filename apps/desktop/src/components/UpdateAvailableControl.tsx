@@ -13,6 +13,8 @@ import {
 } from "../lib/dialog-dismiss";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ChromeTooltip } from "./ChromeTooltip";
+import { Presence } from "./motion/Presence";
+import { motionClass } from "./motion/motion-utils";
 
 const HEADER_ICON_SIZE = 18;
 
@@ -101,18 +103,21 @@ export function UpdateAvailableControl({
           <span className="update-available-badge" aria-hidden="true" />
         </button>
       </ChromeTooltip>
-      {open ? (
-        <div
-          className="dialog-backdrop"
-          role="presentation"
-          onClick={(event) => {
-            if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget, busy)) {
-              setOpen(false);
-            }
-          }}
-        >
+      <Presence
+        open={open}
+        enter="m-scrim-in"
+        exit="m-scrim-out"
+        className="dialog-backdrop"
+        role="presentation"
+        onClick={(event) => {
+          if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget, busy)) {
+            setOpen(false);
+          }
+        }}
+      >
+        {(state) => (
           <div
-            className="dialog update-available-dialog"
+            className={motionClass("dialog update-available-dialog", "m-rise", state)}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
@@ -165,8 +170,8 @@ export function UpdateAvailableControl({
               </button>
             </div>
           </div>
-        </div>
-      ) : null}
+        )}
+      </Presence>
     </>
   );
 }

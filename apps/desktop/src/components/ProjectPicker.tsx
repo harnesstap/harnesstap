@@ -8,6 +8,7 @@ import {
 } from "../lib/recent-projects";
 import { compactHomePath } from "../lib/compact-path";
 import { IconActionButton } from "./IconActionButton";
+import { Presence } from "./motion/Presence";
 
 interface ProjectPickerProps {
   projectPath: string;
@@ -91,62 +92,66 @@ export function ProjectPicker({
           ▾
         </span>
       </button>
-      {open ? (
-        <div className="project-picker-menu" role="listbox">
-          <input
-            ref={filterRef}
-            className="project-picker-filter"
-            type="search"
-            placeholder="Filter recent projects…"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-            aria-label="Filter recent projects"
-          />
-          <div className="project-picker-list">
-            {filtered.length === 0 ? (
-              <div className="project-picker-empty muted">
-                {recent.length === 0
-                  ? "No recent projects yet."
-                  : "No matches."}
-              </div>
-            ) : (
-              filtered.map((row) => {
-                const selected = row.path === projectPath;
-                return (
-                  <button
-                    key={row.path}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    className={`project-picker-item${selected ? " selected" : ""}`}
-                    onClick={() => {
-                      onSelect(row.path);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="project-picker-item-name">
-                      {projectDisplayName(row.path)}
-                    </span>
-                    <span className="project-picker-item-path mono muted">
-                      {compactHomePath(row.path)}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-          <div className="project-picker-footer">
-            <IconActionButton
-              label="Browse…"
-              onClick={() => {
-                setOpen(false);
-                onBrowse();
-              }}
-              icon={<FolderOpen size={16} aria-hidden />}
-            />
-          </div>
+      <Presence
+        open={open}
+        enter="m-scale-in"
+        exit="m-scale-out"
+        className="project-picker-menu"
+        role="listbox"
+      >
+        <input
+          ref={filterRef}
+          className="project-picker-filter"
+          type="search"
+          placeholder="Filter recent projects…"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          aria-label="Filter recent projects"
+        />
+        <div className="project-picker-list">
+          {filtered.length === 0 ? (
+            <div className="project-picker-empty muted">
+              {recent.length === 0
+                ? "No recent projects yet."
+                : "No matches."}
+            </div>
+          ) : (
+            filtered.map((row) => {
+              const selected = row.path === projectPath;
+              return (
+                <button
+                  key={row.path}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  className={`project-picker-item${selected ? " selected" : ""}`}
+                  onClick={() => {
+                    onSelect(row.path);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="project-picker-item-name">
+                    {projectDisplayName(row.path)}
+                  </span>
+                  <span className="project-picker-item-path mono muted">
+                    {compactHomePath(row.path)}
+                  </span>
+                </button>
+              );
+            })
+          )}
         </div>
-      ) : null}
+        <div className="project-picker-footer">
+          <IconActionButton
+            label="Browse…"
+            onClick={() => {
+              setOpen(false);
+              onBrowse();
+            }}
+            icon={<FolderOpen size={16} aria-hidden />}
+          />
+        </div>
+      </Presence>
     </div>
   );
 }

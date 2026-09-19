@@ -1,0 +1,202 @@
+/* Motion system: the only place that defines keyframes. Feature CSS applies
+   these recipes (class or `animation: <name>`) and never adds its own.
+   Durations and easings come from tokens.css. Every recipe is disabled under
+   prefers-reduced-motion; components that time exits in JS fall back to the
+   token duration (see components/motion). */
+
+/* Structure that must hold without motion. */
+.m-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.m-collapse[data-state="open"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+}
+
+.m-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.m-crossfade {
+  position: relative;
+}
+
+.m-crossfade-outgoing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.m-skeleton {
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes m-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes m-fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @keyframes m-rise-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes m-rise-out {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateY(6px); }
+  }
+
+  @keyframes m-scale-in {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes m-scale-out {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: scale(0.98); }
+  }
+
+  @keyframes m-panel-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes m-panel-out {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateY(12px); }
+  }
+
+  @keyframes m-skeleton {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+
+  /* Enter / exit recipes. `both` keeps the first frame before the animation
+     starts and the last frame after it ends, so Presence can unmount late. */
+  .m-fade-in {
+    animation: m-fade-in var(--duration-fast) var(--ease-out) both;
+  }
+
+  .m-fade-out {
+    animation: m-fade-out var(--duration-fast) var(--ease-in) both;
+  }
+
+  .m-rise-in {
+    animation: m-rise-in var(--duration-base) var(--ease-out) both;
+  }
+
+  .m-rise-out {
+    animation: m-rise-out var(--duration-base) var(--ease-in) both;
+  }
+
+  .m-scale-in {
+    animation: m-scale-in var(--duration-fast) var(--ease-out) both;
+  }
+
+  .m-scale-out {
+    animation: m-scale-out var(--duration-fast) var(--ease-in) both;
+  }
+
+  .m-panel-in {
+    animation: m-panel-in var(--duration-base) var(--ease-out) both;
+  }
+
+  .m-panel-out {
+    animation: m-panel-out var(--duration-base) var(--ease-in) both;
+  }
+
+  .m-scrim-in {
+    animation: m-fade-in var(--duration-base) var(--ease-out) both;
+  }
+
+  .m-scrim-out {
+    animation: m-fade-out var(--duration-base) var(--ease-in) both;
+  }
+
+  /* State recipes. */
+  .m-status {
+    transition:
+      color var(--duration-base) var(--ease-in-out),
+      background-color var(--duration-base) var(--ease-in-out),
+      border-color var(--duration-base) var(--ease-in-out),
+      box-shadow var(--duration-base) var(--ease-in-out);
+  }
+
+  .m-pressable {
+    transition:
+      transform var(--duration-instant) var(--ease-out),
+      background-color var(--duration-instant) var(--ease-out);
+  }
+
+  .m-skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface) 0%,
+      var(--surface-hover) 50%,
+      var(--surface) 100%
+    );
+    background-size: 200% 100%;
+    animation: m-skeleton var(--duration-skeleton) linear infinite;
+  }
+
+  .m-collapse {
+    transition:
+      grid-template-rows var(--duration-base) var(--ease-in-out),
+      opacity var(--duration-base) var(--ease-in-out),
+      visibility 0s linear var(--duration-base);
+  }
+
+  .m-collapse[data-state="open"] {
+    transition:
+      grid-template-rows var(--duration-base) var(--ease-in-out),
+      opacity var(--duration-base) var(--ease-in-out),
+      visibility 0s;
+  }
+
+  .m-collapse[data-instant] {
+    transition: none;
+  }
+
+  /* Radix portals own their data-state; map it to the scale recipe. */
+  [data-slot="select-content"][data-state="open"],
+  [data-slot="popover-content"][data-state="open"],
+  .resource-hover-card[data-state="delayed-open"],
+  .resource-hover-card[data-state="instant-open"] {
+    animation: m-scale-in var(--duration-fast) var(--ease-out) both;
+  }
+
+  [data-slot="select-content"][data-state="closed"],
+  [data-slot="popover-content"][data-state="closed"],
+  .resource-hover-card[data-state="closed"] {
+    animation: m-scale-out var(--duration-fast) var(--ease-in) both;
+  }
+}
+
+/* Nothing here awaits transitionend, so transitions are removed outright:
+   Chrome keeps sub-frame (0.01ms) transitions in document.getAnimations(),
+   which would defeat the "no element animates" audit. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

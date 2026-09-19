@@ -1,0 +1,5 @@
+kind: Added
+body: Desktop motion system with token-driven enter/exit recipes for dialogs, panels, menus, and popovers, plus Presence, Collapse, and Crossfade components, all disabled under prefers-reduced-motion.
+time: 2026-09-18T22:30:00Z
+custom:
+  Issue: ""
