@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { connectAgent } from "../lib/agent-client";
+import { connectAgent, hasTauriRuntime } from "../lib/agent-client";
 
 export type AgentPhase = "connecting" | "connected" | "disconnected";
 
@@ -100,6 +100,9 @@ export function useAgentSession(): AgentSession {
 
   // Sidecar watcher rebuilds ht-agent in place; reconnect so previews use new code.
   useEffect(() => {
+    if (!hasTauriRuntime()) {
+      return;
+    }
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     void listen<number>("sidecar-reloaded", () => {
