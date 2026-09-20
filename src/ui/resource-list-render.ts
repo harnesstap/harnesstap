@@ -342,13 +342,15 @@ function resourceListTableLayout(opts: ResourceListRenderOptions): {
   };
 }
 
-function makeIdColumn(showId: boolean, width = 12): Column[] {
+function makeIdColumn(showId: boolean, width = 13): Column[] {
   return showId
     ? [{
         key: "id",
         header: "ID",
         width,
-        widthShare: 0.10,
+        minWidth: width,
+        widthShare: 0.18,
+        wrapOnWordBoundary: false,
         transform: (value: string) => format.shortenId(String(value)),
       }]
     : [];
