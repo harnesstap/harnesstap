@@ -1,0 +1,5 @@
+kind: Fixed
+body: Position desktop resource hover cards at the pointer (top-left plus a small margin), flipping or shifting to stay in the viewport, including over virtualized Library lists.
+time: 2026-09-20T07:35:00Z
+custom:
+  Issue: ""

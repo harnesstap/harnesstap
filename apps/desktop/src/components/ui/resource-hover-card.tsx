@@ -1,14 +1,15 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FocusEvent,
   type PointerEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { FileText, Folder, Package, Store } from "lucide-react";
-import { Tooltip } from "radix-ui";
 import { labelForType } from "../../lib/contents-diff";
 import { harnessDisplayName } from "../../lib/harness-meta";
 import {
@@ -16,8 +17,9 @@ import {
   originFilterValue,
 } from "../../lib/resource-filters";
 import {
-  cursorAnchorStyle,
+  clampPointerHoverCardPosition,
   formatHoverPath,
+  pointerHoverCardStyle,
   resourceHoverCardHasContent,
   type ResourceHoverExtra,
   type ResourceHoverModel,
@@ -28,7 +30,6 @@ import { TypeIcon } from "../TypeIcon";
 const ICON_SIZE = 14;
 const OPEN_DELAY_MS = 400;
 const SKIP_DELAY_MS = 300;
-const COLLISION_PADDING = 8;
 
 let lastHoverCloseAt = 0;
 
@@ -84,9 +85,11 @@ export function ResourceHoverCard({
 }): ReactNode {
   const [open, setOpen] = useState(false);
   const [point, setPoint] = useState({ x: 0, y: 0 });
+  const [cardPos, setCardPos] = useState({ left: 0, top: 0 });
   const pointRef = useRef({ x: 0, y: 0 });
   const pointerInRowRef = useRef(false);
   const openTimerRef = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null);
   const showTooltip = !disabled && resourceHoverCardHasContent(model);
 
   const clearOpenTimer = useCallback(() => {
@@ -111,6 +114,19 @@ export function ResourceHoverCard({
     });
   }, [clearOpenTimer]);
 
+  const revealAtPointer = useCallback((pointer: { x: number; y: number }) => {
+    pointRef.current = pointer;
+    setPoint(pointer);
+    setCardPos(
+      clampPointerHoverCardPosition(
+        pointer,
+        { width: 0, height: 0 },
+        { width: window.innerWidth, height: window.innerHeight },
+      ),
+    );
+    setOpen(true);
+  }, []);
+
   const handlePointerEnter = useCallback(
     (event: PointerEvent<HTMLElement>) => {
       pointerInRowRef.current = true;
@@ -119,11 +135,10 @@ export function ResourceHoverCard({
       const delay =
         Date.now() - lastHoverCloseAt < SKIP_DELAY_MS ? 0 : OPEN_DELAY_MS;
       openTimerRef.current = window.setTimeout(() => {
-        setPoint(pointRef.current);
-        setOpen(true);
+        revealAtPointer(pointRef.current);
       }, delay);
     },
-    [capturePoint, clearOpenTimer],
+    [capturePoint, clearOpenTimer, revealAtPointer],
   );
 
   const handlePointerMove = useCallback(
@@ -138,20 +153,6 @@ export function ResourceHoverCard({
     closeNow();
   }, [closeNow]);
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (next) {
-        setPoint(pointRef.current);
-        setOpen(true);
-        return;
-      }
-      if (!pointerInRowRef.current) {
-        closeNow();
-      }
-    },
-    [closeNow],
-  );
-
   const handleFocusCapture = useCallback((event: FocusEvent<HTMLElement>) => {
     if (!(event.target instanceof HTMLElement)) {
       return;
@@ -161,10 +162,8 @@ export function ResourceHoverCard({
     }
     pointerInRowRef.current = true;
     const rect = event.target.getBoundingClientRect();
-    pointRef.current = { x: rect.left, y: rect.bottom };
-    setPoint(pointRef.current);
-    setOpen(true);
-  }, []);
+    revealAtPointer({ x: rect.left, y: rect.bottom });
+  }, [revealAtPointer]);
 
   const handleBlur = useCallback((event: FocusEvent<HTMLElement>) => {
     const next = event.relatedTarget;
@@ -188,19 +187,84 @@ export function ResourceHoverCard({
     }
   }, [closeNow, showTooltip]);
 
+  useLayoutEffect(() => {
+    if (!open) {
+      return;
+    }
+    const node = contentRef.current;
+    if (!node) {
+      return;
+    }
+    const apply = () => {
+      setCardPos(
+        clampPointerHoverCardPosition(
+          point,
+          { width: node.offsetWidth, height: node.offsetHeight },
+          { width: window.innerWidth, height: window.innerHeight },
+        ),
+      );
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(node);
+    window.addEventListener("resize", apply);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", apply);
+    };
+  }, [open, point]);
+
   if (!showTooltip) {
     return children;
   }
 
   const firstHarnessId = model.harnessIds[0];
 
-  return (
-    <Tooltip.Root
-      open={open}
-      onOpenChange={handleOpenChange}
-      delayDuration={0}
-      disableHoverableContent
+  const card = (
+    <div
+      ref={contentRef}
+      className="resource-hover-card"
+      role="tooltip"
+      data-state="instant-open"
+      style={pointerHoverCardStyle(cardPos)}
     >
+      {model.type !== undefined ? (
+        <HoverCardRow
+          icon={<TypeIcon type={model.type} />}
+          text={labelForType(model.type, 1)}
+        />
+      ) : null}
+      {model.originKind !== undefined ? (
+        <HoverCardRow
+          icon={<OriginHoverIcon originKind={model.originKind} />}
+          text={formatOriginKindLabel(model.originKind)}
+        />
+      ) : null}
+      {model.path !== undefined ? (
+        <HoverCardRow
+          icon={<FileText size={ICON_SIZE} aria-hidden />}
+          text={formatHoverPath(model.path)}
+          mono
+        />
+      ) : null}
+      {firstHarnessId !== undefined ? (
+        <HoverCardRow
+          icon={<HarnessMark id={firstHarnessId} />}
+          text={model.harnessIds.map(harnessDisplayName).join(", ")}
+        />
+      ) : null}
+      {model.extra.map((extra) => (
+        <HoverCardRow
+          key={`${extra.kind}-${extra.text}`}
+          icon={<ExtraHoverIcon extra={extra} />}
+          text={extra.text}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+    <>
       <div
         className="resource-hover-card-host"
         onPointerEnter={handlePointerEnter}
@@ -211,58 +275,7 @@ export function ResourceHoverCard({
       >
         {children}
       </div>
-      <Tooltip.Trigger asChild>
-        <span
-          className="resource-hover-cursor-anchor"
-          style={cursorAnchorStyle(point)}
-          aria-hidden
-          tabIndex={-1}
-        />
-      </Tooltip.Trigger>
-      <Tooltip.Portal container={document.body}>
-        <Tooltip.Content
-          className="resource-hover-card"
-          role="tooltip"
-          side="bottom"
-          align="start"
-          collisionPadding={COLLISION_PADDING}
-          sideOffset={12}
-          updatePositionStrategy="always"
-        >
-          {model.type !== undefined ? (
-            <HoverCardRow
-              icon={<TypeIcon type={model.type} />}
-              text={labelForType(model.type, 1)}
-            />
-          ) : null}
-          {model.originKind !== undefined ? (
-            <HoverCardRow
-              icon={<OriginHoverIcon originKind={model.originKind} />}
-              text={formatOriginKindLabel(model.originKind)}
-            />
-          ) : null}
-          {model.path !== undefined ? (
-            <HoverCardRow
-              icon={<FileText size={ICON_SIZE} aria-hidden />}
-              text={formatHoverPath(model.path)}
-              mono
-            />
-          ) : null}
-          {firstHarnessId !== undefined ? (
-            <HoverCardRow
-              icon={<HarnessMark id={firstHarnessId} />}
-              text={model.harnessIds.map(harnessDisplayName).join(", ")}
-            />
-          ) : null}
-          {model.extra.map((extra) => (
-            <HoverCardRow
-              key={`${extra.kind}-${extra.text}`}
-              icon={<ExtraHoverIcon extra={extra} />}
-              text={extra.text}
-            />
-          ))}
-        </Tooltip.Content>
-      </Tooltip.Portal>
-    </Tooltip.Root>
+      {open ? createPortal(card, document.body) : null}
+    </>
   );
 }

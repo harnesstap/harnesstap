@@ -31,20 +31,54 @@ export function formatHoverPath(path: string): string {
   return path.replaceAll("/", "/\u200b");
 }
 
-export function cursorAnchorStyle(point: { x: number; y: number }): {
+/** Gap between the pointer and the tooltip’s top-left corner. */
+export const POINTER_HOVER_MARGIN_PX = 6;
+
+/** Viewport inset used when flipping or shifting so the card stays on-screen. */
+export const POINTER_HOVER_VIEWPORT_PADDING_PX = 8;
+
+function clampAxis(value: number, min: number, max: number): number {
+  if (max < min) {
+    return min;
+  }
+  return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Place a tooltip down-right of the pointer (top-left + margin). Flip to the
+ * left or above when that default would clip, then shift into the viewport.
+ */
+export function clampPointerHoverCardPosition(
+  pointer: { x: number; y: number },
+  size: { width: number; height: number },
+  viewport: { width: number; height: number },
+  margin = POINTER_HOVER_MARGIN_PX,
+  padding = POINTER_HOVER_VIEWPORT_PADDING_PX,
+): { left: number; top: number } {
+  const maxLeft = viewport.width - padding - size.width;
+  const maxTop = viewport.height - padding - size.height;
+  const left = pointer.x + margin + size.width <= viewport.width - padding
+    ? pointer.x + margin
+    : pointer.x - margin - size.width;
+  const top = pointer.y + margin + size.height <= viewport.height - padding
+    ? pointer.y + margin
+    : pointer.y - margin - size.height;
+  return {
+    left: clampAxis(left, padding, maxLeft),
+    top: clampAxis(top, padding, maxTop),
+  };
+}
+
+export function pointerHoverCardStyle(position: { left: number; top: number }): {
   position: "fixed";
   left: number;
   top: number;
-  width: number;
-  height: number;
   pointerEvents: "none";
 } {
   return {
     position: "fixed",
-    left: point.x,
-    top: point.y,
-    width: 0,
-    height: 0,
+    left: position.left,
+    top: position.top,
     pointerEvents: "none",
   };
 }
