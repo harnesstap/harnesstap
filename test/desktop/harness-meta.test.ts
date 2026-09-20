@@ -40,6 +40,7 @@ describe("harnessDisplayName", () => {
   it("returns friendly names for known harnesses", () => {
     expect(harnessDisplayName("claude-code")).toBe("Claude Code");
     expect(harnessDisplayName("cursor")).toBe("Cursor");
+    expect(harnessDisplayName("minimax-code")).toBe("MiniMax Code");
   });
 
   it("returns the id for unknown harnesses", () => {

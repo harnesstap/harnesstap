@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mergeClaudeSettingsContent, mergeMuseSettingsContent } from "../../src/services/merged-host-config.ts";
+import { mergeClaudeSettingsContent, mergeMinimaxMcpContent, mergeMuseSettingsContent } from "../../src/services/merged-host-config.ts";
 import { mergeSkillMarkdown } from "../../src/services/merge-skill-markdown.ts";
 
 describe("mergeClaudeSettingsContent", () => {
@@ -67,6 +67,39 @@ describe("mergeMuseSettingsContent", () => {
     expect(merged.telemetry.enabled).toBe(false);
     expect(merged.mcp_servers.keep.command).toBe("keep-mcp");
     expect(merged.mcp_servers.docs.command).toBe("docs-mcp");
+  });
+});
+
+describe("mergeMinimaxMcpContent", () => {
+  it("merges mcpServers without clobbering unrelated keys", () => {
+    const live = JSON.stringify(
+      {
+        telemetry: { enabled: false },
+        mcpServers: {
+          keep: { type: "stdio", command: "keep-mcp" },
+        },
+      },
+      null,
+      2,
+    );
+    const generated = JSON.stringify(
+      {
+        mcpServers: {
+          docs: { type: "stdio", command: "docs-mcp", enabled: true },
+        },
+      },
+      null,
+      2,
+    );
+
+    const merged = JSON.parse(mergeMinimaxMcpContent(live, generated)) as {
+      telemetry: { enabled: boolean };
+      mcpServers: Record<string, { command: string }>;
+    };
+
+    expect(merged.telemetry.enabled).toBe(false);
+    expect(merged.mcpServers.keep.command).toBe("keep-mcp");
+    expect(merged.mcpServers.docs.command).toBe("docs-mcp");
   });
 });
 

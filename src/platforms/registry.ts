@@ -404,6 +404,23 @@ const PLATFORMS: PlatformDefinition[] = [
     },
   }),
 
+  def("minimax-code", "MiniMax Code", ["instructions", "skills", "mcp"], {
+    instructions: "AGENTS.md",
+    skills: ".minimax/skills/",
+    plugins: ".minimax-plugin/",
+    pathAlternates: {
+      skills: [".agents/skills/"],
+    },
+  }, {
+    settings: "~/.minimax/config.yaml",
+    mcp: "~/.minimax/mcp.json",
+    skills: "~/.minimax/skills/",
+    plugins: "~/.minimax/plugins/",
+    pathAlternates: {
+      settings: ["~/.minimax/", "~/.mavis/"],
+    },
+  }),
+
   // ── .agents/ convention platforms (skills + instructions) ───────────
   ...([
     ["amp", "Amp", ".agents/skills/", "~/.config/agents/skills/"],

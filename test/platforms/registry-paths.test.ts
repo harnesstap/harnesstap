@@ -157,6 +157,37 @@ describe("registry path detection", () => {
     }
   });
 
+  it("detects minimax-code from .minimax/skills", () => {
+    const projectDir = createTempDir("minimax-code-skills");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".minimax/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nBody.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).toContain("minimax-code");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("does not detect minimax-code from AGENTS.md or .agents/skills alone", () => {
+    const projectDir = createTempDir("minimax-code-shared-only");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Shared\n");
+      writeTextFile(
+        join(projectDir, ".agents/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nBody.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).not.toContain("minimax-code");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("detects claude-code from CLAUDE.md alone", () => {
     const projectDir = createTempDir("claude-code-claude-md");
 

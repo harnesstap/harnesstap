@@ -36,6 +36,7 @@ describe("CLI harness", () => {
         "grok-build",
         "deepseek-harness",
         "muse-code",
+        "minimax-code",
       ]);
 
       const pluginList = await runCli(["l", "ls", "--local-only", "--format", "json"], {
