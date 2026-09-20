@@ -6,13 +6,14 @@ import {
   type ContentsDiffItem,
 } from "../../apps/desktop/src/lib/contents-diff";
 import {
-  cursorAnchorStyle,
+  clampPointerHoverCardPosition,
   formatHoverPath,
   hoverModelFromContentsDiffItem,
   hoverModelFromFileChangeChild,
   hoverModelFromFileChangeGroup,
   hoverModelFromLibraryResource,
   hoverModelFromProfileResource,
+  pointerHoverCardStyle,
   resourceHoverCardHasContent,
 } from "../../apps/desktop/src/lib/resource-hover";
 import type { LibraryResource, ProfileContentsResource } from "../../apps/desktop/src/lib/types";
@@ -194,15 +195,44 @@ describe("resource hover model", () => {
     expect(formatHoverPath("a/b/c")).toBe("a/\u200bb/\u200bc");
   });
 
-  it("places a zero-size fixed anchor at the pointer", () => {
-    expect(cursorAnchorStyle({ x: 140, y: 88 })).toEqual({
+  it("places the card down-right of the pointer with a margin", () => {
+    expect(
+      clampPointerHoverCardPosition(
+        { x: 140, y: 88 },
+        { width: 220, height: 96 },
+        { width: 1200, height: 800 },
+      ),
+    ).toEqual({ left: 146, top: 94 });
+    expect(pointerHoverCardStyle({ left: 146, top: 94 })).toEqual({
       position: "fixed",
-      left: 140,
-      top: 88,
-      width: 0,
-      height: 0,
+      left: 146,
+      top: 94,
       pointerEvents: "none",
     });
+  });
+
+  it("flips left or up when the default corner would clip, then stays in the viewport", () => {
+    expect(
+      clampPointerHoverCardPosition(
+        { x: 980, y: 100 },
+        { width: 200, height: 80 },
+        { width: 1000, height: 800 },
+      ),
+    ).toEqual({ left: 774, top: 106 });
+    expect(
+      clampPointerHoverCardPosition(
+        { x: 120, y: 760 },
+        { width: 200, height: 80 },
+        { width: 1000, height: 800 },
+      ),
+    ).toEqual({ left: 126, top: 674 });
+    expect(
+      clampPointerHoverCardPosition(
+        { x: 990, y: 790 },
+        { width: 200, height: 80 },
+        { width: 1000, height: 800 },
+      ),
+    ).toEqual({ left: 784, top: 704 });
   });
 });
 
@@ -215,9 +245,10 @@ describe("resource hover card chrome", () => {
     "utf8",
   );
 
-  it("anchors the card to a pointer-sized trigger, not the row box", () => {
-    expect(hoverCardSource).toContain("cursorAnchorStyle");
-    expect(hoverCardSource).toContain("resource-hover-cursor-anchor");
+  it("anchors the card to the pointer via a body portal, not the row box", () => {
+    expect(hoverCardSource).toContain("clampPointerHoverCardPosition");
+    expect(hoverCardSource).toContain("createPortal");
+    expect(hoverCardSource).not.toContain("resource-hover-cursor-anchor");
     expect(hoverCardSource).not.toContain("alignOffset");
     expect(hoverCardSource).not.toContain("cursorAlignOffset");
   });

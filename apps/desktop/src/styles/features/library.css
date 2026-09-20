@@ -791,14 +791,6 @@
   white-space: pre-line;
 }
 
-.resource-hover-cursor-anchor {
-  position: fixed;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
 .resource-hover-card {
   z-index: var(--z-panel);
   max-width: min(28rem, calc(100vw - 1.5rem));

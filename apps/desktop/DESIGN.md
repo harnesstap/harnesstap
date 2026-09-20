@@ -193,7 +193,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 **Lists**
 
-- Resource hover cards sit at the pointer and close when the pointer leaves.
+- Resource hover cards open down-right of the pointer (top-left corner plus a small margin), clamp or flip to stay in the viewport, and close when the pointer leaves. Virtualized rows use `transform`, so the card is portaled to `document.body` and positioned from pointer coordinates — never `position: fixed` inside the row.
 - Profile rail order is a desktop-only localStorage preference.
 - Shared listbox keyboard lives in `src/lib/listbox-nav.ts`. The command palette uses it; Library / inventory / Discover / Environments adopt the same recipe.
 
