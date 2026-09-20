@@ -12,6 +12,11 @@ import {
   VIEWPORT_CHROME_LINES,
   type SectionViewport,
 } from "./list-viewport.js";
+import {
+  formatResourceDisplayName,
+  formatResourceScopeLabel,
+  resourceHumanName,
+} from "./resource-display.js";
 import { renderTable, type Column } from "./table.js";
 import { terminalColumns, theme } from "./theme.js";
 
@@ -53,7 +58,7 @@ type ResourceListDisplayRow = ResourceListRow & {
 
 export function formatResourceListNamespace(resource: ResourceListRow): string {
   const ns = resource.namespace.trim();
-  if (!ns) return "";
+  if (!ns) return formatResourceScopeLabel(ns);
   if (resource.origin_kind === "marketplace_link" && resource.origin_ref.includes("@")) {
     const [plugin, marketplace] = resource.origin_ref.split("@", 2);
     if (plugin && marketplace && ns === plugin) {
@@ -402,9 +407,7 @@ export function toResourceListRows(resources: Resource[]): ResourceListRow[] {
   return resources.map((resource) => ({
     ...resource,
     namespace: resource.namespace ?? "",
-    display_name: resource.namespace
-      ? `${resource.name}@${resource.namespace}`
-      : resource.name,
+    display_name: formatResourceDisplayName(resource),
   }));
 }
 
@@ -541,7 +544,7 @@ function decorateRowsForCheckboxes(
         : "";
     return {
       ...row,
-      list_display_name: `${cursor}${checkbox} ${row.name}${constraint}`,
+      list_display_name: `${cursor}${checkbox} ${resourceHumanName(row)}${constraint}`,
       list_namespace: formatResourceListNamespace(row),
     };
   });
@@ -653,14 +656,14 @@ function decorateRowsForSelection(
   return rows.map((row) => ({
     ...row,
     list_display_name: row.id === selectedResourceId
-      ? `> ${row.name}`
-      : `  ${row.name}`,
+      ? `> ${resourceHumanName(row)}`
+      : `  ${resourceHumanName(row)}`,
     list_namespace: formatResourceListNamespace(row),
   }));
 }
 
 export function formatResourceSelectionLabel(resource: ResourceListRow): string {
-  return `${resource.type} ${resource.name}`;
+  return `${resource.type} ${resourceHumanName(resource)}`;
 }
 
 function renderHiddenRowsHint(hiddenCount: number): string {

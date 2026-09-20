@@ -41,6 +41,8 @@ export function resourceTypeGlyph(type: string): TypeGlyph {
       return "variable";
     case "model_config":
       return "wrench";
+    case "file":
+      return "file-text";
     default:
       return "wrench";
   }

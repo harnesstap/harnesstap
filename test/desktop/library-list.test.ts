@@ -13,6 +13,7 @@ import {
   libraryRowUpdateBadge,
   mergeLibraryList,
   parseLibraryScopeName,
+  libraryRowScopeChip,
   scopedCopyHoverText,
   type LibraryListEntry,
   type LibraryListKind,
@@ -188,5 +189,28 @@ describe("scoped library rows", () => {
     expect(scopedCopyHoverText("project default")).toBe(
       "Scoped copy in project default",
     );
+  });
+
+  it("adds an @global chip for un-namespaced resource rows", () => {
+    const grouped = groupScopedLibraryRows(
+      mergeLibraryList(
+        [
+          resource({ id: "r1", type: "skill", name: "api" }),
+          resource({
+            id: "r2",
+            type: "skill",
+            name: "api",
+            namespace: "project default",
+          }),
+        ],
+        [],
+      ),
+      (row) => `${row.name}${row.namespace ? `@${row.namespace}` : ""}`,
+    );
+    expect(grouped.map((row) => [row.name, libraryRowScopeChip(row)])).toEqual([
+      ["api", "global"],
+      ["api", "project default"],
+    ]);
+    expect(libraryRowScopeChip(grouped[0]!)).toBe("global");
   });
 });

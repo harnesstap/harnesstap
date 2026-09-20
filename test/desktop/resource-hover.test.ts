@@ -35,6 +35,7 @@ describe("resource hover model", () => {
       name: "ship",
       path: "/Users/me/.claude/skills/ship/SKILL.md",
       originKind: "marketplace_link",
+      originIncludeRef: true,
       harnessIds: ["claude-code", "cursor"],
       extra: [],
     });
@@ -140,6 +141,7 @@ describe("resource hover model", () => {
       name: "ship",
       path: ".cursor/skills/ship/SKILL.md",
       originKind: "marketplace_link",
+      originIncludeRef: false,
       harnessIds: ["claude-code", "cursor"],
       extra: [{ kind: "destinations", text: "add → Claude Code, Cursor" }],
     });

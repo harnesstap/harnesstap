@@ -41,6 +41,7 @@ export function handleLibraryResources(): Response {
       source: resource.source,
       updated_at: resource.updated_at,
       origin_kind: resource.origin_kind,
+      origin_ref: resource.origin_ref || null,
     })),
   });
 }

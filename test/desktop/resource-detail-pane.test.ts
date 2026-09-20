@@ -77,16 +77,18 @@ describe("resource inspect content preview", () => {
     expect(bodySource).toContain("<code>");
   });
 
-  test("keeps path copy, Finder reveal, and open-in-editor on Path rows only", () => {
+  test("keeps path copy, Finder reveal, and open-in-editor on Path and contained file rows", () => {
     expect(bodySource).toContain("PathAccessActions");
     expect(bodySource).toContain("REVEAL_PATH_LABEL");
-    expect(bodySource).toContain("renderPathActions(actionPath, true, true)");
+    expect(bodySource).toContain("renderPathActions(actionPath, !resourcePathIsDirectory(detail), true)");
     expect(bodySource).toContain("openContainedPath(next, true)");
     expect(bodySource).toContain("openCurrentResource(true)");
     expect(bodySource).toContain("{ path, reveal }");
     expect(bodySource).toContain('fieldName="Path"');
     const contentBlock = bodySource.slice(bodySource.indexOf('fieldName="Content"'));
     expect(contentBlock).not.toContain("action={renderPathActions");
+    expect(bodySource).toContain("onReveal={(path) => void openContainedPath(path, true)}");
+    expect(bodySource).toContain("onOpenEditor={(path) => void openContainedPath(path, false)}");
     expect(fieldRowSource).toContain("action?: ReactNode");
     expect(fieldRowSource).toContain("onIconClick");
     expect(pathAccessSource).toContain("COPY_PATH_LABEL");

@@ -33,6 +33,9 @@ export default defineConfig({
     watch: {
       ignored: ["**/src-tauri/**"],
     },
+    fs: {
+      allow: [rootDir, path.resolve(rootDir, "../..")],
+    },
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

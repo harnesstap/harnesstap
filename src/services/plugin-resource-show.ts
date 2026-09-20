@@ -3,6 +3,11 @@ import { join, relative, resolve, sep } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 import { listResources } from "../models/resource.js";
 import type { PluginDependencyMetadata, Resource } from "../types.js";
+import {
+  containedFileStem,
+  inferContainedFileType,
+} from "../ui/resource-display.js";
+import { listContainedFiles } from "../utils/path-containment.js";
 import { listMarketplaces } from "./marketplace-registry.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import { resolveInstallRoot } from "./resource-sync.js";
@@ -53,29 +58,76 @@ export function pluginResourceShowExtras(
       contained_resources: [],
     };
   }
-  const contained_resources = listResources({ includeComposition: true })
-    .filter(
-      (row) => row.origin_ref === originRef && row.type !== "plugin" && row.id !== resource.id,
-    )
-    .flatMap((row) => {
-      const contained = containedFile(installPath, row.source);
-      if (!contained) {
-        return [];
-      }
-      return [
-        {
-          type: row.type,
-          name: row.name,
-          path: contained.path,
-          relative_path: contained.relative_path,
-        },
-      ];
-    });
   return {
     install_path: installPath,
     marketplace_url: marketplaceUrl,
-    contained_resources,
+    contained_resources: listContainedPluginFiles(installPath, originRef, resource.id),
   };
+}
+
+const SKIP_TREE_SEGMENTS = new Set([".git", "node_modules"]);
+
+function listPluginTreeRelativePaths(installPath: string): string[] {
+  try {
+    return listContainedFiles(installPath).filter(
+      (relativePath) => !relativePath.split("/").some((part) => SKIP_TREE_SEGMENTS.has(part)),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function listContainedPluginFiles(
+  installPath: string,
+  originRef: string,
+  pluginResourceId: string,
+): PluginContainedResource[] {
+  const libraryByRelative = new Map<string, Resource>();
+  for (const row of listResources({ includeComposition: true })) {
+    if (row.origin_ref !== originRef || row.type === "plugin" || row.id === pluginResourceId) {
+      continue;
+    }
+    const contained = containedFile(installPath, row.source);
+    if (contained) {
+      libraryByRelative.set(contained.relative_path, row);
+    }
+  }
+
+  const treePaths = listPluginTreeRelativePaths(installPath);
+  if (treePaths.length === 0) {
+    return [...libraryByRelative.entries()]
+      .map(([relative_path, row]) => {
+        const contained = containedFile(installPath, row.source);
+        return {
+          type: row.type,
+          name: row.name,
+          path: contained?.path ?? join(installPath, ...relative_path.split("/")),
+          relative_path,
+        };
+      })
+      .sort((left, right) => left.relative_path.localeCompare(right.relative_path));
+  }
+
+  return treePaths
+    .map((relative_path) => {
+      const path = join(installPath, ...relative_path.split("/"));
+      const row = libraryByRelative.get(relative_path);
+      if (row) {
+        return {
+          type: row.type,
+          name: row.name,
+          path,
+          relative_path,
+        };
+      }
+      return {
+        type: inferContainedFileType(relative_path),
+        name: containedFileStem(relative_path),
+        path,
+        relative_path,
+      };
+    })
+    .sort((left, right) => left.relative_path.localeCompare(right.relative_path));
 }
 
 function containedFile(

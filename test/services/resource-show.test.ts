@@ -16,9 +16,9 @@ function makeResource(overrides: Partial<ReturnType<typeof makeResourceInput>> =
   return {
     ...input,
     id: "01JEXAMPLE0000000000000000",
-    namespace: "",
-    origin_kind: "manual" as const,
-    origin_ref: "",
+    namespace: input.namespace ?? "",
+    origin_kind: input.origin_kind ?? "manual",
+    origin_ref: input.origin_ref ?? "",
     content_hash: "abc123",
     content_blob_ref: "",
     created_at: "2026-01-01T00:00:00.000Z",
@@ -31,6 +31,8 @@ describe("resource show", () => {
     const output = renderResourceShow(makeResource());
 
     expect(output).toContain("Updated");
+    expect(output).toContain("Path");
+    expect(output).toContain("Local");
     expect(output).not.toContain("Content hash");
     expect(output).not.toContain("Metadata");
     expect(output).not.toMatch(/\bID\b/);
@@ -43,6 +45,7 @@ describe("resource show", () => {
     const output = renderResourceShow(makeResource(), { showAllFields: true });
 
     expect(output).toContain("Content hash");
+    expect(output).toContain("Source");
     expect(output).toContain("abc123");
     expect(output).toContain("01JEXAMPLE0000000000000000");
     expect(output).toContain("Created");
@@ -62,5 +65,31 @@ describe("resource show", () => {
   it("keeps short content unchanged", () => {
     const content = "line 1\nline 2\nline 3";
     expect(truncateResourceContent(content)).toBe(content);
+  });
+
+  it("uses Agent instructions (AGENTS.md) as the display title", () => {
+    const output = renderResourceShow(
+      makeResource({
+        type: "instruction",
+        name: "agents-instructions",
+        source: "AGENTS.md",
+        origin_kind: "local_snapshot",
+        origin_ref: "/Users/christophe.oudar/dev/opensource/harnesstap",
+      }),
+    );
+    expect(output).toContain("Agent instructions (AGENTS.md)");
+    expect(output).toContain("Local (/Users/christophe.oudar/dev/opensource/harnesstap)");
+  });
+
+  it("shows the skill package directory as Path", () => {
+    const output = renderResourceShow(
+      makeResource({
+        type: "skill",
+        name: "archify",
+        source: "/Users/me/.claude/skills/archify/SKILL.md",
+      }),
+    );
+    expect(output).toContain("/Users/me/.claude/skills/archify");
+    expect(output).not.toContain("/Users/me/.claude/skills/archify/SKILL.md");
   });
 });
