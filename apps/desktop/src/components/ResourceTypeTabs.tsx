@@ -211,7 +211,9 @@ export function ResourceTypeTabs({
         const caption = resourceTypeTabTooltip(type, counts, tabOptions);
         const empty = resourceTypeTabEmptyDisabled(type, counts);
         const itemDisabled = empty;
-        const review = empty ? null : typeTabAttentionTooltip(attention?.get(type));
+        const review = empty
+          ? null
+          : typeTabAttentionTooltip(attention?.get(type), type);
         const ariaLabel = review ? `${caption}. ${review}` : caption;
         const compact = resolvedDensity === "compact";
         const collapsedHidden =
@@ -220,9 +222,6 @@ export function ResourceTypeTabs({
           <>
             <span className="resource-type-tab-face">
               <TabGlyph type={type} />
-              {review ? (
-                <span className="resource-type-tab-attention" aria-hidden />
-              ) : null}
             </span>
             <span className="resource-type-tab-count">{count}</span>
             <span className="resource-type-tab-label">{label}</span>
@@ -257,6 +256,9 @@ export function ResourceTypeTabs({
             hidden={collapsedHidden}
           >
             {inner}
+            {review ? (
+              <span className="resource-type-tab-attention" aria-hidden />
+            ) : null}
           </ToggleGroup.Item>
         );
       })}

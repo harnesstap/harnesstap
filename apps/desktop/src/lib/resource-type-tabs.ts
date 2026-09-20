@@ -350,16 +350,28 @@ export interface TypeTabAttention {
   inactive: number;
 }
 
-/** `N to add · M inactive` when those buckets have rows. */
+/** Title-case type noun for attention copy (`1 Skill`, `2 Skills`, `1 MCP`). */
+export function resourceTypeTabAttentionNoun(type: string, count: number): string {
+  const unit = resourceTypeTabUnit(type, count);
+  if (type === "mcp_server") {
+    return unit;
+  }
+  return unit.charAt(0).toUpperCase() + unit.slice(1);
+}
+
+/** `1 MCP to add · M inactive` when those buckets have rows. */
 export function typeTabAttentionTooltip(
   attention: TypeTabAttention | undefined,
+  type: string,
 ): string | null {
   if (!attention) {
     return null;
   }
   const parts: string[] = [];
   if (attention.toAdd > 0) {
-    parts.push(`${attention.toAdd} to add`);
+    parts.push(
+      `${attention.toAdd} ${resourceTypeTabAttentionNoun(type, attention.toAdd)} to add`,
+    );
   }
   if (attention.inactive > 0) {
     parts.push(`${attention.inactive} inactive`);
