@@ -1,5 +1,6 @@
 export const CLAUDE_SETTINGS_RELATIVE = ".claude/settings.json";
 export const MUSE_SETTINGS_RELATIVE = ".config/muse/settings.json";
+export const MINIMAX_MCP_RELATIVE = ".minimax/mcp.json";
 
 export function normalizeHostConfigPath(path: string): string {
   return path.replace(/\\/g, "/").replace(/^\.\//, "").replace(/^~\//, "");
@@ -21,13 +22,22 @@ export function isMuseSettingsPath(path: string): boolean {
   );
 }
 
+export function isMinimaxMcpPath(path: string): boolean {
+  const normalized = normalizeHostConfigPath(path);
+  return (
+    normalized === MINIMAX_MCP_RELATIVE
+    || normalized.endsWith(`/${MINIMAX_MCP_RELATIVE}`)
+  );
+}
+
 /**
  * Shared host JSON that apply merges instead of replacing or deleting.
- * Claude `.claude/settings.json` and Muse `~/.config/muse/settings.json` hold
- * profile-managed keys alongside unrelated user settings.
+ * Claude `.claude/settings.json`, Muse `~/.config/muse/settings.json`, and
+ * MiniMax `~/.minimax/mcp.json` hold profile-managed keys alongside unrelated
+ * user settings.
  */
 export function isMergeableHostConfigPath(path: string): boolean {
-  return isClaudeSettingsPath(path) || isMuseSettingsPath(path);
+  return isClaudeSettingsPath(path) || isMuseSettingsPath(path) || isMinimaxMcpPath(path);
 }
 
 function parseJsonObject(raw: string): Record<string, unknown> | null {
@@ -121,5 +131,36 @@ export function mergeMuseSettingsContent(
     merged[key] = value;
   }
   merged.schema_version = 1;
+  return `${JSON.stringify(merged, null, 2)}\n`;
+}
+
+/**
+ * Overlay MiniMax `mcpServers` onto live `~/.minimax/mcp.json`.
+ * Merges servers key-wise. Leaves unrelated top-level keys.
+ */
+export function mergeMinimaxMcpContent(
+  existingRaw: string | null | undefined,
+  generatedRaw: string,
+): string {
+  const generated = parseJsonObject(generatedRaw);
+  if (!generated) {
+    return generatedRaw;
+  }
+  if (!existingRaw) {
+    return `${JSON.stringify(generated, null, 2)}\n`;
+  }
+  const existing = parseJsonObject(existingRaw);
+  if (!existing) {
+    return `${JSON.stringify(generated, null, 2)}\n`;
+  }
+
+  const merged: Record<string, unknown> = { ...existing };
+  for (const [key, value] of Object.entries(generated)) {
+    if (key === "mcpServers") {
+      merged.mcpServers = mergeEnvRecord(existing.mcpServers, value);
+      continue;
+    }
+    merged[key] = value;
+  }
   return `${JSON.stringify(merged, null, 2)}\n`;
 }

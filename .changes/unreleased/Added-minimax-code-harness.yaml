@@ -1,0 +1,5 @@
+kind: Added
+body: Add a native MiniMax Code harness (`minimax-code`) with merge-safe user MCP, project `.mcp.json`, AGENTS.md, and `.minimax/skills` apply.
+time: 2026-09-20T21:20:00Z
+custom:
+  Issue: ""

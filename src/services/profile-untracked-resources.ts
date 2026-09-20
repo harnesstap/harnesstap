@@ -137,6 +137,11 @@ function isMuseSettingsPath(normalizedPath: string): boolean {
   );
 }
 
+function isMinimaxMcpPath(normalizedPath: string): boolean {
+  const path = normalizedPath.replace(/^~\//, "");
+  return path === ".minimax/mcp.json" || path.endsWith("/.minimax/mcp.json");
+}
+
 function isMcpConfigPath(normalizedPath: string): boolean {
   return /(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(
     normalizedPath.replace(/^~\//, ""),
@@ -152,7 +157,11 @@ function isMergedContainerResource(
     return false;
   }
   if (resource.type === "mcp_server") {
-    return isMcpConfigPath(sourcePath) || isMuseSettingsPath(sourcePath);
+    return (
+      isMcpConfigPath(sourcePath)
+      || isMuseSettingsPath(sourcePath)
+      || isMinimaxMcpPath(sourcePath)
+    );
   }
   if (!MERGED_CONTAINER_RESOURCE_TYPES.has(resource.type)) {
     return false;

@@ -19,6 +19,7 @@ const HARNESS_NAMES: Record<string, string> = {
   "copilot-cli": "Copilot CLI",
   "grok-build": "Grok Build",
   "muse-code": "Muse Code",
+  "minimax-code": "MiniMax Code",
 };
 
 /**

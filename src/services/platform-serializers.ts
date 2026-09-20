@@ -8,6 +8,7 @@ import { GeminiCliSerializer } from "../platforms/gemini-cli.js";
 import { GrokBuildSerializer } from "../platforms/grok-build.js";
 import { DeepSeekHarnessSerializer } from "../platforms/deepseek-harness.js";
 import { MuseCodeSerializer } from "../platforms/muse-code.js";
+import { MiniMaxCodeSerializer } from "../platforms/minimax-code.js";
 import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
 import type { PlatformSerializer } from "../types.js";
 
@@ -23,6 +24,7 @@ export const DEDICATED_SERIALIZER_PLATFORM_IDS = [
   "grok-build",
   "deepseek-harness",
   "muse-code",
+  "minimax-code",
 ] as const;
 
 const dedicatedSerializerPlatformIds = new Set<string>(
@@ -57,6 +59,8 @@ export function getPlatformSerializer(platformId: string): PlatformSerializer {
       return new DeepSeekHarnessSerializer();
     case "muse-code":
       return new MuseCodeSerializer();
+    case "minimax-code":
+      return new MiniMaxCodeSerializer();
     default:
       return new GenericAgentsSerializer(platformId);
   }

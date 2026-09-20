@@ -99,6 +99,20 @@ describe("global-profile-cleanup service", () => {
     ).toEqual([]);
   });
 
+  it("does not plan whole-file removal of mergeable MiniMax mcp.json", () => {
+    expect(
+      planStaleGlobalProfileFiles(
+        "/tmp",
+        [".minimax/skills/kept/SKILL.md"],
+        [
+          ".minimax/skills/kept/SKILL.md",
+          ".minimax/mcp.json",
+        ],
+        ["minimax-code"],
+      ),
+    ).toEqual([]);
+  });
+
   it("expands removed MCP configs onto other harness dedicated MCP paths", () => {
     expect(
       expandStaleMcpConfigMirrors(

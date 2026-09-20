@@ -160,7 +160,28 @@ describe("platform registry", () => {
     expect(muse?.supports.has("agents")).toBe(false);
     expect(muse?.supports.has("commands")).toBe(false);
 
-    expect(registry.getAllPlatforms().length).toBe(43);
+    const minimax = registry.getPlatform("minimax-code");
+    expect(minimax?.name).toBe("MiniMax Code");
+    expect(minimax?.projectPaths.instructions).toBe("AGENTS.md");
+    expect(minimax?.projectPaths.skills).toBe(".minimax/skills/");
+    expect(minimax?.projectPaths.plugins).toBe(".minimax-plugin/");
+    expect(minimax?.projectPaths.mcp).toBeUndefined();
+    expect(minimax?.projectPaths.pathAlternates?.skills).toEqual([".agents/skills/"]);
+    expect(minimax?.globalPaths.settings).toBe("~/.minimax/config.yaml");
+    expect(minimax?.globalPaths.mcp).toBe("~/.minimax/mcp.json");
+    expect(minimax?.globalPaths.skills).toBe("~/.minimax/skills/");
+    expect(minimax?.globalPaths.plugins).toBe("~/.minimax/plugins/");
+    expect(minimax?.globalPaths.pathAlternates?.settings).toEqual([
+      "~/.minimax/",
+      "~/.mavis/",
+    ]);
+    expect(minimax?.supports.has("mcp")).toBe(true);
+    expect(minimax?.supports.has("skills")).toBe(true);
+    expect(minimax?.supports.has("instructions")).toBe(true);
+    expect(minimax?.supports.has("hooks")).toBe(false);
+    expect(minimax?.supports.has("agents")).toBe(false);
+
+    expect(registry.getAllPlatforms().length).toBe(44);
   });
 
   it("detectPlatforms returns empty array (stub)", async () => {

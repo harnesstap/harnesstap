@@ -53,7 +53,8 @@ export function inferMcpTransport(entry: Record<string, unknown>): "stdio" | "ht
       normalized === "http" ||
       normalized === "remote" ||
       normalized === "sse" ||
-      normalized === "streamable_http"
+      normalized === "streamable_http" ||
+      normalized === "streamable-http"
     ) {
       return "http";
     }

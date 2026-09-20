@@ -1,6 +1,6 @@
 # Supported harnesses
 
-HarnessTap registers **43 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in plugins, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
+HarnessTap registers **44 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in plugins, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
 
 For portability caveats (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission, and mirror warnings), see [Portability limits](portability-limits.md).
 
@@ -54,6 +54,7 @@ All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}`
 | **opencode**, **goose**, **grok-build**, **antigravity**, **amazon-q**, generic | Yes | No | Yes |
 | **deepseek-harness** | Yes (`~/.dsh/cordis.patch.yml` home patch) | No | Yes |
 | **muse-code** | Yes (`~/.config/muse/settings.json` `mcp_servers`, user-settings only) | No | Yes |
+| **minimax-code** | Yes (project `.mcp.json`; user `~/.minimax/mcp.json`) | No | Yes |
 
 ## Plugin manifest layouts
 
@@ -93,7 +94,7 @@ Claude **plugin pins** and marketplace metadata (`plugin show` → `claude` bloc
 
 | Tier | Harnesses | Notes |
 | ---- | --------- | ----- |
-| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness`, `muse-code` | Dedicated scan/serialize logic |
+| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness`, `muse-code`, `minimax-code` | Dedicated scan/serialize logic |
 | **Generic** | All other registered harnesses | Path-driven serializer driven by registry `projectPaths` / `globalPaths` |
 
 Filter native harnesses at the CLI:
@@ -164,6 +165,7 @@ Legend for the **Resources** column: `instr` instructions · `skill` skills · `
 | `grok-build` | Grok Build | Native | instr, skill, mcp, perm, hook, agent, cmd, model | Native skills | — |
 | `deepseek-harness` | DeepSeek Harness | Native | instr, skill, mcp, perm, hook, agent, model | Native skills | Yes |
 | `muse-code` | Muse Code | Native | instr, skill, mcp, hook | Native skills | — |
+| `minimax-code` | MiniMax Code | Native | instr, skill, mcp | Native skills | — |
 | `amp` | Amp | Generic | instr, skill | Native skills | — |
 | `kilo` | Kilo Code | Generic | instr, skill | Native skills | — |
 | `augment` | Augment | Generic | instr, skill | Native skills | — |
@@ -205,6 +207,7 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` | — | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
 | **deepseek-harness** | `AGENTS.md` (+ `CLAUDE.md`) | `.dsh/skills/` | — | `~/.dsh/cordis.patch.yml` (global) | `~/.dsh/.agent-presets/` | — | `~/.dsh/settings.yaml` |
 | **muse-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`, `.claude/CLAUDE.md`) | `.agents/skills/` | — | `~/.config/muse/settings.json` (`mcp_servers`, global only) | — | — | `~/.config/muse/settings.json` |
+| **minimax-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`) | `.minimax/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | project `.mcp.json`; user `~/.minimax/mcp.json` | — | — | `~/.minimax/config.yaml` (not rewritten) |
 | **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
 
 Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) but never imports or applies them.
@@ -276,6 +279,22 @@ Detection uses distinctive `.muse/hooks.json` and/or `~/.config/muse/` (`setting
 | **MCP** (`mcp_servers` in user settings; `stdio` / `streamable_http`) | `mcp_server` resources on **global** apply only |
 | **Memory** (`.agents/memory/`) | Skipped — not emitted day one |
 | **Workflows / observer agents** | Runtime-only — out of scope |
+
+### MiniMax Code notes
+
+MiniMax Code (`mcode`, npm `@minimax-ai/code`) stores user data under `~/.minimax` (profile: `~/.minimax-<name>`; override `MINIMAX_DATA_DIR` / `MAVIS_DATA_DIR`). The installer directory `~/.minimax-code` is not user data and is not used for detection. Runtime settings live in `config.yaml`; HarnessTap does not rewrite that file. MCP lives in `mcp.json` (`mcpServers`).
+
+Detection uses distinctive `.minimax/skills/`, `.minimax-plugin/`, and/or `~/.minimax/` (or legacy `~/.mavis/`). Shared `AGENTS.md` / `.agents/skills/` alone do not count as MiniMax. `mcode init .` only writes `AGENTS.md`; a MiniMax-only machine is still detected from the home data directory.
+
+| MiniMax surface | HarnessTap support |
+| --------------- | ------------------- |
+| **AGENTS.md** (also reads `CLAUDE.md`, `.agents/AGENTS.md`) | `instruction` resources; apply emits `AGENTS.md` |
+| **Skills** (`.minimax/skills/`; also discovers `.agents/skills` and `.claude/skills`) | Native `skill` resources; apply writes `.minimax/skills/` only |
+| **Project MCP** (workspace `.mcp.json`) | `mcp_server` resources; merge-safe `mcpServers` |
+| **User MCP** (`~/.minimax/mcp.json`, also reads `~/.minimax/mcp/mcp.json`) | Merged into `mcp.json` on **global** apply |
+| **Plugins** (`mcode plugin` / `/plugins`; local dir `~/.minimax/plugins/`) | Detection via `.minimax-plugin/` and the home plugins path; no install provider yet |
+| **config.yaml** (model, providers, credentials) | Left alone |
+| **Install dir** (`~/.minimax-code`) | Ignored |
 
 ## Related commands
 
