@@ -340,7 +340,10 @@ describe("sources search list and preview", () => {
     expect(pluginTreeSource).toContain("SourcesRecordActions");
     expect(previewPaneSource).toContain("SourcesRecordActions");
     expect(listPaneSource).toContain("ResourceRowRoot");
+    expect(listPaneSource).toContain("ResourceRowTrailing");
     expect(listPaneSource).toContain("InUseMark");
+    const hitTrailing = cssBlock(stylesSource, ".sources-hit .resource-row-trailing");
+    expect(hitTrailing).toContain("align-self: center;");
     expect(workspaceSource).toContain("onOpenInLibrary");
     expect(appSource).toContain("onOpenInLibrary=");
     expect(appSource).toContain("setLibraryFocusPlugin");
@@ -471,6 +474,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("full-screen panels");
     expect(designSource).toContain("ResourceRowRoot");
     expect(designSource).toContain("InUseMark");
+    expect(designSource).toContain("vertically centered in the row");
     expect(designSource).toContain("Cloud browse overlay");
     expect(designSource).toContain("Update available");
     expect(designSource).toContain("No Update button on Discover");
