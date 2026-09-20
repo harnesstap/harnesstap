@@ -12,10 +12,8 @@ import { createPortal } from "react-dom";
 import { FileText, Folder, Package, Store } from "lucide-react";
 import { labelForType } from "../../lib/contents-diff";
 import { harnessDisplayName } from "../../lib/harness-meta";
-import {
-  formatOriginKindLabel,
-  originFilterValue,
-} from "../../lib/resource-filters";
+import { formatOriginDisplayLabel } from "../../lib/resource-display";
+import { originFilterValue } from "../../lib/resource-filters";
 import {
   clampPointerHoverCardPosition,
   formatHoverPath,
@@ -237,7 +235,9 @@ export function ResourceHoverCard({
       {model.originKind !== undefined ? (
         <HoverCardRow
           icon={<OriginHoverIcon originKind={model.originKind} />}
-          text={formatOriginKindLabel(model.originKind)}
+          text={formatOriginDisplayLabel(model.originKind, model.originRef, {
+            includeRef: model.originIncludeRef ?? true,
+          })}
         />
       ) : null}
       {model.path !== undefined ? (

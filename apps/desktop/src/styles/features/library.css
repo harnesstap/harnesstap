@@ -1110,6 +1110,10 @@
   margin: 0.2rem 0;
 }
 
+.library-contained-row .path-access-actions {
+  margin-left: auto;
+}
+
 .plugin-version-history-list {
   list-style: none;
   margin: 0;

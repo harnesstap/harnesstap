@@ -1,7 +1,14 @@
 import type { Resource } from "../types.js";
 import { formatRelativeTimeWithAbsolute } from "../ui/format.js";
 import { renderPanel } from "../ui/panel.js";
+import {
+  formatOriginDisplayLabel,
+  formatResourceDisplayName,
+  packageDirectoryDisplayPath,
+  resourceHumanName,
+} from "../ui/resource-display.js";
 import { renderSubheader } from "../ui/section.js";
+import { pluginResourceShowExtras } from "./plugin-resource-show.js";
 
 const DEFAULT_CONTENT_LINE_LIMIT = 15;
 
@@ -11,14 +18,21 @@ export type ResourceShowOptions = {
 
 function resourceShowPanelRows(
   resource: Resource,
+  extras: ReturnType<typeof pluginResourceShowExtras>,
   opts?: ResourceShowOptions,
 ): Array<[string, string]> {
+  const path = extras?.install_path
+    ?? packageDirectoryDisplayPath(resource.source);
   const panelRows: Array<[string, string]> = [
     ["Type", resource.type],
-    ["Name", resource.name],
+    ["Name", resourceHumanName(resource)],
     ["Description", resource.description || "—"],
-    ["Source", resource.source],
-    ["Origin", `${resource.origin_kind}${resource.origin_ref ? ` (${resource.origin_ref})` : ""}`],
+    ["Path", path || "—"],
+    ["Origin", formatOriginDisplayLabel(
+      resource.origin_kind,
+      resource.origin_ref,
+      { includeRef: resource.type !== "plugin" },
+    )],
     ["Updated", formatRelativeTimeWithAbsolute(resource.updated_at)],
   ];
   if (resource.namespace) {
@@ -26,6 +40,7 @@ function resourceShowPanelRows(
   }
   if (opts?.showAllFields) {
     panelRows.push(
+      ["Source", resource.source],
       ["Content hash", resource.content_hash || "—"],
       ["ID", resource.id],
       ["Created", resource.created_at],
@@ -50,14 +65,30 @@ export function truncateResourceContent(
   ].join("\n");
 }
 
+function renderResourceContent(
+  resource: Resource,
+  extras: ReturnType<typeof pluginResourceShowExtras>,
+): string {
+  if (extras) {
+    if (extras.contained_resources.length === 0) {
+      return "Nothing loaded yet.";
+    }
+    return extras.contained_resources
+      .map((file) => file.relative_path)
+      .join("\n");
+  }
+  return truncateResourceContent(resource.content);
+}
+
 export function renderResourceShow(resource: Resource, opts?: ResourceShowOptions): string {
+  const extras = pluginResourceShowExtras(resource);
   return [
     renderPanel({
-      title: ["RESOURCE", resource.namespace ? `${resource.name}@${resource.namespace}` : resource.name],
-      rows: resourceShowPanelRows(resource, opts),
+      title: ["RESOURCE", formatResourceDisplayName(resource)],
+      rows: resourceShowPanelRows(resource, extras, opts),
     }),
     renderSubheader("CONTENT"),
-    truncateResourceContent(resource.content),
+    renderResourceContent(resource, extras),
   ].join("\n");
 }
 

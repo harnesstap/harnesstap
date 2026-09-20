@@ -25,6 +25,7 @@ import {
   libraryRowSelector,
   libraryRowUpdateBadge,
   parseLibraryScopeName,
+  libraryRowScopeChip,
   scopedCopyHoverText,
   type LibraryListEntry,
   type ScopedLibraryRow,
@@ -183,6 +184,7 @@ export function LibraryResourceList({
           const visibleLabel = entry.scopedProfile
             ? parseLibraryScopeName(label).base
             : label;
+          const scopeChip = libraryRowScopeChip(entry);
           const badge = libraryRowBadge(entry);
           const updateBadge = libraryRowUpdateBadge(entry);
           const filterType = libraryFilterType(entry);
@@ -237,8 +239,8 @@ export function LibraryResourceList({
                   type={filterType}
                   label={visibleLabel}
                   accessory={
-                    entry.scopedProfile ? (
-                      <ResourceRowScopeChip profile={entry.scopedProfile} />
+                    scopeChip ? (
+                      <ResourceRowScopeChip profile={scopeChip} />
                     ) : null
                   }
                 >

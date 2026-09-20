@@ -1,3 +1,4 @@
+import { formatResourceDisplayName } from "./resource-display";
 import type { LibraryResource, ProfileContentsResource } from "./types";
 
 /** Material + composition types accepted by CLI `type:query` search prefixes. */
@@ -78,9 +79,7 @@ export function matchesListSearchQuery(
 }
 
 function displayName(resource: LibraryResource): string {
-  return resource.namespace
-    ? `${resource.name}@${resource.namespace}`
-    : resource.name;
+  return formatResourceDisplayName(resource);
 }
 
 /**
@@ -113,7 +112,7 @@ export function filterLibraryResourcesBySearch<T extends LibraryResource>(
     ) {
       return false;
     }
-    const haystack = `${displayName(resource)} ${resource.description ?? ""} ${resource.namespace ?? ""} ${resource.tags?.join(" ") ?? ""}`;
+    const haystack = `${resource.name} ${displayName(resource)} ${resource.description ?? ""} ${resource.namespace ?? ""} ${resource.tags?.join(" ") ?? ""}`;
     return matchesListSearchQuery(haystack, textQuery);
   });
 }

@@ -48,6 +48,7 @@ import {
   resourceOpenPath,
   resourceOpenUsesSelector,
   resourcePathDisplay,
+  resourcePathIsDirectory,
 } from "../lib/resource-open-path";
 import {
   RESOURCE_CONTENT_PREVIEW_LINES,
@@ -68,7 +69,10 @@ import {
   resourceDeleteDiskDisabled,
   resourceDeleteDiskNeedsConfirmation,
 } from "../lib/resource-delete";
-import { formatOriginKindLabel } from "../lib/resource-filters";
+import {
+  formatOriginDisplayLabel,
+  formatResourceDisplayName,
+} from "../lib/resource-display";
 import type { LibraryResourceDetail } from "../lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -139,17 +143,13 @@ export interface ResourceDetailBodyProps {
 }
 
 function displayName(resource: LibraryResourceDetail): string {
-  return resource.namespace
-    ? `${resource.name}@${resource.namespace}`
-    : resource.name;
+  return formatResourceDisplayName(resource);
 }
 
 function originLabel(resource: LibraryResourceDetail): string {
-  const kind = formatOriginKindLabel(resource.origin_kind);
-  if (isPluginTypeResource(resource.type) || !resource.origin_ref) {
-    return kind;
-  }
-  return `${kind} (${resource.origin_ref})`;
+  return formatOriginDisplayLabel(resource.origin_kind, resource.origin_ref, {
+    includeRef: !isPluginTypeResource(resource.type),
+  });
 }
 
 function isUntrackedDetail(resource: LibraryResourceDetail): boolean {
@@ -772,11 +772,7 @@ export function ResourceDetailBody({
           }
         }}
       >
-        {detail
-          ? chrome === "pane"
-            ? detail.name
-            : displayName(detail)
-          : target.label}
+        {detail ? displayName(detail) : target.label}
         {chrome === "pane" && !fieldsReadOnly ? (
           <IconActionButton
             className="library-field-edit-trigger"
@@ -909,7 +905,8 @@ export function ResourceDetailBody({
             resources={detail.contained_resources}
             openingPath={openingPath}
             disabled={disabled || !baseUrl || loading}
-            onOpen={(path) => void openContainedPath(path)}
+            onReveal={(path) => void openContainedPath(path, true)}
+            onOpenEditor={(path) => void openContainedPath(path, false)}
             onSync={showSync ? () => void runSync("fail", true) : undefined}
             syncBusy={busy}
           />
@@ -962,7 +959,7 @@ export function ResourceDetailBody({
             onIconClick={
               canOpenCurrent ? () => void openCurrentResource(true) : undefined
             }
-            action={renderPathActions(actionPath, true, true)}
+            action={renderPathActions(actionPath, !resourcePathIsDirectory(detail), true)}
           />
           <LibraryFieldRow
             icon={<MapPin size={16} aria-hidden />}

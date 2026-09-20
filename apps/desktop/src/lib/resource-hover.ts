@@ -6,6 +6,7 @@ import {
 } from "./contents-diff";
 import { relatedHarnessesForResourceType } from "./harness-meta";
 import { libraryFilterType } from "./library-list";
+import { isPluginTypeResource } from "./plugin-ref-detail";
 import { resourceDisplayName } from "./resource-search";
 import type {
   DriftFileChange,
@@ -23,6 +24,8 @@ export type ResourceHoverModel = {
   name: string;
   path?: string;
   originKind?: string;
+  originRef?: string;
+  originIncludeRef?: boolean;
   harnessIds: string[];
   extra: ResourceHoverExtra[];
 };
@@ -119,6 +122,11 @@ export function hoverModelFromLibraryResource(
   const origin = resource.origin_kind?.trim();
   if (origin) {
     model.originKind = origin;
+    const originRef = resource.origin_ref?.trim();
+    if (originRef) {
+      model.originRef = originRef;
+    }
+    model.originIncludeRef = !isPluginTypeResource(resource.type);
   }
   return model;
 }
@@ -174,6 +182,7 @@ export function hoverModelFromFileChangeGroup(
   const origin = group.resource?.origin_kind?.trim();
   if (origin) {
     model.originKind = origin;
+    model.originIncludeRef = false;
   }
   const destinations = fileChangeDestinationSummary(group);
   if (destinations) {

@@ -5,6 +5,8 @@ export interface Column {
   key: string;
   header: string;
   width: number;
+  /** Floor used when distributing `widthShare` under `maxWidth`. */
+  minWidth?: number;
   /** Fraction of available width when maxWidth is set (0–1). */
   widthShare?: number;
   /** When false, hyphenated tokens may break mid-token during word wrap. */
@@ -63,10 +65,26 @@ export function computeColumnWidths(
 
   if (hasWidthShare) {
     const available = maxWidth - overhead;
+    const floors = columns.map((col) => col.minWidth ?? 0);
     const shares = columns.map((col) => col.widthShare ?? 0);
-    const widths = shares.map((share) => Math.floor(available * share));
-    const allocated = widths.reduce((sum, width) => sum + width, 0);
-    if (widths.length > 0) {
+    const widths = shares.map((share, index) =>
+      Math.max(floors[index] ?? 0, Math.floor(available * share)),
+    );
+    let allocated = widths.reduce((sum, width) => sum + width, 0);
+    if (allocated > available) {
+      let overflow = allocated - available;
+      for (let index = widths.length - 1; index >= 0 && overflow > 0; index--) {
+        const reducible = (widths[index] ?? 0) - (floors[index] ?? 0);
+        if (reducible <= 0) {
+          continue;
+        }
+        const take = Math.min(reducible, overflow);
+        widths[index] = (widths[index] ?? 0) - take;
+        overflow -= take;
+      }
+      allocated = widths.reduce((sum, width) => sum + width, 0);
+    }
+    if (widths.length > 0 && allocated < available) {
       widths[0] = (widths[0] ?? 0) + available - allocated;
     }
     return widths;

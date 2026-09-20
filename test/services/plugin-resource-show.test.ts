@@ -81,18 +81,25 @@ describe("pluginResourceShowExtras", () => {
       });
 
       const extras = pluginResourceShowExtras(pin, { homeRoot: ctx.homeDir });
-      expect(extras).toEqual({
-        install_path: installRoot,
-        marketplace_url: "https://github.com/acme/team-plugins",
-        contained_resources: [
-          {
-            type: "skill",
-            name: "team",
-            path: skillPath,
-            relative_path: "skills/team/SKILL.md",
-          },
-        ],
+      expect(extras?.install_path).toBe(installRoot);
+      expect(extras?.marketplace_url).toBe("https://github.com/acme/team-plugins");
+      expect(extras?.contained_resources.map((row) => row.relative_path)).toEqual([
+        ".cursor-plugin/plugin.json",
+        "agents/reviewer.md",
+        "rules/advisory.mdc",
+        "rules/global-review.mdc",
+        "rules/review.mdc",
+        "skills/team/SKILL.md",
+      ]);
+      expect(
+        extras?.contained_resources.find((row) => row.relative_path === "skills/team/SKILL.md"),
+      ).toEqual({
+        type: "skill",
+        name: "team",
+        path: skillPath,
+        relative_path: "skills/team/SKILL.md",
       });
+      expect(extras?.contained_resources.some((row) => row.name === "ghost")).toBe(false);
     } finally {
       await ctx.cleanup();
     }
@@ -130,14 +137,22 @@ describe("pluginResourceShowExtras", () => {
       const extras = pluginResourceShowExtras(pin, { homeRoot: ctx.homeDir });
       expect(extras?.marketplace_url).toBeNull();
       expect(extras?.install_path).toBe(installRoot);
-      expect(extras?.contained_resources).toEqual([
-        {
-          type: "skill",
-          name: "team",
-          path: skillPath,
-          relative_path: "skills/team/SKILL.md",
-        },
+      expect(extras?.contained_resources.map((row) => row.relative_path)).toEqual([
+        ".cursor-plugin/plugin.json",
+        "agents/reviewer.md",
+        "rules/advisory.mdc",
+        "rules/global-review.mdc",
+        "rules/review.mdc",
+        "skills/team/SKILL.md",
       ]);
+      expect(
+        extras?.contained_resources.find((row) => row.relative_path === "skills/team/SKILL.md"),
+      ).toEqual({
+        type: "skill",
+        name: "team",
+        path: skillPath,
+        relative_path: "skills/team/SKILL.md",
+      });
     } finally {
       await ctx.cleanup();
     }
@@ -211,14 +226,17 @@ describe("pluginResourceShowExtras", () => {
       });
 
       const extras = pluginResourceShowExtras(pin, { homeRoot: ctx.homeDir });
-      expect(extras?.contained_resources).toEqual([
-        {
-          type: "skill",
-          name: "team",
-          path: skillPath,
-          relative_path: "skills/team/SKILL.md",
-        },
-      ]);
+      expect(extras?.contained_resources.map((row) => row.relative_path)).toContain(
+        "skills/team/SKILL.md",
+      );
+      expect(
+        extras?.contained_resources.find((row) => row.relative_path === "skills/team/SKILL.md"),
+      ).toEqual({
+        type: "skill",
+        name: "team",
+        path: skillPath,
+        relative_path: "skills/team/SKILL.md",
+      });
     } finally {
       await ctx.cleanup();
     }

@@ -88,6 +88,22 @@ describe("ui table", () => {
     expect(widths[0]).toBeGreaterThan(widths[1]);
   });
 
+  it("honors minWidth when widthShare would shrink the first column", async () => {
+    const { computeColumnWidths } = await import("../../src/ui/table.ts");
+    const widths = computeColumnWidths(
+      [
+        { key: "id", header: "ID", width: 13, minWidth: 13, widthShare: 0.1 },
+        { key: "name", header: "NAME", width: 28, widthShare: 0.45 },
+        { key: "namespace", header: "NAMESPACE", width: 20, widthShare: 0.3 },
+        { key: "updated_at", header: "UPDATED", width: 16, widthShare: 0.15 },
+      ],
+      [{ id: "01M30E…7J9Z", name: "openapi-mcp-baseline", namespace: "global", updated_at: "1 seconds ago" }],
+      80,
+    );
+    expect(widths[0]).toBeGreaterThanOrEqual(13);
+    expect(widths.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(80);
+  });
+
   it("applies column styles for resource types", async () => {
     const chalkModule = await import("chalk");
     const originalLevel = chalkModule.default.level;

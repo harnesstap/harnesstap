@@ -61,6 +61,23 @@ describe("filterLibraryResourcesBySearch", () => {
     expect(filterLibraryResourcesBySearch(rows, "  ")).toEqual(rows);
   });
 
+  it("matches Agent instructions display copy in search", () => {
+    const agents = [
+      resource({
+        id: "a",
+        type: "instruction",
+        name: "agents-instructions",
+        source: "AGENTS.md",
+      }),
+    ];
+    expect(
+      filterLibraryResourcesBySearch(agents, "Agent instructions").map((row) => row.id),
+    ).toEqual(["a"]);
+    expect(
+      filterLibraryResourcesBySearch(agents, "agents-instructions").map((row) => row.id),
+    ).toEqual(["a"]);
+  });
+
   it("maps legacy plugin_pin: prefix to plugin rows", () => {
     const withPlugin = [
       ...rows,

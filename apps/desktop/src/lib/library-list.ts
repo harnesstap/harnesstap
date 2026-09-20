@@ -79,6 +79,7 @@ export function mergeLibraryList(
     source: null,
     updated_at: null,
     origin_kind: null,
+    origin_ref: null,
     listKind: "plugin-package",
     version: plugin.version,
     dirty: plugin.dirty,
@@ -206,4 +207,20 @@ export function groupScopedLibraryRows<T>(
 
 export function scopedCopyHoverText(profile: string): string {
   return `Scoped copy in ${profile}`;
+}
+
+export function libraryRowScopeChip(
+  entry: ScopedLibraryRow<LibraryListEntry>,
+): string | null {
+  if (entry.listKind === "plugin-package") {
+    return null;
+  }
+  if (entry.scopedProfile) {
+    return entry.scopedProfile;
+  }
+  const namespace = entry.namespace?.trim() ?? "";
+  if (namespace.length > 0) {
+    return null;
+  }
+  return "global";
 }

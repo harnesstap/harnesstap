@@ -37,6 +37,24 @@ describe("resourceOpenPath", () => {
     expect(resourceOpenUsesSelector(resource)).toBe(true);
   });
 
+  it("shows the skill package directory instead of SKILL.md", () => {
+    const resource = marketplaceAgent({
+      type: "skill",
+      name: "archify",
+      namespace: null,
+      source: "/Users/christophe.oudar/.claude/skills/archify/SKILL.md",
+      filesystem_path: "/Users/christophe.oudar/.claude/skills/archify/SKILL.md",
+      origin_kind: "manual",
+      origin_ref: "/Users/christophe.oudar/.claude/skills/archify/SKILL.md",
+    });
+    expect(resourcePathDisplay(resource)).toBe(
+      "/Users/christophe.oudar/.claude/skills/archify",
+    );
+    expect(resourceOpenPath(resource)).toBe(
+      "/Users/christophe.oudar/.claude/skills/archify",
+    );
+  });
+
   it("does not treat a plugin-relative source as openable on its own", () => {
     const resource = marketplaceAgent({ filesystem_path: null, origin_ref: null });
     expect(resourcePathDisplay(resource)).toBe("agents/devx.md");

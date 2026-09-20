@@ -1,7 +1,10 @@
 import { libraryFilterType } from "./library-list";
+import { groupedOriginKind } from "./resource-display";
 import { filterLibraryResourcesBySearch } from "./resource-search";
 import { RESOURCE_TYPE_TAB_ORDER } from "./resource-type-tabs";
 import type { LibraryResource } from "./types";
+
+export { formatOriginKindLabel } from "./resource-display";
 
 export const LISTABLE_FILTER_RESOURCE_TYPES = RESOURCE_TYPE_TAB_ORDER;
 
@@ -202,13 +205,8 @@ export function buildNamespaceFacetOptions(
   return hasUnnamed ? [{ mode: "unnamed" }, ...named] : named;
 }
 
-const LOCAL_ORIGIN_KINDS = new Set(["local", "local_snapshot", "manual"]);
-
 export function originFilterValue(originKind: string): string {
-  if (LOCAL_ORIGIN_KINDS.has(originKind)) {
-    return "local";
-  }
-  return originKind;
+  return groupedOriginKind(originKind);
 }
 
 export function buildOriginFacetOptions(resources: LibraryResource[]): string[] {
@@ -221,13 +219,3 @@ export function buildOriginFacetOptions(resources: LibraryResource[]): string[] 
   return [...kinds].sort((a, b) => a.localeCompare(b));
 }
 
-const ORIGIN_KIND_LABELS: Record<string, string> = {
-  local: "Local",
-  marketplace_link: "Marketplace",
-  untracked: "Untracked",
-};
-
-export function formatOriginKindLabel(originKind: string): string {
-  const grouped = originFilterValue(originKind);
-  return ORIGIN_KIND_LABELS[grouped] ?? grouped.replaceAll("_", " ");
-}

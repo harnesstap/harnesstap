@@ -1,4 +1,8 @@
 import { isPluginTypeResource } from "./plugin-ref-detail";
+import {
+  isPackageEntryFileName,
+  packageDirectoryDisplayPath,
+} from "./resource-display";
 import type { LibraryResourceDetail } from "./types";
 
 function isAbsoluteFilesystemPath(path: string): boolean {
@@ -12,22 +16,13 @@ function isAbsoluteFilesystemPath(path: string): boolean {
   return /^[A-Za-z]:[\\/]/.test(trimmed);
 }
 
-/** Path shown in the inspect Path field. Plugin-relative sources stay short. */
-export function resourcePathDisplay(resource: LibraryResourceDetail): string {
-  if (isPluginTypeResource(resource.type)) {
-    return resource.install_path?.trim() ?? "";
-  }
-  return resource.source.trim();
+function pathFileName(path: string): string {
+  const normalized = path.replace(/[\\/]+$/, "");
+  const parts = normalized.split(/[/\\]/);
+  return parts[parts.length - 1] ?? "";
 }
 
-/**
- * Absolute path for copy / reveal / open-in-editor.
- * Never returns a bare plugin-relative path such as `agents/devx.md`.
- */
-export function resourceOpenPath(resource: LibraryResourceDetail): string {
-  if (isPluginTypeResource(resource.type)) {
-    return resource.install_path?.trim() ?? "";
-  }
+function firstAbsolutePath(resource: LibraryResourceDetail): string {
   const filesystem = resource.filesystem_path?.trim() ?? "";
   if (filesystem && isAbsoluteFilesystemPath(filesystem)) {
     return filesystem;
@@ -43,6 +38,44 @@ export function resourceOpenPath(resource: LibraryResourceDetail): string {
   return "";
 }
 
+/** Path shown in the inspect Path field. Plugin-relative sources stay short. */
+export function resourcePathDisplay(resource: LibraryResourceDetail): string {
+  if (isPluginTypeResource(resource.type)) {
+    return resource.install_path?.trim() ?? "";
+  }
+  const source = resource.source.trim();
+  const absolute = firstAbsolutePath(resource);
+  const candidate = absolute || source;
+  if (isPackageEntryFileName(pathFileName(candidate))) {
+    return packageDirectoryDisplayPath(candidate);
+  }
+  return source;
+}
+
+/**
+ * Absolute path for copy / reveal / open-in-editor.
+ * Never returns a bare plugin-relative path such as `agents/devx.md`.
+ */
+export function resourceOpenPath(resource: LibraryResourceDetail): string {
+  if (isPluginTypeResource(resource.type)) {
+    return resource.install_path?.trim() ?? "";
+  }
+  const absolute = firstAbsolutePath(resource);
+  if (absolute) {
+    return packageDirectoryDisplayPath(absolute);
+  }
+  return "";
+}
+
 export function resourceOpenUsesSelector(resource: LibraryResourceDetail): boolean {
   return !isPluginTypeResource(resource.type);
+}
+
+export function resourcePathIsDirectory(resource: LibraryResourceDetail): boolean {
+  if (isPluginTypeResource(resource.type)) {
+    return true;
+  }
+  const source = resource.source.trim();
+  const absolute = firstAbsolutePath(resource);
+  return isPackageEntryFileName(pathFileName(absolute || source));
 }
