@@ -222,6 +222,8 @@
   font-weight: 500;
   line-height: 1;
   cursor: pointer;
+  position: relative;
+  overflow: visible;
 }
 
 .resource-type-tab:hover {
@@ -302,13 +304,14 @@
 
 .resource-type-tab-attention {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: 0;
+  right: 0;
   width: 7px;
   height: 7px;
   border-radius: 999px;
   background: var(--yellow);
   box-shadow: 0 0 0 1px var(--bg);
+  pointer-events: none;
 }
 
 .resource-type-tab[data-state="on"] .resource-type-tab-attention {
@@ -319,7 +322,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  position: relative;
 }
 
 .resources-type-group {
@@ -568,7 +570,7 @@
 }
 
 .resource-row.inventory-row {
-  align-items: start;
+  align-items: center;
   height: auto;
 }
 
@@ -672,6 +674,8 @@
 
 .resource-row-leading {
   grid-column: 1;
+  display: inline-flex;
+  align-items: center;
 }
 
 .resource-row-leading:has(.in-use-mark) {
@@ -766,6 +770,12 @@
   align-items: center;
   gap: 0.4rem;
   min-width: 0;
+}
+
+.resource-row-identity-main svg,
+.resource-row-leading svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .resource-row-name {

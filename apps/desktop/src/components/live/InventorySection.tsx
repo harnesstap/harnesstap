@@ -1,6 +1,14 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { CircleCheck, CircleDashed, CirclePause, ListPlus, Power } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  CircleCheck,
+  CircleDashed,
+  CirclePause,
+  ListPlus,
+  Power,
+} from "lucide-react";
 import {
   INVENTORY_ROW_HEIGHT_PX,
   type ProfileInventoryItem,
@@ -95,6 +103,10 @@ export function InventorySection({
   const title = inventorySectionTitle(section);
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
+  const [expanded, setExpanded] = useState(true);
+  const toggleExpanded = () => {
+    setExpanded((current) => !current);
+  };
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -134,20 +146,51 @@ export function InventorySection({
   }
 
   return (
-    <section className="contents-block inventory-section" aria-label={title}>
-      <header className="contents-header">
-        <span className="contents-header-title inventory-section-label">
+    <section
+      className="contents-block inventory-section"
+      aria-label={title}
+      data-state={expanded ? "open" : "closed"}
+    >
+      <header className="contents-header" onClick={toggleExpanded}>
+        <button
+          type="button"
+          className="contents-header-title inventory-section-label inventory-section-toggle"
+          aria-expanded={expanded}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleExpanded();
+          }}
+        >
+          <span className="inventory-section-caret" aria-hidden>
+            {expanded ? (
+              <ChevronDown size={ICON_SIZE} strokeWidth={2} />
+            ) : (
+              <ChevronRight size={ICON_SIZE} strokeWidth={2} />
+            )}
+          </span>
           <span className="inventory-status-glyph" aria-hidden>
             {inventorySectionGlyph(section)}
           </span>
           <span>{title}</span>
-          <span className="inventory-section-count">{rows.length}</span>
-        </span>
+          <span className="badge pill inventory-section-count">{rows.length}</span>
+        </button>
         {batchLabel ? (
-          <span className="muted inventory-batch-progress">{batchLabel}</span>
+          <span
+            className="muted inventory-batch-progress"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            {batchLabel}
+          </span>
         ) : null}
         {!editMode && canAddAll && onAddAll ? (
-          <span className="contents-header-toolbar">
+          <span
+            className="contents-header-toolbar"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <IconActionButton
               primary={addAllPrimary}
               showLabel
@@ -162,7 +205,12 @@ export function InventorySection({
           </span>
         ) : null}
         {!editMode && canActivateAll && onActivateAll ? (
-          <span className="contents-header-toolbar">
+          <span
+            className="contents-header-toolbar"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <IconActionButton
               showLabel
               iconAfterLabel
@@ -176,46 +224,48 @@ export function InventorySection({
           </span>
         ) : null}
       </header>
-      {headerHint ? <p className="muted inventory-section-hint">{headerHint}</p> : null}
-      <Collapse open={rows.length > 0} skipAnimation={skipCollapse}>
-        <div
-          ref={listRef}
-          className="contents-body inventory-section-virtual"
-          style={{ height: `${virtualizer.getTotalSize()}px` }}
-        >
-          {virtualRows.map((virtualRow) => {
-            const item = rows[virtualRow.index];
-            if (!item) {
-              return null;
-            }
-            const key = `${item.resource.type}:${item.resource.name}`;
-            return (
-              <div
-                key={item.key}
-                className="inventory-virtual-row m-fade-in"
-                data-index={virtualRow.index}
-                ref={virtualizer.measureElement}
-                style={resourceRowVirtualStyle(virtualRow.start, scrollMargin)}
-              >
-                <InventoryRow
-                  item={item}
-                  editMode={editMode}
-                  profileName={profileName}
-                  pending={pendingKeys.has(key)}
-                  selectedIsActive={selectedIsActive}
-                  onAdd={onAdd ? () => onAdd(item) : undefined}
-                  onActivate={onActivate ? () => onActivate(item) : undefined}
-                  onOpenResource={onOpenResource}
-                  onOpenPlugin={onOpenPlugin}
-                  onDiff={onDiff ? () => onDiff(item) : undefined}
-                  onRemoveFromProfile={
-                    onRemoveFromProfile ? () => onRemoveFromProfile(item) : undefined
-                  }
-                />
-              </div>
-            );
-          })}
-        </div>
+      <Collapse open={expanded} skipAnimation={skipCollapse}>
+        {headerHint ? <p className="muted inventory-section-hint">{headerHint}</p> : null}
+        {rows.length > 0 ? (
+          <div
+            ref={listRef}
+            className="contents-body inventory-section-virtual"
+            style={{ height: `${virtualizer.getTotalSize()}px` }}
+          >
+            {virtualRows.map((virtualRow) => {
+              const item = rows[virtualRow.index];
+              if (!item) {
+                return null;
+              }
+              const key = `${item.resource.type}:${item.resource.name}`;
+              return (
+                <div
+                  key={item.key}
+                  className="inventory-virtual-row m-fade-in"
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={resourceRowVirtualStyle(virtualRow.start, scrollMargin)}
+                >
+                  <InventoryRow
+                    item={item}
+                    editMode={editMode}
+                    profileName={profileName}
+                    pending={pendingKeys.has(key)}
+                    selectedIsActive={selectedIsActive}
+                    onAdd={onAdd ? () => onAdd(item) : undefined}
+                    onActivate={onActivate ? () => onActivate(item) : undefined}
+                    onOpenResource={onOpenResource}
+                    onOpenPlugin={onOpenPlugin}
+                    onDiff={onDiff ? () => onDiff(item) : undefined}
+                    onRemoveFromProfile={
+                      onRemoveFromProfile ? () => onRemoveFromProfile(item) : undefined
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
       </Collapse>
     </section>
   );

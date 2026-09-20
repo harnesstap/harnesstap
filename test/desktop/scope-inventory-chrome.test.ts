@@ -63,15 +63,40 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).not.toContain("countInventoryTypeTabs(inventoryItems)");
     expect(liveStateSource).not.toContain("countResourceTypeTabs(inventoryItems");
     expect(tabsSource).toContain("resource-type-tab-attention");
+    expect(tabsSource).toContain("typeTabAttentionTooltip(attention?.get(type), type)");
     expect(stylesSource).toContain(".resource-type-tab-attention");
     expect(stylesSource).not.toContain("resource-type-tab-attention-fill");
+    const attentionStart = stylesSource.indexOf("\n.resource-type-tab-attention {");
+    expect(attentionStart).toBeGreaterThan(-1);
+    const attentionBlock = stylesSource.slice(
+      attentionStart,
+      stylesSource.indexOf("}", attentionStart) + 1,
+    );
+    expect(attentionBlock).toContain("top: 0;");
+    expect(attentionBlock).toContain("right: 0;");
+    expect(attentionBlock).not.toContain("left:");
+    const tabStart = stylesSource.indexOf("\n.resource-type-tab {");
+    expect(tabStart).toBeGreaterThan(-1);
+    const tabBlock = stylesSource.slice(
+      tabStart,
+      stylesSource.indexOf("}", tabStart) + 1,
+    );
+    expect(tabBlock).toContain("position: relative;");
+    const faceStart = stylesSource.indexOf("\n.resource-type-tab-face {");
+    expect(faceStart).toBeGreaterThan(-1);
+    const faceBlock = stylesSource.slice(
+      faceStart,
+      stylesSource.indexOf("}", faceStart) + 1,
+    );
+    expect(faceBlock).not.toContain("position: relative;");
     expect(liveStateSource).not.toContain('aria-label="Profile resources"');
     expect(liveStateSource).not.toContain('aria-label="Not staged"');
     expect(designSource).toContain("filters type-tab counts, attention dots, and every section");
     expect(designSource).toContain("Plugin pins share the **Plugins** tab");
     expect(designSource).toContain("Plugin refs hide when empty");
     expect(designSource).toContain("amber attention dot");
-    expect(designSource).toContain("N to add · M inactive");
+    expect(designSource).toContain("1 MCP to add · M inactive");
+    expect(designSource).toContain("top-right corner of the chip");
   });
 
   it("renders Not in profile, Inactive, then Active with filtered section actions", () => {
@@ -84,6 +109,14 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("CirclePause");
     expect(liveStateSource).toContain("CircleCheck");
     expect(liveStateSource).toContain("inventory-section-count");
+    expect(liveStateSource).toContain("badge pill inventory-section-count");
+    expect(liveStateSource).toContain('aria-expanded={expanded}');
+    expect(liveStateSource).toContain("const [expanded, setExpanded] = useState(true)");
+    expect(liveStateSource).toContain("ChevronDown");
+    expect(liveStateSource).toContain("ChevronRight");
+    expect(liveStateSource).toContain("inventory-section-caret");
+    expect(designSource).toContain("Each section is collapsible");
+    expect(designSource).toContain("count as a pill badge");
     expect(liveStateSource).toContain('title="View changes"');
     expect(liveStateSource).toContain('label="Add all"');
     expect(liveStateSource).toContain('label="Activate all"');
@@ -117,7 +150,15 @@ describe("Global/Project scope inventory chrome", () => {
     expect(leadBlock).toContain("display: inline-flex;");
     expect(leadBlock).toContain("align-items: center;");
     expect(leadBlock).not.toContain("flex-direction: column;");
+    expect(leadBlock).toContain("align-self: center;");
     expect(stylesSource).toContain(".resource-row.inventory-row");
+    const inventoryRowBlocks = [
+      ...stylesSource.matchAll(/\.resource-row\.inventory-row \{[^}]+\}/g),
+    ].map((match) => match[0]);
+    expect(inventoryRowBlocks.length).toBeGreaterThan(0);
+    expect(
+      inventoryRowBlocks.some((block) => block.includes("align-items: center;")),
+    ).toBe(true);
     expect(designSource).toContain("trash-width trailing slot");
     expect(designSource).toContain("[type icon] [name]");
     expect(appSource).not.toMatch(

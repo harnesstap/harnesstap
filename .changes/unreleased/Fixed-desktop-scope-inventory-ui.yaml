@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop Global/Project inventory aligns row icons with titles, moves type-chip attention dots to the chip top-right, uses singular add-count tooltips, and makes section panels collapsible with count badges.
+time: 2026-09-20T02:40:00Z
+custom:
+  Issue: ""

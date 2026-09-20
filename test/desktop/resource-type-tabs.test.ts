@@ -171,12 +171,30 @@ describe("resourceTypeTabEmptyDisabled", () => {
 });
 
 describe("typeTabAttentionTooltip", () => {
-  it("prefers N to add · M inactive", () => {
-    expect(typeTabAttentionTooltip({ toAdd: 2, inactive: 3 })).toBe("2 to add · 3 inactive");
-    expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 0 })).toBe("1 to add");
-    expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 4 })).toBe("4 inactive");
-    expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 0 })).toBeNull();
-    expect(typeTabAttentionTooltip(undefined)).toBeNull();
+  it("uses singular type nouns for a single add-count", () => {
+    expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 0 }, "mcp_server")).toBe(
+      "1 MCP to add",
+    );
+    expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 0 }, "skill")).toBe(
+      "1 Skill to add",
+    );
+    expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 2 }, "plugin")).toBe(
+      "1 Plugin to add · 2 inactive",
+    );
+  });
+
+  it("pluralizes type nouns when adding more than one", () => {
+    expect(typeTabAttentionTooltip({ toAdd: 2, inactive: 3 }, "mcp_server")).toBe(
+      "2 MCPs to add · 3 inactive",
+    );
+    expect(typeTabAttentionTooltip({ toAdd: 2, inactive: 0 }, "skill")).toBe(
+      "2 Skills to add",
+    );
+    expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 4 }, "plugin")).toBe(
+      "4 inactive",
+    );
+    expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 0 }, "skill")).toBeNull();
+    expect(typeTabAttentionTooltip(undefined, "skill")).toBeNull();
   });
 });
 
