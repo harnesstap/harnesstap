@@ -978,38 +978,52 @@ export function ResourceDetailBody({
             editing={false}
             onStartEdit={() => undefined}
           />
-          <h3 className="library-detail-section">Content</h3>
-          <LibraryFieldRow
-            icon={<FileCode2 size={16} aria-hidden />}
-            fieldName="Content"
-            readOnly={fieldsReadOnly}
-            display={
-              detail.content ? (
-                <pre className="resource-detail-content">
-                  <code>
-                    {previewResourceContent(
-                      detail.content,
-                      RESOURCE_CONTENT_PREVIEW_LINES,
-                    )}
-                  </code>
-                </pre>
-              ) : undefined
-            }
-            placeholder="No content"
-            editing={editingField === "content"}
-            error={editingField === "content" ? fieldError : null}
-            multiline
-            onStartEdit={() => void startEdit("content")}
-            onCommit={() => void commitField("content", draft)}
-            onCancel={cancelEdit}
-          >
-            {renderEditor("content", true)}
-          </LibraryFieldRow>
-          {detail.content_truncated ? (
-            <p className="muted resource-detail-truncated">
-              Content truncated for preview.
-            </p>
-          ) : null}
+          {detail.contained_resources ? (
+            <PluginRefResourceList
+              resources={detail.contained_resources}
+              openingPath={openingPath}
+              disabled={disabled || !baseUrl || loading}
+              onReveal={(path) => void openContainedPath(path, true)}
+              onOpenEditor={(path) => void openContainedPath(path, false)}
+              onSync={showSync ? () => void runSync("fail", true) : undefined}
+              syncBusy={busy}
+            />
+          ) : (
+            <>
+              <h3 className="library-detail-section">Content</h3>
+              <LibraryFieldRow
+                icon={<FileCode2 size={16} aria-hidden />}
+                fieldName="Content"
+                readOnly={fieldsReadOnly}
+                display={
+                  detail.content ? (
+                    <pre className="resource-detail-content">
+                      <code>
+                        {previewResourceContent(
+                          detail.content,
+                          RESOURCE_CONTENT_PREVIEW_LINES,
+                        )}
+                      </code>
+                    </pre>
+                  ) : undefined
+                }
+                placeholder="No content"
+                editing={editingField === "content"}
+                error={editingField === "content" ? fieldError : null}
+                multiline
+                onStartEdit={() => void startEdit("content")}
+                onCommit={() => void commitField("content", draft)}
+                onCancel={cancelEdit}
+              >
+                {renderEditor("content", true)}
+              </LibraryFieldRow>
+              {detail.content_truncated ? (
+                <p className="muted resource-detail-truncated">
+                  Content truncated for preview.
+                </p>
+              ) : null}
+            </>
+          )}
         </>
       )}
       {preview ? (

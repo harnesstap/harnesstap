@@ -222,4 +222,35 @@ describe("agent library routes", () => {
     expect(pluginBody.resource).toHaveProperty("contained_resources");
     expect(Array.isArray(pluginBody.resource.contained_resources)).toBe(true);
   });
+
+  it("lists nested files on skill package detail Content", async () => {
+    const server = await withServer();
+    const skillDir = join(process.env.HARNESSTAP_HOME ?? "", ".claude", "skills", "last30days");
+    mkdirSync(join(skillDir, "scripts"), { recursive: true });
+    const skillMd = join(skillDir, "SKILL.md");
+    writeFileSync(skillMd, "# last30days\n", "utf8");
+    writeFileSync(join(skillDir, "scripts", "query.sh"), "#!/bin/sh\n", "utf8");
+    createResource({
+      type: "skill",
+      name: "last30days",
+      description: "Last 30 days",
+      content: "",
+      metadata: {},
+      source: skillMd,
+      origin_kind: "local_snapshot",
+      origin_ref: skillMd,
+    });
+
+    const detail = await fetch(
+      `${server.url}/v1/library/resources/${encodeURIComponent("skill:last30days")}`,
+      { headers: { authorization: `Bearer ${server.token}` } },
+    );
+    expect(detail.status).toBe(200);
+    const body = await detail.json();
+    expect(body.resource).not.toHaveProperty("install_path");
+    expect(body.resource).not.toHaveProperty("marketplace_url");
+    expect(body.resource.contained_resources.map((row: { relative_path: string }) => row.relative_path)).toEqual(
+      ["SKILL.md", "scripts/query.sh"].sort((left, right) => left.localeCompare(right)),
+    );
+  });
 });

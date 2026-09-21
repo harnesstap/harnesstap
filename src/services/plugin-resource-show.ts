@@ -6,10 +6,13 @@ import type { PluginDependencyMetadata, Resource } from "../types.js";
 import {
   containedFileStem,
   inferContainedFileType,
+  isPackageEntryFileName,
+  packageDirectoryDisplayPath,
 } from "../ui/resource-display.js";
 import { listContainedFiles } from "../utils/path-containment.js";
 import { listMarketplaces } from "./marketplace-registry.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
+import { resolveExistingResourceFilesystemPath } from "./resource-editor-path.js";
 import { resolveInstallRoot } from "./resource-sync.js";
 
 export interface PluginContainedResource {
@@ -65,6 +68,34 @@ export function pluginResourceShowExtras(
   };
 }
 
+export interface PackageResourceShowExtras {
+  contained_resources: PluginContainedResource[];
+}
+
+/** Nested files for SKILL.md / plugin.json packages that are not plugin-type resources. */
+export function packageResourceShowExtras(
+  resource: Resource,
+  options?: { pathHint?: string | null },
+): PackageResourceShowExtras | undefined {
+  if (resource.type === "plugin") {
+    return undefined;
+  }
+  const filePath = resolveExistingResourceFilesystemPath(resource, options?.pathHint);
+  if (!filePath) {
+    return undefined;
+  }
+  const fileName = filePath.split(/[/\\]/).pop() ?? "";
+  if (!isPackageEntryFileName(fileName)) {
+    return undefined;
+  }
+  const packageDir = packageDirectoryDisplayPath(filePath);
+  const contained_resources = listPackageTreeFiles(packageDir);
+  if (contained_resources.length === 0) {
+    return undefined;
+  }
+  return { contained_resources };
+}
+
 const SKIP_TREE_SEGMENTS = new Set([".git", "node_modules"]);
 
 function listPluginTreeRelativePaths(installPath: string): string[] {
@@ -75,6 +106,28 @@ function listPluginTreeRelativePaths(installPath: string): string[] {
   } catch {
     return [];
   }
+}
+
+function inferPackageContainedFileType(relativePath: string): string {
+  const base = relativePath.split("/").at(-1)?.toLowerCase() ?? "";
+  if (base === "skill.md") {
+    return "skill";
+  }
+  if (base === "plugin.json") {
+    return "plugin";
+  }
+  return inferContainedFileType(relativePath);
+}
+
+function listPackageTreeFiles(packageDir: string): PluginContainedResource[] {
+  return listPluginTreeRelativePaths(packageDir)
+    .map((relative_path) => ({
+      type: inferPackageContainedFileType(relative_path),
+      name: containedFileStem(relative_path),
+      path: join(packageDir, ...relative_path.split("/")),
+      relative_path,
+    }))
+    .sort((left, right) => left.relative_path.localeCompare(right.relative_path));
 }
 
 function listContainedPluginFiles(

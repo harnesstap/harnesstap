@@ -1,9 +1,20 @@
-import { describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "bun:test";
 import {
   renderResourceShow,
   truncateResourceContent,
 } from "../../src/services/resource-show.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 function makeResource(overrides: Partial<ReturnType<typeof makeResourceInput>> = {}) {
   const input = makeResourceInput({
@@ -91,5 +102,31 @@ describe("resource show", () => {
     );
     expect(output).toContain("/Users/me/.claude/skills/archify");
     expect(output).not.toContain("/Users/me/.claude/skills/archify/SKILL.md");
+  });
+
+  it("lists skill package files under CONTENT", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-skill-show-"));
+    tempDirs.push(root);
+    const skillDir = join(root, "last30days");
+    mkdirSync(join(skillDir, "references"), { recursive: true });
+    const skillMd = join(skillDir, "SKILL.md");
+    writeFileSync(skillMd, "# last30days\n", "utf8");
+    writeFileSync(join(skillDir, "references", "notes.md"), "notes\n", "utf8");
+
+    const output = renderResourceShow(
+      makeResource({
+        type: "skill",
+        name: "last30days",
+        content: "",
+        source: skillMd,
+        origin_kind: "local_snapshot",
+        origin_ref: skillMd,
+      }),
+    );
+
+    expect(output).toContain(skillDir);
+    expect(output).toContain("SKILL.md");
+    expect(output).toContain("references/notes.md");
+    expect(output).not.toContain("Nothing loaded yet.");
   });
 });

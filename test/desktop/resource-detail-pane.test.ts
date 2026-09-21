@@ -89,6 +89,9 @@ describe("resource inspect content preview", () => {
     expect(contentBlock).not.toContain("action={renderPathActions");
     expect(bodySource).toContain("onReveal={(path) => void openContainedPath(path, true)}");
     expect(bodySource).toContain("onOpenEditor={(path) => void openContainedPath(path, false)}");
+    const nonPluginSection = bodySource.slice(bodySource.indexOf('fieldName="Description"'));
+    expect(nonPluginSection).toContain("PluginRefResourceList");
+    expect(nonPluginSection).toContain("detail.contained_resources");
     expect(fieldRowSource).toContain("action?: ReactNode");
     expect(fieldRowSource).toContain("onIconClick");
     expect(pathAccessSource).toContain("COPY_PATH_LABEL");

@@ -8,7 +8,7 @@ import {
   resourceHumanName,
 } from "../ui/resource-display.js";
 import { renderSubheader } from "../ui/section.js";
-import { pluginResourceShowExtras } from "./plugin-resource-show.js";
+import { packageResourceShowExtras, pluginResourceShowExtras } from "./plugin-resource-show.js";
 
 const DEFAULT_CONTENT_LINE_LIMIT = 15;
 
@@ -16,13 +16,21 @@ export type ResourceShowOptions = {
   showAllFields?: boolean;
 };
 
+function resourceShowExtras(
+  resource: Resource,
+): ReturnType<typeof pluginResourceShowExtras> | ReturnType<typeof packageResourceShowExtras> {
+  return pluginResourceShowExtras(resource) ?? packageResourceShowExtras(resource);
+}
+
 function resourceShowPanelRows(
   resource: Resource,
-  extras: ReturnType<typeof pluginResourceShowExtras>,
+  extras: ReturnType<typeof resourceShowExtras>,
   opts?: ResourceShowOptions,
 ): Array<[string, string]> {
-  const path = extras?.install_path
-    ?? packageDirectoryDisplayPath(resource.source);
+  const path =
+    extras && "install_path" in extras && extras.install_path
+      ? extras.install_path
+      : packageDirectoryDisplayPath(resource.source);
   const panelRows: Array<[string, string]> = [
     ["Type", resource.type],
     ["Name", resourceHumanName(resource)],
@@ -67,7 +75,7 @@ export function truncateResourceContent(
 
 function renderResourceContent(
   resource: Resource,
-  extras: ReturnType<typeof pluginResourceShowExtras>,
+  extras: ReturnType<typeof resourceShowExtras>,
 ): string {
   if (extras) {
     if (extras.contained_resources.length === 0) {
@@ -81,7 +89,7 @@ function renderResourceContent(
 }
 
 export function renderResourceShow(resource: Resource, opts?: ResourceShowOptions): string {
-  const extras = pluginResourceShowExtras(resource);
+  const extras = resourceShowExtras(resource);
   return [
     renderPanel({
       title: ["RESOURCE", formatResourceDisplayName(resource)],
