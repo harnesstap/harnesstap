@@ -1,0 +1,5 @@
+kind: Fixed
+body: Show nested package files in Library skill (and other SKILL.md / plugin.json package) resource Content, matching plugin file trees.
+time: 2026-09-21T00:40:00Z
+custom:
+  Issue: ""

@@ -6,7 +6,7 @@ import {
   resolveResource,
 } from "../models/resource.js";
 import { overlayMcpServerDetail } from "../services/mcp-resource-detail.js";
-import { pluginResourceShowExtras } from "../services/plugin-resource-show.js";
+import { packageResourceShowExtras, pluginResourceShowExtras } from "../services/plugin-resource-show.js";
 import { resourceAttacherPayload } from "../services/resource-attachers.js";
 import {
   readResourceContentFromPathHint,
@@ -128,15 +128,16 @@ export function handleLibraryResourceDetail(
   }
 
   const resource = result.resource;
-  const extras = pluginResourceShowExtras(resource);
+  const extras = pluginResourceShowExtras(resource) ?? packageResourceShowExtras(resource, options);
   const attachers = resourceAttacherPayload(resource.id);
   const overlay =
     resource.type === "mcp_server"
       ? overlayMcpServerDetail(resource, options?.pathHint)
       : { content: resource.content, updatedAt: resource.updated_at };
   const filesystemPath =
-    extras?.install_path ??
-    resolveExistingResourceFilesystemPath(resource, options?.pathHint);
+    extras && "install_path" in extras && extras.install_path
+      ? extras.install_path
+      : resolveExistingResourceFilesystemPath(resource, options?.pathHint);
   return jsonResponse({
     resource: {
       id: resource.id,

@@ -1,11 +1,14 @@
-import { cpSync, mkdirSync } from "node:fs";
+import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { getHarnesstapDir } from "../../src/db/connection.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addMarketplace } from "../../src/services/marketplace-registry.ts";
-import { pluginResourceShowExtras } from "../../src/services/plugin-resource-show.ts";
+import {
+  packageResourceShowExtras,
+  pluginResourceShowExtras,
+} from "../../src/services/plugin-resource-show.ts";
 
 const FIXTURE = join(import.meta.dirname, "../fixtures/plugin-import/cursor-team-kit");
 
@@ -264,6 +267,62 @@ describe("pluginResourceShowExtras", () => {
 
       const extras = pluginResourceShowExtras(pin, { homeRoot: ctx.homeDir });
       expect(extras?.marketplace_url).toBe("https://github.com/acme/team-plugins");
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+});
+
+describe("packageResourceShowExtras", () => {
+  it("lists nested files under a skill package directory", async () => {
+    const ctx = await createInitializedTestContext("skill-package-show");
+    try {
+      const skillDir = join(ctx.homeDir, ".claude", "skills", "last30days");
+      mkdirSync(join(skillDir, "scripts"), { recursive: true });
+      const skillMd = join(skillDir, "SKILL.md");
+      writeFileSync(skillMd, "# last30days\n", "utf8");
+      writeFileSync(join(skillDir, "scripts", "query.sh"), "#!/bin/sh\n", "utf8");
+      const skill = createResource({
+        type: "skill",
+        name: "last30days",
+        description: "Last 30 days",
+        content: "",
+        metadata: {},
+        source: skillMd,
+        origin_kind: "local_snapshot",
+        origin_ref: skillMd,
+      });
+
+      const extras = packageResourceShowExtras(skill);
+      expect(extras?.contained_resources.map((row) => row.relative_path)).toEqual(
+        ["SKILL.md", "scripts/query.sh"].sort((left, right) => left.localeCompare(right)),
+      );
+      expect(extras?.contained_resources.find((row) => row.relative_path === "SKILL.md")).toEqual({
+        type: "skill",
+        name: "SKILL",
+        path: skillMd,
+        relative_path: "SKILL.md",
+      });
+      expect(
+        extras?.contained_resources.find((row) => row.relative_path === "scripts/query.sh")?.path,
+      ).toBe(join(skillDir, "scripts", "query.sh"));
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+
+  it("returns undefined for inline skills without a package directory", async () => {
+    const ctx = await createInitializedTestContext("skill-inline-show");
+    try {
+      const skill = createResource({
+        type: "skill",
+        name: "ship",
+        description: "Ship",
+        content: "# ship",
+        metadata: {},
+        source: "manual",
+      });
+      expect(packageResourceShowExtras(skill)).toBeUndefined();
     } finally {
       await ctx.cleanup();
     }
