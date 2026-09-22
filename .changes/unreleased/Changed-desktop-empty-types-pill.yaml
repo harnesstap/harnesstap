@@ -1,5 +1,5 @@
 kind: Changed
-body: Explain Global/Project `+N empty` type tabs. Tooltip names the empty types. Click expands them as disabled pills.
-time: 2026-09-22T01:50:00Z
+body: Show empty Global/Project resource types as disabled type tabs instead of a `+N empty` badge.
+time: 2026-09-22T02:58:00Z
 custom:
   Issue: ""

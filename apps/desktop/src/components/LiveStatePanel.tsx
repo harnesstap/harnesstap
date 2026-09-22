@@ -1638,7 +1638,7 @@ export function LiveStatePanel({
   const selectedIsActive = Boolean(selectedProfile && selectedProfile === activeProfile);
   const inventoryTabOptions = {
     includeAll: true,
-    emptyMode: "hide" as const,
+    emptyMode: "disable" as const,
   };
   const searchFilteredInventory = useMemo(
     () => filterProfileInventoryItems(inventoryItems, inventorySearch, null),

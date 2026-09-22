@@ -1738,22 +1738,6 @@
   gap: var(--space-2);
 }
 
-.resource-type-tab-empty-pill {
-  color: var(--muted);
-  border: 1px dashed var(--border);
-  background: transparent;
-  padding: var(--space-1) var(--space-2);
-  border-radius: 999px;
-  font-size: var(--text-micro);
-  font-family: var(--mono);
-  cursor: pointer;
-}
-
-.resource-type-tab-empty-pill:hover {
-  color: var(--fg);
-  border-color: color-mix(in srgb, var(--fg) 28%, var(--border));
-}
-
 .resource-row.inventory-row {
   min-height: calc(var(--space-8) + var(--space-2));
   height: auto;

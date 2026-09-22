@@ -3,8 +3,6 @@ import {
   ALL_RESOURCE_TYPE_TAB,
   countResourceTypeTabs,
   foldResourceTypeTab,
-  RESOURCE_TYPE_TAB_ORDER,
-  resourceTypeTabLabel,
   type TypeTabAttention,
 } from "./resource-type-tabs";
 import type { ProfileResourceListRow } from "./contents-diff";
@@ -300,50 +298,6 @@ export function collectTypeTabAttention(
     byType.set(ALL_RESOURCE_TYPE_TAB, all);
   }
   return byType;
-}
-
-/** Canonical real types with a zero count (plugin refs stay hidden). */
-export function emptyInventoryTypeTabs(
-  counts: ReadonlyMap<string, number>,
-): string[] {
-  return RESOURCE_TYPE_TAB_ORDER.filter((type) => {
-    if (type === "plugin_ref") {
-      return false;
-    }
-    return (counts.get(type) ?? 0) <= 0;
-  });
-}
-
-export const EMPTY_TYPES_PILL_HIDE_LABEL = "Hide empty";
-
-export function emptyTypesPillLabel(count: number): string {
-  return `+${count} empty`;
-}
-
-export function formatEmptyTypeList(types: readonly string[]): string {
-  const labels = types.map((type) => resourceTypeTabLabel(type));
-  if (labels.length === 0) {
-    return "";
-  }
-  if (labels.length === 1) {
-    return labels[0] ?? "";
-  }
-  if (labels.length === 2) {
-    return `${labels[0]} or ${labels[1]}`;
-  }
-  return `${labels.slice(0, -1).join(", ")}, or ${labels[labels.length - 1]}`;
-}
-
-/** One-sentence tooltip for the collapsed `+N empty` pill. */
-export function emptyTypesPillTooltip(types: readonly string[]): string {
-  if (types.length === 0) {
-    return "";
-  }
-  return `Nothing in ${formatEmptyTypeList(types)}`;
-}
-
-export function emptyTypesPillHideTooltip(): string {
-  return "Hide types with no resources";
 }
 
 export function applyOptimisticInventoryMoves(

@@ -174,7 +174,7 @@ describe("Profile resources pane chrome", () => {
   it("uses ResourceTypeTabs over a flat list of direct memberships", () => {
     expect(liveStateSource).toContain("ResourceTypeTabs");
     expect(liveStateSource).toContain("includeAll={true}");
-    expect(liveStateSource).toContain("emptyMode=\"hide\"");
+    expect(liveStateSource).toContain("emptyMode=\"disable\"");
     expect(liveStateSource).toContain("countInventoryTypeTabs");
     expect(liveStateSource).toContain("flattenProfileResourceList");
     expect(liveStateSource).toContain("selectedProfile");

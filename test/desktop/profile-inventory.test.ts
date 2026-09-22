@@ -5,11 +5,6 @@ import {
   applyOptimisticInventoryMoves,
   collectTypeTabAttention,
   countInventoryTypeTabs,
-  emptyInventoryTypeTabs,
-  emptyTypesPillHideTooltip,
-  emptyTypesPillLabel,
-  emptyTypesPillTooltip,
-  EMPTY_TYPES_PILL_HIDE_LABEL,
   filterProfileInventoryItems,
   inventoryMembershipCaption,
   partitionProfileInventory,
@@ -408,31 +403,6 @@ describe("profileInventoryOpenTarget", () => {
       },
     });
     expect(pin.kind).toBe("resource");
-  });
-});
-
-describe("empty inventory type pills", () => {
-  it("lists zero-count real types and formats +N empty", () => {
-    const counts = new Map([
-      ["plugin", 2],
-      ["skill", 0],
-      ["mcp_server", 0],
-    ]);
-    const empty = emptyInventoryTypeTabs(counts);
-    expect(empty).toContain("skill");
-    expect(empty).toContain("mcp_server");
-    expect(empty).not.toContain("plugin");
-    expect(empty).not.toContain("plugin_ref");
-    expect(emptyTypesPillLabel(empty.length)).toBe(`+${empty.length} empty`);
-    expect(emptyTypesPillTooltip(["permission", "env_var", "model_config"])).toBe(
-      "Nothing in Permissions, Env vars, or Model config",
-    );
-    expect(emptyTypesPillTooltip(["skill", "hook"])).toBe(
-      "Nothing in Skills or Hooks",
-    );
-    expect(emptyTypesPillTooltip(["skill"])).toBe("Nothing in Skills");
-    expect(emptyTypesPillHideTooltip()).toBe("Hide types with no resources");
-    expect(EMPTY_TYPES_PILL_HIDE_LABEL).toBe("Hide empty");
   });
 });
 
