@@ -22,7 +22,7 @@ import { loadScanIgnore } from "./scanner-ignore.js";
 import { dropHarnessSkillsDuplicatingPluginSource } from "./scan-dedup.js";
 import type { ImportedSnapshot, PluginSourceScanResult } from "../types.js";
 
-function resolveConfiguredPath(
+export function resolveConfiguredPath(
   rootPath: string,
   configuredPath: string,
 ): string {
@@ -153,7 +153,7 @@ export interface DetectedHomePlatform {
   discoveredPaths: string[];
 }
 
-function buildSharedGlobalPathSet(): Set<string> {
+export function buildSharedGlobalPathSet(): Set<string> {
   const platformCounts = new Map<string, number>();
   for (const platform of getAllPlatforms()) {
     const uniquePaths = new Set(configuredProjectPaths(platform.globalPaths));
