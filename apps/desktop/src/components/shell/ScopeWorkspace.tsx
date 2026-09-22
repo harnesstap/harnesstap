@@ -1,5 +1,5 @@
-import { useMemo, useRef } from "react";
-import { Check, FileDiff, Pencil, Plus, Tag, TextQuote } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, FileDiff, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
@@ -19,6 +19,7 @@ import { ApplyProgressStrip, isApplyStepActive, stepState } from "../live/ApplyP
 import { Collapse } from "../motion/Collapse";
 import { PendingApprovalsStrip } from "../PendingApprovalsStrip";
 import { ProfileDeleteControls } from "../parity/ProfileDeleteControls";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { Banner } from "./Banner";
 import { ProfilesRail } from "./ProfilesRail";
 
@@ -83,6 +84,7 @@ export function ScopeWorkspace({
   const selectedProfileMetaTags =
     selectedProfileSummary?.tags.filter((tag) => tag !== "profile") ?? [];
   const editCloseGuardRef = useRef<(() => boolean) | null>(null);
+  const [setupOverwriteOpen, setSetupOverwriteOpen] = useState(false);
   useRegisterCommands(
     "scope",
     useMemo(
@@ -101,6 +103,13 @@ export function ScopeWorkspace({
           run: () => ctrl.setPreviewChanges(true),
         },
         {
+          id: "scope-overwrite-setup",
+          section: "actions" as const,
+          label: "Overwrite with current setup",
+          disabled: !selectedProfile || !actionsEnabled,
+          run: () => setSetupOverwriteOpen(true),
+        },
+        {
           id: "scope-edit-profile",
           section: "actions" as const,
           label: "Edit profile",
@@ -117,6 +126,7 @@ export function ScopeWorkspace({
         ctrl.setPreviewChanges,
         onOpenCreateProfile,
         selectedProfile,
+        actionsEnabled,
       ],
     ),
   );
@@ -255,30 +265,13 @@ export function ScopeWorkspace({
                   selectedProfile,
                   activeProfile,
                   applied: ctrl.applied,
-                  fileChangeCount: applyPreview?.files.changes.length ?? 0,
                 });
                 if (line.kind === "none") {
                   return null;
                 }
                 return (
                   <div className="muted status-subline status-apply-line" data-testid="scope-status-line">
-                    {line.kind === "active_differ" ? (
-                      <>
-                        {line.text}{" "}
-                        <button
-                          type="button"
-                          className="status-view-changes"
-                          onClick={() => {
-                            ctrl.setPreviewChanges(true);
-                            ctrl.setInventoryEditMode(false);
-                          }}
-                        >
-                          View changes
-                        </button>
-                      </>
-                    ) : (
-                      line.text
-                    )}
+                    {line.text}
                   </div>
                 );
               })() : null}
@@ -324,6 +317,16 @@ export function ScopeWorkspace({
                       <Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
                     )
                   }
+                />
+                <IconActionButton
+                  className="status-edit-action"
+                  onClick={() => setSetupOverwriteOpen(true)}
+                  disabled={!connected || switching || ctrl.overwritingWithSetup}
+                  busy={ctrl.overwritingWithSetup}
+                  spinnerSize={HEADER_ICON_SIZE}
+                  label="Overwrite with current setup"
+                  title="Overwrite with current setup"
+                  icon={<HardDriveUpload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
                 />
                 <IconActionButton
                   className="status-edit-action"
@@ -403,11 +406,12 @@ export function ScopeWorkspace({
             />
           </Collapse>
           <div
-            className={
-              ctrl.switching || ctrl.switchSuccessHold
-                ? "scope-inventory-locked"
-                : undefined
-            }
+            className={[
+              "live-inventory-host",
+              ctrl.switching || ctrl.switchSuccessHold ? "scope-inventory-locked" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
             <LiveStatePanel
               view={view}
@@ -516,6 +520,19 @@ export function ScopeWorkspace({
               onDismiss={() => ctrl.setSwitchError(null)}
             />
           )}
+          <ConfirmDialog
+            open={setupOverwriteOpen}
+            title="Overwrite with current setup?"
+            description="Add, update, and remove profile resources so they match what is on disk now."
+            confirmLabel="Overwrite"
+            cancelLabel="Cancel"
+            confirmBusy={ctrl.overwritingWithSetup}
+            onCancel={() => setSetupOverwriteOpen(false)}
+            onConfirm={() => {
+              setSetupOverwriteOpen(false);
+              void ctrl.handleOverwriteWithCurrentSetup();
+            }}
+          />
         </main>
       )}
     </>

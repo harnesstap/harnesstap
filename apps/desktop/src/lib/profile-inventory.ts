@@ -230,6 +230,56 @@ export function partitionProfileInventory(
   return { notInProfile, inactive, active };
 }
 
+export interface ProfileDiskSnapshotPlan {
+  toAdd: ProfileContentsResource[];
+  toRemove: Array<{ resource: ProfileContentsResource; pluginId?: string }>;
+  commitPaths: string[];
+}
+
+/** Add / remove / commit so the profile snapshot matches live disk. */
+export function planProfileDiskSnapshot(
+  parts: {
+    notInProfile: ProfileInventoryItem[];
+    inactive: ProfileInventoryItem[];
+    active: ProfileInventoryItem[];
+  },
+  fileChanges: DriftFileChange[] = [],
+): ProfileDiskSnapshotPlan {
+  const commitPaths: string[] = [];
+  const seen = new Set<string>();
+  const addPath = (path: string | undefined) => {
+    const next = path?.trim();
+    if (!next || seen.has(next)) {
+      return;
+    }
+    seen.add(next);
+    commitPaths.push(next);
+  };
+  for (const item of parts.active) {
+    if (!item.drifted) {
+      continue;
+    }
+    addPath(item.driftChange?.path ?? item.resource.source);
+  }
+  for (const change of fileChanges) {
+    if (change.type === "modified") {
+      addPath(change.path);
+    }
+  }
+  return {
+    toAdd: parts.notInProfile.map((item) => item.resource),
+    toRemove: parts.inactive.map((item) => ({
+      resource: item.resource,
+      ...(item.pluginId ? { pluginId: item.pluginId } : {}),
+    })),
+    commitPaths,
+  };
+}
+
+export function profileDiskSnapshotHasWork(plan: ProfileDiskSnapshotPlan): boolean {
+  return plan.toAdd.length > 0 || plan.toRemove.length > 0 || plan.commitPaths.length > 0;
+}
+
 /** Inventory row caption. Omit when the owner is the profile already on screen. */
 export function inventoryMembershipCaption(
   pluginName: string | undefined,

@@ -183,8 +183,7 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: none;
 }
 
@@ -559,12 +558,23 @@
 }
 
 .live-pane > .scope-inventory-pane,
+.live-pane > .live-inventory-host,
 .live-pane > .scope-inventory-locked {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.live-inventory-host .scope-inventory-pane,
+.live-inventory-host .scope-preview-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.live-inventory-host .scope-preview-pane {
+  overflow: auto;
 }
 
 .scope-inventory-pane {
@@ -706,6 +716,22 @@
   flex-shrink: 0;
 }
 
+.inventory-row-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.inventory-row-lead-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-action-size);
+  min-width: var(--icon-action-size);
+  height: var(--icon-action-size);
+  flex-shrink: 0;
+}
+
 .inventory-row-remove-placeholder {
   display: block;
   width: var(--icon-action-size);
@@ -768,6 +794,10 @@
 
 .profile-remove-action {
   color: color-mix(in srgb, var(--red) 70%, var(--muted));
+}
+
+.inventory-row-remove-slot .profile-remove-action {
+  color: var(--red);
 }
 
 .profile-remove-action:hover:not(:disabled) {

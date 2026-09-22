@@ -9,6 +9,8 @@ import {
   inventoryMembershipCaption,
   partitionProfileInventory,
   profileInventoryOpenTarget,
+  planProfileDiskSnapshot,
+  profileDiskSnapshotHasWork,
   settleInChunks,
 } from "../../apps/desktop/src/lib/profile-inventory.ts";
 import {
@@ -440,5 +442,61 @@ describe("settleInChunks", () => {
     expect(results).toHaveLength(5);
     expect(seen.filter((value) => value < 100)).toEqual([1, 2, 3, 4, 5]);
     expect(seen.filter((value) => value >= 100)).toEqual([104, 105]);
+  });
+});
+
+describe("planProfileDiskSnapshot", () => {
+  it("adds not-in-profile, removes inactive, and commits drifted plus file paths", () => {
+    const skill = { type: "skill", name: "ship" };
+    const extra = { type: "rule", name: "lint" };
+    const gone = { type: "command", name: "old" };
+    const plan = planProfileDiskSnapshot(
+      {
+        notInProfile: [
+          {
+            section: "not_in_profile",
+            key: "a",
+            type: "rule",
+            label: "lint",
+            resource: extra,
+            drifted: false,
+          },
+        ],
+        inactive: [
+          {
+            section: "inactive",
+            key: "b",
+            type: "command",
+            label: "old",
+            resource: gone,
+            pluginId: "plug-1",
+            drifted: false,
+          },
+        ],
+        active: [
+          {
+            section: "active",
+            key: "c",
+            type: "skill",
+            label: "ship",
+            resource: { ...skill, source: "skills/ship/SKILL.md" },
+            drifted: true,
+            driftChange: {
+              path: "skills/ship/SKILL.md",
+              type: "modified",
+              resource: skill,
+            },
+          },
+        ],
+      },
+      [{ path: "mcp.json", type: "modified" }],
+    );
+    expect(plan.toAdd).toEqual([extra]);
+    expect(plan.toRemove).toEqual([{ resource: gone, pluginId: "plug-1" }]);
+    expect(plan.commitPaths).toEqual(["skills/ship/SKILL.md", "mcp.json"]);
+    expect(profileDiskSnapshotHasWork(plan)).toBe(true);
+    expect(
+      profileDiskSnapshotHasWork({ toAdd: [], toRemove: [], commitPaths: [] }),
+    ).toBe(false);
   });
 });

@@ -121,13 +121,12 @@ describe("shouldAutoReapply", () => {
 });
 
 describe("scopeStatusLine", () => {
-  test("describes selected vs active vs drifted in one sentence", () => {
+  test("describes selected vs active in one sentence", () => {
     expect(
       scopeStatusLine({
         selectedProfile: "work",
         activeProfile: "home",
         applied: true,
-        fileChangeCount: 0,
       }),
     ).toEqual({ kind: "selected_not_applied", text: "Selected · not applied" });
     expect(
@@ -135,21 +134,8 @@ describe("scopeStatusLine", () => {
         selectedProfile: "work",
         activeProfile: "work",
         applied: true,
-        fileChangeCount: 0,
       }),
     ).toEqual({ kind: "active_applied", text: "Active · applied" });
-    expect(
-      scopeStatusLine({
-        selectedProfile: "work",
-        activeProfile: "work",
-        applied: true,
-        fileChangeCount: 3,
-      }),
-    ).toEqual({
-      kind: "active_differ",
-      text: "Active · 3 files differ",
-      fileCount: 3,
-    });
   });
 });
 

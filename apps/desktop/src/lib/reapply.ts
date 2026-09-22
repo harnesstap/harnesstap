@@ -12,15 +12,13 @@ export function applyPreviewChangeCount(
 export type ScopeStatusLine =
   | { kind: "none" }
   | { kind: "selected_not_applied"; text: "Selected · not applied" }
-  | { kind: "active_applied"; text: "Active · applied" }
-  | { kind: "active_differ"; text: string; fileCount: number };
+  | { kind: "active_applied"; text: "Active · applied" };
 
 /** One status sentence under the selected profile name. */
 export function scopeStatusLine(input: {
   selectedProfile: string | null;
   activeProfile: string | null;
   applied: boolean;
-  fileChangeCount: number;
 }): ScopeStatusLine {
   if (!input.selectedProfile) {
     return { kind: "none" };
@@ -28,14 +26,6 @@ export function scopeStatusLine(input: {
   const isActive = input.selectedProfile === input.activeProfile;
   if (!isActive || !input.applied) {
     return { kind: "selected_not_applied", text: "Selected · not applied" };
-  }
-  if (input.fileChangeCount > 0) {
-    const n = input.fileChangeCount;
-    return {
-      kind: "active_differ",
-      text: `Active · ${n} file${n === 1 ? "" : "s"} differ`,
-      fileCount: n,
-    };
   }
   return { kind: "active_applied", text: "Active · applied" };
 }

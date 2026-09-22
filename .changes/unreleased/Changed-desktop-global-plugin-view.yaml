@@ -1,0 +1,5 @@
+kind: Changed
+body: Drop the duplicate Global/Project files-differ header, pin the add FAB over the inventory, keep edit-mode trash red and rightmost, and add Overwrite with current setup to snapshot disk into the profile.
+time: 2026-09-22T01:50:00Z
+custom:
+  Issue: ""

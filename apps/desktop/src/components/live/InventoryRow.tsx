@@ -140,11 +140,16 @@ export function InventoryRow({
       </ResourceRowIdentity>
       <ResourceRowTrailing>
         <span className="inventory-row-action" onClick={stopRowActivate}>
+          {inProfile && editMode ? (
+            <span className="inventory-row-lead-action">{action}</span>
+          ) : (
+            action
+          )}
           {inProfile ? (
             <span className="inventory-row-remove-slot">
               {editMode && onRemoveFromProfile ? (
                 <IconActionButton
-                  className="profile-resource-remove-btn"
+                  className="profile-resource-remove-btn profile-remove-action"
                   label={`Remove ${item.label} from ${profileName}`}
                   title="Remove from profile"
                   busy={pending}
@@ -157,7 +162,6 @@ export function InventoryRow({
               )}
             </span>
           ) : null}
-          {action}
         </span>
       </ResourceRowTrailing>
     </ResourceRowRoot>
