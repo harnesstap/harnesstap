@@ -6,7 +6,10 @@ import {
   collectTypeTabAttention,
   countInventoryTypeTabs,
   emptyInventoryTypeTabs,
+  emptyTypesPillHideTooltip,
   emptyTypesPillLabel,
+  emptyTypesPillTooltip,
+  EMPTY_TYPES_PILL_HIDE_LABEL,
   filterProfileInventoryItems,
   inventoryMembershipCaption,
   partitionProfileInventory,
@@ -421,6 +424,15 @@ describe("empty inventory type pills", () => {
     expect(empty).not.toContain("plugin");
     expect(empty).not.toContain("plugin_ref");
     expect(emptyTypesPillLabel(empty.length)).toBe(`+${empty.length} empty`);
+    expect(emptyTypesPillTooltip(["permission", "env_var", "model_config"])).toBe(
+      "Nothing in Permissions, Env vars, or Model config",
+    );
+    expect(emptyTypesPillTooltip(["skill", "hook"])).toBe(
+      "Nothing in Skills or Hooks",
+    );
+    expect(emptyTypesPillTooltip(["skill"])).toBe("Nothing in Skills");
+    expect(emptyTypesPillHideTooltip()).toBe("Hide types with no resources");
+    expect(EMPTY_TYPES_PILL_HIDE_LABEL).toBe("Hide empty");
   });
 });
 

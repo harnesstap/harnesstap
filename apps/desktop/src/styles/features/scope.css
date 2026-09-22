@@ -1746,6 +1746,12 @@
   border-radius: 999px;
   font-size: var(--text-micro);
   font-family: var(--mono);
+  cursor: pointer;
+}
+
+.resource-type-tab-empty-pill:hover {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--fg) 28%, var(--border));
 }
 
 .resource-row.inventory-row {

@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { ResourceTypeTabs } from "../ResourceTypeTabs";
 import {
+  EMPTY_TYPES_PILL_HIDE_LABEL,
   emptyInventoryTypeTabs,
+  emptyTypesPillHideTooltip,
   emptyTypesPillLabel,
   emptyTypesPillTooltip,
 } from "../../lib/profile-inventory";
@@ -50,9 +53,15 @@ export function LiveHeader({
   typeTab,
   onTypeTab,
 }: LiveHeaderProps) {
+  const [showEmptyTypes, setShowEmptyTypes] = useState(false);
   const emptyTypes = emptyInventoryTypeTabs(typeCounts);
-  const emptyLabel = emptyTypesPillLabel(emptyTypes.length);
-  const emptyTooltip = emptyTypesPillTooltip(emptyTypes);
+  const showingEmpty = showEmptyTypes && emptyTypes.length > 0;
+  const emptyLabel = showingEmpty
+    ? EMPTY_TYPES_PILL_HIDE_LABEL
+    : emptyTypesPillLabel(emptyTypes.length);
+  const emptyTooltip = showingEmpty
+    ? emptyTypesPillHideTooltip()
+    : emptyTypesPillTooltip(emptyTypes);
 
   return (
     <div className="scope-inventory-live-header">
@@ -65,7 +74,7 @@ export function LiveHeader({
       <div className="scope-inventory-type-row">
         <ResourceTypeTabs
           includeAll={true}
-          emptyMode="hide"
+          emptyMode={showingEmpty ? "disable" : "hide"}
           wide
           counts={typeCounts}
           attention={attention}
@@ -74,13 +83,18 @@ export function LiveHeader({
         />
         {emptyTypes.length > 0 ? (
           <ChromeTooltip content={emptyTooltip} side="top">
-            <span
+            <button
+              type="button"
               className="resource-type-tab resource-type-tab-empty-pill"
               data-testid="resource-type-tab-empty"
               aria-label={emptyTooltip}
+              aria-expanded={showingEmpty}
+              onClick={() => {
+                setShowEmptyTypes((current) => !current);
+              }}
             >
               {emptyLabel}
-            </span>
+            </button>
           </ChromeTooltip>
         ) : null}
       </div>

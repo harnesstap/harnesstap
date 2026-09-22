@@ -314,12 +314,36 @@ export function emptyInventoryTypeTabs(
   });
 }
 
+export const EMPTY_TYPES_PILL_HIDE_LABEL = "Hide empty";
+
 export function emptyTypesPillLabel(count: number): string {
   return `+${count} empty`;
 }
 
+export function formatEmptyTypeList(types: readonly string[]): string {
+  const labels = types.map((type) => resourceTypeTabLabel(type));
+  if (labels.length === 0) {
+    return "";
+  }
+  if (labels.length === 1) {
+    return labels[0] ?? "";
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} or ${labels[1]}`;
+  }
+  return `${labels.slice(0, -1).join(", ")}, or ${labels[labels.length - 1]}`;
+}
+
+/** One-sentence tooltip for the collapsed `+N empty` pill. */
 export function emptyTypesPillTooltip(types: readonly string[]): string {
-  return types.map((type) => resourceTypeTabLabel(type)).join(", ");
+  if (types.length === 0) {
+    return "";
+  }
+  return `Nothing in ${formatEmptyTypeList(types)}`;
+}
+
+export function emptyTypesPillHideTooltip(): string {
+  return "Hide types with no resources";
 }
 
 export function applyOptimisticInventoryMoves(

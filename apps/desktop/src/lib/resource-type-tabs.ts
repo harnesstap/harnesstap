@@ -42,7 +42,7 @@ const RESOURCE_TYPE_TAB_FOLD: Record<string, string> = {
 
 /**
  * Alias / junk tabs. Hide entirely when empty, even if `emptyMode` is disable.
- * Real resource types stay visible and disabled on Global/Project inventory.
+ * Real resource types stay visible and disabled when emptyMode is disable.
  */
 const RESOURCE_TYPE_TAB_HIDE_WHEN_EMPTY = new Set(["plugin_ref"]);
 
