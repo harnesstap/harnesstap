@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
+  Cable,
   Check,
   Download,
   FolderGit2,
@@ -24,11 +25,14 @@ import { IconActionButton } from "../IconActionButton";
 import { ParityChrome } from "../parity/ParityChrome";
 import { ProjectHistoryControl } from "../parity/ProjectHistoryControl";
 import { ProjectPicker } from "../ProjectPicker";
-import { UpdateAvailableControl } from "../UpdateAvailableControl";
+import {
+  refreshDesktopUpdateStatus,
+  UpdateAvailableControl,
+  useDesktopUpdateStatus,
+} from "../UpdateAvailableControl";
 import { HeaderMoreMenu } from "./HeaderMoreMenu";
 
 const HEADER_ICON_SIZE = 18;
-export const HEADER_UTILITIES_COLLAPSE_PX = 1100;
 export const HEADER_DEST_ICONS_PX = 960;
 
 function useElementWidth(ref: RefObject<HTMLElement | null>): number {
@@ -115,10 +119,18 @@ export function AppHeader({
   const token = client?.token ?? null;
   const headerRef = useRef<HTMLElement>(null);
   const headerWidth = useElementWidth(headerRef);
-  const collapseUtilities = headerWidth < HEADER_UTILITIES_COLLAPSE_PX;
   const iconDestinations = headerWidth <= HEADER_DEST_ICONS_PX;
+  const updateAvailable = useDesktopUpdateStatus()?.updateAvailable === true;
   const [refreshPhase, setRefreshPhase] = useState<"idle" | "loading" | "success">("idle");
   const refreshFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // The Update menu item only mounts while More is open, so the header owns the check.
+  useEffect(() => {
+    if (!baseUrl || !connected) {
+      return;
+    }
+    void refreshDesktopUpdateStatus(baseUrl, token);
+  }, [baseUrl, connected, token]);
 
   useEffect(() => {
     return () => {
@@ -173,11 +185,7 @@ export function AppHeader({
   return (
     <header
       ref={headerRef}
-      className={[
-        "app-header",
-        collapseUtilities ? "is-compact-utilities" : "",
-        iconDestinations ? "is-compact-dest" : "",
-      ]
+      className={["app-header", iconDestinations ? "is-compact-dest" : ""]
         .filter(Boolean)
         .join(" ")}
     >
@@ -223,6 +231,21 @@ export function AppHeader({
           }}
           switching={switching}
         />
+        {maybeTooltip(
+          iconDestinations,
+          "Harnesses",
+          <button
+            type="button"
+            className={`header-focus-btn labeled${destination === "harnesses" ? " on" : ""}`}
+            onClick={() => onDestinationClick("harnesses")}
+            disabled={switching}
+            aria-label="Harnesses"
+            aria-current={destination === "harnesses" ? "page" : undefined}
+          >
+            <Cable size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+            <span className="header-focus-label">Harnesses</span>
+          </button>,
+        )}
       </div>
       <div className="header-scope">
         <span className="header-scope-label" id="header-scope-label">
@@ -305,14 +328,6 @@ export function AppHeader({
         className="header-status"
         data-testid={connected ? "agent-connected" : undefined}
       >
-        <span className="header-utility-optional">
-          <UpdateAvailableControl
-            baseUrl={baseUrl}
-            token={token}
-            connected={connected}
-            disabled={switching || migrateBusy}
-          />
-        </span>
         <IconActionButton
           className={[
             "refresh-action",
@@ -346,24 +361,6 @@ export function AppHeader({
             )
           }
         />
-        <span className="header-utility-optional">
-          <IconActionButton
-            data-testid="open-migrate-export"
-            onClick={onOpenMigrateExport}
-            disabled={!connected || switching || migrateBusy}
-            label="Export setup"
-            icon={<Upload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-          />
-        </span>
-        <span className="header-utility-optional">
-          <IconActionButton
-            data-testid="open-migrate-import"
-            onClick={onOpenMigrateImport}
-            disabled={!connected || switching || migrateBusy}
-            label="Import setup"
-            icon={<Download size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-          />
-        </span>
         <IconActionButton
           data-testid="open-settings"
           onClick={onOpenSettings}
@@ -371,21 +368,10 @@ export function AppHeader({
           label="Settings"
           icon={<Settings size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
         />
-        <span className="header-utility-optional">
-          <IconActionButton
-            className={["account-action", cloudAuth?.authenticated ? "is-signed-in" : ""]
-              .filter(Boolean)
-              .join(" ")}
-            onClick={onOpenAccount}
-            disabled={!connected}
-            label="Account"
-            title={accountTooltip}
-            icon={<User size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-          />
-        </span>
         <span className="header-more-wrap">
           <HeaderMoreMenu
             disabled={switching}
+            attention={updateAvailable}
             items={[
               {
                 id: "export",

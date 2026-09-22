@@ -104,7 +104,8 @@
   color: var(--accent);
 }
 
-.icon-action.update-available-action {
+.icon-action.update-available-action,
+.icon-action.header-more-trigger {
   position: relative;
 }
 

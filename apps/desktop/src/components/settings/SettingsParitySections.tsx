@@ -1,19 +1,20 @@
+import { useEffect, useState } from "react";
 import type { TelemetryConsentStatus } from "../../lib/types";
 import { CheckForUpdatesSettings } from "./CheckForUpdatesSettings";
 import { ProjectConfigInspect } from "./ProjectConfigInspect";
+import { ProjectHarnessOverrideSection } from "./ProjectHarnessOverrideSection";
 import { ResolveOrderSettings } from "./ResolveOrderSettings";
 import { TelemetrySettingsSection } from "./TelemetrySettingsSection";
 
-export type SettingsTab = "harnesses" | "project" | "advanced";
+export type SettingsTab = "project" | "advanced";
 
 export const SETTINGS_TABS: ReadonlyArray<{ id: SettingsTab; label: string }> = [
-  { id: "harnesses", label: "Harnesses" },
   { id: "project", label: "Project" },
   { id: "advanced", label: "Advanced" },
 ];
 
 export function SettingsParitySections(props: {
-  tab: Exclude<SettingsTab, "harnesses"> | SettingsTab;
+  tab: SettingsTab;
   open: boolean;
   baseUrl: string | null;
   token: string | null;
@@ -25,6 +26,14 @@ export function SettingsParitySections(props: {
   onProjectDirtyChange?: (dirty: boolean) => void;
   onTelemetryConsentChange?: (next: TelemetryConsentStatus) => void;
 }) {
+  const { onProjectDirtyChange } = props;
+  const [configDirty, setConfigDirty] = useState(false);
+  const [overrideDirty, setOverrideDirty] = useState(false);
+
+  useEffect(() => {
+    onProjectDirtyChange?.(configDirty || overrideDirty);
+  }, [configDirty, onProjectDirtyChange, overrideDirty]);
+
   return (
     <>
       <div hidden={props.tab !== "project"}>
@@ -36,7 +45,16 @@ export function SettingsParitySections(props: {
           disabled={props.disabled}
           onSelectProject={props.onSelectProject}
           onBrowseProject={props.onBrowseProject}
-          onDirtyChange={props.onProjectDirtyChange}
+          onDirtyChange={setConfigDirty}
+        />
+        <ProjectHarnessOverrideSection
+          open={props.open}
+          baseUrl={props.baseUrl}
+          token={props.token}
+          projectPath={props.inspectProjectPath}
+          disabled={props.disabled}
+          onSaved={props.onSaved}
+          onDirtyChange={setOverrideDirty}
         />
       </div>
       <div hidden={props.tab !== "advanced"}>

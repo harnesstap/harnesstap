@@ -29,6 +29,7 @@ import { handleProfileFileDiff } from "./profile-file-diff-handlers.js";
 import { handleProfileRemoveResource } from "./profile-remove-resource-handlers.js";
 import { handleEnvironmentsList } from "./environment-handlers.js";
 import { handleMigrateDetectImportScope, handleMigrateExport, handleMigrateImport } from "./migrate-handlers.js";
+import { handleHarnessInventoryGet } from "./harness-inventory-handlers.js";
 import {
   handleHarnessSettingsGet,
   handleHarnessSettingsPut,
@@ -588,6 +589,8 @@ export function createAgentFetchHandler(
       response = await handlers.handleSwitch(request);
     } else if (method === "POST" && url.pathname === "/v1/open-path") {
       response = await handleOpenPath(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/harness/inventory") {
+      response = handleHarnessInventoryGet(request, token);
     } else if (method === "GET" && url.pathname === "/v1/harness") {
       response = handleHarnessSettingsGet(request, token);
     } else if (method === "PUT" && url.pathname === "/v1/harness") {

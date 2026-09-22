@@ -42,7 +42,8 @@ describe("command palette wiring", () => {
 
   test("DESIGN.md and README document the shortcut contract", () => {
     expect(designSource).toContain("`⌘/Ctrl+K`");
-    expect(designSource).toContain("`⌘/Ctrl+1..3`");
+    expect(designSource).toContain("`⌘/Ctrl+1..4`");
+    expect(readmeSource).toContain("`⌘/Ctrl+4` | Go to Harnesses");
     expect(readmeSource).toContain("`⌘/Ctrl+K`");
     expect(readmeSource).toContain("Command palette");
   });

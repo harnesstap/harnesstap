@@ -67,6 +67,7 @@ Knobs: `SHOTS_BASE_URL` (default `http://127.0.0.1:5173/`), `SHOTS_AGENT_PORT`, 
 | `⌘/Ctrl+1` | Go to Library |
 | `⌘/Ctrl+2` | Go to Discover |
 | `⌘/Ctrl+3` | Go to Environments |
+| `⌘/Ctrl+4` | Go to Harnesses |
 | `[` | Switch to Global |
 | `]` | Switch to Project |
 | `/` | Focus the current workspace filter |

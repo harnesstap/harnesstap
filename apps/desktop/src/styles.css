@@ -11,6 +11,7 @@
 @import "./styles/features/library.css";
 @import "./styles/features/discover.css";
 @import "./styles/features/environments.css";
+@import "./styles/features/harnesses.css";
 @import "./styles/features/settings.css";
 @import "./styles/features/dialogs.css";
 @import "./styles/features/commands.css";

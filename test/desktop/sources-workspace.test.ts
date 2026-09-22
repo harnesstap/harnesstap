@@ -97,7 +97,7 @@ function cssBlock(source: string, selector: string): string {
 describe("sources workspace chrome", () => {
   test("SourcesWorkspace is rendered from App when workspaceFocus is sources", () => {
     expect(appSource).toContain("SourcesWorkspace");
-    expect(appSource).toContain('nav.destination === "discover"');
+    expect(appSource).toContain('case "discover":');
     expect(workspaceSource).toContain("export function SourcesWorkspace");
     expect(workspaceSource).toContain("homeResetNonce");
   });

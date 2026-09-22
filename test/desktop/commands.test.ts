@@ -77,12 +77,13 @@ describe("command matching", () => {
 });
 
 describe("shortcut matching", () => {
-  it("matches Ctrl/⌘K and Ctrl/⌘1..3", () => {
+  it("matches Ctrl/⌘K and Ctrl/⌘1..4", () => {
     expect(matchShortcut(event({ key: "k", ctrlKey: true }))).toBe("palette");
     expect(matchShortcut(event({ key: "K", metaKey: true }))).toBe("palette");
     expect(matchShortcut(event({ key: "1", ctrlKey: true }))).toBe("library");
     expect(matchShortcut(event({ key: "2", metaKey: true }))).toBe("discover");
     expect(matchShortcut(event({ key: "3", ctrlKey: true }))).toBe("environments");
+    expect(matchShortcut(event({ key: "4", metaKey: true }))).toBe("harnesses");
     expect(matchShortcut(event({ key: "1" }))).toBe(null);
   });
 

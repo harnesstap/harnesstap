@@ -88,6 +88,14 @@ export function CommandPaletteHost({
         run: () => nav.go("environments"),
       },
       {
+        id: "goto-harnesses",
+        section: "goto",
+        label: "Harnesses",
+        shortcut: formatShortcutKeys(shortcutById("harnesses")),
+        keywords: ["agents", "claude", "cursor", "codex"],
+        run: () => nav.go("harnesses"),
+      },
+      {
         id: "goto-global",
         section: "goto",
         label: "Global",
@@ -199,9 +207,9 @@ export function CommandPaletteHost({
           return;
         case "library":
         case "discover":
-        case "environments": {
-          const key = id === "library" ? "1" : id === "discover" ? "2" : "3";
-          const destination = destinationForNumberKey(key);
+        case "environments":
+        case "harnesses": {
+          const destination = destinationForNumberKey(shortcutById(id).key);
           if (destination) {
             setPaletteOpen(false);
             setCheatSheetOpen(false);

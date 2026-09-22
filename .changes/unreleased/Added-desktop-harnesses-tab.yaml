@@ -1,0 +1,5 @@
+kind: Added
+body: Desktop Harnesses destination (⌘/Ctrl+4) with detect, add, remove, and make-main over `GET /v1/harness/inventory`; the Settings Harnesses tab is gone and the project harness override lives on Settings → Project. Export, Import, and Account moved into the header More menu.
+time: 2026-09-22T03:40:00Z
+custom:
+  Issue: ""
