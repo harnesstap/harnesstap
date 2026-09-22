@@ -98,7 +98,7 @@ describe("desktop header chrome", () => {
   test("exposes Discover as a workspace destination after Library", () => {
     expect(appSource).toContain('aria-label="Discover"');
     expect(appSource).toContain('onDestinationClick("discover")');
-    expect(appSource).toContain('nav.destination === "discover"');
+    expect(appSource).toContain('case "discover":');
     const libraryIdx = appSource.indexOf('aria-label="Library"');
     const sourcesIdx = appSource.indexOf('aria-label="Discover"');
     const parityIdx = appSource.indexOf("<ParityChrome");
@@ -107,9 +107,23 @@ describe("desktop header chrome", () => {
     expect(parityIdx).toBeGreaterThan(sourcesIdx);
   });
 
+  test("exposes Harnesses as a workspace destination after Environments", () => {
+    expect(appSource).toContain('aria-label="Harnesses"');
+    expect(appSource).toContain('onDestinationClick("harnesses")');
+    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harnesses<\/span>/);
+    expect(appSource).toContain("<MemoHarnessesWorkspace");
+    expect(appSource).toContain('case "harnesses":');
+    const parityIdx = appSource.indexOf("<ParityChrome");
+    const harnessesIdx = appSource.indexOf('aria-label="Harnesses"');
+    const scopeIdx = appSource.indexOf('aria-label="Global scope"');
+    expect(parityIdx).toBeGreaterThan(-1);
+    expect(harnessesIdx).toBeGreaterThan(parityIdx);
+    expect(scopeIdx).toBeGreaterThan(harnessesIdx);
+  });
+
   test("DESIGN.md lists inventories as destinations and Global/Project as Scope", () => {
     expect(designSource).toContain(
-      "Header destinations (equal-weight primary nav): **Library | Discover | Environments**",
+      "Header destinations (equal-weight primary nav): **Library | Discover | Environments | Harnesses**",
     );
     expect(designSource).toContain("quieter **Scope** segmented switch");
     expect(designSource).toMatch(/\|\s*Discover\s*\|/);
@@ -129,24 +143,22 @@ describe("desktop header chrome", () => {
     expect(paritySource).toContain('aria-label="Environments"');
   });
 
-  test("labels header destinations Library, Discover, Environments, Global, and Project", () => {
+  test("labels header destinations Library, Discover, Environments, Harnesses, Global, and Project", () => {
     expect(appSource).toMatch(/<Library[\s\S]*\/>\s*<span className="header-focus-label">Library<\/span>/);
     expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*<span className="header-focus-label">Discover<\/span>/);
     expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*<span className="header-focus-label">Environments<\/span>/);
+    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harnesses<\/span>/);
     expect(appSource).toMatch(/<Globe[\s\S]*\/>\s*<span className="header-focus-label">Global<\/span>/);
     expect(appSource).toMatch(/<FolderGit2[\s\S]*\/>\s*<span className="header-focus-label">Project<\/span>/);
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");
     expect(cssSource).toContain(".header-focus-btn.labeled");
-    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Environments**");
+    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Environments | Harnesses**");
     expect(designSource).toContain("Header destinations show icon plus name");
     expect(appSource).toContain("header-scope");
     expect(appSource).toContain('id="header-scope-label"');
-    expect(appSource).toContain("Export setup");
-    expect(appSource).toContain("Import setup");
     expect(appSource).toContain("Refresh live status");
     expect(appSource).toContain('label="Settings"');
-    expect(appSource).toContain('label="Account"');
     expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
     expect(appSource).toContain('aria-current={destination === "library" ? "page" : undefined}');
     expect(appSource).toContain("aria-pressed={scope === \"global\"}");
@@ -157,6 +169,30 @@ describe("desktop header chrome", () => {
     expect(cssSource).toContain("container-type: inline-size");
     expect(cssSource).toContain("minmax(180px, 1fr)");
     expect(designSource).toContain("Window minimum size is 960×600");
+  });
+
+  test("header utilities are Refresh, Settings, and More; Export, Import, and Account live in More", () => {
+    const utilities = sliceBetween(
+      appSource,
+      'className="header-status"',
+      "</header>",
+    );
+    expect(utilities).toContain('data-testid="open-settings"');
+    expect(utilities).toContain("<HeaderMoreMenu");
+    expect(utilities).toContain('label: "Export setup"');
+    expect(utilities).toContain('label: "Import setup"');
+    expect(utilities).toContain('id: "account"');
+    expect(utilities).toContain('variant="menuitem"');
+    expect(utilities).not.toContain('label="Export setup"');
+    expect(utilities).not.toContain('label="Import setup"');
+    expect(utilities).not.toContain('label="Account"');
+    expect(utilities).not.toContain('variant="icon"');
+    expect(appSource).not.toContain("HEADER_UTILITIES_COLLAPSE_PX");
+    expect(appSource).not.toContain("utilitiesCollapsed");
+    expect(cssSource).not.toContain("@container app-header (max-width: 1100px)");
+    expect(cssSource).toContain("@container app-header (max-width: 960px)");
+    expect(appSource).toContain("attention={updateAvailable}");
+    expect(designSource).toContain("Header utilities are Refresh, Settings, and More (Ellipsis) at every width");
   });
 
   test("first-load skeletons are separate rows with a column gap", () => {
@@ -195,9 +231,10 @@ describe("header re-click home", () => {
     expect(appSource).toContain('onClick={() => onDestinationClick("global")}');
     expect(appSource).toContain('onClick={() => onDestinationClick("project")}');
     expect(appSource).toContain("onDestinationClick(\"environments\")");
+    expect(appSource).toContain('onClick={() => onDestinationClick("harnesses")}');
   });
 
-  test("Library, Discover, and Environments re-click bump the navigation resetNonce", () => {
+  test("Library, Discover, Environments, and Harnesses re-click bump the navigation resetNonce", () => {
     expect(appSource).toContain("nav.resetCurrent()");
     expect(appSource).toContain("homeResetNonce={nav.resetNonce}");
     const resetBlock = sliceBetween(
@@ -208,6 +245,7 @@ describe("header re-click home", () => {
     expect(resetBlock).toContain('case "library"');
     expect(resetBlock).toContain('case "discover"');
     expect(resetBlock).toContain('case "environments"');
+    expect(resetBlock).toContain('case "harnesses"');
   });
 
   test("Global and Project re-click clear profile search and close edit without changing selection", () => {
@@ -298,14 +336,17 @@ describe("desktop full-screen panels", () => {
     expect(settingsSource).toContain('role="tablist"');
     expect(settingsSource).toContain("SETTINGS_TABS");
     expect(settingsSource).toContain("data-testid={`settings-tab-${entry.id}`}");
-    expect(settingsTabsSource).toContain('label: "Harnesses"');
+    expect(settingsTabsSource).not.toContain('label: "Harnesses"');
     expect(settingsTabsSource).toContain('label: "Project"');
     expect(settingsTabsSource).toContain('label: "Advanced"');
     expect(settingsTabsSource).not.toContain('label: "Marketplaces"');
     expect(settingsTabsSource).not.toContain('label: "Publish catalogs"');
     expect(settingsTabsSource).toContain("CheckForUpdatesSettings");
-    expect(designSource).toContain("Harnesses | Project | Advanced");
-    expect(designSource).toContain("Footer **Save** / **Cancel** appear only on **Harnesses**");
+    expect(settingsTabsSource).toContain("ProjectHarnessOverrideSection");
+    expect(settingsSource).not.toContain("HarnessSettingsSection");
+    expect(designSource).toContain("labeled tabs **Project | Advanced**");
+    expect(designSource).toContain("No footer Save / Cancel: every tab saves inline");
+    expect(designSource).toContain("the global selection itself is edited on the **Harnesses** destination, never in Settings");
   });
 });
 

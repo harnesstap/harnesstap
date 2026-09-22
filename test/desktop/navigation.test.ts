@@ -66,10 +66,11 @@ describe("navigation history", () => {
     expect(run([{ type: "reset-current" }], nested).resetNonce).toBe(1);
   });
 
-  it("maps ⌘/Ctrl+1..3 keys to destinations", () => {
+  it("maps ⌘/Ctrl+1..4 keys to destinations", () => {
     expect(destinationForNumberKey("1")).toBe("library");
     expect(destinationForNumberKey("2")).toBe("discover");
     expect(destinationForNumberKey("3")).toBe("environments");
-    expect(destinationForNumberKey("4")).toBe(null);
+    expect(destinationForNumberKey("4")).toBe("harnesses");
+    expect(destinationForNumberKey("5")).toBe(null);
   });
 });

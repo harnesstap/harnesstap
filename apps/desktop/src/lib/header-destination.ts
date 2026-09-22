@@ -1,13 +1,19 @@
 import type { Scope } from "./api/scope";
 
 /** Workspaces the header navigates between. Scope is orthogonal (see `Scope`). */
-export type Destination = "library" | "discover" | "environments" | "scope";
+export type Destination =
+  | "library"
+  | "discover"
+  | "environments"
+  | "harnesses"
+  | "scope";
 
 /** Everything clickable in the header nav: destinations plus the scope segment. */
 export type HeaderDestination =
   | "library"
   | "discover"
   | "environments"
+  | "harnesses"
   | "global"
   | "project";
 
@@ -25,6 +31,8 @@ export function activeHeaderDestination(
       return "discover";
     case "environments":
       return "environments";
+    case "harnesses":
+      return "harnesses";
     case "scope":
       switch (scope) {
         case "global":
@@ -51,6 +59,7 @@ export function headerDestinationTarget(
     case "library":
     case "discover":
     case "environments":
+    case "harnesses":
       return { destination: clicked, scope: null };
     case "global":
       return { destination: "scope", scope: "global" };

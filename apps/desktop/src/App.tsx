@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
 import { Tooltip } from "radix-ui";
 import { AppHeader } from "./components/shell/AppHeader";
 import { AppOverlays } from "./components/shell/AppOverlays";
@@ -7,6 +7,7 @@ import { CommandPaletteHost } from "./components/shell/CommandPalette";
 import { ScopeWorkspace } from "./components/shell/ScopeWorkspace";
 import { CommandRegistryProvider } from "./state/command-registry";
 import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace";
+import { HarnessesWorkspace } from "./components/harnesses/HarnessesWorkspace";
 import { ResourcesPanel } from "./components/ResourcesPanel";
 import { SourcesWorkspace } from "./components/SourcesWorkspace";
 import {
@@ -30,6 +31,7 @@ import { toast } from "./state/toast-store";
 const MemoResourcesPanel = memo(ResourcesPanel);
 const MemoSourcesWorkspace = memo(SourcesWorkspace);
 const MemoEnvironmentsWorkspace = memo(EnvironmentsWorkspace);
+const MemoHarnessesWorkspace = memo(HarnessesWorkspace);
 
 export function App() {
   const session = useAgentSession();
@@ -87,6 +89,11 @@ export function App() {
     void statusStore.refreshProfiles(projectPath);
     void statusStore.refreshStatus("full", projectPath);
   }, [projectPath]);
+
+  const onHarnessesChanged = useCallback(() => {
+    void statusStore.refreshStatus("full", projectPath);
+    onLibraryChanged();
+  }, [onLibraryChanged, projectPath]);
 
   const onSuccessToast = useCallback((message: string) => {
     toast({ tone: "success", title: message });
@@ -147,6 +154,7 @@ export function App() {
           case "library":
           case "discover":
           case "environments":
+          case "harnesses":
             nav.resetCurrent();
             return;
           case "global":
@@ -193,6 +201,113 @@ export function App() {
   );
   const scopedProjectPath = nav.scope === "project" ? projectPath : null;
   const shellDisconnected = session.phase !== "connected";
+
+  const renderWorkspace = (): ReactNode => {
+    switch (nav.destination) {
+      case "scope":
+        return (
+          <ScopeWorkspace
+            ctrl={ctrl}
+            disconnected={shellDisconnected}
+            hasHistory={nav.hasHistory}
+            onBack={nav.back}
+            libraryReloadKey={libraryReloadKey}
+            bootstrapBusy={bootstrapBusy}
+            bootstrapError={project.bootstrapError}
+            onDismissBootstrapError={project.clearBootstrapError}
+            onBootstrap={() => void project.ensureProjectReady()}
+            onOpenPlugin={openPluginInLibrary}
+            onOpenCreateProfile={overlays.openCreateProfile}
+            onOpenStashBrowse={() => overlays.openOverlay("stashBrowse")}
+            onRequestSignIn={openCloudAccount}
+            onCreateEnvironment={() => {
+              setEnvironmentCreateOpen(true);
+              nav.go("environments");
+            }}
+          />
+        );
+      case "environments":
+        return (
+          <MemoEnvironmentsWorkspace
+            baseUrl={client?.baseUrl ?? null}
+            token={client?.token ?? null}
+            projectPath={scopedProjectPath}
+            disabled={switching}
+            disconnected={shellDisconnected}
+            homeResetNonce={nav.resetNonce}
+            autoOpenCreate={environmentCreateOpen}
+            onAutoOpenCreateConsumed={onEnvironmentCreateConsumed}
+            onOpenPlugin={openPluginInLibrary}
+            canWorkspaceBack={nav.hasHistory}
+            onWorkspaceBack={nav.back}
+            onSuccess={onSuccessToast}
+          />
+        );
+      case "discover":
+        return (
+          <MemoSourcesWorkspace
+            baseUrl={client?.baseUrl ?? null}
+            token={client?.token ?? null}
+            disabled={switching}
+            disconnected={shellDisconnected}
+            homeResetNonce={nav.resetNonce}
+            cloudAuthenticated={Boolean(cloud.cloudAuth?.authenticated)}
+            onSignIn={openCloudAccount}
+            canWorkspaceBack={nav.hasHistory}
+            onWorkspaceBack={nav.back}
+            onOpenInLibrary={openInLibrary}
+            onSuccess={onSuccessToast}
+          />
+        );
+      case "harnesses":
+        return (
+          <MemoHarnessesWorkspace
+            baseUrl={client?.baseUrl ?? null}
+            token={client?.token ?? null}
+            connected={connected}
+            disabled={switching}
+            disconnected={shellDisconnected}
+            homeResetNonce={nav.resetNonce}
+            canWorkspaceBack={nav.hasHistory}
+            onWorkspaceBack={nav.back}
+            onNestedDepthChange={nav.setNestedDepth}
+            onSuccess={onSuccessToast}
+            onHarnessesChanged={onHarnessesChanged}
+          />
+        );
+      case "library":
+        return (
+          <MemoResourcesPanel
+            baseUrl={client?.baseUrl ?? null}
+            token={client?.token ?? null}
+            reloadKey={libraryReloadKey}
+            disabled={switching}
+            disconnected={shellDisconnected}
+            homeResetNonce={nav.resetNonce}
+            projectPath={scopedProjectPath}
+            selectedProfile={selectedProfile}
+            attachProfileName={attachProfileName}
+            onAddToProfile={onAddToProfile}
+            focusPluginName={libraryFocusPlugin}
+            onFocusPluginConsumed={onFocusPluginConsumed}
+            focusResourceSelector={libraryFocusResource}
+            onFocusResourceConsumed={onFocusResourceConsumed}
+            onBusyChange={setPluginApplyBusy}
+            canWorkspaceBack={nav.hasHistory}
+            onWorkspaceBack={nav.back}
+            autoOpenTrackedDirectories={session.firstRun}
+            onProfilesChanged={onProfilesChanged}
+            onImported={onImported}
+            onSuccess={onSuccessToast}
+            onApplyResult={ctrl.setPendingTrustFromResult}
+          />
+        );
+      default: {
+        const neverDestination: never = nav.destination;
+        return neverDestination;
+      }
+    }
+  };
 
   if (!client) {
     return (
@@ -249,81 +364,7 @@ export function App() {
             shellDisconnected ? " is-disconnected" : ""
           }`}
         >
-          {nav.destination === "scope" ? (
-            <ScopeWorkspace
-              ctrl={ctrl}
-              disconnected={shellDisconnected}
-              hasHistory={nav.hasHistory}
-              onBack={nav.back}
-              libraryReloadKey={libraryReloadKey}
-              bootstrapBusy={bootstrapBusy}
-              bootstrapError={project.bootstrapError}
-              onDismissBootstrapError={project.clearBootstrapError}
-              onBootstrap={() => void project.ensureProjectReady()}
-              onOpenPlugin={openPluginInLibrary}
-              onOpenCreateProfile={overlays.openCreateProfile}
-              onOpenStashBrowse={() => overlays.openOverlay("stashBrowse")}
-              onRequestSignIn={openCloudAccount}
-              onCreateEnvironment={() => {
-                setEnvironmentCreateOpen(true);
-                nav.go("environments");
-              }}
-            />
-          ) : nav.destination === "environments" ? (
-            <MemoEnvironmentsWorkspace
-              baseUrl={client?.baseUrl ?? null}
-              token={client?.token ?? null}
-              projectPath={scopedProjectPath}
-              disabled={switching}
-              disconnected={shellDisconnected}
-              homeResetNonce={nav.resetNonce}
-              autoOpenCreate={environmentCreateOpen}
-              onAutoOpenCreateConsumed={onEnvironmentCreateConsumed}
-              onOpenPlugin={openPluginInLibrary}
-              canWorkspaceBack={nav.hasHistory}
-              onWorkspaceBack={nav.back}
-              onSuccess={onSuccessToast}
-            />
-          ) : nav.destination === "discover" ? (
-            <MemoSourcesWorkspace
-              baseUrl={client?.baseUrl ?? null}
-              token={client?.token ?? null}
-              disabled={switching}
-              disconnected={shellDisconnected}
-              homeResetNonce={nav.resetNonce}
-              cloudAuthenticated={Boolean(cloud.cloudAuth?.authenticated)}
-              onSignIn={openCloudAccount}
-              canWorkspaceBack={nav.hasHistory}
-              onWorkspaceBack={nav.back}
-              onOpenInLibrary={openInLibrary}
-              onSuccess={onSuccessToast}
-            />
-          ) : (
-            <MemoResourcesPanel
-              baseUrl={client?.baseUrl ?? null}
-              token={client?.token ?? null}
-              reloadKey={libraryReloadKey}
-              disabled={switching}
-              disconnected={shellDisconnected}
-              homeResetNonce={nav.resetNonce}
-              projectPath={scopedProjectPath}
-              selectedProfile={selectedProfile}
-              attachProfileName={attachProfileName}
-              onAddToProfile={onAddToProfile}
-              focusPluginName={libraryFocusPlugin}
-              onFocusPluginConsumed={onFocusPluginConsumed}
-              focusResourceSelector={libraryFocusResource}
-              onFocusResourceConsumed={onFocusResourceConsumed}
-              onBusyChange={setPluginApplyBusy}
-              canWorkspaceBack={nav.hasHistory}
-              onWorkspaceBack={nav.back}
-              autoOpenTrackedDirectories={session.firstRun}
-              onProfilesChanged={onProfilesChanged}
-              onImported={onImported}
-              onSuccess={onSuccessToast}
-              onApplyResult={ctrl.setPendingTrustFromResult}
-            />
-          )}
+          {renderWorkspace()}
         </div>
 
         <AppOverlays

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import {
   aliasesExcludingMain,
-  canSaveHarnessSettings,
+  canSaveProjectOverride,
   genericHarnessTooltip,
-  isHarnessSettingsDirty,
+  isProjectOverrideDirty,
+  projectOverrideDraftFromPayload,
   visibleHarnesses,
 } from "../../apps/desktop/src/lib/harness-settings-form.ts";
 
@@ -28,42 +29,67 @@ describe("harness-settings-form", () => {
     expect(ids.sort()).toEqual(["claude-code", "cursor", "some-generic"].sort());
   });
 
-  it("detects dirty state", () => {
-    const baseline = {
-      globalMain: "claude-code",
-      globalAliases: ["cursor"],
-      projectOverride: false,
-      projectMain: "claude-code",
-      projectAliases: [] as string[],
-      materialization: "symlink-preferred" as const,
-    };
-    expect(isHarnessSettingsDirty(baseline, baseline)).toBe(false);
+  it("builds the override draft from the project block", () => {
     expect(
-      isHarnessSettingsDirty(baseline, { ...baseline, globalMain: "cursor" }),
-    ).toBe(true);
+      projectOverrideDraftFromPayload({
+        available: true,
+        override: true,
+        main_harness: "cursor",
+        alias_harnesses: ["claude-code"],
+        materialization_strategy: "copy",
+      }),
+    ).toEqual({
+      override: true,
+      main: "cursor",
+      aliases: ["claude-code"],
+      materialization: "copy",
+    });
+    expect(projectOverrideDraftFromPayload({ available: true, override: false })).toEqual({
+      override: false,
+      main: "",
+      aliases: [],
+      materialization: "symlink-preferred",
+    });
   });
 
-  it("canSave requires project main when override is enabled", () => {
+  it("detects dirty state over the project fields only", () => {
+    const baseline = {
+      override: true,
+      main: "claude-code",
+      aliases: ["cursor"],
+      materialization: "symlink-preferred" as const,
+    };
+    expect(isProjectOverrideDirty(baseline, baseline)).toBe(false);
+    expect(isProjectOverrideDirty(baseline, { ...baseline, main: "cursor" })).toBe(true);
+    expect(isProjectOverrideDirty(baseline, { ...baseline, override: false })).toBe(true);
+    expect(
+      isProjectOverrideDirty(
+        { ...baseline, override: false },
+        { ...baseline, override: false, main: "cursor" },
+      ),
+    ).toBe(false);
+  });
+
+  it("canSave needs a saved global main and a project main when override is on", () => {
     const base = {
       dirty: true,
       busy: false,
       loading: false,
       disabled: false,
-      globalMain: "claude-code",
       baseUrl: "http://127.0.0.1:9",
-      projectOverride: true,
+      projectPath: "/repo",
       projectAvailable: true,
-      projectMain: "",
+      globalMain: "claude-code",
+      override: true,
+      main: "",
     };
-    expect(canSaveHarnessSettings(base)).toBe(false);
-    expect(canSaveHarnessSettings({ ...base, projectMain: "cursor" })).toBe(true);
-    expect(
-      canSaveHarnessSettings({
-        ...base,
-        projectAvailable: false,
-        projectMain: "",
-      }),
-    ).toBe(true);
+    expect(canSaveProjectOverride(base)).toBe(false);
+    expect(canSaveProjectOverride({ ...base, main: "cursor" })).toBe(true);
+    expect(canSaveProjectOverride({ ...base, main: "cursor", globalMain: null })).toBe(false);
+    expect(canSaveProjectOverride({ ...base, override: false })).toBe(true);
+    expect(canSaveProjectOverride({ ...base, override: false, projectAvailable: false })).toBe(
+      false,
+    );
   });
 });
 

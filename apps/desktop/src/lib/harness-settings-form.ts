@@ -1,3 +1,8 @@
+import type {
+  HarnessSettingsProject,
+  MaterializationStrategy,
+} from "./types";
+
 export function aliasesExcludingMain(aliases: string[], main: string): string[] {
   return aliases.filter((id) => id && id !== main);
 }
@@ -21,52 +26,74 @@ export function genericHarnessTooltip(supports: string[]): string {
   return `${GENERIC_HARNESS_BASE}. Supports ${supports.join(", ")}.`;
 }
 
-export interface HarnessSettingsDraft {
-  globalMain: string;
-  globalAliases: string[];
-  projectOverride: boolean;
-  projectMain: string;
-  projectAliases: string[];
-  materialization: "symlink-preferred" | "copy";
+/** Settings → Project harness override. The global selection lives on the Harnesses destination. */
+export interface ProjectHarnessOverrideDraft {
+  override: boolean;
+  main: string;
+  aliases: string[];
+  materialization: MaterializationStrategy;
 }
 
-export function isHarnessSettingsDirty(
-  baseline: HarnessSettingsDraft,
-  draft: HarnessSettingsDraft,
+export const EMPTY_PROJECT_OVERRIDE_DRAFT: ProjectHarnessOverrideDraft = {
+  override: false,
+  main: "",
+  aliases: [],
+  materialization: "symlink-preferred",
+};
+
+export function projectOverrideDraftFromPayload(
+  project: HarnessSettingsProject | undefined,
+): ProjectHarnessOverrideDraft {
+  if (!project || project.override !== true) {
+    return EMPTY_PROJECT_OVERRIDE_DRAFT;
+  }
+  return {
+    override: true,
+    main: project.main_harness ?? "",
+    aliases: [...(project.alias_harnesses ?? [])],
+    materialization: project.materialization_strategy ?? "symlink-preferred",
+  };
+}
+
+export function isProjectOverrideDirty(
+  baseline: ProjectHarnessOverrideDraft,
+  draft: ProjectHarnessOverrideDraft,
 ): boolean {
   return (
-    baseline.globalMain !== draft.globalMain
-    || baseline.globalAliases.join("\0") !== draft.globalAliases.join("\0")
-    || baseline.projectOverride !== draft.projectOverride
-    || (draft.projectOverride
-      && (baseline.projectMain !== draft.projectMain
-        || baseline.projectAliases.join("\0") !== draft.projectAliases.join("\0")
+    baseline.override !== draft.override
+    || (draft.override
+      && (baseline.main !== draft.main
+        || baseline.aliases.join("\0") !== draft.aliases.join("\0")
         || baseline.materialization !== draft.materialization))
   );
 }
 
-export function canSaveHarnessSettings(options: {
+export function canSaveProjectOverride(options: {
   dirty: boolean;
   busy: boolean;
   loading: boolean;
   disabled: boolean;
-  globalMain: string;
   baseUrl: string | null | undefined;
-  projectOverride: boolean;
+  projectPath: string | null;
   projectAvailable: boolean;
-  projectMain: string;
+  /** PUT /v1/harness rejects an empty global main, so the override needs one saved first. */
+  globalMain: string | null;
+  override: boolean;
+  main: string;
 }): boolean {
   if (
     !options.dirty
     || options.busy
     || options.loading
     || options.disabled
-    || !options.globalMain
     || !options.baseUrl
+    || !options.projectPath
+    || !options.projectAvailable
+    || !options.globalMain
   ) {
     return false;
   }
-  if (options.projectOverride && options.projectAvailable && !options.projectMain) {
+  if (options.override && !options.main) {
     return false;
   }
   return true;

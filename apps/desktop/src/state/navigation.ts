@@ -10,7 +10,7 @@ import {
 export type { Destination } from "../lib/header-destination";
 export type { Scope } from "../lib/api/scope";
 
-/** ⌘/Ctrl+1..3. Other keys return null. */
+/** ⌘/Ctrl+1..4. Other keys return null. */
 export function destinationForNumberKey(key: string): Destination | null {
   switch (key) {
     case "1":
@@ -19,6 +19,8 @@ export function destinationForNumberKey(key: string): Destination | null {
       return "discover";
     case "3":
       return "environments";
+    case "4":
+      return "harnesses";
     default:
       return null;
   }

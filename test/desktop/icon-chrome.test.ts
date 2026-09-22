@@ -251,9 +251,12 @@ describe("desktop icon chrome", () => {
     expect(liveStateSource).not.toContain("target-preview-drifted");
     expect(liveStateSource).toContain("singletonPath");
     expect(liveStateSource).not.toContain("expandedKeys");
-    expect(appSource).toContain('label="Account"');
-    expect(appSource).toContain('label="Export setup"');
-    expect(appSource).toContain('label="Import setup"');
+    expect(appSource).toContain('id: "account"');
+    expect(appSource).toContain('label: "Export setup"');
+    expect(appSource).toContain('label: "Import setup"');
+    expect(appSource).not.toContain('label="Account"');
+    expect(appSource).not.toContain('label="Export setup"');
+    expect(appSource).not.toContain('label="Import setup"');
     expect(appSource).toContain("Refresh live status");
     expect(appSource).toContain('label="Settings"');
     expect(iconButtonSource).toContain("ChromeTooltip");

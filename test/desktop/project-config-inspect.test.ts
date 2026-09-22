@@ -32,6 +32,13 @@ const pickerSource = readFileSync(
   ),
   "utf8",
 );
+const overrideSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/settings/ProjectHarnessOverrideSection.tsx",
+  ),
+  "utf8",
+);
 const appSource = readDesktopShellSource();
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
@@ -79,9 +86,7 @@ describe("settings project config picker", () => {
       "<SettingsDrawer",
       "<CloudAccountDrawer",
     );
-    expect(settingsCall).toContain(
-      'projectPath={scope === "project" ? projectPath : null}',
-    );
+    expect(settingsCall).not.toContain("projectPath={scope");
     expect(settingsCall).toContain("inspectProjectPath={projectPath || null}");
     expect(settingsCall).toContain("onSelectProject={onSelectProject}");
     expect(settingsCall).toContain("onBrowseProject={onBrowseProject}");
@@ -157,10 +162,15 @@ describe("settings project config inspect surface", () => {
     expect(inspectSource).not.toContain("<table");
   });
 
-  test("footer Save only on Harnesses and dirty close confirms discard", () => {
-    expect(settingsSource).toContain('tab === "harnesses"');
-    expect(settingsSource).toContain("settings-harness-save");
+  test("no footer Save; harness override saves inline and dirty close confirms discard", () => {
+    expect(settingsSource).not.toContain('tab === "harnesses"');
+    expect(settingsSource).not.toContain("settings-harness-save");
     expect(settingsSource).toContain("Discard changes?");
+    expect(sectionsSource).toContain("ProjectHarnessOverrideSection");
+    expect(overrideSource).toContain('data-testid="settings-harness-save"');
+    expect(overrideSource).toContain("const current = await fetchHarnessSettings(baseUrl, token, projectPath);");
+    expect(overrideSource).toContain("main_harness: currentMain,");
+    expect(overrideSource).toContain("alias_harnesses: [...current.global.alias_harnesses],");
     expect(inspectSource).toContain("project-config-save");
     expect(inspectSource).toContain("parseValidationLineNumber");
     expect(inspectSource).toContain("apm-yml-gutter");

@@ -1,0 +1,195 @@
+/* ── Harnesses destination ───────────────────────────────────────── */
+.harness-list-sidebar {
+  overflow: hidden;
+}
+
+.harness-list-sidebar .resource-filter-section {
+  flex-shrink: 0;
+}
+
+.harness-sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.harness-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: none;
+}
+
+.harness-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 4px;
+}
+
+.harness-list-row .resources-list-env {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.harness-list-row .inventory-row-remove-slot {
+  align-self: center;
+}
+
+.harness-list-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.harness-remove-action {
+  color: color-mix(in srgb, var(--red) 70%, var(--muted));
+}
+
+.harness-remove-action:hover:not(:disabled) {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+}
+
+.harness-skeleton-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.harness-skeleton-line {
+  height: var(--space-3);
+  width: 70%;
+}
+
+.harness-skeleton-line.is-short {
+  width: 40%;
+}
+
+.harness-detail-title .badge {
+  font-size: var(--text-micro);
+  font-weight: 500;
+  color: var(--green);
+  text-transform: lowercase;
+}
+
+.harness-detail-title .harness-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.harness-location-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.harness-location-header {
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-weight: 500;
+}
+
+.harness-location-path {
+  min-width: 0;
+  word-break: break-all;
+}
+
+.harness-location-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  font-size: var(--text-meta);
+  font-weight: 400;
+}
+
+.harness-location-meta .inventory-section-count.pill {
+  margin: 0;
+  padding: 0.05rem 0.4rem;
+  color: var(--muted);
+  line-height: var(--leading-tight);
+}
+
+.harness-location-absent {
+  font-style: italic;
+}
+
+.harness-location-body {
+  padding: 0 0.6rem 0.45rem;
+}
+
+.harness-location-empty {
+  margin: 0.45rem 0 0;
+  font-size: var(--text-meta);
+}
+
+.harness-location-rows .resources-list-item {
+  padding: 0;
+  border: 0;
+}
+
+.harness-location-rows .resource-row:last-child {
+  border-bottom: 0;
+}
+
+.harness-location-body .list-truncation-controls {
+  margin-top: 0.35rem;
+}
+
+.add-harness-empty {
+  margin: 12px 0 0;
+}
+
+.add-harness-show-all {
+  margin-top: 12px;
+}
+
+.detect-harness-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.detect-harness-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.detect-harness-group-title {
+  padding: 0;
+  margin-bottom: 0.35rem;
+  font-size: var(--text-meta);
+  font-weight: 600;
+}
+
+.detect-harness-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.detect-harness-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.detect-harness-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.detect-harness-meta {
+  font-size: var(--text-meta);
+}

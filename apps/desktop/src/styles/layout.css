@@ -336,16 +336,8 @@
 }
 
 .header-more-wrap {
-  display: none;
-  align-items: center;
-}
-
-.app-header.is-compact-utilities .header-utility-optional {
-  display: none;
-}
-
-.app-header.is-compact-utilities .header-more-wrap {
   display: flex;
+  align-items: center;
 }
 
 .app-header.is-compact-dest .header-focus-label,
@@ -359,16 +351,6 @@
   min-width: var(--icon-action-size);
   min-height: var(--icon-action-size);
   padding: 0;
-}
-
-@container app-header (max-width: 1099px) {
-  .header-utility-optional {
-    display: none;
-  }
-
-  .header-more-wrap {
-    display: flex;
-  }
 }
 
 @container app-header (max-width: 960px) {

@@ -19,6 +19,8 @@ export interface HeaderMoreMenuProps {
   disabled?: boolean;
   items: HeaderMoreItem[];
   children?: ReactNode;
+  /** Red dot on the trigger, e.g. when a Desktop update is available. */
+  attention?: boolean;
 }
 
 function menuItemsIn(root: HTMLElement): HTMLElement[] {
@@ -27,11 +29,12 @@ function menuItemsIn(root: HTMLElement): HTMLElement[] {
   );
 }
 
-/** Collapsed header utilities (Export, Import, Account, Update) behind Ellipsis. */
+/** Permanent home of Export, Import, Account, and Update behind Ellipsis. */
 export function HeaderMoreMenu({
   disabled = false,
   items,
   children,
+  attention = false,
 }: HeaderMoreMenuProps) {
   const [open, setOpen] = useState(false);
   const contentRef = useOverlayLayer<HTMLDivElement>({
@@ -85,14 +88,15 @@ export function HeaderMoreMenu({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="icon-action"
+            className="icon-action header-more-trigger"
             data-testid="header-more"
             disabled={disabled}
-            aria-label="More"
+            aria-label={attention ? "More (update available)" : "More"}
             aria-haspopup="menu"
             aria-expanded={open}
           >
             <Ellipsis size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+            {attention ? <span className="update-available-badge" aria-hidden="true" /> : null}
           </button>
         </PopoverTrigger>
       </ChromeTooltip>

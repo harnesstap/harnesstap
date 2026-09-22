@@ -3,7 +3,12 @@ import { ChromeTooltip } from "../ChromeTooltip";
 
 const HEADER_ICON_SIZE = 18;
 
-export type ParityWorkspaceFocus = "library" | "discover" | "scope" | "environments";
+export type ParityWorkspaceFocus =
+  | "library"
+  | "discover"
+  | "scope"
+  | "environments"
+  | "harnesses";
 
 export interface ParityChromeProps {
   workspaceFocus: ParityWorkspaceFocus;

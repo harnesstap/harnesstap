@@ -119,7 +119,6 @@ export function AppOverlays({
         open={overlays.isOpen("settings")}
         baseUrl={baseUrl}
         token={token}
-        projectPath={scope === "project" ? projectPath : null}
         inspectProjectPath={projectPath || null}
         disabled={switching}
         onClose={() => overlays.closeOverlay("settings")}
