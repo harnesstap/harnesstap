@@ -133,15 +133,24 @@ describe("Global/Project scope inventory chrome", () => {
     expect(appSource).toContain("live-toolbar-identity");
     expect(appSource).toContain("live-toolbar-actions");
     expect(appSource).toMatch(/label=\{(?:ctrl\.)?inventoryEditMode \? "Done" : "Edit"\}/);
+    expect(appSource).toContain('label="Overwrite with current setup"');
+    expect(appSource).toContain("HardDriveUpload");
+    expect(appSource).toContain("Overwrite with current setup?");
+    expect(appSource).not.toContain("Active · ${n} file");
+    expect(appSource).not.toContain("status-view-changes");
     expect(liveStateSource).toContain("editMode");
     expect(liveStateSource).toContain("profile-resource-remove-btn");
+    expect(liveStateSource).toContain("profile-remove-action");
     expect(liveStateSource).toContain("Remove from profile");
     expect(liveStateSource).toContain("inventory-row-lead");
+    expect(liveStateSource).toContain("inventory-row-lead-action");
     expect(liveStateSource).toContain("inventory-row-remove-slot");
     expect(liveStateSource).toContain("inventory-row-remove-placeholder");
     expect(liveStateSource).toContain("inventory-row-icon");
     expect(stylesSource).toContain(".inventory-row-lead");
+    expect(stylesSource).toContain(".inventory-row-lead-action");
     expect(stylesSource).toContain(".inventory-row-remove-slot");
+    expect(stylesSource).toContain(".inventory-row-remove-slot .profile-remove-action");
     expect(stylesSource).toContain("width: var(--icon-action-size)");
     const leadStart = stylesSource.indexOf("\n.inventory-row-lead {");
     expect(leadStart).toBeGreaterThan(-1);
@@ -163,6 +172,9 @@ describe("Global/Project scope inventory chrome", () => {
     ).toBe(true);
     expect(designSource).toContain("trash-width trailing slot");
     expect(designSource).toContain("[type icon] [name]");
+    expect(designSource).toContain("rightmost icon");
+    expect(designSource).toContain("Overwrite with current setup");
+    expect(designSource).not.toContain("`Active · N files differ`");
     expect(appSource).not.toMatch(
       /status-edit-action[\s\S]{0,200}openEditProfile\(selectedProfile\)/,
     );
@@ -275,6 +287,9 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("ResourceCreatePanel");
     expect(designSource).toContain("Library create flow");
     expect(liveStateSource).toContain("scope-inventory-scroll");
+    expect(appSource).toContain("live-inventory-host");
+    const hostStart = stylesSource.indexOf("\n.live-pane > .live-inventory-host");
+    expect(hostStart).toBeGreaterThan(-1);
     const fabStart = stylesSource.indexOf("\n.scope-inventory-fab {");
     expect(fabStart).toBeGreaterThan(-1);
     const fabBlock = stylesSource.slice(

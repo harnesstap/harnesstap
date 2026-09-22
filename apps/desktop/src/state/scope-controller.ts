@@ -20,11 +20,19 @@ import {
 import { postApply } from "../lib/api/apply-plugin";
 import { postApprove, postDeny } from "../lib/api/approve";
 import { formatScope, scopeToView, type Scope } from "../lib/api/scope";
+import { flattenProfileResourceList } from "../lib/contents-diff";
 import type { CutVersionRow } from "../lib/cut-versions-form";
 import {
   trustFieldsFromUnknown,
   type ExecutableTrustFields,
 } from "../lib/pending-approvals";
+import {
+  MUTATION_CHUNK_SIZE,
+  partitionProfileInventory,
+  planProfileDiskSnapshot,
+  profileDiskSnapshotHasWork,
+  settleInChunks,
+} from "../lib/profile-inventory";
 import {
   applyProfileRailOrder,
   loadProfileRailOrder,
@@ -33,6 +41,7 @@ import {
   saveProfileRailOrder,
   type ProfileSelectionIntent,
 } from "../lib/profile-rail-order";
+import { resolveProfileResourceStack } from "../lib/profile-resource-stack";
 import {
   APPLY_SUCCESS_HOLD_MS,
   applyCtaHelper,
@@ -177,6 +186,7 @@ export function useScopeController(input: ScopeControllerInput) {
   const [committingManagedChanges, setCommittingManagedChanges] = useState(false);
   const [removingResourceKey, setRemovingResourceKey] = useState<string | null>(null);
   const [addingAllResources, setAddingAllResources] = useState(false);
+  const [overwritingWithSetup, setOverwritingWithSetup] = useState(false);
   const [activatingResources, setActivatingResources] = useState(false);
   const [addResourceError, setAddResourceError] = useState<string | null>(null);
   const [resourceActionError, setResourceActionError] = useState<string | null>(null);
@@ -572,6 +582,102 @@ export function useScopeController(input: ScopeControllerInput) {
     },
     [client, keyFor, loadPreviewFor, projectPath, recoveryBusy, refreshStatus, selectedProfile, view],
   );
+
+  const handleOverwriteWithCurrentSetup = useCallback(async () => {
+    if (!client || !selectedProfile || overwritingWithSetup) {
+      return;
+    }
+    const liveContents = statusStore.getState().status?.contents;
+    const previewMatchesSelection =
+      Boolean(selectedProfile)
+      && applyPreview?.profile === selectedProfile;
+    const resourceStack = resolveProfileResourceStack({
+      selectedProfile,
+      activeProfile,
+      relativeToActive: applyPreview?.relative_to_active ?? false,
+      previewMatchesSelection,
+      liveContents,
+      targetContents: applyPreview?.contents ?? null,
+    });
+    if (resourceStack.kind === "loading") {
+      setAddResourceError("Wait for inventory to finish loading, then try again.");
+      return;
+    }
+    const profileRows = flattenProfileResourceList(resourceStack.contents, {
+      selectedProfile,
+    });
+    const liveRows = flattenProfileResourceList(liveContents ?? null, {
+      selectedProfile,
+    });
+    const fileChanges = applyPreview?.files?.changes ?? [];
+    const plan = planProfileDiskSnapshot(
+      partitionProfileInventory({
+        profileRows,
+        liveRows,
+        notStaged: applyPreview?.not_staged ?? applyPreview?.untracked_resources ?? [],
+        fileChanges,
+      }),
+      fileChanges,
+    );
+    if (!profileDiskSnapshotHasWork(plan)) {
+      toast({ tone: "success", title: "Already matches disk" });
+      return;
+    }
+    setOverwritingWithSetup(true);
+    setAddResourceError(null);
+    try {
+      const results = [
+        ...(await settleInChunks(plan.toAdd, MUTATION_CHUNK_SIZE, async (resource) => {
+          await addProfileResource(
+            client.baseUrl,
+            client.token,
+            selectedProfile,
+            withScope({
+              resourceType: resource.type,
+              resourceName: resource.name,
+            }),
+          );
+        })),
+        ...(await settleInChunks(plan.commitPaths, MUTATION_CHUNK_SIZE, async (path) => {
+          await commitProfileResource(
+            client.baseUrl,
+            client.token,
+            selectedProfile,
+            withScope({ path }),
+          );
+        })),
+        ...(await settleInChunks(plan.toRemove, MUTATION_CHUNK_SIZE, async (item) => {
+          await removeProfileResource(client.baseUrl, client.token, selectedProfile, {
+            resourceType: item.resource.type,
+            resourceName: item.resource.name,
+            ...(item.pluginId ? { pluginId: item.pluginId } : {}),
+          });
+        })),
+      ];
+      const failed = results.find((result) => result.status === "rejected");
+      if (failed && failed.status === "rejected") {
+        throw failed.reason;
+      }
+      await loadPreviewFor(selectedProfile);
+      await refreshStatus("full");
+      toast({ tone: "success", title: "Profile matches current setup" });
+    } catch (error) {
+      setAddResourceError(
+        messageOf(error, "Could not overwrite profile with current setup"),
+      );
+    } finally {
+      setOverwritingWithSetup(false);
+    }
+  }, [
+    activeProfile,
+    applyPreview,
+    client,
+    loadPreviewFor,
+    overwritingWithSetup,
+    refreshStatus,
+    selectedProfile,
+    withScope,
+  ]);
 
   const handleCommitManagedChanges = useCallback(async () => {
     if (!client || !selectedProfile || !applyPreview || committingManagedChanges) {
@@ -1339,6 +1445,8 @@ export function useScopeController(input: ScopeControllerInput) {
     // inventory
     addingResourceKey,
     addingAllResources,
+    overwritingWithSetup,
+    handleOverwriteWithCurrentSetup,
     activatingResources,
     committingManagedChanges,
     removingResourceKey,
