@@ -1,0 +1,530 @@
+import { describe, expect, it } from "bun:test";
+import { parseHarnessInventory } from "../../apps/desktop/src/lib/api/harnesses.ts";
+import {
+  availableHarnesses,
+  canRemoveHarness,
+  configuredHarnesses,
+  defaultProposalChoice,
+  detectProposal,
+  diskPresenceLabel,
+  filterHarnessLocations,
+  harnessesViewReducer,
+  harnessId,
+  harnessSummary,
+  initialHarnessesViewState,
+  removalCopy,
+  resourceDetailTargetFor,
+  selectionFrom,
+  selectionWith,
+  visibleLocationRows,
+  type DiskPresence,
+  type HarnessEntry,
+  type HarnessInventory,
+  type HarnessLocation,
+  type HarnessResourceRow,
+} from "../../apps/desktop/src/lib/harness-inventory.ts";
+
+const CLAUDE = harnessId("claude-code");
+const CURSOR = harnessId("cursor");
+const CODEX = harnessId("codex");
+const GOOSE = harnessId("goose");
+
+function row(type: string, name: string, source: string): HarnessResourceRow {
+  return { id: `${type}-${name}`, type, name, description: "", source };
+}
+
+function entry(
+  id: string,
+  disk: DiskPresence,
+  options: { supported?: boolean; locations?: readonly HarnessLocation[] } = {},
+): HarnessEntry {
+  return {
+    id: harnessId(id),
+    name: id,
+    supported: options.supported ?? true,
+    supports: [],
+    disk,
+    locations: options.locations ?? [],
+  };
+}
+
+const SKILLS: HarnessLocation = {
+  path: "~/.claude/skills/",
+  surfaces: ["skills"],
+  onDisk: true,
+  resources: [
+    row("skill", "alpha", "~/.claude/skills/alpha/SKILL.md"),
+    row("skill", "beta", "~/.claude/skills/beta/SKILL.md"),
+  ],
+};
+
+const SETTINGS: HarnessLocation = {
+  path: "~/.claude/settings.json",
+  surfaces: ["permissions", "hooks", "settings"],
+  onDisk: true,
+  resources: [
+    row("permission", "alpha-allow", "~/.claude/settings.json"),
+    row("hook", "lint", "~/.claude/settings.json"),
+  ],
+};
+
+const RULES: HarnessLocation = {
+  path: "~/.claude/rules/",
+  surfaces: ["rules"],
+  onDisk: false,
+  resources: [],
+};
+
+const CLAUDE_ENTRY = entry("claude-code", "detected", {
+  locations: [SKILLS, RULES, SETTINGS],
+});
+
+describe("selectionWith", () => {
+  const catalog = [CLAUDE_ENTRY, entry("cursor", "absent"), entry("codex", "detected")];
+
+  it("add on a null selection makes that harness main", () => {
+    expect(selectionWith(null, catalog, { kind: "add", id: CLAUDE })).toEqual({
+      kind: "changed",
+      next: { main: CLAUDE, aliases: [] },
+      added: [CLAUDE],
+      removed: [],
+      promotedMain: null,
+    });
+  });
+
+  it("a second add becomes an alias", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [] }, catalog, { kind: "add", id: CURSOR }),
+    ).toEqual({
+      kind: "changed",
+      next: { main: CLAUDE, aliases: [CURSOR] },
+      added: [CURSOR],
+      removed: [],
+      promotedMain: null,
+    });
+  });
+
+  it("adding a configured id is unchanged", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [CURSOR] }, catalog, { kind: "add", id: CURSOR }),
+    ).toEqual({ kind: "unchanged" });
+  });
+
+  it("removing main promotes the first alias", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [CURSOR, CODEX] }, catalog, {
+        kind: "remove",
+        id: CLAUDE,
+      }),
+    ).toEqual({
+      kind: "changed",
+      next: { main: CURSOR, aliases: [CODEX] },
+      added: [],
+      removed: [CLAUDE],
+      promotedMain: CURSOR,
+    });
+  });
+
+  it("removing an alias keeps main", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [CURSOR, CODEX] }, catalog, {
+        kind: "remove",
+        id: CODEX,
+      }),
+    ).toEqual({
+      kind: "changed",
+      next: { main: CLAUDE, aliases: [CURSOR] },
+      added: [],
+      removed: [CODEX],
+      promotedMain: null,
+    });
+  });
+
+  it("removing the only harness is rejected", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [] }, catalog, { kind: "remove", id: CLAUDE }),
+    ).toEqual({ kind: "rejected", reason: "would-empty" });
+  });
+
+  it("removing an unconfigured id is unchanged", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [] }, catalog, { kind: "remove", id: CURSOR }),
+    ).toEqual({ kind: "unchanged" });
+  });
+
+  it("rejects ids the catalog does not know", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [] }, catalog, { kind: "add", id: GOOSE }),
+    ).toEqual({ kind: "rejected", reason: "unknown-harness" });
+  });
+
+  it("make-main swaps roles and keeps alias order", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [CURSOR, CODEX] }, catalog, {
+        kind: "make-main",
+        id: CODEX,
+      }),
+    ).toEqual({
+      kind: "changed",
+      next: { main: CODEX, aliases: [CLAUDE, CURSOR] },
+      added: [],
+      removed: [],
+      promotedMain: null,
+    });
+  });
+
+  it("make-main on the current main is unchanged", () => {
+    expect(
+      selectionWith({ main: CLAUDE, aliases: [CURSOR] }, catalog, {
+        kind: "make-main",
+        id: CLAUDE,
+      }),
+    ).toEqual({ kind: "unchanged" });
+  });
+
+  it("apply-proposal can swap the sole harness in one change", () => {
+    expect(
+      selectionWith({ main: CURSOR, aliases: [] }, catalog, {
+        kind: "apply-proposal",
+        add: [CLAUDE],
+        remove: [CURSOR],
+      }),
+    ).toEqual({
+      kind: "changed",
+      next: { main: CLAUDE, aliases: [] },
+      added: [CLAUDE],
+      removed: [CURSOR],
+      promotedMain: CLAUDE,
+    });
+  });
+
+  it("apply-proposal that would empty the list is rejected", () => {
+    expect(
+      selectionWith({ main: CURSOR, aliases: [] }, catalog, {
+        kind: "apply-proposal",
+        add: [],
+        remove: [CURSOR],
+      }),
+    ).toEqual({ kind: "rejected", reason: "would-empty" });
+  });
+
+  it("is idempotent: the same change on its result is unchanged", () => {
+    const change = { kind: "apply-proposal", add: [CODEX], remove: [CURSOR] } as const;
+    const first = selectionWith({ main: CLAUDE, aliases: [CURSOR] }, catalog, change);
+    if (first.kind !== "changed") throw new Error(`expected changed, got ${first.kind}`);
+
+    expect(first.next).toEqual({ main: CLAUDE, aliases: [CODEX] });
+    expect(selectionWith(first.next, catalog, change)).toEqual({ kind: "unchanged" });
+  });
+});
+
+describe("detectProposal", () => {
+  it("adds detected unconfigured, removes configured absent, skips shared-only", () => {
+    const codex = entry("codex", "detected");
+    const cursor = entry("cursor", "absent");
+    const goose = entry("goose", "shared-only");
+    const inventory: HarnessInventory = {
+      selection: { main: CLAUDE, aliases: [CURSOR, GOOSE] },
+      catalog: [CLAUDE_ENTRY, cursor, codex, goose],
+    };
+
+    const proposal = detectProposal(inventory);
+
+    expect(proposal).toEqual({ add: [codex], remove: [cursor] });
+    expect([...defaultProposalChoice(proposal)]).toEqual([CODEX]);
+  });
+
+  it("is empty when saved harnesses match the disk", () => {
+    expect(
+      detectProposal({
+        selection: { main: CLAUDE, aliases: [] },
+        catalog: [CLAUDE_ENTRY, entry("cursor", "absent")],
+      }),
+    ).toEqual({ add: [], remove: [] });
+  });
+});
+
+describe("selection helpers", () => {
+  it("selectionFrom drops main and duplicates from aliases", () => {
+    expect(selectionFrom(CLAUDE, [CURSOR, CLAUDE, CURSOR, CODEX])).toEqual({
+      main: CLAUDE,
+      aliases: [CURSOR, CODEX],
+    });
+  });
+
+  it("configuredHarnesses follows saved order and drops unknown ids", () => {
+    const cursor = entry("cursor", "absent");
+    expect(
+      configuredHarnesses({
+        selection: { main: CURSOR, aliases: [GOOSE, CLAUDE] },
+        catalog: [CLAUDE_ENTRY, cursor],
+      }).map((item) => item.id),
+    ).toEqual([CURSOR, CLAUDE]);
+  });
+
+  it("availableHarnesses lists detected first, then supported, then registry order", () => {
+    const inventory: HarnessInventory = {
+      selection: { main: CLAUDE, aliases: [] },
+      catalog: [
+        CLAUDE_ENTRY,
+        entry("aider", "absent", { supported: false }),
+        entry("cursor", "absent"),
+        entry("zed", "detected", { supported: false }),
+        entry("codex", "detected"),
+      ],
+    };
+    expect(availableHarnesses(inventory).map((item) => item.id)).toEqual([
+      CODEX,
+      harnessId("zed"),
+      CURSOR,
+      harnessId("aider"),
+    ]);
+  });
+
+  it("canRemoveHarness blocks the sole harness", () => {
+    expect(canRemoveHarness({ main: CLAUDE, aliases: [] }, CLAUDE)).toEqual({
+      ok: false,
+      reason: "would-empty",
+    });
+    expect(canRemoveHarness({ main: CLAUDE, aliases: [CURSOR] }, CURSOR)).toEqual({ ok: true });
+    expect(canRemoveHarness({ main: CLAUDE, aliases: [] }, CURSOR)).toEqual({
+      ok: false,
+      reason: "not-configured",
+    });
+  });
+
+  it("removalCopy names the promoted harness when main is removed", () => {
+    const inventory: HarnessInventory = {
+      selection: { main: CLAUDE, aliases: [CURSOR] },
+      catalog: [
+        { ...CLAUDE_ENTRY, name: "Claude Code" },
+        { ...entry("cursor", "absent"), name: "Cursor" },
+      ],
+    };
+    expect(removalCopy(inventory, CLAUDE)).toEqual({
+      title: "Remove Claude Code?",
+      body: "Claude Code leaves your harness list. Files on disk stay. Cursor becomes the main harness.",
+    });
+    expect(removalCopy(inventory, CURSOR)).toEqual({
+      title: "Remove Cursor?",
+      body: "Cursor leaves your harness list. Files on disk stay.",
+    });
+  });
+
+  it("summarizes resources and on-disk locations", () => {
+    expect(harnessSummary(CLAUDE_ENTRY)).toBe("4 resources · 2 locations on disk");
+    expect(diskPresenceLabel("shared-only")).toBe("shared paths only");
+  });
+});
+
+describe("filterHarnessLocations", () => {
+  it("keeps every location, including empty ones, without a filter", () => {
+    const result = filterHarnessLocations(CLAUDE_ENTRY, "", null);
+    expect(result.locations.map((location) => location.path)).toEqual([
+      "~/.claude/skills/",
+      "~/.claude/rules/",
+      "~/.claude/settings.json",
+    ]);
+    expect([...result.typeCounts.entries()]).toEqual([
+      ["skill", 2],
+      ["permission", 1],
+      ["hook", 1],
+    ]);
+  });
+
+  it("searches first, counts the searched set, then applies the type tab", () => {
+    const result = filterHarnessLocations(CLAUDE_ENTRY, "alpha", "permission");
+    expect([...result.typeCounts.entries()]).toEqual([
+      ["skill", 1],
+      ["permission", 1],
+    ]);
+    expect(result.locations).toEqual([
+      {
+        ...SETTINGS,
+        resources: [row("permission", "alpha-allow", "~/.claude/settings.json")],
+      },
+    ]);
+  });
+
+  it("supports type:name search and drops empty locations while filtering", () => {
+    const result = filterHarnessLocations(CLAUDE_ENTRY, "skill:beta", null);
+    expect(result.locations).toEqual([
+      { ...SKILLS, resources: [row("skill", "beta", "~/.claude/skills/beta/SKILL.md")] },
+    ]);
+  });
+
+  it("previews five rows until expanded", () => {
+    const many: HarnessLocation = {
+      ...SKILLS,
+      resources: ["a", "b", "c", "d", "e", "f", "g"].map((name) =>
+        row("skill", name, `~/.claude/skills/${name}/SKILL.md`),
+      ),
+    };
+    expect(visibleLocationRows(many, false).map((item) => item.name)).toEqual([
+      "a", "b", "c", "d", "e",
+    ]);
+    expect(visibleLocationRows(many, true).length).toBe(7);
+  });
+
+  it("builds a resource detail target from the library id and source", () => {
+    expect(resourceDetailTargetFor(row("skill", "alpha", "~/.claude/skills/alpha/SKILL.md"))).toEqual({
+      kind: "resource",
+      selector: "skill-alpha",
+      label: "alpha",
+      pathHint: "~/.claude/skills/alpha/SKILL.md",
+    });
+    expect(resourceDetailTargetFor({ ...row("skill", "alpha", "~/x"), id: "" }).selector).toBe(
+      "skill:alpha",
+    );
+  });
+});
+
+describe("parseHarnessInventory", () => {
+  it("mints ids, maps wire fields, and drops aliases the catalog does not know", () => {
+    expect(
+      parseHarnessInventory({
+        global: { main_harness: "claude-code", alias_harnesses: ["ghost", "cursor"] },
+        root: "/home/tester",
+        harnesses: [
+          {
+            id: "claude-code",
+            name: "Claude Code",
+            supported: true,
+            supports: ["skills"],
+            disk: "detected",
+            locations: [
+              {
+                path: "~/.claude/skills/",
+                surfaces: ["skills"],
+                on_disk: true,
+                resources: [
+                  {
+                    id: "r1",
+                    type: "skill",
+                    name: "alpha",
+                    description: "A",
+                    source: "~/.claude/skills/alpha/SKILL.md",
+                  },
+                ],
+              },
+            ],
+          },
+          { id: "cursor", name: "Cursor", supported: true, supports: [], disk: "absent", locations: [] },
+        ],
+      }),
+    ).toEqual({
+      selection: { main: CLAUDE, aliases: [CURSOR] },
+      catalog: [
+        {
+          id: CLAUDE,
+          name: "Claude Code",
+          supported: true,
+          supports: ["skills"],
+          disk: "detected",
+          locations: [
+            {
+              path: "~/.claude/skills/",
+              surfaces: ["skills"],
+              onDisk: true,
+              resources: [
+                {
+                  id: "r1",
+                  type: "skill",
+                  name: "alpha",
+                  description: "A",
+                  source: "~/.claude/skills/alpha/SKILL.md",
+                },
+              ],
+            },
+          ],
+        },
+        { id: CURSOR, name: "Cursor", supported: true, supports: [], disk: "absent", locations: [] },
+      ],
+    });
+  });
+
+  it("returns a null selection when no main is saved", () => {
+    expect(
+      parseHarnessInventory({
+        global: { main_harness: null, alias_harnesses: [] },
+        root: "/home/tester",
+        harnesses: [],
+      }),
+    ).toEqual({ selection: null, catalog: [] });
+  });
+
+  it("rejects a body with an unknown disk value", () => {
+    expect(() =>
+      parseHarnessInventory({
+        global: { main_harness: null, alias_harnesses: [] },
+        harnesses: [{ id: "x", name: "X", supported: false, supports: [], disk: "maybe" }],
+      }),
+    ).toThrow("Harness inventory is malformed: disk maybe");
+  });
+});
+
+describe("harnessesViewReducer", () => {
+  const inventory: HarnessInventory = {
+    selection: { main: CLAUDE, aliases: [CURSOR] },
+    catalog: [CLAUDE_ENTRY, entry("cursor", "absent")],
+  };
+  const target = resourceDetailTargetFor(SKILLS.resources[0] as HarnessResourceRow);
+
+  it("starts on the main harness with the inventory pane", () => {
+    expect(initialHarnessesViewState(inventory)).toEqual({
+      selectedId: CLAUDE,
+      pane: { mode: "inventory" },
+      search: "",
+      typeTab: null,
+      editing: false,
+      expandedLocations: new Set(),
+    });
+  });
+
+  it("entering edit closes the detail pane", () => {
+    const state = harnessesViewReducer(initialHarnessesViewState(inventory), {
+      type: "open-detail",
+      target,
+    });
+    expect(harnessesViewReducer(state, { type: "toggle-edit" })).toEqual({
+      ...state,
+      editing: true,
+      pane: { mode: "inventory" },
+    });
+  });
+
+  it("select switches harness, returns to inventory, and clears expansions", () => {
+    let state = initialHarnessesViewState(inventory);
+    state = harnessesViewReducer(state, { type: "expand-location", path: SKILLS.path });
+    state = harnessesViewReducer(state, { type: "search", value: "alpha" });
+    state = harnessesViewReducer(state, { type: "open-detail", target });
+    expect(harnessesViewReducer(state, { type: "select", id: CURSOR })).toEqual({
+      selectedId: CURSOR,
+      pane: { mode: "inventory" },
+      search: "alpha",
+      typeTab: null,
+      editing: false,
+      expandedLocations: new Set(),
+    });
+  });
+
+  it("falls back to main when the selected harness leaves the selection", () => {
+    const state = { ...initialHarnessesViewState(inventory), selectedId: CURSOR };
+    expect(
+      harnessesViewReducer(state, {
+        type: "inventory-loaded",
+        inventory: { ...inventory, selection: { main: CLAUDE, aliases: [] } },
+      }).selectedId,
+    ).toBe(CLAUDE);
+  });
+
+  it("reset returns to the entrypoint", () => {
+    let state = initialHarnessesViewState(inventory);
+    state = harnessesViewReducer(state, { type: "select", id: CURSOR });
+    state = harnessesViewReducer(state, { type: "type-tab", value: "skill" });
+    state = harnessesViewReducer(state, { type: "toggle-edit" });
+    expect(harnessesViewReducer(state, { type: "reset", inventory })).toEqual(
+      initialHarnessesViewState(inventory),
+    );
+  });
+});
