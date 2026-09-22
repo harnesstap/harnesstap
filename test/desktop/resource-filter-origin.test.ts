@@ -172,14 +172,14 @@ describe("library origin filter chrome", () => {
     expect(designSource).toContain("Library, Global/Project inventory");
   });
 
-  test("Library keeps the All tab; Global/Project inventory keeps All with empty types in a trailing pill", () => {
+  test("Library keeps the All tab; Global/Project inventory keeps All with empty types disabled", () => {
     expect(tabsSource).toContain("includeAll = true");
     expect(panelSource).toContain("<ResourceTypeTabs");
     expect(panelSource).not.toContain("includeAll={false}");
     expect(compositionSource).toContain("<ResourceTypeTabs");
     expect(compositionSource).not.toContain("includeAll={false}");
     expect(liveStateSource).toContain("includeAll={true}");
-    expect(liveStateSource).toContain("emptyMode=\"hide\"");
+    expect(liveStateSource).toContain("emptyMode=\"disable\"");
   });
 
   test("renders origin as a radio list, not a combobox", () => {

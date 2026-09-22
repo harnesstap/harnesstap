@@ -5,8 +5,6 @@ import {
   applyOptimisticInventoryMoves,
   collectTypeTabAttention,
   countInventoryTypeTabs,
-  emptyInventoryTypeTabs,
-  emptyTypesPillLabel,
   filterProfileInventoryItems,
   inventoryMembershipCaption,
   partitionProfileInventory,
@@ -405,22 +403,6 @@ describe("profileInventoryOpenTarget", () => {
       },
     });
     expect(pin.kind).toBe("resource");
-  });
-});
-
-describe("empty inventory type pills", () => {
-  it("lists zero-count real types and formats +N empty", () => {
-    const counts = new Map([
-      ["plugin", 2],
-      ["skill", 0],
-      ["mcp_server", 0],
-    ]);
-    const empty = emptyInventoryTypeTabs(counts);
-    expect(empty).toContain("skill");
-    expect(empty).toContain("mcp_server");
-    expect(empty).not.toContain("plugin");
-    expect(empty).not.toContain("plugin_ref");
-    expect(emptyTypesPillLabel(empty.length)).toBe(`+${empty.length} empty`);
   });
 });
 

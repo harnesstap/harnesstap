@@ -3,8 +3,6 @@ import {
   ALL_RESOURCE_TYPE_TAB,
   countResourceTypeTabs,
   foldResourceTypeTab,
-  RESOURCE_TYPE_TAB_ORDER,
-  resourceTypeTabLabel,
   type TypeTabAttention,
 } from "./resource-type-tabs";
 import type { ProfileResourceListRow } from "./contents-diff";
@@ -300,26 +298,6 @@ export function collectTypeTabAttention(
     byType.set(ALL_RESOURCE_TYPE_TAB, all);
   }
   return byType;
-}
-
-/** Canonical real types with a zero count (plugin refs stay hidden). */
-export function emptyInventoryTypeTabs(
-  counts: ReadonlyMap<string, number>,
-): string[] {
-  return RESOURCE_TYPE_TAB_ORDER.filter((type) => {
-    if (type === "plugin_ref") {
-      return false;
-    }
-    return (counts.get(type) ?? 0) <= 0;
-  });
-}
-
-export function emptyTypesPillLabel(count: number): string {
-  return `+${count} empty`;
-}
-
-export function emptyTypesPillTooltip(types: readonly string[]): string {
-  return types.map((type) => resourceTypeTabLabel(type)).join(", ");
 }
 
 export function applyOptimisticInventoryMoves(
