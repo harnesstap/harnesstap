@@ -538,6 +538,27 @@ export interface HostManagedPaths {
   skills?: string;
 }
 
+/**
+ * Extra home paths this harness reads that are not its native `globalPaths`
+ * (another harness's tree, or a shared convention such as `~/.agents/`).
+ * Inventory-only — never applied, persisted, or used for detection.
+ */
+export interface RelatedPlatformLocation {
+  path: string;
+  surfaces: Array<
+    | "instructions"
+    | "skills"
+    | "rules"
+    | "mcp"
+    | "permissions"
+    | "hooks"
+    | "agents"
+    | "commands"
+    | "settings"
+    | "plugins"
+  >;
+}
+
 export interface PlatformDefinition {
   id: string;
   name: string;
@@ -551,6 +572,8 @@ export interface PlatformDefinition {
    * Surfaced for discovery/status only — excluded from scan persist and apply.
    */
   hostManagedPaths?: HostManagedPaths;
+  /** Cross-harness or shared home paths shown on the Harnesses inventory. */
+  relatedLocations?: readonly RelatedPlatformLocation[];
 }
 
 /** @deprecated Use PluginOrigin */

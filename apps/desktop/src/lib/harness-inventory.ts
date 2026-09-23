@@ -20,6 +20,8 @@ export type HarnessRole = "main" | "alias";
 
 export type DiskPresence = "detected" | "shared-only" | "absent";
 
+export type LocationRelation = "native" | "shared" | "host-managed" | "related";
+
 export type RegistryPathKey =
   | "instructions"
   | "skills"
@@ -46,6 +48,9 @@ export interface HarnessLocation {
   readonly path: string;
   readonly surfaces: readonly RegistryPathKey[];
   readonly onDisk: boolean;
+  readonly relation: LocationRelation;
+  /** Owning harness display name when `relation` is `related`. */
+  readonly relatedFrom: string | null;
   readonly resources: readonly HarnessResourceRow[];
 }
 
@@ -205,6 +210,23 @@ export function diskPresenceLabel(disk: DiskPresence): string {
       return "not on disk";
     default: {
       const exhaustive: never = disk;
+      return exhaustive;
+    }
+  }
+}
+
+export function locationRelationLabel(location: HarnessLocation): string | null {
+  switch (location.relation) {
+    case "native":
+      return null;
+    case "shared":
+      return "shared";
+    case "host-managed":
+      return "app-managed";
+    case "related":
+      return location.relatedFrom ? `also ${location.relatedFrom}` : "related";
+    default: {
+      const exhaustive: never = location.relation;
       return exhaustive;
     }
   }

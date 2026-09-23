@@ -13,6 +13,7 @@ import {
   harnessId,
   harnessSummary,
   initialHarnessesViewState,
+  locationRelationLabel,
   removalCopy,
   resourceDetailTargetFor,
   selectionFrom,
@@ -49,32 +50,44 @@ function entry(
   };
 }
 
-const SKILLS: HarnessLocation = {
-  path: "~/.claude/skills/",
-  surfaces: ["skills"],
-  onDisk: true,
-  resources: [
+function location(
+  path: string,
+  surfaces: HarnessLocation["surfaces"],
+  onDisk: boolean,
+  resources: readonly HarnessResourceRow[],
+  extra: Partial<Pick<HarnessLocation, "relation" | "relatedFrom">> = {},
+): HarnessLocation {
+  return {
+    path,
+    surfaces,
+    onDisk,
+    relation: extra.relation ?? "native",
+    relatedFrom: extra.relatedFrom ?? null,
+    resources,
+  };
+}
+
+const SKILLS: HarnessLocation = location(
+  "~/.claude/skills/",
+  ["skills"],
+  true,
+  [
     row("skill", "alpha", "~/.claude/skills/alpha/SKILL.md"),
     row("skill", "beta", "~/.claude/skills/beta/SKILL.md"),
   ],
-};
+);
 
-const SETTINGS: HarnessLocation = {
-  path: "~/.claude/settings.json",
-  surfaces: ["permissions", "hooks", "settings"],
-  onDisk: true,
-  resources: [
+const SETTINGS: HarnessLocation = location(
+  "~/.claude/settings.json",
+  ["permissions", "hooks", "settings"],
+  true,
+  [
     row("permission", "alpha-allow", "~/.claude/settings.json"),
     row("hook", "lint", "~/.claude/settings.json"),
   ],
-};
+);
 
-const RULES: HarnessLocation = {
-  path: "~/.claude/rules/",
-  surfaces: ["rules"],
-  onDisk: false,
-  resources: [],
-};
+const RULES: HarnessLocation = location("~/.claude/rules/", ["rules"], false, []);
 
 const CLAUDE_ENTRY = entry("claude-code", "detected", {
   locations: [SKILLS, RULES, SETTINGS],
@@ -331,6 +344,30 @@ describe("selection helpers", () => {
     expect(harnessSummary(CLAUDE_ENTRY)).toBe("4 resources · 2 locations on disk");
     expect(diskPresenceLabel("shared-only")).toBe("shared paths only");
   });
+
+  it("labels related, shared, and app-managed locations", () => {
+    expect(locationRelationLabel(SKILLS)).toBeNull();
+    expect(
+      locationRelationLabel(
+        location("~/.agents/skills/", ["skills"], true, [], { relation: "shared" }),
+      ),
+    ).toBe("shared");
+    expect(
+      locationRelationLabel(
+        location("~/.cursor/skills-cursor/", ["skills"], true, [], {
+          relation: "host-managed",
+        }),
+      ),
+    ).toBe("app-managed");
+    expect(
+      locationRelationLabel(
+        location("~/.claude/plugins/", ["plugins"], true, [], {
+          relation: "related",
+          relatedFrom: "Claude Code",
+        }),
+      ),
+    ).toBe("also Claude Code");
+  });
 });
 
 describe("filterHarnessLocations", () => {
@@ -442,6 +479,8 @@ describe("parseHarnessInventory", () => {
               path: "~/.claude/skills/",
               surfaces: ["skills"],
               onDisk: true,
+              relation: "native",
+              relatedFrom: null,
               resources: [
                 {
                   id: "r1",

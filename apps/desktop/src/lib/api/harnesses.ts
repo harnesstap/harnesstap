@@ -7,6 +7,7 @@ import {
   type HarnessLocation,
   type HarnessResourceRow,
   type HarnessSelection,
+  type LocationRelation,
   type RegistryPathKey,
 } from "../harness-inventory";
 import { AgentApiError, agentFetch, throwAgentError } from "./http";
@@ -23,6 +24,12 @@ const REGISTRY_PATH_KEYS = new Set<string>([
   "commands",
   "settings",
   "plugins",
+]);
+const LOCATION_RELATIONS = new Set<string>([
+  "native",
+  "shared",
+  "host-managed",
+  "related",
 ]);
 
 function malformed(detail: string): AgentApiError {
@@ -67,10 +74,20 @@ function parseLocation(value: unknown): HarnessLocation {
     (key): key is RegistryPathKey =>
       typeof key === "string" && REGISTRY_PATH_KEYS.has(key),
   );
+  const relationValue = record.relation;
+  const relation: LocationRelation =
+    typeof relationValue === "string" && LOCATION_RELATIONS.has(relationValue)
+      ? (relationValue as LocationRelation)
+      : "native";
   return {
     path: asString(record.path, "location path"),
     surfaces,
     onDisk: record.on_disk === true,
+    relation,
+    relatedFrom:
+      typeof record.related_from === "string" && record.related_from.length > 0
+        ? record.related_from
+        : null,
     resources: asArray(record.resources, "location resources").map(parseResource),
   };
 }

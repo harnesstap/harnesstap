@@ -1,6 +1,7 @@
 import { UnfoldVertical } from "lucide-react";
 import {
   visibleLocationRows,
+  locationRelationLabel,
   type HarnessLocation,
   type HarnessResourceRow,
 } from "../../lib/harness-inventory";
@@ -48,6 +49,7 @@ export function HarnessLocationPanel({
 }: HarnessLocationPanelProps) {
   const rows = visibleLocationRows(location, expanded);
   const total = location.resources.length;
+  const relationLabel = locationRelationLabel(location);
 
   return (
     <section
@@ -60,6 +62,11 @@ export function HarnessLocationPanel({
         <span className="harness-location-meta muted">
           <span className="harness-location-surfaces">{location.surfaces.join(", ")}</span>
           <span className="badge pill inventory-section-count">{total}</span>
+          {relationLabel ? (
+            <span className="harness-location-relation" data-testid="harness-location-relation">
+              {relationLabel}
+            </span>
+          ) : null}
           {!location.onDisk ? (
             <span className="harness-location-absent">not on disk</span>
           ) : null}
@@ -77,7 +84,7 @@ export function HarnessLocationPanel({
                   className="harness-resource-row"
                   disabled={disabled}
                   testId={`harness-resource-${row.name}`}
-                  onActivate={() => onOpen(row)}
+                  onActivate={row.id ? () => onOpen(row) : undefined}
                 >
                   <ResourceRowLeading>
                     <TypeIcon type={row.type} />

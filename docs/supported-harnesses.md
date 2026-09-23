@@ -210,7 +210,7 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **minimax-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`) | `.minimax/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | project `.mcp.json`; user `~/.minimax/mcp.json` | — | — | `~/.minimax/config.yaml` (not rewritten) |
 | **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
 
-Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) but never imports or applies them.
+Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) and on Desktop **Harnesses** (app-managed panel) but never imports or applies them. Cursor plugin installs live under `~/.cursor/plugins/`. Desktop Harnesses also lists related trees Cursor can read: Claude `~/.claude/plugins/` and `~/.claude/skills/`, plus the shared `~/.agents/skills/` hub from the project `.agents/skills/` convention.
 
 Copilot CLI home state lives under `~/.copilot/`. Detection uses `~/.copilot/settings.json` and `~/.copilot/installed-plugins/` in addition to `~/.copilot/skills/` and `~/.copilot/mcp-config.json`. Installed plugins are imported as pins from `~/.copilot/installed-plugins/<marketplace>/<plugin>/`.
 
