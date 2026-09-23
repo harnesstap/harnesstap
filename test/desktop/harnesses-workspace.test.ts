@@ -47,6 +47,8 @@ describe("Harnesses workspace sidebar width", () => {
     expect(sidebar).toContain("width: max-content");
     expect(sidebar).toContain("max-width: 16rem");
     expect(sidebar).toContain("min-width: 11rem");
+    const empty = cssBlock(stylesSource, ".harness-list-sidebar .empty-state");
+    expect(empty).toContain("max-width: 11rem");
   });
 
   it("paints selected and hover chrome across the reserved trash slot", () => {
