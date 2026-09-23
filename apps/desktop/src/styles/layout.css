@@ -222,13 +222,19 @@
 }
 
 .resources-panel-layout {
+  --resources-sidebar-track: 220px;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: var(--resources-sidebar-track) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   flex: 1;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+}
+
+/* Harness rows are short names + a reserved trash slot; do not use the 220px filter track. */
+.resources-panel-layout.harnesses-workspace-layout {
+  --resources-sidebar-track: minmax(11rem, max-content);
 }
 
 @media (max-width: 720px) {
