@@ -3,6 +3,7 @@ import { parseHarnessInventory } from "../../apps/desktop/src/lib/api/harnesses.
 import {
   availableHarnesses,
   canRemoveHarness,
+  harnessSupportsLabel,
   configuredHarnesses,
   defaultProposalChoice,
   detectProposal,
@@ -262,23 +263,38 @@ describe("selection helpers", () => {
     ).toEqual([CURSOR, CLAUDE]);
   });
 
-  it("availableHarnesses lists detected first, then supported, then registry order", () => {
+  it("availableHarnesses lists detected first, then names", () => {
+    const named = (
+      id: string,
+      disk: DiskPresence,
+      name: string,
+      options: { supported?: boolean } = {},
+    ): HarnessEntry => ({ ...entry(id, disk, options), name });
     const inventory: HarnessInventory = {
       selection: { main: CLAUDE, aliases: [] },
       catalog: [
         CLAUDE_ENTRY,
-        entry("aider", "absent", { supported: false }),
-        entry("cursor", "absent"),
-        entry("zed", "detected", { supported: false }),
-        entry("codex", "detected"),
+        named("zed", "absent", "Zed"),
+        named("cursor", "absent", "Cursor"),
+        named("warp", "detected", "Warp"),
+        named("codex", "detected", "Codex"),
+        named("aider", "detected", "Aider", { supported: false }),
       ],
     };
-    expect(availableHarnesses(inventory).map((item) => item.id)).toEqual([
-      CODEX,
-      harnessId("zed"),
-      CURSOR,
-      harnessId("aider"),
+    expect(availableHarnesses(inventory).map((item) => item.name)).toEqual([
+      "Aider",
+      "Codex",
+      "Warp",
+      "Cursor",
+      "Zed",
     ]);
+  });
+
+  it("harnessSupportsLabel uses ResourceTypeTabs short names", () => {
+    expect(harnessSupportsLabel(["skills", "mcp", "agents", "env_vars"])).toBe(
+      "Skills, MCPs, Subagents, Env vars",
+    );
+    expect(harnessSupportsLabel([])).toBe("");
   });
 
   it("canRemoveHarness blocks the sole harness", () => {

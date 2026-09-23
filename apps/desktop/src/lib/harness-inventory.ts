@@ -3,6 +3,7 @@ import { filterLibraryResourcesBySearch } from "./resource-search";
 import {
   countResourceTypeTabs,
   foldResourceTypeTab,
+  resourceTypeTabLabel,
   type TypeTabAttention,
 } from "./resource-type-tabs";
 import type { LibraryResource } from "./types";
@@ -120,11 +121,15 @@ export function configuredHarnesses(
     .filter((entry): entry is HarnessEntry => entry !== null);
 }
 
-function availabilityRank(entry: HarnessEntry): number {
-  return (entry.disk === "detected" ? 0 : 2) + (entry.supported ? 0 : 1);
+function isDetected(entry: HarnessEntry): boolean {
+  return entry.disk === "detected";
 }
 
-/** Add-modal rows: catalog minus configured. Detected first, then supported, then registry order. */
+function compareHarnessName(a: HarnessEntry, b: HarnessEntry): number {
+  return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) || a.id.localeCompare(b.id);
+}
+
+/** Add-modal rows: catalog minus configured. Detected first, then name. */
 export function availableHarnesses(
   inventory: HarnessInventory | null,
 ): readonly HarnessEntry[] {
@@ -132,12 +137,43 @@ export function availableHarnesses(
   const configured = new Set(selectionIds(inventory.selection));
   return inventory.catalog
     .filter((entry) => !configured.has(entry.id))
-    .map((entry, index) => ({ entry, index }))
-    .sort(
-      (a, b) =>
-        availabilityRank(a.entry) - availabilityRank(b.entry) || a.index - b.index,
-    )
-    .map(({ entry }) => entry);
+    .sort((a, b) => {
+      const detectedDelta = Number(isDetected(b)) - Number(isDetected(a));
+      if (detectedDelta !== 0) return detectedDelta;
+      return compareHarnessName(a, b);
+    });
+}
+
+/** Platform feature ids → ResourceTypeTabs short labels, registry order preserved. */
+export function harnessSupportsLabel(supports: readonly string[]): string {
+  return supports.map((feature) => resourceTypeTabLabel(platformFeatureTabId(feature))).join(", ");
+}
+
+function platformFeatureTabId(feature: string): string {
+  switch (feature) {
+    case "instructions":
+      return "instruction";
+    case "skills":
+      return "skill";
+    case "rules":
+      return "rule";
+    case "mcp":
+      return "mcp_server";
+    case "permissions":
+      return "permission";
+    case "hooks":
+      return "hook";
+    case "agents":
+      return "agent";
+    case "commands":
+      return "command";
+    case "env_vars":
+      return "env_var";
+    case "model_config":
+      return "model_config";
+    default:
+      return feature;
+  }
 }
 
 export function defaultSelectedHarness(

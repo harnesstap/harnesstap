@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { diskPresenceLabel, type HarnessEntry, type HarnessId } from "../../lib/harness-inventory";
+import { harnessSupportsLabel, type HarnessEntry, type HarnessId } from "../../lib/harness-inventory";
 import { visibleHarnesses } from "../../lib/harness-settings-form";
 import { useOverlayLayer } from "../../state/overlay-stack";
 import { HarnessIcon } from "../HarnessIcons";
@@ -15,24 +15,13 @@ const ROW_ICON_SIZE = 18;
 
 export interface AddHarnessModalProps {
   open: boolean;
-  /** `availableHarnesses(inventory)`: catalog minus configured, detected first. */
+  /** `availableHarnesses(inventory)`: catalog minus configured, detected first, then name. */
   rows: readonly HarnessEntry[];
   busy: boolean;
   disabled?: boolean;
   onClose: () => void;
   /** Single pick, immediate add. */
   onPick: (id: HarnessId) => void;
-}
-
-function rowMeta(entry: HarnessEntry): string {
-  const parts: string[] = [];
-  if (entry.disk !== "absent") {
-    parts.push(diskPresenceLabel(entry.disk));
-  }
-  if (!entry.supported) {
-    parts.push("path-based mirroring");
-  }
-  return parts.join(" · ");
 }
 
 export function AddHarnessModal({
@@ -109,7 +98,7 @@ export function AddHarnessModal({
           ) : (
             <ul className="resource-type-list" aria-label="Available harnesses">
               {visible.map((entry) => {
-                const meta = rowMeta(entry);
+                const meta = harnessSupportsLabel(entry.supports);
                 return (
                   <li key={entry.id}>
                     <button
