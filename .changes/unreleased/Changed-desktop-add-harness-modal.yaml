@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Add harness dialog lists detected harnesses first then names, and shows supported resource types instead of on-disk or path-based-mirroring copy.
+time: 2026-09-23T06:40:00Z
+custom:
+  Issue: ""
