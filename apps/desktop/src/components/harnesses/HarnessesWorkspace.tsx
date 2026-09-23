@@ -384,7 +384,7 @@ export function HarnessesWorkspace({
         />
       ) : null}
 
-      <div className="resources-panel-layout">
+      <div className="resources-panel-layout harnesses-workspace-layout">
         <HarnessSidebar
           rows={rows}
           selection={selection}
