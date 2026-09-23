@@ -1,13 +1,15 @@
 import { existsSync } from "node:fs";
 import { isAbsolute, relative, sep } from "node:path";
 import { listResources } from "../models/resource.js";
-import { getPlatform } from "../platforms/registry.js";
-import {
-  MATERIAL_RESOURCE_TYPES,
-  type PlatformPaths,
-  type Resource,
+import { getAllPlatforms, getPlatform } from "../platforms/registry.js";
+import type {
+  PlatformDefinition,
+  PlatformPaths,
+  RelatedPlatformLocation,
+  Resource,
 } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { scanCursorHostManagedSkills } from "./cursor-host-managed-skills.js";
 import {
   getHarnessSettings,
   type HarnessCatalogEntry,
@@ -37,6 +39,8 @@ export type RegistryPathKey = (typeof REGISTRY_PATH_KEYS)[number];
 
 export type HarnessDiskPresence = "detected" | "shared-only" | "absent";
 
+export type LocationRelation = "native" | "shared" | "host-managed" | "related";
+
 export interface HarnessLocationResource {
   id: string;
   type: string;
@@ -50,6 +54,10 @@ export interface HarnessLocationEntry {
   path: string;
   surfaces: RegistryPathKey[];
   on_disk: boolean;
+  /** How this path relates to the harness. Native paths omit extra labels. */
+  relation: LocationRelation;
+  /** Display name of the owning harness when `relation` is `related`. */
+  related_from?: string;
   resources: HarnessLocationResource[];
 }
 
@@ -71,6 +79,11 @@ export interface PlatformLocation {
   surfaces: RegistryPathKey[];
   /** `legacy_*` and `pathAlternates` for the same keys. Match-only, never a panel. */
   alternates: string[];
+}
+
+export interface InventoryPlatformLocation extends PlatformLocation {
+  relation: LocationRelation;
+  relatedFrom?: string;
 }
 
 const LEGACY_KEYS: Record<"legacy_instructions" | "legacy_rules", RegistryPathKey> = {
@@ -126,6 +139,138 @@ export function locationsForPlatform(paths: PlatformPaths): PlatformLocation[] {
     for (const alternate of alternates) {
       addAlternate(key, alternate);
     }
+  }
+
+  return locations;
+}
+
+function nativePathOwners(): Map<string, string[]> {
+  const owners = new Map<string, string[]>();
+  for (const platform of getAllPlatforms()) {
+    for (const location of locationsForPlatform(platform.globalPaths)) {
+      const list = owners.get(location.path) ?? [];
+      list.push(platform.id);
+      owners.set(location.path, list);
+    }
+  }
+  return owners;
+}
+
+function classifyRelatedPath(
+  path: string,
+  platformId: string,
+  owners: Map<string, string[]>,
+): { relation: LocationRelation; relatedFrom?: string } {
+  if (path.startsWith("~/.agents/")) {
+    return { relation: "shared" };
+  }
+  const others = (owners.get(path) ?? []).filter((id) => id !== platformId);
+  if (others.length === 1) {
+    const ownerId = others[0];
+    const owner = ownerId ? getPlatform(ownerId) : undefined;
+    return {
+      relation: "related",
+      relatedFrom: owner?.name ?? ownerId,
+    };
+  }
+  if (others.length > 1) {
+    return { relation: "shared" };
+  }
+  return { relation: "related" };
+}
+
+function visitConfiguredPaths(
+  paths: PlatformPaths,
+  visit: (key: RegistryPathKey, value: string) => void,
+): void {
+  for (const [key, value] of Object.entries(paths)) {
+    if (!isRegistryPathKey(key) || typeof value !== "string" || !value) continue;
+    visit(key, value);
+  }
+  for (const [key, alternates] of Object.entries(paths.pathAlternates ?? {})) {
+    if (!isRegistryPathKey(key) || !alternates) continue;
+    for (const alternate of alternates) {
+      visit(key, alternate);
+    }
+  }
+}
+
+function hostManagedPlatformPaths(
+  platform: PlatformDefinition,
+): PlatformPaths | null {
+  const skills = platform.hostManagedPaths?.skills;
+  if (!skills) return null;
+  return { skills };
+}
+
+function relatedLocationSurfaces(
+  location: RelatedPlatformLocation,
+): RegistryPathKey[] {
+  return location.surfaces.filter((surface): surface is RegistryPathKey =>
+    isRegistryPathKey(surface),
+  );
+}
+
+/**
+ * Native global paths, then host-managed, shared `~/.agents/` hubs inferred
+ * from project paths, then explicit related locations. Detection still uses
+ * native `globalPaths` only.
+ */
+export function inventoryLocationsForPlatform(
+  platform: PlatformDefinition,
+  owners = nativePathOwners(),
+): InventoryPlatformLocation[] {
+  const locations: InventoryPlatformLocation[] = locationsForPlatform(
+    platform.globalPaths,
+  ).map((location) => ({ ...location, relation: "native" }));
+  const seen = new Set(locations.map((location) => location.path));
+
+  const push = (
+    path: string,
+    surfaces: RegistryPathKey[],
+    relation: LocationRelation,
+    relatedFrom?: string,
+    alternates: string[] = [],
+  ): void => {
+    if (!path || seen.has(path) || surfaces.length === 0) return;
+    seen.add(path);
+    locations.push({
+      path,
+      surfaces,
+      alternates,
+      relation,
+      ...(relatedFrom ? { relatedFrom } : {}),
+    });
+  };
+
+  const hostPaths = hostManagedPlatformPaths(platform);
+  if (hostPaths) {
+    for (const location of locationsForPlatform(hostPaths)) {
+      push(
+        location.path,
+        location.surfaces,
+        "host-managed",
+        undefined,
+        location.alternates,
+      );
+    }
+  }
+
+  visitConfiguredPaths(platform.projectPaths, (key, value) => {
+    if (!value.startsWith(".agents/")) return;
+    const hub = `~/${value}`;
+    const classified = classifyRelatedPath(hub, platform.id, owners);
+    push(hub, [key], classified.relation, classified.relatedFrom);
+  });
+
+  for (const related of platform.relatedLocations ?? []) {
+    const classified = classifyRelatedPath(related.path, platform.id, owners);
+    push(
+      related.path,
+      relatedLocationSurfaces(related),
+      classified.relation,
+      classified.relatedFrom,
+    );
   }
 
   return locations;
@@ -251,8 +396,80 @@ function toLocationResource(resource: Resource): HarnessLocationResource {
   };
 }
 
+function isHomeInventoryRow(resource: Resource, homeRoot: string): boolean {
+  if (homeRelativeSegments(resource.source, homeRoot) === null) {
+    return false;
+  }
+  const origin = resource.origin_ref ?? "";
+  if (!origin || origin === homeRoot || !isAbsolute(origin)) {
+    return true;
+  }
+  const fromHome = relative(homeRoot, origin);
+  if (!fromHome || isAbsolute(fromHome) || fromHome.split(sep).includes("..")) {
+    return false;
+  }
+  return true;
+}
+
 function byName(a: HarnessLocationResource, b: HarnessLocationResource): number {
   return a.name.localeCompare(b.name) || a.type.localeCompare(b.type);
+}
+
+function existingConfiguredPaths(
+  location: Pick<PlatformLocation, "path" | "alternates">,
+  homeRoot: string,
+): string[] {
+  return [location.path, ...location.alternates].filter((path) =>
+    existsSync(resolveConfiguredPath(homeRoot, path)),
+  );
+}
+
+function toLocationEntry(
+  location: InventoryPlatformLocation,
+  existingPaths: readonly string[],
+  resources: readonly HarnessLocationResource[],
+): HarnessLocationEntry {
+  return {
+    path: location.path,
+    surfaces: location.surfaces,
+    on_disk: existingPaths.length > 0,
+    relation: location.relation,
+    ...(location.relatedFrom ? { related_from: location.relatedFrom } : {}),
+    resources: [...resources].sort(byName),
+  };
+}
+
+function hostManagedSkillRows(
+  platform: PlatformDefinition,
+  location: InventoryPlatformLocation,
+  homeRoot: string,
+): HarnessLocationResource[] {
+  if (location.relation !== "host-managed" || platform.id !== "cursor") {
+    return [];
+  }
+  if (!location.surfaces.includes("skills")) return [];
+  return scanCursorHostManagedSkills(homeRoot).map((skill) => ({
+    id: "",
+    type: "skill",
+    name: skill.name,
+    description: skill.description,
+    source: skill.source,
+  }));
+}
+
+function mergeLocationResources(
+  libraryRows: readonly HarnessLocationResource[],
+  extraRows: readonly HarnessLocationResource[],
+): HarnessLocationResource[] {
+  const seen = new Set(libraryRows.map((row) => `${row.type}:${row.name}:${row.source}`));
+  const merged = [...libraryRows];
+  for (const row of extraRows) {
+    const key = `${row.type}:${row.name}:${row.source}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+  }
+  return merged;
 }
 
 export function getHarnessInventory(
@@ -268,30 +485,29 @@ export function getHarnessInventory(
     detectHomePlatforms(homeRoot).map((entry) => entry.platformId),
   );
   const sharedGlobalPaths = buildSharedGlobalPathSet();
-  const materialTypes = new Set<string>(MATERIAL_RESOURCE_TYPES);
-  const homeRows = listResources().filter(
-    (resource) =>
-      resource.origin_ref === homeRoot && materialTypes.has(resource.type),
+  const owners = nativePathOwners();
+  const homeRows = listResources().filter((resource) =>
+    isHomeInventoryRow(resource, homeRoot),
   );
 
   const harnesses = settings.harnesses.map((entry): HarnessInventoryEntry => {
     const platform = getPlatform(entry.id);
-    const grouped = platform ? locationsForPlatform(platform.globalPaths) : [];
-    const existing = grouped.map((location) => ({
-      location,
-      existingPaths: [location.path, ...location.alternates].filter((path) =>
-        existsSync(resolveConfiguredPath(homeRoot, path)),
-      ),
-    }));
+    const nativeGrouped = platform ? locationsForPlatform(platform.globalPaths) : [];
+    const nativeExisting = nativeGrouped.flatMap((location) =>
+      existingConfiguredPaths(location, homeRoot),
+    );
     const disk = classifyDiskPresence({
       detected: detected.has(entry.id),
-      existingPaths: existing.flatMap((item) => item.existingPaths),
+      existingPaths: nativeExisting,
       sharedGlobalPaths,
     });
     if (!configured.has(entry.id) && disk === "absent") {
       return { ...entry, disk, locations: [] };
     }
 
+    const grouped = platform
+      ? inventoryLocationsForPlatform(platform, owners)
+      : [];
     const resourcesByPath = new Map<string, HarnessLocationResource[]>();
     for (const resource of homeRows) {
       const target = locationForSource(resource.source, grouped, homeRoot);
@@ -304,12 +520,17 @@ export function getHarnessInventory(
     return {
       ...entry,
       disk,
-      locations: existing.map(({ location, existingPaths }) => ({
-        path: location.path,
-        surfaces: location.surfaces,
-        on_disk: existingPaths.length > 0,
-        resources: (resourcesByPath.get(location.path) ?? []).sort(byName),
-      })),
+      locations: grouped.map((location) => {
+        const libraryRows = resourcesByPath.get(location.path) ?? [];
+        const extras = platform
+          ? hostManagedSkillRows(platform, location, homeRoot)
+          : [];
+        return toLocationEntry(
+          location,
+          existingConfiguredPaths(location, homeRoot),
+          mergeLocationResources(libraryRows, extras),
+        );
+      }),
     };
   });
 

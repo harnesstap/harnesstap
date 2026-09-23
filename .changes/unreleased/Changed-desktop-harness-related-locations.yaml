@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Harnesses lists each harness's native home directories plus related trees (Cursor Claude plugins and skills), shared ~/.agents hubs, and Cursor app-managed skills, with the library resources that live there.
+time: 2026-09-23T06:40:00Z
+custom:
+  Issue: ""

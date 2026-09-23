@@ -11,6 +11,11 @@ describe("platform registry", () => {
 
     expect(claude?.supports.has("commands")).toBe(true);
     expect(cursor?.projectPaths.rules).toBe(".cursor/rules/");
+    expect(cursor?.globalPaths.plugins).toBe("~/.cursor/plugins/");
+    expect(cursor?.relatedLocations).toEqual([
+      { path: "~/.claude/plugins/", surfaces: ["plugins"] },
+      { path: "~/.claude/skills/", surfaces: ["skills"] },
+    ]);
     expect(codex?.projectPaths.agents).toBe(".codex/agents/");
     expect(codex?.supports.has("hooks")).toBe(true);
     expect(warp?.projectPaths.instructions).toBe("AGENTS.md");

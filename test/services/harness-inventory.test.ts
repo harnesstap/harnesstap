@@ -4,6 +4,7 @@ import { describe, expect, it } from "bun:test";
 import { getPlatform } from "../../src/platforms/registry.ts";
 import {
   classifyDiskPresence,
+  inventoryLocationsForPlatform,
   locationForSource,
   locationsForPlatform,
   sourceWithinLocation,
@@ -63,6 +64,61 @@ describe("locationsForPlatform", () => {
         alternates: [".cursorrules", ".cursor/rules.md"],
       },
     ]);
+  });
+});
+
+describe("inventoryLocationsForPlatform", () => {
+  it("adds Cursor plugins, app-managed skills, shared ~/.agents, and Claude-related paths", () => {
+    const cursor = getPlatform("cursor");
+    if (!cursor) throw new Error("cursor missing from registry");
+
+    const paths = inventoryLocationsForPlatform(cursor).map((location) => ({
+      path: location.path,
+      surfaces: location.surfaces,
+      relation: location.relation,
+      relatedFrom: location.relatedFrom ?? null,
+    }));
+
+    expect(paths).toEqual([
+      { path: "~/.cursor/rules/", surfaces: ["rules"], relation: "native", relatedFrom: null },
+      { path: "~/.cursor/skills/", surfaces: ["skills"], relation: "native", relatedFrom: null },
+      { path: "~/.cursor/mcp.json", surfaces: ["settings"], relation: "native", relatedFrom: null },
+      { path: "~/.cursor/agents/", surfaces: ["agents"], relation: "native", relatedFrom: null },
+      { path: "~/.cursor/hooks.json", surfaces: ["hooks"], relation: "native", relatedFrom: null },
+      { path: "~/.cursor/plugins/", surfaces: ["plugins"], relation: "native", relatedFrom: null },
+      {
+        path: "~/.cursor/skills-cursor/",
+        surfaces: ["skills"],
+        relation: "host-managed",
+        relatedFrom: null,
+      },
+      { path: "~/.agents/skills/", surfaces: ["skills"], relation: "shared", relatedFrom: null },
+      {
+        path: "~/.claude/plugins/",
+        surfaces: ["plugins"],
+        relation: "related",
+        relatedFrom: "Claude Code",
+      },
+      {
+        path: "~/.claude/skills/",
+        surfaces: ["skills"],
+        relation: "related",
+        relatedFrom: "Claude Code",
+      },
+    ]);
+  });
+
+  it("lists ~/.agents/skills as shared for project .agents harnesses without that global path", () => {
+    const pi = getPlatform("pi");
+    if (!pi) throw new Error("pi missing from registry");
+    expect(
+      inventoryLocationsForPlatform(pi).find((location) => location.path === "~/.agents/skills/"),
+    ).toEqual({
+      path: "~/.agents/skills/",
+      surfaces: ["skills"],
+      alternates: [],
+      relation: "shared",
+    });
   });
 });
 
@@ -193,6 +249,18 @@ describe("getHarnessInventory", () => {
         origin_ref: "/some/project",
       });
 
+      createResource({
+        type: "plugin",
+        name: "demo",
+        namespace: "official",
+        description: "Plugin pin: demo@official",
+        content: "{}",
+        metadata: {},
+        source: "~/.claude/plugins/installed_plugins.json",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@official",
+      });
+
       const inventory = getHarnessInventory(context.homeDir);
       const claude = inventory.harnesses.find((entry) => entry.id === "claude-code");
       const cursor = inventory.harnesses.find((entry) => entry.id === "cursor");
@@ -205,11 +273,12 @@ describe("getHarnessInventory", () => {
       expect(inventory.root).toBe(context.homeDir);
       expect(claude?.disk).toBe("detected");
       expect(
-        claude?.locations.find((location) => location.path === "~/.claude/skills/"),
-      ).toEqual({
+      claude?.locations.find((location) => location.path === "~/.claude/skills/"),
+    ).toEqual({
         path: "~/.claude/skills/",
         surfaces: ["skills"],
         on_disk: true,
+        relation: "native",
         resources: [
           {
             id: skill.id,
@@ -226,10 +295,51 @@ describe("getHarnessInventory", () => {
         path: "~/.claude/rules/",
         surfaces: ["rules"],
         on_disk: false,
+        relation: "native",
         resources: [],
       });
       expect(cursor?.disk).toBe("absent");
-      expect(cursor?.locations.length).toBeGreaterThan(0);
+      expect(cursor?.locations.map((location) => location.path)).toEqual([
+        "~/.cursor/rules/",
+        "~/.cursor/skills/",
+        "~/.cursor/mcp.json",
+        "~/.cursor/agents/",
+        "~/.cursor/hooks.json",
+        "~/.cursor/plugins/",
+        "~/.cursor/skills-cursor/",
+        "~/.agents/skills/",
+        "~/.claude/plugins/",
+        "~/.claude/skills/",
+      ]);
+      expect(
+        cursor?.locations.find((location) => location.path === "~/.claude/plugins/"),
+      ).toMatchObject({
+        relation: "related",
+        related_from: "Claude Code",
+        resources: [
+          expect.objectContaining({
+            type: "plugin",
+            name: "demo",
+            source: "~/.claude/plugins/installed_plugins.json",
+          }),
+        ],
+      });
+      expect(
+        cursor?.locations.find((location) => location.path === "~/.claude/skills/"),
+      ).toMatchObject({
+        relation: "related",
+        related_from: "Claude Code",
+        resources: [
+          expect.objectContaining({
+            type: "skill",
+            name: "foo",
+            source: "~/.claude/skills/foo/SKILL.md",
+          }),
+        ],
+      });
+      expect(
+        cursor?.locations.find((location) => location.path === "~/.agents/skills/"),
+      ).toMatchObject({ relation: "shared", surfaces: ["skills"] });
       expect(aider).toEqual({
         id: "aider",
         name: "Aider",

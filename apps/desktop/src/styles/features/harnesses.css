@@ -142,6 +142,7 @@
   line-height: var(--leading-tight);
 }
 
+.harness-location-relation,
 .harness-location-absent {
   font-style: italic;
 }

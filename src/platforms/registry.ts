@@ -10,6 +10,7 @@ import type {
 type PlatformDefOptions = {
   skillEmission?: PlatformDefinition["skillEmission"];
   hostManagedPaths?: PlatformDefinition["hostManagedPaths"];
+  relatedLocations?: PlatformDefinition["relatedLocations"];
 };
 
 function def(
@@ -33,6 +34,9 @@ function def(
     ...(normalized.skillEmission ? { skillEmission: normalized.skillEmission } : {}),
     ...(normalized.hostManagedPaths
       ? { hostManagedPaths: normalized.hostManagedPaths }
+      : {}),
+    ...(normalized.relatedLocations
+      ? { relatedLocations: normalized.relatedLocations }
       : {}),
   };
 }
@@ -106,10 +110,15 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.cursor/mcp.json",
     agents: "~/.cursor/agents/",
     hooks: "~/.cursor/hooks.json",
+    plugins: "~/.cursor/plugins/",
   }, {
     hostManagedPaths: {
       skills: "~/.cursor/skills-cursor/",
     },
+    relatedLocations: [
+      { path: "~/.claude/plugins/", surfaces: ["plugins"] },
+      { path: "~/.claude/skills/", surfaces: ["skills"] },
+    ],
   }),
 
   // ── Platforms using .agents/ convention ──────────────────────────────
@@ -218,6 +227,7 @@ const PLATFORMS: PlatformDefinition[] = [
     instructions: "~/.config/goose/.goosehints",
     skills: "~/.agents/skills/",
     settings: "~/.config/goose/config.yaml",
+    plugins: "~/.agents/plugins/",
   }),
 
   def("trae", "Trae", ["instructions", "skills", "rules", "mcp"], {
@@ -402,6 +412,12 @@ const PLATFORMS: PlatformDefinition[] = [
     pathAlternates: {
       settings: ["~/.config/muse/"],
     },
+  }, {
+    relatedLocations: [
+      { path: "~/.agents/skills/", surfaces: ["skills"] },
+      { path: "~/.claude/skills/", surfaces: ["skills"] },
+      { path: "~/.codex/skills/", surfaces: ["skills"] },
+    ],
   }),
 
   def("minimax-code", "MiniMax Code", ["instructions", "skills", "mcp"], {
@@ -419,6 +435,12 @@ const PLATFORMS: PlatformDefinition[] = [
     pathAlternates: {
       settings: ["~/.minimax/", "~/.mavis/"],
     },
+  }, {
+    relatedLocations: [
+      { path: "~/.agents/skills/", surfaces: ["skills"] },
+      { path: "~/.claude/skills/", surfaces: ["skills"] },
+      { path: "~/.codex/skills/", surfaces: ["skills"] },
+    ],
   }),
 
   // ── .agents/ convention platforms (skills + instructions) ───────────
