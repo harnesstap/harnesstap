@@ -136,6 +136,7 @@ const PLATFORMS: PlatformDefinition[] = [
     commands: ".opencode/commands/",
     pathAlternates: {
       commands: [".opencode/command/"],
+      skills: [".agents/skills/"],
     },
     mcp: "opencode.json",
   }, {
@@ -143,6 +144,11 @@ const PLATFORMS: PlatformDefinition[] = [
     agents: "~/.config/opencode/agents/",
     commands: "~/.config/opencode/commands/",
     settings: "~/.config/opencode/opencode.json",
+  }, {
+    relatedLocations: [
+      { path: "~/.agents/skills/", surfaces: ["skills"] },
+      { path: "~/.claude/skills/", surfaces: ["skills"] },
+    ],
   }),
 
   def("github-copilot", "GitHub Copilot", ["instructions", "skills", "mcp", "agents"], {
@@ -374,6 +380,10 @@ const PLATFORMS: PlatformDefinition[] = [
     pathAlternates: {
       skills: ["~/.agents/skills/"],
     },
+  }, {
+    relatedLocations: [
+      { path: "~/.claude/skills/", surfaces: ["skills"] },
+    ],
   }),
 
   def("deepseek-harness", "DeepSeek Harness", [

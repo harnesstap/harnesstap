@@ -192,7 +192,7 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **claude-code** | `CLAUDE.md` | `.claude/skills/` | `.claude/rules/` | `.mcp.json` | `.claude/agents/` | `.claude/commands/` | `.claude/settings.json` |
 | **codex** | `AGENTS.md` | `.agents/skills/` | — | `.codex/config.toml` | `.codex/agents/` | — | `.codex/config.toml` |
 | **cursor** | `AGENTS.md` (+ legacy `.cursorrules`) | `.agents/skills/` | `.cursor/rules/` | `.cursor/mcp.json` | `.cursor/agents/` | — | — |
-| **opencode** | `AGENTS.md` | `.opencode/skills/` | — | `opencode.json` | `.opencode/agents/` | `.opencode/commands/` | — |
+| **opencode** | `AGENTS.md` | `.opencode/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | `opencode.json` | `.opencode/agents/` | `.opencode/commands/` | — |
 | **github-copilot** | `.github/copilot-instructions.md` | `.agents/skills/` | — | (global `~/.copilot/mcp-config.json`) | `.github/agents/` | — | — |
 | **copilot-cli** | `AGENTS.md` | `.agents/skills/` | — | `.copilot/mcp-config.json` | `.github/agents/` | — | — |
 | **gemini-cli** | `AGENTS.md` | `.agents/skills/` | — | — | — | `commands/` | `gemini-extension.json` |
@@ -204,7 +204,7 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **aider** | `CONVENTIONS.md` (+ `AGENTS.md`) | — | — | — | — | — | `.aider.conf.yml` |
 | **zed** | `AGENTS.md` (+ `.rules`) | `.agents/skills/` | — | — | — | — | — |
 | **devin** | `AGENTS.md` (+ `AGENTS.local.md`) | `.agents/skills/` | — | — | — | — | `.devin/config.json` |
-| **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` | — | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
+| **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
 | **deepseek-harness** | `AGENTS.md` (+ `CLAUDE.md`) | `.dsh/skills/` | — | `~/.dsh/cordis.patch.yml` (global) | `~/.dsh/.agent-presets/` | — | `~/.dsh/settings.yaml` |
 | **muse-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`, `.claude/CLAUDE.md`) | `.agents/skills/` | — | `~/.config/muse/settings.json` (`mcp_servers`, global only) | — | — | `~/.config/muse/settings.json` |
 | **minimax-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`) | `.minimax/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | project `.mcp.json`; user `~/.minimax/mcp.json` | — | — | `~/.minimax/config.yaml` (not rewritten) |
@@ -234,6 +234,19 @@ HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/co
 
 Antigravity IDE, Antigravity CLI (`agy`), and AGY share the same workspace layout under `.agents/`. Workflows (`.agents/workflows/*.md`) map to HarnessTap **commands**. Global config lives under `~/.gemini/` (`GEMINI.md`, `config/mcp_config.json`, `skills/`, `config/global_workflows/`). This is distinct from the thinner `gemini-cli` entry.
 
+### OpenCode notes
+
+OpenCode discovers skills from its native trees plus Claude- and Agents-compatible directories. HarnessTap inventories those compatibility paths and scans them, but apply still writes only the native OpenCode locations.
+
+| OpenCode surface | HarnessTap support |
+| ---------------- | ------------------ |
+| **AGENTS.md** | `instruction` resources |
+| **Skills** (`.opencode/skills/`, also `.agents/skills/`, `.claude/skills/`; global `~/.config/opencode/skills/`, `~/.agents/skills/`, `~/.claude/skills/`) | Native `skill` resources; apply writes `.opencode/skills/` / `~/.config/opencode/skills/` only |
+| **Agents** (`.opencode/agents/`) | `agent` resources |
+| **Commands** (`.opencode/commands/`, `.opencode/command/`) | `command` resources |
+| **MCP** (`opencode.json`) | `mcp_server` resources |
+| **Server plugins** (`.opencode/plugins/*.js`) | Not mirrored — see [Portability limits](portability-limits.md) |
+
 ### Grok Build notes
 
 Grok Build’s native layout under `.grok/` maps as follows:
@@ -241,7 +254,7 @@ Grok Build’s native layout under `.grok/` maps as follows:
 | Grok surface | HarnessTap support |
 | ------------ | ------------------- |
 | **AGENTS.md** (`AGENT.md`, `Agents.md`) | `instruction` resources |
-| **Skills** (`.grok/skills/`, `~/.grok/skills/`, also `~/.agents/skills/`) | Native `skill` resources |
+| **Skills** (`.grok/skills/`, `~/.grok/skills/`, also `.agents/skills/`, `.claude/skills/`, `~/.agents/skills/`, `~/.claude/skills/`) | Native `skill` resources; apply writes `.grok/skills/` / `~/.grok/skills/` only |
 | **Agents** (`.grok/agents/*.md`) | `agent` resources |
 | **Hooks** (`.grok/hooks/*.json`) | `hook` resources; apply emits `.grok/hooks/harnesstap.json` |
 | **MCP** (`[mcp_servers]` in `.grok/config.toml`) | `mcp_server` resources |
