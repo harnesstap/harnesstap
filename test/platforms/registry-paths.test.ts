@@ -200,6 +200,23 @@ describe("registry path detection", () => {
     }
   });
 
+  it("detects claude-code from .claude/skills alone", () => {
+    const projectDir = createTempDir("claude-code-skills-only");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".claude/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nBody.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).toContain("claude-code");
+      expect(detectPlatforms(projectDir)).not.toContain("opencode");
+      expect(detectPlatforms(projectDir)).not.toContain("grok-build");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("detects devin from AGENTS.local.md alone", () => {
     const projectDir = createTempDir("devin-agents-local");
 

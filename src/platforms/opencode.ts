@@ -35,6 +35,9 @@ interface OpenCodeSerializedMcpEntry {
   environment?: Record<string, string>;
 }
 
+/** Claude-compat project tree; kept off pathAlternates so Claude Code detection stays unique. */
+const PROJECT_SKILL_COMPAT = [".claude/skills/"] as const;
+
 export class OpenCodeSerializer extends BaseSerializer {
   readonly platformId = "opencode";
   readonly platform: PlatformDefinition;
@@ -103,8 +106,30 @@ export class OpenCodeSerializer extends BaseSerializer {
       );
     }
 
-    // 2. Skills: .opencode/skills/
-    resources.push(...this.scanSkillsDir(projectRoot, ".opencode/skills"));
+    // 2. Skills: native `.opencode/skills/` then OpenCode compat trees
+    const seenSkillNames = new Set<string>();
+    this.appendUniqueSkills(
+      resources,
+      seenSkillNames,
+      this.scanSkillsDir(
+        projectRoot,
+        this.platform.projectPaths.skills ?? ".opencode/skills/",
+      ),
+    );
+    for (const alternate of this.platform.projectPaths.pathAlternates?.skills ?? []) {
+      this.appendUniqueSkills(
+        resources,
+        seenSkillNames,
+        this.scanSkillsDir(projectRoot, alternate),
+      );
+    }
+    for (const compatDir of PROJECT_SKILL_COMPAT) {
+      this.appendUniqueSkills(
+        resources,
+        seenSkillNames,
+        this.scanSkillsDir(projectRoot, compatDir),
+      );
+    }
 
     // 2.1 Agents: .opencode/agents/
     resources.push(
@@ -157,13 +182,37 @@ export class OpenCodeSerializer extends BaseSerializer {
   async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
     const resources: ResourceCreateInput[] = [];
 
-    // Global skills
-    resources.push(
-      ...this.scanSkillsDirAt(
-        join(homeRoot, ".config", "opencode", "skills"),
-        "~/.config/opencode/skills",
+    const seenSkillNames = new Set<string>();
+    const globalSkills = this.platform.globalPaths.skills ?? "~/.config/opencode/skills/";
+    this.appendUniqueSkills(
+      resources,
+      seenSkillNames,
+      this.scanSkillsDirAt(
+        this.resolveHomePath(homeRoot, globalSkills),
+        globalSkills.replace(/\/$/, ""),
       ),
     );
+    for (const alternate of this.platform.globalPaths.pathAlternates?.skills ?? []) {
+      this.appendUniqueSkills(
+        resources,
+        seenSkillNames,
+        this.scanSkillsDirAt(
+          this.resolveHomePath(homeRoot, alternate),
+          alternate.replace(/\/$/, ""),
+        ),
+      );
+    }
+    for (const related of this.platform.relatedLocations ?? []) {
+      if (!related.surfaces.includes("skills")) continue;
+      this.appendUniqueSkills(
+        resources,
+        seenSkillNames,
+        this.scanSkillsDirAt(
+          this.resolveHomePath(homeRoot, related.path),
+          related.path.replace(/\/$/, ""),
+        ),
+      );
+    }
 
     resources.push(
       ...this.scanAgentFilesAt(

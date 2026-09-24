@@ -51,6 +51,14 @@ describe("platform registry", () => {
     expect(opencode).toBeDefined();
     expect(opencode?.projectPaths.instructions).toBe("AGENTS.md");
     expect(opencode?.projectPaths.mcp).toBe("opencode.json");
+    expect(opencode?.projectPaths.skills).toBe(".opencode/skills/");
+    expect(opencode?.projectPaths.pathAlternates?.skills).toEqual([
+      ".agents/skills/",
+    ]);
+    expect(opencode?.relatedLocations).toEqual([
+      { path: "~/.agents/skills/", surfaces: ["skills"] },
+      { path: "~/.claude/skills/", surfaces: ["skills"] },
+    ]);
 
     const githubCopilot = registry.getPlatform("github-copilot");
     expect(githubCopilot).toBeDefined();
@@ -120,6 +128,12 @@ describe("platform registry", () => {
 
     const grok = registry.getPlatform("grok-build");
     expect(grok?.projectPaths.skills).toBe(".grok/skills/");
+    expect(grok?.projectPaths.pathAlternates?.skills).toEqual([
+      ".agents/skills/",
+    ]);
+    expect(grok?.relatedLocations).toEqual([
+      { path: "~/.claude/skills/", surfaces: ["skills"] },
+    ]);
     expect(grok?.projectPaths.settings).toBe(".grok/config.toml");
     expect(grok?.projectPaths.agents).toBe(".grok/agents/");
     expect(grok?.projectPaths.hooks).toBe(".grok/hooks/");

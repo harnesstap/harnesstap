@@ -290,6 +290,23 @@ export abstract class BaseSerializer implements PlatformSerializer {
     return resources;
   }
 
+  /**
+   * Append scanned skills, skipping names already seen so native + compat
+   * trees do not double-count the same skill.
+   */
+  protected appendUniqueSkills(
+    resources: ResourceCreateInput[],
+    seenSkillNames: Set<string>,
+    incoming: ResourceCreateInput[],
+  ): void {
+    for (const resource of incoming) {
+      if (resource.type !== "skill") continue;
+      if (seenSkillNames.has(resource.name)) continue;
+      seenSkillNames.add(resource.name);
+      resources.push(resource);
+    }
+  }
+
   protected resolveSkillSourceDir(
     resource: Resource,
     sourceRoot: string,

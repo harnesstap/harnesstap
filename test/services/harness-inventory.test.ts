@@ -120,6 +120,31 @@ describe("inventoryLocationsForPlatform", () => {
       relation: "shared",
     });
   });
+
+  it("lists OpenCode native skills plus related agents and Claude trees", () => {
+    const opencode = getPlatform("opencode");
+    if (!opencode) throw new Error("opencode missing from registry");
+
+    expect(locationsForPlatform(opencode.projectPaths).find((location) => location.path === ".opencode/skills/")).toEqual({
+      path: ".opencode/skills/",
+      surfaces: ["skills"],
+      alternates: [".agents/skills/"],
+    });
+
+    const paths = inventoryLocationsForPlatform(opencode).map((location) => ({
+      path: location.path,
+      surfaces: location.surfaces,
+      relation: location.relation,
+    }));
+
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        { path: "~/.config/opencode/skills/", surfaces: ["skills"], relation: "native" },
+        { path: "~/.agents/skills/", surfaces: ["skills"], relation: "shared" },
+        { path: "~/.claude/skills/", surfaces: ["skills"], relation: "related" },
+      ]),
+    );
+  });
 });
 
 describe("sourceWithinLocation", () => {

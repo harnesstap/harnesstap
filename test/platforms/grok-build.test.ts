@@ -182,6 +182,8 @@ rules = [
         ".grok/hooks/harnesstap.json",
       ]),
     );
+    expect(files.map((file) => file.path)).not.toContain(".agents/skills/review/SKILL.md");
+    expect(files.map((file) => file.path)).not.toContain(".claude/skills/review/SKILL.md");
 
     const config = files.find((file) => file.path === ".grok/config.toml");
     expect(config).toBeDefined();
@@ -236,5 +238,59 @@ rules = [
       globalFiles.find((file) => file.path === ".grok/config.toml")?.content ?? "",
     ) as Record<string, unknown>;
     expect(parsed.models).toEqual({ default: "grok-build" });
+  });
+
+  it("scans .agents/skills and .claude/skills without doubling native skills", async () => {
+    const projectDir = createTempDir("grok-alt-skills");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".grok/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nFrom grok.\n",
+      );
+      writeTextFile(
+        join(projectDir, ".agents/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nFrom agents.\n",
+      );
+      writeTextFile(
+        join(projectDir, ".claude/skills/extra/SKILL.md"),
+        "---\nname: extra\ndescription: Extra\n---\nFrom claude.\n",
+      );
+
+      const resources = await new GrokBuildSerializer().scan(projectDir);
+      const skills = resources.filter((r) => r.type === "skill");
+      expect(skills.filter((r) => r.name === "review")).toHaveLength(1);
+      expect(skills.find((r) => r.name === "review")?.content).toContain("From grok.");
+      expect(skills.some((r) => r.name === "extra")).toBe(true);
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("scans global Claude compat skills without doubling", async () => {
+    const homeDir = createTempDir("grok-home-skills");
+
+    try {
+      writeTextFile(
+        join(homeDir, ".grok/skills/home-skill/SKILL.md"),
+        "---\nname: home-skill\ndescription: Home\n---\nFrom grok.\n",
+      );
+      writeTextFile(
+        join(homeDir, ".claude/skills/home-skill/SKILL.md"),
+        "---\nname: home-skill\ndescription: Home\n---\nFrom claude.\n",
+      );
+      writeTextFile(
+        join(homeDir, ".claude/skills/only-claude/SKILL.md"),
+        "---\nname: only-claude\ndescription: Claude only\n---\nFrom claude.\n",
+      );
+
+      const resources = await new GrokBuildSerializer().scanGlobal(homeDir);
+      const skills = resources.filter((r) => r.type === "skill");
+      expect(skills.filter((r) => r.name === "home-skill")).toHaveLength(1);
+      expect(skills.find((r) => r.name === "home-skill")?.content).toContain("From grok.");
+      expect(skills.some((r) => r.name === "only-claude")).toBe(true);
+    } finally {
+      cleanupDir(homeDir);
+    }
   });
 });

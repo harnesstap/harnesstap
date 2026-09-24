@@ -23,6 +23,9 @@ import type {
 
 type GrokConfigDocument = Record<string, unknown>;
 
+/** Claude-compat project tree; kept off pathAlternates so Claude Code detection stays unique. */
+const PROJECT_SKILL_COMPAT = [".claude/skills/"] as const;
+
 interface GrokMcpServerEntry {
   command?: string;
   args?: string[];
@@ -347,10 +350,26 @@ export class GrokBuildSerializer extends BaseSerializer {
       }
     }
 
+    const seenSkillNames = new Set<string>();
     const skillsPath = this.platform.projectPaths.skills ?? ".grok/skills/";
-    resources.push(...this.scanSkillsDir(projectRoot, skillsPath));
+    this.appendUniqueSkills(
+      resources,
+      seenSkillNames,
+      this.scanSkillsDir(projectRoot, skillsPath),
+    );
     for (const alternate of this.platform.projectPaths.pathAlternates?.skills ?? []) {
-      resources.push(...this.scanSkillsDir(projectRoot, alternate));
+      this.appendUniqueSkills(
+        resources,
+        seenSkillNames,
+        this.scanSkillsDir(projectRoot, alternate),
+      );
+    }
+    for (const compatDir of PROJECT_SKILL_COMPAT) {
+      this.appendUniqueSkills(
+        resources,
+        seenSkillNames,
+        this.scanSkillsDir(projectRoot, compatDir),
+      );
     }
 
     const agentsPath = this.platform.projectPaths.agents ?? ".grok/agents/";
@@ -390,18 +409,34 @@ export class GrokBuildSerializer extends BaseSerializer {
   async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
     const resources: ResourceCreateInput[] = [];
 
+    const seenSkillNames = new Set<string>();
     const skillsPath = this.platform.globalPaths.skills ?? "~/.grok/skills/";
-    resources.push(
-      ...this.scanSkillsDirAt(
+    this.appendUniqueSkills(
+      resources,
+      seenSkillNames,
+      this.scanSkillsDirAt(
         resolveGlobalPath(homeRoot, skillsPath),
         skillsPath.replace(/\/$/, ""),
       ),
     );
     for (const alternate of this.platform.globalPaths.pathAlternates?.skills ?? []) {
-      resources.push(
-        ...this.scanSkillsDirAt(
+      this.appendUniqueSkills(
+        resources,
+        seenSkillNames,
+        this.scanSkillsDirAt(
           resolveGlobalPath(homeRoot, alternate),
           alternate.replace(/\/$/, ""),
+        ),
+      );
+    }
+    for (const related of this.platform.relatedLocations ?? []) {
+      if (!related.surfaces.includes("skills")) continue;
+      this.appendUniqueSkills(
+        resources,
+        seenSkillNames,
+        this.scanSkillsDirAt(
+          resolveGlobalPath(homeRoot, related.path),
+          related.path.replace(/\/$/, ""),
         ),
       );
     }

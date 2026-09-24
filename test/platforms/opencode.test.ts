@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "bun:test";
 import { OpenCodeSerializer } from "../../src/platforms/opencode.ts";
+import { detectHomePlatforms, detectPlatforms } from "../../src/services/scanner.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 import { makeResource } from "../helpers/resources.ts";
 
@@ -84,6 +85,8 @@ describe("OpenCodeSerializer", () => {
     expect(paths).toContain(".opencode/agents/helper.md");
     expect(paths).toContain(".opencode/commands/test.md");
     expect(paths).toContain("opencode.json");
+    expect(paths).not.toContain(".agents/skills/research/SKILL.md");
+    expect(paths).not.toContain(".claude/skills/research/SKILL.md");
   });
 
   it("serializes instructions joined with double newline", async () => {
@@ -129,6 +132,8 @@ describe("OpenCodeSerializer", () => {
     expect(paths).toContain(".config/opencode/opencode.json");
     expect(paths).not.toContain("AGENTS.md");
     expect(paths).not.toContain("opencode.json");
+    expect(paths).not.toContain(".agents/skills/research/SKILL.md");
+    expect(paths).not.toContain(".claude/skills/research/SKILL.md");
   });
 
   it("serializes MCP servers with correct format", async () => {
@@ -261,6 +266,83 @@ describe("OpenCodeSerializer", () => {
       expect(resources[0]?.type).toBe("instruction");
     } finally {
       cleanupDir(projectDir);
+    }
+  });
+
+  it("scans .agents/skills and .claude/skills without doubling native skills", async () => {
+    const projectDir = createTempDir("opencode-alt-skills");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Instructions");
+      writeTextFile(
+        join(projectDir, ".opencode/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nFrom opencode.\n",
+      );
+      writeTextFile(
+        join(projectDir, ".agents/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nFrom agents.\n",
+      );
+      writeTextFile(
+        join(projectDir, ".claude/skills/extra/SKILL.md"),
+        "---\nname: extra\ndescription: Extra\n---\nFrom claude.\n",
+      );
+
+      const resources = await new OpenCodeSerializer().scan(projectDir);
+      const skills = resources.filter((r) => r.type === "skill");
+      expect(skills.filter((r) => r.name === "review")).toHaveLength(1);
+      expect(skills.find((r) => r.name === "review")?.content).toContain("From opencode.");
+      expect(skills.find((r) => r.name === "review")?.source).toContain(".opencode/skills");
+      expect(skills.some((r) => r.name === "extra")).toBe(true);
+      expect(skills.find((r) => r.name === "extra")?.source).toContain(".claude/skills");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("does not detect OpenCode from .agents/skills or .claude/skills alone", () => {
+    const sharedOnly = createTempDir("opencode-shared-only");
+    try {
+      writeTextFile(join(sharedOnly, "AGENTS.md"), "# Shared\n");
+      writeTextFile(
+        join(sharedOnly, ".agents/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nBody.\n",
+      );
+      writeTextFile(
+        join(sharedOnly, ".claude/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nBody.\n",
+      );
+      expect(detectPlatforms(sharedOnly)).not.toContain("opencode");
+    } finally {
+      cleanupDir(sharedOnly);
+    }
+  });
+
+  it("scans global compat skill trees without doubling", async () => {
+    const homeDir = createTempDir("opencode-home-skills");
+    try {
+      writeTextFile(
+        join(homeDir, ".config/opencode/skills/home-skill/SKILL.md"),
+        "---\nname: home-skill\ndescription: Home\n---\nFrom opencode.\n",
+      );
+      writeTextFile(
+        join(homeDir, ".agents/skills/home-skill/SKILL.md"),
+        "---\nname: home-skill\ndescription: Home\n---\nFrom agents.\n",
+      );
+      writeTextFile(
+        join(homeDir, ".claude/skills/only-claude/SKILL.md"),
+        "---\nname: only-claude\ndescription: Claude only\n---\nFrom claude.\n",
+      );
+
+      const resources = await new OpenCodeSerializer().scanGlobal(homeDir);
+      const skills = resources.filter((r) => r.type === "skill");
+      expect(skills.filter((r) => r.name === "home-skill")).toHaveLength(1);
+      expect(skills.find((r) => r.name === "home-skill")?.content).toContain("From opencode.");
+      expect(skills.some((r) => r.name === "only-claude")).toBe(true);
+      expect(
+        detectHomePlatforms(homeDir).map((result) => result.platformId),
+      ).toContain("opencode");
+    } finally {
+      cleanupDir(homeDir);
     }
   });
 });

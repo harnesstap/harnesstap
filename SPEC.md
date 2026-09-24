@@ -707,7 +707,7 @@ Not every host surface round-trips through apply or mirror. Static resources (sk
 
 ### Native serializers
 
-Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness`, `muse-code`, and `minimax-code`. Remaining registered harnesses use the generic serializer.
+Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness`, `muse-code`, and `minimax-code`. Remaining registered harnesses use the generic serializer. Native OpenCode skill scan includes `.agents/skills/` and `.claude/skills/` (and the matching home trees) in addition to `.opencode/skills/`; apply still writes the native OpenCode skill directory only. Grok Build follows the same pattern for `.claude/skills/` alongside existing `.agents/skills/` discovery.
 
 ### Generic serializer
 
