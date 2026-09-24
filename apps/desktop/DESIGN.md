@@ -60,7 +60,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 
 ## Layout
 
-Window minimum size is 960×600. Header grid is brand, destinations, scope, project cluster (flex 1, min 180px), then utilities. Brand text never clips. Header utilities are Refresh, Settings, and More (Ellipsis) at every width; Export, Import, Account, and Update always live in the More menu, and More shows the red update badge when an update exists. Below 960px, destinations are icon-only with tooltips (hit ≥32px) and the Scope label hides.
+Window minimum size is 960×600. Header grid is brand, destinations, scope, project cluster (flex 1, min 180px), then utilities. Brand text never clips. Destinations size to their icon-plus-label (or icon-only) controls and do not shrink or clip into the Scope divider; leftover width goes to the project cluster. Header utilities are Refresh, Settings, and More (Ellipsis) at every width; Export, Import, Account, and Update always live in the More menu, and More shows the red update badge when an update exists. Below 960px, destinations are icon-only with tooltips (hit ≥32px) and the Scope label hides.
 
 First connect shows a centered splash (brand, indeterminate bar, Starting the agent…). Later disconnects keep the last-good shell dimmed with a Reconnecting banner that offers Retry after 5s. First loads use skeletons (rail, inventory, Library, Discover, Environments). A failed switch step is red with a failed suffix, not the in-progress highlight.
 

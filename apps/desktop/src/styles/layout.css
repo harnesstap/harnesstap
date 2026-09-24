@@ -11,7 +11,7 @@
   container-type: inline-size;
   container-name: app-header;
   display: grid;
-  grid-template-columns: max-content minmax(0, auto) max-content minmax(180px, 1fr) max-content;
+  grid-template-columns: max-content max-content max-content minmax(180px, 1fr) max-content;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
@@ -72,9 +72,14 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  min-width: 0;
-  overflow: hidden;
+  flex: 0 0 auto;
+  min-width: max-content;
+  overflow: visible;
   height: var(--header-focus-size);
+}
+
+.header-focus-controls .header-focus-btn {
+  flex: 0 0 auto;
 }
 
 .header-scope {
