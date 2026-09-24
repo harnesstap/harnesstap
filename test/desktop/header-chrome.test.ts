@@ -168,7 +168,25 @@ describe("desktop header chrome", () => {
     expect(paritySource).not.toContain('title="Environments"');
     expect(cssSource).toContain("container-type: inline-size");
     expect(cssSource).toContain("minmax(180px, 1fr)");
+    expect(cssSource).toContain(
+      "grid-template-columns: max-content max-content max-content minmax(180px, 1fr) max-content",
+    );
+    expect(cssSource).not.toContain("minmax(0, auto)");
     expect(designSource).toContain("Window minimum size is 960×600");
+    expect(designSource).toContain("do not shrink or clip into the Scope divider");
+  });
+
+  test("destination cluster does not clip the last primary nav control", () => {
+    const destBlock = sliceBetween(
+      cssSource,
+      ".header-focus-controls {",
+      ".header-scope {",
+    );
+    expect(destBlock).toContain("min-width: max-content");
+    expect(destBlock).toContain("overflow: visible");
+    expect(destBlock).toContain("flex: 0 0 auto");
+    expect(destBlock).not.toContain("overflow: hidden");
+    expect(destBlock).not.toContain("min-width: 0");
   });
 
   test("header utilities are Refresh, Settings, and More; Export, Import, and Account live in More", () => {

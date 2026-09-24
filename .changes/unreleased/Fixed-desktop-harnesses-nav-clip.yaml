@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop header destinations size to their labels so Harnesses keeps full padding and a visible right edge before the Scope divider.
+time: 2026-09-24T11:10:00Z
+custom:
+  Issue: ""
