@@ -1,7 +1,11 @@
 import { existsSync } from "node:fs";
 import type { ResourceCreateInput } from "../types.js";
 import { listCursorPluginInstalls } from "./providers/cursor.js";
-import { dedupePluginInstalls, pluginInstallToPinInput } from "./host-plugin-pins.js";
+import {
+  dedupePluginInstalls,
+  hasInstallPath,
+  pluginInstallToPinInput,
+} from "./host-plugin-pins.js";
 
 const CURSOR_PLUGINS_SOURCE = "~/.cursor/plugins/";
 
@@ -22,9 +26,6 @@ export function listCursorPluginPinCreateInputs(
   homeRoot: string,
 ): ResourceCreateInput[] {
   return dedupePluginInstalls(listCursorPluginInstalls(homeRoot))
-    .filter(
-      (install) =>
-        Boolean(install.installPath) && existsSync(install.installPath as string),
-    )
+    .filter(hasInstallPath)
     .map((install) => pluginInstallToPinInput(install, CURSOR_PLUGINS_SOURCE));
 }

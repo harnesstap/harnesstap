@@ -1,6 +1,14 @@
+import { existsSync } from "node:fs";
 import type { PluginPinMetadata, ResourceCreateInput } from "../types.js";
 import { parsePluginRef } from "./host-plugin-manifest.js";
 import type { PluginInstall } from "./types.js";
+
+export function hasInstallPath(
+  install: PluginInstall,
+): install is PluginInstall & { installPath: string } {
+  if (!install.installPath) return false;
+  return existsSync(install.installPath);
+}
 
 export function pluginInstallToPinInput(
   install: PluginInstall,

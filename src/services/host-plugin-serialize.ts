@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
 import { join, relative, sep } from "node:path";
 import type {
   PluginDependencyMetadata,
@@ -79,8 +79,9 @@ function collectPluginTextFiles(
   const files: Array<{ relativePath: string; content: string }> = [];
   const stack = [root];
   while (stack.length > 0) {
-    const dir = stack.pop() as string;
-    let entries: ReturnType<typeof readdirSync>;
+    const dir = stack.pop();
+    if (!dir) continue;
+    let entries: Dirent[] = [];
     try {
       entries = readdirSync(dir, { withFileTypes: true });
     } catch {

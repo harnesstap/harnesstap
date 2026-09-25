@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { ResourceCreateInput } from "../types.js";
 import {
@@ -6,7 +5,7 @@ import {
   readFirstHostPluginManifest,
   readJsonFile,
 } from "./host-plugin-manifest.js";
-import { dedupePluginInstalls, pluginInstallToPinInput } from "./host-plugin-pins.js";
+import { dedupePluginInstalls, hasInstallPath, pluginInstallToPinInput } from "./host-plugin-pins.js";
 import type { PluginInstall, PluginScope, PluginVersionSource } from "./types.js";
 
 export { parsePluginRef, readJsonFile };
@@ -127,10 +126,7 @@ export function listInstalledPluginPinCreateInputs(
   homeRoot: string,
 ): ResourceCreateInput[] {
   return dedupePluginInstalls(loadInstalled(homeRoot))
-    .filter(
-      (install) =>
-        Boolean(install.installPath) && existsSync(install.installPath as string),
-    )
+    .filter(hasInstallPath)
     .map((install) =>
       pluginInstallToPinInput(
         install,

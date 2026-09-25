@@ -22,6 +22,8 @@ export function normalizeSkillDir(raw: string | undefined): string | undefined {
 
 export function parseSkillEmitPath(path: string): SkillFileRef | undefined {
   const normalized = path.replace(/\\/g, "/");
+  // Host plugin install trees often contain skills/; those are not harness skill emits.
+  if (/(^|\/)plugins\//.test(normalized)) return undefined;
   const match = SKILL_FILE_RE.exec(normalized);
   if (!match) return undefined;
   const prefix = match[1];
