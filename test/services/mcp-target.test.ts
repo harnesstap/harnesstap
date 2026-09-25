@@ -28,6 +28,8 @@ describe("filterMcpServersForTargetPath", () => {
   const resources = [
     mcp("cursor-only", "~/.cursor/mcp.json"),
     mcp("copilot-only", "~/.copilot/mcp-config.json"),
+    mcp("claude-user", "~/.claude.json"),
+    mcp("claude-project", ".mcp.json"),
     mcp("portable", "manual"),
   ];
 
@@ -47,7 +49,20 @@ describe("filterMcpServersForTargetPath", () => {
     ).toEqual(["cursor-only", "portable"]);
   });
 
+  it("does not dual-write Claude user and project MCP files", () => {
+    expect(
+      filterMcpServersForTargetPath(resources, "~/.claude.json").map(
+        (entry) => entry.name,
+      ),
+    ).toEqual(["claude-user", "portable"]);
+    expect(
+      filterMcpServersForTargetPath(resources, ".mcp.json").map(
+        (entry) => entry.name,
+      ),
+    ).toEqual(["claude-project", "portable"]);
+  });
+
   it("returns all servers when target path is missing", () => {
-    expect(filterMcpServersForTargetPath(resources, undefined)).toHaveLength(3);
+    expect(filterMcpServersForTargetPath(resources, undefined)).toHaveLength(5);
   });
 });

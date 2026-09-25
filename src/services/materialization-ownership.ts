@@ -11,6 +11,7 @@ import { formatResourceSelector } from "../models/resource.js";
 import {
   replaceMaterializationsForPlatform,
 } from "../models/resource-materialization.js";
+import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 
 function normalizeFileContent(content: string): string {
@@ -33,7 +34,7 @@ function actionForPath(
   resource: Resource,
   shared: boolean,
 ): MaterializationAction {
-  if (shared) {
+  if (shared || isMergeableHostConfigPath(path)) {
     return "edit-file";
   }
   if (resource.type === "skill" && path.endsWith("SKILL.md")) {

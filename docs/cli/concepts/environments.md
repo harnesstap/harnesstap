@@ -196,11 +196,18 @@ Tracked limitations as of the current CLI. **Shipped** items are resolved in the
 | **`secret_ref` in supported-harnesses** | Environment resources table documents `secret_ref` and MCP substitution. |
 | **Environments concept page** | This document. |
 
+### Shipped — Claude user MCP
+
+| Item | Resolution |
+| --- | --- |
+| **Claude global MCP scan/emit** | `ClaudeCodeSerializer.scanGlobal` imports top-level `mcpServers` from `~/.claude.json`. Global apply merge-overlays that key and leaves OAuth session, `projects`, and other host keys alone. |
+| **No dual-write** | Project apply still writes `.mcp.json` only. Local-scope `projects[<absPath>].mcpServers` is not imported or applied. |
+
 ### Medium — coverage and UX
 
 | Gap | Impact | Proposed fix |
 | --- | --- | --- |
-| **Claude global MCP not scanned** | `init` / home scan imports `~/.claude/skills` but not user-scoped MCP (Claude may store these outside project `.mcp.json`). | Discover Claude Code user MCP path from upstream docs; add `scanGlobal` import if stable. |
+| **Claude local-scope MCP** | `claude mcp add` (default local scope) stores servers under `projects[<absPath>]` in `~/.claude.json`, invisible to project `.mcp.json` and user-scope scan. | Dedicated source mapping; do not promote local into team `.mcp.json` or user `mcpServers`. |
 | **Environment switch without re-apply** | `environment use` updates pointer; harness files stay stale until `profile use --reapply` or `apply`. | Document workflow; consider `environment use --reapply` default or clearer status warning when drift detected. |
 | **`environment create --from-project` captures plaintext secrets** | Import may pull literal tokens from scanned MCP `env` into `env_var` instead of promoting to `secret_ref`. | Wizard prompt: offer `secret_ref` promotion for keys matching MCP env / `needs[]`. |
 | **Copilot HTTP MCP auth fields** | Copilot may use auth blocks beyond `env`; not modeled in metadata. | Audit Copilot MCP schema; extend metadata if needed for round-trip. |
@@ -215,6 +222,6 @@ Tracked limitations as of the current CLI. **Shipped** items are resolved in the
 
 ### Suggested implementation order
 
-1. Claude global MCP scan (if path is stable).
-2. Environment create secret promotion UX.
+1. Environment create secret promotion UX.
+2. Claude local-scope MCP (`projects[<path>].mcpServers`) if a non-promoting source mapping is viable.
 3. Copilot HTTP MCP auth field audit (if round-trip gaps remain).

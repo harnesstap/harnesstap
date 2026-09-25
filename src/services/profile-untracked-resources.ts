@@ -129,6 +129,11 @@ function isClaudeSettingsPath(normalizedPath: string): boolean {
   return path === ".claude/settings.json" || path.endsWith("/.claude/settings.json");
 }
 
+function isClaudeUserJsonPath(normalizedPath: string): boolean {
+  const path = normalizedPath.replace(/^~\//, "");
+  return path === ".claude.json" || path.endsWith("/.claude.json");
+}
+
 function isMuseSettingsPath(normalizedPath: string): boolean {
   const path = normalizedPath.replace(/^~\//, "");
   return (
@@ -159,6 +164,7 @@ function isMergedContainerResource(
   if (resource.type === "mcp_server") {
     return (
       isMcpConfigPath(sourcePath)
+      || isClaudeUserJsonPath(sourcePath)
       || isMuseSettingsPath(sourcePath)
       || isMinimaxMcpPath(sourcePath)
     );

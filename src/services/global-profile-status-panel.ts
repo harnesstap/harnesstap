@@ -93,14 +93,15 @@ export function classifyGlobalDriftChanges(
   return { owned, nonOwned };
 }
 
-function mcpManagedPathForHarness(harnessId: string): string | undefined {
+function mcpManagedPathsForHarness(harnessId: string): string[] {
   switch (harnessId) {
     case "cursor":
-      return ".cursor/mcp.json";
+      return [".cursor/mcp.json"];
     case "claude-code":
-      return ".mcp.json";
+      // Project-scope `.mcp.json` and user-scope `~/.claude.json`.
+      return [".mcp.json", ".claude.json"];
     default:
-      return undefined;
+      return [];
   }
 }
 
@@ -115,11 +116,12 @@ export function declaredMcpFromExpectedFiles(
   const configsByHarness: Record<string, Record<string, McpServerMetadata>> = {};
 
   for (const harnessId of harnessIds) {
-    const mcpPath = mcpManagedPathForHarness(harnessId);
+    const mcpPaths = new Set(mcpManagedPathsForHarness(harnessId));
     const configs: Record<string, McpServerMetadata> = {};
-    if (mcpPath) {
+    if (mcpPaths.size > 0) {
       for (const file of expectedFiles) {
-        if (file.path !== mcpPath) {
+        const normalized = file.path.replace(/\\/g, "/").replace(/^~\//, "");
+        if (!mcpPaths.has(normalized)) {
           continue;
         }
         try {

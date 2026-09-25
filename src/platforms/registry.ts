@@ -70,6 +70,7 @@ const PLATFORMS: PlatformDefinition[] = [
     instructions: "~/.claude/CLAUDE.md",
     skills: "~/.claude/skills/",
     rules: "~/.claude/rules/",
+    mcp: "~/.claude.json",
     agents: "~/.claude/agents/",
     commands: "~/.claude/commands/",
     settings: "~/.claude/settings.json",

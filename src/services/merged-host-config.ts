@@ -1,4 +1,5 @@
 export const CLAUDE_SETTINGS_RELATIVE = ".claude/settings.json";
+export const CLAUDE_USER_JSON_RELATIVE = ".claude.json";
 export const MUSE_SETTINGS_RELATIVE = ".config/muse/settings.json";
 export const MINIMAX_MCP_RELATIVE = ".minimax/mcp.json";
 
@@ -11,6 +12,14 @@ export function isClaudeSettingsPath(path: string): boolean {
   return (
     normalized === CLAUDE_SETTINGS_RELATIVE
     || normalized.endsWith(`/${CLAUDE_SETTINGS_RELATIVE}`)
+  );
+}
+
+export function isClaudeUserJsonPath(path: string): boolean {
+  const normalized = normalizeHostConfigPath(path);
+  return (
+    normalized === CLAUDE_USER_JSON_RELATIVE
+    || normalized.endsWith(`/${CLAUDE_USER_JSON_RELATIVE}`)
   );
 }
 
@@ -32,12 +41,17 @@ export function isMinimaxMcpPath(path: string): boolean {
 
 /**
  * Shared host JSON that apply merges instead of replacing or deleting.
- * Claude `.claude/settings.json`, Muse `~/.config/muse/settings.json`, and
- * MiniMax `~/.minimax/mcp.json` hold profile-managed keys alongside unrelated
- * user settings.
+ * Claude `.claude/settings.json` and `~/.claude.json`, Muse
+ * `~/.config/muse/settings.json`, and MiniMax `~/.minimax/mcp.json` hold
+ * profile-managed keys alongside unrelated user settings / sessions.
  */
 export function isMergeableHostConfigPath(path: string): boolean {
-  return isClaudeSettingsPath(path) || isMuseSettingsPath(path) || isMinimaxMcpPath(path);
+  return (
+    isClaudeSettingsPath(path)
+    || isClaudeUserJsonPath(path)
+    || isMuseSettingsPath(path)
+    || isMinimaxMcpPath(path)
+  );
 }
 
 function parseJsonObject(raw: string): Record<string, unknown> | null {
@@ -96,6 +110,35 @@ export function mergeClaudeSettingsContent(
       continue;
     }
     merged[key] = value;
+  }
+  return `${JSON.stringify(merged, null, 2)}\n`;
+}
+
+/**
+ * Overlay user-scope `mcpServers` onto live `~/.claude.json`.
+ * Preserves OAuth session, `projects` (local-scope MCP and trust state),
+ * and every other top-level key. Refuses to replace the file when the live
+ * JSON cannot be parsed.
+ */
+export function mergeClaudeUserJsonContent(
+  existingRaw: string | null | undefined,
+  generatedRaw: string,
+): string {
+  const generated = parseJsonObject(generatedRaw);
+  if (!generated) {
+    return existingRaw ?? generatedRaw;
+  }
+  if (!existingRaw) {
+    return `${JSON.stringify(generated, null, 2)}\n`;
+  }
+  const existing = parseJsonObject(existingRaw);
+  if (!existing) {
+    return existingRaw;
+  }
+
+  const merged: Record<string, unknown> = { ...existing };
+  if (generated.mcpServers !== undefined) {
+    merged.mcpServers = mergeEnvRecord(existing.mcpServers, generated.mcpServers);
   }
   return `${JSON.stringify(merged, null, 2)}\n`;
 }
