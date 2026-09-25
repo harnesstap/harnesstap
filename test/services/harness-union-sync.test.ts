@@ -100,4 +100,95 @@ describe("syncConfiguredHarnesses", () => {
       await context.cleanup();
     }
   });
+
+  it("copies host plugin install trees between Claude and Cursor on global sync", async () => {
+    const context = await createInitializedTestContext("harness-union-plugins");
+    try {
+      const { setHarnessPreference } = await import("../../src/models/harness.ts");
+      setHarnessPreference({
+        main_harness: "claude-code",
+        alias_harnesses: ["cursor"],
+      });
+
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/.claude-plugin/plugin.json",
+        ),
+        JSON.stringify({ name: "demo", version: "1.0.0" }),
+      );
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/skills/hello/SKILL.md",
+        ),
+        "---\nname: hello\n---\nClaude plugin skill\n",
+      );
+      writeTextFile(
+        join(context.homeDir, ".claude/plugins/installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "demo@demo-market": [
+              {
+                scope: "user",
+                installPath: "cache/demo-market/demo/1.0.0",
+                version: "1.0.0",
+              },
+            ],
+          },
+        }),
+      );
+
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".cursor/plugins/cache/cursor-public/extra/aaaa/.cursor-plugin/plugin.json",
+        ),
+        JSON.stringify({ name: "extra", version: "9.0.0" }),
+      );
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".cursor/plugins/cache/cursor-public/extra/aaaa/skills/extra/SKILL.md",
+        ),
+        "---\nname: extra\n---\nCursor plugin skill\n",
+      );
+
+      const { syncConfiguredHarnesses } = await import(
+        "../../src/services/harness-union-sync.ts"
+      );
+      const result = await syncConfiguredHarnesses({
+        scope: "global",
+        homeRoot: context.homeDir,
+      });
+
+      expect(result.platforms_synced.sort()).toEqual(["claude-code", "cursor"]);
+
+      const cursorCopy = join(
+        context.homeDir,
+        ".cursor/plugins/cache/demo-market/demo/1.0.0/skills/hello/SKILL.md",
+      );
+      expect(existsSync(cursorCopy)).toBe(true);
+      expect(readFileSync(cursorCopy, "utf8")).toContain("Claude plugin skill");
+
+      const claudeCopy = join(
+        context.homeDir,
+        ".claude/plugins/cache/cursor-public/extra/9.0.0/skills/extra/SKILL.md",
+      );
+      expect(existsSync(claudeCopy)).toBe(true);
+      expect(readFileSync(claudeCopy, "utf8")).toContain("Cursor plugin skill");
+
+      const installed = JSON.parse(
+        readFileSync(
+          join(context.homeDir, ".claude/plugins/installed_plugins.json"),
+          "utf8",
+        ),
+      ) as { plugins: Record<string, unknown> };
+      expect(installed.plugins["demo@demo-market"]).toBeDefined();
+      expect(installed.plugins["extra@cursor-public"]).toBeDefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

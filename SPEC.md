@@ -412,7 +412,7 @@ Repositories may declare named profiles, environments, and plugin composition in
 | `harness list` | Lists registered harness targets (`--supported` filters to natively serialized harnesses). |
 | `harness set` | Sets global main/alias harness preferences (flags or interactive). |
 | `harness status` | Shows the global harness preference record. |
-| `harness sync` | Unions on-disk resources from the configured main + alias harnesses, resolves same-identity conflicts with the main harness copy, prefers shared skill emit paths, and materializes through existing serializers. Default scope is home (`~`); `--project` uses the project tree. Not `mirror`. |
+| `harness sync` | Unions on-disk resources from the configured main + alias harnesses, resolves same-identity conflicts with the main harness copy, prefers shared skill emit paths, copies Claude Code and Cursor **host plugin install trees** through the same serializers, and materializes through existing apply writers. Default scope is home (`~`); `--project` uses the project tree. Not `mirror`. |
 | `harness project set` | Sets project-scoped main/alias harness preferences and materialization strategy. |
 | `harness project status` | Shows project-scoped harness preferences. |
 

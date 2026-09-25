@@ -1,6 +1,8 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import { listCursorPluginPinCreateInputs } from "../plugins/cursor-installed.js";
+import { emitHostPluginTrees } from "../services/host-plugin-serialize.js";
 import {
   canonicalAgentFromResource,
   emitMarkdownAgent,
@@ -209,6 +211,8 @@ export class CursorSerializer extends BaseSerializer {
       );
     }
 
+    resources.push(...listCursorPluginPinCreateInputs(homeRoot));
+
     return resources;
   }
 
@@ -236,7 +240,7 @@ export class CursorSerializer extends BaseSerializer {
 
   async serialize(
     resources: Resource[],
-    _projectRoot: string,
+    projectRoot: string,
     options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
@@ -358,6 +362,14 @@ export class CursorSerializer extends BaseSerializer {
       files.push({
         path: mcpPath,
         content: JSON.stringify({ mcpServers }, null, 2),
+      });
+    }
+
+    if (target === "global") {
+      return emitHostPluginTrees(resources, {
+        layout: "cursor",
+        homeRoot: options.projectRoot ?? projectRoot,
+        files,
       });
     }
 

@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { listInstalledPluginPinCreateInputs } from "../plugins/claude-installed.js";
+import { emitHostPluginTrees } from "../services/host-plugin-serialize.js";
 import {
   canonicalAgentFromResource,
   emitMarkdownAgent,
@@ -477,6 +478,14 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     for (const r of byType.get("command") ?? []) {
       if (!commandsPath) continue;
       files.push({ path: `${commandsPath}${r.name}.md`, content: r.content });
+    }
+
+    if (target === "global") {
+      return emitHostPluginTrees(byType.get("plugin") ?? [], {
+        layout: "claude-code",
+        homeRoot: projectRoot,
+        files,
+      });
     }
 
     return files;

@@ -84,7 +84,9 @@ During `apply`, HarnessTap can **install** and **sync** plugins from host instal
 | **copilot-cli** | Copilot CLI marketplace / `copilot plugin` | `~/.copilot/installed-plugins/` |
 | **deepseek-harness** | `dsh plugin --profile web add` | `$DSH_HOME/profiles/web/` |
 
-Claude Code and Copilot CLI **home scan** also import installed marketplace plugins as `plugin_pin` library resources (pins only; use `resource sync` to materialize children). Claude reads `~/.claude/plugins/installed_plugins.json`. Copilot CLI reads `~/.copilot/installed-plugins/<marketplace>/<plugin>/` when `~/.copilot/settings.json` or that install tree is present.
+Claude Code and Copilot CLI **home scan** also import installed marketplace plugins as `plugin_pin` library resources (pins only; use `resource sync` to materialize children). Claude reads `~/.claude/plugins/installed_plugins.json`. Cursor home scan inventories `~/.cursor/plugins/` (`cache/`, `local/`, `marketplaces/`) as the same pin resources. Copilot CLI reads `~/.copilot/installed-plugins/<marketplace>/<plugin>/` when `~/.copilot/settings.json` or that install tree is present.
+
+`ht harness sync` (global) copies those install trees onto peer harnesses that have a native plugin root: Claude ←→ Cursor. Claude additionally records `installed_plugins.json` and `enabledPlugins` in `~/.claude/settings.json`. Cursor has no install CLI and no shared runtime loader for `~/.claude/plugins/`; the Desktop related-location listing is inventory-only.
 
 Other harnesses still benefit from plugin-source **scan** and **resource sync** when you point at an install tree or plugin repo, but do not have an automated install provider yet.
 

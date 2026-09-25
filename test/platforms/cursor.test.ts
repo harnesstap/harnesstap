@@ -312,6 +312,22 @@ describe("CursorSerializer", () => {
     }
   });
 
+  it("scans installed host plugins from ~/.cursor/plugins", async () => {
+    const fixtureHome = fileURLToPath(
+      new URL("../fixtures/cursor-plugins-home", import.meta.url),
+    );
+    const serializer = new CursorSerializer();
+    const resources = await serializer.scanGlobal(fixtureHome);
+    const pins = resources.filter((resource) => resource.type === "plugin");
+    expect(pins.map((pin) => pin.origin_ref)).toEqual(
+      expect.arrayContaining([
+        "active-plugin@cursor-public",
+        "homemade@local",
+        "agent-demo@cursor-public",
+      ]),
+    );
+  });
+
   it("scans and serializes subagent files under .cursor/agents/", async () => {
     const projectDir = createTempDir("cursor-agents");
 

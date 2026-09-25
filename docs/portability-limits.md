@@ -249,6 +249,30 @@ harnesstap resource sync <plugin-selector> --overwrite
 This re-imports skills, commands, and hooks from install trees under
 `~/.claude/plugins/`, `~/.cursor/plugins/`, and similar locations.
 
+### Claude Code ↔ Cursor host plugin trees
+
+There is no shared runtime plugin directory. Agent Plugins 1.0 (`plugin.json`
+with an `agent-plugins` schema, plus `skills/` and `mcp.json`) is the closest
+common package format. Host-specific manifests stay native:
+
+| Surface | Claude Code | Cursor |
+| ------- | ----------- | ------ |
+| Install root | `~/.claude/plugins/` (`cache/…`, `installed_plugins.json`) | `~/.cursor/plugins/` (`cache/`, `local/`, `marketplaces/`) |
+| Manifest | `.claude-plugin/plugin.json` (also reads `.cursor-plugin/` and root `plugin.json` for version) | `.cursor-plugin/plugin.json` or Agent Plugins root `plugin.json` (also inventories `.claude-plugin/` once the tree is in Cursor's root) |
+| Enablement | `enabledPlugins` in `~/.claude/settings.json` plus `installed_plugins.json` | IDE Customize / `/plugin` / MCP `plugin-<name>-<name>` folders; HarnessTap cannot flip Cursor enabled state |
+| Loads the other host's tree? | No | No (Desktop may *list* `~/.claude/plugins/` as a related location) |
+
+`ht harness sync` therefore **dual-writes** native trees (copy files into both
+roots when both harnesses are in the Settings active set). It does not install
+once into Claude and expect Cursor to run it from `~/.claude/plugins/`.
+
+Portable inside a copied tree: skills, `mcp.json`, Agent Plugins root
+`plugin.json`, and whichever host manifests were already present. Not portable:
+Claude `installed_plugins.json` / marketplace git metadata, Cursor enablement
+and `agent plugin marketplace add` auth, hooks that assume
+`${CLAUDE_PLUGIN_ROOT}` or `${CURSOR_PLUGIN_ROOT}`, and host-only plugin
+config (Claude extra known marketplaces, Cursor app MCP folders).
+
 ### Dual-mode scan for plugin-only repos
 
 Repos with `AGENTS.md` plus `.claude-plugin/plugin.json` but no `.claude/` tree
