@@ -116,65 +116,90 @@
   align-items: center;
 }
 
-.harness-location-list {
+.harness-type-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-4);
 }
 
-.harness-location-header {
-  align-items: baseline;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  font-weight: 500;
-}
-
-.harness-location-path {
+.harness-type-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   min-width: 0;
-  word-break: break-all;
 }
 
-.harness-location-meta {
+.harness-type-heading {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.harness-type-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-left: var(--space-2);
+}
+
+.harness-type-section-title {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  font-size: var(--text-meta);
-  font-weight: 400;
-}
-
-.harness-location-meta .inventory-section-count.pill {
+  gap: 0.4rem;
   margin: 0;
-  padding: 0.05rem 0.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
+  font: inherit;
+  font-size: var(--text-meta);
+  font-weight: 600;
   line-height: var(--leading-tight);
+  cursor: default;
+  width: fit-content;
+  max-width: 100%;
+  min-height: var(--icon-action-size);
 }
 
-.harness-location-relation,
-.harness-location-absent {
-  font-style: italic;
+.harness-type-section-title:hover {
+  color: var(--fg);
 }
 
-.harness-location-body {
-  padding: 0 0.6rem 0.45rem;
+.harness-type-section-title:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius);
+}
+
+.harness-resource-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.harness-resource-badges .resource-hover-card-host {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.harness-resource-badge {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.harness-resource-badge.is-static {
+  cursor: default;
 }
 
 .harness-location-empty {
-  margin: 0.45rem 0 0;
+  margin: 0;
   font-size: var(--text-meta);
-}
-
-.harness-location-rows .resources-list-item {
-  padding: 0;
-  border: 0;
-}
-
-.harness-location-rows .resource-row:last-child {
-  border-bottom: 0;
-}
-
-.harness-location-body .list-truncation-controls {
-  margin-top: 0.35rem;
 }
 
 .add-harness-empty {

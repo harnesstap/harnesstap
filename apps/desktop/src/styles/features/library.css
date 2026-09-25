@@ -812,6 +812,11 @@
   line-height: 1.35;
 }
 
+.resource-hover-card-wrap {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .library-detail {
   flex: 1 1 auto;
   min-height: 0;

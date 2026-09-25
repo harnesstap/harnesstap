@@ -1,8 +1,14 @@
+import {
+  harnessDisplayName,
+  harnessIdFromDisplayName,
+  SHARED_AGENTS_SECTION_ID,
+} from "./harness-meta";
 import type { LibraryDetailTarget } from "./library-pane";
 import { filterLibraryResourcesBySearch } from "./resource-search";
 import {
   countResourceTypeTabs,
   foldResourceTypeTab,
+  RESOURCE_TYPE_TAB_ORDER,
   resourceTypeTabLabel,
   type TypeTabAttention,
 } from "./resource-type-tabs";
@@ -155,7 +161,12 @@ export function harnessSupportsLabel(supports: readonly string[]): string {
 }
 
 function platformFeatureTabId(feature: string): string {
-  switch (feature) {
+  return registrySurfaceTabId(feature as RegistryPathKey) ?? feature;
+}
+
+/** Resource-type tab for a registry path key. `settings` is a container only. */
+export function registrySurfaceTabId(surface: string): string | null {
+  switch (surface) {
     case "instructions":
       return "instruction";
     case "skills":
@@ -176,8 +187,12 @@ function platformFeatureTabId(feature: string): string {
       return "env_var";
     case "model_config":
       return "model_config";
+    case "plugins":
+      return "plugin";
+    case "settings":
+      return null;
     default:
-      return feature;
+      return null;
   }
 }
 
@@ -230,6 +245,143 @@ export function locationRelationLabel(location: HarnessLocation): string | null 
       return exhaustive;
     }
   }
+}
+
+const HARNESS_HOME_PREFIXES: readonly { prefix: string; id: string }[] = [
+  { prefix: "~/.config/opencode", id: "opencode" },
+  { prefix: "~/.github", id: "github-copilot" },
+  { prefix: "~/.copilot", id: "copilot-cli" },
+  { prefix: "~/.continue", id: "continue" },
+  { prefix: "~/.windsurf", id: "windsurf" },
+  { prefix: "~/.minimax", id: "minimax-code" },
+  { prefix: "~/.claude", id: "claude-code" },
+  { prefix: "~/.cursor", id: "cursor" },
+  { prefix: "~/.codex", id: "codex" },
+  { prefix: "~/.gemini", id: "gemini-cli" },
+  { prefix: "~/.opencode", id: "opencode" },
+  { prefix: "~/.muse", id: "muse-code" },
+  { prefix: "~/.grok", id: "grok-build" },
+  { prefix: "~/.goose", id: "goose" },
+  { prefix: "~/.warp", id: "warp" },
+  { prefix: "~/.cline", id: "cline" },
+];
+
+function isAgentsHubPath(path: string): boolean {
+  return path === "~/.agents" || path.startsWith("~/.agents/");
+}
+
+function harnessIdFromHomePath(path: string): string | null {
+  if (isAgentsHubPath(path)) {
+    return SHARED_AGENTS_SECTION_ID;
+  }
+  for (const { prefix, id } of HARNESS_HOME_PREFIXES) {
+    if (path === prefix || path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}.`)) {
+      return id;
+    }
+  }
+  return null;
+}
+
+export interface HarnessSectionOwner {
+  readonly iconId: string;
+  readonly name: string;
+}
+
+/** Icon + label for a location section (harness brand or the shared Agents hub). */
+export function locationSectionOwner(
+  location: HarnessLocation,
+  selected: Pick<HarnessEntry, "id" | "name">,
+): HarnessSectionOwner {
+  if (isAgentsHubPath(location.path) || location.relation === "shared") {
+    return {
+      iconId: SHARED_AGENTS_SECTION_ID,
+      name: harnessDisplayName(SHARED_AGENTS_SECTION_ID),
+    };
+  }
+  if (location.relation === "related") {
+    const iconId =
+      harnessIdFromHomePath(location.path)
+      ?? (location.relatedFrom ? harnessIdFromDisplayName(location.relatedFrom) : null)
+      ?? selected.id;
+    return {
+      iconId,
+      name: location.relatedFrom ?? harnessDisplayName(iconId),
+    };
+  }
+  return { iconId: selected.id, name: selected.name };
+}
+
+export const RESOURCE_BADGE_NAME_MAX = 20;
+
+export function truncateResourceBadgeName(
+  name: string,
+  max = RESOURCE_BADGE_NAME_MAX,
+): string {
+  if (name.length <= max) return name;
+  return `${name.slice(0, max)}...`;
+}
+
+export interface HarnessTypeSection {
+  readonly path: string;
+  readonly onDisk: boolean;
+  readonly owner: HarnessSectionOwner;
+  readonly resources: readonly HarnessResourceRow[];
+}
+
+export interface HarnessTypeGroup {
+  readonly type: string;
+  readonly sections: readonly HarnessTypeSection[];
+}
+
+/**
+ * Type groups, then one section per location that contributes that type
+ * (native / related / shared / app-managed), preserving location order.
+ */
+export function groupHarnessLocationsByType(
+  entry: Pick<HarnessEntry, "id" | "name">,
+  locations: readonly HarnessLocation[],
+): readonly HarnessTypeGroup[] {
+  const sectionsByType = new Map<string, HarnessTypeSection[]>();
+
+  for (const location of locations) {
+    const owner = locationSectionOwner(location, entry);
+    const rowsByType = new Map<string, HarnessResourceRow[]>();
+    for (const row of location.resources) {
+      const type = foldResourceTypeTab(row.type);
+      const rows = rowsByType.get(type) ?? [];
+      rows.push(row);
+      rowsByType.set(type, rows);
+    }
+    const types = new Set<string>(rowsByType.keys());
+    for (const surface of location.surfaces) {
+      const mapped = registrySurfaceTabId(surface);
+      if (mapped) types.add(foldResourceTypeTab(mapped));
+    }
+    for (const type of types) {
+      const list = sectionsByType.get(type) ?? [];
+      list.push({
+        path: location.path,
+        onDisk: location.onDisk,
+        owner,
+        resources: rowsByType.get(type) ?? [],
+      });
+      sectionsByType.set(type, list);
+    }
+  }
+
+  const ordered: HarnessTypeGroup[] = [];
+  const seen = new Set<string>();
+  for (const type of RESOURCE_TYPE_TAB_ORDER) {
+    const sections = sectionsByType.get(type);
+    if (!sections || sections.length === 0) continue;
+    ordered.push({ type, sections });
+    seen.add(type);
+  }
+  for (const [type, sections] of sectionsByType) {
+    if (seen.has(type) || sections.length === 0) continue;
+    ordered.push({ type, sections });
+  }
+  return ordered;
 }
 
 export interface DetectProposal {
@@ -510,17 +662,6 @@ export function filterHarnessLocations(
   return { locations, typeCounts: countResourceTypeTabs(types) };
 }
 
-export const HARNESS_PANEL_PREVIEW_SIZE = 5;
-
-export function visibleLocationRows(
-  location: HarnessLocation,
-  expanded: boolean,
-): readonly HarnessResourceRow[] {
-  return expanded
-    ? location.resources
-    : location.resources.slice(0, HARNESS_PANEL_PREVIEW_SIZE);
-}
-
 export function resourceDetailTargetFor(row: HarnessResourceRow): ResourceDetailTarget {
   return {
     kind: "resource",
@@ -543,8 +684,6 @@ export interface HarnessesViewState {
   readonly search: string;
   readonly typeTab: string | null;
   readonly editing: boolean;
-  /** Location paths whose panel shows every row. */
-  readonly expandedLocations: ReadonlySet<string>;
 }
 
 export type HarnessesViewAction =
@@ -555,7 +694,6 @@ export type HarnessesViewAction =
   | { readonly type: "search"; readonly value: string }
   | { readonly type: "type-tab"; readonly value: string | null }
   | { readonly type: "toggle-edit" }
-  | { readonly type: "expand-location"; readonly path: string }
   | { readonly type: "reset"; readonly inventory: HarnessInventory | null };
 
 const INVENTORY_PANE: HarnessesPane = { mode: "inventory" };
@@ -569,7 +707,6 @@ export function initialHarnessesViewState(
     search: "",
     typeTab: null,
     editing: false,
-    expandedLocations: new Set(),
   };
 }
 
@@ -591,7 +728,6 @@ export function harnessesViewReducer(
         ...state,
         selectedId: action.id,
         pane: INVENTORY_PANE,
-        expandedLocations: new Set(),
       };
     case "open-detail":
       return { ...state, pane: { mode: "detail", target: action.target } };
@@ -605,11 +741,6 @@ export function harnessesViewReducer(
       return state.editing
         ? { ...state, editing: false }
         : { ...state, editing: true, pane: INVENTORY_PANE };
-    case "expand-location":
-      return {
-        ...state,
-        expandedLocations: new Set([...state.expandedLocations, action.path]),
-      };
     case "reset":
       return initialHarnessesViewState(action.inventory);
     default: {

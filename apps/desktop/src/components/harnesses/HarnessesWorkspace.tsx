@@ -388,12 +388,10 @@ export function HarnessesWorkspace({
             role={selectedRole}
             search={view.search}
             typeTab={view.typeTab}
-            expandedLocations={view.expandedLocations}
             disabled={controlsDisabled}
             onSearch={(value) => dispatch({ type: "search", value })}
             onTypeTab={(value) => dispatch({ type: "type-tab", value })}
             onMakeMain={onMakeMain}
-            onShowAll={(path) => dispatch({ type: "expand-location", path })}
             onOpen={openRow}
           />
         );

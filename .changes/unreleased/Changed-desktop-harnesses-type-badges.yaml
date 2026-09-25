@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Harnesses lists resources by type then harness section, with wrapping title-only badges and an Agents mark for ~/.agents hubs.
+time: 2026-09-25T13:20:00Z
+custom:
+  Issue: ""
