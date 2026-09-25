@@ -34,6 +34,7 @@ import {
   handleHarnessSettingsGet,
   handleHarnessSettingsPut,
 } from "./harness-settings-handlers.js";
+import { handleHarnessSyncPost } from "./harness-sync-handlers.js";
 import {
   handleTelemetryGet,
   handleTelemetryPut,
@@ -595,6 +596,8 @@ export function createAgentFetchHandler(
       response = handleHarnessSettingsGet(request, token);
     } else if (method === "PUT" && url.pathname === "/v1/harness") {
       response = await handleHarnessSettingsPut(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/harness/sync") {
+      response = await handleHarnessSyncPost(request, token);
     } else if (method === "GET" && url.pathname === "/v1/telemetry") {
       response = handleTelemetryGet(request, token);
     } else if (method === "PUT" && url.pathname === "/v1/telemetry") {

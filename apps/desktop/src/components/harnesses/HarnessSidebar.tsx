@@ -1,4 +1,4 @@
-import { Check, Pencil, Plus, ScanSearch, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Check, Pencil, Plus, ScanSearch, Trash2 } from "lucide-react";
 import {
   canRemoveHarness,
   diskPresenceLabel,
@@ -13,6 +13,7 @@ import type { HarnessesBusy } from "../../state/harnesses-controller";
 import { EmptyState } from "../EmptyState";
 import { HarnessIcon } from "../HarnessIcons";
 import { IconActionButton } from "../IconActionButton";
+import { ButtonSpinner } from "../ButtonSpinner";
 
 const ICON_SIZE = 16;
 const SKELETON_COUNT = 4;
@@ -31,6 +32,14 @@ export interface HarnessSidebarProps {
   onToggleEdit: () => void;
   /** Trash click; the workspace opens the confirm dialog. */
   onRemove: (id: HarnessId) => void;
+  syncLabel: string;
+  syncTitle: string;
+  syncDisabled: boolean;
+  syncHidden: boolean;
+  syncBusy: boolean;
+  syncHelper: string | null;
+  syncError: string | null;
+  onSync: () => void;
 }
 
 function rowSubtitle(entry: HarnessEntry): string {
@@ -54,6 +63,14 @@ export function HarnessSidebar({
   onDetect,
   onToggleEdit,
   onRemove,
+  syncLabel,
+  syncTitle,
+  syncDisabled,
+  syncHidden,
+  syncBusy,
+  syncHelper,
+  syncError,
+  onSync,
 }: HarnessSidebarProps) {
   const working = busy.kind !== "idle";
   const showSkeleton = loading && rows.length === 0;
@@ -170,6 +187,38 @@ export function HarnessSidebar({
           </ul>
         )}
       </div>
+      {syncHidden ? null : (
+        <div className="rail-controls harness-sync-controls">
+          {syncHelper ? (
+            <p className="muted apply-helper" data-testid="sync-harnesses-helper">
+              {syncHelper}
+            </p>
+          ) : null}
+          {syncError ? (
+            <p className="muted apply-helper harness-sync-error" data-testid="sync-harnesses-error">
+              {syncError}
+            </p>
+          ) : null}
+          <button
+            className={["btn", "primary", "rail-apply-action", syncBusy ? "is-busy" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            data-testid="sync-harnesses"
+            onClick={onSync}
+            disabled={syncDisabled || syncBusy}
+            aria-busy={syncBusy}
+            title={syncTitle}
+          >
+            {syncLabel}
+            {syncBusy ? (
+              <ButtonSpinner size={16} />
+            ) : (
+              <ArrowLeftRight size={16} strokeWidth={2} aria-hidden="true" />
+            )}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

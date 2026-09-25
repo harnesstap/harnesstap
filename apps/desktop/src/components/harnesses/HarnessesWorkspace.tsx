@@ -20,6 +20,11 @@ import {
   type HarnessId,
   type HarnessResourceRow,
 } from "../../lib/harness-inventory";
+import {
+  syncHarnessesConfirmBody,
+  syncHarnessesDisabledReason,
+  syncHarnessesTooltip,
+} from "../../lib/harness-sync";
 import { escapeAction } from "../../lib/library-pane";
 import { workspaceBackEnabled } from "../../lib/screen-history";
 import { useRegisterCommands } from "../../state/command-registry";
@@ -41,7 +46,8 @@ type HarnessesOverlay =
   | { readonly kind: "none" }
   | { readonly kind: "add" }
   | { readonly kind: "detect" }
-  | { readonly kind: "remove"; readonly id: HarnessId };
+  | { readonly kind: "remove"; readonly id: HarnessId }
+  | { readonly kind: "sync" };
 
 const NO_OVERLAY: HarnessesOverlay = { kind: "none" };
 
@@ -91,9 +97,12 @@ export function HarnessesWorkspace({
   const [fieldEditing, setFieldEditing] = useState(false);
   const [detailConfirmOpen, setDetailConfirmOpen] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncHelper, setSyncHelper] = useState<string | null>(null);
   const cancelFieldEditRef = useRef<(() => void) | null>(null);
   const detailTitleId = useId();
   const homeResetNonceSeen = useRef(homeResetNonce);
+  const syncedClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const controlsDisabled = disabled || !connected || !baseUrl;
   const working = ctrl.busy.kind !== "idle";
@@ -138,7 +147,17 @@ export function HarnessesWorkspace({
     homeResetNonceSeen.current = homeResetNonce;
     dispatch({ type: "reset", inventory });
     closeOverlay();
+    setSyncError(null);
+    setSyncHelper(null);
   }, [closeOverlay, homeResetNonce, inventory]);
+
+  useEffect(() => {
+    return () => {
+      if (syncedClearRef.current) {
+        clearTimeout(syncedClearRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     onNestedDepthChange?.(detailOpen ? 1 : 0);
@@ -244,6 +263,16 @@ export function HarnessesWorkspace({
   const removeCopy =
     inventory && removeTarget ? removalCopy(inventory, removeTarget) : null;
   const saving = ctrl.busy.kind === "saving";
+  const syncing = ctrl.busy.kind === "syncing";
+  const mainName =
+    selection ? (harnessEntry(inventory, selection.main)?.name ?? selection.main) : "Main";
+  const syncDisabledReason = syncHarnessesDisabledReason({
+    configuredCount: rows.length,
+    hasMain: selection !== null,
+    running: working,
+  });
+  const syncHidden = rows.length === 0;
+  const syncDisabled = controlsDisabled || syncDisabledReason !== null || working;
 
   const backDisabled =
     controlsDisabled
@@ -280,6 +309,33 @@ export function HarnessesWorkspace({
       return;
     }
     void ctrl.change({ kind: "make-main", id: view.selectedId });
+  };
+
+  const openSyncConfirm = () => {
+    if (syncHidden || syncDisabled) {
+      return;
+    }
+    setSyncError(null);
+    openOverlay({ kind: "sync" });
+  };
+
+  const onConfirmSync = async () => {
+    setOverlay(NO_OVERLAY);
+    setSyncError(null);
+    setSyncHelper(null);
+    const result = await ctrl.sync();
+    if (result.ok) {
+      if (syncedClearRef.current) {
+        clearTimeout(syncedClearRef.current);
+      }
+      setSyncHelper("Synced");
+      syncedClearRef.current = setTimeout(() => {
+        setSyncHelper(null);
+        syncedClearRef.current = null;
+      }, 2000);
+      return;
+    }
+    setSyncError(result.message ?? "Could not sync harnesses");
   };
 
   const renderMain = (): ReactNode => {
@@ -398,6 +454,14 @@ export function HarnessesWorkspace({
           onDetect={startDetect}
           onToggleEdit={() => dispatch({ type: "toggle-edit" })}
           onRemove={(id) => openOverlay({ kind: "remove", id })}
+          syncLabel={syncing ? "Syncing…" : "Sync harnesses"}
+          syncTitle={syncDisabledReason ?? syncHarnessesTooltip(mainName)}
+          syncDisabled={syncDisabled}
+          syncHidden={syncHidden}
+          syncBusy={syncing}
+          syncHelper={syncHelper}
+          syncError={syncError}
+          onSync={openSyncConfirm}
         />
         <div className="resources-panel-body">{renderMain()}</div>
       </div>
@@ -417,6 +481,20 @@ export function HarnessesWorkspace({
         busy={saving}
         onApply={(chosen) => void ctrl.applyProposal(chosen)}
         onCancel={closeOverlay}
+      />
+
+      <ConfirmDialog
+        open={overlay.kind === "sync"}
+        title="Sync harnesses"
+        description={syncHarnessesConfirmBody(mainName)}
+        confirmLabel={syncing ? "Syncing…" : "Sync"}
+        confirmBusy={syncing}
+        onConfirm={() => void onConfirmSync()}
+        onCancel={() => {
+          if (!syncing) {
+            closeOverlay();
+          }
+        }}
       />
 
       <ConfirmDialog
