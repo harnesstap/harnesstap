@@ -117,6 +117,14 @@ describe("CLI harness", () => {
         }),
       );
 
+      const sync = await runCli(["harness", "sync", "--dry-run", "--format", "json"]);
+      expect(JSON.parse(sync.stdout)).toEqual(
+        expect.objectContaining({
+          main_harness: "claude-code",
+          alias_harnesses: ["cursor", "codex"],
+        }),
+      );
+
       const human = await runCli(["harness", "status"]);
       expect(human.stdout).toContain("HARNESS");
       expect(human.stdout).toContain("Main harness");

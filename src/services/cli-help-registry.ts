@@ -693,6 +693,17 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "harness status --format json",
     ],
   },
+  "harness.sync": {
+    description:
+      "Union resources from configured harnesses (main + aliases) and materialize with main-wins conflicts",
+    details:
+      "Scans every configured harness, unions portable types (skills, MCP, rules, and other serializer-supported resources), prefers the main harness when the same identity differs, and emits shared skill paths when multiple targets can read them. Default scope is the home directory. This is not mirror-from-main.",
+    examples: [
+      "harness sync",
+      "harness sync --dry-run --format json",
+      "harness sync --project .",
+    ],
+  },
   "harness.project.set": {
     description: "Set project-scoped harness preferences",
     examples: [

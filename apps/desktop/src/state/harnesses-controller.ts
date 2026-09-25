@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rescanResourceTrackedDirectories } from "../lib/agent-client";
-import { fetchHarnessInventory, saveHarnessSelection } from "../lib/api/harnesses";
+import { fetchHarnessInventory, saveHarnessSelection, syncConfiguredHarnesses } from "../lib/api/harnesses";
 import {
   detectProposal,
   harnessEntry,
@@ -19,7 +19,8 @@ export type HarnessesBusy =
   | { readonly kind: "idle" }
   | { readonly kind: "loading" }
   | { readonly kind: "detecting" }
-  | { readonly kind: "saving"; readonly change: SelectionChange };
+  | { readonly kind: "saving"; readonly change: SelectionChange }
+  | { readonly kind: "syncing" };
 
 export interface HarnessesControllerInput {
   readonly baseUrl: string | null;
@@ -46,6 +47,7 @@ export interface HarnessesController {
   dismissProposal(): void;
   /** Single mutation entry point for add / remove / make-main / apply-proposal. */
   change(change: SelectionChange): Promise<HarnessesChangeResult>;
+  sync(): Promise<{ readonly ok: boolean; readonly message?: string }>;
 }
 
 const IDLE: HarnessesBusy = { kind: "idle" };
@@ -262,6 +264,28 @@ export function useHarnessesController(
     [change, proposal],
   );
 
+  const sync = useCallback(async (): Promise<{ ok: boolean; message?: string }> => {
+    if (!baseUrl || busyRef.current.kind !== "idle") {
+      return { ok: false, message: "Could not sync harnesses" };
+    }
+    setBusy({ kind: "syncing" });
+    try {
+      await syncConfiguredHarnesses(baseUrl, token);
+      const next = await load();
+      if (next) {
+        setInventory(next);
+        setError(null);
+      }
+      onChanged?.();
+      return { ok: true };
+    } catch (caught) {
+      const message = errorMessage(caught, "Could not sync harnesses");
+      return { ok: false, message };
+    } finally {
+      setBusy(IDLE);
+    }
+  }, [baseUrl, load, onChanged, token]);
+
   return useMemo(
     () => ({
       inventory,
@@ -273,7 +297,19 @@ export function useHarnessesController(
       applyProposal,
       dismissProposal,
       change,
+      sync,
     }),
-    [applyProposal, busy, change, detect, dismissProposal, error, inventory, proposal, refresh],
+    [
+      applyProposal,
+      busy,
+      change,
+      detect,
+      dismissProposal,
+      error,
+      inventory,
+      proposal,
+      refresh,
+      sync,
+    ],
   );
 }

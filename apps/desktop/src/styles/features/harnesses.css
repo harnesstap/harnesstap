@@ -18,6 +18,14 @@
   text-align: left;
 }
 
+.harness-sync-controls {
+  margin: auto -0.75rem -0.65rem;
+}
+
+.harness-sync-error {
+  color: var(--red);
+}
+
 .harness-sidebar-actions {
   display: flex;
   align-items: center;

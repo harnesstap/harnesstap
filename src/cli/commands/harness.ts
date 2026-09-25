@@ -18,6 +18,10 @@ import {
 import { resolveHarnessSelection } from "../../services/harness-config.js";
 import { getDedicatedSerializerPlatformIds } from "../../services/platform-serializers.js";
 import { detectPlatforms } from "../../services/scanner.js";
+import {
+  HarnessUnionSyncError,
+  syncConfiguredHarnesses,
+} from "../../services/harness-union-sync.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { parseHarnessAliases } from "../handlers/parse-flags.js";
@@ -156,6 +160,46 @@ async function handleHarnessProjectSetCommand(opts: {
   ui.success(`Set project harness preference ${ui.icons.hint} main: ${ui.theme.accent(saved.main_harness)}`);
 }
 
+async function handleHarnessSyncCommand(opts: {
+  project?: string;
+  dryRun?: boolean;
+  format?: string;
+}): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const scope = opts.project ? "project" : "global";
+  try {
+    const result = await syncConfiguredHarnesses({
+      scope,
+      ...(opts.project ? { projectRoot: resolve(opts.project) } : {}),
+      dryRun: opts.dryRun,
+    });
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+    const verb = opts.dryRun ? "Would sync" : "Synced";
+    ui.success(
+      `${verb} ${result.platforms_synced.join(", ")} ${ui.icons.hint} ${result.files_written} files`,
+    );
+    if (result.conflicts.length > 0) {
+      ui.dim(
+        `${result.conflicts.length} conflict${result.conflicts.length === 1 ? "" : "s"} resolved with ${result.main_harness} winning`,
+      );
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.exitCode = 1;
+    ui.danger(message, {
+      hints:
+        error instanceof HarnessUnionSyncError && error.code === "need_two_harnesses"
+          ? [formatCommand("harness set --main <slug> --aliases <slugs>")]
+          : [formatCommand("harness set --main <slug> --aliases <slugs>")],
+    });
+  }
+}
+
 function handleHarnessProjectStatusCommand(opts: {
   project: string;
   format?: string;
@@ -228,6 +272,16 @@ export function registerHarnessCommands(root: Command): void {
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Show global harness preferences")
     .action(handleHarnessStatusCommand);
+
+  harnessCmd
+    .command("sync")
+    .option("--project <path>", "Sync a git-backed project instead of home")
+    .option("--dry-run", "Show what would be written without writing files")
+    .option("--format <mode>", "Output format: human or json", "human")
+    .description(
+      "Union resources from configured harnesses and materialize with main-wins conflicts",
+    )
+    .action(handleHarnessSyncCommand);
 
   const harnessProjectCmd = configureCommandGroup(
     harnessCmd

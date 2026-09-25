@@ -160,3 +160,26 @@ export async function saveHarnessSelection(
   }
   return fetchHarnessInventory(baseUrl, token);
 }
+
+export interface HarnessSyncResult {
+  main_harness: string;
+  alias_harnesses: string[];
+  platforms_synced: string[];
+  files_written: number;
+}
+
+export async function syncConfiguredHarnesses(
+  baseUrl: string,
+  token: string | null,
+): Promise<HarnessSyncResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/harness/sync", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not sync harnesses");
+  }
+  const body = (await response.json()) as HarnessSyncResult;
+  return body;
+}
