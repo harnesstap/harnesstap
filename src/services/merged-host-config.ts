@@ -118,7 +118,7 @@ export function mergeClaudeSettingsContent(
  * Overlay user-scope `mcpServers` onto live `~/.claude.json`.
  * Preserves OAuth session, `projects` (local-scope MCP and trust state),
  * and every other top-level key. Refuses to replace the file when the live
- * JSON cannot be parsed.
+ * JSON cannot be parsed. Local-scope servers are never written into this overlay.
  */
 export function mergeClaudeUserJsonContent(
   existingRaw: string | null | undefined,

@@ -83,9 +83,9 @@ Claude Code stores MCP in two files. HarnessTap follows that split and does **no
 | ----- | ------------- | ---------- |
 | **Project** (shared with the team) | `.mcp.json` | Scan + apply (project) |
 | **User** (all projects, this machine) | top-level `mcpServers` in `~/.claude.json` | Scan + merge-safe apply (global) |
-| **Local** (this project, this user) | `projects[<absPath>].mcpServers` in `~/.claude.json` | Not imported or applied |
+| **Local** (this project, this user) | `projects[<absPath>].mcpServers` in `~/.claude.json` | Scan / inventory only (dedicated source `~/.claude.json#local:<absPath>`). Never applied to `.mcp.json` or top-level user `mcpServers`. |
 
-`~/.claude.json` also holds OAuth session and per-project trust state. Apply overlays `mcpServers` only and never deletes the file. If `CLAUDE_CONFIG_DIR` is set, Claude reads `.claude.json` from that directory instead of `~/.claude.json` — HarnessTap still uses the home path.
+`~/.claude.json` also holds OAuth session and per-project trust state. Apply overlays top-level `mcpServers` only and never deletes the file. Local-scope MCP is bound to the exact absolute project path Claude stored (typically the git root where `claude mcp add` ran). HarnessTap does not promote those servers into team `.mcp.json`, merge them into user-scope `mcpServers`, or copy them across harnesses on Sync harnesses. If `CLAUDE_CONFIG_DIR` is set, Claude reads `.claude.json` from that directory instead of `~/.claude.json` — HarnessTap still uses the home path.
 
 ## Partially bridgeable
 

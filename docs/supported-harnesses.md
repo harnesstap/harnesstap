@@ -47,7 +47,7 @@ All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}`
 
 | Harness | MCP scan/emit | Full env emission | MCP `${VAR}` substitution |
 | ------- | ------------- | ----------------- | ------------------------ |
-| **claude-code** | Yes (project `.mcp.json`; user `~/.claude.json`) | Yes | Yes |
+| **claude-code** | Yes (project `.mcp.json`; user `~/.claude.json`; local `projects[]` inventory-only) | Yes | Yes |
 | **codex** | Yes (`config.toml`) | Yes | Yes |
 | **cursor** | Yes (`.cursor/mcp.json`) | No | Yes |
 | **copilot-cli**, **github-copilot** | Yes | No | Yes |
@@ -191,7 +191,7 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 
 | Harness | Instructions | Skills | Rules | MCP | Agents | Commands | Settings |
 | ------- | ------------ | ------ | ----- | --- | ------ | -------- | -------- |
-| **claude-code** | `CLAUDE.md` | `.claude/skills/` | `.claude/rules/` | `.mcp.json` (project); `~/.claude.json` (user) | `.claude/agents/` | `.claude/commands/` | `.claude/settings.json` |
+| **claude-code** | `CLAUDE.md` | `.claude/skills/` | `.claude/rules/` | `.mcp.json` (project); `~/.claude.json` (user); local `projects[]` inventory-only | `.claude/agents/` | `.claude/commands/` | `.claude/settings.json` |
 | **codex** | `AGENTS.md` | `.agents/skills/` | — | `.codex/config.toml` | `.codex/agents/` | — | `.codex/config.toml` |
 | **cursor** | `AGENTS.md` (+ legacy `.cursorrules`) | `.agents/skills/` | `.cursor/rules/` | `.cursor/mcp.json` | `.cursor/agents/` | — | — |
 | **opencode** | `AGENTS.md` | `.opencode/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | `opencode.json` | `.opencode/agents/` | `.opencode/commands/` | — |
@@ -212,7 +212,7 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **minimax-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`) | `.minimax/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | project `.mcp.json`; user `~/.minimax/mcp.json` | — | — | `~/.minimax/config.yaml` (not rewritten) |
 | **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
 
-Claude Code **user** MCP lives in `~/.claude.json` (`mcpServers` at the top level). Global apply merge-overlays that key and leaves OAuth session and `projects` (local-scope MCP, trust) untouched. **Project** MCP remains `.mcp.json`. Local-scope MCP is not scanned. See [Portability limits — Claude Code MCP scopes](portability-limits.md#claude-code-mcp-scopes).
+Claude Code **user** MCP lives in `~/.claude.json` (`mcpServers` at the top level). Global apply merge-overlays that key and leaves OAuth session and `projects` (local-scope MCP, trust) untouched. **Project** MCP remains `.mcp.json`. **Local** MCP (`projects[<absPath>].mcpServers`) is scanned for inventory with source `~/.claude.json#local:<absPath>` and is never applied. See [Portability limits — Claude Code MCP scopes](portability-limits.md#claude-code-mcp-scopes).
 
 Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) and on Desktop **Harnesses** (app-managed panel) but never imports or applies them. Cursor plugin installs live under `~/.cursor/plugins/`. Desktop Harnesses also lists related trees Cursor can read: Claude `~/.claude/plugins/` and `~/.claude/skills/`, plus the shared `~/.agents/skills/` hub from the project `.agents/skills/` convention.
 

@@ -191,4 +191,68 @@ describe("syncConfiguredHarnesses", () => {
       await context.cleanup();
     }
   });
+
+  it("does not promote Claude local-scope MCP into project .mcp.json on harness sync", async () => {
+    const context = await createInitializedTestContext("harness-union-local-mcp");
+    try {
+      const { setHarnessPreference } = await import("../../src/models/harness.ts");
+      setHarnessPreference({
+        main_harness: "claude-code",
+        alias_harnesses: ["cursor"],
+      });
+
+      writeTextFile(
+        join(context.homeDir, ".claude.json"),
+        JSON.stringify(
+          {
+            mcpServers: { docs: { command: "user-mcp" } },
+            projects: {
+              [context.projectDir]: {
+                mcpServers: {
+                  localOnly: { command: "npx", args: ["local-mcp"] },
+                },
+              },
+            },
+          },
+          null,
+          2,
+        ),
+      );
+      writeTextFile(
+        join(context.projectDir, ".cursor/mcp.json"),
+        JSON.stringify({
+          mcpServers: {
+            github: { command: "npx", args: ["-y", "github-mcp"] },
+          },
+        }, null, 2),
+      );
+
+      const { syncConfiguredHarnesses } = await import(
+        "../../src/services/harness-union-sync.ts"
+      );
+      await syncConfiguredHarnesses({
+        scope: "project",
+        projectRoot: context.projectDir,
+      });
+
+      const claudeMcp = JSON.parse(
+        readFileSync(join(context.projectDir, ".mcp.json"), "utf8"),
+      ) as { mcpServers: Record<string, unknown> };
+      expect(claudeMcp.mcpServers.github).toBeDefined();
+      expect(claudeMcp.mcpServers.localOnly).toBeUndefined();
+      expect(claudeMcp.mcpServers.docs).toBeUndefined();
+
+      const userJson = JSON.parse(
+        readFileSync(join(context.homeDir, ".claude.json"), "utf8"),
+      ) as {
+        mcpServers: Record<string, unknown>;
+        projects: Record<string, { mcpServers?: Record<string, unknown> }>;
+      };
+      expect(userJson.mcpServers.docs).toBeDefined();
+      expect(userJson.mcpServers.localOnly).toBeUndefined();
+      expect(userJson.projects[context.projectDir]?.mcpServers?.localOnly).toBeDefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

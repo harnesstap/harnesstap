@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { filterMcpServersForTargetPath } from "../../src/services/mcp-target.ts";
 import type { Resource } from "../../src/types.ts";
+import { claudeLocalMcpSource } from "../../src/services/claude-local-mcp.ts";
 
 function mcp(
   name: string,
@@ -31,6 +32,7 @@ describe("filterMcpServersForTargetPath", () => {
     mcp("claude-user", "~/.claude.json"),
     mcp("claude-project", ".mcp.json"),
     mcp("portable", "manual"),
+    mcp("claude-local", claudeLocalMcpSource("/tmp/app")),
   ];
 
   it("keeps path-matched and portable servers for copilot", () => {
@@ -64,5 +66,21 @@ describe("filterMcpServersForTargetPath", () => {
 
   it("returns all servers when target path is missing", () => {
     expect(filterMcpServersForTargetPath(resources, undefined)).toHaveLength(5);
+  });
+
+  it("never emits Claude local-scope MCP onto any target", () => {
+    expect(
+      filterMcpServersForTargetPath(resources, "~/.claude.json").map(
+        (entry) => entry.name,
+      ),
+    ).toEqual(["claude-user", "portable"]);
+    expect(
+      filterMcpServersForTargetPath(resources, ".mcp.json").map(
+        (entry) => entry.name,
+      ),
+    ).toEqual(["claude-project", "portable"]);
+    expect(
+      filterMcpServersForTargetPath(resources, undefined).map((entry) => entry.name),
+    ).not.toContain("claude-local");
   });
 });

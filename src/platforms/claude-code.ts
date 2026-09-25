@@ -8,12 +8,14 @@ import {
   emitMarkdownAgent,
 } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
+import { localMcpCreateInputsFromDocument } from "../services/claude-local-mcp.js";
 import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
 import {
   CLAUDE_USER_JSON_RELATIVE,
   mergeClaudeSettingsContent,
   mergeClaudeUserJsonContent,
 } from "../services/merged-host-config.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import type {
   AgentMetadata,
   HookMetadata,
@@ -110,7 +112,30 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     resources.push(...this.scanSkillsDir(projectRoot, ".claude/skills"));
 
     // 4. MCP servers: project-scope .mcp.json (not ~/.claude.json local scope)
-    resources.push(...this.scanMcpServersAt(join(projectRoot, ".mcp.json"), ".mcp.json"));
+    const projectMcp = this.scanMcpServersAt(
+      join(projectRoot, ".mcp.json"),
+      ".mcp.json",
+    );
+    resources.push(...projectMcp);
+
+    // Local-scope MCP for this project lives in ~/.claude.json projects[absPath].
+    // Inventory/scan only — serialize never promotes these into .mcp.json.
+    const homeClaudeJson = this.readFile(
+      join(resolveHomeRoot(), CLAUDE_USER_JSON_RELATIVE),
+    );
+    if (homeClaudeJson) {
+      try {
+        resources.push(
+          ...localMcpCreateInputsFromDocument(
+            JSON.parse(homeClaudeJson) as unknown,
+            projectRoot,
+            new Set(projectMcp.map((resource) => resource.name)),
+          ),
+        );
+      } catch {
+        // invalid JSON — skip
+      }
+    }
 
     // 5. Settings: .claude/settings.json (permissions, hooks, env)
     const settingsContent = this.readFile(
@@ -246,14 +271,25 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       ),
     );
 
-    // User-scope MCP only (top-level mcpServers). Local-scope servers live
-    // under projects[<absPath>].mcpServers and stay off the library.
-    resources.push(
-      ...this.scanMcpServersAt(
-        join(homeRoot, CLAUDE_USER_JSON_RELATIVE),
-        "~/.claude.json",
-      ),
-    );
+    // User-scope MCP only at top-level mcpServers. Local-scope servers live
+    // under projects[<absPath>].mcpServers and are inventoried separately.
+    const userJsonPath = join(homeRoot, CLAUDE_USER_JSON_RELATIVE);
+    const userJsonContent = this.readFile(userJsonPath);
+    const userMcp = this.scanMcpServersAt(userJsonPath, "~/.claude.json");
+    resources.push(...userMcp);
+    if (userJsonContent) {
+      try {
+        resources.push(
+          ...localMcpCreateInputsFromDocument(
+            JSON.parse(userJsonContent) as unknown,
+            undefined,
+            new Set(userMcp.map((resource) => resource.name)),
+          ),
+        );
+      } catch {
+        // invalid JSON — skip
+      }
+    }
 
     const settingsContent = this.readFile(
       join(homeRoot, ".claude", "settings.json"),

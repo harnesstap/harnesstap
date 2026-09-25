@@ -213,6 +213,13 @@ describe("locationForSource", () => {
       ),
     ).toBe(null);
   });
+
+  it("groups Claude local-scope MCP under ~/.claude.json", () => {
+    const mcp = { path: "~/.claude.json", alternates: [] };
+    expect(
+      locationForSource("~/.claude.json#local:/tmp/app", [mcp], HOME),
+    ).toBe(mcp);
+  });
 });
 
 describe("classifyDiskPresence", () => {

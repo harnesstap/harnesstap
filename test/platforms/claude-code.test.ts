@@ -163,7 +163,7 @@ describe("ClaudeCodeSerializer", () => {
     expect(files.find((file) => file.path === "CLAUDE.md")).toBeUndefined();
   });
 
-  it("scans user-scope MCP from ~/.claude.json and ignores local-scope projects", async () => {
+  it("scans user-scope MCP from ~/.claude.json and inventories local-scope projects", async () => {
     const home = createTempDir("claude-home-mcp-");
     try {
       writeTextFile(
@@ -195,13 +195,25 @@ describe("ClaudeCodeSerializer", () => {
       const resources = await serializer.scanGlobal(home);
       const mcps = resources.filter((resource) => resource.type === "mcp_server");
 
-      expect(mcps.map((resource) => resource.name)).toEqual(["docs"]);
-      expect(mcps[0]?.source).toBe("~/.claude.json");
-      expect(mcps[0]?.metadata).toEqual(
+      expect(mcps.map((resource) => resource.name).sort()).toEqual(["docs", "localOnly"]);
+      const user = mcps.find((resource) => resource.name === "docs");
+      const local = mcps.find((resource) => resource.name === "localOnly");
+      expect(user?.source).toBe("~/.claude.json");
+      expect(user?.metadata).toEqual(
         expect.objectContaining({
           transport: "http",
           url: "https://mcp.example.com",
           headers: { Authorization: "Bearer ${API_TOKEN}" },
+        }),
+      );
+      expect(local?.source).toBe("~/.claude.json#local:/tmp/app");
+      expect(local?.metadata).toEqual(
+        expect.objectContaining({
+          transport: "stdio",
+          command: "npx",
+          args: ["local-mcp"],
+          claude_mcp_scope: "local",
+          claude_project_path: "/tmp/app",
         }),
       );
     } finally {
@@ -270,6 +282,112 @@ describe("ClaudeCodeSerializer", () => {
 
     expect(files.find((file) => file.path === ".mcp.json")).toBeUndefined();
     expect(files.find((file) => file.path === ".claude.json")).toBeUndefined();
+  });
+
+  it("does not promote local-scope MCP into .mcp.json or user mcpServers", async () => {
+    const home = createTempDir("claude-local-mcp-apply-");
+    try {
+      writeTextFile(
+        join(home, ".claude.json"),
+        JSON.stringify(
+          {
+            oauthAccount: { accountUuid: "session" },
+            mcpServers: { keep: { command: "keep-mcp" } },
+            projects: {
+              "/tmp/app": {
+                mcpServers: { localOnly: { command: "npx", args: ["local-mcp"] } },
+              },
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const localResource = makeResource({
+        type: "mcp_server",
+        name: "localOnly",
+        source: "~/.claude.json#local:/tmp/app",
+        metadata: {
+          transport: "stdio",
+          command: "npx",
+          args: ["local-mcp"],
+          claude_mcp_scope: "local",
+          claude_project_path: "/tmp/app",
+        },
+      });
+
+      const serializer = new ClaudeCodeSerializer();
+      const projectFiles = await serializer.serialize([localResource], ".");
+      expect(projectFiles.find((file) => file.path === ".mcp.json")).toBeUndefined();
+
+      const globalFiles = await serializer.serialize([localResource], home, {
+        target: "global",
+      });
+      expect(globalFiles.find((file) => file.path === ".claude.json")).toBeUndefined();
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("scans project-local MCP from ~/.claude.json for the current project path", async () => {
+    const home = createTempDir("claude-local-mcp-home-");
+    const projectDir = createTempDir("claude-local-mcp-project-");
+    const previousHome = process.env.HOME;
+    const previousProfile = process.env.USERPROFILE;
+    try {
+      process.env.HOME = home;
+      process.env.USERPROFILE = home;
+      writeTextFile(
+        join(home, ".claude.json"),
+        JSON.stringify(
+          {
+            mcpServers: {
+              docs: { command: "user-mcp" },
+            },
+            projects: {
+              [projectDir]: {
+                mcpServers: {
+                  localOnly: { command: "npx", args: ["local-mcp"] },
+                },
+              },
+              "/tmp/other": {
+                mcpServers: {
+                  otherLocal: { command: "other-mcp" },
+                },
+              },
+            },
+          },
+          null,
+          2,
+        ),
+      );
+      writeTextFile(
+        join(projectDir, ".mcp.json"),
+        JSON.stringify({
+          mcpServers: { team: { command: "team-mcp" } },
+        }),
+      );
+
+      const serializer = new ClaudeCodeSerializer();
+      const scanned = await serializer.scan(projectDir);
+      const mcps = scanned.filter((resource) => resource.type === "mcp_server");
+
+      expect(mcps.map((resource) => resource.name).sort()).toEqual(["localOnly", "team"]);
+      expect(mcps.find((resource) => resource.name === "team")?.source).toBe(".mcp.json");
+      expect(mcps.find((resource) => resource.name === "localOnly")?.source).toBe(
+        `~/.claude.json#local:${projectDir}`,
+      );
+      expect(mcps.some((resource) => resource.name === "docs")).toBe(false);
+      expect(mcps.some((resource) => resource.name === "otherLocal")).toBe(false);
+    } finally {
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
+      if (previousProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previousProfile;
+      cleanupDir(home);
+      cleanupDir(projectDir);
+    }
   });
 
   it("omits unsupported ask permissions from Claude settings output", async () => {
