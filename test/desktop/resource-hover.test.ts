@@ -175,7 +175,7 @@ describe("resource hover model", () => {
     });
   });
 
-  it("treats name-only models as empty hover cards", () => {
+  it("treats name-only models as empty hover cards unless showName is set", () => {
     expect(
       resourceHoverCardHasContent({
         name: "orphan",
@@ -183,6 +183,14 @@ describe("resource hover model", () => {
         extra: [],
       }),
     ).toBe(false);
+    expect(
+      resourceHoverCardHasContent({
+        name: "ship",
+        showName: true,
+        harnessIds: [],
+        extra: [],
+      }),
+    ).toBe(true);
     expect(
       resourceHoverCardHasContent({
         name: "ship",

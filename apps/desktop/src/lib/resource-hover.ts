@@ -22,6 +22,8 @@ export type ResourceHoverExtra = {
 export type ResourceHoverModel = {
   type?: string;
   name: string;
+  /** When true, the card lists the full name after the type. */
+  showName?: boolean;
   path?: string;
   originKind?: string;
   originRef?: string;
@@ -87,6 +89,9 @@ export function pointerHoverCardStyle(position: { left: number; top: number }): 
 }
 
 export function resourceHoverCardHasContent(model: ResourceHoverModel): boolean {
+  if (model.showName) {
+    return true;
+  }
   if (model.type !== undefined) {
     return true;
   }

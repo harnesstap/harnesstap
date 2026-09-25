@@ -59,15 +59,23 @@ function HoverCardRow({
   icon,
   text,
   mono,
+  wrap,
 }: {
   icon: ReactNode;
   text: string;
   mono?: boolean;
+  wrap?: boolean;
 }): ReactNode {
+  const classes = [
+    mono ? "mono" : undefined,
+    wrap ? "resource-hover-card-wrap" : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="resource-hover-card-row">
       {icon}
-      <span className={mono ? "mono" : undefined}>{text}</span>
+      <span className={classes || undefined}>{text}</span>
     </div>
   );
 }
@@ -230,6 +238,13 @@ export function ResourceHoverCard({
         <HoverCardRow
           icon={<TypeIcon type={model.type} />}
           text={labelForType(model.type, 1)}
+        />
+      ) : null}
+      {model.showName ? (
+        <HoverCardRow
+          icon={<FileText size={ICON_SIZE} aria-hidden />}
+          text={model.name}
+          wrap
         />
       ) : null}
       {model.originKind !== undefined ? (

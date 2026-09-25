@@ -9,16 +9,18 @@ import {
   detectProposal,
   diskPresenceLabel,
   filterHarnessLocations,
+  groupHarnessLocationsByType,
   harnessesViewReducer,
   harnessId,
   harnessSummary,
   initialHarnessesViewState,
   locationRelationLabel,
+  locationSectionOwner,
   removalCopy,
   resourceDetailTargetFor,
   selectionFrom,
   selectionWith,
-  visibleLocationRows,
+  truncateResourceBadgeName,
   type DiskPresence,
   type HarnessEntry,
   type HarnessInventory,
@@ -406,17 +408,67 @@ describe("filterHarnessLocations", () => {
     ]);
   });
 
-  it("previews five rows until expanded", () => {
-    const many: HarnessLocation = {
-      ...SKILLS,
-      resources: ["a", "b", "c", "d", "e", "f", "g"].map((name) =>
-        row("skill", name, `~/.claude/skills/${name}/SKILL.md`),
-      ),
-    };
-    expect(visibleLocationRows(many, false).map((item) => item.name)).toEqual([
-      "a", "b", "c", "d", "e",
+  it("groups locations by resource type then harness section", () => {
+    const cursor = entry("cursor", "detected", {
+      locations: [
+        location("~/.cursor/skills/", ["skills"], true, [
+          row("skill", "native", "~/.cursor/skills/native/SKILL.md"),
+        ]),
+        location("~/.cursor/skills-cursor/", ["skills"], true, [
+          row("skill", "builtin", "~/.cursor/skills-cursor/builtin/SKILL.md"),
+        ], { relation: "host-managed" }),
+        location("~/.agents/skills/", ["skills"], true, [
+          row("skill", "hub", "~/.agents/skills/hub/SKILL.md"),
+        ], { relation: "shared" }),
+        location("~/.claude/skills/", ["skills"], true, [
+          row("skill", "claude", "~/.claude/skills/claude/SKILL.md"),
+        ], { relation: "related", relatedFrom: "Claude Code" }),
+        location("~/.cursor/mcp.json", ["settings"], true, [
+          row("mcp_server", "slack", "~/.cursor/mcp.json"),
+        ]),
+      ],
+    });
+    const groups = groupHarnessLocationsByType(cursor, cursor.locations);
+    expect(groups.map((group) => group.type)).toEqual(["mcp_server", "skill"]);
+    const skills = groups[1];
+    expect(skills?.sections.map((section) => [section.owner.iconId, section.owner.name, section.path])).toEqual([
+      ["cursor", "cursor", "~/.cursor/skills/"],
+      ["cursor", "cursor", "~/.cursor/skills-cursor/"],
+      ["agents", "Agents", "~/.agents/skills/"],
+      ["claude-code", "Claude Code", "~/.claude/skills/"],
     ]);
-    expect(visibleLocationRows(many, true).length).toBe(7);
+    expect(groups[0]?.sections[0]?.resources.map((item) => item.name)).toEqual(["slack"]);
+  });
+
+  it("keeps empty surface sections and truncates badge titles", () => {
+    expect(truncateResourceBadgeName("short")).toBe("short");
+    expect(truncateResourceBadgeName("abcdefghijklmnopqrstuvwxyz")).toBe(
+      "abcdefghijklmnopqrst...",
+    );
+    const emptyRules = location("~/.claude/rules/", ["rules"], false, []);
+    const groups = groupHarnessLocationsByType(CLAUDE_ENTRY, [emptyRules]);
+    expect(groups).toEqual([
+      {
+        type: "rule",
+        sections: [
+          {
+            path: "~/.claude/rules/",
+            onDisk: false,
+            owner: { iconId: CLAUDE, name: "claude-code" },
+            resources: [],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("labels Agents for the shared ~/.agents hub", () => {
+    expect(
+      locationSectionOwner(
+        location("~/.agents/skills/", ["skills"], true, [], { relation: "shared" }),
+        CLAUDE_ENTRY,
+      ),
+    ).toEqual({ iconId: "agents", name: "Agents" });
   });
 
   it("builds a resource detail target from the library id and source", () => {
@@ -532,7 +584,6 @@ describe("harnessesViewReducer", () => {
       search: "",
       typeTab: null,
       editing: false,
-      expandedLocations: new Set(),
     });
   });
 
@@ -548,9 +599,8 @@ describe("harnessesViewReducer", () => {
     });
   });
 
-  it("select switches harness, returns to inventory, and clears expansions", () => {
+  it("select switches harness and returns to inventory", () => {
     let state = initialHarnessesViewState(inventory);
-    state = harnessesViewReducer(state, { type: "expand-location", path: SKILLS.path });
     state = harnessesViewReducer(state, { type: "search", value: "alpha" });
     state = harnessesViewReducer(state, { type: "open-detail", target });
     expect(harnessesViewReducer(state, { type: "select", id: CURSOR })).toEqual({
@@ -559,7 +609,6 @@ describe("harnessesViewReducer", () => {
       search: "alpha",
       typeTab: null,
       editing: false,
-      expandedLocations: new Set(),
     });
   });
 

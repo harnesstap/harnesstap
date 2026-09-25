@@ -7,8 +7,12 @@ export const DESKTOP_HARNESS_IDS = ["claude-code", "cursor"] as const;
 
 export type DesktopHarnessId = (typeof DESKTOP_HARNESS_IDS)[number];
 
+/** Shared `~/.agents/` hub. Not a registry platform; used as a section mark. */
+export const SHARED_AGENTS_SECTION_ID = "agents";
+
 /** Display names for known harness ids (desktop + common extras). */
 const HARNESS_NAMES: Record<string, string> = {
+  [SHARED_AGENTS_SECTION_ID]: "Agents",
   "claude-code": "Claude Code",
   cursor: "Cursor",
   codex: "Codex",
@@ -44,6 +48,13 @@ const RELATED_BY_TYPE: Record<string, readonly DesktopHarnessId[]> = {
 
 export function harnessDisplayName(id: string): string {
   return HARNESS_NAMES[id] ?? id;
+}
+
+export function harnessIdFromDisplayName(name: string): string | null {
+  for (const [id, display] of Object.entries(HARNESS_NAMES)) {
+    if (display === name) return id;
+  }
+  return null;
 }
 
 /** Harnesses shown as “related” for a library/profile resource type. */
