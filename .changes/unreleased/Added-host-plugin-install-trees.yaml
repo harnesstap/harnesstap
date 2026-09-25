@@ -1,0 +1,5 @@
+kind: Added
+body: Scan Cursor host plugins and materialize Claude Code and Cursor plugin install trees during harness sync.
+time: 2026-09-25T02:10:00Z
+custom:
+  Issue: ""

@@ -61,4 +61,40 @@ describe("preferSharedSkillEmits", () => {
     expect(paths).toContain(".claude/skills/foo/SKILL.md");
     expect(paths.filter((path) => path.endsWith("foo/SKILL.md"))).toHaveLength(1);
   });
+
+  it("does not rewrite host plugin install-tree skills onto shared skill dirs", () => {
+    const preferred = preferSharedSkillEmits(
+      [
+        {
+          platformId: "cursor",
+          files: [
+            {
+              path: ".cursor/plugins/cache/demo/demo/1.0.0/skills/hello/SKILL.md",
+              content: "plugin",
+            },
+            { path: ".agents/skills/hello/SKILL.md", content: "native" },
+          ],
+        },
+        {
+          platformId: "claude-code",
+          files: [
+            {
+              path: ".claude/plugins/cache/demo/demo/1.0.0/skills/hello/SKILL.md",
+              content: "plugin",
+            },
+          ],
+        },
+      ],
+      ["cursor", "claude-code"],
+      "global",
+    );
+    const files = flattenUniqueFiles(preferred);
+    const paths = files.map((file) => file.path).sort();
+    expect(paths).toContain(
+      ".cursor/plugins/cache/demo/demo/1.0.0/skills/hello/SKILL.md",
+    );
+    expect(paths).toContain(
+      ".claude/plugins/cache/demo/demo/1.0.0/skills/hello/SKILL.md",
+    );
+  });
 });

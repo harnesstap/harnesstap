@@ -85,6 +85,12 @@ function readInstallManifest(
   ) {
     return rootManifest;
   }
+
+  // Claude-native trees are inventoryable once copied into Cursor's plugin root.
+  const claudeManifest = readJson<CursorPluginManifest>(
+    join(installPath, ".claude-plugin", "plugin.json"),
+  );
+  if (claudeManifest?.name) return claudeManifest;
   return null;
 }
 

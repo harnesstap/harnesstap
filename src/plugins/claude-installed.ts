@@ -1,10 +1,14 @@
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type {
-  PluginPinMetadata,
-  ResourceCreateInput,
-} from "../types.js";
+import type { ResourceCreateInput } from "../types.js";
+import {
+  parsePluginRef,
+  readFirstHostPluginManifest,
+  readJsonFile,
+} from "./host-plugin-manifest.js";
+import { dedupePluginInstalls, hasInstallPath, pluginInstallToPinInput } from "./host-plugin-pins.js";
 import type { PluginInstall, PluginScope, PluginVersionSource } from "./types.js";
+
+export { parsePluginRef, readJsonFile };
 
 export interface InstalledPluginRecord {
   scope: PluginScope;
@@ -24,45 +28,28 @@ export function claudePluginsDir(homeRoot: string): string {
   return join(homeRoot, ".claude", "plugins");
 }
 
-export function readJsonFile<T>(path: string): T | null {
-  if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(readFileSync(path, "utf-8")) as T;
-  } catch {
-    return null;
-  }
-}
-
-export function parsePluginRef(ref: string): { name: string; marketplace: string } {
-  const at = ref.lastIndexOf("@");
-  if (at <= 0) return { name: ref, marketplace: "" };
-  return { name: ref.slice(0, at), marketplace: ref.slice(at + 1) };
-}
-
 export function readManifestVersion(installPath: string): {
   version: string;
   versionSource: PluginVersionSource;
   metadata?: PluginInstall["metadata"];
 } {
-  const manifestPath = join(installPath, ".claude-plugin", "plugin.json");
-  const manifest = readJsonFile<{
-    version?: string;
-    description?: string;
-    repository?: string;
-    homepage?: string;
-  }>(manifestPath);
-  if (manifest?.version) {
+  const manifest = readFirstHostPluginManifest(installPath);
+  if (!manifest) {
+    return { version: "unknown", versionSource: "unknown" };
+  }
+  const metadata = {
+    description: manifest.description,
+    repository: manifest.repository,
+    homepage: manifest.homepage,
+  };
+  if (manifest.version) {
     return {
       version: manifest.version,
       versionSource: "manifest",
-      metadata: {
-        description: manifest.description,
-        repository: manifest.repository,
-        homepage: manifest.homepage,
-      },
+      metadata,
     };
   }
-  return { version: "unknown", versionSource: "unknown" };
+  return { version: "unknown", versionSource: "unknown", metadata };
 }
 
 export function resolveInstalledRecordPath(
@@ -130,22 +117,6 @@ export function loadInstalled(homeRoot: string): PluginInstall[] {
   return installs;
 }
 
-function preferInstalledRecord(
-  current: PluginInstall | undefined,
-  candidate: PluginInstall,
-): boolean {
-  if (!current) {
-    return true;
-  }
-  if (candidate.scope === "user" && current.scope !== "user") {
-    return true;
-  }
-  if (candidate.scope === current.scope) {
-    return false;
-  }
-  return false;
-}
-
 /**
  * Build `plugin_pin` create inputs from Claude's installed_plugins.json.
  * Dedupes by ref; prefers user-scope installs when both exist.
@@ -154,42 +125,12 @@ function preferInstalledRecord(
 export function listInstalledPluginPinCreateInputs(
   homeRoot: string,
 ): ResourceCreateInput[] {
-  const byRef = new Map<string, PluginInstall>();
-  for (const install of loadInstalled(homeRoot)) {
-    if (!install.installPath || !existsSync(install.installPath)) {
-      continue;
-    }
-    const current = byRef.get(install.ref);
-    if (preferInstalledRecord(current, install)) {
-      byRef.set(install.ref, install);
-    }
-  }
-
-  return [...byRef.values()]
-    .sort((left, right) => left.ref.localeCompare(right.ref))
-    .map((install) => {
-      const { name, marketplace } = parsePluginRef(install.ref);
-      const metadata: PluginPinMetadata = {
-        source_kind: marketplace ? "marketplace" : "local",
-        ...(marketplace ? { marketplace_name: marketplace } : {}),
-        ...(install.version && install.version !== "unknown"
-          ? { resolved_version: install.version }
-          : {}),
-        sync_status: "never_synced",
-        portable: "reference",
-      };
-      return {
-        type: "plugin" as const,
-        name,
-        namespace: marketplace,
-        description:
-          install.metadata?.description?.trim()
-          || `Plugin pin: ${install.ref}`,
-        content: "{}",
-        metadata,
-        source: "~/.claude/plugins/installed_plugins.json",
-        origin_kind: marketplace ? ("marketplace_link" as const) : ("manual" as const),
-        origin_ref: install.ref,
-      };
-    });
+  return dedupePluginInstalls(loadInstalled(homeRoot))
+    .filter(hasInstallPath)
+    .map((install) =>
+      pluginInstallToPinInput(
+        install,
+        "~/.claude/plugins/installed_plugins.json",
+      ),
+    );
 }

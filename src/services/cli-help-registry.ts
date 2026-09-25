@@ -697,7 +697,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Union resources from configured harnesses (main + aliases) and materialize with main-wins conflicts",
     details:
-      "Scans every configured harness, unions portable types (skills, MCP, rules, and other serializer-supported resources), prefers the main harness when the same identity differs, and emits shared skill paths when multiple targets can read them. Default scope is the home directory. This is not mirror-from-main.",
+      "Scans every configured harness, unions portable types (skills, MCP, rules, host plugin install trees, and other serializer-supported resources), prefers the main harness when the same identity differs, and emits shared skill paths when multiple targets can read them. Claude and Cursor plugin trees are copied into each native root (they do not share a runtime plugin directory). Default scope is the home directory. This is not mirror-from-main.",
     examples: [
       "harness sync",
       "harness sync --dry-run --format json",

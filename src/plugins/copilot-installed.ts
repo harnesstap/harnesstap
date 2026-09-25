@@ -1,27 +1,16 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import type { PluginPinMetadata, ResourceCreateInput } from "../types.js";
+import type { ResourceCreateInput } from "../types.js";
 import type { PluginInstall } from "./types.js";
 import { parsePluginRef, readJsonFile } from "./claude-installed.js";
+import { readFirstHostPluginManifest } from "./host-plugin-manifest.js";
+import { pluginInstallToPinInput } from "./host-plugin-pins.js";
 
 const COPILOT_INSTALLED_PLUGINS_SOURCE = "~/.copilot/installed-plugins/";
 
-const COPILOT_MANIFEST_PATHS = [
-  ".claude-plugin/plugin.json",
-  ".github/plugin/plugin.json",
-  ".cursor-plugin/plugin.json",
-  ".codex-plugin/plugin.json",
-  ".goose-plugin/plugin.json",
-  "plugin.json",
-];
-
-interface CopilotPluginManifest {
-  name?: string;
-  version?: string;
-  description?: string;
-  repository?: string;
-  homepage?: string;
-}
+type CopilotPluginManifest = NonNullable<
+  ReturnType<typeof readFirstHostPluginManifest>
+>;
 
 interface CopilotSettingsFile {
   enabledPlugins?: unknown;
@@ -42,15 +31,7 @@ function listDirNames(dirPath: string): string[] {
 }
 
 function readCopilotManifest(installPath: string): CopilotPluginManifest | null {
-  for (const relativePath of COPILOT_MANIFEST_PATHS) {
-    const manifest = readJsonFile<CopilotPluginManifest>(
-      join(installPath, relativePath),
-    );
-    if (manifest?.name) {
-      return manifest;
-    }
-  }
-  return null;
+  return readFirstHostPluginManifest(installPath);
 }
 
 function normalizeEnabledPlugins(raw: unknown): Map<string, boolean> {
@@ -126,28 +107,7 @@ export function loadInstalledCopilotPlugins(homeRoot: string): PluginInstall[] {
 export function listInstalledCopilotPluginPinCreateInputs(
   homeRoot: string,
 ): ResourceCreateInput[] {
-  return loadInstalledCopilotPlugins(homeRoot).map((install) => {
-    const { marketplace } = parsePluginRef(install.ref);
-    const metadata: PluginPinMetadata = {
-      source_kind: marketplace ? "marketplace" : "local",
-      ...(marketplace ? { marketplace_name: marketplace } : {}),
-      ...(install.version && install.version !== "unknown"
-        ? { resolved_version: install.version }
-        : {}),
-      sync_status: "never_synced",
-      portable: "reference",
-    };
-    return {
-      type: "plugin" as const,
-      name: install.name,
-      namespace: marketplace,
-      description:
-        install.metadata?.description?.trim() || `Plugin pin: ${install.ref}`,
-      content: "{}",
-      metadata,
-      source: COPILOT_INSTALLED_PLUGINS_SOURCE,
-      origin_kind: marketplace ? ("marketplace_link" as const) : ("manual" as const),
-      origin_ref: install.ref,
-    };
-  });
+  return loadInstalledCopilotPlugins(homeRoot).map((install) =>
+    pluginInstallToPinInput(install, COPILOT_INSTALLED_PLUGINS_SOURCE),
+  );
 }
