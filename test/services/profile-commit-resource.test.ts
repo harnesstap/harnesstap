@@ -36,6 +36,8 @@ describe("profile-commit-resource", () => {
     ).toEqual({ type: "rule", name: "always" });
     expect(isMcpConfigManagedPath(".cursor/mcp.json")).toBe(true);
     expect(isMcpConfigManagedPath(".mcp.json")).toBe(true);
+    expect(isMcpConfigManagedPath("~/.claude.json")).toBe(true);
+    expect(isMcpConfigManagedPath(".claude.json")).toBe(true);
     expect(isMcpConfigManagedPath(".copilot/mcp-config.json")).toBe(true);
     expect(isMcpConfigManagedPath("~/.copilot/mcp-config.json")).toBe(true);
     expect(isMcpConfigManagedPath(".agents/mcp_config.json")).toBe(true);

@@ -9,7 +9,11 @@ import {
 } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
-import { mergeClaudeSettingsContent } from "../services/merged-host-config.js";
+import {
+  CLAUDE_USER_JSON_RELATIVE,
+  mergeClaudeSettingsContent,
+  mergeClaudeUserJsonContent,
+} from "../services/merged-host-config.js";
 import type {
   AgentMetadata,
   HookMetadata,
@@ -22,6 +26,24 @@ import type {
   PermissionMetadata,
   SerializeOptions,
 } from "../types.js";
+
+function emitClaudeMcpServerEntry(meta: McpServerMetadata): Record<string, unknown> {
+  const entry: Record<string, unknown> = {};
+  if (meta.transport === "http" && meta.url) {
+    entry["type"] = "http";
+    entry["url"] = meta.url;
+    if (meta.headers && Object.keys(meta.headers).length > 0) {
+      entry["headers"] = meta.headers;
+    }
+  } else {
+    if (meta.command) entry["command"] = meta.command;
+    if (meta.args) entry["args"] = meta.args;
+  }
+  if (meta.env && Object.keys(meta.env).length > 0) {
+    entry["env"] = meta.env;
+  }
+  return entry;
+}
 
 export class ClaudeCodeSerializer extends BaseSerializer {
   readonly platformId = "claude-code";
@@ -87,22 +109,8 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     // 3. Skills: .claude/skills/*/SKILL.md
     resources.push(...this.scanSkillsDir(projectRoot, ".claude/skills"));
 
-    // 4. MCP servers: .mcp.json
-    const mcpContent = this.readFile(join(projectRoot, ".mcp.json"));
-    if (mcpContent) {
-      try {
-        const document = JSON.parse(mcpContent) as unknown;
-        for (const [name, metadata] of Object.entries(
-          parseMcpServersDocument(document),
-        )) {
-          resources.push(
-            this.makeResource("mcp_server", name, "", ".mcp.json", metadata),
-          );
-        }
-      } catch {
-        // invalid JSON — skip
-      }
-    }
+    // 4. MCP servers: project-scope .mcp.json (not ~/.claude.json local scope)
+    resources.push(...this.scanMcpServersAt(join(projectRoot, ".mcp.json"), ".mcp.json"));
 
     // 5. Settings: .claude/settings.json (permissions, hooks, env)
     const settingsContent = this.readFile(
@@ -238,6 +246,15 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       ),
     );
 
+    // User-scope MCP only (top-level mcpServers). Local-scope servers live
+    // under projects[<absPath>].mcpServers and stay off the library.
+    resources.push(
+      ...this.scanMcpServersAt(
+        join(homeRoot, CLAUDE_USER_JSON_RELATIVE),
+        "~/.claude.json",
+      ),
+    );
+
     const settingsContent = this.readFile(
       join(homeRoot, ".claude", "settings.json"),
     );
@@ -320,6 +337,32 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     return resources;
   }
 
+  private scanMcpServersAt(
+    configPath: string,
+    displayPath: string,
+  ): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
+    const mcpContent = this.readFile(configPath);
+    if (!mcpContent) {
+      return resources;
+    }
+
+    try {
+      const document = JSON.parse(mcpContent) as unknown;
+      for (const [name, metadata] of Object.entries(
+        parseMcpServersDocument(document),
+      )) {
+        resources.push(
+          this.makeResource("mcp_server", name, "", displayPath, metadata),
+        );
+      }
+    } catch {
+      // invalid JSON — skip
+    }
+
+    return resources;
+  }
+
   // ── Serialize ───────────────────────────────────────────────────────
 
   async serialize(
@@ -380,7 +423,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       );
     }
 
-    // MCP servers → .mcp.json
+    // MCP servers → project `.mcp.json` or user `~/.claude.json`
     const mcpServers = this.mcpServersForTarget(
       byType.get("mcp_server") ?? [],
       mcpPath,
@@ -388,26 +431,18 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     if (mcpServers.length > 0 && mcpPath) {
       const mcpConfig: Record<string, Record<string, unknown>> = {};
       for (const r of mcpServers) {
-        const meta = r.metadata as McpServerMetadata;
-        const entry: Record<string, unknown> = {};
-        if (meta.transport === "http" && meta.url) {
-          entry["type"] = "http";
-          entry["url"] = meta.url;
-          if (meta.headers && Object.keys(meta.headers).length > 0) {
-            entry["headers"] = meta.headers;
-          }
-        } else {
-          if (meta.command) entry["command"] = meta.command;
-          if (meta.args) entry["args"] = meta.args;
-        }
-        if (meta.env && Object.keys(meta.env).length > 0)
-          entry["env"] = meta.env;
-        mcpConfig[r.name] = entry;
+        mcpConfig[r.name] = emitClaudeMcpServerEntry(r.metadata as McpServerMetadata);
       }
-      files.push({
-        path: mcpPath,
-        content: JSON.stringify({ mcpServers: mcpConfig }, null, 2),
-      });
+      const generated = JSON.stringify({ mcpServers: mcpConfig }, null, 2);
+      if (target === "global") {
+        const existing = this.readFile(join(projectRoot, mcpPath));
+        files.push({
+          path: mcpPath,
+          content: mergeClaudeUserJsonContent(existing, generated),
+        });
+      } else {
+        files.push({ path: mcpPath, content: generated });
+      }
     }
 
     // Permissions + env + hooks → .claude/settings.json

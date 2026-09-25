@@ -37,6 +37,7 @@ describe("locationsForPlatform", () => {
       { path: "~/.claude/CLAUDE.md", surfaces: ["instructions"], alternates: [] },
       { path: "~/.claude/skills/", surfaces: ["skills"], alternates: [] },
       { path: "~/.claude/rules/", surfaces: ["rules"], alternates: [] },
+      { path: "~/.claude.json", surfaces: ["mcp"], alternates: [] },
       { path: "~/.claude/agents/", surfaces: ["agents"], alternates: [] },
       { path: "~/.claude/commands/", surfaces: ["commands"], alternates: [] },
       { path: "~/.claude/settings.json", surfaces: ["settings"], alternates: [] },

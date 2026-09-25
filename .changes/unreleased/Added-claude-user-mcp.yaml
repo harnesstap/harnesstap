@@ -1,0 +1,5 @@
+kind: Added
+body: Scan and merge-apply Claude Code user-scope MCP from ~/.claude.json without dual-writing project .mcp.json or clobbering OAuth/session state.
+time: 2026-09-25T03:20:00Z
+custom:
+  Issue: ""

@@ -35,7 +35,10 @@ function nativeMcpNamesForPath(homeRoot: string, path: string): Set<string> {
   if (normalized.includes(".cursor/") && /(^|\/)mcp\.json$/i.test(normalized)) {
     return listHostNativeMcpNames(homeRoot, "cursor");
   }
-  if (/(^|\/)\.mcp\.json$/i.test(normalized)) {
+  if (
+    /(^|\/)\.mcp\.json$/i.test(normalized)
+    || /(^|\/)\.claude\.json$/i.test(normalized)
+  ) {
     return listHostNativeMcpNames(homeRoot, "claude-code");
   }
   return new Set();

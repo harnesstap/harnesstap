@@ -41,7 +41,7 @@ paths for supported harnesses:
 | **Hooks** | Imported from plugin `hooks/hooks.json`, harness `hooks.json` files (Cursor, Codex), and Claude `.claude/settings.json`. Nested PostToolUse matchers are preserved on emit for Claude Code, Cursor, and Codex. |
 | **Instructions** | `AGENTS.md`, `CLAUDE.md`, `.windsurfrules`, `.github/copilot-instructions.md`, and similar always-on context files. Shared `AGENTS.md` is canonicalized once during scan. |
 | **Rules** | `.cursor/rules/*.mdc`, `.claude/rules/`, `.windsurf/rules/`, `.clinerules/`, `.kiro/steering/`, and directory-based rule trees. |
-| **MCP servers** | stdio and HTTP transports from `.mcp.json`, `.codex/config.toml`, and harness-specific MCP config files. |
+| **MCP servers** | stdio and HTTP transports from `.mcp.json`, Claude user `~/.claude.json`, `.codex/config.toml`, and harness-specific MCP config files. |
 | **Static commands** | Markdown (`.md`) and TOML (`.toml`) command definitions from `commands/` trees, plugin manifest pointers, and skill `scripts/command-metadata.json` sub-commands. |
 | **Agents** | Subagent manifests under harness `agents/` dirs. Codex uses `.toml` (`developer_instructions`); Claude/Cursor/Copilot use markdown + YAML. Cross-harness apply maps `model`, `reasoning_effort`, and read-only semantics; see [supported-harnesses — agent bridging](supported-harnesses.md#agent--subagent-bridging). |
 
@@ -74,6 +74,18 @@ Copilot CLI, VS Code).
 
 Full detail, host storage locations, workarounds, and remaining gaps: [Environments — MCP authentication
 limitations](./cli/concepts/environments.md#mcp-authentication-limitations).
+
+### Claude Code MCP scopes
+
+Claude Code stores MCP in two files. HarnessTap follows that split and does **not** dual-write:
+
+| Scope | Upstream path | HarnessTap |
+| ----- | ------------- | ---------- |
+| **Project** (shared with the team) | `.mcp.json` | Scan + apply (project) |
+| **User** (all projects, this machine) | top-level `mcpServers` in `~/.claude.json` | Scan + merge-safe apply (global) |
+| **Local** (this project, this user) | `projects[<absPath>].mcpServers` in `~/.claude.json` | Not imported or applied |
+
+`~/.claude.json` also holds OAuth session and per-project trust state. Apply overlays `mcpServers` only and never deletes the file. If `CLAUDE_CONFIG_DIR` is set, Claude reads `.claude.json` from that directory instead of `~/.claude.json` — HarnessTap still uses the home path.
 
 ## Partially bridgeable
 

@@ -322,12 +322,16 @@ function tryEditAggregateContent(
         return { ok: false, reason: "Shared file section cannot be identified" };
       }
       delete servers[resource.name];
-      const next = { ...obj, mcpServers: servers };
-      const emptied = Object.keys(servers).length === 0;
+      const next: Record<string, unknown> = { ...obj };
+      if (Object.keys(servers).length === 0) {
+        delete next.mcpServers;
+      } else {
+        next.mcpServers = servers;
+      }
       return {
         ok: true,
         content: `${JSON.stringify(next, null, 2)}\n`,
-        emptied,
+        emptied: Object.keys(next).length === 0,
       };
     }
 
@@ -419,8 +423,9 @@ function evaluateCandidate(
       // Discovery/source without a recorded hash: only allow surgical edits of
       // known aggregate formats. Anything else is protected.
       if (
-        candidate.path.endsWith("mcp.json") ||
-        candidate.path.endsWith("hooks.json")
+        candidate.path.endsWith("mcp.json")
+        || candidate.path.endsWith(".claude.json")
+        || candidate.path.endsWith("hooks.json")
       ) {
         const edit = tryEditAggregateContent(content, resource);
         if (!edit.ok) {

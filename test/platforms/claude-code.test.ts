@@ -163,6 +163,115 @@ describe("ClaudeCodeSerializer", () => {
     expect(files.find((file) => file.path === "CLAUDE.md")).toBeUndefined();
   });
 
+  it("scans user-scope MCP from ~/.claude.json and ignores local-scope projects", async () => {
+    const home = createTempDir("claude-home-mcp-");
+    try {
+      writeTextFile(
+        join(home, ".claude.json"),
+        JSON.stringify(
+          {
+            oauthAccount: { accountUuid: "session" },
+            mcpServers: {
+              docs: {
+                type: "http",
+                url: "https://mcp.example.com",
+                headers: { Authorization: "Bearer ${API_TOKEN}" },
+              },
+            },
+            projects: {
+              "/tmp/app": {
+                mcpServers: {
+                  localOnly: { command: "npx", args: ["local-mcp"] },
+                },
+              },
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const serializer = new ClaudeCodeSerializer();
+      const resources = await serializer.scanGlobal(home);
+      const mcps = resources.filter((resource) => resource.type === "mcp_server");
+
+      expect(mcps.map((resource) => resource.name)).toEqual(["docs"]);
+      expect(mcps[0]?.source).toBe("~/.claude.json");
+      expect(mcps[0]?.metadata).toEqual(
+        expect.objectContaining({
+          transport: "http",
+          url: "https://mcp.example.com",
+          headers: { Authorization: "Bearer ${API_TOKEN}" },
+        }),
+      );
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("merges global MCP into ~/.claude.json without clobbering session state", async () => {
+    const home = createTempDir("claude-home-mcp-apply-");
+    try {
+      writeTextFile(
+        join(home, ".claude.json"),
+        JSON.stringify(
+          {
+            oauthAccount: { accountUuid: "session" },
+            projects: { "/tmp/app": { allowedTools: [] } },
+            mcpServers: { keep: { command: "keep-mcp" } },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const serializer = new ClaudeCodeSerializer();
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "mcp_server",
+            name: "docs",
+            source: "~/.claude.json",
+            metadata: { transport: "http", url: "https://example.com/mcp" },
+          }),
+        ],
+        home,
+        { target: "global" },
+      );
+
+      expect(files.map((file) => file.path)).toEqual([".claude.json"]);
+      const written = JSON.parse(files[0]?.content ?? "{}") as {
+        oauthAccount: { accountUuid: string };
+        projects: Record<string, unknown>;
+        mcpServers: Record<string, { command?: string; url?: string }>;
+      };
+      expect(written.oauthAccount.accountUuid).toBe("session");
+      expect(written.projects["/tmp/app"]).toEqual({ allowedTools: [] });
+      expect(written.mcpServers.keep.command).toBe("keep-mcp");
+      expect(written.mcpServers.docs.url).toBe("https://example.com/mcp");
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("does not emit user MCP into project .mcp.json", async () => {
+    const serializer = new ClaudeCodeSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "mcp_server",
+          name: "docs",
+          source: "~/.claude.json",
+          metadata: { transport: "http", url: "https://example.com/mcp" },
+        }),
+      ],
+      ".",
+    );
+
+    expect(files.find((file) => file.path === ".mcp.json")).toBeUndefined();
+    expect(files.find((file) => file.path === ".claude.json")).toBeUndefined();
+  });
+
   it("omits unsupported ask permissions from Claude settings output", async () => {
     const serializer = new ClaudeCodeSerializer();
     const files = await serializer.serialize(

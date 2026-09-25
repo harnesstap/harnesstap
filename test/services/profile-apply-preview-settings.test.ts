@@ -113,4 +113,40 @@ describe("previewProfileApply unmanaged settings.json", () => {
       await context.cleanup();
     }
   });
+
+  it("does not list ~/.claude.json as a whole-file delete when the profile does not manage MCP", async () => {
+    const context = await createInitializedTestContext("preview-claude-json-added");
+    try {
+      const profile = createPlugin({ name: "teads-user-mcp" });
+      setPluginTags(profile.id, ["profile"]);
+
+      writeFileSync(
+        join(context.homeDir, ".claude.json"),
+        JSON.stringify(
+          {
+            oauthAccount: { accountUuid: "session" },
+            mcpServers: { docs: { command: "docs-mcp" } },
+          },
+          null,
+          2,
+        ),
+        "utf-8",
+      );
+
+      const preview = await previewProfileApply({
+        profile: "teads-user-mcp",
+        scope: "home",
+        harness: "claude-code",
+      });
+
+      expect(
+        preview.files.changes.some(
+          (change) =>
+            change.path.replace(/\\/g, "/").endsWith(".claude.json"),
+        ),
+      ).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

@@ -1,6 +1,69 @@
 import { describe, expect, it } from "bun:test";
-import { mergeClaudeSettingsContent, mergeMinimaxMcpContent, mergeMuseSettingsContent } from "../../src/services/merged-host-config.ts";
+import {
+  isClaudeUserJsonPath,
+  isMergeableHostConfigPath,
+  mergeClaudeSettingsContent,
+  mergeClaudeUserJsonContent,
+  mergeMinimaxMcpContent,
+  mergeMuseSettingsContent,
+} from "../../src/services/merged-host-config.ts";
 import { mergeSkillMarkdown } from "../../src/services/merge-skill-markdown.ts";
+
+describe("mergeClaudeUserJsonContent", () => {
+  it("overlays mcpServers and keeps oauth plus projects", () => {
+    const live = JSON.stringify(
+      {
+        oauthAccount: { accountUuid: "keep-me" },
+        projects: {
+          "/tmp/app": {
+            mcpServers: { localOnly: { command: "npx", args: ["local-mcp"] } },
+          },
+        },
+        mcpServers: {
+          keep: { command: "keep-mcp" },
+        },
+      },
+      null,
+      2,
+    );
+    const generated = JSON.stringify(
+      {
+        mcpServers: {
+          docs: { type: "http", url: "https://example.com/mcp" },
+        },
+      },
+      null,
+      2,
+    );
+
+    const merged = JSON.parse(mergeClaudeUserJsonContent(live, generated)) as {
+      oauthAccount: { accountUuid: string };
+      projects: Record<string, { mcpServers: Record<string, unknown> }>;
+      mcpServers: Record<string, { command?: string; url?: string }>;
+    };
+
+    expect(merged.oauthAccount.accountUuid).toBe("keep-me");
+    expect(merged.projects["/tmp/app"]?.mcpServers.localOnly).toEqual({
+      command: "npx",
+      args: ["local-mcp"],
+    });
+    expect(merged.mcpServers.keep.command).toBe("keep-mcp");
+    expect(merged.mcpServers.docs.url).toBe("https://example.com/mcp");
+  });
+
+  it("does not replace unparseable live ~/.claude.json", () => {
+    const live = "{ not-json";
+    const generated = JSON.stringify({ mcpServers: { docs: { command: "x" } } });
+    expect(mergeClaudeUserJsonContent(live, generated)).toBe(live);
+  });
+
+  it("treats ~/.claude.json as mergeable host config", () => {
+    expect(isClaudeUserJsonPath("~/.claude.json")).toBe(true);
+    expect(isClaudeUserJsonPath(".claude.json")).toBe(true);
+    expect(isMergeableHostConfigPath(".claude.json")).toBe(true);
+    expect(isMergeableHostConfigPath(".claude/settings.json")).toBe(true);
+  });
+});
 
 describe("mergeClaudeSettingsContent", () => {
   it("keeps unrelated live keys while overlaying profile permissions", () => {

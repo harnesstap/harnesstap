@@ -10,6 +10,7 @@ describe("platform registry", () => {
     const warp = registry.getPlatform("warp");
 
     expect(claude?.supports.has("commands")).toBe(true);
+    expect(claude?.globalPaths.mcp).toBe("~/.claude.json");
     expect(cursor?.projectPaths.rules).toBe(".cursor/rules/");
     expect(cursor?.globalPaths.plugins).toBe("~/.cursor/plugins/");
     expect(cursor?.relatedLocations).toEqual([
