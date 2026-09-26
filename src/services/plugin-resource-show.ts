@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
-import { listResources } from "../models/resource.js";
+import { listResourcesMatchingOriginRef } from "../models/resource.js";
 import type { PluginDependencyMetadata, Resource } from "../types.js";
 import {
   containedFileStem,
@@ -9,7 +9,7 @@ import {
   isPackageEntryFileName,
   packageDirectoryDisplayPath,
 } from "../ui/resource-display.js";
-import { listContainedFiles } from "../utils/path-containment.js";
+import { listContainedFilesPage } from "../utils/path-containment.js";
 import { listMarketplaces } from "./marketplace-registry.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import {
@@ -18,6 +18,8 @@ import {
 } from "./host-plugin-versions.js";
 import { resolveExistingResourceFilesystemPath } from "./resource-editor-path.js";
 import { resolveInstallRoot } from "./resource-sync.js";
+
+export const CONTAINED_FILES_PAGE_SIZE = 20;
 
 export interface PluginContainedResource {
   type: string;
@@ -35,9 +37,23 @@ export interface PluginResourceShowExtras {
   available_versions: HostPluginCacheVersion[];
 }
 
+export type PluginResourceShowOptions = {
+  homeRoot?: string;
+  harnesstapDir?: string;
+  pathHint?: string | null;
+  includeContained?: boolean;
+  limit?: number;
+  offset?: number;
+};
+
+export type ContainedResourcePage = {
+  contained_resources: PluginContainedResource[];
+  has_more: boolean;
+};
+
 export function pluginResourceShowExtras(
   resource: Resource,
-  options?: { homeRoot?: string; harnesstapDir?: string },
+  options?: PluginResourceShowOptions,
 ): PluginResourceShowExtras | undefined {
   if (resource.type !== "plugin") {
     return undefined;
@@ -66,6 +82,7 @@ export function pluginResourceShowExtras(
     versions.current_version ??
     (resource.metadata as PluginDependencyMetadata).resolved_version ??
     null;
+  const includeContained = options?.includeContained !== false;
   if (!installPath) {
     return {
       install_path: null,
@@ -79,7 +96,12 @@ export function pluginResourceShowExtras(
   return {
     install_path: installPath,
     marketplace_url: marketplaceUrl,
-    contained_resources: listContainedPluginFiles(installPath, originRef, resource.id),
+    contained_resources: includeContained
+      ? listContainedPluginFiles(installPath, originRef, resource.id, {
+          limit: options?.limit,
+          offset: options?.offset,
+        }).contained_resources
+      : [],
     current_version,
     advertised_version: versions.advertised_version,
     available_versions: versions.available_versions,
@@ -93,36 +115,69 @@ export interface PackageResourceShowExtras {
 /** Nested files for SKILL.md / plugin.json packages that are not plugin-type resources. */
 export function packageResourceShowExtras(
   resource: Resource,
-  options?: { pathHint?: string | null },
+  options?: PluginResourceShowOptions,
 ): PackageResourceShowExtras | undefined {
   if (resource.type === "plugin") {
     return undefined;
   }
-  const filePath = resolveExistingResourceFilesystemPath(resource, options?.pathHint);
-  if (!filePath) {
+  if (options?.includeContained === false) {
     return undefined;
   }
-  const fileName = filePath.split(/[/\\]/).pop() ?? "";
-  if (!isPackageEntryFileName(fileName)) {
+  const page = listPackageContainedFiles(resource, options);
+  if (!page || page.contained_resources.length === 0) {
     return undefined;
   }
-  const packageDir = packageDirectoryDisplayPath(filePath);
-  const contained_resources = listPackageTreeFiles(packageDir);
-  if (contained_resources.length === 0) {
-    return undefined;
+  return { contained_resources: page.contained_resources };
+}
+
+export function listResourceContainedFiles(
+  resource: Resource,
+  options?: PluginResourceShowOptions,
+): ContainedResourcePage {
+  if (resource.type === "plugin") {
+    const extras = pluginResourceShowExtras(resource, {
+      ...options,
+      includeContained: false,
+    });
+    if (!extras?.install_path) {
+      return { contained_resources: [], has_more: false };
+    }
+    return listContainedPluginFiles(
+      extras.install_path,
+      resource.origin_ref || resource.name,
+      resource.id,
+      { limit: options?.limit, offset: options?.offset },
+    );
   }
-  return { contained_resources };
+  return (
+    listPackageContainedFiles(resource, options) ?? {
+      contained_resources: [],
+      has_more: false,
+    }
+  );
 }
 
 const SKIP_TREE_SEGMENTS = new Set([".git", "node_modules"]);
 
-function listPluginTreeRelativePaths(installPath: string): string[] {
+function listPluginTreeRelativePaths(
+  installPath: string,
+  options?: { limit?: number; offset?: number },
+): { files: string[]; hasMore: boolean } {
   try {
-    return listContainedFiles(installPath).filter(
-      (relativePath) => !relativePath.split("/").some((part) => SKIP_TREE_SEGMENTS.has(part)),
-    );
+    const page = listContainedFilesPage(installPath, {
+      limit: options?.limit,
+      offset: options?.offset,
+      skipDirNames: SKIP_TREE_SEGMENTS,
+    });
+    if (options?.limit === undefined && (options?.offset ?? 0) === 0) {
+      return {
+        files: page.files.slice().sort((left, right) => left.localeCompare(right)),
+        hasMore: page.hasMore,
+      };
+    }
+    return page;
   } catch {
-    return [];
+    return { files: [], hasMore: false };
   }
 }
 
@@ -137,25 +192,49 @@ function inferPackageContainedFileType(relativePath: string): string {
   return inferContainedFileType(relativePath);
 }
 
-function listPackageTreeFiles(packageDir: string): PluginContainedResource[] {
-  return listPluginTreeRelativePaths(packageDir)
-    .map((relative_path) => ({
+function listPackageTreeFiles(
+  packageDir: string,
+  options?: { limit?: number; offset?: number },
+): ContainedResourcePage {
+  const page = listPluginTreeRelativePaths(packageDir, options);
+  return {
+    contained_resources: page.files.map((relative_path) => ({
       type: inferPackageContainedFileType(relative_path),
       name: containedFileStem(relative_path),
       path: join(packageDir, ...relative_path.split("/")),
       relative_path,
-    }))
-    .sort((left, right) => left.relative_path.localeCompare(right.relative_path));
+    })),
+    has_more: page.hasMore,
+  };
+}
+
+function listPackageContainedFiles(
+  resource: Resource,
+  options?: PluginResourceShowOptions,
+): ContainedResourcePage | undefined {
+  const filePath = resolveExistingResourceFilesystemPath(resource, options?.pathHint);
+  if (!filePath) {
+    return undefined;
+  }
+  const fileName = filePath.split(/[/\\]/).pop() ?? "";
+  if (!isPackageEntryFileName(fileName)) {
+    return undefined;
+  }
+  return listPackageTreeFiles(packageDirectoryDisplayPath(filePath), {
+    limit: options?.limit,
+    offset: options?.offset,
+  });
 }
 
 function listContainedPluginFiles(
   installPath: string,
   originRef: string,
   pluginResourceId: string,
-): PluginContainedResource[] {
+  options?: { limit?: number; offset?: number },
+): ContainedResourcePage {
   const libraryByRelative = new Map<string, Resource>();
-  for (const row of listResources({ includeComposition: true })) {
-    if (row.origin_ref !== originRef || row.type === "plugin" || row.id === pluginResourceId) {
+  for (const row of listResourcesMatchingOriginRef(originRef)) {
+    if (row.type === "plugin" || row.id === pluginResourceId) {
       continue;
     }
     const contained = containedFile(installPath, row.source);
@@ -164,9 +243,9 @@ function listContainedPluginFiles(
     }
   }
 
-  const treePaths = listPluginTreeRelativePaths(installPath);
-  if (treePaths.length === 0) {
-    return [...libraryByRelative.entries()]
+  const treePage = listPluginTreeRelativePaths(installPath, options);
+  if (treePage.files.length === 0 && !treePage.hasMore) {
+    const fallback = [...libraryByRelative.entries()]
       .map(([relative_path, row]) => {
         const contained = containedFile(installPath, row.source);
         return {
@@ -177,10 +256,20 @@ function listContainedPluginFiles(
         };
       })
       .sort((left, right) => left.relative_path.localeCompare(right.relative_path));
+    const start = Math.max(0, options?.offset ?? 0);
+    const limit = options?.limit;
+    if (limit === undefined) {
+      return { contained_resources: fallback.slice(start), has_more: false };
+    }
+    const end = start + limit;
+    return {
+      contained_resources: fallback.slice(start, end),
+      has_more: end < fallback.length,
+    };
   }
 
-  return treePaths
-    .map((relative_path) => {
+  return {
+    contained_resources: treePage.files.map((relative_path) => {
       const path = join(installPath, ...relative_path.split("/"));
       const row = libraryByRelative.get(relative_path);
       if (row) {
@@ -197,8 +286,9 @@ function listContainedPluginFiles(
         path,
         relative_path,
       };
-    })
-    .sort((left, right) => left.relative_path.localeCompare(right.relative_path));
+    }),
+    has_more: treePage.hasMore,
+  };
 }
 
 function containedFile(

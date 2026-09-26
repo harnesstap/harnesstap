@@ -6,6 +6,7 @@ import { getHarnesstapDir } from "../../src/db/connection.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addMarketplace } from "../../src/services/marketplace-registry.ts";
 import {
+  listResourceContainedFiles,
   packageResourceShowExtras,
   pluginResourceShowExtras,
 } from "../../src/services/plugin-resource-show.ts";
@@ -326,6 +327,67 @@ describe("packageResourceShowExtras", () => {
         source: "manual",
       });
       expect(packageResourceShowExtras(skill)).toBeUndefined();
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+});
+
+describe("listResourceContainedFiles", () => {
+  it("skips the tree when includeContained is false and pages large plugin trees", async () => {
+    const ctx = await createInitializedTestContext("plugin-show-page");
+    try {
+      const installRoot = join(ctx.homeDir, ".claude", "plugins", "cache", "team-mkt", "paged");
+      mkdirSync(join(installRoot, "skills"), { recursive: true });
+      mkdirSync(join(installRoot, "node_modules", "left-pad"), { recursive: true });
+      writeFileSync(join(installRoot, "plugin.json"), "{}\n");
+      writeFileSync(join(installRoot, "node_modules", "left-pad", "index.js"), "module.exports=1\n");
+      for (let index = 0; index < 25; index += 1) {
+        const name = `s${String(index).padStart(2, "0")}`;
+        mkdirSync(join(installRoot, "skills", name), { recursive: true });
+        writeFileSync(join(installRoot, "skills", name, "SKILL.md"), `# ${name}\n`);
+      }
+      const pin = createResource({
+        type: "plugin",
+        name: "paged",
+        namespace: "team-mkt",
+        description: "Plugin pin: paged@team-mkt",
+        content: "{}",
+        metadata: {},
+        source: "composition:plugin",
+        origin_kind: "marketplace_link",
+        origin_ref: "paged@team-mkt",
+      });
+
+      const skipped = pluginResourceShowExtras(pin, {
+        homeRoot: ctx.homeDir,
+        includeContained: false,
+      });
+      expect(skipped?.contained_resources).toEqual([]);
+      expect(skipped?.install_path).toBe(installRoot);
+
+      const first = listResourceContainedFiles(pin, {
+        homeRoot: ctx.homeDir,
+        limit: 20,
+        offset: 0,
+      });
+      expect(first.contained_resources).toHaveLength(20);
+      expect(first.has_more).toBe(true);
+      expect(
+        first.contained_resources.some((row) => row.relative_path.includes("node_modules")),
+      ).toBe(false);
+
+      const rest = listResourceContainedFiles(pin, {
+        homeRoot: ctx.homeDir,
+        offset: 20,
+      });
+      expect(rest.has_more).toBe(false);
+      expect(first.contained_resources.length + rest.contained_resources.length).toBe(26);
+      expect(
+        [...first.contained_resources, ...rest.contained_resources].some((row) =>
+          row.relative_path.includes("node_modules"),
+        ),
+      ).toBe(false);
     } finally {
       await ctx.cleanup();
     }

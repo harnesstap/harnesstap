@@ -258,4 +258,57 @@ describe("agent library routes", () => {
       ["SKILL.md", "scripts/query.sh"].sort((left, right) => left.localeCompare(right)),
     );
   });
+
+  it("omits the file tree on detail when include_contained=0 and pages files separately", async () => {
+    const server = await withServer();
+    const installRoot = join(process.env.HARNESSTAP_HOME ?? "", ".claude", "plugins", "cache", "team-mkt", "demo");
+    mkdirSync(join(installRoot, "skills"), { recursive: true });
+    writeFileSync(join(installRoot, "plugin.json"), "{}\n", "utf8");
+    for (let index = 0; index < 25; index += 1) {
+      const name = `s${String(index).padStart(2, "0")}`;
+      mkdirSync(join(installRoot, "skills", name), { recursive: true });
+      writeFileSync(join(installRoot, "skills", name, "SKILL.md"), `# ${name}\n`, "utf8");
+    }
+    createResource({
+      type: "plugin",
+      name: "demo",
+      namespace: "team-mkt",
+      description: "Plugin pin: demo@team-mkt",
+      content: "{}",
+      metadata: {},
+      source: "composition:plugin",
+      origin_kind: "marketplace_link",
+      origin_ref: "demo@team-mkt",
+    });
+
+    const headers = { authorization: `Bearer ${server.token}` };
+    const selector = encodeURIComponent("plugin:demo@team-mkt");
+    const fast = await fetch(
+      `${server.url}/v1/library/resources/${selector}?include_contained=0`,
+      { headers },
+    );
+    expect(fast.status).toBe(200);
+    const fastBody = await fast.json();
+    expect(fastBody.resource.contained_resources).toEqual([]);
+    expect(fastBody.resource).toHaveProperty("install_path");
+
+    const page = await fetch(
+      `${server.url}/v1/library/resources/${selector}/files?limit=20&offset=0`,
+      { headers },
+    );
+    expect(page.status).toBe(200);
+    const pageBody = await page.json();
+    expect(pageBody.files).toHaveLength(20);
+    expect(pageBody.has_more).toBe(true);
+
+    const rest = await fetch(
+      `${server.url}/v1/library/resources/${selector}/files?offset=20`,
+      { headers },
+    );
+    expect(rest.status).toBe(200);
+    const restBody = await rest.json();
+    expect(restBody.files.length).toBeGreaterThan(0);
+    expect(restBody.has_more).toBe(false);
+    expect(pageBody.files.length + restBody.files.length).toBe(26);
+  });
 });

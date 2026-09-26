@@ -6,7 +6,11 @@ import {
   resolveResource,
 } from "../models/resource.js";
 import { overlayMcpServerDetail } from "../services/mcp-resource-detail.js";
-import { packageResourceShowExtras, pluginResourceShowExtras } from "../services/plugin-resource-show.js";
+import {
+  listResourceContainedFiles,
+  packageResourceShowExtras,
+  pluginResourceShowExtras,
+} from "../services/plugin-resource-show.js";
 import { resourceAttacherPayload } from "../services/resource-attachers.js";
 import {
   readResourceContentFromPathHint,
@@ -46,9 +50,28 @@ export function handleLibraryResources(): Response {
   });
 }
 
+function parseIncludeContained(raw: string | null): boolean {
+  if (raw === null || raw.trim() === "") {
+    return true;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized !== "0" && normalized !== "false" && normalized !== "no";
+}
+
+function parsePageInt(raw: string | null): number | undefined {
+  if (raw === null || raw.trim() === "") {
+    return undefined;
+  }
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isFinite(value) || value < 0) {
+    return undefined;
+  }
+  return value;
+}
+
 export function handleLibraryResourceDetail(
   selector: string,
-  options?: { pathHint?: string | null },
+  options?: { pathHint?: string | null; includeContained?: boolean },
 ): Response {
   const trimmed = selector.trim();
   if (!trimmed) {
@@ -128,7 +151,15 @@ export function handleLibraryResourceDetail(
   }
 
   const resource = result.resource;
-  const extras = pluginResourceShowExtras(resource) ?? packageResourceShowExtras(resource, options);
+  const extras =
+    pluginResourceShowExtras(resource, {
+      includeContained: options?.includeContained,
+      pathHint: options?.pathHint,
+    }) ??
+    packageResourceShowExtras(resource, {
+      includeContained: options?.includeContained,
+      pathHint: options?.pathHint,
+    });
   const attachers = resourceAttacherPayload(resource.id);
   const overlay =
     resource.type === "mcp_server"
@@ -155,6 +186,67 @@ export function handleLibraryResourceDetail(
       ...attachers,
       ...(extras ?? {}),
     },
+  });
+}
+
+export function parseIncludeContainedParam(raw: string | null): boolean {
+  return parseIncludeContained(raw);
+}
+
+export function parseContainedFilesPageParam(
+  raw: string | null,
+): number | undefined {
+  return parsePageInt(raw);
+}
+
+export function handleLibraryResourceFiles(
+  selector: string,
+  options?: { pathHint?: string | null; limit?: number; offset?: number },
+): Response {
+  const trimmed = selector.trim();
+  if (!trimmed) {
+    return jsonResponse(
+      { error: "invalid_selector", message: "Resource selector is required" },
+      { status: 400 },
+    );
+  }
+
+  const untracked = parseUntrackedResourceSelector(trimmed);
+  if (untracked) {
+    return jsonResponse({ files: [], has_more: false });
+  }
+
+  const result = resolveResource(trimmed);
+  if (result.status === "not_found") {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+  if (result.status === "ambiguous") {
+    return jsonResponse(
+      {
+        error: "ambiguous",
+        message: `Ambiguous resource name: ${trimmed}`,
+        matches: result.matches.map((resource) => ({
+          id: resource.id,
+          type: resource.type,
+          name: resource.name,
+          namespace: resource.namespace || null,
+        })),
+      },
+      { status: 409 },
+    );
+  }
+
+  const page = listResourceContainedFiles(result.resource, {
+    pathHint: options?.pathHint,
+    limit: options?.limit,
+    offset: options?.offset,
+  });
+  return jsonResponse({
+    files: page.contained_resources,
+    has_more: page.has_more,
   });
 }
 

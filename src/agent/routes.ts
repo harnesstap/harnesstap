@@ -72,7 +72,10 @@ import {
   handleLibraryPlugins,
   handleLibraryResourceCreate,
   handleLibraryResourceDetail,
+  handleLibraryResourceFiles,
   handleLibraryResources,
+  parseContainedFilesPageParam,
+  parseIncludeContainedParam,
 } from "./profile-library-handlers.js";
 import {
   handleResourceTrackedDirectoriesList,
@@ -638,10 +641,24 @@ export function createAgentFetchHandler(
     } else if (method === "DELETE" && url.pathname === "/v1/library/resource-directories") {
       response = await handleResourceTrackedDirectoryRemove(request, token);
     } else if (method === "GET" && url.pathname.startsWith("/v1/library/resources/")) {
+      const filesMatch = url.pathname.match(
+        /^\/v1\/library\/resources\/([^/]+)\/files$/,
+      );
       const deletePlanMatch = url.pathname.match(
         /^\/v1\/library\/resources\/([^/]+)\/delete-plan$/,
       );
-      if (deletePlanMatch) {
+      if (filesMatch) {
+        const authError = requireAgentBearerAuth(request, token);
+        if (authError) {
+          response = authError;
+        } else {
+          response = handleLibraryResourceFiles(decodeURIComponent(filesMatch[1] ?? ""), {
+            pathHint: url.searchParams.get("path"),
+            limit: parseContainedFilesPageParam(url.searchParams.get("limit")),
+            offset: parseContainedFilesPageParam(url.searchParams.get("offset")) ?? 0,
+          });
+        }
+      } else if (deletePlanMatch) {
         const parity = await tryParityRoutes(request, token, {
           isAgentSwitchInProgress: routeDeps.isAgentSwitchInProgress,
         });
@@ -656,6 +673,9 @@ export function createAgentFetchHandler(
           );
           response = handleLibraryResourceDetail(selector, {
             pathHint: url.searchParams.get("path"),
+            includeContained: parseIncludeContainedParam(
+              url.searchParams.get("include_contained"),
+            ),
           });
         }
       }

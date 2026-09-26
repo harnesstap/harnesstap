@@ -8,6 +8,7 @@ import {
   assertContainedPath,
   isContainedPath,
   listContainedFiles,
+  listContainedFilesPage,
 } from "../../src/utils/path-containment.ts";
 
 let root: string;
@@ -92,6 +93,33 @@ describe("listContainedFiles", () => {
     writeFileSync(join(root, "..foo"), "x");
     writeFileSync(join(root, "..."), "y");
     expect(listContainedFiles(root).sort()).toEqual(["...", "..foo"]);
+  });
+
+  it("pages files and stops walking after the requested limit", () => {
+    mkdirSync(join(root, "skills"), { recursive: true });
+    writeFileSync(join(root, "plugin.json"), "{}");
+    writeFileSync(join(root, "skills", "a.md"), "a");
+    writeFileSync(join(root, "skills", "b.md"), "b");
+    const first = listContainedFilesPage(root, { limit: 2 });
+    expect(first.files).toHaveLength(2);
+    expect(first.hasMore).toBe(true);
+    const rest = listContainedFilesPage(root, { offset: 2 });
+    expect(rest.files).toHaveLength(1);
+    expect(rest.hasMore).toBe(false);
+    expect([...first.files, ...rest.files].sort()).toEqual(
+      listContainedFiles(root).sort(),
+    );
+  });
+
+  it("does not descend skipped directory names", () => {
+    mkdirSync(join(root, "node_modules", "pkg"), { recursive: true });
+    writeFileSync(join(root, "keep.md"), "k");
+    writeFileSync(join(root, "node_modules", "pkg", "index.js"), "x");
+    const page = listContainedFilesPage(root, {
+      skipDirNames: new Set(["node_modules"]),
+    });
+    expect(page.files).toEqual(["keep.md"]);
+    expect(page.hasMore).toBe(false);
   });
 });
 

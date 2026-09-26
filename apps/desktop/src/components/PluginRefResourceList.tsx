@@ -1,7 +1,9 @@
 import { RefreshCw } from "lucide-react";
 import {
   PLUGIN_REF_EMPTY_RESOURCES_COPY,
+  containedFilesCanRevealMore,
   groupContainedResources,
+  sliceContainedFiles,
 } from "../lib/plugin-ref-detail";
 import type { PluginContainedResource } from "../lib/types";
 import { IconActionButton } from "./IconActionButton";
@@ -16,6 +18,11 @@ export interface PluginRefResourceListProps {
   onOpenEditor: (path: string) => void;
   onSync?: () => void;
   syncBusy?: boolean;
+  filesLoading?: boolean;
+  hasMore?: boolean;
+  visibleCount?: number;
+  onShowMore?: () => void;
+  onShowAll?: () => void;
 }
 
 export function PluginRefResourceList({
@@ -26,14 +33,27 @@ export function PluginRefResourceList({
   onOpenEditor,
   onSync,
   syncBusy = false,
+  filesLoading = false,
+  hasMore = false,
+  visibleCount,
+  onShowMore,
+  onShowAll,
 }: PluginRefResourceListProps) {
   const rows = resources ?? [];
-  const groups = groupContainedResources(rows);
+  const visible = visibleCount === undefined ? rows : sliceContainedFiles(rows, visibleCount);
+  const groups = groupContainedResources(visible);
+  const canRevealMore = containedFilesCanRevealMore(
+    visible.length,
+    rows.length,
+    hasMore,
+  );
 
   return (
     <section className="library-contained-resources" aria-label="Content">
       <h3 className="library-contained-heading">Content</h3>
-      {groups.length === 0 ? (
+      {filesLoading && rows.length === 0 ? (
+        <p className="muted">Loading files…</p>
+      ) : groups.length === 0 ? (
         <div className="library-contained-empty">
           <p className="muted">{PLUGIN_REF_EMPTY_RESOURCES_COPY}</p>
           {onSync ? (
@@ -49,29 +69,51 @@ export function PluginRefResourceList({
           ) : null}
         </div>
       ) : (
-        groups.map((group) => (
-          <div key={group.type} className="library-contained-group">
-            <div className="library-contained-group-label muted">
-              {group.type.replaceAll("_", " ")}
-            </div>
-            {group.resources.map((entry) => (
-              <div key={`${entry.type}:${entry.path}`} className="library-contained-row">
-                <span className="library-contained-type">
-                  <TypeIcon type={entry.type} />
-                </span>
-                <span className="library-contained-path mono">{entry.relative_path}</span>
-                <PathAccessActions
-                  path={entry.path}
-                  disabled={disabled}
-                  opening={openingPath === entry.path}
-                  showEditor
-                  onReveal={onReveal}
-                  onOpenEditor={onOpenEditor}
-                />
+        <>
+          {groups.map((group) => (
+            <div key={group.type} className="library-contained-group">
+              <div className="library-contained-group-label muted">
+                {group.type.replaceAll("_", " ")}
               </div>
-            ))}
-          </div>
-        ))
+              {group.resources.map((entry) => (
+                <div key={`${entry.type}:${entry.path}`} className="library-contained-row">
+                  <span className="library-contained-type">
+                    <TypeIcon type={entry.type} />
+                  </span>
+                  <span className="library-contained-path mono">{entry.relative_path}</span>
+                  <PathAccessActions
+                    path={entry.path}
+                    disabled={disabled}
+                    opening={openingPath === entry.path}
+                    showEditor
+                    onReveal={onReveal}
+                    onOpenEditor={onOpenEditor}
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+          {canRevealMore && onShowMore && onShowAll ? (
+            <div className="library-contained-more">
+              <button
+                type="button"
+                className="link-btn"
+                disabled={disabled || filesLoading}
+                onClick={onShowMore}
+              >
+                Show more
+              </button>
+              <button
+                type="button"
+                className="link-btn"
+                disabled={disabled || filesLoading}
+                onClick={onShowAll}
+              >
+                Show all
+              </button>
+            </div>
+          ) : null}
+        </>
       )}
     </section>
   );
