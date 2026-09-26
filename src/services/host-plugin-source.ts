@@ -377,6 +377,25 @@ export function listRemotePluginVersionTags(
   }));
 }
 
+function originDefaultRef(runCommand: RunCommand, root: string): string | null {
+  const symbolic = runGit(
+    runCommand,
+    ["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
+    root,
+  );
+  if (symbolic.exitCode === 0 && symbolic.stdout.trim()) {
+    return symbolic.stdout.trim();
+  }
+  const abbrev = runGit(
+    runCommand,
+    ["rev-parse", "--abbrev-ref", "origin/HEAD"],
+    root,
+  );
+  return abbrev.exitCode === 0 && abbrev.stdout.trim()
+    ? abbrev.stdout.trim()
+    : null;
+}
+
 export function refreshMarketplaceCheckout(
   homeRoot: string,
   marketplace: string,
@@ -388,7 +407,10 @@ export function refreshMarketplaceCheckout(
     defaultMarketplaceRoot(homeRoot, marketplace);
   const url = known?.url ?? null;
   if (existsSync(join(root, ".git"))) {
-    const fetch = runGit(runCommand, ["fetch", "origin"], root);
+    let fetch = runGit(runCommand, ["fetch", "origin", "--tags", "--prune"], root);
+    if (fetch.exitCode !== 0) {
+      fetch = runGit(runCommand, ["fetch", "origin"], root);
+    }
     if (fetch.exitCode !== 0) {
       return {
         ok: false,
@@ -396,24 +418,25 @@ export function refreshMarketplaceCheckout(
         root,
       };
     }
-    const originHead = runGit(
-      runCommand,
-      ["rev-parse", "--abbrev-ref", "origin/HEAD"],
-      root,
-    );
-    const ref =
-      originHead.exitCode === 0 && originHead.stdout.trim()
-        ? originHead.stdout.trim()
-        : "origin/main";
-    const reset = runGit(runCommand, ["reset", "--hard", ref], root);
-    if (reset.exitCode !== 0) {
-      return {
-        ok: false,
-        message: reset.stderr.trim() || "git reset failed",
-        root,
-      };
+    const refsToTry = [
+      originDefaultRef(runCommand, root),
+      "origin/main",
+      "origin/master",
+    ];
+    let lastMessage = "git reset failed";
+    for (const ref of refsToTry) {
+      if (!ref) continue;
+      const reset = runGit(runCommand, ["reset", "--hard", ref], root);
+      if (reset.exitCode === 0) {
+        return { ok: true, message: "Refreshed marketplace", root };
+      }
+      lastMessage = reset.stderr.trim() || lastMessage;
     }
-    return { ok: true, message: "Refreshed marketplace", root };
+    return {
+      ok: false,
+      message: lastMessage,
+      root,
+    };
   }
   if (!url) {
     return {
@@ -612,10 +635,16 @@ export function pullHostPluginSourceVersions(input: {
   if (live?.version && !gitRefs[live.version]) {
     gitRefs[live.version] = live.version;
   }
+  const advertisedVersion =
+    Object.keys(gitRefs)
+      .filter((version) => semver.valid(version))
+      .sort(semver.rcompare)[0] ??
+    live?.version ??
+    null;
   const snapshot: HostPluginSourceSnapshot = {
     source_url: sourceUrl,
     source_ref: live?.gitRef ?? null,
-    advertised_version: live?.version ?? null,
+    advertised_version: advertisedVersion,
     git_refs: gitRefs,
     fetched_at: new Date().toISOString(),
   };
