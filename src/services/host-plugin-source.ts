@@ -73,6 +73,20 @@ function runGit(
   });
 }
 
+export function isRelativePluginSourcePath(path: string | null | undefined): boolean {
+  const trimmed = path?.trim() ?? "";
+  if (!trimmed) {
+    return false;
+  }
+  if (trimmed.includes("://") || trimmed.startsWith("git@")) {
+    return false;
+  }
+  if (trimmed.startsWith("/")) {
+    return false;
+  }
+  return true;
+}
+
 export function parseMarketplacePluginSource(
   entry: unknown,
 ): MarketplacePluginSource | null {
@@ -193,6 +207,68 @@ function readKnownMarketplace(
       break;
   }
   return { url, installLocation };
+}
+
+function marketplaceManifestRepositoryUrl(root: string): string | null {
+  const marketplacePath = join(root, ".claude-plugin", "marketplace.json");
+  const file = readJsonFile<Record<string, unknown>>(marketplacePath);
+  if (!file || !isRecord(file)) {
+    return null;
+  }
+  const repository = file.repository;
+  if (typeof repository === "string" && repository.trim()) {
+    return githubCloneUrl(repository.trim());
+  }
+  if (isRecord(repository) && typeof repository.url === "string" && repository.url.trim()) {
+    return githubCloneUrl(repository.url.trim());
+  }
+  return null;
+}
+
+export function resolveMarketplaceCloneUrl(
+  homeRoot: string,
+  marketplace: string,
+  runCommand: RunCommand = runCommandWithTimeout,
+): string | null {
+  const known = readKnownMarketplace(homeRoot, marketplace);
+  if (known?.url) {
+    return known.url;
+  }
+  const root = resolveMarketplaceRoot(homeRoot, marketplace);
+  if (!root) {
+    return null;
+  }
+  if (existsSync(join(root, ".git"))) {
+    const remote = runGit(runCommand, ["remote", "get-url", "origin"], root);
+    const url = remote.stdout.trim();
+    if (remote.exitCode === 0 && url) {
+      return githubCloneUrl(url);
+    }
+  }
+  return marketplaceManifestRepositoryUrl(root);
+}
+
+export function resolveHostPluginCloneUrl(input: {
+  homeRoot: string;
+  marketplace: string;
+  live: MarketplacePluginSource | null;
+  snapshot?: HostPluginSourceSnapshot | null;
+  runCommand?: RunCommand;
+}): string | null {
+  if (input.live?.url) {
+    return input.live.url;
+  }
+  if (input.snapshot?.source_url) {
+    return input.snapshot.source_url;
+  }
+  if (!isRelativePluginSourcePath(input.live?.path)) {
+    return null;
+  }
+  return resolveMarketplaceCloneUrl(
+    input.homeRoot,
+    input.marketplace,
+    input.runCommand ?? runCommandWithTimeout,
+  );
 }
 
 export function readMarketplacePluginSource(
@@ -445,7 +521,13 @@ export function downloadHostPluginVersion(input: {
     input.originRef,
     input.harnesstapDir,
   );
-  const sourceUrl = live?.url ?? snapshot?.source_url ?? null;
+  const sourceUrl = resolveHostPluginCloneUrl({
+    homeRoot,
+    marketplace,
+    live,
+    snapshot,
+    runCommand: input.runCommand,
+  });
   const refs = gitRefsToTry({
     version: input.version,
     storedRef: snapshot?.git_refs[input.version],
@@ -511,7 +593,12 @@ export function pullHostPluginSourceVersions(input: {
   }
   const refreshed = refreshMarketplaceCheckout(homeRoot, marketplace, run);
   const live = readMarketplacePluginSource(homeRoot, marketplace, name);
-  const sourceUrl = live?.url ?? null;
+  const sourceUrl = resolveHostPluginCloneUrl({
+    homeRoot,
+    marketplace,
+    live,
+    runCommand: run,
+  });
   const gitRefs: Record<string, string> = {};
   if (sourceUrl) {
     const tags = listRemotePluginVersionTags(sourceUrl, run);

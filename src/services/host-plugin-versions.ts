@@ -18,6 +18,7 @@ import {
   downloadHostPluginVersion,
   pullHostPluginSourceVersions,
   readHostPluginSourceSnapshot,
+  resolveMarketplaceRoot,
 } from "./host-plugin-source.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 
@@ -106,13 +107,11 @@ function advertisedMarketplaceVersion(
   marketplace: string,
   pluginName: string,
 ): string | null {
-  const marketplacePath = join(
-    claudePluginsDir(homeRoot),
-    "marketplaces",
-    marketplace,
-    ".claude-plugin",
-    "marketplace.json",
-  );
+  const root = resolveMarketplaceRoot(homeRoot, marketplace);
+  if (!root) {
+    return null;
+  }
+  const marketplacePath = join(root, ".claude-plugin", "marketplace.json");
   const file = readJsonFile<MarketplaceFile>(marketplacePath);
   const entry = file?.plugins?.find((plugin) => plugin.name === pluginName);
   const version = entry?.version?.trim();
