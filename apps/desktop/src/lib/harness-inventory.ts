@@ -630,12 +630,9 @@ function searchRows(
   search: string,
 ): readonly HarnessResourceRow[] {
   if (!search.trim()) return rows;
-  const matched = new Set(
-    filterLibraryResourcesBySearch(rows.map(asLibraryResource), search).map(
-      (resource) => resource.id,
-    ),
+  return rows.filter(
+    (row) => filterLibraryResourcesBySearch([asLibraryResource(row)], search).length > 0,
   );
-  return rows.filter((row) => matched.has(row.id));
 }
 
 export function filterHarnessLocations(

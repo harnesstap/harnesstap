@@ -10,6 +10,10 @@ const workspaceSource = readFileSync(
   ),
   "utf8",
 );
+const liveHeaderSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/live/LiveHeader.tsx"),
+  "utf8",
+);
 const sidebarSource = readFileSync(
   join(
     import.meta.dir,
@@ -65,5 +69,20 @@ describe("Harnesses workspace sidebar width", () => {
   it("documents the harness list column vs the Library filter track", () => {
     expect(designSource).toContain("not the 220px Library filter track");
     expect(designSource).toContain("reserved trash slot");
+  });
+});
+
+describe("Harnesses resource search field", () => {
+  it("disables spelling correction on Filter resources", () => {
+    expect(liveHeaderSource).toContain('placeholder="Filter resources"');
+    expect(liveHeaderSource).toContain("spellCheck={false}");
+    expect(liveHeaderSource).toContain('autoComplete="off"');
+    expect(liveHeaderSource).toContain('autoCorrect="off"');
+    expect(liveHeaderSource).toContain('autoCapitalize="off"');
+  });
+
+  it("documents case-insensitive typed-query filtering", () => {
+    expect(designSource).toContain("case-insensitive substring of the typed query");
+    expect(designSource).not.toContain("did you mean");
   });
 });

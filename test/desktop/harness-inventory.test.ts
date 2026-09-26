@@ -408,6 +408,28 @@ describe("filterHarnessLocations", () => {
     ]);
   });
 
+  it("matches names and type prefixes case-insensitively", () => {
+    const byName = filterHarnessLocations(CLAUDE_ENTRY, "ALPHA", null);
+    expect(
+      byName.locations.flatMap((location) => location.resources.map((resource) => resource.name)),
+    ).toEqual(["alpha", "alpha-allow"]);
+
+    const byPrefix = filterHarnessLocations(CLAUDE_ENTRY, "SKILL:Beta", null);
+    expect(byPrefix.locations).toEqual([
+      { ...SKILLS, resources: [row("skill", "beta", "~/.claude/skills/beta/SKILL.md")] },
+    ]);
+  });
+
+  it("filters only the typed query and does not fuzzy-match misspellings", () => {
+    expect(filterHarnessLocations(CLAUDE_ENTRY, "alpah", null).locations).toEqual([]);
+    expect(filterHarnessLocations(CLAUDE_ENTRY, "skil:beta", null).locations).toEqual([]);
+    expect(
+      filterHarnessLocations(CLAUDE_ENTRY, "alph", null).locations.flatMap((location) =>
+        location.resources.map((resource) => resource.name),
+      ),
+    ).toEqual(["alpha", "alpha-allow"]);
+  });
+
   it("groups locations by resource type then harness section", () => {
     const cursor = entry("cursor", "detected", {
       locations: [

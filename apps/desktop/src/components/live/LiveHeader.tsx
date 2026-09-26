@@ -22,6 +22,10 @@ export function ListSearchField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
       />
     </label>
   );
