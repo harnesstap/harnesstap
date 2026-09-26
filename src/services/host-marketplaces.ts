@@ -11,6 +11,8 @@ import {
   listMarketplaces,
   normalizeMarketplaceUrl,
 } from "./marketplace-registry.js";
+import { builtinMarketplaceEntry } from "./builtin-marketplaces.js";
+import { resolveMarketplaceRoot } from "./host-plugin-source.js";
 
 export interface VisibleMarketplaceEntry extends PluginMarketplaceEntry {
   managed: boolean;
@@ -31,6 +33,20 @@ function githubMarketplaceUrl(repo: string): string {
     return stripTrailingSlash(normalizeMarketplaceUrl(trimmed));
   }
   return stripTrailingSlash(normalizeMarketplaceUrl(`https://github.com/${trimmed}`));
+}
+
+function mergeMarketplacePlatforms(
+  left: PluginMarketplacePlatform[],
+  right: PluginMarketplacePlatform[],
+): PluginMarketplacePlatform[] {
+  const seen = new Set<PluginMarketplacePlatform>();
+  const merged: PluginMarketplacePlatform[] = [];
+  for (const platform of [...left, ...right]) {
+    if (seen.has(platform)) continue;
+    seen.add(platform);
+    merged.push(platform);
+  }
+  return merged;
 }
 
 function repositoryUrlFromManifest(root: string): string | undefined {
@@ -102,9 +118,9 @@ export function listVisibleMarketplaces(
   harnesstapDir: string,
   homeRoot: string = resolveHomeRoot(),
 ): VisibleMarketplaceEntry[] {
-  const registered = listMarketplaces(harnesstapDir).map((entry) => ({
+  const registered: VisibleMarketplaceEntry[] = listMarketplaces(harnesstapDir).map((entry) => ({
     ...entry,
-    managed: true as const,
+    managed: true,
   }));
   const seenNames = new Set(registered.map((entry) => entry.name));
   const seenUrls = new Set(
@@ -120,7 +136,27 @@ export function listVisibleMarketplaces(
     host.push(entry);
   }
 
-  return [...registered, ...host];
+  const listed = [...registered, ...host];
+  const builtin = builtinMarketplaceEntry();
+  const existing = listed.find((entry) => entry.name === builtin.name);
+  const contentRoot = resolveMarketplaceRoot(homeRoot, builtin.name);
+  if (existing) {
+    existing.platforms = mergeMarketplacePlatforms(builtin.platforms, existing.platforms);
+    if (!existing.url) {
+      existing.url = builtin.url;
+    }
+    if (contentRoot && !existing.contentRoot) {
+      existing.contentRoot = contentRoot;
+    }
+  } else {
+    listed.push({
+      ...builtin,
+      managed: false,
+      ...(contentRoot ? { contentRoot } : {}),
+    });
+  }
+
+  return listed;
 }
 
 export function toMarketplaceListEntry(

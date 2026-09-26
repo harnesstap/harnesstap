@@ -10,9 +10,10 @@ import {
   packageDirectoryDisplayPath,
 } from "../ui/resource-display.js";
 import { listContainedFilesPage } from "../utils/path-containment.js";
-import { listMarketplaces } from "./marketplace-registry.js";
+import { listVisibleMarketplaces } from "./host-marketplaces.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import {
+  hostPluginPullUnavailableReason,
   listHostPluginVersions,
   type HostPluginCacheVersion,
 } from "./host-plugin-versions.js";
@@ -35,6 +36,7 @@ export interface PluginResourceShowExtras {
   current_version: string | null;
   advertised_version: string | null;
   available_versions: HostPluginCacheVersion[];
+  pull_unavailable_reason: string | null;
 }
 
 export type PluginResourceShowOptions = {
@@ -73,11 +75,16 @@ export function pluginResourceShowExtras(
     "";
   const marketplaceUrl =
     resource.origin_kind === "marketplace_link" && marketplaceName
-      ? (listMarketplaces(options?.harnesstapDir ?? getHarnesstapDir()).find(
-          (entry) => entry.name === marketplaceName,
-        )?.url ?? null)
+      ? (listVisibleMarketplaces(
+          options?.harnesstapDir ?? getHarnesstapDir(),
+          options?.homeRoot,
+        ).find((entry) => entry.name === marketplaceName)?.url ?? null)
       : null;
   const versions = listHostPluginVersions(originRef, options?.homeRoot);
+  const pull_unavailable_reason = hostPluginPullUnavailableReason(
+    originRef,
+    options?.homeRoot,
+  );
   const current_version =
     versions.current_version ??
     (resource.metadata as PluginDependencyMetadata).resolved_version ??
@@ -91,6 +98,7 @@ export function pluginResourceShowExtras(
       current_version,
       advertised_version: versions.advertised_version,
       available_versions: versions.available_versions,
+      pull_unavailable_reason,
     };
   }
   return {
@@ -105,6 +113,7 @@ export function pluginResourceShowExtras(
     current_version,
     advertised_version: versions.advertised_version,
     available_versions: versions.available_versions,
+    pull_unavailable_reason,
   };
 }
 

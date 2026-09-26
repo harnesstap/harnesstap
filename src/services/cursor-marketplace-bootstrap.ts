@@ -1,8 +1,12 @@
 import type { PluginMarketplaceEntry } from "../config/settings.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
 import { defaultRunCommand, type CommandResult } from "../plugins/run-command.js";
+import {
+  CURSOR_PUBLIC_MARKETPLACE,
+  isCursorPublicMarketplace,
+} from "./builtin-marketplaces.js";
 
-export const CURSOR_BUILTIN_MARKETPLACE = "cursor-public";
+export const CURSOR_BUILTIN_MARKETPLACE = CURSOR_PUBLIC_MARKETPLACE;
 
 export interface CursorMarketplaceToEnsure {
   name: string;
@@ -41,7 +45,7 @@ export function cursorMarketplaceGitUrlKey(url: string): string {
 }
 
 export function isCursorBuiltinMarketplace(name: string): boolean {
-  return name === CURSOR_BUILTIN_MARKETPLACE;
+  return isCursorPublicMarketplace(name);
 }
 
 export function cursorMarketplaceIsRegistered(

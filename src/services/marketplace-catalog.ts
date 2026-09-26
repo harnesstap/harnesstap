@@ -18,6 +18,10 @@ import {
   parseCursorMarketplaceManifest,
 } from "./marketplace-catalog-parse.js";
 import { listMarketplaces } from "./marketplace-registry.js";
+import {
+  builtinMarketplaceEntry,
+  builtinMarketplaceGitUrl,
+} from "./builtin-marketplaces.js";
 
 export type { CatalogPlugin } from "./marketplace-catalog-parse.js";
 
@@ -164,11 +168,26 @@ function catalogWithRegistryIdentity(
   };
 }
 
+function catalogRefreshEntry(
+  harnesstapDir: string,
+  name: string,
+): { name: string; url: string; platforms: PluginMarketplacePlatform[] } | undefined {
+  const registered = listMarketplaces(harnesstapDir).find((entry) => entry.name === name);
+  if (registered) {
+    return registered;
+  }
+  const url = builtinMarketplaceGitUrl(name);
+  if (!url) {
+    return undefined;
+  }
+  return builtinMarketplaceEntry();
+}
+
 export function refreshMarketplaceCatalog(
   harnesstapDir: string,
   options: RefreshMarketplaceCatalogOptions,
 ): RefreshMarketplaceCatalogResult {
-  const entry = listMarketplaces(harnesstapDir).find((m) => m.name === options.name);
+  const entry = catalogRefreshEntry(harnesstapDir, options.name);
   if (!entry) {
     return { ok: false, message: `Marketplace not found: ${options.name}` };
   }
@@ -280,6 +299,16 @@ function pluginMatchesQuery(plugin: CatalogPlugin, query: string): boolean {
   return false;
 }
 
+function listCatalogSearchMarketplaces(
+  harnesstapDir: string,
+): Array<{ name: string }> {
+  const registered = listMarketplaces(harnesstapDir);
+  if (registered.some((entry) => builtinMarketplaceGitUrl(entry.name))) {
+    return registered;
+  }
+  return [...registered, builtinMarketplaceEntry()];
+}
+
 export interface SearchCatalogPluginsOptions {
   refresh?: boolean;
 }
@@ -289,8 +318,9 @@ export function searchCatalogPlugins(
   query: string,
   options: SearchCatalogPluginsOptions = {},
 ): CatalogPlugin[] {
+  const marketplaces = listCatalogSearchMarketplaces(harnesstapDir);
   if (options.refresh) {
-    for (const marketplace of listMarketplaces(harnesstapDir)) {
+    for (const marketplace of marketplaces) {
       refreshMarketplaceCatalog(harnesstapDir, {
         name: marketplace.name,
         force: true,
@@ -300,7 +330,7 @@ export function searchCatalogPlugins(
 
   const trimmed = query.trim();
   const results: CatalogPlugin[] = [];
-  for (const marketplace of listMarketplaces(harnesstapDir)) {
+  for (const marketplace of marketplaces) {
     const plugins = listCatalogPlugins(harnesstapDir, { name: marketplace.name });
     for (const plugin of plugins) {
       if (!trimmed || pluginMatchesQuery(plugin, trimmed)) {

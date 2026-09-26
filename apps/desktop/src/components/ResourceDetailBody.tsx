@@ -48,6 +48,9 @@ import { formatLibraryTimestamp } from "../lib/library-timestamp";
 import {
   hostPluginVersionHint,
   hostPluginVersionOptions,
+  libraryPullIsDisabled,
+  libraryPullUnavailableReason,
+  libraryPullVersionsTooltip,
   pluginVersionFieldVisible,
 } from "../lib/plugin-host-version";
 import {
@@ -126,10 +129,6 @@ function libraryResourceNoun(type: string): string {
 function librarySyncPreviewTooltip(type: string): string {
   const noun = libraryResourceNoun(type);
   return `Compare this ${noun} with its origin`;
-}
-
-function libraryPullVersionsTooltip(): string {
-  return "Fetch versions from source";
 }
 
 function pendingSyncWriteTooltip(type: string): string {
@@ -711,7 +710,7 @@ export function ResourceDetailBody({
   }
 
   async function runPull(): Promise<void> {
-    if (!baseUrl || !target || !detail) {
+    if (!baseUrl || !target || !detail || libraryPullIsDisabled(detail.pull_unavailable_reason)) {
       return;
     }
     setMutating(true);
@@ -842,6 +841,11 @@ export function ResourceDetailBody({
   );
   const showSync = Boolean(detail && !isUntrackedDetail(detail) && isSyncableDetail(detail));
   const showPull = Boolean(detail && !isUntrackedDetail(detail) && isPullableDetail(detail));
+  const pullUnavailableReason = detail
+    ? libraryPullUnavailableReason(detail.pull_unavailable_reason)
+    : null;
+  const pullDisabled =
+    chromeLocked || busy || libraryPullIsDisabled(pullUnavailableReason);
   const showDelete = Boolean(detail && !isUntrackedDetail(detail));
   const showApply = Boolean(preview && preview.updated.length > 0);
   const deleteAttachers = detail ? attachersFromResourceDetail(detail) : null;
@@ -865,8 +869,8 @@ export function ResourceDetailBody({
       {showPull ? (
         <IconActionButton
           primary
-          disabled={chromeLocked || busy}
-          title={libraryPullVersionsTooltip()}
+          disabled={pullDisabled}
+          title={libraryPullVersionsTooltip(pullUnavailableReason)}
           label="Pull"
           showLabel
           onClick={() => void runPull()}

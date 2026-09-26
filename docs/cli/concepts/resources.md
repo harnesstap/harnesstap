@@ -107,7 +107,7 @@ ht resource show plugin_pin:formatter@my-marketplace
 
 Claude Code **home scan** (`init`, profile from home, `scan` of global defaults) also registers installed plugins from `~/.claude/plugins/installed_plugins.json` as `plugin_pin` resources. Cursor home scan registers `~/.cursor/plugins/`. Copilot CLI home scan registers installed plugins from `~/.copilot/installed-plugins/`. That creates the pin in the library; run `resource sync` to materialize child skills/hooks from the install tree.
 
-Claude Code, Goose, and Copilot CLI have native plugin install/sync providers. Cursor inventories `~/.cursor/plugins/` and registers marketplaces with `agent plugin marketplace add`; plugin install is still Cursor Customize or `/plugin`. `ht harness sync` copies Claude and Cursor install trees onto each other (native roots; not a shared plugin directory). Other harnesses may import plugin manifest metadata without full install-tree fidelity — see [Portability limits](../../portability-limits.md).
+Claude Code, Goose, and Copilot CLI have native plugin install/sync providers. Cursor inventories `~/.cursor/plugins/`. **cursor-public** is a native git marketplace (`https://github.com/cursor/plugins`); other Cursor marketplaces still use `agent plugin marketplace add`. Plugin install in Cursor remains Customize or `/plugin`. `ht harness sync` copies Claude and Cursor install trees onto each other (native roots; not a shared plugin directory). Other harnesses may import plugin manifest metadata without full install-tree fidelity — see [Portability limits](../../portability-limits.md).
 
 ## Portability notes
 

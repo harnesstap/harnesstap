@@ -184,6 +184,7 @@ describe("pluginResourceShowExtras", () => {
         current_version: null,
         advertised_version: null,
         available_versions: [],
+        pull_unavailable_reason: "Marketplace team-mkt is not installed",
       });
     } finally {
       await ctx.cleanup();

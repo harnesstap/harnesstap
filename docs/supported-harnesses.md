@@ -79,7 +79,7 @@ During `apply`, HarnessTap can **install** and **sync** plugins from host instal
 | Harness | Provider | Typical install location |
 | ------- | -------- | ------------------------ |
 | **claude-code** | Claude Code marketplace / `claude plugin` | `~/.claude/plugins/` |
-| **cursor** | Inventory + git check/update; marketplace ensure via `agent plugin marketplace add` (install remains Cursor Customize / `/plugin` — no `agent plugin install`) | `~/.cursor/plugins/` |
+| **cursor** | Inventory + git check/update; `cursor-public` is a native git marketplace (`https://github.com/cursor/plugins`); other marketplaces via `agent plugin marketplace add` (install remains Cursor Customize / `/plugin` — no `agent plugin install`) | `~/.cursor/plugins/` |
 | **goose** | `goose plugin install` (git-backed Open Plugins) | `~/.agents/plugins/` |
 | **copilot-cli** | Copilot CLI marketplace / `copilot plugin` | `~/.copilot/installed-plugins/` |
 | **deepseek-harness** | `dsh plugin --profile web add` | `$DSH_HOME/profiles/web/` |

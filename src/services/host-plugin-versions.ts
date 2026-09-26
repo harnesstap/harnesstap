@@ -6,21 +6,24 @@ import {
   claudePluginsDir,
   getInstalledPluginRecord,
   parsePluginRef,
-  readJsonFile,
   readManifestVersion,
   resolveInstalledRecordPath,
   writeInstalledPluginRecord,
 } from "../plugins/claude-installed.js";
+import { cursorCacheRoot } from "../plugins/refresh.js";
 import type { RunCommand } from "../plugins/run-command.js";
 import type { PluginPinMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   downloadHostPluginVersion,
   isRelativePluginSourcePath,
+  marketplaceNotInstalledMessage,
   pullHostPluginSourceVersions,
   readHostPluginSourceSnapshot,
   readMarketplacePluginSource,
+  resolveMarketplaceCloneUrl,
   resolveMarketplaceRoot,
+  defaultMarketplaceRoot,
 } from "./host-plugin-source.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 
@@ -56,15 +59,6 @@ export interface HostPluginVersionInfo {
   current_version: string | null;
   advertised_version: string | null;
   available_versions: HostPluginCacheVersion[];
-}
-
-interface MarketplacePluginEntry {
-  name?: string;
-  version?: string;
-}
-
-interface MarketplaceFile {
-  plugins?: MarketplacePluginEntry[];
 }
 
 export function isCacheVersionDirectoryName(name: string): boolean {
@@ -104,6 +98,29 @@ function cachePluginDir(
   return join(claudePluginsDir(homeRoot), "cache", marketplace, pluginName);
 }
 
+export function missingMarketplacePullMessage(originRef: string): string {
+  return `Plugin ${originRef} has no marketplace, so source versions cannot be pulled`;
+}
+
+export function hostPluginPullUnavailableReason(
+  originRef: string,
+  homeRoot?: string,
+): string | null {
+  const resolvedHome = homeRoot ?? resolveHomeRoot();
+  const { marketplace } = parsePluginRef(originRef);
+  if (!marketplace) {
+    return missingMarketplacePullMessage(originRef);
+  }
+  const url = resolveMarketplaceCloneUrl(resolvedHome, marketplace);
+  const root =
+    resolveMarketplaceRoot(resolvedHome, marketplace) ??
+    defaultMarketplaceRoot(resolvedHome, marketplace);
+  if (url || existsSync(root)) {
+    return null;
+  }
+  return marketplaceNotInstalledMessage(marketplace);
+}
+
 export function highestHostPluginSourceVersion(
   versions: Array<string | null | undefined>,
 ): string | null {
@@ -118,15 +135,10 @@ function advertisedMarketplaceVersion(
   marketplace: string,
   pluginName: string,
 ): string | null {
-  const root = resolveMarketplaceRoot(homeRoot, marketplace);
-  if (!root) {
-    return null;
-  }
-  const marketplacePath = join(root, ".claude-plugin", "marketplace.json");
-  const file = readJsonFile<MarketplaceFile>(marketplacePath);
-  const entry = file?.plugins?.find((plugin) => plugin.name === pluginName);
-  const version = entry?.version?.trim();
-  return version ? version : null;
+  return (
+    readMarketplacePluginSource(homeRoot, marketplace, pluginName)?.version ??
+    null
+  );
 }
 
 function checkoutPluginManifestVersion(
@@ -152,12 +164,9 @@ function checkoutPluginManifestVersion(
   return manifest.version !== "unknown" ? manifest.version : null;
 }
 
-function listCacheVersionDirs(
-  homeRoot: string,
-  marketplace: string,
-  pluginName: string,
+function scanCacheParent(
+  parent: string,
 ): Array<{ version: string; path: string; manifest_version: string | null }> {
-  const parent = cachePluginDir(homeRoot, marketplace, pluginName);
   if (!existsSync(parent)) {
     return [];
   }
@@ -197,6 +206,26 @@ function listCacheVersionDirs(
   } catch {
     return [];
   }
+}
+
+function listCacheVersionDirs(
+  homeRoot: string,
+  marketplace: string,
+  pluginName: string,
+): Array<{ version: string; path: string; manifest_version: string | null }> {
+  const rows = [
+    ...scanCacheParent(cachePluginDir(homeRoot, marketplace, pluginName)),
+    ...scanCacheParent(
+      join(cursorCacheRoot(homeRoot), marketplace, pluginName),
+    ),
+  ];
+  const byVersion = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    if (!byVersion.has(row.version)) {
+      byVersion.set(row.version, row);
+    }
+  }
+  return [...byVersion.values()];
 }
 
 export function listHostPluginVersions(
@@ -313,7 +342,7 @@ export function pullHostPluginVersions(input: {
   if (!marketplace) {
     throw new HostPluginVersionError(
       "missing_marketplace",
-      `Plugin ${input.originRef} has no marketplace, so source versions cannot be pulled`,
+      missingMarketplacePullMessage(input.originRef),
     );
   }
   try {

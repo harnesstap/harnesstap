@@ -1,5 +1,22 @@
 import type { PluginHostCacheVersion } from "./types";
 
+export const LIBRARY_PULL_VERSIONS_TOOLTIP = "Fetch versions from source";
+
+export function libraryPullUnavailableReason(
+  reason?: string | null,
+): string | null {
+  const trimmed = reason?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function libraryPullVersionsTooltip(reason?: string | null): string {
+  return libraryPullUnavailableReason(reason) ?? LIBRARY_PULL_VERSIONS_TOOLTIP;
+}
+
+export function libraryPullIsDisabled(reason?: string | null): boolean {
+  return libraryPullUnavailableReason(reason) !== null;
+}
+
 export function formatHostPluginVersionOption(
   row: Pick<PluginHostCacheVersion, "version" | "manifest_version" | "advertised">,
 ): string {

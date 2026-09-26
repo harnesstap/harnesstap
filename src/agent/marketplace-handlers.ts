@@ -1,5 +1,6 @@
 import type { PluginMarketplacePlatform } from "../config/settings.js";
 import { getHarnesstapDir } from "../db/connection.js";
+import { builtinMarketplaceGitUrl } from "../services/builtin-marketplaces.js";
 import {
   listCatalogPlugins,
   listPluginsFromMarketplaceRoot,
@@ -139,7 +140,9 @@ export function handleMarketplacePluginsList(
   const plugins = entry.managed
     ? listCatalogPlugins(harnesstapDir, { name: entry.name })
     : entry.contentRoot
-      ? listPluginsFromMarketplaceRoot(entry.contentRoot, entry.name)
-      : [];
+      ? listPluginsFromMarketplaceRoot(entry.contentRoot, entry.name, entry.platforms)
+      : builtinMarketplaceGitUrl(entry.name)
+        ? listCatalogPlugins(harnesstapDir, { name: entry.name })
+        : [];
   return jsonResponse({ marketplace: entry.name, plugins });
 }

@@ -3,6 +3,8 @@ import {
   formatHostPluginVersionOption,
   hostPluginVersionHint,
   hostPluginVersionOptions,
+  libraryPullIsDisabled,
+  libraryPullVersionsTooltip,
   pluginVersionFieldVisible,
 } from "../../apps/desktop/src/lib/plugin-host-version.ts";
 
@@ -35,6 +37,20 @@ describe("plugin host version labels", () => {
     expect(hostPluginVersionHint("6.1.1", "5.1.0")).toBe("Marketplace lists 6.1.1.");
     expect(hostPluginVersionHint("5.1.0", "5.1.0")).toBeNull();
     expect(hostPluginVersionHint(null, "5.1.0")).toBeNull();
+  });
+
+  it("disables Pull and tooltips the source-unavailable reason", () => {
+    expect(libraryPullVersionsTooltip(null)).toBe("Fetch versions from source");
+    expect(libraryPullIsDisabled(null)).toBe(false);
+    expect(
+      libraryPullVersionsTooltip("Marketplace acme-plugins is not installed"),
+    ).toBe("Marketplace acme-plugins is not installed");
+    expect(
+      libraryPullIsDisabled("Marketplace acme-plugins is not installed"),
+    ).toBe(true);
+    expect(
+      libraryPullVersionsTooltip("Plugin demo has no marketplace, so source versions cannot be pulled"),
+    ).toBe("Plugin demo has no marketplace, so source versions cannot be pulled");
   });
 
   it("builds filterable combobox options from cache and marketplace notes", () => {

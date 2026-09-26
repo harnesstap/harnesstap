@@ -75,6 +75,7 @@ describe("listVisibleMarketplaces", () => {
     expect(listed.map((entry) => entry.name)).toEqual([
       "claude-plugins-official",
       "teads-plugins",
+      "cursor-public",
     ]);
     expect(listed.find((entry) => entry.name === "teads-plugins")).toMatchObject({
       url: "https://github.com/outbrain/claude-plugins",
@@ -119,6 +120,31 @@ describe("listVisibleMarketplaces", () => {
     expect(listed.map((entry) => ({ name: entry.name, managed: entry.managed }))).toEqual([
       { name: "teads-plugins", managed: true },
       { name: "extra", managed: false },
+      { name: "cursor-public", managed: false },
     ]);
+  });
+
+  it("keeps cursor-public as a Cursor+Claude source when Claude already knows the repo", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-host-mkt-"));
+    const harnesstapDir = join(home, ".harnesstap");
+    mkdirSync(harnesstapDir, { recursive: true });
+    const checkout = join(home, ".claude", "plugins", "marketplaces", "cursor-public");
+    mkdirSync(checkout, { recursive: true });
+    writeKnownMarketplaces(home, {
+      "cursor-public": {
+        source: { source: "github", repo: "cursor/plugins" },
+        installLocation: checkout,
+      },
+    });
+
+    const listed = listVisibleMarketplaces(harnesstapDir, home);
+    const rows = listed.filter((entry) => entry.name === "cursor-public");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      platforms: ["cursor", "claude-code"],
+      managed: false,
+      contentRoot: checkout,
+    });
+    expect(rows[0]?.url).toContain("github.com/cursor/plugins");
   });
 });
