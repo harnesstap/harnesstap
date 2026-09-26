@@ -10,7 +10,11 @@ import {
 import { deleteResourceMaterializations } from "../../models/resource-materialization.js";
 import { PluginProvenanceError } from "../../services/plugin-origin.js";
 import { parseUntrackedResourceSelector } from "../../services/untracked-resource.js";
-import { syncLinkedResources } from "../../services/resource-sync.js";
+import {
+  switchHostPluginCacheVersion,
+  syncLinkedResources,
+} from "../../services/resource-sync.js";
+import { HostPluginVersionError } from "../../services/host-plugin-versions.js";
 import {
   executeResourceDiskDeletion,
   planResourceDiskDeletion,
@@ -19,6 +23,8 @@ import type { Resource } from "../../types.js";
 
 const SYNC_PATH =
   /^\/v1\/library\/resources\/([^/]+)\/sync$/;
+const VERSION_PATH =
+  /^\/v1\/library\/resources\/([^/]+)\/version$/;
 const DELETE_PLAN_PATH =
   /^\/v1\/library\/resources\/([^/]+)\/delete-plan$/;
 const DELETE_PATH = /^\/v1\/library\/resources\/([^/]+)$/;
@@ -34,11 +40,15 @@ export async function tryHandle(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   const syncMatch = url.pathname.match(SYNC_PATH);
+  const versionMatch = url.pathname.match(VERSION_PATH);
   const deletePlanMatch = url.pathname.match(DELETE_PLAN_PATH);
   const deleteMatch = url.pathname.match(DELETE_PATH);
 
   if (request.method === "POST" && syncMatch) {
     return handleSync(request, token, decodeSelector(syncMatch[1] ?? ""), url);
+  }
+  if (request.method === "POST" && versionMatch) {
+    return handleVersion(request, token, decodeSelector(versionMatch[1] ?? ""));
   }
   if (request.method === "GET" && deletePlanMatch) {
     return handleDeletePlan(
@@ -272,6 +282,113 @@ async function handleSync(
       {
         error: "sync_failed",
         message: error instanceof Error ? error.message : "Sync failed",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+function hostPluginVersionErrorResponse(error: HostPluginVersionError): Response {
+  switch (error.code) {
+    case "not_plugin":
+    case "missing_marketplace":
+      return jsonResponse(
+        { error: error.code, message: error.message },
+        { status: 400 },
+      );
+    case "version_not_found":
+      return jsonResponse(
+        { error: error.code, message: error.message },
+        { status: 404 },
+      );
+    default: {
+      const _exhaustive: never = error.code;
+      return _exhaustive;
+    }
+  }
+}
+
+async function handleVersion(
+  request: Request,
+  token: string,
+  selector: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+
+  const trimmed = selector.trim();
+  if (!trimmed) {
+    return jsonResponse(
+      { error: "invalid_selector", message: "Resource selector is required" },
+      { status: 400 },
+    );
+  }
+  if (parseUntrackedResourceSelector(trimmed)) {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+
+  const parsedBody = await readJsonObject(request);
+  if (!parsedBody.ok) {
+    return parsedBody.response;
+  }
+  const version =
+    typeof parsedBody.body.version === "string" ? parsedBody.body.version.trim() : "";
+  if (!version) {
+    return jsonResponse(
+      { error: "invalid_version", message: "version is required" },
+      { status: 400 },
+    );
+  }
+
+  const resolved = resolveResource(trimmed, { mode: "compose" });
+  if (resolved.status === "ambiguous") {
+    return ambiguousResponse(trimmed, resolved.matches);
+  }
+  if (resolved.status === "not_found") {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+
+  try {
+    const result = await switchHostPluginCacheVersion({
+      resource: resolved.resource,
+      version,
+    });
+    return jsonResponse({
+      version: result.version,
+      install_path: result.install_path,
+      sync: {
+        checked: result.sync.checked,
+        updated: result.sync.updated.map(resourceSummary),
+        unchanged: result.sync.unchanged.map(resourceSummary),
+        skipped: result.sync.skipped.map(resourceSummary),
+        stale: result.sync.stale.map((entry) => ({
+          resource: resourceSummary(entry.resource),
+          reason: entry.reason,
+        })),
+      },
+    });
+  } catch (error) {
+    if (error instanceof HostPluginVersionError) {
+      return hostPluginVersionErrorResponse(error);
+    }
+    if (error instanceof PluginProvenanceError) {
+      return jsonResponse(
+        { error: "sync_not_allowed", message: error.message },
+        { status: 400 },
+      );
+    }
+    return jsonResponse(
+      {
+        error: "version_switch_failed",
+        message: error instanceof Error ? error.message : "Could not switch plugin version",
       },
       { status: 500 },
     );

@@ -20,6 +20,7 @@ import {
   MapPin,
   Pencil,
   RefreshCw,
+  Tag,
   TextQuote,
   Trash2,
 } from "lucide-react";
@@ -35,11 +36,17 @@ import {
   isResourceConflictError,
   patchLibraryResource,
   previewLibraryResourceDelete,
+  switchLibraryPluginVersion,
   syncLibraryResource,
   type ResourceDeletePlan,
   type ResourceSyncResult,
 } from "../lib/api/resource-mutate";
 import { formatLibraryTimestamp } from "../lib/library-timestamp";
+import {
+  formatHostPluginVersionOption,
+  hostPluginVersionHint,
+  pluginVersionFieldVisible,
+} from "../lib/plugin-host-version";
 import {
   isPluginTypeResource,
   pluginRefShowsMarketplaceUrl,
@@ -76,6 +83,13 @@ import {
 import type { LibraryResourceDetail } from "../lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { IconActionButton } from "./IconActionButton";
 import type { LibraryDetailChromeProps } from "./LibraryDetailChrome";
@@ -140,10 +154,16 @@ export interface ResourceDetailBodyProps {
   onBusyChange?: (busy: boolean) => void;
   onOpenOwningPlugin?: (pluginName: string) => void;
   showBack?: boolean;
+  duplicatePluginNames?: ReadonlySet<string>;
 }
 
-function displayName(resource: LibraryResourceDetail): string {
-  return formatResourceDisplayName(resource);
+function displayName(
+  resource: LibraryResourceDetail,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  return formatResourceDisplayName(resource, {
+    disambiguatePlugin: duplicateNames?.has(resource.name) ?? false,
+  });
 }
 
 function originLabel(resource: LibraryResourceDetail): string {
@@ -219,6 +239,7 @@ export function ResourceDetailBody({
   onBusyChange,
   onOpenOwningPlugin,
   showBack = true,
+  duplicatePluginNames,
 }: ResourceDetailBodyProps) {
   const generatedTitleId = useId();
   const titleId = titleIdProp ?? generatedTitleId;
@@ -556,6 +577,35 @@ export function ResourceDetailBody({
     }
   }
 
+  async function runSwitchVersion(version: string): Promise<void> {
+    if (!baseUrl || !target || !detail) {
+      return;
+    }
+    if (version === detail.current_version) {
+      return;
+    }
+    setMutating(true);
+    setActionError(null);
+    try {
+      const result = await switchLibraryPluginVersion(
+        baseUrl,
+        token,
+        target.selector,
+        version,
+      );
+      onSuccess?.(`Using ${detail.name} ${result.version}`);
+      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
+        pathHint: target.pathHint,
+      });
+      setDetail(next);
+      onLibraryChanged?.();
+    } catch (switchError: unknown) {
+      setActionError(errorMessage(switchError, "Could not switch plugin version"));
+    } finally {
+      setMutating(false);
+    }
+  }
+
   async function openContainedPath(path: string, reveal = false): Promise<void> {
     if (!baseUrl || openingPath) {
       return;
@@ -772,7 +822,7 @@ export function ResourceDetailBody({
           }
         }}
       >
-        {detail ? displayName(detail) : target.label}
+        {detail ? displayName(detail, duplicatePluginNames) : target.label}
         {chrome === "pane" && !fieldsReadOnly ? (
           <IconActionButton
             className="library-field-edit-trigger"
@@ -826,6 +876,10 @@ export function ResourceDetailBody({
     );
   }
 
+  const versionHint = detail
+    ? hostPluginVersionHint(detail.advertised_version, detail.current_version)
+    : null;
+
   const fields: ReactNode = loading ? (
     <p className="muted">Loading details…</p>
   ) : !detail && error ? (
@@ -873,6 +927,54 @@ export function ResourceDetailBody({
               readOnly
               mono
               display={detail.marketplace_url}
+              editing={false}
+              onStartEdit={() => undefined}
+            />
+          ) : null}
+          {pluginVersionFieldVisible(detail) ? (
+            <LibraryFieldRow
+              icon={<Tag size={16} aria-hidden />}
+              fieldName="Version"
+              readOnly
+              mono
+              display={
+                (detail.available_versions?.length ?? 0) > 1 ? (
+                  <div className="library-field-version">
+                    <Select
+                      value={detail.current_version ?? undefined}
+                      onValueChange={(next) => {
+                        void runSwitchVersion(next);
+                      }}
+                      disabled={disabled || busy || !baseUrl}
+                    >
+                      <SelectTrigger
+                        className="library-field-version-select"
+                        aria-label="Plugin version"
+                      >
+                        <SelectValue placeholder="Unknown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {detail.available_versions?.map((row) => (
+                          <SelectItem key={row.version} value={row.version}>
+                            {formatHostPluginVersionOption(row)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {versionHint ? (
+                      <p className="library-field-version-hint">{versionHint}</p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="library-field-version">
+                    <span>{detail.current_version ?? "Unknown"}</span>
+                    {versionHint ? (
+                      <p className="library-field-version-hint">{versionHint}</p>
+                    ) : null}
+                  </div>
+                )
+              }
+              placeholder="Unknown"
               editing={false}
               onStartEdit={() => undefined}
             />

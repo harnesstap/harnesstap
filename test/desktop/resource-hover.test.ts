@@ -56,6 +56,33 @@ describe("resource hover model", () => {
     });
   });
 
+  it("adds marketplace to hover names only when plugin names collide", () => {
+    const unique: LibraryResource = {
+      id: "plugin:ripwire",
+      name: "ripwire",
+      type: "plugin",
+      namespace: "claude-plugins-official",
+      origin_ref: "ripwire@claude-plugins-official",
+      description: null,
+    };
+    expect(hoverModelFromLibraryResource(unique)).toMatchObject({
+      type: "plugin_ref",
+      name: "ripwire",
+    });
+    const colliding = new Set(["superpowers"]);
+    const official: LibraryResource = {
+      id: "plugin:sp1",
+      name: "superpowers",
+      type: "plugin",
+      namespace: "claude-plugins-official",
+      origin_ref: "superpowers@claude-plugins-official",
+      description: null,
+    };
+    expect(hoverModelFromLibraryResource(official, colliding)).toMatchObject({
+      name: "superpowers@claude-plugins-official",
+    });
+  });
+
   it("uses namespace display name and omits empty path/origin", () => {
     const resource: LibraryResource = {
       id: "rule:x",

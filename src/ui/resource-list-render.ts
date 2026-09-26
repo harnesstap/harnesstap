@@ -13,6 +13,7 @@ import {
   type SectionViewport,
 } from "./list-viewport.js";
 import {
+  duplicatePluginNames,
   formatResourceDisplayName,
   formatResourceScopeLabel,
   resourceHumanName,
@@ -406,10 +407,13 @@ function makeResourceListColumns(
 }
 
 export function toResourceListRows(resources: Resource[]): ResourceListRow[] {
+  const collidingNames = duplicatePluginNames(resources);
   return resources.map((resource) => ({
     ...resource,
     namespace: resource.namespace ?? "",
-    display_name: formatResourceDisplayName(resource),
+    display_name: formatResourceDisplayName(resource, {
+      disambiguatePlugin: collidingNames.has(resource.name),
+    }),
   }));
 }
 

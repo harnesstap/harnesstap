@@ -4,6 +4,7 @@ import {
   mergeLibraryList,
   type LibraryListEntry,
 } from "./library-list";
+import { duplicatePluginNames } from "./resource-display";
 import { resourceDisplayName } from "./resource-search";
 import type { LibraryPlugin, LibraryResource } from "./types";
 
@@ -36,6 +37,7 @@ export function compareCompositionGroupTypes(left: string, right: string): numbe
 export function groupCompositionMembership(
   resources: LibraryResource[],
 ): Array<{ type: string; label: string; resources: LibraryResource[] }> {
+  const collidingNames = duplicatePluginNames(resources);
   const groups = new Map<string, LibraryResource[]>();
   for (const resource of resources) {
     const type = compositionSearchType(resource);
@@ -52,7 +54,9 @@ export function groupCompositionMembership(
       type,
       label: libraryFilterTypeLabel(type),
       resources: [...rows].sort((a, b) =>
-        resourceDisplayName(a).localeCompare(resourceDisplayName(b)),
+        resourceDisplayName(a, collidingNames).localeCompare(
+          resourceDisplayName(b, collidingNames),
+        ),
       ),
     }));
 }

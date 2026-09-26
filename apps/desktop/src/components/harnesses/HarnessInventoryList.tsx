@@ -1,6 +1,8 @@
 import {
   groupHarnessLocationsByType,
-  truncateResourceBadgeName,
+  harnessDuplicatePluginNames,
+  harnessResourceBadgeLabel,
+  harnessResourceDisplayName,
   type HarnessEntry,
   type HarnessLocation,
   type HarnessResourceRow,
@@ -26,10 +28,14 @@ function rowKey(row: HarnessResourceRow): string {
   return row.id || `${row.type}:${row.name}:${row.source}`;
 }
 
-function badgeHover(row: HarnessResourceRow): ResourceHoverModel {
+function badgeHover(
+  row: HarnessResourceRow,
+  duplicateNames?: ReadonlySet<string>,
+): ResourceHoverModel {
+  const name = harnessResourceDisplayName(row, duplicateNames);
   return {
     type: row.type,
-    name: row.name,
+    name,
     showName: true,
     path: row.source,
     harnessIds: [],
@@ -41,12 +47,15 @@ function ResourceBadge({
   row,
   disabled,
   onOpen,
+  duplicateNames,
 }: {
   row: HarnessResourceRow;
   disabled: boolean;
   onOpen: (row: HarnessResourceRow) => void;
+  duplicateNames?: ReadonlySet<string>;
 }) {
-  const label = truncateResourceBadgeName(row.name);
+  const label = harnessResourceBadgeLabel(row, duplicateNames);
+  const fullName = harnessResourceDisplayName(row, duplicateNames);
   const clickable = Boolean(row.id) && !disabled;
   const className = "resource-type-tab harness-resource-badge";
 
@@ -55,8 +64,8 @@ function ResourceBadge({
       type="button"
       className={className}
       disabled={disabled}
-      data-testid={`harness-resource-${row.name}`}
-      aria-label={row.name}
+      data-testid={`harness-resource-${fullName}`}
+      aria-label={fullName}
       onClick={() => onOpen(row)}
     >
       {label}
@@ -64,15 +73,15 @@ function ResourceBadge({
   ) : (
     <span
       className={`${className} is-static`}
-      data-testid={`harness-resource-${row.name}`}
-      aria-label={row.name}
+      data-testid={`harness-resource-${fullName}`}
+      aria-label={fullName}
     >
       {label}
     </span>
   );
 
   return (
-    <ResourceHoverCard model={badgeHover(row)} disabled={disabled}>
+    <ResourceHoverCard model={badgeHover(row, duplicateNames)} disabled={disabled}>
       {face}
     </ResourceHoverCard>
   );
@@ -83,11 +92,13 @@ function HarnessTypeSectionBlock({
   section,
   disabled,
   onOpen,
+  duplicateNames,
 }: {
   type: string;
   section: HarnessTypeSection;
   disabled: boolean;
   onOpen: (row: HarnessResourceRow) => void;
+  duplicateNames?: ReadonlySet<string>;
 }) {
   return (
     <section
@@ -112,6 +123,7 @@ function HarnessTypeSectionBlock({
               row={row}
               disabled={disabled}
               onOpen={onOpen}
+              duplicateNames={duplicateNames}
             />
           ))}
         </div>
@@ -127,6 +139,7 @@ export function HarnessInventoryList({
   onOpen,
 }: HarnessInventoryListProps) {
   const groups = groupHarnessLocationsByType(entry, locations);
+  const duplicateNames = harnessDuplicatePluginNames(entry.locations);
 
   return (
     <div className="harness-type-list">
@@ -149,6 +162,7 @@ export function HarnessInventoryList({
               section={section}
               disabled={disabled}
               onOpen={onOpen}
+              duplicateNames={duplicateNames}
             />
           ))}
         </section>

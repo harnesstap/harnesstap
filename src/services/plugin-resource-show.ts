@@ -12,6 +12,10 @@ import {
 import { listContainedFiles } from "../utils/path-containment.js";
 import { listMarketplaces } from "./marketplace-registry.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
+import {
+  listHostPluginVersions,
+  type HostPluginCacheVersion,
+} from "./host-plugin-versions.js";
 import { resolveExistingResourceFilesystemPath } from "./resource-editor-path.js";
 import { resolveInstallRoot } from "./resource-sync.js";
 
@@ -26,6 +30,9 @@ export interface PluginResourceShowExtras {
   install_path: string | null;
   marketplace_url: string | null;
   contained_resources: PluginContainedResource[];
+  current_version: string | null;
+  advertised_version: string | null;
+  available_versions: HostPluginCacheVersion[];
 }
 
 export function pluginResourceShowExtras(
@@ -54,17 +61,28 @@ export function pluginResourceShowExtras(
           (entry) => entry.name === marketplaceName,
         )?.url ?? null)
       : null;
+  const versions = listHostPluginVersions(originRef, options?.homeRoot);
+  const current_version =
+    versions.current_version ??
+    (resource.metadata as PluginDependencyMetadata).resolved_version ??
+    null;
   if (!installPath) {
     return {
       install_path: null,
       marketplace_url: marketplaceUrl,
       contained_resources: [],
+      current_version,
+      advertised_version: versions.advertised_version,
+      available_versions: versions.available_versions,
     };
   }
   return {
     install_path: installPath,
     marketplace_url: marketplaceUrl,
     contained_resources: listContainedPluginFiles(installPath, originRef, resource.id),
+    current_version,
+    advertised_version: versions.advertised_version,
+    available_versions: versions.available_versions,
   };
 }
 

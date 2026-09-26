@@ -94,6 +94,12 @@ describe("tryHandle resource-mutate", () => {
       { headers: {} },
     );
     expect(sync?.status).toBe(401);
+    const version = await handle(
+      "POST",
+      "/v1/library/resources/plugin%3Ademo/version",
+      { headers: {}, body: { version: "2.0.0" } },
+    );
+    expect(version?.status).toBe(401);
     const del = await handle("DELETE", "/v1/library/resources/skill%3Aship", {
       headers: {},
     });
@@ -661,5 +667,80 @@ describe("PATCH /v1/library/resources/:selector", () => {
     expect(response?.status).toBe(409);
     const body = (await response?.json()) as { error: string };
     expect(body.error).toBe("resource_exists");
+  });
+
+  it("POST version retargets the host cache pointer", async () => {
+    const context = await withHome("parity-mutate-version");
+    const v1 = join(
+      context.homeDir,
+      ".claude",
+      "plugins",
+      "cache",
+      "team-mkt",
+      "demo",
+      "1.0.0",
+    );
+    const v2 = join(
+      context.homeDir,
+      ".claude",
+      "plugins",
+      "cache",
+      "team-mkt",
+      "demo",
+      "2.0.0",
+    );
+    for (const root of [v1, v2]) {
+      mkdirSync(join(root, ".claude-plugin"), { recursive: true });
+      writeFileSync(
+        join(root, ".claude-plugin", "plugin.json"),
+        JSON.stringify({
+          name: "demo",
+          version: root.endsWith("2.0.0") ? "2.0.0" : "1.0.0",
+        }),
+      );
+    }
+    mkdirSync(join(context.homeDir, ".claude", "plugins"), { recursive: true });
+    writeFileSync(
+      join(context.homeDir, ".claude", "plugins", "installed_plugins.json"),
+      JSON.stringify({
+        version: 2,
+        plugins: {
+          "demo@team-mkt": [
+            {
+              scope: "user",
+              installPath: "cache/team-mkt/demo/1.0.0",
+              version: "1.0.0",
+            },
+          ],
+        },
+      }),
+    );
+    const pin = createResource({
+      type: "plugin",
+      name: "demo",
+      namespace: "team-mkt",
+      description: "Plugin pin: demo@team-mkt",
+      content: "{}",
+      metadata: { resolved_version: "1.0.0" },
+      source: "composition:plugin",
+      origin_kind: "marketplace_link",
+      origin_ref: "demo@team-mkt",
+    });
+    const response = await handle(
+      "POST",
+      `/v1/library/resources/${encodeURIComponent(pin.id)}/version`,
+      { body: { version: "2.0.0" } },
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as { version: string; install_path: string };
+    expect(body.version).toBe("2.0.0");
+    expect(body.install_path).toBe(v2);
+    const installed = JSON.parse(
+      readFileSync(
+        join(context.homeDir, ".claude", "plugins", "installed_plugins.json"),
+        "utf8",
+      ),
+    ) as { plugins: Record<string, Array<{ version: string }>> };
+    expect(installed.plugins["demo@team-mkt"]?.[0]?.version).toBe("2.0.0");
   });
 });

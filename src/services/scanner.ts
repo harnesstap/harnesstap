@@ -583,7 +583,11 @@ export function persistScanResults(
         origin_kind: r.origin_kind ?? "local_snapshot",
         origin_ref: r.origin_ref ?? (originRef || r.source),
       });
-      const key = resourceDedupKey({ ...incoming, namespace });
+      const key = resourceDedupKey({
+        type: incoming.type,
+        name: incoming.name,
+        namespace: incoming.namespace ?? "",
+      });
       if (seen.has(key)) continue;
       seen.add(key);
 
@@ -597,7 +601,7 @@ export function persistScanResults(
           (resource) =>
             resource.type === incoming.type &&
             resource.name === incoming.name &&
-            resource.namespace === namespace,
+            resource.namespace === (incoming.namespace ?? ""),
         );
         if (existing) {
           conflicts.push({ platformId: result.platformId, existing, incoming });

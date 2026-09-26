@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { ResourceCreateInput } from "../types.js";
 import {
   parsePluginRef,
@@ -61,13 +62,27 @@ export function resolveInstalledRecordPath(
     : join(claudePluginsDir(homeRoot), record.installPath);
 }
 
+export function readInstalledPluginsFile(
+  homeRoot: string,
+): InstalledPluginsFile | null {
+  const path = join(claudePluginsDir(homeRoot), "installed_plugins.json");
+  return readJsonFile<InstalledPluginsFile>(path);
+}
+
+export function getInstalledPluginRecord(
+  homeRoot: string,
+  ref: string,
+): InstalledPluginRecord | null {
+  const file = readInstalledPluginsFile(homeRoot);
+  return file?.plugins[ref]?.[0] ?? null;
+}
+
 export function getInstalledPluginInstallPath(
   homeRoot: string,
   ref: string,
   candidateRefs?: string[],
 ): string | null {
-  const path = join(claudePluginsDir(homeRoot), "installed_plugins.json");
-  const file = readJsonFile<InstalledPluginsFile>(path);
+  const file = readInstalledPluginsFile(homeRoot);
   if (!file?.plugins) {
     return null;
   }
@@ -82,6 +97,25 @@ export function getInstalledPluginInstallPath(
   }
 
   return null;
+}
+
+export function writeInstalledPluginRecord(
+  homeRoot: string,
+  ref: string,
+  record: InstalledPluginRecord,
+): void {
+  const path = join(claudePluginsDir(homeRoot), "installed_plugins.json");
+  const existing = readInstalledPluginsFile(homeRoot);
+  const file: InstalledPluginsFile = {
+    version: existing?.version ?? 2,
+    plugins: { ...(existing?.plugins ?? {}) },
+  };
+  const current = file.plugins[ref] ?? [];
+  const previous = current.find((row) => row.scope === record.scope);
+  const rest = current.filter((row) => row.scope !== record.scope);
+  file.plugins[ref] = [{ ...previous, ...record }, ...rest];
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(file, null, 2)}\n`);
 }
 
 export function loadInstalled(homeRoot: string): PluginInstall[] {

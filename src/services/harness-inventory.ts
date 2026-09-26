@@ -48,6 +48,7 @@ export interface HarnessLocationResource {
   description: string;
   source: string;
   origin_kind: string;
+  namespace: string;
   origin_ref: string | null;
 }
 
@@ -396,6 +397,7 @@ function toLocationResource(resource: Resource): HarnessLocationResource {
     description: resource.description,
     source: resource.source,
     origin_kind: resource.origin_kind,
+    namespace: resource.namespace ?? "",
     origin_ref: resource.origin_ref || null,
   };
 }
@@ -459,6 +461,7 @@ function hostManagedSkillRows(
     description: skill.description,
     source: skill.source,
     origin_kind: "manual",
+    namespace: "",
     origin_ref: null,
   }));
 }
