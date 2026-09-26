@@ -38,6 +38,7 @@ import {
   groupScopedLibraryRows,
   libraryFilterType,
   libraryRowSelector,
+  libraryRowTreatAsScoped,
   mergeLibraryList,
   type LibraryListEntry,
 } from "../lib/library-list";
@@ -72,6 +73,7 @@ import {
   resetResourceFilterState,
   type ResourceFilterState,
 } from "../lib/resource-filters";
+import { duplicatePluginNames } from "../lib/resource-display";
 import { resourceDisplayName } from "../lib/resource-search";
 import {
   countResourceTypeTabs,
@@ -434,15 +436,23 @@ export function ResourcesPanel({
     [filterState, entries, typeTab],
   );
 
+  const collidingPluginNames = useMemo(
+    () => duplicatePluginNames(entries),
+    [entries],
+  );
+
   const listRows = useMemo(
     () =>
       groupScopedLibraryRows(
         [...filteredEntries].sort((left, right) =>
-          resourceDisplayName(left).localeCompare(resourceDisplayName(right)),
+          resourceDisplayName(left, collidingPluginNames).localeCompare(
+            resourceDisplayName(right, collidingPluginNames),
+          ),
         ),
-        resourceDisplayName,
+        (row) => resourceDisplayName(row, collidingPluginNames),
+        { treatAsScoped: libraryRowTreatAsScoped },
       ),
-    [filteredEntries],
+    [collidingPluginNames, filteredEntries],
   );
 
   useEffect(() => {
@@ -613,7 +623,7 @@ export function ResourcesPanel({
   );
 
   function openLibraryRow(entry: LibraryListEntry): void {
-    const label = resourceDisplayName(entry);
+    const label = resourceDisplayName(entry, collidingPluginNames);
     setLastSelector(libraryRowSelector(entry));
     switch (entry.listKind) {
       case "plugin-package":
@@ -719,6 +729,7 @@ export function ResourcesPanel({
             onConfirmOpenChange={setConfirmOpen}
             onBusyChange={handleDetailBusy}
             showBack={false}
+            duplicatePluginNames={collidingPluginNames}
           />
         );
       case "plugin-package":
@@ -844,6 +855,7 @@ export function ResourcesPanel({
           lastSelector={lastSelector}
           enteringIds={enteringIds}
           onOpen={openLibraryRow}
+          duplicatePluginNames={collidingPluginNames}
         />
       </>
     );

@@ -3,6 +3,7 @@ import {
   harnessIdFromDisplayName,
   SHARED_AGENTS_SECTION_ID,
 } from "./harness-meta";
+import { duplicatePluginNames, formatResourceDisplayName } from "./resource-display";
 import type { LibraryDetailTarget } from "./library-pane";
 import { filterLibraryResourcesBySearch } from "./resource-search";
 import {
@@ -48,6 +49,7 @@ export interface HarnessResourceRow {
   /** `~/`-relative path; row subtitle and detail `pathHint`. */
   readonly source: string;
   readonly origin_kind?: string | null;
+  readonly namespace?: string | null;
   readonly origin_ref?: string | null;
 }
 
@@ -321,6 +323,42 @@ export function truncateResourceBadgeName(
 ): string {
   if (name.length <= max) return name;
   return `${name.slice(0, max)}...`;
+}
+
+export function harnessDuplicatePluginNames(
+  locations: readonly { resources: readonly HarnessResourceRow[] }[],
+): Set<string> {
+  return duplicatePluginNames(
+    locations.flatMap((location) => location.resources),
+  );
+}
+
+/** Plugin refs use `name@marketplace` only when the same plugin name appears twice. */
+export function harnessResourceDisplayName(
+  row: HarnessResourceRow,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  return formatResourceDisplayName(
+    {
+      name: row.name,
+      type: row.type,
+      namespace: row.namespace,
+      origin_ref: row.origin_ref,
+      source: row.source,
+    },
+    { disambiguatePlugin: duplicateNames?.has(row.name) ?? false },
+  );
+}
+
+export function harnessResourceBadgeLabel(
+  row: HarnessResourceRow,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  const label = harnessResourceDisplayName(row, duplicateNames);
+  if (row.type === "plugin") {
+    return label;
+  }
+  return truncateResourceBadgeName(label);
 }
 
 export interface HarnessTypeSection {
@@ -621,7 +659,7 @@ function asLibraryResource(row: HarnessResourceRow): LibraryResource {
     id: row.id,
     name: row.name,
     type: row.type,
-    namespace: null,
+    namespace: row.namespace ?? null,
     description: row.description,
     source: row.source,
     origin_kind: row.origin_kind,
@@ -677,8 +715,8 @@ export function harnessMarketplaceFilterOptions(
   const seen = new Set<string>();
   const options: HarnessFilterOption[] = [];
   for (const location of entry.locations) {
-    for (const row of location.resources) {
-      const name = harnessResourceMarketplace(row);
+    for (const resource of location.resources) {
+      const name = harnessResourceMarketplace(resource);
       if (!name || seen.has(name)) continue;
       seen.add(name);
       options.push({ id: name, label: name });
@@ -694,6 +732,17 @@ export function isHarnessFacetFilterActive(facets: HarnessFacetFilter | undefine
   );
 }
 
+function searchIdentity(row: {
+  id: string;
+  type: string;
+  name: string;
+  source?: string | null;
+  origin_ref?: string | null;
+}): string {
+  if (row.id) return `id:${row.id}`;
+  return `row:${row.type}:${row.name}:${row.source ?? ""}:${row.origin_ref ?? ""}`;
+}
+
 function searchRows(
   rows: readonly HarnessResourceRow[],
   search: string,
@@ -701,10 +750,10 @@ function searchRows(
   if (!search.trim()) return rows;
   const matched = new Set(
     filterLibraryResourcesBySearch(rows.map(asLibraryResource), search).map(
-      (resource) => resource.id,
+      (resource) => searchIdentity(resource),
     ),
   );
-  return rows.filter((row) => matched.has(row.id));
+  return rows.filter((row) => matched.has(searchIdentity(row)));
 }
 
 function marketplaceRows(
@@ -750,11 +799,14 @@ export function filterHarnessLocations(
   return { locations, typeCounts: countResourceTypeTabs(types) };
 }
 
-export function resourceDetailTargetFor(row: HarnessResourceRow): ResourceDetailTarget {
+export function resourceDetailTargetFor(
+  row: HarnessResourceRow,
+  duplicateNames?: ReadonlySet<string>,
+): ResourceDetailTarget {
   return {
     kind: "resource",
     selector: row.id || `${row.type}:${row.name}`,
-    label: row.name,
+    label: harnessResourceDisplayName(row, duplicateNames),
     pathHint: row.source,
   };
 }

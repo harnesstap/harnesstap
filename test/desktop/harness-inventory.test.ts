@@ -19,6 +19,9 @@ import {
   harnessMarketplaceFilterOptions,
   harnessOriginFilterOptions,
   harnessResourceMarketplace,
+  harnessResourceBadgeLabel,
+  harnessResourceDisplayName,
+  harnessDuplicatePluginNames,
   harnessSummary,
   harnessSupportsLabel,
   initialHarnessesViewState,
@@ -40,9 +43,18 @@ function row(
   type: string,
   name: string,
   source: string,
-  extra: Partial<Pick<HarnessResourceRow, "origin_kind" | "origin_ref">> = {},
+  extra: Partial<Pick<HarnessResourceRow, "id" | "namespace" | "origin_kind" | "origin_ref">> = {},
 ): HarnessResourceRow {
-  return { id: `${type}-${name}`, type, name, description: "", source, ...extra };
+  return {
+    id: extra.id ?? `${type}-${extra.origin_ref ?? name}`,
+    type,
+    name,
+    description: "",
+    source,
+    origin_kind: extra.origin_kind ?? null,
+    namespace: extra.namespace ?? null,
+    origin_ref: extra.origin_ref ?? null,
+  };
 }
 
 function entry(
@@ -480,6 +492,44 @@ describe("filterHarnessLocations", () => {
     ]);
   });
 
+  it("finds Claude-directory plugins by marketplace identity", () => {
+    const claude = entry("claude-code", "detected", {
+      locations: [
+        location("~/.claude/plugins/", ["plugins"], true, [
+          row(
+            "plugin",
+            "superpowers",
+            "~/.claude/plugins/installed_plugins.json",
+            {
+              namespace: "claude-plugins-official",
+              origin_ref: "superpowers@claude-plugins-official",
+            },
+          ),
+          row(
+            "plugin",
+            "superpowers",
+            "~/.claude/plugins/installed_plugins.json",
+            {
+              namespace: "superpowers-dev",
+              origin_ref: "superpowers@superpowers-dev",
+            },
+          ),
+        ]),
+      ],
+    });
+    const official = filterHarnessLocations(claude, "claude-plugins-official", null);
+    expect(official.locations[0]?.resources.map((item) => item.origin_ref)).toEqual([
+      "superpowers@claude-plugins-official",
+    ]);
+    expect(
+      official.locations[0]?.resources.map((item) =>
+        harnessResourceDisplayName(item, harnessDuplicatePluginNames(claude.locations)),
+      ),
+    ).toEqual(["superpowers@claude-plugins-official"]);
+    const byName = filterHarnessLocations(claude, "superpowers", null);
+    expect(byName.locations[0]?.resources).toHaveLength(2);
+  });
+
   it("groups locations by resource type then harness section", () => {
     const cursor = entry("cursor", "detected", {
       locations: [
@@ -516,6 +566,25 @@ describe("filterHarnessLocations", () => {
     expect(truncateResourceBadgeName("short")).toBe("short");
     expect(truncateResourceBadgeName("abcdefghijklmnopqrstuvwxyz")).toBe(
       "abcdefghijklmnopqrst...",
+    );
+    expect(
+      harnessResourceBadgeLabel(
+        row("plugin", "superpowers", "~/.claude/plugins/installed_plugins.json", {
+          origin_ref: "superpowers@claude-plugins-official",
+        }),
+      ),
+    ).toBe("superpowers");
+    const colliding = [
+      row("plugin", "superpowers", "~/.claude/plugins/installed_plugins.json", {
+        origin_ref: "superpowers@claude-plugins-official",
+      }),
+      row("plugin", "superpowers", "~/.claude/plugins/installed_plugins.json", {
+        origin_ref: "superpowers@superpowers-dev",
+      }),
+    ];
+    const dupes = harnessDuplicatePluginNames([{ resources: colliding }]);
+    expect(harnessResourceBadgeLabel(colliding[0]!, dupes)).toBe(
+      "superpowers@claude-plugins-official",
     );
     const emptyRules = location("~/.claude/rules/", ["rules"], false, []);
     const groups = groupHarnessLocationsByType(CLAUDE_ENTRY, [emptyRules]);
@@ -615,6 +684,7 @@ describe("parseHarnessInventory", () => {
                   description: "A",
                   source: "~/.claude/skills/alpha/SKILL.md",
                   origin_kind: null,
+                  namespace: null,
                   origin_ref: null,
                 },
               ],

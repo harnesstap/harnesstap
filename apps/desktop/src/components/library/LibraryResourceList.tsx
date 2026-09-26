@@ -23,6 +23,7 @@ import {
   libraryRowBadge,
   libraryRowHeight,
   libraryRowSelector,
+  libraryRowTreatAsScoped,
   libraryRowUpdateBadge,
   parseLibraryScopeName,
   libraryRowScopeChip,
@@ -50,6 +51,7 @@ export interface LibraryResourceListProps {
   enteringIds: ReadonlySet<string>;
   onOpen: (entry: LibraryListEntry) => void;
   onActiveSelectorChange?: (selector: string | null) => void;
+  duplicatePluginNames?: ReadonlySet<string>;
 }
 
 export function LibraryResourceList({
@@ -60,6 +62,7 @@ export function LibraryResourceList({
   enteringIds,
   onOpen,
   onActiveSelectorChange,
+  duplicatePluginNames,
 }: LibraryResourceListProps): ReactNode {
   const listId = useId();
   const parentRef = useRef<HTMLDivElement>(null);
@@ -77,7 +80,7 @@ export function LibraryResourceList({
     getItemKey: (index) => rows[index]?.id ?? index,
   });
 
-  const labels = rows.map((row) => resourceDisplayName(row));
+  const labels = rows.map((row) => resourceDisplayName(row, duplicatePluginNames));
   const activeIndexRef = useRef(0);
   activeIndexRef.current = activeIndex;
   const virtualizerRef = useRef(virtualizer);
@@ -180,10 +183,11 @@ export function LibraryResourceList({
           if (!entry) {
             return null;
           }
-          const label = resourceDisplayName(entry);
-          const visibleLabel = entry.scopedProfile
-            ? parseLibraryScopeName(label).base
-            : label;
+          const label = resourceDisplayName(entry, duplicatePluginNames);
+          const visibleLabel =
+            entry.scopedProfile && libraryRowTreatAsScoped(entry)
+              ? parseLibraryScopeName(label).base
+              : label;
           const scopeChip = libraryRowScopeChip(entry);
           const badge = libraryRowBadge(entry);
           const updateBadge = libraryRowUpdateBadge(entry);
@@ -192,7 +196,7 @@ export function LibraryResourceList({
           const selector = libraryRowSelector(entry);
           const isActive = virtualRow.index === activeIndex;
           const isCurrent = lastSelector === selector;
-          const hover = hoverModelFromLibraryResource(entry);
+          const hover = hoverModelFromLibraryResource(entry, duplicatePluginNames);
           if (entry.scopedProfile) {
             hover.extra = [
               ...hover.extra,

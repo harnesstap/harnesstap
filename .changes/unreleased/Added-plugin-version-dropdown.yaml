@@ -1,0 +1,5 @@
+kind: Added
+body: Show host plugin cache versions on Library plugin details and switch the installed version from a dropdown.
+time: 2026-09-25T23:59:00Z
+custom:
+  Issue: ""

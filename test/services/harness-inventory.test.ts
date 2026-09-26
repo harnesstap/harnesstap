@@ -313,6 +313,7 @@ describe("getHarnessInventory", () => {
             description: "A skill",
             source: "~/.claude/skills/foo/SKILL.md",
             origin_kind: "manual",
+            namespace: "",
             origin_ref: context.homeDir,
           },
         ],
@@ -340,6 +341,20 @@ describe("getHarnessInventory", () => {
         "~/.claude/skills/",
       ]);
       expect(
+        claude?.locations.find((location) => location.path === "~/.claude/plugins/"),
+      ).toMatchObject({
+        relation: "native",
+        resources: [
+          expect.objectContaining({
+            type: "plugin",
+            name: "demo",
+            namespace: "official",
+            origin_ref: "demo@official",
+            source: "~/.claude/plugins/installed_plugins.json",
+          }),
+        ],
+      });
+      expect(
         cursor?.locations.find((location) => location.path === "~/.claude/plugins/"),
       ).toMatchObject({
         relation: "related",
@@ -348,6 +363,8 @@ describe("getHarnessInventory", () => {
           expect.objectContaining({
             type: "plugin",
             name: "demo",
+            namespace: "official",
+            origin_ref: "demo@official",
             source: "~/.claude/plugins/installed_plugins.json",
           }),
         ],

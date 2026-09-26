@@ -78,6 +78,35 @@ describe("filterLibraryResourcesBySearch", () => {
     ).toEqual(["a"]);
   });
 
+  it("matches plugin marketplace origin_ref", () => {
+    const plugins = [
+      resource({
+        id: "p1",
+        type: "plugin",
+        name: "superpowers",
+        namespace: "claude-plugins-official",
+        origin_ref: "superpowers@claude-plugins-official",
+      }),
+      resource({
+        id: "p2",
+        type: "plugin",
+        name: "superpowers",
+        namespace: "cursor-public",
+        origin_ref: "superpowers@cursor-public",
+      }),
+    ];
+    expect(
+      filterLibraryResourcesBySearch(plugins, "claude-plugins-official").map(
+        (row) => row.id,
+      ),
+    ).toEqual(["p1"]);
+    expect(
+      filterLibraryResourcesBySearch(plugins, "superpowers@cursor-public").map(
+        (row) => row.id,
+      ),
+    ).toEqual(["p2"]);
+  });
+
   it("maps legacy plugin_pin: prefix to plugin rows", () => {
     const withPlugin = [
       ...rows,

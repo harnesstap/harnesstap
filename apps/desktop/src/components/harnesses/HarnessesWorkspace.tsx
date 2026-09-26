@@ -11,6 +11,7 @@ import {
 import {
   availableHarnesses,
   configuredHarnesses,
+  harnessDuplicatePluginNames,
   harnessEntry,
   harnessesViewReducer,
   initialHarnessesViewState,
@@ -258,6 +259,13 @@ export function HarnessesWorkspace({
   const available = useMemo(() => availableHarnesses(inventory), [inventory]);
   const selection = inventory?.selection ?? null;
   const selectedEntry = harnessEntry(inventory, view.selectedId);
+  const collidingPluginNames = useMemo(
+    () =>
+      selectedEntry
+        ? harnessDuplicatePluginNames(selectedEntry.locations)
+        : new Set<string>(),
+    [selectedEntry],
+  );
   const selectedRole = view.selectedId ? roleOf(selection, view.selectedId) : null;
   const removeTarget = overlay.kind === "remove" ? overlay.id : null;
   const removeCopy =
@@ -283,7 +291,10 @@ export function HarnessesWorkspace({
     || (detailOpen && detailConfirmOpen);
 
   const openRow = (row: HarnessResourceRow) => {
-    dispatch({ type: "open-detail", target: resourceDetailTargetFor(row) });
+    dispatch({
+      type: "open-detail",
+      target: resourceDetailTargetFor(row, collidingPluginNames),
+    });
   };
 
   const onPick = async (id: HarnessId) => {
@@ -369,6 +380,7 @@ export function HarnessesWorkspace({
             }}
             onConfirmOpenChange={setDetailConfirmOpen}
             onBusyChange={setDetailBusy}
+            duplicatePluginNames={collidingPluginNames}
           />
         );
       case "inventory":
