@@ -65,6 +65,8 @@ function parseResource(value: unknown): HarnessResourceRow {
     name: asString(record.name, "resource name"),
     description: typeof record.description === "string" ? record.description : "",
     source: asString(record.source, "resource source"),
+    origin_kind: typeof record.origin_kind === "string" ? record.origin_kind : null,
+    origin_ref: typeof record.origin_ref === "string" ? record.origin_ref : null,
   };
 }
 

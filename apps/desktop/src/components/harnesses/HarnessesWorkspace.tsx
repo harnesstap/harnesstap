@@ -388,9 +388,13 @@ export function HarnessesWorkspace({
             role={selectedRole}
             search={view.search}
             typeTab={view.typeTab}
+            originIds={view.originIds}
+            marketplaceIds={view.marketplaceIds}
             disabled={controlsDisabled}
             onSearch={(value) => dispatch({ type: "search", value })}
             onTypeTab={(value) => dispatch({ type: "type-tab", value })}
+            onOriginIds={(value) => dispatch({ type: "origin-filter", value })}
+            onMarketplaceIds={(value) => dispatch({ type: "marketplace-filter", value })}
             onMakeMain={onMakeMain}
             onOpen={openRow}
           />
