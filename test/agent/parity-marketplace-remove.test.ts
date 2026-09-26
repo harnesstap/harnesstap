@@ -111,7 +111,7 @@ describe("DELETE /v1/marketplaces/:name", () => {
       headers: { Authorization: `Bearer ${server.token}` },
     });
     const listed = (await list.json()) as { marketplaces: Array<{ name: string }> };
-    expect(listed.marketplaces.map((m) => m.name)).toEqual(["keep-me"]);
+    expect(listed.marketplaces.map((m) => m.name)).toEqual(["keep-me", "cursor-public"]);
   });
 
   it("returns 404 for an unknown name", async () => {
