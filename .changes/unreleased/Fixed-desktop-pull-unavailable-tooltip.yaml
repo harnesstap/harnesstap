@@ -1,0 +1,5 @@
+kind: Fixed
+body: Disable library Pull when a plugin source cannot be updated and tooltip the reason, including marketplace-not-installed and missing-marketplace cases.
+time: 2026-09-26T08:50:00Z
+custom:
+  Issue: ""

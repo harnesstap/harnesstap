@@ -211,6 +211,7 @@ describe("agent library routes", () => {
     expect(skillBody.resource).not.toHaveProperty("contained_resources");
     expect(skillBody.resource).not.toHaveProperty("current_version");
     expect(skillBody.resource).not.toHaveProperty("available_versions");
+    expect(skillBody.resource).not.toHaveProperty("pull_unavailable_reason");
     expect(skillBody.resource.content).toContain("# ship");
 
     const plugin = await fetch(
@@ -225,6 +226,7 @@ describe("agent library routes", () => {
     expect(pluginBody.resource).toHaveProperty("current_version");
     expect(pluginBody.resource).toHaveProperty("advertised_version");
     expect(pluginBody.resource).toHaveProperty("available_versions");
+    expect(pluginBody.resource).toHaveProperty("pull_unavailable_reason");
     expect(Array.isArray(pluginBody.resource.contained_resources)).toBe(true);
   });
 

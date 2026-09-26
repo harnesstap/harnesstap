@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { isInvalidPreviewPath } from "../utils/preview-path.js";
+import { builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
 import {
   listCatalogPlugins,
   listPluginsFromMarketplaceRoot,
@@ -104,13 +105,20 @@ export function previewMarketplacePlugin(
   );
 
   if (visible && !visible.managed) {
-    const plugins = visible.contentRoot
-      ? listPluginsFromMarketplaceRoot(visible.contentRoot, visible.name)
-      : [];
-    if (!plugins.some((plugin) => plugin.name === input.plugin) || !visible.contentRoot) {
+    if (visible.contentRoot) {
+      const plugins = listPluginsFromMarketplaceRoot(
+        visible.contentRoot,
+        visible.name,
+        visible.platforms,
+      );
+      if (!plugins.some((plugin) => plugin.name === input.plugin)) {
+        return { status: "not_found" };
+      }
+      return previewFromRoot(visible.contentRoot, input.plugin, input.path);
+    }
+    if (!builtinMarketplaceGitUrl(visible.name)) {
       return { status: "not_found" };
     }
-    return previewFromRoot(visible.contentRoot, input.plugin, input.path);
   }
 
   const plugins = ensureCatalogPlugins(harnesstapDir, input.marketplace);

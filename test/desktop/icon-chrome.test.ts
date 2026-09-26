@@ -25,6 +25,7 @@ const recordActionsSource = read("components/SourcesRecordActions.tsx");
 const sourceSidebarSource = read("components/SourceSidebar.tsx");
 const pluginDetailSource = read("components/PluginPackageDetail.tsx");
 const resourceDetailSource = read("components/ResourceDetailBody.tsx");
+const pluginHostVersionSource = read("lib/plugin-host-version.ts");
 const pendingSource = read("components/PendingApprovalsStrip.tsx");
 const updateSource = read("components/UpdateAvailableControl.tsx");
 const iconButtonSource = read("components/IconActionButton.tsx");
@@ -310,8 +311,10 @@ describe("desktop icon chrome", () => {
 
   test("library Pull tooltip fetches versions from source", () => {
     expect(resourceDetailSource).toContain("libraryPullVersionsTooltip");
-    expect(resourceDetailSource).toContain("Fetch versions from source");
-    expect(resourceDetailSource).toContain("libraryPullVersionsTooltip()");
+    expect(pluginHostVersionSource).toContain("Fetch versions from source");
+    expect(resourceDetailSource).toContain("libraryPullVersionsTooltip(pullUnavailableReason)");
+    expect(resourceDetailSource).toContain("libraryPullIsDisabled");
+    expect(resourceDetailSource).toContain("pullDisabled");
   });
 
   test("library Sync tooltip compares with origin", () => {

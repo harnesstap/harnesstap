@@ -111,6 +111,7 @@ export interface LibraryResourceDetail {
   current_version?: string | null;
   advertised_version?: string | null;
   available_versions?: PluginHostCacheVersion[];
+  pull_unavailable_reason?: string | null;
   attached_profiles?: string[];
   attached_plugins?: string[];
   active_profile?: string | null;

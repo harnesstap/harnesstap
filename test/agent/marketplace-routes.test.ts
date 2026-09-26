@@ -63,7 +63,16 @@ describe("agent marketplace routes", () => {
       headers: { Authorization: `Bearer ${server.token}` },
     });
     expect(ok.status).toBe(200);
-    await expect(ok.json()).resolves.toEqual({ marketplaces: [] });
+    await expect(ok.json()).resolves.toEqual({
+      marketplaces: [
+        {
+          name: "cursor-public",
+          url: "https://github.com/cursor/plugins.git",
+          platforms: ["cursor", "claude-code"],
+          managed: false,
+        },
+      ],
+    });
   });
 
   it("lists Claude known_marketplaces that are not in the HarnessTap registry", async () => {
@@ -101,6 +110,12 @@ describe("agent marketplace routes", () => {
         name: "teads-plugins",
         url: "https://github.com/outbrain/claude-plugins",
         platforms: ["claude-code"],
+        managed: false,
+      },
+      {
+        name: "cursor-public",
+        url: "https://github.com/cursor/plugins.git",
+        platforms: ["cursor", "claude-code"],
         managed: false,
       },
     ]);

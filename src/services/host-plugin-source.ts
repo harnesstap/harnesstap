@@ -14,11 +14,18 @@ import {
   DEFAULT_GIT_CLONE_TIMEOUT_MS,
   runCommandWithTimeout,
 } from "../utils/run-command-with-timeout.js";
+import { builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
+import { listMarketplaces } from "./marketplace-registry.js";
 import { resolveMarketplacePluginDirectory } from "./plugin-origin-apply.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 
 const FULL_SHA = /^[0-9a-f]{40}$/i;
 const SNAPSHOT_FILE = "host-plugin-source-versions.json";
+const MARKETPLACE_MANIFEST_RELATIVE_PATHS = [
+  ".claude-plugin/marketplace.json",
+  ".cursor-plugin/marketplace.json",
+  "marketplace.json",
+] as const;
 
 export interface MarketplacePluginSource {
   version: string | null;
@@ -165,7 +172,7 @@ export function resolveMarketplaceRoot(
   return existsSync(fallback) ? fallback : null;
 }
 
-function readKnownMarketplace(
+function readClaudeKnownMarketplace(
   homeRoot: string,
   marketplace: string,
 ): { url: string | null; installLocation: string | null } | null {
@@ -209,10 +216,98 @@ function readKnownMarketplace(
   return { url, installLocation };
 }
 
+function githubRepoFromCloneUrl(url: string): string | null {
+  const stripped = stripGitSuffix(url);
+  const match = stripped.match(/^https?:\/\/github\.com\/([^/]+\/[^/]+)$/i);
+  return match?.[1] ?? null;
+}
+
+function claudeKnownMarketplaceSource(url: string): Record<string, unknown> {
+  const repo = githubRepoFromCloneUrl(url);
+  if (repo) {
+    return { source: "github", repo };
+  }
+  return { source: "url", url };
+}
+
+function persistBuiltinClaudeKnownMarketplace(
+  homeRoot: string,
+  marketplace: string,
+  root: string,
+  url: string | null,
+): void {
+  const builtinUrl = builtinMarketplaceGitUrl(marketplace);
+  if (!builtinUrl || !existsSync(root)) {
+    return;
+  }
+  const knownPath = join(claudePluginsDir(homeRoot), "known_marketplaces.json");
+  const raw = readJsonFile<KnownMarketplaceFile>(knownPath);
+  const file: Record<string, unknown> = isRecord(raw) ? { ...raw } : {};
+  const previous = isRecord(file[marketplace]) ? { ...file[marketplace] } : {};
+  const previousSource = isRecord(previous.source) ? previous.source : {};
+  const hasSource =
+    typeof previousSource.source === "string" && previousSource.source.trim().length > 0;
+  file[marketplace] = {
+    ...previous,
+    source: hasSource ? previousSource : claudeKnownMarketplaceSource(url ?? builtinUrl),
+    installLocation: root,
+  };
+  mkdirSync(dirname(knownPath), { recursive: true });
+  writeFileSync(knownPath, `${JSON.stringify(file, null, 2)}\n`);
+}
+
+function readKnownMarketplace(
+  homeRoot: string,
+  marketplace: string,
+  harnesstapDir: string = getHarnesstapDir(),
+): { url: string | null; installLocation: string | null } | null {
+  const known = readClaudeKnownMarketplace(homeRoot, marketplace);
+  const builtinUrl = builtinMarketplaceGitUrl(marketplace);
+  if (known) {
+    return {
+      url: known.url ?? builtinUrl,
+      installLocation: known.installLocation,
+    };
+  }
+  if (builtinUrl) {
+    return { url: builtinUrl, installLocation: null };
+  }
+  const registered = listMarketplaces(harnesstapDir).find(
+    (entry) => entry.name === marketplace,
+  );
+  if (registered?.url) {
+    return { url: githubCloneUrl(registered.url), installLocation: null };
+  }
+  return null;
+}
+
+export function marketplaceNotInstalledMessage(marketplace: string): string {
+  return `Marketplace ${marketplace} is not installed`;
+}
+
+function readMarketplaceManifestRecord(
+  root: string,
+): Record<string, unknown> | null {
+  for (const relative of MARKETPLACE_MANIFEST_RELATIVE_PATHS) {
+    const file = readJsonFile<Record<string, unknown>>(join(root, relative));
+    if (file && isRecord(file)) {
+      return file;
+    }
+  }
+  return null;
+}
+
+function readMarketplaceFile(root: string): MarketplaceFile | null {
+  const file = readMarketplaceManifestRecord(root);
+  if (!file || !Array.isArray(file.plugins)) {
+    return null;
+  }
+  return file as MarketplaceFile;
+}
+
 function marketplaceManifestRepositoryUrl(root: string): string | null {
-  const marketplacePath = join(root, ".claude-plugin", "marketplace.json");
-  const file = readJsonFile<Record<string, unknown>>(marketplacePath);
-  if (!file || !isRecord(file)) {
+  const file = readMarketplaceManifestRecord(root);
+  if (!file) {
     return null;
   }
   const repository = file.repository;
@@ -280,8 +375,7 @@ export function readMarketplacePluginSource(
   if (!root) {
     return null;
   }
-  const marketplacePath = join(root, ".claude-plugin", "marketplace.json");
-  const file = readJsonFile<MarketplaceFile>(marketplacePath);
+  const file = readMarketplaceFile(root);
   const entry = file?.plugins?.find((plugin) => {
     if (!isRecord(plugin)) {
       return false;
@@ -428,6 +522,7 @@ export function refreshMarketplaceCheckout(
       if (!ref) continue;
       const reset = runGit(runCommand, ["reset", "--hard", ref], root);
       if (reset.exitCode === 0) {
+        persistBuiltinClaudeKnownMarketplace(homeRoot, marketplace, root, url);
         return { ok: true, message: "Refreshed marketplace", root };
       }
       lastMessage = reset.stderr.trim() || lastMessage;
@@ -439,12 +534,21 @@ export function refreshMarketplaceCheckout(
     };
   }
   if (!url) {
+    const exists = existsSync(root);
+    if (exists) {
+      persistBuiltinClaudeKnownMarketplace(
+        homeRoot,
+        marketplace,
+        root,
+        builtinMarketplaceGitUrl(marketplace),
+      );
+    }
     return {
-      ok: existsSync(root),
-      message: existsSync(root)
+      ok: exists,
+      message: exists
         ? "Using local marketplace checkout"
-        : `Marketplace ${marketplace} is not installed`,
-      root: existsSync(root) ? root : null,
+        : marketplaceNotInstalledMessage(marketplace),
+      root: exists ? root : null,
     };
   }
   const cloned = refreshGitSource({
@@ -457,6 +561,9 @@ export function refreshMarketplaceCheckout(
         options?.cwd,
       ),
   });
+  if (cloned.ok) {
+    persistBuiltinClaudeKnownMarketplace(homeRoot, marketplace, root, url);
+  }
   return {
     ok: cloned.ok,
     message: cloned.message,

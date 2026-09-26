@@ -309,7 +309,7 @@ shared `AGENTS.md` instruction resources.
 
 ### Cursor plugin marketplaces
 
-HarnessTap registers Cursor marketplaces with `agent plugin marketplace add` during apply and when `plugin add` targets the active profile. `agent plugin` has no install command; install from Cursor Customize or `/plugin`, then inventory `~/.cursor/plugins/`. Missing `agent` auth or a failed `marketplace list` skips host registration instead of failing apply.
+`cursor-public` is Cursor's built-in public marketplace. HarnessTap treats it as a native git source at `https://github.com/cursor/plugins` (marketplace manifest `.cursor-plugin/marketplace.json`; each plugin is a relative path in that repo). Library **Pull** clones or fetches that repo even when Cursor has not installed the marketplace. The checkout lives under the Claude host marketplace root (`~/.claude/plugins/marketplaces/cursor-public`) and is recorded in Claude `known_marketplaces.json`, so Claude Code can install from `plugin@cursor-public` refs. `ht harness sync` copies those trees onto Cursor. Other Cursor marketplaces are still registered with `agent plugin marketplace add` during apply and when `plugin add` targets the active profile. `agent plugin` has no install command; install from Cursor Customize or `/plugin`, then inventory `~/.cursor/plugins/`. Missing `agent` auth or a failed `marketplace list` skips host registration instead of failing apply. HarnessTap never sends `marketplace add` for `cursor-public` (Cursor already has it).
 
 ### Copilot plugin install
 

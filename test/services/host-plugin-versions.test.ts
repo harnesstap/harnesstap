@@ -7,6 +7,7 @@ import { cleanupDir, createTempDir } from "../helpers/fs.ts";
 import { createResource, getResource } from "../../src/models/resource.ts";
 import {
   highestHostPluginSourceVersion,
+  hostPluginPullUnavailableReason,
   listHostPluginVersions,
   pullHostPluginVersions,
   resolvedVersionFromInstallRoot,
@@ -701,6 +702,24 @@ describe("host plugin source pull and download", () => {
       ).toBe("6.4.2");
     } finally {
       cleanupDir(repo);
+      await ctx.cleanup();
+    }
+  });
+});
+
+describe("hostPluginPullUnavailableReason", () => {
+  it("reports missing marketplace and not-installed sources", async () => {
+    const ctx = await createInitializedTestContext("host-plugin-pull-reason");
+    try {
+      expect(hostPluginPullUnavailableReason("solo", ctx.homeDir)).toMatch(
+        /has no marketplace/,
+      );
+      expect(hostPluginPullUnavailableReason("demo@nowhere", ctx.homeDir)).toBe(
+        "Marketplace nowhere is not installed",
+      );
+      writeMarketplaceCatalog(ctx.homeDir, "nowhere", "demo", "1.0.0");
+      expect(hostPluginPullUnavailableReason("demo@nowhere", ctx.homeDir)).toBeNull();
+    } finally {
       await ctx.cleanup();
     }
   });
