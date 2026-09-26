@@ -1016,6 +1016,13 @@
 }
 
 .library-field-version-select {
+  width: 100%;
+  max-width: 20rem;
+  font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: var(--text-meta);
+}
+
+.library-field-version-select input {
   font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
   font-size: var(--text-meta);
 }

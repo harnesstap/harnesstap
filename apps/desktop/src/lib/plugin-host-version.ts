@@ -26,6 +26,15 @@ export function hostPluginVersionHint(
   return `Marketplace lists ${advertisedVersion}.`;
 }
 
+export function hostPluginVersionOptions(
+  rows: Array<Pick<PluginHostCacheVersion, "version" | "manifest_version" | "advertised">>,
+): Array<{ value: string; label: string }> {
+  return rows.map((row) => ({
+    value: row.version,
+    label: formatHostPluginVersionOption(row),
+  }));
+}
+
 export function pluginVersionFieldVisible(detail: {
   type: string;
   origin_kind?: string;

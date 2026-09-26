@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import semver from "semver";
+import { getHarnesstapDir } from "../db/connection.js";
 import {
   claudePluginsDir,
   getInstalledPluginRecord,
@@ -10,8 +11,14 @@ import {
   resolveInstalledRecordPath,
   writeInstalledPluginRecord,
 } from "../plugins/claude-installed.js";
+import type { RunCommand } from "../plugins/run-command.js";
 import type { PluginPinMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import {
+  downloadHostPluginVersion,
+  pullHostPluginSourceVersions,
+  readHostPluginSourceSnapshot,
+} from "./host-plugin-source.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 
 const GIT_SHA_DIR = /^[0-9a-f]{7,40}$/i;
@@ -19,7 +26,10 @@ const GIT_SHA_DIR = /^[0-9a-f]{7,40}$/i;
 export type HostPluginVersionErrorCode =
   | "not_plugin"
   | "missing_marketplace"
-  | "version_not_found";
+  | "version_not_found"
+  | "source_unavailable"
+  | "pull_failed"
+  | "download_failed";
 
 export class HostPluginVersionError extends Error {
   readonly code: HostPluginVersionErrorCode;
@@ -212,6 +222,24 @@ export function listHostPluginVersions(
     });
   }
 
+  const snapshot = readHostPluginSourceSnapshot(originRef, getHarnesstapDir());
+  const remoteVersions = [
+    ...(advertised_version ? [advertised_version] : []),
+    ...Object.keys(snapshot?.git_refs ?? {}),
+  ];
+  for (const version of remoteVersions) {
+    if (byVersion.has(version)) {
+      continue;
+    }
+    byVersion.set(version, {
+      version,
+      path: "",
+      manifest_version: null,
+      current: version === current_version,
+      advertised: advertised_version === version,
+    });
+  }
+
   const available_versions = sortHostPluginVersionNames([...byVersion.keys()]).map(
     (version) => {
       const row = byVersion.get(version);
@@ -233,6 +261,79 @@ export function listHostPluginVersions(
   );
 
   return { current_version, advertised_version, available_versions };
+}
+
+export function pullHostPluginVersions(input: {
+  originRef: string;
+  homeRoot?: string;
+  harnesstapDir?: string;
+  runCommand?: RunCommand;
+}): HostPluginVersionInfo {
+  const { marketplace } = parsePluginRef(input.originRef);
+  if (!marketplace) {
+    throw new HostPluginVersionError(
+      "missing_marketplace",
+      `Plugin ${input.originRef} has no marketplace, so source versions cannot be pulled`,
+    );
+  }
+  try {
+    pullHostPluginSourceVersions({
+      originRef: input.originRef,
+      homeRoot: input.homeRoot,
+      harnesstapDir: input.harnesstapDir,
+      runCommand: input.runCommand,
+    });
+  } catch (error) {
+    throw new HostPluginVersionError(
+      "pull_failed",
+      error instanceof Error ? error.message : "Could not pull plugin versions",
+    );
+  }
+  const info = listHostPluginVersions(input.originRef, input.homeRoot);
+  if (
+    info.available_versions.length === 0 &&
+    !info.advertised_version &&
+    !info.current_version
+  ) {
+    throw new HostPluginVersionError(
+      "source_unavailable",
+      `No versions found for ${input.originRef}`,
+    );
+  }
+  return info;
+}
+
+export function ensureHostPluginVersionInstalled(input: {
+  originRef: string;
+  version: string;
+  homeRoot?: string;
+  harnesstapDir?: string;
+  runCommand?: RunCommand;
+}): { version: string; install_path: string } {
+  const homeRoot = input.homeRoot ?? resolveHomeRoot();
+  const info = listHostPluginVersions(input.originRef, homeRoot);
+  const selected = info.available_versions.find(
+    (row) => row.version === input.version,
+  );
+  if (selected?.path && existsSync(selected.path)) {
+    return { version: selected.version, install_path: selected.path };
+  }
+  try {
+    return downloadHostPluginVersion({
+      originRef: input.originRef,
+      version: input.version,
+      homeRoot,
+      harnesstapDir: input.harnesstapDir,
+      runCommand: input.runCommand,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Could not download plugin version";
+    if (/not available from the source/i.test(message)) {
+      throw new HostPluginVersionError("version_not_found", message);
+    }
+    throw new HostPluginVersionError("download_failed", message);
+  }
 }
 
 export function retargetHostPluginVersion(input: {

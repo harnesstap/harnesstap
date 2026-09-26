@@ -23,6 +23,7 @@ import { getInstalledCursorPluginInstallPath } from "../plugins/cursor-installed
 import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.js";
 import {
   HostPluginVersionError,
+  ensureHostPluginVersionInstalled,
   hostPluginMetadataForVersion,
   resolvedVersionFromInstallRoot,
   retargetHostPluginVersion,
@@ -428,18 +429,16 @@ export async function switchHostPluginCacheVersion(input: {
     );
   }
   const originRef = input.resource.origin_ref || formatPluginRef(input.resource);
+  ensureHostPluginVersionInstalled({
+    originRef,
+    version: input.version,
+    homeRoot: input.homeRoot,
+  });
   const retargeted = retargetHostPluginVersion({
     originRef,
     version: input.version,
     homeRoot: input.homeRoot,
   });
-  if (retargeted.unchanged) {
-    return {
-      version: retargeted.version,
-      install_path: retargeted.install_path,
-      sync: { checked: 0, updated: [], stale: [], unchanged: [], skipped: [] },
-    };
-  }
   updateResource(input.resource.id, {
     metadata: hostPluginMetadataForVersion(input.resource, retargeted.version),
   });

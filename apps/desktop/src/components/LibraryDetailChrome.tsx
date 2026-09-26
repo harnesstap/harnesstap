@@ -5,7 +5,8 @@ import { IconActionButton } from "./IconActionButton";
 export interface LibraryDetailChromeProps {
   titleId: string;
   title: ReactNode;
-  typeLabel: string;
+  /** Optional type word beside the title. Resource details omit this. */
+  typeLabel?: string;
   onBack: () => void;
   onBackPointerDown?: () => void;
   preserveFocusOnBack?: boolean;
