@@ -117,6 +117,11 @@ export interface LibraryResourceDetail {
   in_active_profile?: boolean;
 }
 
+export interface LibraryResourceFilesPage {
+  files: PluginContainedResource[];
+  has_more: boolean;
+}
+
 export type ProfileCreateSource = "compose" | "home" | "project";
 export type ProfileConflictPolicy = "skip" | "overwrite";
 

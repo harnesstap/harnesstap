@@ -574,6 +574,15 @@ export function listResourcesByOriginRef(
   return rows.map(mapResourceRow);
 }
 
+/** Every resource row that shares `origin_ref`, regardless of origin_kind. */
+export function listResourcesMatchingOriginRef(originRef: string): Resource[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM resources WHERE origin_ref = ? ORDER BY updated_at DESC")
+    .all(originRef) as ResourceRow[];
+  return rows.map(mapResourceRow);
+}
+
 export function listPluginResourcesByOriginRef(originRef: string): Resource[] {
   const db = getDb();
   const rows = db

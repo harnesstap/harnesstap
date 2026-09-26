@@ -90,8 +90,10 @@ describe("resource inspect content preview", () => {
     expect(bodySource).toContain("onReveal={(path) => void openContainedPath(path, true)}");
     expect(bodySource).toContain("onOpenEditor={(path) => void openContainedPath(path, false)}");
     const nonPluginSection = bodySource.slice(bodySource.indexOf('fieldName="Description"'));
-    expect(nonPluginSection).toContain("PluginRefResourceList");
-    expect(nonPluginSection).toContain("detail.contained_resources");
+    expect(nonPluginSection).toContain("containedFileList");
+    expect(nonPluginSection).toContain("containedFiles.length");
+    expect(bodySource).toContain("includeContained: false");
+    expect(bodySource).toContain("fetchLibraryResourceFiles");
     expect(fieldRowSource).toContain("action?: ReactNode");
     expect(fieldRowSource).toContain("onIconClick");
     expect(pathAccessSource).toContain("COPY_PATH_LABEL");
@@ -138,5 +140,21 @@ describe("resource inspect content preview", () => {
     expect(designSource).toContain("open-in-editor");
     expect(designSource).toContain("Reveal in Finder");
     expect(designSource).toContain("viewport-capped");
+  });
+
+  test("Content file lists cap at 20 with Show more and Show all text links", () => {
+    const listSource = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/components/PluginRefResourceList.tsx"),
+      "utf8",
+    );
+    expect(listSource).toContain('className="link-btn"');
+    expect(listSource).toContain("Show more");
+    expect(listSource).toContain("Show all");
+    expect(bodySource).toContain("CONTAINED_FILES_PAGE_SIZE");
+    expect(bodySource).toContain('revealContainedFiles("more")');
+    expect(bodySource).toContain('revealContainedFiles("all")');
+    expect(designSource).toContain("The list shows the first 20 files");
+    expect(designSource).toContain("**Show more** and **Show all** are text links");
+    expect(designSource).toContain("without waiting for the full file tree");
   });
 });

@@ -1201,6 +1201,24 @@
   font-size: var(--text-meta);
 }
 
+.library-contained-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.library-contained-more .link-btn {
+  min-height: var(--icon-action-size);
+  padding-inline: var(--space-1);
+}
+
+.library-contained-more .link-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .resources-list-source {
   display: block;
   font-size: var(--text-meta);

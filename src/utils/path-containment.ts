@@ -47,6 +47,80 @@ export function assertArchiveMembersContained(root: string, members: string[]): 
   }
 }
 
+export type ListContainedFilesPageOptions = {
+  /** Skip this many files before collecting. */
+  offset?: number;
+  /** Collect at most this many files. Omitted means the rest of the tree. */
+  limit?: number;
+  /** Directory names to skip (do not descend). */
+  skipDirNames?: ReadonlySet<string>;
+};
+
+export type ContainedFilesPage = {
+  files: string[];
+  hasMore: boolean;
+};
+
+/**
+ * Walk `root` in sorted-entry DFS order and return a page of files.
+ * Stops after `offset + limit` files plus one extra to set `hasMore`,
+ * so callers can paginate without walking the rest of the tree.
+ */
+export function listContainedFilesPage(
+  root: string,
+  options?: ListContainedFilesPageOptions,
+): ContainedFilesPage {
+  const resolvedRoot = realpathSync(resolve(root));
+  const files: string[] = [];
+  const visited = new Set<string>();
+  const offset = Math.max(0, options?.offset ?? 0);
+  const limit = options?.limit;
+  const skipDirNames = options?.skipDirNames;
+  const want = limit === undefined ? Number.POSITIVE_INFINITY : Math.max(0, limit);
+  let skipped = 0;
+  let hasMore = false;
+
+  const walk = (dir: string): boolean => {
+    if (visited.has(dir)) return false;
+    visited.add(dir);
+
+    const entries = readdirSync(dir, { withFileTypes: true }).slice().sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+
+    for (const entry of entries) {
+      const absolute = join(dir, entry.name);
+      const real = realpathSync(absolute);
+      const rel = relative(resolvedRoot, real);
+      if (isOutsideRelative(rel)) {
+        throw new PathEscapeError(relative(resolvedRoot, absolute), resolvedRoot);
+      }
+      if (statSync(real).isDirectory()) {
+        if (skipDirNames?.has(entry.name)) {
+          continue;
+        }
+        if (walk(real)) {
+          return true;
+        }
+        continue;
+      }
+      if (skipped < offset) {
+        skipped += 1;
+        continue;
+      }
+      if (files.length >= want) {
+        hasMore = true;
+        return true;
+      }
+      files.push(relative(resolvedRoot, absolute).split(sep).join("/"));
+    }
+    return false;
+  };
+
+  walk(resolvedRoot);
+  return { files, hasMore };
+}
+
 /**
  * Walk `root` and return every file as a POSIX-style relative path.
  *
@@ -55,31 +129,7 @@ export function assertArchiveMembersContained(root: string, members: string[]): 
  * tracked so a cycle terminates instead of hanging.
  */
 export function listContainedFiles(root: string): string[] {
-  const resolvedRoot = realpathSync(resolve(root));
-  const files: string[] = [];
-  const visited = new Set<string>();
-
-  const walk = (dir: string): void => {
-    if (visited.has(dir)) return;
-    visited.add(dir);
-
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const absolute = join(dir, entry.name);
-      const real = realpathSync(absolute);
-      const rel = relative(resolvedRoot, real);
-      if (isOutsideRelative(rel)) {
-        throw new PathEscapeError(relative(resolvedRoot, absolute), resolvedRoot);
-      }
-      if (statSync(real).isDirectory()) {
-        walk(real);
-        continue;
-      }
-      files.push(relative(resolvedRoot, absolute).split(sep).join("/"));
-    }
-  };
-
-  walk(resolvedRoot);
-  return files;
+  return listContainedFilesPage(root).files;
 }
 
 export class BundleSymlinkError extends Error {

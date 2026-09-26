@@ -28,6 +28,7 @@ import {
 import {
   AgentApiError,
   fetchLibraryResourceDetail,
+  fetchLibraryResourceFiles,
   openResourcePath,
   removeProfileResource,
 } from "../lib/agent-client";
@@ -50,8 +51,10 @@ import {
   pluginVersionFieldVisible,
 } from "../lib/plugin-host-version";
 import {
+  CONTAINED_FILES_PAGE_SIZE,
   isPluginTypeResource,
   pluginRefShowsMarketplaceUrl,
+  resourceDetailUsesFileTree,
 } from "../lib/plugin-ref-detail";
 import {
   resourceOpenPath,
@@ -82,7 +85,7 @@ import {
   formatOriginDisplayLabel,
   formatResourceDisplayName,
 } from "../lib/resource-display";
-import type { LibraryResourceDetail } from "../lib/types";
+import type { LibraryResourceDetail, PluginContainedResource } from "../lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -274,12 +277,110 @@ export function ResourceDetailBody({
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [descriptionMultiline, setDescriptionMultiline] = useState(false);
   const [openingPath, setOpeningPath] = useState<string | null>(null);
+  const [containedFiles, setContainedFiles] = useState<PluginContainedResource[]>(
+    [],
+  );
+  const [containedHasMore, setContainedHasMore] = useState(false);
+  const [containedLoading, setContainedLoading] = useState(false);
+  const [containedVisible, setContainedVisible] = useState(
+    CONTAINED_FILES_PAGE_SIZE,
+  );
 
   const busy = mutating;
   const chromeLocked = disabled || !baseUrl || loading;
   const untracked = detail ? isUntrackedDetail(detail) : true;
   const fieldsReadOnly = untracked || disabled || !baseUrl;
   const typeLabel = detail ? detail.type.replaceAll("_", " ") : "";
+
+  async function loadContainedFiles(
+    next: LibraryResourceDetail,
+    isCancelled?: () => boolean,
+  ): Promise<void> {
+    if (!baseUrl || !resourceDetailUsesFileTree(next)) {
+      if (isCancelled?.()) {
+        return;
+      }
+      setContainedFiles([]);
+      setContainedHasMore(false);
+      setContainedVisible(CONTAINED_FILES_PAGE_SIZE);
+      setContainedLoading(false);
+      return;
+    }
+    setContainedLoading(true);
+    setContainedVisible(CONTAINED_FILES_PAGE_SIZE);
+    try {
+      const page = await fetchLibraryResourceFiles(baseUrl, token, target.selector, {
+        pathHint: target.pathHint,
+        limit: CONTAINED_FILES_PAGE_SIZE,
+        offset: 0,
+      });
+      if (isCancelled?.()) {
+        return;
+      }
+      setContainedFiles(page.files);
+      setContainedHasMore(page.has_more);
+    } catch {
+      if (isCancelled?.()) {
+        return;
+      }
+      setContainedFiles([]);
+      setContainedHasMore(false);
+    } finally {
+      if (!isCancelled?.()) {
+        setContainedLoading(false);
+      }
+    }
+  }
+
+  async function refreshLoadedDetail(): Promise<LibraryResourceDetail> {
+    const next = await fetchLibraryResourceDetail(baseUrl ?? "", token, target.selector, {
+      pathHint: target.pathHint,
+      includeContained: false,
+    });
+    setDetail(next);
+    await loadContainedFiles(next);
+    return next;
+  }
+
+  async function revealContainedFiles(mode: "more" | "all"): Promise<void> {
+    if (!baseUrl) {
+      return;
+    }
+    if (mode === "more" && containedVisible < containedFiles.length) {
+      setContainedVisible((current) =>
+        Math.min(current + CONTAINED_FILES_PAGE_SIZE, containedFiles.length),
+      );
+      return;
+    }
+    if (!containedHasMore) {
+      setContainedVisible(
+        mode === "all"
+          ? containedFiles.length
+          : Math.min(containedVisible + CONTAINED_FILES_PAGE_SIZE, containedFiles.length),
+      );
+      return;
+    }
+    setContainedLoading(true);
+    try {
+      const page = await fetchLibraryResourceFiles(baseUrl, token, target.selector, {
+        pathHint: target.pathHint,
+        limit: mode === "all" ? undefined : CONTAINED_FILES_PAGE_SIZE,
+        offset: containedFiles.length,
+      });
+      const nextFiles = [...containedFiles, ...page.files];
+      setContainedFiles(nextFiles);
+      setContainedHasMore(page.has_more);
+      setContainedVisible(
+        mode === "all"
+          ? nextFiles.length
+          : Math.min(containedVisible + CONTAINED_FILES_PAGE_SIZE, nextFiles.length),
+      );
+    } catch (loadError: unknown) {
+      setActionError(errorMessage(loadError, "Could not load resource files"));
+    } finally {
+      setContainedLoading(false);
+    }
+  }
 
   useEffect(() => {
     onFieldEditingChange?.(editingField !== null);
@@ -323,6 +424,10 @@ export function ResourceDetailBody({
       setFieldError(null);
       setOpeningPath(null);
       setProtectionPlan(null);
+      setContainedFiles([]);
+      setContainedHasMore(false);
+      setContainedLoading(false);
+      setContainedVisible(CONTAINED_FILES_PAGE_SIZE);
       return;
     }
 
@@ -336,21 +441,25 @@ export function ResourceDetailBody({
     setFieldError(null);
     setOpeningPath(null);
     setProtectionPlan(null);
+    setContainedFiles([]);
+    setContainedHasMore(false);
+    setContainedLoading(false);
+    setContainedVisible(CONTAINED_FILES_PAGE_SIZE);
     void fetchLibraryResourceDetail(baseUrl, token, target.selector, {
       pathHint: target.pathHint,
+      includeContained: false,
     })
-      .then((next) => {
-        if (!cancelled) {
-          setDetail(next);
+      .then(async (next) => {
+        if (cancelled) {
+          return;
         }
+        setDetail(next);
+        setLoading(false);
+        await loadContainedFiles(next, () => cancelled);
       })
       .catch((loadError: unknown) => {
         if (!cancelled) {
           setError(errorMessage(loadError, "Could not load resource details"));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
           setLoading(false);
         }
       });
@@ -436,10 +545,7 @@ export function ResourceDetailBody({
             ? { description: nextValue }
             : { content: nextValue };
       await patchLibraryResource(baseUrl, token, target.selector, patch);
-      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
-        pathHint: target.pathHint,
-      });
-      setDetail(next);
+      await refreshLoadedDetail();
       setEditingField((current) => (current === field ? null : current));
       setFieldError(null);
       onLibraryChanged?.();
@@ -488,10 +594,7 @@ export function ResourceDetailBody({
       }
       setPreview(null);
       onSuccess?.(`Synced ${quoteResource(detail)}`);
-      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
-        pathHint: target.pathHint,
-      });
-      setDetail(next);
+      await refreshLoadedDetail();
       onLibraryChanged?.();
     } catch (syncError: unknown) {
       if (!dryRun && isResourceConflictError(syncError)) {
@@ -573,10 +676,7 @@ export function ResourceDetailBody({
       onSuccess?.(
         `Removed ${quoteResource(detail)} from ${attachers.active_profile}`,
       );
-      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
-        pathHint: target.pathHint,
-      });
-      setDetail(next);
+      await refreshLoadedDetail();
       onLibraryChanged?.();
     } catch (removeError: unknown) {
       setActionError(
@@ -601,10 +701,7 @@ export function ResourceDetailBody({
         version,
       );
       onSuccess?.(`Using ${detail.name} ${result.version}`);
-      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
-        pathHint: target.pathHint,
-      });
-      setDetail(next);
+      await refreshLoadedDetail();
       onLibraryChanged?.();
     } catch (switchError: unknown) {
       setActionError(errorMessage(switchError, "Could not switch plugin version"));
@@ -622,10 +719,7 @@ export function ResourceDetailBody({
     try {
       await pullLibraryPluginVersions(baseUrl, token, target.selector);
       onSuccess?.(`Pulled ${detail.name} versions`);
-      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
-        pathHint: target.pathHint,
-      });
-      setDetail(next);
+      await refreshLoadedDetail();
       onLibraryChanged?.();
     } catch (pullError: unknown) {
       setActionError(errorMessage(pullError, "Could not pull plugin versions"));
@@ -922,6 +1016,23 @@ export function ResourceDetailBody({
     ? hostPluginVersionHint(detail.advertised_version, detail.current_version)
     : null;
 
+  const containedFileList = (
+    <PluginRefResourceList
+      resources={containedFiles}
+      openingPath={openingPath}
+      disabled={disabled || !baseUrl || loading}
+      onReveal={(path) => void openContainedPath(path, true)}
+      onOpenEditor={(path) => void openContainedPath(path, false)}
+      onSync={showSync ? () => void runSync("fail", true) : undefined}
+      syncBusy={busy}
+      filesLoading={containedLoading}
+      hasMore={containedHasMore}
+      visibleCount={containedVisible}
+      onShowMore={() => void revealContainedFiles("more")}
+      onShowAll={() => void revealContainedFiles("all")}
+    />
+  );
+
   const fields: ReactNode = loading ? (
     <p className="muted">Loading details…</p>
   ) : !detail && error ? (
@@ -1037,15 +1148,7 @@ export function ResourceDetailBody({
             editing={false}
             onStartEdit={() => undefined}
           />
-          <PluginRefResourceList
-            resources={detail.contained_resources}
-            openingPath={openingPath}
-            disabled={disabled || !baseUrl || loading}
-            onReveal={(path) => void openContainedPath(path, true)}
-            onOpenEditor={(path) => void openContainedPath(path, false)}
-            onSync={showSync ? () => void runSync("fail", true) : undefined}
-            syncBusy={busy}
-          />
+          {containedFileList}
         </>
       ) : (
         <>
@@ -1114,16 +1217,9 @@ export function ResourceDetailBody({
             editing={false}
             onStartEdit={() => undefined}
           />
-          {detail.contained_resources ? (
-            <PluginRefResourceList
-              resources={detail.contained_resources}
-              openingPath={openingPath}
-              disabled={disabled || !baseUrl || loading}
-              onReveal={(path) => void openContainedPath(path, true)}
-              onOpenEditor={(path) => void openContainedPath(path, false)}
-              onSync={showSync ? () => void runSync("fail", true) : undefined}
-              syncBusy={busy}
-            />
+          {containedFiles.length > 0 ||
+          (containedLoading && resourceDetailUsesFileTree(detail)) ? (
+            containedFileList
           ) : (
             <>
               <h3 className="library-detail-section">Content</h3>

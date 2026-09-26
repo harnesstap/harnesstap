@@ -1,0 +1,5 @@
+kind: Fixed
+body: Cap Library plugin Content at 20 files with Show more / Show all, and load detail without walking the full tree.
+time: 2026-09-26T06:40:00Z
+custom:
+  Issue: ""

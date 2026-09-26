@@ -23,6 +23,7 @@ import type {
   LibraryPlugin,
   LibraryResource,
   LibraryResourceDetail,
+  LibraryResourceFilesPage,
   MigrateDetectImportScopeResult,
   MigrateExportInput,
   MigrateExportResult,
@@ -421,10 +422,17 @@ export async function fetchLibraryResourceDetail(
   baseUrl: string,
   token: string | null,
   selector: string,
-  options?: { pathHint?: string | null },
+  options?: { pathHint?: string | null; includeContained?: boolean },
 ): Promise<LibraryResourceDetail> {
+  const params = new URLSearchParams();
   const pathHint = options?.pathHint?.trim();
-  const query = pathHint ? `?path=${encodeURIComponent(pathHint)}` : "";
+  if (pathHint) {
+    params.set("path", pathHint);
+  }
+  if (options?.includeContained === false) {
+    params.set("include_contained", "0");
+  }
+  const query = params.toString() ? `?${params.toString()}` : "";
   const response = await agentFetch(
     baseUrl,
     token,
@@ -435,6 +443,35 @@ export async function fetchLibraryResourceDetail(
   }
   const body = (await response.json()) as { resource: LibraryResourceDetail };
   return body.resource;
+}
+
+export async function fetchLibraryResourceFiles(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  options?: { pathHint?: string | null; limit?: number; offset?: number },
+): Promise<LibraryResourceFilesPage> {
+  const params = new URLSearchParams();
+  const pathHint = options?.pathHint?.trim();
+  if (pathHint) {
+    params.set("path", pathHint);
+  }
+  if (options?.limit !== undefined) {
+    params.set("limit", String(options.limit));
+  }
+  if (options?.offset !== undefined) {
+    params.set("offset", String(options.offset));
+  }
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/library/resources/${encodeURIComponent(selector)}/files${query}`,
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load resource files");
+  }
+  return (await response.json()) as LibraryResourceFilesPage;
 }
 
 export async function previewProfileCreate(
