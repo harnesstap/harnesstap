@@ -642,7 +642,7 @@ Manage global harness preferences and git-backed project overrides.
 - `harness list --supported` — only harnesses HarnessTap can serialize natively
 - `harness list --format json`
 - `harness set --main <slug> --aliases <slugs>`
-- `harness sync` — union configured harnesses (home), including Claude/Cursor host plugin trees; `--project` for a repo; `--dry-run`
+- `harness sync` — union configured harnesses (home), including Claude/Cursor host plugin trees and `.agents` materialization for OpenCode-like harnesses; `--plugin-resources symlink|copy|clone`; `--project` for a repo; `--dry-run`
 - `harness project set --project <path>`
 - `harness project set --materialization-strategy <symlink-preferred|copy>`
 - `harness project status --format json`

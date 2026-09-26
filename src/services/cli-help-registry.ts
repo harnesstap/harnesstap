@@ -697,10 +697,11 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Union resources from configured harnesses (main + aliases) and materialize with main-wins conflicts",
     details:
-      "Scans every configured harness, unions portable types (skills, MCP, rules, host plugin install trees, and other serializer-supported resources), prefers the main harness when the same identity differs, and emits shared skill paths when multiple targets can read them. Claude and Cursor plugin trees are copied into each native root (they do not share a runtime plugin directory). Default scope is the home directory. This is not mirror-from-main.",
+      "Scans every configured harness, unions portable types (skills, MCP, rules, host plugin install trees, and other serializer-supported resources), prefers the main harness when the same identity differs, and emits shared skill paths when multiple targets can read them. Claude and Cursor plugin trees are copied into each native root (they do not share a runtime plugin directory). Skills, agents, and commands inside those plugins are also materialized into `.agents` (and equivalent folders) for OpenCode and other harnesses that do not load Cursor/Claude plugin roots. Matching CLAUDE.md and AGENTS.md share one file: AGENTS.md is canonical and CLAUDE.md links to it unless copy mode is set. Configure with `harnessSync.pluginResources` in config.jsonc (`symlink`, `copy`, or `clone`) or `--plugin-resources`. Default scope is the home directory. This is not mirror-from-main.",
     examples: [
       "harness sync",
       "harness sync --dry-run --format json",
+      "harness sync --plugin-resources copy",
       "harness sync --project .",
     ],
   },

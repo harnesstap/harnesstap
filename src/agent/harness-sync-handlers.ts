@@ -2,6 +2,7 @@ import {
   HarnessUnionSyncError,
   syncConfiguredHarnesses,
 } from "../services/harness-union-sync.js";
+import { isPluginResourceMode } from "../services/plugin-resource-mode.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
 
@@ -39,11 +40,16 @@ export async function handleHarnessSyncPost(
       : undefined;
   const dryRun = record.dry_run === true;
 
+  const pluginResourceMode = isPluginResourceMode(record.plugin_resource_mode)
+    ? record.plugin_resource_mode
+    : undefined;
+
   try {
     const result = await syncConfiguredHarnesses({
       scope: project ? "project" : "global",
       ...(project ? { projectRoot: project } : {}),
       dryRun,
+      ...(pluginResourceMode ? { pluginResourceMode } : {}),
     });
     return jsonResponse(result);
   } catch (error) {

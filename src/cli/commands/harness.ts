@@ -1,10 +1,11 @@
 import { resolve } from "node:path";
 import type { Command } from "commander";
-import { getDb } from "../../db/connection.js";
+import { loadSettings } from "../../config/settings.js";
+import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import {
-  getProjectHarnessConfig,
   getHarnessPreference,
+  getProjectHarnessConfig,
   setHarnessPreference,
   setProjectHarnessConfig,
 } from "../../models/harness.js";
@@ -16,18 +17,22 @@ import {
   projectNameFromUrl,
 } from "../../services/git.js";
 import { resolveHarnessSelection } from "../../services/harness-config.js";
-import { getDedicatedSerializerPlatformIds } from "../../services/platform-serializers.js";
-import { detectPlatforms } from "../../services/scanner.js";
 import {
   HarnessUnionSyncError,
   syncConfiguredHarnesses,
 } from "../../services/harness-union-sync.js";
+import { getDedicatedSerializerPlatformIds } from "../../services/platform-serializers.js";
+import {
+  DEFAULT_PLUGIN_RESOURCE_MODE,
+  parsePluginResourceMode,
+} from "../../services/plugin-resource-mode.js";
+import { detectPlatforms } from "../../services/scanner.js";
+import { shouldUseWizard } from "../../services/wizards/shared.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { parseHarnessAliases } from "../handlers/parse-flags.js";
 import { configureCommandGroup } from "../help.js";
 import { formatCommand, reportNoGitOrigin } from "../shared.js";
-import { shouldUseWizard } from "../../services/wizards/shared.js";
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
 
@@ -105,6 +110,10 @@ function handleHarnessStatusCommand(opts: { format?: string }): void {
     rows: [
       ["Main harness", preference.main_harness],
       ["Alias harnesses", preference.alias_harnesses.join(", ") || "(none)"],
+      [
+        "Plugin resources",
+        loadSettings(getHarnesstapDir()).harnessSync.pluginResources,
+      ],
     ],
   });
 }
@@ -164,16 +173,21 @@ async function handleHarnessSyncCommand(opts: {
   project?: string;
   dryRun?: boolean;
   format?: string;
+  pluginResources?: string;
 }): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
   const scope = opts.project ? "project" : "global";
+  const pluginResourceMode = opts.pluginResources
+    ? parsePluginResourceMode(opts.pluginResources)
+    : undefined;
   try {
     const result = await syncConfiguredHarnesses({
       scope,
       ...(opts.project ? { projectRoot: resolve(opts.project) } : {}),
       dryRun: opts.dryRun,
+      ...(pluginResourceMode ? { pluginResourceMode } : {}),
     });
     if (format === "json") {
       printJson(result);
@@ -277,6 +291,10 @@ export function registerHarnessCommands(root: Command): void {
     .command("sync")
     .option("--project <path>", "Sync a git-backed project instead of home")
     .option("--dry-run", "Show what would be written without writing files")
+    .option(
+      "--plugin-resources <mode>",
+      `How to materialize Cursor/Claude plugin files into .agents: symlink, copy, or clone (default ${DEFAULT_PLUGIN_RESOURCE_MODE}, or harnessSync.pluginResources in config.jsonc)`,
+    )
     .option("--format <mode>", "Output format: human or json", "human")
     .description(
       "Union resources from configured harnesses and materialize with main-wins conflicts",

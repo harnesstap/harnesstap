@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
@@ -251,6 +251,193 @@ describe("syncConfiguredHarnesses", () => {
       expect(userJson.mcpServers.docs).toBeDefined();
       expect(userJson.mcpServers.localOnly).toBeUndefined();
       expect(userJson.projects[context.projectDir]?.mcpServers?.localOnly).toBeDefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("extracts Cursor/Claude plugin skills into .agents for OpenCode", async () => {
+    const context = await createInitializedTestContext("harness-union-plugin-agents");
+    try {
+      const { setHarnessPreference } = await import("../../src/models/harness.ts");
+      setHarnessPreference({
+        main_harness: "claude-code",
+        alias_harnesses: ["opencode"],
+      });
+
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/.claude-plugin/plugin.json",
+        ),
+        JSON.stringify({ name: "demo", version: "1.0.0" }),
+      );
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/skills/hello/SKILL.md",
+        ),
+        "---\nname: hello\ndescription: Plugin hello\n---\nHello from a Claude plugin.\n",
+      );
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/agents/reviewer.md",
+        ),
+        "---\nname: reviewer\n---\nReview carefully.\n",
+      );
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/commands/ping.md",
+        ),
+        "Ping the plugin.\n",
+      );
+      writeTextFile(
+        join(context.homeDir, ".claude/plugins/installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "demo@demo-market": [
+              {
+                scope: "user",
+                installPath: "cache/demo-market/demo/1.0.0",
+                version: "1.0.0",
+              },
+            ],
+          },
+        }),
+      );
+
+      const { syncConfiguredHarnesses } = await import(
+        "../../src/services/harness-union-sync.ts"
+      );
+      const result = await syncConfiguredHarnesses({
+        scope: "global",
+        homeRoot: context.homeDir,
+        pluginResourceMode: "symlink",
+      });
+
+      expect(result.plugin_resource_mode).toBe("symlink");
+      expect(result.files).toContain(".agents/skills/hello/SKILL.md");
+
+      const hubSkill = join(context.homeDir, ".agents/skills/hello");
+      expect(existsSync(join(hubSkill, "SKILL.md"))).toBe(true);
+      expect(lstatSync(hubSkill).isSymbolicLink()).toBe(true);
+      expect(readFileSync(join(hubSkill, "SKILL.md"), "utf8")).toContain(
+        "Hello from a Claude plugin.",
+      );
+      expect(existsSync(join(context.homeDir, ".claude/skills/hello/SKILL.md"))).toBe(
+        false,
+      );
+
+      const agentPath = join(
+        context.homeDir,
+        ".config/opencode/agents/reviewer.md",
+      );
+      expect(existsSync(agentPath)).toBe(true);
+      expect(readFileSync(agentPath, "utf8")).toContain("Review carefully.");
+
+      const commandPath = join(
+        context.homeDir,
+        ".config/opencode/commands/ping.md",
+      );
+      expect(existsSync(commandPath)).toBe(true);
+      expect(readFileSync(commandPath, "utf8")).toContain("Ping the plugin.");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("copies plugin skills into .agents when pluginResources is copy", async () => {
+    const context = await createInitializedTestContext("harness-union-plugin-copy");
+    try {
+      const { setHarnessPreference } = await import("../../src/models/harness.ts");
+      setHarnessPreference({
+        main_harness: "claude-code",
+        alias_harnesses: ["opencode"],
+      });
+
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/.claude-plugin/plugin.json",
+        ),
+        JSON.stringify({ name: "demo", version: "1.0.0" }),
+      );
+      writeTextFile(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/skills/hello/SKILL.md",
+        ),
+        "---\nname: hello\n---\nCopied plugin skill.\n",
+      );
+      writeTextFile(
+        join(context.homeDir, ".claude/plugins/installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "demo@demo-market": [
+              {
+                scope: "user",
+                installPath: "cache/demo-market/demo/1.0.0",
+                version: "1.0.0",
+              },
+            ],
+          },
+        }),
+      );
+
+      const { syncConfiguredHarnesses } = await import(
+        "../../src/services/harness-union-sync.ts"
+      );
+      await syncConfiguredHarnesses({
+        scope: "global",
+        homeRoot: context.homeDir,
+        pluginResourceMode: "copy",
+      });
+
+      const hubSkill = join(context.homeDir, ".agents/skills/hello");
+      expect(lstatSync(hubSkill).isSymbolicLink()).toBe(false);
+      expect(lstatSync(hubSkill).isDirectory()).toBe(true);
+      expect(readFileSync(join(hubSkill, "SKILL.md"), "utf8")).toContain(
+        "Copied plugin skill.",
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("makes CLAUDE.md a symlink to AGENTS.md when instruction content matches", async () => {
+    const context = await createInitializedTestContext("harness-union-instruction-link");
+    try {
+      const { setHarnessPreference } = await import("../../src/models/harness.ts");
+      setHarnessPreference({
+        main_harness: "claude-code",
+        alias_harnesses: ["opencode"],
+      });
+
+      writeTextFile(
+        join(context.projectDir, "CLAUDE.md"),
+        "Use the shared instruction file.\n",
+      );
+
+      const { syncConfiguredHarnesses } = await import(
+        "../../src/services/harness-union-sync.ts"
+      );
+      await syncConfiguredHarnesses({
+        scope: "project",
+        projectRoot: context.projectDir,
+        pluginResourceMode: "symlink",
+      });
+
+      const agents = join(context.projectDir, "AGENTS.md");
+      const claude = join(context.projectDir, "CLAUDE.md");
+      expect(existsSync(agents)).toBe(true);
+      expect(lstatSync(agents).isSymbolicLink()).toBe(false);
+      expect(lstatSync(claude).isSymbolicLink()).toBe(true);
+      expect(readFileSync(claude, "utf8")).toContain("Use the shared instruction file.");
+      expect(readFileSync(agents, "utf8")).toContain("Use the shared instruction file.");
     } finally {
       await context.cleanup();
     }

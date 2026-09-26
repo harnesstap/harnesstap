@@ -45,6 +45,9 @@ describe("Harnesses sync CTA", () => {
       "Merge across configured harnesses. Claude Code wins conflicts.",
     );
     expect(syncHarnessesConfirmBody("Claude Code")).toContain("Prefers shared paths.");
+    expect(syncHarnessesConfirmBody("Claude Code")).toContain(
+      "Cursor and Claude plugin skills also land in .agents",
+    );
     expect(syncHarnessesConfirmBody("Claude Code")).not.toContain("—");
     expect(syncHarnessesDisabledReason({
       configuredCount: 1,
