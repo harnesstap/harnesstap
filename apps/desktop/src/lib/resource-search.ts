@@ -87,9 +87,18 @@ function displayName(
   });
 }
 
+function resourceTypePrefix(section: string | undefined): string | undefined {
+  if (section === undefined) {
+    return undefined;
+  }
+  const normalized = section.toLowerCase();
+  return RESOURCE_TYPE_PREFIXES.has(normalized) ? normalized : undefined;
+}
+
 /**
  * CLI-compatible resource filter: `skill:dbt` limits to type + text;
  * plain text matches name, description, and namespace display form.
+ * Type prefixes are case-insensitive; text is a case-insensitive substring.
  */
 export function filterLibraryResourcesBySearch<T extends LibraryResource>(
   resources: T[],
@@ -100,21 +109,16 @@ export function filterLibraryResourcesBySearch<T extends LibraryResource>(
     return resources;
   }
 
-  const sectionIsResourceType =
-    parsed.section !== undefined && RESOURCE_TYPE_PREFIXES.has(parsed.section);
-
-  const textQuery = sectionIsResourceType
-    ? parsed
-    : parsed.section !== undefined
-      ? { section: undefined, text: parsed.raw, raw: parsed.raw }
-      : parsed;
+  const typePrefix = resourceTypePrefix(parsed.section);
+  const textQuery =
+    typePrefix !== undefined
+      ? { ...parsed, section: typePrefix }
+      : parsed.section !== undefined
+        ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+        : parsed;
 
   return resources.filter((resource) => {
-    if (
-      sectionIsResourceType &&
-      parsed.section !== undefined &&
-      !resourceMatchesTypePrefix(resource, parsed.section)
-    ) {
+    if (typePrefix !== undefined && !resourceMatchesTypePrefix(resource, typePrefix)) {
       return false;
     }
     const haystack = `${resource.name} ${displayName(resource)} ${resource.description ?? ""} ${resource.namespace ?? ""} ${resource.origin_ref ?? ""} ${resource.tags?.join(" ") ?? ""}`;
@@ -176,19 +180,18 @@ export function filterContentsResourcesBySearch(
     return resources;
   }
 
-  const sectionIsResourceType =
-    parsed.section !== undefined && RESOURCE_TYPE_PREFIXES.has(parsed.section);
-  const textQuery = sectionIsResourceType
-    ? parsed
-    : parsed.section !== undefined
-      ? { section: undefined, text: parsed.raw, raw: parsed.raw }
-      : parsed;
+  const typePrefix = resourceTypePrefix(parsed.section);
+  const textQuery =
+    typePrefix !== undefined
+      ? { ...parsed, section: typePrefix }
+      : parsed.section !== undefined
+        ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+        : parsed;
 
   return resources.filter((resource) => {
     if (
-      sectionIsResourceType &&
-      parsed.section !== undefined &&
-      !resourceMatchesTypePrefix(
+      typePrefix !== undefined
+      && !resourceMatchesTypePrefix(
         {
           id: resource.name,
           name: resource.name,
@@ -196,7 +199,7 @@ export function filterContentsResourcesBySearch(
           namespace: null,
           description: null,
         },
-        parsed.section,
+        typePrefix,
       )
     ) {
       return false;
