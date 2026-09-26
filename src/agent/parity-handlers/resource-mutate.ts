@@ -3,9 +3,11 @@ import { jsonResponse } from "../http.js";
 import {
   deleteResource,
   listLinkedResources,
+  listPluginResourcesByOriginRef,
   resolveResource,
   updateResource,
   type ImportConflictPolicy,
+  type ResourceLookupResult,
 } from "../../models/resource.js";
 import { deleteResourceMaterializations } from "../../models/resource-materialization.js";
 import { PluginProvenanceError } from "../../services/plugin-origin.js";
@@ -82,6 +84,32 @@ function decodeSelector(raw: string): string {
   } catch {
     return raw;
   }
+}
+
+function pluginOriginRefFromSelector(selector: string): string {
+  const trimmed = selector.trim();
+  if (trimmed.startsWith("plugin:") || trimmed.startsWith("plugin_pin:")) {
+    return trimmed.slice(trimmed.indexOf(":") + 1);
+  }
+  return trimmed;
+}
+
+function resolveHostPluginResource(selector: string): ResourceLookupResult {
+  const resolved = resolveResource(selector, { mode: "compose" });
+  if (resolved.status !== "not_found") {
+    return resolved;
+  }
+  const matches = listPluginResourcesByOriginRef(
+    pluginOriginRefFromSelector(selector),
+  );
+  if (matches.length === 0) {
+    return resolved;
+  }
+  if (matches.length === 1) {
+    const [match] = matches;
+    return match ? { status: "found", resource: match } : resolved;
+  }
+  return { status: "ambiguous", matches };
 }
 
 function resourceSummary(resource: Resource): {
@@ -349,7 +377,7 @@ async function handlePull(
     );
   }
 
-  const resolved = resolveResource(trimmed, { mode: "compose" });
+  const resolved = resolveHostPluginResource(trimmed);
   if (resolved.status === "ambiguous") {
     return ambiguousResponse(trimmed, resolved.matches);
   }
@@ -425,7 +453,7 @@ async function handleVersion(
     );
   }
 
-  const resolved = resolveResource(trimmed, { mode: "compose" });
+  const resolved = resolveHostPluginResource(trimmed);
   if (resolved.status === "ambiguous") {
     return ambiguousResponse(trimmed, resolved.matches);
   }

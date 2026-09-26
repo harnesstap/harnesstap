@@ -117,6 +117,34 @@ describe("tryHandle resource-mutate", () => {
     expect(patch?.status).toBe(401);
   });
 
+  it("POST pull finds a marketplace pin by origin_ref", async () => {
+    await withHome("parity-mutate-pull-origin-ref");
+    createResource({
+      type: "plugin",
+      name: "superpowers",
+      namespace: "",
+      description: "Plugin pin: superpowers@superpowers-marketplace",
+      content: "{}",
+      metadata: { resolved_version: "5.1.0" },
+      source: "composition:plugin",
+      origin_kind: "marketplace_link",
+      origin_ref: "superpowers@superpowers-marketplace",
+    });
+    const missing = await handle(
+      "POST",
+      "/v1/library/resources/plugin%3Amissing%40nowhere/pull",
+    );
+    expect(missing?.status).toBe(404);
+    const response = await handle(
+      "POST",
+      `/v1/library/resources/${encodeURIComponent("superpowers@superpowers-marketplace")}/pull`,
+    );
+    expect(response).not.toBeNull();
+    expect(response?.status).not.toBe(404);
+    const body = (await response?.json()) as { error?: string };
+    expect(body.error).not.toBe("not_found");
+  });
+
   it("DELETE returns 200 then the row is gone", async () => {
     await withHome("parity-mutate-delete-ok");
     const resource = createResource({

@@ -325,6 +325,18 @@ describe("marketplace plugin source parse", () => {
       gitRef: null,
       path: "./plugins/nested",
     });
+    expect(
+      parseMarketplacePluginSource({
+        name: "superpowers",
+        version: "6.4.2",
+        source: "./",
+      }),
+    ).toEqual({
+      version: "6.4.2",
+      url: null,
+      gitRef: null,
+      path: "./",
+    });
   });
 });
 
@@ -498,6 +510,91 @@ describe("host plugin source pull and download", () => {
     } finally {
       cleanupDir(plugin.dir);
       cleanupDir(marketplaceRepo);
+      await ctx.cleanup();
+    }
+  });
+
+  it("pulls git tags when the catalog source is ./ like superpowers-marketplace", async () => {
+    const ctx = await createInitializedTestContext("host-plugin-pull-dot-source");
+    const repo = createTempDir("host-plugin-superpowers-src-");
+    try {
+      git(repo, "init -b main");
+      for (const version of ["5.1.0", "6.1.1", "6.3.0"]) {
+        writePluginTree(repo, "superpowers", version);
+        writeFileSync(
+          join(repo, ".claude-plugin", "marketplace.json"),
+          JSON.stringify({
+            name: "superpowers-dev",
+            plugins: [
+              {
+                name: "superpowers",
+                version,
+                source: "./",
+              },
+            ],
+          }),
+        );
+        git(repo, "add -A");
+        git(repo, `commit -m v${version}`);
+        git(repo, `tag v${version}`);
+      }
+
+      const marketplaceRoot = join(
+        ctx.homeDir,
+        ".claude",
+        "plugins",
+        "marketplaces",
+        "superpowers-marketplace",
+      );
+      mkdirSync(join(marketplaceRoot, ".."), { recursive: true });
+      execSync(
+        `git -c protocol.file.allow=always clone ${repo} ${marketplaceRoot}`,
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+      git(marketplaceRoot, "reset --hard v6.1.1");
+
+      mkdirSync(join(ctx.homeDir, ".claude", "plugins"), { recursive: true });
+      writeFileSync(
+        join(ctx.homeDir, ".claude", "plugins", "known_marketplaces.json"),
+        JSON.stringify({
+          "superpowers-marketplace": {
+            source: { source: "url", url: `file://${repo}` },
+            installLocation: marketplaceRoot,
+          },
+        }),
+      );
+
+      writePluginCache(ctx.homeDir, "superpowers-marketplace", "superpowers", "5.1.0");
+      writeInstalled(
+        ctx.homeDir,
+        "superpowers@superpowers-marketplace",
+        "cache/superpowers-marketplace/superpowers/5.1.0",
+        "5.1.0",
+      );
+
+      const before = listHostPluginVersions(
+        "superpowers@superpowers-marketplace",
+        ctx.homeDir,
+      );
+      expect(before.current_version).toBe("5.1.0");
+      expect(before.advertised_version).toBe("6.1.1");
+      expect(before.available_versions.map((row) => row.version)).toEqual([
+        "6.1.1",
+        "5.1.0",
+      ]);
+
+      const pulled = pullHostPluginVersions({
+        originRef: "superpowers@superpowers-marketplace",
+        homeRoot: ctx.homeDir,
+      });
+      expect(pulled.advertised_version).toBe("6.3.0");
+      expect(pulled.available_versions.map((row) => row.version)).toEqual([
+        "6.3.0",
+        "6.1.1",
+        "5.1.0",
+      ]);
+    } finally {
+      cleanupDir(repo);
       await ctx.cleanup();
     }
   });

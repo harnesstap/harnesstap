@@ -574,6 +574,16 @@ export function listResourcesByOriginRef(
   return rows.map(mapResourceRow);
 }
 
+export function listPluginResourcesByOriginRef(originRef: string): Resource[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      "SELECT * FROM resources WHERE type = 'plugin' AND origin_ref = ? ORDER BY created_at DESC",
+    )
+    .all(originRef) as ResourceRow[];
+  return rows.map(mapResourceRow);
+}
+
 export function deleteResource(nameOrId: string): boolean {
   const db = getDb();
   const result = resolveResource(nameOrId);
