@@ -47,6 +47,13 @@ describe("filterLibraryResourcesBySearch", () => {
     expect(filtered.map((row) => row.name)).toEqual(["migrating-dbt-core"]);
   });
 
+  it("treats type prefixes as case-insensitive and does not fuzzy-match typos", () => {
+    expect(
+      filterLibraryResourcesBySearch(rows, "SKILL:DBT").map((row) => row.name),
+    ).toEqual(["migrating-dbt-core"]);
+    expect(filterLibraryResourcesBySearch(rows, "skil:dbt")).toEqual([]);
+  });
+
   it("filters by plain text across name and description", () => {
     const filtered = filterLibraryResourcesBySearch(rows, "api");
     expect(filtered.map((row) => row.name)).toEqual(["api-design"]);

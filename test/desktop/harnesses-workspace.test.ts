@@ -84,10 +84,16 @@ describe("Harnesses workspace sidebar width", () => {
 });
 
 describe("Harnesses resource filter field", () => {
+  it("disables spelling correction on Filter resources", () => {
+    expect(liveHeaderSource).toContain('placeholder="Filter resources"');
+    expect(liveHeaderSource).toContain("spellCheck={false}");
+    expect(liveHeaderSource).toContain('autoComplete="off"');
+    expect(liveHeaderSource).toContain('autoCorrect="off"');
+    expect(liveHeaderSource).toContain('autoCapitalize="off"');
+  });
+
   it("uses a compact Filter resources field with a trailing origin menu", () => {
     expect(liveHeaderSource).toContain("compactSearch");
-    expect(liveHeaderSource).toContain('spellCheck={false}');
-    expect(liveHeaderSource).toContain('autoComplete="off"');
     expect(detailSource).toContain("compactSearch");
     expect(detailSource).toContain("HarnessFilterMenu");
     expect(filterMenuSource).toContain("Filter per harness origin");
@@ -97,7 +103,7 @@ describe("Harnesses resource filter field", () => {
     expect(cssBlock(stylesSource, ".list-search-compact")).toContain("max-width: 20rem");
   });
 
-  it("documents origin and marketplace facets on Filter resources", () => {
+  it("documents origin, marketplace, and typed-query filtering", () => {
     expect(designSource).toContain("compact **Filter resources** field");
     expect(designSource).toContain("Filter per harness origin");
     expect(designSource).toContain("case-insensitive substring of the typed query");
