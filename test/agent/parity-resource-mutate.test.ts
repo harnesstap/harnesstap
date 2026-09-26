@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { tryHandle } from "../../src/agent/parity-handlers/resource-mutate.ts";
@@ -295,6 +295,84 @@ describe("tryHandle resource-mutate", () => {
     expect(body.deleted_files).toEqual([filePath]);
     expect(existsSync(filePath)).toBe(false);
     expect(getResource(resource.id)).toBeUndefined();
+  });
+
+  it("DELETE library_and_disk removes a host plugin install then the library row", async () => {
+    const home = await withHome("parity-mutate-delete-plugin-pin");
+    const sha = "d183d812c10a49c75de5dd647f7f2e448c8de366";
+    const installRoot = join(
+      home.homeDir,
+      ".claude",
+      "plugins",
+      "cache",
+      "__DEFAULT__",
+      "caveman",
+      sha,
+    );
+    mkdirSync(join(installRoot, ".claude-plugin"), { recursive: true });
+    writeFileSync(
+      join(installRoot, ".claude-plugin", "plugin.json"),
+      JSON.stringify({ name: "caveman", version: "1.0.0" }),
+    );
+    const registryPath = join(
+      home.homeDir,
+      ".claude",
+      "plugins",
+      "installed_plugins.json",
+    );
+    writeFileSync(
+      registryPath,
+      `${JSON.stringify({
+        version: 2,
+        plugins: {
+          "caveman@__DEFAULT__": [
+            {
+              scope: "user",
+              installPath: `cache/__DEFAULT__/caveman/${sha}`,
+              version: sha,
+            },
+          ],
+        },
+      })}\n`,
+    );
+    const resource = createResource({
+      type: "plugin",
+      name: "caveman",
+      namespace: "__DEFAULT__",
+      description: "cached",
+      content: "{}",
+      metadata: {
+        source_kind: "marketplace",
+        marketplace_name: "__DEFAULT__",
+        resolved_version: sha,
+        sync_status: "never_synced",
+        portable: "reference",
+      },
+      source: "~/.claude/plugins/installed_plugins.json",
+      origin_kind: "marketplace_link",
+      origin_ref: "caveman@__DEFAULT__",
+    });
+
+    const response = await handle(
+      "DELETE",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}`,
+      { body: { mode: "library_and_disk" } },
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as {
+      mode: string;
+      deleted_files: string[];
+      edited_files: string[];
+    };
+    expect(body.mode).toBe("library_and_disk");
+    expect(body.deleted_files).toContain(installRoot);
+    expect(body.edited_files).toContain(registryPath);
+    expect(existsSync(installRoot)).toBe(false);
+    expect(getResource(resource.id)).toBeUndefined();
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8")) as {
+      plugins: Record<string, unknown>;
+    };
+    expect(registry.plugins["caveman@__DEFAULT__"]).toBeUndefined();
   });
 
   it("DELETE library_and_disk returns 409 until force when the disk copy drifted", async () => {
