@@ -100,6 +100,12 @@ describe("tryHandle resource-mutate", () => {
       { headers: {}, body: { version: "2.0.0" } },
     );
     expect(version?.status).toBe(401);
+    const pull = await handle(
+      "POST",
+      "/v1/library/resources/plugin%3Ademo/pull",
+      { headers: {} },
+    );
+    expect(pull?.status).toBe(401);
     const del = await handle("DELETE", "/v1/library/resources/skill%3Aship", {
       headers: {},
     });

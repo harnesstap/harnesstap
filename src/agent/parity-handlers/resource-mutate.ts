@@ -14,17 +14,23 @@ import {
   switchHostPluginCacheVersion,
   syncLinkedResources,
 } from "../../services/resource-sync.js";
-import { HostPluginVersionError } from "../../services/host-plugin-versions.js";
+import {
+  HostPluginVersionError,
+  pullHostPluginVersions,
+} from "../../services/host-plugin-versions.js";
 import {
   executeResourceDiskDeletion,
   planResourceDiskDeletion,
 } from "../../services/resource-disk-cleanup.js";
+import { formatPluginRef } from "../../services/plugin-composition.js";
 import type { Resource } from "../../types.js";
 
 const SYNC_PATH =
   /^\/v1\/library\/resources\/([^/]+)\/sync$/;
 const VERSION_PATH =
   /^\/v1\/library\/resources\/([^/]+)\/version$/;
+const PULL_PATH =
+  /^\/v1\/library\/resources\/([^/]+)\/pull$/;
 const DELETE_PLAN_PATH =
   /^\/v1\/library\/resources\/([^/]+)\/delete-plan$/;
 const DELETE_PATH = /^\/v1\/library\/resources\/([^/]+)$/;
@@ -41,6 +47,7 @@ export async function tryHandle(
   const url = new URL(request.url);
   const syncMatch = url.pathname.match(SYNC_PATH);
   const versionMatch = url.pathname.match(VERSION_PATH);
+  const pullMatch = url.pathname.match(PULL_PATH);
   const deletePlanMatch = url.pathname.match(DELETE_PLAN_PATH);
   const deleteMatch = url.pathname.match(DELETE_PATH);
 
@@ -49,6 +56,9 @@ export async function tryHandle(
   }
   if (request.method === "POST" && versionMatch) {
     return handleVersion(request, token, decodeSelector(versionMatch[1] ?? ""));
+  }
+  if (request.method === "POST" && pullMatch) {
+    return handlePull(request, token, decodeSelector(pullMatch[1] ?? ""));
   }
   if (request.method === "GET" && deletePlanMatch) {
     return handleDeletePlan(
@@ -301,10 +311,80 @@ function hostPluginVersionErrorResponse(error: HostPluginVersionError): Response
         { error: error.code, message: error.message },
         { status: 404 },
       );
+    case "source_unavailable":
+    case "pull_failed":
+    case "download_failed":
+      return jsonResponse(
+        { error: error.code, message: error.message },
+        { status: 400 },
+      );
     default: {
       const _exhaustive: never = error.code;
       return _exhaustive;
     }
+  }
+}
+
+async function handlePull(
+  request: Request,
+  token: string,
+  selector: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+
+  const trimmed = selector.trim();
+  if (!trimmed) {
+    return jsonResponse(
+      { error: "invalid_selector", message: "Resource selector is required" },
+      { status: 400 },
+    );
+  }
+  if (parseUntrackedResourceSelector(trimmed)) {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+
+  const resolved = resolveResource(trimmed, { mode: "compose" });
+  if (resolved.status === "ambiguous") {
+    return ambiguousResponse(trimmed, resolved.matches);
+  }
+  if (resolved.status === "not_found") {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+  if (resolved.resource.type !== "plugin") {
+    return hostPluginVersionErrorResponse(
+      new HostPluginVersionError(
+        "not_plugin",
+        `Resource ${resolved.resource.name} is not a plugin`,
+      ),
+    );
+  }
+
+  try {
+    const originRef =
+      resolved.resource.origin_ref || formatPluginRef(resolved.resource);
+    const info = pullHostPluginVersions({ originRef });
+    return jsonResponse(info);
+  } catch (error) {
+    if (error instanceof HostPluginVersionError) {
+      return hostPluginVersionErrorResponse(error);
+    }
+    return jsonResponse(
+      {
+        error: "pull_failed",
+        message:
+          error instanceof Error ? error.message : "Could not pull plugin versions",
+      },
+      { status: 500 },
+    );
   }
 }
 

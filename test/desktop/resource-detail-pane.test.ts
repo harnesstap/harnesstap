@@ -119,12 +119,17 @@ describe("resource inspect content preview", () => {
     expect(bodySource).toContain("onRegisterCancelFieldEdit");
   });
 
-  test("plugin details expose a Version field and Select when several cache versions exist", () => {
+  test("plugin details expose a filterable Version combobox and Pull", () => {
     expect(bodySource).toContain('fieldName="Version"');
     expect(bodySource).toContain("switchLibraryPluginVersion");
-    expect(bodySource).toContain("formatHostPluginVersionOption");
+    expect(bodySource).toContain("hostPluginVersionOptions");
+    expect(bodySource).toContain("Combobox");
     expect(bodySource).toContain("library-field-version-select");
-    expect(designSource).toContain("**Version** is the host cache directory");
+    expect(bodySource).toContain('label="Pull"');
+    expect(bodySource).toContain("pullLibraryPluginVersions");
+    expect(bodySource).not.toContain("typeLabel={typeLabel}");
+    expect(designSource).toContain("**Version** is a filterable combobox");
+    expect(designSource).toContain("no type label beside those actions");
   });
 
   test("DESIGN.md locks inspect as a viewport-capped dialog with a 15-line code block", () => {

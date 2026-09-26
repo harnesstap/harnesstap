@@ -34,6 +34,7 @@ export interface ComboboxProps {
   placeholder?: string;
   emptyLabel?: string;
   allowCustom?: boolean;
+  "aria-label"?: string;
   onValueChange: (value: string) => void;
 }
 
@@ -45,6 +46,7 @@ export function Combobox({
   placeholder,
   emptyLabel,
   allowCustom = false,
+  "aria-label": ariaLabel,
   onValueChange,
 }: ComboboxProps) {
   const generatedId = useId();
@@ -258,6 +260,7 @@ export function Combobox({
             autoComplete="off"
             spellCheck={false}
             disabled={disabled}
+            aria-label={ariaLabel}
             placeholder={placeholder}
             value={inputValue}
             className="pr-8"

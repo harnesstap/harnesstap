@@ -158,6 +158,7 @@ describe("library items header design lock", () => {
       "ResourceTypeTabs filters a flat list",
     );
     expect(designSource).toContain("labeled **Apply**");
+    expect(designSource).toContain("labeled **Pull**");
     expect(designSource).toContain("labeled **Sync**");
     expect(designSource).toContain("labeled **Write**");
   });

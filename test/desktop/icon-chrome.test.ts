@@ -296,6 +296,8 @@ describe("desktop icon chrome", () => {
     expect(pluginDetailSource).not.toMatch(/>Update</);
     expect(pluginDetailSource).toMatch(/case "apply":[\s\S]*?showLabel[\s\S]*?label="Apply"/);
     expect(pluginDetailSource).toMatch(/case "restore":[\s\S]*?showLabel[\s\S]*?label="Restore"/);
+    expect(resourceDetailSource).toContain('label="Pull"');
+    expect(resourceDetailSource).toMatch(/label="Pull"[\s\S]*?showLabel/);
     expect(resourceDetailSource).toContain('label="Sync"');
     expect(resourceDetailSource).toContain('label="Write"');
     expect(resourceDetailSource).not.toContain('label="Apply sync"');
@@ -303,6 +305,13 @@ describe("desktop icon chrome", () => {
     expect(resourceDetailSource).toContain('label="Delete"');
     expect(resourceDetailSource).toMatch(/label="Sync"[\s\S]*?showLabel/);
     expect(resourceDetailSource).toMatch(/label="Write"[\s\S]*?showLabel/);
+    expect(resourceDetailSource).not.toContain("typeLabel={typeLabel}");
+  });
+
+  test("library Pull tooltip fetches versions from source", () => {
+    expect(resourceDetailSource).toContain("libraryPullVersionsTooltip");
+    expect(resourceDetailSource).toContain("Fetch versions from source");
+    expect(resourceDetailSource).toContain("libraryPullVersionsTooltip()");
   });
 
   test("library Sync tooltip compares with origin", () => {
