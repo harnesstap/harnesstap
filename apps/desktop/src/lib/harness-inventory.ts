@@ -374,8 +374,9 @@ export interface HarnessTypeGroup {
 }
 
 /**
- * Type groups, then one section per location that contributes that type
+ * Type groups, then one section per location that has resources of that type
  * (native / related / shared / app-managed), preserving location order.
+ * Empty harness sections and type groups with no remaining sections are omitted.
  */
 export function groupHarnessLocationsByType(
   entry: Pick<HarnessEntry, "id" | "name">,
@@ -392,18 +393,14 @@ export function groupHarnessLocationsByType(
       rows.push(row);
       rowsByType.set(type, rows);
     }
-    const types = new Set<string>(rowsByType.keys());
-    for (const surface of location.surfaces) {
-      const mapped = registrySurfaceTabId(surface);
-      if (mapped) types.add(foldResourceTypeTab(mapped));
-    }
-    for (const type of types) {
+    for (const [type, resources] of rowsByType) {
+      if (resources.length === 0) continue;
       const list = sectionsByType.get(type) ?? [];
       list.push({
         path: location.path,
         onDisk: location.onDisk,
         owner,
-        resources: rowsByType.get(type) ?? [],
+        resources,
       });
       sectionsByType.set(type, list);
     }

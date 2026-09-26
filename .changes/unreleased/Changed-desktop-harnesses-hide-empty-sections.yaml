@@ -1,0 +1,5 @@
+kind: Changed
+body: Desktop Harnesses hides empty harness sections and empty type groups, and keeps a whole-view empty state when nothing matches.
+time: 2026-09-26T03:43:34Z
+custom:
+  Issue: ""

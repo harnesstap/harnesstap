@@ -584,7 +584,7 @@ describe("filterHarnessLocations", () => {
     expect(groups[0]?.sections[0]?.resources.map((item) => item.name)).toEqual(["slack"]);
   });
 
-  it("keeps empty surface sections and truncates badge titles", () => {
+  it("truncates badge titles and disambiguates colliding plugin names", () => {
     expect(truncateResourceBadgeName("short")).toBe("short");
     expect(truncateResourceBadgeName("abcdefghijklmnopqrstuvwxyz")).toBe(
       "abcdefghijklmnopqrst...",
@@ -608,21 +608,51 @@ describe("filterHarnessLocations", () => {
     expect(harnessResourceBadgeLabel(colliding[0]!, dupes)).toBe(
       "superpowers@claude-plugins-official",
     );
-    const emptyRules = location("~/.claude/rules/", ["rules"], false, []);
-    const groups = groupHarnessLocationsByType(CLAUDE_ENTRY, [emptyRules]);
-    expect(groups).toEqual([
-      {
-        type: "rule",
-        sections: [
-          {
-            path: "~/.claude/rules/",
-            onDisk: false,
-            owner: { iconId: CLAUDE, name: "claude-code" },
-            resources: [],
-          },
-        ],
-      },
-    ]);
+  });
+
+  it("omits empty harness sections and type groups with no resources", () => {
+    const opencode = entry("opencode", "detected", {
+      locations: [
+        location("~/.config/opencode/skills/", ["skills"], true, [
+          row("skill", "alpha", "~/.config/opencode/skills/alpha/SKILL.md"),
+        ]),
+        location("~/.config/opencode/", ["mcp", "commands"], true, []),
+        location("~/.agents/skills/", ["skills"], true, [], { relation: "shared" }),
+        location("~/.claude/skills/", ["skills"], true, [], {
+          relation: "related",
+          relatedFrom: "Claude Code",
+        }),
+      ],
+    });
+    const groups = groupHarnessLocationsByType(opencode, opencode.locations);
+    expect(groups.map((group) => group.type)).toEqual(["skill"]);
+    expect(
+      groups[0]?.sections.map((section) => [
+        section.owner.iconId,
+        section.owner.name,
+        section.path,
+        section.resources.length,
+      ]),
+    ).toEqual([["opencode", "opencode", "~/.config/opencode/skills/", 1]]);
+    expect(
+      groupHarnessLocationsByType(CLAUDE_ENTRY, CLAUDE_ENTRY.locations).map((group) => group.type),
+    ).toEqual(["skill", "hook", "permission"]);
+    expect(
+      groupHarnessLocationsByType(CLAUDE_ENTRY, [
+        location("~/.claude/rules/", ["rules"], false, []),
+      ]),
+    ).toEqual([]);
+    const mixedSurface = location(
+      "~/.claude/",
+      ["skills", "rules"],
+      true,
+      [row("skill", "only", "~/.claude/only/SKILL.md")],
+    );
+    expect(groupHarnessLocationsByType(CLAUDE_ENTRY, [mixedSurface]).map((group) => group.type)).toEqual(
+      ["skill"],
+    );
+    const miss = filterHarnessLocations(opencode, "nope", null);
+    expect(groupHarnessLocationsByType(opencode, miss.locations)).toEqual([]);
   });
 
   it("labels Agents for the shared ~/.agents hub", () => {
