@@ -119,6 +119,14 @@ describe("resource inspect content preview", () => {
     expect(bodySource).toContain("onRegisterCancelFieldEdit");
   });
 
+  test("plugin details expose a Version field and Select when several cache versions exist", () => {
+    expect(bodySource).toContain('fieldName="Version"');
+    expect(bodySource).toContain("switchLibraryPluginVersion");
+    expect(bodySource).toContain("formatHostPluginVersionOption");
+    expect(bodySource).toContain("library-field-version-select");
+    expect(designSource).toContain("**Version** is the host cache directory");
+  });
+
   test("DESIGN.md locks inspect as a viewport-capped dialog with a 15-line code block", () => {
     expect(designSource).toContain("15-line");
     expect(designSource).toContain("code block");

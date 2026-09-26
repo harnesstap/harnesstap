@@ -16,6 +16,7 @@ export interface ResourceDetailPaneProps {
   disabled?: boolean;
   onSuccess?: (message: string) => void;
   onLibraryChanged?: () => void;
+  duplicatePluginNames?: ReadonlySet<string>;
 }
 
 export function ResourceDetailPane({
@@ -27,6 +28,7 @@ export function ResourceDetailPane({
   disabled = false,
   onSuccess,
   onLibraryChanged,
+  duplicatePluginNames,
 }: ResourceDetailPaneProps) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -82,6 +84,7 @@ export function ResourceDetailPane({
           onFieldEditingChange={setFieldEditing}
           onConfirmOpenChange={setConfirmOpen}
           onBusyChange={setBusy}
+          duplicatePluginNames={duplicatePluginNames}
         />
       </div>
     </div>

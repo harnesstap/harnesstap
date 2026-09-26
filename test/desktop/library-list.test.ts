@@ -10,6 +10,7 @@ import {
   libraryRowBadge,
   libraryRowHeight,
   libraryRowSelector,
+  libraryRowTreatAsScoped,
   libraryRowUpdateBadge,
   mergeLibraryList,
   parseLibraryScopeName,
@@ -18,6 +19,8 @@ import {
   type LibraryListEntry,
   type LibraryListKind,
 } from "../../apps/desktop/src/lib/library-list.ts";
+import { duplicatePluginNames } from "../../src/ui/resource-display.ts";
+import { resourceDisplayName } from "../../apps/desktop/src/lib/resource-search.ts";
 import type { LibraryResource } from "../../apps/desktop/src/lib/types.ts";
 
 function resource(
@@ -188,6 +191,56 @@ describe("scoped library rows", () => {
     ]);
     expect(scopedCopyHoverText("project default")).toBe(
       "Scoped copy in project default",
+    );
+  });
+
+  it("keeps plugin refs as name@marketplace instead of scoped profile copies", () => {
+    const entries = mergeLibraryList(
+      [
+        resource({
+          id: "r1",
+          type: "plugin",
+          name: "superpowers",
+          namespace: "claude-plugins-official",
+          origin_ref: "superpowers@claude-plugins-official",
+        }),
+        resource({
+          id: "r2",
+          type: "plugin",
+          name: "superpowers",
+          namespace: "superpowers-dev",
+          origin_ref: "superpowers@superpowers-dev",
+        }),
+      ],
+      [{ ...pluginHead, id: "p-super", name: "superpowers" }],
+    );
+    const dupes = duplicatePluginNames(entries);
+    const labelOf = (row: LibraryListEntry) => resourceDisplayName(row, dupes);
+    const grouped = groupScopedLibraryRows(entries, labelOf, {
+      treatAsScoped: libraryRowTreatAsScoped,
+    });
+    const refs = grouped.filter((row) => row.listKind === "resource");
+    expect(refs.map((row) => [labelOf(row), row.scopedProfile])).toEqual([
+      ["superpowers@claude-plugins-official", null],
+      ["superpowers@superpowers-dev", null],
+    ]);
+  });
+
+  it("omits marketplace on a unique plugin ref", () => {
+    const entries = mergeLibraryList(
+      [
+        resource({
+          id: "r1",
+          type: "plugin",
+          name: "ripwire",
+          namespace: "claude-plugins-official",
+          origin_ref: "ripwire@claude-plugins-official",
+        }),
+      ],
+      [],
+    );
+    expect(resourceDisplayName(entries[0]!, duplicatePluginNames(entries))).toBe(
+      "ripwire",
     );
   });
 

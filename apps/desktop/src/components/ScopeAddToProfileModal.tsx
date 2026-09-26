@@ -11,6 +11,7 @@ import {
   mergeCompositionMembership,
 } from "../lib/composition-membership";
 import { libraryFilterType } from "../lib/library-list";
+import { duplicatePluginNames } from "../lib/resource-display";
 import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import { resourceRowVirtualStyle } from "../lib/resource-row-virtual";
 import {
@@ -162,6 +163,10 @@ export function ScopeAddToProfileModal({
       }),
     [entries, excludeProfileName, profileKeys],
   );
+  const collidingPluginNames = useMemo(
+    () => duplicatePluginNames(entries),
+    [entries],
+  );
   const searched = useMemo(
     () => filterLibraryResourcesBySearch(available, deferredSearch),
     [available, deferredSearch],
@@ -179,9 +184,11 @@ export function ScopeAddToProfileModal({
         ? searched
         : searched.filter((entry) => libraryFilterType(entry) === resolvedType);
     return [...rows].sort((left, right) =>
-      resourceDisplayName(left).localeCompare(resourceDisplayName(right)),
+      resourceDisplayName(left, collidingPluginNames).localeCompare(
+        resourceDisplayName(right, collidingPluginNames),
+      ),
     );
-  }, [resolvedType, searched]);
+  }, [collidingPluginNames, resolvedType, searched]);
 
   const selectedCount = visible.filter((entry) => selectedIds.has(entry.id)).length;
   const controlsDisabled = disabled || adding;
@@ -293,7 +300,10 @@ export function ScopeAddToProfileModal({
                       style={resourceRowVirtualStyle(virtualRow.start)}
                     >
                       <ResourceRowRoot
-                        hover={hoverModelFromLibraryResource(entry)}
+                        hover={hoverModelFromLibraryResource(
+                          entry,
+                          collidingPluginNames,
+                        )}
                         testId={`scope-add-row-${entry.name}`}
                       >
                         <ResourceRowLeading>
@@ -318,7 +328,7 @@ export function ScopeAddToProfileModal({
                         </ResourceRowLeading>
                         <ResourceRowIdentity
                           type={type}
-                          label={resourceDisplayName(entry)}
+                          label={resourceDisplayName(entry, collidingPluginNames)}
                           htmlFor={checkboxId}
                         />
                       </ResourceRowRoot>

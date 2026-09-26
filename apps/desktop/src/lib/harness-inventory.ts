@@ -3,6 +3,7 @@ import {
   harnessIdFromDisplayName,
   SHARED_AGENTS_SECTION_ID,
 } from "./harness-meta";
+import { duplicatePluginNames, formatResourceDisplayName } from "./resource-display";
 import type { LibraryDetailTarget } from "./library-pane";
 import { filterLibraryResourcesBySearch } from "./resource-search";
 import {
@@ -47,6 +48,9 @@ export interface HarnessResourceRow {
   readonly description: string;
   /** `~/`-relative path; row subtitle and detail `pathHint`. */
   readonly source: string;
+  readonly origin_kind?: string | null;
+  readonly namespace?: string | null;
+  readonly origin_ref?: string | null;
 }
 
 /** One panel in the main pane. Identity is `path`. */
@@ -319,6 +323,42 @@ export function truncateResourceBadgeName(
 ): string {
   if (name.length <= max) return name;
   return `${name.slice(0, max)}...`;
+}
+
+export function harnessDuplicatePluginNames(
+  locations: readonly { resources: readonly HarnessResourceRow[] }[],
+): Set<string> {
+  return duplicatePluginNames(
+    locations.flatMap((location) => location.resources),
+  );
+}
+
+/** Plugin refs use `name@marketplace` only when the same plugin name appears twice. */
+export function harnessResourceDisplayName(
+  row: HarnessResourceRow,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  return formatResourceDisplayName(
+    {
+      name: row.name,
+      type: row.type,
+      namespace: row.namespace,
+      origin_ref: row.origin_ref,
+      source: row.source,
+    },
+    { disambiguatePlugin: duplicateNames?.has(row.name) ?? false },
+  );
+}
+
+export function harnessResourceBadgeLabel(
+  row: HarnessResourceRow,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  const label = harnessResourceDisplayName(row, duplicateNames);
+  if (row.type === "plugin") {
+    return label;
+  }
+  return truncateResourceBadgeName(label);
 }
 
 export interface HarnessTypeSection {
@@ -619,10 +659,88 @@ function asLibraryResource(row: HarnessResourceRow): LibraryResource {
     id: row.id,
     name: row.name,
     type: row.type,
-    namespace: null,
+    namespace: row.namespace ?? null,
     description: row.description,
     source: row.source,
+    origin_kind: row.origin_kind,
+    origin_ref: row.origin_ref,
   };
+}
+
+export interface HarnessFilterOption {
+  readonly id: string;
+  readonly label: string;
+}
+
+export interface HarnessFacetFilter {
+  readonly origins?: ReadonlySet<string>;
+  readonly marketplaces?: ReadonlySet<string>;
+}
+
+const MARKETPLACE_ORIGIN_KIND = "marketplace_link";
+const MARKETPLACE_FALLBACK_LABEL = "Marketplace";
+
+/** Marketplace catalog name from `plugin@marketplace` origin refs. */
+export function harnessResourceMarketplace(
+  row: Pick<HarnessResourceRow, "origin_kind" | "origin_ref">,
+): string | null {
+  if (row.origin_kind !== MARKETPLACE_ORIGIN_KIND) return null;
+  const ref = row.origin_ref?.trim() ?? "";
+  if (!ref) return MARKETPLACE_FALLBACK_LABEL;
+  const separator = ref.lastIndexOf("@");
+  if (separator >= 0 && separator < ref.length - 1) {
+    return ref.slice(separator + 1);
+  }
+  return ref;
+}
+
+export function harnessOriginFilterOptions(
+  entry: Pick<HarnessEntry, "id" | "name" | "locations">,
+): HarnessFilterOption[] {
+  const seen = new Set<string>();
+  const options: HarnessFilterOption[] = [];
+  for (const location of entry.locations) {
+    if (location.resources.length === 0) continue;
+    const owner = locationSectionOwner(location, entry);
+    if (seen.has(owner.iconId)) continue;
+    seen.add(owner.iconId);
+    options.push({ id: owner.iconId, label: owner.name });
+  }
+  return options;
+}
+
+export function harnessMarketplaceFilterOptions(
+  entry: Pick<HarnessEntry, "locations">,
+): HarnessFilterOption[] {
+  const seen = new Set<string>();
+  const options: HarnessFilterOption[] = [];
+  for (const location of entry.locations) {
+    for (const resource of location.resources) {
+      const name = harnessResourceMarketplace(resource);
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      options.push({ id: name, label: name });
+    }
+  }
+  return options.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+}
+
+export function isHarnessFacetFilterActive(facets: HarnessFacetFilter | undefined): boolean {
+  return Boolean(
+    (facets?.origins && facets.origins.size > 0)
+    || (facets?.marketplaces && facets.marketplaces.size > 0),
+  );
+}
+
+function searchIdentity(row: {
+  id: string;
+  type: string;
+  name: string;
+  source?: string | null;
+  origin_ref?: string | null;
+}): string {
+  if (row.id) return `id:${row.id}`;
+  return `row:${row.type}:${row.name}:${row.source ?? ""}:${row.origin_ref ?? ""}`;
 }
 
 function searchRows(
@@ -630,24 +748,46 @@ function searchRows(
   search: string,
 ): readonly HarnessResourceRow[] {
   if (!search.trim()) return rows;
-  return rows.filter(
-    (row) => filterLibraryResourcesBySearch([asLibraryResource(row)], search).length > 0,
+  const matched = new Set(
+    filterLibraryResourcesBySearch(rows.map(asLibraryResource), search).map(
+      (resource) => searchIdentity(resource),
+    ),
   );
+  return rows.filter((row) => matched.has(searchIdentity(row)));
+}
+
+function marketplaceRows(
+  rows: readonly HarnessResourceRow[],
+  marketplaces: ReadonlySet<string> | undefined,
+): readonly HarnessResourceRow[] {
+  if (!marketplaces || marketplaces.size === 0) return rows;
+  return rows.filter((row) => {
+    const name = harnessResourceMarketplace(row);
+    return name !== null && marketplaces.has(name);
+  });
 }
 
 export function filterHarnessLocations(
   entry: HarnessEntry | null,
   search: string,
   typeTab: string | null,
+  facets?: HarnessFacetFilter,
 ): FilteredHarnessLocations {
   if (!entry) {
     return { locations: [], typeCounts: new Map() };
   }
-  const filtering = search.trim().length > 0 || typeTab !== null;
+  const origins = facets?.origins;
+  const originActive = Boolean(origins && origins.size > 0);
+  const marketplaceActive = Boolean(facets?.marketplaces && facets.marketplaces.size > 0);
+  const filtering =
+    search.trim().length > 0 || typeTab !== null || originActive || marketplaceActive;
   const types: string[] = [];
   const locations: HarnessLocation[] = [];
   for (const location of entry.locations) {
-    const searched = searchRows(location.resources, search);
+    if (originActive && origins && !origins.has(locationSectionOwner(location, entry).iconId)) {
+      continue;
+    }
+    const searched = marketplaceRows(searchRows(location.resources, search), facets?.marketplaces);
     types.push(...searched.map((row) => row.type));
     const rows =
       typeTab === null
@@ -659,11 +799,14 @@ export function filterHarnessLocations(
   return { locations, typeCounts: countResourceTypeTabs(types) };
 }
 
-export function resourceDetailTargetFor(row: HarnessResourceRow): ResourceDetailTarget {
+export function resourceDetailTargetFor(
+  row: HarnessResourceRow,
+  duplicateNames?: ReadonlySet<string>,
+): ResourceDetailTarget {
   return {
     kind: "resource",
     selector: row.id || `${row.type}:${row.name}`,
-    label: row.name,
+    label: harnessResourceDisplayName(row, duplicateNames),
     pathHint: row.source,
   };
 }
@@ -680,6 +823,8 @@ export interface HarnessesViewState {
   readonly pane: HarnessesPane;
   readonly search: string;
   readonly typeTab: string | null;
+  readonly originIds: readonly string[];
+  readonly marketplaceIds: readonly string[];
   readonly editing: boolean;
 }
 
@@ -690,6 +835,8 @@ export type HarnessesViewAction =
   | { readonly type: "close-detail" }
   | { readonly type: "search"; readonly value: string }
   | { readonly type: "type-tab"; readonly value: string | null }
+  | { readonly type: "origin-filter"; readonly value: readonly string[] }
+  | { readonly type: "marketplace-filter"; readonly value: readonly string[] }
   | { readonly type: "toggle-edit" }
   | { readonly type: "reset"; readonly inventory: HarnessInventory | null };
 
@@ -703,6 +850,8 @@ export function initialHarnessesViewState(
     pane: INVENTORY_PANE,
     search: "",
     typeTab: null,
+    originIds: [],
+    marketplaceIds: [],
     editing: false,
   };
 }
@@ -734,6 +883,10 @@ export function harnessesViewReducer(
       return { ...state, search: action.value };
     case "type-tab":
       return { ...state, typeTab: action.value };
+    case "origin-filter":
+      return { ...state, originIds: action.value };
+    case "marketplace-filter":
+      return { ...state, marketplaceIds: action.value };
     case "toggle-edit":
       return state.editing
         ? { ...state, editing: false }

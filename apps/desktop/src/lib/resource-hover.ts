@@ -112,11 +112,12 @@ export function resourceHoverCardHasContent(model: ResourceHoverModel): boolean 
 
 export function hoverModelFromLibraryResource(
   resource: LibraryResource,
+  duplicateNames?: ReadonlySet<string>,
 ): ResourceHoverModel {
   const filterType = libraryFilterType(resource);
   const model: ResourceHoverModel = {
     type: filterType,
-    name: resourceDisplayName(resource),
+    name: resourceDisplayName(resource, duplicateNames),
     harnessIds: [...relatedHarnessesForResourceType(filterType)],
     extra: [],
   };

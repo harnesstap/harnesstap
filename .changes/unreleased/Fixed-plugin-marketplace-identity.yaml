@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep same-named host plugins distinct as name@marketplace in Library and Harnesses, including Claude-directory installs. Unique plugin names stay unsuffixed.
+time: 2026-09-26T00:50:00Z
+custom:
+  Issue: ""

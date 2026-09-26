@@ -388,10 +388,10 @@ Repositories may declare named profiles, environments, and plugin composition in
 
 | Command | Current behavior |
 | --- | --- |
-| `resource list` | Lists canonical resources; NAME uses human labels (`Agent instructions (AGENTS.md)` for the shared AGENTS.md instruction) while ids stay `agents-instructions`. Shows `name@namespace` in search haystacks when namespace is non-empty; empty namespace lists as `global`. Hides `type=plugin` composition refs by default; use `--all` to disable per-type caps. |
+| `resource list` | Lists canonical resources; NAME uses human labels (`Agent instructions (AGENTS.md)` for the shared AGENTS.md instruction) while ids stay `agents-instructions`. Shows `name@namespace` in search haystacks when namespace is non-empty; empty namespace lists as `global`. Plugin composition refs (`type=plugin`) display as the plugin name, and as `name@marketplace` (origin_ref) when two or more plugin refs share that name. Hides `type=plugin` composition refs by default; use `--all` to disable per-type caps. |
 | `resource show` | Prints the resource with display labels. Origin is `Local` / `Local (/path)` (or Marketplace). Path is the package directory for plugins and `SKILL.md` packages. Plugin and `SKILL.md` package content lists nested files under that directory. Supports selector grammar. |
 | `resource sync` | Refreshes `plugin_pin` resources and `marketplace_link` children from install roots. Supports `--on-conflict`, `--prune`, `--force`, `--dry-run`. |
-| `resource delete` | Deletes a resource by selector or ID. Desktop/API modes: `library` (default; library row only, no disk changes) and `library_and_disk` (remove known global, tracked-project, and source locations first, then the library row). Preview via `GET /v1/library/resources/:selector/delete-plan`. Disk cleanup is surgical for shared aggregate files (for example MCP JSON entries) and blocks with `protected` / 409 when a shared section cannot be identified, a path escapes the managed root, or the path is missing/unreadable. Hash mismatch (edited outside the library) is confirmable, not a hard block: the plan lists it in `confirmations`, Desktop requires a “delete anyway?” checkbox, and `DELETE` with `mode=library_and_disk` requires `force: true` to remove the drifted on-disk copy. Desktop inspect shows a human-readable reason and the path (copy / reveal in Finder) for both hard blocks and confirmable drift. |
+| `resource delete` | Deletes a resource by selector or ID. Desktop/API modes: `library` (default; library row only, no disk changes) and `library_and_disk` (remove known global, tracked-project, and source locations first, then the library row). Preview via `GET /v1/library/resources/:selector/delete-plan`. Disk cleanup is surgical for shared aggregate files (for example MCP JSON entries) and blocks with `protected` / 409 when a shared section cannot be identified, a path escapes the managed root, or the path is missing/unreadable. Hash mismatch (edited outside the library) is confirmable, not a hard block: the plan lists it in `confirmations`, Desktop requires a “delete anyway?” checkbox, and `DELETE` with `mode=library_and_disk` requires `force: true` to remove the drifted on-disk copy. Desktop inspect shows a human-readable reason and the path (copy / reveal in Finder) for both hard blocks and confirmable drift. Host plugin pins (`type=plugin` scanned from Claude/Cursor/Copilot installs) also delete the resolved install tree and surgically unregister Claude `installed_plugins.json` / `enabledPlugins` entries; composition plugin refs are library-only. |
 
 ### Project-local commands (top-level)
 
@@ -778,13 +778,17 @@ For `apply`, when no `--harness` list is passed, platforms are detected from the
 
 ### `resource sync`
 
-For `type=plugin_pin` resources:
+For `type=plugin_pin` resources (stored as `resources.type=plugin`):
 
-1. Resolve marketplace or local install path (including git-SHA cache directories such as `~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>`, and Copilot CLI trees at `~/.copilot/installed-plugins/<marketplace>/<plugin>`).
+1. Resolve marketplace or local install path (including git-SHA cache directories such as `~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>`, and Copilot CLI trees at `~/.copilot/installed-plugins/<marketplace>/<plugin>`). Prefer the exact origin ref in `installed_plugins.json` over catalog aliases. When a cache parent has several version directories and no install pointer, pick the newest semver.
 2. Fetch or re-scan via `plugin-source-import`.
-3. Update plugin metadata (`resolved_version`, `manifests`, `sync_status`). When `plugin.json` has no version, `resolved_version` is the cache directory git SHA so the install can participate in composition.
+3. Update plugin metadata (`resolved_version`, `manifests`, `sync_status`). When the install path is a cache version directory (semver or git SHA), `resolved_version` is that directory name even if `plugin.json` disagrees. When `plugin.json` has no version and the directory is not a version id, `resolved_version` is the cache directory git SHA so the install can participate in composition.
 4. Diff and upsert child resources in the plugin namespace.
 5. On conflict, prompt on TTY or honor `--on-conflict overwrite|ignore|fail` (default `fail` when non-interactive).
+
+Library plugin resource detail includes `current_version`, `advertised_version` (from that marketplace's `marketplace.json`), and `available_versions` (host cache directories for that marketplace). Desktop shows Version on plugin details; a Select appears when more than one cache version exists. `POST /v1/library/resources/:selector/version` with `{ version }` retargets the Claude `installed_plugins.json` record for that origin ref and runs `resource sync` with overwrite.
+
+Home scan persists each host plugin pin as `type=plugin` keyed by name plus marketplace namespace, so `superpowers@claude-plugins-official` and `superpowers@superpowers-dev` are separate library rows. Desktop Library and Harnesses labels use the plugin name, and `name@marketplace` only when more than one pin shares that name. Claude inventory lists pins whose source is under `~/.claude/plugins/`; Cursor also shows those as a related Claude Code section plus pins under `~/.cursor/plugins/`.
 
 Orphans are removed only with `--prune`.
 

@@ -6,6 +6,7 @@ import {
   filterHarnessLocations,
   groupHarnessLocationsByType,
   harnessSummary,
+  isHarnessFacetFilterActive,
   NO_ATTENTION,
   type HarnessEntry,
   type HarnessResourceRow,
@@ -16,6 +17,7 @@ import { EmptyState } from "../EmptyState";
 import { HarnessIcon } from "../HarnessIcons";
 import { IconActionButton } from "../IconActionButton";
 import { LiveHeader } from "../live/LiveHeader";
+import { HarnessFilterMenu } from "./HarnessFilterMenu";
 import { HarnessInventoryList } from "./HarnessInventoryList";
 
 const ICON_SIZE = 16;
@@ -26,9 +28,13 @@ export interface HarnessDetailProps {
   role: HarnessRole;
   search: string;
   typeTab: string | null;
+  originIds: readonly string[];
+  marketplaceIds: readonly string[];
   disabled: boolean;
   onSearch: (value: string) => void;
   onTypeTab: (value: string | null) => void;
+  onOriginIds: (value: readonly string[]) => void;
+  onMarketplaceIds: (value: readonly string[]) => void;
   onMakeMain: () => void;
   onOpen: (row: HarnessResourceRow) => void;
 }
@@ -45,24 +51,40 @@ export function HarnessDetail({
   role,
   search,
   typeTab,
+  originIds,
+  marketplaceIds,
   disabled,
   onSearch,
   onTypeTab,
+  onOriginIds,
+  onMarketplaceIds,
   onMakeMain,
   onOpen,
 }: HarnessDetailProps) {
   const filtered = useMemo(
-    () => filterHarnessLocations(entry, search, typeTab),
-    [entry, search, typeTab],
+    () =>
+      filterHarnessLocations(entry, search, typeTab, {
+        origins: new Set(originIds),
+        marketplaces: new Set(marketplaceIds),
+      }),
+    [entry, marketplaceIds, originIds, search, typeTab],
   );
   const groups = useMemo(
     () => groupHarnessLocationsByType(entry, filtered.locations),
     [entry, filtered.locations],
   );
-  const filtering = search.trim().length > 0 || typeTab !== null;
+  const filtering =
+    search.trim().length > 0
+    || typeTab !== null
+    || isHarnessFacetFilterActive({
+      origins: new Set(originIds),
+      marketplaces: new Set(marketplaceIds),
+    });
   const clearFilters = () => {
     onSearch("");
     onTypeTab(null);
+    onOriginIds([]);
+    onMarketplaceIds([]);
   };
   const empty = groups.length === 0;
 
@@ -99,6 +121,17 @@ export function HarnessDetail({
         attention={NO_ATTENTION}
         typeTab={typeTab}
         onTypeTab={onTypeTab}
+        compactSearch
+        searchTrailing={
+          <HarnessFilterMenu
+            entry={entry}
+            originIds={originIds}
+            marketplaceIds={marketplaceIds}
+            disabled={disabled}
+            onOriginsChange={onOriginIds}
+            onMarketplacesChange={onMarketplaceIds}
+          />
+        }
       />
       {empty ? (
         filtering ? (

@@ -133,7 +133,7 @@
   top: 0;
   z-index: var(--z-sticky);
   margin: 0 0 0.5rem;
-  background: var(--bg);
+  background: var(--surface);
   flex-shrink: 0;
 }
 
@@ -310,7 +310,7 @@
   height: 7px;
   border-radius: 999px;
   background: var(--yellow);
-  box-shadow: 0 0 0 1px var(--bg);
+  box-shadow: 0 0 0 1px var(--surface);
   pointer-events: none;
 }
 
@@ -1005,6 +1005,25 @@
 
 .library-field-display.is-editable {
   cursor: text;
+}
+
+.library-field-version {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.library-field-version-select {
+  font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: var(--text-meta);
+}
+
+.library-field-version-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-meta);
 }
 
 .library-field-edit-trigger {

@@ -147,3 +147,31 @@ export async function patchLibraryResource(
     return throwAgentError(response, "Could not update resource");
   }
 }
+
+export interface PluginVersionSwitchResult {
+  version: string;
+  install_path: string;
+  sync: ResourceSyncResult;
+}
+
+export async function switchLibraryPluginVersion(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  version: string,
+): Promise<PluginVersionSwitchResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/library/resources/${encodeURIComponent(selector)}/version`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ version }),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not switch plugin version");
+  }
+  return (await response.json()) as PluginVersionSwitchResult;
+}

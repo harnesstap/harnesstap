@@ -1,4 +1,4 @@
-import { formatResourceDisplayName } from "./resource-display";
+import { duplicatePluginNames, formatResourceDisplayName } from "./resource-display";
 import type { LibraryResource, ProfileContentsResource } from "./types";
 
 /** Material + composition types accepted by CLI `type:query` search prefixes. */
@@ -78,8 +78,13 @@ export function matchesListSearchQuery(
   return normalizedHaystack.includes(normalizedText);
 }
 
-function displayName(resource: LibraryResource): string {
-  return formatResourceDisplayName(resource);
+function displayName(
+  resource: LibraryResource,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  return formatResourceDisplayName(resource, {
+    disambiguatePlugin: duplicateNames?.has(resource.name) ?? false,
+  });
 }
 
 function resourceTypePrefix(section: string | undefined): string | undefined {
@@ -116,7 +121,7 @@ export function filterLibraryResourcesBySearch<T extends LibraryResource>(
     if (typePrefix !== undefined && !resourceMatchesTypePrefix(resource, typePrefix)) {
       return false;
     }
-    const haystack = `${resource.name} ${displayName(resource)} ${resource.description ?? ""} ${resource.namespace ?? ""} ${resource.tags?.join(" ") ?? ""}`;
+    const haystack = `${resource.name} ${displayName(resource)} ${resource.description ?? ""} ${resource.namespace ?? ""} ${resource.origin_ref ?? ""} ${resource.tags?.join(" ") ?? ""}`;
     return matchesListSearchQuery(haystack, textQuery);
   });
 }
@@ -139,6 +144,7 @@ export function filterLibraryResourcesByProfile(
 export function groupLibraryResourcesByType(
   resources: LibraryResource[],
 ): Array<{ type: string; resources: LibraryResource[] }> {
+  const duplicateNames = duplicatePluginNames(resources);
   const groups = new Map<string, LibraryResource[]>();
   for (const resource of resources) {
     const bucket = groups.get(resource.type);
@@ -153,13 +159,16 @@ export function groupLibraryResourcesByType(
     .map(([type, rows]) => ({
       type,
       resources: [...rows].sort((a, b) =>
-        displayName(a).localeCompare(displayName(b)),
+        displayName(a, duplicateNames).localeCompare(displayName(b, duplicateNames)),
       ),
     }));
 }
 
-export function resourceDisplayName(resource: LibraryResource): string {
-  return displayName(resource);
+export function resourceDisplayName(
+  resource: LibraryResource,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  return displayName(resource, duplicateNames);
 }
 
 export function filterContentsResourcesBySearch(
