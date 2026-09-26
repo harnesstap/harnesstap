@@ -121,7 +121,6 @@ export function HarnessDetail({
         attention={NO_ATTENTION}
         typeTab={typeTab}
         onTypeTab={onTypeTab}
-        compactSearch
         searchTrailing={
           <HarnessFilterMenu
             entry={entry}
