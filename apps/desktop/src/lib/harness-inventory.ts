@@ -732,9 +732,15 @@ export function isHarnessFacetFilterActive(facets: HarnessFacetFilter | undefine
   );
 }
 
-function searchIdentity(row: Pick<HarnessResourceRow, "id" | "type" | "name" | "source" | "origin_ref">): string {
+function searchIdentity(row: {
+  id: string;
+  type: string;
+  name: string;
+  source?: string | null;
+  origin_ref?: string | null;
+}): string {
   if (row.id) return `id:${row.id}`;
-  return `row:${row.type}:${row.name}:${row.source}:${row.origin_ref ?? ""}`;
+  return `row:${row.type}:${row.name}:${row.source ?? ""}:${row.origin_ref ?? ""}`;
 }
 
 function searchRows(
