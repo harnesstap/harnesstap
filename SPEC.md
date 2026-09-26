@@ -20,7 +20,7 @@ The product currently supports these main workflows:
 - Apply one or more plugins, a local bundle file, or a plugin export URL to a project.
 - Declare repo **project profiles** in `apm.yml` and switch with `ht use`.
 - Sync plugin composition resources from marketplace or local install roots via `resource sync`.
-- Union on-disk resources across the configured main and alias harnesses with `harness sync` (Desktop **Sync harnesses**).
+- Union on-disk resources across the configured main and alias harnesses with `harness sync` (Desktop **Sync harnesses**), including Cursor/Claude host plugin trees plus portable `.agents` materialization for OpenCode and similar harnesses.
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
 - Export or import a machine-transfer archive of local plugins, harness preferences, and config (`migrate`).
 - Authenticate with HarnessTap Cloud (`auth`); search, install, and publish plugins into org **catalogs**.
@@ -412,7 +412,7 @@ Repositories may declare named profiles, environments, and plugin composition in
 | `harness list` | Lists registered harness targets (`--supported` filters to natively serialized harnesses). |
 | `harness set` | Sets global main/alias harness preferences (flags or interactive). |
 | `harness status` | Shows the global harness preference record. |
-| `harness sync` | Unions on-disk resources from the configured main + alias harnesses, resolves same-identity conflicts with the main harness copy, prefers shared skill emit paths, copies Claude Code and Cursor **host plugin install trees** through the same serializers, and materializes through existing apply writers. Default scope is home (`~`); `--project` uses the project tree. Not `mirror`. |
+| `harness sync` | Unions on-disk resources from the configured main + alias harnesses, resolves same-identity conflicts with the main harness copy, prefers shared skill emit paths, copies Claude Code and Cursor **host plugin install trees** through the same serializers, and materializes through existing apply writers. For harnesses that do not load those native plugin roots (OpenCode, Codex, and similar), skills/agents/commands inside Cursor/Claude plugins are also written to `.agents` (and equivalent native folders). Identical `CLAUDE.md` and `AGENTS.md` bodies share one file: **AGENTS.md is canonical**; `CLAUDE.md` is a symlink (default), copy-on-write clone, or independent copy. Configure with `harnessSync.pluginResources` in `config.jsonc` (`symlink` default, `copy`, or `clone`) or `harness sync --plugin-resources`. Default scope is home (`~`); `--project` uses the project tree. Not `mirror`. |
 | `harness project set` | Sets project-scoped main/alias harness preferences and materialization strategy. |
 | `harness project status` | Shows project-scoped harness preferences. |
 
@@ -600,11 +600,14 @@ Example `config.jsonc`:
     "marketplaces": []
   },
   "layerVersionHistoryLimit": 10,
+  "harnessSync": {
+    "pluginResources": "symlink"
+  },
   "telemetry": { "enabled": true }
 }
 ```
 
-Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age, registered marketplaces, and how many frozen plugin versions to retain per name. Telemetry is **off until opt-in**. Desktop asks on first start; CLI prints a one-time warning with enable/disable instructions. Set `telemetry.enabled` to `false` or export `HARNESSTAP_TELEMETRY=0` to disable; set `telemetry.enabled` to `true` or `HARNESSTAP_TELEMETRY=1` to enable. Event names are documented in `docs/telemetry.md` (user-facing copy lives in `README.md` and `docs/`).
+Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age, registered marketplaces, how `harness sync` materializes Cursor/Claude plugin files into `.agents` (`harnessSync.pluginResources`: `symlink`, `copy`, or `clone`), and how many frozen plugin versions to retain per name. Telemetry is **off until opt-in**. Desktop asks on first start; CLI prints a one-time warning with enable/disable instructions. Set `telemetry.enabled` to `false` or export `HARNESSTAP_TELEMETRY=0` to disable; set `telemetry.enabled` to `true` or `HARNESSTAP_TELEMETRY=1` to enable. Event names are documented in `docs/telemetry.md` (user-facing copy lives in `README.md` and `docs/`).
 
 ### Schema (logical tables)
 
@@ -709,7 +712,7 @@ Not every host surface round-trips through apply or mirror. Static resources (sk
 
 ### Native serializers
 
-Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness`, `muse-code`, and `minimax-code`. Remaining registered harnesses use the generic serializer. Native OpenCode skill scan includes `.agents/skills/` and `.claude/skills/` (and the matching home trees) in addition to `.opencode/skills/`; apply still writes the native OpenCode skill directory only. Grok Build follows the same pattern for `.claude/skills/` alongside existing `.agents/skills/` discovery.
+Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness`, `muse-code`, and `minimax-code`. Remaining registered harnesses use the generic serializer. Native OpenCode skill scan includes `.agents/skills/` and `.claude/skills/` (and the matching home trees) in addition to `.opencode/skills/`; apply still writes the native OpenCode skill directory only. `harness sync` writes Cursor/Claude **plugin** skills into `.agents/skills/` so OpenCode can load them without a native plugin root. Grok Build follows the same pattern for `.claude/skills/` alongside existing `.agents/skills/` discovery.
 
 ### Generic serializer
 
@@ -735,7 +738,9 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 **Dual-mode repos:** when a project has both harness files and a plugin manifest, `scan` automatically merges harness scan with plugin-source import. `plugin from-project` always uses the merged scan.
 
-**Symlinked `AGENTS.md`:** platform detection ignores symlinked `AGENTS.md` so a link to `CLAUDE.md` does not register a spurious AGENTS-based harness.
+**Symlinked `AGENTS.md`:** platform detection ignores a **symlinked** `AGENTS.md` (for example a link to `CLAUDE.md`) so that layout does not register a spurious AGENTS-based harness.
+
+**`CLAUDE.md` vs `AGENTS.md` on sync:** Claude Code 2.1.277+ reads `AGENTS.md` only when no `CLAUDE.md` / `.claude/CLAUDE.md` / `CLAUDE.local.md` exists in the working directory or above (default `claude-md-or-agents-md`). If both files exist, Claude reads `CLAUDE.md` and ignores `AGENTS.md`. OpenCode is the reverse: it reads `AGENTS.md` and ignores `CLAUDE.md` when `AGENTS.md` is present. `harness sync` therefore keeps **one canonical `AGENTS.md`** when both files would hold the same text, and makes `CLAUDE.md` a **symlink** to it (default). Claude still sees a `CLAUDE.md` path (so it does not also load `AGENTS.md`); OpenCode reads the real `AGENTS.md`. `copy` writes independent files. `clone` uses copy-on-write (`COPYFILE_FICLONE`) and falls back to copy. Different bodies stay as two files.
 
 When one supported harness already exists in a project, it becomes the default main harness for that project.
 

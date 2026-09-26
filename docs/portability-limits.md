@@ -278,6 +278,13 @@ common package format. Host-specific manifests stay native:
 roots when both harnesses are in the Settings active set). It does not install
 once into Claude and expect Cursor to run it from `~/.claude/plugins/`.
 
+Harnesses that do not load those roots (OpenCode, Codex, Gemini, and similar)
+get the **portable extract**: skills land in `~/.agents/skills/` (and native
+skill dirs that cannot read the hub); agents and commands go through the
+target serializer. `harnessSync.pluginResources` (`symlink` / `copy` /
+`clone`) controls whether those hub files are links back into the plugin
+tree, independent copies, or copy-on-write clones.
+
 Portable inside a copied tree: skills, `mcp.json`, Agent Plugins root
 `plugin.json`, and whichever host manifests were already present. Not portable:
 Claude `installed_plugins.json` / marketplace git metadata, Cursor enablement

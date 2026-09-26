@@ -1,7 +1,7 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { loadSettings, saveSettings } from "../../src/config/settings.js";
 
 describe("loadSettings", () => {
@@ -11,10 +11,27 @@ describe("loadSettings", () => {
     expect(settings.plugins.refreshMaxAgeHours).toBe(24);
   });
 
-  it("defaults pluginVersionHistoryLimit to 10 when config missing", () => {
+  it("defaults harnessSync.pluginResources to symlink", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
-    const settings = loadSettings(dir);
-    expect(settings.pluginVersionHistoryLimit).toBe(10);
+    expect(loadSettings(dir).harnessSync.pluginResources).toBe("symlink");
+  });
+
+  it("reads harnessSync.pluginResources from config.jsonc", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      JSON.stringify({ harnessSync: { pluginResources: "clone" } }),
+    );
+    expect(loadSettings(dir).harnessSync.pluginResources).toBe("clone");
+  });
+
+  it("falls back to symlink for invalid harnessSync.pluginResources", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      JSON.stringify({ harnessSync: { pluginResources: "hardlink" } }),
+    );
+    expect(loadSettings(dir).harnessSync.pluginResources).toBe("symlink");
   });
 
   it("reads refreshMaxAgeHours from config.json", () => {
@@ -170,6 +187,7 @@ describe("plugins.marketplaces", () => {
         ],
       },
       pluginVersionHistoryLimit: 10,
+      harnessSync: { pluginResources: "symlink" },
     });
     const raw = JSON.parse(readFileSync(join(dir, "config.json"), "utf-8"));
     expect(raw.plugins.marketplaces).toEqual([
@@ -204,6 +222,7 @@ describe("plugins.marketplaces", () => {
         ],
       },
       pluginVersionHistoryLimit: 10,
+      harnessSync: { pluginResources: "symlink" },
     });
     const jsonc = JSON.parse(readFileSync(join(dir, "config.jsonc"), "utf-8"));
     expect(jsonc.plugins.marketplaces).toEqual([
@@ -229,6 +248,7 @@ describe("plugins.marketplaces", () => {
         marketplaces: [],
       },
       pluginVersionHistoryLimit: 10,
+      harnessSync: { pluginResources: "symlink" },
     });
     const jsonc = JSON.parse(readFileSync(join(dir, "config.jsonc"), "utf-8"));
     expect(jsonc.telemetry).toEqual({ enabled: false });

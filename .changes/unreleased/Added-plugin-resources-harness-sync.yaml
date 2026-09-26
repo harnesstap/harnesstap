@@ -1,0 +1,5 @@
+kind: Added
+body: Materialize Cursor and Claude plugin skills into `.agents` during harness sync, with symlink/copy/clone modes and CLAUDE.md linking to canonical AGENTS.md.
+time: 2026-09-26T09:45:00Z
+custom:
+  Issue: ""

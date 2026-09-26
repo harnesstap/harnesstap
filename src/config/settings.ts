@@ -1,5 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  DEFAULT_PLUGIN_RESOURCE_MODE,
+  isPluginResourceMode,
+  type PluginResourceMode,
+} from "../services/plugin-resource-mode.js";
 
 export type PluginMarketplacePlatform =
   | "claude-code"
@@ -19,6 +24,9 @@ export interface HarnesstapSettings {
     marketplaces: PluginMarketplaceEntry[];
   };
   pluginVersionHistoryLimit: number;
+  harnessSync: {
+    pluginResources: PluginResourceMode;
+  };
 }
 
 const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
@@ -31,6 +39,7 @@ const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
 const DEFAULTS: HarnesstapSettings = {
   plugins: { refreshMaxAgeHours: 24, marketplaces: [] },
   pluginVersionHistoryLimit: 10,
+  harnessSync: { pluginResources: DEFAULT_PLUGIN_RESOURCE_MODE },
 };
 
 function isPluginMarketplacePlatform(
@@ -199,9 +208,12 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
   const path = settingsPath(harnesstapDir);
   if (!existsSync(path)) return DEFAULTS;
   try {
-    const raw = parseJsonc(readFileSync(path, "utf-8")) as Partial<HarnesstapSettings>;
+    const raw = parseJsonc(readFileSync(path, "utf-8")) as Partial<HarnesstapSettings> & {
+      harnessSync?: { pluginResources?: unknown };
+    };
     const hours = raw.plugins?.refreshMaxAgeHours;
     const limit = raw.pluginVersionHistoryLimit;
+    const pluginResources = raw.harnessSync?.pluginResources;
     return {
       plugins: {
         refreshMaxAgeHours:
@@ -214,6 +226,11 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
         typeof limit === "number" && Number.isInteger(limit) && limit >= 1
           ? limit
           : DEFAULTS.pluginVersionHistoryLimit,
+      harnessSync: {
+        pluginResources: isPluginResourceMode(pluginResources)
+          ? pluginResources
+          : DEFAULTS.harnessSync.pluginResources,
+      },
     };
   } catch {
     return DEFAULTS;
@@ -259,6 +276,7 @@ export function saveSettings(
       ...existing,
       plugins: settings.plugins,
       pluginVersionHistoryLimit: settings.pluginVersionHistoryLimit,
+      harnessSync: settings.harnessSync,
     },
     path,
   );

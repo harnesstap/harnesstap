@@ -1,4 +1,6 @@
 import { resolve } from "node:path";
+import { loadSettings } from "../config/settings.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import {
   getHarnessPreference,
   getProjectHarnessConfig,
@@ -11,30 +13,45 @@ import type {
   SerializerTarget,
   SnapshotState,
 } from "../types.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import {
+  type ApplyResult,
   generateFiles,
   materializeFiles,
   writeFiles,
-  type ApplyResult,
 } from "./applier.js";
-import { persistWrittenMaterializations } from "./materialization-ownership.js";
 import { getGitOrigin, normalizeGitUrl, projectNameFromUrl } from "./git.js";
+import {
+  toPortableEmitResources,
+  type UnionConflict,
+  unionHarnessResources,
+} from "./harness-resource-union.js";
+import { uniqueHarnessTargets } from "./harness-targets.js";
+import {
+  extractHostPluginMaterial,
+  materializeSkillHubPlan,
+  planPluginSkillHub,
+  portableHarnessesForPluginFanout,
+} from "./host-plugin-material.js";
+import {
+  applyInstructionLinks,
+  pairInstructionFiles,
+} from "./instruction-file-links.js";
+import { persistWrittenMaterializations } from "./materialization-ownership.js";
+import { getPlatformSerializer } from "./platform-serializers.js";
+import {
+  DEFAULT_PLUGIN_RESOURCE_MODE,
+  type PluginResourceMode,
+} from "./plugin-resource-mode.js";
+import { resourceIdentity } from "./reference-resources.js";
 import {
   persistScanResults,
   scanPlatform,
 } from "./scanner.js";
-import { getPlatformSerializer } from "./platform-serializers.js";
-import { resolveHomeRoot } from "../utils/home-root.js";
-import {
-  toPortableEmitResources,
-  unionHarnessResources,
-  type UnionConflict,
-} from "./harness-resource-union.js";
 import {
   flattenUniqueFiles,
   preferSharedSkillEmits,
 } from "./shared-emit-paths.js";
-import { uniqueHarnessTargets } from "./harness-targets.js";
 
 export type HarnessUnionSyncCode =
   | "no_main_harness"
@@ -55,6 +72,7 @@ export interface SyncConfiguredHarnessesOptions {
   projectRoot?: string;
   homeRoot?: string;
   dryRun?: boolean;
+  pluginResourceMode?: PluginResourceMode;
 }
 
 export interface SyncConfiguredHarnessesResult {
@@ -64,6 +82,18 @@ export interface SyncConfiguredHarnessesResult {
   files_written: number;
   conflicts: UnionConflict[];
   files: string[];
+  plugin_resource_mode: PluginResourceMode;
+}
+
+function resolvePluginResourceMode(
+  override?: PluginResourceMode,
+): PluginResourceMode {
+  if (override) return override;
+  try {
+    return loadSettings(getHarnesstapDir()).harnessSync.pluginResources;
+  } catch {
+    return DEFAULT_PLUGIN_RESOURCE_MODE;
+  }
 }
 
 function resolveConfiguredSelection(projectRoot?: string): {
@@ -168,6 +198,9 @@ export async function syncConfiguredHarnesses(
   const serializeOptions = selection.cursor_skill_mode
     ? { target, skillCursorMode: selection.cursor_skill_mode }
     : { target };
+  const pluginResourceMode = resolvePluginResourceMode(options.pluginResourceMode);
+  const portablePlatforms = portableHarnessesForPluginFanout(platforms);
+  const homeRoot = options.homeRoot ?? resolveHomeRoot();
 
   const generated = await generateFiles(
     emitResources,
@@ -176,17 +209,54 @@ export async function syncConfiguredHarnesses(
     serializeOptions,
   );
   const preferred = preferSharedSkillEmits(generated, platforms, target);
-  const files = flattenUniqueFiles(preferred);
-  const filePaths = files.map((file) => file.path);
+
+  const extraResults: ApplyResult[] = [];
+  let skillHubPlans: ReturnType<typeof planPluginSkillHub> = [];
+  if (target === "global" && portablePlatforms.length > 0) {
+    const occupied = new Set(unioned.resources.map(resourceIdentity));
+    const extracted = await extractHostPluginMaterial(
+      unioned.resources,
+      homeRoot,
+      occupied,
+    );
+    if (extracted.resources.length > 0) {
+      const extraGenerated = await generateFiles(
+        toPortableEmitResources(extracted.resources),
+        portablePlatforms,
+        rootPath,
+        serializeOptions,
+      );
+      extraResults.push(
+        ...preferSharedSkillEmits(extraGenerated, portablePlatforms, target),
+      );
+    }
+    skillHubPlans = planPluginSkillHub(
+      extracted.skills,
+      portablePlatforms,
+      target,
+    );
+  }
+
+  const paired = pairInstructionFiles(
+    flattenUniqueFiles([...preferred, ...extraResults]),
+    pluginResourceMode,
+  );
+  const files = paired.files;
+  const filePaths = [
+    ...files.map((file) => file.path.replace(/\\/g, "/")),
+    ...paired.links.map((link) => link.path),
+    ...skillHubPlans.map((plan) => plan.skillMdPath),
+  ].filter((path, index, all) => all.indexOf(path) === index);
 
   if (options.dryRun) {
     return {
       main_harness: selection.main_harness,
       alias_harnesses: selection.alias_harnesses,
       platforms_synced: platforms,
-      files_written: files.length,
+      files_written: filePaths.length,
       conflicts: unioned.conflicts,
       files: filePaths,
+      plugin_resource_mode: pluginResourceMode,
     };
   }
 
@@ -218,6 +288,8 @@ export async function syncConfiguredHarnesses(
   } else {
     await materializeFiles(files, rootPath, { conflictPolicy: "replace" });
   }
+  applyInstructionLinks(rootPath, paired.links, pluginResourceMode);
+  materializeSkillHubPlan(rootPath, skillHubPlans, pluginResourceMode);
 
   persistWrittenMaterializations({
     scope: target === "global" ? "global" : "project",
@@ -242,8 +314,9 @@ export async function syncConfiguredHarnesses(
     main_harness: selection.main_harness,
     alias_harnesses: selection.alias_harnesses,
     platforms_synced: platforms,
-    files_written: files.length,
+    files_written: filePaths.length,
     conflicts: unioned.conflicts,
     files: filePaths,
+    plugin_resource_mode: pluginResourceMode,
   };
 }

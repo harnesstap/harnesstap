@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
-import { runCli } from "../helpers/cli.ts";
 
 describe("CLI harness", () => {
   it("lists harnesses and supports noun-group aliases", async () => {
@@ -129,6 +129,7 @@ describe("CLI harness", () => {
       expect(human.stdout).toContain("HARNESS");
       expect(human.stdout).toContain("Main harness");
       expect(human.stdout).toContain("Alias harnesses");
+      expect(human.stdout).toContain("Plugin resources");
     } finally {
       await context.cleanup();
     }
