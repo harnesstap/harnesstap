@@ -133,7 +133,7 @@
   top: 0;
   z-index: var(--z-sticky);
   margin: 0 0 0.5rem;
-  background: var(--bg);
+  background: var(--surface);
   flex-shrink: 0;
 }
 
@@ -310,7 +310,7 @@
   height: 7px;
   border-radius: 999px;
   background: var(--yellow);
-  box-shadow: 0 0 0 1px var(--bg);
+  box-shadow: 0 0 0 1px var(--surface);
   pointer-events: none;
 }
 

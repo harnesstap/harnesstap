@@ -312,6 +312,8 @@ describe("getHarnessInventory", () => {
             name: "foo",
             description: "A skill",
             source: "~/.claude/skills/foo/SKILL.md",
+            origin_kind: "manual",
+            origin_ref: context.homeDir,
           },
         ],
       });

@@ -10,6 +10,21 @@ const workspaceSource = readFileSync(
   ),
   "utf8",
 );
+const liveHeaderSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/live/LiveHeader.tsx"),
+  "utf8",
+);
+const detailSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/harnesses/HarnessDetail.tsx"),
+  "utf8",
+);
+const filterMenuSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/harnesses/HarnessFilterMenu.tsx",
+  ),
+  "utf8",
+);
 const sidebarSource = readFileSync(
   join(
     import.meta.dir,
@@ -65,5 +80,27 @@ describe("Harnesses workspace sidebar width", () => {
   it("documents the harness list column vs the Library filter track", () => {
     expect(designSource).toContain("not the 220px Library filter track");
     expect(designSource).toContain("reserved trash slot");
+  });
+});
+
+describe("Harnesses resource filter field", () => {
+  it("uses a compact Filter resources field with a trailing origin menu", () => {
+    expect(liveHeaderSource).toContain("compactSearch");
+    expect(liveHeaderSource).toContain('spellCheck={false}');
+    expect(liveHeaderSource).toContain('autoComplete="off"');
+    expect(detailSource).toContain("compactSearch");
+    expect(detailSource).toContain("HarnessFilterMenu");
+    expect(filterMenuSource).toContain("Filter per harness origin");
+    expect(filterMenuSource).toContain("Marketplace");
+    expect(filterMenuSource).toContain('data-testid="harness-resource-filter"');
+    expect(stylesSource).toContain(".list-search-compact");
+    expect(cssBlock(stylesSource, ".list-search-compact")).toContain("max-width: 20rem");
+  });
+
+  it("documents origin and marketplace facets on Filter resources", () => {
+    expect(designSource).toContain("compact **Filter resources** field");
+    expect(designSource).toContain("Filter per harness origin");
+    expect(designSource).toContain("case-insensitive substring of the typed query");
+    expect(designSource).not.toContain("did you mean");
   });
 });
