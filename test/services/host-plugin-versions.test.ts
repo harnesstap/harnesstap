@@ -6,6 +6,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { cleanupDir, createTempDir } from "../helpers/fs.ts";
 import { createResource, getResource } from "../../src/models/resource.ts";
 import {
+  highestHostPluginSourceVersion,
   listHostPluginVersions,
   pullHostPluginVersions,
   resolvedVersionFromInstallRoot,
@@ -277,6 +278,13 @@ describe("host plugin cache versions", () => {
     } finally {
       await ctx.cleanup();
     }
+  });
+
+  it("picks the highest semver as the advertised source version", () => {
+    expect(highestHostPluginSourceVersion(["6.3.0", "6.4.2", "5.1.0"])).toBe(
+      "6.4.2",
+    );
+    expect(highestHostPluginSourceVersion(["6.3.0", null, ""])).toBe("6.3.0");
   });
 });
 
@@ -593,6 +601,104 @@ describe("host plugin source pull and download", () => {
         "6.1.1",
         "5.1.0",
       ]);
+    } finally {
+      cleanupDir(repo);
+      await ctx.cleanup();
+    }
+  });
+
+  it("advertises the highest git tag when marketplace.json lags behind", async () => {
+    const ctx = await createInitializedTestContext("host-plugin-pull-stale-catalog");
+    const repo = createTempDir("host-plugin-superpowers-stale-");
+    try {
+      git(repo, "init -b main");
+      for (const version of ["5.1.0", "6.3.0"]) {
+        writePluginTree(repo, "superpowers", version);
+        writeFileSync(
+          join(repo, ".claude-plugin", "marketplace.json"),
+          JSON.stringify({
+            name: "superpowers-dev",
+            plugins: [
+              {
+                name: "superpowers",
+                version: "6.3.0",
+                source: "./",
+              },
+            ],
+          }),
+        );
+        git(repo, "add -A");
+        git(repo, `commit -m v${version}`);
+        git(repo, `tag v${version}`);
+      }
+      writePluginTree(repo, "superpowers", "6.4.2");
+      writeFileSync(
+        join(repo, ".claude-plugin", "marketplace.json"),
+        JSON.stringify({
+          name: "superpowers-dev",
+          plugins: [
+            {
+              name: "superpowers",
+              version: "6.3.0",
+              source: "./",
+            },
+          ],
+        }),
+      );
+      git(repo, "add -A");
+      git(repo, "commit -m v6.4.2-stale-catalog");
+      git(repo, "tag v6.4.2");
+
+      const marketplaceRoot = join(
+        ctx.homeDir,
+        ".claude",
+        "plugins",
+        "marketplaces",
+        "superpowers-marketplace",
+      );
+      mkdirSync(join(marketplaceRoot, ".."), { recursive: true });
+      execSync(
+        `git -c protocol.file.allow=always clone ${repo} ${marketplaceRoot}`,
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+      git(marketplaceRoot, "reset --hard v6.3.0");
+
+      mkdirSync(join(ctx.homeDir, ".claude", "plugins"), { recursive: true });
+      writeFileSync(
+        join(ctx.homeDir, ".claude", "plugins", "known_marketplaces.json"),
+        JSON.stringify({
+          "superpowers-marketplace": {
+            source: { source: "url", url: `file://${repo}` },
+            installLocation: marketplaceRoot,
+          },
+        }),
+      );
+
+      writePluginCache(ctx.homeDir, "superpowers-marketplace", "superpowers", "5.1.0");
+      writeInstalled(
+        ctx.homeDir,
+        "superpowers@superpowers-marketplace",
+        "cache/superpowers-marketplace/superpowers/5.1.0",
+        "5.1.0",
+      );
+
+      expect(
+        listHostPluginVersions("superpowers@superpowers-marketplace", ctx.homeDir)
+          .advertised_version,
+      ).toBe("6.3.0");
+
+      const pulled = pullHostPluginVersions({
+        originRef: "superpowers@superpowers-marketplace",
+        homeRoot: ctx.homeDir,
+      });
+      expect(pulled.advertised_version).toBe("6.4.2");
+      expect(pulled.available_versions.find((row) => row.advertised)?.version).toBe(
+        "6.4.2",
+      );
+      expect(
+        listHostPluginVersions("superpowers@superpowers-marketplace", ctx.homeDir)
+          .advertised_version,
+      ).toBe("6.4.2");
     } finally {
       cleanupDir(repo);
       await ctx.cleanup();

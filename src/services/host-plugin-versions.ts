@@ -16,8 +16,10 @@ import type { PluginPinMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   downloadHostPluginVersion,
+  isRelativePluginSourcePath,
   pullHostPluginSourceVersions,
   readHostPluginSourceSnapshot,
+  readMarketplacePluginSource,
   resolveMarketplaceRoot,
 } from "./host-plugin-source.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
@@ -102,6 +104,15 @@ function cachePluginDir(
   return join(claudePluginsDir(homeRoot), "cache", marketplace, pluginName);
 }
 
+export function highestHostPluginSourceVersion(
+  versions: Array<string | null | undefined>,
+): string | null {
+  const names = sortHostPluginVersionNames(
+    versions.filter((version): version is string => Boolean(version?.trim())),
+  );
+  return names[0] ?? null;
+}
+
 function advertisedMarketplaceVersion(
   homeRoot: string,
   marketplace: string,
@@ -116,6 +127,29 @@ function advertisedMarketplaceVersion(
   const entry = file?.plugins?.find((plugin) => plugin.name === pluginName);
   const version = entry?.version?.trim();
   return version ? version : null;
+}
+
+function checkoutPluginManifestVersion(
+  homeRoot: string,
+  marketplace: string,
+  pluginName: string,
+): string | null {
+  const live = readMarketplacePluginSource(homeRoot, marketplace, pluginName);
+  if (!isRelativePluginSourcePath(live?.path)) {
+    return null;
+  }
+  const root = resolveMarketplaceRoot(homeRoot, marketplace);
+  if (!root) {
+    return null;
+  }
+  const relative = live?.path?.trim() ?? "";
+  const pluginDir =
+    relative === "." || relative === "./" ? root : join(root, relative);
+  if (!existsSync(pluginDir)) {
+    return null;
+  }
+  const manifest = readManifestVersion(pluginDir);
+  return manifest.version !== "unknown" ? manifest.version : null;
 }
 
 function listCacheVersionDirs(
@@ -171,8 +205,16 @@ export function listHostPluginVersions(
 ): HostPluginVersionInfo {
   const resolvedHome = homeRoot ?? resolveHomeRoot();
   const { name, marketplace } = parsePluginRef(originRef);
-  const advertised_version = marketplace
+  const catalogVersion = marketplace
     ? advertisedMarketplaceVersion(resolvedHome, marketplace, name)
+    : null;
+  const snapshot = readHostPluginSourceSnapshot(originRef, getHarnesstapDir());
+  const advertised_version = marketplace
+    ? highestHostPluginSourceVersion([
+        catalogVersion,
+        checkoutPluginManifestVersion(resolvedHome, marketplace, name),
+        ...Object.keys(snapshot?.git_refs ?? {}),
+      ])
     : null;
   const record = getInstalledPluginRecord(resolvedHome, originRef);
   const installedPath = record
@@ -221,7 +263,6 @@ export function listHostPluginVersions(
     });
   }
 
-  const snapshot = readHostPluginSourceSnapshot(originRef, getHarnesstapDir());
   const remoteVersions = [
     ...(advertised_version ? [advertised_version] : []),
     ...Object.keys(snapshot?.git_refs ?? {}),

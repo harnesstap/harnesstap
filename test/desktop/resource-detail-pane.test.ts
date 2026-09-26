@@ -131,6 +131,7 @@ describe("resource inspect content preview", () => {
     expect(bodySource).toContain("pullLibraryPluginVersions");
     expect(bodySource).not.toContain("typeLabel={typeLabel}");
     expect(designSource).toContain("**Version** is a filterable combobox");
+    expect(designSource).toContain("highest source version");
     expect(designSource).toContain("no type label beside those actions");
   });
 
