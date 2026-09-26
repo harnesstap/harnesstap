@@ -32,6 +32,13 @@ const sidebarSource = readFileSync(
   ),
   "utf8",
 );
+const inventoryListSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/harnesses/HarnessInventoryList.tsx",
+  ),
+  "utf8",
+);
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",
@@ -120,5 +127,20 @@ describe("Harnesses resource filter field", () => {
     expect(designSource).toContain("Filter per harness origin");
     expect(designSource).toContain("case-insensitive substring of the typed query");
     expect(designSource).not.toContain("did you mean");
+  });
+});
+
+describe("Harnesses empty inventory sections", () => {
+  it("hides empty harness sections and keeps a whole-view empty state", () => {
+    expect(inventoryListSource).not.toContain("Nothing here yet.");
+    expect(inventoryListSource).toContain("section.resources.length > 0");
+    expect(detailSource).toContain("Nothing to list for this harness.");
+    expect(detailSource).toContain("noResultsTitle");
+    expect(detailSource).toContain("Clear filters");
+    expect(designSource).toContain(
+      "Hide harness sections with no resources after the current type, search, origin, and marketplace filters",
+    );
+    expect(designSource).not.toContain("Empty type sections stay");
+    expect(stylesSource).not.toContain(".harness-location-empty");
   });
 });

@@ -113,21 +113,17 @@ function HarnessTypeSectionBlock({
           <span>{section.owner.name}</span>
         </button>
       </ChromeTooltip>
-      {section.resources.length === 0 ? (
-        <p className="muted harness-location-empty">Nothing here yet.</p>
-      ) : (
-        <div className="harness-resource-badges">
-          {section.resources.map((row) => (
-            <ResourceBadge
-              key={rowKey(row)}
-              row={row}
-              disabled={disabled}
-              onOpen={onOpen}
-              duplicateNames={duplicateNames}
-            />
-          ))}
-        </div>
-      )}
+      <div className="harness-resource-badges">
+        {section.resources.map((row) => (
+          <ResourceBadge
+            key={rowKey(row)}
+            row={row}
+            disabled={disabled}
+            onOpen={onOpen}
+            duplicateNames={duplicateNames}
+          />
+        ))}
+      </div>
     </section>
   );
 }
@@ -138,7 +134,12 @@ export function HarnessInventoryList({
   disabled,
   onOpen,
 }: HarnessInventoryListProps) {
-  const groups = groupHarnessLocationsByType(entry, locations);
+  const groups = groupHarnessLocationsByType(entry, locations)
+    .map((group) => ({
+      ...group,
+      sections: group.sections.filter((section) => section.resources.length > 0),
+    }))
+    .filter((group) => group.sections.length > 0);
   const duplicateNames = harnessDuplicatePluginNames(entry.locations);
 
   return (

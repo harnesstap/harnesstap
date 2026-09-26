@@ -146,7 +146,7 @@ export function HarnessDetail({
         ) : (
           <EmptyState
             title="No resources"
-            body="This harness declares no global paths."
+            body="Nothing to list for this harness."
           />
         )
       ) : (
