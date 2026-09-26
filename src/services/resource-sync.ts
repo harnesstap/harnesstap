@@ -1,11 +1,12 @@
 import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { getDb } from "../db/connection.js";
 import {
   listLinkedResources,
   listResources,
   normalizeResourceInput,
   resolveResource,
+  updateResource,
   upsertResource,
   type ImportConflictPolicy,
 } from "../models/resource.js";
@@ -20,6 +21,14 @@ import { getInstalledPluginInstallPath } from "../plugins/claude-installed.js";
 import { getInstalledCopilotPluginInstallPath } from "../plugins/copilot-installed.js";
 import { getInstalledCursorPluginInstallPath } from "../plugins/cursor-installed.js";
 import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.js";
+import {
+  HostPluginVersionError,
+  ensureHostPluginVersionInstalled,
+  hostPluginMetadataForVersion,
+  resolvedVersionFromInstallRoot,
+  retargetHostPluginVersion,
+  sortHostPluginVersionNames,
+} from "./host-plugin-versions.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./plugin-composition.js";
 import { assertSyncable } from "./plugin-origin.js";
@@ -48,6 +57,20 @@ function defaultClaudePluginsRoot(homeRoot: string): string {
   return join(homeRoot, ".claude", "plugins");
 }
 
+function uniqueInstallRefs(originRef: string, homeRoot: string): string[] {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of [
+    originRef,
+    ...resolveClaudeInstallRefCandidates(originRef, homeRoot),
+  ]) {
+    if (!candidate || seen.has(candidate)) continue;
+    seen.add(candidate);
+    ordered.push(candidate);
+  }
+  return ordered;
+}
+
 function resolveExistingInstallRoot(candidate: string): string | undefined {
   if (!existsSync(candidate)) {
     return undefined;
@@ -56,17 +79,26 @@ function resolveExistingInstallRoot(candidate: string): string | undefined {
     return candidate;
   }
   try {
+    const children: string[] = [];
     for (const entry of readdirSync(candidate, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const childPath = join(candidate, entry.name);
       if (isPluginInstallRoot(childPath)) {
-        return childPath;
+        children.push(childPath);
       }
     }
+    if (children.length === 0) {
+      return candidate;
+    }
+    if (children.length === 1) {
+      return children[0];
+    }
+    const byName = new Map(children.map((path) => [basename(path), path]));
+    const newest = sortHostPluginVersionNames([...byName.keys()])[0];
+    return (newest ? byName.get(newest) : children[0]) ?? children[0];
   } catch {
     return candidate;
   }
-  return candidate;
 }
 
 export function resolveInstallRoot(
@@ -77,7 +109,7 @@ export function resolveInstallRoot(
   const [plugin, marketplace] = originRef.split("@");
   if (!plugin) return undefined;
 
-  const installRefCandidates = resolveClaudeInstallRefCandidates(originRef, homeRoot);
+  const installRefCandidates = uniqueInstallRefs(originRef, homeRoot);
   const installedPath = getInstalledPluginInstallPath(
     homeRoot,
     originRef,
@@ -284,7 +316,10 @@ export async function syncPluginResource(
     if (!options.dryRun) {
       const metadata: PluginPinMetadata = {
         ...(pluginResource.metadata as PluginPinMetadata),
-        resolved_version: manifestVersion,
+        resolved_version: resolvedVersionFromInstallRoot(
+          installRoot,
+          manifestVersion,
+        ),
         sync_status: "synced",
         manifests: {
           ...(pluginResource.metadata as PluginPinMetadata).manifests,
@@ -307,7 +342,10 @@ export async function syncPluginResource(
   if (!options.dryRun) {
     const metadata: PluginPinMetadata = {
       ...(pluginResource.metadata as PluginPinMetadata),
-      resolved_version: scan.plugin_version,
+      resolved_version: resolvedVersionFromInstallRoot(
+        installRoot,
+        scan.plugin_version,
+      ),
       sync_status: "synced",
       manifests: {
         ...(pluginResource.metadata as PluginPinMetadata).manifests,
@@ -373,6 +411,48 @@ export async function syncPluginResource(
   }
 
   return { checked, updated, stale, unchanged, skipped };
+}
+
+export async function switchHostPluginCacheVersion(input: {
+  resource: Resource;
+  version: string;
+  homeRoot?: string;
+}): Promise<{
+  version: string;
+  install_path: string;
+  sync: SyncLinkedResourcesResult;
+}> {
+  if (input.resource.type !== "plugin") {
+    throw new HostPluginVersionError(
+      "not_plugin",
+      `Resource ${input.resource.name} is not a plugin`,
+    );
+  }
+  const originRef = input.resource.origin_ref || formatPluginRef(input.resource);
+  ensureHostPluginVersionInstalled({
+    originRef,
+    version: input.version,
+    homeRoot: input.homeRoot,
+  });
+  const retargeted = retargetHostPluginVersion({
+    originRef,
+    version: input.version,
+    homeRoot: input.homeRoot,
+  });
+  updateResource(input.resource.id, {
+    metadata: hostPluginMetadataForVersion(input.resource, retargeted.version),
+  });
+  const sync = await syncLinkedResources({
+    selector: input.resource.id,
+    onConflict: "overwrite",
+    policy: "overwrite",
+    homeRoot: input.homeRoot,
+  });
+  return {
+    version: retargeted.version,
+    install_path: retargeted.install_path,
+    sync,
+  };
 }
 
 export async function syncLinkedResources(

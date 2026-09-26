@@ -1,4 +1,4 @@
-import { formatResourceDisplayName } from "./resource-display";
+import { duplicatePluginNames, formatResourceDisplayName } from "./resource-display";
 import type { LibraryResource, ProfileContentsResource } from "./types";
 
 /** Material + composition types accepted by CLI `type:query` search prefixes. */
@@ -78,13 +78,27 @@ export function matchesListSearchQuery(
   return normalizedHaystack.includes(normalizedText);
 }
 
-function displayName(resource: LibraryResource): string {
-  return formatResourceDisplayName(resource);
+function displayName(
+  resource: LibraryResource,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  return formatResourceDisplayName(resource, {
+    disambiguatePlugin: duplicateNames?.has(resource.name) ?? false,
+  });
+}
+
+function resourceTypePrefix(section: string | undefined): string | undefined {
+  if (section === undefined) {
+    return undefined;
+  }
+  const normalized = section.toLowerCase();
+  return RESOURCE_TYPE_PREFIXES.has(normalized) ? normalized : undefined;
 }
 
 /**
  * CLI-compatible resource filter: `skill:dbt` limits to type + text;
  * plain text matches name, description, and namespace display form.
+ * Type prefixes are case-insensitive; text is a case-insensitive substring.
  */
 export function filterLibraryResourcesBySearch<T extends LibraryResource>(
   resources: T[],
@@ -95,24 +109,19 @@ export function filterLibraryResourcesBySearch<T extends LibraryResource>(
     return resources;
   }
 
-  const sectionIsResourceType =
-    parsed.section !== undefined && RESOURCE_TYPE_PREFIXES.has(parsed.section);
-
-  const textQuery = sectionIsResourceType
-    ? parsed
-    : parsed.section !== undefined
-      ? { section: undefined, text: parsed.raw, raw: parsed.raw }
-      : parsed;
+  const typePrefix = resourceTypePrefix(parsed.section);
+  const textQuery =
+    typePrefix !== undefined
+      ? { ...parsed, section: typePrefix }
+      : parsed.section !== undefined
+        ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+        : parsed;
 
   return resources.filter((resource) => {
-    if (
-      sectionIsResourceType &&
-      parsed.section !== undefined &&
-      !resourceMatchesTypePrefix(resource, parsed.section)
-    ) {
+    if (typePrefix !== undefined && !resourceMatchesTypePrefix(resource, typePrefix)) {
       return false;
     }
-    const haystack = `${resource.name} ${displayName(resource)} ${resource.description ?? ""} ${resource.namespace ?? ""} ${resource.tags?.join(" ") ?? ""}`;
+    const haystack = `${resource.name} ${displayName(resource)} ${resource.description ?? ""} ${resource.namespace ?? ""} ${resource.origin_ref ?? ""} ${resource.tags?.join(" ") ?? ""}`;
     return matchesListSearchQuery(haystack, textQuery);
   });
 }
@@ -135,6 +144,7 @@ export function filterLibraryResourcesByProfile(
 export function groupLibraryResourcesByType(
   resources: LibraryResource[],
 ): Array<{ type: string; resources: LibraryResource[] }> {
+  const duplicateNames = duplicatePluginNames(resources);
   const groups = new Map<string, LibraryResource[]>();
   for (const resource of resources) {
     const bucket = groups.get(resource.type);
@@ -149,13 +159,16 @@ export function groupLibraryResourcesByType(
     .map(([type, rows]) => ({
       type,
       resources: [...rows].sort((a, b) =>
-        displayName(a).localeCompare(displayName(b)),
+        displayName(a, duplicateNames).localeCompare(displayName(b, duplicateNames)),
       ),
     }));
 }
 
-export function resourceDisplayName(resource: LibraryResource): string {
-  return displayName(resource);
+export function resourceDisplayName(
+  resource: LibraryResource,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  return displayName(resource, duplicateNames);
 }
 
 export function filterContentsResourcesBySearch(
@@ -167,19 +180,18 @@ export function filterContentsResourcesBySearch(
     return resources;
   }
 
-  const sectionIsResourceType =
-    parsed.section !== undefined && RESOURCE_TYPE_PREFIXES.has(parsed.section);
-  const textQuery = sectionIsResourceType
-    ? parsed
-    : parsed.section !== undefined
-      ? { section: undefined, text: parsed.raw, raw: parsed.raw }
-      : parsed;
+  const typePrefix = resourceTypePrefix(parsed.section);
+  const textQuery =
+    typePrefix !== undefined
+      ? { ...parsed, section: typePrefix }
+      : parsed.section !== undefined
+        ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+        : parsed;
 
   return resources.filter((resource) => {
     if (
-      sectionIsResourceType &&
-      parsed.section !== undefined &&
-      !resourceMatchesTypePrefix(
+      typePrefix !== undefined
+      && !resourceMatchesTypePrefix(
         {
           id: resource.name,
           name: resource.name,
@@ -187,7 +199,7 @@ export function filterContentsResourcesBySearch(
           namespace: null,
           description: null,
         },
-        parsed.section,
+        typePrefix,
       )
     ) {
       return false;

@@ -11,6 +11,7 @@ import {
 import {
   availableHarnesses,
   configuredHarnesses,
+  harnessDuplicatePluginNames,
   harnessEntry,
   harnessesViewReducer,
   initialHarnessesViewState,
@@ -258,6 +259,13 @@ export function HarnessesWorkspace({
   const available = useMemo(() => availableHarnesses(inventory), [inventory]);
   const selection = inventory?.selection ?? null;
   const selectedEntry = harnessEntry(inventory, view.selectedId);
+  const collidingPluginNames = useMemo(
+    () =>
+      selectedEntry
+        ? harnessDuplicatePluginNames(selectedEntry.locations)
+        : new Set<string>(),
+    [selectedEntry],
+  );
   const selectedRole = view.selectedId ? roleOf(selection, view.selectedId) : null;
   const removeTarget = overlay.kind === "remove" ? overlay.id : null;
   const removeCopy =
@@ -283,7 +291,10 @@ export function HarnessesWorkspace({
     || (detailOpen && detailConfirmOpen);
 
   const openRow = (row: HarnessResourceRow) => {
-    dispatch({ type: "open-detail", target: resourceDetailTargetFor(row) });
+    dispatch({
+      type: "open-detail",
+      target: resourceDetailTargetFor(row, collidingPluginNames),
+    });
   };
 
   const onPick = async (id: HarnessId) => {
@@ -369,6 +380,7 @@ export function HarnessesWorkspace({
             }}
             onConfirmOpenChange={setDetailConfirmOpen}
             onBusyChange={setDetailBusy}
+            duplicatePluginNames={collidingPluginNames}
           />
         );
       case "inventory":
@@ -388,12 +400,14 @@ export function HarnessesWorkspace({
             role={selectedRole}
             search={view.search}
             typeTab={view.typeTab}
-            expandedLocations={view.expandedLocations}
+            originIds={view.originIds}
+            marketplaceIds={view.marketplaceIds}
             disabled={controlsDisabled}
             onSearch={(value) => dispatch({ type: "search", value })}
             onTypeTab={(value) => dispatch({ type: "type-tab", value })}
+            onOriginIds={(value) => dispatch({ type: "origin-filter", value })}
+            onMarketplaceIds={(value) => dispatch({ type: "marketplace-filter", value })}
             onMakeMain={onMakeMain}
-            onShowAll={(path) => dispatch({ type: "expand-location", path })}
             onOpen={openRow}
           />
         );

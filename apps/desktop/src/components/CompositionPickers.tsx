@@ -14,6 +14,7 @@ import {
   isCompositionPluginPackage,
 } from "../lib/composition-membership";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
+import { duplicatePluginNames } from "../lib/resource-display";
 import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import {
   filterLibraryResourcesBySearch,
@@ -88,15 +89,17 @@ function ResourcePickerRow({
   disabled,
   onToggle,
   onInspect,
+  duplicateNames,
 }: {
   resource: LibraryResource;
   selected: boolean;
   disabled: boolean;
   onToggle?: (id: string) => void;
   onInspect?: (resource: LibraryResource) => void;
+  duplicateNames?: ReadonlySet<string>;
 }) {
   const id = `resource-${resource.id}`;
-  const label = resourceDisplayName(resource);
+  const label = resourceDisplayName(resource, duplicateNames);
   const rowType = compositionSearchType(resource);
   const inspect =
     !onInspect || isCompositionPluginPackage(resource)
@@ -106,7 +109,7 @@ function ResourcePickerRow({
         };
   return (
     <ResourceRowRoot
-      hover={hoverModelFromLibraryResource(resource)}
+      hover={hoverModelFromLibraryResource(resource, duplicateNames)}
       testId={`create-resource-${label}`}
       disabled={disabled}
       onActivate={inspect}
@@ -160,6 +163,10 @@ export function ResourceSelectionList({
 }: ResourceSelectionListProps) {
   const [typeTab, setTypeTab] = useState<string | null>(null);
 
+  const collidingNames = useMemo(
+    () => duplicatePluginNames(resources),
+    [resources],
+  );
   const filteredResources = useMemo(
     () => filterLibraryResourcesBySearch(resources, filter),
     [filter, resources],
@@ -180,9 +187,11 @@ export function ResourceSelectionList({
             (resource) => compositionSearchType(resource) === effectiveType,
           );
     return [...rows].sort((left, right) =>
-      resourceDisplayName(left).localeCompare(resourceDisplayName(right)),
+      resourceDisplayName(left, collidingNames).localeCompare(
+        resourceDisplayName(right, collidingNames),
+      ),
     );
-  }, [effectiveType, filteredResources]);
+  }, [collidingNames, effectiveType, filteredResources]);
 
   const emptyLabel =
     resources.length === 0
@@ -220,6 +229,7 @@ export function ResourceSelectionList({
                 disabled={disabled}
                 onToggle={onToggle}
                 onInspect={onInspect}
+                duplicateNames={collidingNames}
               />
             ))
           )}

@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   CheckCheck,
   Clock,
+  Download,
   FileCode2,
   Folder,
   Hash,
@@ -20,6 +21,7 @@ import {
   MapPin,
   Pencil,
   RefreshCw,
+  Tag,
   TextQuote,
   Trash2,
 } from "lucide-react";
@@ -35,11 +37,18 @@ import {
   isResourceConflictError,
   patchLibraryResource,
   previewLibraryResourceDelete,
+  pullLibraryPluginVersions,
+  switchLibraryPluginVersion,
   syncLibraryResource,
   type ResourceDeletePlan,
   type ResourceSyncResult,
 } from "../lib/api/resource-mutate";
 import { formatLibraryTimestamp } from "../lib/library-timestamp";
+import {
+  hostPluginVersionHint,
+  hostPluginVersionOptions,
+  pluginVersionFieldVisible,
+} from "../lib/plugin-host-version";
 import {
   isPluginTypeResource,
   pluginRefShowsMarketplaceUrl,
@@ -74,6 +83,7 @@ import {
   formatResourceDisplayName,
 } from "../lib/resource-display";
 import type { LibraryResourceDetail } from "../lib/types";
+import { Combobox } from "@/components/ui/combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -115,6 +125,10 @@ function librarySyncPreviewTooltip(type: string): string {
   return `Compare this ${noun} with its origin`;
 }
 
+function libraryPullVersionsTooltip(): string {
+  return "Fetch versions from source";
+}
+
 function pendingSyncWriteTooltip(type: string): string {
   const noun = libraryResourceNoun(type);
   return `Write origin copy to this ${noun}`;
@@ -140,10 +154,16 @@ export interface ResourceDetailBodyProps {
   onBusyChange?: (busy: boolean) => void;
   onOpenOwningPlugin?: (pluginName: string) => void;
   showBack?: boolean;
+  duplicatePluginNames?: ReadonlySet<string>;
 }
 
-function displayName(resource: LibraryResourceDetail): string {
-  return formatResourceDisplayName(resource);
+function displayName(
+  resource: LibraryResourceDetail,
+  duplicateNames?: ReadonlySet<string>,
+): string {
+  return formatResourceDisplayName(resource, {
+    disambiguatePlugin: duplicateNames?.has(resource.name) ?? false,
+  });
 }
 
 function originLabel(resource: LibraryResourceDetail): string {
@@ -160,7 +180,17 @@ function isUntrackedDetail(resource: LibraryResourceDetail): boolean {
 }
 
 function isSyncableDetail(resource: LibraryResourceDetail): boolean {
-  return resource.origin_kind === "marketplace_link" || resource.type === "plugin";
+  if (isPluginTypeResource(resource.type)) {
+    return false;
+  }
+  return resource.origin_kind === "marketplace_link";
+}
+
+function isPullableDetail(resource: LibraryResourceDetail): boolean {
+  return (
+    isPluginTypeResource(resource.type) &&
+    resource.origin_kind === "marketplace_link"
+  );
 }
 
 function quoteResource(resource: { type: string; name: string }): string {
@@ -219,6 +249,7 @@ export function ResourceDetailBody({
   onBusyChange,
   onOpenOwningPlugin,
   showBack = true,
+  duplicatePluginNames,
 }: ResourceDetailBodyProps) {
   const generatedTitleId = useId();
   const titleId = titleIdProp ?? generatedTitleId;
@@ -556,6 +587,53 @@ export function ResourceDetailBody({
     }
   }
 
+  async function runSwitchVersion(version: string): Promise<void> {
+    if (!baseUrl || !target || !detail) {
+      return;
+    }
+    setMutating(true);
+    setActionError(null);
+    try {
+      const result = await switchLibraryPluginVersion(
+        baseUrl,
+        token,
+        target.selector,
+        version,
+      );
+      onSuccess?.(`Using ${detail.name} ${result.version}`);
+      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
+        pathHint: target.pathHint,
+      });
+      setDetail(next);
+      onLibraryChanged?.();
+    } catch (switchError: unknown) {
+      setActionError(errorMessage(switchError, "Could not switch plugin version"));
+    } finally {
+      setMutating(false);
+    }
+  }
+
+  async function runPull(): Promise<void> {
+    if (!baseUrl || !target || !detail) {
+      return;
+    }
+    setMutating(true);
+    setActionError(null);
+    try {
+      await pullLibraryPluginVersions(baseUrl, token, target.selector);
+      onSuccess?.(`Pulled ${detail.name} versions`);
+      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
+        pathHint: target.pathHint,
+      });
+      setDetail(next);
+      onLibraryChanged?.();
+    } catch (pullError: unknown) {
+      setActionError(errorMessage(pullError, "Could not pull plugin versions"));
+    } finally {
+      setMutating(false);
+    }
+  }
+
   async function openContainedPath(path: string, reveal = false): Promise<void> {
     if (!baseUrl || openingPath) {
       return;
@@ -669,6 +747,7 @@ export function ResourceDetailBody({
       (actionPath || (resourceOpenUsesSelector(detail) && target.selector)),
   );
   const showSync = Boolean(detail && !isUntrackedDetail(detail) && isSyncableDetail(detail));
+  const showPull = Boolean(detail && !isUntrackedDetail(detail) && isPullableDetail(detail));
   const showDelete = Boolean(detail && !isUntrackedDetail(detail));
   const showApply = Boolean(preview && preview.updated.length > 0);
   const deleteAttachers = detail ? attachersFromResourceDetail(detail) : null;
@@ -689,6 +768,19 @@ export function ResourceDetailBody({
 
   const actionButtons = (
     <>
+      {showPull ? (
+        <IconActionButton
+          primary
+          disabled={chromeLocked || busy}
+          title={libraryPullVersionsTooltip()}
+          label="Pull"
+          showLabel
+          onClick={() => void runPull()}
+          busy={busy}
+          spinnerSize={14}
+          icon={<Download size={16} aria-hidden />}
+        />
+      ) : null}
       {showSync ? (
         <IconActionButton
           primary
@@ -772,7 +864,7 @@ export function ResourceDetailBody({
           }
         }}
       >
-        {detail ? displayName(detail) : target.label}
+        {detail ? displayName(detail, duplicatePluginNames) : target.label}
         {chrome === "pane" && !fieldsReadOnly ? (
           <IconActionButton
             className="library-field-edit-trigger"
@@ -826,6 +918,10 @@ export function ResourceDetailBody({
     );
   }
 
+  const versionHint = detail
+    ? hostPluginVersionHint(detail.advertised_version, detail.current_version)
+    : null;
+
   const fields: ReactNode = loading ? (
     <p className="muted">Loading details…</p>
   ) : !detail && error ? (
@@ -873,6 +969,46 @@ export function ResourceDetailBody({
               readOnly
               mono
               display={detail.marketplace_url}
+              editing={false}
+              onStartEdit={() => undefined}
+            />
+          ) : null}
+          {pluginVersionFieldVisible(detail) ? (
+            <LibraryFieldRow
+              icon={<Tag size={16} aria-hidden />}
+              fieldName="Version"
+              readOnly
+              mono
+              display={
+                <div className="library-field-version">
+                  <div className="library-field-version-select">
+                    <Combobox
+                      value={detail.current_version ?? ""}
+                      options={hostPluginVersionOptions(
+                        detail.available_versions ?? [],
+                      )}
+                      disabled={disabled || busy || !baseUrl}
+                      placeholder={
+                        (detail.available_versions?.length ?? 0) > 0
+                          ? "Select version"
+                          : "Pull to list versions"
+                      }
+                      emptyLabel="No versions match"
+                      aria-label="Plugin version"
+                      onValueChange={(next) => {
+                        if (!next) {
+                          return;
+                        }
+                        void runSwitchVersion(next);
+                      }}
+                    />
+                  </div>
+                  {versionHint ? (
+                    <p className="library-field-version-hint">{versionHint}</p>
+                  ) : null}
+                </div>
+              }
+              placeholder="Unknown"
               editing={false}
               onStartEdit={() => undefined}
             />
@@ -1239,11 +1375,10 @@ export function ResourceDetailBody({
         <Chrome
           titleId={titleId}
           title={nameEditor}
-          typeLabel={typeLabel}
           onBack={onBack}
           showBack={showBack}
           backDisabled={confirm !== null}
-          actions={showSync || showDelete ? actionButtons : null}
+          actions={showPull || showSync || showDelete ? actionButtons : null}
         >
           <div className="library-detail-body">{fields}</div>
         </Chrome>
@@ -1272,7 +1407,7 @@ export function ResourceDetailBody({
         </div>
       </div>
       <div className="resource-detail-body">{fields}</div>
-      {showSync || showDelete ? (
+      {showPull || showSync || showDelete ? (
         <div className="resource-detail-actions">{actionButtons}</div>
       ) : null}
       {confirms}

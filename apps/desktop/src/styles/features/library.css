@@ -133,7 +133,7 @@
   top: 0;
   z-index: var(--z-sticky);
   margin: 0 0 0.5rem;
-  background: var(--bg);
+  background: var(--surface);
   flex-shrink: 0;
 }
 
@@ -310,7 +310,7 @@
   height: 7px;
   border-radius: 999px;
   background: var(--yellow);
-  box-shadow: 0 0 0 1px var(--bg);
+  box-shadow: 0 0 0 1px var(--surface);
   pointer-events: none;
 }
 
@@ -812,6 +812,11 @@
   line-height: 1.35;
 }
 
+.resource-hover-card-wrap {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .library-detail {
   flex: 1 1 auto;
   min-height: 0;
@@ -1000,6 +1005,32 @@
 
 .library-field-display.is-editable {
   cursor: text;
+}
+
+.library-field-version {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.library-field-version-select {
+  width: 100%;
+  max-width: 20rem;
+  font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: var(--text-meta);
+}
+
+.library-field-version-select input {
+  font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: var(--text-meta);
+}
+
+.library-field-version-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-meta);
 }
 
 .library-field-edit-trigger {

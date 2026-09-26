@@ -1,0 +1,5 @@
+kind: Features
+body: Pull marketplace plugin versions from the git source, pick one in a filterable combobox, and apply the selected version. Resource details header shows Pull/Sync and Delete only (no type label).
+time: 2026-09-26T04:10:00Z
+custom:
+  Issue: ""

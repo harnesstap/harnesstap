@@ -114,6 +114,61 @@ describe("scanner services", () => {
     }
   });
 
+  it("persists same-named plugin pins from different marketplaces", async () => {
+    const context = await createInitializedTestContext("scanner-plugin-markets");
+
+    try {
+      const scanner = await import("../../src/services/scanner.ts");
+      const pin = (marketplace: string, source: string) => ({
+        type: "plugin" as const,
+        name: "superpowers",
+        namespace: marketplace,
+        description: `Plugin pin: superpowers@${marketplace}`,
+        content: "{}",
+        metadata: {
+          source_kind: "marketplace",
+          marketplace_name: marketplace,
+        },
+        source,
+        origin_kind: "marketplace_link" as const,
+        origin_ref: `superpowers@${marketplace}`,
+      });
+
+      const out = scanner.persistScanResults(
+        [
+          {
+            platformId: "claude-code",
+            resources: [
+              pin(
+                "claude-plugins-official",
+                "~/.claude/plugins/installed_plugins.json",
+              ),
+              pin("superpowers-dev", "~/.claude/plugins/installed_plugins.json"),
+            ],
+          },
+          {
+            platformId: "cursor",
+            resources: [pin("cursor-public", "~/.cursor/plugins/")],
+          },
+        ],
+        { conflictPolicy: "skip", originRef: context.homeDir },
+      );
+
+      expect(
+        out.resolved
+          .filter((resource) => resource.type === "plugin")
+          .map((resource) => resource.origin_ref)
+          .sort(),
+      ).toEqual([
+        "superpowers@claude-plugins-official",
+        "superpowers@cursor-public",
+        "superpowers@superpowers-dev",
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("deduplicates resources by type and name when persisting", async () => {
     const context = await createInitializedTestContext("scanner-persist");
 

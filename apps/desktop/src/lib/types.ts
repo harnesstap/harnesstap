@@ -84,6 +84,14 @@ export interface PluginContainedResource {
   relative_path: string;
 }
 
+export interface PluginHostCacheVersion {
+  version: string;
+  path: string;
+  manifest_version: string | null;
+  current: boolean;
+  advertised: boolean;
+}
+
 export interface LibraryResourceDetail {
   id: string;
   type: string;
@@ -100,6 +108,9 @@ export interface LibraryResourceDetail {
   install_path?: string | null;
   marketplace_url?: string | null;
   contained_resources?: PluginContainedResource[];
+  current_version?: string | null;
+  advertised_version?: string | null;
+  available_versions?: PluginHostCacheVersion[];
   attached_profiles?: string[];
   attached_plugins?: string[];
   active_profile?: string | null;

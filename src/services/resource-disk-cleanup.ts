@@ -27,10 +27,13 @@ import type {
   ResourceMaterialization,
 } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
-import { getPlatformSerializer } from "./platform-serializers.js";
-import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isClaudeLocalMcpResource } from "./claude-local-mcp.js";
+import { isHostPluginPinResource } from "./host-plugin-serialize.js";
+import { hashGeneratedContent } from "./materialization-ownership.js";
+import { isPluginInstallRoot } from "./plugin-source-import.js";
+import { getPlatformSerializer } from "./platform-serializers.js";
 import { detectPlatforms, scanPlatform } from "./scanner.js";
+import { resolveInstallRoot } from "./resource-sync.js";
 
 interface Candidate {
   scope: ResourceDeleteLocation["scope"];
@@ -119,7 +122,21 @@ function assertSafeAbsolutePath(rootPath: string, absolutePath: string): string 
   return fullPath;
 }
 
+function expandUserPath(pathValue: string): string {
+  const trimmed = pathValue.trim();
+  if (trimmed === "~") {
+    return resolve(resolveHomeRoot());
+  }
+  if (trimmed.startsWith("~/")) {
+    return resolve(join(resolveHomeRoot(), trimmed.slice(2)));
+  }
+  return resolve(trimmed);
+}
+
 function toAbsoluteUnderRoot(rootPath: string, pathValue: string): string {
+  if (pathValue === "~" || pathValue.startsWith("~/")) {
+    return expandUserPath(pathValue);
+  }
   if (isAbsolute(pathValue)) {
     return resolve(pathValue);
   }
@@ -141,10 +158,66 @@ function inferActionFromPath(
   if (resource.type === "skill" && absolutePath.endsWith(`${sep}SKILL.md`)) {
     return "delete-directory";
   }
-  if (absolutePath.endsWith("mcp.json") || absolutePath.endsWith("hooks.json")) {
+  if (
+    resource.type === "plugin" &&
+    (isPluginInstallRoot(absolutePath) || isExistingDirectory(absolutePath))
+  ) {
+    return "delete-directory";
+  }
+  if (
+    absolutePath.endsWith("mcp.json") ||
+    absolutePath.endsWith("hooks.json") ||
+    absolutePath.endsWith("installed_plugins.json")
+  ) {
     return "edit-file";
   }
   return "delete-file";
+}
+
+function isExistingDirectory(absolutePath: string): boolean {
+  try {
+    return existsSync(absolutePath) && lstatSync(absolutePath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function pluginRegistryKeys(resource: Resource): string[] {
+  const keys = new Set<string>();
+  if (resource.origin_ref) {
+    keys.add(resource.origin_ref);
+  }
+  keys.add(resource.name);
+  if (resource.namespace) {
+    keys.add(`${resource.name}@${resource.namespace}`);
+  }
+  return [...keys];
+}
+
+function matchingRecordKeys(
+  record: Record<string, unknown>,
+  resource: Resource,
+): string[] {
+  const wanted = new Set(pluginRegistryKeys(resource));
+  return Object.keys(record).filter((key) => wanted.has(key));
+}
+
+function isInstalledPluginsRegistry(obj: Record<string, unknown>): boolean {
+  if (!obj.plugins || typeof obj.plugins !== "object" || Array.isArray(obj.plugins)) {
+    return false;
+  }
+  const values = Object.values(obj.plugins as Record<string, unknown>);
+  return values.length === 0 || values.every((value) => Array.isArray(value));
+}
+
+function shouldCollectHostPluginInstall(resource: Resource): boolean {
+  if (!isHostPluginPinResource(resource)) {
+    return false;
+  }
+  if (resource.source.startsWith("composition:")) {
+    return false;
+  }
+  return true;
 }
 
 function candidateKey(candidate: Candidate): string {
@@ -208,7 +281,7 @@ function collectSourceCandidates(
   const ownershipKey = ownershipKeyFor(resource);
   for (const raw of [resource.source, resource.origin_ref]) {
     if (!raw || raw === "manual") continue;
-    const absolute = resolve(raw);
+    const absolute = expandUserPath(raw);
     if (!existsSync(absolute)) continue;
     const rootPath = dirname(absolute);
     upsertCandidate(map, {
@@ -291,6 +364,107 @@ async function collectDiscoveryCandidates(
   }
 }
 
+function collectPluginInstallCandidates(
+  resource: Resource,
+  map: Map<string, Candidate>,
+): void {
+  if (!shouldCollectHostPluginInstall(resource)) {
+    return;
+  }
+
+  const homeRoot = resolveHomeRoot();
+  const ownershipKey = ownershipKeyFor(resource);
+  const originRef = resource.origin_ref || resource.name;
+  const installRoot = resolveInstallRoot(originRef, homeRoot);
+  if (installRoot && existsSync(installRoot)) {
+    upsertCandidate(map, {
+      scope: "global",
+      project_id: null,
+      project_name: null,
+      root_path: homeRoot,
+      path: installRoot,
+      relative_path: relativeUnderRoot(homeRoot, installRoot),
+      action: "delete-directory",
+      ownership_key: ownershipKey,
+      generated_hash: "",
+      managed_container: true,
+      platform_id: null,
+      from_ledger: false,
+    });
+  }
+
+  const registryPath = join(homeRoot, ".claude", "plugins", "installed_plugins.json");
+  if (existsSync(registryPath)) {
+    const content = readTextIfExists(registryPath);
+    if (content) {
+      try {
+        const parsed = JSON.parse(content) as unknown;
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          !Array.isArray(parsed) &&
+          isInstalledPluginsRegistry(parsed as Record<string, unknown>)
+        ) {
+          const plugins = (parsed as { plugins: Record<string, unknown> }).plugins;
+          if (matchingRecordKeys(plugins, resource).length > 0) {
+            upsertCandidate(map, {
+              scope: "global",
+              project_id: null,
+              project_name: null,
+              root_path: homeRoot,
+              path: registryPath,
+              relative_path: relativeUnderRoot(homeRoot, registryPath),
+              action: "edit-file",
+              ownership_key: ownershipKey,
+              generated_hash: "",
+              managed_container: false,
+              platform_id: "claude-code",
+              from_ledger: false,
+            });
+          }
+        }
+      } catch {
+        // Ignore unreadable registry; install-tree delete can still proceed.
+      }
+    }
+  }
+
+  const settingsPath = join(homeRoot, ".claude", "settings.json");
+  if (existsSync(settingsPath)) {
+    const content = readTextIfExists(settingsPath);
+    if (content) {
+      try {
+        const parsed = JSON.parse(content) as unknown;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const enabled = (parsed as { enabledPlugins?: unknown }).enabledPlugins;
+          if (enabled && typeof enabled === "object" && !Array.isArray(enabled)) {
+            if (
+              matchingRecordKeys(enabled as Record<string, unknown>, resource).length > 0
+            ) {
+              upsertCandidate(map, {
+                scope: "global",
+                project_id: null,
+                project_name: null,
+                root_path: homeRoot,
+                path: settingsPath,
+                relative_path: relativeUnderRoot(homeRoot, settingsPath),
+                action: "edit-file",
+                ownership_key: ownershipKey,
+                generated_hash: "",
+                managed_container: false,
+                platform_id: "claude-code",
+                from_ledger: false,
+              });
+            }
+          }
+        }
+      } catch {
+        // Ignore unreadable settings; install-tree delete can still proceed.
+      }
+    }
+  }
+}
+
 function readTextIfExists(path: string): string | null {
   if (!existsSync(path)) return null;
   try {
@@ -319,21 +493,64 @@ function tryEditAggregateContent(
       !Array.isArray(obj.mcpServers)
     ) {
       const servers = { ...(obj.mcpServers as Record<string, unknown>) };
-      if (!(resource.name in servers)) {
+      if (resource.name in servers) {
+        delete servers[resource.name];
+        const next: Record<string, unknown> = { ...obj };
+        if (Object.keys(servers).length === 0) {
+          delete next.mcpServers;
+        } else {
+          next.mcpServers = servers;
+        }
+        return {
+          ok: true,
+          content: `${JSON.stringify(next, null, 2)}\n`,
+          emptied: Object.keys(next).length === 0,
+        };
+      }
+    }
+
+    // Claude installed_plugins.json: { version, plugins: { "name@marketplace": [...] } }
+    if (isInstalledPluginsRegistry(obj)) {
+      const plugins = { ...(obj.plugins as Record<string, unknown>) };
+      const keys = matchingRecordKeys(plugins, resource);
+      if (keys.length === 0) {
         return { ok: false, reason: "Shared file section cannot be identified" };
       }
-      delete servers[resource.name];
-      const next: Record<string, unknown> = { ...obj };
-      if (Object.keys(servers).length === 0) {
-        delete next.mcpServers;
-      } else {
-        next.mcpServers = servers;
+      for (const key of keys) {
+        delete plugins[key];
       }
+      const next: Record<string, unknown> = { ...obj, plugins };
       return {
         ok: true,
         content: `${JSON.stringify(next, null, 2)}\n`,
         emptied: Object.keys(next).length === 0,
       };
+    }
+
+    // Claude settings.json: { enabledPlugins: { "name@marketplace": true } }
+    if (
+      obj.enabledPlugins &&
+      typeof obj.enabledPlugins === "object" &&
+      !Array.isArray(obj.enabledPlugins)
+    ) {
+      const enabled = { ...(obj.enabledPlugins as Record<string, unknown>) };
+      const keys = matchingRecordKeys(enabled, resource);
+      if (keys.length > 0) {
+        for (const key of keys) {
+          delete enabled[key];
+        }
+        const next: Record<string, unknown> = { ...obj };
+        if (Object.keys(enabled).length === 0) {
+          delete next.enabledPlugins;
+        } else {
+          next.enabledPlugins = enabled;
+        }
+        return {
+          ok: true,
+          content: `${JSON.stringify(next, null, 2)}\n`,
+          emptied: Object.keys(next).length === 0,
+        };
+      }
     }
 
     // Top-level keyed aggregate (some MCP layouts): { name: ... }
@@ -501,7 +718,10 @@ function evaluateCandidate(
       ...base,
       path: skillDir,
       action: "delete-directory",
-      reason: "Owned skill directory",
+      reason:
+        resource.type === "plugin"
+          ? "Owned plugin install directory"
+          : "Owned skill directory",
     };
   }
 
@@ -539,8 +759,12 @@ export async function planResourceDiskDeletion(
 
   const map = new Map<string, Candidate>();
   collectLedgerCandidates(resource, map);
-  collectSourceCandidates(resource, map);
-  await collectDiscoveryCandidates(resource, map);
+  if (resource.type === "plugin") {
+    collectPluginInstallCandidates(resource, map);
+  } else {
+    collectSourceCandidates(resource, map);
+    await collectDiscoveryCandidates(resource, map);
+  }
 
   const locations = [...map.values()]
     .map((candidate) => evaluateCandidate(candidate, resource))

@@ -3,27 +3,35 @@ import { parseHarnessInventory } from "../../apps/desktop/src/lib/api/harnesses.
 import {
   availableHarnesses,
   canRemoveHarness,
-  harnessSupportsLabel,
   configuredHarnesses,
+  type DiskPresence,
   defaultProposalChoice,
   detectProposal,
   diskPresenceLabel,
   filterHarnessLocations,
-  harnessesViewReducer,
-  harnessId,
-  harnessSummary,
-  initialHarnessesViewState,
-  locationRelationLabel,
-  removalCopy,
-  resourceDetailTargetFor,
-  selectionFrom,
-  selectionWith,
-  visibleLocationRows,
-  type DiskPresence,
+  groupHarnessLocationsByType,
   type HarnessEntry,
   type HarnessInventory,
   type HarnessLocation,
   type HarnessResourceRow,
+  harnessesViewReducer,
+  harnessId,
+  harnessMarketplaceFilterOptions,
+  harnessOriginFilterOptions,
+  harnessResourceMarketplace,
+  harnessResourceBadgeLabel,
+  harnessResourceDisplayName,
+  harnessDuplicatePluginNames,
+  harnessSummary,
+  harnessSupportsLabel,
+  initialHarnessesViewState,
+  locationRelationLabel,
+  locationSectionOwner,
+  removalCopy,
+  resourceDetailTargetFor,
+  selectionFrom,
+  selectionWith,
+  truncateResourceBadgeName,
 } from "../../apps/desktop/src/lib/harness-inventory.ts";
 
 const CLAUDE = harnessId("claude-code");
@@ -31,8 +39,22 @@ const CURSOR = harnessId("cursor");
 const CODEX = harnessId("codex");
 const GOOSE = harnessId("goose");
 
-function row(type: string, name: string, source: string): HarnessResourceRow {
-  return { id: `${type}-${name}`, type, name, description: "", source };
+function row(
+  type: string,
+  name: string,
+  source: string,
+  extra: Partial<Pick<HarnessResourceRow, "id" | "namespace" | "origin_kind" | "origin_ref">> = {},
+): HarnessResourceRow {
+  return {
+    id: extra.id ?? `${type}-${extra.origin_ref ?? name}`,
+    type,
+    name,
+    description: "",
+    source,
+    origin_kind: extra.origin_kind ?? null,
+    namespace: extra.namespace ?? null,
+    origin_ref: extra.origin_ref ?? null,
+  };
 }
 
 function entry(
@@ -406,17 +428,210 @@ describe("filterHarnessLocations", () => {
     ]);
   });
 
-  it("previews five rows until expanded", () => {
-    const many: HarnessLocation = {
-      ...SKILLS,
-      resources: ["a", "b", "c", "d", "e", "f", "g"].map((name) =>
-        row("skill", name, `~/.claude/skills/${name}/SKILL.md`),
-      ),
-    };
-    expect(visibleLocationRows(many, false).map((item) => item.name)).toEqual([
-      "a", "b", "c", "d", "e",
+  it("matches names and type prefixes case-insensitively", () => {
+    const byName = filterHarnessLocations(CLAUDE_ENTRY, "ALPHA", null);
+    expect(
+      byName.locations.flatMap((location) => location.resources.map((resource) => resource.name)),
+    ).toEqual(["alpha", "alpha-allow"]);
+
+    const byPrefix = filterHarnessLocations(CLAUDE_ENTRY, "SKILL:Beta", null);
+    expect(byPrefix.locations).toEqual([
+      { ...SKILLS, resources: [row("skill", "beta", "~/.claude/skills/beta/SKILL.md")] },
     ]);
-    expect(visibleLocationRows(many, true).length).toBe(7);
+  });
+
+  it("filters only the typed query and does not fuzzy-match misspellings", () => {
+    expect(filterHarnessLocations(CLAUDE_ENTRY, "alpah", null).locations).toEqual([]);
+    expect(filterHarnessLocations(CLAUDE_ENTRY, "skil:beta", null).locations).toEqual([]);
+    expect(
+      filterHarnessLocations(CLAUDE_ENTRY, "alph", null).locations.flatMap((location) =>
+        location.resources.map((resource) => resource.name),
+      ),
+    ).toEqual(["alpha", "alpha-allow"]);
+  });
+
+  it("filters by harness origin and marketplace independently of search", () => {
+    const mixed = entry("cursor", "detected", {
+      locations: [
+        location("~/.cursor/skills/", ["skills"], true, [
+          row("skill", "native", "~/.cursor/skills/native/SKILL.md"),
+        ]),
+        location("~/.claude/skills/", ["skills"], true, [
+          row("skill", "claude", "~/.claude/skills/claude/SKILL.md", {
+            origin_kind: "marketplace_link",
+            origin_ref: "claude@official",
+          }),
+        ], { relation: "related", relatedFrom: "Claude Code" }),
+        location("~/.claude/plugins/", ["plugins"], true, [
+          row("plugin", "demo", "~/.claude/plugins/installed_plugins.json", {
+            origin_kind: "marketplace_link",
+            origin_ref: "demo@official",
+          }),
+        ], { relation: "related", relatedFrom: "Claude Code" }),
+      ],
+    });
+
+    expect(harnessOriginFilterOptions(mixed).map((option) => option.id)).toEqual([
+      "cursor",
+      "claude-code",
+    ]);
+    expect(harnessMarketplaceFilterOptions(mixed)).toEqual([{ id: "official", label: "official" }]);
+    expect(
+      harnessResourceMarketplace({
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@official",
+      }),
+    ).toBe("official");
+
+    const byOrigin = filterHarnessLocations(mixed, "", null, {
+      origins: new Set(["claude-code"]),
+    });
+    expect(
+      byOrigin.locations.flatMap((location) => location.resources.map((resource) => resource.name)),
+    ).toEqual(["claude", "demo"]);
+    expect([...byOrigin.typeCounts.entries()]).toEqual([
+      ["skill", 1],
+      ["plugin", 1],
+    ]);
+
+    const byMarketplace = filterHarnessLocations(mixed, "", "skill", {
+      marketplaces: new Set(["official"]),
+    });
+    expect(byMarketplace.locations).toEqual([
+      {
+        ...mixed.locations[1],
+        resources: [
+          row("skill", "claude", "~/.claude/skills/claude/SKILL.md", {
+            origin_kind: "marketplace_link",
+            origin_ref: "claude@official",
+          }),
+        ],
+      },
+    ]);
+    expect([...byMarketplace.typeCounts.entries()]).toEqual([
+      ["skill", 1],
+      ["plugin", 1],
+    ]);
+  });
+
+  it("finds Claude-directory plugins by marketplace identity", () => {
+    const claude = entry("claude-code", "detected", {
+      locations: [
+        location("~/.claude/plugins/", ["plugins"], true, [
+          row(
+            "plugin",
+            "superpowers",
+            "~/.claude/plugins/installed_plugins.json",
+            {
+              namespace: "claude-plugins-official",
+              origin_ref: "superpowers@claude-plugins-official",
+            },
+          ),
+          row(
+            "plugin",
+            "superpowers",
+            "~/.claude/plugins/installed_plugins.json",
+            {
+              namespace: "superpowers-dev",
+              origin_ref: "superpowers@superpowers-dev",
+            },
+          ),
+        ]),
+      ],
+    });
+    const official = filterHarnessLocations(claude, "claude-plugins-official", null);
+    expect(official.locations[0]?.resources.map((item) => item.origin_ref)).toEqual([
+      "superpowers@claude-plugins-official",
+    ]);
+    expect(
+      official.locations[0]?.resources.map((item) =>
+        harnessResourceDisplayName(item, harnessDuplicatePluginNames(claude.locations)),
+      ),
+    ).toEqual(["superpowers@claude-plugins-official"]);
+    const byName = filterHarnessLocations(claude, "superpowers", null);
+    expect(byName.locations[0]?.resources).toHaveLength(2);
+  });
+
+  it("groups locations by resource type then harness section", () => {
+    const cursor = entry("cursor", "detected", {
+      locations: [
+        location("~/.cursor/skills/", ["skills"], true, [
+          row("skill", "native", "~/.cursor/skills/native/SKILL.md"),
+        ]),
+        location("~/.cursor/skills-cursor/", ["skills"], true, [
+          row("skill", "builtin", "~/.cursor/skills-cursor/builtin/SKILL.md"),
+        ], { relation: "host-managed" }),
+        location("~/.agents/skills/", ["skills"], true, [
+          row("skill", "hub", "~/.agents/skills/hub/SKILL.md"),
+        ], { relation: "shared" }),
+        location("~/.claude/skills/", ["skills"], true, [
+          row("skill", "claude", "~/.claude/skills/claude/SKILL.md"),
+        ], { relation: "related", relatedFrom: "Claude Code" }),
+        location("~/.cursor/mcp.json", ["settings"], true, [
+          row("mcp_server", "slack", "~/.cursor/mcp.json"),
+        ]),
+      ],
+    });
+    const groups = groupHarnessLocationsByType(cursor, cursor.locations);
+    expect(groups.map((group) => group.type)).toEqual(["mcp_server", "skill"]);
+    const skills = groups[1];
+    expect(skills?.sections.map((section) => [section.owner.iconId, section.owner.name, section.path])).toEqual([
+      ["cursor", "cursor", "~/.cursor/skills/"],
+      ["cursor", "cursor", "~/.cursor/skills-cursor/"],
+      ["agents", "Agents", "~/.agents/skills/"],
+      ["claude-code", "Claude Code", "~/.claude/skills/"],
+    ]);
+    expect(groups[0]?.sections[0]?.resources.map((item) => item.name)).toEqual(["slack"]);
+  });
+
+  it("keeps empty surface sections and truncates badge titles", () => {
+    expect(truncateResourceBadgeName("short")).toBe("short");
+    expect(truncateResourceBadgeName("abcdefghijklmnopqrstuvwxyz")).toBe(
+      "abcdefghijklmnopqrst...",
+    );
+    expect(
+      harnessResourceBadgeLabel(
+        row("plugin", "superpowers", "~/.claude/plugins/installed_plugins.json", {
+          origin_ref: "superpowers@claude-plugins-official",
+        }),
+      ),
+    ).toBe("superpowers");
+    const colliding = [
+      row("plugin", "superpowers", "~/.claude/plugins/installed_plugins.json", {
+        origin_ref: "superpowers@claude-plugins-official",
+      }),
+      row("plugin", "superpowers", "~/.claude/plugins/installed_plugins.json", {
+        origin_ref: "superpowers@superpowers-dev",
+      }),
+    ];
+    const dupes = harnessDuplicatePluginNames([{ resources: colliding }]);
+    expect(harnessResourceBadgeLabel(colliding[0]!, dupes)).toBe(
+      "superpowers@claude-plugins-official",
+    );
+    const emptyRules = location("~/.claude/rules/", ["rules"], false, []);
+    const groups = groupHarnessLocationsByType(CLAUDE_ENTRY, [emptyRules]);
+    expect(groups).toEqual([
+      {
+        type: "rule",
+        sections: [
+          {
+            path: "~/.claude/rules/",
+            onDisk: false,
+            owner: { iconId: CLAUDE, name: "claude-code" },
+            resources: [],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("labels Agents for the shared ~/.agents hub", () => {
+    expect(
+      locationSectionOwner(
+        location("~/.agents/skills/", ["skills"], true, [], { relation: "shared" }),
+        CLAUDE_ENTRY,
+      ),
+    ).toEqual({ iconId: "agents", name: "Agents" });
   });
 
   it("builds a resource detail target from the library id and source", () => {
@@ -457,6 +672,8 @@ describe("parseHarnessInventory", () => {
                     name: "alpha",
                     description: "A",
                     source: "~/.claude/skills/alpha/SKILL.md",
+                    origin_kind: null,
+                    origin_ref: null,
                   },
                 ],
               },
@@ -488,6 +705,9 @@ describe("parseHarnessInventory", () => {
                   name: "alpha",
                   description: "A",
                   source: "~/.claude/skills/alpha/SKILL.md",
+                  origin_kind: null,
+                  namespace: null,
+                  origin_ref: null,
                 },
               ],
             },
@@ -531,8 +751,9 @@ describe("harnessesViewReducer", () => {
       pane: { mode: "inventory" },
       search: "",
       typeTab: null,
+      originIds: [],
+      marketplaceIds: [],
       editing: false,
-      expandedLocations: new Set(),
     });
   });
 
@@ -548,9 +769,8 @@ describe("harnessesViewReducer", () => {
     });
   });
 
-  it("select switches harness, returns to inventory, and clears expansions", () => {
+  it("select switches harness and returns to inventory", () => {
     let state = initialHarnessesViewState(inventory);
-    state = harnessesViewReducer(state, { type: "expand-location", path: SKILLS.path });
     state = harnessesViewReducer(state, { type: "search", value: "alpha" });
     state = harnessesViewReducer(state, { type: "open-detail", target });
     expect(harnessesViewReducer(state, { type: "select", id: CURSOR })).toEqual({
@@ -558,8 +778,9 @@ describe("harnessesViewReducer", () => {
       pane: { mode: "inventory" },
       search: "alpha",
       typeTab: null,
+      originIds: [],
+      marketplaceIds: [],
       editing: false,
-      expandedLocations: new Set(),
     });
   });
 
@@ -577,6 +798,8 @@ describe("harnessesViewReducer", () => {
     let state = initialHarnessesViewState(inventory);
     state = harnessesViewReducer(state, { type: "select", id: CURSOR });
     state = harnessesViewReducer(state, { type: "type-tab", value: "skill" });
+    state = harnessesViewReducer(state, { type: "origin-filter", value: ["claude-code"] });
+    state = harnessesViewReducer(state, { type: "marketplace-filter", value: ["official"] });
     state = harnessesViewReducer(state, { type: "toggle-edit" });
     expect(harnessesViewReducer(state, { type: "reset", inventory })).toEqual(
       initialHarnessesViewState(inventory),

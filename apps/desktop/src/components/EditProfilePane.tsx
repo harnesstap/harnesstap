@@ -21,6 +21,7 @@ import {
   mergeCompositionMembership,
 } from "../lib/composition-membership";
 import { formatLastEditLine } from "../lib/library-timestamp";
+import { duplicatePluginNames } from "../lib/resource-display";
 import { resourceDisplayName } from "../lib/resource-search";
 import type {
   CatalogPlugin,
@@ -273,6 +274,10 @@ export function EditProfilePane({
       }),
     [plugins, profileName, resources],
   );
+  const collidingPluginNames = useMemo(
+    () => duplicatePluginNames(membership),
+    [membership],
+  );
 
   const selectedPluginIds = useMemo(() => {
     if (!detail) {
@@ -461,7 +466,7 @@ export function EditProfilePane({
       return;
     }
     const wasSelected = selectedMembershipIds.includes(id);
-    const label = resourceDisplayName(entry);
+    const label = resourceDisplayName(entry, collidingPluginNames);
     const result = isCompositionPluginPackage(entry)
       ? togglePlugin(id)
       : toggleResource(id);
@@ -612,7 +617,7 @@ export function EditProfilePane({
             onInspectResource={(resource) => {
               setInspectTarget({
                 selector: resource.id,
-                label: resourceDisplayName(resource),
+                label: resourceDisplayName(resource, collidingPluginNames),
                 pathHint: resource.source,
               });
             }}
@@ -658,6 +663,7 @@ export function EditProfilePane({
         disabled={controlsDisabled}
         onClose={() => setInspectTarget(null)}
         onSuccess={onSuccess}
+        duplicatePluginNames={collidingPluginNames}
         onLibraryChanged={() => {
           if (!baseUrl) {
             return;

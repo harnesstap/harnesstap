@@ -147,3 +147,60 @@ export async function patchLibraryResource(
     return throwAgentError(response, "Could not update resource");
   }
 }
+
+export interface PluginVersionSwitchResult {
+  version: string;
+  install_path: string;
+  sync: ResourceSyncResult;
+}
+
+export interface PluginVersionPullResult {
+  current_version: string | null;
+  advertised_version: string | null;
+  available_versions: Array<{
+    version: string;
+    path: string;
+    manifest_version: string | null;
+    current: boolean;
+    advertised: boolean;
+  }>;
+}
+
+export async function pullLibraryPluginVersions(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+): Promise<PluginVersionPullResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/library/resources/${encodeURIComponent(selector)}/pull`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not pull plugin versions");
+  }
+  return (await response.json()) as PluginVersionPullResult;
+}
+
+export async function switchLibraryPluginVersion(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  version: string,
+): Promise<PluginVersionSwitchResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/library/resources/${encodeURIComponent(selector)}/version`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ version }),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not switch plugin version");
+  }
+  return (await response.json()) as PluginVersionSwitchResult;
+}

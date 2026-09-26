@@ -180,6 +180,9 @@ describe("pluginResourceShowExtras", () => {
         install_path: null,
         marketplace_url: null,
         contained_resources: [],
+        current_version: null,
+        advertised_version: null,
+        available_versions: [],
       });
     } finally {
       await ctx.cleanup();

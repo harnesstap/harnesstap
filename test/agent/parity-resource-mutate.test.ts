@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { tryHandle } from "../../src/agent/parity-handlers/resource-mutate.ts";
@@ -94,6 +94,18 @@ describe("tryHandle resource-mutate", () => {
       { headers: {} },
     );
     expect(sync?.status).toBe(401);
+    const version = await handle(
+      "POST",
+      "/v1/library/resources/plugin%3Ademo/version",
+      { headers: {}, body: { version: "2.0.0" } },
+    );
+    expect(version?.status).toBe(401);
+    const pull = await handle(
+      "POST",
+      "/v1/library/resources/plugin%3Ademo/pull",
+      { headers: {} },
+    );
+    expect(pull?.status).toBe(401);
     const del = await handle("DELETE", "/v1/library/resources/skill%3Aship", {
       headers: {},
     });
@@ -103,6 +115,34 @@ describe("tryHandle resource-mutate", () => {
       body: { name: "nope" },
     });
     expect(patch?.status).toBe(401);
+  });
+
+  it("POST pull finds a marketplace pin by origin_ref", async () => {
+    await withHome("parity-mutate-pull-origin-ref");
+    createResource({
+      type: "plugin",
+      name: "superpowers",
+      namespace: "",
+      description: "Plugin pin: superpowers@superpowers-marketplace",
+      content: "{}",
+      metadata: { resolved_version: "5.1.0" },
+      source: "composition:plugin",
+      origin_kind: "marketplace_link",
+      origin_ref: "superpowers@superpowers-marketplace",
+    });
+    const missing = await handle(
+      "POST",
+      "/v1/library/resources/plugin%3Amissing%40nowhere/pull",
+    );
+    expect(missing?.status).toBe(404);
+    const response = await handle(
+      "POST",
+      `/v1/library/resources/${encodeURIComponent("superpowers@superpowers-marketplace")}/pull`,
+    );
+    expect(response).not.toBeNull();
+    expect(response?.status).not.toBe(404);
+    const body = (await response?.json()) as { error?: string };
+    expect(body.error).not.toBe("not_found");
   });
 
   it("DELETE returns 200 then the row is gone", async () => {
@@ -295,6 +335,84 @@ describe("tryHandle resource-mutate", () => {
     expect(body.deleted_files).toEqual([filePath]);
     expect(existsSync(filePath)).toBe(false);
     expect(getResource(resource.id)).toBeUndefined();
+  });
+
+  it("DELETE library_and_disk removes a host plugin install then the library row", async () => {
+    const home = await withHome("parity-mutate-delete-plugin-pin");
+    const sha = "d183d812c10a49c75de5dd647f7f2e448c8de366";
+    const installRoot = join(
+      home.homeDir,
+      ".claude",
+      "plugins",
+      "cache",
+      "__DEFAULT__",
+      "caveman",
+      sha,
+    );
+    mkdirSync(join(installRoot, ".claude-plugin"), { recursive: true });
+    writeFileSync(
+      join(installRoot, ".claude-plugin", "plugin.json"),
+      JSON.stringify({ name: "caveman", version: "1.0.0" }),
+    );
+    const registryPath = join(
+      home.homeDir,
+      ".claude",
+      "plugins",
+      "installed_plugins.json",
+    );
+    writeFileSync(
+      registryPath,
+      `${JSON.stringify({
+        version: 2,
+        plugins: {
+          "caveman@__DEFAULT__": [
+            {
+              scope: "user",
+              installPath: `cache/__DEFAULT__/caveman/${sha}`,
+              version: sha,
+            },
+          ],
+        },
+      })}\n`,
+    );
+    const resource = createResource({
+      type: "plugin",
+      name: "caveman",
+      namespace: "__DEFAULT__",
+      description: "cached",
+      content: "{}",
+      metadata: {
+        source_kind: "marketplace",
+        marketplace_name: "__DEFAULT__",
+        resolved_version: sha,
+        sync_status: "never_synced",
+        portable: "reference",
+      },
+      source: "~/.claude/plugins/installed_plugins.json",
+      origin_kind: "marketplace_link",
+      origin_ref: "caveman@__DEFAULT__",
+    });
+
+    const response = await handle(
+      "DELETE",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}`,
+      { body: { mode: "library_and_disk" } },
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as {
+      mode: string;
+      deleted_files: string[];
+      edited_files: string[];
+    };
+    expect(body.mode).toBe("library_and_disk");
+    expect(body.deleted_files).toContain(installRoot);
+    expect(body.edited_files).toContain(registryPath);
+    expect(existsSync(installRoot)).toBe(false);
+    expect(getResource(resource.id)).toBeUndefined();
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8")) as {
+      plugins: Record<string, unknown>;
+    };
+    expect(registry.plugins["caveman@__DEFAULT__"]).toBeUndefined();
   });
 
   it("DELETE library_and_disk returns 409 until force when the disk copy drifted", async () => {
@@ -583,5 +701,80 @@ describe("PATCH /v1/library/resources/:selector", () => {
     expect(response?.status).toBe(409);
     const body = (await response?.json()) as { error: string };
     expect(body.error).toBe("resource_exists");
+  });
+
+  it("POST version retargets the host cache pointer", async () => {
+    const context = await withHome("parity-mutate-version");
+    const v1 = join(
+      context.homeDir,
+      ".claude",
+      "plugins",
+      "cache",
+      "team-mkt",
+      "demo",
+      "1.0.0",
+    );
+    const v2 = join(
+      context.homeDir,
+      ".claude",
+      "plugins",
+      "cache",
+      "team-mkt",
+      "demo",
+      "2.0.0",
+    );
+    for (const root of [v1, v2]) {
+      mkdirSync(join(root, ".claude-plugin"), { recursive: true });
+      writeFileSync(
+        join(root, ".claude-plugin", "plugin.json"),
+        JSON.stringify({
+          name: "demo",
+          version: root.endsWith("2.0.0") ? "2.0.0" : "1.0.0",
+        }),
+      );
+    }
+    mkdirSync(join(context.homeDir, ".claude", "plugins"), { recursive: true });
+    writeFileSync(
+      join(context.homeDir, ".claude", "plugins", "installed_plugins.json"),
+      JSON.stringify({
+        version: 2,
+        plugins: {
+          "demo@team-mkt": [
+            {
+              scope: "user",
+              installPath: "cache/team-mkt/demo/1.0.0",
+              version: "1.0.0",
+            },
+          ],
+        },
+      }),
+    );
+    const pin = createResource({
+      type: "plugin",
+      name: "demo",
+      namespace: "team-mkt",
+      description: "Plugin pin: demo@team-mkt",
+      content: "{}",
+      metadata: { resolved_version: "1.0.0" },
+      source: "composition:plugin",
+      origin_kind: "marketplace_link",
+      origin_ref: "demo@team-mkt",
+    });
+    const response = await handle(
+      "POST",
+      `/v1/library/resources/${encodeURIComponent(pin.id)}/version`,
+      { body: { version: "2.0.0" } },
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as { version: string; install_path: string };
+    expect(body.version).toBe("2.0.0");
+    expect(body.install_path).toBe(v2);
+    const installed = JSON.parse(
+      readFileSync(
+        join(context.homeDir, ".claude", "plugins", "installed_plugins.json"),
+        "utf8",
+      ),
+    ) as { plugins: Record<string, Array<{ version: string }>> };
+    expect(installed.plugins["demo@team-mkt"]?.[0]?.version).toBe("2.0.0");
   });
 });

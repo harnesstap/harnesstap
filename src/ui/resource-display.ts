@@ -59,12 +59,61 @@ export function resourceHumanName(resource: {
   return isAgentsMdResource(resource) ? AGENTS_MD_DISPLAY_NAME : resource.name;
 }
 
-export function formatResourceDisplayName(resource: {
-  name: string;
-  namespace?: string | null;
-  source?: string | null;
-}): string {
+export type PluginDisplayOptions = {
+  /** When true, plugin refs include `@marketplace` so colliding names stay distinct. */
+  disambiguatePlugin?: boolean;
+};
+
+/** Plugin ref names that appear more than once. Authored plugin packages are ignored. */
+export function duplicatePluginNames(
+  resources: readonly {
+    name: string;
+    type?: string | null;
+    listKind?: string | null;
+  }[],
+): Set<string> {
+  const counts = new Map<string, number>();
+  for (const resource of resources) {
+    if (resource.type !== "plugin" || resource.listKind === "plugin-package") {
+      continue;
+    }
+    const name = resource.name.trim();
+    if (!name) {
+      continue;
+    }
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const duplicates = new Set<string>();
+  for (const [name, count] of counts) {
+    if (count >= 2) {
+      duplicates.add(name);
+    }
+  }
+  return duplicates;
+}
+
+export function formatResourceDisplayName(
+  resource: {
+    name: string;
+    type?: string | null;
+    namespace?: string | null;
+    origin_ref?: string | null;
+    source?: string | null;
+  },
+  options?: PluginDisplayOptions,
+): string {
   const base = resourceHumanName(resource);
+  if (resource.type === "plugin") {
+    if (!options?.disambiguatePlugin) {
+      return base;
+    }
+    const ref = resource.origin_ref?.trim() ?? "";
+    if (ref.includes("@")) {
+      return ref;
+    }
+    const marketplace = resource.namespace?.trim() ?? "";
+    return marketplace ? `${base}@${marketplace}` : base;
+  }
   const namespace = resource.namespace?.trim() ?? "";
   return namespace ? `${base}@${namespace}` : base;
 }

@@ -47,6 +47,13 @@ describe("filterLibraryResourcesBySearch", () => {
     expect(filtered.map((row) => row.name)).toEqual(["migrating-dbt-core"]);
   });
 
+  it("treats type prefixes as case-insensitive and does not fuzzy-match typos", () => {
+    expect(
+      filterLibraryResourcesBySearch(rows, "SKILL:DBT").map((row) => row.name),
+    ).toEqual(["migrating-dbt-core"]);
+    expect(filterLibraryResourcesBySearch(rows, "skil:dbt")).toEqual([]);
+  });
+
   it("filters by plain text across name and description", () => {
     const filtered = filterLibraryResourcesBySearch(rows, "api");
     expect(filtered.map((row) => row.name)).toEqual(["api-design"]);
@@ -76,6 +83,35 @@ describe("filterLibraryResourcesBySearch", () => {
     expect(
       filterLibraryResourcesBySearch(agents, "agents-instructions").map((row) => row.id),
     ).toEqual(["a"]);
+  });
+
+  it("matches plugin marketplace origin_ref", () => {
+    const plugins = [
+      resource({
+        id: "p1",
+        type: "plugin",
+        name: "superpowers",
+        namespace: "claude-plugins-official",
+        origin_ref: "superpowers@claude-plugins-official",
+      }),
+      resource({
+        id: "p2",
+        type: "plugin",
+        name: "superpowers",
+        namespace: "cursor-public",
+        origin_ref: "superpowers@cursor-public",
+      }),
+    ];
+    expect(
+      filterLibraryResourcesBySearch(plugins, "claude-plugins-official").map(
+        (row) => row.id,
+      ),
+    ).toEqual(["p1"]);
+    expect(
+      filterLibraryResourcesBySearch(plugins, "superpowers@cursor-public").map(
+        (row) => row.id,
+      ),
+    ).toEqual(["p2"]);
   });
 
   it("maps legacy plugin_pin: prefix to plugin rows", () => {

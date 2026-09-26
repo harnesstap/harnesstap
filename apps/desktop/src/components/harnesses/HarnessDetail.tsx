@@ -4,7 +4,9 @@ import { noResultsTitle } from "../../lib/empty-copy";
 import {
   diskPresenceLabel,
   filterHarnessLocations,
+  groupHarnessLocationsByType,
   harnessSummary,
+  isHarnessFacetFilterActive,
   NO_ATTENTION,
   type HarnessEntry,
   type HarnessResourceRow,
@@ -15,7 +17,8 @@ import { EmptyState } from "../EmptyState";
 import { HarnessIcon } from "../HarnessIcons";
 import { IconActionButton } from "../IconActionButton";
 import { LiveHeader } from "../live/LiveHeader";
-import { HarnessLocationPanel } from "./HarnessLocationPanel";
+import { HarnessFilterMenu } from "./HarnessFilterMenu";
+import { HarnessInventoryList } from "./HarnessInventoryList";
 
 const ICON_SIZE = 16;
 const TITLE_ICON_SIZE = 18;
@@ -25,12 +28,14 @@ export interface HarnessDetailProps {
   role: HarnessRole;
   search: string;
   typeTab: string | null;
-  expandedLocations: ReadonlySet<string>;
+  originIds: readonly string[];
+  marketplaceIds: readonly string[];
   disabled: boolean;
   onSearch: (value: string) => void;
   onTypeTab: (value: string | null) => void;
+  onOriginIds: (value: readonly string[]) => void;
+  onMarketplaceIds: (value: readonly string[]) => void;
   onMakeMain: () => void;
-  onShowAll: (path: string) => void;
   onOpen: (row: HarnessResourceRow) => void;
 }
 
@@ -46,23 +51,42 @@ export function HarnessDetail({
   role,
   search,
   typeTab,
-  expandedLocations,
+  originIds,
+  marketplaceIds,
   disabled,
   onSearch,
   onTypeTab,
+  onOriginIds,
+  onMarketplaceIds,
   onMakeMain,
-  onShowAll,
   onOpen,
 }: HarnessDetailProps) {
   const filtered = useMemo(
-    () => filterHarnessLocations(entry, search, typeTab),
-    [entry, search, typeTab],
+    () =>
+      filterHarnessLocations(entry, search, typeTab, {
+        origins: new Set(originIds),
+        marketplaces: new Set(marketplaceIds),
+      }),
+    [entry, marketplaceIds, originIds, search, typeTab],
   );
-  const filtering = search.trim().length > 0 || typeTab !== null;
+  const groups = useMemo(
+    () => groupHarnessLocationsByType(entry, filtered.locations),
+    [entry, filtered.locations],
+  );
+  const filtering =
+    search.trim().length > 0
+    || typeTab !== null
+    || isHarnessFacetFilterActive({
+      origins: new Set(originIds),
+      marketplaces: new Set(marketplaceIds),
+    });
   const clearFilters = () => {
     onSearch("");
     onTypeTab(null);
+    onOriginIds([]);
+    onMarketplaceIds([]);
   };
+  const empty = groups.length === 0;
 
   return (
     <div className="edit-profile-body harness-detail" data-testid="harness-detail">
@@ -97,12 +121,23 @@ export function HarnessDetail({
         attention={NO_ATTENTION}
         typeTab={typeTab}
         onTypeTab={onTypeTab}
+        compactSearch
+        searchTrailing={
+          <HarnessFilterMenu
+            entry={entry}
+            originIds={originIds}
+            marketplaceIds={marketplaceIds}
+            disabled={disabled}
+            onOriginsChange={onOriginIds}
+            onMarketplacesChange={onMarketplaceIds}
+          />
+        }
       />
-      {filtered.locations.length === 0 ? (
+      {empty ? (
         filtering ? (
           <EmptyState
             title={noResultsTitle(search)}
-            body="Clear filters to see every location."
+            body="Clear filters to see every resource."
             action={{
               label: "Clear filters",
               onClick: clearFilters,
@@ -111,23 +146,17 @@ export function HarnessDetail({
           />
         ) : (
           <EmptyState
-            title="No locations"
+            title="No resources"
             body="This harness declares no global paths."
           />
         )
       ) : (
-        <div className="harness-location-list">
-          {filtered.locations.map((location) => (
-            <HarnessLocationPanel
-              key={location.path}
-              location={location}
-              expanded={expandedLocations.has(location.path)}
-              disabled={disabled}
-              onShowAll={() => onShowAll(location.path)}
-              onOpen={onOpen}
-            />
-          ))}
-        </div>
+        <HarnessInventoryList
+          entry={entry}
+          locations={filtered.locations}
+          disabled={disabled}
+          onOpen={onOpen}
+        />
       )}
     </div>
   );

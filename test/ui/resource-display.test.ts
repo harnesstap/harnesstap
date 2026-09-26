@@ -3,6 +3,7 @@ import {
   AGENTS_MD_DISPLAY_NAME,
   containedFileStem,
   formatOriginDisplayLabel,
+  duplicatePluginNames,
   formatResourceDisplayName,
   formatResourceScopeLabel,
   inferContainedFileType,
@@ -35,6 +36,40 @@ describe("resource display labels", () => {
       }),
     ).toBe(`${AGENTS_MD_DISPLAY_NAME}@project default`);
     expect(formatResourceDisplayName({ name: "api" })).toBe("api");
+  });
+
+  it("omits marketplace on a unique plugin and adds it when names collide", () => {
+    expect(
+      formatResourceDisplayName({
+        name: "ripwire",
+        type: "plugin",
+        origin_ref: "ripwire@claude-plugins-official",
+      }),
+    ).toBe("ripwire");
+    expect(
+      formatResourceDisplayName(
+        {
+          name: "superpowers",
+          type: "plugin",
+          origin_ref: "superpowers@claude-plugins-official",
+        },
+        { disambiguatePlugin: true },
+      ),
+    ).toBe("superpowers@claude-plugins-official");
+    expect(
+      duplicatePluginNames([
+        { name: "ripwire", type: "plugin" },
+        { name: "superpowers", type: "plugin" },
+        { name: "superpowers", type: "plugin" },
+        { name: "ship", type: "skill" },
+      ]),
+    ).toEqual(new Set(["superpowers"]));
+    expect(
+      duplicatePluginNames([
+        { name: "superpowers", type: "plugin", listKind: "plugin-package" },
+        { name: "superpowers", type: "plugin" },
+      ]),
+    ).toEqual(new Set());
   });
 
   it("labels empty namespace as global", () => {

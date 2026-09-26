@@ -1,4 +1,5 @@
 import type { LibraryPluginHead } from "./api/library-plugins";
+import { duplicatePluginNames } from "./resource-display";
 import { resourceDisplayName } from "./resource-search";
 import { resourceTypeTabLabel } from "./resource-type-tabs";
 import type { LibraryResource } from "./types";
@@ -40,6 +41,7 @@ export function libraryFilterTypeLabel(filterType: string): string {
 export function groupLibraryListByFilterType(
   entries: LibraryListEntry[],
 ): Array<{ type: string; label: string; resources: LibraryListEntry[] }> {
+  const collidingNames = duplicatePluginNames(entries);
   const groups = new Map<string, LibraryListEntry[]>();
   for (const entry of entries) {
     const key = libraryFilterType(entry);
@@ -56,7 +58,9 @@ export function groupLibraryListByFilterType(
       type,
       label: libraryFilterTypeLabel(type),
       resources: [...rows].sort((a, b) =>
-        resourceDisplayName(a).localeCompare(resourceDisplayName(b)),
+        resourceDisplayName(a, collidingNames).localeCompare(
+          resourceDisplayName(b, collidingNames),
+        ),
       ),
     }));
 }
@@ -92,6 +96,11 @@ export function mergeLibraryList(
 
 export function isPluginRefRow(entry: LibraryListEntry): boolean {
   return entry.listKind === "resource" && entry.type === "plugin";
+}
+
+/** Marketplace plugin refs are identity, not profile-scoped copies of a base name. */
+export function libraryRowTreatAsScoped(entry: LibraryListEntry): boolean {
+  return entry.listKind === "resource" && entry.type !== "plugin";
 }
 
 export function libraryRowBadge(entry: LibraryListEntry): string | null {
@@ -165,15 +174,21 @@ export type ScopedLibraryRow<T> = T & { scopedProfile: string | null };
 export function groupScopedLibraryRows<T>(
   rows: readonly T[],
   displayNameOf: (row: T) => string,
+  options?: { treatAsScoped?: (row: T) => boolean },
 ): Array<ScopedLibraryRow<T>> {
+  const treatAsScoped = options?.treatAsScoped ?? (() => true);
   const bases = new Set<string>();
   for (const row of rows) {
+    if (!treatAsScoped(row)) continue;
     const parsed = parseLibraryScopeName(displayNameOf(row));
     if (parsed.profile === null) {
       bases.add(parsed.base);
     }
   }
   const decorated: Array<ScopedLibraryRow<T>> = rows.map((row) => {
+    if (!treatAsScoped(row)) {
+      return { ...row, scopedProfile: null };
+    }
     const parsed = parseLibraryScopeName(displayNameOf(row));
     const scopedProfile =
       parsed.profile !== null && bases.has(parsed.base) ? parsed.profile : null;
@@ -184,12 +199,16 @@ export function groupScopedLibraryRows<T>(
     const rightName = displayNameOf(right);
     const leftParsed = parseLibraryScopeName(leftName);
     const rightParsed = parseLibraryScopeName(rightName);
-    const leftKey = leftParsed.profile !== null && bases.has(leftParsed.base)
-      ? leftParsed.base
-      : leftName;
-    const rightKey = rightParsed.profile !== null && bases.has(rightParsed.base)
-      ? rightParsed.base
-      : rightName;
+    const leftKey =
+      treatAsScoped(left) && leftParsed.profile !== null && bases.has(leftParsed.base)
+        ? leftParsed.base
+        : leftName;
+    const rightKey =
+      treatAsScoped(right) &&
+      rightParsed.profile !== null &&
+      bases.has(rightParsed.base)
+        ? rightParsed.base
+        : rightName;
     const byBase = leftKey.localeCompare(rightKey);
     if (byBase !== 0) {
       return byBase;

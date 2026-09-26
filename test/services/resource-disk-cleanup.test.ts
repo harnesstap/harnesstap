@@ -372,4 +372,197 @@ describe("resource disk cleanup", () => {
       await context.cleanup();
     }
   });
+
+  it("resolves tilde-prefixed sources to home files", async () => {
+    const context = await createInitializedTestContext("disk-cleanup-tilde-source");
+    try {
+      const skillPath = join(
+        context.homeDir,
+        ".claude",
+        "skills",
+        "ship",
+        "SKILL.md",
+      );
+      mkdirSync(join(skillPath, ".."), { recursive: true });
+      writeFileSync(skillPath, "# Ship\n", "utf-8");
+
+      const resource = createResource({
+        type: "skill",
+        name: "ship",
+        description: "",
+        content: "# Ship",
+        metadata: {},
+        source: "~/.claude/skills/ship/SKILL.md",
+      });
+
+      const plan = await planResourceDiskDeletion(resource.id);
+      expect(plan.can_delete_from_disk).toBe(true);
+      expect(plan.locations.some((location) => location.path === dirname(skillPath))).toBe(
+        true,
+      );
+
+      const result = await executeResourceDiskDeletion(plan);
+      expect(result.deleted_files).toContain(dirname(skillPath));
+      expect(existsSync(skillPath)).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("deletes a host plugin install tree and unregisters it", async () => {
+    const context = await createInitializedTestContext("disk-cleanup-plugin-pin");
+    try {
+      const sha = "d183d812c10a49c75de5dd647f7f2e448c8de366";
+      const installRoot = join(
+        context.homeDir,
+        ".claude",
+        "plugins",
+        "cache",
+        "__DEFAULT__",
+        "caveman",
+        sha,
+      );
+      mkdirSync(join(installRoot, ".claude-plugin"), { recursive: true });
+      writeFileSync(
+        join(installRoot, ".claude-plugin", "plugin.json"),
+        JSON.stringify({ name: "caveman", version: "1.0.0" }),
+      );
+      writeFileSync(join(installRoot, "README.md"), "# caveman\n");
+
+      const registryPath = join(
+        context.homeDir,
+        ".claude",
+        "plugins",
+        "installed_plugins.json",
+      );
+      writeFileSync(
+        registryPath,
+        `${JSON.stringify(
+          {
+            version: 2,
+            plugins: {
+              "keep@__DEFAULT__": [
+                { scope: "user", installPath: "cache/__DEFAULT__/keep/1.0.0", version: "1.0.0" },
+              ],
+              "caveman@__DEFAULT__": [
+                {
+                  scope: "user",
+                  installPath: `cache/__DEFAULT__/caveman/${sha}`,
+                  version: sha,
+                },
+              ],
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+
+      const settingsPath = join(context.homeDir, ".claude", "settings.json");
+      writeFileSync(
+        settingsPath,
+        `${JSON.stringify(
+          {
+            enabledPlugins: {
+              "keep@__DEFAULT__": true,
+              "caveman@__DEFAULT__": true,
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+
+      const resource = createResource({
+        type: "plugin",
+        name: "caveman",
+        namespace: "__DEFAULT__",
+        description: "Plugin pin: caveman@__DEFAULT__",
+        content: "{}",
+        metadata: {
+          source_kind: "marketplace",
+          marketplace_name: "__DEFAULT__",
+          resolved_version: sha,
+          sync_status: "never_synced",
+          portable: "reference",
+        },
+        source: "~/.claude/plugins/installed_plugins.json",
+        origin_kind: "marketplace_link",
+        origin_ref: "caveman@__DEFAULT__",
+      });
+
+      const plan = await planResourceDiskDeletion(resource.id);
+      expect(plan.can_delete_from_disk).toBe(true);
+      expect(plan.locations.map((location) => location.action).sort()).toEqual([
+        "delete-directory",
+        "edit-file",
+        "edit-file",
+      ]);
+      expect(plan.locations.some((location) => location.path === installRoot)).toBe(true);
+
+      const result = await executeResourceDiskDeletion(plan);
+      expect(result.deleted_files).toContain(installRoot);
+      expect(result.edited_files).toEqual(
+        expect.arrayContaining([registryPath, settingsPath]),
+      );
+      expect(existsSync(installRoot)).toBe(false);
+
+      const registry = JSON.parse(readFileSync(registryPath, "utf-8")) as {
+        plugins: Record<string, unknown>;
+      };
+      expect(registry.plugins["caveman@__DEFAULT__"]).toBeUndefined();
+      expect(registry.plugins["keep@__DEFAULT__"]).toBeDefined();
+
+      const settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as {
+        enabledPlugins: Record<string, boolean>;
+      };
+      expect(settings.enabledPlugins["caveman@__DEFAULT__"]).toBeUndefined();
+      expect(settings.enabledPlugins["keep@__DEFAULT__"]).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not delete a host install when removing a composition plugin ref", async () => {
+    const context = await createInitializedTestContext(
+      "disk-cleanup-composition-plugin-ref",
+    );
+    try {
+      const installRoot = join(
+        context.homeDir,
+        ".claude",
+        "plugins",
+        "cache",
+        "demo-market",
+        "demo",
+        "1.0.0",
+      );
+      mkdirSync(join(installRoot, ".claude-plugin"), { recursive: true });
+      writeFileSync(
+        join(installRoot, ".claude-plugin", "plugin.json"),
+        JSON.stringify({ name: "demo", version: "1.0.0" }),
+      );
+
+      const resource = createResource({
+        type: "plugin",
+        name: "demo",
+        description: "Dependency: demo",
+        content: "{}",
+        metadata: {
+          source_kind: "local",
+          sync_status: "never_synced",
+          portable: "reference",
+        },
+        source: "composition:plugin",
+        origin_kind: "manual",
+        origin_ref: "demo",
+      });
+
+      const plan = await planResourceDiskDeletion(resource.id);
+      expect(plan.locations).toEqual([]);
+      expect(existsSync(installRoot)).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
