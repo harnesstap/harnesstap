@@ -1,6 +1,7 @@
 import { hashResourceBody } from "./resource-hash.js";
 import { resourceIdentity } from "./reference-resources.js";
 import type { Resource, ResourceCreateInput } from "../types.js";
+import { isClaudeLocalMcpResource } from "./claude-local-mcp.js";
 
 export interface HarnessScanSlice {
   platformId: string;
@@ -72,24 +73,28 @@ export function unionHarnessResources(
   };
 }
 
-/** MCP path-binding must not block cross-harness emit. */
+/** MCP path-binding must not block cross-harness emit.
+ * Claude local-scope MCP is inventory-only and is never rewritten as portable.
+ */
 export function toPortableEmitResources(
   resources: ResourceCreateInput[],
 ): Resource[] {
-  return resources.map((resource) => {
-    const portableSource =
-      resource.type === "mcp_server" ? "manual" : resource.source;
-    return {
-      ...resource,
-      id: `sync:${resourceIdentity(resource)}`,
-      namespace: resource.namespace ?? "",
-      origin_kind: resource.origin_kind ?? "manual",
-      origin_ref: resource.origin_ref ?? resource.source,
-      content_hash: fingerprint(resource),
-      content_blob_ref: resource.content_blob_ref ?? "",
-      source: portableSource,
-      created_at: "",
-      updated_at: "",
-    };
-  });
+  return resources
+    .filter((resource) => !isClaudeLocalMcpResource(resource))
+    .map((resource) => {
+      const portableSource =
+        resource.type === "mcp_server" ? "manual" : resource.source;
+      return {
+        ...resource,
+        id: `sync:${resourceIdentity(resource)}`,
+        namespace: resource.namespace ?? "",
+        origin_kind: resource.origin_kind ?? "manual",
+        origin_ref: resource.origin_ref ?? resource.source,
+        content_hash: fingerprint(resource),
+        content_blob_ref: resource.content_blob_ref ?? "",
+        source: portableSource,
+        created_at: "",
+        updated_at: "",
+      };
+    });
 }

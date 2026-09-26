@@ -73,6 +73,13 @@ export interface McpServerMetadata {
   mode?: string;
   /** Muse Code stdio `framing`; invalid on `streamable_http`. */
   framing?: string;
+  /**
+   * Claude Code MCP scope. `local` is inventory-only
+   * (`projects[<absPath>].mcpServers` in `~/.claude.json`).
+   */
+  claude_mcp_scope?: "user" | "local";
+  /** Absolute project path for `claude_mcp_scope: "local"`. */
+  claude_project_path?: string;
 }
 
 export interface PermissionMetadata {

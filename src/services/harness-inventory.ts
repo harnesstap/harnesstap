@@ -9,6 +9,7 @@ import type {
   Resource,
 } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { inventorySourceForMatching } from "./claude-local-mcp.js";
 import { scanCursorHostManagedSkills } from "./cursor-host-managed-skills.js";
 import {
   getHarnessSettings,
@@ -284,10 +285,11 @@ function homeRelativeSegments(
   homeRoot: string,
 ): string[] | null {
   let rel: string;
-  if (source.startsWith("~/")) {
-    rel = source.slice(2);
-  } else if (isAbsolute(source)) {
-    const fromHome = relative(homeRoot, source);
+  const matchSource = inventorySourceForMatching(source);
+  if (matchSource.startsWith("~/")) {
+    rel = matchSource.slice(2);
+  } else if (isAbsolute(matchSource)) {
+    const fromHome = relative(homeRoot, matchSource);
     if (!fromHome || isAbsolute(fromHome)) {
       return null;
     }

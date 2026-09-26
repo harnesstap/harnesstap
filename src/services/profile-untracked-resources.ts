@@ -131,6 +131,9 @@ function isClaudeSettingsPath(normalizedPath: string): boolean {
 
 function isClaudeUserJsonPath(normalizedPath: string): boolean {
   const path = normalizedPath.replace(/^~\//, "");
+  if (path.includes("#")) {
+    return false;
+  }
   return path === ".claude.json" || path.endsWith("/.claude.json");
 }
 

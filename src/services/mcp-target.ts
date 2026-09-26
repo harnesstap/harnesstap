@@ -1,5 +1,6 @@
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { Resource } from "../types.js";
+import { isClaudeLocalMcpResource } from "./claude-local-mcp.js";
 
 function normalizePath(path: string, rootPath = ""): string {
   let normalized = path.replace(/\\/g, "/");
@@ -87,7 +88,10 @@ export function filterMcpServersForTargetPath(
   targetMcpPath: string | undefined,
   rootPath = "",
 ): Resource[] {
-  const mcps = resources.filter((resource) => resource.type === "mcp_server");
+  const mcps = resources.filter(
+    (resource) =>
+      resource.type === "mcp_server" && !isClaudeLocalMcpResource(resource),
+  );
   if (!targetMcpPath) {
     return mcps;
   }

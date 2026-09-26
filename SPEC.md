@@ -725,7 +725,7 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 ### Scan
 
-`scan` detects harnesses by declared project paths, reads resources through serializers, and deduplicates within a run before upserting into SQLite (`origin_kind=local_snapshot`).
+`scan` detects harnesses by declared project paths, reads resources through serializers, and deduplicates within a run before upserting into SQLite (`origin_kind=local_snapshot`). Claude Code local-scope MCP (`projects[<absPath>].mcpServers` in `~/.claude.json`) is inventoried with source `~/.claude.json#local:<absPath>` and is never applied to project `.mcp.json` or user-scope `mcpServers`.
 
 **Shared instruction canonicalization:** when multiple AGENTS-based platforms share one `AGENTS.md`, the scanner imports a single canonical instruction instead of per-platform `*-instructions` synthetic names. Rescans remove stale synthetic duplicates when content matches.
 

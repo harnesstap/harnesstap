@@ -26,13 +26,14 @@ import type {
   ResourceDeleteResult,
   ResourceMaterialization,
 } from "../types.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
+import { isClaudeLocalMcpResource } from "./claude-local-mcp.js";
 import { isHostPluginPinResource } from "./host-plugin-serialize.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 import { detectPlatforms, scanPlatform } from "./scanner.js";
 import { resolveInstallRoot } from "./resource-sync.js";
-import { resolveHomeRoot } from "../utils/home-root.js";
 
 interface Candidate {
   scope: ResourceDeleteLocation["scope"];
@@ -615,6 +616,14 @@ function evaluateCandidate(
       ...base,
       action: "protected",
       reason: "Path no longer exists",
+    };
+  }
+
+  if (isClaudeLocalMcpResource(resource)) {
+    return {
+      ...base,
+      action: "protected",
+      reason: "Claude local-scope MCP is inventory-only",
     };
   }
 
