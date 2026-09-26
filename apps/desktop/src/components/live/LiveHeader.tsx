@@ -7,22 +7,14 @@ export function ListSearchField({
   onChange,
   placeholder,
   label,
-  compact = false,
-  trailing,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   label: string;
-  compact?: boolean;
-  trailing?: ReactNode;
 }) {
   return (
-    <div
-      className={["list-search", compact ? "list-search-compact" : ""]
-        .filter(Boolean)
-        .join(" ")}
-    >
+    <div className="list-search">
       <label>
         <span className="sr-only">{label}</span>
         <input
@@ -38,7 +30,6 @@ export function ListSearchField({
           spellCheck={false}
         />
       </label>
-      {trailing ? <span className="list-search-trailing">{trailing}</span> : null}
     </div>
   );
 }
@@ -50,7 +41,6 @@ export interface LiveHeaderProps {
   attention: ReadonlyMap<string, TypeTabAttention>;
   typeTab: string | null;
   onTypeTab: (next: string | null) => void;
-  compactSearch?: boolean;
   searchTrailing?: ReactNode;
 }
 
@@ -61,19 +51,26 @@ export function LiveHeader({
   attention,
   typeTab,
   onTypeTab,
-  compactSearch = false,
   searchTrailing,
 }: LiveHeaderProps) {
+  const searchField = (
+    <ListSearchField
+      value={search}
+      onChange={onSearch}
+      placeholder="Filter resources"
+      label="Filter resources"
+    />
+  );
   return (
     <div className="scope-inventory-live-header">
-      <ListSearchField
-        value={search}
-        onChange={onSearch}
-        placeholder="Filter resources"
-        label="Filter resources"
-        compact={compactSearch}
-        trailing={searchTrailing}
-      />
+      {searchTrailing ? (
+        <div className="list-search-row">
+          {searchField}
+          {searchTrailing}
+        </div>
+      ) : (
+        searchField
+      )}
       <div className="scope-inventory-type-row">
         <ResourceTypeTabs
           includeAll={true}

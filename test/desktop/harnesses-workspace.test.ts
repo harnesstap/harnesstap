@@ -92,19 +92,31 @@ describe("Harnesses resource filter field", () => {
     expect(liveHeaderSource).toContain('autoCapitalize="off"');
   });
 
-  it("uses a compact Filter resources field with a trailing origin menu", () => {
-    expect(liveHeaderSource).toContain("compactSearch");
-    expect(detailSource).toContain("compactSearch");
+  it("uses a full-width Filter resources field with an adjacent origin menu", () => {
+    expect(liveHeaderSource).toContain("searchTrailing");
+    expect(liveHeaderSource).toContain("list-search-row");
+    expect(liveHeaderSource).not.toContain("compactSearch");
+    expect(liveHeaderSource).not.toContain("list-search-trailing");
+    expect(detailSource).not.toContain("compactSearch");
     expect(detailSource).toContain("HarnessFilterMenu");
     expect(filterMenuSource).toContain("Filter per harness origin");
     expect(filterMenuSource).toContain("Marketplace");
     expect(filterMenuSource).toContain('data-testid="harness-resource-filter"');
-    expect(stylesSource).toContain(".list-search-compact");
-    expect(cssBlock(stylesSource, ".list-search-compact")).toContain("max-width: 20rem");
+    const row = cssBlock(stylesSource, ".list-search-row");
+    expect(row).toContain("width: 100%");
+    expect(row).toContain("display: flex");
+    expect(row).toContain("gap: 0.4rem");
+    expect(cssBlock(stylesSource, ".list-search-row .list-search")).toContain(
+      "flex: 1 1 auto",
+    );
+    expect(stylesSource).not.toContain(".list-search-compact");
+    expect(stylesSource).not.toContain(".list-search-trailing");
   });
 
   it("documents origin, marketplace, and typed-query filtering", () => {
-    expect(designSource).toContain("compact **Filter resources** field");
+    expect(designSource).toContain("full-width **Filter resources** field");
+    expect(designSource).toContain("Filter icon outside the search input");
+    expect(designSource).not.toContain("compact **Filter resources** field");
     expect(designSource).toContain("Filter per harness origin");
     expect(designSource).toContain("case-insensitive substring of the typed query");
     expect(designSource).not.toContain("did you mean");
