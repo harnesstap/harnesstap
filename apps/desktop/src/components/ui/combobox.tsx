@@ -263,6 +263,7 @@ export function Combobox({
             aria-label={ariaLabel}
             placeholder={placeholder}
             value={inputValue}
+            title={selected?.title ?? selectedLabel}
             className="pr-8"
             onFocus={() => {
               if (!open) {
@@ -335,7 +336,12 @@ export function Combobox({
                   onMouseEnter={() => setHighlightedIndex(index)}
                   onClick={() => commit(option)}
                 >
-                  <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                  <span
+                    className="min-w-0 flex-1 truncate"
+                    title={option.title ?? option.label}
+                  >
+                    {option.label}
+                  </span>
                   {selectedOption ? (
                     <span className="absolute right-2 flex size-3.5 items-center justify-center">
                       <CheckIcon className="size-4" />

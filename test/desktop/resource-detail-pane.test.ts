@@ -135,6 +135,10 @@ describe("resource inspect content preview", () => {
     expect(designSource).toContain("**Version** is a filterable combobox");
     expect(designSource).toContain("highest source version");
     expect(designSource).toContain("no type label beside those actions");
+    expect(designSource).toContain("`(release)` for tagged/marketplace semver");
+    expect(designSource).toContain("`(git)` for git commit hashes");
+    expect(designSource).toContain("Marketplace URL shows as a text link");
+    expect(bodySource).toContain("ExternalTextLink");
   });
 
   test("DESIGN.md locks inspect as a viewport-capped dialog with a 15-line code block", () => {

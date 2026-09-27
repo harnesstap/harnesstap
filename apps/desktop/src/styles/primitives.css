@@ -210,6 +210,11 @@
   color: var(--fg);
 }
 
+.link-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .link-btn:disabled {
   opacity: var(--opacity-disabled);
   cursor: default;
