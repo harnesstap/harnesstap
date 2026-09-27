@@ -177,6 +177,13 @@
   min-width: 0;
 }
 
+.harness-type-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
 .harness-type-heading {
   margin: 0;
   display: flex;
@@ -185,6 +192,11 @@
   font-size: var(--text-body);
   font-weight: 600;
   color: var(--fg);
+  min-width: 0;
+}
+
+.harness-type-heading-row .icon-action {
+  flex-shrink: 0;
 }
 
 .harness-type-section {

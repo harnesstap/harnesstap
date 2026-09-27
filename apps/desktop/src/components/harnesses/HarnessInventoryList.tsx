@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import {
   groupHarnessLocationsByType,
   harnessDuplicatePluginNames,
@@ -8,10 +9,19 @@ import {
   type HarnessResourceRow,
   type HarnessTypeSection,
 } from "../../lib/harness-inventory";
+import {
+  HARNESS_PULL_ALL_EMPTY_TOOLTIP,
+  HARNESS_PULL_ALL_LABEL,
+  HARNESS_PULL_ALL_TOOLTIP,
+  harnessPluginPullTargets,
+  pluginRowsFromTypeGroup,
+  type HarnessPluginPullTarget,
+} from "../../lib/harness-plugin-pull";
 import type { ResourceHoverModel } from "../../lib/resource-hover";
 import { resourceTypeTabLabel } from "../../lib/resource-type-tabs";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { HarnessIcon } from "../HarnessIcons";
+import { IconActionButton } from "../IconActionButton";
 import { TypeIcon } from "../TypeIcon";
 import { ResourceHoverCard } from "../ui/resource-hover-card";
 
@@ -21,7 +31,9 @@ export interface HarnessInventoryListProps {
   entry: HarnessEntry;
   locations: readonly HarnessLocation[];
   disabled: boolean;
+  pullAllBusy?: boolean;
   onOpen: (row: HarnessResourceRow) => void;
+  onPullAllPlugins?: (targets: readonly HarnessPluginPullTarget[]) => void;
 }
 
 function rowKey(row: HarnessResourceRow): string {
@@ -132,7 +144,9 @@ export function HarnessInventoryList({
   entry,
   locations,
   disabled,
+  pullAllBusy = false,
   onOpen,
+  onPullAllPlugins,
 }: HarnessInventoryListProps) {
   const groups = groupHarnessLocationsByType(entry, locations)
     .map((group) => ({
@@ -144,30 +158,59 @@ export function HarnessInventoryList({
 
   return (
     <div className="harness-type-list">
-      {groups.map((group) => (
-        <section
-          key={group.type}
-          className="harness-type-group"
-          aria-label={resourceTypeTabLabel(group.type)}
-          data-testid="harness-type-group"
-          data-type={group.type}
-        >
-          <h3 className="harness-type-heading">
-            <TypeIcon type={group.type} />
-            <span>{resourceTypeTabLabel(group.type)}</span>
-          </h3>
-          {group.sections.map((section) => (
-            <HarnessTypeSectionBlock
-              key={section.path}
-              type={group.type}
-              section={section}
-              disabled={disabled}
-              onOpen={onOpen}
-              duplicateNames={duplicateNames}
-            />
-          ))}
-        </section>
-      ))}
+      {groups.map((group) => {
+        const pullTargets =
+          group.type === "plugin"
+            ? harnessPluginPullTargets(pluginRowsFromTypeGroup(group), duplicateNames)
+            : [];
+        const pullAll = onPullAllPlugins;
+        const showPullAll = group.type === "plugin" && Boolean(pullAll);
+        const pullDisabled = disabled || pullAllBusy || pullTargets.length === 0;
+        return (
+          <section
+            key={group.type}
+            className="harness-type-group"
+            aria-label={resourceTypeTabLabel(group.type)}
+            data-testid="harness-type-group"
+            data-type={group.type}
+          >
+            <div className="harness-type-heading-row">
+              <h3 className="harness-type-heading">
+                <TypeIcon type={group.type} />
+                <span>{resourceTypeTabLabel(group.type)}</span>
+              </h3>
+              {showPullAll && pullAll ? (
+                <IconActionButton
+                  data-testid="harness-pull-all-plugins"
+                  showLabel
+                  iconAfterLabel
+                  busy={pullAllBusy}
+                  spinnerSize={TITLE_ICON_SIZE}
+                  disabled={pullDisabled}
+                  label={HARNESS_PULL_ALL_LABEL}
+                  title={
+                    pullTargets.length === 0
+                      ? HARNESS_PULL_ALL_EMPTY_TOOLTIP
+                      : HARNESS_PULL_ALL_TOOLTIP
+                  }
+                  onClick={() => pullAll(pullTargets)}
+                  icon={<Download size={TITLE_ICON_SIZE} aria-hidden />}
+                />
+              ) : null}
+            </div>
+            {group.sections.map((section) => (
+              <HarnessTypeSectionBlock
+                key={section.path}
+                type={group.type}
+                section={section}
+                disabled={disabled}
+                onOpen={onOpen}
+                duplicateNames={duplicateNames}
+              />
+            ))}
+          </section>
+        );
+      })}
     </div>
   );
 }
