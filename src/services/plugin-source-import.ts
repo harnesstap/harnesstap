@@ -285,24 +285,112 @@ function listPluginManifests(sourcePath: string): ListedPluginManifest[] {
   return manifests;
 }
 
-function resolvePluginRoot(sourcePath: string): {
+const GIT_SHA_DIR = /^[0-9a-f]{7,40}$/i;
+const SEMVER_DIR = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+
+function isCacheVersionDirectoryName(name: string): boolean {
+  return GIT_SHA_DIR.test(name) || SEMVER_DIR.test(name);
+}
+
+interface HostPluginCacheIdentity {
+  marketplace: string;
+  pluginName: string;
+  version: string;
+  sourcePluginKind: PluginSourceRootKind;
+}
+
+/**
+ * `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>` and the Cursor
+ * equivalent. Official Claude LSP plugins (gopls-lsp, clangd-lsp, …) live here
+ * with no `.claude-plugin/plugin.json` — metadata is in marketplace.json.
+ */
+function parseHostPluginCacheIdentity(
+  sourcePath: string,
+): HostPluginCacheIdentity | null {
+  const parts = normalizePath(sourcePath)
+    .replace(/\/+$/, "")
+    .split("/")
+    .filter(Boolean);
+  for (let i = 0; i < parts.length - 4; i++) {
+    if (parts[i] !== "plugins" || parts[i + 1] !== "cache") continue;
+    if (i + 4 !== parts.length - 1) continue;
+    const marketplace = parts[i + 2];
+    const pluginName = parts[i + 3];
+    const version = parts[i + 4];
+    if (!marketplace || !pluginName || !version) continue;
+    if (!isCacheVersionDirectoryName(version)) continue;
+    const hostDir = i > 0 ? parts[i - 1] : "";
+    const sourcePluginKind: PluginSourceRootKind =
+      hostDir === ".cursor" ? "cursor-plugin" : "claude-plugin";
+    return { marketplace, pluginName, version, sourcePluginKind };
+  }
+  return null;
+}
+
+function firstExistingPath(candidates: readonly string[]): string | undefined {
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+function marketplaceRepoRoot(manifestPath: string): string {
+  const manifestDir = dirname(manifestPath);
+  const name = basename(manifestDir);
+  if (
+    name === ".claude-plugin" ||
+    name === ".cursor-plugin" ||
+    name === ".codex-plugin"
+  ) {
+    return dirname(manifestDir);
+  }
+  if (name === "plugin" && basename(dirname(manifestDir)) === ".github") {
+    return dirname(dirname(manifestDir));
+  }
+  return manifestDir;
+}
+
+function resolveMarketplaceEntryPath(
+  manifestPath: string,
+  entryPath: string,
+): string {
+  const fromManifestDir = join(dirname(manifestPath), entryPath);
+  const fromRepoRoot = join(marketplaceRepoRoot(manifestPath), entryPath);
+  return firstExistingPath([fromManifestDir, fromRepoRoot]) ?? fromManifestDir;
+}
+
+function nestedCachePluginRoots(
+  sourcePath: string,
+  pluginName: string,
+): string[] {
+  return [
+    join(sourcePath, "plugins", pluginName),
+    join(sourcePath, "plugins", "claude", pluginName),
+    join(sourcePath, pluginName),
+  ];
+}
+
+function findNestedPluginRoot(
+  sourcePath: string,
+  pluginName: string,
+): string | undefined {
+  return firstExistingPath(nestedCachePluginRoots(sourcePath, pluginName));
+}
+
+function pluginRootFromManifests(
+  rootPath: string,
+  allManifests: ListedPluginManifest[],
+): {
   rootPath: string;
   manifestPath: string;
   sourcePluginKind: PluginSourceRootKind;
   manifest: ValidatedPluginManifest;
   allManifests: ListedPluginManifest[];
-} {
-  const allManifests = listPluginManifests(sourcePath);
-  if (allManifests.length === 0) {
-    throw new Error(`Unsupported plugin source layout: ${sourcePath}`);
-  }
-
+} | null {
   const primary = allManifests[0];
-  if (!primary) {
-    throw new Error(`Unsupported plugin source layout: ${sourcePath}`);
-  }
+  if (!primary) return null;
   return {
-    rootPath: sourcePath,
+    rootPath,
     manifestPath: primary.manifestPath,
     sourcePluginKind: primary.sourcePluginKind,
     manifest: primary.manifest,
@@ -310,7 +398,58 @@ function resolvePluginRoot(sourcePath: string): {
   };
 }
 
-const GIT_SHA_DIR = /^[0-9a-f]{7,40}$/i;
+function synthesizedCachePluginRoot(
+  rootPath: string,
+  identity: HostPluginCacheIdentity,
+): {
+  rootPath: string;
+  manifestPath: string;
+  sourcePluginKind: PluginSourceRootKind;
+  manifest: ValidatedPluginManifest;
+  allManifests: ListedPluginManifest[];
+} {
+  const relativeManifestPath =
+    identity.sourcePluginKind === "cursor-plugin"
+      ? ".cursor-plugin/plugin.json"
+      : ".claude-plugin/plugin.json";
+  return {
+    rootPath,
+    manifestPath: join(rootPath, relativeManifestPath),
+    sourcePluginKind: identity.sourcePluginKind,
+    manifest: { name: identity.pluginName, version: identity.version },
+    allManifests: [],
+  };
+}
+
+function resolvePluginRoot(sourcePath: string): {
+  rootPath: string;
+  manifestPath: string;
+  sourcePluginKind: PluginSourceRootKind;
+  manifest: ValidatedPluginManifest;
+  allManifests: ListedPluginManifest[];
+} {
+  const local = pluginRootFromManifests(
+    sourcePath,
+    listPluginManifests(sourcePath),
+  );
+  if (local) return local;
+
+  const cache = parseHostPluginCacheIdentity(sourcePath);
+  if (cache) {
+    const nested = findNestedPluginRoot(sourcePath, cache.pluginName);
+    if (nested && nested !== sourcePath) {
+      const nestedManifests = pluginRootFromManifests(
+        nested,
+        listPluginManifests(nested),
+      );
+      if (nestedManifests) return nestedManifests;
+      return synthesizedCachePluginRoot(nested, cache);
+    }
+    return synthesizedCachePluginRoot(sourcePath, cache);
+  }
+
+  throw new Error(`Unsupported plugin source layout: ${sourcePath}`);
+}
 
 function versionFromInstallDirectory(installRoot: string): string | undefined {
   const dirName = basename(installRoot);
@@ -844,12 +983,12 @@ function listMarketplacePluginRoots(repoRoot: string): string[] {
       continue;
     }
 
-    const manifestDir = dirname(manifestPath);
     for (const entry of manifest.plugins) {
-      const pluginRoot = normalizePath(join(manifestDir, entry.path));
-      if (seen.has(pluginRoot)) continue;
-      seen.add(pluginRoot);
-      roots.push(join(manifestDir, entry.path));
+      const pluginRoot = resolveMarketplaceEntryPath(manifestPath, entry.path);
+      const key = normalizePath(pluginRoot);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      roots.push(pluginRoot);
     }
   }
 
@@ -960,8 +1099,12 @@ function scanPluginRoot(
     return primary;
   }
 
+  const cache = parseHostPluginCacheIdentity(sourcePath);
   for (const pluginRoot of listMarketplacePluginRoots(sourcePath)) {
     if (normalizePath(pluginRoot) === normalizePath(sourcePath)) {
+      continue;
+    }
+    if (cache && basename(pluginRoot) !== cache.pluginName) {
       continue;
     }
 
@@ -974,7 +1117,19 @@ function scanPluginRoot(
     }
   }
 
+  if (cache) {
+    return primary;
+  }
+
   throw new Error(`No supported plugin resources found in ${sourcePath}`);
+}
+
+function isPluginMergeSkipError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message.startsWith("No supported plugin resources found in") ||
+    error.message.startsWith("Unsupported plugin source layout:")
+  );
 }
 
 export async function scanPluginSourceForMerge(
@@ -983,10 +1138,7 @@ export async function scanPluginSourceForMerge(
   try {
     return await scanPluginSource(sourcePath);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.startsWith("No supported plugin resources found in")
-    ) {
+    if (isPluginMergeSkipError(error)) {
       return [];
     }
     throw error;
@@ -1008,10 +1160,9 @@ export function scanPluginSourceSync(sourcePath: string): PluginSourceScanResult
   );
 
   const marketplaceName = manifest.name;
-  const manifestDir = dirname(sourcePath);
 
   return manifest.plugins.map((entry) => {
-    return scanPluginRoot(join(manifestDir, entry.path), {
+    return scanPluginRoot(resolveMarketplaceEntryPath(sourcePath, entry.path), {
       sourceKind: "marketplace",
       sourceLabel: marketplaceName,
       marketplaceName,
