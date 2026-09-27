@@ -23,7 +23,7 @@ function PreviewBody({ preview }: { preview: HarnessSyncPreviewState }): ReactNo
       return (
         <p className="muted harness-sync-preview-status" role="status" aria-live="polite">
           <ButtonSpinner size={16} />
-          Counting changes…
+          Counting resource changes…
         </p>
       );
     case "error":

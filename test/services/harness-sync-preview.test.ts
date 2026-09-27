@@ -1,49 +1,40 @@
-import { afterEach, describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { describe, expect, it } from "bun:test";
 import { countHarnessSyncChanges } from "../../src/services/harness-sync-preview.ts";
+import type { ExtractHostPluginMaterialResult } from "../../src/services/host-plugin-material.ts";
+import { makeResourceInput } from "../helpers/resources.ts";
+
+const noExtracted: ExtractHostPluginMaterialResult = {
+  skills: [],
+  resources: [],
+};
+
+const pluginPin = makeResourceInput({
+  type: "plugin",
+  name: "gopls-lsp",
+  origin_ref: "gopls-lsp@claude-plugins-official",
+  metadata: {
+    source_kind: "marketplace",
+    marketplace_name: "claude-plugins-official",
+    resolved_version: "1.0.0",
+  },
+});
 
 describe("countHarnessSyncChanges", () => {
-  const tempDirs: string[] = [];
-
-  afterEach(() => {
-    for (const dir of tempDirs.splice(0)) {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  function tempRoot(): string {
-    const dir = mkdtempSync(join(tmpdir(), "ht-harness-sync-preview-"));
-    tempDirs.push(dir);
-    return dir;
-  }
-
-  it("counts missing files as changes on the harness that would emit them", () => {
-    const rootPath = tempRoot();
+  it("counts a missing union resource as one change on the harness that lacks it", () => {
+    const skill = makeResourceInput({ type: "skill", name: "alpha", content: "from claude\n" });
+    const mcp = makeResourceInput({
+      type: "mcp_server",
+      name: "github",
+      content: '{"command":"npx"}',
+    });
     const rows = countHarnessSyncChanges({
       platforms: ["claude-code", "cursor"],
-      results: [
-        {
-          platformId: "claude-code",
-          files: [{ path: ".claude/skills/alpha/SKILL.md", content: "claude\n" }],
-        },
-        {
-          platformId: "cursor",
-          files: [{ path: ".agents/skills/alpha/SKILL.md", content: "cursor\n" }],
-        },
+      slices: [
+        { platformId: "claude-code", resources: [skill] },
+        { platformId: "cursor", resources: [mcp] },
       ],
-      paired: {
-        files: [
-          { path: ".claude/skills/alpha/SKILL.md", content: "claude\n" },
-          { path: ".agents/skills/alpha/SKILL.md", content: "cursor\n" },
-        ],
-        links: [],
-      },
-      skillHubPlans: [],
-      target: "project",
-      rootPath,
-      pluginResourceMode: "symlink",
+      unionResources: [skill, mcp],
+      extracted: noExtracted,
     });
     expect(rows).toEqual([
       { harness: "claude-code", changes: 1 },
@@ -51,38 +42,87 @@ describe("countHarnessSyncChanges", () => {
     ]);
   });
 
-  it("skips files whose on-disk contents already match", () => {
-    const rootPath = tempRoot();
-    mkdirSync(join(rootPath, ".claude/skills/alpha"), { recursive: true });
-    writeFileSync(join(rootPath, ".claude/skills/alpha/SKILL.md"), "claude\n");
-
+  it("skips resources whose scan-slice body already matches the union", () => {
+    const skill = makeResourceInput({ type: "skill", name: "alpha", content: "shared\n" });
     const rows = countHarnessSyncChanges({
       platforms: ["claude-code", "cursor"],
-      results: [
-        {
-          platformId: "claude-code",
-          files: [{ path: ".claude/skills/alpha/SKILL.md", content: "claude\n" }],
-        },
-        {
-          platformId: "cursor",
-          files: [{ path: ".agents/skills/alpha/SKILL.md", content: "cursor\n" }],
-        },
+      slices: [
+        { platformId: "claude-code", resources: [skill] },
+        { platformId: "cursor", resources: [skill] },
       ],
-      paired: {
-        files: [
-          { path: ".claude/skills/alpha/SKILL.md", content: "claude\n" },
-          { path: ".agents/skills/alpha/SKILL.md", content: "cursor\n" },
-        ],
-        links: [],
-      },
-      skillHubPlans: [],
-      target: "project",
-      rootPath,
-      pluginResourceMode: "symlink",
+      unionResources: [skill],
+      extracted: noExtracted,
+    });
+    expect(rows).toEqual([
+      { harness: "claude-code", changes: 0 },
+      { harness: "cursor", changes: 0 },
+    ]);
+  });
+
+  it("counts a body-hash mismatch as one resource change", () => {
+    const winner = makeResourceInput({ type: "skill", name: "alpha", content: "main\n" });
+    const loser = makeResourceInput({ type: "skill", name: "alpha", content: "alias\n" });
+    const rows = countHarnessSyncChanges({
+      platforms: ["claude-code", "cursor"],
+      slices: [
+        { platformId: "claude-code", resources: [winner] },
+        { platformId: "cursor", resources: [loser] },
+      ],
+      unionResources: [winner],
+      extracted: noExtracted,
     });
     expect(rows).toEqual([
       { harness: "claude-code", changes: 0 },
       { harness: "cursor", changes: 1 },
+    ]);
+  });
+
+  it("counts a host plugin pin as one resource on Claude/Cursor, not on portable harnesses", () => {
+    const skill = makeResourceInput({ type: "skill", name: "alpha", content: "alpha\n" });
+    const extractedSkill = makeResourceInput({
+      type: "rule",
+      name: "from-plugin",
+      content: "rule\n",
+    });
+    const rows = countHarnessSyncChanges({
+      platforms: ["claude-code", "cursor", "opencode"],
+      slices: [
+        { platformId: "claude-code", resources: [pluginPin, skill] },
+        { platformId: "cursor", resources: [skill] },
+        { platformId: "opencode", resources: [] },
+      ],
+      unionResources: [pluginPin, skill],
+      extracted: {
+        skills: [{ name: "plugin-skill", sourceDir: "/tmp/plugin-skill" }],
+        resources: [extractedSkill],
+      },
+    });
+    expect(rows).toEqual([
+      { harness: "claude-code", changes: 0 },
+      { harness: "cursor", changes: 1 },
+      { harness: "opencode", changes: 3 },
+    ]);
+  });
+
+  it("does not count Claude local-scope MCP as a portable emit", () => {
+    const localMcp = makeResourceInput({
+      type: "mcp_server",
+      name: "local-only",
+      source: "~/.claude.json#local:/tmp/project",
+      metadata: { claude_mcp_scope: "local", transport: "stdio" },
+    });
+    const rows = countHarnessSyncChanges({
+      platforms: ["claude-code", "cursor"],
+      slices: [
+        { platformId: "claude-code", resources: [localMcp] },
+        { platformId: "cursor", resources: [] },
+      ],
+      unionResources: [localMcp],
+      extracted: noExtracted,
+    });
+    expect(rows).toEqual([
+      { harness: "claude-code", changes: 0 },
+      { harness: "cursor", changes: 0 },
     ]);
   });
 });

@@ -50,7 +50,7 @@ describe("Harnesses sync CTA", () => {
     expect(workspaceSource).toContain("<SyncHarnessesDialog");
     expect(dialogSource).toContain('title="Sync harnesses"');
     expect(dialogSource).toContain('confirmLabel={syncing ? "Syncing…" : "Sync"}');
-    expect(dialogSource).toContain("Counting changes…");
+    expect(dialogSource).toContain("Counting resource changes…");
     expect(dialogSource).toContain("formatHarnessSyncChangeCount");
     expect(dialogSource).toContain('confirmDisabled={counting}');
     expect(apiSource).toContain("/v1/harness/sync");
@@ -69,12 +69,12 @@ describe("Harnesses sync CTA", () => {
       hasMain: true,
       running: false,
     })).toBe("Add another harness to sync");
-    expect(formatHarnessSyncChangeCount(0)).toBe("0 changes");
-    expect(formatHarnessSyncChangeCount(1)).toBe("1 change");
-    expect(formatHarnessSyncChangeCount(3)).toBe("3 changes");
+    expect(formatHarnessSyncChangeCount(0)).toBe("0 resource changes");
+    expect(formatHarnessSyncChangeCount(1)).toBe("1 resource change");
+    expect(formatHarnessSyncChangeCount(3)).toBe("3 resource changes");
     expect(HARNESS_SYNC_PREVIEW_ERROR).not.toContain("—");
     expect(designSource).toContain("Sticky footer under the configured list");
-    expect(designSource).toContain("Counting changes…");
+    expect(designSource).toContain("Counting resource changes…");
     expect(designSource).toContain("dry_run: true");
     expect(stylesSource).toContain(".harness-sync-controls");
     expect(stylesSource).toContain(".harness-sync-preview-count");

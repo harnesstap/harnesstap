@@ -274,7 +274,7 @@ export function useHarnessesController(
   const previewSync = useCallback(
     async (signal?: AbortSignal): Promise<readonly HarnessSyncChangeCount[]> => {
       if (!baseUrl) {
-        throw new Error("Could not count changes");
+        throw new Error("Could not count resource changes");
       }
       return previewConfiguredHarnessSync(baseUrl, token, signal);
     },

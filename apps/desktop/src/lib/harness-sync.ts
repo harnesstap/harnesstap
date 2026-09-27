@@ -23,10 +23,10 @@ export function syncHarnessesDisabledReason(input: {
 }
 
 export function formatHarnessSyncChangeCount(count: number): string {
-  return count === 1 ? "1 change" : `${count} changes`;
+  return count === 1 ? "1 resource change" : `${count} resource changes`;
 }
 
-export const HARNESS_SYNC_PREVIEW_ERROR = "Could not count changes.";
+export const HARNESS_SYNC_PREVIEW_ERROR = "Could not count resource changes.";
 
 export interface HarnessSyncPreviewRow {
   readonly id: string;

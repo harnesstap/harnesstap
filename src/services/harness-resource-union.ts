@@ -19,7 +19,7 @@ export interface UnionHarnessResourcesResult {
   conflicts: UnionConflict[];
 }
 
-function fingerprint(resource: ResourceCreateInput): string {
+export function resourceFingerprint(resource: ResourceCreateInput): string {
   return hashResourceBody({
     type: resource.type,
     content: resource.content,
@@ -56,7 +56,7 @@ export function unionHarnessResources(
         });
         continue;
       }
-      if (fingerprint(existing.resource) === fingerprint(resource)) {
+      if (resourceFingerprint(existing.resource) === resourceFingerprint(resource)) {
         continue;
       }
       conflicts.push({
@@ -90,7 +90,7 @@ export function toPortableEmitResources(
         namespace: resource.namespace ?? "",
         origin_kind: resource.origin_kind ?? "manual",
         origin_ref: resource.origin_ref ?? resource.source,
-        content_hash: fingerprint(resource),
+        content_hash: resourceFingerprint(resource),
         content_blob_ref: resource.content_blob_ref ?? "",
         source: portableSource,
         created_at: "",
