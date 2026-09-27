@@ -26,6 +26,54 @@
   color: var(--red);
 }
 
+.harness-sync-preview {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.harness-sync-preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.harness-sync-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  min-height: var(--icon-action-size);
+}
+
+.harness-sync-preview-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-body);
+}
+
+.harness-sync-preview-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--text-meta);
+  color: var(--muted);
+}
+
+.harness-sync-preview-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  min-height: var(--icon-action-size);
+  font-size: var(--text-meta);
+}
+
 .harness-sidebar-actions {
   display: flex;
   align-items: center;

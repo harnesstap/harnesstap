@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rescanResourceTrackedDirectories } from "../lib/agent-client";
-import { fetchHarnessInventory, saveHarnessSelection, syncConfiguredHarnesses } from "../lib/api/harnesses";
+import {
+  fetchHarnessInventory,
+  previewConfiguredHarnessSync,
+  saveHarnessSelection,
+  syncConfiguredHarnesses,
+  type HarnessSyncChangeCount,
+} from "../lib/api/harnesses";
 import {
   detectProposal,
   harnessEntry,
@@ -47,6 +53,7 @@ export interface HarnessesController {
   dismissProposal(): void;
   /** Single mutation entry point for add / remove / make-main / apply-proposal. */
   change(change: SelectionChange): Promise<HarnessesChangeResult>;
+  previewSync(signal?: AbortSignal): Promise<readonly HarnessSyncChangeCount[]>;
   sync(): Promise<{ readonly ok: boolean; readonly message?: string }>;
 }
 
@@ -264,6 +271,16 @@ export function useHarnessesController(
     [change, proposal],
   );
 
+  const previewSync = useCallback(
+    async (signal?: AbortSignal): Promise<readonly HarnessSyncChangeCount[]> => {
+      if (!baseUrl) {
+        throw new Error("Could not count changes");
+      }
+      return previewConfiguredHarnessSync(baseUrl, token, signal);
+    },
+    [baseUrl, token],
+  );
+
   const sync = useCallback(async (): Promise<{ ok: boolean; message?: string }> => {
     if (!baseUrl || busyRef.current.kind !== "idle") {
       return { ok: false, message: "Could not sync harnesses" };
@@ -297,6 +314,7 @@ export function useHarnessesController(
       applyProposal,
       dismissProposal,
       change,
+      previewSync,
       sync,
     }),
     [
@@ -308,6 +326,7 @@ export function useHarnessesController(
       error,
       inventory,
       proposal,
+      previewSync,
       refresh,
       sync,
     ],

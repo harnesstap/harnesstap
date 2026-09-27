@@ -21,3 +21,20 @@ export function syncHarnessesDisabledReason(input: {
   if (input.configuredCount === 1) return "Add another harness to sync";
   return null;
 }
+
+export function formatHarnessSyncChangeCount(count: number): string {
+  return count === 1 ? "1 change" : `${count} changes`;
+}
+
+export const HARNESS_SYNC_PREVIEW_ERROR = "Could not count changes.";
+
+export interface HarnessSyncPreviewRow {
+  readonly id: string;
+  readonly name: string;
+  readonly changes: number;
+}
+
+export type HarnessSyncPreviewState =
+  | { readonly kind: "loading" }
+  | { readonly kind: "ready"; readonly rows: readonly HarnessSyncPreviewRow[] }
+  | { readonly kind: "error"; readonly message: string };

@@ -26,6 +26,10 @@ import {
   type UnionConflict,
   unionHarnessResources,
 } from "./harness-resource-union.js";
+import {
+  countHarnessSyncChanges,
+  type HarnessSyncChangeCount,
+} from "./harness-sync-preview.js";
 import { uniqueHarnessTargets } from "./harness-targets.js";
 import {
   extractHostPluginMaterial,
@@ -80,6 +84,7 @@ export interface SyncConfiguredHarnessesResult {
   alias_harnesses: string[];
   platforms_synced: string[];
   files_written: number;
+  harness_changes: HarnessSyncChangeCount[];
   conflicts: UnionConflict[];
   files: string[];
   plugin_resource_mode: PluginResourceMode;
@@ -247,6 +252,15 @@ export async function syncConfiguredHarnesses(
     ...paired.links.map((link) => link.path),
     ...skillHubPlans.map((plan) => plan.skillMdPath),
   ].filter((path, index, all) => all.indexOf(path) === index);
+  const harness_changes = countHarnessSyncChanges({
+    platforms,
+    results: [...preferred, ...extraResults],
+    paired,
+    skillHubPlans,
+    target,
+    rootPath,
+    pluginResourceMode,
+  });
 
   if (options.dryRun) {
     return {
@@ -254,6 +268,7 @@ export async function syncConfiguredHarnesses(
       alias_harnesses: selection.alias_harnesses,
       platforms_synced: platforms,
       files_written: filePaths.length,
+      harness_changes,
       conflicts: unioned.conflicts,
       files: filePaths,
       plugin_resource_mode: pluginResourceMode,
@@ -315,6 +330,7 @@ export async function syncConfiguredHarnesses(
     alias_harnesses: selection.alias_harnesses,
     platforms_synced: platforms,
     files_written: filePaths.length,
+    harness_changes,
     conflicts: unioned.conflicts,
     files: filePaths,
     plugin_resource_mode: pluginResourceMode,

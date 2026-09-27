@@ -8,11 +8,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { harnessDisplayName } from "../../lib/harness-meta";
 import {
   availableHarnesses,
   configuredHarnesses,
   harnessDuplicatePluginNames,
   harnessEntry,
+  harnessId,
   harnessesViewReducer,
   initialHarnessesViewState,
   removalCopy,
@@ -22,9 +24,10 @@ import {
   type HarnessResourceRow,
 } from "../../lib/harness-inventory";
 import {
-  syncHarnessesConfirmBody,
+  HARNESS_SYNC_PREVIEW_ERROR,
   syncHarnessesDisabledReason,
   syncHarnessesTooltip,
+  type HarnessSyncPreviewState,
 } from "../../lib/harness-sync";
 import { escapeAction } from "../../lib/library-pane";
 import { workspaceBackEnabled } from "../../lib/screen-history";
@@ -41,6 +44,7 @@ import { AddHarnessModal } from "./AddHarnessModal";
 import { DetectHarnessesDialog } from "./DetectHarnessesDialog";
 import { HarnessDetail } from "./HarnessDetail";
 import { HarnessSidebar } from "./HarnessSidebar";
+import { SyncHarnessesDialog } from "./SyncHarnessesDialog";
 
 /** Add, detect confirm, and remove confirm never stack. */
 type HarnessesOverlay =
@@ -100,6 +104,9 @@ export function HarnessesWorkspace({
   const [detailBusy, setDetailBusy] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncHelper, setSyncHelper] = useState<string | null>(null);
+  const [syncPreview, setSyncPreview] = useState<HarnessSyncPreviewState>({
+    kind: "loading",
+  });
   const cancelFieldEditRef = useRef<(() => void) | null>(null);
   const detailTitleId = useId();
   const homeResetNonceSeen = useRef(homeResetNonce);
@@ -169,6 +176,40 @@ export function HarnessesWorkspace({
       onNestedDepthChange?.(0);
     };
   }, [onNestedDepthChange]);
+
+  useEffect(() => {
+    if (overlay.kind !== "sync") {
+      return;
+    }
+    const abort = new AbortController();
+    let cancelled = false;
+    void ctrl
+      .previewSync(abort.signal)
+      .then((counts) => {
+        if (cancelled) return;
+        setSyncPreview({
+          kind: "ready",
+          rows: counts.map((row) => ({
+            id: row.harness,
+            name: harnessEntry(inventory, harnessId(row.harness))?.name
+              ?? harnessDisplayName(row.harness),
+            changes: row.changes,
+          })),
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled || abort.signal.aborted) return;
+        if (error instanceof Error && error.name === "AbortError") return;
+        setSyncPreview({
+          kind: "error",
+          message: HARNESS_SYNC_PREVIEW_ERROR,
+        });
+      });
+    return () => {
+      cancelled = true;
+      abort.abort();
+    };
+  }, [ctrl.previewSync, inventory, overlay.kind]);
 
   const closeDetail = useCallback(() => {
     if (document.activeElement instanceof HTMLElement) {
@@ -327,6 +368,7 @@ export function HarnessesWorkspace({
       return;
     }
     setSyncError(null);
+    setSyncPreview({ kind: "loading" });
     openOverlay({ kind: "sync" });
   };
 
@@ -497,12 +539,11 @@ export function HarnessesWorkspace({
         onCancel={closeOverlay}
       />
 
-      <ConfirmDialog
+      <SyncHarnessesDialog
         open={overlay.kind === "sync"}
-        title="Sync harnesses"
-        description={syncHarnessesConfirmBody(mainName)}
-        confirmLabel={syncing ? "Syncing…" : "Sync"}
-        confirmBusy={syncing}
+        mainName={mainName}
+        preview={syncPreview}
+        syncing={syncing}
         onConfirm={() => void onConfirmSync()}
         onCancel={() => {
           if (!syncing) {
