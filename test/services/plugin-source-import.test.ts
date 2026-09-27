@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
-import { scanPluginSource } from "../../src/services/plugin-source-import.ts";
+import {
+  isPluginInstallRoot,
+  scanPluginSource,
+  scanPluginSourceForMerge,
+} from "../../src/services/plugin-source-import.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 const fixtureRoot = join(import.meta.dirname, "../fixtures/plugin-import");
@@ -449,6 +453,137 @@ developer_instructions = "Design contracts."
       expect(entries[0]?.plugin_version).toBe("4a4211102f36");
     } finally {
       cleanupDir(root);
+    }
+  });
+
+  it("treats official Claude cache version dirs without plugin.json as plugin roots", async () => {
+    const home = createTempDir("claude-official-cache-gopls");
+    const installRoot = join(
+      home,
+      ".claude/plugins/cache/claude-plugins-official/gopls-lsp/1.0.0",
+    );
+    try {
+      writeTextFile(join(installRoot, "LICENSE"), "Apache-2.0\n");
+      writeTextFile(
+        join(installRoot, "README.md"),
+        "# gopls-lsp\n\nGo language server.\n",
+      );
+
+      expect(isPluginInstallRoot(installRoot)).toBe(true);
+
+      const merged = await scanPluginSourceForMerge(installRoot);
+      expect(merged).toHaveLength(1);
+      expect(merged[0]?.plugin_name).toBe("gopls-lsp");
+      expect(merged[0]?.resources).toEqual([]);
+
+      const entries = await scanPluginSource(installRoot);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({
+        source_kind: "claude-plugin",
+        plugin_name: "gopls-lsp",
+        plugin_version: "1.0.0",
+        resources: [],
+      });
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("scans skills from a manifest-less Claude cache version dir", async () => {
+    const home = createTempDir("claude-official-cache-skill");
+    const installRoot = join(
+      home,
+      ".claude/plugins/cache/claude-plugins-official/gopls-lsp/1.0.0",
+    );
+    try {
+      writeTextFile(join(installRoot, "LICENSE"), "Apache-2.0\n");
+      writeTextFile(
+        join(installRoot, "skills/go-review/SKILL.md"),
+        "---\nname: go-review\ndescription: Review Go\n---\n# Go review\n",
+      );
+
+      const entries = await scanPluginSource(installRoot);
+      expect(entries[0]?.resources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "skill", name: "go-review" }),
+        ]),
+      );
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("resolves nested plugins/<name> trees inside official Claude cache checkouts", async () => {
+    const home = createTempDir("claude-official-cache-nested");
+    const cacheRoot = join(
+      home,
+      ".claude/plugins/cache/claude-plugins-official/gopls-lsp/1.0.0",
+    );
+    try {
+      writeTextFile(
+        join(cacheRoot, ".claude-plugin/marketplace.json"),
+        JSON.stringify({
+          name: "claude-plugins-official",
+          plugins: [
+            { name: "gopls-lsp", source: "./plugins/gopls-lsp" },
+            { name: "other", source: "./plugins/other" },
+          ],
+        }),
+      );
+      writeTextFile(join(cacheRoot, "plugins/gopls-lsp/LICENSE"), "Apache-2.0\n");
+      writeTextFile(
+        join(cacheRoot, "plugins/gopls-lsp/skills/gopls-help/SKILL.md"),
+        "---\nname: gopls-help\ndescription: Help with gopls\n---\n# Help\n",
+      );
+      writeTextFile(
+        join(cacheRoot, "plugins/other/.claude-plugin/plugin.json"),
+        JSON.stringify({ name: "other", version: "9.0.0" }),
+      );
+      writeTextFile(
+        join(cacheRoot, "plugins/other/skills/other-skill/SKILL.md"),
+        "---\nname: other-skill\ndescription: Other\n---\n# Other\n",
+      );
+
+      const entries = await scanPluginSource(cacheRoot);
+      expect(entries[0]?.plugin_name).toBe("gopls-lsp");
+      expect(entries[0]?.plugin_version).toBe("1.0.0");
+      expect(entries[0]?.resources.map((resource) => resource.name)).toEqual([
+        "gopls-help",
+      ]);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("resolves official marketplace source paths from the repo root", async () => {
+    const repo = createTempDir("official-marketplace-source");
+    try {
+      writeTextFile(
+        join(repo, ".claude-plugin/marketplace.json"),
+        JSON.stringify({
+          name: "claude-plugins-official",
+          plugins: [{ name: "gopls-lsp", source: "./plugins/gopls-lsp" }],
+        }),
+      );
+      writeTextFile(
+        join(repo, "plugins/gopls-lsp/.claude-plugin/plugin.json"),
+        JSON.stringify({ name: "gopls-lsp", version: "1.0.0" }),
+      );
+      writeTextFile(
+        join(repo, "plugins/gopls-lsp/skills/gopls-help/SKILL.md"),
+        "---\nname: gopls-help\ndescription: Help\n---\n# Help\n",
+      );
+
+      const entries = await scanPluginSource(
+        join(repo, ".claude-plugin/marketplace.json"),
+      );
+      expect(entries).toHaveLength(1);
+      expect(entries[0]?.plugin_name).toBe("gopls-lsp");
+      expect(entries[0]?.resources.some((resource) => resource.type === "skill")).toBe(
+        true,
+      );
+    } finally {
+      cleanupDir(repo);
     }
   });
 });

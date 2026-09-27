@@ -70,6 +70,8 @@ All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}`
 | `.github/plugin/plugin.json` | GitHub Copilot / Copilot CLI | `copilot-plugin` |
 | `plugin.json` / `.goose-plugin/plugin.json` / `.plugin/plugin.json` | Goose (Open Plugins) | `goose-plugin` |
 
+Official Claude plugin cache trees at `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>` are also valid scan/sync roots when they have **no** `plugin.json` (LSP-only plugins such as `gopls-lsp`, whose `lspServers` live in the marketplace catalog). Name and version are taken from the cache path. If that directory is a marketplace checkout, import uses the nested `plugins/<name>` tree. Marketplace `source` / `path` values like `./plugins/gopls-lsp` resolve from the marketplace repo root, not from `.claude-plugin/`.
+
 Scanning a repo with both harness files and a plugin manifest merges both sources automatically. See [Portability limits — dual-mode scan](portability-limits.md#dual-mode-scan-for-plugin-only-repos).
 
 ### Plugin install and sync providers

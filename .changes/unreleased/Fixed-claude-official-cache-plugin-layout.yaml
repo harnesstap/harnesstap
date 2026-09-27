@@ -1,0 +1,5 @@
+kind: Fixed
+body: Treat official Claude plugin cache version directories without plugin.json (gopls-lsp and similar LSP plugins) as valid sync/scan roots so harness dry-run can count changes.
+time: 2026-09-27T06:30:00Z
+custom:
+  Issue: ""

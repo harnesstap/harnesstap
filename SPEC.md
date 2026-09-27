@@ -734,7 +734,7 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 **`.harnesstapignore`:** gitignore-style patterns at the project root exclude paths from scan and `plugin from-project`. Applies to project-derived flows only (not home-default discovery during `init`).
 
-**Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.github/plugin/plugin.json`, Goose Open Plugins manifests) or marketplace manifest snapshots plugin content into canonical resources. `--global` installs into each configured harness's global paths; `--harness` limits targets.
+**Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.github/plugin/plugin.json`, Goose Open Plugins manifests) or marketplace manifest snapshots plugin content into canonical resources. Host cache version directories (`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>` and the Cursor equivalent) are valid plugin roots even when they have no `plugin.json` — official Claude LSP plugins such as `gopls-lsp` store metadata in the marketplace catalog and copy only LICENSE/README into the cache. Name and version come from that path; a nested `plugins/<name>` tree is used when the cache dir is a marketplace checkout. `--global` installs into each configured harness's global paths; `--harness` limits targets.
 
 **Dual-mode repos:** when a project has both harness files and a plugin manifest, `scan` automatically merges harness scan with plugin-source import. `plugin from-project` always uses the merged scan.
 

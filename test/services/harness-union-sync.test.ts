@@ -442,4 +442,55 @@ describe("syncConfiguredHarnesses", () => {
       await context.cleanup();
     }
   });
+
+  it("dry-run succeeds for official Claude cache plugins without plugin.json", async () => {
+    const context = await createInitializedTestContext("harness-union-gopls-lsp");
+    try {
+      const { setHarnessPreference } = await import("../../src/models/harness.ts");
+      setHarnessPreference({
+        main_harness: "claude-code",
+        alias_harnesses: ["opencode"],
+      });
+
+      const installRoot =
+        ".claude/plugins/cache/claude-plugins-official/gopls-lsp/1.0.0";
+      writeTextFile(
+        join(context.homeDir, installRoot, "LICENSE"),
+        "Apache-2.0\n",
+      );
+      writeTextFile(
+        join(context.homeDir, installRoot, "README.md"),
+        "# gopls-lsp\n",
+      );
+      writeTextFile(
+        join(context.homeDir, ".claude/plugins/installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "gopls-lsp@claude-plugins-official": [
+              {
+                scope: "user",
+                installPath: "cache/claude-plugins-official/gopls-lsp/1.0.0",
+                version: "1.0.0",
+              },
+            ],
+          },
+        }),
+      );
+
+      const { syncConfiguredHarnesses } = await import(
+        "../../src/services/harness-union-sync.ts"
+      );
+      const result = await syncConfiguredHarnesses({
+        scope: "global",
+        homeRoot: context.homeDir,
+        dryRun: true,
+      });
+
+      expect(result.platforms_synced.sort()).toEqual(["claude-code", "opencode"]);
+      expect(result.harness_changes.every((row) => row.changes >= 0)).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
