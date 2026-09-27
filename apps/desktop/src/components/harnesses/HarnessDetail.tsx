@@ -38,6 +38,7 @@ export interface HarnessDetailProps {
   onMarketplaceIds: (value: readonly string[]) => void;
   onMakeMain: () => void;
   onOpen: (row: HarnessResourceRow) => void;
+  onOpenLocation?: (path: string) => void;
   pullAllBusy?: boolean;
   onPullAllPlugins?: (targets: readonly HarnessPluginPullTarget[]) => void;
 }
@@ -63,6 +64,7 @@ export function HarnessDetail({
   onMarketplaceIds,
   onMakeMain,
   onOpen,
+  onOpenLocation,
   pullAllBusy = false,
   onPullAllPlugins,
 }: HarnessDetailProps) {
@@ -161,6 +163,7 @@ export function HarnessDetail({
           disabled={disabled}
           pullAllBusy={pullAllBusy}
           onOpen={onOpen}
+          onOpenLocation={onOpenLocation}
           onPullAllPlugins={onPullAllPlugins}
         />
       )}

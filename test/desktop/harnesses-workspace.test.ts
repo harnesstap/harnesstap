@@ -145,6 +145,22 @@ describe("Harnesses empty inventory sections", () => {
   });
 });
 
+describe("Harnesses section open location", () => {
+  it("adds an ExternalLink control beside each harness section title", () => {
+    expect(inventoryListSource).toContain('data-testid="harness-open-location"');
+    expect(inventoryListSource).toContain("HARNESS_OPEN_LOCATION_LABEL");
+    expect(inventoryListSource).toContain("ExternalLink");
+    expect(inventoryListSource).toContain("onOpenLocation");
+    expect(inventoryListSource).toContain("section.onDisk");
+    expect(detailSource).toContain("onOpenLocation");
+    expect(workspaceSource).toContain("harnessLocationOpenRequest");
+    expect(workspaceSource).toContain("openResourcePath");
+    const titleRow = cssBlock(stylesSource, ".harness-type-section-title-row");
+    expect(titleRow).toContain("display: flex");
+    expect(designSource).toContain("ExternalLink icon-action beside the section name");
+  });
+});
+
 describe("Harnesses Plugins Pull all", () => {
   it("puts a labeled Pull all control on the Plugins type heading", () => {
     expect(inventoryListSource).toContain('data-testid="harness-pull-all-plugins"');

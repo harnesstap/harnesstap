@@ -29,11 +29,14 @@ import {
   syncHarnessesTooltip,
   type HarnessSyncPreviewState,
 } from "../../lib/harness-sync";
+import { openResourcePath } from "../../lib/agent-client";
+import { harnessLocationOpenRequest } from "../../lib/harness-location-open";
 import { escapeAction } from "../../lib/library-pane";
 import type { HarnessPluginPullTarget } from "../../lib/harness-plugin-pull";
 import { workspaceBackEnabled } from "../../lib/screen-history";
 import { useRegisterCommands } from "../../state/command-registry";
 import { changeSettled, useHarnessesController } from "../../state/harnesses-controller";
+import { toast } from "../../state/toast-store";
 import { useEscapeWhenNoLayer } from "../../state/overlay-stack";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { EmptyState } from "../EmptyState";
@@ -366,6 +369,22 @@ export function HarnessesWorkspace({
     });
   };
 
+  const openLocation = useCallback(
+    async (path: string) => {
+      if (!baseUrl || controlsDisabled) {
+        return;
+      }
+      try {
+        await openResourcePath(baseUrl, token, harnessLocationOpenRequest(path));
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "Could not open location";
+        toast({ tone: "error", title: message });
+      }
+    },
+    [baseUrl, controlsDisabled, token],
+  );
+
   const onPick = async (id: HarnessId) => {
     const result = await ctrl.change({ kind: "add", id });
     if (changeSettled(result)) {
@@ -479,6 +498,7 @@ export function HarnessesWorkspace({
             onMarketplaceIds={(value) => dispatch({ type: "marketplace-filter", value })}
             onMakeMain={onMakeMain}
             onOpen={openRow}
+            onOpenLocation={(path) => void openLocation(path)}
             pullAllBusy={pullBusy}
             onPullAllPlugins={startPullAll}
           />

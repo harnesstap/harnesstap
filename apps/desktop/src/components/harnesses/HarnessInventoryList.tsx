@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import {
   groupHarnessLocationsByType,
   harnessDuplicatePluginNames,
@@ -17,6 +17,7 @@ import {
   pluginRowsFromTypeGroup,
   type HarnessPluginPullTarget,
 } from "../../lib/harness-plugin-pull";
+import { HARNESS_OPEN_LOCATION_LABEL } from "../../lib/harness-location-open";
 import type { ResourceHoverModel } from "../../lib/resource-hover";
 import { resourceTypeTabLabel } from "../../lib/resource-type-tabs";
 import { ChromeTooltip } from "../ChromeTooltip";
@@ -33,6 +34,7 @@ export interface HarnessInventoryListProps {
   disabled: boolean;
   pullAllBusy?: boolean;
   onOpen: (row: HarnessResourceRow) => void;
+  onOpenLocation?: (path: string) => void;
   onPullAllPlugins?: (targets: readonly HarnessPluginPullTarget[]) => void;
 }
 
@@ -104,14 +106,18 @@ function HarnessTypeSectionBlock({
   section,
   disabled,
   onOpen,
+  onOpenLocation,
   duplicateNames,
 }: {
   type: string;
   section: HarnessTypeSection;
   disabled: boolean;
   onOpen: (row: HarnessResourceRow) => void;
+  onOpenLocation?: (path: string) => void;
   duplicateNames?: ReadonlySet<string>;
 }) {
+  const openLocation = onOpenLocation;
+  const canOpenLocation = Boolean(openLocation) && section.onDisk;
   return (
     <section
       className="harness-type-section"
@@ -119,12 +125,24 @@ function HarnessTypeSectionBlock({
       data-testid="harness-location"
       data-path={section.path}
     >
-      <ChromeTooltip content={section.path}>
-        <button type="button" className="harness-type-section-title">
-          <HarnessIcon id={section.owner.iconId} size={TITLE_ICON_SIZE} tooltip={false} />
-          <span>{section.owner.name}</span>
-        </button>
-      </ChromeTooltip>
+      <div className="harness-type-section-title-row">
+        <ChromeTooltip content={section.path}>
+          <span className="harness-type-section-title">
+            <HarnessIcon id={section.owner.iconId} size={TITLE_ICON_SIZE} tooltip={false} />
+            <span>{section.owner.name}</span>
+          </span>
+        </ChromeTooltip>
+        {openLocation ? (
+          <IconActionButton
+            data-testid="harness-open-location"
+            label={HARNESS_OPEN_LOCATION_LABEL}
+            title={section.path}
+            disabled={disabled || !canOpenLocation}
+            onClick={() => openLocation(section.path)}
+            icon={<ExternalLink size={TITLE_ICON_SIZE} aria-hidden />}
+          />
+        ) : null}
+      </div>
       <div className="harness-resource-badges">
         {section.resources.map((row) => (
           <ResourceBadge
@@ -146,6 +164,7 @@ export function HarnessInventoryList({
   disabled,
   pullAllBusy = false,
   onOpen,
+  onOpenLocation,
   onPullAllPlugins,
 }: HarnessInventoryListProps) {
   const groups = groupHarnessLocationsByType(entry, locations)
@@ -205,6 +224,7 @@ export function HarnessInventoryList({
                 section={section}
                 disabled={disabled}
                 onOpen={onOpen}
+                onOpenLocation={onOpenLocation}
                 duplicateNames={duplicateNames}
               />
             ))}
