@@ -207,6 +207,17 @@
   padding-left: var(--space-2);
 }
 
+.harness-type-section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.harness-type-section-title-row .icon-action {
+  flex-shrink: 0;
+}
+
 .harness-type-section-title {
   display: inline-flex;
   align-items: center;
