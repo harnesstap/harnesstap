@@ -93,6 +93,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { ExternalTextLink } from "./ExternalTextLink";
 import { IconActionButton } from "./IconActionButton";
 import type { LibraryDetailChromeProps } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
@@ -1083,7 +1084,7 @@ export function ResourceDetailBody({
               fieldName="Marketplace URL"
               readOnly
               mono
-              display={detail.marketplace_url}
+              display={<ExternalTextLink href={detail.marketplace_url ?? ""} />}
               editing={false}
               onStartEdit={() => undefined}
             />

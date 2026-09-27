@@ -1,6 +1,7 @@
 export type ComboboxOption = {
   value: string;
   label: string;
+  title?: string;
 };
 
 export function filterComboboxOptions(
@@ -11,8 +12,10 @@ export function filterComboboxOptions(
   if (needle.length === 0) {
     return options;
   }
-  return options.filter((option) =>
-    option.label.toLowerCase().includes(needle),
+  return options.filter(
+    (option) =>
+      option.label.toLowerCase().includes(needle) ||
+      option.value.toLowerCase().includes(needle),
   );
 }
 

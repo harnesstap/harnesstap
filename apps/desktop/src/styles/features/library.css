@@ -1003,6 +1003,11 @@
   min-width: 0;
 }
 
+.library-field-display .link-btn {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
 .library-field-display.is-editable {
   cursor: text;
 }

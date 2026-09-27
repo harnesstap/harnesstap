@@ -1,0 +1,5 @@
+kind: Changed
+body: Label resource-detail Version options as (release) vs (git), and make Marketplace URL a clickable text link.
+time: 2026-09-27T06:30:00Z
+custom:
+  Issue: ""

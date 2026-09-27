@@ -29,6 +29,17 @@ describe("filterComboboxOptions", () => {
       { value: "team", label: "team" },
     ]);
   });
+
+  test("matches the option value so a shortened git label still filters", () => {
+    const sha = "6fd4507659784c351abbd2bc264c7162cfd386dc";
+    const rows = [
+      { value: sha, label: "6fd450765978 (git)", title: sha },
+      { value: "5.1.0", label: "5.1.0 (release)" },
+    ];
+    expect(filterComboboxOptions(rows, "6fd4507659784c351")).toEqual([rows[0]]);
+    expect(filterComboboxOptions(rows, "(git)")).toEqual([rows[0]]);
+    expect(filterComboboxOptions(rows, "release")).toEqual([rows[1]]);
+  });
 });
 
 describe("customComboboxOption", () => {
