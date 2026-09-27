@@ -51,17 +51,13 @@ function PullRowList({
             <li key={row.selector}>
               <span className="plugin-pull-report-name">{row.name}</span>
               {version ? (
-                <span className="muted plugin-pull-report-version">{version}</span>
+                <>
+                  {" "}
+                  <span className="muted plugin-pull-report-version">{version}</span>
+                </>
               ) : null}
               {showMessage && row.message ? (
                 <span className="plugin-pull-report-message">{row.message}</span>
-              ) : null}
-              {row.changes.length > 0 ? (
-                <ul className="plugin-pull-report-changes">
-                  {row.changes.map((change) => (
-                    <li key={`${row.selector}-${change}`}>{change}</li>
-                  ))}
-                </ul>
               ) : null}
             </li>
           );

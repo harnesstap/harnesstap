@@ -39,6 +39,13 @@ const inventoryListSource = readFileSync(
   ),
   "utf8",
 );
+const pullDialogSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/harnesses/PluginPullReportDialog.tsx",
+  ),
+  "utf8",
+);
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
   "utf8",
@@ -175,7 +182,14 @@ describe("Harnesses Plugins Pull all", () => {
     expect(designSource).toContain("The **Plugins** type heading has labeled **Pull all**");
     expect(designSource).toContain("Plugin updates");
     expect(designSource).toContain("Already current");
+    expect(designSource).toContain("no nested skills");
+    expect(designSource).toContain("bounded concurrency");
+    expect(designSource).not.toContain("nested resource names");
     expect(designSource).not.toContain("Pull all plugins —");
+    expect(pullDialogSource).toContain('{" "}');
+    expect(pullDialogSource).not.toContain("plugin-pull-report-changes");
+    expect(pullDialogSource).not.toContain("row.changes");
+    expect(stylesSource).not.toContain(".plugin-pull-report-changes");
     const heading = cssBlock(stylesSource, ".harness-type-heading-row");
     expect(heading).toContain("display: flex");
     expect(heading).toContain("gap: 0.4rem");

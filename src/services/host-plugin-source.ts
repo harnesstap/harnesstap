@@ -58,11 +58,32 @@ function stripGitSuffix(value: string): string {
   return value.replace(/\/+$/, "").replace(/\.git$/i, "");
 }
 
-function githubCloneUrl(repo: string): string {
+/**
+ * SCP-style remotes (`git@github.com:owner/repo.git`, or a GitHub App user such as
+ * `org-1535932@github.com:owner/repo.git`) and already-mangled
+ * `https://github.com/<scp>` values. Host must contain a dot so `owner/repo` shorthand
+ * is not treated as SCP.
+ */
+const SCP_GIT_URL =
+  /^(?:https?:\/\/github\.com\/)?(?:[^@/\s]+@)?([^:/\s]+\.[^:/\s]+):(.+)$/i;
+
+/**
+ * Turn a marketplace/plugin source into a cloneable git URL.
+ * `owner/repo` becomes `https://github.com/owner/repo.git`. SCP-style SSH remotes
+ * become HTTPS instead of `https://github.com/user@host:path`.
+ */
+export function githubCloneUrl(repo: string): string {
   const trimmed = repo.trim();
   if (trimmed.startsWith("file:")) {
     return trimmed;
   }
+
+  const scp = trimmed.match(SCP_GIT_URL);
+  if (scp?.[1] && scp[2]) {
+    const path = stripGitSuffix(scp[2].replace(/^\/+/, ""));
+    return `https://${scp[1]}/${path}.git`;
+  }
+
   if (trimmed.includes("://")) {
     return trimmed.endsWith(".git") ? trimmed : `${stripGitSuffix(trimmed)}.git`;
   }
@@ -85,7 +106,11 @@ export function isRelativePluginSourcePath(path: string | null | undefined): boo
   if (!trimmed) {
     return false;
   }
-  if (trimmed.includes("://") || trimmed.startsWith("git@")) {
+  if (
+    trimmed.includes("://")
+    || trimmed.startsWith("git@")
+    || SCP_GIT_URL.test(trimmed)
+  ) {
     return false;
   }
   if (trimmed.startsWith("/")) {
@@ -106,7 +131,15 @@ export function parseMarketplacePluginSource(
       : null;
   const source = entry.source;
   if (typeof source === "string" && source.trim()) {
-    return { version, url: null, gitRef: null, path: source.trim() };
+    const raw = source.trim();
+    if (
+      raw.includes("://")
+      || raw.startsWith("git@")
+      || SCP_GIT_URL.test(raw)
+    ) {
+      return { version, url: githubCloneUrl(raw), gitRef: null, path: null };
+    }
+    return { version, url: null, gitRef: null, path: raw };
   }
   if (!isRecord(source)) {
     return { version, url: null, gitRef: null, path: null };
@@ -351,10 +384,10 @@ export function resolveHostPluginCloneUrl(input: {
   runCommand?: RunCommand;
 }): string | null {
   if (input.live?.url) {
-    return input.live.url;
+    return githubCloneUrl(input.live.url);
   }
   if (input.snapshot?.source_url) {
-    return input.snapshot.source_url;
+    return githubCloneUrl(input.snapshot.source_url);
   }
   if (!isRelativePluginSourcePath(input.live?.path)) {
     return null;
@@ -448,10 +481,11 @@ export function listRemotePluginVersionTags(
   cloneUrl: string,
   runCommand: RunCommand = runCommandWithTimeout,
 ): Array<{ version: string; gitRef: string }> {
-  const result = runGit(runCommand, ["ls-remote", "--tags", cloneUrl]);
+  const url = githubCloneUrl(cloneUrl);
+  const result = runGit(runCommand, ["ls-remote", "--tags", url]);
   if (result.exitCode !== 0) {
     throw new Error(
-      result.stderr.trim() || `git ls-remote failed for ${cloneUrl}`,
+      result.stderr.trim() || `git ls-remote failed for ${url}`,
     );
   }
   const byVersion = new Map<string, string>();
@@ -499,7 +533,7 @@ export function refreshMarketplaceCheckout(
   const root =
     resolveMarketplaceRoot(homeRoot, marketplace) ??
     defaultMarketplaceRoot(homeRoot, marketplace);
-  const url = known?.url ?? null;
+  const url = known?.url ? githubCloneUrl(known.url) : null;
   if (existsSync(join(root, ".git"))) {
     let fetch = runGit(runCommand, ["fetch", "origin", "--tags", "--prune"], root);
     if (fetch.exitCode !== 0) {
@@ -599,7 +633,7 @@ function clonePluginVersion(input: {
       options?.cwd,
     );
   return refreshGitSource({
-    url: input.url,
+    url: githubCloneUrl(input.url),
     ref: input.gitRef,
     targetDir: input.targetDir,
     runCommand: run,
