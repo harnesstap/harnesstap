@@ -1,20 +1,15 @@
+import type { ResourceCreateInput } from "../types.js";
+import { isClaudeLocalMcpResource } from "./claude-local-mcp.js";
 import {
-  existsSync,
-  lstatSync,
-  readFileSync,
-  readlinkSync,
-} from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
-import type { SerializedFile, SerializerTarget } from "../types.js";
-import type { ApplyResult } from "./applier.js";
-import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+  type HarnessScanSlice,
+  resourceFingerprint,
+} from "./harness-resource-union.js";
 import {
-  nativeSkillDir,
-  type SkillHubPlan,
+  type ExtractHostPluginMaterialResult,
+  isHostPluginTreePlatform,
 } from "./host-plugin-material.js";
-import type { InstructionLink, PairedInstructionFiles } from "./instruction-file-links.js";
-import type { PluginResourceMode } from "./plugin-resource-mode.js";
-import { skillConsumeDirs } from "./shared-emit-paths.js";
+import { isHostPluginPinResource } from "./host-plugin-serialize.js";
+import { resourceIdentity } from "./reference-resources.js";
 
 export interface HarnessSyncChangeCount {
   harness: string;
@@ -23,214 +18,95 @@ export interface HarnessSyncChangeCount {
 
 export interface CountHarnessSyncChangesInput {
   platforms: readonly string[];
-  results: readonly ApplyResult[];
-  paired: PairedInstructionFiles;
-  skillHubPlans: readonly SkillHubPlan[];
-  target: SerializerTarget;
-  rootPath: string;
-  pluginResourceMode: PluginResourceMode;
+  slices: readonly HarnessScanSlice[];
+  unionResources: readonly ResourceCreateInput[];
+  extracted: ExtractHostPluginMaterialResult;
 }
 
-function posix(path: string): string {
-  return path.replace(/\\/g, "/");
+function isHostPluginPin(resource: ResourceCreateInput): boolean {
+  return isHostPluginPinResource({
+    type: resource.type,
+    metadata: resource.metadata,
+    origin_ref: resource.origin_ref ?? "",
+  });
 }
 
-function filesByPlatform(
-  results: readonly ApplyResult[],
-): Map<string, Map<string, SerializedFile>> {
-  const byPlatform = new Map<string, Map<string, SerializedFile>>();
-  for (const result of results) {
-    let files = byPlatform.get(result.platformId);
-    if (!files) {
-      files = new Map();
-      byPlatform.set(result.platformId, files);
-    }
-    for (const file of result.files) {
-      const path = posix(file.path);
-      files.set(path, { ...file, path });
-    }
+function sliceByIdentity(
+  slice: HarnessScanSlice | undefined,
+): Map<string, ResourceCreateInput> {
+  const byIdentity = new Map<string, ResourceCreateInput>();
+  if (!slice) return byIdentity;
+  for (const resource of slice.resources) {
+    byIdentity.set(resourceIdentity(resource), resource);
   }
-  return byPlatform;
+  return byIdentity;
 }
 
-function linkExists(fullPath: string): boolean {
-  try {
-    lstatSync(fullPath);
-    return true;
-  } catch {
-    return false;
+function sliceSkillNames(slice: HarnessScanSlice | undefined): Set<string> {
+  const names = new Set<string>();
+  if (!slice) return names;
+  for (const resource of slice.resources) {
+    if (resource.type === "skill") names.add(resource.name);
   }
+  return names;
 }
 
-function isSymlink(fullPath: string): boolean {
-  try {
-    return lstatSync(fullPath).isSymbolicLink();
-  } catch {
-    return false;
-  }
-}
-
-function serializedWouldChange(rootPath: string, file: SerializedFile): boolean {
-  const fullPath = join(rootPath, file.path);
-  if (!existsSync(fullPath)) return true;
-  try {
-    const current = readFileSync(fullPath, "utf8");
-    return !fileContentsEquivalentForDrift(file.path, current, file.content);
-  } catch {
-    return true;
-  }
-}
-
-function symlinkWouldChange(rootPath: string, link: InstructionLink): boolean {
-  const dest = join(rootPath, link.path);
-  const canonical = join(rootPath, link.target);
-  const expected = posix(relative(dirname(dest), canonical) || basename(canonical));
-  if (!linkExists(dest)) return true;
-  if (!isSymlink(dest)) return true;
-  try {
-    return posix(readlinkSync(dest)) !== expected;
-  } catch {
-    return true;
-  }
-}
-
-function cloneWouldChange(
-  rootPath: string,
-  link: InstructionLink,
-  paired: PairedInstructionFiles,
+function resourceWouldChange(
+  planned: ResourceCreateInput,
+  current: Map<string, ResourceCreateInput>,
 ): boolean {
-  const dest = join(rootPath, link.path);
-  const expected =
-    paired.files.find((file) => posix(file.path) === link.target)?.content ??
-    (existsSync(join(rootPath, link.target))
-      ? readFileSync(join(rootPath, link.target), "utf8")
-      : null);
-  if (expected === null) return !existsSync(dest);
-  if (!existsSync(dest) || isSymlink(dest)) return true;
-  try {
-    return !fileContentsEquivalentForDrift(
-      link.path,
-      readFileSync(dest, "utf8"),
-      expected,
-    );
-  } catch {
-    return true;
-  }
-}
-
-function linkWouldChange(
-  rootPath: string,
-  link: InstructionLink,
-  mode: PluginResourceMode,
-  paired: PairedInstructionFiles,
-): boolean {
-  switch (mode) {
-    case "copy":
-      return false;
-    case "symlink":
-      return symlinkWouldChange(rootPath, link);
-    case "clone":
-      return cloneWouldChange(rootPath, link, paired);
-    default: {
-      const exhaustive: never = mode;
-      return exhaustive;
-    }
-  }
-}
-
-function hubWouldChange(rootPath: string, plan: SkillHubPlan): boolean {
-  const dest = join(rootPath, plan.skillMdPath);
-  const source = join(plan.sourceDir, "SKILL.md");
-  if (!existsSync(dest)) return true;
-  if (!existsSync(source)) return true;
-  try {
-    return !fileContentsEquivalentForDrift(
-      plan.skillMdPath,
-      readFileSync(dest, "utf8"),
-      readFileSync(source, "utf8"),
-    );
-  } catch {
-    return true;
-  }
-}
-
-function planBelongsToHarness(
-  plan: SkillHubPlan,
-  platformId: string,
-  target: SerializerTarget,
-): boolean {
-  const dest = `${posix(plan.destDir).replace(/\/+$/, "")}/`;
-  for (const dir of skillConsumeDirs(platformId, target)) {
-    if (dest.startsWith(dir)) return true;
-  }
-  const native = nativeSkillDir(platformId, target);
-  return Boolean(native && dest.startsWith(native));
-}
-
-function pathWouldChange(
-  relPath: string,
-  platformFiles: Map<string, SerializedFile>,
-  paired: PairedInstructionFiles,
-  hubs: Map<string, SkillHubPlan>,
-  rootPath: string,
-  mode: PluginResourceMode,
-): boolean {
-  const link = paired.links.find((entry) => entry.path === relPath);
-  if (link) {
-    return linkWouldChange(rootPath, link, mode, paired);
-  }
-  const file =
-    paired.files.find((entry) => posix(entry.path) === relPath) ??
-    platformFiles.get(relPath);
-  if (file) {
-    return serializedWouldChange(rootPath, file);
-  }
-  const hub = hubs.get(relPath);
-  if (hub) {
-    return hubWouldChange(rootPath, hub);
-  }
-  return !existsSync(join(rootPath, relPath));
+  const existing = current.get(resourceIdentity(planned));
+  if (!existing) return true;
+  return resourceFingerprint(existing) !== resourceFingerprint(planned);
 }
 
 /**
- * Count files that would actually change on disk, grouped by the harness
- * that would emit or consume them.
+ * Count resources that would be added or updated on each harness.
+ *
+ * One `type:name:namespace` is one change, matching inventory rows. Host
+ * plugin pins count as a single resource on Claude/Cursor; portable harnesses
+ * get extracted plugin skills/resources instead of those pin trees.
  */
 export function countHarnessSyncChanges(
   input: CountHarnessSyncChangesInput,
 ): HarnessSyncChangeCount[] {
-  const byPlatform = filesByPlatform(input.results);
-  const hubs = new Map(
-    input.skillHubPlans.map((plan) => [posix(plan.skillMdPath), plan]),
+  const slices = new Map(
+    input.slices.map((slice) => [slice.platformId, slice]),
   );
 
   return input.platforms.map((harness) => {
-    const files = byPlatform.get(harness) ?? new Map();
-    const paths = new Set(files.keys());
-    for (const link of input.paired.links) {
-      if (files.has(link.path)) paths.add(link.path);
+    const slice = slices.get(harness);
+    const current = sliceByIdentity(slice);
+    const skillNames = sliceSkillNames(slice);
+    const portable = !isHostPluginTreePlatform(harness);
+    const seen = new Set<string>();
+    let changes = 0;
+
+    const consider = (resource: ResourceCreateInput): void => {
+      if (isClaudeLocalMcpResource(resource)) return;
+      if (portable && isHostPluginPin(resource)) return;
+      const identity = resourceIdentity(resource);
+      if (seen.has(identity)) return;
+      seen.add(identity);
+      if (resourceWouldChange(resource, current)) changes += 1;
+    };
+
+    for (const resource of input.unionResources) {
+      consider(resource);
     }
-    for (const plan of input.skillHubPlans) {
-      if (planBelongsToHarness(plan, harness, input.target)) {
-        paths.add(posix(plan.skillMdPath));
+
+    if (portable) {
+      for (const resource of input.extracted.resources) {
+        consider(resource);
+      }
+      for (const skill of input.extracted.skills) {
+        const identity = `skill:${skill.name}:`;
+        if (seen.has(identity)) continue;
+        seen.add(identity);
+        if (!skillNames.has(skill.name)) changes += 1;
       }
     }
 
-    let changes = 0;
-    for (const path of paths) {
-      if (
-        pathWouldChange(
-          path,
-          files,
-          input.paired,
-          hubs,
-          input.rootPath,
-          input.pluginResourceMode,
-        )
-      ) {
-        changes += 1;
-      }
-    }
     return { harness, changes };
   });
 }

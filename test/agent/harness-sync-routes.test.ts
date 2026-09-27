@@ -86,7 +86,9 @@ describe("agent harness sync route", () => {
       "claude-code",
       "cursor",
     ]);
-    expect(body.harness_changes.every((row) => row.changes >= 0)).toBe(true);
-    expect(body.harness_changes.some((row) => row.changes > 0)).toBe(true);
+    expect(body.harness_changes).toEqual([
+      { harness: "claude-code", changes: 1 },
+      { harness: "cursor", changes: 1 },
+    ]);
   });
 });

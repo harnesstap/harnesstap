@@ -228,12 +228,12 @@ export async function previewConfiguredHarnessSync(
     signal,
   });
   if (!response.ok) {
-    return throwAgentError(response, "Could not count changes");
+    return throwAgentError(response, "Could not count resource changes");
   }
   try {
     const body = asRecord(await response.json(), "body");
     return parseHarnessChanges(body.harness_changes);
   } catch {
-    throw new AgentApiError("Could not count changes", 500, "invalid_preview");
+    throw new AgentApiError("Could not count resource changes", 500, "invalid_preview");
   }
 }

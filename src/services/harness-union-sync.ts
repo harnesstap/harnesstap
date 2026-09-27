@@ -33,6 +33,7 @@ import {
 import { uniqueHarnessTargets } from "./harness-targets.js";
 import {
   extractHostPluginMaterial,
+  type ExtractHostPluginMaterialResult,
   materializeSkillHubPlan,
   planPluginSkillHub,
   portableHarnessesForPluginFanout,
@@ -217,9 +218,10 @@ export async function syncConfiguredHarnesses(
 
   const extraResults: ApplyResult[] = [];
   let skillHubPlans: ReturnType<typeof planPluginSkillHub> = [];
+  let extracted: ExtractHostPluginMaterialResult = { skills: [], resources: [] };
   if (target === "global" && portablePlatforms.length > 0) {
     const occupied = new Set(unioned.resources.map(resourceIdentity));
-    const extracted = await extractHostPluginMaterial(
+    extracted = await extractHostPluginMaterial(
       unioned.resources,
       homeRoot,
       occupied,
@@ -254,12 +256,9 @@ export async function syncConfiguredHarnesses(
   ].filter((path, index, all) => all.indexOf(path) === index);
   const harness_changes = countHarnessSyncChanges({
     platforms,
-    results: [...preferred, ...extraResults],
-    paired,
-    skillHubPlans,
-    target,
-    rootPath,
-    pluginResourceMode,
+    slices,
+    unionResources: unioned.resources,
+    extracted,
   });
 
   if (options.dryRun) {
