@@ -30,6 +30,7 @@ import {
   type HarnessSyncPreviewState,
 } from "../../lib/harness-sync";
 import { escapeAction } from "../../lib/library-pane";
+import type { HarnessPluginPullTarget } from "../../lib/harness-plugin-pull";
 import { workspaceBackEnabled } from "../../lib/screen-history";
 import { useRegisterCommands } from "../../state/command-registry";
 import { changeSettled, useHarnessesController } from "../../state/harnesses-controller";
@@ -44,6 +45,7 @@ import { AddHarnessModal } from "./AddHarnessModal";
 import { DetectHarnessesDialog } from "./DetectHarnessesDialog";
 import { HarnessDetail } from "./HarnessDetail";
 import { HarnessSidebar } from "./HarnessSidebar";
+import { PluginPullReportDialog } from "./PluginPullReportDialog";
 import { SyncHarnessesDialog } from "./SyncHarnessesDialog";
 
 /** Add, detect confirm, and remove confirm never stack. */
@@ -107,6 +109,12 @@ export function HarnessesWorkspace({
   const [syncPreview, setSyncPreview] = useState<HarnessSyncPreviewState>({
     kind: "loading",
   });
+  const [pullOpen, setPullOpen] = useState(false);
+  const [pullBusy, setPullBusy] = useState(false);
+  const [pullRunKey, setPullRunKey] = useState(0);
+  const [pullTargets, setPullTargets] = useState<readonly HarnessPluginPullTarget[]>(
+    [],
+  );
   const cancelFieldEditRef = useRef<(() => void) | null>(null);
   const detailTitleId = useId();
   const homeResetNonceSeen = useRef(homeResetNonce);
@@ -157,6 +165,9 @@ export function HarnessesWorkspace({
     closeOverlay();
     setSyncError(null);
     setSyncHelper(null);
+    setPullOpen(false);
+    setPullBusy(false);
+    setPullTargets([]);
   }, [closeOverlay, homeResetNonce, inventory]);
 
   useEffect(() => {
@@ -222,19 +233,36 @@ export function HarnessesWorkspace({
   }, []);
 
   const startDetect = useCallback(() => {
-    if (controlsDisabled || working) {
+    if (controlsDisabled || working || pullBusy || pullOpen) {
       return;
     }
     setOverlay(NO_OVERLAY);
     void ctrl.detect();
-  }, [controlsDisabled, ctrl.detect, working]);
+  }, [controlsDisabled, ctrl.detect, pullBusy, pullOpen, working]);
 
   const openAdd = useCallback(() => {
-    if (controlsDisabled || working) {
+    if (controlsDisabled || working || pullBusy || pullOpen) {
       return;
     }
     openOverlay({ kind: "add" });
-  }, [controlsDisabled, openOverlay, working]);
+  }, [controlsDisabled, openOverlay, pullBusy, pullOpen, working]);
+
+  const startPullAll = useCallback(
+    (targets: readonly HarnessPluginPullTarget[]) => {
+      if (controlsDisabled || working || pullBusy || targets.length === 0) {
+        return;
+      }
+      closeOverlay();
+      setPullTargets(targets);
+      setPullRunKey((value) => value + 1);
+      setPullOpen(true);
+    },
+    [closeOverlay, controlsDisabled, pullBusy, working],
+  );
+
+  const handlePullFinished = useCallback(() => {
+    void ctrl.refresh();
+  }, [ctrl.refresh]);
 
   useRegisterCommands(
     "harnesses",
@@ -245,7 +273,7 @@ export function HarnessesWorkspace({
           section: "actions" as const,
           label: "Add harness",
           keywords: ["harness", "platform"],
-          disabled: controlsDisabled || working,
+          disabled: controlsDisabled || working || pullBusy || pullOpen,
           run: openAdd,
         },
         {
@@ -253,11 +281,11 @@ export function HarnessesWorkspace({
           section: "actions" as const,
           label: "Detect harnesses",
           keywords: ["harness", "scan", "disk"],
-          disabled: controlsDisabled || working,
+          disabled: controlsDisabled || working || pullBusy || pullOpen,
           run: startDetect,
         },
       ],
-      [controlsDisabled, openAdd, startDetect, working],
+      [controlsDisabled, openAdd, pullBusy, pullOpen, startDetect, working],
     ),
   );
 
@@ -451,6 +479,8 @@ export function HarnessesWorkspace({
             onMarketplaceIds={(value) => dispatch({ type: "marketplace-filter", value })}
             onMakeMain={onMakeMain}
             onOpen={openRow}
+            pullAllBusy={pullBusy}
+            onPullAllPlugins={startPullAll}
           />
         );
       default: {
@@ -521,6 +551,19 @@ export function HarnessesWorkspace({
         />
         <div className="resources-panel-body">{renderMain()}</div>
       </div>
+
+      <PluginPullReportDialog
+        open={pullOpen}
+        targets={pullTargets}
+        runKey={pullRunKey}
+        baseUrl={baseUrl}
+        token={token}
+        onClose={() => {
+          setPullOpen(false);
+        }}
+        onBusyChange={setPullBusy}
+        onFinished={handlePullFinished}
+      />
 
       <AddHarnessModal
         open={overlay.kind === "add"}

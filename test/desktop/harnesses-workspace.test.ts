@@ -144,3 +144,24 @@ describe("Harnesses empty inventory sections", () => {
     expect(stylesSource).not.toContain(".harness-location-empty");
   });
 });
+
+describe("Harnesses Plugins Pull all", () => {
+  it("puts a labeled Pull all control on the Plugins type heading", () => {
+    expect(inventoryListSource).toContain('data-testid="harness-pull-all-plugins"');
+    expect(inventoryListSource).toContain("HARNESS_PULL_ALL_LABEL");
+    expect(inventoryListSource).toContain("showLabel");
+    expect(inventoryListSource).toContain("iconAfterLabel");
+    expect(inventoryListSource).toContain("Download");
+    expect(inventoryListSource).toContain("group.type === \"plugin\"");
+    expect(workspaceSource).toContain("PluginPullReportDialog");
+    expect(workspaceSource).toContain("startPullAll");
+    expect(designSource).toContain("The **Plugins** type heading has labeled **Pull all**");
+    expect(designSource).toContain("Plugin updates");
+    expect(designSource).toContain("Already current");
+    expect(designSource).not.toContain("Pull all plugins —");
+    const heading = cssBlock(stylesSource, ".harness-type-heading-row");
+    expect(heading).toContain("display: flex");
+    expect(heading).toContain("gap: 0.4rem");
+    expect(stylesSource).toContain(".dialog.plugin-pull-report-dialog");
+  });
+});

@@ -286,6 +286,66 @@
   text-align: left;
 }
 
+.dialog.plugin-pull-report-dialog {
+  width: min(36rem, 100%);
+  max-height: min(80vh, 40rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.plugin-pull-report-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.plugin-pull-report-header h2 {
+  margin: 0;
+}
+
+.plugin-pull-report-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.plugin-pull-report-group {
+  margin: 0.75rem 0 0;
+}
+
+.plugin-pull-report-group h3 {
+  margin: 0 0 0.35rem;
+  font-size: var(--text-meta);
+  font-family: var(--mono);
+}
+
+.plugin-pull-report-group ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.plugin-pull-report-name {
+  font-weight: 500;
+}
+
+.plugin-pull-report-version {
+  margin-left: 0.4rem;
+  font-family: var(--mono);
+  font-size: var(--text-meta);
+}
+
+.plugin-pull-report-message {
+  display: block;
+  color: var(--red);
+  font-size: var(--text-meta);
+}
+
+.plugin-pull-report-changes {
+  margin: 0.2rem 0 0;
+}
+
 .dialog.doctor-report-dialog {
   width: min(36rem, 100%);
   max-height: min(80vh, 40rem);

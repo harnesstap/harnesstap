@@ -12,6 +12,7 @@ import {
   type HarnessResourceRow,
   type HarnessRole,
 } from "../../lib/harness-inventory";
+import type { HarnessPluginPullTarget } from "../../lib/harness-plugin-pull";
 import { genericHarnessTooltip } from "../../lib/harness-settings-form";
 import { EmptyState } from "../EmptyState";
 import { HarnessIcon } from "../HarnessIcons";
@@ -37,6 +38,8 @@ export interface HarnessDetailProps {
   onMarketplaceIds: (value: readonly string[]) => void;
   onMakeMain: () => void;
   onOpen: (row: HarnessResourceRow) => void;
+  pullAllBusy?: boolean;
+  onPullAllPlugins?: (targets: readonly HarnessPluginPullTarget[]) => void;
 }
 
 function subtitle(entry: HarnessEntry): string {
@@ -60,6 +63,8 @@ export function HarnessDetail({
   onMarketplaceIds,
   onMakeMain,
   onOpen,
+  pullAllBusy = false,
+  onPullAllPlugins,
 }: HarnessDetailProps) {
   const filtered = useMemo(
     () =>
@@ -154,7 +159,9 @@ export function HarnessDetail({
           entry={entry}
           locations={filtered.locations}
           disabled={disabled}
+          pullAllBusy={pullAllBusy}
           onOpen={onOpen}
+          onPullAllPlugins={onPullAllPlugins}
         />
       )}
     </div>
