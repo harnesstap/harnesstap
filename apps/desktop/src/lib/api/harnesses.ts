@@ -170,11 +170,17 @@ export async function saveHarnessSelection(
   return fetchHarnessInventory(baseUrl, token);
 }
 
+export interface HarnessSyncChangeCount {
+  harness: string;
+  changes: number;
+}
+
 export interface HarnessSyncResult {
   main_harness: string;
   alias_harnesses: string[];
   platforms_synced: string[];
   files_written: number;
+  harness_changes: HarnessSyncChangeCount[];
 }
 
 export async function syncConfiguredHarnesses(
@@ -191,4 +197,43 @@ export async function syncConfiguredHarnesses(
   }
   const body = (await response.json()) as HarnessSyncResult;
   return body;
+}
+
+function parseHarnessChanges(value: unknown): HarnessSyncChangeCount[] {
+  if (!Array.isArray(value)) {
+    throw malformed("harness_changes");
+  }
+  return value.map((entry, index) => {
+    const record = asRecord(entry, `harness_changes[${index}]`);
+    const changes = record.changes;
+    if (typeof changes !== "number" || !Number.isFinite(changes) || changes < 0) {
+      throw malformed("harness_changes count");
+    }
+    return {
+      harness: asString(record.harness, "harness"),
+      changes: Math.floor(changes),
+    };
+  });
+}
+
+export async function previewConfiguredHarnessSync(
+  baseUrl: string,
+  token: string | null,
+  signal?: AbortSignal,
+): Promise<HarnessSyncChangeCount[]> {
+  const response = await agentFetch(baseUrl, token, "/v1/harness/sync", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ dry_run: true }),
+    signal,
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not count changes");
+  }
+  try {
+    const body = asRecord(await response.json(), "body");
+    return parseHarnessChanges(body.harness_changes);
+  } catch {
+    throw new AgentApiError("Could not count changes", 500, "invalid_preview");
+  }
 }

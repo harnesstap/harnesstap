@@ -1,7 +1,7 @@
+import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import { setHarnessPreference } from "../../src/models/harness.ts";
 import { writeTextFile } from "../helpers/fs.ts";
@@ -60,6 +60,14 @@ describe("agent harness sync route", () => {
       join(dir, ".claude/skills/alpha/SKILL.md"),
       "---\nname: alpha\n---\nfrom claude\n",
     );
+    writeTextFile(
+      join(dir, ".cursor/mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          github: { command: "npx", args: ["-y", "@modelcontextprotocol/server-github"] },
+        },
+      }),
+    );
     const response = await fetch(`${server.url}/v1/harness/sync`, {
       method: "POST",
       headers: {
@@ -69,7 +77,16 @@ describe("agent harness sync route", () => {
       body: JSON.stringify({ dry_run: true }),
     });
     expect(response.status).toBe(200);
-    const body = await response.json() as { platforms_synced: string[] };
+    const body = await response.json() as {
+      platforms_synced: string[];
+      harness_changes: Array<{ harness: string; changes: number }>;
+    };
     expect(body.platforms_synced.sort()).toEqual(["claude-code", "cursor"]);
+    expect(body.harness_changes.map((row) => row.harness).sort()).toEqual([
+      "claude-code",
+      "cursor",
+    ]);
+    expect(body.harness_changes.every((row) => row.changes >= 0)).toBe(true);
+    expect(body.harness_changes.some((row) => row.changes > 0)).toBe(true);
   });
 });
