@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createTempDir } from "../helpers/fs.ts";
 import {
@@ -42,6 +42,33 @@ describe("plugin translation markers", () => {
     rmSync(markerPath);
     expect(isPluginTranslatedResource(root, resource)).toBe(false);
     expect(dropPluginTranslatedResources(root, [resource])).toHaveLength(1);
+  });
+
+  it("ignores a directory at the marker path (e.g. ~/.harnesstap toolkit home)", () => {
+    const root = createTempDir("plugin-marker-dir-collision-");
+    mkdirSync(join(root, ".harnesstap"), { recursive: true });
+    const resource = {
+      type: "mcp_server" as const,
+      name: "docs",
+      content: "{}",
+      source: "~/.claude.json",
+    };
+    expect(isPluginTranslatedResource(root, resource)).toBe(false);
+    expect(readPluginTranslationMarker(join(root, ".harnesstap"))).toBeNull();
+  });
+
+  it("ignores malformed marker JSON", () => {
+    const root = createTempDir("plugin-marker-bad-json-");
+    const agentsDir = join(root, ".config/opencode/agents");
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(join(agentsDir, ".harnesstap"), "not-json", "utf8");
+    const resource = {
+      type: "agent" as const,
+      name: "reviewer",
+      content: "x",
+      source: "~/.config/opencode/agents/reviewer.md",
+    };
+    expect(isPluginTranslatedResource(root, resource)).toBe(false);
   });
 
   it("merges leaf resource markers in a shared parent directory", () => {

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { ResourceCreateInput } from "../types.js";
 import type { ApplyResult } from "./applier.js";
@@ -55,7 +55,12 @@ export function readPluginTranslationMarker(
   markerPath: string,
 ): PluginTranslationMarkerFile | null {
   if (!existsSync(markerPath)) return null;
-  return parseMarkerFile(readFileSync(markerPath, "utf8"));
+  try {
+    if (!lstatSync(markerPath).isFile()) return null;
+    return parseMarkerFile(readFileSync(markerPath, "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 function entryKey(entry: Pick<PluginTranslationMarkerEntry, "type" | "name">): string {
