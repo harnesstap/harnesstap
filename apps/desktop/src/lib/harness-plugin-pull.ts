@@ -2,7 +2,6 @@ import {
   pullLibraryPluginVersions,
   switchLibraryPluginVersion,
   type PluginVersionPullResult,
-  type ResourceSyncSummary,
 } from "./api/resource-mutate";
 import { AgentApiError } from "./api/http";
 import {
@@ -10,13 +9,12 @@ import {
   type HarnessResourceRow,
   type HarnessTypeGroup,
 } from "./harness-inventory";
-import { isPluginTypeResource } from "./plugin-ref-detail";
-import { resourceTypeTabUnit } from "./resource-type-tabs";
 
 export const HARNESS_PULL_ALL_LABEL = "Pull all";
 export const HARNESS_PULL_ALL_TOOLTIP = "Pull all plugins";
 export const HARNESS_PULL_ALL_EMPTY_TOOLTIP = "No plugins to pull.";
 export const HARNESS_PLUGIN_PULL_TITLE = "Plugin updates";
+export const HARNESS_PLUGIN_PULL_CONCURRENCY = 4;
 
 export interface HarnessPluginPullTarget {
   readonly selector: string;
@@ -31,7 +29,6 @@ export interface HarnessPluginPullRow {
   readonly status: HarnessPluginPullStatus;
   readonly fromVersion?: string | null;
   readonly toVersion?: string | null;
-  readonly changes: readonly string[];
   readonly message?: string;
 }
 
@@ -107,19 +104,6 @@ export function latestPulledVersion(
     return marked.version;
   }
   return info.available_versions[0]?.version ?? null;
-}
-
-export function syncChangeLines(
-  updated: readonly ResourceSyncSummary[],
-): string[] {
-  const lines: string[] = [];
-  for (const resource of updated) {
-    if (isPluginTypeResource(resource.type) || resource.type === "plugin_pin") {
-      continue;
-    }
-    lines.push(`${resourceTypeTabUnit(resource.type, 1)} ${resource.name}`);
-  }
-  return lines;
 }
 
 export function versionChangeLine(
@@ -228,12 +212,97 @@ export function groupHarnessPluginPullReport(
 export interface HarnessPluginPullDeps {
   pull: typeof pullLibraryPluginVersions;
   switchVersion: typeof switchLibraryPluginVersion;
+  concurrency?: number;
 }
 
 const defaultDeps: HarnessPluginPullDeps = {
   pull: pullLibraryPluginVersions,
   switchVersion: switchLibraryPluginVersion,
 };
+
+async function mapPool<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) {
+    return [];
+  }
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(concurrency, 1), items.length);
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) {
+        return;
+      }
+      results[index] = await mapper(items[index] as T, index);
+    }
+  }
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+async function pullOneHarnessPlugin(
+  baseUrl: string,
+  token: string | null,
+  target: HarnessPluginPullTarget,
+  deps: HarnessPluginPullDeps,
+): Promise<HarnessPluginPullRow> {
+  try {
+    const pulled = await deps.pull(baseUrl, token, target.selector);
+    const current = pulled.current_version;
+    const latest = latestPulledVersion(pulled);
+    if (!latest) {
+      if (current) {
+        return {
+          name: target.name,
+          selector: target.selector,
+          status: "current",
+          fromVersion: current,
+          toVersion: current,
+        };
+      }
+      return {
+        name: target.name,
+        selector: target.selector,
+        status: "failed",
+        message: `No versions found for ${target.name}`,
+      };
+    }
+    if (latest === current) {
+      return {
+        name: target.name,
+        selector: target.selector,
+        status: "current",
+        fromVersion: current,
+        toVersion: latest,
+      };
+    }
+    const switched = await deps.switchVersion(
+      baseUrl,
+      token,
+      target.selector,
+      latest,
+    );
+    return {
+      name: target.name,
+      selector: target.selector,
+      status: "updated",
+      fromVersion: current,
+      toVersion: switched.version,
+    };
+  } catch (error: unknown) {
+    return {
+      name: target.name,
+      selector: target.selector,
+      status: "failed",
+      message: pullErrorMessage(error, `Could not pull ${target.name}`),
+    };
+  }
+}
 
 export async function pullLatestHarnessPlugins(
   baseUrl: string,
@@ -242,71 +311,19 @@ export async function pullLatestHarnessPlugins(
   onProgress?: (completed: number, total: number) => void,
   deps: HarnessPluginPullDeps = defaultDeps,
 ): Promise<HarnessPluginPullReport> {
-  const results: HarnessPluginPullRow[] = [];
   const total = targets.length;
-  for (const [index, target] of targets.entries()) {
-    onProgress?.(index, total);
-    try {
-      const pulled = await deps.pull(baseUrl, token, target.selector);
-      const current = pulled.current_version;
-      const latest = latestPulledVersion(pulled);
-      if (!latest) {
-        if (current) {
-          results.push({
-            name: target.name,
-            selector: target.selector,
-            status: "current",
-            fromVersion: current,
-            toVersion: current,
-            changes: [],
-          });
-        } else {
-          results.push({
-            name: target.name,
-            selector: target.selector,
-            status: "failed",
-            changes: [],
-            message: `No versions found for ${target.name}`,
-          });
-        }
-        continue;
-      }
-      if (latest === current) {
-        results.push({
-          name: target.name,
-          selector: target.selector,
-          status: "current",
-          fromVersion: current,
-          toVersion: latest,
-          changes: [],
-        });
-        continue;
-      }
-      const switched = await deps.switchVersion(
-        baseUrl,
-        token,
-        target.selector,
-        latest,
-      );
-      results.push({
-        name: target.name,
-        selector: target.selector,
-        status: "updated",
-        fromVersion: current,
-        toVersion: switched.version,
-        changes: syncChangeLines(switched.sync.updated),
-      });
-    } catch (error: unknown) {
-      results.push({
-        name: target.name,
-        selector: target.selector,
-        status: "failed",
-        changes: [],
-        message: pullErrorMessage(error, `Could not pull ${target.name}`),
-      });
-    }
-  }
-  onProgress?.(total, total);
+  let completed = 0;
+  onProgress?.(0, total);
+  const results = await mapPool(
+    targets,
+    deps.concurrency ?? HARNESS_PLUGIN_PULL_CONCURRENCY,
+    async (target) => {
+      const row = await pullOneHarnessPlugin(baseUrl, token, target, deps);
+      completed += 1;
+      onProgress?.(completed, total);
+      return row;
+    },
+  );
   return makeHarnessPluginPullReport(results);
 }
 

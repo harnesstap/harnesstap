@@ -1,0 +1,5 @@
+kind: Fixed
+body: Normalize SCP-style marketplace git remotes (including GitHub App users like org-id@github.com:owner/repo) to https clone URLs so Pull no longer requests https://github.com/org-id@github.com:owner/repo.git.
+time: 2026-09-27T09:50:00Z
+custom:
+  Issue: ""
