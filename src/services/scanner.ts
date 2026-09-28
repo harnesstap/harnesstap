@@ -5,6 +5,7 @@ import type { PlatformPaths, Resource } from "../types.js";
 import {
   deleteResource,
   listResources,
+  listResourcesByOriginRef,
   normalizeResourceInput,
   upsertResource,
   type ImportConflictPolicy,
@@ -646,6 +647,45 @@ export function persistScanResults(
   return { resources: persisted, resolved, importedCounts, conflicts };
 }
 
+/**
+ * Drop `local_snapshot` rows for `originRef` that no longer appear in a fresh
+ * harness scan (e.g. MCP servers removed from a host config file).
+ */
+export function reconcileLocalSnapshotScan(
+  originRef: string,
+  results: readonly ScanResult[],
+): Resource[] {
+  const freshKeys = new Set<string>();
+  for (const result of results) {
+    for (const resource of result.resources) {
+      const normalized = normalizeResourceInput({
+        ...resource,
+        namespace: resource.namespace ?? "",
+        origin_kind: resource.origin_kind ?? "local_snapshot",
+        origin_ref: resource.origin_ref ?? originRef,
+      });
+      freshKeys.add(
+        resourceDedupKey({
+          type: normalized.type,
+          name: normalized.name,
+          namespace: normalized.namespace ?? "",
+        }),
+      );
+    }
+  }
+
+  const removed: Resource[] = [];
+  for (const resource of listResourcesByOriginRef(originRef, "local_snapshot")) {
+    if (freshKeys.has(resourceDedupKey(resource))) {
+      continue;
+    }
+    if (deleteResource(resource.id)) {
+      removed.push(resource);
+    }
+  }
+  return removed;
+}
+
 export function applyScanConflicts(
   conflicts: ScanConflict[],
   resolution: "overwrite" | "skip",
@@ -674,11 +714,14 @@ export async function scanAndPersist(
   platformFilter?: string,
   options?: PersistScanOptions,
 ): Promise<Resource[]> {
+  const originRef = options?.originRef ?? projectRoot;
   const results = await scanProject(projectRoot, platformFilter);
-  return persistScanResults(results, {
+  const persisted = persistScanResults(results, {
     ...options,
-    originRef: options?.originRef ?? projectRoot,
-  }).resolved;
+    originRef,
+  });
+  reconcileLocalSnapshotScan(originRef, results);
+  return persisted.resolved;
 }
 
 export function persistPluginSourceScanResults(
@@ -814,6 +857,7 @@ export async function scanAndPersistHomeDefaults(
     conflictPolicy: "skip",
     originRef: homeRoot,
   });
+  reconcileLocalSnapshotScan(homeRoot, results);
 
   return {
     detected: platformFilter

@@ -69,6 +69,8 @@ export interface HarnessesWorkspaceProps {
   disconnected?: boolean;
   /** Bump while mounted to return to the inventory entrypoint (header re-click). */
   homeResetNonce?: number;
+  /** Bump when the header refresh rescans library roots; refetch harness inventory. */
+  inventoryReloadKey?: number;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
   /** 1 while the resource detail pane is open, else 0. */
@@ -85,6 +87,7 @@ export function HarnessesWorkspace({
   disabled = false,
   disconnected = false,
   homeResetNonce = 0,
+  inventoryReloadKey = 0,
   canWorkspaceBack = false,
   onWorkspaceBack,
   onNestedDepthChange,
@@ -121,6 +124,7 @@ export function HarnessesWorkspace({
   const cancelFieldEditRef = useRef<(() => void) | null>(null);
   const detailTitleId = useId();
   const homeResetNonceSeen = useRef(homeResetNonce);
+  const inventoryReloadKeySeen = useRef(inventoryReloadKey);
   const syncedClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const controlsDisabled = disabled || !connected || !baseUrl;
@@ -172,6 +176,17 @@ export function HarnessesWorkspace({
     setPullBusy(false);
     setPullTargets([]);
   }, [closeOverlay, homeResetNonce, inventory]);
+
+  useEffect(() => {
+    if (inventoryReloadKeySeen.current === inventoryReloadKey) {
+      return;
+    }
+    inventoryReloadKeySeen.current = inventoryReloadKey;
+    if (inventoryReloadKey === 0) {
+      return;
+    }
+    void ctrl.refresh();
+  }, [ctrl.refresh, inventoryReloadKey]);
 
   useEffect(() => {
     return () => {
