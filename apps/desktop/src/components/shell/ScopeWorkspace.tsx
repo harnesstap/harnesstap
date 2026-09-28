@@ -449,6 +449,9 @@ export function ScopeWorkspace({
                 selectedProfile ? () => ctrl.openEditProfile(selectedProfile) : undefined
               }
               onAddResource={ctrl.handleAddResource}
+              onDiscardResource={
+                actionsEnabled ? ctrl.handleDiscardResource : undefined
+              }
               onAfterAdds={
                 selectedProfile
                   ? (addedName) =>

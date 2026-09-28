@@ -24,6 +24,10 @@ import { tryParityRoutes } from "./parity-routes.js";
 import { handleConstraintRecoveryRun } from "./constraint-recovery-handlers.js";
 import { handleProfileApplyPreview } from "./profile-apply-preview-handlers.js";
 import { handleProfileAddAllResources, handleProfileAddResource, handleProfileCommitResource } from "./profile-add-resource-handlers.js";
+import {
+  handleProfileDiscardAllResources,
+  handleProfileDiscardResource,
+} from "./profile-discard-live-handlers.js";
 import { handleProfileRestoreFile } from "./profile-restore-file-handlers.js";
 import { handleProfileFileDiff } from "./profile-file-diff-handlers.js";
 import { handleProfileRemoveResource } from "./profile-remove-resource-handlers.js";
@@ -783,6 +787,24 @@ export function createAgentFetchHandler(
                 decodeURIComponent(fileDiffMatch[1] ?? ""),
               );
             } else {
+            const discardAllMatch = url.pathname.match(
+              /^\/v1\/profiles\/([^/]+)\/discard-all-resources$/,
+            );
+            if (method === "POST" && discardAllMatch) {
+              response = await handleProfileDiscardAllResources(
+                request,
+                token,
+                decodeURIComponent(discardAllMatch[1] ?? ""),
+              );
+            } else {
+            const discardMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/discard-resource$/);
+            if (method === "POST" && discardMatch) {
+              response = await handleProfileDiscardResource(
+                request,
+                token,
+                decodeURIComponent(discardMatch[1] ?? ""),
+              );
+            } else {
             const removeMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/remove-resource$/);
             if (method === "POST" && removeMatch) {
               response = await handleProfileRemoveResource(
@@ -805,6 +827,8 @@ export function createAgentFetchHandler(
             } else {
               response = jsonResponse({ error: "not_found" }, { status: 404 });
             }
+          }
+          }
           }
           }
           }

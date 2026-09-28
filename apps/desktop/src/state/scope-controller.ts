@@ -3,6 +3,7 @@ import {
   AgentApiError,
   addAllProfileResources,
   addProfileResource,
+  discardProfileResource,
   attachProfileComposition,
   cancelSwitch,
   commitProfileResource,
@@ -958,6 +959,36 @@ export function useScopeController(input: ScopeControllerInput) {
     [client, maybeAutoReapplyAfterMutation, refreshProfilePreview, selectedProfile],
   );
 
+  const handleDiscardResource = useCallback(
+    async (resource: ProfileContentsResource) => {
+      const profileName =
+        selectedProfile ?? statusStore.getState().status?.active_profile ?? null;
+      if (!client || !profileName) {
+        return;
+      }
+      setResourceActionError(null);
+      try {
+        await discardProfileResource(
+          client.baseUrl,
+          client.token,
+          profileName,
+          withScope({
+            resourceType: resource.type,
+            resourceName: resource.name,
+          }),
+        );
+        if (selectedProfile) {
+          await loadPreviewFor(selectedProfile);
+        }
+        await refreshStatus("full");
+      } catch (error) {
+        setResourceActionError(messageOf(error, "Could not discard resource"));
+        throw error;
+      }
+    },
+    [client, loadPreviewFor, refreshStatus, selectedProfile, withScope],
+  );
+
   const handleAddResource = useCallback(
     async (
       resource: ProfileContentsResource,
@@ -1458,6 +1489,7 @@ export function useScopeController(input: ScopeControllerInput) {
     fileChangeBusyPath,
     fileChangeBusyAction,
     handleAddResource,
+    handleDiscardResource,
     handleAddAllResources,
     handleActivateResources,
     handleAttachLibraryItem,

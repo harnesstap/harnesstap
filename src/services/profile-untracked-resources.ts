@@ -28,6 +28,7 @@ import { generateFiles, removeGlobalMaterializedFiles } from "./applier.js";
 import { ensureLiveLibraryRef, isLiveLibraryRef } from "./live-library-ref.js";
 import {
   persistScanResults,
+  reconcileLocalSnapshotScan,
   scanHomeDefaults,
   scanProject,
   type ScanResult,
@@ -443,6 +444,166 @@ export async function addResourceToProfile(input: {
   touchPluginUpdatedAt(profilePlugin.id);
 
   return toNotStagedContentsResource(resource, alreadyInProfile ? "update" : "add");
+}
+
+function collectGeneratedPaths(
+  generated: Awaited<ReturnType<typeof generateFiles>>,
+): string[] {
+  const seen = new Set<string>();
+  const paths: string[] = [];
+  for (const result of generated) {
+    for (const file of result.files) {
+      if (seen.has(file.path)) {
+        continue;
+      }
+      seen.add(file.path);
+      paths.push(file.path);
+    }
+  }
+  return paths;
+}
+
+async function discardableNotInProfileScanResults(input: {
+  profileSelector: string;
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+}): Promise<{ originRef: string; scanResults: ScanResult[] }> {
+  const trackedKeys = trackedResourceKeys(input.profileSelector);
+  const { originRef, scanResults } = await resolveUntrackedScanResults(input);
+  const filtered = scanResults
+    .map((result) => ({
+      ...result,
+      resources: result.resources.filter((resource) => {
+        if (!isMaterialResource(resource)) {
+          return false;
+        }
+        return !trackedKeys.has(profileResourceKey(resource));
+      }),
+    }))
+    .filter((result) => result.resources.length > 0);
+  return { originRef, scanResults: filtered };
+}
+
+async function discardScanResultsFromHarness(input: {
+  profileSelector: string;
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+  originRef: string;
+  scanResults: ScanResult[];
+}): Promise<{
+  removed_paths: string[];
+  discarded_count: number;
+  resources: ProfileContentsResource[];
+}> {
+  if (input.scanResults.length === 0) {
+    throw new Error("No live resources to discard.");
+  }
+
+  const persisted = persistScanResults(input.scanResults, {
+    conflictPolicy: "overwrite",
+    originRef: input.originRef,
+  });
+  const material = persisted.resolved.filter(isMaterialResource);
+  if (material.length === 0) {
+    throw new Error("No live resources to discard.");
+  }
+
+  const target = input.scope === "project" ? "project" : "global";
+  let generated: Awaited<ReturnType<typeof generateFiles>>;
+  if (input.scope === "project") {
+    const platformIds = [...new Set(input.scanResults.map((result) => result.platformId))];
+    generated = await generateFiles(material, platformIds, input.originRef, { target });
+    const rescanned = await scanProject(input.originRef);
+    reconcileLocalSnapshotScan(input.originRef, rescanned);
+  } else {
+    const mainHarness = resolveMainHarnessTarget(input.harness);
+    generated = await generateFiles(material, [mainHarness], input.originRef, { target });
+    const rescanned = await scanHomeDefaults(mainHarness, input.originRef);
+    reconcileLocalSnapshotScan(input.originRef, rescanned);
+  }
+
+  const paths = collectGeneratedPaths(generated);
+  if (paths.length === 0) {
+    throw new Error("No managed files to remove for discard.");
+  }
+  removeGlobalMaterializedFiles(input.originRef, paths);
+
+  const resources = material.map((resource) => toContentsResource(resource));
+  return {
+    removed_paths: paths,
+    discarded_count: resources.length,
+    resources,
+  };
+}
+
+/** Remove one on-disk resource that is not in the profile stack (Not in profile). */
+export async function discardLiveResourceFromHarness(input: {
+  profileSelector: string;
+  resourceType: string;
+  resourceName: string;
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+}): Promise<{
+  removed_paths: string[];
+  resource: ProfileContentsResource;
+}> {
+  if (!MATERIAL_RESOURCE_TYPE_SET.has(input.resourceType)) {
+    throw new Error(`Unsupported resource type: ${input.resourceType}`);
+  }
+  const trackedKeys = trackedResourceKeys(input.profileSelector);
+  const key = `${input.resourceType}:${input.resourceName}`;
+  if (trackedKeys.has(key)) {
+    throw new Error(`Resource is in profile: ${input.resourceType}:${input.resourceName}`);
+  }
+
+  const { originRef, scanResults } = await discardableNotInProfileScanResults(input);
+  const matching = filterScanResultsForResource(
+    scanResults,
+    input.resourceType,
+    input.resourceName,
+  );
+  if (matching.length === 0) {
+    throw new Error(
+      `Resource not found on disk: ${input.resourceType}:${input.resourceName}`,
+    );
+  }
+
+  const result = await discardScanResultsFromHarness({
+    ...input,
+    originRef,
+    scanResults: matching,
+  });
+  const resource = result.resources.find(
+    (entry) => entry.type === input.resourceType && entry.name === input.resourceName,
+  );
+  if (!resource) {
+    throw new Error(
+      `Could not discard resource: ${input.resourceType}:${input.resourceName}`,
+    );
+  }
+  return { removed_paths: result.removed_paths, resource };
+}
+
+/** Remove every on-disk resource that is not in the profile stack (Not in profile). */
+export async function discardAllLiveResourcesFromHarness(input: {
+  profileSelector: string;
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+}): Promise<{
+  removed_paths: string[];
+  discarded_count: number;
+  resources: ProfileContentsResource[];
+}> {
+  const { originRef, scanResults } = await discardableNotInProfileScanResults(input);
+  return discardScanResultsFromHarness({
+    ...input,
+    originRef,
+    scanResults,
+  });
 }
 
 /** Not-staged lists adds and live updates; stash only captures resources not already on the profile. */

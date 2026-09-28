@@ -38,6 +38,8 @@ import type {
   ProfileAddAllResourcesRequest,
   ProfileAddAllResourcesResult,
   ProfileAddResourceRequest,
+  ProfileDiscardAllResourcesResult,
+  ProfileDiscardResourceResult,
   ProfileAddResourceResult,
   OpenPathRequest,
   OpenPathResult,
@@ -1015,6 +1017,50 @@ export async function addAllProfileResources(
     return throwAgentError(response, "Could not add all resources to profile");
   }
   return (await response.json()) as ProfileAddAllResourcesResult;
+}
+
+export async function discardProfileResource(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfileAddResourceRequest,
+): Promise<ProfileDiscardResourceResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/discard-resource`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not discard live resource");
+  }
+  return (await response.json()) as ProfileDiscardResourceResult;
+}
+
+export async function discardAllProfileResources(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfileAddAllResourcesRequest,
+): Promise<ProfileDiscardAllResourcesResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/discard-all-resources`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not discard live resources");
+  }
+  return (await response.json()) as ProfileDiscardAllResourcesResult;
 }
 
 export async function commitProfileResource(

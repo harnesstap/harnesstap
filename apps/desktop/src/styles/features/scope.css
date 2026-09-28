@@ -722,6 +722,12 @@
   gap: 0.4rem;
 }
 
+.inventory-row-not-in-profile-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .inventory-row-lead-action {
   display: inline-flex;
   align-items: center;
