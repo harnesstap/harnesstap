@@ -15,6 +15,10 @@ import {
   normalizeSkillDir,
   skillConsumeDirs,
 } from "./shared-emit-paths.js";
+import {
+  type PluginTranslationSource,
+  pluginTranslationSourceFromPin,
+} from "./plugin-translation-source.js";
 
 export const HOST_PLUGIN_TREE_PLATFORMS: ReadonlySet<HostPluginLayout> = new Set([
   "claude-code",
@@ -34,11 +38,13 @@ export function portableHarnessesForPluginFanout(
 export interface ExtractedPluginSkill {
   name: string;
   sourceDir: string;
+  plugin: PluginTranslationSource;
 }
 
 export interface ExtractHostPluginMaterialResult {
   skills: ExtractedPluginSkill[];
   resources: ResourceCreateInput[];
+  resourcePlugins: Map<string, PluginTranslationSource>;
 }
 
 function isHostPluginPinInput(
@@ -72,6 +78,7 @@ export async function extractHostPluginMaterial(
 ): Promise<ExtractHostPluginMaterialResult> {
   const skills: ExtractedPluginSkill[] = [];
   const resources: ResourceCreateInput[] = [];
+  const resourcePlugins = new Map<string, PluginTranslationSource>();
   const seenSkills = new Set<string>();
   const seenIdentities = new Set<string>(occupiedIdentities);
 
@@ -88,6 +95,8 @@ export async function extractHostPluginMaterial(
     if (!originRef) continue;
     const installRoot = resolveInstallRoot(originRef, homeRoot);
     if (!installRoot || !existsSync(installRoot)) continue;
+    const pluginSource = pluginTranslationSourceFromPin(pin);
+    if (!pluginSource) continue;
 
     const scans = await scanPluginSourceForMerge(installRoot);
     for (const scan of scans) {
@@ -97,18 +106,19 @@ export async function extractHostPluginMaterial(
           const sourceDir = skillSourceDir(installRoot, resource);
           if (!sourceDir) continue;
           seenSkills.add(resource.name);
-          skills.push({ name: resource.name, sourceDir });
+          skills.push({ name: resource.name, sourceDir, plugin: pluginSource });
           continue;
         }
         const identity = resourceIdentity(resource);
         if (seenIdentities.has(identity)) continue;
         seenIdentities.add(identity);
         resources.push(resource);
+        resourcePlugins.set(identity, pluginSource);
       }
     }
   }
 
-  return { skills, resources };
+  return { skills, resources, resourcePlugins };
 }
 
 export function agentsSkillHubPrefix(): string {

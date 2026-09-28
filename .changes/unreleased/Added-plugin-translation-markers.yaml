@@ -1,0 +1,5 @@
+kind: Added
+body: Write `.harnesstap` plugin-translation markers during harness sync and skip marked paths on home/project scan so translated plugin artifacts are not imported as standalone resources.
+time: 2026-09-28T06:55:00Z
+custom:
+  Issue: ""
