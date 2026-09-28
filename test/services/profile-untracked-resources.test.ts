@@ -12,6 +12,7 @@ import {
   addResourceToProfile,
   detectNotStagedProfileResources,
   detectUntrackedProfileResources,
+  discardLiveResourceFromHarness,
 } from "../../src/services/profile-untracked-resources.ts";
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { listResources } from "../../src/models/resource.ts";
@@ -51,6 +52,45 @@ describe("profile-untracked-resources service", () => {
 
       expect(untracked.some((resource) => resource.name === "manual-skill")).toBe(true);
       expect(untracked.some((resource) => resource.name === "kept-skill")).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("discards an untracked resource from the live harness", async () => {
+    const context = await createInitializedTestContext("profile-untracked-discard");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      setActiveProfileName("work");
+
+      const skillDir = join(context.homeDir, ".claude", "skills", "manual-skill");
+      mkdirSync(skillDir, { recursive: true });
+      const skillPath = join(skillDir, "SKILL.md");
+      writeFileSync(
+        skillPath,
+        "---\nname: manual-skill\ndescription: manual\n---\n\n# manual",
+        "utf-8",
+      );
+
+      const discarded = await discardLiveResourceFromHarness({
+        profileSelector: "work",
+        resourceType: "skill",
+        resourceName: "manual-skill",
+        scope: "home",
+        harness: "claude-code",
+      });
+
+      expect(discarded.resource.name).toBe("manual-skill");
+      expect(discarded.removed_paths.length).toBeGreaterThan(0);
+      const remaining = await detectUntrackedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+        harness: "claude-code",
+      });
+      expect(remaining.some((resource) => resource.name === "manual-skill")).toBe(
+        false,
+      );
     } finally {
       await context.cleanup();
     }

@@ -1418,6 +1418,7 @@ export interface LiveStatePanelProps {
     options?: { skipAutoReapply?: boolean },
   ) => Promise<void>;
   onAddAllResources?: (resources: ProfileContentsResource[]) => Promise<void>;
+  onDiscardResource?: (resource: ProfileContentsResource) => Promise<void>;
   onActivateResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onAfterAdds?: (addedName: string) => Promise<void>;
   onAttachLibraryItem?: (item: {
@@ -1481,6 +1482,7 @@ export function LiveStatePanel({
   onCreateProfileFromProject,
   onEditProfile,
   onAddResource,
+  onDiscardResource,
   onActivateResources,
   onAfterAdds,
   onAttachLibraryItem,
@@ -2046,6 +2048,7 @@ export function LiveStatePanel({
             railPrimaryIsReapply={railPrimaryIsReapply}
             inactiveHeaderHint={inactiveHeaderHint}
             onAddResource={onAddResource}
+            onDiscardResource={onDiscardResource}
             onActivateResources={onActivateResources}
             onAfterAdds={onAfterAdds}
             onOpenResource={openResource}

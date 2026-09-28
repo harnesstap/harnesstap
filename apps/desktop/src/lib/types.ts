@@ -394,6 +394,17 @@ export interface ProfileAddAllResourcesResult {
   added_count: number;
 }
 
+export interface ProfileDiscardResourceResult {
+  resource: ProfileContentsResource;
+  removed_paths: string[];
+}
+
+export interface ProfileDiscardAllResourcesResult {
+  resources: ProfileContentsResource[];
+  discarded_count: number;
+  removed_paths: string[];
+}
+
 export interface ProfileRemoveResourceRequest {
   resourceType: string;
   resourceName: string;

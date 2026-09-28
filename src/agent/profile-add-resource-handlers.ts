@@ -18,7 +18,7 @@ function parseScope(value: unknown): ProfileApplyPreviewScope | undefined {
   return undefined;
 }
 
-function parseAddResourceBody(body: unknown): Response | {
+export function parseAddResourceBody(body: unknown): Response | {
   scope: ProfileApplyPreviewScope;
   projectPath?: string;
   harness?: string;

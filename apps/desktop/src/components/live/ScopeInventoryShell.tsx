@@ -37,6 +37,7 @@ export interface ScopeInventoryShellProps {
     profileOverride?: string,
     options?: { skipAutoReapply?: boolean },
   ) => Promise<void>;
+  onDiscardResource?: (resource: ProfileContentsResource) => Promise<void>;
   onActivateResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onAfterAdds?: (addedName: string) => Promise<void>;
   onOpenResource: (target: ResourceDetailTarget) => void;
@@ -49,7 +50,7 @@ export interface ScopeInventoryShellProps {
 }
 
 function batchLabel(
-  verb: "Adding" | "Activating",
+  verb: "Adding" | "Activating" | "Discarding",
   done: number,
   total: number,
 ): string {
@@ -70,6 +71,7 @@ export function ScopeInventoryShell({
   railPrimaryIsReapply,
   inactiveHeaderHint,
   onAddResource,
+  onDiscardResource,
   onActivateResources,
   onAfterAdds,
   onOpenResource,
@@ -84,10 +86,15 @@ export function ScopeInventoryShell({
   const [moves, setMoves] = useState<Map<string, ProfileInventorySectionId>>(
     () => new Map(),
   );
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(() => new Set());
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(() => new Set());
   const [addProgress, setAddProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
+  const [discardProgress, setDiscardProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [activateProgress, setActivateProgress] = useState<{
     done: number;
     total: number;
@@ -95,11 +102,17 @@ export function ScopeInventoryShell({
   const [pendingRemove, setPendingRemove] = useState<ProfileInventoryItem | null>(
     null,
   );
-
-  const displayed = useMemo(
-    () => applyOptimisticInventoryMoves(items, moves),
-    [items, moves],
+  const [pendingDiscard, setPendingDiscard] = useState<ProfileInventoryItem | null>(
+    null,
   );
+  const [pendingDiscardAll, setPendingDiscardAll] = useState<
+    ProfileInventoryItem[] | null
+  >(null);
+
+  const displayed = useMemo(() => {
+    const moved = applyOptimisticInventoryMoves(items, moves);
+    return moved.filter((item) => !hiddenKeys.has(membershipKey(item.resource)));
+  }, [hiddenKeys, items, moves]);
   const bySection = useMemo(() => {
     return {
       not_in_profile: displayed.filter((item) => item.section === "not_in_profile"),
@@ -181,6 +194,116 @@ export function ScopeInventoryShell({
           label: "Retry",
           onClick: () => {
             void runActivate(item);
+          },
+        },
+      });
+    }
+  };
+
+  const runDiscard = async (item: ProfileInventoryItem) => {
+    if (!onDiscardResource) {
+      return;
+    }
+    const key = membershipKey(item.resource);
+    setHiddenKeys((current) => {
+      const next = new Set(current);
+      next.add(key);
+      return next;
+    });
+    setPendingKeys((current) => {
+      const next = new Set(current);
+      next.add(key);
+      return next;
+    });
+    try {
+      await onDiscardResource(item.resource);
+      setPendingKeys((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+    } catch {
+      setHiddenKeys((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+      setPendingKeys((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+      toast({
+        tone: "error",
+        title: `Could not discard ${item.label}`,
+        action: {
+          label: "Retry",
+          onClick: () => {
+            void runDiscard(item);
+          },
+        },
+      });
+    }
+  };
+
+  const runDiscardAll = async (rows: ProfileInventoryItem[]) => {
+    if (!onDiscardResource || rows.length === 0) {
+      return;
+    }
+    for (const row of rows) {
+      const key = membershipKey(row.resource);
+      setHiddenKeys((current) => {
+        const next = new Set(current);
+        next.add(key);
+        return next;
+      });
+      setPendingKeys((current) => {
+        const next = new Set(current);
+        next.add(key);
+        return next;
+      });
+    }
+    setDiscardProgress({ done: 0, total: rows.length });
+    const results = await settleInChunks(
+      rows,
+      MUTATION_CHUNK_SIZE,
+      async (row) => {
+        const key = membershipKey(row.resource);
+        try {
+          await onDiscardResource(row.resource);
+          setPendingKeys((current) => {
+            const next = new Set(current);
+            next.delete(key);
+            return next;
+          });
+        } catch (error) {
+          setHiddenKeys((current) => {
+            const next = new Set(current);
+            next.delete(key);
+            return next;
+          });
+          setPendingKeys((current) => {
+            const next = new Set(current);
+            next.delete(key);
+            return next;
+          });
+          throw error;
+        }
+      },
+      (done, total) => setDiscardProgress({ done, total }),
+    );
+    setDiscardProgress(null);
+    const failed = results.flatMap((result, index) =>
+      result.status === "rejected" && rows[index] ? [rows[index]] : [],
+    );
+    if (failed[0]) {
+      toast({
+        tone: "error",
+        title: `Could not discard ${failed[0].label}`,
+        action: {
+          label: "Retry",
+          onClick: () => {
+            void runDiscardAll(failed);
           },
         },
       });
@@ -317,7 +440,13 @@ export function ScopeInventoryShell({
                 selectedIsActive={selectedIsActive}
                 pendingKeys={pendingKeys}
                 batchLabel={
-                  section === "not_in_profile" && addProgress
+                  section === "not_in_profile" && discardProgress
+                    ? batchLabel(
+                        "Discarding",
+                        discardProgress.done,
+                        discardProgress.total,
+                      )
+                    : section === "not_in_profile" && addProgress
                     ? batchLabel("Adding", addProgress.done, addProgress.total)
                     : section === "inactive" && activateProgress
                       ? batchLabel(
@@ -328,6 +457,9 @@ export function ScopeInventoryShell({
                       : null
                 }
                 canAddAll={section === "not_in_profile" && Boolean(onAddResource)}
+                canDiscardAll={
+                  section === "not_in_profile" && Boolean(onDiscardResource)
+                }
                 canActivateAll={
                   section === "inactive"
                   && selectedIsActive
@@ -335,15 +467,24 @@ export function ScopeInventoryShell({
                 }
                 addAllPrimary={!railPrimaryIsReapply}
                 addingAll={addingAllResources || addProgress !== null}
+                discardingAll={discardProgress !== null}
                 activatingAll={activatingResources || activateProgress !== null}
                 headerHint={hint}
                 onAddAll={
                   section === "not_in_profile" ? () => void runAddAll(rows) : undefined
                 }
+                onDiscardAll={
+                  section === "not_in_profile"
+                    ? () => setPendingDiscardAll(rows)
+                    : undefined
+                }
                 onActivateAll={
                   section === "inactive" ? () => void runActivateAll(rows) : undefined
                 }
                 onAdd={onAddResource ? (item) => void runAdd(item) : undefined}
+                onDiscard={
+                  onDiscardResource ? (item) => setPendingDiscard(item) : undefined
+                }
                 onActivate={
                   onActivateResources ? (item) => void runActivate(item) : undefined
                 }
@@ -383,6 +524,48 @@ export function ScopeInventoryShell({
       >
         <Plus size={20} strokeWidth={2} aria-hidden />
       </button>
+      <ConfirmDialog
+        open={pendingDiscard !== null}
+        title="Discard live resource?"
+        description={
+          pendingDiscard
+            ? `Remove ${pendingDiscard.label} from your harness setup? This deletes the live copy on disk.`
+            : ""
+        }
+        tone="destructive"
+        confirmLabel="Discard"
+        cancelLabel="Cancel"
+        onCancel={() => setPendingDiscard(null)}
+        onConfirm={() => {
+          if (!pendingDiscard) {
+            return;
+          }
+          const item = pendingDiscard;
+          setPendingDiscard(null);
+          void runDiscard(item);
+        }}
+      />
+      <ConfirmDialog
+        open={pendingDiscardAll !== null && pendingDiscardAll.length > 0}
+        title="Discard all live resources?"
+        description={
+          pendingDiscardAll
+            ? `Remove ${pendingDiscardAll.length} resources from your harness setup? This deletes their live copies on disk.`
+            : ""
+        }
+        tone="destructive"
+        confirmLabel="Discard all"
+        cancelLabel="Cancel"
+        onCancel={() => setPendingDiscardAll(null)}
+        onConfirm={() => {
+          if (!pendingDiscardAll || pendingDiscardAll.length === 0) {
+            return;
+          }
+          const rows = pendingDiscardAll;
+          setPendingDiscardAll(null);
+          void runDiscardAll(rows);
+        }}
+      />
       <ConfirmDialog
         open={pendingRemove !== null}
         title="Remove from profile"

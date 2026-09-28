@@ -7,6 +7,7 @@ import {
   CircleDashed,
   CirclePause,
   ListPlus,
+  ListX,
   Power,
 } from "lucide-react";
 import {
@@ -61,14 +62,18 @@ export interface InventorySectionProps {
   pendingKeys: ReadonlySet<string>;
   batchLabel: string | null;
   canAddAll: boolean;
+  canDiscardAll: boolean;
   canActivateAll: boolean;
   addAllPrimary: boolean;
   addingAll: boolean;
+  discardingAll: boolean;
   activatingAll: boolean;
   headerHint?: string | null;
   onAddAll?: () => void;
+  onDiscardAll?: () => void;
   onActivateAll?: () => void;
   onAdd?: (item: ProfileInventoryItem) => void;
+  onDiscard?: (item: ProfileInventoryItem) => void;
   onActivate?: (item: ProfileInventoryItem) => void;
   onOpenResource: (target: ResourceDetailTarget) => void;
   onOpenPlugin?: (pluginName: string) => void;
@@ -86,14 +91,18 @@ export function InventorySection({
   pendingKeys,
   batchLabel,
   canAddAll,
+  canDiscardAll,
   canActivateAll,
   addAllPrimary,
   addingAll,
+  discardingAll,
   activatingAll,
   headerHint,
   onAddAll,
+  onDiscardAll,
   onActivateAll,
   onAdd,
+  onDiscard,
   onActivate,
   onOpenResource,
   onOpenPlugin,
@@ -184,24 +193,40 @@ export function InventorySection({
             {batchLabel}
           </span>
         ) : null}
-        {!editMode && canAddAll && onAddAll ? (
+        {!editMode && (canAddAll || canDiscardAll) ? (
           <span
             className="contents-header-toolbar"
             onClick={(event) => {
               event.stopPropagation();
             }}
           >
-            <IconActionButton
-              primary={addAllPrimary}
-              showLabel
-              iconAfterLabel
-              busy={addingAll}
-              spinnerSize={ICON_SIZE}
-              label="Add all"
-              title={`Add all ${rows.length} items to ${profileName}`}
-              onClick={onAddAll}
-              icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-            />
+            {canAddAll && onAddAll ? (
+              <IconActionButton
+                primary={addAllPrimary}
+                showLabel
+                iconAfterLabel
+                busy={addingAll}
+                spinnerSize={ICON_SIZE}
+                label="Add all"
+                title={`Add all ${rows.length} items to ${profileName}`}
+                onClick={onAddAll}
+                icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
+            ) : null}
+            {canDiscardAll && onDiscardAll ? (
+              <IconActionButton
+                className="profile-remove-action"
+                showLabel
+                iconAfterLabel
+                busy={discardingAll}
+                spinnerSize={ICON_SIZE}
+                label="Discard all"
+                title={`Discard ${rows.length} live resources`}
+                onClick={onDiscardAll}
+                disabled={rows.length === 0}
+                icon={<ListX size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
+            ) : null}
           </span>
         ) : null}
         {!editMode && canActivateAll && onActivateAll ? (
@@ -253,6 +278,7 @@ export function InventorySection({
                     pending={pendingKeys.has(key)}
                     selectedIsActive={selectedIsActive}
                     onAdd={onAdd ? () => onAdd(item) : undefined}
+                    onDiscard={onDiscard ? () => onDiscard(item) : undefined}
                     onActivate={onActivate ? () => onActivate(item) : undefined}
                     onOpenResource={onOpenResource}
                     onOpenPlugin={onOpenPlugin}

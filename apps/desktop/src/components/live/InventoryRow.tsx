@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
-import { CircleAlert, FileDiff, Plus, Power, Trash2 } from "lucide-react";
+import { CircleAlert, FileDiff, Plus, Power, Trash2, X } from "lucide-react";
 import {
   inventoryMembershipCaption,
   profileInventoryOpenTarget,
@@ -31,6 +31,7 @@ export interface InventoryRowProps {
   pending: boolean;
   selectedIsActive: boolean;
   onAdd?: () => void;
+  onDiscard?: () => void;
   onActivate?: () => void;
   onOpenResource: (target: ResourceDetailTarget) => void;
   onOpenPlugin?: (pluginName: string) => void;
@@ -45,6 +46,7 @@ export function InventoryRow({
   pending,
   selectedIsActive,
   onAdd,
+  onDiscard,
   onActivate,
   onOpenResource,
   onOpenPlugin,
@@ -80,17 +82,32 @@ export function InventoryRow({
         icon={<FileDiff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
       />
     );
-  } else if (item.section === "not_in_profile" && onAdd) {
+  } else if (item.section === "not_in_profile" && (onAdd || onDiscard)) {
     action = (
-      <IconActionButton
-        className="untracked-add-btn"
-        showLabel
-        spinnerSize={ICON_SIZE}
-        label="Add"
-        title={`Add ${item.label} to this profile`}
-        onClick={onAdd}
-        icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-      />
+      <span className="inventory-row-not-in-profile-actions">
+        {onDiscard ? (
+          <IconActionButton
+            className="profile-remove-action"
+            showLabel
+            spinnerSize={ICON_SIZE}
+            label="Discard"
+            title={`Discard ${item.label} from live setup`}
+            onClick={onDiscard}
+            icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
+        {onAdd ? (
+          <IconActionButton
+            className="untracked-add-btn"
+            showLabel
+            spinnerSize={ICON_SIZE}
+            label="Add"
+            title={`Add ${item.label} to this profile`}
+            onClick={onAdd}
+            icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
+      </span>
     );
   } else if (showActivate && onActivate) {
     action = (
