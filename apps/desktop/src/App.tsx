@@ -273,6 +273,7 @@ export function App() {
             onNestedDepthChange={nav.setNestedDepth}
             onSuccess={onSuccessToast}
             onHarnessesChanged={onHarnessesChanged}
+            inventoryReloadKey={libraryReloadKey}
           />
         );
       case "library":

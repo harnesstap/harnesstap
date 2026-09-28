@@ -112,6 +112,7 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain('onDestinationClick("harnesses")');
     expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harnesses<\/span>/);
     expect(appSource).toContain("<MemoHarnessesWorkspace");
+    expect(appSource).toContain("inventoryReloadKey={libraryReloadKey}");
     expect(appSource).toContain('case "harnesses":');
     const parityIdx = appSource.indexOf("<ParityChrome");
     const harnessesIdx = appSource.indexOf('aria-label="Harnesses"');

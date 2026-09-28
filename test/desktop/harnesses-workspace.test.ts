@@ -153,7 +153,8 @@ describe("Harnesses section open location", () => {
     expect(inventoryListSource).toContain("onOpenLocation");
     expect(inventoryListSource).toContain("section.onDisk");
     expect(detailSource).toContain("onOpenLocation");
-    expect(workspaceSource).toContain("harnessLocationOpenRequest");
+    expect(workspaceSource).toContain("inventoryReloadKey");
+    expect(workspaceSource).toContain("inventoryReloadKeySeen");
     expect(workspaceSource).toContain("openResourcePath");
     const titleRow = cssBlock(stylesSource, ".harness-type-section-title-row");
     expect(titleRow).toContain("display: flex");
