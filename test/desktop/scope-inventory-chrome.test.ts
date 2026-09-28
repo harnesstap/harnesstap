@@ -133,7 +133,9 @@ describe("Global/Project scope inventory chrome", () => {
     expect(appSource).toContain("live-toolbar-identity");
     expect(appSource).toContain("live-toolbar-actions");
     expect(appSource).toMatch(/label=\{(?:ctrl\.)?inventoryEditMode \? "Done" : "Edit"\}/);
-    expect(appSource).toContain('label="Overwrite with current setup"');
+    expect(appSource).toContain('"btn", "primary"');
+    expect(appSource).toMatch(/\{ctrl\.overwritingWithSetup \? "Overwriting…" : "Overwrite"\}/);
+    expect(appSource).toContain('title="Overwrite with current setup"');
     expect(appSource).toContain("HardDriveUpload");
     expect(appSource).toContain("Overwrite with current setup?");
     expect(appSource).not.toContain("Active · ${n} file");
@@ -173,7 +175,7 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("trash-width trailing slot");
     expect(designSource).toContain("[type icon] [name]");
     expect(designSource).toContain("rightmost icon");
-    expect(designSource).toContain("Overwrite with current setup");
+    expect(designSource).toContain("labeled accent **Overwrite**");
     expect(designSource).not.toContain("`Active · N files differ`");
     expect(appSource).not.toMatch(
       /status-edit-action[\s\S]{0,200}openEditProfile\(selectedProfile\)/,
