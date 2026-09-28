@@ -21,6 +21,7 @@ import { scanPluginSource, scanPluginSourceForMerge } from "./plugin-source-impo
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadScanIgnore } from "./scanner-ignore.js";
 import { dropHarnessSkillsDuplicatingPluginSource } from "./scan-dedup.js";
+import { dropPluginTranslatedResources } from "./plugin-translation-marker.js";
 import type { ImportedSnapshot, PluginSourceScanResult } from "../types.js";
 
 export function resolveConfiguredPath(
@@ -370,7 +371,10 @@ export async function scanPlatform(
   projectRoot: string,
 ): Promise<ScanResult> {
   const serializer = getPlatformSerializer(platformId);
-  const resources = await serializer.scan(projectRoot);
+  const resources = dropPluginTranslatedResources(
+    projectRoot,
+    await serializer.scan(projectRoot),
+  );
   return { platformId, resources };
 }
 
@@ -433,7 +437,7 @@ export async function scanHomeDefaults(
     results.push({
       platformId: result.platformId,
       discoveredPaths: result.discoveredPaths,
-      resources,
+      resources: dropPluginTranslatedResources(homeRoot, resources),
     });
   }
 

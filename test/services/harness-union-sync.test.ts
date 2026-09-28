@@ -344,6 +344,34 @@ describe("syncConfiguredHarnesses", () => {
       );
       expect(existsSync(commandPath)).toBe(true);
       expect(readFileSync(commandPath, "utf8")).toContain("Ping the plugin.");
+
+      const skillMarker = join(hubSkill, ".harnesstap");
+      expect(existsSync(skillMarker)).toBe(true);
+      const marker = JSON.parse(readFileSync(skillMarker, "utf8")) as {
+        entries: Array<{ origin_ref: string; type: string; name: string }>;
+      };
+      expect(marker.entries[0]?.origin_ref).toBe("demo@demo-market");
+      expect(marker.entries[0]?.type).toBe("skill");
+      expect(marker.entries[0]?.name).toBe("hello");
+
+      const { scanHomeDefaults } = await import("../../src/services/scanner.ts");
+      const scanned = await scanHomeDefaults(undefined, context.homeDir);
+      const opencode = scanned.find((entry) => entry.platformId === "opencode");
+      expect(
+        opencode?.resources.some(
+          (resource) => resource.type === "skill" && resource.name === "hello",
+        ),
+      ).toBe(false);
+      expect(
+        opencode?.resources.some(
+          (resource) => resource.type === "agent" && resource.name === "reviewer",
+        ),
+      ).toBe(false);
+      expect(
+        opencode?.resources.some(
+          (resource) => resource.type === "command" && resource.name === "ping",
+        ),
+      ).toBe(false);
     } finally {
       await context.cleanup();
     }

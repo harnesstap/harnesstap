@@ -49,6 +49,7 @@ import {
   type PluginResourceMode,
 } from "./plugin-resource-mode.js";
 import { resourceIdentity } from "./reference-resources.js";
+import { writeHarnessSyncPluginTranslationMarkers } from "./plugin-translation-marker.js";
 import {
   persistScanResults,
   scanPlatform,
@@ -218,7 +219,11 @@ export async function syncConfiguredHarnesses(
 
   const extraResults: ApplyResult[] = [];
   let skillHubPlans: ReturnType<typeof planPluginSkillHub> = [];
-  let extracted: ExtractHostPluginMaterialResult = { skills: [], resources: [] };
+  let extracted: ExtractHostPluginMaterialResult = {
+    skills: [],
+    resources: [],
+    resourcePlugins: new Map(),
+  };
   if (target === "global" && portablePlatforms.length > 0) {
     const occupied = new Set(unioned.resources.map(resourceIdentity));
     extracted = await extractHostPluginMaterial(
@@ -304,6 +309,15 @@ export async function syncConfiguredHarnesses(
   }
   applyInstructionLinks(rootPath, paired.links, pluginResourceMode);
   materializeSkillHubPlan(rootPath, skillHubPlans, pluginResourceMode);
+  await writeHarnessSyncPluginTranslationMarkers({
+    rootPath,
+    extracted,
+    skillHubPlans,
+    extraResults,
+    portablePlatforms,
+    target,
+    serializeOptions,
+  });
 
   persistWrittenMaterializations({
     scope: target === "global" ? "global" : "project",
