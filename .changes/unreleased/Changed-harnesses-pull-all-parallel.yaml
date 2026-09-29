@@ -1,5 +1,0 @@
-kind: Changed
-body: Harnesses Pull all updates plugins with bounded concurrency, and the Plugin updates dialog lists plugin version lines only (no nested skills).
-time: 2026-09-27T09:50:00Z
-custom:
-  Issue: ""

@@ -1,5 +1,0 @@
-kind: Added
-body: Add Desktop **Discard** / **Discard all** on profile **Not in profile** inventory rows to remove live harness copies (agent discard-resource APIs).
-time: 2026-09-28T06:55:00Z
-custom:
-  Issue: ""

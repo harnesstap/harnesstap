@@ -1,5 +1,0 @@
-kind: Added
-body: Desktop Sync harnesses confirm modal previews per-harness change counts from a dry-run, with a loader until the preview finishes.
-time: 2026-09-27T01:54:00Z
-custom:
-  Issue: ""

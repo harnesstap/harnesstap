@@ -1,5 +1,0 @@
-kind: Fixed
-body: Reconcile home harness scans on Desktop header refresh so removed host MCP servers (including OpenCode opencode.json entries) drop out of Harnesses inventory.
-time: 2026-09-28T06:30:00Z
-custom:
-  Issue: ""
