@@ -1,5 +1,0 @@
-kind: Added
-body: Harnesses inventory Plugins heading has Pull all, which fetches each listed plugin's latest source version, applies it when newer, and opens a Plugin updates report of what changed.
-time: 2026-09-27T06:40:00Z
-custom:
-  Issue: ""

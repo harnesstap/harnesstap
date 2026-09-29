@@ -1,5 +1,0 @@
-kind: Changed
-body: Desktop Sync harnesses preview counts resource changes (add/update by type:name:namespace) instead of every planned on-disk file.
-time: 2026-09-27T09:25:00Z
-custom:
-  Issue: ""
