@@ -166,10 +166,13 @@ describe("listCatalogPluginsPage", () => {
 
 describe("streamCatalogPlugins", () => {
   let restoreFetch: (() => void) | undefined;
+  let restoreNow: (() => void) | undefined;
 
   afterEach(() => {
     restoreFetch?.();
     restoreFetch = undefined;
+    restoreNow?.();
+    restoreNow = undefined;
   });
 
   it("streams paginated chunks per source", async () => {
@@ -239,15 +242,38 @@ describe("streamCatalogPlugins", () => {
   });
 
   it("sets timedOut when deadline elapses before all pages finish", async () => {
+    const originalNow = Date.now;
+    let now = originalNow();
+    Date.now = () => now;
+    restoreNow = () => {
+      Date.now = originalNow;
+    };
+
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://mock",
-      pageDelayMs: 5,
       plugins: Array.from({ length: 100 }, (_, index) => ({
         orgSlug: "harnesstap-cloud",
         slug: `plugin-${index}`,
         name: `Plugin ${index}`,
       })),
     });
+
+    const catalogFetch = globalThis.fetch;
+    let listPages = 0;
+    globalThis.fetch = (async (input, init) => {
+      const response = await catalogFetch(input, init);
+      const url = String(input);
+      const isPluginList =
+        url.startsWith("https://mock/api/public/plugins")
+        || url.startsWith("https://mock/api/catalog/plugins");
+      if (isPluginList) {
+        listPages += 1;
+        if (listPages === 1) {
+          now += 50;
+        }
+      }
+      return response;
+    }) as typeof fetch;
 
     const sources: CatalogListSource[] = [{
       label: "harnesstap-cloud",
@@ -263,9 +289,7 @@ describe("streamCatalogPlugins", () => {
     const done = events.find((event) => event.type === "done");
     expect(done).toEqual({ type: "done", timedOut: true });
     const chunks = events.filter((event) => event.type === "chunk");
-    expect(chunks.length).toBeLessThan(2);
-    expect(chunks.some((event) =>
-      event.type === "chunk" && !event.chunk.exhausted,
-    )).toBe(true);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]?.type === "chunk" && !chunks[0].chunk.exhausted).toBe(true);
   });
 });
