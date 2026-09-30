@@ -1,7 +1,7 @@
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import semver from "semver";
-import { getHarnesstapDir } from "../db/connection.js";
+import { getHarnesstapDir, harnesstapDirForHomeRoot } from "../db/connection.js";
 import {
   claudePluginsDir,
   parsePluginRef,
@@ -682,7 +682,8 @@ export function downloadHostPluginVersion(input: {
       `Plugin ${input.originRef} has no marketplace, so a source version cannot be downloaded`,
     );
   }
-  const harnesstapDir = input.harnesstapDir ?? getHarnesstapDir();
+  const harnesstapDir =
+    input.harnesstapDir ?? harnesstapDirForHomeRoot(homeRoot);
   const target = hostPluginPackageDir(
     harnesstapDir,
     marketplace,
@@ -697,7 +698,10 @@ export function downloadHostPluginVersion(input: {
       version: input.version,
       canonicalDir: target,
     });
-    return { version: input.version, install_path: target };
+    return {
+      version: input.version,
+      install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
+    };
   }
   const live = readMarketplacePluginSource(homeRoot, marketplace, name);
   const snapshot = readHostPluginSourceSnapshot(
@@ -741,7 +745,10 @@ export function downloadHostPluginVersion(input: {
           version: input.version,
           canonicalDir: target,
         });
-        return { version: input.version, install_path: target };
+        return {
+          version: input.version,
+          install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
+        };
       }
       lastMessage = cloned.message;
     }
@@ -777,7 +784,10 @@ export function downloadHostPluginVersion(input: {
         version: input.version,
         canonicalDir: target,
       });
-      return { version: input.version, install_path: target };
+      return {
+        version: input.version,
+        install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
+      };
     }
   }
   throw new Error(

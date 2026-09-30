@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import semver from "semver";
-import { getHarnesstapDir } from "../db/connection.js";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import {
   claudePluginsDir,
   getInstalledPluginRecord,
@@ -228,7 +228,7 @@ function listCacheVersionDirs(
     }
   }
   const packageParent = hostPluginPackagesParent(
-    getHarnesstapDir(),
+    harnesstapDirForHomeRoot(homeRoot),
     marketplace,
     pluginName,
   );
@@ -278,7 +278,10 @@ export function listHostPluginVersions(
   const catalogVersion = marketplace
     ? advertisedMarketplaceVersion(resolvedHome, marketplace, name)
     : null;
-  const snapshot = readHostPluginSourceSnapshot(originRef, getHarnesstapDir());
+  const snapshot = readHostPluginSourceSnapshot(
+    originRef,
+    harnesstapDirForHomeRoot(resolvedHome),
+  );
   const advertised_version = marketplace
     ? highestHostPluginSourceVersion([
         catalogVersion,
@@ -429,13 +432,15 @@ export function ensureHostPluginVersionInstalled(input: {
     return { version: selected.version, install_path: selected.path };
   }
   try {
-    return downloadHostPluginVersion({
+    const downloaded = downloadHostPluginVersion({
       originRef: input.originRef,
       version: input.version,
       homeRoot,
-      harnesstapDir: input.harnesstapDir,
+      harnesstapDir:
+        input.harnesstapDir ?? harnesstapDirForHomeRoot(homeRoot),
       runCommand: input.runCommand,
     });
+    return downloaded;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Could not download plugin version";

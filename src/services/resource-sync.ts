@@ -34,7 +34,7 @@ import { formatPluginRef } from "./plugin-composition.js";
 import { assertSyncable } from "./plugin-origin.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import { hashResourceBody } from "./resource-hash.js";
-import { getHarnesstapDir } from "../db/connection.js";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
 import {
   ingestHostPluginTreeIntoCache,
@@ -107,13 +107,18 @@ function resolveExistingInstallRoot(candidate: string): string | undefined {
   }
 }
 
-export function resolveInstallRoot(
+export type ResolveInstallRootOptions = {
+  /** When false, only resolve harness-native install trees (for cross-harness serialize). */
+  preferCanonicalPackage?: boolean;
+};
+
+function resolveInstallRootCandidates(
   originRef: string,
-  homeRoot: string = resolveHomeRoot(),
-  claudePluginsRoot: string = defaultClaudePluginsRoot(homeRoot),
-): string | undefined {
+  homeRoot: string,
+  claudePluginsRoot: string,
+): string[] {
   const [plugin, marketplace] = originRef.split("@");
-  if (!plugin) return undefined;
+  if (!plugin) return [];
 
   const installRefCandidates = uniqueInstallRefs(originRef, homeRoot);
   const installedPath = getInstalledPluginInstallPath(
@@ -153,17 +158,31 @@ export function resolveInstallRoot(
   if (originRef.startsWith("./") || originRef.startsWith("../")) {
     candidates.unshift(join(process.cwd(), originRef));
   }
+  return candidates;
+}
+
+export function resolveInstallRoot(
+  originRef: string,
+  homeRoot: string = resolveHomeRoot(),
+  claudePluginsRoot: string = defaultClaudePluginsRoot(homeRoot),
+  options: ResolveInstallRootOptions = {},
+): string | undefined {
+  const candidates = resolveInstallRootCandidates(
+    originRef,
+    homeRoot,
+    claudePluginsRoot,
+  );
 
   for (const candidate of candidates) {
     const resolved = resolveExistingInstallRoot(candidate);
     if (resolved) {
       const { marketplace: parsedMarketplace } = parsePluginRef(originRef);
-      if (!parsedMarketplace) {
+      if (!parsedMarketplace || options.preferCanonicalPackage === false) {
         return resolved;
       }
       const version = resolvedVersionFromInstallRoot(resolved);
       const canonical = resolveCanonicalHostPluginRoot({
-        harnesstapDir: getHarnesstapDir(),
+        harnesstapDir: harnesstapDirForHomeRoot(homeRoot),
         originRef,
         version,
       });
@@ -319,7 +338,7 @@ export async function syncPluginResource(
   if (syncMarketplace && !options.dryRun) {
     const version = resolvedVersionFromInstallRoot(installRoot);
     scanRoot = ingestHostPluginTreeIntoCache({
-      harnesstapDir: getHarnesstapDir(),
+      harnesstapDir: harnesstapDirForHomeRoot(homeRoot),
       homeRoot,
       originRef,
       sourceInstallRoot: installRoot,

@@ -201,7 +201,9 @@ export function emitHostPluginTrees(
   for (const resource of resources) {
     if (!isHostPluginPinResource(resource)) continue;
     const originRef = pluginRef(resource);
-    const sourceRoot = resolveInstallRoot(originRef, options.homeRoot);
+    const sourceRoot = resolveInstallRoot(originRef, options.homeRoot, undefined, {
+      preferCanonicalPackage: false,
+    });
     if (!sourceRoot || !existsSync(sourceRoot)) continue;
 
     const relativeRoot = hostPluginRelativeRoot(options.layout, resource);

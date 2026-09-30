@@ -33,7 +33,7 @@ import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 import { detectPlatforms, scanPlatform } from "./scanner.js";
-import { getHarnesstapDir } from "../db/connection.js";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
 import { resolveCanonicalHostPluginRoot } from "./package-cache/index.js";
 import { resolveInstallRoot } from "./resource-sync.js";
@@ -387,7 +387,7 @@ function collectPluginInstallCandidates(
   const metadata = resource.metadata as { resolved_version?: string };
   if (marketplace && metadata.resolved_version) {
     const canonical = resolveCanonicalHostPluginRoot({
-      harnesstapDir: getHarnesstapDir(),
+      harnesstapDir: harnesstapDirForHomeRoot(homeRoot),
       originRef,
       version: metadata.resolved_version,
     });

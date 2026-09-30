@@ -50,6 +50,14 @@ function resolveHarnesstapDir(): string {
   return join(homePath, ".harnesstap");
 }
 
+/** HarnessTap data dir for a given user home (isolates tests that pass a custom homeRoot). */
+export function harnesstapDirForHomeRoot(homeRoot: string): string {
+  if (process.env.HARNESSTAP_HOME) {
+    return process.env.HARNESSTAP_HOME;
+  }
+  return join(homeRoot, ".harnesstap");
+}
+
 function resolveDbPath(): string {
   return join(resolveHarnesstapDir(), "harnesstap.db");
 }
