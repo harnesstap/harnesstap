@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
   applyCtaHelper,
-  scopeStatusLine,
+  PROFILE_HEADER_STATUS_TOOLTIP,
+  profileHeaderStatus,
   shouldAutoReapply,
   shouldShowReapply,
 } from "../../apps/desktop/src/lib/reapply.ts";
@@ -120,22 +121,58 @@ describe("shouldAutoReapply", () => {
   });
 });
 
-describe("scopeStatusLine", () => {
-  test("describes selected vs active in one sentence", () => {
+describe("profileHeaderStatus", () => {
+  const base = {
+    selectedProfile: "work",
+    activeProfile: "work",
+    applied: true,
+    view: "home" as const,
+    globalDriftStatus: "clean" as const,
+  };
+
+  test("marks inactive when another profile is active", () => {
     expect(
-      scopeStatusLine({
-        selectedProfile: "work",
-        activeProfile: "home",
-        applied: true,
-      }),
-    ).toEqual({ kind: "selected_not_applied", text: "Selected · not applied" });
+      profileHeaderStatus({ ...base, activeProfile: "home" }),
+    ).toEqual({
+      kind: "inactive",
+      tooltip: PROFILE_HEADER_STATUS_TOOLTIP.inactive,
+      active: false,
+      warn: false,
+    });
+  });
+
+  test("marks active and applied when live matches saved", () => {
+    expect(profileHeaderStatus(base)).toEqual({
+      kind: "active_applied",
+      tooltip: PROFILE_HEADER_STATUS_TOOLTIP.active_applied,
+      active: true,
+      warn: false,
+    });
+  });
+
+  test("warns when active but not fully applied", () => {
+    expect(profileHeaderStatus({ ...base, applied: false })).toEqual({
+      kind: "active_not_fully_applied",
+      tooltip: PROFILE_HEADER_STATUS_TOOLTIP.active_not_fully_applied,
+      active: true,
+      warn: true,
+    });
     expect(
-      scopeStatusLine({
-        selectedProfile: "work",
-        activeProfile: "work",
-        applied: true,
-      }),
-    ).toEqual({ kind: "active_applied", text: "Active · applied" });
+      profileHeaderStatus({ ...base, globalDriftStatus: "drifted" }),
+    ).toEqual({
+      kind: "active_not_fully_applied",
+      tooltip: PROFILE_HEADER_STATUS_TOOLTIP.active_not_fully_applied,
+      active: true,
+      warn: true,
+    });
+    expect(
+      profileHeaderStatus({ ...base, globalDriftStatus: "pending" }),
+    ).toEqual({
+      kind: "active_not_fully_applied",
+      tooltip: PROFILE_HEADER_STATUS_TOOLTIP.active_not_fully_applied,
+      active: true,
+      warn: true,
+    });
   });
 });
 

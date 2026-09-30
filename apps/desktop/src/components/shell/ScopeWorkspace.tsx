@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from "react";
-import { Check, FileDiff, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
+import { Check, FileDiff, HardDriveUpload, Pencil, Plus, Tag } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
   shouldShowPendingApprovalsStrip,
 } from "../../lib/pending-approvals";
-import { scopeStatusLine } from "../../lib/reapply";
+import { profileHeaderStatus } from "../../lib/reapply";
 import { type ProfileCreateSource } from "../../lib/types";
 import type { ScopeController } from "../../state/scope-controller";
 import { useRegisterCommands } from "../../state/command-registry";
@@ -13,10 +13,10 @@ import { useStatusStore } from "../../state/status-store";
 import { toast } from "../../state/toast-store";
 import { EditProfilePane } from "../EditProfilePane";
 import { ButtonSpinner } from "../ButtonSpinner";
-import { FieldIdentityIcon } from "../FieldIdentityIcon";
 import { IconActionButton } from "../IconActionButton";
 import { LiveStatePanel } from "../LiveStatePanel";
 import { ApplyProgressStrip, isApplyStepActive, stepState } from "../live/ApplyProgressStrip";
+import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
 import { Collapse } from "../motion/Collapse";
 import { PendingApprovalsStrip } from "../PendingApprovalsStrip";
 import { ProfileDeleteControls } from "../parity/ProfileDeleteControls";
@@ -84,6 +84,14 @@ export function ScopeWorkspace({
   const actionsEnabled = connected && Boolean(token) && !switching;
   const selectedProfileMetaTags =
     selectedProfileSummary?.tags.filter((tag) => tag !== "profile") ?? [];
+  const headerStatus = profileHeaderStatus({
+    selectedProfile,
+    activeProfile,
+    applied: ctrl.applied,
+    view,
+    globalDriftStatus: status?.drift_summary.global.status ?? "clean",
+    projectDriftStatus: status?.drift_summary.project?.status,
+  });
   const editCloseGuardRef = useRef<(() => boolean) | null>(null);
   const [setupOverwriteOpen, setSetupOverwriteOpen] = useState(false);
   useRegisterCommands(
@@ -211,6 +219,12 @@ export function ScopeWorkspace({
               <div className="status-line" aria-live="polite">
                 {selectedProfile ? (
                   <>
+                    {headerStatus.kind !== "none" && headerStatus.tooltip ? (
+                      <ProfileHeaderStatus
+                        kind={headerStatus.kind}
+                        tooltip={headerStatus.tooltip}
+                      />
+                    ) : null}
                     {ctrl.renamingProfile ? (
                       <input
                         ref={ctrl.renameInputRef}
@@ -261,35 +275,6 @@ export function ScopeWorkspace({
                   "No profile selected"
                 )}
               </div>
-              {selectedProfile ? (() => {
-                const line = scopeStatusLine({
-                  selectedProfile,
-                  activeProfile,
-                  applied: ctrl.applied,
-                });
-                if (line.kind === "none") {
-                  return null;
-                }
-                return (
-                  <div className="muted status-subline status-apply-line" data-testid="scope-status-line">
-                    {line.text}
-                  </div>
-                );
-              })() : null}
-              {selectedProfile ? (
-                <div className="muted status-subline status-description">
-                  <FieldIdentityIcon
-                    label="Description"
-                    icon={<TextQuote size={14} strokeWidth={2} aria-hidden="true" />}
-                  />
-                  <span
-                    className="status-description-text"
-                    title={selectedProfileSummary?.description ?? undefined}
-                  >
-                    {selectedProfileSummary?.description?.trim() || "\u00A0"}
-                  </span>
-                </div>
-              ) : null}
               {ctrl.renameError ? (
                 <div className="muted status-subline status-rename-error">
                   {ctrl.renameError}
