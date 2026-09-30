@@ -118,6 +118,18 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("ChevronRight");
     expect(liveStateSource).toContain("inventory-section-caret");
     expect(designSource).toContain("Each section is collapsible");
+    expect(designSource).toContain("one Lucide caret");
+    expect(designSource).toContain("Do not stack a CSS disclosure triangle");
+    const inventoryCaretOverrideStart = stylesSource.indexOf(
+      ".inventory-section > .contents-header::before",
+    );
+    expect(inventoryCaretOverrideStart).toBeGreaterThan(-1);
+    const inventoryCaretOverride = stylesSource.slice(
+      inventoryCaretOverrideStart,
+      inventoryCaretOverrideStart + 420,
+    );
+    expect(inventoryCaretOverride).toContain('[data-state="open"]');
+    expect(inventoryCaretOverride).toContain("content: none");
     expect(designSource).toContain("count as a pill badge");
     expect(liveStateSource).toContain('title="View changes"');
     expect(liveStateSource).toContain('label="Add all"');

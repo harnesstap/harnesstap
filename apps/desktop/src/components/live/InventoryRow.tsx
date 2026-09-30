@@ -85,17 +85,6 @@ export function InventoryRow({
   } else if (item.section === "not_in_profile" && (onAdd || onDiscard)) {
     action = (
       <span className="inventory-row-not-in-profile-actions">
-        {onDiscard ? (
-          <IconActionButton
-            className="profile-remove-action"
-            showLabel
-            spinnerSize={ICON_SIZE}
-            label="Discard"
-            title={`Discard ${item.label} from live setup`}
-            onClick={onDiscard}
-            icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-          />
-        ) : null}
         {onAdd ? (
           <IconActionButton
             className="untracked-add-btn"
@@ -105,6 +94,17 @@ export function InventoryRow({
             title={`Add ${item.label} to this profile`}
             onClick={onAdd}
             icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
+        {onDiscard ? (
+          <IconActionButton
+            className="profile-remove-action"
+            showLabel
+            spinnerSize={ICON_SIZE}
+            label="Discard"
+            title={`Discard ${item.label} from live setup`}
+            onClick={onDiscard}
+            icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
           />
         ) : null}
       </span>

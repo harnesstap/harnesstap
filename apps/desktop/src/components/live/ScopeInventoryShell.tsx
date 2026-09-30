@@ -12,8 +12,16 @@ import {
 import type { ProfileContentsResource } from "../../lib/types";
 import { toast } from "../../state/toast-store";
 import { noResultsTitle } from "../../lib/empty-copy";
+import {
+  collectDiscardPathRows,
+  discardAllDescription,
+  discardAllTitle,
+  discardResourceDescription,
+  discardResourceTitle,
+} from "../../lib/scope-inventory-discard";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { EmptyState } from "../EmptyState";
+import { DiscardPathList } from "./DiscardPathList";
 import { InventorySection } from "./InventorySection";
 import { LiveHeader } from "./LiveHeader";
 import type { TypeTabAttention } from "../../lib/resource-type-tabs";
@@ -526,12 +534,8 @@ export function ScopeInventoryShell({
       </button>
       <ConfirmDialog
         open={pendingDiscard !== null}
-        title="Discard live resource?"
-        description={
-          pendingDiscard
-            ? `Remove ${pendingDiscard.label} from your harness setup? This deletes the live copy on disk.`
-            : ""
-        }
+        title={pendingDiscard ? discardResourceTitle(pendingDiscard) : ""}
+        description={pendingDiscard ? discardResourceDescription() : ""}
         tone="destructive"
         confirmLabel="Discard"
         cancelLabel="Cancel"
@@ -544,14 +548,22 @@ export function ScopeInventoryShell({
           setPendingDiscard(null);
           void runDiscard(item);
         }}
-      />
+      >
+        {pendingDiscard ? (
+          <DiscardPathList
+            key={pendingDiscard.key}
+            rows={collectDiscardPathRows([pendingDiscard])}
+            showLabels={false}
+          />
+        ) : null}
+      </ConfirmDialog>
       <ConfirmDialog
         open={pendingDiscardAll !== null && pendingDiscardAll.length > 0}
-        title="Discard all live resources?"
+        title={
+          pendingDiscardAll ? discardAllTitle(pendingDiscardAll.length) : ""
+        }
         description={
-          pendingDiscardAll
-            ? `Remove ${pendingDiscardAll.length} resources from your harness setup? This deletes their live copies on disk.`
-            : ""
+          pendingDiscardAll ? discardAllDescription(pendingDiscardAll.length) : ""
         }
         tone="destructive"
         confirmLabel="Discard all"
@@ -565,7 +577,15 @@ export function ScopeInventoryShell({
           setPendingDiscardAll(null);
           void runDiscardAll(rows);
         }}
-      />
+      >
+        {pendingDiscardAll ? (
+          <DiscardPathList
+            key={`discard-all-${pendingDiscardAll.length}`}
+            rows={collectDiscardPathRows(pendingDiscardAll)}
+            showLabels
+          />
+        ) : null}
+      </ConfirmDialog>
       <ConfirmDialog
         open={pendingRemove !== null}
         title="Remove from profile"
