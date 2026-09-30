@@ -265,7 +265,7 @@ describe("desktop icon chrome", () => {
   });
 
   test("converts Library and Sources header clusters to icon-only", () => {
-    expect(resourcesSource).toContain('label="Create resource"');
+    expect(resourcesSource).toContain('label: "Create resource"');
     expect(resourcesSource).toContain('label="Import"');
     expect(resourcesSource).toContain('label="Tracked directories"');
     expect(resourcesSource).toContain('label="Update all"');

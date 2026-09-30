@@ -1,7 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { FolderDown, FolderInput, FilterX, Plus, RefreshCw } from "lucide-react";
+import { Check, FolderDown, FolderInput, FilterX, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
+import { ChromeTooltip } from "./ChromeTooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRegisterCommands } from "../state/command-registry";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
@@ -27,6 +29,7 @@ import {
   fetchProfiles,
 } from "../lib/agent-client";
 import {
+  deleteLibraryPlugin,
   fetchLibraryPluginHeads,
   type LibraryPluginHead,
 } from "../lib/api/library-plugins";
@@ -34,6 +37,17 @@ import {
   fetchPluginOriginCheck,
   postPluginOriginUpdate,
 } from "../lib/api/plugin-origin-update";
+import { deleteLibraryResource } from "../lib/api/resource-mutate";
+import {
+  LIBRARY_BULK_DELETE_PREVIEW,
+  libraryBulkDeleteLine,
+  libraryBulkDeleteShowAllLabel,
+  libraryBulkDeleteVisibleCount,
+  pruneSelectedIds,
+  selectAllCheckboxState,
+  toggleSelectAllVisible,
+} from "../lib/library-bulk-edit";
+import { MUTATION_CHUNK_SIZE, settleInChunks } from "../lib/profile-inventory";
 import {
   groupScopedLibraryRows,
   libraryFilterType,
@@ -78,6 +92,7 @@ import { resourceDisplayName } from "../lib/resource-search";
 import {
   countResourceTypeTabs,
   resolveResourceTypeTab,
+  resourceTypeTabLabel,
 } from "../lib/resource-type-tabs";
 import { workspaceBackEnabled } from "../lib/screen-history";
 import { useEscapeWhenNoLayer } from "../state/overlay-stack";
@@ -190,6 +205,13 @@ export function ResourcesPanel({
   );
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createType, setCreateType] = useState<CreateResourceType | null>(null);
+  const [libraryEditMode, setLibraryEditModeState] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
+  const [bulkDeleteRevealed, setBulkDeleteRevealed] = useState(
+    LIBRARY_BULK_DELETE_PREVIEW,
+  );
   const libraryCommandsLocked = disabled || !baseUrl;
   useRegisterCommands(
     "library",
@@ -455,6 +477,23 @@ export function ResourcesPanel({
     [collidingPluginNames, filteredEntries],
   );
 
+  const visibleRowIds = useMemo(
+    () => listRows.map((row) => row.id),
+    [listRows],
+  );
+  const selectedEntries = useMemo(() => {
+    if (selectedIds.size === 0) {
+      return [];
+    }
+    const fromList = listRows.filter((row) => selectedIds.has(row.id));
+    const listed = new Set(fromList.map((row) => row.id));
+    const rest = entries.filter(
+      (entry) => selectedIds.has(entry.id) && !listed.has(entry.id),
+    );
+    return [...fromList, ...rest];
+  }, [entries, listRows, selectedIds]);
+  const selectAllState = selectAllCheckboxState(visibleRowIds, selectedIds);
+
   useEffect(() => {
     const seen = seenRowIdsRef.current;
     const nextEntering = new Set<string>();
@@ -467,8 +506,28 @@ export function ResourcesPanel({
     setEnteringIds(nextEntering);
   }, [listRows]);
 
+  useEffect(() => {
+    const known = new Set(entries.map((entry) => entry.id));
+    setSelectedIds((current) => {
+      if (current.size === 0) {
+        return current;
+      }
+      const next = pruneSelectedIds(current, known);
+      return next.size === current.size ? current : next;
+    });
+  }, [entries]);
+
   const libraryEmpty = resources.length === 0 && plugins.length === 0;
-  const paneConfirmOpen = confirmOpen || originUpdateConfirmOpen;
+  const paneConfirmOpen = confirmOpen || originUpdateConfirmOpen || bulkDeleteOpen;
+
+  function setLibraryEditMode(next: boolean): void {
+    setLibraryEditModeState(next);
+    if (!next) {
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+      setBulkDeleteRevealed(LIBRARY_BULK_DELETE_PREVIEW);
+    }
+  }
 
   function leaveToList(): void {
     if (document.activeElement instanceof HTMLElement) {
@@ -553,6 +612,7 @@ export function ResourcesPanel({
     }
     homeResetNonceSeen.current = homeResetNonce;
     applyFilterChangeRef.current(defaultResourceFilterState());
+    setLibraryEditMode(false);
   }, [homeResetNonce]);
 
   // Back on Esc while no dialog is open; open layers take Esc first.
@@ -659,6 +719,85 @@ export function ResourcesPanel({
 
   function reloadLibrary(): void {
     setResourcesReloadKey((value) => value + 1);
+  }
+
+  function openBulkDelete(): void {
+    if (selectedEntries.length === 0 || bulkDeleteBusy) {
+      return;
+    }
+    setBulkDeleteRevealed(LIBRARY_BULK_DELETE_PREVIEW);
+    setBulkDeleteOpen(true);
+  }
+
+  async function runBulkDelete(): Promise<void> {
+    if (!baseUrl || selectedEntries.length === 0) {
+      return;
+    }
+    setBulkDeleteBusy(true);
+    setActionError(null);
+    const batch = selectedEntries;
+    const results = await settleInChunks(
+      batch,
+      MUTATION_CHUNK_SIZE,
+      async (entry) => {
+        switch (entry.listKind) {
+          case "plugin-package":
+            await deleteLibraryPlugin(baseUrl, token, entry.name);
+            return;
+          case "resource":
+            await deleteLibraryResource(
+              baseUrl,
+              token,
+              libraryRowSelector(entry),
+              "library",
+            );
+            return;
+          default: {
+            const neverKind: never = entry.listKind;
+            return neverKind;
+          }
+        }
+      },
+    );
+    const failed = results.filter((result) => result.status === "rejected");
+    const deletedIds = new Set(
+      batch
+        .filter((_, index) => results[index]?.status === "fulfilled")
+        .map((entry) => entry.id),
+    );
+    const deletedCount = deletedIds.size;
+    if (deletedCount > 0) {
+      if (batch.some((entry) => entry.listKind === "plugin-package" && deletedIds.has(entry.id))) {
+        onProfilesChanged?.();
+      }
+      onSuccess?.(
+        `Deleted ${deletedCount} resource${deletedCount === 1 ? "" : "s"}`,
+      );
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        for (const id of deletedIds) {
+          next.delete(id);
+        }
+        return next;
+      });
+      reloadLibrary();
+    }
+    setBulkDeleteBusy(false);
+    if (failed.length === 0) {
+      setBulkDeleteOpen(false);
+      setBulkDeleteRevealed(LIBRARY_BULK_DELETE_PREVIEW);
+      return;
+    }
+    const first = failed[0];
+    const reason =
+      first && first.status === "rejected"
+        ? errorMessage(first.reason, "Could not delete resources")
+        : "Could not delete resources";
+    setActionError(
+      failed.length === batch.length
+        ? reason
+        : `${reason} ${failed.length} of ${batch.length} could not be deleted.`,
+    );
   }
 
   async function runOriginUpdateAll(): Promise<void> {
@@ -841,19 +980,57 @@ export function ResourcesPanel({
     }
     return (
       <>
-        <ResourceTypeTabs
-          counts={typeCounts}
-          value={typeTab}
-          disabled={disabled}
-          overflow="collapse"
-          onChange={(next) => applyFilterChange({ ...filterState, type: next })}
-        />
+        {libraryEditMode ? (
+          <div className="library-list-toolbar">
+            <span className="library-edit-check-slot">
+              <Checkbox
+                data-testid="library-select-all"
+                aria-label="Select all"
+                checked={selectAllState}
+                disabled={disabled || visibleRowIds.length === 0}
+                onCheckedChange={() => {
+                  setSelectedIds((current) =>
+                    toggleSelectAllVisible(visibleRowIds, current),
+                  );
+                }}
+              />
+            </span>
+            <ResourceTypeTabs
+              counts={typeCounts}
+              value={typeTab}
+              disabled={disabled}
+              overflow="collapse"
+              onChange={(next) => applyFilterChange({ ...filterState, type: next })}
+            />
+          </div>
+        ) : (
+          <ResourceTypeTabs
+            counts={typeCounts}
+            value={typeTab}
+            disabled={disabled}
+            overflow="collapse"
+            onChange={(next) => applyFilterChange({ ...filterState, type: next })}
+          />
+        )}
         <LibraryResourceList
           rows={listRows}
           inUseIndex={inUseIndex}
           disabled={disabled}
           lastSelector={lastSelector}
           enteringIds={enteringIds}
+          libraryEditMode={libraryEditMode}
+          selectedIds={selectedIds}
+          onToggleSelected={(id) => {
+            setSelectedIds((current) => {
+              const next = new Set(current);
+              if (next.has(id)) {
+                next.delete(id);
+              } else {
+                next.add(id);
+              }
+              return next;
+            });
+          }}
           onOpen={openLibraryRow}
           duplicatePluginNames={collidingPluginNames}
         />
@@ -883,6 +1060,18 @@ export function ResourcesPanel({
     })
     || (hasLocalPrevious && confirmOpen);
   const count = outdatedCount;
+  const bulkDeleteLines = selectedEntries.map((entry) => ({
+    id: entry.id,
+    line: libraryBulkDeleteLine(
+      resourceTypeTabLabel(libraryFilterType(entry)),
+      resourceDisplayName(entry, collidingPluginNames),
+    ),
+  }));
+  const bulkDeleteVisibleCount = libraryBulkDeleteVisibleCount(
+    bulkDeleteLines.length,
+    bulkDeleteRevealed,
+  );
+  const showListFab = pane.mode === "list" && !error;
 
   return (
     <main
@@ -917,14 +1106,22 @@ export function ResourcesPanel({
             </div>
           </div>
           <div className="resources-panel-header-actions">
-            <IconActionButton
-              primary
-              data-testid="library-create-resource"
-              label="Create resource"
-              disabled={disabled || !baseUrl}
-              onClick={() => setCreateModalOpen(true)}
-              icon={<Plus size={16} aria-hidden />}
-            />
+            {pane.mode === "list" ? (
+              <IconActionButton
+                data-testid="library-edit-mode"
+                label={libraryEditMode ? "Done" : "Edit"}
+                aria-pressed={libraryEditMode}
+                disabled={disabled || !baseUrl}
+                onClick={() => setLibraryEditMode(!libraryEditMode)}
+                icon={
+                  libraryEditMode ? (
+                    <Check size={16} aria-hidden />
+                  ) : (
+                    <Pencil size={16} aria-hidden />
+                  )
+                }
+              />
+            ) : null}
             <IconActionButton
               label="Import"
               title="Import"
@@ -973,9 +1170,108 @@ export function ResourcesPanel({
               {actionError}
             </div>
           ) : null}
-          {renderMainPane()}
+          {pane.mode === "list" ? (
+            <div className="library-list-pane">
+              {renderMainPane()}
+              {showListFab ? (
+                <ChromeTooltip
+                  content={libraryEditMode ? "Delete selected" : "Add resource"}
+                >
+                  <button
+                    type="button"
+                    className={[
+                      "scope-inventory-fab",
+                      "icon-action",
+                      libraryEditMode ? "destructive" : "primary",
+                    ].join(" ")}
+                    data-testid="library-list-fab"
+                    aria-label={
+                      libraryEditMode ? "Delete selected" : "Add resource"
+                    }
+                    disabled={
+                      disabled
+                      || !baseUrl
+                      || bulkDeleteBusy
+                      || (libraryEditMode && selectedEntries.length === 0)
+                    }
+                    onClick={() => {
+                      if (libraryEditMode) {
+                        openBulkDelete();
+                        return;
+                      }
+                      setCreateModalOpen(true);
+                    }}
+                  >
+                    {libraryEditMode ? (
+                      <Trash2 size={20} strokeWidth={2} aria-hidden />
+                    ) : (
+                      <Plus size={20} strokeWidth={2} aria-hidden />
+                    )}
+                  </button>
+                </ChromeTooltip>
+              ) : null}
+            </div>
+          ) : (
+            renderMainPane()
+          )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        title="Delete from library?"
+        description={
+          <>
+            <p className="muted">
+              These items will be deleted from the library.
+            </p>
+            <ul className="library-bulk-delete-list">
+              {bulkDeleteLines.slice(0, bulkDeleteVisibleCount).map((item) => (
+                <li key={item.id}>{item.line}</li>
+              ))}
+            </ul>
+            {bulkDeleteVisibleCount < bulkDeleteLines.length ? (
+              <div className="library-contained-more">
+                <button
+                  type="button"
+                  className="link-btn"
+                  disabled={bulkDeleteBusy}
+                  onClick={() => {
+                    setBulkDeleteRevealed(
+                      (current) => current + LIBRARY_BULK_DELETE_PREVIEW,
+                    );
+                  }}
+                >
+                  Show more
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
+                  disabled={bulkDeleteBusy}
+                  onClick={() => {
+                    setBulkDeleteRevealed(bulkDeleteLines.length);
+                  }}
+                >
+                  {libraryBulkDeleteShowAllLabel(bulkDeleteLines.length)}
+                </button>
+              </div>
+            ) : null}
+          </>
+        }
+        tone="destructive"
+        confirmLabel="Delete"
+        confirmBusy={bulkDeleteBusy}
+        confirmDisabled={bulkDeleteLines.length === 0}
+        onConfirm={() => {
+          void runBulkDelete();
+        }}
+        onCancel={() => {
+          if (!bulkDeleteBusy) {
+            setBulkDeleteOpen(false);
+            setBulkDeleteRevealed(LIBRARY_BULK_DELETE_PREVIEW);
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={originUpdateConfirmOpen}

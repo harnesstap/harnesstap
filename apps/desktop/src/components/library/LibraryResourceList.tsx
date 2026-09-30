@@ -42,6 +42,7 @@ import {
 import { hoverModelFromLibraryResource } from "../../lib/resource-hover";
 import { resourceRowVirtualStyle } from "../../lib/resource-row-virtual";
 import { resourceDisplayName } from "../../lib/resource-search";
+import { Checkbox } from "../ui/checkbox";
 
 export interface LibraryResourceListProps {
   rows: Array<ScopedLibraryRow<LibraryListEntry>>;
@@ -49,6 +50,9 @@ export interface LibraryResourceListProps {
   disabled?: boolean;
   lastSelector: string | null;
   enteringIds: ReadonlySet<string>;
+  libraryEditMode?: boolean;
+  selectedIds?: ReadonlySet<string>;
+  onToggleSelected?: (id: string) => void;
   onOpen: (entry: LibraryListEntry) => void;
   onActiveSelectorChange?: (selector: string | null) => void;
   duplicatePluginNames?: ReadonlySet<string>;
@@ -60,6 +64,9 @@ export function LibraryResourceList({
   disabled = false,
   lastSelector,
   enteringIds,
+  libraryEditMode = false,
+  selectedIds,
+  onToggleSelected,
   onOpen,
   onActiveSelectorChange,
   duplicatePluginNames,
@@ -237,6 +244,19 @@ export function LibraryResourceList({
                 }}
               >
                 <ResourceRowLeading>
+                  {libraryEditMode ? (
+                    <span className="resource-row-checkbox library-edit-check-slot">
+                      <Checkbox
+                        data-testid={`library-row-select-${entry.id}`}
+                        aria-label={`Select ${label}`}
+                        checked={selectedIds?.has(entry.id) ?? false}
+                        disabled={disabled}
+                        onCheckedChange={() => {
+                          onToggleSelected?.(entry.id);
+                        }}
+                      />
+                    </span>
+                  ) : null}
                   <InUseMark membership={inUse} />
                 </ResourceRowLeading>
                 <ResourceRowIdentity

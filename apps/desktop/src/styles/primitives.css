@@ -28,6 +28,17 @@
   background: color-mix(in srgb, var(--accent) 88%, var(--primary-foreground));
 }
 
+.icon-action.destructive {
+  background: var(--red);
+  border-color: transparent;
+  color: var(--destructive-foreground);
+}
+
+.icon-action.destructive:hover:not(:disabled) {
+  color: var(--destructive-foreground);
+  background: color-mix(in srgb, var(--red) 88%, var(--fg));
+}
+
 .icon-action.has-label {
   width: auto;
   min-width: 32px;

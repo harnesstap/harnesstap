@@ -44,11 +44,11 @@ const headerRow = sliceBetween(
 );
 
 describe("library items header actions", () => {
-  test("clusters Create resource, Import, and Tracked directories as icon actions", () => {
+  test("clusters Edit, Import, and Tracked directories as icon actions", () => {
     expect(headerRow).toContain('className="resources-panel-header-actions"');
     const clusterIdx = headerRow.indexOf("resources-panel-header-actions");
     expect(headerRow.slice(clusterIdx)).toContain("IconActionButton");
-    expect(headerRow.slice(clusterIdx)).toContain('label="Create resource"');
+    expect(headerRow.slice(clusterIdx)).toContain("library-edit-mode");
     expect(headerRow.slice(clusterIdx)).toContain('label="Import"');
     expect(headerRow.slice(clusterIdx)).toContain('label="Tracked directories"');
   });
@@ -61,11 +61,11 @@ describe("library items header actions", () => {
     expect(panelSource).toContain("onWorkspaceBack");
   });
 
-  test("renders Create resource as an accent icon-only action", () => {
-    expect(headerRow).toContain('data-testid="library-create-resource"');
-    expect(headerRow).toContain('label="Create resource"');
-    expect(headerRow).toContain("primary");
-    expect(headerRow).toContain("setCreateModalOpen(true)");
+  test("renders Edit as a non-primary icon-only action", () => {
+    expect(headerRow).toContain('data-testid="library-edit-mode"');
+    expect(headerRow).toContain("setLibraryEditMode");
+    expect(headerRow).not.toContain("primary");
+    expect(headerRow).not.toContain('data-testid="library-create-resource"');
   });
 
   test("renders Import as an icon-only secondary action", () => {
@@ -91,7 +91,7 @@ describe("library items header actions", () => {
 
   test("keeps the empty-state Import into library CTA as icon-only Import", () => {
     expect(panelSource).toContain("<EmptyState");
-    expect(panelSource).toMatch(/label="Create resource"[\s\S]*label="Import"/);
+    expect(panelSource).toMatch(/label: "Create resource"[\s\S]*label="Import"/);
   });
 
   test("auto-opens tracked directories after first-run bootstrap", () => {
@@ -137,9 +137,9 @@ describe("library items header action styles", () => {
 
 describe("library items header design lock", () => {
   test("documents the Library header action cluster", () => {
-    expect(designSource).toContain("**Create resource** (accent");
+    expect(designSource).toContain("icon-only **Edit**");
     expect(designSource).toContain("Header cluster");
-    expect(designSource).toContain("icon-only **Create resource**");
+    expect(designSource).toContain("sticky **Add resource** FAB");
   });
 
   test("documents workspace back before the panel title", () => {
@@ -151,7 +151,7 @@ describe("library items header design lock", () => {
 
   test("documents unified library list and detail", () => {
     expect(designSource).toContain("No Items/Packages tabs");
-    expect(designSource).toContain("Create resource opens the centered type-picker");
+    expect(designSource).toContain("opens the centered type-picker dialog");
     expect(designSource).toContain("Sync on a library row is `resource sync`");
     expect(designSource).toContain("plugin ref");
     expect(designSource).toContain(
