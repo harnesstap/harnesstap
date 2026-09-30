@@ -77,6 +77,11 @@ textarea:focus-visible,
   box-shadow: var(--focus-ring-on-accent);
 }
 
+.icon-action.destructive:focus-visible,
+.btn.destructive:focus-visible {
+  box-shadow: var(--focus-ring-on-accent);
+}
+
 /* Pressed: instant, physical, tiny. */
 button:active:not(:disabled) {
   transform: translateY(0.5px);
@@ -90,7 +95,7 @@ button:active:not(:disabled) {
   transform: translateY(0.5px);
 }
 
-.icon-action:active:not(:disabled):not(.primary) {
+.icon-action:active:not(:disabled):not(.primary):not(.destructive) {
   background: var(--surface-selected);
 }
 
