@@ -32,6 +32,8 @@ describe("initializeSchema", () => {
           "project_plugins",
           "projects",
           "resource_materializations",
+          "package_cache_entries",
+          "plugin_pin_materializations",
           "resources",
           "plugin_working_snapshots",
           "schema_version",
@@ -44,7 +46,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(30);
+      expect(versionRow.version).toBe(31);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -153,7 +155,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 30 }]);
+      expect(versionRows).toEqual([{ version: 31 }]);
     } finally {
       await context.cleanup();
     }
@@ -563,7 +565,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(30);
+        expect(version).toBe(31);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -590,7 +592,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(30);
+      expect(version).toBe(31);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -605,6 +607,40 @@ describe("initializeSchema", () => {
       expect(
         db.prepare("SELECT id FROM plugins WHERE id = 'plugin'").get(),
       ).toEqual({ id: "plugin" });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("upgrades schema v30 with package cache tables", async () => {
+    const context = await createTestContext("schema-upgrade-v31");
+
+    try {
+      const db = context.connection.getDb();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (30);
+        CREATE TABLE resources (id TEXT PRIMARY KEY);
+      `);
+
+      context.schema.initializeSchema(db);
+
+      const version = (
+        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
+          version: number;
+        }
+      ).version;
+      expect(version).toBe(31);
+
+      const tables = db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('package_cache_entries', 'plugin_pin_materializations') ORDER BY name",
+        )
+        .all() as Array<{ name: string }>;
+      expect(tables.map((row) => row.name)).toEqual([
+        "package_cache_entries",
+        "plugin_pin_materializations",
+      ]);
     } finally {
       await context.cleanup();
     }
@@ -659,7 +695,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(30);
+      expect(version).toBe(31);
 
       const columns = db
         .prepare("PRAGMA table_info(resource_materializations)")
@@ -755,7 +791,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(30);
+      expect(version).toBe(31);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")

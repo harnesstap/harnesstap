@@ -36,8 +36,6 @@ import { parseDependencyRef } from "./plugin-dependency.js";
 import { hashResourceBody } from "./resource-hash.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
-import { upsertPackageCacheEntry } from "../models/package-cache-entry.js";
-import { hostPluginPackageRelativePath } from "./package-cache/paths.js";
 import {
   ingestHostPluginTreeIntoCache,
   resolveCanonicalHostPluginRoot,
@@ -163,23 +161,13 @@ export function resolveInstallRoot(
       if (!parsedMarketplace) {
         return resolved;
       }
-      const harnesstapDir = getHarnesstapDir();
       const version = resolvedVersionFromInstallRoot(resolved);
       const canonical = resolveCanonicalHostPluginRoot({
-        harnesstapDir,
+        harnesstapDir: getHarnesstapDir(),
         originRef,
         version,
       });
-      if (canonical) {
-        return canonical;
-      }
-      return ingestHostPluginTreeIntoCache({
-        harnesstapDir,
-        homeRoot,
-        originRef,
-        sourceInstallRoot: resolved,
-        version,
-      });
+      return canonical ?? resolved;
     }
   }
   return undefined;
@@ -318,19 +306,6 @@ export async function syncPluginResource(
 
   const originRef = pluginResource.origin_ref || formatPluginRef(pluginResource);
   const installRoot = resolveInstallRoot(originRef, homeRoot, claudePluginsRoot);
-  if (installRoot) {
-    const { marketplace: mp, name: pluginName } = parsePluginRef(originRef);
-    if (mp) {
-      const version = resolvedVersionFromInstallRoot(installRoot);
-      upsertPackageCacheEntry({
-        kind: "host_plugin",
-        origin_ref: originRef,
-        resolved_key: version,
-        relative_path: hostPluginPackageRelativePath(mp, pluginName, version),
-        resource_id: pluginResource.id,
-      });
-    }
-  }
   if (!installRoot) {
     stale.push({
       resource: pluginResource,
@@ -339,16 +314,30 @@ export async function syncPluginResource(
     return { checked: 1, updated, stale, unchanged, skipped };
   }
 
+  let scanRoot = installRoot;
+  const { marketplace: syncMarketplace } = parsePluginRef(originRef);
+  if (syncMarketplace && !options.dryRun) {
+    const version = resolvedVersionFromInstallRoot(installRoot);
+    scanRoot = ingestHostPluginTreeIntoCache({
+      harnesstapDir: getHarnesstapDir(),
+      homeRoot,
+      originRef,
+      sourceInstallRoot: installRoot,
+      version,
+      pluginPinResourceId: pluginResource.id,
+    });
+  }
+
   let scan: Awaited<ReturnType<typeof scanPluginSource>>[number] | undefined;
   try {
-    const imports = await scanPluginSource(installRoot);
+    const imports = await scanPluginSource(scanRoot);
     scan = imports[0];
   } catch {
     scan = undefined;
   }
 
   if (!scan) {
-    const manifestVersion = readPluginVersionFromInstallRoot(installRoot);
+    const manifestVersion = readPluginVersionFromInstallRoot(scanRoot);
     if (!manifestVersion) {
       stale.push({ resource: pluginResource, reason: "plugin tree is empty" });
       return { checked: 1, updated, stale, unchanged, skipped };
@@ -358,7 +347,7 @@ export async function syncPluginResource(
       const metadata: PluginPinMetadata = {
         ...(pluginResource.metadata as PluginPinMetadata),
         resolved_version: resolvedVersionFromInstallRoot(
-          installRoot,
+          scanRoot,
           manifestVersion,
         ),
         sync_status: "synced",
@@ -384,7 +373,7 @@ export async function syncPluginResource(
     const metadata: PluginPinMetadata = {
       ...(pluginResource.metadata as PluginPinMetadata),
       resolved_version: resolvedVersionFromInstallRoot(
-        installRoot,
+        scanRoot,
         scan.plugin_version,
       ),
       sync_status: "synced",

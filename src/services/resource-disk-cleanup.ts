@@ -33,6 +33,9 @@ import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 import { detectPlatforms, scanPlatform } from "./scanner.js";
+import { getHarnesstapDir } from "../db/connection.js";
+import { parsePluginRef } from "../plugins/claude-installed.js";
+import { resolveCanonicalHostPluginRoot } from "./package-cache/index.js";
 import { resolveInstallRoot } from "./resource-sync.js";
 
 interface Candidate {
@@ -376,14 +379,30 @@ function collectPluginInstallCandidates(
   const ownershipKey = ownershipKeyFor(resource);
   const originRef = resource.origin_ref || resource.name;
   const installRoot = resolveInstallRoot(originRef, homeRoot);
+  const installPaths = new Set<string>();
   if (installRoot && existsSync(installRoot)) {
+    installPaths.add(installRoot);
+  }
+  const { marketplace } = parsePluginRef(originRef);
+  const metadata = resource.metadata as { resolved_version?: string };
+  if (marketplace && metadata.resolved_version) {
+    const canonical = resolveCanonicalHostPluginRoot({
+      harnesstapDir: getHarnesstapDir(),
+      originRef,
+      version: metadata.resolved_version,
+    });
+    if (canonical && existsSync(canonical)) {
+      installPaths.add(canonical);
+    }
+  }
+  for (const path of installPaths) {
     upsertCandidate(map, {
       scope: "global",
       project_id: null,
       project_name: null,
       root_path: homeRoot,
-      path: installRoot,
-      relative_path: relativeUnderRoot(homeRoot, installRoot),
+      path,
+      relative_path: relativeUnderRoot(homeRoot, path),
       action: "delete-directory",
       ownership_key: ownershipKey,
       generated_hash: "",
