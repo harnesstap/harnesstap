@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 30;
+const SCHEMA_VERSION = 31;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -247,6 +247,40 @@ const MIGRATIONS: Record<number, Migration> = {
       ON resource_materializations(root_path, path);
     CREATE INDEX idx_resource_materializations_resource
       ON resource_materializations(resource_id);
+  `,
+  31: `
+    CREATE TABLE package_cache_entries (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK(kind IN ('host_plugin', 'apm_git')),
+      resource_id TEXT REFERENCES resources(id) ON DELETE SET NULL,
+      origin_ref TEXT NOT NULL,
+      resolved_key TEXT NOT NULL,
+      relative_path TEXT NOT NULL,
+      content_fingerprint TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(kind, origin_ref, resolved_key)
+    );
+
+    CREATE INDEX idx_package_cache_entries_origin
+      ON package_cache_entries(origin_ref, resolved_key);
+
+    CREATE TABLE plugin_pin_materializations (
+      id TEXT PRIMARY KEY,
+      scope TEXT NOT NULL CHECK(scope IN ('global', 'project')),
+      root_path TEXT NOT NULL,
+      relative_path TEXT NOT NULL,
+      origin_ref TEXT NOT NULL,
+      resource_type TEXT NOT NULL,
+      resource_name TEXT NOT NULL,
+      plugin_pin_resource_id TEXT REFERENCES resources(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(scope, root_path, relative_path)
+    );
+
+    CREATE INDEX idx_plugin_pin_materializations_lookup
+      ON plugin_pin_materializations(scope, root_path, relative_path);
   `,
 };
 

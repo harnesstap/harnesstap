@@ -34,6 +34,14 @@ import { formatPluginRef } from "./plugin-composition.js";
 import { assertSyncable } from "./plugin-origin.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import { hashResourceBody } from "./resource-hash.js";
+import { getHarnesstapDir } from "../db/connection.js";
+import { parsePluginRef } from "../plugins/claude-installed.js";
+import { upsertPackageCacheEntry } from "../models/package-cache-entry.js";
+import { hostPluginPackageRelativePath } from "./package-cache/paths.js";
+import {
+  ingestHostPluginTreeIntoCache,
+  resolveCanonicalHostPluginRoot,
+} from "./package-cache/index.js";
 
 export interface SyncLinkedResourcesOptions {
   selector?: string;
@@ -151,7 +159,27 @@ export function resolveInstallRoot(
   for (const candidate of candidates) {
     const resolved = resolveExistingInstallRoot(candidate);
     if (resolved) {
-      return resolved;
+      const { marketplace: parsedMarketplace } = parsePluginRef(originRef);
+      if (!parsedMarketplace) {
+        return resolved;
+      }
+      const harnesstapDir = getHarnesstapDir();
+      const version = resolvedVersionFromInstallRoot(resolved);
+      const canonical = resolveCanonicalHostPluginRoot({
+        harnesstapDir,
+        originRef,
+        version,
+      });
+      if (canonical) {
+        return canonical;
+      }
+      return ingestHostPluginTreeIntoCache({
+        harnesstapDir,
+        homeRoot,
+        originRef,
+        sourceInstallRoot: resolved,
+        version,
+      });
     }
   }
   return undefined;
@@ -290,6 +318,19 @@ export async function syncPluginResource(
 
   const originRef = pluginResource.origin_ref || formatPluginRef(pluginResource);
   const installRoot = resolveInstallRoot(originRef, homeRoot, claudePluginsRoot);
+  if (installRoot) {
+    const { marketplace: mp, name: pluginName } = parsePluginRef(originRef);
+    if (mp) {
+      const version = resolvedVersionFromInstallRoot(installRoot);
+      upsertPackageCacheEntry({
+        kind: "host_plugin",
+        origin_ref: originRef,
+        resolved_key: version,
+        relative_path: hostPluginPackageRelativePath(mp, pluginName, version),
+        resource_id: pluginResource.id,
+      });
+    }
+  }
   if (!installRoot) {
     stale.push({
       resource: pluginResource,

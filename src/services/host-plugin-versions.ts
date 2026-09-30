@@ -26,6 +26,7 @@ import {
   defaultMarketplaceRoot,
 } from "./host-plugin-source.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
+import { hostPluginPackagesParent } from "./package-cache/paths.js";
 
 const GIT_SHA_DIR = /^[0-9a-f]{7,40}$/i;
 
@@ -213,7 +214,14 @@ function listCacheVersionDirs(
   marketplace: string,
   pluginName: string,
 ): Array<{ version: string; path: string; manifest_version: string | null }> {
+  const harnesstapDir = getHarnesstapDir();
+  const packageParent = hostPluginPackagesParent(
+    harnesstapDir,
+    marketplace,
+    pluginName,
+  );
   const rows = [
+    ...scanCacheParent(packageParent),
     ...scanCacheParent(cachePluginDir(homeRoot, marketplace, pluginName)),
     ...scanCacheParent(
       join(cursorCacheRoot(homeRoot), marketplace, pluginName),

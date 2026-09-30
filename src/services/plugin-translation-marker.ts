@@ -9,6 +9,12 @@ import { resourceIdentity } from "./reference-resources.js";
 import type { SerializerTarget, SerializeOptions } from "../types.js";
 import { toPortableEmitResources } from "./harness-resource-union.js";
 import {
+  findPluginPinResourceIdByOriginRef,
+  matchesPluginPinMaterialization,
+  upsertPluginPinMaterialization,
+} from "../models/plugin-pin-materialization.js";
+import type { MaterializationScope } from "../types.js";
+import {
   PLUGIN_TRANSLATION_SCHEMA,
   type PluginTranslationMarkerEntry,
   type PluginTranslationMarkerFile,
@@ -124,6 +130,9 @@ export function isPluginTranslatedResource(
   rootPath: string,
   resource: ResourceCreateInput,
 ): boolean {
+  if (matchesPluginPinMaterialization(rootPath, resource)) {
+    return true;
+  }
   const markerDir = markerDirectoryForSource(rootPath, resource);
   if (!markerDir) return false;
   const marker = readPluginTranslationMarker(join(markerDir, ".harnesstap"));
@@ -138,8 +147,27 @@ export function dropPluginTranslatedResources(
   return resources.filter((resource) => !isPluginTranslatedResource(rootPath, resource));
 }
 
+function recordTranslationProvenance(input: {
+  scope: MaterializationScope;
+  rootPath: string;
+  relativePath: string;
+  entry: PluginTranslationMarkerEntry;
+}): void {
+  const pinId = findPluginPinResourceIdByOriginRef(input.entry.origin_ref);
+  upsertPluginPinMaterialization({
+    scope: input.scope,
+    root_path: input.rootPath,
+    relative_path: input.relativePath.replace(/\\/g, "/"),
+    origin_ref: input.entry.origin_ref,
+    resource_type: input.entry.type,
+    resource_name: input.entry.name,
+    plugin_pin_resource_id: pinId,
+  });
+}
+
 export async function writeHarnessSyncPluginTranslationMarkers(input: {
   rootPath: string;
+  scope: MaterializationScope;
   extracted: ExtractHostPluginMaterialResult;
   skillHubPlans: readonly SkillHubPlan[];
   extraResults: readonly ApplyResult[];
@@ -155,11 +183,26 @@ export async function writeHarnessSyncPluginTranslationMarkers(input: {
     const skillName = plan.destDir.replace(/\\/g, "/").split("/").pop() ?? "";
     const plugin = skillPluginByName.get(skillName);
     if (!plugin || !skillName) continue;
-    writePluginTranslationMarker(join(input.rootPath, plan.destDir), {
+    const entry: PluginTranslationMarkerEntry = {
       ...plugin,
       type: "skill",
       name: skillName,
-    }, { exclusive: true });
+    };
+    writePluginTranslationMarker(join(input.rootPath, plan.destDir), entry, {
+      exclusive: true,
+    });
+    recordTranslationProvenance({
+      scope: input.scope,
+      rootPath: input.rootPath,
+      relativePath: plan.destDir,
+      entry,
+    });
+    recordTranslationProvenance({
+      scope: input.scope,
+      rootPath: input.rootPath,
+      relativePath: plan.skillMdPath,
+      entry,
+    });
   }
 
   const serializedPaths = new Set<string>();
@@ -187,11 +230,20 @@ export async function writeHarnessSyncPluginTranslationMarkers(input: {
         const markerDir = relative.endsWith("/SKILL.md")
           ? dirname(absolute)
           : dirname(absolute);
-        writePluginTranslationMarker(markerDir, {
+        const entry: PluginTranslationMarkerEntry = {
           ...plugin,
           type: resource.type,
           name: resource.name,
-        }, { exclusive: relative.endsWith("/SKILL.md") });
+        };
+        writePluginTranslationMarker(markerDir, entry, {
+          exclusive: relative.endsWith("/SKILL.md"),
+        });
+        recordTranslationProvenance({
+          scope: input.scope,
+          rootPath: input.rootPath,
+          relativePath: relative,
+          entry,
+        });
       }
     }
   }
