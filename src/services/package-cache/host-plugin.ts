@@ -1,5 +1,5 @@
-import { cpSync, existsSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { getHarnesstapDir } from "../../db/connection.js";
 import { parsePluginRef } from "../../plugins/claude-installed.js";
 import {
@@ -12,6 +12,28 @@ import {
   hostPluginPackageDir,
   hostPluginPackageRelativePath,
 } from "./paths.js";
+
+function shouldCopyPackageTreePath(root: string, absolutePath: string): boolean {
+  const rel = relative(root, absolutePath).replace(/\\/g, "/");
+  if (rel === "" || rel === ".") {
+    return true;
+  }
+  if (rel === ".git" || rel.startsWith(".git/")) {
+    return false;
+  }
+  if (rel === "node_modules" || rel.startsWith("node_modules/")) {
+    return false;
+  }
+  return true;
+}
+
+function copyPackageTree(sourceRoot: string, destRoot: string): void {
+  cpSync(sourceRoot, destRoot, {
+    recursive: true,
+    force: true,
+    filter: (path) => shouldCopyPackageTreePath(sourceRoot, path),
+  });
+}
 
 export function mirrorHostPluginView(input: {
   homeRoot: string;
@@ -33,8 +55,11 @@ export function mirrorHostPluginView(input: {
   ) {
     return hostView;
   }
+  if (existsSync(hostView)) {
+    rmSync(hostView, { recursive: true, force: true });
+  }
   mkdirSync(dirname(hostView), { recursive: true });
-  cpSync(input.canonicalDir, hostView, { recursive: true, force: true });
+  copyPackageTree(input.canonicalDir, hostView);
   return hostView;
 }
 
@@ -58,7 +83,10 @@ export function ingestHostPluginTreeIntoCache(input: {
   );
   if (!existsSync(canonical) || !isPluginInstallRoot(canonical)) {
     mkdirSync(dirname(canonical), { recursive: true });
-    cpSync(input.sourceInstallRoot, canonical, { recursive: true, force: true });
+    if (existsSync(canonical)) {
+      rmSync(canonical, { recursive: true, force: true });
+    }
+    copyPackageTree(input.sourceInstallRoot, canonical);
   }
   const relative = hostPluginPackageRelativePath(marketplace, name, input.version);
   upsertPackageCacheEntry({
