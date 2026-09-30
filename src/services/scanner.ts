@@ -431,14 +431,27 @@ export async function scanHomeDefaults(
   const results: HomeScanResult[] = [];
   for (const result of platforms) {
     const serializer = getPlatformSerializer(result.platformId);
-    const resources = serializer.scanGlobal
-      ? await serializer.scanGlobal(homeRoot)
-      : await serializer.scan(homeRoot);
-    results.push({
-      platformId: result.platformId,
-      discoveredPaths: result.discoveredPaths,
-      resources: dropPluginTranslatedResources(homeRoot, resources),
-    });
+    try {
+      const resources = serializer.scanGlobal
+        ? await serializer.scanGlobal(homeRoot)
+        : await serializer.scan(homeRoot);
+      results.push({
+        platformId: result.platformId,
+        discoveredPaths: result.discoveredPaths,
+        resources: dropPluginTranslatedResources(homeRoot, resources),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const firstLine = message.split("\n")[0];
+      console.warn(
+        `Skipping home scan for ${result.platformId}: ${firstLine && firstLine.length > 0 ? firstLine : message}`,
+      );
+      results.push({
+        platformId: result.platformId,
+        discoveredPaths: result.discoveredPaths,
+        resources: [],
+      });
+    }
   }
 
   return results;

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Skip malformed home YAML during library bootstrap so the desktop sidecar keeps booting.
+time: 2026-09-30T23:15:00Z
+custom:
+  Issue: ""

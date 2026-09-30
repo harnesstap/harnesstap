@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { parse, stringify } from "yaml";
+import { Document, parse, Scalar, visit } from "yaml";
 import type { McpServerMetadata, ResourceCreateInput } from "../types.js";
 
 export const HARNESSTAP_PATCH_PREFIX = "harnesstap-";
@@ -15,6 +15,33 @@ export interface CordisInsertItem {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function yamlErrorSummary(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const firstLine = message.split("\n")[0];
+  return firstLine && firstLine.length > 0 ? firstLine : message;
+}
+
+function parseYamlOrSkip(content: string, source: string): unknown {
+  try {
+    return parse(content);
+  } catch (error) {
+    console.warn(`Skipping malformed YAML in ${source}: ${yamlErrorSummary(error)}`);
+    return undefined;
+  }
+}
+
+function stringifyYaml(value: unknown): string {
+  const document = new Document(value);
+  visit(document, {
+    Scalar(_key, node) {
+      if (typeof node.value === "string" && /\s/.test(node.value)) {
+        node.type = Scalar.QUOTE_DOUBLE;
+      }
+    },
+  });
+  return document.toString();
 }
 
 export function resolveDshHome(homeRoot: string): string {
@@ -71,7 +98,7 @@ export function mergeCordisPatch(
   rows: CordisInsertItem[],
 ): string {
   if (!existing || existing.trim().length === 0) {
-    return stringify(rows.length > 0 ? [{ insert: rows }] : []);
+    return stringifyYaml(rows.length > 0 ? [{ insert: rows }] : []);
   }
   const parsed: unknown = parse(existing);
   if (!Array.isArray(parsed)) {
@@ -91,7 +118,7 @@ export function mergeCordisPatch(
   if (rows.length > 0) {
     nextOps.push({ insert: rows });
   }
-  return stringify(nextOps);
+  return stringifyYaml(nextOps);
 }
 
 function mcpMetadataFromConfig(config: Record<string, unknown>): McpServerMetadata {
@@ -143,7 +170,8 @@ function collectMcpItems(node: unknown, acc: ResourceCreateInput[], source: stri
 }
 
 export function parseCordisMcpServers(content: string, source: string): ResourceCreateInput[] {
-  const parsed: unknown = parse(content);
+  const parsed = parseYamlOrSkip(content, source);
+  if (parsed === undefined) return [];
   const resources: ResourceCreateInput[] = [];
   collectMcpItems(parsed, resources, source);
   return resources;
@@ -175,11 +203,11 @@ export function mergeSettingsYaml(existing: string | undefined, overlay: Setting
     const previous = isRecord(doc.permission) ? doc.permission : {};
     doc.permission = { ...previous, defaultPreset: overlay.permissionPreset };
   }
-  return stringify(doc);
+  return stringifyYaml(doc);
 }
 
 export function parseSettingsResources(content: string, source: string): ResourceCreateInput[] {
-  const parsed: unknown = parse(content);
+  const parsed = parseYamlOrSkip(content, source);
   if (!isRecord(parsed)) return [];
   const resources: ResourceCreateInput[] = [];
   const modelSection = parsed["agent-default-model"];
