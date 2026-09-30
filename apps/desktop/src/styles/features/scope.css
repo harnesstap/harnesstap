@@ -997,7 +997,10 @@
   content: "▾";
 }
 
-.inventory-section > .contents-header::before {
+.inventory-section > .contents-header::before,
+.inventory-section[open] > .contents-header::before,
+.inventory-section[data-state="open"] > .contents-header::before,
+.inventory-section[data-state="closed"] > .contents-header::before {
   content: none;
 }
 
