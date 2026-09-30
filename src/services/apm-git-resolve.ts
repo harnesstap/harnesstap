@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { upsertPackageCacheEntry } from "../models/package-cache-entry.js";
