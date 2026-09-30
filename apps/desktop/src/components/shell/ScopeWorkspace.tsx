@@ -7,6 +7,7 @@ import {
 } from "../../lib/pending-approvals";
 import { profileHeaderStatus } from "../../lib/reapply";
 import { type ProfileCreateSource } from "../../lib/types";
+import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import type { ScopeController } from "../../state/scope-controller";
 import { useRegisterCommands } from "../../state/command-registry";
 import { useStatusStore } from "../../state/status-store";
@@ -247,6 +248,7 @@ export function ScopeWorkspace({
                         }}
                         disabled={ctrl.renameBusy}
                         aria-label="Rename selected profile"
+                        {...noSpellcheckProps}
                       />
                     ) : (
                       <button

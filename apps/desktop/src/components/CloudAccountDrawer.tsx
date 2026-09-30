@@ -16,6 +16,7 @@ import {
 } from "../lib/api/cloud-orgs";
 import type { CloudAuthStatus, CloudPendingLogin } from "../lib/types";
 import { noResultsTitle } from "../lib/empty-copy";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 import { Copy, ExternalLink, LogIn, LogOut, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
@@ -78,6 +79,7 @@ function OrganizationsList({
             onChange={(event) => onOrgQueryChange(event.target.value)}
             disabled={controlsLocked}
             placeholder="Filter organizations"
+            {...noSpellcheckProps}
           />
         </label>
       ) : null}

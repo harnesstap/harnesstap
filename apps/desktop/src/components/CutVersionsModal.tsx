@@ -4,6 +4,7 @@ import {
   type CutVersionRow,
   validateCutRows,
 } from "../lib/cut-versions-form";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 
 export interface CutVersionsModalProps {
   open: boolean;
@@ -78,8 +79,7 @@ export function CutVersionsModal({
                       disabled={busy}
                       aria-invalid={error ? true : undefined}
                       aria-describedby={error ? `${inputId}-error` : undefined}
-                      autoComplete="off"
-                      spellCheck={false}
+                      {...noSpellcheckProps}
                     />
                     {error ? (
                       <p

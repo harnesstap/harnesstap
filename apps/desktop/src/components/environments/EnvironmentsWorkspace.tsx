@@ -22,6 +22,7 @@ import {
 import { toast } from "../../state/toast-store";
 import { useRegisterCommands } from "../../state/command-registry";
 import { noResultsTitle } from "../../lib/empty-copy";
+import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { EnvironmentDrawer } from "./EnvironmentDrawer";
 
 const ACTION_ICON_SIZE = 16;
@@ -311,6 +312,7 @@ export function EnvironmentsWorkspace({
                 data-workspace-filter=""
                 onChange={(event) => setQuery(event.target.value)}
                 disabled={controlsDisabled}
+                {...noSpellcheckProps}
               />
               <IconActionButton
                 className="resource-filter-clear"

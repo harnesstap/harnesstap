@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { ResourceTypeTabs } from "../ResourceTypeTabs";
 import type { TypeTabAttention } from "../../lib/resource-type-tabs";
 
@@ -24,10 +25,7 @@ export function ListSearchField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           aria-label={label}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
+          {...noSpellcheckProps}
         />
       </label>
     </div>

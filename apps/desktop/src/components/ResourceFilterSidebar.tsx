@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { IconActionButton } from "./IconActionButton";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 import {
   buildNamespaceFacetOptions,
   buildOriginFacetOptions,
@@ -211,6 +212,7 @@ export function ResourceFilterSidebar({
             onChange={(event) => setSearchInput(event.target.value)}
             disabled={disabled}
             aria-label="Filter resources"
+            {...noSpellcheckProps}
           />
           <IconActionButton
             className="resource-filter-clear"

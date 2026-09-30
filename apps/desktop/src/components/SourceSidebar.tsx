@@ -13,6 +13,7 @@ import {
   type SourceCheckState,
   type SourceRow,
 } from "../lib/sources-sidebar";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { IconActionButton } from "./IconActionButton";
 
@@ -177,6 +178,7 @@ export function SourceSidebar({
               applySidebarChange(() => onQueryChange(next));
             }}
             disabled={controlsDisabled}
+            {...noSpellcheckProps}
           />
           {refreshing ? (
             <span

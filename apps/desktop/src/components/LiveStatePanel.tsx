@@ -66,6 +66,7 @@ import {
   resourceTypeTabTooltip,
   visibleResourceTypeTabs,
 } from "../lib/resource-type-tabs";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 import type {
   DriftFileChange,
   HarnessLiveStatus,
@@ -146,6 +147,7 @@ function ListSearchField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
+        {...noSpellcheckProps}
       />
     </label>
   );

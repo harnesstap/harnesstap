@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { noSpellcheckProps } from "@/lib/no-spellcheck"
 import { cn } from "@/lib/utils"
 
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
@@ -12,6 +13,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
         className
       )}
       {...props}
+      {...noSpellcheckProps}
     />
   )
 }
