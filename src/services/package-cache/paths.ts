@@ -53,6 +53,21 @@ export function hostPluginPackageRelativePath(
   );
 }
 
+/** Legacy read-only locations (pre-`cache/packages/git/`). */
+export function apmGitLegacyPackagePaths(
+  harnesstapDir: string,
+  repoUrl: string,
+  commit: string,
+): string[] {
+  const digest = createHash("sha256").update(repoUrl, "utf8").digest("hex");
+  const commitLower = commit.toLowerCase();
+  return [
+    join(harnesstapDir, "cache", "apm-git", digest, commitLower),
+    join(packagesCacheRoot(harnesstapDir), "apm-git", digest, commitLower),
+  ];
+}
+
+/** HarnessTap git checkouts for `apm.yml` / `dependencies.apm` (not Microsoft APM cache). */
 export function apmGitPackageDir(
   harnesstapDir: string,
   repoUrl: string,
@@ -61,7 +76,7 @@ export function apmGitPackageDir(
   const digest = createHash("sha256").update(repoUrl, "utf8").digest("hex");
   return join(
     packagesCacheRoot(harnesstapDir),
-    "apm-git",
+    "git",
     digest,
     commit.toLowerCase(),
   );
@@ -69,5 +84,5 @@ export function apmGitPackageDir(
 
 export function apmGitPackageRelativePath(repoUrl: string, commit: string): string {
   const digest = createHash("sha256").update(repoUrl, "utf8").digest("hex");
-  return join(PACKAGES_CACHE_ROOT, "apm-git", digest, commit.toLowerCase());
+  return join(PACKAGES_CACHE_ROOT, "git", digest, commit.toLowerCase());
 }

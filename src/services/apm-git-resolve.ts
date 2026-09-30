@@ -3,6 +3,7 @@ import { existsSync, lstatSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { upsertPackageCacheEntry } from "../models/package-cache-entry.js";
 import {
+  apmGitLegacyPackagePaths,
   apmGitPackageDir,
   apmGitPackageRelativePath,
 } from "./package-cache/paths.js";
@@ -118,17 +119,14 @@ export function apmGitCacheDir(
   repoUrl: string,
   commit: string,
 ): string {
-  const digest = createHash("sha256").update(repoUrl, "utf8").digest("hex");
-  const legacy = join(
-    harnesstapDir,
-    "cache",
-    "apm-git",
-    digest,
-    commit.toLowerCase(),
-  );
   const modern = apmGitPackageDir(harnesstapDir, repoUrl, commit);
-  if (existsSync(legacy) && !existsSync(modern)) {
-    return legacy;
+  if (existsSync(modern)) {
+    return modern;
+  }
+  for (const legacy of apmGitLegacyPackagePaths(harnesstapDir, repoUrl, commit)) {
+    if (existsSync(legacy)) {
+      return legacy;
+    }
   }
   return modern;
 }
