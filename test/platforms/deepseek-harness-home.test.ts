@@ -167,6 +167,27 @@ describe("settings yaml", () => {
     );
   });
 
+  it("quotes model names that contain spaces", () => {
+    const yaml = mergeSettingsYaml(undefined, {
+      model: { provider: "xai", model: "grok-4.6 prism" },
+    });
+    expect(yaml).toContain('model: "grok-4.6 prism"');
+    const parsed = parse(yaml) as Record<string, unknown>;
+    expect(parsed["agent-default-model"]).toEqual({
+      provider: "xai",
+      model: "grok-4.6 prism",
+    });
+  });
+
+  it("skips settings YAML with a multiline implicit key instead of throwing", () => {
+    const malformed = `agent-default-model:
+  grok-4.6 prism
+  provider: deepseek
+`;
+    expect(() => parse(malformed)).toThrow(/Implicit keys need to be on a single line/);
+    expect(parseSettingsResources(malformed, "~/.dsh/settings.yaml")).toEqual([]);
+  });
+
   it("parses model and permission preset", () => {
     const resources = parseSettingsResources(
       `

@@ -531,6 +531,39 @@ describe("scanner services", () => {
     }
   });
 
+  it("skips malformed home YAML with a multiline implicit key and keeps booting", async () => {
+    const context = await createInitializedTestContext("scanner-home-yaml-skip");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.dsh/settings.yaml`,
+        "agent-default-model:\n  grok-4.6 prism\n  provider: deepseek\n",
+      );
+      writeTextFile(
+        `${context.homeDir}/.dsh/skills/ok/SKILL.md`,
+        "---\nname: ok\ndescription: Still imported\n---\n# Ok",
+      );
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const result = await scanner.scanAndPersistHomeDefaults();
+      const dsh = result.results.find(
+        (entry) => entry.platformId === "deepseek-harness",
+      );
+
+      expect(dsh).toBeDefined();
+      expect(dsh?.resources.some((resource) => resource.type === "model_config")).toBe(
+        false,
+      );
+      expect(dsh?.resources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "skill", name: "ok" }),
+        ]),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("persists imported snapshots for a direct plugin source", async () => {
     const context = await createInitializedTestContext("scanner-plugin-source");
 
