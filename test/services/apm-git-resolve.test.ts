@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { execSync } from "node:child_process";
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 import { cleanupDir, createTempDir } from "../helpers/fs.ts";
 import {
+  apmGitCacheDir,
   classifyApmGitRef,
   canonicalApmRepoUrl,
   resolveApmGitDependency,
@@ -12,6 +13,10 @@ import {
   selectSemverTag,
   ApmGitResolveError,
 } from "../../src/services/apm-git-resolve.ts";
+import {
+  apmGitLegacyPackagePaths,
+  apmGitPackageDir,
+} from "../../src/services/package-cache/paths.ts";
 import { parseApmDependencyEntry } from "../../src/services/apm-dependencies.ts";
 import type { Lockfile } from "../../src/services/lockfile.ts";
 import type { RunCommand } from "../../src/plugins/run-command.ts";
@@ -90,6 +95,24 @@ describe("apm git resolve", () => {
     expect(selectSemverTag("^3.0.0", ["v1.0.0"])).toBeUndefined();
   });
 
+  it("stores new checkouts under cache/packages/git with legacy path fallback", () => {
+    const harnesstapDir = join(ctx.homeDir, ".harnesstap");
+    const repoUrl = "github.com/acme/widgets";
+    const commit = "b".repeat(40);
+    const modern = apmGitPackageDir(harnesstapDir, repoUrl, commit);
+    const [, packagesLegacy] = apmGitLegacyPackagePaths(harnesstapDir, repoUrl, commit);
+
+    expect(apmGitCacheDir(harnesstapDir, repoUrl, commit)).toBe(modern);
+
+    mkdirSync(packagesLegacy, { recursive: true });
+    writeFileSync(join(packagesLegacy, "legacy.txt"), "old");
+    expect(apmGitCacheDir(harnesstapDir, repoUrl, commit)).toBe(packagesLegacy);
+
+    mkdirSync(modern, { recursive: true });
+    writeFileSync(join(modern, "new.txt"), "new");
+    expect(apmGitCacheDir(harnesstapDir, repoUrl, commit)).toBe(modern);
+  });
+
   it("resolves a tag to a commit SHA and fetches it", () => {
     const remote = createPluginGitRepo();
     try {
@@ -101,6 +124,8 @@ describe("apm git resolve", () => {
       expect(fetched.commit).toBe(remote.sha);
       expect(fetched.replayed).toBe(false);
       expect(fetched.resolvedRef).toBe("v1.0.0");
+      expect(fetched.checkoutRoot).toContain("/cache/packages/git/");
+      expect(existsSync(fetched.checkoutRoot)).toBe(true);
     } finally {
       cleanupDir(remote.dir);
     }

@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import semver from "semver";
-import { getHarnesstapDir } from "../db/connection.js";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import {
   claudePluginsDir,
   getInstalledPluginRecord,
@@ -26,6 +26,8 @@ import {
   defaultMarketplaceRoot,
 } from "./host-plugin-source.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
+import { cacheVersionDir } from "./host-plugin-source.js";
+import { hostPluginPackagesParent } from "./package-cache/paths.js";
 
 const GIT_SHA_DIR = /^[0-9a-f]{7,40}$/i;
 
@@ -225,7 +227,46 @@ function listCacheVersionDirs(
       byVersion.set(row.version, row);
     }
   }
+  const packageParent = hostPluginPackagesParent(
+    harnesstapDirForHomeRoot(homeRoot),
+    marketplace,
+    pluginName,
+  );
+  for (const row of scanCacheParent(packageParent)) {
+    if (!byVersion.has(row.version)) {
+      byVersion.set(row.version, row);
+    }
+  }
   return [...byVersion.values()];
+}
+
+function relativeInstallPathForHostRegistry(
+  homeRoot: string,
+  originRef: string,
+  version: string,
+  absolutePath: string,
+): string {
+  const claudeRoot = claudePluginsDir(homeRoot);
+  if (absolutePath.startsWith(claudeRoot)) {
+    return absolutePath.slice(claudeRoot.length).replace(/^[/\\]/, "");
+  }
+  const { name, marketplace } = parsePluginRef(originRef);
+  if (marketplace) {
+    return join("cache", marketplace, name, version).replace(/\\/g, "/");
+  }
+  return absolutePath;
+}
+
+export function hostViewInstallPath(
+  homeRoot: string,
+  originRef: string,
+  version: string,
+): string {
+  const { name, marketplace } = parsePluginRef(originRef);
+  if (!marketplace) {
+    return "";
+  }
+  return cacheVersionDir(homeRoot, marketplace, name, version);
 }
 
 export function listHostPluginVersions(
@@ -237,7 +278,10 @@ export function listHostPluginVersions(
   const catalogVersion = marketplace
     ? advertisedMarketplaceVersion(resolvedHome, marketplace, name)
     : null;
-  const snapshot = readHostPluginSourceSnapshot(originRef, getHarnesstapDir());
+  const snapshot = readHostPluginSourceSnapshot(
+    originRef,
+    harnesstapDirForHomeRoot(resolvedHome),
+  );
   const advertised_version = marketplace
     ? highestHostPluginSourceVersion([
         catalogVersion,
@@ -388,13 +432,15 @@ export function ensureHostPluginVersionInstalled(input: {
     return { version: selected.version, install_path: selected.path };
   }
   try {
-    return downloadHostPluginVersion({
+    const downloaded = downloadHostPluginVersion({
       originRef: input.originRef,
       version: input.version,
       homeRoot,
-      harnesstapDir: input.harnesstapDir,
+      harnesstapDir:
+        input.harnesstapDir ?? harnesstapDirForHomeRoot(homeRoot),
       runCommand: input.runCommand,
     });
+    return downloaded;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Could not download plugin version";
@@ -437,9 +483,12 @@ export function retargetHostPluginVersion(input: {
     };
   }
 
-  const relativePath = selected.path.startsWith(claudePluginsDir(homeRoot))
-    ? selected.path.slice(claudePluginsDir(homeRoot).length).replace(/^[/\\]/, "")
-    : selected.path;
+  const relativePath = relativeInstallPathForHostRegistry(
+    homeRoot,
+    originRef,
+    selected.version,
+    selected.path,
+  );
   const existing = getInstalledPluginRecord(homeRoot, originRef);
   writeInstalledPluginRecord(homeRoot, originRef, {
     scope: existing?.scope ?? "user",

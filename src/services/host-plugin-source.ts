@@ -1,7 +1,7 @@
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import semver from "semver";
-import { getHarnesstapDir } from "../db/connection.js";
+import { getHarnesstapDir, harnesstapDirForHomeRoot } from "../db/connection.js";
 import {
   claudePluginsDir,
   parsePluginRef,
@@ -17,6 +17,12 @@ import {
 import { builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
 import { listMarketplaces } from "./marketplace-registry.js";
 import { resolveMarketplacePluginDirectory } from "./plugin-origin-apply.js";
+import { upsertPackageCacheEntry } from "../models/package-cache-entry.js";
+import {
+  hostPluginPackageDir,
+  hostPluginPackageRelativePath,
+} from "./package-cache/paths.js";
+import { mirrorHostPluginView } from "./package-cache/host-plugin.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 
 const FULL_SHA = /^[0-9a-f]{40}$/i;
@@ -676,9 +682,26 @@ export function downloadHostPluginVersion(input: {
       `Plugin ${input.originRef} has no marketplace, so a source version cannot be downloaded`,
     );
   }
-  const target = cacheVersionDir(homeRoot, marketplace, name, input.version);
+  const harnesstapDir =
+    input.harnesstapDir ?? harnesstapDirForHomeRoot(homeRoot);
+  const target = hostPluginPackageDir(
+    harnesstapDir,
+    marketplace,
+    name,
+    input.version,
+  );
   if (existsSync(target) && isPluginInstallRoot(target)) {
-    return { version: input.version, install_path: target };
+    mirrorHostPluginView({
+      homeRoot,
+      marketplace,
+      pluginName: name,
+      version: input.version,
+      canonicalDir: target,
+    });
+    return {
+      version: input.version,
+      install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
+    };
   }
   const live = readMarketplacePluginSource(homeRoot, marketplace, name);
   const snapshot = readHostPluginSourceSnapshot(
@@ -709,7 +732,23 @@ export function downloadHostPluginVersion(input: {
         runCommand: run,
       });
       if (cloned.ok && isPluginInstallRoot(target)) {
-        return { version: input.version, install_path: target };
+        upsertPackageCacheEntry({
+          kind: "host_plugin",
+          origin_ref: input.originRef,
+          resolved_key: input.version,
+          relative_path: hostPluginPackageRelativePath(marketplace, name, input.version),
+        });
+        mirrorHostPluginView({
+          homeRoot,
+          marketplace,
+          pluginName: name,
+          version: input.version,
+          canonicalDir: target,
+        });
+        return {
+          version: input.version,
+          install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
+        };
       }
       lastMessage = cloned.message;
     }
@@ -732,7 +771,23 @@ export function downloadHostPluginVersion(input: {
     if (pluginDir && existsSync(pluginDir) && isPluginInstallRoot(pluginDir)) {
       mkdirSync(dirname(target), { recursive: true });
       cpSync(pluginDir, target, { recursive: true });
-      return { version: input.version, install_path: target };
+      upsertPackageCacheEntry({
+        kind: "host_plugin",
+        origin_ref: input.originRef,
+        resolved_key: input.version,
+        relative_path: hostPluginPackageRelativePath(marketplace, name, input.version),
+      });
+      mirrorHostPluginView({
+        homeRoot,
+        marketplace,
+        pluginName: name,
+        version: input.version,
+        canonicalDir: target,
+      });
+      return {
+        version: input.version,
+        install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
+      };
     }
   }
   throw new Error(

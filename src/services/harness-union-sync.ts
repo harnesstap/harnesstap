@@ -311,6 +311,7 @@ export async function syncConfiguredHarnesses(
   materializeSkillHubPlan(rootPath, skillHubPlans, pluginResourceMode);
   await writeHarnessSyncPluginTranslationMarkers({
     rootPath,
+    scope: target === "global" ? "global" : "project",
     extracted,
     skillHubPlans,
     extraResults,

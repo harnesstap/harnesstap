@@ -1,6 +1,11 @@
-import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { upsertPackageCacheEntry } from "../models/package-cache-entry.js";
+import {
+  apmGitLegacyPackagePaths,
+  apmGitPackageDir,
+  apmGitPackageRelativePath,
+} from "./package-cache/paths.js";
 import semver from "semver";
 import {
   DEFAULT_GIT_CLONE_TIMEOUT_MS,
@@ -113,8 +118,30 @@ export function apmGitCacheDir(
   repoUrl: string,
   commit: string,
 ): string {
-  const digest = createHash("sha256").update(repoUrl, "utf8").digest("hex");
-  return join(harnesstapDir, "cache", "apm-git", digest, commit.toLowerCase());
+  const modern = apmGitPackageDir(harnesstapDir, repoUrl, commit);
+  if (existsSync(modern)) {
+    return modern;
+  }
+  for (const legacy of apmGitLegacyPackagePaths(harnesstapDir, repoUrl, commit)) {
+    if (existsSync(legacy)) {
+      return legacy;
+    }
+  }
+  return modern;
+}
+
+export function recordApmGitPackageCacheEntry(input: {
+  harnesstapDir: string;
+  repoUrl: string;
+  commit: string;
+  originRef: string;
+}): void {
+  upsertPackageCacheEntry({
+    kind: "apm_git",
+    origin_ref: input.originRef,
+    resolved_key: input.commit.toLowerCase(),
+    relative_path: apmGitPackageRelativePath(input.repoUrl, input.commit),
+  });
 }
 
 export function assertSafeApmVirtualPath(path: string): void {
@@ -484,5 +511,11 @@ export function resolveAndFetchApmGitDependency(
     apmGitCacheDir(harnesstapDir, resolution.repoUrl, resolution.commit),
     options.runCommand,
   );
+  recordApmGitPackageCacheEntry({
+    harnesstapDir,
+    repoUrl: resolution.repoUrl,
+    commit: resolution.commit,
+    originRef: dependency.originRef,
+  });
   return { ...resolution, checkoutRoot };
 }

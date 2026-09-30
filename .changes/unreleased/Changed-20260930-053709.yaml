@@ -1,0 +1,5 @@
+kind: Changed
+body: Rename APM git package cache from cache/packages/apm-git to cache/packages/git (legacy paths still read).
+time: 2026-09-30T05:37:09.536570476Z
+custom:
+    Issue: "293"

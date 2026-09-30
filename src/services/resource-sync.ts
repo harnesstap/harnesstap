@@ -34,6 +34,12 @@ import { formatPluginRef } from "./plugin-composition.js";
 import { assertSyncable } from "./plugin-origin.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import { hashResourceBody } from "./resource-hash.js";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
+import { parsePluginRef } from "../plugins/claude-installed.js";
+import {
+  ingestHostPluginTreeIntoCache,
+  resolveCanonicalHostPluginRoot,
+} from "./package-cache/index.js";
 
 export interface SyncLinkedResourcesOptions {
   selector?: string;
@@ -101,13 +107,18 @@ function resolveExistingInstallRoot(candidate: string): string | undefined {
   }
 }
 
-export function resolveInstallRoot(
+export type ResolveInstallRootOptions = {
+  /** When false, only resolve harness-native install trees (for cross-harness serialize). */
+  preferCanonicalPackage?: boolean;
+};
+
+function resolveInstallRootCandidates(
   originRef: string,
-  homeRoot: string = resolveHomeRoot(),
-  claudePluginsRoot: string = defaultClaudePluginsRoot(homeRoot),
-): string | undefined {
+  homeRoot: string,
+  claudePluginsRoot: string,
+): string[] {
   const [plugin, marketplace] = originRef.split("@");
-  if (!plugin) return undefined;
+  if (!plugin) return [];
 
   const installRefCandidates = uniqueInstallRefs(originRef, homeRoot);
   const installedPath = getInstalledPluginInstallPath(
@@ -147,11 +158,35 @@ export function resolveInstallRoot(
   if (originRef.startsWith("./") || originRef.startsWith("../")) {
     candidates.unshift(join(process.cwd(), originRef));
   }
+  return candidates;
+}
+
+export function resolveInstallRoot(
+  originRef: string,
+  homeRoot: string = resolveHomeRoot(),
+  claudePluginsRoot: string = defaultClaudePluginsRoot(homeRoot),
+  options: ResolveInstallRootOptions = {},
+): string | undefined {
+  const candidates = resolveInstallRootCandidates(
+    originRef,
+    homeRoot,
+    claudePluginsRoot,
+  );
 
   for (const candidate of candidates) {
     const resolved = resolveExistingInstallRoot(candidate);
     if (resolved) {
-      return resolved;
+      const { marketplace: parsedMarketplace } = parsePluginRef(originRef);
+      if (!parsedMarketplace || options.preferCanonicalPackage === false) {
+        return resolved;
+      }
+      const version = resolvedVersionFromInstallRoot(resolved);
+      const canonical = resolveCanonicalHostPluginRoot({
+        harnesstapDir: harnesstapDirForHomeRoot(homeRoot),
+        originRef,
+        version,
+      });
+      return canonical ?? resolved;
     }
   }
   return undefined;
@@ -298,16 +333,30 @@ export async function syncPluginResource(
     return { checked: 1, updated, stale, unchanged, skipped };
   }
 
+  let scanRoot = installRoot;
+  const { marketplace: syncMarketplace } = parsePluginRef(originRef);
+  if (syncMarketplace && !options.dryRun) {
+    const version = resolvedVersionFromInstallRoot(installRoot);
+    scanRoot = ingestHostPluginTreeIntoCache({
+      harnesstapDir: harnesstapDirForHomeRoot(homeRoot),
+      homeRoot,
+      originRef,
+      sourceInstallRoot: installRoot,
+      version,
+      pluginPinResourceId: pluginResource.id,
+    });
+  }
+
   let scan: Awaited<ReturnType<typeof scanPluginSource>>[number] | undefined;
   try {
-    const imports = await scanPluginSource(installRoot);
+    const imports = await scanPluginSource(scanRoot);
     scan = imports[0];
   } catch {
     scan = undefined;
   }
 
   if (!scan) {
-    const manifestVersion = readPluginVersionFromInstallRoot(installRoot);
+    const manifestVersion = readPluginVersionFromInstallRoot(scanRoot);
     if (!manifestVersion) {
       stale.push({ resource: pluginResource, reason: "plugin tree is empty" });
       return { checked: 1, updated, stale, unchanged, skipped };
@@ -317,7 +366,7 @@ export async function syncPluginResource(
       const metadata: PluginPinMetadata = {
         ...(pluginResource.metadata as PluginPinMetadata),
         resolved_version: resolvedVersionFromInstallRoot(
-          installRoot,
+          scanRoot,
           manifestVersion,
         ),
         sync_status: "synced",
@@ -343,7 +392,7 @@ export async function syncPluginResource(
     const metadata: PluginPinMetadata = {
       ...(pluginResource.metadata as PluginPinMetadata),
       resolved_version: resolvedVersionFromInstallRoot(
-        installRoot,
+        scanRoot,
         scan.plugin_version,
       ),
       sync_status: "synced",
