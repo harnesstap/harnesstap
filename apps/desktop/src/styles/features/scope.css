@@ -818,6 +818,57 @@
   font-weight: 600;
 }
 
+.profile-header-status {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+  overflow: visible;
+}
+
+.profile-header-status:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius);
+}
+
+.profile-header-status-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1.5px solid var(--muted);
+}
+
+.profile-header-status[data-kind="active_applied"] .profile-header-status-dot,
+.profile-header-status[data-kind="active_not_fully_applied"] .profile-header-status-dot {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.profile-header-status-warn {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--yellow);
+  box-shadow: 0 0 0 1px var(--surface);
+  pointer-events: none;
+}
+
 .status-edit-action {
   margin-left: 0.15rem;
 }
@@ -874,21 +925,6 @@
 
 .status-line .badge-meta {
   color: var(--muted);
-}
-
-.status-description {
-  /* Override .status-subline wrap so ellipsis + reserved height stay stable. */
-  flex-wrap: nowrap;
-  max-width: 40rem;
-  line-height: 1.35;
-  min-height: calc(1.35em);
-}
-
-.status-description-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .pending-approvals-list {
@@ -1848,8 +1884,4 @@
 .scope-add-modal-virtual {
   position: relative;
   width: 100%;
-}
-
-.status-apply-line {
-  font-weight: 500;
 }

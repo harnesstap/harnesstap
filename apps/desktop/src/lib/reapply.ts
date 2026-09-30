@@ -9,25 +9,64 @@ export function applyPreviewChangeCount(
   return preview?.files.changes.length ?? 0;
 }
 
-export type ScopeStatusLine =
-  | { kind: "none" }
-  | { kind: "selected_not_applied"; text: "Selected · not applied" }
-  | { kind: "active_applied"; text: "Active · applied" };
+export type ProfileHeaderStatusKind =
+  | "none"
+  | "inactive"
+  | "active_applied"
+  | "active_not_fully_applied";
 
-/** One status sentence under the selected profile name. */
-export function scopeStatusLine(input: {
+export const PROFILE_HEADER_STATUS_TOOLTIP = {
+  inactive: "Inactive",
+  active_applied: "Active and applied",
+  active_not_fully_applied: "Active. Not fully applied.",
+} as const;
+
+export interface ProfileHeaderStatusState {
+  kind: ProfileHeaderStatusKind;
+  tooltip: string | null;
+  active: boolean;
+  warn: boolean;
+}
+
+/** Live-toolbar status disc: active, active-but-not-fully-applied, or inactive. */
+export function profileHeaderStatus(input: {
   selectedProfile: string | null;
   activeProfile: string | null;
   applied: boolean;
-}): ScopeStatusLine {
+  view: ViewScope;
+  globalDriftStatus: "clean" | "drifted" | "pending";
+  projectDriftStatus?: "na" | "clean" | "drifted";
+}): ProfileHeaderStatusState {
   if (!input.selectedProfile) {
-    return { kind: "none" };
+    return { kind: "none", tooltip: null, active: false, warn: false };
   }
   const isActive = input.selectedProfile === input.activeProfile;
-  if (!isActive || !input.applied) {
-    return { kind: "selected_not_applied", text: "Selected · not applied" };
+  if (!isActive) {
+    return {
+      kind: "inactive",
+      tooltip: PROFILE_HEADER_STATUS_TOOLTIP.inactive,
+      active: false,
+      warn: false,
+    };
   }
-  return { kind: "active_applied", text: "Active · applied" };
+  const pendingLive =
+    input.view === "home" && input.globalDriftStatus === "pending";
+  const notFullyApplied =
+    !input.applied || scopeHasDrift(input) || pendingLive;
+  if (notFullyApplied) {
+    return {
+      kind: "active_not_fully_applied",
+      tooltip: PROFILE_HEADER_STATUS_TOOLTIP.active_not_fully_applied,
+      active: true,
+      warn: true,
+    };
+  }
+  return {
+    kind: "active_applied",
+    tooltip: PROFILE_HEADER_STATUS_TOOLTIP.active_applied,
+    active: true,
+    warn: false,
+  };
 }
 
 export type ApplyHelperKind =

@@ -75,13 +75,11 @@ describe("desktop icon chrome", () => {
   });
 
   test("marks profile description with TextQuote field identity", () => {
-    expect(appSource).toContain("FieldIdentityIcon");
-    expect(appSource).toContain("TextQuote");
-    expect(appSource).toContain('label="Description"');
     expect(resourceDetailSource).toContain("TextQuote");
     expect(pluginDetailSource).toContain("TextQuote");
     expect(designSource).toContain("**TextQuote**");
     expect(designSource).toContain("Profile **title** stays icon-free");
+    expect(appSource).not.toContain("status-description");
   });
 
   test("locks Designer voice: short tooltips, no em dash UI copy", () => {
