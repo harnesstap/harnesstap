@@ -21,6 +21,7 @@ import {
   type ShortcutId,
 } from "../../lib/commands";
 import { noResultsTitle } from "../../lib/empty-copy";
+import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { isListboxNavKey, nextListboxIndex } from "../../lib/listbox-nav";
 import { loadRecentProjects, projectDisplayName } from "../../lib/recent-projects";
 import {
@@ -386,6 +387,7 @@ function CommandPalette({
               setActive(0);
             }}
             onKeyDown={onInputKeyDown}
+            {...noSpellcheckProps}
           />
           <div
             id={listId}

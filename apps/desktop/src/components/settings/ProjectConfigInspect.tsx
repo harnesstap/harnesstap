@@ -10,6 +10,7 @@ import {
   type ProjectConfigProfile,
   type ProjectConfigValidation,
 } from "../../lib/api/project-config";
+import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { openResourcePath } from "../../lib/agent-client";
 import { ExternalLink, Save } from "lucide-react";
 import { ButtonSpinner } from "../ButtonSpinner";
@@ -373,7 +374,7 @@ function ApmYamlEditor({
         value={value}
         rows={15}
         disabled={disabled}
-        spellCheck={false}
+        {...noSpellcheckProps}
         aria-label="apm.yml"
         aria-invalid={invalid}
         onScroll={syncScroll}

@@ -43,6 +43,7 @@ import {
   pluginDetailCompositionEntries,
 } from "../lib/composition-membership";
 import { fieldKeyAction } from "../lib/library-field-edit";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 import { validateCutRows } from "../lib/cut-versions-form";
 import {
   cutLibraryPlugin,
@@ -1138,6 +1139,7 @@ export function PluginPackageDetail({
           onChange={(event) => setDraft(event.target.value)}
           onBlur={(event) => void commitTextField("name", event.target.value)}
           onKeyDown={(event) => onEditorKeyDown("name", event)}
+          {...noSpellcheckProps}
         />
         <span className="mono library-detail-version">{versionSuffix}</span>
       </>
@@ -1198,6 +1200,7 @@ export function PluginPackageDetail({
           rows={4}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => onEditorKeyDown("description", event)}
+          {...noSpellcheckProps}
         />
       );
     }
@@ -1214,6 +1217,7 @@ export function PluginPackageDetail({
           void commitTextField("description", event.target.value)
         }
         onKeyDown={(event) => onEditorKeyDown("description", event)}
+        {...noSpellcheckProps}
       />
     );
   }

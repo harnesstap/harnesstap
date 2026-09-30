@@ -28,6 +28,7 @@ import {
   useDialogDismiss,
 } from "../lib/dialog-dismiss";
 import { noResultsTitle } from "../lib/empty-copy";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
@@ -257,6 +258,7 @@ export function ScopeAddToProfileModal({
               placeholder="Filter by name"
               aria-label="Filter library items"
               disabled={controlsDisabled || loading}
+              {...noSpellcheckProps}
             />
           </label>
           <ResourceTypeTabs

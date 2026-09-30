@@ -19,6 +19,7 @@ import {
 import type { ProfileCreateSource } from "../../lib/types";
 import type { ScopeController } from "../../state/scope-controller";
 import { noResultsTitle } from "../../lib/empty-copy";
+import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
@@ -301,6 +302,7 @@ export function ProfilesRail({
           onChange={(event) => setProfileFilter(event.target.value)}
           disabled={!connected || switching || visibleProfiles.length === 0}
           aria-label="Filter profiles by name, description, or tags"
+          {...noSpellcheckProps}
         />
         {profileFilter.trim() ? (
           <IconActionButton

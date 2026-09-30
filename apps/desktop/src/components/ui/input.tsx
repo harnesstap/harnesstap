@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { noSpellcheckProps } from "@/lib/no-spellcheck"
 import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
@@ -14,6 +15,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         className
       )}
       {...props}
+      {...noSpellcheckProps}
     />
   )
 }

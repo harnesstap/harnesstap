@@ -100,10 +100,7 @@ describe("Harnesses workspace sidebar width", () => {
 describe("Harnesses resource filter field", () => {
   it("disables spelling correction on Filter resources", () => {
     expect(liveHeaderSource).toContain('placeholder="Filter resources"');
-    expect(liveHeaderSource).toContain("spellCheck={false}");
-    expect(liveHeaderSource).toContain('autoComplete="off"');
-    expect(liveHeaderSource).toContain('autoCorrect="off"');
-    expect(liveHeaderSource).toContain('autoCapitalize="off"');
+    expect(liveHeaderSource).toContain("{...noSpellcheckProps}");
   });
 
   it("uses a full-width Filter resources field with an adjacent origin menu", () => {

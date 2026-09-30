@@ -257,8 +257,6 @@ export function Combobox({
             aria-expanded={open}
             aria-controls={open ? listId : undefined}
             aria-activedescendant={activeDescendant}
-            autoComplete="off"
-            spellCheck={false}
             disabled={disabled}
             aria-label={ariaLabel}
             placeholder={placeholder}

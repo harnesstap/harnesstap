@@ -88,6 +88,7 @@ import {
   formatOriginDisplayLabel,
   formatResourceDisplayName,
 } from "../lib/resource-display";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 import type { LibraryResourceDetail, PluginContainedResource } from "../lib/types";
 import { Combobox } from "@/components/ui/combobox";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -937,6 +938,7 @@ export function ResourceDetailBody({
         onChange={(event) => setDraft(event.target.value)}
         onBlur={(event) => void commitField("name", event.target.value)}
         onKeyDown={(event) => onEditorKeyDown("name", event)}
+        {...noSpellcheckProps}
       />
     ) : (
       <span
@@ -999,6 +1001,7 @@ export function ResourceDetailBody({
           rows={field === "content" ? 12 : 4}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => onEditorKeyDown(field, event)}
+          {...noSpellcheckProps}
         />
       );
     }
@@ -1013,6 +1016,7 @@ export function ResourceDetailBody({
         onChange={(event) => setDraft(event.target.value)}
         onBlur={(event) => void commitField(field, event.target.value)}
         onKeyDown={(event) => onEditorKeyDown(field, event)}
+        {...noSpellcheckProps}
       />
     );
   }

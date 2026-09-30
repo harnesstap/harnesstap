@@ -9,6 +9,7 @@ import {
 } from "../lib/recent-projects";
 import { compactHomePath } from "../lib/compact-path";
 import { noResultsTitle } from "../lib/empty-copy";
+import { noSpellcheckProps } from "../lib/no-spellcheck";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
 
@@ -108,6 +109,7 @@ export function ProjectPicker({
           value={filter}
           onChange={(event) => setFilter(event.target.value)}
           aria-label="Filter recent projects"
+          {...noSpellcheckProps}
         />
         <div className="project-picker-list">
           {filtered.length === 0 ? (

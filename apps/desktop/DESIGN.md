@@ -82,6 +82,10 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 **Lean UI — one path per action.** Don’t offer two controls or two status phrasings for the same job unless the second clearly earns it (different outcome, different audience, or recovery). Desktop: no dual Apply; don’t pair tint+counts with redundant status words that repeat the same signal. Quiet icon chrome that mutates disk still confirms in a modal (Re-apply).
 
+**Fields**
+
+- Text fields never spell-check, autocorrect, autocapitalize, or offer spelling suggestions (search, filters, editors, dialogs, settings). Typed queries stay as typed. `Input` / `Textarea` default this; raw fields spread `noSpellcheckProps`; `index.html` sets `spellcheck="false"` so new controls inherit it.
+
 **Voice**
 
 - Short, human, tool-like. Tooltips and action blurbs, not lectures.
