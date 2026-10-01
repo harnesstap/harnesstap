@@ -916,6 +916,21 @@
   font-size: var(--text-meta);
 }
 
+.status-description {
+  /* Override .status-subline wrap so ellipsis + reserved height stay stable. */
+  flex-wrap: nowrap;
+  max-width: 40rem;
+  line-height: 1.35;
+  min-height: calc(1.35em);
+}
+
+.status-description-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status-line .badge {
   font-size: var(--text-micro);
   font-weight: 500;

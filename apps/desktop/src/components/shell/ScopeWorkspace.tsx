@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Check, FileDiff, HardDriveUpload, Pencil, Plus, Tag } from "lucide-react";
+import { Check, FileDiff, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
@@ -14,6 +14,7 @@ import { useStatusStore } from "../../state/status-store";
 import { toast } from "../../state/toast-store";
 import { EditProfilePane } from "../EditProfilePane";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { FieldIdentityIcon } from "../FieldIdentityIcon";
 import { IconActionButton } from "../IconActionButton";
 import { LiveStatePanel } from "../LiveStatePanel";
 import { ApplyProgressStrip, isApplyStepActive, stepState } from "../live/ApplyProgressStrip";
@@ -277,6 +278,20 @@ export function ScopeWorkspace({
                   "No profile selected"
                 )}
               </div>
+              {selectedProfile ? (
+                <div className="muted status-subline status-description">
+                  <FieldIdentityIcon
+                    label="Description"
+                    icon={<TextQuote size={14} strokeWidth={2} aria-hidden="true" />}
+                  />
+                  <span
+                    className="status-description-text"
+                    title={selectedProfileSummary?.description ?? undefined}
+                  >
+                    {selectedProfileSummary?.description?.trim() || "\u00A0"}
+                  </span>
+                </div>
+              ) : null}
               {ctrl.renameError ? (
                 <div className="muted status-subline status-rename-error">
                   {ctrl.renameError}

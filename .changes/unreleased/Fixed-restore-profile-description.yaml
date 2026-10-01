@@ -1,0 +1,5 @@
+kind: Fixed
+body: Restore the profile description under the live-state header name, keeping the status disc instead of status subtitle copy.
+time: 2026-10-01T00:32:00Z
+custom:
+  Issue: ""
