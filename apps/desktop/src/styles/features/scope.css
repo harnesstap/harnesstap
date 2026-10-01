@@ -1850,11 +1850,19 @@
   width: 100%;
 }
 
-.inventory-section-hint,
-.inventory-batch-progress {
+.inventory-section-hint {
   margin: 0;
   padding: 0 var(--space-3) var(--space-2);
   font-size: var(--text-meta);
+}
+
+.contents-header-toolbar .inventory-batch-progress {
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-meta);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .edit-profile-footer {
