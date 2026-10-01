@@ -17,7 +17,7 @@ import {
   type ProfileInventoryItem,
   type ProfileInventorySectionId,
 } from "../../lib/profile-inventory";
-import { resourceRowVirtualStyle } from "../../lib/resource-row-virtual";
+import { listScrollMargin, resourceRowVirtualStyle } from "../../lib/resource-row-virtual";
 import { IconActionButton } from "../IconActionButton";
 import { Collapse } from "../motion/Collapse";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
@@ -126,27 +126,30 @@ export function InventorySection({
   };
 
   useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) {
+      return;
+    }
     const measure = () => {
       const list = listRef.current;
-      const scroll = scrollRef.current;
-      if (!list || !scroll) {
+      if (!list) {
         return;
       }
-      const next =
-        list.getBoundingClientRect().top
-        - scroll.getBoundingClientRect().top
-        + scroll.scrollTop;
-      setScrollMargin(next);
+      const next = listScrollMargin(list, scroll);
+      setScrollMargin((prev) => (Math.abs(prev - next) < 0.5 ? prev : next));
     };
     measure();
-    const scroll = scrollRef.current;
-    scroll?.addEventListener("scroll", measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroll);
+    for (const child of scroll.children) {
+      observer.observe(child);
+    }
     window.addEventListener("resize", measure);
     return () => {
-      scroll?.removeEventListener("scroll", measure);
+      observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [rows.length, scrollRef]);
+  }, [expanded, rows.length, scrollRef]);
 
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -285,7 +288,11 @@ export function InventorySection({
           </span>
         ) : null}
       </header>
-      <Collapse open={expanded} skipAnimation={skipCollapse}>
+      <Collapse
+        open={expanded}
+        skipAnimation={skipCollapse}
+        className="inventory-section-collapse"
+      >
         {headerHint ? <p className="muted inventory-section-hint">{headerHint}</p> : null}
         {rows.length > 0 ? (
           <div
