@@ -1444,6 +1444,7 @@ export interface LiveStatePanelProps {
   onRemoveResourceFromProfile?: (
     resource: ProfileContentsResource,
     pluginId?: string,
+    options?: { skipAutoReapply?: boolean },
   ) => Promise<void>;
   removingResourceKey?: string | null;
   onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
@@ -2077,10 +2078,11 @@ export function LiveStatePanel({
             }
             onRemoveFromProfile={
               onRemoveResourceFromProfile
-                ? (item) =>
-                    onRemoveResourceFromProfile(item.resource, item.pluginId)
+                ? (item, options) =>
+                    onRemoveResourceFromProfile(item.resource, item.pluginId, options)
                 : undefined
             }
+            onAfterRemoves={onAfterAdds ? () => onAfterAdds("") : undefined}
             onOpenAddModal={() => setAddModalOpen(true)}
             addingAllResources={addingAllResources}
             activatingResources={activatingResources}

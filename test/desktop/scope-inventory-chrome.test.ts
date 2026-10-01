@@ -163,18 +163,13 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain('data-testid="inventory-active-edit"');
     expect(liveStateSource).toContain('label={editMode ? "Done" : "Edit"}');
     expect(liveStateSource).toContain("onToggleEdit={section === \"active\" ? onToggleEditMode : undefined}");
-    expect(liveStateSource).toContain("profile-resource-remove-btn");
+    expect(liveStateSource).toContain("resource-row-checkbox");
+    expect(liveStateSource).toContain("data-testid={`inventory-row-select-${item.key}`}");
     expect(liveStateSource).toContain("profile-remove-action");
-    expect(liveStateSource).toContain("Remove from profile");
+    expect(liveStateSource).toContain("Remove from profile?");
     expect(liveStateSource).toContain("inventory-row-lead");
-    expect(liveStateSource).toContain("inventory-row-lead-action");
-    expect(liveStateSource).toContain("inventory-row-remove-slot");
-    expect(liveStateSource).toContain("inventory-row-remove-placeholder");
     expect(liveStateSource).toContain("inventory-row-icon");
     expect(stylesSource).toContain(".inventory-row-lead");
-    expect(stylesSource).toContain(".inventory-row-lead-action");
-    expect(stylesSource).toContain(".inventory-row-remove-slot");
-    expect(stylesSource).toContain(".inventory-row-remove-slot .profile-remove-action");
     expect(stylesSource).toContain("width: var(--icon-action-size)");
     const leadStart = stylesSource.indexOf("\n.inventory-row-lead {");
     expect(leadStart).toBeGreaterThan(-1);
@@ -194,9 +189,9 @@ describe("Global/Project scope inventory chrome", () => {
     expect(
       inventoryRowBlocks.some((block) => block.includes("align-items: center;")),
     ).toBe(true);
-    expect(designSource).toContain("trash-width trailing slot");
-    expect(designSource).toContain("[type icon] [name]");
-    expect(designSource).toContain("rightmost icon");
+    expect(designSource).toContain("leading checkbox");
+    expect(designSource).toContain("[checkbox?] [type icon] [name]");
+    expect(designSource).toContain("Delete selected");
     expect(designSource).toContain("labeled accent **Overwrite**");
     expect(designSource).toContain("opens the full-screen profile edit pane");
     expect(designSource).toContain("**Active** section header has labeled **Edit**");
@@ -205,7 +200,13 @@ describe("Global/Project scope inventory chrome", () => {
 
   it("keeps a FAB that opens pick-from-library and Create for the library flow", () => {
     expect(liveStateSource).toContain('data-testid="scope-inventory-fab"');
-    expect(liveStateSource).toContain('aria-label="Add to profile"');
+    expect(liveStateSource).toContain('editMode ? "Delete selected" : "Add to profile"');
+    expect(liveStateSource).toContain('editMode ? "destructive" : "primary"');
+    expect(liveStateSource).toContain("Trash2");
+    expect(liveStateSource).toContain("Show more");
+    expect(liveStateSource).toContain("libraryBulkDeleteShowAllLabel");
+    expect(liveStateSource).toContain("setSelectedIds(new Set())");
+    expect(liveStateSource).toContain("skipAutoReapply");
     expect(liveStateSource).toContain("ScopeAddToProfileModal");
     expect(addModalSource).toContain('label="Create"');
     expect(addModalSource).toContain("Checkbox");

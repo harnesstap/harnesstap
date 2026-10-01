@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, type RefObject } from "react";
-import { FilterX, Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { FilterX, Plus, Trash2 } from "lucide-react";
 import {
   MUTATION_CHUNK_SIZE,
   PROFILE_INVENTORY_SECTION_ORDER,
@@ -19,13 +19,21 @@ import {
   discardResourceDescription,
   discardResourceTitle,
 } from "../../lib/scope-inventory-discard";
+import {
+  LIBRARY_BULK_DELETE_PREVIEW,
+  libraryBulkDeleteLine,
+  libraryBulkDeleteShowAllLabel,
+  libraryBulkDeleteVisibleCount,
+  pruneSelectedIds,
+} from "../../lib/library-bulk-edit";
+import { resourceTypeTabLabel, type TypeTabAttention } from "../../lib/resource-type-tabs";
+import { ChromeTooltip } from "../ChromeTooltip";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { EmptyState } from "../EmptyState";
+import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { DiscardPathList } from "./DiscardPathList";
 import { InventorySection } from "./InventorySection";
 import { LiveHeader } from "./LiveHeader";
-import type { TypeTabAttention } from "../../lib/resource-type-tabs";
-import type { ResourceDetailTarget } from "../ResourceDetailPane";
 
 export interface ScopeInventoryShellProps {
   search: string;
@@ -52,7 +60,11 @@ export interface ScopeInventoryShellProps {
   onOpenResource: (target: ResourceDetailTarget) => void;
   onOpenPlugin?: (pluginName: string) => void;
   onDiff?: (item: ProfileInventoryItem) => void;
-  onRemoveFromProfile?: (item: ProfileInventoryItem) => Promise<void> | void;
+  onRemoveFromProfile?: (
+    item: ProfileInventoryItem,
+    options?: { skipAutoReapply?: boolean },
+  ) => Promise<void> | void;
+  onAfterRemoves?: () => Promise<void>;
   onOpenAddModal: () => void;
   addingAllResources?: boolean;
   activatingResources?: boolean;
@@ -88,6 +100,7 @@ export function ScopeInventoryShell({
   onOpenPlugin,
   onDiff,
   onRemoveFromProfile,
+  onAfterRemoves,
   onOpenAddModal,
   addingAllResources = false,
   activatingResources = false,
@@ -109,8 +122,14 @@ export function ScopeInventoryShell({
     done: number;
     total: number;
   } | null>(null);
-  const [pendingRemove, setPendingRemove] = useState<ProfileInventoryItem | null>(
-    null,
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkRemoveOpen, setBulkRemoveOpen] = useState(false);
+  const [bulkRemoveBusy, setBulkRemoveBusy] = useState(false);
+  const [bulkRemoveRevealed, setBulkRemoveRevealed] = useState(
+    LIBRARY_BULK_DELETE_PREVIEW,
+  );
+  const [pendingRemoveRows, setPendingRemoveRows] = useState<ProfileInventoryItem[]>(
+    [],
   );
   const [pendingDiscard, setPendingDiscard] = useState<ProfileInventoryItem | null>(
     null,
@@ -130,6 +149,57 @@ export function ScopeInventoryShell({
       active: displayed.filter((item) => item.section === "active"),
     };
   }, [displayed]);
+  const selectableItems = useMemo(
+    () => displayed.filter((item) => item.section !== "not_in_profile"),
+    [displayed],
+  );
+  const knownSelectableIds = useMemo(
+    () => new Set(selectableItems.map((item) => item.key)),
+    [selectableItems],
+  );
+
+  useEffect(() => {
+    if (!editMode) {
+      setSelectedIds(new Set());
+      setBulkRemoveOpen(false);
+      setBulkRemoveRevealed(LIBRARY_BULK_DELETE_PREVIEW);
+      setBulkRemoveBusy(false);
+      setPendingRemoveRows([]);
+    }
+  }, [editMode]);
+
+  useEffect(() => {
+    if (bulkRemoveBusy) {
+      return;
+    }
+    setSelectedIds((current) => pruneSelectedIds(current, knownSelectableIds));
+  }, [bulkRemoveBusy, knownSelectableIds]);
+
+  const selectedItems = useMemo(
+    () => selectableItems.filter((item) => selectedIds.has(item.key)),
+    [selectableItems, selectedIds],
+  );
+  const bulkRemoveSource = bulkRemoveOpen ? pendingRemoveRows : selectedItems;
+  const bulkRemoveLines = bulkRemoveSource.map((item) => ({
+    id: item.key,
+    line: libraryBulkDeleteLine(resourceTypeTabLabel(item.type), item.label),
+  }));
+  const bulkRemoveVisibleCount = libraryBulkDeleteVisibleCount(
+    bulkRemoveLines.length,
+    bulkRemoveRevealed,
+  );
+
+  const toggleSelected = (item: ProfileInventoryItem) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(item.key)) {
+        next.delete(item.key);
+      } else {
+        next.add(item.key);
+      }
+      return next;
+    });
+  };
 
   const markPending = (key: string, section: ProfileInventorySectionId) => {
     setMoves((current) => {
@@ -398,25 +468,60 @@ export function ScopeInventoryShell({
     }
   };
 
-  const runRemove = async (item: ProfileInventoryItem) => {
-    if (!onRemoveFromProfile) {
+  const runRemoveAll = async (rows: ProfileInventoryItem[]) => {
+    if (!onRemoveFromProfile || rows.length === 0 || bulkRemoveBusy) {
       return;
     }
-    const key = membershipKey(item.resource);
-    const from = item.section;
-    markPending(key, "not_in_profile");
-    try {
-      await onRemoveFromProfile(item);
-      clearPending(key);
-    } catch {
-      clearPending(key, from);
+    setBulkRemoveBusy(true);
+    for (const row of rows) {
+      markPending(membershipKey(row.resource), "not_in_profile");
+    }
+    const results: PromiseSettledResult<void>[] = [];
+    for (const row of rows) {
+      const key = membershipKey(row.resource);
+      const from = row.section;
+      try {
+        await onRemoveFromProfile(row, { skipAutoReapply: true });
+        clearPending(key);
+        results.push({ status: "fulfilled", value: undefined });
+      } catch (error) {
+        clearPending(key, from);
+        results.push({
+          status: "rejected",
+          reason: error,
+        });
+      }
+    }
+    const succeeded = rows.filter((_, index) => results[index]?.status === "fulfilled");
+    const failed = rows.filter((_, index) => results[index]?.status === "rejected");
+    if (succeeded.length > 0) {
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        for (const row of succeeded) {
+          next.delete(row.key);
+        }
+        return next;
+      });
+      if (onAfterRemoves) {
+        try {
+          await onAfterRemoves();
+        } catch {
+          // Inventory already dropped the memberships; apply can retry from the rail.
+        }
+      }
+    }
+    setBulkRemoveBusy(false);
+    setBulkRemoveOpen(false);
+    setBulkRemoveRevealed(LIBRARY_BULK_DELETE_PREVIEW);
+    setPendingRemoveRows([]);
+    if (failed[0]) {
       toast({
         tone: "error",
-        title: `Could not remove ${item.label}`,
+        title: `Could not remove ${failed[0].label}`,
         action: {
           label: "Retry",
           onClick: () => {
-            void runRemove(item);
+            void runRemoveAll(failed);
           },
         },
       });
@@ -502,8 +607,9 @@ export function ScopeInventoryShell({
                 onOpenResource={onOpenResource}
                 onOpenPlugin={onOpenPlugin}
                 onDiff={onDiff}
-                onRemoveFromProfile={
-                  onRemoveFromProfile ? (item) => setPendingRemove(item) : undefined
+                selectedIds={editMode ? selectedIds : undefined}
+                onToggleSelected={
+                  editMode && onRemoveFromProfile ? toggleSelected : undefined
                 }
               />
             );
@@ -525,16 +631,43 @@ export function ScopeInventoryShell({
           ) : null}
         </div>
       </div>
-      <button
-        type="button"
-        className="scope-inventory-fab icon-action primary"
-        data-testid="scope-inventory-fab"
-        aria-label="Add to profile"
-        disabled={!selectedProfile}
-        onClick={onOpenAddModal}
+      <ChromeTooltip
+        content={editMode ? "Delete selected" : "Add to profile"}
       >
-        <Plus size={20} strokeWidth={2} aria-hidden />
-      </button>
+        <button
+          type="button"
+          className={[
+            "scope-inventory-fab",
+            "icon-action",
+            editMode ? "destructive" : "primary",
+          ].join(" ")}
+          data-testid="scope-inventory-fab"
+          aria-label={editMode ? "Delete selected" : "Add to profile"}
+          disabled={
+            !selectedProfile
+            || bulkRemoveBusy
+            || (editMode && selectedItems.length === 0)
+          }
+          onClick={() => {
+            if (editMode) {
+              if (selectedItems.length === 0 || bulkRemoveBusy) {
+                return;
+              }
+              setBulkRemoveRevealed(LIBRARY_BULK_DELETE_PREVIEW);
+              setPendingRemoveRows(selectedItems);
+              setBulkRemoveOpen(true);
+              return;
+            }
+            onOpenAddModal();
+          }}
+        >
+          {editMode ? (
+            <Trash2 size={20} strokeWidth={2} aria-hidden />
+          ) : (
+            <Plus size={20} strokeWidth={2} aria-hidden />
+          )}
+        </button>
+      </ChromeTooltip>
       <ConfirmDialog
         open={pendingDiscard !== null}
         title={pendingDiscard ? discardResourceTitle(pendingDiscard) : ""}
@@ -590,24 +723,59 @@ export function ScopeInventoryShell({
         ) : null}
       </ConfirmDialog>
       <ConfirmDialog
-        open={pendingRemove !== null}
-        title="Remove from profile"
+        open={bulkRemoveOpen}
+        title="Remove from profile?"
         description={
-          pendingRemove
-            ? `Remove ${pendingRemove.label} from ${selectedProfile}?`
-            : ""
+          <>
+            <p className="muted">
+              These items will be removed from the profile.
+            </p>
+            <ul className="library-bulk-delete-list">
+              {bulkRemoveLines.slice(0, bulkRemoveVisibleCount).map((item) => (
+                <li key={item.id}>{item.line}</li>
+              ))}
+            </ul>
+            {bulkRemoveVisibleCount < bulkRemoveLines.length ? (
+              <div className="library-contained-more">
+                <button
+                  type="button"
+                  className="link-btn"
+                  disabled={bulkRemoveBusy}
+                  onClick={() => {
+                    setBulkRemoveRevealed(
+                      (current) => current + LIBRARY_BULK_DELETE_PREVIEW,
+                    );
+                  }}
+                >
+                  Show more
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
+                  disabled={bulkRemoveBusy}
+                  onClick={() => {
+                    setBulkRemoveRevealed(bulkRemoveLines.length);
+                  }}
+                >
+                  {libraryBulkDeleteShowAllLabel(bulkRemoveLines.length)}
+                </button>
+              </div>
+            ) : null}
+          </>
         }
         tone="destructive"
         confirmLabel="Remove"
-        cancelLabel="Cancel"
-        onCancel={() => setPendingRemove(null)}
+        confirmBusy={bulkRemoveBusy}
+        confirmDisabled={bulkRemoveLines.length === 0}
         onConfirm={() => {
-          if (!pendingRemove) {
-            return;
+          void runRemoveAll(pendingRemoveRows);
+        }}
+        onCancel={() => {
+          if (!bulkRemoveBusy) {
+            setBulkRemoveOpen(false);
+            setBulkRemoveRevealed(LIBRARY_BULK_DELETE_PREVIEW);
+            setPendingRemoveRows([]);
           }
-          const item = pendingRemove;
-          setPendingRemove(null);
-          void runRemove(item);
         }}
       />
     </div>
