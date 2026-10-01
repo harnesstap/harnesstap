@@ -154,6 +154,10 @@ describe("syncConfiguredHarnesses", () => {
         ),
         "---\nname: extra\n---\nCursor plugin skill\n",
       );
+      writeTextFile(
+        join(context.homeDir, ".cursor/plugins/installed.json"),
+        JSON.stringify({ plugins: ["extra@cursor-public"] }),
+      );
 
       const { syncConfiguredHarnesses } = await import(
         "../../src/services/harness-union-sync.ts"
