@@ -172,7 +172,10 @@ export type OriginFingerprintKind = (typeof ORIGIN_FINGERPRINT_KINDS)[number];
 export interface PluginOverrides {
   /** Plugin name → exact version that ends mediation for that name. */
   versions: Record<string, string>;
-  /** `type:name` → plugin name whose copy of that resource wins. */
+  /**
+   * `type:name` → winning plugin name, or a resource id when one plugin
+   * contributes more than one copy of that key.
+   */
   resources: Record<string, string>;
 }
 

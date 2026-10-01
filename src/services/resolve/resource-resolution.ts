@@ -8,7 +8,7 @@ import type {
   MaterialResourceType,
   Resource,
 } from "../../types.js";
-import { SingletonConflictError } from "./types.js";
+import { previewConflictContent, SingletonConflictError } from "./types.js";
 import type { ResourceDecision, ResourceSide, SelectedPlugin } from "./types.js";
 
 interface Candidate {
@@ -17,6 +17,31 @@ interface Candidate {
   /** Sort key: plugin declaration index, then resource order within the plugin. */
   declarationIndex: number;
   resourceIndex: number;
+}
+
+function toSide(plugin: SelectedPlugin, resource: Resource): ResourceSide {
+  return {
+    pluginName: plugin.name,
+    pluginVersion: plugin.version,
+    depth: plugin.depth,
+    resourceId: resource.id,
+    source: resource.source,
+    namespace: resource.namespace,
+    fingerprint: resourceFingerprint(resource),
+    preview: previewConflictContent(resource.content),
+  };
+}
+
+function uniqueByFingerprint(candidates: Candidate[]): Candidate[] {
+  const seen = new Set<string>();
+  const unique: Candidate[] = [];
+  for (const candidate of candidates) {
+    const fingerprint = resourceFingerprint(candidate.resource);
+    if (seen.has(fingerprint)) continue;
+    seen.add(fingerprint);
+    unique.push(candidate);
+  }
+  return unique;
 }
 
 function isMaterial(type: string): type is MaterialResourceType {
@@ -78,31 +103,17 @@ export function resolveResources(input: {
       if (!resource || !isMaterial(resource.type)) continue;
       const key = resolutionKey(resource);
       const bucket = candidates.get(key);
+      const candidate: Candidate = {
+        resource,
+        side: toSide(plugin, resource),
+        declarationIndex: plugin.declarationIndex,
+        resourceIndex: index,
+      };
       if (bucket) {
-        bucket.push({
-          resource,
-          side: {
-            pluginName: plugin.name,
-            pluginVersion: plugin.version,
-            depth: plugin.depth,
-          },
-          declarationIndex: plugin.declarationIndex,
-          resourceIndex: index,
-        });
+        bucket.push(candidate);
       } else {
         keyOrder.push(key);
-        candidates.set(key, [
-          {
-            resource,
-            side: {
-              pluginName: plugin.name,
-              pluginVersion: plugin.version,
-              depth: plugin.depth,
-            },
-            declarationIndex: plugin.declarationIndex,
-            resourceIndex: index,
-          },
-        ]);
+        candidates.set(key, [candidate]);
       }
     }
   }
@@ -115,9 +126,11 @@ export function resolveResources(input: {
     const bucket = candidates.get(key);
     if (!bucket || bucket.length === 0) continue;
 
-    const overridePlugin = input.overrides.resources[key];
-    if (overridePlugin) {
-      const chosen = bucket.find((c) => c.side.pluginName === overridePlugin);
+    const overrideValue = input.overrides.resources[key];
+    if (overrideValue) {
+      const chosen =
+        bucket.find((c) => c.resource.id === overrideValue)
+        ?? bucket.find((c) => c.side.pluginName === overrideValue);
       if (chosen) {
         resources.push(chosen.resource);
         decisions.push({
@@ -159,11 +172,9 @@ export function resolveResources(input: {
       continue;
     }
 
-    const fingerprints = new Set(
-      shallowest.map((c) => resourceFingerprint(c.resource)),
-    );
-    if (fingerprints.size === 1) {
-      const winner = shallowest[0];
+    const uniqueShallowest = uniqueByFingerprint(shallowest);
+    if (uniqueShallowest.length === 1) {
+      const winner = uniqueShallowest[0];
       if (!winner) continue;
       resources.push(winner.resource);
       decisions.push({
@@ -175,7 +186,7 @@ export function resolveResources(input: {
       continue;
     }
 
-    const firstResource = shallowest[0]?.resource;
+    const firstResource = uniqueShallowest[0]?.resource;
     if (!firstResource || !isMaterial(firstResource.type)) continue;
 
     if (
@@ -184,7 +195,7 @@ export function resolveResources(input: {
     ) {
       throw new SingletonConflictError({
         key,
-        sides: shallowest.map((c) => c.side),
+        sides: uniqueShallowest.map((c) => c.side),
         rootName: input.rootName,
       });
     }

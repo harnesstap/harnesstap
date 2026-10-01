@@ -128,6 +128,11 @@ describe("previewProfileApply constraint recovery", () => {
       "override-resource",
       "override-resource",
     ]);
+    const labels = preview.recovery_actions?.map((action) => action.label) ?? [];
+    expect(new Set(labels).size).toBe(2);
+    expect(preview.recovery_actions?.every((action) =>
+      action.id === "override-resource" && Boolean(action.preview),
+    )).toBe(true);
   });
 
   it("includes tag-as-profile when the plugin is not a profile", async () => {

@@ -351,6 +351,11 @@ export type RecoveryAction =
       rootName: string;
       key: string;
       winnerPluginName: string;
+      winnerResourceId?: string;
+      source?: string;
+      namespace?: string;
+      fingerprint?: string;
+      preview?: string;
     }
   | { id: "detach-dependency"; label: string; rootName: string; pluginName: string }
   | { id: "clear-override"; label: string; rootName: string; pluginName: string }

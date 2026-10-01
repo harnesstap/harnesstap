@@ -85,7 +85,11 @@ export async function runConstraintRecovery(
       return;
     }
     case "override-resource": {
-      setPluginResourceOverride(root.id, action.key, action.winnerPluginName);
+      setPluginResourceOverride(
+        root.id,
+        action.key,
+        action.winnerResourceId ?? action.winnerPluginName,
+      );
       return;
     }
     case "tag-as-profile": {
@@ -190,7 +194,7 @@ export interface OfferConstraintRecoveryInput {
 function recoveryActionKey(action: RecoveryAction): string {
   switch (action.id) {
     case "override-resource":
-      return `${action.id}::${action.key}::${action.winnerPluginName}`;
+      return `${action.id}::${action.key}::${action.winnerResourceId ?? action.winnerPluginName}`;
     case "sync-install":
     case "create-plugin":
     case "override-version":

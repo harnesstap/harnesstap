@@ -5,6 +5,14 @@ import { DEPENDENCY_SOURCE_KINDS } from "../types.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
 
+function optionalTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -222,6 +230,11 @@ function parseRecoveryAction(value: unknown): RecoveryAction | Response {
         rootName: rootName.trim(),
         key: key.trim(),
         winnerPluginName: winnerPluginName.trim(),
+        winnerResourceId: optionalTrimmedString(value.winnerResourceId),
+        source: optionalTrimmedString(value.source),
+        namespace: optionalTrimmedString(value.namespace),
+        fingerprint: optionalTrimmedString(value.fingerprint),
+        preview: typeof value.preview === "string" ? value.preview : undefined,
       };
     }
     case "tag-as-profile": {

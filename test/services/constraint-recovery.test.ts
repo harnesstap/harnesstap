@@ -128,6 +128,26 @@ describe("runConstraintRecovery", () => {
     });
   });
 
+  it("stores a resource id for override-resource when provided", async () => {
+    const root = createPlugin({ name: "my-setup" });
+
+    await runConstraintRecovery({
+      rootName: "my-setup",
+      action: {
+        id: "override-resource",
+        label: "Use AGENTS.md for instruction:agents-instructions",
+        rootName: "my-setup",
+        key: "instruction:agents-instructions",
+        winnerPluginName: "global default",
+        winnerResourceId: "res_123",
+      },
+    });
+
+    expect(getPluginOverrides(root.id).resources).toEqual({
+      "instruction:agents-instructions": "res_123",
+    });
+  });
+
   it("tags the plugin as a profile for tag-as-profile recovery", async () => {
     const plugin = createPlugin({ name: "focus" });
     expect(isProfilePlugin(plugin)).toBe(false);

@@ -101,6 +101,7 @@ import {
   partitionProfileInventory,
 } from "../lib/profile-inventory";
 import { ScopeInventoryShell } from "./live/ScopeInventoryShell";
+import { ConflictRecoveryChoices, isResourceConflictChooser } from "./live/ConflictRecoveryChoices";
 import { ScopeAddToProfileModal } from "./ScopeAddToProfileModal";
 import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceCreatePanel } from "./ResourceCreatePanel";
@@ -1790,7 +1791,19 @@ export function LiveStatePanel({
         </div>
       ) : null}
       {previewWarning ? (
-        <div className="banner" role="status">
+        <div
+          className={[
+            "banner",
+            recoveryActions
+            && onRecoveryAction
+            && isResourceConflictChooser(recoveryActions)
+              ? "has-conflict-choices"
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          role="status"
+        >
           <div style={{ whiteSpace: "pre-wrap" }}>{previewWarning}</div>
           {showNotTrackedActions ? (
             <div className="banner-actions">
@@ -1813,19 +1826,11 @@ export function LiveStatePanel({
               ) : null}
             </div>
           ) : recoveryActions && onRecoveryAction ? (
-            <div className="banner-actions">
-              {recoveryActions.map((action, index) => (
-                <button
-                  key={`${action.id}-${index}`}
-                  type="button"
-                  className={index === 0 ? "btn primary" : "btn"}
-                  onClick={() => onRecoveryAction(action)}
-                  disabled={recoveryBusy}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
+            <ConflictRecoveryChoices
+              actions={recoveryActions}
+              onRecoveryAction={onRecoveryAction}
+              recoveryBusy={recoveryBusy}
+            />
           ) : null}
         </div>
       ) : null}
