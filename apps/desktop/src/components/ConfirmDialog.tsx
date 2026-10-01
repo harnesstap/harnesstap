@@ -92,7 +92,11 @@ export function ConfirmDialog({
               description
             )}
           </div>
-          {children}
+          {children ? (
+            <div className="confirm-dialog-extra">
+              {children}
+            </div>
+          ) : null}
           {confirmHint && confirmDisabled ? (
             <p className="confirm-dialog-hint" role="status">
               {confirmHint}
