@@ -7,6 +7,7 @@ import {
   touchPluginUpdatedAt,
 } from "../models/plugin-model.js";
 import { isProfilePlugin } from "../constants/profile.js";
+import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { PACKAGES_CACHE_ROOT } from "./package-cache/paths.js";
 import {
   MATERIAL_RESOURCE_TYPES,
@@ -510,6 +511,9 @@ function collectDiscardSourcePaths(
       if (isHarnessTapPackageCachePath(normalized, originRef)) {
         continue;
       }
+      if (isCursorHostManagedSkillsPath(normalized) || isCursorHostManagedSkillsPath(source)) {
+        continue;
+      }
       seen.add(normalized);
       paths.push(normalized);
     }
@@ -562,6 +566,9 @@ async function discardableNotInProfileScanResults(input: {
       ...result,
       resources: result.resources.filter((resource) => {
         if (!isMaterialResource(resource)) {
+          return false;
+        }
+        if (isCursorHostManagedSkillsPath(resource.source ?? "")) {
           return false;
         }
         return !trackedKeys.has(profileResourceKey(resource));
@@ -937,6 +944,9 @@ export async function captureUntrackedResourcesForStash(input: {
   for (const result of generated) {
     for (const file of result.files) {
       if (seenPaths.has(file.path)) {
+        continue;
+      }
+      if (isCursorHostManagedSkillsPath(file.path)) {
         continue;
       }
       seenPaths.add(file.path);

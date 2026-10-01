@@ -5,6 +5,7 @@ import {
   listGlobalApplySnapshots,
 } from "../models/global-apply-snapshot.js";
 import { getPlatform } from "../platforms/registry.js";
+import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 
 export function collectOtherProfilesSnapshotTrackedFiles(
@@ -48,6 +49,9 @@ export function collectOrphanSkillFilesOnDisk(
       continue;
     }
 
+    if (isCursorHostManagedSkillsPath(configuredSkills)) {
+      continue;
+    }
     const relativeSkillsRoot = configuredSkills.slice(2).replace(/\/$/, "");
     const skillsDir = join(homeRoot, relativeSkillsRoot);
     let entries: string[];
@@ -196,7 +200,10 @@ export function planStaleGlobalProfileFiles(
 ): string[] {
   const desired = new Set(desiredFiles);
   const stale = previousTrackedFiles.filter(
-    (filePath) => !desired.has(filePath) && !isMergeableHostConfigPath(filePath),
+    (filePath) =>
+      !desired.has(filePath)
+      && !isMergeableHostConfigPath(filePath)
+      && !isCursorHostManagedSkillsPath(filePath),
   );
   return expandStaleMcpConfigMirrors(
     expandStaleSkillHubMirrors(stale, desired),

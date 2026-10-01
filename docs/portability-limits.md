@@ -228,7 +228,7 @@ Cursor keeps three distinct skill trees:
 | ---- | --------- | ---------- |
 | `~/.cursor/skills/` | User / personal skills | Global scan, persist, and apply |
 | `.agents/skills/` (project, `agents-skills` mode) | Project skills | Project scan / apply when configured |
-| `~/.cursor/skills-cursor/` | Cursor app-managed built-ins | **Inventory only** via `profile status` / apply-preview `host_managed.cursor` — never persisted, staged, or applied |
+| `~/.cursor/skills-cursor/` | Cursor app-managed built-ins | **Inventory only** via `profile status` / apply-preview `host_managed.cursor` — never persisted, staged, applied, discarded, or removed from disk |
 
 Name collisions between host-managed built-ins and user/profile skills appear as
 panel reason `cursor_host_skill_collision` (yellow) and do not flip

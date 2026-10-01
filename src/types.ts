@@ -576,7 +576,8 @@ export interface PlatformDefinition {
   skillEmission?: SkillEmission;
   /**
    * App-managed paths (e.g. Cursor `~/.cursor/skills-cursor/`).
-   * Surfaced for discovery/status only — excluded from scan persist and apply.
+   * Surfaced for discovery/status only — excluded from scan persist, apply,
+   * discard, and profile remove/unstage live-file deletion.
    */
   hostManagedPaths?: HostManagedPaths;
   /** Cross-harness or shared home paths shown on the Harnesses inventory. */

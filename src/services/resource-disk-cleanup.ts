@@ -28,6 +28,7 @@ import type {
 } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { isClaudeLocalMcpResource } from "./claude-local-mcp.js";
+import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { isHostPluginPinResource } from "./host-plugin-serialize.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
@@ -643,6 +644,18 @@ function evaluateCandidate(
       ...base,
       action: "protected",
       reason: "Claude local-scope MCP is inventory-only",
+    };
+  }
+
+  if (
+    isCursorHostManagedSkillsPath(candidate.path)
+    || (candidate.relative_path !== null
+      && isCursorHostManagedSkillsPath(candidate.relative_path))
+  ) {
+    return {
+      ...base,
+      action: "protected",
+      reason: "Cursor host-managed skills are inventory-only",
     };
   }
 

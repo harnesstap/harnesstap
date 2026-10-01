@@ -1,0 +1,5 @@
+kind: Fixed
+body: Skip Cursor's app-managed ~/.cursor/skills-cursor tree when discarding live copies or removing/unstaging a profile resource, while still deleting other harness translations of the same type:name.
+time: 2026-10-01T10:25:00Z
+custom:
+  Issue: ""
