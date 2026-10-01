@@ -446,21 +446,59 @@ export async function addResourceToProfile(input: {
   return toNotStagedContentsResource(resource, alreadyInProfile ? "update" : "add");
 }
 
-function collectGeneratedPaths(
-  generated: Awaited<ReturnType<typeof generateFiles>>,
+/** Unique scanned on-disk sources, relative to origin, for discard deletes. */
+function collectDiscardSourcePaths(
+  scanResults: ScanResult[],
+  originRef: string,
 ): string[] {
   const seen = new Set<string>();
   const paths: string[] = [];
-  for (const result of generated) {
-    for (const file of result.files) {
-      if (seen.has(file.path)) {
+  for (const result of scanResults) {
+    for (const resource of result.resources) {
+      if (!isMaterialResource(resource)) {
         continue;
       }
-      seen.add(file.path);
-      paths.push(file.path);
+      const source = resource.source?.trim() ?? "";
+      if (!source || source === "manual") {
+        continue;
+      }
+      const normalized = normalizeManagedPath(source, originRef);
+      if (!normalized || seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      paths.push(normalized);
     }
   }
   return paths;
+}
+
+function discardedContentsFromScan(
+  scanResults: ScanResult[],
+): ProfileContentsResource[] {
+  const seen = new Set<string>();
+  const resources: ProfileContentsResource[] = [];
+  for (const result of scanResults) {
+    for (const resource of result.resources) {
+      if (!isMaterialResource(resource)) {
+        continue;
+      }
+      const key = profileResourceKey(resource);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      resources.push({
+        id: "",
+        type: resource.type,
+        name: resource.name,
+        source: resource.source,
+        ...(resource.origin_kind ? { origin_kind: resource.origin_kind } : {}),
+        ...(resource.origin_ref ? { origin_ref: resource.origin_ref } : {}),
+      });
+    }
+  }
+  return resources;
 }
 
 async function discardableNotInProfileScanResults(input: {
@@ -501,36 +539,28 @@ async function discardScanResultsFromHarness(input: {
     throw new Error("No live resources to discard.");
   }
 
-  const persisted = persistScanResults(input.scanResults, {
-    conflictPolicy: "overwrite",
-    originRef: input.originRef,
-  });
-  const material = persisted.resolved.filter(isMaterialResource);
-  if (material.length === 0) {
+  const resources = discardedContentsFromScan(input.scanResults);
+  if (resources.length === 0) {
     throw new Error("No live resources to discard.");
   }
 
-  const target = input.scope === "project" ? "project" : "global";
-  let generated: Awaited<ReturnType<typeof generateFiles>>;
-  if (input.scope === "project") {
-    const platformIds = [...new Set(input.scanResults.map((result) => result.platformId))];
-    generated = await generateFiles(material, platformIds, input.originRef, { target });
-    const rescanned = await scanProject(input.originRef);
-    reconcileLocalSnapshotScan(input.originRef, rescanned);
-  } else {
-    const mainHarness = resolveMainHarnessTarget(input.harness);
-    generated = await generateFiles(material, [mainHarness], input.originRef, { target });
-    const rescanned = await scanHomeDefaults(mainHarness, input.originRef);
-    reconcileLocalSnapshotScan(input.originRef, rescanned);
-  }
-
-  const paths = collectGeneratedPaths(generated);
+  const paths = collectDiscardSourcePaths(input.scanResults, input.originRef);
   if (paths.length === 0) {
     throw new Error("No managed files to remove for discard.");
   }
   removeGlobalMaterializedFiles(input.originRef, paths);
 
-  const resources = material.map((resource) => toContentsResource(resource));
+  if (input.scope === "project") {
+    const rescanned = await scanProject(input.originRef);
+    reconcileLocalSnapshotScan(input.originRef, rescanned);
+  } else {
+    const rescanned = await scanHomeDefaults(
+      input.harness ? resolveMainHarnessTarget(input.harness) : undefined,
+      input.originRef,
+    );
+    reconcileLocalSnapshotScan(input.originRef, rescanned);
+  }
+
   return {
     removed_paths: paths,
     discarded_count: resources.length,

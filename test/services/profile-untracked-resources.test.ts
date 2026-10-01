@@ -1,5 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
@@ -8,14 +7,16 @@ import { createPlugin, addResourceToPlugin, setPluginTags, getPluginById } from 
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.js";
 import { createInitializedTestContext } from "../helpers/db.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
+import { listResources } from "../../src/models/resource.ts";
+import { setHarnessPreference } from "../../src/models/harness.ts";
 import {
   addResourceToProfile,
   detectNotStagedProfileResources,
   detectUntrackedProfileResources,
+  discardAllLiveResourcesFromHarness,
   discardLiveResourceFromHarness,
 } from "../../src/services/profile-untracked-resources.ts";
-import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
-import { listResources } from "../../src/models/resource.ts";
 
 describe("profile-untracked-resources service", () => {
   it("detects harness resources not attached to the profile", async () => {
@@ -91,6 +92,92 @@ describe("profile-untracked-resources service", () => {
       expect(remaining.some((resource) => resource.name === "manual-skill")).toBe(
         false,
       );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("discards scanned live files when the main harness is not the scan source", async () => {
+    const context = await createInitializedTestContext(
+      "profile-untracked-discard-mismatch",
+    );
+    try {
+      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      setActiveProfileName("work");
+
+      const skillDir = join(context.homeDir, ".claude", "skills", "manual-skill");
+      mkdirSync(skillDir, { recursive: true });
+      const skillPath = join(skillDir, "SKILL.md");
+      writeFileSync(
+        skillPath,
+        "---\nname: manual-skill\ndescription: manual\n---\n\n# manual",
+        "utf-8",
+      );
+
+      const discarded = await discardLiveResourceFromHarness({
+        profileSelector: "work",
+        resourceType: "skill",
+        resourceName: "manual-skill",
+        scope: "home",
+      });
+
+      expect(discarded.resource.name).toBe("manual-skill");
+      expect(existsSync(skillPath)).toBe(false);
+      const remaining = await detectUntrackedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+      });
+      expect(remaining.some((resource) => resource.name === "manual-skill")).toBe(
+        false,
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("discards all not-in-profile scan sources regardless of main harness", async () => {
+    const context = await createInitializedTestContext(
+      "profile-untracked-discard-all-mismatch",
+    );
+    try {
+      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      setActiveProfileName("work");
+
+      const firstDir = join(context.homeDir, ".claude", "skills", "agent-creator");
+      const secondDir = join(context.homeDir, ".claude", "skills", "analyst");
+      mkdirSync(firstDir, { recursive: true });
+      mkdirSync(secondDir, { recursive: true });
+      writeFileSync(
+        join(firstDir, "SKILL.md"),
+        "---\nname: agent-creator\ndescription: a\n---\n\n# a",
+        "utf-8",
+      );
+      writeFileSync(
+        join(secondDir, "SKILL.md"),
+        "---\nname: analyst\ndescription: b\n---\n\n# b",
+        "utf-8",
+      );
+
+      const discarded = await discardAllLiveResourcesFromHarness({
+        profileSelector: "work",
+        scope: "home",
+      });
+
+      expect(discarded.discarded_count).toBeGreaterThanOrEqual(2);
+      expect(existsSync(join(firstDir, "SKILL.md"))).toBe(false);
+      expect(existsSync(join(secondDir, "SKILL.md"))).toBe(false);
+      const remaining = await detectUntrackedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+      });
+      expect(remaining.some((resource) => resource.name === "agent-creator")).toBe(
+        false,
+      );
+      expect(remaining.some((resource) => resource.name === "analyst")).toBe(false);
     } finally {
       await context.cleanup();
     }

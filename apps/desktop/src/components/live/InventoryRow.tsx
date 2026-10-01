@@ -136,7 +136,7 @@ export function InventoryRow({
       ]
         .filter(Boolean)
         .join(" ")}
-      onActivate={openRow}
+      onActivate={showSelect && onToggleSelected ? onToggleSelected : openRow}
     >
       <ResourceRowLeading className="inventory-row-lead">
         {showSelect && onToggleSelected ? (
