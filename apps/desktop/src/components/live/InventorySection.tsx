@@ -81,7 +81,8 @@ export interface InventorySectionProps {
   onOpenResource: (target: ResourceDetailTarget) => void;
   onOpenPlugin?: (pluginName: string) => void;
   onDiff?: (item: ProfileInventoryItem) => void;
-  onRemoveFromProfile?: (item: ProfileInventoryItem) => void;
+  selectedIds?: ReadonlySet<string>;
+  onToggleSelected?: (item: ProfileInventoryItem) => void;
 }
 
 export function InventorySection({
@@ -111,7 +112,8 @@ export function InventorySection({
   onOpenResource,
   onOpenPlugin,
   onDiff,
-  onRemoveFromProfile,
+  selectedIds,
+  onToggleSelected,
 }: InventorySectionProps) {
   const title = inventorySectionTitle(section);
   const listRef = useRef<HTMLDivElement>(null);
@@ -311,8 +313,9 @@ export function InventorySection({
                     onOpenResource={onOpenResource}
                     onOpenPlugin={onOpenPlugin}
                     onDiff={onDiff ? () => onDiff(item) : undefined}
-                    onRemoveFromProfile={
-                      onRemoveFromProfile ? () => onRemoveFromProfile(item) : undefined
+                    selected={selectedIds?.has(item.key) ?? false}
+                    onToggleSelected={
+                      onToggleSelected ? () => onToggleSelected(item) : undefined
                     }
                   />
                 </div>

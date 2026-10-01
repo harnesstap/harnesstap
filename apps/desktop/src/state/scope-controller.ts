@@ -1033,7 +1033,11 @@ export function useScopeController(input: ScopeControllerInput) {
   );
 
   const handleRemoveResourceFromProfile = useCallback(
-    async (resource: ProfileContentsResource, pluginId?: string) => {
+    async (
+      resource: ProfileContentsResource,
+      pluginId?: string,
+      options?: { skipAutoReapply?: boolean },
+    ) => {
       const profileName =
         selectedProfile ?? statusStore.getState().status?.active_profile ?? null;
       if (!client || !profileName || removingResourceKey) {
@@ -1050,6 +1054,9 @@ export function useScopeController(input: ScopeControllerInput) {
           ...(pluginId ? { pluginId } : {}),
         });
         await refreshProfilePreview();
+        if (options?.skipAutoReapply) {
+          return;
+        }
         if (shouldAutoReapply(reapplyInput)) {
           await runSwitch(true, profileName);
         }

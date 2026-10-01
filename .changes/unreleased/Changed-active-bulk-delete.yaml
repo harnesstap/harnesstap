@@ -1,0 +1,5 @@
+kind: Changed
+body: Replace Active inventory edit trash with row checkboxes and a red Delete selected FAB, confirming bulk remove from the profile.
+time: 2026-10-01T01:20:00Z
+custom:
+  Issue: ""

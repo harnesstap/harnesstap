@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
-import { CircleAlert, FileDiff, Plus, Power, Trash2, X } from "lucide-react";
+import { CircleAlert, FileDiff, Plus, Power, X } from "lucide-react";
 import {
   inventoryMembershipCaption,
   profileInventoryOpenTarget,
@@ -10,6 +10,7 @@ import { ButtonSpinner } from "../ButtonSpinner";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { IconActionButton } from "../IconActionButton";
 import { TypeIcon } from "../TypeIcon";
+import { Checkbox } from "../ui/checkbox";
 import {
   ResourceRowDescription,
   ResourceRowIdentity,
@@ -30,13 +31,14 @@ export interface InventoryRowProps {
   profileName: string | null;
   pending: boolean;
   selectedIsActive: boolean;
+  selected?: boolean;
+  onToggleSelected?: () => void;
   onAdd?: () => void;
   onDiscard?: () => void;
   onActivate?: () => void;
   onOpenResource: (target: ResourceDetailTarget) => void;
   onOpenPlugin?: (pluginName: string) => void;
   onDiff?: () => void;
-  onRemoveFromProfile?: () => void;
 }
 
 export function InventoryRow({
@@ -45,19 +47,21 @@ export function InventoryRow({
   profileName,
   pending,
   selectedIsActive,
+  selected = false,
+  onToggleSelected,
   onAdd,
   onDiscard,
   onActivate,
   onOpenResource,
   onOpenPlugin,
   onDiff,
-  onRemoveFromProfile,
 }: InventoryRowProps) {
   const inProfile = item.section !== "not_in_profile";
   const membershipCaption = inventoryMembershipCaption(item.pluginName, profileName);
   const drifted = item.section === "active" && item.drifted;
   const showActivate =
     !editMode && item.section === "inactive" && selectedIsActive && Boolean(onActivate);
+  const showSelect = inProfile && editMode && Boolean(onToggleSelected);
   const openRow = () => {
     const target = profileInventoryOpenTarget(item);
     if (target.kind === "plugin-package") {
@@ -135,6 +139,19 @@ export function InventoryRow({
       onActivate={openRow}
     >
       <ResourceRowLeading className="inventory-row-lead">
+        {showSelect && onToggleSelected ? (
+          <span className="resource-row-checkbox" onClick={stopRowActivate}>
+            <Checkbox
+              data-testid={`inventory-row-select-${item.key}`}
+              aria-label={`Select ${item.label}`}
+              checked={selected}
+              disabled={pending}
+              onCheckedChange={() => {
+                onToggleSelected();
+              }}
+            />
+          </span>
+        ) : null}
         {drifted ? (
           <ChromeTooltip content="Active, differs from disk" side="top">
             <span
@@ -157,28 +174,7 @@ export function InventoryRow({
       </ResourceRowIdentity>
       <ResourceRowTrailing>
         <span className="inventory-row-action" onClick={stopRowActivate}>
-          {inProfile && editMode ? (
-            <span className="inventory-row-lead-action">{action}</span>
-          ) : (
-            action
-          )}
-          {inProfile ? (
-            <span className="inventory-row-remove-slot">
-              {editMode && onRemoveFromProfile ? (
-                <IconActionButton
-                  className="profile-resource-remove-btn profile-remove-action"
-                  label={`Remove ${item.label} from ${profileName}`}
-                  title="Remove from profile"
-                  busy={pending}
-                  spinnerSize={ICON_SIZE}
-                  onClick={onRemoveFromProfile}
-                  icon={<Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />}
-                />
-              ) : (
-                <span className="inventory-row-remove-placeholder" aria-hidden />
-              )}
-            </span>
-          ) : null}
+          {action}
         </span>
       </ResourceRowTrailing>
     </ResourceRowRoot>
