@@ -48,6 +48,11 @@ export interface ResourceSide {
   pluginName: string;
   pluginVersion: string;
   depth: number;
+  resourceId?: string;
+  source?: string;
+  namespace?: string;
+  fingerprint?: string;
+  preview?: string;
 }
 
 /** One `type:name` outcome from Pass 2. */
@@ -106,6 +111,11 @@ export type RecoveryAction =
       rootName: string;
       key: string;
       winnerPluginName: string;
+      winnerResourceId?: string;
+      source?: string;
+      namespace?: string;
+      fingerprint?: string;
+      preview?: string;
     }
   | {
       id: "detach-dependency";
@@ -264,6 +274,82 @@ function buildUnsatisfiable(input: {
   };
 }
 
+export const CONFLICT_PREVIEW_LINES = 12;
+
+export function previewConflictContent(content: string): string {
+  const lines = content.split("\n");
+  if (lines.length <= CONFLICT_PREVIEW_LINES) {
+    return content;
+  }
+  return [
+    ...lines.slice(0, CONFLICT_PREVIEW_LINES),
+    `… (${lines.length} lines in content)`,
+  ].join("\n");
+}
+
+function conflictSideParts(
+  side: ResourceSide,
+  sides: readonly ResourceSide[],
+): string[] {
+  const plugin = `${side.pluginName}@${side.pluginVersion}`;
+  const samePlugin =
+    sides.length > 0
+    && sides.every(
+      (other) =>
+        other.pluginName === side.pluginName
+        && other.pluginVersion === side.pluginVersion,
+    );
+  const sourcesDiffer = new Set(sides.map((entry) => entry.source ?? "")).size > 1;
+  const namespacesDiffer =
+    new Set(sides.map((entry) => entry.namespace ?? "")).size > 1;
+  const parts: string[] = [];
+  if (!samePlugin) {
+    parts.push(plugin);
+  }
+  const source = side.source?.trim();
+  if (source && (samePlugin || sourcesDiffer)) {
+    parts.push(source);
+  }
+  if (namespacesDiffer && side.namespace?.trim()) {
+    parts.push(`@${side.namespace}`);
+  }
+  if (side.fingerprint) {
+    parts.push(side.fingerprint.slice(0, 7));
+  }
+  if (parts.length === 0) {
+    parts.push(plugin);
+  }
+  return parts;
+}
+
+/** Unique human label for one singleton-conflict copy. */
+export function describeConflictSide(
+  side: ResourceSide,
+  sides: readonly ResourceSide[],
+): string {
+  const base = conflictSideParts(side, sides).join(" · ");
+  const collisions = sides.filter(
+    (other) => conflictSideParts(other, sides).join(" · ") === base,
+  );
+  if (collisions.length > 1 && side.resourceId) {
+    return `${base} · ${side.resourceId.slice(0, 8)}`;
+  }
+  return base;
+}
+
+/** Plugin name, or resource id when one plugin owns multiple copies. */
+export function overrideWinnerValue(
+  side: ResourceSide,
+  sides: readonly ResourceSide[],
+): string {
+  const sameName =
+    sides.filter((other) => other.pluginName === side.pluginName).length > 1;
+  if (sameName && side.resourceId) {
+    return side.resourceId;
+  }
+  return side.pluginName;
+}
+
 function hintForAction(action: RecoveryAction): string {
   switch (action.id) {
     case "sync-install":
@@ -279,7 +365,7 @@ function hintForAction(action: RecoveryAction): string {
     case "override-version":
       return `ht plugin edit ${action.rootName} --override plugin:${action.pluginName}@<version>`;
     case "override-resource":
-      return `ht plugin edit ${action.rootName} --override ${action.key}=${action.winnerPluginName}`;
+      return `ht plugin edit ${action.rootName} --override ${action.key}=${action.winnerResourceId ?? action.winnerPluginName}`;
     case "detach-dependency":
       return `ht plugin edit ${action.rootName} --remove plugin:${action.pluginName}`;
     case "clear-override":
@@ -329,18 +415,32 @@ export class SingletonConflictError extends Error {
   readonly actions: RecoveryAction[];
 
   constructor(input: { key: string; sides: ResourceSide[]; rootName: string }) {
-    const actions: RecoveryAction[] = input.sides.map((side) => ({
-      id: "override-resource",
-      label: `Use ${side.pluginName}@${side.pluginVersion} for ${input.key}`,
-      rootName: input.rootName,
-      key: input.key,
-      winnerPluginName: side.pluginName,
-    }));
+    const actions: RecoveryAction[] = input.sides.map((side) => {
+      const winnerResourceId =
+        overrideWinnerValue(side, input.sides) !== side.pluginName
+          ? overrideWinnerValue(side, input.sides)
+          : side.resourceId;
+      return {
+        id: "override-resource",
+        label: `Use ${describeConflictSide(side, input.sides)} for ${input.key}`,
+        rootName: input.rootName,
+        key: input.key,
+        winnerPluginName: side.pluginName,
+        ...(winnerResourceId ? { winnerResourceId } : {}),
+        ...(side.source ? { source: side.source } : {}),
+        ...(side.namespace ? { namespace: side.namespace } : {}),
+        ...(side.fingerprint ? { fingerprint: side.fingerprint } : {}),
+        ...(side.preview ? { preview: side.preview } : {}),
+      };
+    });
     const lines = [
       `conflicting ${input.key} at the same depth`,
-      ...input.sides.map(
-        (side) => `  ${side.pluginName}@${side.pluginVersion} (depth ${side.depth})`,
-      ),
+      ...input.sides.map((side) => {
+        const detail = describeConflictSide(side, input.sides);
+        const plugin = `${side.pluginName}@${side.pluginVersion}`;
+        const suffix = detail === plugin ? "" : ` · ${detail}`;
+        return `  ${plugin} (depth ${side.depth})${suffix}`;
+      }),
       `  fix: ${actions[0]?.label ?? `override ${input.key}`}`,
     ];
     super(lines.join("\n"));

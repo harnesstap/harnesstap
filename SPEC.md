@@ -207,7 +207,7 @@ A plugin is an ordered list of attachments:
 | `plugin_pin` | yes | `plugin edit L --add plugin_pin:posthog@cursor-team-kit` | `resource sync plugin_pin:posthog@cursor-team-kit` |
 | `plugin` | no | `plugin edit L --add plugin:backend-oncall@^1.0` | resolves to another local or published plugin version |
 
-Nested `plugin` refs expand depth-first with cycle detection at apply time.
+Nested `plugin` refs expand depth-first with cycle detection at apply time. Equal-depth singleton conflicts (`instruction`, and other singleton types) fail closed unless fingerprints match: identical content collapses to one winner; distinct copies become one recovery action each, labeled by source path and a short content hash (not only `plugin@version`). When one plugin contributes multiple copies, `overrides.resources` may store a resource id. Desktop shows a truncated preview of each copy before **Use this**.
 
 **Lazy plugin pin attach:** `plugin edit --add plugin_pin:…` links only. Sync is explicit via `resource sync`, `plugin edit --sync`, or `apply --sync-plugins`.
 

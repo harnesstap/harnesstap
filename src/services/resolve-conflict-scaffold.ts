@@ -17,6 +17,8 @@ import {
 } from "./wizards/shared.js";
 import {
   SingletonConflictError,
+  describeConflictSide,
+  overrideWinnerValue,
   type UnsatisfiableConstraintError,
 } from "./resolve/types.js";
 import type { Plugin } from "../types.js";
@@ -105,15 +107,16 @@ export async function offerConflictScaffold(
   const versionOverrides: Record<string, string> = {};
 
   if (input.error instanceof SingletonConflictError) {
+    const conflict = input.error;
     const choice = await promptForChoice({
-      message: `Which plugin should own ${input.error.key}?`,
-      choices: input.error.sides.map((side) => ({
-        name: `${side.pluginName}@${side.pluginVersion}`,
-        value: side.pluginName,
+      message: `Which plugin should own ${conflict.key}?`,
+      choices: conflict.sides.map((side) => ({
+        name: describeConflictSide(side, conflict.sides),
+        value: overrideWinnerValue(side, conflict.sides),
       })),
     });
     if (!choice) return undefined;
-    resourceOverrides[input.error.key] = choice;
+    resourceOverrides[conflict.key] = choice;
   } else {
     const choice = await promptForChoice({
       message: `Which version of ${input.error.pluginName} should win?`,

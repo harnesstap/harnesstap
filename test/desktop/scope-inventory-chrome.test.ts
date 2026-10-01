@@ -362,4 +362,13 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("Re-clicking the selected profile keeps it selected");
     expect(designSource).toContain("overlay strip");
   });
+
+  it("shows a previewed conflict chooser instead of identical plugin@version buttons", () => {
+    expect(liveStateSource).toContain("ConflictRecoveryChoices");
+    expect(liveStateSource).toContain("conflict-choice-preview");
+    expect(liveStateSource).toContain("Use this");
+    expect(liveStateSource).toContain("has-conflict-choices");
+    expect(designSource).toContain("one choice card per distinct copy");
+    expect(stylesSource).toContain(".conflict-choice-preview");
+  });
 });

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Distinguish same-plugin singleton conflict choices with source, hash, and a content preview.
+time: 2026-10-01T11:45:00Z
+custom:
+  Issue: ""
