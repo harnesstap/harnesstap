@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -111,13 +112,21 @@ function installRootsForResource(
   return installRoot ? [installRoot] : [];
 }
 
+function canonicalizeExistingPath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
+
 function openableFileOrSkill(path: string): string | null {
   if (isOpenableFile(path)) {
-    return path;
+    return canonicalizeExistingPath(path);
   }
   const skillMarkdown = join(path, "SKILL.md");
   if (isOpenableFile(skillMarkdown)) {
-    return skillMarkdown;
+    return canonicalizeExistingPath(skillMarkdown);
   }
   return null;
 }

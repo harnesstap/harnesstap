@@ -45,6 +45,9 @@ export function resourcePathDisplay(resource: LibraryResourceDetail): string {
   }
   const source = resource.source.trim();
   const absolute = firstAbsolutePath(resource);
+  if (absolute && isAbsoluteFilesystemPath(source)) {
+    return packageDirectoryDisplayPath(absolute);
+  }
   const candidate = absolute || source;
   if (isPackageEntryFileName(pathFileName(candidate))) {
     return packageDirectoryDisplayPath(candidate);
