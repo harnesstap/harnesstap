@@ -31,6 +31,22 @@ export function previewKeyId(key: PreviewKey): string {
   return `${key.scope}\u0000${key.projectPath ?? ""}\u0000${key.profile}`;
 }
 
+export function previewKeyFromId(id: string): PreviewKey | null {
+  const parts = id.split("\u0000");
+  if (parts.length !== 3) {
+    return null;
+  }
+  const [scope, projectPath, profile] = parts;
+  if ((scope !== "global" && scope !== "project") || !profile) {
+    return null;
+  }
+  return {
+    scope,
+    projectPath: projectPath.length > 0 ? projectPath : null,
+    profile,
+  };
+}
+
 export interface PreviewEntry {
   data: ProfileApplyPreview | null;
   error: string | null;
@@ -159,6 +175,57 @@ export function createStatusStore(
     setState({ previews: { ...state.previews, [id]: { ...current, ...patch } } });
   };
 
+  const loadPreview = async (
+    previewKey: PreviewKey,
+  ): Promise<ProfileApplyPreview | null> => {
+    if (!client) {
+      return null;
+    }
+    const id = previewKeyId(previewKey);
+    const key = `preview:${id}`;
+    const generation = nextGeneration(key);
+    const { signal } = controller;
+    patchPreview(id, { refreshing: true, error: null });
+    try {
+      const preview = await fetchers.fetchApplyPreview(
+        client.baseUrl,
+        client.token,
+        {
+          profile: previewKey.profile,
+          scope: scopeToView(previewKey.scope),
+          ...(previewKey.scope === "project" && previewKey.projectPath
+            ? { projectPath: previewKey.projectPath }
+            : {}),
+        },
+        { signal },
+      );
+      if (!isCurrent(key, generation)) {
+        return null;
+      }
+      patchPreview(id, { data: preview, error: null, refreshing: false });
+      return preview;
+    } catch (error) {
+      if (!isCurrent(key, generation) || isAbortError(error)) {
+        return null;
+      }
+      patchPreview(id, {
+        error: errorMessage(error, "Could not preview profile apply"),
+        refreshing: false,
+      });
+      return null;
+    }
+  };
+
+  const reloadLoadedPreviews = async (): Promise<void> => {
+    const keys = Object.keys(state.previews)
+      .map((id) => previewKeyFromId(id))
+      .filter((key): key is PreviewKey => key !== null);
+    if (keys.length === 0) {
+      return;
+    }
+    await Promise.all(keys.map((key) => loadPreview(key)));
+  };
+
   return {
     getState: () => state,
     subscribe: (listener) => {
@@ -199,6 +266,9 @@ export function createStatusStore(
           statusRefreshing: false,
           ...(depth === "full" ? { harnessSnapshotComplete: true } : {}),
         });
+        if (depth === "full") {
+          await reloadLoadedPreviews();
+        }
         return true;
       } catch (error) {
         if (!isCurrent(key, generation) || isAbortError(error)) {
@@ -262,44 +332,7 @@ export function createStatusStore(
         setState({ stash: [] });
       }
     },
-    async loadPreview(previewKey) {
-      if (!client) {
-        return null;
-      }
-      const id = previewKeyId(previewKey);
-      const key = `preview:${id}`;
-      const generation = nextGeneration(key);
-      const { signal } = controller;
-      patchPreview(id, { refreshing: true, error: null });
-      try {
-        const preview = await fetchers.fetchApplyPreview(
-          client.baseUrl,
-          client.token,
-          {
-            profile: previewKey.profile,
-            scope: scopeToView(previewKey.scope),
-            ...(previewKey.scope === "project" && previewKey.projectPath
-              ? { projectPath: previewKey.projectPath }
-              : {}),
-          },
-          { signal },
-        );
-        if (!isCurrent(key, generation)) {
-          return null;
-        }
-        patchPreview(id, { data: preview, error: null, refreshing: false });
-        return preview;
-      } catch (error) {
-        if (!isCurrent(key, generation) || isAbortError(error)) {
-          return null;
-        }
-        patchPreview(id, {
-          error: errorMessage(error, "Could not preview profile apply"),
-          refreshing: false,
-        });
-        return null;
-      }
-    },
+    loadPreview,
     setPreview(previewKey, preview) {
       const id = previewKeyId(previewKey);
       // A direct write supersedes any in-flight load for the same key.

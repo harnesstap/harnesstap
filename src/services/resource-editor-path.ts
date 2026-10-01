@@ -81,9 +81,17 @@ function isPluginRefHint(candidate: string): boolean {
   return candidate.includes("@") && !candidate.includes("/") && !candidate.includes("\\");
 }
 
-function isBareRelativePath(candidate: string): boolean {
+function looksLikeFilesystemSource(candidate: string): boolean {
   const trimmed = candidate.trim();
   if (!trimmed || trimmed === "manual" || trimmed.startsWith("composition:")) {
+    return false;
+  }
+  return true;
+}
+
+function isBareRelativePath(candidate: string): boolean {
+  const trimmed = candidate.trim();
+  if (!looksLikeFilesystemSource(trimmed)) {
     return false;
   }
   if (trimmed.startsWith("~") || isAbsolute(trimmed) || isPluginRefHint(trimmed)) {
@@ -192,11 +200,17 @@ export function resolveResourceEditorPath(input: {
 
   const resource = result.resource;
   const roots = installRootsForResource(resource);
-  for (const candidate of candidatePaths(resource, input.pathHint)) {
+  const candidates = candidatePaths(resource, input.pathHint);
+  for (const candidate of candidates) {
     const resolved = resolveExistingEditorPath(candidate, roots);
     if (resolved) {
       return resolved;
     }
+  }
+
+  const diskHint = candidates.find((candidate) => looksLikeFilesystemSource(candidate));
+  if (diskHint) {
+    throw new Error(`Path is not an openable file: ${diskHint}`);
   }
 
   const scratchPath = scratchPathForResource(resource);

@@ -5,7 +5,7 @@ import type { PlatformPaths, Resource } from "../types.js";
 import {
   deleteResource,
   listResources,
-  listResourcesByOriginRef,
+  listResourcesMatchingOriginRef,
   normalizeResourceInput,
   upsertResource,
   type ImportConflictPolicy,
@@ -22,6 +22,7 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadScanIgnore } from "./scanner-ignore.js";
 import { dropHarnessSkillsDuplicatingPluginSource } from "./scan-dedup.js";
 import { dropPluginTranslatedResources } from "./plugin-translation-marker.js";
+import { isLiveLibraryRef } from "./live-library-ref.js";
 import type { ImportedSnapshot, PluginSourceScanResult } from "../types.js";
 
 export function resolveConfiguredPath(
@@ -665,8 +666,9 @@ export function persistScanResults(
 }
 
 /**
- * Drop `local_snapshot` rows for `originRef` that no longer appear in a fresh
- * harness scan (e.g. MCP servers removed from a host config file).
+ * Drop `local_snapshot` and live-library-ref rows for `originRef` that no
+ * longer appear in a fresh harness scan (removed MCP servers, deleted agent
+ * files, and Not in profile live refs stored as origin_kind manual).
  */
 export function reconcileLocalSnapshotScan(
   originRef: string,
@@ -692,7 +694,12 @@ export function reconcileLocalSnapshotScan(
   }
 
   const removed: Resource[] = [];
-  for (const resource of listResourcesByOriginRef(originRef, "local_snapshot")) {
+  for (const resource of listResourcesMatchingOriginRef(originRef)) {
+    const reconcileable =
+      resource.origin_kind === "local_snapshot" || isLiveLibraryRef(resource);
+    if (!reconcileable) {
+      continue;
+    }
     if (freshKeys.has(resourceDedupKey(resource))) {
       continue;
     }

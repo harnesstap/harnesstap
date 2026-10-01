@@ -17,6 +17,7 @@ import {
   resolveExistingResourceFilesystemPath,
 } from "../services/resource-editor-path.js";
 import { truncateResourceContent } from "../services/resource-show.js";
+import { isLiveLibraryRef } from "../services/live-library-ref.js";
 import { parseUntrackedResourceSelector } from "../services/untracked-resource.js";
 import { MATERIAL_RESOURCE_TYPES, type MaterialResourceType } from "../types.js";
 import { requireAgentBearerAuth } from "./auth.js";
@@ -169,6 +170,20 @@ export function handleLibraryResourceDetail(
     extras && "install_path" in extras && extras.install_path
       ? extras.install_path
       : resolveExistingResourceFilesystemPath(resource, options?.pathHint);
+  const requiresLiveFile =
+    isLiveLibraryRef(resource) || resource.origin_kind === "local_snapshot";
+  if (requiresLiveFile && !filesystemPath) {
+    const liveHint = (options?.pathHint?.trim() || resource.source || "").trim();
+    if (liveHint && liveHint !== "manual" && !liveHint.startsWith("composition:")) {
+      return jsonResponse(
+        {
+          error: "not_found",
+          message: `Path is not an openable file: ${liveHint}`,
+        },
+        { status: 404 },
+      );
+    }
+  }
   return jsonResponse({
     resource: {
       id: resource.id,

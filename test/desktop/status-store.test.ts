@@ -116,7 +116,44 @@ describe("status store generation counter", () => {
     store.setPreview(globalKey, preview("written"));
     pending.resolve(preview("stale"));
     expect(await load).toBeNull();
-    expect(store.getState().previews[previewKeyId(globalKey)]?.data?.profile).toBe("written");
+      expect(store.getState().previews[previewKeyId(globalKey)]?.data?.profile).toBe("written");
+  });
+
+  it("reloads held apply previews when full live status refresh succeeds", async () => {
+    const previews: ProfileApplyPreview[] = [preview("stale"), preview("fresh")];
+    const store = storeWith({
+      fetchStatus: () => Promise.resolve(status("work")),
+      fetchApplyPreview: () => Promise.resolve(previews.shift() ?? preview("extra")),
+    });
+
+    await store.loadPreview(globalKey);
+    expect(store.getState().previews[previewKeyId(globalKey)]?.data?.profile).toBe(
+      "stale",
+    );
+
+    expect(await store.refreshStatus("full", "")).toBe(true);
+    expect(store.getState().previews[previewKeyId(globalKey)]?.data?.profile).toBe(
+      "fresh",
+    );
+  });
+
+  it("does not reload apply previews on fast status polls", async () => {
+    let previewCalls = 0;
+    const store = storeWith({
+      fetchStatus: () => Promise.resolve(status("work", { depth: "fast" })),
+      fetchApplyPreview: () => {
+        previewCalls += 1;
+        return Promise.resolve(preview("held"));
+      },
+    });
+
+    await store.loadPreview(globalKey);
+    expect(previewCalls).toBe(1);
+    expect(await store.refreshStatus("fast", "")).toBe(true);
+    expect(previewCalls).toBe(1);
+    expect(store.getState().previews[previewKeyId(globalKey)]?.data?.profile).toBe(
+      "held",
+    );
   });
 
   it("invalidates every in-flight request when aborted", async () => {
