@@ -1,0 +1,5 @@
+kind: Fixed
+body: Paint Active inventory rows inside the section instead of leaving a blank body with rows flashing at the bottom of the scroller.
+time: 2026-10-01T12:30:00Z
+custom:
+  Issue: ""

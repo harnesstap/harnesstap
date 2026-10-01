@@ -1846,6 +1846,15 @@
   background: var(--surface-hover);
 }
 
+.inventory-section.contents-block {
+  overflow: visible;
+}
+
+.inventory-section-collapse[data-state="open"] > .m-collapse-inner {
+  overflow: visible;
+  min-height: min-content;
+}
+
 .inventory-section-virtual {
   position: relative;
   width: 100%;
