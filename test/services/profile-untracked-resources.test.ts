@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import { createPlugin, addResourceToPlugin, setPluginTags, getPluginById } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
@@ -17,6 +17,7 @@ import {
   discardAllLiveResourcesFromHarness,
   discardLiveResourceFromHarness,
 } from "../../src/services/profile-untracked-resources.ts";
+import * as scanner from "../../src/services/scanner.ts";
 
 describe("profile-untracked-resources service", () => {
   it("detects harness resources not attached to the profile", async () => {
@@ -178,6 +179,116 @@ describe("profile-untracked-resources service", () => {
         false,
       );
       expect(remaining.some((resource) => resource.name === "analyst")).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("bulk-discards many skills with one home rescan, not per file", async () => {
+    const context = await createInitializedTestContext(
+      "profile-untracked-discard-all-bulk",
+    );
+    try {
+      const originalScan = scanner.scanHomeDefaults;
+      const originalReconcile = scanner.reconcileLocalSnapshotScan;
+      let homeScanCount = 0;
+      let reconcileCount = 0;
+      const scanSpy = spyOn(scanner, "scanHomeDefaults").mockImplementation(
+        async (...args) => {
+          homeScanCount += 1;
+          return originalScan(...args);
+        },
+      );
+      const reconcileSpy = spyOn(scanner, "reconcileLocalSnapshotScan").mockImplementation(
+        (...args) => {
+          reconcileCount += 1;
+          return originalReconcile(...args);
+        },
+      );
+
+      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      setActiveProfileName("work");
+
+      const skillNames = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot"];
+      for (const name of skillNames) {
+        const dir = join(context.homeDir, ".claude", "skills", name);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(
+          join(dir, "SKILL.md"),
+          `---\nname: ${name}\ndescription: ${name}\n---\n\n# ${name}`,
+          "utf-8",
+        );
+      }
+      const cacheSkill = join(
+        context.homeDir,
+        ".claude/plugins/cache/market/demo/1.0.0/skills/cached-skill",
+      );
+      mkdirSync(cacheSkill, { recursive: true });
+      const cachePath = join(cacheSkill, "SKILL.md");
+      writeFileSync(
+        cachePath,
+        "---\nname: cached-skill\ndescription: cache\n---\n\n# cache",
+        "utf-8",
+      );
+
+      const discarded = await discardAllLiveResourcesFromHarness({
+        profileSelector: "work",
+        scope: "home",
+        resources: skillNames.map((name) => ({
+          resourceType: "skill",
+          resourceName: name,
+        })),
+      });
+
+      expect(discarded.discarded_count).toBe(skillNames.length);
+      for (const name of skillNames) {
+        expect(
+          existsSync(join(context.homeDir, ".claude", "skills", name, "SKILL.md")),
+        ).toBe(false);
+      }
+      expect(existsSync(cachePath)).toBe(true);
+      expect(homeScanCount).toBe(2);
+      expect(reconcileCount).toBe(1);
+      scanSpy.mockRestore();
+      reconcileSpy.mockRestore();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("discards a subset without leaving sibling live files", async () => {
+    const context = await createInitializedTestContext(
+      "profile-untracked-discard-subset",
+    );
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      setActiveProfileName("work");
+
+      for (const name of ["keep-skill", "drop-skill"]) {
+        const dir = join(context.homeDir, ".claude", "skills", name);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(
+          join(dir, "SKILL.md"),
+          `---\nname: ${name}\ndescription: ${name}\n---\n\n# ${name}`,
+          "utf-8",
+        );
+      }
+
+      await discardAllLiveResourcesFromHarness({
+        profileSelector: "work",
+        scope: "home",
+        resources: [{ resourceType: "skill", resourceName: "drop-skill" }],
+      });
+
+      expect(
+        existsSync(join(context.homeDir, ".claude", "skills", "drop-skill", "SKILL.md")),
+      ).toBe(false);
+      expect(
+        existsSync(join(context.homeDir, ".claude", "skills", "keep-skill", "SKILL.md")),
+      ).toBe(true);
     } finally {
       await context.cleanup();
     }

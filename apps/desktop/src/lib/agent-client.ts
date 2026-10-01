@@ -38,6 +38,7 @@ import type {
   ProfileAddAllResourcesRequest,
   ProfileAddAllResourcesResult,
   ProfileAddResourceRequest,
+  ProfileDiscardAllResourcesRequest,
   ProfileDiscardAllResourcesResult,
   ProfileDiscardResourceResult,
   ProfileAddResourceResult,
@@ -1045,7 +1046,7 @@ export async function discardAllProfileResources(
   baseUrl: string,
   token: string | null,
   profileName: string,
-  body: ProfileAddAllResourcesRequest,
+  body: ProfileDiscardAllResourcesRequest,
 ): Promise<ProfileDiscardAllResourcesResult> {
   const response = await agentFetch(
     baseUrl,

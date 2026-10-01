@@ -68,6 +68,7 @@ export interface InventorySectionProps {
   canActivateAll: boolean;
   addAllPrimary: boolean;
   addingAll: boolean;
+  addingAllDisabled?: boolean;
   discardingAll: boolean;
   activatingAll: boolean;
   headerHint?: string | null;
@@ -99,6 +100,7 @@ export function InventorySection({
   canActivateAll,
   addAllPrimary,
   addingAll,
+  addingAllDisabled = false,
   discardingAll,
   activatingAll,
   headerHint,
@@ -216,6 +218,7 @@ export function InventorySection({
                 label="Add all"
                 title={`Add all ${rows.length} items to ${profileName}`}
                 onClick={onAddAll}
+                disabled={addingAllDisabled}
                 icon={<ListPlus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
               />
             ) : null}

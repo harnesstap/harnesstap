@@ -393,6 +393,15 @@ export interface ProfileAddAllResourcesRequest {
   projectPath?: string;
 }
 
+export interface ProfileDiscardResourceSelector {
+  resourceType: string;
+  resourceName: string;
+}
+
+export interface ProfileDiscardAllResourcesRequest extends ProfileAddAllResourcesRequest {
+  resources?: ProfileDiscardResourceSelector[];
+}
+
 export interface ProfileAddAllResourcesResult {
   resources: ProfileContentsResource[];
   added_count: number;

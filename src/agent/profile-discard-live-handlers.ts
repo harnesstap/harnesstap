@@ -1,6 +1,7 @@
 import {
   discardAllLiveResourcesFromHarness,
   discardLiveResourceFromHarness,
+  type DiscardLiveResourceSelector,
 } from "../services/profile-untracked-resources.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
@@ -8,6 +9,50 @@ import { parseAddResourceBody } from "./profile-add-resource-handlers.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseDiscardResourceSelectors(
+  body: unknown,
+): DiscardLiveResourceSelector[] | Response | undefined {
+  if (!isRecord(body) || body.resources === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(body.resources)) {
+    return jsonResponse(
+      { error: "invalid_resources", message: "resources must be an array" },
+      { status: 400 },
+    );
+  }
+  const selectors: DiscardLiveResourceSelector[] = [];
+  const seen = new Set<string>();
+  for (const entry of body.resources) {
+    if (!isRecord(entry)) {
+      return jsonResponse(
+        { error: "invalid_resources", message: "resources entries must be objects" },
+        { status: 400 },
+      );
+    }
+    const resourceType =
+      typeof entry.resourceType === "string" ? entry.resourceType.trim() : "";
+    const resourceName =
+      typeof entry.resourceName === "string" ? entry.resourceName.trim() : "";
+    if (!resourceType || !resourceName) {
+      return jsonResponse(
+        {
+          error: "invalid_resources",
+          message: "each resource needs resourceType and resourceName",
+        },
+        { status: 400 },
+      );
+    }
+    const key = `${resourceType}:${resourceName}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    selectors.push({ resourceType, resourceName });
+  }
+  return selectors;
 }
 
 export async function handleProfileDiscardResource(
@@ -89,10 +134,16 @@ export async function handleProfileDiscardAllResources(
     return parsed;
   }
 
+  const selectors = parseDiscardResourceSelectors(body);
+  if (selectors instanceof Response) {
+    return selectors;
+  }
+
   try {
     const result = await discardAllLiveResourcesFromHarness({
       profileSelector: profileName,
       ...parsed,
+      ...(selectors && selectors.length > 0 ? { resources: selectors } : {}),
     });
     return jsonResponse(result);
   } catch (error) {
