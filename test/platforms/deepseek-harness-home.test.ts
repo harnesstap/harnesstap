@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 import { parse } from "yaml";
 import {
   HARNESSTAP_PATCH_PREFIX,
@@ -108,6 +108,30 @@ describe("mergeCordisPatch", () => {
 });
 
 describe("parseCordisMcpServers", () => {
+  it("skips malformed patch YAML without warning", () => {
+    const malformed = `- insert:
+    grok-4.6 prism
+    - id: memory
+`;
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(parseCordisMcpServers(malformed, "~/.dsh/cordis.patch.yml")).toEqual([]);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("reports the YAML parse error when merging a malformed patch", () => {
+    const malformed = `- insert:
+    grok-4.6 prism
+    - id: memory
+`;
+    expect(() => mergeCordisPatch(malformed, [])).toThrow(
+      /Malformed cordis\.patch\.yml: Implicit keys need to be on a single line/,
+    );
+  });
+
   it("reads stdio and streamable-http rows", () => {
     const yaml = `
 - insert:
@@ -179,13 +203,32 @@ describe("settings yaml", () => {
     });
   });
 
-  it("skips settings YAML with a multiline implicit key instead of throwing", () => {
+  it("skips malformed settings YAML without warning", () => {
     const malformed = `agent-default-model:
   grok-4.6 prism
   provider: deepseek
 `;
     expect(() => parse(malformed)).toThrow(/Implicit keys need to be on a single line/);
-    expect(parseSettingsResources(malformed, "~/.dsh/settings.yaml")).toEqual([]);
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(parseSettingsResources(malformed, "~/.dsh/settings.yaml")).toEqual([]);
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("reports the YAML parse error when merging malformed settings", () => {
+    const malformed = `agent-default-model:
+  grok-4.6 prism
+  provider: deepseek
+`;
+    expect(() => mergeSettingsYaml(malformed, { model: { model: "deepseek-chat" } })).toThrow(
+      /Malformed settings\.yaml: Implicit keys need to be on a single line/,
+    );
   });
 
   it("parses model and permission preset", () => {

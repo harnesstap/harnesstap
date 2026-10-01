@@ -23,12 +23,19 @@ function yamlErrorSummary(error: unknown): string {
   return firstLine && firstLine.length > 0 ? firstLine : message;
 }
 
-function parseYamlOrSkip(content: string, source: string): unknown {
+function parseYamlOrSkip(content: string): unknown {
+  try {
+    return parse(content);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseYamlDocument(content: string, label: string): unknown {
   try {
     return parse(content);
   } catch (error) {
-    console.warn(`Skipping malformed YAML in ${source}: ${yamlErrorSummary(error)}`);
-    return undefined;
+    throw new Error(`Malformed ${label}: ${yamlErrorSummary(error)}`);
   }
 }
 
@@ -100,7 +107,7 @@ export function mergeCordisPatch(
   if (!existing || existing.trim().length === 0) {
     return stringifyYaml(rows.length > 0 ? [{ insert: rows }] : []);
   }
-  const parsed: unknown = parse(existing);
+  const parsed: unknown = parseYamlDocument(existing, "cordis.patch.yml");
   if (!Array.isArray(parsed)) {
     throw new Error("Invalid cordis.patch.yml: expected a YAML list of patch operations");
   }
@@ -170,7 +177,7 @@ function collectMcpItems(node: unknown, acc: ResourceCreateInput[], source: stri
 }
 
 export function parseCordisMcpServers(content: string, source: string): ResourceCreateInput[] {
-  const parsed = parseYamlOrSkip(content, source);
+  const parsed = parseYamlOrSkip(content);
   if (parsed === undefined) return [];
   const resources: ResourceCreateInput[] = [];
   collectMcpItems(parsed, resources, source);
@@ -185,7 +192,7 @@ export interface SettingsOverlay {
 export function mergeSettingsYaml(existing: string | undefined, overlay: SettingsOverlay): string {
   let doc: Record<string, unknown> = {};
   if (existing && existing.trim().length > 0) {
-    const parsed: unknown = parse(existing);
+    const parsed: unknown = parseYamlDocument(existing, "settings.yaml");
     if (!isRecord(parsed)) {
       throw new Error("Invalid settings.yaml: expected a YAML mapping");
     }
@@ -207,7 +214,7 @@ export function mergeSettingsYaml(existing: string | undefined, overlay: Setting
 }
 
 export function parseSettingsResources(content: string, source: string): ResourceCreateInput[] {
-  const parsed = parseYamlOrSkip(content, source);
+  const parsed = parseYamlOrSkip(content);
   if (!isRecord(parsed)) return [];
   const resources: ResourceCreateInput[] = [];
   const modelSection = parsed["agent-default-model"];
