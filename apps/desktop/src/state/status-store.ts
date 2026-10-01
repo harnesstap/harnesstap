@@ -33,11 +33,15 @@ export function previewKeyId(key: PreviewKey): string {
 
 export function previewKeyFromId(id: string): PreviewKey | null {
   const parts = id.split("\u0000");
-  if (parts.length !== 3) {
-    return null;
-  }
-  const [scope, projectPath, profile] = parts;
-  if ((scope !== "global" && scope !== "project") || !profile) {
+  const scope = parts[0];
+  const projectPath = parts[1];
+  const profile = parts[2];
+  if (
+    parts.length !== 3
+    || projectPath === undefined
+    || !profile
+    || (scope !== "global" && scope !== "project")
+  ) {
     return null;
   }
   return {
