@@ -10,6 +10,44 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function parseDiscardResourceSelectors(
+  body: unknown,
+): Array<{ resourceType: string; resourceName: string }> | Response | undefined {
+  if (!isRecord(body) || body.resources === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(body.resources)) {
+    return jsonResponse(
+      { error: "invalid_resources", message: "resources must be an array" },
+      { status: 400 },
+    );
+  }
+  const selectors: Array<{ resourceType: string; resourceName: string }> = [];
+  for (const entry of body.resources) {
+    if (!isRecord(entry)) {
+      return jsonResponse(
+        { error: "invalid_resources", message: "resources entries must be objects" },
+        { status: 400 },
+      );
+    }
+    const resourceType =
+      typeof entry.resourceType === "string" ? entry.resourceType.trim() : "";
+    const resourceName =
+      typeof entry.resourceName === "string" ? entry.resourceName.trim() : "";
+    if (!resourceType || !resourceName) {
+      return jsonResponse(
+        {
+          error: "invalid_resources",
+          message: "each resource needs resourceType and resourceName",
+        },
+        { status: 400 },
+      );
+    }
+    selectors.push({ resourceType, resourceName });
+  }
+  return selectors;
+}
+
 export async function handleProfileDiscardResource(
   request: Request,
   token: string,
@@ -89,10 +127,16 @@ export async function handleProfileDiscardAllResources(
     return parsed;
   }
 
+  const resources = parseDiscardResourceSelectors(body);
+  if (resources instanceof Response) {
+    return resources;
+  }
+
   try {
     const result = await discardAllLiveResourcesFromHarness({
       profileSelector: profileName,
       ...parsed,
+      ...(resources ? { resources } : {}),
     });
     return jsonResponse(result);
   } catch (error) {

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Batch Desktop Discard all into one scan/delete/rescan across every harness copy, skip the HarnessTap package cache, and align Discarding N of M with Add all / Discard all.
+time: 2026-10-01T09:45:00Z
+custom:
+  Issue: ""

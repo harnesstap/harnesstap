@@ -57,6 +57,10 @@ describe("scope inventory discard controls", () => {
     );
     expect(inventorySectionSource).toContain("profile-remove-action");
     expect(inventorySectionSource).toContain("disabled={rows.length === 0}");
+    expect(toolbar.indexOf("inventory-batch-progress")).toBeGreaterThan(-1);
+    expect(toolbar.indexOf("inventory-batch-progress")).toBeLessThan(
+      toolbar.indexOf('label="Add all"'),
+    );
     expect(designSource).toContain("section **Add all**");
     expect(designSource).toContain("then **Discard all**");
   });
@@ -84,8 +88,10 @@ describe("scope inventory discard controls", () => {
       "utf8",
     );
     expect(workspaceSource).toContain("handleDiscardResource");
+    expect(workspaceSource).toContain("handleDiscardAllResources");
     const liveStateSource = readLiveInventorySource();
     expect(liveStateSource).toContain("onDiscardResource");
+    expect(liveStateSource).toContain("onDiscardAllResources");
   });
 });
 

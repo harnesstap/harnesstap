@@ -1,11 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import {
   addResourceToPlugin,
   resolvePluginSelector,
   touchPluginUpdatedAt,
 } from "../models/plugin-model.js";
 import { isProfilePlugin } from "../constants/profile.js";
+import { PACKAGES_CACHE_ROOT } from "./package-cache/paths.js";
 import {
   MATERIAL_RESOURCE_TYPES,
   type MaterialResourceType,
@@ -375,10 +377,20 @@ function filterScanResultsForResource(
   resourceType: string,
   resourceName: string,
 ): ScanResult[] {
+  return filterScanResultsForResourceKeys(
+    results,
+    new Set([`${resourceType}:${resourceName}`]),
+  );
+}
+
+function filterScanResultsForResourceKeys(
+  results: ScanResult[],
+  keys: ReadonlySet<string>,
+): ScanResult[] {
   const filtered: ScanResult[] = [];
   for (const result of results) {
-    const resources = result.resources.filter(
-      (resource) => resource.type === resourceType && resource.name === resourceName,
+    const resources = result.resources.filter((resource) =>
+      keys.has(profileResourceKey(resource)),
     );
     if (resources.length === 0) {
       continue;
@@ -446,6 +458,29 @@ export async function addResourceToProfile(input: {
   return toNotStagedContentsResource(resource, alreadyInProfile ? "update" : "add");
 }
 
+function isHarnessTapPackageCachePath(normalized: string, originRef: string): boolean {
+  const posix = normalized.replace(/\\/g, "/");
+  if (
+    posix.includes("/.harnesstap/cache/")
+    || posix.startsWith(".harnesstap/cache/")
+    || posix.includes(`/${PACKAGES_CACHE_ROOT}/`)
+    || posix.startsWith(`${PACKAGES_CACHE_ROOT}/`)
+  ) {
+    return true;
+  }
+  const htDir = harnesstapDirForHomeRoot(originRef).replace(/\\/g, "/").replace(/\/$/, "");
+  const origin = originRef.replace(/\\/g, "/").replace(/\/$/, "");
+  const absolute =
+    posix.startsWith("/") || /^[A-Za-z]:/.test(posix)
+      ? posix
+      : `${origin}/${posix}`;
+  return (
+    absolute.startsWith(`${htDir}/cache/packages/`)
+    || absolute === `${htDir}/cache/packages`
+    || absolute.startsWith(`${htDir}/cache/`)
+  );
+}
+
 /** Unique scanned on-disk sources, relative to origin, for discard deletes. */
 function collectDiscardSourcePaths(
   scanResults: ScanResult[],
@@ -464,6 +499,12 @@ function collectDiscardSourcePaths(
       }
       const normalized = normalizeManagedPath(source, originRef);
       if (!normalized || seen.has(normalized)) {
+        continue;
+      }
+      if (isMergedContainerResource(resource, originRef)) {
+        continue;
+      }
+      if (isHarnessTapPackageCachePath(normalized, originRef)) {
         continue;
       }
       seen.add(normalized);
@@ -508,7 +549,11 @@ async function discardableNotInProfileScanResults(input: {
   harness?: string;
 }): Promise<{ originRef: string; scanResults: ScanResult[] }> {
   const trackedKeys = trackedResourceKeys(input.profileSelector);
-  const { originRef, scanResults } = await resolveUntrackedScanResults(input);
+  const { originRef, scanResults } = await resolveUntrackedScanResults({
+    ...input,
+    // Discard every registered harness copy, not only the main-harness scan.
+    harness: undefined,
+  });
   const filtered = scanResults
     .map((result) => ({
       ...result,
@@ -554,10 +599,7 @@ async function discardScanResultsFromHarness(input: {
     const rescanned = await scanProject(input.originRef);
     reconcileLocalSnapshotScan(input.originRef, rescanned);
   } else {
-    const rescanned = await scanHomeDefaults(
-      input.harness ? resolveMainHarnessTarget(input.harness) : undefined,
-      input.originRef,
-    );
+    const rescanned = await scanHomeDefaults(undefined, input.originRef);
     reconcileLocalSnapshotScan(input.originRef, rescanned);
   }
 
@@ -623,16 +665,29 @@ export async function discardAllLiveResourcesFromHarness(input: {
   scope: ProfileApplyPreviewScope;
   projectPath?: string;
   harness?: string;
+  resources?: Array<{ resourceType: string; resourceName: string }>;
 }): Promise<{
   removed_paths: string[];
   discarded_count: number;
   resources: ProfileContentsResource[];
 }> {
   const { originRef, scanResults } = await discardableNotInProfileScanResults(input);
+  const selectors = input.resources ?? [];
+  const matching =
+    selectors.length === 0
+      ? scanResults
+      : filterScanResultsForResourceKeys(
+          scanResults,
+          new Set(
+            selectors.map(
+              (resource) => `${resource.resourceType}:${resource.resourceName}`,
+            ),
+          ),
+        );
   return discardScanResultsFromHarness({
     ...input,
     originRef,
-    scanResults,
+    scanResults: matching,
   });
 }
 

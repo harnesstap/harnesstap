@@ -393,6 +393,12 @@ export interface ProfileAddAllResourcesRequest {
   projectPath?: string;
 }
 
+export interface ProfileDiscardAllResourcesRequest {
+  scope: ViewScope;
+  projectPath?: string;
+  resources?: Array<{ resourceType: string; resourceName: string }>;
+}
+
 export interface ProfileAddAllResourcesResult {
   resources: ProfileContentsResource[];
   added_count: number;

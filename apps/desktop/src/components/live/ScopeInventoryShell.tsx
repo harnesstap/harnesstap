@@ -55,6 +55,9 @@ export interface ScopeInventoryShellProps {
     options?: { skipAutoReapply?: boolean },
   ) => Promise<void>;
   onDiscardResource?: (resource: ProfileContentsResource) => Promise<void>;
+  onDiscardAllResources?: (
+    resources: Array<{ type: string; name: string }>,
+  ) => Promise<void>;
   onActivateResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onAfterAdds?: (addedName: string) => Promise<void>;
   onOpenResource: (target: ResourceDetailTarget) => void;
@@ -94,6 +97,7 @@ export function ScopeInventoryShell({
   inactiveHeaderHint,
   onAddResource,
   onDiscardResource,
+  onDiscardAllResources,
   onActivateResources,
   onAfterAdds,
   onOpenResource,
@@ -327,66 +331,109 @@ export function ScopeInventoryShell({
   };
 
   const runDiscardAll = async (rows: ProfileInventoryItem[]) => {
-    if (!onDiscardResource || rows.length === 0) {
+    if ((!onDiscardAllResources && !onDiscardResource) || rows.length === 0) {
       return;
     }
-    for (const row of rows) {
-      const key = membershipKey(row.resource);
+    setHiddenKeys((current) => {
+      const next = new Set(current);
+      for (const row of rows) {
+        next.add(membershipKey(row.resource));
+      }
+      return next;
+    });
+    setPendingKeys((current) => {
+      const next = new Set(current);
+      for (const row of rows) {
+        next.add(membershipKey(row.resource));
+      }
+      return next;
+    });
+    setDiscardProgress({ done: 0, total: rows.length });
+    try {
+      if (onDiscardAllResources) {
+        await onDiscardAllResources(
+          rows.map((row) => ({ type: row.resource.type, name: row.resource.name })),
+        );
+        setDiscardProgress({ done: rows.length, total: rows.length });
+        setPendingKeys((current) => {
+          const next = new Set(current);
+          for (const row of rows) {
+            next.delete(membershipKey(row.resource));
+          }
+          return next;
+        });
+        return;
+      }
+      const results = await settleInChunks(
+        rows,
+        MUTATION_CHUNK_SIZE,
+        async (row) => {
+          const key = membershipKey(row.resource);
+          try {
+            await onDiscardResource?.(row.resource);
+            setPendingKeys((current) => {
+              const next = new Set(current);
+              next.delete(key);
+              return next;
+            });
+          } catch (error) {
+            setHiddenKeys((current) => {
+              const next = new Set(current);
+              next.delete(key);
+              return next;
+            });
+            setPendingKeys((current) => {
+              const next = new Set(current);
+              next.delete(key);
+              return next;
+            });
+            throw error;
+          }
+        },
+        (done, total) => setDiscardProgress({ done, total }),
+      );
+      const failed = results.flatMap((result, index) =>
+        result.status === "rejected" && rows[index] ? [rows[index]] : [],
+      );
+      if (failed[0]) {
+        toast({
+          tone: "error",
+          title: `Could not discard ${failed[0].label}`,
+          action: {
+            label: "Retry",
+            onClick: () => {
+              void runDiscardAll(failed);
+            },
+          },
+        });
+      }
+    } catch {
       setHiddenKeys((current) => {
         const next = new Set(current);
-        next.add(key);
+        for (const row of rows) {
+          next.delete(membershipKey(row.resource));
+        }
         return next;
       });
       setPendingKeys((current) => {
         const next = new Set(current);
-        next.add(key);
+        for (const row of rows) {
+          next.delete(membershipKey(row.resource));
+        }
         return next;
       });
-    }
-    setDiscardProgress({ done: 0, total: rows.length });
-    const results = await settleInChunks(
-      rows,
-      MUTATION_CHUNK_SIZE,
-      async (row) => {
-        const key = membershipKey(row.resource);
-        try {
-          await onDiscardResource(row.resource);
-          setPendingKeys((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-        } catch (error) {
-          setHiddenKeys((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-          setPendingKeys((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-          throw error;
-        }
-      },
-      (done, total) => setDiscardProgress({ done, total }),
-    );
-    setDiscardProgress(null);
-    const failed = results.flatMap((result, index) =>
-      result.status === "rejected" && rows[index] ? [rows[index]] : [],
-    );
-    if (failed[0]) {
       toast({
         tone: "error",
-        title: `Could not discard ${failed[0].label}`,
+        title: "Could not discard live resources",
         action: {
           label: "Retry",
           onClick: () => {
-            void runDiscardAll(failed);
+            void runDiscardAll(rows);
           },
         },
       });
+    } finally {
+      setDiscardProgress(null);
     }
   };
 
@@ -573,7 +620,8 @@ export function ScopeInventoryShell({
                 }
                 canAddAll={section === "not_in_profile" && Boolean(onAddResource)}
                 canDiscardAll={
-                  section === "not_in_profile" && Boolean(onDiscardResource)
+                  section === "not_in_profile"
+                  && Boolean(onDiscardAllResources || onDiscardResource)
                 }
                 canActivateAll={
                   section === "inactive"

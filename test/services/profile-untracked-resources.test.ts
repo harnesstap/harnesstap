@@ -10,6 +10,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { listResources } from "../../src/models/resource.ts";
 import { setHarnessPreference } from "../../src/models/harness.ts";
+import { getHarnesstapDir } from "../../src/db/connection.ts";
 import {
   addResourceToProfile,
   detectNotStagedProfileResources,
@@ -178,6 +179,109 @@ describe("profile-untracked-resources service", () => {
         false,
       );
       expect(remaining.some((resource) => resource.name === "analyst")).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("discards the same skill in every harness without touching the HT package cache", async () => {
+    const context = await createInitializedTestContext(
+      "profile-untracked-discard-multi-harness",
+    );
+    try {
+      setHarnessPreference({
+        main_harness: "cursor",
+        alias_harnesses: ["claude-code"],
+      });
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      setActiveProfileName("work");
+
+      const claudeDir = join(context.homeDir, ".claude", "skills", "manual-skill");
+      const cursorDir = join(context.homeDir, ".cursor", "skills", "manual-skill");
+      mkdirSync(claudeDir, { recursive: true });
+      mkdirSync(cursorDir, { recursive: true });
+      const skillBody = "---\nname: manual-skill\ndescription: manual\n---\n\n# manual";
+      writeFileSync(join(claudeDir, "SKILL.md"), skillBody, "utf-8");
+      writeFileSync(join(cursorDir, "SKILL.md"), skillBody, "utf-8");
+
+      const cacheFile = join(
+        getHarnesstapDir(),
+        "cache",
+        "packages",
+        "host-plugin",
+        "mp",
+        "keep",
+        "1.0.0",
+        "README.md",
+      );
+      mkdirSync(join(cacheFile, ".."), { recursive: true });
+      writeFileSync(cacheFile, "keep-me", "utf-8");
+
+      const discarded = await discardLiveResourceFromHarness({
+        profileSelector: "work",
+        resourceType: "skill",
+        resourceName: "manual-skill",
+        scope: "home",
+        harness: "cursor",
+      });
+
+      expect(discarded.removed_paths.length).toBeGreaterThanOrEqual(2);
+      expect(existsSync(join(claudeDir, "SKILL.md"))).toBe(false);
+      expect(existsSync(join(cursorDir, "SKILL.md"))).toBe(false);
+      expect(existsSync(cacheFile)).toBe(true);
+      const remaining = await detectUntrackedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+      });
+      expect(remaining.some((resource) => resource.name === "manual-skill")).toBe(
+        false,
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("discard-all with a selector list deletes only those identities, still in every harness", async () => {
+    const context = await createInitializedTestContext(
+      "profile-untracked-discard-all-subset",
+    );
+    try {
+      setHarnessPreference({
+        main_harness: "cursor",
+        alias_harnesses: ["claude-code"],
+      });
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      setActiveProfileName("work");
+
+      const writeSkill = (harnessDir: string, name: string) => {
+        const dir = join(context.homeDir, harnessDir, "skills", name);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(
+          join(dir, "SKILL.md"),
+          `---\nname: ${name}\ndescription: ${name}\n---\n\n# ${name}`,
+          "utf-8",
+        );
+        return join(dir, "SKILL.md");
+      };
+      const dropClaude = writeSkill(".claude", "drop-me");
+      const dropCursor = writeSkill(".cursor", "drop-me");
+      const keepClaude = writeSkill(".claude", "keep-me");
+      const keepCursor = writeSkill(".cursor", "keep-me");
+
+      const discarded = await discardAllLiveResourcesFromHarness({
+        profileSelector: "work",
+        scope: "home",
+        harness: "cursor",
+        resources: [{ resourceType: "skill", resourceName: "drop-me" }],
+      });
+
+      expect(discarded.discarded_count).toBeGreaterThanOrEqual(1);
+      expect(existsSync(dropClaude)).toBe(false);
+      expect(existsSync(dropCursor)).toBe(false);
+      expect(existsSync(keepClaude)).toBe(true);
+      expect(existsSync(keepCursor)).toBe(true);
     } finally {
       await context.cleanup();
     }

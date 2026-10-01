@@ -1421,6 +1421,9 @@ export interface LiveStatePanelProps {
   ) => Promise<void>;
   onAddAllResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onDiscardResource?: (resource: ProfileContentsResource) => Promise<void>;
+  onDiscardAllResources?: (
+    resources: Array<{ type: string; name: string }>,
+  ) => Promise<void>;
   onActivateResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onAfterAdds?: (addedName: string) => Promise<void>;
   onAttachLibraryItem?: (item: {
@@ -1487,6 +1490,7 @@ export function LiveStatePanel({
   onEditProfile,
   onAddResource,
   onDiscardResource,
+  onDiscardAllResources,
   onActivateResources,
   onAfterAdds,
   onAttachLibraryItem,
@@ -2055,6 +2059,7 @@ export function LiveStatePanel({
             inactiveHeaderHint={inactiveHeaderHint}
             onAddResource={onAddResource}
             onDiscardResource={onDiscardResource}
+            onDiscardAllResources={onDiscardAllResources}
             onActivateResources={onActivateResources}
             onAfterAdds={onAfterAdds}
             onOpenResource={openResource}

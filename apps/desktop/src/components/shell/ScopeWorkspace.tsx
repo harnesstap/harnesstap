@@ -445,6 +445,9 @@ export function ScopeWorkspace({
               onDiscardResource={
                 actionsEnabled ? ctrl.handleDiscardResource : undefined
               }
+              onDiscardAllResources={
+                actionsEnabled ? ctrl.handleDiscardAllResources : undefined
+              }
               onAfterAdds={
                 selectedProfile
                   ? (addedName) =>
