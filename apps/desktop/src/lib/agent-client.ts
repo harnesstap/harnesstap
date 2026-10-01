@@ -33,6 +33,7 @@ import type {
   MarketplaceAddResult,
   MarketplaceListResult,
   MarketplacePluginsResult,
+  MarketplaceSourceBranchesResult,
   ProfileApplyPreview,
   ProfileApplyPreviewRequest,
   ProfileAddAllResourcesRequest,
@@ -657,6 +658,22 @@ export async function addMarketplace(
     return throwAgentError(response, "Could not add marketplace");
   }
   return (await response.json()) as MarketplaceAddResult;
+}
+
+export async function fetchMarketplaceSourceBranches(
+  baseUrl: string,
+  token: string | null,
+  source: string,
+): Promise<MarketplaceSourceBranchesResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/marketplaces/branches?url=${encodeURIComponent(source)}`,
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not list git branches");
+  }
+  return (await response.json()) as MarketplaceSourceBranchesResult;
 }
 
 export async function fetchMarketplacePlugins(

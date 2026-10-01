@@ -46,6 +46,7 @@ import {
 import {
   handleMarketplacePluginsList,
   handleMarketplacesAdd,
+  handleMarketplacesBranches,
   handleMarketplacesList,
 } from "./marketplace-handlers.js";
 import { handleOpenPath } from "./open-path-handlers.js";
@@ -611,6 +612,8 @@ export function createAgentFetchHandler(
       response = await handleTelemetryPut(request, token);
     } else if (method === "GET" && url.pathname === "/v1/marketplaces") {
       response = handleMarketplacesList(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/marketplaces/branches") {
+      response = handleMarketplacesBranches(request, token);
     } else if (method === "POST" && url.pathname === "/v1/marketplaces") {
       response = await handleMarketplacesAdd(request, token);
     } else if (method === "GET" && url.pathname.match(/^\/v1\/marketplaces\/[^/]+\/plugins$/)) {

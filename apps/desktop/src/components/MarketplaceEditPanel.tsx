@@ -1,23 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { open as openDirectoryDialog } from "@tauri-apps/plugin-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { addMarketplace } from "../lib/agent-client";
+import { addMarketplace, fetchMarketplaceSourceBranches } from "../lib/agent-client";
 import { patchMarketplace } from "../lib/api/sources";
 import {
+  extraTrackedBranches,
   marketplaceDraftIsDirty,
+  marketplaceSourceLooksResolvable,
   marketplaceSubmitCloseAction,
-  formatTrackedBranchesField,
-  parseTrackedBranchesField,
 } from "../lib/sources-panels";
 import type {
   PluginMarketplaceEntry,
   PluginMarketplacePlatform,
 } from "../lib/types";
-import { Check, Plus, X } from "lucide-react";
+import { Check, FolderOpen, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FullScreenPanel } from "./FullScreenPanel";
+import { IconActionButton } from "./IconActionButton";
+import { MarketplaceTrackedBranchesField } from "./MarketplaceTrackedBranchesField";
 
 const MARKETPLACE_PLATFORMS: PluginMarketplacePlatform[] = [
   "claude-code",
@@ -27,6 +30,7 @@ const MARKETPLACE_PLATFORMS: PluginMarketplacePlatform[] = [
 ];
 
 const DEFAULT_PLATFORMS: PluginMarketplacePlatform[] = ["claude-code"];
+const BRANCH_LIST_DEBOUNCE_MS = 400;
 
 export function deriveMarketplaceNameFromUrl(url: string): string {
   const trimmed = url.trim();
@@ -85,17 +89,23 @@ export function MarketplaceEditPanel({
   const [platforms, setPlatforms] = useState<PluginMarketplacePlatform[]>([
     ...DEFAULT_PLATFORMS,
   ]);
-  const [trackedBranches, setTrackedBranches] = useState("");
+  const [trackedBranches, setTrackedBranches] = useState<string[]>([]);
+  const [branchOptions, setBranchOptions] = useState<string[]>([]);
+  const [defaultBranch, setDefaultBranch] = useState<string | null>(null);
+  const [branchesLoading, setBranchesLoading] = useState(false);
   const [baselineUrl, setBaselineUrl] = useState("");
   const [baselineName, setBaselineName] = useState("");
   const [baselinePlatforms, setBaselinePlatforms] = useState<
     PluginMarketplacePlatform[]
   >([...DEFAULT_PLATFORMS]);
-  const [baselineTrackedBranches, setBaselineTrackedBranches] = useState("");
+  const [baselineTrackedBranches, setBaselineTrackedBranches] = useState<string[]>(
+    [],
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const branchListGeneration = useRef(0);
 
   useEffect(() => {
     if (!open) {
@@ -104,7 +114,7 @@ export function MarketplaceEditPanel({
     if (mode === "edit" && entry) {
       const nextPlatforms =
         entry.platforms.length > 0 ? [...entry.platforms] : [...DEFAULT_PLATFORMS];
-      const nextBranches = formatTrackedBranchesField(entry.trackedBranches ?? []);
+      const nextBranches = [...(entry.trackedBranches ?? [])];
       setUrl(entry.url);
       setName(entry.name);
       setNameTouched(true);
@@ -119,17 +129,65 @@ export function MarketplaceEditPanel({
       setName("");
       setNameTouched(false);
       setPlatforms([...DEFAULT_PLATFORMS]);
-      setTrackedBranches("");
+      setTrackedBranches([]);
       setBaselineUrl("");
       setBaselineName("");
       setBaselinePlatforms([...DEFAULT_PLATFORMS]);
-      setBaselineTrackedBranches("");
+      setBaselineTrackedBranches([]);
     }
+    setBranchOptions([]);
+    setDefaultBranch(null);
+    setBranchesLoading(false);
     setBusy(false);
     setError(null);
     setWarning(null);
     setDiscardOpen(false);
   }, [open, mode, entry]);
+
+  useEffect(() => {
+    if (!open || !baseUrl) {
+      return;
+    }
+    const source = url.trim();
+    if (!marketplaceSourceLooksResolvable(source)) {
+      branchListGeneration.current += 1;
+      setBranchOptions([]);
+      setDefaultBranch(null);
+      setBranchesLoading(false);
+      return;
+    }
+    const generation = ++branchListGeneration.current;
+    const timer = window.setTimeout(() => {
+      setBranchesLoading(true);
+      void fetchMarketplaceSourceBranches(baseUrl, token, source)
+        .then((result) => {
+          if (generation !== branchListGeneration.current) {
+            return;
+          }
+          setBranchOptions(result.branches);
+          setDefaultBranch(result.defaultBranch);
+          setTrackedBranches((current) => {
+            const known = new Set(result.branches);
+            return current.filter((branch) => known.has(branch));
+          });
+        })
+        .catch(() => {
+          if (generation !== branchListGeneration.current) {
+            return;
+          }
+          setBranchOptions([]);
+          setDefaultBranch(null);
+        })
+        .finally(() => {
+          if (generation === branchListGeneration.current) {
+            setBranchesLoading(false);
+          }
+        });
+    }, BRANCH_LIST_DEBOUNCE_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [open, url, baseUrl, token]);
 
   if (!open) {
     return null;
@@ -149,6 +207,7 @@ export function MarketplaceEditPanel({
     baselinePlatforms,
     baselineTrackedBranches,
   });
+  const sourceReady = marketplaceSourceLooksResolvable(url);
 
   const onUrlChange = (nextUrl: string) => {
     setUrl(nextUrl);
@@ -157,11 +216,27 @@ export function MarketplaceEditPanel({
     }
   };
 
-  const markClean = (nextUrl: string, nextName: string, nextBranches: string) => {
+  const browseLocalRepo = async () => {
+    try {
+      const selected = await openDirectoryDialog({
+        directory: true,
+        multiple: false,
+        title: "Select local git marketplace",
+        defaultPath: url.trim() || undefined,
+      });
+      if (typeof selected === "string" && selected.length > 0) {
+        onUrlChange(selected);
+      }
+    } catch {
+      // Web / cancelled: keep the typed URL or path.
+    }
+  };
+
+  const markClean = (nextUrl: string, nextName: string, nextBranches: string[]) => {
     setBaselineUrl(nextUrl);
     setBaselineName(nextName);
     setBaselinePlatforms([...platforms]);
-    setBaselineTrackedBranches(formatTrackedBranchesField(nextBranches));
+    setBaselineTrackedBranches([...nextBranches]);
   };
 
   const requestClose = () => {
@@ -183,7 +258,7 @@ export function MarketplaceEditPanel({
     successMessage: string,
     nextUrl: string,
     nextName: string,
-    nextBranches: string,
+    nextBranches: string[],
   ): boolean => {
     if (marketplaceSubmitCloseAction(refresh) === "stay-warning" && refresh) {
       setWarning(refresh.message);
@@ -205,8 +280,7 @@ export function MarketplaceEditPanel({
     setWarning(null);
     const nextUrl = url.trim();
     const nextName = resolvedName;
-    const nextBranches = parseTrackedBranchesField(trackedBranches);
-    const nextBranchesField = formatTrackedBranchesField(nextBranches);
+    const nextBranches = extraTrackedBranches(trackedBranches, defaultBranch);
     try {
       if (mode === "add") {
         const result = await addMarketplace(baseUrl, token, {
@@ -222,7 +296,7 @@ export function MarketplaceEditPanel({
             : "Marketplace added.",
           nextUrl,
           nextName,
-          nextBranchesField,
+          nextBranches,
         );
         return;
       }
@@ -240,7 +314,7 @@ export function MarketplaceEditPanel({
         "Marketplace updated.",
         nextUrl,
         nextName,
-        nextBranchesField,
+        nextBranches,
       );
     } catch (saveError: unknown) {
       setError(
@@ -307,15 +381,23 @@ export function MarketplaceEditPanel({
           ) : null}
           <div className="form-field gap-1.5">
             <Label htmlFor="marketplace-edit-url">URL or path</Label>
-            <Input
-              id="marketplace-edit-url"
-              data-testid="marketplace-url"
-              autoFocus={mode === "add"}
-              value={url}
-              onChange={(event) => onUrlChange(event.target.value)}
-              placeholder="https://github.com/org/marketplace or /path/to/repo"
-              disabled={controlsDisabled}
-            />
+            <div className="marketplace-source-row">
+              <Input
+                id="marketplace-edit-url"
+                data-testid="marketplace-url"
+                autoFocus={mode === "add"}
+                value={url}
+                onChange={(event) => onUrlChange(event.target.value)}
+                placeholder="https://github.com/org/marketplace or /path/to/repo"
+                disabled={controlsDisabled}
+              />
+              <IconActionButton
+                label="Choose folder"
+                disabled={controlsDisabled}
+                onClick={() => void browseLocalRepo()}
+                icon={<FolderOpen size={16} aria-hidden />}
+              />
+            </div>
           </div>
           <div className="form-field gap-1.5">
             <Label htmlFor="marketplace-edit-name">Name</Label>
@@ -333,13 +415,15 @@ export function MarketplaceEditPanel({
           </div>
           <div className="form-field gap-1.5">
             <Label htmlFor="marketplace-tracked-branches">Tracked branches</Label>
-            <Input
+            <MarketplaceTrackedBranchesField
               id="marketplace-tracked-branches"
-              data-testid="marketplace-tracked-branches"
-              value={trackedBranches}
-              onChange={(event) => setTrackedBranches(event.target.value)}
-              placeholder="Leave empty for the default branch"
+              selected={trackedBranches}
+              branches={branchOptions}
+              defaultBranch={defaultBranch}
               disabled={controlsDisabled}
+              loading={branchesLoading}
+              sourceReady={sourceReady}
+              onChange={setTrackedBranches}
             />
             <p className="muted">Empty tracks the default branch only. Extra branches are opt-in.</p>
           </div>

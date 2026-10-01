@@ -1,0 +1,5 @@
+kind: Changed
+body: Discover Add marketplace can pick a local git folder and multi-select tracked branches listed from git.
+time: 2026-10-01T13:20:00Z
+custom:
+  Issue: ""

@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
   connectCatalogDraftIsDirty,
+  extraTrackedBranches,
   marketplaceDraftIsDirty,
+  marketplaceSourceLooksResolvable,
   marketplaceSubmitCloseAction,
 } from "../../apps/desktop/src/lib/sources-panels.ts";
 
@@ -91,6 +93,25 @@ describe("marketplaceDraftIsDirty", () => {
         ...baseline,
       }),
     ).toBe(true);
+  });
+});
+
+describe("extraTrackedBranches", () => {
+  test("drops the default branch so empty still means default only", () => {
+    expect(extraTrackedBranches(["main", "develop"], "main")).toEqual(["develop"]);
+    expect(extraTrackedBranches(["main"], "main")).toEqual([]);
+    expect(extraTrackedBranches([], "main")).toEqual([]);
+  });
+});
+
+describe("marketplaceSourceLooksResolvable", () => {
+  test("accepts git URLs and local paths once they look complete", () => {
+    expect(marketplaceSourceLooksResolvable("")).toBe(false);
+    expect(marketplaceSourceLooksResolvable("https://github.com")).toBe(false);
+    expect(marketplaceSourceLooksResolvable("https://github.com/org/repo")).toBe(true);
+    expect(marketplaceSourceLooksResolvable("git@github.com:org/repo.git")).toBe(true);
+    expect(marketplaceSourceLooksResolvable("/tmp/market")).toBe(true);
+    expect(marketplaceSourceLooksResolvable("file:///tmp/market")).toBe(true);
   });
 });
 
