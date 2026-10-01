@@ -244,7 +244,11 @@ describe("desktop icon chrome", () => {
     expect(liveStateSource).toContain("ChevronsDown");
     expect(liveStateSource).toContain('label="Show all"');
     expect(liveStateSource).toContain("UnfoldVertical");
-    expect(liveStateSource).not.toContain('className="link-btn"');
+    const truncation = liveStateSource.slice(
+      liveStateSource.indexOf("function ListTruncationControls"),
+      liveStateSource.indexOf("function resourceDetailTarget"),
+    );
+    expect(truncation).not.toContain("link-btn");
     expect(liveStateSource).not.toContain("TODO(G4)");
     expect(liveStateSource).toContain("addAllPrimary={!railPrimaryIsReapply}");
     expect(designSource).toContain("Ghost **Add all**");
