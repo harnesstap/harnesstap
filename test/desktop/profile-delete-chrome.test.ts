@@ -89,6 +89,15 @@ describe("profile delete chrome", () => {
     expect(deleteSource).not.toContain("profile-delete-footer");
     expect(deleteSource).toContain("ConfirmDialog");
     expect(deleteSource).toContain("Also delete the plugin from the library");
+    expect(deleteSource).toContain("confirm-dialog-option");
+    expect(deleteSource).not.toContain("text-muted-foreground");
+    expect(stylesSource).toContain(".confirm-dialog-extra");
+    expect(stylesSource).toContain(".confirm-dialog-option");
+    expect(cssBlock(stylesSource, ".confirm-dialog-extra")).toContain("margin-top: 1rem");
+    expect(readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/components/ConfirmDialog.tsx"),
+      "utf8",
+    )).toContain("confirm-dialog-extra");
   });
 
   test("places the icon control on the trailing live-toolbar, not beside rail create", () => {
@@ -114,6 +123,7 @@ describe("profile delete chrome", () => {
     expect(designSource).toContain("edit-profile header");
     expect(designSource).toContain("edit-profile header next to Done");
     expect(designSource).toContain("delete-plugin checkbox");
+    expect(designSource).toContain("distinct option row below the description");
     expect(designSource).toContain("icon-only trash control");
     expect(designSource).toContain("trailing live-toolbar control");
   });

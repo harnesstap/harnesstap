@@ -137,14 +137,15 @@ export function ProfileDeleteControls({
             {error}
           </div>
         ) : null}
-        <div className="flex items-center gap-2">
+        <div className="confirm-dialog-option">
           <Checkbox
             id={checkboxId}
+            className="size-4"
             checked={deletePlugin}
             disabled={busy}
             onCheckedChange={(value) => setDeletePlugin(value === true)}
           />
-          <Label htmlFor={checkboxId} className="font-normal text-muted-foreground">
+          <Label htmlFor={checkboxId} className="font-medium leading-snug">
             Also delete the plugin from the library
           </Label>
         </div>
