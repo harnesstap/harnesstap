@@ -161,10 +161,11 @@ export function MarketplaceTrackedBranchesField({
             if (event.nativeEvent.isComposing) {
               return;
             }
-            if (isListboxNavKey(event.key)) {
+            const navKey = event.key;
+            if (isListboxNavKey(navKey)) {
               event.preventDefault();
               setHighlightedIndex((current) =>
-                nextListboxIndex(current, event.key, visible.length),
+                nextListboxIndex(current, navKey, visible.length),
               );
               return;
             }
