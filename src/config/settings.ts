@@ -16,6 +16,8 @@ export interface PluginMarketplaceEntry {
   name: string;
   url: string;
   platforms: PluginMarketplacePlatform[];
+  /** Extra git branches to catalog. Empty/omitted tracks only the default branch. */
+  trackedBranches?: string[];
 }
 
 export interface HarnesstapSettings {
@@ -51,6 +53,21 @@ function isPluginMarketplacePlatform(
   );
 }
 
+export function parseTrackedBranches(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const branches: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    branches.push(trimmed);
+  }
+  return branches;
+}
+
 export function settingsPath(harnesstapDir: string): string {
   return existsSync(join(harnesstapDir, "config.jsonc"))
     ? join(harnesstapDir, "config.jsonc")
@@ -80,10 +97,12 @@ export function parseMarketplaces(value: unknown): PluginMarketplaceEntry[] {
     const parsedPlatforms = platforms.filter(isPluginMarketplacePlatform);
     if (parsedPlatforms.length === 0) continue;
 
+    const trackedBranches = parseTrackedBranches(record.trackedBranches);
     marketplaces.push({
       name: trimmedName,
       url: trimmedUrl,
       platforms: parsedPlatforms,
+      ...(trackedBranches.length > 0 ? { trackedBranches } : {}),
     });
   }
 

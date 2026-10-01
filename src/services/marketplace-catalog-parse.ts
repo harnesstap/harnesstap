@@ -1,4 +1,5 @@
 import { basename } from "node:path";
+import semver from "semver";
 
 export interface CatalogPlugin {
   name: string;
@@ -116,4 +117,41 @@ export function parseCursorMarketplaceManifest(raw: unknown): ParsedMarketplaceC
   const marketplaceName = readMarketplaceName(raw);
   const plugins = parsePlugins(raw, marketplaceName, resolveCursorPluginName);
   return { marketplaceName, plugins };
+}
+
+function catalogSemver(version: string | undefined): string | null {
+  if (!version?.trim()) return null;
+  const trimmed = version.trim();
+  const withoutV = trimmed.startsWith("v") ? trimmed.slice(1) : trimmed;
+  return semver.valid(withoutV);
+}
+
+function preferCatalogPlugin(current: CatalogPlugin, incoming: CatalogPlugin): CatalogPlugin {
+  const currentRank = catalogSemver(current.version);
+  const incomingRank = catalogSemver(incoming.version);
+  const preferIncoming =
+    incomingRank !== null &&
+    (currentRank === null || semver.rcompare(incomingRank, currentRank) < 0);
+
+  const chosen = preferIncoming ? incoming : current;
+  const other = preferIncoming ? current : incoming;
+  return {
+    ...chosen,
+    version: chosen.version ?? other.version,
+    description: chosen.description ?? other.description,
+  };
+}
+
+/** One catalog row per plugin name; later copies (other branches) merge into the first. */
+export function mergeCatalogPluginsByIdentity(plugins: CatalogPlugin[]): CatalogPlugin[] {
+  const byName = new Map<string, CatalogPlugin>();
+  for (const plugin of plugins) {
+    const existing = byName.get(plugin.name);
+    if (!existing) {
+      byName.set(plugin.name, plugin);
+      continue;
+    }
+    byName.set(plugin.name, preferCatalogPlugin(existing, plugin));
+  }
+  return [...byName.values()];
 }

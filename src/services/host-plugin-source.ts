@@ -16,6 +16,7 @@ import {
 } from "../utils/run-command-with-timeout.js";
 import { builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
 import { listMarketplaces } from "./marketplace-registry.js";
+import { listCatalogPluginBranchVersions } from "./marketplace-catalog.js";
 import { resolveMarketplacePluginDirectory } from "./plugin-origin-apply.js";
 import { upsertPackageCacheEntry } from "../models/package-cache-entry.js";
 import {
@@ -81,6 +82,15 @@ const SCP_GIT_URL =
 export function githubCloneUrl(repo: string): string {
   const trimmed = repo.trim();
   if (trimmed.startsWith("file:")) {
+    return trimmed;
+  }
+  if (
+    trimmed.startsWith("/")
+    || trimmed.startsWith("./")
+    || trimmed.startsWith("../")
+    || trimmed.startsWith("~/")
+    || /^[A-Za-z]:[\\/]/.test(trimmed)
+  ) {
     return trimmed;
   }
 
@@ -823,6 +833,11 @@ export function pullHostPluginSourceVersions(input: {
     const tags = listRemotePluginVersionTags(sourceUrl, run);
     for (const row of tags) {
       gitRefs[row.version] = row.gitRef;
+    }
+  }
+  for (const row of listCatalogPluginBranchVersions(harnesstapDir, marketplace, name)) {
+    if (row.version && !gitRefs[row.version]) {
+      gitRefs[row.version] = row.branch;
     }
   }
   if (live?.version && !gitRefs[live.version] && live.gitRef) {

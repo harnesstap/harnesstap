@@ -25,7 +25,7 @@ export function refreshGitSource(opts: GitRefreshOptions): {
   }
   mkdirSync(opts.targetDir, { recursive: true });
 
-  const cloneArgs = ["clone", "--depth", "1"];
+  const cloneArgs = ["-c", "protocol.file.allow=always", "clone", "--depth", "1"];
   if (opts.ref) cloneArgs.push("--branch", opts.ref);
   cloneArgs.push(opts.url, opts.targetDir);
 
@@ -37,7 +37,14 @@ export function refreshGitSource(opts: GitRefreshOptions): {
     };
   }
 
-  const rev = run("git", ["-C", opts.targetDir, "rev-parse", "HEAD"]);
+  const rev = run("git", [
+    "-c",
+    "protocol.file.allow=always",
+    "-C",
+    opts.targetDir,
+    "rev-parse",
+    "HEAD",
+  ]);
   return {
     ok: true,
     sha: rev.stdout.trim(),

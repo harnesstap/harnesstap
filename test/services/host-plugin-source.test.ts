@@ -33,6 +33,7 @@ describe("githubCloneUrl", () => {
       "https://github.com/outbrain/claude-plugins.git",
     );
     expect(githubCloneUrl("file:///tmp/marketplace")).toBe("file:///tmp/marketplace");
+    expect(githubCloneUrl("/tmp/marketplace")).toBe("/tmp/marketplace");
     expect(githubCloneUrl("ssh://git@github.com/outbrain/claude-plugins.git")).toBe(
       "ssh://git@github.com/outbrain/claude-plugins.git",
     );

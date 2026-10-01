@@ -24,6 +24,7 @@ export interface PatchMarketplaceInput {
   name?: string;
   url?: string;
   platforms?: PluginMarketplacePlatform[];
+  trackedBranches?: string[];
 }
 
 export interface PatchMarketplaceResult {

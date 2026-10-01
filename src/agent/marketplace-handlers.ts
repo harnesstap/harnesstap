@@ -1,4 +1,4 @@
-import type { PluginMarketplacePlatform } from "../config/settings.js";
+import { parseTrackedBranches, type PluginMarketplacePlatform } from "../config/settings.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import { builtinMarketplaceGitUrl } from "../services/builtin-marketplaces.js";
 import {
@@ -100,12 +100,38 @@ export async function handleMarketplacesAdd(
     return platforms;
   }
 
+  let trackedBranches: string[] | undefined;
+  if (body.trackedBranches !== undefined) {
+    if (!Array.isArray(body.trackedBranches)) {
+      return jsonResponse(
+        {
+          error: "invalid_tracked_branches",
+          message: "trackedBranches must be an array of branch names",
+        },
+        { status: 400 },
+      );
+    }
+    for (const item of body.trackedBranches) {
+      if (typeof item !== "string") {
+        return jsonResponse(
+          {
+            error: "invalid_tracked_branches",
+            message: "trackedBranches must be an array of branch names",
+          },
+          { status: 400 },
+        );
+      }
+    }
+    trackedBranches = parseTrackedBranches(body.trackedBranches);
+  }
+
   try {
     const harnesstapDir = getHarnesstapDir();
     const result = addMarketplace(harnesstapDir, {
       url: url.trim(),
       name: name.trim(),
       platforms,
+      ...(trackedBranches !== undefined ? { trackedBranches } : {}),
     });
     const refresh = refreshMarketplaceCatalog(harnesstapDir, {
       name: result.entry.name,

@@ -1,6 +1,29 @@
 import { describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
+
+function initLocalMarketplaceRepo(): string {
+  const repo = mkdtempSync(join(tmpdir(), "ht-cli-mkt-"));
+  mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
+  writeFileSync(
+    join(repo, ".claude-plugin", "marketplace.json"),
+    JSON.stringify({ name: "local-market", plugins: [{ name: "alpha", version: "1.0.0" }] }),
+  );
+  spawnSync("git", ["init"], { cwd: repo, stdio: "ignore" });
+  spawnSync("git", ["add", "."], { cwd: repo, stdio: "ignore" });
+  spawnSync(
+    "git",
+    ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "init"],
+    { cwd: repo, stdio: "ignore" },
+  );
+  spawnSync("git", ["branch", "-M", "main"], { cwd: repo, stdio: "ignore" });
+  spawnSync("git", ["branch", "develop"], { cwd: repo, stdio: "ignore" });
+  return repo;
+}
 
 describe("CLI marketplace", () => {
   it("adds and lists a marketplace", async () => {
@@ -27,6 +50,35 @@ describe("CLI marketplace", () => {
       });
       const payload = JSON.parse(list.stdout);
       expect(payload.marketplaces[0].name).toBe("demo");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("adds a local path marketplace with extra tracked branches", async () => {
+    const context = await createTestContext("cli-mkt-local-branches");
+    const repo = initLocalMarketplaceRepo();
+    try {
+      await runCli(["init"]);
+      const add = await runCli(
+        [
+          "marketplace",
+          "add",
+          `file://${repo}`,
+          "--name",
+          "local-market",
+          "--branch",
+          "develop",
+          "--format",
+          "json",
+        ],
+        { isTTY: false },
+      );
+      expect(add.exitCode ?? 0).toBe(0);
+      const payload = JSON.parse(add.stdout);
+      expect(payload.entry.url).toBe(repo);
+      expect(payload.entry.trackedBranches).toEqual(["develop"]);
+      expect(payload.refresh.ok).toBe(true);
     } finally {
       await context.cleanup();
     }

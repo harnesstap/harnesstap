@@ -75,6 +75,7 @@ async function handleMarketplaceAddCommand(
   opts: {
     name?: string;
     platform?: string[];
+    branch?: string[];
     format?: string;
   },
 ): Promise<void> {
@@ -82,7 +83,12 @@ async function handleMarketplaceAddCommand(
   const harnesstapDir = getHarnesstapDir();
   const name = opts.name?.trim() || deriveMarketplaceNameFromUrl(url);
   const platforms = parsePlatforms(opts.platform);
-  const result = addMarketplace(harnesstapDir, { url, name, platforms });
+  const result = addMarketplace(harnesstapDir, {
+    url,
+    name,
+    platforms,
+    trackedBranches: opts.branch,
+  });
 
   let refresh: RefreshMarketplaceCatalogResult | undefined;
   try {
@@ -261,7 +267,7 @@ export function registerMarketplaceCommands(root: Command): void {
 
   marketplaceCmd
     .command("add")
-    .argument("<url>", "Marketplace git URL to register")
+    .argument("<url>", "Marketplace git URL, file:// URL, or local git path")
     .option("--name <id>", "Marketplace registry name")
     .option(
       "--platform <id>",
@@ -269,9 +275,15 @@ export function registerMarketplaceCommands(root: Command): void {
       collectRepeatedOption,
       [],
     )
+    .option(
+      "--branch <name>",
+      "Extra git branch to catalog (repeatable; default: the repo default branch only)",
+      collectRepeatedOption,
+      [],
+    )
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--no-interactive", "Disable interactive prompts")
-    .description("Register a plugin marketplace URL")
+    .description("Register a plugin marketplace git URL or local path")
     .action(handleMarketplaceAddCommand);
 
   marketplaceCmd

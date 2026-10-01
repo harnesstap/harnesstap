@@ -20,6 +20,11 @@ describe("normalizeMarketplaceUrl", () => {
       "https://github.com/example/demo",
     );
   });
+
+  it("canonicalizes file:// and local paths to the same path", () => {
+    expect(normalizeMarketplaceUrl("file:///tmp/demo-market.git")).toBe("/tmp/demo-market");
+    expect(normalizeMarketplaceUrl("/tmp/demo-market.git")).toBe("/tmp/demo-market");
+  });
 });
 
 describe("addMarketplace + listMarketplaces", () => {
@@ -165,5 +170,33 @@ describe("updateMarketplace", () => {
     expect(() =>
       updateMarketplace(dir, "a", { url: "https://github.com/example/b.git" }),
     ).toThrow(/url conflict/i);
+  });
+
+  it("stores extra tracked branches and treats file:// as the same local git", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-marketplace-"));
+    const result = addMarketplace(dir, {
+      name: "local",
+      url: "file:///tmp/team-market.git",
+      platforms: ["claude-code"],
+      trackedBranches: ["develop", "develop", " release "],
+    });
+    expect(result.status).toBe("added");
+    expect(result.entry).toEqual({
+      name: "local",
+      url: "/tmp/team-market",
+      platforms: ["claude-code"],
+      trackedBranches: ["develop", "release"],
+    });
+    const again = addMarketplace(dir, {
+      name: "other",
+      url: "/tmp/team-market",
+      platforms: ["cursor"],
+    });
+    expect(again.status).toBe("already_configured");
+    const updated = updateMarketplace(dir, "local", { trackedBranches: [] });
+    expect(updated.status).toBe("updated");
+    if (updated.status !== "updated") return;
+    expect(updated.trackedBranchesChanged).toBe(true);
+    expect(updated.entry.trackedBranches).toBeUndefined();
   });
 });
