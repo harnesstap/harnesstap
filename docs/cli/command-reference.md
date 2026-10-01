@@ -53,7 +53,7 @@ Key options:
 - `--interactive` — prompt for harness selection instead of relying on explicit flags
 - `--format <mode>` — `human` or `json`
 
-`init` seeds a local `global default` profile plugin (tagged `profile`) from library resources imported from home, writes `active-profile.json` unless `--no-default-profile` is passed, and prints the tracked directory list (home as `~`). Global apply does **not** run automatically — run `ht profile use "global default"` to materialize home harness files.
+`init` seeds a local `global default` profile plugin (tagged `profile`) from library resources imported from home **only when no profile plugins exist yet**. Re-running init or starting Desktop does not recreate `global default` after a rename or when other profiles are present. It writes `active-profile.json` when that profile is created or the pointer is unset (unless `--no-default-profile`), and prints the tracked directory list (home as `~`). Global apply does **not** run automatically — run `ht profile use "global default"` to materialize home harness files.
 
 ### init completion
 

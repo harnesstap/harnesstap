@@ -106,7 +106,7 @@ Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, en
 
 Anonymous CLI/Desktop analytics are off until you opt in. Desktop asks on first start. Disable with `HARNESSTAP_TELEMETRY=0` or `"telemetry": { "enabled": false }` in `config.jsonc`. See [Telemetry](../telemetry.md).
 
-`init` seeds a `global default` profile plugin and writes `active-profile.json`, but does **not** run global apply automatically. Run `ht profile use "global default"` to materialize home harness files. See [Profiles](./concepts/profiles.md).
+`init` seeds a `global default` profile plugin on first start (when no profiles exist yet) and writes `active-profile.json`, but does **not** run global apply automatically. Run `ht profile use "global default"` to materialize home harness files. See [Profiles](./concepts/profiles.md).
 
 ## Next steps
 
