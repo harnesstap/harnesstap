@@ -1,7 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resourceRowVirtualStyle } from "../../apps/desktop/src/lib/resource-row-virtual.ts";
+import {
+  listScrollMargin,
+  resourceRowVirtualStyle,
+} from "../../apps/desktop/src/lib/resource-row-virtual.ts";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const root = join(import.meta.dir, "../../apps/desktop/src");
@@ -28,6 +31,20 @@ function cssBlock(source: string, selector: string): string {
 }
 
 describe("resource row layout", () => {
+  it("treats inventory scrollMargin as a layout offset, not a scroll listener", () => {
+    const list = { getBoundingClientRect: () => ({ top: 120 }) };
+    const scroll = { getBoundingClientRect: () => ({ top: 40 }), scrollTop: 80 };
+    expect(listScrollMargin(list, scroll)).toBe(160);
+    expect(inventorySectionSource).toContain("listScrollMargin");
+    expect(inventorySectionSource).toContain("ResizeObserver");
+    expect(inventorySectionSource).toContain("inventory-section-collapse");
+    expect(inventorySectionSource).not.toContain('addEventListener("scroll"');
+    expect(stylesSource).toContain(".inventory-section.contents-block");
+    expect(stylesSource).toContain(
+      ".inventory-section-collapse[data-state=\"open\"] > .m-collapse-inner",
+    );
+  });
+
   it("does not lock virtual wrappers to the estimated height", () => {
     const style = resourceRowVirtualStyle(80, 12);
     expect(style.height).toBeUndefined();
