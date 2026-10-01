@@ -74,6 +74,9 @@
 }
 
 .profile-item-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   flex: 1 1 auto;
   min-width: 0;
   text-align: left;
@@ -141,10 +144,8 @@
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
-.profile-item .badge {
-  font-size: var(--text-micro);
-  color: var(--green);
-  margin-left: 0.35rem;
+.profile-item-main .profile-header-status {
+  cursor: inherit;
 }
 
 .rail-controls {

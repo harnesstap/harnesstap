@@ -20,9 +20,11 @@ import type { ProfileCreateSource } from "../../lib/types";
 import type { ScopeController } from "../../state/scope-controller";
 import { noResultsTitle } from "../../lib/empty-copy";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
+import { profileHeaderStatus } from "../../lib/reapply";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
+import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
 import { PublishProfileDrawer } from "../parity/PublishProfileDrawer";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import { toast } from "../../state/toast-store";
@@ -62,6 +64,8 @@ export function ProfilesRail({
     selectedProfile,
     selectedProfileSummary,
     activeProfile,
+    applied,
+    view,
     editingProfile,
     canReorderProfiles,
     persistRailOrder,
@@ -77,6 +81,15 @@ export function ProfilesRail({
   const topStashEntry = stashEntries[0];
   const profilesRefreshing = useStatusStore((state) => state.profilesRefreshing);
   const hasStatus = useStatusStore((state) => state.status !== null);
+  const status = useStatusStore((state) => state.status);
+  const activeRailStatus = profileHeaderStatus({
+    selectedProfile: activeProfile,
+    activeProfile,
+    applied,
+    view,
+    globalDriftStatus: status?.drift_summary.global.status ?? "clean",
+    projectDriftStatus: status?.drift_summary.project?.status,
+  });
   const showRailSkeleton =
     profiles.length === 0 && !profilesError && (profilesRefreshing || !hasStatus);
 
@@ -448,8 +461,17 @@ export function ProfilesRail({
                 }}
                 disabled={switching}
               >
+                {isActive &&
+                activeRailStatus.kind !== "none" &&
+                activeRailStatus.tooltip ? (
+                  <ProfileHeaderStatus
+                    as="span"
+                    kind={activeRailStatus.kind}
+                    tooltip={activeRailStatus.tooltip}
+                    testId="profile-rail-status"
+                  />
+                ) : null}
                 {profile.name}
-                {isActive ? <span className="badge">active</span> : null}
               </button>
               <IconActionButton
                 className="profile-item-action profile-item-edit"

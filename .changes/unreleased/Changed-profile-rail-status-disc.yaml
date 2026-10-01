@@ -1,0 +1,5 @@
+kind: Changed
+body: Mark the active profile in the Profiles rail with the same green status disc (and yellow not-fully-applied overlay) as the live-state header, and drop the redundant active word.
+time: 2026-10-01T11:53:00Z
+custom:
+  Issue: ""

@@ -65,10 +65,13 @@ describe("profile header status chrome", () => {
     });
 
     expect(componentSource).toContain("ChromeTooltip");
-    expect(componentSource).toContain("aria-label={tooltip}");
-    expect(componentSource).toContain("data-kind={kind}");
+    expect(componentSource).toContain('"aria-label": tooltip');
+    expect(componentSource).toContain('"data-kind": kind');
     expect(componentSource).toContain("profile-header-status-dot");
     expect(componentSource).toContain("profile-header-status-warn");
+    expect(componentSource).toContain('as = "button"');
+    expect(componentSource).toContain('case "span":');
+    expect(componentSource).toContain('case "button":');
     for (const kind of kinds) {
       expect(componentSource).toContain(`case "${kind}":`);
     }
@@ -123,5 +126,20 @@ describe("profile header status chrome", () => {
     expect(designSource).toContain("Active. Not fully applied.");
     expect(designSource).toContain("No status subtitle under the name");
     expect(designSource).toContain("muted profile **description**");
+  });
+
+  test("marks the active Profiles rail row with the same disc and drops the active word", () => {
+    expect(appSource).toContain("<ProfileHeaderStatus");
+    expect(appSource).toContain('as="span"');
+    expect(appSource).toContain('testId="profile-rail-status"');
+    expect(appSource).toContain("activeRailStatus");
+    expect(appSource).not.toContain('<span className="badge">active</span>');
+    expect(stylesSource).toContain(".profile-item-main .profile-header-status");
+    expect(designSource).toContain(
+      "The Profiles rail marks the active row with the same status disc",
+    );
+    expect(designSource).toContain("does not keep a separate `active` word badge");
+    expect(designSource).toContain("Inactive rail rows have no disc");
+    expect(designSource).not.toContain("the rail keeps its `active` badge");
   });
 });
