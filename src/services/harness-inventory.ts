@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { isAbsolute, relative, sep } from "node:path";
 import { listResources } from "../models/resource.js";
 import { getAllPlatforms, getPlatform } from "../platforms/registry.js";
+import { cursorLoadsForeignHarnessTrees } from "../plugins/cursor-enablement.js";
 import type {
   PlatformDefinition,
   PlatformPaths,
@@ -226,6 +227,7 @@ function relatedLocationSurfaces(
 export function inventoryLocationsForPlatform(
   platform: PlatformDefinition,
   owners = nativePathOwners(),
+  options: { includeForeignHarnessTrees?: boolean } = {},
 ): InventoryPlatformLocation[] {
   const locations: InventoryPlatformLocation[] = locationsForPlatform(
     platform.globalPaths,
@@ -263,21 +265,25 @@ export function inventoryLocationsForPlatform(
     }
   }
 
-  visitConfiguredPaths(platform.projectPaths, (key, value) => {
-    if (!value.startsWith(".agents/")) return;
-    const hub = `~/${value}`;
-    const classified = classifyRelatedPath(hub, platform.id, owners);
-    push(hub, [key], classified.relation, classified.relatedFrom);
-  });
+  const includeForeign = options.includeForeignHarnessTrees !== false;
 
-  for (const related of platform.relatedLocations ?? []) {
-    const classified = classifyRelatedPath(related.path, platform.id, owners);
-    push(
-      related.path,
-      relatedLocationSurfaces(related),
-      classified.relation,
-      classified.relatedFrom,
-    );
+  if (includeForeign) {
+    visitConfiguredPaths(platform.projectPaths, (key, value) => {
+      if (!value.startsWith(".agents/")) return;
+      const hub = `~/${value}`;
+      const classified = classifyRelatedPath(hub, platform.id, owners);
+      push(hub, [key], classified.relation, classified.relatedFrom);
+    });
+
+    for (const related of platform.relatedLocations ?? []) {
+      const classified = classifyRelatedPath(related.path, platform.id, owners);
+      push(
+        related.path,
+        relatedLocationSurfaces(related),
+        classified.relation,
+        classified.relatedFrom,
+      );
+    }
   }
 
   return locations;
@@ -522,7 +528,10 @@ export function getHarnessInventory(
     }
 
     const grouped = platform
-      ? inventoryLocationsForPlatform(platform, owners)
+      ? inventoryLocationsForPlatform(platform, owners, {
+          includeForeignHarnessTrees:
+            platform.id !== "cursor" || cursorLoadsForeignHarnessTrees(homeRoot),
+        })
       : [];
     const resourcesByPath = new Map<string, HarnessLocationResource[]>();
     for (const resource of homeRows) {

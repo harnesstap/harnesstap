@@ -2,6 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 import { listResourcesMatchingOriginRef } from "../models/resource.js";
+import { getInstalledCursorPluginInstallPath } from "../plugins/cursor-installed.js";
 import type { PluginDependencyMetadata, Resource } from "../types.js";
 import {
   containedFileStem,
@@ -10,6 +11,7 @@ import {
   packageDirectoryDisplayPath,
 } from "../ui/resource-display.js";
 import { listContainedFilesPage } from "../utils/path-containment.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import { listVisibleMarketplaces } from "./host-marketplaces.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import {
@@ -61,13 +63,18 @@ export function pluginResourceShowExtras(
     return undefined;
   }
   const originRef = resource.origin_ref || resource.name;
-  const installPath = options?.homeRoot
-    ? resolveInstallRoot(
-        originRef,
-        options.homeRoot,
-        join(options.homeRoot, ".claude", "plugins"),
-      )
-    : resolveInstallRoot(originRef);
+  const homeRoot = options?.homeRoot ?? resolveHomeRoot();
+  const cursorInstall = getInstalledCursorPluginInstallPath(homeRoot, originRef);
+  const preferCursorInstall = (resource.source ?? "").includes(".cursor/plugins");
+  const installPath =
+    preferCursorInstall && cursorInstall
+      ? cursorInstall
+      : resolveInstallRoot(
+          originRef,
+          homeRoot,
+          join(homeRoot, ".claude", "plugins"),
+          preferCursorInstall ? { preferCanonicalPackage: false } : {},
+        );
   const marketplaceName =
     (resource.metadata as PluginDependencyMetadata).marketplace_name ||
     parseDependencyRef(originRef).namespace ||

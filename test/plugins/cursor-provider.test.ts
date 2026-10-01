@@ -23,33 +23,19 @@ describe("CursorPluginProvider", () => {
 
     const byRef = Object.fromEntries(installs.map((row) => [row.ref, row]));
 
+    expect(Object.keys(byRef).sort()).toEqual([
+      "active-plugin@cursor-public",
+      "homemade@local",
+    ]);
     expect(byRef["active-plugin@cursor-public"]).toMatchObject({
       enabled: true,
       scope: "user",
       version: "2.0.0",
     });
-    expect(byRef["dormant@cursor-public"]).toMatchObject({
-      enabled: false,
-      scope: "user",
-    });
-    expect(byRef["demo@cursor-public"]).toMatchObject({
-      enabled: false,
-      scope: "user",
-    });
-    expect(byRef["agent-demo@cursor-public"]).toMatchObject({
-      enabled: false,
-      scope: "user",
-      version: "1.2.3",
-    });
     expect(byRef["homemade@local"]).toMatchObject({
       enabled: true,
       scope: "local",
       version: "0.0.1",
-    });
-    expect(byRef["only-market@example"]).toMatchObject({
-      enabled: false,
-      scope: "user",
-      version: "9.9.9",
     });
   });
 
@@ -64,6 +50,10 @@ describe("CursorPluginProvider", () => {
       homeRoot: fixtureHome,
       harnesstapDir: "/tmp/ht",
     });
+    expect(installs.map((row) => row.ref).sort()).toEqual([
+      "dormant@cursor-public",
+      "homemade@local",
+    ]);
     expect(installs.find((row) => row.ref === "dormant@cursor-public")?.enabled).toBe(
       true,
     );
@@ -72,6 +62,9 @@ describe("CursorPluginProvider", () => {
   it("skips git refresh when cache is fresh", async () => {
     const provider = new CursorPluginProvider({
       runCommand: () => ({ stdout: "", stderr: "", exitCode: 0 }),
+      collectEnablementSignals: () => ({
+        pluginNames: new Set(["demo"]),
+      }),
     });
     const results = await provider.check(
       {

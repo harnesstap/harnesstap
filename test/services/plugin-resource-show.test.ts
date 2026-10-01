@@ -139,8 +139,8 @@ describe("pluginResourceShowExtras", () => {
       });
 
       const extras = pluginResourceShowExtras(pin, { homeRoot: ctx.homeDir });
-      expect(extras?.marketplace_url).toBeNull();
       expect(extras?.install_path).toBe(installRoot);
+      expect(extras?.marketplace_url).toBeNull();
       expect(extras?.contained_resources.map((row) => row.relative_path)).toEqual([
         ".cursor-plugin/plugin.json",
         "agents/reviewer.md",
@@ -157,6 +157,78 @@ describe("pluginResourceShowExtras", () => {
         path: skillPath,
         relative_path: "skills/team/SKILL.md",
       });
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+
+  it("opens Cursor plugin pins from ~/.cursor/plugins, not the HT package cache", async () => {
+    const ctx = await createInitializedTestContext("plugin-show-cursor-native");
+    try {
+      const cursorInstall = join(
+        ctx.homeDir,
+        ".cursor",
+        "plugins",
+        "cache",
+        "cursor-public",
+        "confluence-pages",
+        "deadbeef01ab",
+      );
+      mkdirSync(cursorInstall, { recursive: true });
+      cpSync(FIXTURE, cursorInstall, { recursive: true });
+      writeFileSync(
+        join(cursorInstall, ".cursor-plugin", "plugin.json"),
+        JSON.stringify({ name: "confluence-pages", version: "1.0.0" }),
+      );
+      mkdirSync(
+        join(
+          ctx.homeDir,
+          ".cursor",
+          "projects",
+          "mcps",
+          "plugin-confluence-pages-confluence-pages",
+        ),
+        { recursive: true },
+      );
+      const htCache = join(
+        ctx.connection.getHarnesstapDir(),
+        "cache",
+        "packages",
+        "host-plugin",
+        "teads-plugins",
+        "confluence-pages",
+        "97eded443c64",
+      );
+      mkdirSync(htCache, { recursive: true });
+      cpSync(FIXTURE, htCache, { recursive: true });
+      const claudeInstall = join(
+        ctx.homeDir,
+        ".claude",
+        "plugins",
+        "cache",
+        "teads-plugins",
+        "confluence-pages",
+        "97eded443c64",
+      );
+      mkdirSync(claudeInstall, { recursive: true });
+      cpSync(FIXTURE, claudeInstall, { recursive: true });
+
+      const pin = createResource({
+        type: "plugin",
+        name: "confluence-pages",
+        namespace: "cursor-public",
+        description: "Plugin pin: confluence-pages@cursor-public",
+        content: "{}",
+        metadata: { marketplace_name: "cursor-public", source_kind: "marketplace" },
+        source: "~/.cursor/plugins/",
+        origin_kind: "marketplace_link",
+        origin_ref: "confluence-pages@cursor-public",
+      });
+
+      const extras = pluginResourceShowExtras(pin, { homeRoot: ctx.homeDir });
+      expect(extras?.install_path).toBe(cursorInstall);
+      expect(extras?.install_path).not.toContain(".harnesstap");
+      expect(extras?.install_path).not.toContain(".claude/plugins");
     } finally {
       await ctx.cleanup();
     }

@@ -13,9 +13,10 @@ describe("listCursorPluginPinCreateInputs", () => {
     const pins = listCursorPluginPinCreateInputs(fixtureHome);
     const refs = pins.map((pin) => pin.origin_ref);
 
-    expect(refs).toContain("active-plugin@cursor-public");
-    expect(refs).toContain("homemade@local");
-    expect(refs).toContain("agent-demo@cursor-public");
+    expect(refs.sort()).toEqual([
+      "active-plugin@cursor-public",
+      "homemade@local",
+    ]);
 
     const active = pins.find(
       (pin) => pin.origin_ref === "active-plugin@cursor-public",
@@ -185,7 +186,7 @@ describe("host plugin serialize", () => {
     }
   });
 
-  it("inventories a Claude-manifest-only tree under Cursor cache", async () => {
+  it("does not inventory a Cursor cache copy without Cursor install records", async () => {
     const home = createTempDir("cursor-claude-manifest-");
     try {
       writeTextFile(
@@ -196,8 +197,17 @@ describe("host plugin serialize", () => {
         JSON.stringify({ name: "ported", version: "1.0.0" }),
       );
 
-      const pins = listCursorPluginPinCreateInputs(home);
-      expect(pins.map((pin) => pin.origin_ref)).toEqual(["ported@demo-market"]);
+      expect(listCursorPluginPinCreateInputs(home).map((pin) => pin.origin_ref)).toEqual(
+        [],
+      );
+
+      writeTextFile(
+        join(home, ".cursor/plugins/installed.json"),
+        JSON.stringify({ plugins: ["ported@demo-market"] }),
+      );
+      expect(listCursorPluginPinCreateInputs(home).map((pin) => pin.origin_ref)).toEqual([
+        "ported@demo-market",
+      ]);
     } finally {
       cleanupDir(home);
     }

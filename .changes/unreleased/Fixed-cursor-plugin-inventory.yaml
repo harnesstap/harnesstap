@@ -1,0 +1,5 @@
+kind: Fixed
+body: List only plugins Cursor itself has installed on the Cursor harness, and skip .claude/.agents when third-party import is off.
+time: 2026-10-01T23:50:00Z
+custom:
+  Issue: ""

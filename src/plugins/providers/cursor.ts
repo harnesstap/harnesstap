@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import {
   collectCursorEnablementSignals,
   type CollectCursorEnablementSignals,
@@ -128,6 +128,29 @@ function isEnabledForCachePlugin(
   return signals.pluginNames.has(name);
 }
 
+function isUnderCursorPluginsRoot(
+  homeRoot: string,
+  installPath: string,
+): boolean {
+  const pluginsRoot = join(homeRoot, ".cursor", "plugins");
+  const rel = relative(pluginsRoot, installPath);
+  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+function isInventoriedCursorInstall(
+  install: PluginInstall,
+  signals: CursorEnablementSignals,
+  homeRoot: string,
+): boolean {
+  if (!install.installPath || !isUnderCursorPluginsRoot(homeRoot, install.installPath)) {
+    return false;
+  }
+  if (install.scope === "local") {
+    return true;
+  }
+  return isEnabledForCachePlugin(install.name, signals);
+}
+
 function scanCacheInstalls(
   homeRoot: string,
   signals: CursorEnablementSignals,
@@ -238,6 +261,22 @@ function scanMarketplaceInstalls(
   return installs;
 }
 
+/** Names present under Cursor's plugin root, including cached-but-disabled trees. */
+export function listCursorPluginFootprintNames(homeRoot: string): Set<string> {
+  const emptySignals: CursorEnablementSignals = { pluginNames: new Set() };
+  const names = new Set<string>();
+  for (const install of [
+    ...scanCacheInstalls(homeRoot, emptySignals),
+    ...scanLocalInstalls(homeRoot),
+    ...scanMarketplaceInstalls(homeRoot, new Set(), emptySignals),
+  ]) {
+    if (install.installPath && isUnderCursorPluginsRoot(homeRoot, install.installPath)) {
+      names.add(install.name);
+    }
+  }
+  return names;
+}
+
 /** Synchronous Cursor inventory used by status panels and the provider. */
 export function listCursorPluginInstalls(
   homeRoot: string,
@@ -248,7 +287,9 @@ export function listCursorPluginInstalls(
   const local = scanLocalInstalls(homeRoot);
   const refs = new Set(cache.map((row) => row.ref));
   const marketplaces = scanMarketplaceInstalls(homeRoot, refs, signals);
-  return [...cache, ...local, ...marketplaces];
+  return [...cache, ...local, ...marketplaces].filter((install) =>
+    isInventoriedCursorInstall(install, signals, homeRoot),
+  );
 }
 
 export class CursorPluginProvider implements PluginProvider {
