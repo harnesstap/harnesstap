@@ -27,9 +27,11 @@ describe("marketplaceDraftIsDirty", () => {
         url: "",
         name: "",
         platforms: ["claude-code"],
+        trackedBranches: "",
         baselineUrl: "",
         baselineName: "",
         baselinePlatforms: ["claude-code"],
+        baselineTrackedBranches: "",
       }),
     ).toBe(false);
     expect(
@@ -37,9 +39,11 @@ describe("marketplaceDraftIsDirty", () => {
         url: "https://github.com/org/demo",
         name: "demo",
         platforms: ["claude-code"],
+        trackedBranches: "",
         baselineUrl: "",
         baselineName: "",
         baselinePlatforms: ["claude-code"],
+        baselineTrackedBranches: "",
       }),
     ).toBe(true);
   });
@@ -48,13 +52,15 @@ describe("marketplaceDraftIsDirty", () => {
     const baseline = {
       baselineUrl: "https://github.com/org/demo",
       baselineName: "demo",
-      baselinePlatforms: ["claude-code"],
+      baselinePlatforms: ["claude-code"] as const,
+      baselineTrackedBranches: "",
     };
     expect(
       marketplaceDraftIsDirty({
         url: "https://github.com/org/demo",
         name: "demo",
         platforms: ["claude-code"],
+        trackedBranches: "",
         ...baseline,
       }),
     ).toBe(false);
@@ -63,6 +69,7 @@ describe("marketplaceDraftIsDirty", () => {
         url: "https://github.com/org/other",
         name: "demo",
         platforms: ["claude-code"],
+        trackedBranches: "",
         ...baseline,
       }),
     ).toBe(true);
@@ -71,6 +78,16 @@ describe("marketplaceDraftIsDirty", () => {
         url: "https://github.com/org/demo",
         name: "demo",
         platforms: ["claude-code", "cursor"],
+        trackedBranches: "",
+        ...baseline,
+      }),
+    ).toBe(true);
+    expect(
+      marketplaceDraftIsDirty({
+        url: "https://github.com/org/demo",
+        name: "demo",
+        platforms: ["claude-code"],
+        trackedBranches: "develop",
         ...baseline,
       }),
     ).toBe(true);

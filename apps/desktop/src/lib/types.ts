@@ -668,6 +668,7 @@ export interface PluginMarketplaceEntry {
   url: string;
   platforms: PluginMarketplacePlatform[];
   managed?: boolean;
+  trackedBranches?: string[];
 }
 
 export interface MarketplaceListResult {
@@ -678,6 +679,7 @@ export interface MarketplaceAddRequest {
   url: string;
   name: string;
   platforms?: PluginMarketplacePlatform[];
+  trackedBranches?: string[];
 }
 
 export interface MarketplaceAddResult {

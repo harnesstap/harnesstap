@@ -1,4 +1,4 @@
-import type { PluginMarketplacePlatform } from "../../config/settings.js";
+import { parseTrackedBranches, type PluginMarketplacePlatform } from "../../config/settings.js";
 import { getHarnesstapDir } from "../../db/connection.js";
 import {
   refreshMarketplaceCatalog,
@@ -51,6 +51,35 @@ function parseOptionalPlatforms(
     platforms.push(item as PluginMarketplacePlatform);
   }
   return platforms;
+}
+
+function parseOptionalTrackedBranches(
+  value: unknown,
+): string[] | Response | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return jsonResponse(
+      {
+        error: "invalid_tracked_branches",
+        message: "trackedBranches must be an array of branch names",
+      },
+      { status: 400 },
+    );
+  }
+  for (const item of value) {
+    if (typeof item !== "string") {
+      return jsonResponse(
+        {
+          error: "invalid_tracked_branches",
+          message: "trackedBranches must be an array of branch names",
+        },
+        { status: 400 },
+      );
+    }
+  }
+  return parseTrackedBranches(value);
 }
 
 export async function tryHandle(
@@ -132,12 +161,18 @@ export async function tryHandle(
     return platforms;
   }
 
+  const trackedBranches = parseOptionalTrackedBranches(body.trackedBranches);
+  if (trackedBranches instanceof Response) {
+    return trackedBranches;
+  }
+
   try {
     const harnesstapDir = getHarnesstapDir();
     const result = updateMarketplace(harnesstapDir, currentName, {
       ...(body.name !== undefined ? { name: body.name } : {}),
       ...(body.url !== undefined ? { url: body.url } : {}),
       ...(platforms !== undefined ? { platforms } : {}),
+      ...(trackedBranches !== undefined ? { trackedBranches } : {}),
     });
     switch (result.status) {
       case "not_found":
@@ -153,7 +188,7 @@ export async function tryHandle(
             result.entry.name,
           );
         }
-        if (result.urlChanged || result.renamedFrom) {
+        if (result.urlChanged || result.renamedFrom || result.trackedBranchesChanged) {
           const refresh = refreshMarketplaceCatalog(harnesstapDir, {
             name: result.entry.name,
             force: true,

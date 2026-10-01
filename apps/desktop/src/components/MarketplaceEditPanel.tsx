@@ -7,6 +7,8 @@ import { patchMarketplace } from "../lib/api/sources";
 import {
   marketplaceDraftIsDirty,
   marketplaceSubmitCloseAction,
+  formatTrackedBranchesField,
+  parseTrackedBranchesField,
 } from "../lib/sources-panels";
 import type {
   PluginMarketplaceEntry,
@@ -83,11 +85,13 @@ export function MarketplaceEditPanel({
   const [platforms, setPlatforms] = useState<PluginMarketplacePlatform[]>([
     ...DEFAULT_PLATFORMS,
   ]);
+  const [trackedBranches, setTrackedBranches] = useState("");
   const [baselineUrl, setBaselineUrl] = useState("");
   const [baselineName, setBaselineName] = useState("");
   const [baselinePlatforms, setBaselinePlatforms] = useState<
     PluginMarketplacePlatform[]
   >([...DEFAULT_PLATFORMS]);
+  const [baselineTrackedBranches, setBaselineTrackedBranches] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -100,21 +104,26 @@ export function MarketplaceEditPanel({
     if (mode === "edit" && entry) {
       const nextPlatforms =
         entry.platforms.length > 0 ? [...entry.platforms] : [...DEFAULT_PLATFORMS];
+      const nextBranches = formatTrackedBranchesField(entry.trackedBranches ?? []);
       setUrl(entry.url);
       setName(entry.name);
       setNameTouched(true);
       setPlatforms(nextPlatforms);
+      setTrackedBranches(nextBranches);
       setBaselineUrl(entry.url);
       setBaselineName(entry.name);
       setBaselinePlatforms(nextPlatforms);
+      setBaselineTrackedBranches(nextBranches);
     } else {
       setUrl("");
       setName("");
       setNameTouched(false);
       setPlatforms([...DEFAULT_PLATFORMS]);
+      setTrackedBranches("");
       setBaselineUrl("");
       setBaselineName("");
       setBaselinePlatforms([...DEFAULT_PLATFORMS]);
+      setBaselineTrackedBranches("");
     }
     setBusy(false);
     setError(null);
@@ -134,9 +143,11 @@ export function MarketplaceEditPanel({
     url,
     name,
     platforms,
+    trackedBranches,
     baselineUrl,
     baselineName,
     baselinePlatforms,
+    baselineTrackedBranches,
   });
 
   const onUrlChange = (nextUrl: string) => {
@@ -146,10 +157,11 @@ export function MarketplaceEditPanel({
     }
   };
 
-  const markClean = (nextUrl: string, nextName: string) => {
+  const markClean = (nextUrl: string, nextName: string, nextBranches: string) => {
     setBaselineUrl(nextUrl);
     setBaselineName(nextName);
     setBaselinePlatforms([...platforms]);
+    setBaselineTrackedBranches(formatTrackedBranchesField(nextBranches));
   };
 
   const requestClose = () => {
@@ -171,10 +183,11 @@ export function MarketplaceEditPanel({
     successMessage: string,
     nextUrl: string,
     nextName: string,
+    nextBranches: string,
   ): boolean => {
     if (marketplaceSubmitCloseAction(refresh) === "stay-warning" && refresh) {
       setWarning(refresh.message);
-      markClean(nextUrl, nextName);
+      markClean(nextUrl, nextName, nextBranches);
       onListed?.();
       return true;
     }
@@ -192,12 +205,15 @@ export function MarketplaceEditPanel({
     setWarning(null);
     const nextUrl = url.trim();
     const nextName = resolvedName;
+    const nextBranches = parseTrackedBranchesField(trackedBranches);
+    const nextBranchesField = formatTrackedBranchesField(nextBranches);
     try {
       if (mode === "add") {
         const result = await addMarketplace(baseUrl, token, {
           url: nextUrl,
           name: nextName,
           platforms,
+          ...(nextBranches.length > 0 ? { trackedBranches: nextBranches } : {}),
         });
         applyRefreshOutcome(
           result.refresh,
@@ -206,6 +222,7 @@ export function MarketplaceEditPanel({
             : "Marketplace added.",
           nextUrl,
           nextName,
+          nextBranchesField,
         );
         return;
       }
@@ -216,12 +233,14 @@ export function MarketplaceEditPanel({
         name: nextName,
         url: nextUrl,
         platforms,
+        trackedBranches: nextBranches,
       });
       applyRefreshOutcome(
         result.refresh,
         "Marketplace updated.",
         nextUrl,
         nextName,
+        nextBranchesField,
       );
     } catch (saveError: unknown) {
       setError(
@@ -287,14 +306,14 @@ export function MarketplaceEditPanel({
             </div>
           ) : null}
           <div className="form-field gap-1.5">
-            <Label htmlFor="marketplace-edit-url">URL</Label>
+            <Label htmlFor="marketplace-edit-url">URL or path</Label>
             <Input
               id="marketplace-edit-url"
-              type="url"
+              data-testid="marketplace-url"
               autoFocus={mode === "add"}
               value={url}
               onChange={(event) => onUrlChange(event.target.value)}
-              placeholder="https://github.com/org/marketplace"
+              placeholder="https://github.com/org/marketplace or /path/to/repo"
               disabled={controlsDisabled}
             />
           </div>
@@ -302,6 +321,7 @@ export function MarketplaceEditPanel({
             <Label htmlFor="marketplace-edit-name">Name</Label>
             <Input
               id="marketplace-edit-name"
+              data-testid="marketplace-name"
               value={name}
               onChange={(event) => {
                 setNameTouched(true);
@@ -310,6 +330,18 @@ export function MarketplaceEditPanel({
               placeholder="my-marketplace"
               disabled={controlsDisabled}
             />
+          </div>
+          <div className="form-field gap-1.5">
+            <Label htmlFor="marketplace-tracked-branches">Tracked branches</Label>
+            <Input
+              id="marketplace-tracked-branches"
+              data-testid="marketplace-tracked-branches"
+              value={trackedBranches}
+              onChange={(event) => setTrackedBranches(event.target.value)}
+              placeholder="Leave empty for the default branch"
+              disabled={controlsDisabled}
+            />
+            <p className="muted">Empty tracks the default branch only. Extra branches are opt-in.</p>
           </div>
           <fieldset className="form-field gap-1.5">
             <legend>Platforms</legend>

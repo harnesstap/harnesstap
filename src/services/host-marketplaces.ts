@@ -167,5 +167,8 @@ export function toMarketplaceListEntry(
     url: entry.url,
     platforms: entry.platforms,
     managed: entry.managed,
+    ...(entry.trackedBranches && entry.trackedBranches.length > 0
+      ? { trackedBranches: entry.trackedBranches }
+      : {}),
   };
 }

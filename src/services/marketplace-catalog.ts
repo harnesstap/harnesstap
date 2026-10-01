@@ -1,19 +1,26 @@
 import {
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { PluginMarketplacePlatform } from "../config/settings.js";
-import { loadSettings } from "../config/settings.js";
+import {
+  loadSettings,
+  parseTrackedBranches,
+  type PluginMarketplacePlatform,
+} from "../config/settings.js";
 import { refreshGitSource } from "../plugins/refresh.js";
+import { runCommandWithTimeout } from "../utils/run-command-with-timeout.js";
 import {
   type CatalogPlugin,
   type ParsedMarketplaceCatalog,
+  mergeCatalogPluginsByIdentity,
   parseClaudeMarketplaceManifest,
   parseCursorMarketplaceManifest,
 } from "./marketplace-catalog-parse.js";
@@ -25,11 +32,18 @@ import {
 
 export type { CatalogPlugin } from "./marketplace-catalog-parse.js";
 
+export interface MarketplacePluginBranchVersion {
+  name: string;
+  version: string;
+  branch: string;
+}
+
 export interface StoredMarketplaceCatalog extends ParsedMarketplaceCatalog {
   marketplaceEntryName: string;
   manifestName?: string;
   refreshedAt: string;
   sha?: string;
+  pluginVersions?: MarketplacePluginBranchVersion[];
 }
 
 export interface RefreshMarketplaceCatalogOptions {
@@ -171,7 +185,14 @@ function catalogWithRegistryIdentity(
 function catalogRefreshEntry(
   harnesstapDir: string,
   name: string,
-): { name: string; url: string; platforms: PluginMarketplacePlatform[] } | undefined {
+):
+  | {
+      name: string;
+      url: string;
+      platforms: PluginMarketplacePlatform[];
+      trackedBranches?: string[];
+    }
+  | undefined {
   const registered = listMarketplaces(harnesstapDir).find((entry) => entry.name === name);
   if (registered) {
     return registered;
@@ -181,6 +202,61 @@ function catalogRefreshEntry(
     return undefined;
   }
   return builtinMarketplaceEntry();
+}
+
+function parseCatalogFromDir(
+  dir: string,
+  platforms: PluginMarketplacePlatform[],
+  registryName: string,
+):
+  | { ok: true; catalog: ReturnType<typeof catalogWithRegistryIdentity> }
+  | { ok: false; message: string } {
+  const manifest = resolveManifest(dir, platforms);
+  if (!manifest) {
+    return {
+      ok: false,
+      message:
+        "No marketplace manifest found (.claude-plugin/marketplace.json, .cursor-plugin/marketplace.json, or marketplace.json).",
+    };
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
+  } catch {
+    return { ok: false, message: "Failed to parse marketplace manifest JSON" };
+  }
+
+  return {
+    ok: true,
+    catalog: catalogWithRegistryIdentity(parseManifest(manifest.platform, raw), registryName),
+  };
+}
+
+function checkoutBranchName(dir: string): string {
+  const result = runCommandWithTimeout("git", [
+    "-c",
+    "protocol.file.allow=always",
+    "-C",
+    dir,
+    "rev-parse",
+    "--abbrev-ref",
+    "HEAD",
+  ]);
+  const name = result.stdout.trim();
+  return result.exitCode === 0 && name && name !== "HEAD" ? name : "HEAD";
+}
+
+function versionsFromPlugins(
+  plugins: CatalogPlugin[],
+  branch: string,
+): MarketplacePluginBranchVersion[] {
+  const rows: MarketplacePluginBranchVersion[] = [];
+  for (const plugin of plugins) {
+    if (!plugin.version) continue;
+    rows.push({ name: plugin.name, version: plugin.version, branch });
+  }
+  return rows;
 }
 
 export function refreshMarketplaceCatalog(
@@ -221,29 +297,56 @@ export function refreshMarketplaceCatalog(
     return { ok: false, message: refresh.message };
   }
 
-  const manifest = resolveManifest(cacheDir, entry.platforms);
-  if (!manifest) {
-    return {
-      ok: false,
-      message:
-        "No marketplace manifest found (.claude-plugin/marketplace.json, .cursor-plugin/marketplace.json, or marketplace.json).",
-    };
+  const defaultCatalog = parseCatalogFromDir(cacheDir, entry.platforms, entry.name);
+  if (!defaultCatalog.ok) {
+    return defaultCatalog;
   }
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
-  } catch {
-    return { ok: false, message: "Failed to parse marketplace manifest JSON" };
+  const defaultBranch = checkoutBranchName(cacheDir);
+  const extraBranches = parseTrackedBranches(entry.trackedBranches ?? []).filter(
+    (branch) => branch !== defaultBranch,
+  );
+  const pluginVersions = versionsFromPlugins(defaultCatalog.catalog.plugins, defaultBranch);
+  const pluginBatches: CatalogPlugin[][] = [defaultCatalog.catalog.plugins];
+
+  for (const branch of extraBranches) {
+    const branchDir = mkdtempSync(join(tmpdir(), "ht-mkt-branch-"));
+    try {
+      const branchRefresh = refreshGitSource({
+        url: entry.url,
+        targetDir: branchDir,
+        ref: branch,
+      });
+      if (!branchRefresh.ok) {
+        return {
+          ok: false,
+          message: `Tracked branch "${branch}": ${branchRefresh.message}`,
+        };
+      }
+      const branchCatalog = parseCatalogFromDir(branchDir, entry.platforms, entry.name);
+      if (!branchCatalog.ok) {
+        return {
+          ok: false,
+          message: `Tracked branch "${branch}": ${branchCatalog.message}`,
+        };
+      }
+      pluginBatches.push(branchCatalog.catalog.plugins);
+      pluginVersions.push(...versionsFromPlugins(branchCatalog.catalog.plugins, branch));
+    } finally {
+      rmSync(branchDir, { recursive: true, force: true });
+    }
   }
 
-  const parsed = parseManifest(manifest.platform, raw);
-  const catalog = catalogWithRegistryIdentity(parsed, entry.name);
+  const catalog = {
+    ...defaultCatalog.catalog,
+    plugins: mergeCatalogPluginsByIdentity(pluginBatches.flat()),
+  };
   const stored: StoredMarketplaceCatalog = {
     ...catalog,
     marketplaceEntryName: entry.name,
     refreshedAt: new Date().toISOString(),
     ...(refresh.sha ? { sha: refresh.sha } : {}),
+    ...(pluginVersions.length > 0 ? { pluginVersions } : {}),
   };
   writeStoredCatalog(catalogPath, stored);
 
@@ -260,6 +363,15 @@ export function listCatalogPlugins(
 ): CatalogPlugin[] {
   const stored = readStoredCatalog(marketplaceCatalogPath(harnesstapDir, options.name));
   return stored?.plugins ?? [];
+}
+
+export function listCatalogPluginBranchVersions(
+  harnesstapDir: string,
+  marketplace: string,
+  pluginName: string,
+): MarketplacePluginBranchVersion[] {
+  const stored = readStoredCatalog(marketplaceCatalogPath(harnesstapDir, marketplace));
+  return (stored?.pluginVersions ?? []).filter((row) => row.name === pluginName);
 }
 
 export function listPluginsFromMarketplaceRoot(

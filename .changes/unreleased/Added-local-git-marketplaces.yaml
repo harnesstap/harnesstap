@@ -1,0 +1,5 @@
+kind: Added
+body: Register local git marketplaces (path or file://) and optional extra tracked branches, with plugins deduped by identity across branches.
+time: 2026-10-01T12:20:00Z
+custom:
+  Issue: ""

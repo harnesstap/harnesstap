@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
+  mergeCatalogPluginsByIdentity,
   parseClaudeMarketplaceManifest,
   parseCursorMarketplaceManifest,
 } from "../../src/services/marketplace-catalog-parse.js";
@@ -33,6 +34,18 @@ describe("marketplace-catalog-parse", () => {
     expect(parsed.plugins.map((p) => p.name)).toEqual([
       "release-guardian",
       "release-guardian",
+    ]);
+  });
+
+  it("dedups same-named plugins across branches and keeps the higher semver", () => {
+    const merged = mergeCatalogPluginsByIdentity([
+      { name: "alpha", version: "1.0.0", ref: "alpha@team" },
+      { name: "beta", version: "1.0.0", ref: "beta@team" },
+      { name: "alpha", version: "2.0.0", ref: "alpha@team", description: "newer" },
+    ]);
+    expect(merged).toEqual([
+      { name: "alpha", version: "2.0.0", ref: "alpha@team", description: "newer" },
+      { name: "beta", version: "1.0.0", ref: "beta@team" },
     ]);
   });
 });
