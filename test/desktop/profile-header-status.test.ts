@@ -107,18 +107,21 @@ describe("profile header status chrome", () => {
     expect(warnDot).toContain("right:");
   });
 
-  test("drops header subtitle copy and keeps title plus version", () => {
+  test("drops header status copy and keeps title, version, and description", () => {
     expect(appSource).toContain("<ProfileHeaderStatus");
     expect(appSource).toContain("profileHeaderStatus(");
     expect(appSource).toContain("className=\"status-title\"");
     expect(appSource).toContain("badge-meta");
+    expect(appSource).toContain("status-description");
+    expect(appSource).toContain("FieldIdentityIcon");
+    expect(appSource).toContain("TextQuote");
     expect(appSource).not.toContain("scope-status-line");
     expect(appSource).not.toContain("status-apply-line");
-    expect(appSource).not.toContain("status-description");
     expect(appSource).not.toContain("Active · applied");
     expect(appSource).not.toContain("Selected · not applied");
     expect(designSource).toContain("Active and applied");
     expect(designSource).toContain("Active. Not fully applied.");
-    expect(designSource).toContain("No subtitle lines under the name");
+    expect(designSource).toContain("No status subtitle under the name");
+    expect(designSource).toContain("muted profile **description**");
   });
 });

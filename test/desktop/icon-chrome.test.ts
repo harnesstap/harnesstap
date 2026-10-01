@@ -79,7 +79,9 @@ describe("desktop icon chrome", () => {
     expect(pluginDetailSource).toContain("TextQuote");
     expect(designSource).toContain("**TextQuote**");
     expect(designSource).toContain("Profile **title** stays icon-free");
-    expect(appSource).not.toContain("status-description");
+    expect(appSource).toContain("status-description");
+    expect(appSource).toContain("FieldIdentityIcon");
+    expect(appSource).toContain("TextQuote");
   });
 
   test("locks Designer voice: short tooltips, no em dash UI copy", () => {
