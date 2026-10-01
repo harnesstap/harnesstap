@@ -372,6 +372,31 @@ describe("syncConfiguredHarnesses", () => {
           (resource) => resource.type === "command" && resource.name === "ping",
         ),
       ).toBe(false);
+
+      const { listResources } = await import("../../src/models/resource.ts");
+      expect(
+        listResources().some(
+          (resource) => resource.type === "skill" && resource.name === "hello",
+        ),
+      ).toBe(false);
+
+      const { getHarnessInventory } = await import(
+        "../../src/services/harness-inventory.ts"
+      );
+      const inventory = getHarnessInventory(context.homeDir);
+      const namesOfType = (harnessId: string, type: string): string[] =>
+        inventory.harnesses
+          .find((entry) => entry.id === harnessId)
+          ?.locations.flatMap((location) =>
+            location.resources
+              .filter((resource) => resource.type === type)
+              .map((resource) => resource.name),
+          )
+          .sort() ?? [];
+
+      expect(namesOfType("claude-code", "plugin")).toContain("demo");
+      expect(namesOfType("claude-code", "skill")).not.toContain("hello");
+      expect(namesOfType("opencode", "skill")).not.toContain("hello");
     } finally {
       await context.cleanup();
     }

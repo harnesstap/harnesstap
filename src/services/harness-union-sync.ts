@@ -49,7 +49,10 @@ import {
   type PluginResourceMode,
 } from "./plugin-resource-mode.js";
 import { resourceIdentity } from "./reference-resources.js";
-import { writeHarnessSyncPluginTranslationMarkers } from "./plugin-translation-marker.js";
+import {
+  dropPluginTranslatedResources,
+  writeHarnessSyncPluginTranslationMarkers,
+} from "./plugin-translation-marker.js";
 import {
   persistScanResults,
   scanPlatform,
@@ -156,10 +159,13 @@ async function scanConfiguredSlices(
   for (const platformId of platformIds) {
     if (target === "global") {
       const serializer = getPlatformSerializer(platformId);
-      const resources = serializer.scanGlobal
+      const scanned = serializer.scanGlobal
         ? await serializer.scanGlobal(rootPath)
         : await serializer.scan(rootPath);
-      slices.push({ platformId, resources });
+      slices.push({
+        platformId,
+        resources: dropPluginTranslatedResources(rootPath, scanned),
+      });
       continue;
     }
     const scan = await scanPlatform(platformId, rootPath);

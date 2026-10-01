@@ -30,6 +30,89 @@ describe("applier services", () => {
     }
   });
 
+  it("does not emit standalone skills on plugin-capable harnesses when the host plugin is installed", async () => {
+    const context = await createInitializedTestContext("applier-host-plugin-skills");
+
+    try {
+      mkdirSync(join(context.homeDir, ".claude", "plugins"), { recursive: true });
+      writeFileSync(
+        join(context.homeDir, ".claude", "plugins", "installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "demo@demo-market": [
+              {
+                scope: "user",
+                installPath: "cache/demo-market/demo/1.0.0",
+                version: "1.0.0",
+              },
+            ],
+          },
+        }),
+      );
+      mkdirSync(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/.claude-plugin",
+        ),
+        { recursive: true },
+      );
+      writeFileSync(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/demo-market/demo/1.0.0/.claude-plugin/plugin.json",
+        ),
+        JSON.stringify({ name: "demo", version: "1.0.0" }),
+      );
+
+      const applier = await import("../../src/services/applier.ts");
+      const bundled = makeResource({
+        type: "skill",
+        name: "hello",
+        description: "Plugin hello",
+        content: "# Hello\n",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@demo-market",
+        source: "skills/hello/SKILL.md",
+      });
+      const standalone = makeResource({
+        id: "resource-2",
+        type: "skill",
+        name: "notes",
+        description: "Local notes",
+        content: "# Notes\n",
+        origin_kind: "manual",
+        origin_ref: "",
+        source: "manual",
+      });
+
+      const results = await applier.generateFiles(
+        [bundled, standalone],
+        ["claude-code", "cursor", "opencode"],
+        context.homeDir,
+        { target: "global" },
+      );
+
+      const pathsFor = (platformId: string): string[] =>
+        results
+          .find((result) => result.platformId === platformId)
+          ?.files.map((file) => file.path.replace(/\\/g, "/")) ?? [];
+
+      const claudePaths = pathsFor("claude-code");
+      const cursorPaths = pathsFor("cursor");
+      const opencodePaths = pathsFor("opencode");
+
+      expect(claudePaths.some((path) => path.includes("skills/hello/"))).toBe(false);
+      expect(cursorPaths.some((path) => path.includes("skills/hello/"))).toBe(false);
+      expect(claudePaths.some((path) => path.includes("skills/notes/"))).toBe(true);
+      expect(cursorPaths.some((path) => path.includes("skills/notes/"))).toBe(true);
+      expect(opencodePaths.some((path) => path.includes("skills/hello/"))).toBe(true);
+      expect(opencodePaths.some((path) => path.includes("skills/notes/"))).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("writes generated files to disk", async () => {
     const context = await createInitializedTestContext("applier-write");
 

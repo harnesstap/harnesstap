@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getPlatform } from "../platforms/registry.js";
-import type { ResourceCreateInput, SerializerTarget } from "../types.js";
+import type { Resource, ResourceCreateInput, SerializerTarget } from "../types.js";
+import { hostPluginPinIsInstalled } from "./host-native-mcp.js";
 import {
   type HostPluginLayout,
   isHostPluginPinResource,
@@ -33,6 +34,34 @@ export function portableHarnessesForPluginFanout(
   platforms: readonly string[],
 ): string[] {
   return platforms.filter((id) => !isHostPluginTreePlatform(id));
+}
+
+function isHostPluginBundledSkill(
+  resource: Pick<Resource, "type" | "origin_kind" | "origin_ref">,
+  homeRoot: string,
+): boolean {
+  if (resource.type !== "skill") return false;
+  if (resource.origin_kind !== "marketplace_link") return false;
+  const originRef = resource.origin_ref?.trim() ?? "";
+  if (!originRef.includes("@")) return false;
+  return hostPluginPinIsInstalled(homeRoot, originRef);
+}
+
+/**
+ * Cursor and Claude Code load marketplace plugins from the host plugin tree.
+ * Do not also serialize those bundled skills as standalone `skills/` dirs.
+ * Portable harnesses (OpenCode, Codex, …) still receive them as skills.
+ */
+export function omitHostPluginBundledSkills(
+  resources: readonly Resource[],
+  platformId: string,
+  homeRoot: string,
+  target: SerializerTarget = "project",
+): Resource[] {
+  if (target !== "global" || !isHostPluginTreePlatform(platformId)) {
+    return [...resources];
+  }
+  return resources.filter((resource) => !isHostPluginBundledSkill(resource, homeRoot));
 }
 
 export interface ExtractedPluginSkill {
