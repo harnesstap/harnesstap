@@ -18,6 +18,7 @@ import {
   resolveResourceEditorPath,
 } from "../../src/services/resource-editor-path.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
+import { getHarnesstapDir } from "../../src/db/connection.ts";
 
 describe("resource-editor-path service", () => {
   const tempDirs: string[] = [];
@@ -118,6 +119,40 @@ describe("resource-editor-path service", () => {
           pathHint: "agents/devx.md",
         }),
       ).toBe(absolutePath);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not write editor-scratch when a live disk path is missing", async () => {
+    const context = await createInitializedTestContext("resource-editor-missing-live");
+    try {
+      const missing = join(
+        context.homeDir,
+        ".config",
+        "opencode",
+        "agents",
+        "agent-creator.md",
+      );
+      const resource = createResource({
+        type: "agent",
+        name: "agent-creator",
+        description: "",
+        content: "# stale",
+        metadata: { content_status: "live" },
+        source: "~/.config/opencode/agents/agent-creator.md",
+        origin_kind: "manual",
+        origin_ref: context.homeDir,
+      });
+
+      expect(() =>
+        resolveResourceEditorPath({
+          selector: resource.id,
+          pathHint: "~/.config/opencode/agents/agent-creator.md",
+        }),
+      ).toThrow(/Path is not an openable file/);
+      expect(existsSync(missing)).toBe(false);
+      expect(existsSync(join(getHarnesstapDir(), "editor-scratch"))).toBe(false);
     } finally {
       await context.cleanup();
     }

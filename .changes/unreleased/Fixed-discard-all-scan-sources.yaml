@@ -1,5 +1,5 @@
 kind: Fixed
-body: Persist Desktop Not in profile Discard by deleting scanned live files instead of the main-harness emit paths, and toggle Active edit-mode row clicks.
+body: Persist Desktop Not in profile Discard by deleting scanned live files, toggle Active edit-mode row clicks, and drop missing live files on Refresh instead of serving SQLite or editor-scratch copies.
 time: 2026-10-01T06:20:00Z
 custom:
   Issue: ""
