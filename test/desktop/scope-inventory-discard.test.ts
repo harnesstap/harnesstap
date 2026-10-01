@@ -84,8 +84,35 @@ describe("scope inventory discard controls", () => {
       "utf8",
     );
     expect(workspaceSource).toContain("handleDiscardResource");
+    expect(workspaceSource).toContain("handleDiscardAllResources");
     const liveStateSource = readLiveInventorySource();
     expect(liveStateSource).toContain("onDiscardResource");
+    expect(liveStateSource).toContain("onDiscardAllResources");
+  });
+
+  it("Discard all uses one bulk sidecar call instead of N per-row discards", () => {
+    const runStart = shellSource.indexOf("const runDiscardAll");
+    const runEnd = shellSource.indexOf("const runAddAll");
+    const runDiscardAll = shellSource.slice(runStart, runEnd);
+    expect(runDiscardAll).toContain("onDiscardAllResources");
+    expect(runDiscardAll).not.toContain("settleInChunks");
+    expect(runDiscardAll).not.toContain("onDiscardResource(row.resource)");
+
+    const controllerSource = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/state/scope-controller.ts"),
+      "utf8",
+    );
+    const bulkStart = controllerSource.indexOf("const handleDiscardAllResources");
+    const bulkEnd = controllerSource.indexOf("const handleAddResource");
+    const bulkHandler = controllerSource.slice(bulkStart, bulkEnd);
+    expect(bulkHandler).toContain("discardAllProfileResources");
+    expect(bulkHandler).not.toContain("discardProfileResource");
+    expect(bulkHandler).toContain("loadPreviewFor");
+    expect(bulkHandler.indexOf("refreshStatus(\"full\")")).toBe(
+      bulkHandler.lastIndexOf("refreshStatus(\"full\")"),
+    );
+
+    expect(inventorySectionSource).toContain("addingAllDisabled");
   });
 });
 

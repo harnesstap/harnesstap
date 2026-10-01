@@ -55,6 +55,7 @@ export interface ScopeInventoryShellProps {
     options?: { skipAutoReapply?: boolean },
   ) => Promise<void>;
   onDiscardResource?: (resource: ProfileContentsResource) => Promise<void>;
+  onDiscardAllResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onActivateResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onAfterAdds?: (addedName: string) => Promise<void>;
   onOpenResource: (target: ResourceDetailTarget) => void;
@@ -75,6 +76,9 @@ function batchLabel(
   done: number,
   total: number,
 ): string {
+  if (verb === "Discarding" && done <= 0) {
+    return `${verb} ${total}…`;
+  }
   return `${verb} ${Math.min(done, total)} of ${total}…`;
 }
 
@@ -94,6 +98,7 @@ export function ScopeInventoryShell({
   inactiveHeaderHint,
   onAddResource,
   onDiscardResource,
+  onDiscardAllResources,
   onActivateResources,
   onAfterAdds,
   onOpenResource,
@@ -327,66 +332,62 @@ export function ScopeInventoryShell({
   };
 
   const runDiscardAll = async (rows: ProfileInventoryItem[]) => {
-    if (!onDiscardResource || rows.length === 0) {
+    if (!onDiscardAllResources || rows.length === 0) {
       return;
     }
-    for (const row of rows) {
-      const key = membershipKey(row.resource);
+    const keys = rows.map((row) => membershipKey(row.resource));
+    setHiddenKeys((current) => {
+      const next = new Set(current);
+      for (const key of keys) {
+        next.add(key);
+      }
+      return next;
+    });
+    setPendingKeys((current) => {
+      const next = new Set(current);
+      for (const key of keys) {
+        next.add(key);
+      }
+      return next;
+    });
+    setDiscardProgress({ done: 0, total: rows.length });
+    try {
+      await onDiscardAllResources(rows.map((row) => row.resource));
+      setPendingKeys((current) => {
+        const next = new Set(current);
+        for (const key of keys) {
+          next.delete(key);
+        }
+        return next;
+      });
+      setDiscardProgress({ done: rows.length, total: rows.length });
+    } catch {
       setHiddenKeys((current) => {
         const next = new Set(current);
-        next.add(key);
+        for (const key of keys) {
+          next.delete(key);
+        }
         return next;
       });
       setPendingKeys((current) => {
         const next = new Set(current);
-        next.add(key);
+        for (const key of keys) {
+          next.delete(key);
+        }
         return next;
       });
-    }
-    setDiscardProgress({ done: 0, total: rows.length });
-    const results = await settleInChunks(
-      rows,
-      MUTATION_CHUNK_SIZE,
-      async (row) => {
-        const key = membershipKey(row.resource);
-        try {
-          await onDiscardResource(row.resource);
-          setPendingKeys((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-        } catch (error) {
-          setHiddenKeys((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-          setPendingKeys((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-          throw error;
-        }
-      },
-      (done, total) => setDiscardProgress({ done, total }),
-    );
-    setDiscardProgress(null);
-    const failed = results.flatMap((result, index) =>
-      result.status === "rejected" && rows[index] ? [rows[index]] : [],
-    );
-    if (failed[0]) {
       toast({
         tone: "error",
-        title: `Could not discard ${failed[0].label}`,
+        title: "Could not discard live resources",
         action: {
           label: "Retry",
           onClick: () => {
-            void runDiscardAll(failed);
+            void runDiscardAll(rows);
           },
         },
       });
+    } finally {
+      setDiscardProgress(null);
     }
   };
 
@@ -573,7 +574,7 @@ export function ScopeInventoryShell({
                 }
                 canAddAll={section === "not_in_profile" && Boolean(onAddResource)}
                 canDiscardAll={
-                  section === "not_in_profile" && Boolean(onDiscardResource)
+                  section === "not_in_profile" && Boolean(onDiscardAllResources)
                 }
                 canActivateAll={
                   section === "inactive"
@@ -588,6 +589,7 @@ export function ScopeInventoryShell({
                 onAddAll={
                   section === "not_in_profile" ? () => void runAddAll(rows) : undefined
                 }
+                addingAllDisabled={discardProgress !== null}
                 onDiscardAll={
                   section === "not_in_profile"
                     ? () => setPendingDiscardAll(rows)

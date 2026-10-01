@@ -370,15 +370,17 @@ export async function detectNotStagedProfileResources(input: {
   return notStagedFromHomeScan(input.profileSelector, input.harness);
 }
 
-function filterScanResultsForResource(
+function filterScanResultsForResourceKeys(
   results: ScanResult[],
-  resourceType: string,
-  resourceName: string,
+  keys: ReadonlySet<string>,
 ): ScanResult[] {
+  if (keys.size === 0) {
+    return [];
+  }
   const filtered: ScanResult[] = [];
   for (const result of results) {
-    const resources = result.resources.filter(
-      (resource) => resource.type === resourceType && resource.name === resourceName,
+    const resources = result.resources.filter((resource) =>
+      keys.has(profileResourceKey(resource)),
     );
     if (resources.length === 0) {
       continue;
@@ -386,6 +388,17 @@ function filterScanResultsForResource(
     filtered.push({ ...result, resources });
   }
   return filtered;
+}
+
+function filterScanResultsForResource(
+  results: ScanResult[],
+  resourceType: string,
+  resourceName: string,
+): ScanResult[] {
+  return filterScanResultsForResourceKeys(
+    results,
+    new Set([`${resourceType}:${resourceName}`]),
+  );
 }
 
 export async function addResourceToProfile(input: {
@@ -617,22 +630,38 @@ export async function discardLiveResourceFromHarness(input: {
   return { removed_paths: result.removed_paths, resource };
 }
 
+export type DiscardLiveResourceSelector = {
+  resourceType: string;
+  resourceName: string;
+};
+
 /** Remove every on-disk resource that is not in the profile stack (Not in profile). */
 export async function discardAllLiveResourcesFromHarness(input: {
   profileSelector: string;
   scope: ProfileApplyPreviewScope;
   projectPath?: string;
   harness?: string;
+  resources?: DiscardLiveResourceSelector[];
 }): Promise<{
   removed_paths: string[];
   discarded_count: number;
   resources: ProfileContentsResource[];
 }> {
   const { originRef, scanResults } = await discardableNotInProfileScanResults(input);
+  const selected = input.resources?.length
+    ? filterScanResultsForResourceKeys(
+        scanResults,
+        new Set(
+          input.resources.map(
+            (resource) => `${resource.resourceType}:${resource.resourceName}`,
+          ),
+        ),
+      )
+    : scanResults;
   return discardScanResultsFromHarness({
     ...input,
     originRef,
-    scanResults,
+    scanResults: selected,
   });
 }
 

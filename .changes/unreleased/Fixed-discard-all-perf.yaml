@@ -1,0 +1,5 @@
+kind: Fixed
+body: Speed up Desktop Not in profile Discard all with one sidecar delete and refresh instead of a per-row scan, reconcile, and live-status reload.
+time: 2026-10-01T09:40:00Z
+custom:
+  Issue: ""
