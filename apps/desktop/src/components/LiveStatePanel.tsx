@@ -1435,6 +1435,7 @@ export interface LiveStatePanelProps {
   previewChanges?: boolean;
   onClosePreview?: () => void;
   editMode?: boolean;
+  onToggleEditMode?: () => void;
   /** When the rail already has Re-apply as the accent CTA, demote Add all. */
   railPrimaryIsReapply?: boolean;
   onCommitManagedChanges?: () => Promise<void>;
@@ -1493,6 +1494,7 @@ export function LiveStatePanel({
   previewChanges = false,
   onClosePreview,
   editMode = false,
+  onToggleEditMode,
   railPrimaryIsReapply = false,
   onCommitManagedChanges,
   committingManagedChanges = false,
@@ -2047,6 +2049,7 @@ export function LiveStatePanel({
             selectedProfile={selectedProfile}
             selectedIsActive={selectedIsActive}
             editMode={editMode}
+            onToggleEditMode={onToggleEditMode}
             railPrimaryIsReapply={railPrimaryIsReapply}
             inactiveHeaderHint={inactiveHeaderHint}
             onAddResource={onAddResource}

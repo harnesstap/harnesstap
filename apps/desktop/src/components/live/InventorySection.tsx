@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   CircleCheck,
@@ -8,6 +9,7 @@ import {
   CirclePause,
   ListPlus,
   ListX,
+  Pencil,
   Power,
 } from "lucide-react";
 import {
@@ -72,6 +74,7 @@ export interface InventorySectionProps {
   onAddAll?: () => void;
   onDiscardAll?: () => void;
   onActivateAll?: () => void;
+  onToggleEdit?: () => void;
   onAdd?: (item: ProfileInventoryItem) => void;
   onDiscard?: (item: ProfileInventoryItem) => void;
   onActivate?: (item: ProfileInventoryItem) => void;
@@ -101,6 +104,7 @@ export function InventorySection({
   onAddAll,
   onDiscardAll,
   onActivateAll,
+  onToggleEdit,
   onAdd,
   onDiscard,
   onActivate,
@@ -150,7 +154,7 @@ export function InventorySection({
   const virtualRows = virtualizer.getVirtualItems();
   const skipCollapse = rows.length > 50;
 
-  if (rows.length === 0 && !headerHint) {
+  if (rows.length === 0 && !headerHint && !(editMode && onToggleEdit)) {
     return null;
   }
 
@@ -245,6 +249,30 @@ export function InventorySection({
               title={`Activate ${rows.length} items`}
               onClick={onActivateAll}
               icon={<Power size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+            />
+          </span>
+        ) : null}
+        {onToggleEdit ? (
+          <span
+            className="contents-header-toolbar"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <IconActionButton
+              showLabel
+              iconAfterLabel
+              data-testid="inventory-active-edit"
+              label={editMode ? "Done" : "Edit"}
+              title={editMode ? "Done" : "Edit"}
+              onClick={onToggleEdit}
+              icon={
+                editMode ? (
+                  <Check size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                ) : (
+                  <Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                )
+              }
             />
           </span>
         ) : null}

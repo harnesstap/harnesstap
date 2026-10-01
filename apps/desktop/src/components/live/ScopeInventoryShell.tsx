@@ -38,6 +38,7 @@ export interface ScopeInventoryShellProps {
   selectedProfile: string | null;
   selectedIsActive: boolean;
   editMode: boolean;
+  onToggleEditMode?: () => void;
   railPrimaryIsReapply: boolean;
   inactiveHeaderHint: string | null;
   onAddResource?: (
@@ -76,6 +77,7 @@ export function ScopeInventoryShell({
   selectedProfile,
   selectedIsActive,
   editMode,
+  onToggleEditMode,
   railPrimaryIsReapply,
   inactiveHeaderHint,
   onAddResource,
@@ -489,6 +491,7 @@ export function ScopeInventoryShell({
                 onActivateAll={
                   section === "inactive" ? () => void runActivateAll(rows) : undefined
                 }
+                onToggleEdit={section === "active" ? onToggleEditMode : undefined}
                 onAdd={onAddResource ? (item) => void runAdd(item) : undefined}
                 onDiscard={
                   onDiscardResource ? (item) => setPendingDiscard(item) : undefined
