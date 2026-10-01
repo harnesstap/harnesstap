@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 import { DeepSeekHarnessSerializer } from "../../src/platforms/deepseek-harness.ts";
 import { detectPlatforms } from "../../src/services/scanner.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
@@ -407,6 +407,38 @@ describe("DeepSeekHarnessSerializer global", () => {
           { target: "global" },
         ),
       ).rejects.toThrow(/list of patch operations/);
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+
+  it("scans malformed home settings.yaml silently and fails apply when merging it", async () => {
+    const homeDir = createTempDir("dsh-malformed-settings");
+    const malformed = "agent-default-model:\n  grok-4.6 prism\n  provider: deepseek\n";
+    try {
+      writeTextFile(join(homeDir, ".dsh/settings.yaml"), malformed);
+      const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        const resources = await new DeepSeekHarnessSerializer().scanGlobal(homeDir);
+        expect(resources.some((resource) => resource.type === "model_config")).toBe(false);
+        expect(warnSpy.mock.calls.flat().join("\n")).not.toMatch(/malformed YAML/i);
+      } finally {
+        warnSpy.mockRestore();
+      }
+
+      await expect(
+        new DeepSeekHarnessSerializer().serialize(
+          [
+            makeResource({
+              type: "model_config",
+              name: "default",
+              metadata: { model: "deepseek-chat", provider: "deepseek" },
+            }),
+          ],
+          homeDir,
+          { target: "global" },
+        ),
+      ).rejects.toThrow(/Malformed settings\.yaml: Implicit keys need to be on a single line/);
     } finally {
       cleanupDir(homeDir);
     }

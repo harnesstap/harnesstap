@@ -1,0 +1,5 @@
+kind: Fixed
+body: Stop warning on malformed DeepSeek home YAML during scan; still fail apply/merge so user YAML is not overwritten.
+time: 2026-10-01T01:05:00Z
+custom:
+    Issue: ""
