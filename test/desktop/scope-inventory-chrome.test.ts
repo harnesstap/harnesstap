@@ -165,6 +165,10 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("onToggleEdit={section === \"active\" ? onToggleEditMode : undefined}");
     expect(liveStateSource).toContain("resource-row-checkbox");
     expect(liveStateSource).toContain("data-testid={`inventory-row-select-${item.key}`}");
+    expect(liveStateSource).toContain(
+      "onActivate={showSelect && onToggleSelected ? onToggleSelected : openRow}",
+    );
+    expect(designSource).toContain("toggles that checkbox and does not open details");
     expect(liveStateSource).toContain("profile-remove-action");
     expect(liveStateSource).toContain("Remove from profile?");
     expect(liveStateSource).toContain("inventory-row-lead");
