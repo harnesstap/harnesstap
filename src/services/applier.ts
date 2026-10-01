@@ -30,6 +30,7 @@ import {
   attachResourceOwnership,
   persistWrittenMaterializations,
 } from "./materialization-ownership.js";
+import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { gateDeployFiles } from "./deploy-gate.js";
 import {
   type EnvironmentFragment,
@@ -167,6 +168,9 @@ export function removeGlobalMaterializedFiles(
   filePaths: string[],
 ): void {
   for (const filePath of new Set(filePaths)) {
+    if (isCursorHostManagedSkillsPath(filePath)) {
+      continue;
+    }
     const fullPath = assertMaterializedPathIsSafe(rootPath, filePath);
     if (filePath.endsWith("/SKILL.md")) {
       const skillDir = dirname(fullPath);

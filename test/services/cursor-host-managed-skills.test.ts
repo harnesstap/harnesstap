@@ -5,6 +5,7 @@ import { getPlatform } from "../../src/platforms/registry.ts";
 import {
   buildCursorHostManagedStatus,
   detectCursorHostManagedSkillCollisions,
+  isCursorHostManagedSkillsPath,
   scanCursorHostManagedSkills,
 } from "../../src/services/cursor-host-managed-skills.ts";
 import { detectGlobalProfileStatus } from "../../src/services/global-profile-drift.ts";
@@ -211,6 +212,25 @@ describe("cursor host-managed skills", () => {
     const platform = getPlatform("cursor");
     expect(platform?.hostManagedPaths?.skills).toBe("~/.cursor/skills-cursor/");
     expect(platform?.globalPaths.skills).toBe("~/.cursor/skills/");
+  });
+
+  it("identifies the Cursor-only skills tree without matching user skills", () => {
+    expect(isCursorHostManagedSkillsPath("~/.cursor/skills-cursor/")).toBe(true);
+    expect(isCursorHostManagedSkillsPath(".cursor/skills-cursor/create-skill/SKILL.md")).toBe(
+      true,
+    );
+    expect(
+      isCursorHostManagedSkillsPath("/home/me/.cursor/skills-cursor/loop/SKILL.md"),
+    ).toBe(true);
+    expect(isCursorHostManagedSkillsPath("~/.cursor/skills/create-skill/SKILL.md")).toBe(
+      false,
+    );
+    expect(isCursorHostManagedSkillsPath(".claude/skills/create-skill/SKILL.md")).toBe(
+      false,
+    );
+    expect(isCursorHostManagedSkillsPath(".agents/skills/create-skill/SKILL.md")).toBe(
+      false,
+    );
   });
 
   it("buildCursorHostManagedStatus returns inventory and collisions together", async () => {

@@ -99,6 +99,51 @@ describe("resource disk cleanup", () => {
     }
   });
 
+  it("protects Cursor host-managed skills-cursor copies from disk delete", async () => {
+    const context = await createInitializedTestContext("disk-cleanup-skills-cursor");
+    try {
+      const hostPath = join(
+        context.homeDir,
+        ".cursor",
+        "skills-cursor",
+        "create-skill",
+        "SKILL.md",
+      );
+      mkdirSync(join(hostPath, ".."), { recursive: true });
+      writeFileSync(hostPath, "# Built-in\n", "utf-8");
+      const hash = hashGeneratedContent("# Built-in\n");
+
+      const resource = createResource({
+        type: "skill",
+        name: "create-skill",
+        description: "",
+        content: "# Built-in",
+        metadata: {},
+        source: hostPath,
+      });
+      recordResourceMaterialization({
+        resource_id: resource.id,
+        scope: "global",
+        root_path: context.homeDir,
+        platform_id: "cursor",
+        path: ".cursor/skills-cursor/create-skill/SKILL.md",
+        action: "delete-directory",
+        ownership_key: "skill:create-skill",
+        generated_hash: hash,
+        managed_container: true,
+      });
+
+      const plan = await planResourceDiskDeletion(resource.id);
+      expect(plan.can_delete_from_disk).toBe(false);
+      expect(plan.locations.some((location) => location.action === "protected")).toBe(
+        true,
+      );
+      expect(existsSync(hostPath)).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("includes a source path once even when it matches a generated path", async () => {
     const context = await createInitializedTestContext("disk-cleanup-source-dedupe");
     try {

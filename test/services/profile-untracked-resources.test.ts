@@ -310,6 +310,58 @@ describe("profile-untracked-resources service", () => {
     }
   });
 
+  it("keeps Cursor host-managed skills-cursor files when discarding harness copies", async () => {
+    const context = await createInitializedTestContext(
+      "profile-untracked-discard-skills-cursor",
+    );
+    try {
+      setHarnessPreference({
+        main_harness: "cursor",
+        alias_harnesses: ["claude-code"],
+      });
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      setActiveProfileName("work");
+
+      const skillBody =
+        "---\nname: create-skill\ndescription: create\n---\n\n# create";
+      const claudeDir = join(context.homeDir, ".claude", "skills", "create-skill");
+      const cursorUserDir = join(context.homeDir, ".cursor", "skills", "create-skill");
+      const agentsDir = join(context.homeDir, ".agents", "skills", "create-skill");
+      const hostDir = join(context.homeDir, ".cursor", "skills-cursor", "create-skill");
+      for (const dir of [claudeDir, cursorUserDir, agentsDir, hostDir]) {
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, "SKILL.md"), skillBody, "utf-8");
+      }
+      const cacheFile = join(
+        getHarnesstapDir(),
+        "cache",
+        "packages",
+        "host-plugin",
+        "mp",
+        "keep",
+        "1.0.0",
+        "README.md",
+      );
+      mkdirSync(join(cacheFile, ".."), { recursive: true });
+      writeFileSync(cacheFile, "keep-me", "utf-8");
+
+      const discarded = await discardAllLiveResourcesFromHarness({
+        profileSelector: "work",
+        scope: "home",
+      });
+
+      expect(discarded.discarded_count).toBeGreaterThanOrEqual(1);
+      expect(existsSync(join(claudeDir, "SKILL.md"))).toBe(false);
+      expect(existsSync(join(cursorUserDir, "SKILL.md"))).toBe(false);
+      expect(existsSync(join(agentsDir, "SKILL.md"))).toBe(false);
+      expect(existsSync(join(hostDir, "SKILL.md"))).toBe(true);
+      expect(existsSync(cacheFile)).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("discards a subset without leaving sibling live files", async () => {
     const context = await createInitializedTestContext(
       "profile-untracked-discard-subset",

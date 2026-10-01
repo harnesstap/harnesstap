@@ -2,10 +2,12 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
+import { createPlugin, addResourceToPlugin, getPluginResources, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
+import { setHarnessPreference } from "../../src/models/harness.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.js";
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
+import { removeResourceFromProfile } from "../../src/services/profile-remove-resource.ts";
 import {
   collectOrphanSkillFilesOnDisk,
   expandStaleMcpConfigMirrors,
@@ -61,6 +63,18 @@ describe("global-profile-cleanup service", () => {
       ".claude/skills/gone/SKILL.md",
       ".agents/skills/gone/SKILL.md",
     ]);
+
+    expect(
+      planStaleGlobalProfileFiles(
+        "/tmp",
+        [],
+        [
+          ".cursor/skills/create-skill/SKILL.md",
+          ".cursor/skills-cursor/create-skill/SKILL.md",
+        ],
+        ["cursor"],
+      ),
+    ).not.toContain(".cursor/skills-cursor/create-skill/SKILL.md");
 
     // Keep the hub when the incoming profile still owns the skill under any path.
     expect(
@@ -342,6 +356,69 @@ describe("global-profile-cleanup service", () => {
       expect(existsSync(copilotMcp)).toBe(false);
       expect(switched.removed_files).toContain(".cursor/mcp.json");
       expect(switched.removed_files).toContain(".copilot/mcp-config.json");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not delete Cursor skills-cursor files when removing a skill from the profile", async () => {
+    const context = await createInitializedTestContext(
+      "global-profile-cleanup-skills-cursor-remove",
+    );
+    try {
+      setHarnessPreference({
+        main_harness: "cursor",
+        alias_harnesses: ["claude-code"],
+      });
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "skill",
+          name: "create-skill",
+          description: "managed",
+          content: "# create",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      await applyProfilePlugin("work", {
+        harness: "cursor,claude-code",
+        conflictPolicy: "replace",
+      });
+      setActiveProfileName("work");
+
+      const hostPath = join(
+        context.homeDir,
+        ".cursor",
+        "skills-cursor",
+        "create-skill",
+        "SKILL.md",
+      );
+      mkdirSync(dirname(hostPath), { recursive: true });
+      writeFileSync(hostPath, "# Cursor built-in\n", "utf-8");
+
+      removeResourceFromProfile({
+        profileSelector: "work",
+        resourceType: "skill",
+        resourceName: "create-skill",
+      });
+      expect(getPluginResources(profile.id)).toHaveLength(0);
+
+      const reapplied = await applyProfilePlugin("work", {
+        harness: "cursor,claude-code",
+        conflictPolicy: "replace",
+      });
+
+      expect(existsSync(hostPath)).toBe(true);
+      expect(reapplied.removed_files ?? []).not.toContain(
+        ".cursor/skills-cursor/create-skill/SKILL.md",
+      );
+      expect(
+        existsSync(join(context.homeDir, ".cursor", "skills", "create-skill", "SKILL.md")),
+      ).toBe(false);
     } finally {
       await context.cleanup();
     }

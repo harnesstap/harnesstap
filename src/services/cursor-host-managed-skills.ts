@@ -7,6 +7,14 @@ export const CURSOR_HOST_MANAGED_SKILLS_DISPLAY_ROOT =
   "~/.cursor/skills-cursor";
 export const CURSOR_USER_SKILLS_DISPLAY_ROOT = "~/.cursor/skills";
 
+const CURSOR_HOST_MANAGED_SKILLS_PATH_RE =
+  /(^|\/)\.cursor\/skills-cursor(\/|$)/;
+
+/** True for Cursor app-managed `~/.cursor/skills-cursor` (and files under it). */
+export function isCursorHostManagedSkillsPath(path: string): boolean {
+  return CURSOR_HOST_MANAGED_SKILLS_PATH_RE.test(path.replace(/\\/g, "/"));
+}
+
 export type CursorHostSkillOverlap = "user_skill" | "profile_skill";
 
 export interface CursorHostManagedSkill {
