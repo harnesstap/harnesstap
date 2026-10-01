@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Check, FileDiff, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
+import { FileDiff, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
@@ -300,27 +300,6 @@ export function ScopeWorkspace({
             </div>
             {selectedProfile ? (
               <div className="live-toolbar-actions">
-                <IconActionButton
-                  className="status-edit-action"
-                  onClick={() => {
-                    if (ctrl.inventoryEditMode) {
-                      ctrl.setInventoryEditMode(false);
-                      return;
-                    }
-                    ctrl.setInventoryEditMode(true);
-                    ctrl.setPreviewChanges(false);
-                  }}
-                  disabled={!connected || switching}
-                  label={ctrl.inventoryEditMode ? "Done" : "Edit"}
-                  title={ctrl.inventoryEditMode ? "Done" : "Edit"}
-                  icon={
-                    ctrl.inventoryEditMode ? (
-                      <Check size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                    ) : (
-                      <Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                    )
-                  }
-                />
                 <button
                   type="button"
                   className={["btn", "primary", ctrl.overwritingWithSetup ? "is-busy" : ""]
@@ -338,6 +317,18 @@ export function ScopeWorkspace({
                     <HardDriveUpload size={16} strokeWidth={2} aria-hidden="true" />
                   )}
                 </button>
+                <IconActionButton
+                  className="status-edit-action"
+                  onClick={() => {
+                    ctrl.setInventoryEditMode(false);
+                    ctrl.setPreviewChanges(false);
+                    ctrl.openEditProfile(selectedProfile);
+                  }}
+                  disabled={!connected || switching}
+                  label={`Edit ${selectedProfile}`}
+                  title={`Edit ${selectedProfile}`}
+                  icon={<Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                />
                 <IconActionButton
                   className="status-edit-action"
                   onClick={() => {
@@ -479,6 +470,14 @@ export function ScopeWorkspace({
               previewChanges={ctrl.previewChanges}
               onClosePreview={() => ctrl.setPreviewChanges(false)}
               editMode={ctrl.inventoryEditMode}
+              onToggleEditMode={() => {
+                if (ctrl.inventoryEditMode) {
+                  ctrl.setInventoryEditMode(false);
+                  return;
+                }
+                ctrl.setInventoryEditMode(true);
+                ctrl.setPreviewChanges(false);
+              }}
               railPrimaryIsReapply={ctrl.showReapply}
               onCommitManagedChanges={
                 actionsEnabled ? ctrl.handleCommitManagedChanges : undefined

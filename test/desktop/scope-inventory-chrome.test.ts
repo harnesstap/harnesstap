@@ -140,19 +140,29 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("Ghost **Add all**");
   });
 
-  it("enters edit mode from the header pencil and exits with Done", () => {
+  it("opens profile edit from the header pencil after Overwrite; Active Edit toggles row mode", () => {
     expect(appSource).toContain("inventoryEditMode");
     expect(appSource).toContain("live-toolbar-identity");
     expect(appSource).toContain("live-toolbar-actions");
-    expect(appSource).toMatch(/label=\{(?:ctrl\.)?inventoryEditMode \? "Done" : "Edit"\}/);
+    expect(appSource).toContain("onToggleEditMode");
     expect(appSource).toContain('"btn", "primary"');
     expect(appSource).toMatch(/\{ctrl\.overwritingWithSetup \? "Overwriting…" : "Overwrite"\}/);
     expect(appSource).toContain('title="Overwrite with current setup"');
     expect(appSource).toContain("HardDriveUpload");
     expect(appSource).toContain("Overwrite with current setup?");
+    const overwriteIdx = appSource.indexOf('title="Overwrite with current setup"');
+    const headerEditIdx = appSource.indexOf(
+      "ctrl.openEditProfile(selectedProfile)",
+      overwriteIdx,
+    );
+    expect(overwriteIdx).toBeGreaterThan(-1);
+    expect(headerEditIdx).toBeGreaterThan(overwriteIdx);
     expect(appSource).not.toContain("Active · ${n} file");
     expect(appSource).not.toContain("status-view-changes");
     expect(liveStateSource).toContain("editMode");
+    expect(liveStateSource).toContain('data-testid="inventory-active-edit"');
+    expect(liveStateSource).toContain('label={editMode ? "Done" : "Edit"}');
+    expect(liveStateSource).toContain("onToggleEdit={section === \"active\" ? onToggleEditMode : undefined}");
     expect(liveStateSource).toContain("profile-resource-remove-btn");
     expect(liveStateSource).toContain("profile-remove-action");
     expect(liveStateSource).toContain("Remove from profile");
@@ -188,10 +198,9 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("[type icon] [name]");
     expect(designSource).toContain("rightmost icon");
     expect(designSource).toContain("labeled accent **Overwrite**");
+    expect(designSource).toContain("opens the full-screen profile edit pane");
+    expect(designSource).toContain("**Active** section header has labeled **Edit**");
     expect(designSource).not.toContain("`Active · N files differ`");
-    expect(appSource).not.toMatch(
-      /status-edit-action[\s\S]{0,200}openEditProfile\(selectedProfile\)/,
-    );
   });
 
   it("keeps a FAB that opens pick-from-library and Create for the library flow", () => {
