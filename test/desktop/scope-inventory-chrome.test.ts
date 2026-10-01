@@ -212,7 +212,7 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("setSelectedIds(new Set())");
     expect(liveStateSource).toContain("skipAutoReapply");
     expect(liveStateSource).toContain("ScopeAddToProfileModal");
-    expect(addModalSource).toContain('label="Create"');
+    expect(addModalSource).toContain('label="Create a resource"');
     expect(addModalSource).toContain("Checkbox");
     expect(addModalSource).toContain("dialog-header-actions");
     expect(addModalSource).toContain("type={type}");
