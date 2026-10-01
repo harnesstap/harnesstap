@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import {
-  formatHarnessSyncChangeCount,
+  formatHarnessSyncChangeSummary,
   syncHarnessesConfirmBody,
+  type HarnessSyncChangeKinds,
   type HarnessSyncPreviewState,
 } from "../../lib/harness-sync";
 import { ButtonSpinner } from "../ButtonSpinner";
@@ -15,6 +16,53 @@ export interface SyncHarnessesDialogProps {
   syncing: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+}
+
+const HARNESS_SYNC_KIND_BADGES: ReadonlyArray<{
+  key: keyof HarnessSyncChangeKinds;
+  kindClass: "add" | "remove" | "update";
+  mark: string;
+  label: string;
+}> = [
+  { key: "added", kindClass: "add", mark: "+", label: "added" },
+  { key: "removed", kindClass: "remove", mark: "−", label: "removed" },
+  { key: "modified", kindClass: "update", mark: "~", label: "modified" },
+];
+
+function HarnessSyncChangeBadges({
+  counts,
+}: {
+  counts: HarnessSyncChangeKinds;
+}): ReactNode {
+  const summary = formatHarnessSyncChangeSummary(counts);
+  const badges = HARNESS_SYNC_KIND_BADGES.flatMap(({ key, kindClass, mark, label }) => {
+    const count = counts[key];
+    if (count <= 0) return [];
+    return [
+      <span
+        key={key}
+        className={`file-change-kind-badge apply-diff-kind-badge static ${kindClass}`}
+        aria-label={`${count} ${label}`}
+      >
+        <span className="file-change-kind-mark" aria-hidden>
+          {mark}
+        </span>
+        <span>{count}</span>
+      </span>,
+    ];
+  });
+  if (badges.length === 0) {
+    return <span className="sr-only">{summary}</span>;
+  }
+  return (
+    <div
+      className="harness-sync-preview-badges file-change-kind-badges apply-diff-kind-badges"
+      role="group"
+      aria-label={summary}
+    >
+      {badges}
+    </div>
+  );
 }
 
 function PreviewBody({ preview }: { preview: HarnessSyncPreviewState }): ReactNode {
@@ -39,9 +87,7 @@ function PreviewBody({ preview }: { preview: HarnessSyncPreviewState }): ReactNo
             <li key={row.id} className="harness-sync-preview-row">
               <HarnessIcon id={row.id} tooltip={false} />
               <span className="harness-sync-preview-name">{row.name}</span>
-              <span className="harness-sync-preview-count">
-                {formatHarnessSyncChangeCount(row.changes)}
-              </span>
+              <HarnessSyncChangeBadges counts={row} />
             </li>
           ))}
         </ul>

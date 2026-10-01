@@ -22,16 +22,27 @@ export function syncHarnessesDisabledReason(input: {
   return null;
 }
 
-export function formatHarnessSyncChangeCount(count: number): string {
-  return count === 1 ? "1 resource change" : `${count} resource changes`;
+export interface HarnessSyncChangeKinds {
+  readonly added: number;
+  readonly removed: number;
+  readonly modified: number;
+}
+
+export function formatHarnessSyncChangeSummary(
+  counts: HarnessSyncChangeKinds,
+): string {
+  const parts: string[] = [];
+  if (counts.added > 0) parts.push(`${counts.added} added`);
+  if (counts.removed > 0) parts.push(`${counts.removed} removed`);
+  if (counts.modified > 0) parts.push(`${counts.modified} modified`);
+  return parts.length > 0 ? parts.join(", ") : "no resource changes";
 }
 
 export const HARNESS_SYNC_PREVIEW_ERROR = "Could not count resource changes.";
 
-export interface HarnessSyncPreviewRow {
+export interface HarnessSyncPreviewRow extends HarnessSyncChangeKinds {
   readonly id: string;
   readonly name: string;
-  readonly changes: number;
 }
 
 export type HarnessSyncPreviewState =

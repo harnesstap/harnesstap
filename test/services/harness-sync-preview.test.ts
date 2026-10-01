@@ -37,8 +37,8 @@ describe("countHarnessSyncChanges", () => {
       extracted: noExtracted,
     });
     expect(rows).toEqual([
-      { harness: "claude-code", changes: 1 },
-      { harness: "cursor", changes: 1 },
+      { harness: "claude-code", changes: 1, added: 1, removed: 0, modified: 0 },
+      { harness: "cursor", changes: 1, added: 1, removed: 0, modified: 0 },
     ]);
   });
 
@@ -54,8 +54,8 @@ describe("countHarnessSyncChanges", () => {
       extracted: noExtracted,
     });
     expect(rows).toEqual([
-      { harness: "claude-code", changes: 0 },
-      { harness: "cursor", changes: 0 },
+      { harness: "claude-code", changes: 0, added: 0, removed: 0, modified: 0 },
+      { harness: "cursor", changes: 0, added: 0, removed: 0, modified: 0 },
     ]);
   });
 
@@ -72,8 +72,8 @@ describe("countHarnessSyncChanges", () => {
       extracted: noExtracted,
     });
     expect(rows).toEqual([
-      { harness: "claude-code", changes: 0 },
-      { harness: "cursor", changes: 1 },
+      { harness: "claude-code", changes: 0, added: 0, removed: 0, modified: 0 },
+      { harness: "cursor", changes: 1, added: 0, removed: 0, modified: 1 },
     ]);
   });
 
@@ -98,9 +98,9 @@ describe("countHarnessSyncChanges", () => {
       },
     });
     expect(rows).toEqual([
-      { harness: "claude-code", changes: 0 },
-      { harness: "cursor", changes: 1 },
-      { harness: "opencode", changes: 3 },
+      { harness: "claude-code", changes: 0, added: 0, removed: 0, modified: 0 },
+      { harness: "cursor", changes: 1, added: 1, removed: 0, modified: 0 },
+      { harness: "opencode", changes: 3, added: 3, removed: 0, modified: 0 },
     ]);
   });
 
@@ -121,8 +121,26 @@ describe("countHarnessSyncChanges", () => {
       extracted: noExtracted,
     });
     expect(rows).toEqual([
-      { harness: "claude-code", changes: 0 },
-      { harness: "cursor", changes: 0 },
+      { harness: "claude-code", changes: 0, added: 0, removed: 0, modified: 0 },
+      { harness: "cursor", changes: 0, added: 0, removed: 0, modified: 0 },
+    ]);
+  });
+
+  it("counts a slice resource omitted from the union as removed", () => {
+    const kept = makeResourceInput({ type: "skill", name: "keep", content: "keep\n" });
+    const extra = makeResourceInput({ type: "skill", name: "gone", content: "gone\n" });
+    const rows = countHarnessSyncChanges({
+      platforms: ["claude-code", "cursor"],
+      slices: [
+        { platformId: "claude-code", resources: [kept] },
+        { platformId: "cursor", resources: [kept, extra] },
+      ],
+      unionResources: [kept],
+      extracted: noExtracted,
+    });
+    expect(rows).toEqual([
+      { harness: "claude-code", changes: 0, added: 0, removed: 0, modified: 0 },
+      { harness: "cursor", changes: 1, added: 0, removed: 1, modified: 0 },
     ]);
   });
 });
