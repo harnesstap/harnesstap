@@ -177,6 +177,9 @@ export async function saveHarnessSelection(
 export interface HarnessSyncChangeCount {
   harness: string;
   changes: number;
+  added: number;
+  removed: number;
+  modified: number;
 }
 
 export interface HarnessSyncResult {
@@ -203,19 +206,28 @@ export async function syncConfiguredHarnesses(
   return body;
 }
 
+function parseChangeCount(value: unknown, detail: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw malformed(detail);
+  }
+  return Math.floor(value);
+}
+
 function parseHarnessChanges(value: unknown): HarnessSyncChangeCount[] {
   if (!Array.isArray(value)) {
     throw malformed("harness_changes");
   }
   return value.map((entry, index) => {
     const record = asRecord(entry, `harness_changes[${index}]`);
-    const changes = record.changes;
-    if (typeof changes !== "number" || !Number.isFinite(changes) || changes < 0) {
-      throw malformed("harness_changes count");
-    }
+    const added = parseChangeCount(record.added, "harness_changes added");
+    const removed = parseChangeCount(record.removed, "harness_changes removed");
+    const modified = parseChangeCount(record.modified, "harness_changes modified");
     return {
       harness: asString(record.harness, "harness"),
-      changes: Math.floor(changes),
+      added,
+      removed,
+      modified,
+      changes: added + removed + modified,
     };
   });
 }

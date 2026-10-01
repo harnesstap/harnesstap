@@ -222,7 +222,9 @@ export function HarnessesWorkspace({
             id: row.harness,
             name: harnessEntry(inventory, harnessId(row.harness))?.name
               ?? harnessDisplayName(row.harness),
-            changes: row.changes,
+            added: row.added,
+            removed: row.removed,
+            modified: row.modified,
           })),
         });
       })

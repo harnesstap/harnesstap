@@ -14,6 +14,9 @@ import { resourceIdentity } from "./reference-resources.js";
 export interface HarnessSyncChangeCount {
   harness: string;
   changes: number;
+  added: number;
+  removed: number;
+  modified: number;
 }
 
 export interface CountHarnessSyncChangesInput {
@@ -51,21 +54,22 @@ function sliceSkillNames(slice: HarnessScanSlice | undefined): Set<string> {
   return names;
 }
 
-function resourceWouldChange(
-  planned: ResourceCreateInput,
-  current: Map<string, ResourceCreateInput>,
+function skipPreviewResource(
+  resource: ResourceCreateInput,
+  portable: boolean,
 ): boolean {
-  const existing = current.get(resourceIdentity(planned));
-  if (!existing) return true;
-  return resourceFingerprint(existing) !== resourceFingerprint(planned);
+  if (isClaudeLocalMcpResource(resource)) return true;
+  if (portable && isHostPluginPin(resource)) return true;
+  return false;
 }
 
 /**
- * Count resources that would be added or updated on each harness.
+ * Count resources that would be added, removed, or updated on each harness.
  *
  * One `type:name:namespace` is one change, matching inventory rows. Host
  * plugin pins count as a single resource on Claude/Cursor; portable harnesses
  * get extracted plugin skills/resources instead of those pin trees.
+ * `changes` is added + removed + modified.
  */
 export function countHarnessSyncChanges(
   input: CountHarnessSyncChangesInput,
@@ -79,16 +83,24 @@ export function countHarnessSyncChanges(
     const current = sliceByIdentity(slice);
     const skillNames = sliceSkillNames(slice);
     const portable = !isHostPluginTreePlatform(harness);
-    const seen = new Set<string>();
-    let changes = 0;
+    const planned = new Set<string>();
+    let added = 0;
+    let modified = 0;
+    let removed = 0;
 
     const consider = (resource: ResourceCreateInput): void => {
-      if (isClaudeLocalMcpResource(resource)) return;
-      if (portable && isHostPluginPin(resource)) return;
+      if (skipPreviewResource(resource, portable)) return;
       const identity = resourceIdentity(resource);
-      if (seen.has(identity)) return;
-      seen.add(identity);
-      if (resourceWouldChange(resource, current)) changes += 1;
+      if (planned.has(identity)) return;
+      planned.add(identity);
+      const existing = current.get(identity);
+      if (!existing) {
+        added += 1;
+        return;
+      }
+      if (resourceFingerprint(existing) !== resourceFingerprint(resource)) {
+        modified += 1;
+      }
     };
 
     for (const resource of input.unionResources) {
@@ -101,12 +113,23 @@ export function countHarnessSyncChanges(
       }
       for (const skill of input.extracted.skills) {
         const identity = `skill:${skill.name}:`;
-        if (seen.has(identity)) continue;
-        seen.add(identity);
-        if (!skillNames.has(skill.name)) changes += 1;
+        if (planned.has(identity)) continue;
+        planned.add(identity);
+        if (!skillNames.has(skill.name)) added += 1;
       }
     }
 
-    return { harness, changes };
+    for (const [identity, resource] of current) {
+      if (skipPreviewResource(resource, portable)) continue;
+      if (!planned.has(identity)) removed += 1;
+    }
+
+    return {
+      harness,
+      added,
+      removed,
+      modified,
+      changes: added + removed + modified,
+    };
   });
 }

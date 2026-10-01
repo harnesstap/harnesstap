@@ -79,7 +79,13 @@ describe("agent harness sync route", () => {
     expect(response.status).toBe(200);
     const body = await response.json() as {
       platforms_synced: string[];
-      harness_changes: Array<{ harness: string; changes: number }>;
+      harness_changes: Array<{
+        harness: string;
+        changes: number;
+        added: number;
+        removed: number;
+        modified: number;
+      }>;
     };
     expect(body.platforms_synced.sort()).toEqual(["claude-code", "cursor"]);
     expect(body.harness_changes.map((row) => row.harness).sort()).toEqual([
@@ -87,8 +93,20 @@ describe("agent harness sync route", () => {
       "cursor",
     ]);
     expect(body.harness_changes).toEqual([
-      { harness: "claude-code", changes: 1 },
-      { harness: "cursor", changes: 1 },
+      {
+        harness: "claude-code",
+        changes: 1,
+        added: 1,
+        removed: 0,
+        modified: 0,
+      },
+      {
+        harness: "cursor",
+        changes: 1,
+        added: 1,
+        removed: 0,
+        modified: 0,
+      },
     ]);
   });
 });

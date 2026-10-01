@@ -1,0 +1,5 @@
+kind: Changed
+body: Show Desktop Sync harnesses preview as per-harness + added, − removed, and ~ modified badges instead of a single resource-change count.
+time: 2026-10-01T10:25:00Z
+custom:
+  Issue: "280 284"

@@ -58,11 +58,9 @@
   font-size: var(--text-body);
 }
 
-.harness-sync-preview-count {
+.harness-sync-preview-badges {
   margin-left: auto;
-  font-family: var(--mono);
-  font-size: var(--text-meta);
-  color: var(--muted);
+  justify-content: flex-end;
 }
 
 .harness-sync-preview-status {
