@@ -256,6 +256,7 @@ export async function generateFiles(
       serializedResources,
       pid,
       homeRoot,
+      target,
     );
     const serializer = getPlatformSerializer(pid);
     let files = await serializer.serialize(platformResources, projectRoot, {

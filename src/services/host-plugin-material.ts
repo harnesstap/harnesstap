@@ -56,8 +56,9 @@ export function omitHostPluginBundledSkills(
   resources: readonly Resource[],
   platformId: string,
   homeRoot: string,
+  target: SerializerTarget = "project",
 ): Resource[] {
-  if (!isHostPluginTreePlatform(platformId)) {
+  if (target !== "global" || !isHostPluginTreePlatform(platformId)) {
     return [...resources];
   }
   return resources.filter((resource) => !isHostPluginBundledSkill(resource, homeRoot));
