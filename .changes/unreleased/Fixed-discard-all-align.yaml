@@ -1,0 +1,5 @@
+kind: Fixed
+body: Align Discarding progress with Add all / Discard all, and delete every harness-local copy of a discarded identity without touching the HarnessTap package cache.
+time: 2026-10-01T09:50:00Z
+custom:
+  Issue: ""

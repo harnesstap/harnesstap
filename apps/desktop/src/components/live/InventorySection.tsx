@@ -191,16 +191,6 @@ export function InventorySection({
           <span>{title}</span>
           <span className="badge pill inventory-section-count">{rows.length}</span>
         </button>
-        {batchLabel ? (
-          <span
-            className="muted inventory-batch-progress"
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
-          >
-            {batchLabel}
-          </span>
-        ) : null}
         {!editMode && (canAddAll || canDiscardAll) ? (
           <span
             className="contents-header-toolbar"
@@ -208,6 +198,9 @@ export function InventorySection({
               event.stopPropagation();
             }}
           >
+            {batchLabel ? (
+              <span className="muted inventory-batch-progress">{batchLabel}</span>
+            ) : null}
             {canAddAll && onAddAll ? (
               <IconActionButton
                 primary={addAllPrimary}
@@ -245,6 +238,9 @@ export function InventorySection({
               event.stopPropagation();
             }}
           >
+            {batchLabel ? (
+              <span className="muted inventory-batch-progress">{batchLabel}</span>
+            ) : null}
             <IconActionButton
               showLabel
               iconAfterLabel
