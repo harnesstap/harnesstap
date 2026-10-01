@@ -16,6 +16,7 @@ import {
   type HarnessCatalogEntry,
   type HarnessSettingsGlobal,
 } from "./harness-settings.js";
+import { resolveExistingResourceFilesystemPath } from "./resource-editor-path.js";
 import {
   buildSharedGlobalPathSet,
   detectHomePlatforms,
@@ -48,6 +49,7 @@ export interface HarnessLocationResource {
   name: string;
   description: string;
   source: string;
+  filesystem_path?: string | null;
   origin_kind: string;
   namespace: string;
   origin_ref: string | null;
@@ -392,12 +394,14 @@ export function classifyDiskPresence(input: {
 }
 
 function toLocationResource(resource: Resource): HarnessLocationResource {
+  const filesystemPath = resolveExistingResourceFilesystemPath(resource);
   return {
     id: resource.id,
     type: resource.type,
     name: resource.name,
     description: resource.description,
     source: resource.source,
+    ...(filesystemPath ? { filesystem_path: filesystemPath } : {}),
     origin_kind: resource.origin_kind,
     namespace: resource.namespace ?? "",
     origin_ref: resource.origin_ref || null,

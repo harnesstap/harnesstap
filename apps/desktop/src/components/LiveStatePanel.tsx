@@ -1345,7 +1345,7 @@ function contentsResourceAsItem(
     iconType: resource.type,
     label: resource.name,
     detail: resource.type.replaceAll("_", " "),
-    path: resource.source,
+    path: resource.filesystem_path ?? resource.source,
     selector: resource.id ?? `${resource.type}:${resource.name}`,
   };
 }

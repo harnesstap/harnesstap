@@ -44,6 +44,7 @@ export function handleLibraryResources(): Response {
       namespace: resource.namespace ?? null,
       description: resource.description ?? null,
       source: resource.source,
+      filesystem_path: resolveExistingResourceFilesystemPath(resource),
       updated_at: resource.updated_at,
       origin_kind: resource.origin_kind,
       origin_ref: resource.origin_ref || null,

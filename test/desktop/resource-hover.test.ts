@@ -33,7 +33,7 @@ describe("resource hover model", () => {
     expect(hoverModelFromLibraryResource(skill)).toEqual({
       type: "skill",
       name: "ship",
-      path: "/Users/me/.claude/skills/ship/SKILL.md",
+      path: "/Users/me/.claude/skills/ship",
       originKind: "marketplace_link",
       originIncludeRef: true,
       harnessIds: ["claude-code", "cursor"],
@@ -111,6 +111,37 @@ describe("resource hover model", () => {
       path: "/Users/me/.claude/commands/deploy.md",
       harnessIds: ["claude-code"],
       extra: [],
+    });
+  });
+
+  it("uses the canonical live skill folder instead of a ~/.agents scan source", () => {
+    const resource: ProfileContentsResource = {
+      type: "skill",
+      name: "instrument-llm-analytics",
+      source: "~/.agents/skills/instrument-llm-analytics/SKILL.md",
+      filesystem_path:
+        "/Users/christophe.oudar/.claude/plugins/cache/claude-plugins-official/posthog/1.1.58/skills/instrument-llm-analytics/SKILL.md",
+    };
+    expect(hoverModelFromProfileResource(resource)).toEqual({
+      type: "skill",
+      name: "instrument-llm-analytics",
+      path: "/Users/christophe.oudar/.claude/plugins/cache/claude-plugins-official/posthog/1.1.58/skills/instrument-llm-analytics",
+      harnessIds: ["claude-code", "cursor"],
+      extra: [],
+    });
+    expect(
+      hoverModelFromLibraryResource({
+        id: "skill:instrument-llm-analytics",
+        name: "instrument-llm-analytics",
+        type: "skill",
+        namespace: null,
+        description: null,
+        source: "~/.agents/skills/instrument-llm-analytics/SKILL.md",
+        filesystem_path:
+          "/Users/christophe.oudar/.claude/plugins/cache/claude-plugins-official/posthog/1.1.58/skills/instrument-llm-analytics/SKILL.md",
+      }),
+    ).toMatchObject({
+      path: "/Users/christophe.oudar/.claude/plugins/cache/claude-plugins-official/posthog/1.1.58/skills/instrument-llm-analytics",
     });
   });
 

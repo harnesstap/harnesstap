@@ -1,0 +1,5 @@
+kind: Fixed
+body: Show the same canonical live skill path in Desktop list tooltips as in details when ~/.agents is a symlink into a harness plugin cache.
+time: 2026-10-01T07:50:00Z
+custom:
+  Issue: ""

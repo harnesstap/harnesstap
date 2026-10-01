@@ -65,6 +65,10 @@ function parseResource(value: unknown): HarnessResourceRow {
     name: asString(record.name, "resource name"),
     description: typeof record.description === "string" ? record.description : "",
     source: asString(record.source, "resource source"),
+    filesystem_path:
+      typeof record.filesystem_path === "string" && record.filesystem_path.trim()
+        ? record.filesystem_path
+        : null,
     origin_kind: typeof record.origin_kind === "string" ? record.origin_kind : null,
     namespace:
       typeof record.namespace === "string" && record.namespace.length > 0

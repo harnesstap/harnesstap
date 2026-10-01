@@ -48,6 +48,8 @@ export interface HarnessResourceRow {
   readonly description: string;
   /** `~/`-relative path; row subtitle and detail `pathHint`. */
   readonly source: string;
+  /** Canonical live file when `source` is a hub symlink or scan alias. */
+  readonly filesystem_path?: string | null;
   readonly origin_kind?: string | null;
   readonly namespace?: string | null;
   readonly origin_ref?: string | null;
@@ -659,6 +661,7 @@ function asLibraryResource(row: HarnessResourceRow): LibraryResource {
     namespace: row.namespace ?? null,
     description: row.description,
     source: row.source,
+    filesystem_path: row.filesystem_path,
     origin_kind: row.origin_kind,
     origin_ref: row.origin_ref,
   };

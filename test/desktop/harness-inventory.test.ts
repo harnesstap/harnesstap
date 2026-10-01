@@ -735,6 +735,7 @@ describe("parseHarnessInventory", () => {
                   name: "alpha",
                   description: "A",
                   source: "~/.claude/skills/alpha/SKILL.md",
+                  filesystem_path: null,
                   origin_kind: null,
                   namespace: null,
                   origin_ref: null,

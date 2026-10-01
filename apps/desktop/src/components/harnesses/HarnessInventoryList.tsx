@@ -18,7 +18,10 @@ import {
   type HarnessPluginPullTarget,
 } from "../../lib/harness-plugin-pull";
 import { HARNESS_OPEN_LOCATION_LABEL } from "../../lib/harness-location-open";
-import type { ResourceHoverModel } from "../../lib/resource-hover";
+import {
+  listRowHoverPath,
+  type ResourceHoverModel,
+} from "../../lib/resource-hover";
 import { resourceTypeTabLabel } from "../../lib/resource-type-tabs";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { HarnessIcon } from "../HarnessIcons";
@@ -51,7 +54,7 @@ function badgeHover(
     type: row.type,
     name,
     showName: true,
-    path: row.source,
+    path: listRowHoverPath(row),
     harnessIds: [],
     extra: [],
   };
