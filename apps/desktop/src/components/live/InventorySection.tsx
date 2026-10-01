@@ -157,8 +157,15 @@ export function InventorySection({
   });
   const virtualRows = virtualizer.getVirtualItems();
   const skipCollapse = rows.length > 50;
+  const keepEmptyDuringBatch =
+    Boolean(batchLabel) || discardingAll || addingAll || activatingAll;
 
-  if (rows.length === 0 && !headerHint && !(editMode && onToggleEdit)) {
+  if (
+    rows.length === 0
+    && !headerHint
+    && !(editMode && onToggleEdit)
+    && !keepEmptyDuringBatch
+  ) {
     return null;
   }
 

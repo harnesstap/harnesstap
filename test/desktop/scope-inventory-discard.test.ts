@@ -117,6 +117,8 @@ describe("scope inventory discard controls", () => {
     );
 
     expect(inventorySectionSource).toContain("addingAllDisabled");
+    expect(inventorySectionSource).toContain("keepEmptyDuringBatch");
+    expect(inventorySectionSource).toContain("discardingAll");
   });
 });
 
