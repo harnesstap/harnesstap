@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { hasParentTraversalSegment } from "../utils/path-containment.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   findImportedSnapshotOwnersByFile,
   getImportedSnapshot,
@@ -31,6 +32,7 @@ import {
   persistWrittenMaterializations,
 } from "./materialization-ownership.js";
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
+import { omitHostPluginBundledSkills } from "./host-plugin-material.js";
 import { gateDeployFiles } from "./deploy-gate.js";
 import {
   type EnvironmentFragment,
@@ -248,9 +250,15 @@ export async function generateFiles(
     options.skillSourceRoot ??
     resources.find((r) => r.type === "skill" && r.origin_ref)?.origin_ref;
 
+  const homeRoot = resolveHomeRoot();
   for (const pid of platforms) {
+    const platformResources = omitHostPluginBundledSkills(
+      serializedResources,
+      pid,
+      homeRoot,
+    );
     const serializer = getPlatformSerializer(pid);
-    let files = await serializer.serialize(serializedResources, projectRoot, {
+    let files = await serializer.serialize(platformResources, projectRoot, {
       target,
       skillCursorMode: options.skillCursorMode,
       skillSourceRoot,
@@ -259,7 +267,7 @@ export async function generateFiles(
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudePluginExtensions(files, claudeConfig, projectRoot);
     }
-    files = await attachResourceOwnership(files, serializedResources, {
+    files = await attachResourceOwnership(files, platformResources, {
       platformId: pid,
       rootPath: projectRoot,
       target,

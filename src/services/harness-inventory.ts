@@ -10,6 +10,7 @@ import type {
 } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { inventorySourceForMatching } from "./claude-local-mcp.js";
+import { isPluginTranslatedResource } from "./plugin-translation-marker.js";
 import { scanCursorHostManagedSkills } from "./cursor-host-managed-skills.js";
 import {
   getHarnessSettings,
@@ -525,6 +526,7 @@ export function getHarnessInventory(
       : [];
     const resourcesByPath = new Map<string, HarnessLocationResource[]>();
     for (const resource of homeRows) {
+      if (isPluginTranslatedResource(homeRoot, resource)) continue;
       const target = locationForSource(resource.source, grouped, homeRoot);
       if (!target) continue;
       const rows = resourcesByPath.get(target.path) ?? [];
