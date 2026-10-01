@@ -227,7 +227,7 @@ export function ScopeAddToProfileModal({
                 <IconActionButton
                   primary
                   showLabel
-                  label="Create"
+                  label="Create a resource"
                   disabled={controlsDisabled}
                   onClick={onCreate}
                   icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
