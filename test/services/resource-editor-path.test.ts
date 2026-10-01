@@ -3,7 +3,9 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -153,6 +155,43 @@ describe("resource-editor-path service", () => {
       ).toThrow(/Path is not an openable file/);
       expect(existsSync(missing)).toBe(false);
       expect(existsSync(join(getHarnesstapDir(), "editor-scratch"))).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("opens the canonical live skill when ~/.agents is a symlink copy of ~/.claude", async () => {
+    const context = await createInitializedTestContext("resource-editor-agents-symlink");
+    try {
+      const claudeDir = join(context.homeDir, ".claude", "skills", "agent-development");
+      const agentsDir = join(context.homeDir, ".agents", "skills", "agent-development");
+      mkdirSync(claudeDir, { recursive: true });
+      mkdirSync(join(context.homeDir, ".agents", "skills"), { recursive: true });
+      const liveFile = join(claudeDir, "SKILL.md");
+      writeFileSync(liveFile, "---\nname: agent-development\n---\nbody\n", "utf-8");
+      symlinkSync(claudeDir, agentsDir);
+
+      const resource = createResource({
+        type: "skill",
+        name: "agent-development",
+        description: "",
+        content: "body",
+        metadata: {},
+        source: "~/.agents/skills/agent-development/SKILL.md",
+        origin_kind: "local_snapshot",
+        origin_ref: context.homeDir,
+      });
+
+      const canonical = realpathSync(liveFile);
+      expect(
+        resolveExistingResourceFilesystemPath(resource, agentsDir),
+      ).toBe(canonical);
+      expect(
+        resolveResourceEditorPath({
+          selector: resource.id,
+          pathHint: "~/.agents/skills/agent-development",
+        }),
+      ).toBe(canonical);
     } finally {
       await context.cleanup();
     }

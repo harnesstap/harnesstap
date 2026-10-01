@@ -76,4 +76,23 @@ describe("resourceOpenPath", () => {
     );
     expect(resourceOpenUsesSelector(resource)).toBe(false);
   });
+
+  it("shows and opens the same live skill folder when source is a .agents hub copy", () => {
+    const resource = marketplaceAgent({
+      type: "skill",
+      name: "agent-development",
+      namespace: null,
+      source: "/Users/christophe.oudar/.agents/skills/agent-development",
+      filesystem_path:
+        "/Users/christophe.oudar/.claude/skills/agent-development/SKILL.md",
+      origin_kind: "local_snapshot",
+      origin_ref: "/Users/christophe.oudar",
+    });
+    expect(resourcePathDisplay(resource)).toBe(
+      "/Users/christophe.oudar/.claude/skills/agent-development",
+    );
+    expect(resourceOpenPath(resource)).toBe(
+      "/Users/christophe.oudar/.claude/skills/agent-development",
+    );
+  });
 });

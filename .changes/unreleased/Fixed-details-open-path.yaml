@@ -1,0 +1,5 @@
+kind: Fixed
+body: Show and open the same live on-disk path in Desktop resource details when a ~/.agents skill is a symlink of ~/.claude.
+time: 2026-10-01T07:10:00Z
+custom:
+  Issue: ""
