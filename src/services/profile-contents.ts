@@ -9,6 +9,7 @@ import type { Resource } from "../types.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { formatResourceTypeSummary } from "./project-status-payload.js";
 import { collectProfilePluginIds } from "./profile-apply.js";
+import { resolveExistingResourceFilesystemPath } from "./resource-editor-path.js";
 
 export interface ProfileContentsResource {
   id: string;
@@ -16,6 +17,8 @@ export interface ProfileContentsResource {
   name: string;
   /** On-disk path or import origin label (hover target in desktop). */
   source: string;
+  /** Canonical live file when `source` is a hub symlink or scan alias. */
+  filesystem_path?: string | null;
   origin_kind?: string;
   origin_ref?: string;
   /** Present on not-staged rows: add is missing from the profile; update differs on disk. */
@@ -52,6 +55,7 @@ function materialResources(resources: Resource[]): Resource[] {
 }
 
 export function toContentsResource(resource: Resource): ProfileContentsResource {
+  const filesystemPath = resolveExistingResourceFilesystemPath(resource);
   return {
     id: resource.id,
     type: resource.type,
@@ -59,6 +63,7 @@ export function toContentsResource(resource: Resource): ProfileContentsResource 
     source: resource.source,
     ...(resource.origin_kind ? { origin_kind: resource.origin_kind } : {}),
     ...(resource.origin_ref ? { origin_ref: resource.origin_ref } : {}),
+    ...(filesystemPath ? { filesystem_path: filesystemPath } : {}),
   };
 }
 

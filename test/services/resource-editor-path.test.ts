@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import { handleOpenPath } from "../../src/agent/open-path-handlers.ts";
 import { createResource } from "../../src/models/resource.ts";
 import * as openPath from "../../src/services/open-path.ts";
+import { toContentsResource } from "../../src/services/profile-contents.ts";
 import {
   resolveEditorPath,
   resolveExistingResourceFilesystemPath,
@@ -192,6 +193,10 @@ describe("resource-editor-path service", () => {
           pathHint: "~/.agents/skills/agent-development",
         }),
       ).toBe(canonical);
+      expect(toContentsResource(resource)).toMatchObject({
+        source: "~/.agents/skills/agent-development/SKILL.md",
+        filesystem_path: canonical,
+      });
     } finally {
       await context.cleanup();
     }

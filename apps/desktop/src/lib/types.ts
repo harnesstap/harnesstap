@@ -31,6 +31,8 @@ export interface LibraryResource {
   description: string | null;
   /** On-disk path or import origin label. */
   source?: string | null;
+  /** Canonical live file when `source` is a hub symlink or scan alias. */
+  filesystem_path?: string | null;
   updated_at?: string | null;
   origin_kind?: string | null;
   origin_ref?: string | null;
@@ -266,6 +268,8 @@ export interface ProfileContentsResource {
   id?: string;
   /** On-disk path or import origin label (hover target). */
   source?: string;
+  /** Canonical live file when `source` is a hub symlink or scan alias. */
+  filesystem_path?: string | null;
   origin_kind?: string;
   origin_ref?: string;
   /** Present on not-staged rows: add is missing from the profile; update differs on disk. */

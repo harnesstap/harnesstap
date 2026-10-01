@@ -7,6 +7,7 @@ import {
 import { relatedHarnessesForResourceType } from "./harness-meta";
 import { libraryFilterType } from "./library-list";
 import { isPluginTypeResource } from "./plugin-ref-detail";
+import { packageDirectoryDisplayPath } from "./resource-display";
 import { resourceDisplayName } from "./resource-search";
 import type {
   DriftFileChange,
@@ -34,6 +35,20 @@ export type ResourceHoverModel = {
 
 export function formatHoverPath(path: string): string {
   return path.replaceAll("/", "/\u200b");
+}
+
+/** List-row / tooltip path: live file when present, SKILL.md stripped like details. */
+export function listRowHoverPath(resource: {
+  source?: string | null;
+  filesystem_path?: string | null;
+}): string | undefined {
+  const live = resource.filesystem_path?.trim();
+  const source = resource.source?.trim();
+  const path = live || source;
+  if (!path) {
+    return undefined;
+  }
+  return packageDirectoryDisplayPath(path);
 }
 
 /** Gap between the pointer and the tooltip’s top-left corner. */
@@ -121,7 +136,7 @@ export function hoverModelFromLibraryResource(
     harnessIds: [...relatedHarnessesForResourceType(filterType)],
     extra: [],
   };
-  const path = resource.source?.trim();
+  const path = listRowHoverPath(resource);
   if (path) {
     model.path = path;
   }
@@ -146,7 +161,7 @@ export function hoverModelFromProfileResource(
     harnessIds: [...relatedHarnessesForResourceType(resource.type)],
     extra: [],
   };
-  const path = resource.source?.trim();
+  const path = listRowHoverPath(resource);
   if (path) {
     model.path = path;
   }
@@ -162,7 +177,7 @@ export function hoverModelFromContentsDiffItem(
     harnessIds: [...relatedHarnessesForResourceType(item.iconType)],
     extra: [],
   };
-  const path = item.path?.trim();
+  const path = listRowHoverPath({ source: item.path });
   if (path) {
     model.path = path;
   }

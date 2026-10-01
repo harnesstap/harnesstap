@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { getPlatform } from "../../src/platforms/registry.ts";
@@ -319,6 +319,7 @@ describe("getHarnessInventory", () => {
             name: "foo",
             description: "A skill",
             source: "~/.claude/skills/foo/SKILL.md",
+            filesystem_path: realpathSync(join(skillDir, "SKILL.md")),
             origin_kind: "manual",
             namespace: "",
             origin_ref: context.homeDir,
