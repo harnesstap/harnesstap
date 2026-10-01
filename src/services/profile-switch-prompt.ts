@@ -36,7 +36,7 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
 
   if (!shouldPromptProfileEnable({ yes: input.yes, format })) {
     ui.hint(
-      `Profile ${ui.theme.accent(status.active_profile)} differs from your main harness (${status.main_harness}). Update it before switching to avoid losing on-disk changes.`,
+      `Profile ${ui.theme.accent(status.active_profile)} differs from registered harnesses (${status.registered_harnesses.join(", ")}). Update it before switching to avoid losing on-disk changes.`,
     );
     return false;
   }
@@ -51,14 +51,14 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
   ].filter(Boolean);
 
   ui.warn(
-    `Profile ${ui.theme.accent(status.active_profile)} is out of sync with your main harness (${status.main_harness}).`,
+    `Profile ${ui.theme.accent(status.active_profile)} is out of sync with registered harnesses (${status.registered_harnesses.join(", ")}).`,
   );
   if (summaryParts.length > 0) {
     ui.dim(summaryParts.join(", "));
   }
 
   const confirmed = await promptForConfirmation({
-    message: `Update profile ${status.active_profile} from the main harness before switching to ${input.targetProfileName}?`,
+    message: `Update profile ${status.active_profile} from registered harnesses before switching to ${input.targetProfileName}?`,
     default: true,
   });
 
@@ -68,11 +68,11 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
 
   const updated = await updateProfileFromMainHarness({
     profileSelector: status.active_profile,
-    harness: status.main_harness,
+    harness: status.registered_harnesses.join(","),
   });
 
   ui.success(
-    `Updated profile ${ui.theme.accent(updated.profile_name)} from ${updated.main_harness}`,
+    `Updated profile ${ui.theme.accent(updated.profile_name)} from ${updated.registered_harnesses.join(", ")}`,
   );
   if (updated.attached_resources > 0 || updated.removed_resources > 0) {
     ui.dim(

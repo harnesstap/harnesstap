@@ -46,14 +46,14 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(31);
+      expect(versionRow.version).toBe(32);
 
       const projectHarnessColumns = context.connection
         .getDb()
         .prepare("PRAGMA table_info(project_harnesses)")
         .all() as Array<{ name: string }>;
       expect(projectHarnessColumns.map((column) => column.name)).toEqual(
-        expect.arrayContaining(["cursor_skill_mode"]),
+        expect.arrayContaining(["cursor_skill_mode", "registered_harnesses"]),
       );
 
       const pluginColumns = context.connection
@@ -565,7 +565,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(31);
+        expect(version).toBe(32);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -592,7 +592,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(31);
+      expect(version).toBe(32);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -630,7 +630,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(31);
+      expect(version).toBe(32);
 
       const tables = db
         .prepare(
@@ -695,7 +695,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(31);
+      expect(version).toBe(32);
 
       const columns = db
         .prepare("PRAGMA table_info(resource_materializations)")
@@ -791,7 +791,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(31);
+      expect(version).toBe(32);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")

@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { isAbsolute, join, resolve } from "node:path";
 import { loadSettings } from "../config/settings.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import {
@@ -63,7 +64,7 @@ import {
 } from "./shared-emit-paths.js";
 
 export type HarnessUnionSyncCode =
-  | "no_main_harness"
+  | "no_registered_harnesses"
   | "need_two_harnesses";
 
 export class HarnessUnionSyncError extends Error {
@@ -85,8 +86,8 @@ export interface SyncConfiguredHarnessesOptions {
 }
 
 export interface SyncConfiguredHarnessesResult {
-  main_harness: string;
-  alias_harnesses: string[];
+  registered_harnesses: string[];
+  conflict_policy: "last-write";
   platforms_synced: string[];
   files_written: number;
   harness_changes: HarnessSyncChangeCount[];
@@ -107,8 +108,7 @@ function resolvePluginResourceMode(
 }
 
 function resolveConfiguredSelection(projectRoot?: string): {
-  main_harness: string;
-  alias_harnesses: string[];
+  registered_harnesses: string[];
   cursor_skill_mode?: CursorSkillMode;
 } {
   const global = getHarnessPreference();
@@ -121,13 +121,13 @@ function resolveConfiguredSelection(projectRoot?: string): {
         local_path: projectRoot,
       });
       const projectConfig = getProjectHarnessConfig(project.id);
-      if (projectConfig?.main_harness) {
+      const registered = uniqueHarnessTargets(
+        projectConfig?.registered_harnesses ?? [],
+      );
+      if (registered.length > 0) {
         return {
-          main_harness: projectConfig.main_harness,
-          alias_harnesses: projectConfig.alias_harnesses.filter(
-            (alias) => alias !== projectConfig.main_harness,
-          ),
-          ...(projectConfig.cursor_skill_mode
+          registered_harnesses: registered,
+          ...(projectConfig?.cursor_skill_mode
             ? { cursor_skill_mode: projectConfig.cursor_skill_mode }
             : {}),
         };
@@ -135,48 +135,65 @@ function resolveConfiguredSelection(projectRoot?: string): {
     }
   }
 
-  if (!global?.main_harness) {
+  const registered = uniqueHarnessTargets(global?.registered_harnesses ?? []);
+  if (registered.length === 0) {
     throw new HarnessUnionSyncError(
-      "no_main_harness",
-      "No main harness configured. Run harnesstap harness set --main <slug>.",
+      "no_registered_harnesses",
+      "No harnesses configured. Run harnesstap harness set --harnesses <slugs>.",
     );
   }
 
-  return {
-    main_harness: global.main_harness,
-    alias_harnesses: global.alias_harnesses.filter(
-      (alias) => alias !== global.main_harness,
-    ),
-  };
+  return { registered_harnesses: registered };
+}
+
+function resourceMtimeMs(rootPath: string, source: string): number | undefined {
+  if (!source) return undefined;
+  const full = isAbsolute(source) ? source : join(rootPath, source);
+  try {
+    if (!existsSync(full)) return undefined;
+    return statSync(full).mtimeMs;
+  } catch {
+    return undefined;
+  }
 }
 
 async function scanConfiguredSlices(
   platformIds: readonly string[],
   target: SerializerTarget,
   rootPath: string,
-): Promise<Array<{ platformId: string; resources: ResourceCreateInput[] }>> {
+): Promise<Array<{
+  platformId: string;
+  resources: ResourceCreateInput[];
+  mtimesMs: Map<string, number>;
+}>> {
   const slices = [];
   for (const platformId of platformIds) {
+    let resources: ResourceCreateInput[];
     if (target === "global") {
       const serializer = getPlatformSerializer(platformId);
       const scanned = serializer.scanGlobal
         ? await serializer.scanGlobal(rootPath)
         : await serializer.scan(rootPath);
-      slices.push({
-        platformId,
-        resources: dropPluginTranslatedResources(rootPath, scanned),
-      });
-      continue;
+      resources = dropPluginTranslatedResources(rootPath, scanned);
+    } else {
+      const scan = await scanPlatform(platformId, rootPath);
+      resources = scan.resources;
     }
-    const scan = await scanPlatform(platformId, rootPath);
-    slices.push({ platformId, resources: scan.resources });
+    const mtimesMs = new Map<string, number>();
+    for (const resource of resources) {
+      const mtime = resourceMtimeMs(rootPath, resource.source);
+      if (mtime !== undefined) {
+        mtimesMs.set(resourceIdentity(resource), mtime);
+      }
+    }
+    slices.push({ platformId, resources, mtimesMs });
   }
   return slices;
 }
 
 /**
- * Union resources from the Settings active set (main + aliases), resolve
- * conflicts with main-wins, then materialize through existing serializers.
+ * Union resources from the registered harness set, resolve same-identity
+ * conflicts with last-write, then materialize through existing serializers.
  */
 export async function syncConfiguredHarnesses(
   options: SyncConfiguredHarnessesOptions = {},
@@ -194,10 +211,7 @@ export async function syncConfiguredHarnesses(
   const selection = resolveConfiguredSelection(
     target === "project" ? rootPath : undefined,
   );
-  const platforms = uniqueHarnessTargets([
-    selection.main_harness,
-    ...selection.alias_harnesses,
-  ]);
+  const platforms = uniqueHarnessTargets(selection.registered_harnesses);
   if (platforms.length < 2) {
     throw new HarnessUnionSyncError(
       "need_two_harnesses",
@@ -206,7 +220,7 @@ export async function syncConfiguredHarnesses(
   }
 
   const slices = await scanConfiguredSlices(platforms, target, rootPath);
-  const unioned = unionHarnessResources(slices, selection.main_harness);
+  const unioned = unionHarnessResources(slices, "last-write");
   const emitResources = toPortableEmitResources(unioned.resources);
   const serializeOptions = selection.cursor_skill_mode
     ? { target, skillCursorMode: selection.cursor_skill_mode }
@@ -272,17 +286,19 @@ export async function syncConfiguredHarnesses(
     extracted,
   });
 
+  const payload = {
+    registered_harnesses: platforms,
+    conflict_policy: "last-write" as const,
+    platforms_synced: platforms,
+    files_written: filePaths.length,
+    harness_changes,
+    conflicts: unioned.conflicts,
+    files: filePaths,
+    plugin_resource_mode: pluginResourceMode,
+  };
+
   if (options.dryRun) {
-    return {
-      main_harness: selection.main_harness,
-      alias_harnesses: selection.alias_harnesses,
-      platforms_synced: platforms,
-      files_written: filePaths.length,
-      harness_changes,
-      conflicts: unioned.conflicts,
-      files: filePaths,
-      plugin_resource_mode: pluginResourceMode,
-    };
+    return payload;
   }
 
   if (target === "project") {
@@ -305,7 +321,7 @@ export async function syncConfiguredHarnesses(
       };
       createSnapshot({
         project_id: project.id,
-        label: `Before harness sync (${selection.main_harness})`,
+        label: `Before harness sync (${platforms.join(", ")})`,
         state: snapshotState,
       });
     }
@@ -345,14 +361,5 @@ export async function syncConfiguredHarnesses(
     originRef: rootPath,
   });
 
-  return {
-    main_harness: selection.main_harness,
-    alias_harnesses: selection.alias_harnesses,
-    platforms_synced: platforms,
-    files_written: filePaths.length,
-    harness_changes,
-    conflicts: unioned.conflicts,
-    files: filePaths,
-    plugin_resource_mode: pluginResourceMode,
-  };
+  return payload;
 }

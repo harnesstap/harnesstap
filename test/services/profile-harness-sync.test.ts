@@ -27,7 +27,7 @@ describe("profile-harness-sync service", () => {
   it("detects harness resources missing from the active profile stack", async () => {
     const context = await createInitializedTestContext("profile-harness-sync-detect");
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
       const profile = createPlugin({ name: "work" });
       setPluginTags(profile.id, ["profile"]);
@@ -69,7 +69,7 @@ describe("profile-harness-sync service", () => {
   it("updates the profile plugin from the main harness before switching away", async () => {
     const context = await createInitializedTestContext("profile-harness-sync-update");
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
       const profileA = createPlugin({ name: "profile-a" });
       setPluginTags(profileA.id, ["profile"]);

@@ -11,9 +11,7 @@ describe("addSkillPackage integration", () => {
     const context = await createInitializedTestContext("add-skill-package");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "codex",
-        alias_harnesses: ["claude-code"],
+      setHarnessPreference({ registered_harnesses: ["codex", "claude-code"],
       });
 
       const result = await addSkillPackage({
@@ -41,7 +39,7 @@ describe("addSkillPackage integration", () => {
     const context = await createInitializedTestContext("add-create-plugin");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({ main_harness: "codex", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["codex"] });
       await addSkillPackage({
         source: fixture,
         skillNames: ["caveman"],

@@ -106,29 +106,25 @@ describe("CLI harness", () => {
         "cursor,codex",
       ]);
       expect(setResult.stdout).toContain("✓ Set harness preference");
-      expect(setResult.stdout).toContain("main:");
       expect(setResult.stdout).toContain("claude-code");
+      expect(setResult.stdout).toContain("cursor");
+      expect(setResult.stdout).toContain("codex");
 
       const show = await runCli(["harness", "status", "--format", "json"]);
       expect(JSON.parse(show.stdout)).toEqual(
-        expect.objectContaining({
-          main_harness: "claude-code",
-          alias_harnesses: ["cursor", "codex"],
+        expect.objectContaining({ registered_harnesses: ["claude-code", "cursor", "codex"],
         }),
       );
 
       const sync = await runCli(["harness", "sync", "--dry-run", "--format", "json"]);
       expect(JSON.parse(sync.stdout)).toEqual(
-        expect.objectContaining({
-          main_harness: "claude-code",
-          alias_harnesses: ["cursor", "codex"],
+        expect.objectContaining({ registered_harnesses: ["claude-code", "cursor", "codex"],
         }),
       );
 
       const human = await runCli(["harness", "status"]);
       expect(human.stdout).toContain("HARNESS");
-      expect(human.stdout).toContain("Main harness");
-      expect(human.stdout).toContain("Alias harnesses");
+      expect(human.stdout).toContain("Registered");
       expect(human.stdout).toContain("Plugin resources");
     } finally {
       await context.cleanup();
@@ -141,8 +137,7 @@ describe("CLI harness", () => {
       const result = await runCli(["harness", "set"], {
         isTTY: true,
         promptResponses: [
-          { main_harness: "claude-code" },
-          { alias_harnesses: ["cursor"] },
+          { value: ["claude-code", "cursor"] },
         ],
       });
 
@@ -175,8 +170,7 @@ describe("CLI harness", () => {
       const result = await runCli(["harness", "set"], {
         isTTY: true,
         promptResponses: [
-          { main_harness: "claude-code" },
-          { alias_harnesses: ["cursor"] },
+          { value: ["claude-code", "cursor"] },
         ],
       });
 
@@ -199,15 +193,13 @@ describe("CLI harness", () => {
         isTTY: true,
         env: { SHELL: "/bin/zsh" },
         promptResponses: [
-          { main_harness: "claude-code" },
-          { alias_harnesses: ["cursor"] },
-          // Decline interactive tab-completion install during init.
+          { value: ["claude-code", "cursor"] },
           { value: false },
         ],
       });
 
       expect(prompted.exitCode ?? 0).toBe(0);
-      expect(prompted.stdout).toContain("MAIN HARNESS");
+      expect(prompted.stdout).toContain("HARNESSES");
 
       const jsonSuppressed = await runCli(["init", "--format", "json"], {
         isTTY: true,
@@ -220,13 +212,13 @@ describe("CLI harness", () => {
         env: { CI: "true" },
       });
       expect(ciSuppressed.exitCode ?? 0).toBe(0);
-      expect(ciSuppressed.stdout).not.toContain("MAIN HARNESS");
+      expect(ciSuppressed.stdout).not.toContain("HARNESSES");
 
       const disabled = await runCli(["--no-interactive", "init"], {
         isTTY: true,
       });
       expect(disabled.exitCode ?? 0).toBe(0);
-      expect(disabled.stdout).not.toContain("MAIN HARNESS");
+      expect(disabled.stdout).not.toContain("HARNESSES");
     } finally {
       await context.cleanup();
     }
@@ -252,8 +244,8 @@ describe("CLI harness", () => {
         "copy",
       ]);
       expect(setResult.stdout).toContain("✓ Set project harness preference");
-      expect(setResult.stdout).toContain("main:");
       expect(setResult.stdout).toContain("cursor");
+      expect(setResult.stdout).toContain("codex");
 
       const show = await runCli([
         "harness",
@@ -266,9 +258,7 @@ describe("CLI harness", () => {
       ]);
 
       expect(JSON.parse(show.stdout)).toEqual(
-        expect.objectContaining({
-          main_harness: "cursor",
-          alias_harnesses: ["codex"],
+        expect.objectContaining({ registered_harnesses: ["cursor", "codex"],
           materialization_strategy: "copy",
         }),
       );
@@ -281,7 +271,7 @@ describe("CLI harness", () => {
         context.projectDir,
       ]);
       expect(human.stdout).toContain("HARNESS");
-      expect(human.stdout).toContain("Main harness");
+      expect(human.stdout).toContain("Registered");
       expect(human.stdout).toContain("Materialization");
     } finally {
       await context.cleanup();
@@ -303,8 +293,7 @@ describe("CLI harness", () => {
       ], {
         isTTY: true,
         promptResponses: [
-          { main_harness: "cursor" },
-          { alias_harnesses: ["codex"] },
+          { value: ["cursor", "codex"] },
         ],
       });
 

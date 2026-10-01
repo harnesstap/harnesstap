@@ -402,8 +402,7 @@ export interface DeckJson {
 }
 
 export interface HarnessSelection {
-  main_harness: string;
-  alias_harnesses: string[];
+  registered_harnesses: string[];
 }
 
 export interface HarnessPreference extends HarnessSelection {

@@ -7,7 +7,7 @@ import {
 } from "../models/harness.js";
 import { upsertProject } from "../models/project.js";
 import { createSnapshot } from "../models/snapshot.js";
-import type { CursorSkillMode, SnapshotState } from "../types.js";
+import type { CursorSkillMode, Resource, ResourceCreateInput, SerializedFile, SnapshotState } from "../types.js";
 import { detectPlatforms, hasPluginSourceLayout, scanPlatform } from "./scanner.js";
 import { scanPluginSourceForMerge } from "./plugin-source-import.js";
 import {
@@ -21,21 +21,23 @@ import {
   mirrorSurfaceWarnings,
   type MirrorSurfaceWarning,
 } from "./harness-surface-gaps.js";
-import type { Resource, ResourceCreateInput, SerializedFile } from "../types.js";
+import {
+  uniqueHarnessTargets,
+} from "./harness-targets.js";
 
-export type ProjectReferenceStrategy = "main" | "plugin" | "agents" | "auto";
+export type ProjectReferenceStrategy = "disk" | "plugin" | "agents" | "auto" | "main";
 
 export interface ProjectSyncOptions {
   projectRoot: string;
   dryRun?: boolean;
   forceShiftReference?: string;
-  /** Where to load reference resources when mirroring (default: main). */
+  /** Where to load reference resources when rematerializing (default: disk). */
   referenceStrategy?: ProjectReferenceStrategy;
 }
 
 export interface ProjectSyncResult {
-  main_harness: string;
-  alias_harnesses: string[];
+  registered_harnesses: string[];
+  from_harness: string;
   materialization_strategy: "symlink-preferred" | "copy";
   platforms_synced: string[];
   files_written: number;
@@ -45,10 +47,10 @@ export interface ProjectSyncResult {
 function resolveSyncHarnesses(
   projectId: string | undefined,
   projectRoot: string,
-  forceMain?: string,
+  fromHarness?: string,
 ): {
-  main_harness: string;
-  alias_harnesses: string[];
+  registered_harnesses: string[];
+  from_harness: string;
   materialization_strategy: "symlink-preferred" | "copy";
   cursor_skill_mode?: CursorSkillMode;
 } {
@@ -58,26 +60,24 @@ function resolveSyncHarnesses(
   const global = getHarnessPreference();
 
   const detected = detectPlatforms(projectRoot);
-  const main =
-    forceMain ??
-    projectConfig?.main_harness ??
-    global?.main_harness ??
-    detected[0];
+  const registered = uniqueHarnessTargets([
+    ...(fromHarness ? [fromHarness] : []),
+    ...(projectConfig?.registered_harnesses
+      ?? global?.registered_harnesses
+      ?? detected),
+  ]);
 
-  if (!main) {
+  const from = fromHarness ?? registered[0];
+
+  if (!from) {
     throw new Error(
-      "No main harness configured. Run harnesstap harness project set or harnesstap harness set.",
+      "No harnesses configured. Run harnesstap harness project set or harnesstap harness set.",
     );
   }
 
-  const aliases =
-    projectConfig?.alias_harnesses ??
-    global?.alias_harnesses ??
-    detected.filter((p) => p !== main);
-
   return {
-    main_harness: main,
-    alias_harnesses: aliases.filter((a) => a !== main),
+    registered_harnesses: registered.length > 0 ? registered : [from],
+    from_harness: from,
     materialization_strategy:
       projectConfig?.materialization_strategy ?? "symlink-preferred",
     ...(projectConfig?.cursor_skill_mode
@@ -195,20 +195,20 @@ async function scanAgentsReferenceResources(
 }
 
 function emptyReferenceError(
-  mainHarness: string,
+  fromHarness: string,
   projectRoot: string,
 ): Error {
   return new Error(
-    `Main harness "${mainHarness}" has no on-disk resources in ${projectRoot}. ` +
+    `Harness "${fromHarness}" has no on-disk resources in ${projectRoot}. ` +
       "Try: harnesstap mirror --reference plugin " +
       "or harnesstap scan . " +
-      "or harnesstap harness project set --main codex",
+      "or harnesstap harness project set --harnesses claude-code,cursor",
   );
 }
 
 async function resolveReferenceResources(
   projectRoot: string,
-  mainHarness: string,
+  fromHarness: string,
   strategy: ProjectReferenceStrategy,
 ): Promise<Resource[]> {
   if (strategy === "plugin") {
@@ -232,25 +232,25 @@ async function resolveReferenceResources(
     return toSyncResources(agentResources);
   }
 
-  const mainScan = await scanPlatform(mainHarness, projectRoot);
+  const diskScan = await scanPlatform(fromHarness, projectRoot);
 
-  if (strategy === "main") {
-    if (mainScan.resources.length === 0) {
-      throw emptyReferenceError(mainHarness, projectRoot);
+  if (strategy === "main" || strategy === "disk") {
+    if (diskScan.resources.length === 0) {
+      throw emptyReferenceError(fromHarness, projectRoot);
     }
-    return toSyncResources(mainScan.resources);
+    return toSyncResources(diskScan.resources);
   }
 
-  if (mainScan.resources.length > 0) {
+  if (diskScan.resources.length > 0) {
     if (strategy === "auto" && hasPluginSourceLayout(projectRoot)) {
       const pluginResources = await scanPluginReferenceResources(projectRoot);
-      if (mainScanLacksPluginSkills(mainScan.resources, pluginResources)) {
+      if (mainScanLacksPluginSkills(diskScan.resources, pluginResources)) {
         return toSyncResources(
-          mergeReferenceResourceInputs(mainScan.resources, pluginResources),
+          mergeReferenceResourceInputs(diskScan.resources, pluginResources),
         );
       }
     }
-    return toSyncResources(mainScan.resources);
+    return toSyncResources(diskScan.resources);
   }
 
   const pluginResources = await scanPluginReferenceResources(projectRoot);
@@ -263,11 +263,11 @@ async function resolveReferenceResources(
     return toSyncResources(agentResources);
   }
 
-  throw emptyReferenceError(mainHarness, projectRoot);
+  throw emptyReferenceError(fromHarness, projectRoot);
 }
 
 /**
- * Sync alias harness outputs from the main harness on-disk configuration.
+ * Rematerialize registered harness outputs from one on-disk source (`--from`).
  */
 export async function syncProject(
   options: ProjectSyncOptions,
@@ -276,7 +276,7 @@ export async function syncProject(
     projectRoot,
     dryRun,
     forceShiftReference,
-    referenceStrategy = "main",
+    referenceStrategy = "disk",
   } = options;
   const gitOrigin = getGitOrigin(projectRoot);
 
@@ -293,8 +293,10 @@ export async function syncProject(
       const current = getProjectHarnessConfig(project.id);
       setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: forceShiftReference,
-        alias_harnesses: current?.alias_harnesses,
+        registered_harnesses: uniqueHarnessTargets([
+          forceShiftReference,
+          ...(current?.registered_harnesses ?? []),
+        ]),
         materialization_strategy: current?.materialization_strategy,
         cursor_skill_mode: current?.cursor_skill_mode,
       });
@@ -309,14 +311,17 @@ export async function syncProject(
 
   const resources = await resolveReferenceResources(
     projectRoot,
-    harnesses.main_harness,
+    harnesses.from_harness,
     referenceStrategy,
   );
 
+  const otherPlatforms = harnesses.registered_harnesses.filter(
+    (id) => id !== harnesses.from_harness,
+  );
   const aliasPlatforms =
-    harnesses.alias_harnesses.length > 0
-      ? harnesses.alias_harnesses
-      : detectPlatforms(projectRoot).filter((p) => p !== harnesses.main_harness);
+    otherPlatforms.length > 0
+      ? otherPlatforms
+      : detectPlatforms(projectRoot).filter((p) => p !== harnesses.from_harness);
 
   const serializeOptions = harnesses.cursor_skill_mode
     ? { skillCursorMode: harnesses.cursor_skill_mode }
@@ -324,7 +329,7 @@ export async function syncProject(
 
   const mainGenerated = await generateFiles(
     resources,
-    [harnesses.main_harness],
+    [harnesses.from_harness],
     projectRoot,
     serializeOptions,
   );
@@ -364,7 +369,7 @@ export async function syncProject(
     };
     createSnapshot({
       project_id: projectId,
-      label: `Before mirror (${harnesses.main_harness})`,
+      label: `Before mirror (${harnesses.from_harness})`,
       state: snapshotState,
     });
   }

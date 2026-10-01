@@ -169,8 +169,8 @@ describe("settings project config inspect surface", () => {
     expect(sectionsSource).toContain("ProjectHarnessOverrideSection");
     expect(overrideSource).toContain('data-testid="settings-harness-save"');
     expect(overrideSource).toContain("const current = await fetchHarnessSettings(baseUrl, token, projectPath);");
-    expect(overrideSource).toContain("main_harness: currentMain,");
-    expect(overrideSource).toContain("alias_harnesses: [...current.global.alias_harnesses],");
+    expect(overrideSource).toContain("registered_harnesses: currentRegistered,");
+    expect(overrideSource).toContain("registered_harnesses: draft.registered,");
     expect(inspectSource).toContain("project-config-save");
     expect(inspectSource).toContain("parseValidationLineNumber");
     expect(inspectSource).toContain("apm-yml-gutter");

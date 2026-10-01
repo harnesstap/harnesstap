@@ -18,7 +18,7 @@ When you run `ht init`, HarnessTap:
 `init` sets the active profile pointer only — it does **not** run global apply. Materialize home harness files after bootstrap:
 
 ```bash
-ht init --main codex --aliases claude-code,cursor
+ht init --harnesses codex,claude-code,cursor
 ht profile use "global default"
 # or shorthand when <name> is not a reserved command:
 ht default
@@ -72,7 +72,7 @@ Combine multiple context plugins with `plugin edit --add plugin:…` refs. `prof
 Control bootstrap behavior with init flags:
 
 ```bash
-ht init --main claude-code --aliases cursor,codex
+ht init --harnesses claude-code,cursor,codex
 ht init --no-default-profile    # skip default profile plugin and active-profile.json
 ht init --interactive           # prompt for harness selection
 ```
@@ -81,7 +81,7 @@ After init, manage harness preferences independently:
 
 ```bash
 ht harness status --format json
-ht harness set --main claude-code --aliases cursor,codex
+ht harness set --harnesses claude-code,cursor,codex
 ```
 
 The **main** harness is the primary write target during profile apply. **Aliases** receive mirrored output when you run `mirror` in a repo, or when profile apply includes multiple harnesses via `--harness`.

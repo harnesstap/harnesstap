@@ -19,7 +19,7 @@ import {
   type ProfileContentsResource,
 } from "./profile-contents.js";
 import type { ProfileApplyPreviewScope } from "./profile-apply-preview.js";
-import { resolveMainHarnessTarget } from "./profile-harness-sync.js";
+import { resolveRegisteredScanTargets } from "./profile-harness-sync.js";
 import {
   persistScanResults,
   scanHomeDefaults,
@@ -220,7 +220,7 @@ async function scanForCommit(input: {
     input.scope === "project"
       ? await scanProject(originRef)
       : await scanHomeDefaults(
-          input.harness ? resolveMainHarnessTarget(input.harness) : undefined,
+          input.harness ? resolveRegisteredScanTargets(input.harness)[0] : undefined,
           originRef,
         );
   return { originRef, scanned };

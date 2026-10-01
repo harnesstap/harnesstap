@@ -60,17 +60,16 @@ describe("Harnesses sync CTA", () => {
     expect(apiSource).toContain("/v1/harness/sync");
     expect(apiSource).toContain("dry_run: true");
     expect(apiSource).toContain("harness_changes");
-    expect(syncHarnessesTooltip("Claude Code")).toBe(
-      "Merge across configured harnesses. Claude Code wins conflicts.",
+    expect(syncHarnessesTooltip()).toBe(
+      "Merge across registered harnesses. Newest on-disk copy wins conflicts.",
     );
-    expect(syncHarnessesConfirmBody("Claude Code")).toContain("Prefers shared paths.");
-    expect(syncHarnessesConfirmBody("Claude Code")).toContain(
+    expect(syncHarnessesConfirmBody()).toContain("Prefers shared paths.");
+    expect(syncHarnessesConfirmBody()).toContain(
       "Cursor and Claude plugin skills also land in .agents",
     );
-    expect(syncHarnessesConfirmBody("Claude Code")).not.toContain("—");
+    expect(syncHarnessesConfirmBody()).not.toContain("—");
     expect(syncHarnessesDisabledReason({
       configuredCount: 1,
-      hasMain: true,
       running: false,
     })).toBe("Add another harness to sync");
     expect(formatHarnessSyncChangeSummary({

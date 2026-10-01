@@ -66,16 +66,18 @@ function resolveScanConflictPolicy(opts: {
 function parseReferenceStrategy(
   value: string | undefined,
 ): ProjectReferenceStrategy {
-  const strategy = value ?? "main";
+  const strategy = value ?? "disk";
   switch (strategy) {
     case "main":
+    case "disk":
+      return "disk";
     case "plugin":
     case "agents":
     case "auto":
       return strategy;
     default:
       throw new Error(
-        `Invalid --reference value: ${value}. Expected main, plugin, agents, or auto.`,
+        `Invalid --reference value: ${value}. Expected disk, plugin, agents, auto, or main (deprecated).`,
       );
   }
 }
@@ -545,7 +547,7 @@ function printMirrorSurfaceWarnings(
 ): void {
   for (const warning of warnings) {
     ui.warn(
-      `${warning.harness} surface ${warning.path} is not mirrored to ${warning.alias_harnesses.join(", ")}: ${warning.message}`,
+      `${warning.harness} surface ${warning.path} is not rematerialized to ${warning.alias_harnesses.join(", ")}: ${warning.message}`,
     );
   }
 }
@@ -555,6 +557,7 @@ async function handleProjectSyncCommand(
   opts: {
     dryRun?: boolean;
     format?: string;
+    from?: string;
     forceShiftReference?: string;
     reference?: string;
   },
@@ -578,11 +581,11 @@ async function handleProjectSyncCommand(
         const r = await syncProject({
           projectRoot,
           dryRun: false,
-          forceShiftReference: opts.forceShiftReference,
+          forceShiftReference: opts.from ?? opts.forceShiftReference,
           referenceStrategy,
         });
         spin.succeed(
-          `Synced ${r.platforms_synced.join(", ") || "(none)"} from ${r.main_harness} ${ui.icons.bullet} ${formatCount(r.files_written, "file")}`,
+          `Synced ${r.platforms_synced.join(", ") || "(none)"} from ${r.from_harness} ${ui.icons.bullet} ${formatCount(r.files_written, "file")}`,
         );
         printMirrorSurfaceWarnings(r.surface_warnings);
         return r;
@@ -590,7 +593,7 @@ async function handleProjectSyncCommand(
       return syncProject({
         projectRoot,
         dryRun: opts.dryRun,
-        forceShiftReference: opts.forceShiftReference,
+        forceShiftReference: opts.from ?? opts.forceShiftReference,
         referenceStrategy,
       });
     })();
@@ -602,7 +605,7 @@ async function handleProjectSyncCommand(
     if (opts.dryRun) {
       const dryTag = ui.theme.muted("[dry run] ");
       const verdict = ui.theme.success(
-        `${ui.icons.success} Synced ${result.platforms_synced.join(", ") || "(none)"} from ${result.main_harness} ${ui.icons.bullet} ${formatCount(result.files_written, "file")}`,
+        `${ui.icons.success} Synced ${result.platforms_synced.join(", ") || "(none)"} from ${result.from_harness} ${ui.icons.bullet} ${formatCount(result.files_written, "file")}`,
       );
       console.log(dryTag + verdict);
     }
@@ -658,18 +661,19 @@ export function registerProjectCommandsAfterConfig(root: Command): void {
     .command("mirror")
     .argument("[path]", "Project directory", ".")
     .option("--dry-run", "Show what would be written without writing files")
+    .option("--from <slug>", "On-disk harness to copy from (same as --force-shift-reference)")
     .option(
       "--force-shift-reference <slug>",
-      "Set the project main harness before mirroring",
+      "Deprecated alias of --from",
     )
     .option(
       "--reference <strategy>",
-      "Reference source for mirror: main, plugin, agents, or auto",
-      "main",
+      "Reference source: disk, plugin, agents, or auto (main is a deprecated alias of disk)",
+      "disk",
     )
     .option("--format <mode>", "Output format: human or json", "human")
     .description(
-      "Mirror alias harness outputs from the main harness on-disk configuration",
+      "Rematerialize registered harness files from one on-disk harness (or plugin/AGENTS.md fallback)",
     )
     .action(handleProjectSyncCommand);
 

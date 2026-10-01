@@ -216,7 +216,7 @@ describe("POST /v1/environments", () => {
   });
 
   it("creates from-project using the selected project path", async () => {
-    setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+    setHarnessPreference({ registered_harnesses: ["claude-code"] });
     mkdirSync(join(ctx.projectDir, ".claude"), { recursive: true });
     writeFileSync(
       join(ctx.projectDir, ".claude", "settings.json"),

@@ -14,7 +14,7 @@ describe("harness-settings service", () => {
     }
   });
 
-  it("getHarnessSettings returns global nulls, catalog with supported flags, and unavailable project without git", async () => {
+  it("getHarnessSettings returns an empty registered set, catalog, and unavailable project without git", async () => {
     const context = await createInitializedTestContext("harness-settings-get");
     try {
       const { getHarnessSettings } = await import(
@@ -25,8 +25,7 @@ describe("harness-settings service", () => {
 
       const payload = getHarnessSettings(projectDir);
       expect(payload.global).toEqual({
-        main_harness: null,
-        alias_harnesses: [],
+        registered_harnesses: [],
       });
       expect(payload.harnesses.some((h) => h.id === "claude-code" && h.supported)).toBe(
         true,
@@ -48,7 +47,7 @@ describe("harness-settings service", () => {
     }
   });
 
-  it("putHarnessSettings saves global and mirrors when project override is on", async () => {
+  it("putHarnessSettings saves global and project override without rematerializing", async () => {
     const context = await createInitializedTestContext("harness-settings-put");
     try {
       const { putHarnessSettings } = await import(
@@ -64,57 +63,36 @@ describe("harness-settings service", () => {
       tempDirs.push(projectDir);
       initGitRepo(projectDir);
 
-      let syncCalls = 0;
-      const result = await putHarnessSettings(
-        {
-          global: {
-            main_harness: "claude-code",
-            alias_harnesses: ["cursor"],
-          },
-          project: {
-            path: projectDir,
-            override: true,
-            main_harness: "codex",
-            alias_harnesses: ["claude-code"],
-            materialization_strategy: "copy",
-          },
+      const result = await putHarnessSettings({
+        global: { registered_harnesses: ["claude-code", "cursor"] },
+        project: {
+          path: projectDir,
+          override: true,
+          registered_harnesses: ["codex", "claude-code"],
+          materialization_strategy: "copy",
         },
-        {
-          syncProject: async (opts) => {
-            syncCalls += 1;
-            expect(opts.projectRoot).toBe(projectDir);
-            expect(opts.forceShiftReference).toBeUndefined();
-            return {
-              main_harness: "codex",
-              alias_harnesses: ["claude-code"],
-              materialization_strategy: "copy" as const,
-              platforms_synced: ["claude-code"],
-              files_written: 2,
-              surface_warnings: [],
-            };
-          },
-        },
-      );
+      });
 
-      expect(syncCalls).toBe(1);
-      expect(getHarnessPreference()?.main_harness).toBe("claude-code");
+      expect(getHarnessPreference()?.registered_harnesses).toEqual([
+        "claude-code",
+        "cursor",
+      ]);
       const project = getProjectByOrigin(
         normalizeGitUrl("git@github.com:acme/harnesstap-fixture.git"),
       );
       expect(project).toBeDefined();
       expect(getProjectHarnessConfig(project!.id)).toMatchObject({
-        main_harness: "codex",
-        alias_harnesses: ["claude-code"],
+        registered_harnesses: ["codex", "claude-code"],
         materialization_strategy: "copy",
       });
-      expect(result.mirror?.files_written).toBe(2);
       expect(result.project?.override).toBe(true);
+      expect("mirror" in result).toBe(false);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("putHarnessSettings clears override without calling sync", async () => {
+  it("putHarnessSettings clears override", async () => {
     const context = await createInitializedTestContext("harness-settings-clear");
     try {
       const { putHarnessSettings } = await import(
@@ -138,70 +116,15 @@ describe("harness-settings service", () => {
       });
       setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: "codex",
-        alias_harnesses: [],
+        registered_harnesses: ["codex"],
       });
 
-      let syncCalls = 0;
-      await putHarnessSettings(
-        {
-          global: { main_harness: "claude-code", alias_harnesses: [] },
-          project: { path: projectDir, override: false },
-        },
-        {
-          syncProject: async () => {
-            syncCalls += 1;
-            throw new Error("should not sync");
-          },
-        },
-      );
+      await putHarnessSettings({
+        global: { registered_harnesses: ["claude-code"] },
+        project: { path: projectDir, override: false },
+      });
 
-      expect(syncCalls).toBe(0);
       expect(getProjectHarnessConfig(project.id)).toBeUndefined();
-    } finally {
-      await context.cleanup();
-    }
-  });
-
-  it("putHarnessSettings keeps prefs when sync throws and sets mirror_error", async () => {
-    const context = await createInitializedTestContext("harness-settings-mirror-err");
-    try {
-      const { putHarnessSettings } = await import(
-        "../../src/services/harness-settings.ts"
-      );
-      const { getProjectHarnessConfig } = await import(
-        "../../src/models/harness.ts"
-      );
-      const { getProjectByOrigin } = await import("../../src/models/project.ts");
-      const { normalizeGitUrl } = await import("../../src/services/git.ts");
-
-      const projectDir = mkdtempSync(join(tmpdir(), "ht-hs-merr-"));
-      tempDirs.push(projectDir);
-      initGitRepo(projectDir);
-
-      const result = await putHarnessSettings(
-        {
-          global: { main_harness: "claude-code", alias_harnesses: [] },
-          project: {
-            path: projectDir,
-            override: true,
-            main_harness: "cursor",
-            alias_harnesses: [],
-          },
-        },
-        {
-          syncProject: async () => {
-            throw new Error("mirror boom");
-          },
-        },
-      );
-
-      const project = getProjectByOrigin(
-        normalizeGitUrl("git@github.com:acme/harnesstap-fixture.git"),
-      );
-      expect(getProjectHarnessConfig(project!.id)?.main_harness).toBe("cursor");
-      expect(result.mirror_error).toBe("mirror boom");
-      expect(result.mirror).toBeUndefined();
     } finally {
       await context.cleanup();
     }
@@ -215,7 +138,7 @@ describe("harness-settings service", () => {
       );
       await expect(
         putHarnessSettings({
-          global: { main_harness: "not-a-real-harness", alias_harnesses: [] },
+          global: { registered_harnesses: ["not-a-real-harness"] },
         }),
       ).rejects.toThrow(/unknown harness/i);
     } finally {
@@ -234,12 +157,7 @@ describe("harness-settings service", () => {
       );
 
       setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
-      });
-      expect(getHarnessPreference()).toMatchObject({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+        registered_harnesses: ["claude-code", "cursor"],
       });
 
       const projectDir = mkdtempSync(join(tmpdir(), "ht-hs-nogit-put-"));
@@ -247,30 +165,25 @@ describe("harness-settings service", () => {
 
       await expect(
         putHarnessSettings({
-          global: {
-            main_harness: "codex",
-            alias_harnesses: [],
-          },
+          global: { registered_harnesses: ["codex"] },
           project: {
             path: projectDir,
             override: true,
-            main_harness: "cursor",
-            alias_harnesses: [],
+            registered_harnesses: ["cursor"],
           },
         }),
       ).rejects.toThrow(/git origin/i);
 
       expect(getHarnessPreference()).toMatchObject({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+        registered_harnesses: ["claude-code", "cursor"],
       });
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not persist global preference when project override main is missing", async () => {
-    const context = await createInitializedTestContext("harness-settings-nomain-put");
+  it("does not persist global preference when project override registered set is empty", async () => {
+    const context = await createInitializedTestContext("harness-settings-noreg-put");
     try {
       const { putHarnessSettings } = await import(
         "../../src/services/harness-settings.ts"
@@ -280,28 +193,24 @@ describe("harness-settings service", () => {
       );
 
       setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: [],
+        registered_harnesses: ["claude-code"],
       });
 
-      const projectDir = mkdtempSync(join(tmpdir(), "ht-hs-nomain-put-"));
+      const projectDir = mkdtempSync(join(tmpdir(), "ht-hs-noreg-put-"));
       tempDirs.push(projectDir);
       initGitRepo(projectDir);
 
       await expect(
         putHarnessSettings({
-          global: {
-            main_harness: "codex",
-            alias_harnesses: [],
-          },
+          global: { registered_harnesses: ["codex"] },
           project: {
             path: projectDir,
             override: true,
           },
         }),
-      ).rejects.toThrow(/main_harness is required/i);
+      ).rejects.toThrow(/registered_harnesses is required/i);
 
-      expect(getHarnessPreference()?.main_harness).toBe("claude-code");
+      expect(getHarnessPreference()?.registered_harnesses).toEqual(["claude-code"]);
     } finally {
       await context.cleanup();
     }

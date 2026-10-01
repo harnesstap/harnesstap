@@ -118,125 +118,98 @@ const CLAUDE_ENTRY = entry("claude-code", "detected", {
 describe("selectionWith", () => {
   const catalog = [CLAUDE_ENTRY, entry("cursor", "absent"), entry("codex", "detected")];
 
-  it("add on a null selection makes that harness main", () => {
+  it("add on a null selection registers that harness", () => {
     expect(selectionWith(null, catalog, { kind: "add", id: CLAUDE })).toEqual({
       kind: "changed",
-      next: { main: CLAUDE, aliases: [] },
+      next: { registered: [CLAUDE] },
       added: [CLAUDE],
       removed: [],
-      promotedMain: null,
     });
   });
 
-  it("a second add becomes an alias", () => {
+  it("a second add appends to the registered set", () => {
     expect(
-      selectionWith({ main: CLAUDE, aliases: [] }, catalog, { kind: "add", id: CURSOR }),
+      selectionWith({ registered: [CLAUDE] }, catalog, { kind: "add", id: CURSOR }),
     ).toEqual({
       kind: "changed",
-      next: { main: CLAUDE, aliases: [CURSOR] },
+      next: { registered: [CLAUDE, CURSOR] },
       added: [CURSOR],
       removed: [],
-      promotedMain: null,
     });
   });
 
   it("adding a configured id is unchanged", () => {
     expect(
-      selectionWith({ main: CLAUDE, aliases: [CURSOR] }, catalog, { kind: "add", id: CURSOR }),
+      selectionWith({ registered: [CLAUDE, CURSOR] }, catalog, { kind: "add", id: CURSOR }),
     ).toEqual({ kind: "unchanged" });
   });
 
-  it("removing main promotes the first alias", () => {
+  it("removing the first registered keeps the rest in order", () => {
     expect(
-      selectionWith({ main: CLAUDE, aliases: [CURSOR, CODEX] }, catalog, {
+      selectionWith({ registered: [CLAUDE, CURSOR, CODEX] }, catalog, {
         kind: "remove",
         id: CLAUDE,
       }),
     ).toEqual({
       kind: "changed",
-      next: { main: CURSOR, aliases: [CODEX] },
+      next: { registered: [CURSOR, CODEX] },
       added: [],
       removed: [CLAUDE],
-      promotedMain: CURSOR,
     });
   });
 
-  it("removing an alias keeps main", () => {
+  it("removing a later registered id keeps the others", () => {
     expect(
-      selectionWith({ main: CLAUDE, aliases: [CURSOR, CODEX] }, catalog, {
+      selectionWith({ registered: [CLAUDE, CURSOR, CODEX] }, catalog, {
         kind: "remove",
         id: CODEX,
       }),
     ).toEqual({
       kind: "changed",
-      next: { main: CLAUDE, aliases: [CURSOR] },
+      next: { registered: [CLAUDE, CURSOR] },
       added: [],
       removed: [CODEX],
-      promotedMain: null,
     });
   });
 
   it("removing the only harness is rejected", () => {
     expect(
-      selectionWith({ main: CLAUDE, aliases: [] }, catalog, { kind: "remove", id: CLAUDE }),
+      selectionWith({ registered: [CLAUDE] }, catalog, { kind: "remove", id: CLAUDE }),
     ).toEqual({ kind: "rejected", reason: "would-empty" });
   });
 
   it("removing an unconfigured id is unchanged", () => {
     expect(
-      selectionWith({ main: CLAUDE, aliases: [] }, catalog, { kind: "remove", id: CURSOR }),
+      selectionWith({ registered: [CLAUDE] }, catalog, { kind: "remove", id: CURSOR }),
     ).toEqual({ kind: "unchanged" });
   });
 
   it("rejects ids the catalog does not know", () => {
     expect(
-      selectionWith({ main: CLAUDE, aliases: [] }, catalog, { kind: "add", id: GOOSE }),
+      selectionWith({ registered: [CLAUDE] }, catalog, { kind: "add", id: GOOSE }),
     ).toEqual({ kind: "rejected", reason: "unknown-harness" });
   });
 
-  it("make-main swaps roles and keeps alias order", () => {
-    expect(
-      selectionWith({ main: CLAUDE, aliases: [CURSOR, CODEX] }, catalog, {
-        kind: "make-main",
-        id: CODEX,
-      }),
-    ).toEqual({
-      kind: "changed",
-      next: { main: CODEX, aliases: [CLAUDE, CURSOR] },
-      added: [],
-      removed: [],
-      promotedMain: null,
-    });
-  });
 
-  it("make-main on the current main is unchanged", () => {
-    expect(
-      selectionWith({ main: CLAUDE, aliases: [CURSOR] }, catalog, {
-        kind: "make-main",
-        id: CLAUDE,
-      }),
-    ).toEqual({ kind: "unchanged" });
-  });
 
   it("apply-proposal can swap the sole harness in one change", () => {
     expect(
-      selectionWith({ main: CURSOR, aliases: [] }, catalog, {
+      selectionWith({ registered: [CURSOR] }, catalog, {
         kind: "apply-proposal",
         add: [CLAUDE],
         remove: [CURSOR],
       }),
     ).toEqual({
       kind: "changed",
-      next: { main: CLAUDE, aliases: [] },
+      next: { registered: [CLAUDE] },
       added: [CLAUDE],
       removed: [CURSOR],
-      promotedMain: CLAUDE,
     });
   });
 
   it("apply-proposal that would empty the list is rejected", () => {
     expect(
-      selectionWith({ main: CURSOR, aliases: [] }, catalog, {
+      selectionWith({ registered: [CURSOR] }, catalog, {
         kind: "apply-proposal",
         add: [],
         remove: [CURSOR],
@@ -246,10 +219,10 @@ describe("selectionWith", () => {
 
   it("is idempotent: the same change on its result is unchanged", () => {
     const change = { kind: "apply-proposal", add: [CODEX], remove: [CURSOR] } as const;
-    const first = selectionWith({ main: CLAUDE, aliases: [CURSOR] }, catalog, change);
+    const first = selectionWith({ registered: [CLAUDE, CURSOR] }, catalog, change);
     if (first.kind !== "changed") throw new Error(`expected changed, got ${first.kind}`);
 
-    expect(first.next).toEqual({ main: CLAUDE, aliases: [CODEX] });
+    expect(first.next).toEqual({ registered: [CLAUDE, CODEX] });
     expect(selectionWith(first.next, catalog, change)).toEqual({ kind: "unchanged" });
   });
 });
@@ -260,7 +233,7 @@ describe("detectProposal", () => {
     const cursor = entry("cursor", "absent");
     const goose = entry("goose", "shared-only");
     const inventory: HarnessInventory = {
-      selection: { main: CLAUDE, aliases: [CURSOR, GOOSE] },
+      selection: { registered: [CLAUDE, CURSOR, GOOSE] },
       catalog: [CLAUDE_ENTRY, cursor, codex, goose],
     };
 
@@ -273,7 +246,7 @@ describe("detectProposal", () => {
   it("is empty when saved harnesses match the disk", () => {
     expect(
       detectProposal({
-        selection: { main: CLAUDE, aliases: [] },
+        selection: { registered: [CLAUDE] },
         catalog: [CLAUDE_ENTRY, entry("cursor", "absent")],
       }),
     ).toEqual({ add: [], remove: [] });
@@ -281,10 +254,9 @@ describe("detectProposal", () => {
 });
 
 describe("selection helpers", () => {
-  it("selectionFrom drops main and duplicates from aliases", () => {
-    expect(selectionFrom(CLAUDE, [CURSOR, CLAUDE, CURSOR, CODEX])).toEqual({
-      main: CLAUDE,
-      aliases: [CURSOR, CODEX],
+  it("selectionFrom drops duplicates, first occurrence wins", () => {
+    expect(selectionFrom([CLAUDE, CURSOR, CLAUDE, CURSOR, CODEX])).toEqual({
+      registered: [CLAUDE, CURSOR, CODEX],
     });
   });
 
@@ -292,7 +264,7 @@ describe("selection helpers", () => {
     const cursor = entry("cursor", "absent");
     expect(
       configuredHarnesses({
-        selection: { main: CURSOR, aliases: [GOOSE, CLAUDE] },
+        selection: { registered: [CURSOR, GOOSE, CLAUDE] },
         catalog: [CLAUDE_ENTRY, cursor],
       }).map((item) => item.id),
     ).toEqual([CURSOR, CLAUDE]);
@@ -306,7 +278,7 @@ describe("selection helpers", () => {
       options: { supported?: boolean } = {},
     ): HarnessEntry => ({ ...entry(id, disk, options), name });
     const inventory: HarnessInventory = {
-      selection: { main: CLAUDE, aliases: [] },
+      selection: { registered: [CLAUDE] },
       catalog: [
         CLAUDE_ENTRY,
         named("zed", "absent", "Zed"),
@@ -333,20 +305,20 @@ describe("selection helpers", () => {
   });
 
   it("canRemoveHarness blocks the sole harness", () => {
-    expect(canRemoveHarness({ main: CLAUDE, aliases: [] }, CLAUDE)).toEqual({
+    expect(canRemoveHarness({ registered: [CLAUDE] }, CLAUDE)).toEqual({
       ok: false,
       reason: "would-empty",
     });
-    expect(canRemoveHarness({ main: CLAUDE, aliases: [CURSOR] }, CURSOR)).toEqual({ ok: true });
-    expect(canRemoveHarness({ main: CLAUDE, aliases: [] }, CURSOR)).toEqual({
+    expect(canRemoveHarness({ registered: [CLAUDE, CURSOR] }, CURSOR)).toEqual({ ok: true });
+    expect(canRemoveHarness({ registered: [CLAUDE] }, CURSOR)).toEqual({
       ok: false,
       reason: "not-configured",
     });
   });
 
-  it("removalCopy names the promoted harness when main is removed", () => {
+  it("removalCopy says files on disk stay", () => {
     const inventory: HarnessInventory = {
-      selection: { main: CLAUDE, aliases: [CURSOR] },
+      selection: { registered: [CLAUDE, CURSOR] },
       catalog: [
         { ...CLAUDE_ENTRY, name: "Claude Code" },
         { ...entry("cursor", "absent"), name: "Cursor" },
@@ -354,7 +326,7 @@ describe("selection helpers", () => {
     };
     expect(removalCopy(inventory, CLAUDE)).toEqual({
       title: "Remove Claude Code?",
-      body: "Claude Code leaves your harness list. Files on disk stay. Cursor becomes the main harness.",
+      body: "Claude Code leaves your harness list. Files on disk stay.",
     });
     expect(removalCopy(inventory, CURSOR)).toEqual({
       title: "Remove Cursor?",
@@ -681,7 +653,7 @@ describe("parseHarnessInventory", () => {
   it("mints ids, maps wire fields, and drops aliases the catalog does not know", () => {
     expect(
       parseHarnessInventory({
-        global: { main_harness: "claude-code", alias_harnesses: ["ghost", "cursor"] },
+        global: { registered_harnesses: ["claude-code", "ghost", "cursor"] },
         root: "/home/tester",
         harnesses: [
           {
@@ -713,7 +685,7 @@ describe("parseHarnessInventory", () => {
         ],
       }),
     ).toEqual({
-      selection: { main: CLAUDE, aliases: [CURSOR] },
+      selection: { registered: [CLAUDE, CURSOR] },
       catalog: [
         {
           id: CLAUDE,
@@ -752,7 +724,7 @@ describe("parseHarnessInventory", () => {
   it("returns a null selection when no main is saved", () => {
     expect(
       parseHarnessInventory({
-        global: { main_harness: null, alias_harnesses: [] },
+        global: { registered_harnesses: [] },
         root: "/home/tester",
         harnesses: [],
       }),
@@ -762,7 +734,7 @@ describe("parseHarnessInventory", () => {
   it("rejects a body with an unknown disk value", () => {
     expect(() =>
       parseHarnessInventory({
-        global: { main_harness: null, alias_harnesses: [] },
+        global: { registered_harnesses: [] },
         harnesses: [{ id: "x", name: "X", supported: false, supports: [], disk: "maybe" }],
       }),
     ).toThrow("Harness inventory is malformed: disk maybe");
@@ -771,12 +743,12 @@ describe("parseHarnessInventory", () => {
 
 describe("harnessesViewReducer", () => {
   const inventory: HarnessInventory = {
-    selection: { main: CLAUDE, aliases: [CURSOR] },
+    selection: { registered: [CLAUDE, CURSOR] },
     catalog: [CLAUDE_ENTRY, entry("cursor", "absent")],
   };
   const target = resourceDetailTargetFor(SKILLS.resources[0] as HarnessResourceRow);
 
-  it("starts on the main harness with the inventory pane", () => {
+  it("starts on the first registered harness with the inventory pane", () => {
     expect(initialHarnessesViewState(inventory)).toEqual({
       selectedId: CLAUDE,
       pane: { mode: "inventory" },
@@ -815,12 +787,12 @@ describe("harnessesViewReducer", () => {
     });
   });
 
-  it("falls back to main when the selected harness leaves the selection", () => {
+  it("falls back to the first remaining harness when the selected harness leaves", () => {
     const state = { ...initialHarnessesViewState(inventory), selectedId: CURSOR };
     expect(
       harnessesViewReducer(state, {
         type: "inventory-loaded",
-        inventory: { ...inventory, selection: { main: CLAUDE, aliases: [] } },
+        inventory: { ...inventory, selection: { registered: [CLAUDE] } },
       }).selectedId,
     ).toBe(CLAUDE);
   });

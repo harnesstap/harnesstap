@@ -41,14 +41,14 @@ Initialize local HarnessTap state.
 
 ```bash
 ht init
-ht init --main claude-code --aliases cursor,codex
+ht init --harnesses claude-code,cursor,codex
 ht init --format json
 ```
 
 Key options:
 
-- `--main <slug>` — set the default main harness
-- `--aliases <slugs>` — comma-separated alias harnesses
+- `--harnesses <slugs>` — comma-separated registered harness slugs
+- `--main <slug>` / `--aliases <slugs>` — deprecated; prepended/appended to the registered set
 - `--no-default-profile` — skip seeding the `global default` profile plugin and `active-profile.json` pointer
 - `--interactive` — prompt for harness selection instead of relying on explicit flags
 - `--format <mode>` — `human` or `json`
@@ -112,7 +112,7 @@ Git-style commands for working in a project directory. Each defaults to the curr
 
 - `scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
 - `use` — switch to a project-configured profile from `apm.yml` (`ht use --profile <key>`, not a positional profile name)
-- `mirror [path]` — mirror alias harness outputs from the main harness state
+- `mirror [path]` — rematerialize other registered harnesses from `--from` (default first registered)
 - `status [path]` — show project status with drift summary
 - `history [path]` — list snapshots for a tracked project
 - `revert [snapshot-id]` — restore files from a previous snapshot
@@ -134,9 +134,9 @@ Apply plugins with top-level `apply` (not under this group). Onboard from repo-r
 - `use --force` — apply even when the profile is already active and in sync
 - `use --no-pull` — fail when composition refs are missing locally
 - `use --harness <slugs>` / `--on-conflict <replace|skip|prompt>` / `--account <name>` / `--base-url <url>` / `--format json`
-- `mirror --dry-run` — preview alias mirror writes
-- `mirror --force-shift-reference <slug>` — set the project main harness before mirroring
-- `mirror --reference <strategy>` — reference source: main, plugin, agents, or auto
+- `mirror --dry-run` — preview rematerialize writes
+- `mirror --from <slug>` — on-disk harness to copy from (`--force-shift-reference` is a deprecated alias)
+- `mirror --reference <strategy>` — reference source: disk, plugin, agents, auto (`main` is a deprecated alias of disk)
 - `mirror --format json`
 - `status --check` — exit `1` when drift exists since the last snapshot, or when `apm.lock.yaml` disagrees with the applied manifest (CI)
 - `status --format json` — includes a `drift` object when git-backed
@@ -641,8 +641,8 @@ Manage global harness preferences and git-backed project overrides.
 
 - `harness list --supported` — only harnesses HarnessTap can serialize natively
 - `harness list --format json`
-- `harness set --main <slug> --aliases <slugs>`
-- `harness sync` — union configured harnesses (home), including Claude/Cursor host plugin trees and `.agents` materialization for OpenCode-like harnesses; `--plugin-resources symlink|copy|clone`; `--project` for a repo; `--dry-run`
+- `harness set --harnesses <slugs>`
+- `harness sync` — union registered harnesses (home) with last-write conflicts, including Claude/Cursor host plugin trees and `.agents` materialization for OpenCode-like harnesses; `--plugin-resources symlink|copy|clone`; `--project` for a repo; `--dry-run`
 - `harness project set --project <path>`
 - `harness project set --materialization-strategy <symlink-preferred|copy>`
 - `harness project status --format json`

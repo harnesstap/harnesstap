@@ -37,7 +37,7 @@ describe("unionHarnessResources", () => {
           resources: [mcp("github", "npx", ".cursor/mcp.json")],
         },
       ],
-      "claude-code",
+      "last-write",
     );
 
     expect(result.resources.map((resource) => resource.name).sort()).toEqual([
@@ -47,7 +47,7 @@ describe("unionHarnessResources", () => {
     expect(result.conflicts).toEqual([]);
   });
 
-  it("keeps the main harness copy when the same identity differs", () => {
+  it("keeps the later registered copy when the same identity differs and mtimes tie", () => {
     const result = unionHarnessResources(
       [
         {
@@ -59,7 +59,7 @@ describe("unionHarnessResources", () => {
           resources: [skill("shared", "claude body", ".claude/skills/shared/SKILL.md")],
         },
       ],
-      "claude-code",
+      "last-write",
     );
 
     expect(result.resources).toHaveLength(1);
@@ -71,5 +71,26 @@ describe("unionHarnessResources", () => {
         loserPlatformId: "cursor",
       },
     ]);
+  });
+
+  it("keeps the newest mtime when the same identity differs", () => {
+    const result = unionHarnessResources(
+      [
+        {
+          platformId: "cursor",
+          resources: [skill("shared", "cursor body", ".agents/skills/shared/SKILL.md")],
+          mtimesMs: new Map([["skill:shared:", 200]]),
+        },
+        {
+          platformId: "claude-code",
+          resources: [skill("shared", "claude body", ".claude/skills/shared/SKILL.md")],
+          mtimesMs: new Map([["skill:shared:", 100]]),
+        },
+      ],
+      "last-write",
+    );
+
+    expect(result.resources[0]?.content).toBe("cursor body");
+    expect(result.conflicts[0]?.winnerPlatformId).toBe("cursor");
   });
 });

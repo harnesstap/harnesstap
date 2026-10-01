@@ -43,7 +43,7 @@ export interface EnvironmentCapturePreview {
   mode: "capture" | "refresh";
   environment_name: string;
   configured_plugin_ids: string[];
-  main_harness: string;
+  harness: string;
   requirements: EnvironmentRequirementCollection;
   values: Record<string, string>;
   secret_refs: Record<string, { provider: "env"; ref: string }>;
@@ -58,18 +58,16 @@ function unique<T>(values: Iterable<T>): T[] {
   return [...new Set(values)];
 }
 
-function resolveMainHarness(projectRoot: string): string {
+function resolveScanHarness(projectRoot: string): string {
   const project = getProjectByLocalPath(projectRoot);
   if (project) {
     const projectHarness = getProjectHarnessConfig(project.id);
-    if (projectHarness?.main_harness) {
-      return projectHarness.main_harness;
-    }
+    const [first] = projectHarness?.registered_harnesses ?? [];
+    if (first) return first;
   }
   const globalHarness = getHarnessPreference();
-  if (globalHarness?.main_harness) {
-    return globalHarness.main_harness;
-  }
+  const [globalFirst] = globalHarness?.registered_harnesses ?? [];
+  if (globalFirst) return globalFirst;
   const detected = detectPlatforms(projectRoot);
   const [first] = detected;
   if (first) {
@@ -195,8 +193,8 @@ export async function previewEnvironmentCapture(input: {
   const requirements = collectRequirementsFromPlugins(pluginIds);
   requirements.configured_plugin_ids = configuredPluginIds;
 
-  const mainHarness = resolveMainHarness(input.projectRoot);
-  const scanResult = await scanPlatform(mainHarness, input.projectRoot);
+  const scanHarness = resolveScanHarness(input.projectRoot);
+  const scanResult = await scanPlatform(scanHarness, input.projectRoot);
   const scannedResources = scanResult.resources.map(
     (resource): Resource =>
       ({
@@ -267,7 +265,7 @@ export async function previewEnvironmentCapture(input: {
     mode: input.mode,
     environment_name: input.environmentName,
     configured_plugin_ids: configuredPluginIds,
-    main_harness: mainHarness,
+    harness: scanHarness,
     requirements,
     values,
     secret_refs: secretRefs,

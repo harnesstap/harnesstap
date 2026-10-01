@@ -3,10 +3,6 @@ import type {
   MaterializationStrategy,
 } from "./types";
 
-export function aliasesExcludingMain(aliases: string[], main: string): string[] {
-  return aliases.filter((id) => id && id !== main);
-}
-
 export function visibleHarnesses<T extends { id: string; supported: boolean }>(
   harnesses: T[],
   options: { showAll: boolean; selectedIds: string[] },
@@ -29,15 +25,13 @@ export function genericHarnessTooltip(supports: string[]): string {
 /** Settings → Project harness override. The global selection lives on the Harnesses destination. */
 export interface ProjectHarnessOverrideDraft {
   override: boolean;
-  main: string;
-  aliases: string[];
+  registered: string[];
   materialization: MaterializationStrategy;
 }
 
 export const EMPTY_PROJECT_OVERRIDE_DRAFT: ProjectHarnessOverrideDraft = {
   override: false,
-  main: "",
-  aliases: [],
+  registered: [],
   materialization: "symlink-preferred",
 };
 
@@ -49,8 +43,7 @@ export function projectOverrideDraftFromPayload(
   }
   return {
     override: true,
-    main: project.main_harness ?? "",
-    aliases: [...(project.alias_harnesses ?? [])],
+    registered: [...(project.registered_harnesses ?? [])],
     materialization: project.materialization_strategy ?? "symlink-preferred",
   };
 }
@@ -62,8 +55,7 @@ export function isProjectOverrideDirty(
   return (
     baseline.override !== draft.override
     || (draft.override
-      && (baseline.main !== draft.main
-        || baseline.aliases.join("\0") !== draft.aliases.join("\0")
+      && (baseline.registered.join("\0") !== draft.registered.join("\0")
         || baseline.materialization !== draft.materialization))
   );
 }
@@ -76,10 +68,9 @@ export function canSaveProjectOverride(options: {
   baseUrl: string | null | undefined;
   projectPath: string | null;
   projectAvailable: boolean;
-  /** PUT /v1/harness rejects an empty global main, so the override needs one saved first. */
-  globalMain: string | null;
+  globalRegistered: string[];
   override: boolean;
-  main: string;
+  registered: string[];
 }): boolean {
   if (
     !options.dirty
@@ -89,11 +80,11 @@ export function canSaveProjectOverride(options: {
     || !options.baseUrl
     || !options.projectPath
     || !options.projectAvailable
-    || !options.globalMain
+    || options.globalRegistered.length === 0
   ) {
     return false;
   }
-  if (options.override && !options.main) {
+  if (options.override && options.registered.length === 0) {
     return false;
   }
   return true;

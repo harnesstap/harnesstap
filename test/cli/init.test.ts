@@ -131,9 +131,7 @@ describe("CLI init", () => {
 
       expect(result.stdout).toContain("HarnessTap initialized");
       expect(JSON.parse(show.stdout)).toEqual(
-        expect.objectContaining({
-          main_harness: "claude-code",
-          alias_harnesses: ["cursor", "codex"],
+        expect.objectContaining({ registered_harnesses: ["claude-code", "cursor", "codex"],
         }),
       );
     } finally {
@@ -162,8 +160,7 @@ describe("CLI init", () => {
       ]);
 
       expect(rerun.stdout).toContain("HarnessTap initialized");
-      expect(rerun.stdout).toContain("main: claude-code");
-      expect(rerun.stdout).toContain("aliases: cursor");
+      expect(rerun.stdout).toContain("claude-code, cursor");
       expect(rerun.stdout).toContain("will be overwritten");
       expect(rerun.stdout).not.toContain("Built-in Plugins");
       expect(rerun.stdout).not.toContain("already up to date");

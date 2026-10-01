@@ -26,7 +26,7 @@ HarnessTap is an agent harness configuration toolkit for Claude Code, Codex, Cur
 ## Quick links
 
 ```bash
-ht init --main codex --aliases claude-code,cursor
+ht init --harnesses codex,claude-code,cursor
 ht plugin list --search foundation --remote-only
 ht apply engineering-foundation
 ht status .

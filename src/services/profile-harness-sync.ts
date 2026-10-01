@@ -23,6 +23,8 @@ import {
 import {
   assertSupportedHarnessTargets,
   parsePlatformFilter,
+  registeredHarnessesOf,
+  uniqueHarnessTargets,
 } from "./harness-targets.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
@@ -35,7 +37,7 @@ export interface ProfileHarnessSyncChange {
 
 export interface ProfileHarnessSyncStatus {
   active_profile: string;
-  main_harness: string;
+  registered_harnesses: string[];
   in_sync: boolean;
   changes: ProfileHarnessSyncChange[];
   warning?: string;
@@ -43,7 +45,7 @@ export interface ProfileHarnessSyncStatus {
 
 export interface UpdateProfileFromHarnessResult {
   profile_name: string;
-  main_harness: string;
+  registered_harnesses: string[];
   attached_resources: number;
   removed_resources: number;
   updated_resources: number;
@@ -63,41 +65,41 @@ function profileResourceKey(
   return `${resource.type}:${resource.name}`;
 }
 
+export function resolveRegisteredScanTargets(
+  harnessOption?: string,
+  homeRoot = resolveHomeRoot(),
+): string[] {
+  const explicitTargets = uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
+  if (explicitTargets.length > 0) {
+    assertSupportedHarnessTargets(explicitTargets);
+    return explicitTargets;
+  }
+
+  const registered = registeredHarnessesOf(getHarnessPreference());
+  if (registered.length > 0) {
+    assertSupportedHarnessTargets(registered);
+    return registered;
+  }
+
+  const detected = detectHomePlatforms(homeRoot).map((entry) => entry.platformId);
+  if (detected.length === 0) {
+    throw new Error(
+      "No harnesses configured. Run harnesstap harness set or pass --harness <slugs>.",
+    );
+  }
+  return detected;
+}
+
+/** First registered or explicit target. Prefer `resolveRegisteredScanTargets`. */
 export function resolveMainHarnessTarget(
   harnessOption?: string,
   homeRoot = resolveHomeRoot(),
 ): string {
-  const explicitTargets = parsePlatformFilter(harnessOption) ?? [];
-  if (explicitTargets.length > 0) {
-    assertSupportedHarnessTargets(explicitTargets);
-    const preference = getHarnessPreference();
-    if (
-      explicitTargets.length > 1
-      && preference
-      && explicitTargets.includes(preference.main_harness)
-    ) {
-      return preference.main_harness;
-    }
-    const [firstTarget] = explicitTargets;
-    if (!firstTarget) {
-      throw new Error("No harness targets provided.");
-    }
-    return firstTarget;
+  const [first] = resolveRegisteredScanTargets(harnessOption, homeRoot);
+  if (!first) {
+    throw new Error("No harness targets provided.");
   }
-
-  const preference = getHarnessPreference();
-  if (preference?.main_harness) {
-    assertSupportedHarnessTargets([preference.main_harness]);
-    return preference.main_harness;
-  }
-
-  const [detected] = detectHomePlatforms(homeRoot);
-  if (!detected) {
-    throw new Error(
-      "No main harness detected. Run harnesstap harness set or pass --harness <slug>.",
-    );
-  }
-  return detected.platformId;
+  return first;
 }
 
 function compareMaterialResources(
@@ -148,6 +150,15 @@ function compareMaterialResources(
   return changes;
 }
 
+async function scanRegisteredHome(harnessOption?: string) {
+  const targets = resolveRegisteredScanTargets(harnessOption);
+  const homeRoot = resolveHomeRoot();
+  const scanned = await scanHomeDefaults(undefined, homeRoot);
+  const wanted = new Set(targets);
+  const filtered = scanned.filter((result) => wanted.has(result.platformId));
+  return { targets, scanned: filtered.length > 0 ? filtered : scanned };
+}
+
 export async function detectProfileHarnessSyncStatus(input: {
   profileSelector: string;
   harness?: string;
@@ -160,7 +171,7 @@ export async function detectProfileHarnessSyncStatus(input: {
     throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
-  const mainHarness = resolveMainHarnessTarget(input.harness);
+  const { targets, scanned } = await scanRegisteredHome(input.harness);
   let profileResources: Resource[];
   try {
     profileResources = mergePluginsForApply(
@@ -169,20 +180,19 @@ export async function detectProfileHarnessSyncStatus(input: {
   } catch (error) {
     return {
       active_profile: profilePlugin.name,
-      main_harness: mainHarness,
+      registered_harnesses: targets,
       in_sync: false,
       changes: [],
       warning: error instanceof Error ? error.message : String(error),
     };
   }
 
-  const scanned = await scanHomeDefaults(mainHarness);
   const harnessResources = scanned.flatMap((result) => result.resources);
   const changes = compareMaterialResources(profileResources, harnessResources);
 
   return {
     active_profile: profilePlugin.name,
-    main_harness: mainHarness,
+    registered_harnesses: targets,
     in_sync: changes.length === 0,
     changes,
   };
@@ -200,9 +210,8 @@ export async function updateProfileFromMainHarness(input: {
     throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
-  const mainHarness = resolveMainHarnessTarget(input.harness);
+  const { targets, scanned } = await scanRegisteredHome(input.harness);
   const beforeSync = getPluginResources(profilePlugin.id).filter(isMaterialResource);
-  const scanned = await scanHomeDefaults(mainHarness);
   const harnessResources = scanned.flatMap((result) => result.resources);
   const pendingChanges = compareMaterialResources(beforeSync, harnessResources);
   const homeRoot = resolveHomeRoot();
@@ -236,7 +245,7 @@ export async function updateProfileFromMainHarness(input: {
 
   return {
     profile_name: profilePlugin.name,
-    main_harness: mainHarness,
+    registered_harnesses: targets,
     attached_resources: attachedResources,
     removed_resources: removedResources,
     updated_resources: pendingChanges.filter((change) => change.change === "modified").length,

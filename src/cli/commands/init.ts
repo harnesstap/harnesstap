@@ -18,7 +18,7 @@ import {
 import { addSkillPackage } from "../../services/add-package.js";
 import { bootstrapLocalLibrary } from "../../services/bootstrap-local-library.js";
 import { resolveHarnessSelection } from "../../services/harness-config.js";
-import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
+import { assertSupportedHarnessTargets, registeredHarnessesOf } from "../../services/harness-targets.js";
 import { maybePromptInitCatalogInstall } from "../../services/init-catalog-prompt.js";
 import { maybePromptInitCompletionInstall } from "../../services/init-completion-install.js";
 import { printResourceTrackedDirectoriesList } from "./resource-directories.js";
@@ -38,7 +38,7 @@ import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { formatCount } from "../formatting.js";
 import {
   parseCommaSeparatedList,
-  parseHarnessAliases,
+  parseHarnessList,
   resolveAddScope,
 } from "../handlers/parse-flags.js";
 import { formatCommand } from "../shared.js";
@@ -212,6 +212,7 @@ async function handleAddCommand(
 
 async function handleInitCommand(opts: {
   format?: string;
+  harnesses?: string;
   main?: string;
   aliases?: string;
   interactive?: boolean;
@@ -227,11 +228,11 @@ async function handleInitCommand(opts: {
   if (format === "human" && hadExistingStore) {
     const preference = getHarnessPreference();
     ui.warn(
-      "~/.harnesstap already exists. Harness preferences stay unchanged unless you pass --main or --aliases.",
+      "~/.harnesstap already exists. Harness preferences stay unchanged unless you pass --harnesses, --main, or --aliases.",
     );
     if (preference) {
       ui.dim(
-        `Current defaults: main=${preference.main_harness}, aliases=${preference.alias_harnesses.join(", ") || "(none)"}`,
+        `Current defaults: ${registeredHarnessesOf(preference).join(", ") || "(none)"}`,
       );
     }
     console.log("");
@@ -240,10 +241,11 @@ async function handleInitCommand(opts: {
     interactive: opts.interactive,
     noInteractive: opts.noInteractive,
     format,
-    missingRequiredArgs: !opts.main && !opts.aliases,
+    missingRequiredArgs: !opts.harnesses && !opts.main && !opts.aliases,
   });
   const shouldSelectHarness =
     useWizard ||
+    Boolean(opts.harnesses) ||
     Boolean(opts.main) ||
     Boolean(opts.aliases);
   const currentHarnessPreference = getHarnessPreference();
@@ -253,13 +255,13 @@ async function handleInitCommand(opts: {
 
   if (shouldSelectHarness) {
     const selection = await resolveHarnessSelection({
+      harnesses: parseHarnessList(opts.harnesses),
       main: opts.main,
-      aliases: parseHarnessAliases(opts.aliases),
+      aliases: parseHarnessList(opts.aliases),
       nonInteractive: !useWizard,
       current: currentHarnessPreference,
       detected: homeDefaults.detected.map((result) => result.platformId),
-      mainMessage: "Select the default main harness",
-      aliasMessage: "Select default alias harnesses to keep in sync",
+      message: "Select harnesses to keep in sync",
     });
     savedHarnessPreference = setHarnessPreference(selection);
   }
@@ -277,10 +279,8 @@ async function handleInitCommand(opts: {
   }
 
   if (shouldSelectHarness && currentHarnessPreference) {
-    const aliasSummary =
-      currentHarnessPreference.alias_harnesses.join(", ") || "(none)";
     ui.warn(
-      `Existing harness defaults will be overwritten (main: ${currentHarnessPreference.main_harness}, aliases: ${aliasSummary}).`,
+      `Existing harness defaults will be overwritten (${registeredHarnessesOf(currentHarnessPreference).join(", ") || "(none)"}).`,
     );
     console.log("");
   }
@@ -299,11 +299,7 @@ async function handleInitCommand(opts: {
   if (savedHarnessPreference) {
     console.log("");
     ui.kvBlock([
-      { key: "MAIN HARNESS", value: savedHarnessPreference.main_harness },
-      {
-        key: "ALIASES",
-        value: savedHarnessPreference.alias_harnesses.join(", ") || "(none)",
-      },
+      { key: "HARNESSES", value: registeredHarnessesOf(savedHarnessPreference).join(", ") || "(none)" },
     ], { keyWidth: 14 });
   }
 
@@ -357,8 +353,9 @@ export function registerInitCommands(root: Command): void {
     .command("init")
     .description("Initialize the harnesstap database and config directory")
     .option("--format <mode>", "Output format: human or json", "human")
-    .option("--main <slug>", "Default main harness slug")
-    .option("--aliases <slugs>", "Comma-separated alias harness slugs")
+    .option("--harnesses <slugs>", "Comma-separated registered harness slugs")
+    .option("--main <slug>", "Deprecated: prepended to the registered set")
+    .option("--aliases <slugs>", "Deprecated: appended to the registered set")
     .option("--no-default-profile", "Skip creating and activating the global default profile plugin")
     .option(
       "--interactive",
@@ -366,6 +363,7 @@ export function registerInitCommands(root: Command): void {
     )
     .action(async (opts: {
       format?: string;
+      harnesses?: string;
       main?: string;
       aliases?: string;
       interactive?: boolean;

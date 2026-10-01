@@ -25,7 +25,7 @@ import {
   toNotStagedContentsResource,
 } from "./profile-contents.js";
 import type { ProfileApplyPreviewScope } from "./profile-apply-preview.js";
-import { resolveMainHarnessTarget } from "./profile-harness-sync.js";
+import { resolveRegisteredScanTargets } from "./profile-harness-sync.js";
 import { assessProjectScanStatus } from "./project-scan-status.js";
 import { generateFiles, removeGlobalMaterializedFiles } from "./applier.js";
 import { ensureLiveLibraryRef, isLiveLibraryRef } from "./live-library-ref.js";
@@ -236,7 +236,7 @@ async function notStagedFromHomeScan(
   const homeRoot = resolveHomeRoot();
   // Scan all detected harnesses unless a specific harness filter is requested.
   const scanned = await scanHomeDefaults(
-    harness ? resolveMainHarnessTarget(harness) : undefined,
+    harness ? resolveRegisteredScanTargets(harness)[0] : undefined,
     homeRoot,
   );
   const platformIds = scanned.map((result) => result.platformId);
@@ -748,7 +748,7 @@ async function resolveUntrackedScanResults(input: {
 
   const originRef = resolveHomeRoot();
   const scanned = await scanHomeDefaults(
-    input.harness ? resolveMainHarnessTarget(input.harness) : undefined,
+    input.harness ? resolveRegisteredScanTargets(input.harness)[0] : undefined,
     originRef,
   );
   const ownedPaths = await profileOwnedPaths(
@@ -912,7 +912,7 @@ export async function captureUntrackedResourcesForStash(input: {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
 
-  const mainHarness = resolveMainHarnessTarget(input.harness);
+  const harnesses = resolveRegisteredScanTargets(input.harness);
   const homeRoot = resolveHomeRoot();
   const { scanResults: untrackedScanResults } = await resolveUntrackedScanResults({
     profileSelector: input.profileSelector,
@@ -934,7 +934,7 @@ export async function captureUntrackedResourcesForStash(input: {
 
   const generated = await generateFiles(
     persisted.resolved.filter(isMaterialResource),
-    [mainHarness],
+    harnesses,
     homeRoot,
     { target: "global" },
   );

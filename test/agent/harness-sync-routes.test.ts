@@ -33,9 +33,7 @@ describe("agent harness sync route", () => {
 
   it("POST /v1/harness/sync requires two configured harnesses", async () => {
     const { server } = await withServer();
-    setHarnessPreference({
-      main_harness: "claude-code",
-      alias_harnesses: [],
+    setHarnessPreference({ registered_harnesses: ["claude-code"],
     });
     const response = await fetch(`${server.url}/v1/harness/sync`, {
       method: "POST",
@@ -52,9 +50,7 @@ describe("agent harness sync route", () => {
 
   it("POST /v1/harness/sync dry-run unions configured home harnesses", async () => {
     const { server, dir } = await withServer();
-    setHarnessPreference({
-      main_harness: "claude-code",
-      alias_harnesses: ["cursor"],
+    setHarnessPreference({ registered_harnesses: ["claude-code", "cursor"],
     });
     writeTextFile(
       join(dir, ".claude/skills/alpha/SKILL.md"),

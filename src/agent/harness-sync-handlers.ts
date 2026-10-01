@@ -56,7 +56,7 @@ export async function handleHarnessSyncPost(
     if (error instanceof HarnessUnionSyncError) {
       switch (error.code) {
         case "need_two_harnesses":
-        case "no_main_harness":
+        case "no_registered_harnesses":
           return jsonResponse(
             { error: error.code, message: error.message },
             { status: 400 },

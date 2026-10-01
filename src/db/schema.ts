@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 31;
+const SCHEMA_VERSION = 32;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -282,7 +282,120 @@ const MIGRATIONS: Record<number, Migration> = {
     CREATE INDEX idx_plugin_pin_materializations_lookup
       ON plugin_pin_materializations(scope, root_path, relative_path);
   `,
+  32: migrateHarnessTablesToRegisteredSet,
 };
+
+function tableColumns(db: SqliteDatabase, name: string): string[] {
+  return (
+    db.prepare(`PRAGMA table_info(${name})`).all() as Array<{ name: string }>
+  ).map((column) => column.name);
+}
+
+function combineLegacyRegisteredJson(main: string, aliasesJson: string): string {
+  let aliases: string[] = [];
+  try {
+    const parsed = JSON.parse(aliasesJson) as unknown;
+    if (Array.isArray(parsed)) {
+      aliases = parsed.filter((entry): entry is string => typeof entry === "string");
+    }
+  } catch {
+    aliases = [];
+  }
+  const seen = new Set<string>();
+  const registered: string[] = [];
+  for (const harness of [main, ...aliases]) {
+    if (!harness || seen.has(harness)) continue;
+    seen.add(harness);
+    registered.push(harness);
+  }
+  return JSON.stringify(registered);
+}
+
+function migrateHarnessTablesToRegisteredSet(db: SqliteDatabase): void {
+  if (tableExists(db, "harness_preferences")) {
+    const columns = tableColumns(db, "harness_preferences");
+    if (columns.includes("main_harness") || !columns.includes("registered_harnesses")) {
+      db.exec(`
+        CREATE TABLE harness_preferences_new (
+          scope TEXT PRIMARY KEY DEFAULT 'default',
+          registered_harnesses TEXT NOT NULL DEFAULT '[]',
+          updated_at TEXT NOT NULL
+        );
+      `);
+      const rows = db
+        .prepare("SELECT * FROM harness_preferences")
+        .all() as Array<{
+          scope: string;
+          main_harness?: string;
+          alias_harnesses?: string;
+          registered_harnesses?: string;
+          updated_at: string;
+        }>;
+      const insert = db.prepare(
+        `INSERT INTO harness_preferences_new (scope, registered_harnesses, updated_at)
+         VALUES (?, ?, ?)`,
+      );
+      for (const row of rows) {
+        const registered =
+          row.registered_harnesses
+          ?? combineLegacyRegisteredJson(row.main_harness ?? "", row.alias_harnesses ?? "[]");
+        insert.run(row.scope, registered, row.updated_at);
+      }
+      db.exec(`
+        DROP TABLE harness_preferences;
+        ALTER TABLE harness_preferences_new RENAME TO harness_preferences;
+      `);
+    }
+  }
+
+  if (tableExists(db, "project_harnesses")) {
+    const columns = tableColumns(db, "project_harnesses");
+    if (columns.includes("main_harness") || !columns.includes("registered_harnesses")) {
+      db.exec(`
+        CREATE TABLE project_harnesses_new (
+          project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+          registered_harnesses TEXT NOT NULL DEFAULT '[]',
+          materialization_strategy TEXT NOT NULL DEFAULT 'symlink-preferred',
+          updated_at TEXT NOT NULL,
+          cursor_skill_mode TEXT
+        );
+      `);
+      const rows = db
+        .prepare("SELECT * FROM project_harnesses")
+        .all() as Array<{
+          project_id: string;
+          main_harness?: string;
+          alias_harnesses?: string;
+          registered_harnesses?: string;
+          materialization_strategy: string;
+          updated_at: string;
+          cursor_skill_mode: string | null;
+        }>;
+      const insert = db.prepare(
+        `INSERT INTO project_harnesses_new (
+           project_id, registered_harnesses, materialization_strategy,
+           cursor_skill_mode, updated_at
+         ) VALUES (?, ?, ?, ?, ?)`,
+      );
+      for (const row of rows) {
+        const registered =
+          row.registered_harnesses
+          ?? combineLegacyRegisteredJson(row.main_harness ?? "", row.alias_harnesses ?? "[]");
+        insert.run(
+          row.project_id,
+          registered,
+          row.materialization_strategy,
+          row.cursor_skill_mode,
+          row.updated_at,
+        );
+      }
+      db.exec(`
+        DROP TABLE project_harnesses;
+        ALTER TABLE project_harnesses_new RENAME TO project_harnesses;
+      `);
+    }
+  }
+}
 
 function tableExists(db: SqliteDatabase, name: string): boolean {
   const row = db

@@ -235,9 +235,7 @@ describe("planned scenarios services", () => {
       pluginModel.addResourceToPlugin(plugin.id, resource.id);
       const environment = environmentModel.createEnvironment({ name: "migrate-env" });
       environmentModel.upsertEnvironmentEnvVar(environment.id, "PD_REGION", "eu");
-      harnessModel.setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+      harnessModel.setHarnessPreference({ registered_harnesses: ["claude-code", "cursor"],
       });
       mkdirSync(join(context.homeDir, ".harnesstap"), { recursive: true });
       writeFileSync(
@@ -263,8 +261,8 @@ describe("planned scenarios services", () => {
         expect(imported.environments_imported).toBe(1);
         expect(pluginModel.getPlugin("migrate-me")).toBeDefined();
         expect(environmentModel.getEnvironmentByName("migrate-env")).toBeDefined();
-        expect(harnessModel.getHarnessPreference()?.main_harness).toBe(
-          "claude-code",
+        expect(harnessModel.getHarnessPreference()?.registered_harnesses).toEqual(
+          ["claude-code"],
         );
         expect(
           JSON.parse(

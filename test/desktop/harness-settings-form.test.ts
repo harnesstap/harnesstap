@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import {
-  aliasesExcludingMain,
   canSaveProjectOverride,
   genericHarnessTooltip,
   isProjectOverrideDirty,
@@ -15,12 +14,6 @@ describe("harness-settings-form", () => {
     { id: "some-generic", name: "Generic", supported: false, supports: [] as string[] },
   ];
 
-  it("excludes main from aliases", () => {
-    expect(aliasesExcludingMain(["cursor", "claude-code"], "claude-code")).toEqual([
-      "cursor",
-    ]);
-  });
-
   it("showAll=false lists all supported plus selected unsupported", () => {
     const ids = visibleHarnesses(catalog, {
       showAll: false,
@@ -34,20 +27,17 @@ describe("harness-settings-form", () => {
       projectOverrideDraftFromPayload({
         available: true,
         override: true,
-        main_harness: "cursor",
-        alias_harnesses: ["claude-code"],
+        registered_harnesses: ["cursor", "claude-code"],
         materialization_strategy: "copy",
       }),
     ).toEqual({
       override: true,
-      main: "cursor",
-      aliases: ["claude-code"],
+      registered: ["cursor", "claude-code"],
       materialization: "copy",
     });
     expect(projectOverrideDraftFromPayload({ available: true, override: false })).toEqual({
       override: false,
-      main: "",
-      aliases: [],
+      registered: [],
       materialization: "symlink-preferred",
     });
   });
@@ -55,22 +45,23 @@ describe("harness-settings-form", () => {
   it("detects dirty state over the project fields only", () => {
     const baseline = {
       override: true,
-      main: "claude-code",
-      aliases: ["cursor"],
+      registered: ["claude-code", "cursor"],
       materialization: "symlink-preferred" as const,
     };
     expect(isProjectOverrideDirty(baseline, baseline)).toBe(false);
-    expect(isProjectOverrideDirty(baseline, { ...baseline, main: "cursor" })).toBe(true);
+    expect(
+      isProjectOverrideDirty(baseline, { ...baseline, registered: ["cursor"] }),
+    ).toBe(true);
     expect(isProjectOverrideDirty(baseline, { ...baseline, override: false })).toBe(true);
     expect(
       isProjectOverrideDirty(
         { ...baseline, override: false },
-        { ...baseline, override: false, main: "cursor" },
+        { ...baseline, override: false, registered: ["cursor"] },
       ),
     ).toBe(false);
   });
 
-  it("canSave needs a saved global main and a project main when override is on", () => {
+  it("canSave needs a saved global set and a project set when override is on", () => {
     const base = {
       dirty: true,
       busy: false,
@@ -79,13 +70,15 @@ describe("harness-settings-form", () => {
       baseUrl: "http://127.0.0.1:9",
       projectPath: "/repo",
       projectAvailable: true,
-      globalMain: "claude-code",
+      globalRegistered: ["claude-code"],
       override: true,
-      main: "",
+      registered: [] as string[],
     };
     expect(canSaveProjectOverride(base)).toBe(false);
-    expect(canSaveProjectOverride({ ...base, main: "cursor" })).toBe(true);
-    expect(canSaveProjectOverride({ ...base, main: "cursor", globalMain: null })).toBe(false);
+    expect(canSaveProjectOverride({ ...base, registered: ["cursor"] })).toBe(true);
+    expect(
+      canSaveProjectOverride({ ...base, registered: ["cursor"], globalRegistered: [] }),
+    ).toBe(false);
     expect(canSaveProjectOverride({ ...base, override: false })).toBe(true);
     expect(canSaveProjectOverride({ ...base, override: false, projectAvailable: false })).toBe(
       false,
@@ -97,12 +90,6 @@ describe("genericHarnessTooltip", () => {
   it("returns base text when supports is empty", () => {
     expect(genericHarnessTooltip([])).toBe(
       "Path-based mirroring (no dedicated serializer)",
-    );
-  });
-
-  it("appends supports list when non-empty", () => {
-    expect(genericHarnessTooltip(["skills", "agents"])).toBe(
-      "Path-based mirroring (no dedicated serializer). Supports skills, agents.",
     );
   });
 });

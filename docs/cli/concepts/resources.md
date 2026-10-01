@@ -52,7 +52,7 @@ See the full harness matrix — which types each harness supports — in [Suppor
 `scan` detects supported harness files in a repository and imports them into the canonical library. `init` also scans registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`).
 
 ```bash
-ht init --main codex --aliases claude-code,cursor
+ht init --harnesses codex,claude-code,cursor
 ht scan .
 ht resource list
 ht resource list --search helper          # non-interactive filter

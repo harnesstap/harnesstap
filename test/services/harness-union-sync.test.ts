@@ -5,13 +5,11 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 describe("syncConfiguredHarnesses", () => {
-  it("unions MCP and skills across configured harnesses with main-wins", async () => {
+  it("unions MCP and skills across registered harnesses with last-write", async () => {
     const context = await createInitializedTestContext("harness-union-sync");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+      setHarnessPreference({ registered_harnesses: ["claude-code", "cursor"],
       });
 
       writeTextFile(
@@ -48,8 +46,9 @@ describe("syncConfiguredHarnesses", () => {
         join(context.projectDir, ".claude/skills/alpha/SKILL.md"),
         "utf8",
       );
-      expect(claudeSkill).toContain("claude alpha");
-      expect(claudeSkill).not.toContain("cursor alpha");
+      expect(claudeSkill).toContain("cursor alpha");
+      expect(claudeSkill).not.toContain("claude alpha");
+      expect(result.conflict_policy).toBe("last-write");
 
       const cursorMcp = readFileSync(join(context.projectDir, ".cursor/mcp.json"), "utf8");
       expect(cursorMcp).toContain("github");
@@ -65,9 +64,7 @@ describe("syncConfiguredHarnesses", () => {
     const context = await createInitializedTestContext("harness-union-agents");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "cursor",
-        alias_harnesses: ["grok-build"],
+      setHarnessPreference({ registered_harnesses: ["cursor", "grok-build"],
       });
 
       writeTextFile(
@@ -105,9 +102,7 @@ describe("syncConfiguredHarnesses", () => {
     const context = await createInitializedTestContext("harness-union-plugins");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+      setHarnessPreference({ registered_harnesses: ["claude-code", "cursor"],
       });
 
       writeTextFile(
@@ -200,9 +195,7 @@ describe("syncConfiguredHarnesses", () => {
     const context = await createInitializedTestContext("harness-union-local-mcp");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+      setHarnessPreference({ registered_harnesses: ["claude-code", "cursor"],
       });
 
       writeTextFile(
@@ -264,9 +257,7 @@ describe("syncConfiguredHarnesses", () => {
     const context = await createInitializedTestContext("harness-union-plugin-agents");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["opencode"],
+      setHarnessPreference({ registered_harnesses: ["claude-code", "opencode"],
       });
 
       writeTextFile(
@@ -410,9 +401,7 @@ describe("syncConfiguredHarnesses", () => {
     const context = await createInitializedTestContext("harness-union-plugin-copy");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["opencode"],
+      setHarnessPreference({ registered_harnesses: ["claude-code", "opencode"],
       });
 
       writeTextFile(
@@ -469,9 +458,7 @@ describe("syncConfiguredHarnesses", () => {
     const context = await createInitializedTestContext("harness-union-instruction-link");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["opencode"],
+      setHarnessPreference({ registered_harnesses: ["claude-code", "opencode"],
       });
 
       writeTextFile(
@@ -504,9 +491,7 @@ describe("syncConfiguredHarnesses", () => {
     const context = await createInitializedTestContext("harness-union-gopls-lsp");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["opencode"],
+      setHarnessPreference({ registered_harnesses: ["claude-code", "opencode"],
       });
 
       const installRoot =

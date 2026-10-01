@@ -248,7 +248,7 @@ describe("CLI planned scenarios", () => {
         "--format",
         "json",
       ]);
-      expect(syncDry.stdout).toContain("main_harness");
+      expect(syncDry.stdout).toContain("registered_harnesses");
 
       // Human-mode sync: spinner resolves to a Synced verdict
       const syncHuman = await runCli([

@@ -129,7 +129,7 @@ describe("ponytail portability", () => {
       });
 
       expect(result.files_written).toBeGreaterThan(0);
-      expect(result.main_harness).toBe("claude-code");
+      expect(result.from_harness).toBe("claude-code");
     } finally {
       await context.cleanup();
     }

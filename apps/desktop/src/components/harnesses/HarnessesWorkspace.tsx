@@ -19,7 +19,6 @@ import {
   initialHarnessesViewState,
   removalCopy,
   resourceDetailTargetFor,
-  roleOf,
   type HarnessId,
   type HarnessResourceRow,
 } from "../../lib/harness-inventory";
@@ -355,17 +354,13 @@ export function HarnessesWorkspace({
         : new Set<string>(),
     [selectedEntry],
   );
-  const selectedRole = view.selectedId ? roleOf(selection, view.selectedId) : null;
   const removeTarget = overlay.kind === "remove" ? overlay.id : null;
   const removeCopy =
     inventory && removeTarget ? removalCopy(inventory, removeTarget) : null;
   const saving = ctrl.busy.kind === "saving";
   const syncing = ctrl.busy.kind === "syncing";
-  const mainName =
-    selection ? (harnessEntry(inventory, selection.main)?.name ?? selection.main) : "Main";
   const syncDisabledReason = syncHarnessesDisabledReason({
     configuredCount: rows.length,
-    hasMain: selection !== null,
     running: working,
   });
   const syncHidden = rows.length === 0;
@@ -418,13 +413,6 @@ export function HarnessesWorkspace({
     if (changeSettled(result)) {
       setOverlay(NO_OVERLAY);
     }
-  };
-
-  const onMakeMain = () => {
-    if (!view.selectedId) {
-      return;
-    }
-    void ctrl.change({ kind: "make-main", id: view.selectedId });
   };
 
   const openSyncConfirm = () => {
@@ -490,7 +478,7 @@ export function HarnessesWorkspace({
           />
         );
       case "inventory":
-        if (!selectedEntry || !selectedRole) {
+        if (!selectedEntry) {
           return rows.length === 0 ? (
             <EmptyState
               title="No harnesses set up."
@@ -503,7 +491,6 @@ export function HarnessesWorkspace({
         return (
           <HarnessDetail
             entry={selectedEntry}
-            role={selectedRole}
             search={view.search}
             typeTab={view.typeTab}
             originIds={view.originIds}
@@ -513,7 +500,6 @@ export function HarnessesWorkspace({
             onTypeTab={(value) => dispatch({ type: "type-tab", value })}
             onOriginIds={(value) => dispatch({ type: "origin-filter", value })}
             onMarketplaceIds={(value) => dispatch({ type: "marketplace-filter", value })}
-            onMakeMain={onMakeMain}
             onOpen={openRow}
             onOpenLocation={(path) => void openLocation(path)}
             pullAllBusy={pullBusy}
@@ -578,7 +564,7 @@ export function HarnessesWorkspace({
           onToggleEdit={() => dispatch({ type: "toggle-edit" })}
           onRemove={(id) => openOverlay({ kind: "remove", id })}
           syncLabel={syncing ? "Syncing…" : "Sync harnesses"}
-          syncTitle={syncDisabledReason ?? syncHarnessesTooltip(mainName)}
+          syncTitle={syncDisabledReason ?? syncHarnessesTooltip()}
           syncDisabled={syncDisabled}
           syncHidden={syncHidden}
           syncBusy={syncing}
@@ -621,7 +607,6 @@ export function HarnessesWorkspace({
 
       <SyncHarnessesDialog
         open={overlay.kind === "sync"}
-        mainName={mainName}
         preview={syncPreview}
         syncing={syncing}
         onConfirm={() => void onConfirmSync()}

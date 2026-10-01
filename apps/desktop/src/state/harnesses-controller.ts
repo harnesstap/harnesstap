@@ -51,7 +51,7 @@ export interface HarnessesController {
   detect(): Promise<void>;
   applyProposal(chosen: ReadonlySet<HarnessId>): Promise<void>;
   dismissProposal(): void;
-  /** Single mutation entry point for add / remove / make-main / apply-proposal. */
+  /** Single mutation entry point for add / remove / apply-proposal. */
   change(change: SelectionChange): Promise<HarnessesChangeResult>;
   previewSync(signal?: AbortSignal): Promise<readonly HarnessSyncChangeCount[]>;
   sync(): Promise<{ readonly ok: boolean; readonly message?: string }>;
@@ -108,8 +108,6 @@ export function saveSuccessMessage(
       return `Added ${names(inventory, outcome.added)}`;
     case "remove":
       return `Removed ${names(inventory, outcome.removed)}`;
-    case "make-main":
-      return `${names(inventory, [change.id])} is now the main harness`;
     case "apply-proposal": {
       const parts: string[] = [];
       if (outcome.added.length > 0) parts.push(`added ${names(inventory, outcome.added)}`);

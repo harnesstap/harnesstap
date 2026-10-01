@@ -44,7 +44,7 @@ Apply a public catalog baseline in a few minutes.
 1. **Initialize** local state (creates `~/.harnesstap` and scans supported home harness folders).
 
    ```bash
-   ht init --main codex --aliases claude-code,cursor
+   ht init --harnesses codex,claude-code,cursor
    ```
 
 2. **Apply** a catalog plugin by bare name (fetches from the public HarnessTap Cloud catalog when needed).
@@ -97,7 +97,7 @@ After the baseline fits, build and share your own plugins.
 
    ```bash
    ht harness status --format json
-   ht harness set --main claude-code --aliases cursor,codex
+   ht harness set --harnesses claude-code,cursor,codex
    ```
 
 ## Where data lives
