@@ -48,7 +48,7 @@ export function parseTrackedBranchesField(value: string): string[] {
 }
 
 export function formatTrackedBranchesField(value: string | readonly string[]): string {
-  if (Array.isArray(value)) {
+  if (typeof value !== "string") {
     return value.join(", ");
   }
   return parseTrackedBranchesField(value).join(", ");
