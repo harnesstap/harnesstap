@@ -616,7 +616,7 @@ export function ScopeInventoryShell({
               />
             );
           })}
-          {displayed.length === 0 ? (
+          {displayed.length === 0 && !discardProgress && !addProgress ? (
             <EmptyState
               title={noResultsTitle(search)}
               body="Clear the filter to see every resource."

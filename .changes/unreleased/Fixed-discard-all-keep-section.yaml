@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep the Not in profile inventory section visible while Discard all runs so Discarding N… stays on screen after optimistic row hide.
+time: 2026-10-01T09:55:00Z
+custom:
+  Issue: ""
