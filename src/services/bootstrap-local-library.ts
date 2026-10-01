@@ -16,7 +16,8 @@ export interface BootstrapLocalLibraryResult {
 
 /**
  * Shared first-run / re-init bootstrap: schema, home scan, default
- * environment, and a default profile seeded from library resources.
+ * environment, and a default profile seeded from library resources when
+ * no profile plugins exist yet.
  */
 export async function bootstrapLocalLibrary(
   options: BootstrapLocalLibraryOptions = {},

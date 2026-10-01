@@ -1,0 +1,5 @@
+kind: Fixed
+body: Do not recreate the global default profile on Desktop or init when any profile already exists.
+time: 2026-10-01T11:30:00Z
+custom:
+  Issue: ""

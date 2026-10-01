@@ -7,7 +7,7 @@ import { getDb } from "../../src/db/connection.ts";
 import { initializeSchema } from "../../src/db/schema.ts";
 import { getPluginResources } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { getActiveProfileName } from "../../src/services/active-profile.ts";
+import { getActiveProfileName, setActiveProfileName } from "../../src/services/active-profile.ts";
 import {
   ensureDefaultProfilePlugin,
   seedDefaultProfileFromLibrary,
@@ -102,6 +102,35 @@ describe("ensureDefaultProfilePlugin", () => {
       "skill",
     ]);
     expect(attached.some((resource) => resource.type === "plugin")).toBe(false);
+    expect(getActiveProfileName()).toBe("global default");
+  });
+
+  it("does not recreate global default when another profile already exists", () => {
+    withHome();
+    const { plugin } = createProfileCommand({ name: "my baseline" });
+    setActiveProfileName(plugin.name);
+
+    const result = seedDefaultProfileFromLibrary();
+    expect(result.created).toBe(false);
+    expect(result.plugin.name).toBe("my baseline");
+    expect(listProfilePlugins().map((entry) => entry.name)).toEqual(["my baseline"]);
+    expect(getActiveProfileName()).toBe("my baseline");
+  });
+
+  it("does not steal the active pointer when global default already exists", () => {
+    withHome();
+    seedDefaultProfileFromLibrary();
+    createProfileCommand({ name: "work" });
+    setActiveProfileName("work");
+
+    const result = seedDefaultProfileFromLibrary();
+    expect(result.created).toBe(false);
+    expect(result.plugin.name).toBe("global default");
+    expect(getActiveProfileName()).toBe("work");
+    expect(listProfilePlugins().map((entry) => entry.name).sort()).toEqual([
+      "global default",
+      "work",
+    ]);
   });
 
   it("is a no-op when a profile already exists", () => {

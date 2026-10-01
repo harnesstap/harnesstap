@@ -74,20 +74,26 @@ function libraryResourcesForDefaultProfile() {
 }
 
 /**
- * Create the `global default` profile plugin when missing, then attach every
- * non-plugin library resource if the profile has none yet.
+ * Seed `global default` only when no profile plugins exist (first start).
+ * If that profile is already present and empty, attach library resources.
+ * Do not recreate it after a rename or when any other profile is present.
  */
 export function seedDefaultProfileFromLibrary(): EnsureDefaultProfileResult {
   migrateLegacyDefaultProfile();
   let plugin = findProfileByName(GLOBAL_DEFAULT_PROFILE_NAME);
-  const created = !plugin;
+  let created = false;
   if (!plugin) {
+    const [existing] = listProfilePlugins();
+    if (existing) {
+      return { plugin: existing, created: false };
+    }
     plugin = createPlugin({
       name: GLOBAL_DEFAULT_PROFILE_NAME,
       version: "1.0.0",
       description: "Bootstrap profile from init",
       tags: [PROFILE_PLUGIN_TAG],
     });
+    created = true;
   }
 
   const attachedMaterial = getPluginResources(plugin.id).filter(
@@ -99,6 +105,8 @@ export function seedDefaultProfileFromLibrary(): EnsureDefaultProfileResult {
     }
   }
 
-  setActiveProfileName(GLOBAL_DEFAULT_PROFILE_NAME);
+  if (created || !getActiveProfileName()) {
+    setActiveProfileName(plugin.name);
+  }
   return { plugin, created };
 }
