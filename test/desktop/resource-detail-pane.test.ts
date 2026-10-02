@@ -83,6 +83,11 @@ describe("resource inspect content preview", () => {
     expect(bodySource).toContain("renderPathActions(actionPath, !resourcePathIsDirectory(detail), true)");
     expect(bodySource).toContain("openContainedPath(next, true)");
     expect(bodySource).toContain("openCurrentResource(true)");
+    expect(bodySource).toContain("const canOpenCurrent = Boolean(");
+    expect(bodySource).toContain("detail && actionPath");
+    expect(bodySource).not.toContain(
+      "actionPath || (resourceOpenUsesSelector(detail) && target.selector)",
+    );
     expect(bodySource).toContain("{ path, reveal }");
     expect(bodySource).toContain('fieldName="Path"');
     const contentBlock = bodySource.slice(bodySource.indexOf('fieldName="Content"'));

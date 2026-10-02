@@ -5,14 +5,6 @@ import {
 } from "./resource-display";
 import type { LibraryResourceDetail } from "./types";
 
-function isBareRelativeSource(path: string): boolean {
-  const trimmed = path.trim();
-  if (!trimmed || isAbsoluteFilesystemPath(trimmed)) {
-    return false;
-  }
-  return !trimmed.includes("/") && !trimmed.includes("\\");
-}
-
 function isAbsoluteFilesystemPath(path: string): boolean {
   const trimmed = path.trim();
   if (!trimmed) {
@@ -46,20 +38,17 @@ function firstAbsolutePath(resource: LibraryResourceDetail): string {
   return "";
 }
 
-/** Path shown in the inspect Path field. Plugin-relative sources stay short. */
+/** Path shown in the inspect Path field. Live files use the resolved absolute path. */
 export function resourcePathDisplay(resource: LibraryResourceDetail): string {
   if (isPluginTypeResource(resource.type)) {
     return resource.install_path?.trim() ?? "";
   }
   const source = resource.source.trim();
   const absolute = firstAbsolutePath(resource);
-  if (
-    absolute
-    && (isAbsoluteFilesystemPath(source) || isBareRelativeSource(source))
-  ) {
+  if (absolute) {
     return packageDirectoryDisplayPath(absolute);
   }
-  const candidate = absolute || source;
+  const candidate = source;
   if (isPackageEntryFileName(pathFileName(candidate))) {
     return packageDirectoryDisplayPath(candidate);
   }

@@ -28,9 +28,11 @@ function marketplaceAgent(
 }
 
 describe("resourceOpenPath", () => {
-  it("keeps a short Path label but opens the resolved absolute file", () => {
+  it("shows and opens the resolved marketplace agent file, not agents/devx.md", () => {
     const resource = marketplaceAgent();
-    expect(resourcePathDisplay(resource)).toBe("agents/devx.md");
+    expect(resourcePathDisplay(resource)).toBe(
+      "/home/ada/.cursor/plugins/cache/teads-plugins/devx/agents/devx.md",
+    );
     expect(resourceOpenPath(resource)).toBe(
       "/home/ada/.cursor/plugins/cache/teads-plugins/devx/agents/devx.md",
     );

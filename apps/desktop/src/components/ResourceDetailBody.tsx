@@ -754,23 +754,20 @@ export function ResourceDetailBody({
       return;
     }
     const actionPath = resourceOpenPath(detail);
-    const trackingPath = actionPath || resourcePathDisplay(detail);
-    if (!trackingPath && !resourceOpenUsesSelector(detail)) {
+    if (!actionPath) {
       return;
     }
+    const trackingPath = actionPath;
     setOpeningPath(trackingPath);
     setActionError(null);
     try {
       if (resourceOpenUsesSelector(detail)) {
         await openResourcePath(baseUrl, token, {
           selector: target.selector,
-          pathHint: actionPath || detail.source || target.pathHint,
+          pathHint: actionPath,
           reveal,
         });
       } else {
-        if (!actionPath) {
-          throw new Error("Install path not found");
-        }
         await openResourcePath(baseUrl, token, { path: actionPath, reveal });
       }
     } catch (openError: unknown) {
@@ -837,10 +834,7 @@ export function ResourceDetailBody({
 
   const displayPath = detail ? resourcePathDisplay(detail) : "";
   const actionPath = detail ? resourceOpenPath(detail) : "";
-  const canOpenCurrent = Boolean(
-    detail &&
-      (actionPath || (resourceOpenUsesSelector(detail) && target.selector)),
-  );
+  const canOpenCurrent = Boolean(detail && actionPath);
   const showSync = Boolean(detail && !isUntrackedDetail(detail) && isSyncableDetail(detail));
   const showPull = Boolean(detail && !isUntrackedDetail(detail) && isPullableDetail(detail));
   const pullUnavailableReason = detail

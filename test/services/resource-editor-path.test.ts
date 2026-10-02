@@ -22,6 +22,7 @@ import {
 } from "../../src/services/resource-editor-path.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { getHarnesstapDir } from "../../src/db/connection.ts";
+import { hostPluginPackageDir } from "../../src/services/package-cache/paths.ts";
 
 describe("resource-editor-path service", () => {
   const tempDirs: string[] = [];
@@ -113,6 +114,65 @@ describe("resource-editor-path service", () => {
       expect(() => resolveEditorPath("agents/devx.md")).toThrow(
         /Path is not an openable file: agents\/devx.md/,
       );
+      expect(
+        resolveExistingResourceFilesystemPath(resource, "agents/devx.md"),
+      ).toBe(absolutePath);
+      expect(
+        resolveResourceEditorPath({
+          selector: "agent:devx@devx",
+          pathHint: "agents/devx.md",
+        }),
+      ).toBe(absolutePath);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("opens agents/devx.md from a native install when the canonical cache copy has no file", async () => {
+    const context = await createInitializedTestContext("resource-editor-canonical-miss");
+    try {
+      const nativeRoot = join(
+        context.homeDir,
+        ".claude",
+        "plugins",
+        "cache",
+        "teads-plugins",
+        "devx",
+      );
+      mkdirSync(join(nativeRoot, "agents"), { recursive: true });
+      writeFileSync(
+        join(nativeRoot, "plugin.json"),
+        JSON.stringify({ name: "devx", version: "1.0.0" }),
+        "utf-8",
+      );
+      const absolutePath = join(nativeRoot, "agents", "devx.md");
+      writeFileSync(absolutePath, "# DevX agent\n", "utf-8");
+
+      const canonicalRoot = hostPluginPackageDir(
+        getHarnesstapDir(),
+        "teads-plugins",
+        "devx",
+        "devx",
+      );
+      mkdirSync(canonicalRoot, { recursive: true });
+      writeFileSync(
+        join(canonicalRoot, "plugin.json"),
+        JSON.stringify({ name: "devx", version: "1.0.0" }),
+        "utf-8",
+      );
+
+      const resource = createResource({
+        type: "agent",
+        name: "devx",
+        namespace: "devx",
+        description: "General DevX guide",
+        content: "# DevX agent",
+        metadata: {},
+        source: "agents/devx.md",
+        origin_kind: "marketplace_link",
+        origin_ref: "devx@teads-plugins",
+      });
+
       expect(
         resolveExistingResourceFilesystemPath(resource, "agents/devx.md"),
       ).toBe(absolutePath);

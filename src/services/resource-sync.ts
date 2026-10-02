@@ -161,35 +161,67 @@ function resolveInstallRootCandidates(
   return candidates;
 }
 
+export function listExistingInstallRoots(
+  originRef: string,
+  homeRoot: string = resolveHomeRoot(),
+  claudePluginsRoot: string = defaultClaudePluginsRoot(homeRoot),
+): string[] {
+  const roots: string[] = [];
+  const seen = new Set<string>();
+  const add = (path: string | undefined) => {
+    if (!path || seen.has(path)) {
+      return;
+    }
+    seen.add(path);
+    roots.push(path);
+  };
+
+  for (const candidate of resolveInstallRootCandidates(
+    originRef,
+    homeRoot,
+    claudePluginsRoot,
+  )) {
+    const resolved = resolveExistingInstallRoot(candidate);
+    if (!resolved) {
+      continue;
+    }
+    const { marketplace: parsedMarketplace } = parsePluginRef(originRef);
+    if (parsedMarketplace) {
+      const version = resolvedVersionFromInstallRoot(resolved);
+      add(
+        resolveCanonicalHostPluginRoot({
+          harnesstapDir: harnesstapDirForHomeRoot(homeRoot),
+          originRef,
+          version,
+        }),
+      );
+    }
+    add(resolved);
+  }
+  return roots;
+}
+
 export function resolveInstallRoot(
   originRef: string,
   homeRoot: string = resolveHomeRoot(),
   claudePluginsRoot: string = defaultClaudePluginsRoot(homeRoot),
   options: ResolveInstallRootOptions = {},
 ): string | undefined {
-  const candidates = resolveInstallRootCandidates(
-    originRef,
-    homeRoot,
-    claudePluginsRoot,
-  );
-
-  for (const candidate of candidates) {
-    const resolved = resolveExistingInstallRoot(candidate);
-    if (resolved) {
-      const { marketplace: parsedMarketplace } = parsePluginRef(originRef);
-      if (!parsedMarketplace || options.preferCanonicalPackage === false) {
+  if (options.preferCanonicalPackage === false) {
+    const candidates = resolveInstallRootCandidates(
+      originRef,
+      homeRoot,
+      claudePluginsRoot,
+    );
+    for (const candidate of candidates) {
+      const resolved = resolveExistingInstallRoot(candidate);
+      if (resolved) {
         return resolved;
       }
-      const version = resolvedVersionFromInstallRoot(resolved);
-      const canonical = resolveCanonicalHostPluginRoot({
-        harnesstapDir: harnesstapDirForHomeRoot(homeRoot),
-        originRef,
-        version,
-      });
-      return canonical ?? resolved;
     }
+    return undefined;
   }
-  return undefined;
+  return listExistingInstallRoots(originRef, homeRoot, claudePluginsRoot)[0];
 }
 
 function isPinned(resource: Resource): boolean {

@@ -11,7 +11,7 @@ import { getHarnesstapDir } from "../db/connection.js";
 import { resolveResource } from "../models/resource.js";
 import type { Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
-import { resolveInstallRoot } from "./resource-sync.js";
+import { listExistingInstallRoots } from "./resource-sync.js";
 import { isUntrackedResourceSelector } from "./untracked-resource.js";
 
 function expandUserPath(candidate: string): string {
@@ -132,8 +132,7 @@ function installRootsForResource(
   if (!originRef) {
     return [];
   }
-  const installRoot = resolveInstallRoot(originRef);
-  return installRoot ? [installRoot] : [];
+  return listExistingInstallRoots(originRef);
 }
 
 function originDirectory(
