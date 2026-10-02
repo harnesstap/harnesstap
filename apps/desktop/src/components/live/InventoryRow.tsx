@@ -96,9 +96,18 @@ export function InventoryRow({
         icon={<FileDiff size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
       />
     );
-  } else if (item.section === "not_in_profile" && (onAdd || onDiscard)) {
+  } else if (item.section === "not_in_profile" && (onAdd || onDiscard || (onDiff && item.driftChange))) {
     action = (
       <span className="inventory-chip-not-in-profile-actions">
+        {onDiff && item.driftChange ? (
+          <IconActionButton
+            className="file-change-diff-btn"
+            label={`View changes for ${item.label}`}
+            title="View changes"
+            onClick={onDiff}
+            icon={<FileDiff size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
+          />
+        ) : null}
         {onAdd ? (
           <IconActionButton
             className="untracked-add-btn"

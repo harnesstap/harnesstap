@@ -2075,9 +2075,19 @@ export function LiveStatePanel({
               onDiffFileChange
                 ? (item) => {
                     const change = item.driftChange;
-                    if (change?.path) {
-                      onDiffFileChange(change);
+                    if (!change?.path) {
+                      return;
                     }
+                    onDiffFileChange({
+                      ...change,
+                      resource: {
+                        type: item.resource.type,
+                        name: item.resource.name,
+                        ...(change.resource?.origin_kind != null
+                          ? { origin_kind: change.resource.origin_kind }
+                          : {}),
+                      },
+                    });
                   }
                 : undefined
             }

@@ -7,7 +7,10 @@ import {
   foldResourceTypeTab,
   type TypeTabAttention,
 } from "./resource-type-tabs";
-import type { ProfileResourceListRow } from "./contents-diff";
+import {
+  fileChangeMatchesResource,
+  type ProfileResourceListRow,
+} from "./contents-diff";
 import type {
   DriftFileChange,
   ProfileContentsResource,
@@ -158,16 +161,7 @@ function fileChangeForResource(
   resource: ProfileContentsResource,
   fileChanges: DriftFileChange[],
 ): DriftFileChange | undefined {
-  const source = resource.source?.replace(/\\/g, "/");
-  return fileChanges.find((change) => {
-    if (change.resource?.type === resource.type && change.resource.name === resource.name) {
-      return true;
-    }
-    if (!source) {
-      return false;
-    }
-    return change.path.replace(/\\/g, "/") === source;
-  });
+  return fileChanges.find((change) => fileChangeMatchesResource(resource, change));
 }
 
 export function partitionProfileInventory(
@@ -192,6 +186,7 @@ export function partitionProfileInventory(
     if (coveredKeys.has(key)) {
       continue;
     }
+    const driftChange = fileChangeForResource(resource, fileChanges);
     notInProfile.push({
       section: "not_in_profile",
       key: `not-in-profile:${key}`,
@@ -199,6 +194,7 @@ export function partitionProfileInventory(
       label: formatResourceDisplayName(resource),
       resource,
       drifted: false,
+      ...(driftChange ? { driftChange } : {}),
     });
   }
 
