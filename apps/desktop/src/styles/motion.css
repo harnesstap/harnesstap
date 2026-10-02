@@ -27,6 +27,10 @@
   position: relative;
 }
 
+.m-crossfade-incoming {
+  min-height: 0;
+}
+
 .m-crossfade-outgoing {
   position: absolute;
   top: 0;

@@ -400,6 +400,29 @@ describe("mergeSourcesHits", () => {
     ).toEqual(["Focus"]);
   });
 
+  test("marketplace search matches name or description such as slack", () => {
+    const groups = mergeSourcesHits({
+      query: "slack",
+      sourceOrder: ["mkt:demo"],
+      marketplaces: [
+        {
+          sourceId: "mkt:demo",
+          sourceLabel: "demo",
+          marketplaceName: "demo",
+          plugins: [
+            { name: "cursor-team", description: "Slack bot helpers" },
+            { name: "other", description: "Unrelated" },
+            { name: "slack-kit", description: "Team kit" },
+          ],
+        },
+      ],
+    });
+    expect(groups.flatMap((group) => group.hits).map((hit) => hit.name)).toEqual([
+      "cursor-team",
+      "slack-kit",
+    ]);
+  });
+
   test("keeps a cloud plugin when the query matches tags but not name or description", () => {
     const groups = mergeSourcesHits({
       query: "ci",
@@ -762,7 +785,7 @@ describe("discoverListEmptyCopy", () => {
   test("keeps search empty copy when showing in-library hits", () => {
     expect(discoverListEmptyCopy({ query: "", showInLibrary: true })).toEqual({
       message: "Search to add",
-      hint: "Type a name to search sources.",
+      hint: "Type a name or description.",
       action: null,
     });
     expect(

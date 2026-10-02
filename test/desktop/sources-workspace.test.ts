@@ -157,12 +157,16 @@ describe("sources workspace chrome", () => {
     expect(sidebarSource).toContain("source-master-row");
   });
 
-  test("header cluster uses icon-only Add marketplace and Connect catalog", () => {
+  test("header cluster uses icon-only Add marketplace, Manage marketplaces, and Connect catalog", () => {
     expect(workspaceSource).toContain('label="Add marketplace"');
     expect(workspaceSource).toContain('title="Add marketplace"');
+    expect(workspaceSource).toContain('label="Manage marketplaces"');
+    expect(workspaceSource).toContain('title="Manage marketplaces"');
     expect(workspaceSource).toContain('label="Connect catalog"');
     expect(workspaceSource).toContain('title="Connect catalog"');
     expect(workspaceSource).toContain("IconActionButton");
+    expect(workspaceSource).toContain("<List size={20}");
+    expect(workspaceSource).toContain("ManageMarketplacesModal");
     expect(workspaceSource).not.toMatch(
       /label="Add marketplace"[\s\S]{0,400}Add marketplace\s*</,
     );
@@ -187,9 +191,59 @@ describe("sources workspace chrome", () => {
     expect(sourcesHeader).toContain("min-height: var(--icon-action-size-lg)");
     expect(sourcesHeader).not.toContain("width: auto");
     expect(workspaceSource).toContain("<Store size={20}");
+    expect(workspaceSource).toContain("<List size={20}");
     expect(workspaceSource).toContain("<Cloud size={20}");
     expect(workspaceSource).not.toContain("<Store size={16}");
     expect(workspaceSource).not.toContain("<Cloud size={16}");
+  });
+
+  test("filter sidebar marketplace rows have no edit or delete icons", () => {
+    expect(sidebarSource).not.toContain("onEditMarketplace");
+    expect(sidebarSource).not.toContain("onRemoveMarketplace");
+    expect(sidebarSource).not.toContain("onRequestRemoveMarketplace");
+    expect(sidebarSource).not.toContain("Pencil");
+    expect(sidebarSource).not.toContain("Trash2");
+    expect(sidebarSource).toContain('case "marketplace":');
+    expect(sidebarSource).toContain("return null");
+  });
+
+  test("Manage marketplaces modal lists every marketplace with edit and delete", () => {
+    const modalSource = readFileSync(
+      join(
+        import.meta.dir,
+        "../../apps/desktop/src/components/ManageMarketplacesModal.tsx",
+      ),
+      "utf8",
+    );
+    expect(modalSource).toContain("marketplaces.map");
+    expect(modalSource).toContain('label="Edit"');
+    expect(modalSource).toContain('label="Remove"');
+    expect(modalSource).not.toContain("entry.managed");
+    expect(modalSource).not.toContain("removable");
+    expect(workspaceSource).toContain("marketplaces={marketplaces}");
+    expect(workspaceSource).toContain("onRemove={(name) => void onRemoveMarketplace(name)}");
+    const designLock = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+      "utf8",
+    );
+    expect(designLock).toContain("**Manage marketplaces**");
+    expect(designLock).toContain("Marketplace filter rows are checkboxes only");
+    expect(designLock).toContain("not pinned to the title line");
+  });
+
+  test("main Discover list pane scrolls", () => {
+    const list = cssBlock(stylesSource, ".sources-list");
+    expect(list).toContain("overflow: auto");
+    expect(list).toContain("min-height: 0");
+    const incoming = cssBlock(
+      stylesSource,
+      ".sources-workspace .m-crossfade-incoming",
+    );
+    expect(incoming).toContain("overflow: auto");
+    expect(incoming).toContain("min-height: 0");
+    const crossfade = cssBlock(stylesSource, ".sources-pane-crossfade");
+    expect(crossfade).toContain("min-height: 0");
+    expect(crossfade).toContain("overflow: hidden");
   });
 
   test("shows cached Discover hits immediately and header marketplace refresh progress", () => {
@@ -399,6 +453,8 @@ describe("sources search list and preview", () => {
     expect(listPaneSource).toContain("InUseMark");
     const hitTrailing = cssBlock(stylesSource, ".sources-hit .resource-row-trailing");
     expect(hitTrailing).toContain("align-self: center;");
+    const hitRow = cssBlock(stylesSource, ".sources-hit.resource-row");
+    expect(hitRow).toContain("align-items: center;");
     expect(workspaceSource).toContain("onOpenInLibrary");
     expect(appSource).toContain("onOpenInLibrary=");
     expect(appSource).toContain("setLibraryFocusPlugin");

@@ -72,11 +72,12 @@ import {
   type SourceRow,
 } from "../lib/sources-sidebar";
 import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
-import { Cloud, Store, ArrowLeft } from "lucide-react";
+import { Cloud, Store, ArrowLeft, List } from "lucide-react";
 import { ConnectCatalogPanel } from "./ConnectCatalogPanel";
 import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
+import { ManageMarketplacesModal } from "./ManageMarketplacesModal";
 import { MarketplaceEditPanel } from "./MarketplaceEditPanel";
 import { PinToPluginPanel } from "./PinToPluginPanel";
 import { SourceSidebar } from "./SourceSidebar";
@@ -210,6 +211,7 @@ export function SourcesWorkspace({
   const [busy, setBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
+  const [manageMarketplacesOpen, setManageMarketplacesOpen] = useState(false);
   const [marketplaceMode, setMarketplaceMode] = useState<"add" | "edit">("add");
   const [editingMarketplace, setEditingMarketplace] =
     useState<PluginMarketplaceEntry | null>(null);
@@ -1386,6 +1388,13 @@ export function SourcesWorkspace({
               icon={<Store size={20} aria-hidden />}
             />
             <IconActionButton
+              label="Manage marketplaces"
+              title="Manage marketplaces"
+              disabled={controlsDisabled}
+              onClick={() => setManageMarketplacesOpen(true)}
+              icon={<List size={20} aria-hidden />}
+            />
+            <IconActionButton
               label="Connect catalog"
               title="Connect catalog"
               disabled={controlsDisabled}
@@ -1420,16 +1429,6 @@ export function SourcesWorkspace({
           onRetryOriginCheck={refresh}
           refreshing={sidebarRefreshing}
           onConfirmOpenChange={setSidebarConfirmOpen}
-          onEditMarketplace={(name) => {
-            const entry = marketplaces.find((item) => item.name === name) ?? null;
-            if (!entry) {
-              return;
-            }
-            setMarketplaceMode("edit");
-            setEditingMarketplace(entry);
-            setMarketplaceOpen(true);
-          }}
-          onRemoveMarketplace={(name) => void onRemoveMarketplace(name)}
           onDisconnectOrg={(org) => void onDisconnectOrg(org)}
           onUnregisterCatalog={(selector) => void onUnregisterCatalog(selector)}
         />
@@ -1440,6 +1439,20 @@ export function SourcesWorkspace({
         </div>
       </div>
 
+      <ManageMarketplacesModal
+        open={manageMarketplacesOpen}
+        marketplaces={marketplaces}
+        busy={busy}
+        disabled={controlsDisabled}
+        onClose={() => setManageMarketplacesOpen(false)}
+        onEdit={(entry) => {
+          setManageMarketplacesOpen(false);
+          setMarketplaceMode("edit");
+          setEditingMarketplace(entry);
+          setMarketplaceOpen(true);
+        }}
+        onRemove={(name) => void onRemoveMarketplace(name)}
+      />
       <MarketplaceEditPanel
         open={marketplaceOpen}
         mode={marketplaceMode}

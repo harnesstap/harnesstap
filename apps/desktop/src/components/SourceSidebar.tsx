@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FilterX, Pencil, Trash2, Unlink, Unplug } from "lucide-react";
+import { FilterX, Unlink, Unplug } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { sourcesSidebarChangeAction } from "../lib/sources-pane";
@@ -20,7 +20,6 @@ import { IconActionButton } from "./IconActionButton";
 const ACTION_ICON_SIZE = 16;
 
 type PendingConfirm =
-  | { kind: "marketplace"; name: string }
   | { kind: "org"; org: string }
   | { kind: "catalog"; selector: string };
 
@@ -40,8 +39,6 @@ export interface SourceSidebarProps {
   originCheckError?: string | null;
   onRetryOriginCheck?: () => void;
   refreshing?: boolean;
-  onEditMarketplace: (name: string) => void;
-  onRemoveMarketplace: (name: string) => void;
   onDisconnectOrg: (org: string) => void;
   onUnregisterCatalog: (selector: string) => void;
   onConfirmOpenChange?: (open: boolean) => void;
@@ -53,12 +50,6 @@ function confirmCopy(pending: PendingConfirm): {
   confirmLabel: string;
 } {
   switch (pending.kind) {
-    case "marketplace":
-      return {
-        title: "Remove marketplace?",
-        description: `Removing ${pending.name} unregisters this source. Plugins already pinned stay installed.`,
-        confirmLabel: "Remove marketplace",
-      };
     case "org":
       return {
         title: "Disconnect org?",
@@ -111,8 +102,6 @@ export function SourceSidebar({
   originCheckError,
   onRetryOriginCheck,
   refreshing = false,
-  onEditMarketplace,
-  onRemoveMarketplace,
   onDisconnectOrg,
   onUnregisterCatalog,
   onConfirmOpenChange,
@@ -145,9 +134,6 @@ export function SourceSidebar({
       return;
     }
     switch (pending.kind) {
-      case "marketplace":
-        onRemoveMarketplace(pending.name);
-        break;
       case "org":
         onDisconnectOrg(pending.org);
         break;
@@ -263,10 +249,6 @@ export function SourceSidebar({
               )}
               disabled={controlsDisabled}
               onToggle={() => applySidebarChange(() => onToggle(row.id))}
-              onEditMarketplace={onEditMarketplace}
-              onRequestRemoveMarketplace={(name) =>
-                setPending({ kind: "marketplace", name })
-              }
               onRequestDisconnectOrg={(org) => setPending({ kind: "org", org })}
               onRequestUnregisterCatalog={(selector) =>
                 setPending({ kind: "catalog", selector })
@@ -297,8 +279,6 @@ function SourceRowItem({
   checked,
   disabled,
   onToggle,
-  onEditMarketplace,
-  onRequestRemoveMarketplace,
   onRequestDisconnectOrg,
   onRequestUnregisterCatalog,
 }: {
@@ -306,8 +286,6 @@ function SourceRowItem({
   checked: boolean;
   disabled: boolean;
   onToggle: () => void;
-  onEditMarketplace: (name: string) => void;
-  onRequestRemoveMarketplace: (name: string) => void;
   onRequestDisconnectOrg: (org: string) => void;
   onRequestUnregisterCatalog: (selector: string) => void;
 }) {
@@ -327,8 +305,6 @@ function SourceRowItem({
       <SourceRowActions
         row={row}
         disabled={disabled}
-        onEditMarketplace={onEditMarketplace}
-        onRequestRemoveMarketplace={onRequestRemoveMarketplace}
         onRequestDisconnectOrg={onRequestDisconnectOrg}
         onRequestUnregisterCatalog={onRequestUnregisterCatalog}
       />
@@ -339,41 +315,18 @@ function SourceRowItem({
 function SourceRowActions({
   row,
   disabled,
-  onEditMarketplace,
-  onRequestRemoveMarketplace,
   onRequestDisconnectOrg,
   onRequestUnregisterCatalog,
 }: {
   row: SourceRow;
   disabled: boolean;
-  onEditMarketplace: (name: string) => void;
-  onRequestRemoveMarketplace: (name: string) => void;
   onRequestDisconnectOrg: (org: string) => void;
   onRequestUnregisterCatalog: (selector: string) => void;
 }) {
   switch (row.kind) {
     case "local":
-      return null;
     case "marketplace":
-      if (!row.removable) {
-        return null;
-      }
-      return (
-        <div className="source-row-actions">
-          <IconActionButton
-            label="Edit"
-            disabled={disabled}
-            onClick={() => onEditMarketplace(row.label)}
-            icon={<Pencil size={ACTION_ICON_SIZE} aria-hidden />}
-          />
-          <IconActionButton
-            label="Remove"
-            disabled={disabled}
-            onClick={() => onRequestRemoveMarketplace(row.label)}
-            icon={<Trash2 size={ACTION_ICON_SIZE} aria-hidden />}
-          />
-        </div>
-      );
+      return null;
     case "cloud-org":
       if (row.disconnectForbidden || !row.removable) {
         return null;
