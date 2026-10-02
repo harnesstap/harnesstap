@@ -295,8 +295,7 @@ async function notStagedFromProjectScan(
   const committed = trackedResourceMap(profileSelector);
   const resolvedRoot = resolve(projectPath);
   const scanStatus = await assessProjectScanStatus(resolvedRoot);
-  const scanned = await scanProject(resolvedRoot);
-  const platformIds = scanned.map((result) => result.platformId);
+  const platformIds = scanStatus.on_disk.platforms;
   const ownedPaths = await profileOwnedPaths(
     profileSelector,
     resolvedRoot,
