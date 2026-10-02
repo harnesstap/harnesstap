@@ -1,3 +1,4 @@
+import { formatResourceDisplayName } from "./resource-display";
 import { filterContentsResourcesBySearch } from "./resource-search";
 import {
   ALL_RESOURCE_TYPE_TAB,
@@ -195,7 +196,7 @@ export function partitionProfileInventory(
       section: "not_in_profile",
       key: `not-in-profile:${key}`,
       type: resource.type,
-      label: resource.name,
+      label: formatResourceDisplayName(resource),
       resource,
       drifted: false,
     });
@@ -214,7 +215,7 @@ export function partitionProfileInventory(
       section: onHarness ? "active" : "inactive",
       key: row.key,
       type: row.type,
-      label: resource.name,
+      label: formatResourceDisplayName(resource),
       resource,
       pluginId: row.kind === "resource" ? row.pluginId : undefined,
       pluginName: row.kind === "resource" ? row.pluginName : undefined,

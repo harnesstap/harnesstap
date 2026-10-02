@@ -59,6 +59,7 @@ function asArray(value: unknown, detail: string): unknown[] {
 
 function parseResource(value: unknown): HarnessResourceRow {
   const record = asRecord(value, "resource row");
+  const hook = parseHook(record.hook);
   return {
     id: asString(record.id, "resource id"),
     type: asString(record.type, "resource type"),
@@ -78,6 +79,25 @@ function parseResource(value: unknown): HarnessResourceRow {
       typeof record.origin_ref === "string" && record.origin_ref.length > 0
         ? record.origin_ref
         : null,
+    ...(hook ? { hook } : {}),
+  };
+}
+
+function parseHook(value: unknown): HarnessResourceRow["hook"] | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  if (typeof record.event !== "string" || typeof record.script !== "string") {
+    return undefined;
+  }
+  return {
+    event: record.event,
+    script: record.script,
+    ...(typeof record.matcher === "string" && record.matcher
+      ? { matcher: record.matcher }
+      : {}),
+    ...(typeof record.type === "string" && record.type ? { type: record.type } : {}),
   };
 }
 

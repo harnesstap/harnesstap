@@ -6,6 +6,7 @@ import {
 } from "../models/plugin-model.js";
 import { getEnvironmentResources } from "../models/environment.js";
 import type { Resource } from "../types.js";
+import { hookInventoryWireFromResource } from "../ui/hook-display.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { formatResourceTypeSummary } from "./project-status-payload.js";
 import { collectProfilePluginIds } from "./profile-apply.js";
@@ -21,6 +22,12 @@ export interface ProfileContentsResource {
   filesystem_path?: string | null;
   origin_kind?: string;
   origin_ref?: string;
+  hook?: {
+    event: string;
+    script: string;
+    matcher?: string;
+    type?: string;
+  };
   /** Present on not-staged rows: add is missing from the profile; update differs on disk. */
   not_staged_kind?: "add" | "update";
 }
@@ -56,6 +63,7 @@ function materialResources(resources: Resource[]): Resource[] {
 
 export function toContentsResource(resource: Resource): ProfileContentsResource {
   const filesystemPath = resolveExistingResourceFilesystemPath(resource);
+  const hook = hookInventoryWireFromResource(resource);
   return {
     id: resource.id,
     type: resource.type,
@@ -64,6 +72,7 @@ export function toContentsResource(resource: Resource): ProfileContentsResource 
     ...(resource.origin_kind ? { origin_kind: resource.origin_kind } : {}),
     ...(resource.origin_ref ? { origin_ref: resource.origin_ref } : {}),
     ...(filesystemPath ? { filesystem_path: filesystemPath } : {}),
+    ...(hook ? { hook } : {}),
   };
 }
 

@@ -53,6 +53,12 @@ export interface HarnessResourceRow {
   readonly origin_kind?: string | null;
   readonly namespace?: string | null;
   readonly origin_ref?: string | null;
+  readonly hook?: {
+    readonly event: string;
+    readonly script: string;
+    readonly matcher?: string;
+    readonly type?: string;
+  };
 }
 
 /** One panel in the main pane. Identity is `path`. */
@@ -351,6 +357,7 @@ export function harnessResourceDisplayName(
       namespace: row.namespace,
       origin_ref: row.origin_ref,
       source: row.source,
+      hook: row.hook,
     },
     { disambiguatePlugin: duplicateNames?.has(row.name) ?? false },
   );
@@ -361,7 +368,7 @@ export function harnessResourceBadgeLabel(
   duplicateNames?: ReadonlySet<string>,
 ): string {
   const label = harnessResourceDisplayName(row, duplicateNames);
-  if (row.type === "plugin") {
+  if (row.type === "plugin" || row.type === "hook") {
     return label;
   }
   return truncateResourceBadgeName(label);
@@ -628,6 +635,7 @@ function asLibraryResource(row: HarnessResourceRow): LibraryResource {
     filesystem_path: row.filesystem_path,
     origin_kind: row.origin_kind,
     origin_ref: row.origin_ref,
+    ...(row.hook ? { hook: row.hook } : {}),
   };
 }
 

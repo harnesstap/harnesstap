@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { open as openDirectoryDialog } from "@tauri-apps/plugin-dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { addMarketplace, fetchMarketplaceSourceBranches } from "../lib/agent-client";
+import { addMarketplace, fetchMarketplaceSourceBranches, fetchMarketplaceTypeDetection } from "../lib/agent-client";
 import { patchMarketplace } from "../lib/api/sources";
 import {
   extraTrackedBranches,
@@ -12,6 +11,7 @@ import {
   marketplaceSubmitCloseAction,
 } from "../lib/sources-panels";
 import type {
+  MarketplaceTypeDetectResult,
   PluginMarketplaceEntry,
   PluginMarketplacePlatform,
 } from "../lib/types";
@@ -22,14 +22,6 @@ import { FullScreenPanel } from "./FullScreenPanel";
 import { IconActionButton } from "./IconActionButton";
 import { MarketplaceTrackedBranchesField } from "./MarketplaceTrackedBranchesField";
 
-const MARKETPLACE_PLATFORMS: PluginMarketplacePlatform[] = [
-  "claude-code",
-  "cursor",
-  "goose",
-  "copilot-cli",
-];
-
-const DEFAULT_PLATFORMS: PluginMarketplacePlatform[] = ["claude-code"];
 const BRANCH_LIST_DEBOUNCE_MS = 400;
 
 export function deriveMarketplaceNameFromUrl(url: string): string {
@@ -49,15 +41,6 @@ export function deriveMarketplaceNameFromUrl(url: string): string {
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
-}
-
-function togglePlatform(
-  platforms: PluginMarketplacePlatform[],
-  platform: PluginMarketplacePlatform,
-): PluginMarketplacePlatform[] {
-  return platforms.includes(platform)
-    ? platforms.filter((item) => item !== platform)
-    : [...platforms, platform];
 }
 
 export interface MarketplaceEditPanelProps {
@@ -86,18 +69,20 @@ export function MarketplaceEditPanel({
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
-  const [platforms, setPlatforms] = useState<PluginMarketplacePlatform[]>([
-    ...DEFAULT_PLATFORMS,
-  ]);
+  const [platforms, setPlatforms] = useState<PluginMarketplacePlatform[]>([]);
   const [trackedBranches, setTrackedBranches] = useState<string[]>([]);
   const [branchOptions, setBranchOptions] = useState<string[]>([]);
   const [defaultBranch, setDefaultBranch] = useState<string | null>(null);
   const [branchesLoading, setBranchesLoading] = useState(false);
+  const [typeDetection, setTypeDetection] = useState<MarketplaceTypeDetectResult | null>(
+    null,
+  );
+  const [typeDetecting, setTypeDetecting] = useState(false);
   const [baselineUrl, setBaselineUrl] = useState("");
   const [baselineName, setBaselineName] = useState("");
   const [baselinePlatforms, setBaselinePlatforms] = useState<
     PluginMarketplacePlatform[]
-  >([...DEFAULT_PLATFORMS]);
+  >([]);
   const [baselineTrackedBranches, setBaselineTrackedBranches] = useState<string[]>(
     [],
   );
@@ -112,8 +97,7 @@ export function MarketplaceEditPanel({
       return;
     }
     if (mode === "edit" && entry) {
-      const nextPlatforms =
-        entry.platforms.length > 0 ? [...entry.platforms] : [...DEFAULT_PLATFORMS];
+      const nextPlatforms = [...(entry.platforms ?? [])];
       const nextBranches = [...(entry.trackedBranches ?? [])];
       setUrl(entry.url);
       setName(entry.name);
@@ -128,16 +112,18 @@ export function MarketplaceEditPanel({
       setUrl("");
       setName("");
       setNameTouched(false);
-      setPlatforms([...DEFAULT_PLATFORMS]);
+      setPlatforms([]);
       setTrackedBranches([]);
       setBaselineUrl("");
       setBaselineName("");
-      setBaselinePlatforms([...DEFAULT_PLATFORMS]);
+      setBaselinePlatforms([]);
       setBaselineTrackedBranches([]);
     }
     setBranchOptions([]);
     setDefaultBranch(null);
     setBranchesLoading(false);
+    setTypeDetection(null);
+    setTypeDetecting(false);
     setBusy(false);
     setError(null);
     setWarning(null);
@@ -154,11 +140,15 @@ export function MarketplaceEditPanel({
       setBranchOptions([]);
       setDefaultBranch(null);
       setBranchesLoading(false);
+      setTypeDetection(null);
+      setTypeDetecting(false);
+      setPlatforms([]);
       return;
     }
     const generation = ++branchListGeneration.current;
     const timer = window.setTimeout(() => {
       setBranchesLoading(true);
+      setTypeDetecting(true);
       void fetchMarketplaceSourceBranches(baseUrl, token, source)
         .then((result) => {
           if (generation !== branchListGeneration.current) {
@@ -183,6 +173,31 @@ export function MarketplaceEditPanel({
             setBranchesLoading(false);
           }
         });
+      void fetchMarketplaceTypeDetection(baseUrl, token, source)
+        .then((result) => {
+          if (generation !== branchListGeneration.current) {
+            return;
+          }
+          setTypeDetection(result);
+          setPlatforms(result.status === "inferred" ? [...result.platforms] : []);
+        })
+        .catch((detectError: unknown) => {
+          if (generation !== branchListGeneration.current) {
+            return;
+          }
+          setTypeDetection({
+            status: "error",
+            platforms: [],
+            manifests: [],
+            message: errorMessage(detectError, "Could not detect marketplace type."),
+          });
+          setPlatforms([]);
+        })
+        .finally(() => {
+          if (generation === branchListGeneration.current) {
+            setTypeDetecting(false);
+          }
+        });
     }, BRANCH_LIST_DEBOUNCE_MS);
     return () => {
       window.clearTimeout(timer);
@@ -196,7 +211,11 @@ export function MarketplaceEditPanel({
   const controlsDisabled = disabled || busy || !baseUrl;
   const resolvedName = name.trim() || deriveMarketplaceNameFromUrl(url);
   const canSubmit =
-    Boolean(url.trim()) && Boolean(resolvedName) && platforms.length > 0;
+    Boolean(url.trim())
+    && Boolean(resolvedName)
+    && !typeDetecting
+    && typeDetection?.status === "inferred"
+    && platforms.length > 0;
   const dirty = marketplaceDraftIsDirty({
     url,
     name,
@@ -427,27 +446,44 @@ export function MarketplaceEditPanel({
             />
             <p className="muted">Empty tracks the default branch only. Extra branches are opt-in.</p>
           </div>
-          <fieldset className="form-field gap-1.5">
-            <legend>Platforms</legend>
-            {MARKETPLACE_PLATFORMS.map((platform) => (
-              <div className="flex items-center gap-2" key={platform}>
-                <Checkbox
-                  id={`marketplace-platform-${platform}`}
-                  checked={platforms.includes(platform)}
-                  disabled={controlsDisabled}
-                  onCheckedChange={() =>
-                    setPlatforms((current) => togglePlatform(current, platform))
-                  }
-                />
-                <Label
-                  htmlFor={`marketplace-platform-${platform}`}
-                  className="font-normal"
-                >
-                  {platform}
-                </Label>
+          <div className="form-field gap-1.5">
+            <Label id="marketplace-type-label">Type</Label>
+            {typeDetecting ? (
+              <p
+                className="muted"
+                role="status"
+                data-testid="marketplace-type-status"
+                aria-labelledby="marketplace-type-label"
+              >
+                Detecting type…
+              </p>
+            ) : typeDetection?.status === "error" ? (
+              <div
+                className="banner error"
+                role="alert"
+                data-testid="marketplace-type-status"
+              >
+                {typeDetection.message}
               </div>
-            ))}
-          </fieldset>
+            ) : typeDetection?.status === "ambiguous" ? (
+              <div
+                className="banner"
+                role="status"
+                data-testid="marketplace-type-status"
+              >
+                {typeDetection.message}
+              </div>
+            ) : (
+              <p
+                className="muted"
+                role="status"
+                data-testid="marketplace-type-status"
+                aria-labelledby="marketplace-type-label"
+              >
+                {typeDetection?.message ?? "Type is inferred from the URL or path."}
+              </p>
+            )}
+          </div>
     </FullScreenPanel>
       <ConfirmDialog
         open={discardOpen}
