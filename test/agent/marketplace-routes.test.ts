@@ -178,6 +178,35 @@ describe("agent marketplace routes", () => {
     expect(pluginBody.plugins.some((p) => p.ref === "demo-plugin@e2e-market")).toBe(true);
   });
 
+  it("lists git branches for a local marketplace path", async () => {
+    const server = await withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+    spawnSync("git", ["branch", "-M", "main"], { cwd: repo, stdio: "ignore" });
+    spawnSync("git", ["branch", "develop"], { cwd: repo, stdio: "ignore" });
+
+    const denied = await fetch(
+      `${server.url}/v1/marketplaces/branches?url=${encodeURIComponent(repo)}`,
+    );
+    expect(denied.status).toBe(401);
+
+    const missing = await fetch(`${server.url}/v1/marketplaces/branches`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(missing.status).toBe(400);
+
+    const listed = await fetch(
+      `${server.url}/v1/marketplaces/branches?url=${encodeURIComponent(repo)}`,
+      { headers: { Authorization: `Bearer ${server.token}` } },
+    );
+    expect(listed.status).toBe(200);
+    const body = (await listed.json()) as {
+      branches: string[];
+      defaultBranch: string | null;
+    };
+    expect(body.defaultBranch).toBe("main");
+    expect(body.branches.sort()).toEqual(["develop", "main"]);
+  });
+
   it("returns 404 for plugins on unknown marketplace", async () => {
     const server = await withServer();
 

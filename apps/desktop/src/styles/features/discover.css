@@ -184,3 +184,16 @@
 .marketplace-row-platforms {
   font-size: var(--text-body);
 }
+
+.marketplace-source-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.marketplace-source-row input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}

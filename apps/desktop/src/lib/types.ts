@@ -700,6 +700,11 @@ export interface MarketplacePluginsResult {
   plugins: CatalogPlugin[];
 }
 
+export interface MarketplaceSourceBranchesResult {
+  branches: string[];
+  defaultBranch: string | null;
+}
+
 export interface ProfilePluginAddRequest {
   ref: string;
   projectPath?: string;

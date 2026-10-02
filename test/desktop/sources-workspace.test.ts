@@ -210,6 +210,31 @@ describe("sources workspace chrome", () => {
     expect(compositionSource).toContain('label="Pin plugin"');
   });
 
+  test("Add marketplace picks a local git folder and lists tracked branches", () => {
+    expect(marketplacePanelSource).toContain("@tauri-apps/plugin-dialog");
+    expect(marketplacePanelSource).toContain('label="Choose folder"');
+    expect(marketplacePanelSource).toContain("fetchMarketplaceSourceBranches");
+    expect(marketplacePanelSource).toContain("MarketplaceTrackedBranchesField");
+    expect(marketplacePanelSource).not.toContain(
+      'placeholder="Leave empty for the default branch"',
+    );
+    const branchesFieldSource = readFileSync(
+      join(
+        import.meta.dir,
+        "../../apps/desktop/src/components/MarketplaceTrackedBranchesField.tsx",
+      ),
+      "utf8",
+    );
+    expect(branchesFieldSource).toContain("aria-multiselectable");
+    expect(branchesFieldSource).toContain("Leave empty for the default branch");
+    const designLock = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+      "utf8",
+    );
+    expect(designLock).toContain("Choose folder");
+    expect(designLock).toContain("multi-select dropdown");
+  });
+
   test("keeps the marketplace panel open and shows a warning when refresh fails", () => {
     expect(marketplacePanelSource).toContain("marketplaceSubmitCloseAction");
     expect(marketplacePanelSource).toContain('className="banner"');
