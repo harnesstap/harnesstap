@@ -1,6 +1,11 @@
 import { existsSync } from "node:fs";
 import type { RunCommand } from "../plugins/run-command.js";
 import { runCommandWithTimeout } from "../utils/run-command-with-timeout.js";
+import {
+  githubGitConfigArgs,
+  githubHttpsRemoteForAuth,
+  resolveGithubAccessToken,
+} from "./github-credentials.js";
 import { normalizeMarketplaceUrl } from "./marketplace-registry.js";
 
 export const GIT_LS_REMOTE_TIMEOUT_MS = 20_000;
@@ -10,7 +15,9 @@ export interface MarketplaceSourceBranches {
   defaultBranch: string | null;
 }
 
-const FILE_PROTOCOL_ARGS = ["-c", "protocol.file.allow=always"] as const;
+function gitConfigArgs(): string[] {
+  return githubGitConfigArgs(resolveGithubAccessToken().token);
+}
 
 export function parseGitHeadSymref(stdout: string): string | null {
   for (const line of stdout.split(/\r?\n/)) {
@@ -70,7 +77,7 @@ function listLocalBranches(
   runCommand: RunCommand | undefined,
 ): MarketplaceSourceBranches {
   const listed = runGit(runCommand, [
-    ...FILE_PROTOCOL_ARGS,
+    ...gitConfigArgs(),
     "-C",
     dir,
     "for-each-ref",
@@ -81,7 +88,7 @@ function listLocalBranches(
     gitFailed(listed.stderr, "Could not list local git branches");
   }
   const head = runGit(runCommand, [
-    ...FILE_PROTOCOL_ARGS,
+    ...gitConfigArgs(),
     "-C",
     dir,
     "symbolic-ref",
@@ -102,7 +109,7 @@ function listRemoteBranches(
   runCommand: RunCommand | undefined,
 ): MarketplaceSourceBranches {
   const listed = runGit(runCommand, [
-    ...FILE_PROTOCOL_ARGS,
+    ...gitConfigArgs(),
     "ls-remote",
     "--heads",
     "--symref",
@@ -128,5 +135,6 @@ export function listMarketplaceSourceBranches(
   if (existsSync(url)) {
     return listLocalBranches(url, runCommand);
   }
-  return listRemoteBranches(url, runCommand);
+  const token = resolveGithubAccessToken().token;
+  return listRemoteBranches(githubHttpsRemoteForAuth(url, token), runCommand);
 }

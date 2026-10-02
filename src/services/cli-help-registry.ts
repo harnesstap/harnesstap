@@ -748,6 +748,25 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "auth logout --account work",
     ],
   },
+  "github.login": {
+    description: "Log into GitHub via device authentication (GitHub App user-to-server)",
+    examples: [
+      "github login",
+    ],
+  },
+  "github.status": {
+    description: "Show GitHub authentication status",
+    examples: [
+      "github status",
+      "github status --format json",
+    ],
+  },
+  "github.logout": {
+    description: "Remove the stored GitHub session",
+    examples: [
+      "github logout",
+    ],
+  },
   "marketplace.add": {
     description: "Register a plugin marketplace URL",
     examples: [

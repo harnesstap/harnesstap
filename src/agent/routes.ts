@@ -19,6 +19,10 @@ import {
   type CloudAuthHandlers,
   createCloudAuthHandlers,
 } from "./cloud-auth-handlers.js";
+import {
+  type GithubAuthHandlers,
+  createGithubAuthHandlers,
+} from "./github-auth-handlers.js";
 import { jsonResponse } from "./http.js";
 import { tryParityRoutes } from "./parity-routes.js";
 import { handleConstraintRecoveryRun } from "./constraint-recovery-handlers.js";
@@ -185,6 +189,7 @@ export interface AgentRouteDeps {
   isAgentSwitchInProgress: typeof isAgentSwitchInProgress;
   profileCloudHandlers: ProfileCloudHandlers;
   cloudAuthHandlers: CloudAuthHandlers;
+  githubAuthHandlers: GithubAuthHandlers;
 }
 
 export function createDefaultAgentRouteDeps(): AgentRouteDeps {
@@ -198,6 +203,7 @@ export function createDefaultAgentRouteDeps(): AgentRouteDeps {
     isAgentSwitchInProgress,
     profileCloudHandlers: createProfileCloudHandlers(),
     cloudAuthHandlers: createCloudAuthHandlers(),
+    githubAuthHandlers: createGithubAuthHandlers(),
   };
 }
 
@@ -576,6 +582,16 @@ export function createAgentFetchHandler(
       response = await routeDeps.cloudAuthHandlers.handleLoginCancel(request, token);
     } else if (method === "POST" && url.pathname === "/v1/cloud/auth/logout") {
       response = await routeDeps.cloudAuthHandlers.handleLogout(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/github/auth") {
+      response = await routeDeps.githubAuthHandlers.handleStatus(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/github/auth/login") {
+      response = await routeDeps.githubAuthHandlers.handleLogin(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/github/auth/login/poll") {
+      response = await routeDeps.githubAuthHandlers.handleLoginPoll(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/github/auth/login/cancel") {
+      response = await routeDeps.githubAuthHandlers.handleLoginCancel(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/github/auth/logout") {
+      response = await routeDeps.githubAuthHandlers.handleLogout(request, token);
     } else if (method === "GET" && url.pathname === "/v1/profiles/stash") {
       response = handleProfileStashList(request, token);
     } else if (method === "POST" && url.pathname === "/v1/profiles/stash") {

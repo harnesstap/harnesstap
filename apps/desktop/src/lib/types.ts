@@ -223,6 +223,28 @@ export interface CloudAuthLoginPollResult {
   auth?: CloudAuthStatus;
 }
 
+export interface GithubPendingLogin {
+  user_code: string;
+  verification_uri: string;
+  verification_uri_complete: string;
+  expires_at: number;
+}
+
+export interface GithubAuthStatus {
+  authenticated: boolean;
+  login?: string;
+  name?: string;
+  clientId?: string;
+  pendingLogin?: GithubPendingLogin;
+}
+
+export interface GithubAuthLoginPollResult {
+  status: "pending" | "complete" | "error";
+  intervalMs?: number;
+  message?: string;
+  auth?: GithubAuthStatus;
+}
+
 export interface ProfileTagResult {
   plugin_id: string;
   tags: string[];

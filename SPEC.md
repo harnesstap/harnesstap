@@ -27,6 +27,7 @@ The product currently supports these main workflows:
 - Create **environments** (blank, from a project, or from configured plugin requirements); edit values; bind default environments to plugins; switch home or session-local active environment; cascade on `apply` / `profile use`.
 - Manage **profiles** (plugins tagged `profile`) for global machine presets; switch with `profile use` / `profile switch`; stash untracked home resources with `profile stash`.
 - Authenticate HarnessTap Cloud with named **accounts** (`cloud-accounts.json`, `--account` on catalog commands).
+- Authenticate GitHub with a GitHub App device-flow session (`github-session.json`) so private marketplace git reads work without `gh`.
 - Optional **desktop** control plane (`apps/desktop`) talks to a local `ht-agent` sidecar (`agent serve` / `ui --serve` for engineering debug).
 
 ## Core concepts
@@ -131,6 +132,7 @@ Use this table to disambiguate overlapping words.
 | **Workspace** | Single local SQLite library; offline share via `migrate` | `~/.harnesstap/harnesstap.db` |
 | **Catalog** | Org-scoped published plugin collection (multiplayer) | `plugin list --search`, `plugin pull` · Cloud APIs |
 | **Account** | Cloud auth identity (tokens, org context) | `auth login`, `--account` · `cloud-accounts.json` |
+| **GitHub session** | GitHub App user-to-server token for private repo reads | `github login` · `github-session.json` |
 | **Project config** | Repo-declared profiles, environments, and plugin graph for `ht use` / `ht install` / `ht apply` | `apm.yml` · `config show|init`, `use`, `install`, `apply` |
 | **Context-side** | What the model sees: instructions, skills, rules, MCP, hooks, agents, commands, and composition refs | Plugin material attachments |
 | **Environment-side** | Runtime how: env vars, models, permissions, secret refs | Environment values; satisfies `needs[]` |
@@ -308,6 +310,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harnesstap environment ...` | Creates and manages environments; edits values and secret refs; sets global or session-local active environment; status/drift against terminal env. |
 | `harnesstap profile ...` | Lists, shows, creates, tags, switches, and stashes profile plugins; global apply via `profile use`. |
 | `harnesstap auth ...` | Authenticates with HarnessTap Cloud and manages local cloud accounts. |
+| `harnesstap github ...` | Authenticates with GitHub (App device flow) so private marketplace and GitHub git reads can use a stored user-to-server token. |
 | `harnesstap approve` | Writes project `apm.yml` `executables.allow` (or `~/.harnesstap/config.jsonc` with `--user`). `--pending`, `--all`, `--recommended`, `--list`. |
 | `harnesstap deny` | Writes project `apm.yml` `executables.deny` (or user config with `--user`). User grants can only narrow. |
 | `harnesstap policy explain` | Prints the effective executable-trust decision, deciding layer, and shadowed layers for a package. |
@@ -425,6 +428,18 @@ Repositories may declare named profiles, environments, and plugin composition in
 | `auth orgs` | Lists organizations; `--switch` updates the active org. |
 | `auth logout` | Removes a local cloud account. |
 
+### `github` subcommands
+
+GitHub login is **not** HarnessTap Cloud `auth`. It stores a GitHub App user-to-server token for private GitHub content (marketplace detect, clone, `ls-remote`). Tokens are never written into clone URLs; git uses an `http.extraHeader` Authorization bearer. Device flow uses the public App client id (`Iv23liiaeCAUoGKe2uUx`, override `HARNESSTAP_GITHUB_APP_CLIENT_ID`). The App client secret is never committed; if GitHub requires it for token exchange or refresh, set `HARNESSTAP_GITHUB_APP_CLIENT_SECRET`.
+
+Credential precedence for GitHub HTTPS reads: `HARNESSTAP_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKEN` → stored `github-session.json` → `gh auth token` → ambient Git.
+
+| Command | Current behavior |
+| --- | --- |
+| `github login` | GitHub App device authentication; saves `~/.harnesstap/github-session.json` (`0600`). |
+| `github status` | Shows the stored session (and whether an env/`gh` token is in use). |
+| `github logout` | Deletes the stored GitHub session. |
+
 ### `profile` subcommands
 
 A **profile** is a plugin whose `tags` include the reserved string `profile`. Profiles are not a separate storage type — they use the same `plugins` table and publish pipeline as any plugin.
@@ -494,7 +509,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `plugin list|show|cut|apply --dry-run|doctor`, `profile list|show|status|use|switch|stash`, `environment list|show|edit|status|create --dry-run`, `status|history`, `harness list|status`, `init`, `auth status|orgs`, `migrate export|import`, `config show|validate|init`, `use --dry-run`, `add --dry-run|--list`, `marketplace list|show`, `plugin search`, `pack`, `audit`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `plugin list|show|cut|apply --dry-run|doctor`, `profile list|show|status|use|switch|stash`, `environment list|show|edit|status|create --dry-run`, `status|history`, `harness list|status`, `init`, `auth status|orgs`, `github status`, `migrate export|import`, `config show|validate|init`, `use --dry-run`, `add --dry-run|--list`, `marketplace list|show`, `plugin search`, `pack`, `audit`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -583,6 +598,7 @@ Persistent operational state lives in SQLite at `~/.harnesstap/harnesstap.db` (o
 | `~/.harnesstap/config.jsonc` | Toolkit configuration (JSONC comments allowed) |
 | `~/.harnesstap/telemetry-state.json` | Anonymous telemetry distinct id and first-run stamps |
 | `~/.harnesstap/cloud-accounts.json` | HarnessTap Cloud accounts and tokens |
+| `~/.harnesstap/github-session.json` | GitHub App user-to-server session (`0600`) |
 | `~/.harnesstap/active-profile.json` | Active profile pointer (`{ "name": "<plugin-name>" }`) |
 | `~/.harnesstap/plugin-refresh-cache.json` | Internal refresh timestamps used during `resource sync` |
 | `~/.harnesstap/environments/<name>.json` | Named environment fragments (JSONC) |
@@ -835,6 +851,8 @@ Authentication stores named accounts in `~/.harnesstap/cloud-accounts.json`. The
 - `auth status`, `auth orgs`, and `auth logout` manage accounts and active org context.
 - `plugin list --search`, `plugin pull`, and `plugin publish` use the selected cloud account (`--account`).
 - `profile list --search` and `profile pull` filter or validate profile-tagged plugins (`tag=profile`).
+
+Private GitHub marketplaces and git plugin sources use `github login` (or `HARNESSTAP_GITHUB_TOKEN` / `GH_TOKEN` / `GITHUB_TOKEN` / `gh auth token`). That session is not a Cloud account.
 
 ### Catalog scope
 

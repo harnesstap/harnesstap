@@ -20,6 +20,7 @@ import { noSpellcheckProps } from "../lib/no-spellcheck";
 import { Copy, ExternalLink, LogIn, LogOut, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
+import { GithubSignInSection } from "./GithubSignInSection";
 import { Presence } from "./motion/Presence";
 
 interface CloudAccountDrawerProps {
@@ -501,6 +502,12 @@ export function CloudAccountDrawer({
               </div>
             </div>
           )}
+      <GithubSignInSection
+        open={open}
+        baseUrl={baseUrl}
+        token={token}
+        disabled={disabled}
+      />
     </FullScreenPanel>
     </Presence>
   );

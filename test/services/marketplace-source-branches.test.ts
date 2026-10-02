@@ -10,6 +10,7 @@ import {
   parseGitHeadSymref,
   parseGitLsRemoteHeads,
 } from "../../src/services/marketplace-source-branches.ts";
+import { resetGithubTokenLookups } from "../../src/services/github-credentials.ts";
 
 function initLocalRepo(): string {
   const repo = mkdtempSync(join(tmpdir(), "ht-mkt-branches-"));
@@ -73,5 +74,47 @@ describe("listMarketplaceSourceBranches", () => {
       branches: ["main", "develop"],
       defaultBranch: "main",
     });
+  });
+
+  it("passes a GitHub extraheader and keeps the token out of the URL", () => {
+    const previous = {
+      HARNESSTAP_GITHUB_TOKEN: process.env.HARNESSTAP_GITHUB_TOKEN,
+      GH_TOKEN: process.env.GH_TOKEN,
+      GITHUB_TOKEN: process.env.GITHUB_TOKEN,
+    };
+    process.env.HARNESSTAP_GITHUB_TOKEN = "ghu_detect";
+    delete process.env.GH_TOKEN;
+    delete process.env.GITHUB_TOKEN;
+    resetGithubTokenLookups();
+    try {
+      const seen: string[][] = [];
+      const run: RunCommand = (_command, args) => {
+        seen.push(args);
+        return {
+          stdout: "ref: refs/heads/main\tHEAD\nabc\trefs/heads/main\n",
+          stderr: "",
+          exitCode: 0,
+        };
+      };
+      expect(
+        listMarketplaceSourceBranches("git@github.com:acme/private.git", run),
+      ).toEqual({
+        branches: ["main"],
+        defaultBranch: "main",
+      });
+      const args = seen[0] ?? [];
+      expect(args.some((arg) => arg.includes("AUTHORIZATION: bearer ghu_detect"))).toBe(true);
+      expect(args).toContain("https://github.com/acme/private.git");
+      expect(args.join(" ")).not.toContain("ghu_detect@");
+    } finally {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+      resetGithubTokenLookups();
+    }
   });
 });
