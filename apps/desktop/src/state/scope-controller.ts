@@ -234,14 +234,27 @@ export function useScopeController(input: ScopeControllerInput) {
     ? "Choose a project directory to preview project apply."
     : preview.error;
 
+  const wasSwitchingRef = useRef(false);
+  const previewRetrySeenRef = useRef(previewRetryKey);
+
   // Keep the last preview on screen while a new one loads (no null-before-refetch).
+  // `ensure` reuses a warm project preload; apply/retry still force a refresh.
   useEffect(() => {
-    if (!client || !previewKey || switching || projectPathMissing) {
+    if (!client || !previewKey || projectPathMissing) {
       return;
     }
-    void statusStore.loadPreview(previewKey);
+    if (switching) {
+      wasSwitchingRef.current = true;
+      return;
+    }
+    const afterSwitch = wasSwitchingRef.current;
+    wasSwitchingRef.current = false;
+    const retried = previewRetryKey !== previewRetrySeenRef.current;
+    previewRetrySeenRef.current = previewRetryKey;
+    void statusStore.loadPreview(previewKey, {
+      mode: afterSwitch || retried ? "refresh" : "ensure",
+    });
     // Intentionally omit status.as_of: fast polls would re-trigger the fetch.
-    // Post-switch refresh is covered by `switching` flipping back to false.
     // Keyed on the serialized preview key so a fresh key object does not refetch.
   }, [client, previewKeyIdValue, switching, projectPathMissing, previewRetryKey]);
 

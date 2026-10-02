@@ -23,6 +23,7 @@ import { useNavigation, type Scope } from "./state/navigation";
 import { useOverlays } from "./state/overlays";
 import { useProject } from "./state/project";
 import { useScopeController } from "./state/scope-controller";
+import { useProjectScopePreload } from "./state/project-scope-preload";
 import { statusStore, useStatusPolling } from "./state/status-store";
 import { useTelemetryConsent } from "./state/telemetry-consent";
 import { toast } from "./state/toast-store";
@@ -80,6 +81,11 @@ export function App() {
   }, [client, connected, projectPath]);
 
   useStatusPolling({ enabled: connected && !switching, projectPath });
+  useProjectScopePreload({
+    enabled: connected && Boolean(client),
+    projectPath,
+    switching,
+  });
 
   useEffect(() => {
     nav.setNestedDepth(ctrl.editingProfile ? 1 : 0);

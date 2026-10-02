@@ -245,3 +245,106 @@ describe("status store never nulls a held value on refetch", () => {
     expect(store.getState().harnessSnapshotComplete).toBe(false);
   });
 });
+
+const projectKey: PreviewKey = {
+  scope: "project",
+  projectPath: "/repo",
+  profile: "project default",
+};
+
+function projectPreview(profile: string): ProfileApplyPreview {
+  return { profile, scope: "project", contents: null, untracked_resources: [] };
+}
+
+describe("status store preview preload", () => {
+  it("dedupes in-flight loadPreview calls for the same key", async () => {
+    const pending = deferred<ProfileApplyPreview>();
+    let calls = 0;
+    const store = storeWith({
+      fetchApplyPreview: () => {
+        calls += 1;
+        return pending.promise;
+      },
+    });
+
+    const first = store.loadPreview(projectKey, { mode: "ensure", background: true });
+    const second = store.loadPreview(projectKey, { mode: "ensure" });
+    pending.resolve(projectPreview("project default"));
+    expect(await first).toEqual(projectPreview("project default"));
+    expect(await second).toEqual(projectPreview("project default"));
+    expect(calls).toBe(1);
+  });
+
+  it("ensure reuses a warm cache so the first Project open does not rescan", async () => {
+    let calls = 0;
+    const store = storeWith({
+      fetchApplyPreview: () => {
+        calls += 1;
+        return Promise.resolve(projectPreview("project default"));
+      },
+    });
+
+    await store.loadPreview(projectKey, { mode: "ensure", background: true });
+    expect(calls).toBe(1);
+    expect(await store.loadPreview(projectKey, { mode: "ensure" })).toEqual(
+      projectPreview("project default"),
+    );
+    expect(calls).toBe(1);
+  });
+
+  it("refresh still fetches after a warm ensure", async () => {
+    let calls = 0;
+    const store = storeWith({
+      fetchApplyPreview: () => {
+        calls += 1;
+        return Promise.resolve(projectPreview(`v${calls}`));
+      },
+    });
+
+    await store.loadPreview(projectKey, { mode: "ensure", background: true });
+    await store.loadPreview(projectKey, { mode: "refresh" });
+    expect(calls).toBe(2);
+    expect(store.getState().previews[previewKeyId(projectKey)]?.data?.profile).toBe("v2");
+  });
+
+  it("aborts an in-flight project preload when the project path changes", async () => {
+    const pending = deferred<ProfileApplyPreview>();
+    const store = storeWith({ fetchApplyPreview: () => pending.promise });
+    const load = store.loadPreview(projectKey, { mode: "ensure", background: true });
+    expect(store.getState().previews[previewKeyId(projectKey)]?.refreshing).toBe(true);
+
+    store.abortProjectPreviews("/other");
+    pending.resolve(projectPreview("stale"));
+    expect(await load).toBeNull();
+    expect(store.getState().previews[previewKeyId(projectKey)]?.refreshing).toBe(false);
+    expect(store.getState().previews[previewKeyId(projectKey)]?.data).toBeNull();
+  });
+
+  it("does not abort a preload for the project path that is still selected", async () => {
+    const pending = deferred<ProfileApplyPreview>();
+    const store = storeWith({ fetchApplyPreview: () => pending.promise });
+    const load = store.loadPreview(projectKey, { mode: "ensure", background: true });
+    store.abortProjectPreviews("/repo");
+    pending.resolve(projectPreview("project default"));
+    expect(await load).toEqual(projectPreview("project default"));
+  });
+
+  it("does not wait on a background project preview when full status refresh finishes", async () => {
+    const statusPending = deferred<GlobalProfileStatus>();
+    const previewPending = deferred<ProfileApplyPreview>();
+    const store = storeWith({
+      fetchStatus: () => statusPending.promise,
+      fetchApplyPreview: () => previewPending.promise,
+    });
+
+    const preload = store.loadPreview(projectKey, { mode: "ensure", background: true });
+    const refresh = store.refreshStatus("full", "/repo");
+    statusPending.resolve(status("work"));
+    expect(await refresh).toBe(true);
+    expect(store.getState().previews[previewKeyId(projectKey)]?.refreshing).toBe(true);
+
+    previewPending.resolve(projectPreview("project default"));
+    await preload;
+  });
+});
+

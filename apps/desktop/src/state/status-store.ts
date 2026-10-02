@@ -141,12 +141,27 @@ export interface StatusStore {
   refreshProfiles: (projectPath: string) => Promise<void>;
   refreshStash: () => Promise<void>;
   /** Fetch a preview while keeping the previous value on screen. */
-  loadPreview: (key: PreviewKey) => Promise<ProfileApplyPreview | null>;
+  loadPreview: (
+    key: PreviewKey,
+    options?: LoadPreviewOptions,
+  ) => Promise<ProfileApplyPreview | null>;
   setPreview: (key: PreviewKey, preview: ProfileApplyPreview) => void;
   setPreviewError: (key: PreviewKey, error: string | null) => void;
   setStatusError: (error: string | null) => void;
+  /**
+   * Abort in-flight project apply-previews whose path is not `keepProjectPath`.
+   * Global preview and status polls are left running.
+   */
+  abortProjectPreviews: (keepProjectPath: string | null) => void;
   /** Abort in-flight requests and invalidate their generations. */
   abortInFlight: () => void;
+}
+
+export interface LoadPreviewOptions {
+  /** `ensure` reuses in-flight work or a warm cache. `refresh` always fetches. */
+  mode?: "ensure" | "refresh";
+  /** Background preloads are not awaited by a full status refresh. */
+  background?: boolean;
 }
 
 export function createStatusStore(
@@ -157,6 +172,9 @@ export function createStatusStore(
   let controller = new AbortController();
   const listeners = new Set<() => void>();
   const generations = new Map<string, number>();
+  const previewControllers = new Map<string, AbortController>();
+  const inFlightPreviews = new Map<string, Promise<ProfileApplyPreview | null>>();
+  const backgroundPreviewIds = new Set<string>();
 
   const setState = (patch: Partial<StatusStoreState>) => {
     state = { ...state, ...patch };
@@ -179,16 +197,59 @@ export function createStatusStore(
     setState({ previews: { ...state.previews, [id]: { ...current, ...patch } } });
   };
 
-  const loadPreview = async (
+  const previewRequestController = (id: string): AbortController => {
+    previewControllers.get(id)?.abort();
+    const previewController = new AbortController();
+    previewControllers.set(id, previewController);
+    return previewController;
+  };
+
+  const previewSignal = (previewController: AbortController): AbortSignal => {
+    if (typeof AbortSignal.any === "function") {
+      return AbortSignal.any([controller.signal, previewController.signal]);
+    }
+    return previewController.signal;
+  };
+
+  const abortPreviewId = (id: string, clearRefreshing: boolean) => {
+    previewControllers.get(id)?.abort();
+    previewControllers.delete(id);
+    inFlightPreviews.delete(id);
+    nextGeneration(`preview:${id}`);
+    if (clearRefreshing) {
+      const current = state.previews[id];
+      if (current?.refreshing) {
+        patchPreview(id, { refreshing: false });
+      }
+    }
+  };
+
+  const abortProjectPreviews = (keepProjectPath: string | null) => {
+    const keep = keepProjectPath?.trim() || null;
+    const ids = new Set([...inFlightPreviews.keys(), ...previewControllers.keys()]);
+    for (const id of ids) {
+      const key = previewKeyFromId(id);
+      if (key?.scope !== "project") {
+        continue;
+      }
+      if (keep && key.projectPath === keep) {
+        continue;
+      }
+      abortPreviewId(id, true);
+    }
+  };
+
+  const fetchPreview = async (
     previewKey: PreviewKey,
+    id: string,
   ): Promise<ProfileApplyPreview | null> => {
     if (!client) {
       return null;
     }
-    const id = previewKeyId(previewKey);
     const key = `preview:${id}`;
     const generation = nextGeneration(key);
-    const { signal } = controller;
+    const previewController = previewRequestController(id);
+    const signal = previewSignal(previewController);
     patchPreview(id, { refreshing: true, error: null });
     try {
       const preview = await fetchers.fetchApplyPreview(
@@ -210,6 +271,9 @@ export function createStatusStore(
       return preview;
     } catch (error) {
       if (!isCurrent(key, generation) || isAbortError(error)) {
+        if (isCurrent(key, generation)) {
+          patchPreview(id, { refreshing: false });
+        }
         return null;
       }
       patchPreview(id, {
@@ -217,7 +281,46 @@ export function createStatusStore(
         refreshing: false,
       });
       return null;
+    } finally {
+      if (previewControllers.get(id) === previewController) {
+        previewControllers.delete(id);
+      }
     }
+  };
+
+  const loadPreview = async (
+    previewKey: PreviewKey,
+    options?: LoadPreviewOptions,
+  ): Promise<ProfileApplyPreview | null> => {
+    if (!client) {
+      return null;
+    }
+    const id = previewKeyId(previewKey);
+    const mode = options?.mode ?? "refresh";
+    if (options?.background) {
+      backgroundPreviewIds.add(id);
+    } else {
+      backgroundPreviewIds.delete(id);
+    }
+
+    const inFlight = inFlightPreviews.get(id);
+    if (inFlight) {
+      return inFlight;
+    }
+    if (mode === "ensure") {
+      const existing = state.previews[id];
+      if (existing?.data && !existing.refreshing) {
+        return existing.data;
+      }
+    }
+
+    const request = fetchPreview(previewKey, id).finally(() => {
+      if (inFlightPreviews.get(id) === request) {
+        inFlightPreviews.delete(id);
+      }
+    });
+    inFlightPreviews.set(id, request);
+    return request;
   };
 
   const reloadLoadedPreviews = async (): Promise<void> => {
@@ -227,7 +330,19 @@ export function createStatusStore(
     if (keys.length === 0) {
       return;
     }
-    await Promise.all(keys.map((key) => loadPreview(key)));
+    const foreground: PreviewKey[] = [];
+    const background: PreviewKey[] = [];
+    for (const key of keys) {
+      if (backgroundPreviewIds.has(previewKeyId(key))) {
+        background.push(key);
+      } else {
+        foreground.push(key);
+      }
+    }
+    await Promise.all(foreground.map((key) => loadPreview(key, { mode: "refresh" })));
+    for (const key of background) {
+      void loadPreview(key, { mode: "ensure", background: true });
+    }
   };
 
   return {
@@ -339,8 +454,7 @@ export function createStatusStore(
     loadPreview,
     setPreview(previewKey, preview) {
       const id = previewKeyId(previewKey);
-      // A direct write supersedes any in-flight load for the same key.
-      nextGeneration(`preview:${id}`);
+      abortPreviewId(id, false);
       patchPreview(id, { data: preview, error: null, refreshing: false });
     },
     setPreviewError(previewKey, error) {
@@ -349,13 +463,28 @@ export function createStatusStore(
     setStatusError(error) {
       setState({ statusError: error });
     },
+    abortProjectPreviews,
     abortInFlight() {
       controller.abort();
       controller = new AbortController();
+      for (const previewController of previewControllers.values()) {
+        previewController.abort();
+      }
+      previewControllers.clear();
+      inFlightPreviews.clear();
       for (const key of generations.keys()) {
         nextGeneration(key);
       }
-      setState({ statusRefreshing: false, profilesRefreshing: false });
+      setState({
+        statusRefreshing: false,
+        profilesRefreshing: false,
+        previews: Object.fromEntries(
+          Object.entries(state.previews).map(([id, entry]) => [
+            id,
+            { ...entry, refreshing: false },
+          ]),
+        ),
+      });
     },
   };
 }
