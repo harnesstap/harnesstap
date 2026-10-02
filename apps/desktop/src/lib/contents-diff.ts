@@ -149,6 +149,41 @@ export function inferFileChangeType(path: string): string | undefined {
   return undefined;
 }
 
+/** Identity for a 1:1 managed path when apply preview omitted `resource`. */
+export function inferFileChangeResource(
+  path: string,
+): { type: string; name: string } | null {
+  const type = inferFileChangeType(path);
+  if (type === undefined) {
+    return null;
+  }
+  const normalized = path.replace(/\\/g, "/");
+  switch (type) {
+    case "skill": {
+      const match = normalized.match(/(?:^|\/)skills\/([^/]+)\/SKILL\.md$/i);
+      return match?.[1] ? { type, name: match[1] } : null;
+    }
+    case "agent": {
+      const match = normalized.match(/(?:^|\/)agents\/([^/]+)\.(md|toml)$/i);
+      return match?.[1] ? { type, name: match[1] } : null;
+    }
+    case "command": {
+      const match = normalized.match(/(?:^|\/)commands?\/([^/]+)\.md$/i);
+      return match?.[1] ? { type, name: match[1] } : null;
+    }
+    case "rule": {
+      const match = normalized.match(/(?:^|\/)rules\/([^/]+)\.(md|mdc)$/i);
+      return match?.[1] ? { type, name: match[1] } : null;
+    }
+    case "mcp_server":
+    case "instruction":
+    case "hook":
+      return null;
+    default:
+      return null;
+  }
+}
+
 /** Normalize a library source path to a home/project-relative managed path. */
 export function managedPathFromResourceSource(
   source: string | null | undefined,

@@ -64,14 +64,19 @@ describe("fileChangeRowActions", () => {
     expect(row.canDiff).toBe(true);
   });
 
-  it("shows Diff only on modified rows", () => {
+  it("shows Diff on modified and would-write (+) rows", () => {
     const modified: DriftFileChange = {
       path: ".cursor/mcp.json",
       type: "modified",
     };
-    const deleted: DriftFileChange = {
-      path: ".claude/skills/x/SKILL.md",
+    const wouldWrite: DriftFileChange = {
+      path: ".codex/agents/helper.toml",
       type: "deleted",
+      resource: { type: "agent", name: "helper" },
+    };
+    const extra: DriftFileChange = {
+      path: ".claude/skills/x/SKILL.md",
+      type: "added",
       resource: { type: "skill", name: "x" },
     };
     expect(
@@ -81,7 +86,13 @@ describe("fileChangeRowActions", () => {
       }).canDiff,
     ).toBe(true);
     expect(
-      fileChangeRowActions(deleted, {
+      fileChangeRowActions(wouldWrite, {
+        rootPath: root,
+        profileHasResource: true,
+      }).canDiff,
+    ).toBe(true);
+    expect(
+      fileChangeRowActions(extra, {
         rootPath: root,
         profileHasResource: true,
       }).canDiff,
