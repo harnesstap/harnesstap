@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Check,
@@ -13,12 +13,17 @@ import {
   Power,
 } from "lucide-react";
 import {
-  INVENTORY_ROW_HEIGHT_PX,
+  INVENTORY_CHIP_HEIGHT_PX,
+  INVENTORY_CHIP_VIRTUALIZE_MIN_ITEMS,
+  groupProfileInventoryByType,
   type ProfileInventoryItem,
   type ProfileInventorySectionId,
+  type ProfileInventoryTypeGroup,
 } from "../../lib/profile-inventory";
 import { listScrollMargin, resourceRowVirtualStyle } from "../../lib/resource-row-virtual";
+import { resourceTypeTabLabel } from "../../lib/resource-type-tabs";
 import { IconActionButton } from "../IconActionButton";
+import { TypeIcon } from "../TypeIcon";
 import { Collapse } from "../motion/Collapse";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { InventoryRow } from "./InventoryRow";
@@ -54,9 +59,19 @@ function inventorySectionGlyph(section: ProfileInventorySectionId): ReactNode {
   }
 }
 
+function estimateTypeGroupSize(
+  group: ProfileInventoryTypeGroup,
+  showTypeHeaders: boolean,
+): number {
+  const header = showTypeHeaders ? 28 : 0;
+  const rows = Math.max(1, Math.ceil(group.items.length / 4));
+  return header + 6 + rows * INVENTORY_CHIP_HEIGHT_PX;
+}
+
 export interface InventorySectionProps {
   section: ProfileInventorySectionId;
   rows: ProfileInventoryItem[];
+  typeTab: string | null;
   scrollRef: RefObject<HTMLDivElement | null>;
   editMode: boolean;
   profileName: string | null;
@@ -89,6 +104,7 @@ export interface InventorySectionProps {
 export function InventorySection({
   section,
   rows,
+  typeTab,
   scrollRef,
   editMode,
   profileName,
@@ -124,10 +140,18 @@ export function InventorySection({
   const toggleExpanded = () => {
     setExpanded((current) => !current);
   };
+  const showTypeHeaders = typeTab === null;
+  const groups = useMemo(
+    () => (showTypeHeaders ? groupProfileInventoryByType(rows) : rows.length > 0
+      ? [{ type: typeTab ?? rows[0]?.type ?? "", items: rows }]
+      : []),
+    [rows, showTypeHeaders, typeTab],
+  );
+  const virtualizeGroups = rows.length >= INVENTORY_CHIP_VIRTUALIZE_MIN_ITEMS;
 
   useLayoutEffect(() => {
     const scroll = scrollRef.current;
-    if (!scroll) {
+    if (!scroll || !virtualizeGroups) {
       return;
     }
     const measure = () => {
@@ -149,13 +173,16 @@ export function InventorySection({
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [expanded, rows.length, scrollRef]);
+  }, [expanded, groups.length, scrollRef, virtualizeGroups]);
 
   const virtualizer = useVirtualizer({
-    count: rows.length,
+    count: virtualizeGroups ? groups.length : 0,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => INVENTORY_ROW_HEIGHT_PX,
-    overscan: 10,
+    estimateSize: (index) => {
+      const group = groups[index];
+      return group ? estimateTypeGroupSize(group, showTypeHeaders) : INVENTORY_CHIP_HEIGHT_PX;
+    },
+    overscan: 4,
     scrollMargin,
   });
   const virtualRows = virtualizer.getVirtualItems();
@@ -171,6 +198,47 @@ export function InventorySection({
   ) {
     return null;
   }
+
+  const renderChip = (item: ProfileInventoryItem) => {
+    const key = `${item.resource.type}:${item.resource.name}`;
+    return (
+      <InventoryRow
+        key={item.key}
+        item={item}
+        editMode={editMode}
+        profileName={profileName}
+        pending={pendingKeys.has(key)}
+        selectedIsActive={selectedIsActive}
+        onAdd={onAdd ? () => onAdd(item) : undefined}
+        onDiscard={onDiscard ? () => onDiscard(item) : undefined}
+        onActivate={onActivate ? () => onActivate(item) : undefined}
+        onOpenResource={onOpenResource}
+        onOpenPlugin={onOpenPlugin}
+        onDiff={onDiff ? () => onDiff(item) : undefined}
+        selected={selectedIds?.has(item.key) ?? false}
+        onToggleSelected={
+          onToggleSelected ? () => onToggleSelected(item) : undefined
+        }
+      />
+    );
+  };
+
+  const renderTypeGroup = (group: ProfileInventoryTypeGroup) => (
+    <div
+      className="inventory-type-group"
+      data-testid="inventory-type-group"
+      data-type={group.type}
+      aria-label={showTypeHeaders ? resourceTypeTabLabel(group.type) : undefined}
+    >
+      {showTypeHeaders ? (
+        <h3 className="inventory-type-heading">
+          <TypeIcon type={group.type} />
+          <span>{resourceTypeTabLabel(group.type)}</span>
+        </h3>
+      ) : null}
+      <div className="inventory-chip-cluster">{group.items.map(renderChip)}</div>
+    </div>
+  );
 
   return (
     <section
@@ -294,46 +362,35 @@ export function InventorySection({
         className="inventory-section-collapse"
       >
         {headerHint ? <p className="muted inventory-section-hint">{headerHint}</p> : null}
-        {rows.length > 0 ? (
+        {rows.length > 0 && virtualizeGroups ? (
           <div
             ref={listRef}
             className="contents-body inventory-section-virtual"
             style={{ height: `${virtualizer.getTotalSize()}px` }}
           >
             {virtualRows.map((virtualRow) => {
-              const item = rows[virtualRow.index];
-              if (!item) {
+              const group = groups[virtualRow.index];
+              if (!group) {
                 return null;
               }
-              const key = `${item.resource.type}:${item.resource.name}`;
               return (
                 <div
-                  key={item.key}
-                  className="inventory-virtual-row m-fade-in"
+                  key={group.type}
+                  className="inventory-virtual-group m-fade-in"
                   data-index={virtualRow.index}
                   ref={virtualizer.measureElement}
                   style={resourceRowVirtualStyle(virtualRow.start, scrollMargin)}
                 >
-                  <InventoryRow
-                    item={item}
-                    editMode={editMode}
-                    profileName={profileName}
-                    pending={pendingKeys.has(key)}
-                    selectedIsActive={selectedIsActive}
-                    onAdd={onAdd ? () => onAdd(item) : undefined}
-                    onDiscard={onDiscard ? () => onDiscard(item) : undefined}
-                    onActivate={onActivate ? () => onActivate(item) : undefined}
-                    onOpenResource={onOpenResource}
-                    onOpenPlugin={onOpenPlugin}
-                    onDiff={onDiff ? () => onDiff(item) : undefined}
-                    selected={selectedIds?.has(item.key) ?? false}
-                    onToggleSelected={
-                      onToggleSelected ? () => onToggleSelected(item) : undefined
-                    }
-                  />
+                  {renderTypeGroup(group)}
                 </div>
               );
             })}
+          </div>
+        ) : rows.length > 0 ? (
+          <div className="contents-body inventory-section-chips">
+            {groups.map((group) => (
+              <div key={group.type}>{renderTypeGroup(group)}</div>
+            ))}
           </div>
         ) : null}
       </Collapse>

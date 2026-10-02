@@ -6,8 +6,10 @@ import {
   collectTypeTabAttention,
   countInventoryTypeTabs,
   filterProfileInventoryItems,
+  groupProfileInventoryByType,
   inventoryMembershipCaption,
   partitionProfileInventory,
+  type ProfileInventoryItem,
   profileInventoryOpenTarget,
   planProfileDiskSnapshot,
   profileDiskSnapshotHasWork,
@@ -47,6 +49,29 @@ describe("PROFILE_INVENTORY_SECTION_ORDER", () => {
       "inactive",
       "active",
     ]);
+  });
+});
+
+describe("groupProfileInventoryByType", () => {
+  it("clusters items in type-tab order and folds plugin pins into Plugins", () => {
+    const item = (type: string, name: string): ProfileInventoryItem => ({
+      section: "active",
+      key: `${type}:${name}`,
+      type,
+      label: name,
+      resource: { type, name },
+      drifted: false,
+    });
+    const groups = groupProfileInventoryByType([
+      item("skill", "ship"),
+      item("plugin_pin", "devx"),
+      item("rule", "quiet"),
+      item("plugin", "pack"),
+      item("skill", "docs"),
+    ]);
+    expect(groups.map((group) => group.type)).toEqual(["plugin", "skill", "rule"]);
+    expect(groups[0]?.items.map((row) => row.label)).toEqual(["devx", "pack"]);
+    expect(groups[1]?.items.map((row) => row.label)).toEqual(["ship", "docs"]);
   });
 });
 

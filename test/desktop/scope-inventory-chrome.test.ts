@@ -137,6 +137,13 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain('label="Add"');
     expect(liveStateSource).toContain('label="Activate"');
     expect(liveStateSource).toContain("addAllPrimary={!railPrimaryIsReapply}");
+    expect(liveStateSource).toContain("groupProfileInventoryByType");
+    expect(liveStateSource).toContain("showTypeHeaders");
+    expect(liveStateSource).toContain("inventory-type-heading");
+    expect(liveStateSource).toContain("inventory-chip-cluster");
+    expect(liveStateSource).toContain("INVENTORY_CHIP_VIRTUALIZE_MIN_ITEMS");
+    expect(designSource).toContain("When the type filter is All");
+    expect(designSource).toContain("A selected type tab omits those type subsection headers");
     expect(designSource).toContain("Ghost **Add all**");
   });
 
@@ -146,9 +153,10 @@ describe("Global/Project scope inventory chrome", () => {
     expect(appSource).toContain("live-toolbar-actions");
     expect(appSource).toContain("onToggleEditMode");
     expect(appSource).toContain('"btn", "primary"');
-    expect(appSource).toMatch(/\{ctrl\.overwritingWithSetup \? "Overwriting…" : "Overwrite"\}/);
+    expect(appSource).toContain('label="Overwrite"');
     expect(appSource).toContain('title="Overwrite with current setup"');
     expect(appSource).toContain("HardDriveUpload");
+    expect(appSource).toContain("busy={ctrl.overwritingWithSetup}");
     expect(appSource).toContain("Overwrite with current setup?");
     const overwriteIdx = appSource.indexOf('title="Overwrite with current setup"');
     const headerEditIdx = appSource.indexOf(
@@ -165,38 +173,30 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("onToggleEdit={section === \"active\" ? onToggleEditMode : undefined}");
     expect(liveStateSource).toContain("resource-row-checkbox");
     expect(liveStateSource).toContain("data-testid={`inventory-row-select-${item.key}`}");
-    expect(liveStateSource).toContain(
-      "onActivate={showSelect && onToggleSelected ? onToggleSelected : openRow}",
-    );
+    expect(liveStateSource).toContain("activateChip");
     expect(designSource).toContain("toggles that checkbox and does not open details");
     expect(liveStateSource).toContain("profile-remove-action");
     expect(liveStateSource).toContain("Remove from profile?");
-    expect(liveStateSource).toContain("inventory-row-lead");
-    expect(liveStateSource).toContain("inventory-row-icon");
-    expect(stylesSource).toContain(".inventory-row-lead");
-    expect(stylesSource).toContain("width: var(--icon-action-size)");
-    const leadStart = stylesSource.indexOf("\n.inventory-row-lead {");
-    expect(leadStart).toBeGreaterThan(-1);
-    const leadBlock = stylesSource.slice(
-      leadStart,
-      stylesSource.indexOf("}", leadStart) + 1,
+    expect(liveStateSource).toContain("inventory-chip");
+    expect(liveStateSource).toContain("inventory-chip-name");
+    expect(stylesSource).toContain(".inventory-chip {");
+    const chipStart = stylesSource.indexOf("\n.inventory-chip {");
+    expect(chipStart).toBeGreaterThan(-1);
+    const chipBlock = stylesSource.slice(
+      chipStart,
+      stylesSource.indexOf("}", chipStart) + 1,
     );
-    expect(leadBlock).toContain("display: inline-flex;");
-    expect(leadBlock).toContain("align-items: center;");
-    expect(leadBlock).not.toContain("flex-direction: column;");
-    expect(leadBlock).toContain("align-self: center;");
-    expect(stylesSource).toContain(".resource-row.inventory-row");
-    const inventoryRowBlocks = [
-      ...stylesSource.matchAll(/\.resource-row\.inventory-row \{[^}]+\}/g),
-    ].map((match) => match[0]);
-    expect(inventoryRowBlocks.length).toBeGreaterThan(0);
-    expect(
-      inventoryRowBlocks.some((block) => block.includes("align-items: center;")),
-    ).toBe(true);
+    expect(chipBlock).toContain("display: inline-flex;");
+    expect(chipBlock).toContain("align-items: center;");
+    expect(chipBlock).toContain("height: 26px;");
+    expect(chipBlock).toContain("border-radius: var(--radius);");
+    expect(stylesSource).toContain(".inventory-chip-cluster");
+    expect(stylesSource).toContain("flex-wrap: wrap");
+    expect(stylesSource).not.toContain(".resource-row.inventory-row");
     expect(designSource).toContain("leading checkbox");
-    expect(designSource).toContain("[checkbox?] [type icon] [name]");
+    expect(designSource).toContain("[checkbox?][status glyph?] name");
     expect(designSource).toContain("Delete selected");
-    expect(designSource).toContain("labeled accent **Overwrite**");
+    expect(designSource).toContain("icon-only accent **Overwrite**");
     expect(designSource).toContain("opens the full-screen profile edit pane");
     expect(designSource).toContain("**Active** section header has labeled **Edit**");
     expect(designSource).not.toContain("`Active · N files differ`");

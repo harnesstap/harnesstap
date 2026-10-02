@@ -550,6 +550,7 @@ export function ScopeInventoryShell({
                 key={section}
                 section={section}
                 rows={rows}
+                typeTab={typeTab}
                 scrollRef={scrollRef as RefObject<HTMLDivElement | null>}
                 editMode={editMode}
                 profileName={selectedProfile}
