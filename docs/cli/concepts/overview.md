@@ -80,6 +80,7 @@ HarnessTap separates **context-side** configuration (skills, MCP, hooks, rules â
 | **Workspace** | Local library of plugins, resources, and environments at `~/.harnesstap` |
 | **Catalog** | Org-scoped published plugins you search and pull into the workspace |
 | **Account** | HarnessTap Cloud login identity (`auth login`, `--account`) â€” not a profile |
+| **GitHub session** | GitHub App login (`github login`) for private GitHub marketplace/repo reads |
 
 A **plugin** is the versioned context package you apply to projects or profiles. **Plugin pins** and nested **plugin** refs are dependencies attached during composition.
 

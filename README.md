@@ -271,7 +271,7 @@ To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: fals
 
 CLI and Desktop can send anonymous product analytics (install, Cloud connect, plugin apply) to the HarnessTap EU PostHog project after you opt in. Desktop asks on first start. CLI prints a one-time warning with `HARNESSTAP_TELEMETRY=0` / `"telemetry": { "enabled": false }` disable instructions (and how to enable). Details: [Telemetry](docs/telemetry.md).
 
-Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md).
+Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md). Private GitHub marketplaces: `ht github login`.
 
 ---
 
@@ -289,7 +289,7 @@ See the full matrix — resource types, skill emission, plugin support, and path
 
 ## Where data lives
 
-Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, profiles, tracked projects, snapshots, harness preferences). Optional settings live in `~/.harnesstap/config.jsonc`. Cloud accounts: `~/.harnesstap/cloud-accounts.json`.
+Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, profiles, tracked projects, snapshots, harness preferences). Optional settings live in `~/.harnesstap/config.jsonc`. Cloud accounts: `~/.harnesstap/cloud-accounts.json`. GitHub session: `~/.harnesstap/github-session.json`.
 
 Override the base directory with `HARNESSTAP_HOME`.
 

@@ -10,6 +10,8 @@ import type {
   AgentSwitchStreamEvent,
   CloudAuthLoginPollResult,
   CloudAuthStatus,
+  GithubAuthLoginPollResult,
+  GithubAuthStatus,
   CloudProfile,
   CloudProfilePullRequest,
   CloudProfilePullResult,
@@ -800,6 +802,88 @@ export async function logoutCloudAuth(
     return throwAgentError(response, "Could not sign out of cloud");
   }
   return (await response.json()) as CloudAuthStatus;
+}
+
+export async function fetchGithubAuthStatus(
+  baseUrl: string,
+  token: string | null,
+): Promise<GithubAuthStatus> {
+  const response = await agentFetch(baseUrl, token, "/v1/github/auth");
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load GitHub account");
+  }
+  return (await response.json()) as GithubAuthStatus;
+}
+
+export async function startGithubLogin(
+  baseUrl: string,
+  token: string | null,
+): Promise<GithubAuthStatus> {
+  const response = await agentFetch(baseUrl, token, "/v1/github/auth/login", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not start GitHub login");
+  }
+  return (await response.json()) as GithubAuthStatus;
+}
+
+export async function pollGithubLogin(
+  baseUrl: string,
+  token: string | null,
+): Promise<GithubAuthLoginPollResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    "/v1/github/auth/login/poll",
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      message?: string;
+      error?: string;
+      status?: string;
+      intervalMs?: number;
+    };
+    if (body.status === "error" || body.status === "pending") {
+      return body as GithubAuthLoginPollResult;
+    }
+    throw new AgentApiError(
+      body.message ?? "Could not poll GitHub login",
+      response.status,
+      body.error,
+    );
+  }
+  return (await response.json()) as GithubAuthLoginPollResult;
+}
+
+export async function cancelGithubLogin(
+  baseUrl: string,
+  token: string | null,
+): Promise<GithubAuthStatus> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    "/v1/github/auth/login/cancel",
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not cancel GitHub login");
+  }
+  return (await response.json()) as GithubAuthStatus;
+}
+
+export async function logoutGithubAuth(
+  baseUrl: string,
+  token: string | null,
+): Promise<GithubAuthStatus> {
+  const response = await agentFetch(baseUrl, token, "/v1/github/auth/logout", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not sign out of GitHub");
+  }
+  return (await response.json()) as GithubAuthStatus;
 }
 
 export async function tagProfile(

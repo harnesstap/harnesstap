@@ -91,7 +91,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Short, human, tool-like. Tooltips and action blurbs, not lectures.
 - No em dashes in Desktop system/UI strings (tooltips, empty states, helpers, status, confirms). Prefer a period, comma, parentheses, or a short second sentence.
 - Not robot, not condescending (no “Simply…” / “Just…” / “please carefully…”).
-- Prefer verbs users do: `Refresh live status`, `Export setup`, `Sign in to Cloud`.
+- Prefer verbs users do: `Refresh live status`, `Export setup`, `Sign in to Cloud`, `Sign in with GitHub`.
 - One idea per string. A second clause often means redesign, not a longer tooltip. Detail belongs in a confirm or modal.
 - Bad: `Refresh live status and rescan tracked directories — this may take a moment.` Good: `Refresh live status`.
 - Bad: `Install this project's apm.yml (ht install). Not a profile switch.` Good: `Install project config`.

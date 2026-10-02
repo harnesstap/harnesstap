@@ -13,6 +13,11 @@ import {
 } from "../utils/run-command-with-timeout.js";
 import type { RunCommand } from "../plugins/run-command.js";
 import {
+  ensureGithubGitConfigArgs,
+  githubHttpsRemoteForAuth,
+  resolveGithubAccessToken,
+} from "./github-credentials.js";
+import {
   BundleSymlinkError,
   assertContainedPath,
   hasParentTraversalSegment,
@@ -185,7 +190,7 @@ function runGit(
   args: string[],
   cwd?: string,
 ): { stdout: string; stderr: string; exitCode: number } {
-  return run("git", ["-c", "protocol.file.allow=always", ...args], {
+  return run("git", ensureGithubGitConfigArgs(args), {
     timeoutMs: DEFAULT_GIT_CLONE_TIMEOUT_MS,
     ...(cwd ? { cwd } : {}),
   });
@@ -245,8 +250,13 @@ export function selectSemverTag(
   return candidates[0];
 }
 
+function authorizedGitRemote(url: string): string {
+  return githubHttpsRemoteForAuth(url, resolveGithubAccessToken().token);
+}
+
 function listRemoteTags(run: RunCommand, cloneUrl: string): RemoteRef[] {
-  const result = runGit(run, ["ls-remote", "--tags", cloneUrl]);
+  const remote = authorizedGitRemote(cloneUrl);
+  const result = runGit(run, ["ls-remote", "--tags", remote]);
   if (result.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to list tags for ${cloneUrl}: ${result.stderr.trim() || "git ls-remote failed"}`,
@@ -257,7 +267,7 @@ function listRemoteTags(run: RunCommand, cloneUrl: string): RemoteRef[] {
 
 function resolveLiteralRef(run: RunCommand, cloneUrl: string, ref: string): string {
   if (FULL_SHA.test(ref)) {
-    const probe = runGit(run, ["ls-remote", cloneUrl, ref]);
+    const probe = runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), ref]);
     if (probe.exitCode === 0) {
       const parsed = parseLsRemote(probe.stdout);
       const sha = parsed[0]?.sha ?? ref.toLowerCase();
@@ -268,7 +278,7 @@ function resolveLiteralRef(run: RunCommand, cloneUrl: string, ref: string): stri
     return ref.toLowerCase();
   }
 
-  const listed = runGit(run, ["ls-remote", cloneUrl, ref, `refs/heads/${ref}`, `refs/tags/${ref}`]);
+  const listed = runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), ref, `refs/heads/${ref}`, `refs/tags/${ref}`]);
   if (listed.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to resolve ${ref} for ${cloneUrl}: ${listed.stderr.trim() || "git ls-remote failed"}`,
@@ -289,7 +299,7 @@ function resolveLiteralRef(run: RunCommand, cloneUrl: string, ref: string): stri
 }
 
 function resolveHead(run: RunCommand, cloneUrl: string): string {
-  const result = runGit(run, ["ls-remote", cloneUrl, "HEAD"]);
+  const result = runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), "HEAD"]);
   if (result.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to resolve HEAD for ${cloneUrl}: ${result.stderr.trim() || "git ls-remote failed"}`,
@@ -458,7 +468,7 @@ export function checkoutApmGitCommit(
       `Failed to initialize checkout for ${resolution.cloneUrl}: ${init.stderr.trim()}`,
     );
   }
-  const remote = runGit(runCommand, ["-C", targetDir, "remote", "add", "origin", resolution.cloneUrl]);
+  const remote = runGit(runCommand, ["-C", targetDir, "remote", "add", "origin", authorizedGitRemote(resolution.cloneUrl)]);
   if (remote.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to add origin ${resolution.cloneUrl}: ${remote.stderr.trim()}`,

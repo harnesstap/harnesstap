@@ -9,6 +9,11 @@ import {
 } from "../plugins/claude-installed.js";
 import { refreshGitSource } from "../plugins/refresh.js";
 import type { RunCommand } from "../plugins/run-command.js";
+import {
+  ensureGithubGitConfigArgs,
+  githubHttpsRemoteForAuth,
+  resolveGithubAccessToken,
+} from "./github-credentials.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   DEFAULT_GIT_CLONE_TIMEOUT_MS,
@@ -111,7 +116,7 @@ function runGit(
   args: string[],
   cwd?: string,
 ): { stdout: string; stderr: string; exitCode: number } {
-  return run("git", ["-c", "protocol.file.allow=always", ...args], {
+  return run("git", ensureGithubGitConfigArgs(args), {
     timeoutMs: DEFAULT_GIT_CLONE_TIMEOUT_MS,
     ...(cwd ? { cwd } : {}),
   });
@@ -497,7 +502,8 @@ export function listRemotePluginVersionTags(
   cloneUrl: string,
   runCommand: RunCommand = runCommandWithTimeout,
 ): Array<{ version: string; gitRef: string }> {
-  const url = githubCloneUrl(cloneUrl);
+  const token = resolveGithubAccessToken().token;
+  const url = githubHttpsRemoteForAuth(githubCloneUrl(cloneUrl), token);
   const result = runGit(runCommand, ["ls-remote", "--tags", url]);
   if (result.exitCode !== 0) {
     throw new Error(

@@ -476,6 +476,24 @@ Manage HarnessTap Cloud authentication and cloud account state.
 
 Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands. There is no `--profile` flag on `auth` — use `--account`.
 
+## github
+
+Authenticate with GitHub via the HarnessTap GitHub App device flow. Distinct from `auth` (HarnessTap Cloud). Stores a user-to-server token in `~/.harnesstap/github-session.json` (`0600`) and uses it for private GitHub marketplace and git reads (Authorization basic `x-access-token` extraheader, never a token in the clone URL). Private Contents require the App to be installed on the target account or org.
+
+Does not require `gh`. Client id is public (`Iv23liiaeCAUoGKe2uUx`; override `HARNESSTAP_GITHUB_APP_CLIENT_ID`). Never commit a client secret. If token exchange or refresh needs one, set `HARNESSTAP_GITHUB_APP_CLIENT_SECRET`.
+
+Credential precedence: `HARNESSTAP_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKEN` → stored session → `gh auth token` → ambient Git.
+
+### Commands
+
+- `github login`
+- `github status`
+- `github logout`
+
+### Important options
+
+- `github status --format json`
+
 ## profile (`p`)
 
 Manage profile plugins (plugins tagged `profile`) and global profile switching. Profiles apply to **machine home** harness paths; use `apply` for projects.

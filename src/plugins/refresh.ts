@@ -1,6 +1,11 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
+  githubGitConfigArgs,
+  githubHttpsRemoteForAuth,
+  resolveGithubAccessToken,
+} from "../services/github-credentials.js";
+import {
   DEFAULT_GIT_CLONE_TIMEOUT_MS,
   runCommandWithTimeout,
 } from "../utils/run-command-with-timeout.js";
@@ -25,9 +30,11 @@ export function refreshGitSource(opts: GitRefreshOptions): {
   }
   mkdirSync(opts.targetDir, { recursive: true });
 
-  const cloneArgs = ["-c", "protocol.file.allow=always", "clone", "--depth", "1"];
+  const token = resolveGithubAccessToken().token;
+  const url = githubHttpsRemoteForAuth(opts.url, token);
+  const cloneArgs = [...githubGitConfigArgs(token), "clone", "--depth", "1"];
   if (opts.ref) cloneArgs.push("--branch", opts.ref);
-  cloneArgs.push(opts.url, opts.targetDir);
+  cloneArgs.push(url, opts.targetDir);
 
   const clone = run("git", cloneArgs, { timeoutMs: DEFAULT_GIT_CLONE_TIMEOUT_MS });
   if (clone.exitCode !== 0) {
@@ -38,8 +45,7 @@ export function refreshGitSource(opts: GitRefreshOptions): {
   }
 
   const rev = run("git", [
-    "-c",
-    "protocol.file.allow=always",
+    ...githubGitConfigArgs(token),
     "-C",
     opts.targetDir,
     "rev-parse",

@@ -102,7 +102,7 @@ After the baseline fits, build and share your own plugins.
 
 ## Where data lives
 
-Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, tracked projects, snapshots). Optional settings live in `~/.harnesstap/config.jsonc`. Override the base directory with `HARNESSTAP_HOME`.
+Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, tracked projects, snapshots). Optional settings live in `~/.harnesstap/config.jsonc`. Cloud accounts: `~/.harnesstap/cloud-accounts.json`. GitHub session: `~/.harnesstap/github-session.json`. Override the base directory with `HARNESSTAP_HOME`.
 
 Anonymous CLI/Desktop analytics are off until you opt in. Desktop asks on first start. Disable with `HARNESSTAP_TELEMETRY=0` or `"telemetry": { "enabled": false }` in `config.jsonc`. See [Telemetry](../telemetry.md).
 

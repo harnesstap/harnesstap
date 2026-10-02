@@ -2,6 +2,8 @@
 
 Authenticate with your cloud account, switch organizations, search and install shared plugin bundles, and publish your own plugins to your team's organization. Remote catalog commands live on **`plugin`**; use **`auth`** for authentication and org context.
 
+Private GitHub marketplace clones use **`ht github login`**, not `auth login`.
+
 ## Prerequisites
 
 ### Current HarnessTap CLI installation
