@@ -18,6 +18,7 @@ import {
   uniqueFileChanges,
   inferFileChangeType,
   inferFileChangeResource,
+  fileChangeMatchesResource,
   managedPathFromResourceSource,
   compositionTypeCounts,
   filterProfileResourceList,
@@ -374,6 +375,8 @@ describe("contents-diff helpers", () => {
     expect(inferFileChangeType("opencode.json")).toBe("mcp_server");
     expect(inferFileChangeType(".codex/agents/helper.toml")).toBe("agent");
     expect(inferFileChangeType(".claude/agents/helper.md")).toBe("agent");
+    expect(inferFileChangeType(".codex/config.toml")).toBe("mcp_server");
+    expect(inferFileChangeType("~/.config/goose/config.yaml")).toBe("mcp_server");
     expect(inferFileChangeResource(".codex/agents/helper.toml")).toEqual({
       type: "agent",
       name: "helper",
@@ -403,6 +406,27 @@ describe("contents-diff helpers", () => {
       instruction: 2,
       skill: 1,
     });
+  });
+
+  it("matches MCP and subagent chips onto aggregate or renamed file diffs", () => {
+    expect(
+      fileChangeMatchesResource(
+        { type: "mcp_server", name: "devel", source: "~/.cursor/mcp.json" },
+        { path: ".claude.json", type: "modified" },
+      ),
+    ).toBe(true);
+    expect(
+      fileChangeMatchesResource(
+        { type: "mcp_server", name: "devel", source: "manual" },
+        { path: ".codex/config.toml", type: "modified" },
+      ),
+    ).toBe(true);
+    expect(
+      fileChangeMatchesResource(
+        { type: "agent", name: "Researcher", source: "~/.claude/agents/researcher.md" },
+        { path: ".claude/agents/researcher.md", type: "modified" },
+      ),
+    ).toBe(true);
   });
 
   it("filters file changes by selected kinds; empty selection shows all", () => {

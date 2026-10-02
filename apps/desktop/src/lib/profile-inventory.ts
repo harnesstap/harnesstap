@@ -8,7 +8,9 @@ import {
   type TypeTabAttention,
 } from "./resource-type-tabs";
 import {
-  fileChangeMatchesResource,
+  inferFileChangeType,
+  managedPathFromResourceSource,
+  preferredFileChangeForResource,
   type ProfileResourceListRow,
 } from "./contents-diff";
 import type {
@@ -157,11 +159,46 @@ export function coveredProfileMembershipKeys(
   return keys;
 }
 
+function managedDriftPath(
+  resource: Pick<ProfileContentsResource, "source" | "filesystem_path">,
+): string | null {
+  return (
+    managedPathFromResourceSource(resource.filesystem_path)
+    ?? managedPathFromResourceSource(resource.source)
+  );
+}
+
+function synthesizeTypedDriftChange(
+  resource: ProfileContentsResource,
+  liveUpdate?: ProfileContentsResource,
+): DriftFileChange | undefined {
+  if (resource.type !== "mcp_server" && resource.type !== "agent") {
+    return undefined;
+  }
+  const path = (liveUpdate ? managedDriftPath(liveUpdate) : null)
+    ?? managedDriftPath(resource);
+  if (!path || inferFileChangeType(path) !== resource.type) {
+    return undefined;
+  }
+  return {
+    path,
+    type: "modified",
+    resource: { type: resource.type, name: resource.name },
+  };
+}
+
 function fileChangeForResource(
   resource: ProfileContentsResource,
   fileChanges: DriftFileChange[],
+  liveUpdate?: ProfileContentsResource,
 ): DriftFileChange | undefined {
-  return fileChanges.find((change) => fileChangeMatchesResource(resource, change));
+  return (
+    preferredFileChangeForResource(resource, fileChanges)
+    ?? (liveUpdate
+      ? preferredFileChangeForResource(liveUpdate, fileChanges)
+      : undefined)
+    ?? synthesizeTypedDriftChange(resource, liveUpdate)
+  );
 }
 
 export function partitionProfileInventory(
@@ -175,12 +212,14 @@ export function partitionProfileInventory(
   const coveredKeys = coveredProfileMembershipKeys(input.profileRows);
   const fileChanges = input.fileChanges ?? [];
   const driftedKeys = new Set<string>();
+  const notStagedUpdates = new Map<string, ProfileContentsResource>();
   const notInProfile: ProfileInventoryItem[] = [];
 
   for (const resource of input.notStaged) {
     const key = membershipKey(resource);
     if (resource.not_staged_kind === "update") {
       driftedKeys.add(key);
+      notStagedUpdates.set(key, resource);
       continue;
     }
     if (coveredKeys.has(key)) {
@@ -205,7 +244,8 @@ export function partitionProfileInventory(
     const resource = resourceFromRow(row);
     const key = membershipKey(resource);
     const onHarness = rowAliases(row).some((alias) => liveKeys.has(alias));
-    const driftChange = fileChangeForResource(resource, fileChanges);
+    const liveUpdate = notStagedUpdates.get(key);
+    const driftChange = fileChangeForResource(resource, fileChanges, liveUpdate);
     const drifted = driftedKeys.has(key) || Boolean(driftChange);
     const item: ProfileInventoryItem = {
       section: onHarness ? "active" : "inactive",
