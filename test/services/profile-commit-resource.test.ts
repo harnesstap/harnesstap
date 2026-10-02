@@ -7,6 +7,7 @@ import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import {
   commitManagedPathFromLive,
   commitManagedResourceFromLive,
+  isAggregateConfigManagedPath,
   isMcpConfigManagedPath,
   resourceKeyFromManagedPath,
 } from "../../src/services/profile-commit-resource.ts";
@@ -42,6 +43,20 @@ describe("profile-commit-resource", () => {
     expect(isMcpConfigManagedPath("~/.copilot/mcp-config.json")).toBe(true);
     expect(isMcpConfigManagedPath(".agents/mcp_config.json")).toBe(true);
     expect(isMcpConfigManagedPath("opencode.json")).toBe(true);
+  });
+
+  it("maps harness settings and hooks files as aggregate config paths", () => {
+    expect(resourceKeyFromManagedPath(".claude/settings.json")).toBeNull();
+    expect(resourceKeyFromManagedPath("~/.claude/settings.json")).toBeNull();
+    expect(isAggregateConfigManagedPath(".claude/settings.json")).toBe(true);
+    expect(isAggregateConfigManagedPath("~/.claude/settings.json")).toBe(true);
+    expect(isAggregateConfigManagedPath(".cursor/hooks.json")).toBe(true);
+    expect(isAggregateConfigManagedPath("~/.cursor/hooks.json")).toBe(true);
+    expect(isAggregateConfigManagedPath("~/.config/muse/settings.json")).toBe(true);
+    expect(isAggregateConfigManagedPath(".codex/config.toml")).toBe(true);
+    expect(isAggregateConfigManagedPath(".claude/skills/manual-skill/SKILL.md")).toBe(
+      false,
+    );
   });
 
   it("maps OpenCode and other registry harness skill paths", () => {
@@ -290,6 +305,127 @@ describe("profile-commit-resource", () => {
           (entry) => entry.type === "mcp_server" && entry.name === "cursor-only",
         ),
       ).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("commits live .claude/settings.json permissions and env into the profile", async () => {
+    const context = await createInitializedTestContext("profile-commit-claude-settings");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      const permission = createResource({
+        type: "permission",
+        name: "allow-Read(*)",
+        description: "",
+        content: "",
+        metadata: { action: "allow", pattern: "Read(*)" },
+        source: "~/.claude/settings.json",
+      });
+      const envVar = createResource({
+        type: "env_var",
+        name: "FOO",
+        description: "",
+        content: "",
+        metadata: { key: "FOO", value: "old" },
+        source: "~/.claude/settings.json",
+      });
+      addResourceToPlugin(profile.id, permission.id);
+      addResourceToPlugin(profile.id, envVar.id);
+
+      await applyProfilePlugin("work", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+
+      mkdirSync(join(context.homeDir, ".claude"), { recursive: true });
+      writeFileSync(
+        join(context.homeDir, ".claude", "settings.json"),
+        `${JSON.stringify(
+          {
+            permissions: { allow: ["Read(*)", "Bash(*)"], deny: [] },
+            env: { FOO: "new" },
+          },
+          null,
+          2,
+        )}\n`,
+        "utf-8",
+      );
+
+      const committed = await commitManagedPathFromLive({
+        profileSelector: "work",
+        path: ".claude/settings.json",
+        scope: "home",
+        harness: "claude-code",
+      });
+
+      expect(committed.map((entry) => `${entry.type}:${entry.name}`).sort()).toEqual([
+        "env_var:FOO",
+        "permission:allow-Bash(*)",
+        "permission:allow-Read(*)",
+      ]);
+      const foo = listResources().find(
+        (entry) => entry.type === "env_var" && entry.name === "FOO",
+      );
+      expect(foo?.metadata).toMatchObject({ key: "FOO", value: "new" });
+      expect(
+        listResources().some(
+          (entry) => entry.type === "permission" && entry.name === "allow-Bash(*)",
+        ),
+      ).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("commits live .cursor/hooks.json into profile hook resources", async () => {
+    const context = await createInitializedTestContext("profile-commit-cursor-hooks");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      const hook = createResource({
+        type: "hook",
+        name: "sessionStart-1",
+        description: "",
+        content: "",
+        metadata: { event: "sessionStart", script: "echo old" },
+        source: ".cursor/hooks.json",
+      });
+      addResourceToPlugin(profile.id, hook.id);
+
+      mkdirSync(join(context.projectDir, ".cursor"), { recursive: true });
+      writeFileSync(
+        join(context.projectDir, ".cursor", "hooks.json"),
+        `${JSON.stringify(
+          {
+            version: 1,
+            hooks: {
+              sessionStart: [{ command: "echo new" }],
+            },
+          },
+          null,
+          2,
+        )}\n`,
+        "utf-8",
+      );
+
+      const committed = await commitManagedPathFromLive({
+        profileSelector: "work",
+        path: ".cursor/hooks.json",
+        scope: "project",
+        projectPath: context.projectDir,
+        harness: "cursor",
+      });
+
+      expect(committed.some((entry) => entry.type === "hook")).toBe(true);
+      const library = listResources().find(
+        (entry) => entry.type === "hook" && entry.name === "sessionStart-1",
+      );
+      expect(library?.metadata).toMatchObject({
+        event: "sessionStart",
+        script: "echo new",
+      });
     } finally {
       await context.cleanup();
     }

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Map harness settings and hooks files such as .claude/settings.json when committing live disk into a profile.
+time: 2026-10-02T04:50:00Z
+custom:
+  Issue: ""
