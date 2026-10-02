@@ -38,6 +38,7 @@ import {
   type EnvironmentFragment,
   mergeResolvedEnvironmentIntoResources,
 } from "./environment-cascade.js";
+import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -280,7 +281,12 @@ export async function generateFiles(
     results.push({ platformId: pid, files });
   }
 
-  return results;
+  return pinSkillEmitsToExistingLivePaths(
+    projectRoot,
+    results,
+    platforms,
+    target,
+  );
 }
 
 /**

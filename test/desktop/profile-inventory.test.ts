@@ -211,6 +211,26 @@ describe("partitionProfileInventory", () => {
       .toEqual(["not_in_profile", "inactive", "active"]);
   });
 
+  it("does not invent a View-changes path for fingerprint updates without apply file changes", () => {
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(profile, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(live, { selectedProfile: "work" }),
+      notStaged: [
+        {
+          type: "skill",
+          name: "ship",
+          id: "ship-id",
+          source: "~/.claude/skills/ship/SKILL.md",
+          not_staged_kind: "update",
+        },
+      ],
+    });
+
+    expect(parts.active[0]?.resource.name).toBe("ship");
+    expect(parts.active[0]?.drifted).toBe(true);
+    expect(parts.active[0]?.driftChange).toBeUndefined();
+  });
+
   it("labels hook chips as Event: script basename", () => {
     const hook: ProfileContentsResource = {
       type: "hook",

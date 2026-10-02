@@ -95,15 +95,14 @@ export function buildUnifiedDiffLines(
   contextLines = 3,
 ): UnifiedDiffLine[] {
   const ops = computeOps(splitLines(from), splitLines(to));
+  if (ops.every((op) => op.kind === "equal")) {
+    return [{ kind: "meta", text: "(no content differences)" }];
+  }
+
   const result: UnifiedDiffLine[] = [
     { kind: "meta", text: `--- live/${path}` },
     { kind: "meta", text: `+++ after-apply/${path}` },
   ];
-
-  if (ops.every((op) => op.kind === "equal")) {
-    result.push({ kind: "meta", text: "(no content differences)" });
-    return result;
-  }
 
   // Include change ops plus ±contextLines of surrounding equal lines.
   const include = new Array<boolean>(ops.length).fill(false);

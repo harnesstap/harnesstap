@@ -13,6 +13,17 @@ import { buildUnifiedDiffLines, countUnifiedDiffChanges } from "../lib/unified-d
 import { Presence } from "./motion/Presence";
 import { motionClass } from "./motion/motion-utils";
 
+function userFacingManagedPath(path: string, scope: ViewScope): string {
+  const normalized = path.replace(/\\/g, "/");
+  if (!normalized) {
+    return normalized;
+  }
+  if (scope === "home" && !normalized.startsWith("~") && !normalized.startsWith("/")) {
+    return `~/${normalized}`;
+  }
+  return normalized;
+}
+
 export interface FileDiffModalProps {
   open: boolean;
   path: string | null;
@@ -98,7 +109,7 @@ export function FileDiffModal({
 
   const changeCounts = useMemo(() => countUnifiedDiffChanges(lines), [lines]);
   const showDiffChrome = !loading && !error && diff !== null;
-  const shownPath = path ?? "";
+  const shownPath = userFacingManagedPath(path ?? "", scope);
 
   return (
     <Presence
@@ -136,11 +147,6 @@ export function FileDiffModal({
               </h2>
               {resource?.type === "mcp_server" && resource.name ? (
                 <p className="muted file-diff-resource">{resource.name}</p>
-              ) : null}
-              {showDiffChrome ? (
-                <p className="muted file-diff-legend">
-                  Green = would add · Red = would remove
-                </p>
               ) : null}
             </div>
             <button
