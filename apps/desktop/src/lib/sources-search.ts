@@ -218,7 +218,7 @@ export function discoverListEmptyCopy(input: {
   }
   return {
     message: "Search to add",
-    hint: "Type a name to search sources.",
+    hint: "Type a name or description.",
     action: null,
   };
 }
@@ -597,23 +597,31 @@ export function hoverModelFromSourcesHit(hit: SourcesHit): ResourceHoverModel {
 }
 
 function hitMatchesQuery(hit: SourcesHit, query: string): boolean {
-  const parts = [hit.name, hit.description ?? "", ...(hit.tags ?? [])];
+  if (matchQuery(hit.name, query) || matchQuery(hit.description ?? "", query)) {
+    return true;
+  }
+  for (const tag of hit.tags ?? []) {
+    if (matchQuery(tag, query)) {
+      return true;
+    }
+  }
   switch (hit.kind) {
     case "plugin":
-      break;
+      return false;
     case "standalone": {
-      parts.push(hit.typeLabel);
+      if (matchQuery(hit.typeLabel, query)) {
+        return true;
+      }
       const selector = hit.identity.localSelector ?? "";
       const at = selector.lastIndexOf("@");
-      if (at >= 0) {
-        parts.push(selector.slice(at + 1));
+      if (at >= 0 && matchQuery(selector.slice(at + 1), query)) {
+        return true;
       }
-      break;
+      return false;
     }
     default: {
       const neverKind: never = hit.kind;
       return neverKind;
     }
   }
-  return matchQuery(parts.join(" "), query);
 }

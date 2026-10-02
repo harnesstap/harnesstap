@@ -18,7 +18,7 @@ function initLocalMarketplaceRepo(manifestName = "local-market"): string {
     JSON.stringify({
       name: manifestName,
       plugins: [
-        { name: "alpha", version: "1.0.0" },
+        { name: "alpha", version: "1.0.0", description: "Slack helpers" },
         { name: "beta", version: "2.0.0" },
       ],
     }),
@@ -60,6 +60,7 @@ describe("marketplace-catalog", () => {
     });
     refreshMarketplaceCatalog(home, { name: "local-market", force: true });
     expect(searchCatalogPlugins(home, "alp").map((p) => p.name)).toEqual(["alpha"]);
+    expect(searchCatalogPlugins(home, "slack").map((p) => p.name)).toEqual(["alpha"]);
   });
 
   it("uses registry name for plugin refs when manifest name differs", () => {
