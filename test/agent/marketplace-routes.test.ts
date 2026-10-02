@@ -207,6 +207,33 @@ describe("agent marketplace routes", () => {
     expect(body.branches.sort()).toEqual(["develop", "main"]);
   });
 
+  it("detects marketplace type for a local path", async () => {
+    const server = await withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+
+    const denied = await fetch(
+      `${server.url}/v1/marketplaces/detect?url=${encodeURIComponent(repo)}`,
+    );
+    expect(denied.status).toBe(401);
+
+    const missing = await fetch(`${server.url}/v1/marketplaces/detect`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(missing.status).toBe(400);
+
+    const detected = await fetch(
+      `${server.url}/v1/marketplaces/detect?url=${encodeURIComponent(repo)}`,
+      { headers: { Authorization: `Bearer ${server.token}` } },
+    );
+    expect(detected.status).toBe(200);
+    await expect(detected.json()).resolves.toEqual({
+      status: "inferred",
+      platforms: ["claude-code"],
+      manifests: [".claude-plugin/marketplace.json"],
+      message: "Inferred: Claude Code",
+    });
+  });
+
   it("returns 404 for plugins on unknown marketplace", async () => {
     const server = await withServer();
 

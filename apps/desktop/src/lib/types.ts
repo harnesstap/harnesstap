@@ -686,6 +686,15 @@ export interface MarketplaceSourceBranchesResult {
   defaultBranch: string | null;
 }
 
+export type MarketplaceTypeDetectStatus = "inferred" | "ambiguous" | "error";
+
+export interface MarketplaceTypeDetectResult {
+  status: MarketplaceTypeDetectStatus;
+  platforms: PluginMarketplacePlatform[];
+  manifests: string[];
+  message: string;
+}
+
 export interface ProfilePluginAddRequest {
   ref: string;
   projectPath?: string;

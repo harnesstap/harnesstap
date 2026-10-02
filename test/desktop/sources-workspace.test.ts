@@ -235,6 +235,20 @@ describe("sources workspace chrome", () => {
     expect(designLock).toContain("multi-select dropdown");
   });
 
+  test("Add marketplace infers type instead of asking for platforms", () => {
+    expect(marketplacePanelSource).toContain("fetchMarketplaceTypeDetection");
+    expect(marketplacePanelSource).toContain('data-testid="marketplace-type-status"');
+    expect(marketplacePanelSource).toContain("Detecting type…");
+    expect(marketplacePanelSource).not.toContain("marketplace-platform-");
+    expect(marketplacePanelSource).not.toContain("<legend>Platforms</legend>");
+    const designLock = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+      "utf8",
+    );
+    expect(designLock).toContain("Type is inferred on URL/path change");
+    expect(designLock).not.toContain("and **Platforms**.");
+  });
+
   test("keeps the marketplace panel open and shows a warning when refresh fails", () => {
     expect(marketplacePanelSource).toContain("marketplaceSubmitCloseAction");
     expect(marketplacePanelSource).toContain('className="banner"');
