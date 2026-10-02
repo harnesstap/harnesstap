@@ -7,6 +7,13 @@
   min-height: var(--icon-action-size-lg);
 }
 
+.source-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
 .source-master-row {
   font-weight: 600;
 }
@@ -78,6 +85,10 @@
   align-self: center;
 }
 
+.sources-hit.resource-row {
+  align-items: center;
+}
+
 .sources-pin-plugin-list {
   list-style: none;
   margin: 0;
@@ -110,16 +121,34 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: none;
 }
 
 .sources-workspace .resources-panel-body {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sources-pane-crossfade {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sources-workspace .m-crossfade-incoming {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .sources-preview,
@@ -127,6 +156,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: none;
 }
 
 .sources-preview .library-field-row,
@@ -196,4 +229,57 @@
   flex: 1;
   min-width: 0;
   width: auto;
+}
+
+.manage-marketplaces-dialog {
+  width: min(32rem, calc(100vw - 3rem));
+  max-height: min(70vh, calc(100vh - 6rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.manage-marketplaces-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.manage-marketplaces-header h2 {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-title);
+}
+
+.manage-marketplaces-empty {
+  margin: 0;
+}
+
+.manage-marketplaces-dialog .marketplace-list {
+  overflow: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.manage-marketplaces-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.manage-marketplaces-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.manage-marketplaces-row .source-row-actions {
+  padding-left: 0;
+  flex-shrink: 0;
 }

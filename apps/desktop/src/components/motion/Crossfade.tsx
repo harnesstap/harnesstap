@@ -98,7 +98,10 @@ export function Crossfade<K extends CrossfadeKey>({
       ) : null}
       <div
         key={`in-${String(state.current)}`}
-        className={hasSwappedRef.current ? "m-fade-in" : undefined}
+        className={joinClassNames(
+          "m-crossfade-incoming",
+          hasSwappedRef.current ? "m-fade-in" : undefined,
+        )}
       >
         {children}
       </div>
