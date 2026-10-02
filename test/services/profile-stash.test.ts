@@ -88,7 +88,7 @@ describe("profile stash", () => {
   it("stashes only untracked resources and keeps tracked files and active profile", async () => {
     const context = await createInitializedTestContext("profile-stash-untracked");
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
       const profileA = createPlugin({ name: "profile-a" });
       setPluginTags(profileA.id, ["profile"]);
@@ -134,7 +134,7 @@ describe("profile stash", () => {
   it("pops the most recent stash and restores untracked files only", async () => {
     const context = await createInitializedTestContext("profile-stash-pop");
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
       const profileA = createPlugin({ name: "profile-a" });
       setPluginTags(profileA.id, ["profile"]);
@@ -180,7 +180,7 @@ describe("profile stash", () => {
   it("errors when there are no untracked resources", async () => {
     const context = await createInitializedTestContext("profile-stash-no-untracked");
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
       const profileA = createPlugin({ name: "profile-a" });
       setPluginTags(profileA.id, ["profile"]);
@@ -206,7 +206,7 @@ describe("profile stash", () => {
   it("does not stash tracked resource drift as stashable state", async () => {
     const context = await createInitializedTestContext("profile-stash-tracked-drift");
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
       const profileA = createPlugin({ name: "profile-a" });
       setPluginTags(profileA.id, ["profile"]);
@@ -237,7 +237,7 @@ describe("profile stash", () => {
   it("supports multiple untracked stash bundles", async () => {
     const context = await createInitializedTestContext("profile-stash-multi");
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
       const profileA = createPlugin({ name: "profile-a" });
       setPluginTags(profileA.id, ["profile"]);
@@ -295,7 +295,7 @@ describe("profile stash", () => {
   it("clears global state via project use --profile empty after optional untracked stash", async () => {
     const context = await createInitializedTestContext("profile-stash-project-use");
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
       const profileA = createPlugin({ name: "profile-a" });
       setPluginTags(profileA.id, ["profile"]);

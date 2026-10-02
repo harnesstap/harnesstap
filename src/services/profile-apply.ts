@@ -42,6 +42,7 @@ import { preparePluginPinsForApply, collectPluginPinsForPrepare } from "./plugin
 import {
   assertSupportedHarnessTargets,
   parsePlatformFilter,
+  registeredHarnessesOf,
   uniqueHarnessTargets,
 } from "./harness-targets.js";
 import { detectPlatforms } from "./scanner.js";
@@ -379,10 +380,7 @@ function resolveGlobalApplyHarnessTargets(harnessOption?: string): string[] {
 
   const preference = getHarnessPreference();
   if (preference) {
-    const preferredTargets = uniqueHarnessTargets([
-      preference.main_harness,
-      ...preference.alias_harnesses,
-    ]);
+    const preferredTargets = registeredHarnessesOf(preference);
     assertSupportedHarnessTargets(preferredTargets);
     return preferredTargets;
   }

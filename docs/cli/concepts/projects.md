@@ -30,7 +30,7 @@ ht apply my-setup --ignore-plugin-versions   # skip validation
 ht apply my-setup --sync-plugins             # refresh plugin resources first
 ```
 
-Applying a plugin writes a known baseline onto disk. It is distinct from **mirror**, which syncs alias harness outputs from the current on-disk main harness without re-specifying the plugin.
+Applying a plugin writes a known baseline onto disk. It is distinct from **mirror**, which rematerializes other registered harnesses from one on-disk tree without re-specifying the plugin.
 
 ## Scan and track
 
@@ -85,11 +85,11 @@ See [Scenario 21](../../scenarios/details/21-detect-drift.md).
 
 ## Project harness preferences
 
-Per-project harness settings (main and aliases for this repo) are separate from global `harness set`:
+Per-project harness settings (the registered set for this repo) are separate from global `harness set`:
 
 ```bash
 ht harness project status .
-ht harness project set --main claude-code --aliases cursor
+ht harness project set --harnesses claude-code,cursor
 ```
 
 These require a git-backed project and influence which harnesses `apply` and `mirror` target by default.

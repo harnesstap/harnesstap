@@ -18,7 +18,7 @@ ht targets
 
 1. `--target` / `--all` / `--harness` on the command line (`--target` and `--harness` occupy the same slot and are mutually exclusive with `--all`)
 2. `targets:` (or singular `target`) in `apm.yml`, then `compilation.target` when those fields are omitted
-3. Project harness preference, then global harness preference (`ht init --main` / `ht harness set`)
+3. Project harness preference, then global harness preference (`ht init --harnesses` / `ht harness set`)
 4. Auto-detection from documented filesystem signals (`.cursor/`, `.claude/`, `CLAUDE.md`, …), then HT `detectPlatforms`
 
 Preview the table with `ht targets` (or `ht targets --json`) before compiling. Pin `targets:` so every machine, CI job, and cloud agent writes the same files:
@@ -29,7 +29,7 @@ version: "1.0.0"
 targets: [cursor, claude]
 ```
 
-Declared `targets:` wins over harness preference and whichever tool folders happen to exist on the current machine. When `targets:` is omitted, preference keeps `ht apply <plugin>` / install portable across machines that already ran `ht init --main`.
+Declared `targets:` wins over harness preference and whichever tool folders happen to exist on the current machine. When `targets:` is omitted, preference keeps `ht apply <plugin>` / install portable across machines that already ran `ht init --harnesses`.
 
 Canonical slugs: `copilot`, `claude`, `grok-build`, `cursor`, `opencode`, `codex`, `gemini`, `antigravity`, `windsurf`, `kiro`, `agent-skills`. `--all` expands the HT-mapped set including `antigravity` and `kiro`. `agent-skills` is a meta-target and is skipped as a HarnessTap harness. Experimental APM targets that need a feature flag are not accepted.
 

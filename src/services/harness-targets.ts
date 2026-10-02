@@ -8,8 +8,36 @@ export function parsePlatformFilter(platform?: string): string[] | undefined {
   return platform?.split(",").map((p) => p.trim()).filter(Boolean);
 }
 
-export function uniqueHarnessTargets(harnesses: string[]): string[] {
+export function uniqueHarnessTargets(harnesses: readonly string[]): string[] {
   return [...new Set(harnesses.filter(Boolean))];
+}
+
+/** Ordered registered set. Drops empties and duplicates, first occurrence wins. */
+export function normalizeRegisteredHarnesses(
+  harnesses: readonly string[],
+): string[] {
+  return uniqueHarnessTargets(harnesses);
+}
+
+export function registeredHarnessesOf(
+  selection:
+    | { registered_harnesses?: readonly string[] }
+    | null
+    | undefined,
+): string[] {
+  if (!selection?.registered_harnesses) return [];
+  return normalizeRegisteredHarnesses(selection.registered_harnesses);
+}
+
+/** `--main`/`--aliases` and pre-v32 archive JSON. */
+export function registeredFromLegacyParts(
+  main?: string | null,
+  aliases?: readonly string[] | null,
+): string[] {
+  return normalizeRegisteredHarnesses([
+    ...(main ? [main] : []),
+    ...(aliases ?? []),
+  ]);
 }
 
 export function assertSupportedHarnessTargets(harnesses: string[]): void {
@@ -32,10 +60,7 @@ export function resolveScanGlobalHarnessTargets(
 
   const preference = getHarnessPreference();
   if (preference) {
-    const preferredTargets = uniqueHarnessTargets([
-      preference.main_harness,
-      ...preference.alias_harnesses,
-    ]);
+    const preferredTargets = registeredHarnessesOf(preference);
     assertSupportedHarnessTargets(preferredTargets);
     return preferredTargets;
   }
@@ -62,20 +87,14 @@ export function collectApplyPreferenceHarnesses(projectRoot: string): string[] {
     ? getProjectHarnessConfig(projectByPath.id)
     : undefined;
   if (projectConfig) {
-    const preferredTargets = uniqueHarnessTargets([
-      projectConfig.main_harness,
-      ...projectConfig.alias_harnesses,
-    ]);
+    const preferredTargets = registeredHarnessesOf(projectConfig);
     assertSupportedHarnessTargets(preferredTargets);
     return preferredTargets;
   }
 
   const preference = getHarnessPreference();
   if (preference) {
-    const preferredTargets = uniqueHarnessTargets([
-      preference.main_harness,
-      ...preference.alias_harnesses,
-    ]);
+    const preferredTargets = registeredHarnessesOf(preference);
     assertSupportedHarnessTargets(preferredTargets);
     return preferredTargets;
   }

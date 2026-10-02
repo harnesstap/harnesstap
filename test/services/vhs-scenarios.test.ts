@@ -145,7 +145,7 @@ describe("VHS scenario manifest", () => {
       .find((line) => line.startsWith('Type "'));
 
     // First typed command should be ht init
-    expect(firstTypedCommand).toMatch(/^Type "ht init --main codex --aliases claude-code,cursor"/);
+    expect(firstTypedCommand).toMatch(/^Type "ht init --harnesses codex,claude-code,cursor"/);
 
     // Tape contains the visible commands from the approved story
     expect(tape).toContain('Type "ht scan ."');

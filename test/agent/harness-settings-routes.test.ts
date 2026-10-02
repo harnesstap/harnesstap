@@ -32,9 +32,7 @@ describe("agent harness settings routes", () => {
 
   it("GET /v1/harness requires auth and returns payload", async () => {
     const server = await withServer();
-    setHarnessPreference({
-      main_harness: "claude-code",
-      alias_harnesses: ["cursor"],
+    setHarnessPreference({ registered_harnesses: ["claude-code", "cursor"],
     });
 
     const unauth = await fetch(`${server.url}/v1/harness`);
@@ -45,7 +43,7 @@ describe("agent harness settings routes", () => {
     });
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.global.main_harness).toBe("claude-code");
+    expect(body.global.registered_harnesses).toEqual(["claude-code", "cursor"]);
     expect(body.harnesses.length).toBeGreaterThan(0);
   });
 
@@ -58,20 +56,18 @@ describe("agent harness settings routes", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        global: { main_harness: "cursor", alias_harnesses: ["codex"] },
+        global: { registered_harnesses: ["cursor", "codex"] },
       }),
     });
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.global).toEqual({
-      main_harness: "cursor",
-      alias_harnesses: ["codex"],
+    expect(body.global).toEqual({ registered_harnesses: ["cursor", "codex"],
     });
 
     const get = await fetch(`${server.url}/v1/harness`, {
       headers: { Authorization: `Bearer ${server.token}` },
     });
     const loaded = await get.json();
-    expect(loaded.global.main_harness).toBe("cursor");
+    expect(loaded.global.registered_harnesses).toEqual(["cursor", "codex"]);
   });
 });

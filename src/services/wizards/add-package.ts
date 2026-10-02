@@ -1,6 +1,7 @@
 import { listPlugins } from "../../models/plugin-model.js";
 import { getHarnessPreference } from "../../models/harness.js";
 import { getAllPlatforms } from "../../platforms/registry.js";
+import { registeredHarnessesOf } from "../harness-targets.js";
 import type { DiscoveredSkill } from "../skill-discovery.js";
 import { promptForSearchableMultiSelect } from "./searchable-multi-select.js";
 import {
@@ -25,7 +26,7 @@ export interface AddPackageWizardResult {
 function defaultHarnessSelection(): string[] {
   const preference = getHarnessPreference();
   if (preference) {
-    return [preference.main_harness, ...preference.alias_harnesses].filter(Boolean);
+    return registeredHarnessesOf(preference);
   }
   return [];
 }

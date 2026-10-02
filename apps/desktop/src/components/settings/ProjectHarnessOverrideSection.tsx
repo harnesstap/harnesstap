@@ -12,7 +12,6 @@ import { SelectionList } from "@/components/ui/selection-list";
 import { Switch } from "@/components/ui/switch";
 import { fetchHarnessSettings, saveHarnessSettings } from "../../lib/agent-client";
 import {
-  aliasesExcludingMain,
   canSaveProjectOverride,
   EMPTY_PROJECT_OVERRIDE_DRAFT,
   genericHarnessTooltip,
@@ -39,36 +38,34 @@ export interface ProjectHarnessOverrideSectionProps {
   onDirtyChange?: (dirty: boolean) => void;
 }
 
-const NO_GLOBAL_MAIN_NOTE = "Set up a main harness on the Harnesses screen first.";
+const NO_GLOBAL_SET_NOTE = "Register at least one harness on the Harnesses screen first.";
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-function toggleAlias(aliases: string[], id: string): string[] {
-  return aliases.includes(id)
-    ? aliases.filter((alias) => alias !== id)
-    : [...aliases, id];
+function toggleRegistered(ids: string[], id: string): string[] {
+  return ids.includes(id)
+    ? ids.filter((entry) => entry !== id)
+    : [...ids, id];
 }
 
-function aliasListItems(harnesses: HarnessCatalogEntry[], mainId: string) {
-  return harnesses
-    .filter((harness) => harness.id !== mainId)
-    .map((harness) => ({
-      id: harness.id,
-      name: harness.name,
-      leading: <HarnessIcon id={harness.id} />,
-      trailing: !harness.supported ? (
-        <span
-          className="harness-generic-info"
-          title={genericHarnessTooltip(harness.supports)}
-          aria-label={genericHarnessTooltip(harness.supports)}
-          role="img"
-        >
-          <Info aria-hidden="true" size={14} strokeWidth={2} />
-        </span>
-      ) : undefined,
-    }));
+function harnessListItems(harnesses: HarnessCatalogEntry[]) {
+  return harnesses.map((harness) => ({
+    id: harness.id,
+    name: harness.name,
+    leading: <HarnessIcon id={harness.id} />,
+    trailing: !harness.supported ? (
+      <span
+        className="harness-generic-info"
+        title={genericHarnessTooltip(harness.supports)}
+        aria-label={genericHarnessTooltip(harness.supports)}
+        role="img"
+      >
+        <Info aria-hidden="true" size={14} strokeWidth={2} />
+      </span>
+    ) : undefined,
+  }));
 }
 
 /**
@@ -86,8 +83,7 @@ export function ProjectHarnessOverrideSection({
   onDirtyChange,
 }: ProjectHarnessOverrideSectionProps) {
   const [harnesses, setHarnesses] = useState<HarnessCatalogEntry[]>([]);
-  const [globalMain, setGlobalMain] = useState<string | null>(null);
-  const [globalAliases, setGlobalAliases] = useState<string[]>([]);
+  const [globalRegistered, setGlobalRegistered] = useState<string[]>([]);
   const [projectAvailable, setProjectAvailable] = useState(false);
   const [projectReason, setProjectReason] = useState<string | null>(null);
   const [hadExistingOverride, setHadExistingOverride] = useState(false);
@@ -101,19 +97,16 @@ export function ProjectHarnessOverrideSection({
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     setError(null);
-    setWarning(null);
     setShowAll(false);
     if (!baseUrl || !projectPath) {
       setHarnesses([]);
-      setGlobalMain(null);
-      setGlobalAliases([]);
+      setGlobalRegistered([]);
       setProjectAvailable(false);
       setProjectReason(null);
       setHadExistingOverride(false);
@@ -130,8 +123,7 @@ export function ProjectHarnessOverrideSection({
           return;
         }
         setHarnesses(payload.harnesses);
-        setGlobalMain(payload.global.main_harness);
-        setGlobalAliases([...payload.global.alias_harnesses]);
+        setGlobalRegistered([...payload.global.registered_harnesses]);
         setProjectAvailable(payload.project?.available === true);
         setProjectReason(payload.project?.reason ?? null);
         setHadExistingOverride(payload.project?.override === true);
@@ -166,17 +158,9 @@ export function ProjectHarnessOverrideSection({
     };
   }, [onDirtyChange]);
 
-  const selectedIds = useMemo(
-    () => [draft.main, ...draft.aliases].filter(Boolean),
-    [draft.aliases, draft.main],
-  );
   const visible = useMemo(
-    () => visibleHarnesses(harnesses, { showAll, selectedIds }),
-    [harnesses, selectedIds, showAll],
-  );
-  const aliasItems = useMemo(
-    () => aliasListItems(visible, draft.main),
-    [draft.main, visible],
+    () => visibleHarnesses(harnesses, { showAll, selectedIds: draft.registered }),
+    [harnesses, draft.registered, showAll],
   );
 
   const controlsDisabled = disabled || busy || loading;
@@ -188,18 +172,10 @@ export function ProjectHarnessOverrideSection({
     baseUrl,
     projectPath,
     projectAvailable,
-    globalMain,
+    globalRegistered,
     override: draft.override,
-    main: draft.main,
+    registered: draft.registered,
   });
-
-  const setMain = (main: string) => {
-    setDraft((prev) => ({
-      ...prev,
-      main,
-      aliases: aliasesExcludingMain(prev.aliases, main),
-    }));
-  };
 
   const onOverrideChange = (enabled: boolean) => {
     setDraft((prev) => {
@@ -207,11 +183,9 @@ export function ProjectHarnessOverrideSection({
         return { ...prev, override: false };
       }
       if (!hadExistingOverride) {
-        const main = globalMain ?? "";
         return {
           override: true,
-          main,
-          aliases: aliasesExcludingMain(globalAliases, main),
+          registered: [...globalRegistered],
           materialization: "symlink-preferred",
         };
       }
@@ -230,43 +204,28 @@ export function ProjectHarnessOverrideSection({
     }
     setBusy(true);
     setError(null);
-    setWarning(null);
     try {
       const current = await fetchHarnessSettings(baseUrl, token, projectPath);
-      const currentMain = current.global.main_harness;
-      if (!currentMain) {
-        setGlobalMain(null);
-        setError(NO_GLOBAL_MAIN_NOTE);
+      const currentRegistered = [...current.global.registered_harnesses];
+      if (currentRegistered.length === 0) {
+        setGlobalRegistered([]);
+        setError(NO_GLOBAL_SET_NOTE);
         return;
       }
       const body: PutHarnessSettingsInput = {
-        global: {
-          main_harness: currentMain,
-          alias_harnesses: [...current.global.alias_harnesses],
-        },
+        global: { registered_harnesses: currentRegistered },
         project: draft.override
           ? {
               path: projectPath,
               override: true,
-              main_harness: draft.main,
-              alias_harnesses: draft.aliases,
+              registered_harnesses: draft.registered,
               materialization_strategy: draft.materialization,
             }
           : { path: projectPath, override: false },
       };
       const result = await saveHarnessSettings(baseUrl, token, body);
-      if (result.mirror_error) {
-        setWarning(result.mirror_error);
-      } else if (result.mirror?.surface_warnings?.length) {
-        setWarning(
-          result.mirror.surface_warnings
-            .map((entry) => `${entry.harness}: ${entry.message}`)
-            .join(" "),
-        );
-      }
       const next = projectOverrideDraftFromPayload(result.project);
-      setGlobalMain(result.global.main_harness);
-      setGlobalAliases([...result.global.alias_harnesses]);
+      setGlobalRegistered([...result.global.registered_harnesses]);
       setHadExistingOverride(result.project?.override === true);
       if (result.project) {
         setProjectAvailable(result.project.available === true);
@@ -288,11 +247,6 @@ export function ProjectHarnessOverrideSection({
       {error ? (
         <div className="banner error" role="alert">
           {error}
-        </div>
-      ) : null}
-      {warning ? (
-        <div className="banner" role="status">
-          {warning}
         </div>
       ) : null}
       {!projectPath ? (
@@ -322,8 +276,8 @@ export function ProjectHarnessOverrideSection({
             />
             <Label htmlFor="settings-project-override">Use project override</Label>
           </div>
-          {!globalMain ? (
-            <p className="field-note muted">{NO_GLOBAL_MAIN_NOTE}</p>
+          {globalRegistered.length === 0 ? (
+            <p className="field-note muted">{NO_GLOBAL_SET_NOTE}</p>
           ) : null}
           {!draft.override ? (
             <p className="field-note muted">
@@ -331,40 +285,19 @@ export function ProjectHarnessOverrideSection({
             </p>
           ) : (
             <>
-              <div className="form-field">
-                <Label htmlFor="settings-project-main">Main harness</Label>
-                <Select
-                  value={draft.main || undefined}
-                  onValueChange={setMain}
-                  disabled={controlsDisabled}
-                >
-                  <SelectTrigger id="settings-project-main" className="w-full">
-                    <SelectValue placeholder="Select a harness…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {visible.map((harness) => (
-                      <SelectItem key={harness.id} value={harness.id}>
-                        <HarnessIcon id={harness.id} />
-                        {harness.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               <SelectionList
-                title="Alias harnesses"
-                idPrefix="project-aliases"
+                title="Registered harnesses"
+                idPrefix="project-harnesses"
                 emptyLabel="No harnesses available."
-                items={aliasItems}
-                selectedIds={draft.aliases}
+                items={harnessListItems(visible)}
+                selectedIds={draft.registered}
                 disabled={controlsDisabled}
                 className="settings-alias-list"
                 listClassName="settings-alias-list-rows"
                 onToggle={(id) =>
                   setDraft((prev) => ({
                     ...prev,
-                    aliases: toggleAlias(prev.aliases, id),
+                    registered: toggleRegistered(prev.registered, id),
                   }))}
               />
 
@@ -398,10 +331,6 @@ export function ProjectHarnessOverrideSection({
                   </SelectContent>
                 </Select>
               </div>
-
-              <p className="field-note muted">
-                Saving rematerializes alias harness files from the main harness on disk.
-              </p>
             </>
           )}
           <div className="project-config-actions">

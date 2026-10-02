@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { FilterX, Star } from "lucide-react";
+import { FilterX } from "lucide-react";
 import { noResultsTitle } from "../../lib/empty-copy";
 import {
   diskPresenceLabel,
@@ -10,13 +10,11 @@ import {
   NO_ATTENTION,
   type HarnessEntry,
   type HarnessResourceRow,
-  type HarnessRole,
 } from "../../lib/harness-inventory";
 import type { HarnessPluginPullTarget } from "../../lib/harness-plugin-pull";
 import { genericHarnessTooltip } from "../../lib/harness-settings-form";
 import { EmptyState } from "../EmptyState";
 import { HarnessIcon } from "../HarnessIcons";
-import { IconActionButton } from "../IconActionButton";
 import { LiveHeader } from "../live/LiveHeader";
 import { HarnessFilterMenu } from "./HarnessFilterMenu";
 import { HarnessInventoryList } from "./HarnessInventoryList";
@@ -26,7 +24,6 @@ const TITLE_ICON_SIZE = 18;
 
 export interface HarnessDetailProps {
   entry: HarnessEntry;
-  role: HarnessRole;
   search: string;
   typeTab: string | null;
   originIds: readonly string[];
@@ -36,7 +33,6 @@ export interface HarnessDetailProps {
   onTypeTab: (value: string | null) => void;
   onOriginIds: (value: readonly string[]) => void;
   onMarketplaceIds: (value: readonly string[]) => void;
-  onMakeMain: () => void;
   onOpen: (row: HarnessResourceRow) => void;
   onOpenLocation?: (path: string) => void;
   pullAllBusy?: boolean;
@@ -52,7 +48,6 @@ function subtitle(entry: HarnessEntry): string {
 
 export function HarnessDetail({
   entry,
-  role,
   search,
   typeTab,
   originIds,
@@ -62,7 +57,6 @@ export function HarnessDetail({
   onTypeTab,
   onOriginIds,
   onMarketplaceIds,
-  onMakeMain,
   onOpen,
   onOpenLocation,
   pullAllBusy = false,
@@ -102,22 +96,10 @@ export function HarnessDetail({
           <h2>
             <HarnessIcon id={entry.id} size={TITLE_ICON_SIZE} tooltip={false} />
             {entry.name}
-            {role === "main" ? <span className="badge">main</span> : null}
           </h2>
           <p className="muted">{subtitle(entry)}</p>
           {!entry.supported ? (
             <p className="muted">{genericHarnessTooltip([...entry.supports])}</p>
-          ) : null}
-        </div>
-        <div className="edit-profile-header-actions">
-          {role !== "main" ? (
-            <IconActionButton
-              data-testid="make-main-harness"
-              label="Make main harness"
-              disabled={disabled}
-              onClick={onMakeMain}
-              icon={<Star size={ICON_SIZE} aria-hidden />}
-            />
           ) : null}
         </div>
       </div>

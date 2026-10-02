@@ -5,6 +5,10 @@ export function parseHarnessAliases(aliases?: string): string[] | undefined {
     .filter(Boolean);
 }
 
+export function parseHarnessList(value?: string): string[] | undefined {
+  return parseHarnessAliases(value);
+}
+
 export function parseCommaSeparatedList(value: string | undefined): string[] | undefined {
   if (!value) return undefined;
   const items = value.split(",").map((entry) => entry.trim()).filter(Boolean);

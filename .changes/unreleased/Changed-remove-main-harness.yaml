@@ -1,0 +1,5 @@
+kind: Changed
+body: Drop the main/alias harness split. Preferences, apply, and Desktop Harnesses use an ordered registered set. Harness sync uses last-write conflict policy. Mirror rematerializes from --from (default first registered). Schema v32 stores registered_harnesses.
+time: 2026-10-01T23:45:00Z
+custom:
+  Issue: ""

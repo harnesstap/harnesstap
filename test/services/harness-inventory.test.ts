@@ -281,7 +281,7 @@ describe("getHarnessInventory", () => {
       mkdirSync(skillDir, { recursive: true });
       writeFileSync(join(skillDir, "SKILL.md"), "---\nname: foo\n---\nbody\n");
 
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: ["cursor"] });
+      setHarnessPreference({ registered_harnesses: ["claude-code", "cursor"] });
       const skill = createResource({
         type: "skill",
         name: "foo",
@@ -318,9 +318,7 @@ describe("getHarnessInventory", () => {
       const cursor = inventory.harnesses.find((entry) => entry.id === "cursor");
       const aider = inventory.harnesses.find((entry) => entry.id === "aider");
 
-      expect(inventory.global).toEqual({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+      expect(inventory.global).toEqual({ registered_harnesses: ["claude-code", "cursor"],
       });
       expect(inventory.root).toBe(context.homeDir);
       expect(claude?.disk).toBe("detected");
@@ -444,7 +442,7 @@ describe("getHarnessInventory", () => {
         settingsPath,
         JSON.stringify({ "cursor.skills.includeThirdPartyPlugins": false }),
       );
-      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["cursor"] });
       mkdirSync(join(context.homeDir, ".cursor", "plugins"), { recursive: true });
 
       const inventory = getHarnessInventory(context.homeDir);

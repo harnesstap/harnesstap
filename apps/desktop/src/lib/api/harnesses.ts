@@ -128,16 +128,19 @@ export function parseHarnessInventory(body: unknown): HarnessInventory {
   const catalog = asArray(record.harnesses, "harnesses").map(parseEntry);
   const known = new Set<string>(catalog.map((entry) => entry.id));
 
-  const main = global.main_harness;
-  let selection: HarnessSelection | null = null;
-  if (typeof main === "string" && main.length > 0) {
-    const aliases = Array.isArray(global.alias_harnesses)
-      ? global.alias_harnesses.filter(
-          (alias): alias is string => typeof alias === "string" && known.has(alias),
-        )
-      : [];
-    selection = selectionFrom(harnessId(main), aliases.map(harnessId));
-  }
+  const registeredRaw = Array.isArray(global.registered_harnesses)
+    ? global.registered_harnesses
+    : [
+        ...(typeof global.main_harness === "string" && global.main_harness.length > 0
+          ? [global.main_harness]
+          : []),
+        ...(Array.isArray(global.alias_harnesses) ? global.alias_harnesses : []),
+      ];
+  const registered = registeredRaw.filter(
+    (id): id is string => typeof id === "string" && known.has(id),
+  );
+  const selection =
+    registered.length > 0 ? selectionFrom(registered.map(harnessId)) : null;
   return { selection, catalog };
 }
 
@@ -165,7 +168,7 @@ export async function saveHarnessSelection(
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      global: { main_harness: next.main, alias_harnesses: [...next.aliases] },
+      global: { registered_harnesses: [...next.registered] },
     }),
   });
   if (!response.ok) {
@@ -183,8 +186,8 @@ export interface HarnessSyncChangeCount {
 }
 
 export interface HarnessSyncResult {
-  main_harness: string;
-  alias_harnesses: string[];
+  registered_harnesses: string[];
+  conflict_policy?: string;
   platforms_synced: string[];
   files_written: number;
   harness_changes: HarnessSyncChangeCount[];

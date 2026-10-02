@@ -17,7 +17,8 @@ import { getHarnessPreference, setHarnessPreference } from "../models/harness.js
 import { listPlugins } from "../models/plugin-model.js";
 import { loadSettings } from "../config/settings.js";
 import type { HarnesstapSettings } from "../config/settings.js";
-import type { HarnessPreference } from "../types.js";
+import type { HarnessPreference, HarnessSelection } from "../types.js";
+import { registeredFromLegacyParts } from "./harness-targets.js";
 import {
   formatEnvironmentToml,
   importEnvironmentToml,
@@ -36,6 +37,25 @@ import {
   parseApEnvelope,
 } from "./agent-plugins/envelope.js";
 import { isLegacyPluginTomlPath } from "./legacy-toml-transport.js";
+
+function selectionFromArchive(raw: unknown): HarnessSelection {
+  const rec = (raw ?? {}) as Record<string, unknown>;
+  if (Array.isArray(rec.registered_harnesses)) {
+    return {
+      registered_harnesses: rec.registered_harnesses.filter(
+        (entry): entry is string => typeof entry === "string",
+      ),
+    };
+  }
+  return {
+    registered_harnesses: registeredFromLegacyParts(
+      typeof rec.main_harness === "string" ? rec.main_harness : null,
+      Array.isArray(rec.alias_harnesses)
+        ? rec.alias_harnesses.filter((entry): entry is string => typeof entry === "string")
+        : [],
+    ),
+  };
+}
 
 export const MIGRATE_MANIFEST_VERSION_V1 = 1 as const;
 export const MIGRATE_MANIFEST_VERSION = 2 as const;
@@ -340,10 +360,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       const harness = JSON.parse(
         readFileSync(harnessPath, "utf-8"),
       ) as HarnessPreference;
-      setHarnessPreference({
-        main_harness: harness.main_harness,
-        alias_harnesses: harness.alias_harnesses,
-      });
+      setHarnessPreference(selectionFromArchive(harness));
     }
 
     if (existsSync(configPath)) {

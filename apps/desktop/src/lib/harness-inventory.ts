@@ -23,7 +23,7 @@ export function harnessId(id: string): HarnessId {
   return id as HarnessId;
 }
 
-export type HarnessRole = "main" | "alias";
+export type HarnessRole = "registered";
 
 export type DiskPresence = "detected" | "shared-only" | "absent";
 
@@ -76,16 +76,15 @@ export interface HarnessEntry {
 }
 
 /**
- * Saved global preference. `aliases` never contains `main` and has no
- * duplicates. Constructors: `selectionFrom` and `selectionWith` only.
+ * Saved global preference. Ordered registered set, no duplicates.
+ * Constructors: `selectionFrom` and `selectionWith` only.
  */
 export interface HarnessSelection {
-  readonly main: HarnessId;
-  readonly aliases: readonly HarnessId[];
+  readonly registered: readonly HarnessId[];
 }
 
 export interface HarnessInventory {
-  /** null = no saved main (fresh install). */
+  /** null = no saved harnesses (fresh install). */
   readonly selection: HarnessSelection | null;
   /** Every registry harness in registry order. */
   readonly catalog: readonly HarnessEntry[];
@@ -94,30 +93,35 @@ export interface HarnessInventory {
 export type ResourceDetailTarget = Extract<LibraryDetailTarget, { kind: "resource" }>;
 
 export function selectionFrom(
-  main: HarnessId,
-  aliases: readonly HarnessId[],
+  registered: readonly HarnessId[],
 ): HarnessSelection {
-  const seen = new Set<HarnessId>([main]);
+  const seen = new Set<HarnessId>();
   const deduped: HarnessId[] = [];
-  for (const alias of aliases) {
-    if (seen.has(alias)) continue;
-    seen.add(alias);
-    deduped.push(alias);
+  for (const id of registered) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    deduped.push(id);
   }
-  return { main, aliases: deduped };
+  return { registered: deduped };
 }
 
 export function selectionIds(selection: HarnessSelection | null): readonly HarnessId[] {
-  return selection ? [selection.main, ...selection.aliases] : [];
+  return selection?.registered ?? [];
 }
 
+export function isRegistered(
+  selection: HarnessSelection | null,
+  id: HarnessId,
+): boolean {
+  return selection?.registered.includes(id) ?? false;
+}
+
+/** @deprecated Use isRegistered. */
 export function roleOf(
   selection: HarnessSelection | null,
   id: HarnessId,
 ): HarnessRole | null {
-  if (!selection) return null;
-  if (selection.main === id) return "main";
-  return selection.aliases.includes(id) ? "alias" : null;
+  return isRegistered(selection, id) ? "registered" : null;
 }
 
 export function harnessEntry(
@@ -205,7 +209,7 @@ export function registrySurfaceTabId(surface: string): string | null {
 export function defaultSelectedHarness(
   inventory: HarnessInventory | null,
 ): HarnessId | null {
-  return inventory?.selection?.main ?? null;
+  return inventory?.selection?.registered[0] ?? null;
 }
 
 export function harnessResourceCount(entry: HarnessEntry): number {
@@ -456,7 +460,6 @@ export function defaultProposalChoice(proposal: DetectProposal): ReadonlySet<Har
 export type SelectionChange =
   | { readonly kind: "add"; readonly id: HarnessId }
   | { readonly kind: "remove"; readonly id: HarnessId }
-  | { readonly kind: "make-main"; readonly id: HarnessId }
   | {
       readonly kind: "apply-proposal";
       readonly add: readonly HarnessId[];
@@ -472,8 +475,6 @@ export type SelectionOutcome =
       readonly next: HarnessSelection;
       readonly added: readonly HarnessId[];
       readonly removed: readonly HarnessId[];
-      /** Set when a removal took the main and the first alias was promoted. */
-      readonly promotedMain: HarnessId | null;
     }
   | { readonly kind: "rejected"; readonly reason: SelectionRejection };
 
@@ -482,57 +483,43 @@ type FoldStep =
   | { readonly kind: "rejected"; readonly reason: SelectionRejection };
 
 function addStep(current: HarnessSelection | null, id: HarnessId): FoldStep {
-  if (roleOf(current, id) !== null) {
+  if (isRegistered(current, id)) {
     return { kind: "ok", next: current, applied: false };
   }
   if (!current) {
-    return { kind: "ok", next: { main: id, aliases: [] }, applied: true };
+    return { kind: "ok", next: selectionFrom([id]), applied: true };
   }
   return {
     kind: "ok",
-    next: { main: current.main, aliases: [...current.aliases, id] },
+    next: selectionFrom([...current.registered, id]),
     applied: true,
   };
 }
 
 function removeStep(current: HarnessSelection | null, id: HarnessId): FoldStep {
-  const role = roleOf(current, id);
-  if (!current || role === null) {
+  if (!current || !isRegistered(current, id)) {
     return { kind: "ok", next: current, applied: false };
   }
-  if (current.aliases.length === 0) {
+  if (current.registered.length === 1) {
     return { kind: "rejected", reason: "would-empty" };
-  }
-  if (role === "main") {
-    const [promoted, ...rest] = current.aliases;
-    if (!promoted) {
-      return { kind: "rejected", reason: "would-empty" };
-    }
-    return { kind: "ok", next: { main: promoted, aliases: rest }, applied: true };
   }
   return {
     kind: "ok",
-    next: {
-      main: current.main,
-      aliases: current.aliases.filter((alias) => alias !== id),
-    },
+    next: selectionFrom(current.registered.filter((entry) => entry !== id)),
     applied: true,
   };
 }
 
 function changed(
-  before: HarnessSelection | null,
   next: HarnessSelection,
   added: readonly HarnessId[],
   removed: readonly HarnessId[],
 ): SelectionOutcome {
-  const mainRemoved = before !== null && removed.includes(before.main);
   return {
     kind: "changed",
     next,
     added,
     removed,
-    promotedMain: mainRemoved ? next.main : null,
   };
 }
 
@@ -557,30 +544,13 @@ export function selectionWith(
       const step = addStep(current, change.id);
       if (step.kind === "rejected") return step;
       if (!step.applied || !step.next) return { kind: "unchanged" };
-      return changed(current, step.next, [change.id], []);
+      return changed(step.next, [change.id], []);
     }
     case "remove": {
       const step = removeStep(current, change.id);
       if (step.kind === "rejected") return step;
       if (!step.applied || !step.next) return { kind: "unchanged" };
-      return changed(current, step.next, [], [change.id]);
-    }
-    case "make-main": {
-      const role = roleOf(current, change.id);
-      if (!current || role === null) {
-        return { kind: "rejected", reason: "unknown-harness" };
-      }
-      if (role === "main") return { kind: "unchanged" };
-      return {
-        kind: "changed",
-        next: {
-          main: change.id,
-          aliases: [current.main, ...current.aliases.filter((alias) => alias !== change.id)],
-        },
-        added: [],
-        removed: [],
-        promotedMain: null,
-      };
+      return changed(step.next, [], [change.id]);
     }
     case "apply-proposal": {
       let next = current;
@@ -601,7 +571,7 @@ export function selectionWith(
       if (!next || (added.length === 0 && removed.length === 0)) {
         return { kind: "unchanged" };
       }
-      return changed(current, next, added, removed);
+      return changed(next, added, removed);
     }
     default: {
       const exhaustive: never = change;
@@ -634,15 +604,9 @@ export function removalCopy(
   id: HarnessId,
 ): { readonly title: string; readonly body: string } {
   const name = harnessEntry(inventory, id)?.name ?? id;
-  const selection = inventory.selection;
-  const promoted =
-    selection && selection.main === id ? (selection.aliases[0] ?? null) : null;
-  const promotedName = promoted ? (harnessEntry(inventory, promoted)?.name ?? promoted) : null;
   return {
     title: `Remove ${name}?`,
-    body:
-      `${name} leaves your harness list. Files on disk stay.`
-      + (promotedName ? ` ${promotedName} becomes the main harness.` : ""),
+    body: `${name} leaves your harness list. Files on disk stay.`,
   };
 }
 

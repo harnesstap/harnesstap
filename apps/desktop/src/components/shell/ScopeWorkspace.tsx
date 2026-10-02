@@ -17,7 +17,7 @@ import { ButtonSpinner } from "../ButtonSpinner";
 import { FieldIdentityIcon } from "../FieldIdentityIcon";
 import { IconActionButton } from "../IconActionButton";
 import { LiveStatePanel } from "../LiveStatePanel";
-import { ApplyProgressStrip, isApplyStepActive, stepState } from "../live/ApplyProgressStrip";
+import { ApplyProgressStrip, isApplyStepActive, stepState, switchStepClassName } from "../live/ApplyProgressStrip";
 import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
 import { Collapse } from "../motion/Collapse";
 import { PendingApprovalsStrip } from "../PendingApprovalsStrip";
@@ -28,7 +28,7 @@ import { ProfilesRail } from "./ProfilesRail";
 
 const HEADER_ICON_SIZE = 18;
 
-export { isApplyStepActive, stepState };
+export { isApplyStepActive, stepState, switchStepClassName };
 
 export interface ScopeWorkspaceProps {
   ctrl: ScopeController;

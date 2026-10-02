@@ -132,7 +132,7 @@ Default onboarding in a repo that already has `apm.yml`. Same loop as `ht apply`
 ### Project: scan and apply
 
 ```bash
-ht init --main codex --aliases claude-code,cursor
+ht init --harnesses codex,claude-code,cursor
 ht scan .
 ht resource list
 ht apply engineering-foundation --project .
@@ -144,7 +144,7 @@ ht status .
 ### Machine: profile switch
 
 ```bash
-ht init --main claude-code --aliases cursor,codex
+ht init --harnesses claude-code,cursor,codex
 ht profile use "global default"
 # after you compose a `work` profile:
 ht work
@@ -191,7 +191,7 @@ Initialise HarnessTap, scan an existing repository, browse catalog plugins, appl
 [Full walkthrough →](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 ```bash
-ht init --main codex --aliases claude-code,cursor
+ht init --harnesses codex,claude-code,cursor
 ht scan .                    # detect existing resources
 ht resource list             # review discovered resources
 ht plugin list --search foundation --remote-only
@@ -280,7 +280,7 @@ Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md).
 ```bash
 ht harness list
 ht harness list --supported    # native serializers only
-ht harness set --main claude-code --aliases cursor,codex
+ht harness set --harnesses claude-code,cursor,codex
 ```
 
 See the full matrix — resource types, skill emission, plugin support, and paths — in **[Supported harnesses](docs/supported-harnesses.md)**.

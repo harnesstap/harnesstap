@@ -254,7 +254,7 @@ function printFromProjectPreviewSummary(
 ): void {
   console.log("");
   console.log(`Environment: ${preview.environment_name}`);
-  console.log(`Project harness: ${preview.main_harness}`);
+  console.log(`Project harness: ${preview.harness}`);
   console.log(`Configured plugins: ${preview.configured_plugin_ids.length}`);
   console.log(`Imported values: ${Object.keys(preview.values).length}`);
   console.log(`Secret refs: ${Object.keys(preview.secret_refs).length}`);

@@ -21,7 +21,7 @@ describe("environment capture service", () => {
     const context = await createInitializedTestContext("env-capture-resolution");
 
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
       mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
       writeFileSync(
         join(context.projectDir, ".claude", "settings.json"),
@@ -128,7 +128,7 @@ describe("environment capture service", () => {
     const context = await createInitializedTestContext("env-capture-strict");
 
     try {
-      setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
       mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
       writeFileSync(
         join(context.projectDir, ".claude", "settings.json"),

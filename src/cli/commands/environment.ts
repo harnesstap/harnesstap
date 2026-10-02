@@ -520,7 +520,7 @@ function printEnvironmentCreateResult(
         title: ["ENVIRONMENT", `${action} ${opts.name}`],
         rows: [
           ["Project", opts.fromProject ? resolve(opts.fromProject) : "—"],
-          ["Main harness", captureResult.main_harness],
+          ["Harness", captureResult.harness],
           ["Configured plugins", `${captureResult.configured_plugin_ids.length}`],
           ["Persisted", captureResult.persisted ? "yes" : "no"],
           ["Missing keys", `${captureResult.missing_keys.length}`],

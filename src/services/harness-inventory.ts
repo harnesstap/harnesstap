@@ -499,7 +499,7 @@ export function getHarnessInventory(
 ): HarnessInventoryPayload {
   const settings = getHarnessSettings();
   const configured = new Set(
-    [settings.global.main_harness, ...settings.global.alias_harnesses].filter(
+    [settings.global.registered_harnesses].flat().filter(
       (id): id is string => typeof id === "string" && id.length > 0,
     ),
   );

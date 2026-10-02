@@ -18,7 +18,6 @@ import {
 } from "../../services/git.js";
 import { resolveHarnessSelection } from "../../services/harness-config.js";
 import {
-  HarnessUnionSyncError,
   syncConfiguredHarnesses,
 } from "../../services/harness-union-sync.js";
 import { getDedicatedSerializerPlatformIds } from "../../services/platform-serializers.js";
@@ -27,10 +26,11 @@ import {
   parsePluginResourceMode,
 } from "../../services/plugin-resource-mode.js";
 import { detectPlatforms } from "../../services/scanner.js";
+import { registeredHarnessesOf } from "../../services/harness-targets.js";
 import { shouldUseWizard } from "../../services/wizards/shared.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
-import { parseHarnessAliases } from "../handlers/parse-flags.js";
+import { parseHarnessList } from "../handlers/parse-flags.js";
 import { configureCommandGroup } from "../help.js";
 import { formatCommand, reportNoGitOrigin } from "../shared.js";
 
@@ -65,6 +65,7 @@ function handleHarnessListCommand(
 }
 
 async function handleHarnessSetCommand(opts: {
+  harnesses?: string;
   main?: string;
   aliases?: string;
   interactive?: boolean;
@@ -75,16 +76,19 @@ async function handleHarnessSetCommand(opts: {
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
     noInteractive: opts.noInteractive,
-    missingRequiredArgs: !opts.main && !opts.aliases,
+    missingRequiredArgs: !opts.harnesses && !opts.main && !opts.aliases,
   });
   const selection = await resolveHarnessSelection({
+    harnesses: parseHarnessList(opts.harnesses),
     main: opts.main,
-    aliases: parseHarnessAliases(opts.aliases),
+    aliases: parseHarnessList(opts.aliases),
     nonInteractive: !useWizard,
     current: getHarnessPreference(),
   });
   const saved = setHarnessPreference(selection);
-  ui.success(`Set harness preference ${ui.icons.hint} main: ${ui.theme.accent(saved.main_harness)}`);
+  ui.success(
+    `Set harness preference ${ui.icons.hint} ${ui.theme.accent(registeredHarnessesOf(saved).join(", "))}`,
+  );
 }
 
 function handleHarnessStatusCommand(opts: { format?: string }): void {
@@ -95,8 +99,7 @@ function handleHarnessStatusCommand(opts: { format?: string }): void {
   if (format === "json") {
     printJson(
       preference ?? {
-        main_harness: null,
-        alias_harnesses: [],
+        registered_harnesses: [],
       },
     );
     return;
@@ -108,8 +111,7 @@ function handleHarnessStatusCommand(opts: { format?: string }): void {
   ui.panel({
     title: ["HARNESS"],
     rows: [
-      ["Main harness", preference.main_harness],
-      ["Alias harnesses", preference.alias_harnesses.join(", ") || "(none)"],
+      ["Registered", registeredHarnessesOf(preference).join(", ") || "(none)"],
       [
         "Plugin resources",
         loadSettings(getHarnesstapDir()).harnessSync.pluginResources,
@@ -120,6 +122,7 @@ function handleHarnessStatusCommand(opts: { format?: string }): void {
 
 async function handleHarnessProjectSetCommand(opts: {
   project: string;
+  harnesses?: string;
   main?: string;
   aliases?: string;
   materializationStrategy?: string;
@@ -131,7 +134,7 @@ async function handleHarnessProjectSetCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    reportNoGitOrigin(`${formatCommand("harness project set --project . --main codex")}`);
+    reportNoGitOrigin(`${formatCommand("harness project set --project . --harnesses claude-code,cursor")}`);
     return;
   }
 
@@ -144,12 +147,13 @@ async function handleHarnessProjectSetCommand(opts: {
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
     noInteractive: opts.noInteractive,
-    missingRequiredArgs: !opts.main && !opts.aliases,
+    missingRequiredArgs: !opts.harnesses && !opts.main && !opts.aliases,
   });
 
   const selection = await resolveHarnessSelection({
+    harnesses: parseHarnessList(opts.harnesses),
     main: opts.main,
-    aliases: parseHarnessAliases(opts.aliases),
+    aliases: parseHarnessList(opts.aliases),
     nonInteractive: !useWizard,
     current: getProjectHarnessConfig(project.id),
     detected: detectPlatforms(projectRoot),
@@ -157,8 +161,7 @@ async function handleHarnessProjectSetCommand(opts: {
 
   const saved = setProjectHarnessConfig({
     project_id: project.id,
-    main_harness: selection.main_harness,
-    alias_harnesses: selection.alias_harnesses,
+    registered_harnesses: selection.registered_harnesses,
     ...(opts.materializationStrategy
       ? {
           materialization_strategy:
@@ -166,7 +169,9 @@ async function handleHarnessProjectSetCommand(opts: {
         }
       : {}),
   });
-  ui.success(`Set project harness preference ${ui.icons.hint} main: ${ui.theme.accent(saved.main_harness)}`);
+  ui.success(
+    `Set project harness preference ${ui.icons.hint} ${ui.theme.accent(registeredHarnessesOf(saved).join(", "))}`,
+  );
 }
 
 async function handleHarnessSyncCommand(opts: {
@@ -199,17 +204,14 @@ async function handleHarnessSyncCommand(opts: {
     );
     if (result.conflicts.length > 0) {
       ui.dim(
-        `${result.conflicts.length} conflict${result.conflicts.length === 1 ? "" : "s"} resolved with ${result.main_harness} winning`,
+        `${result.conflicts.length} conflict${result.conflicts.length === 1 ? "" : "s"} resolved with last-write (newest on-disk copy)`,
       );
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.exitCode = 1;
     ui.danger(message, {
-      hints:
-        error instanceof HarnessUnionSyncError && error.code === "need_two_harnesses"
-          ? [formatCommand("harness set --main <slug> --aliases <slugs>")]
-          : [formatCommand("harness set --main <slug> --aliases <slugs>")],
+      hints: [formatCommand("harness set --harnesses <slugs>")],
     });
   }
 }
@@ -234,8 +236,7 @@ function handleHarnessProjectStatusCommand(opts: {
   if (format === "json") {
     printJson(
       config ?? {
-        main_harness: null,
-        alias_harnesses: [],
+        registered_harnesses: [],
         materialization_strategy: "symlink-preferred",
       },
     );
@@ -250,8 +251,7 @@ function handleHarnessProjectStatusCommand(opts: {
   ui.panel({
     title: ["HARNESS", "project"],
     rows: [
-      ["Main harness", config.main_harness],
-      ["Alias harnesses", config.alias_harnesses.join(", ") || "(none)"],
+      ["Registered", registeredHarnessesOf(config).join(", ") || "(none)"],
       ["Materialization", config.materialization_strategy],
     ],
   });
@@ -262,7 +262,7 @@ export function registerHarnessCommands(root: Command): void {
     root
       .command("harness")
       .alias("h")
-      .description("Manage harness preferences for main and alias platforms"),
+      .description("Manage the registered harness set"),
   );
 
   harnessCmd
@@ -275,10 +275,11 @@ export function registerHarnessCommands(root: Command): void {
 
   harnessCmd
     .command("set")
-    .option("--main <slug>", "Main harness slug")
-    .option("--aliases <slugs>", "Comma-separated alias harness slugs")
+    .option("--harnesses <slugs>", "Comma-separated registered harness slugs")
+    .option("--main <slug>", "Deprecated: prepended to the registered set")
+    .option("--aliases <slugs>", "Deprecated: appended to the registered set")
     .option("--interactive", "Prompt instead of relying on explicit flags")
-    .description("Set global harness preferences")
+    .description("Set global registered harnesses")
     .action(handleHarnessSetCommand);
 
   harnessCmd
@@ -297,7 +298,7 @@ export function registerHarnessCommands(root: Command): void {
     )
     .option("--format <mode>", "Output format: human or json", "human")
     .description(
-      "Union resources from configured harnesses and materialize with main-wins conflicts",
+      "Union resources from registered harnesses and materialize with last-write conflicts",
     )
     .action(handleHarnessSyncCommand);
 
@@ -310,14 +311,15 @@ export function registerHarnessCommands(root: Command): void {
   harnessProjectCmd
     .command("set")
     .option("--project <path>", "Project directory", ".")
-    .option("--main <slug>", "Main harness slug")
-    .option("--aliases <slugs>", "Comma-separated alias harness slugs")
+    .option("--harnesses <slugs>", "Comma-separated registered harness slugs")
+    .option("--main <slug>", "Deprecated: prepended to the registered set")
+    .option("--aliases <slugs>", "Deprecated: appended to the registered set")
     .option(
       "--materialization-strategy <strategy>",
       "Materialization strategy: symlink-preferred or copy",
     )
     .option("--interactive", "Prompt instead of relying on explicit flags")
-    .description("Set project-scoped harness preferences")
+    .description("Set project-scoped registered harnesses")
     .action(handleHarnessProjectSetCommand);
 
   harnessProjectCmd

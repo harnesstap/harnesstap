@@ -1,76 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
-
-const promptMock = mock(() => Promise.resolve({}));
-const searchPromptMock = mock(() => Promise.resolve("cursor"));
-const aliasPromptMock = mock(() => Promise.resolve([]));
-
-mock.module("inquirer", () => ({
-  default: {
-    prompt: promptMock,
-  },
-}));
-
-mock.module("@inquirer/search", () => ({
-  default: searchPromptMock,
-}));
-
-mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
-  promptForSearchableMultiSelect: aliasPromptMock,
-}));
+import { describe, expect, it } from "bun:test";
 
 describe("harness config service", () => {
-  beforeEach(() => {
-    promptMock.mockReset();
-    searchPromptMock.mockReset();
-    aliasPromptMock.mockReset();
-  });
-
-  it("excludes the chosen main harness from alias choices", async () => {
-    const originalIsTTY = process.stdin.isTTY;
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
-
-    searchPromptMock.mockResolvedValueOnce("cursor");
-    aliasPromptMock.mockResolvedValueOnce(["codex"]);
-
-    try {
-      const service = await import("../../src/services/harness-config.ts");
-      const selection = await service.resolveHarnessSelection({
-        current: {
-          main_harness: "claude-code",
-          alias_harnesses: ["codex", "cursor"],
-          updated_at: new Date().toISOString(),
-        },
-      });
-
-      expect(selection).toEqual({
-        main_harness: "cursor",
-        alias_harnesses: ["codex"],
-      });
-
-      expect(searchPromptMock).toHaveBeenCalledTimes(1);
-      expect(aliasPromptMock).toHaveBeenCalledTimes(1);
-
-      const aliasPrompt = aliasPromptMock.mock.calls[0]?.[0] as {
-        default?: string[];
-        choices?: Array<{ value: string }>;
-      };
-      expect(aliasPrompt?.default).toEqual(["codex"]);
-      expect(
-        (aliasPrompt?.choices as Array<{ value: string }>).map(
-          (choice) => choice.value,
-        ),
-      ).not.toContain("cursor");
-    } finally {
-      Object.defineProperty(process.stdin, "isTTY", {
-        value: originalIsTTY,
-        configurable: true,
-      });
-    }
-  });
-
   it("uses explicit main and aliases in non-interactive mode", async () => {
     const service = await import("../../src/services/harness-config.ts");
     const selection = await service.resolveHarnessSelection({
@@ -80,12 +10,23 @@ describe("harness config service", () => {
     });
 
     expect(selection).toEqual({
-      main_harness: "claude-code",
-      alias_harnesses: ["cursor", "copilot-cli"],
+      registered_harnesses: ["claude-code", "cursor", "copilot-cli"],
     });
   });
 
-  it("excludes main from aliases in non-interactive mode", async () => {
+  it("uses --harnesses in non-interactive mode", async () => {
+    const service = await import("../../src/services/harness-config.ts");
+    const selection = await service.resolveHarnessSelection({
+      harnesses: ["cursor", "codex", "cursor"],
+      nonInteractive: true,
+    });
+
+    expect(selection).toEqual({
+      registered_harnesses: ["cursor", "codex"],
+    });
+  });
+
+  it("drops duplicates from deprecated main/aliases in non-interactive mode", async () => {
     const service = await import("../../src/services/harness-config.ts");
     const selection = await service.resolveHarnessSelection({
       main: "cursor",
@@ -94,74 +35,40 @@ describe("harness config service", () => {
     });
 
     expect(selection).toEqual({
-      main_harness: "cursor",
-      alias_harnesses: ["codex"],
+      registered_harnesses: ["cursor", "codex"],
     });
   });
 
-  it("defaults main from current preference", async () => {
+  it("defaults from current preference", async () => {
     const service = await import("../../src/services/harness-config.ts");
     const selection = await service.resolveHarnessSelection({
       current: {
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+        registered_harnesses: ["claude-code", "cursor"],
         updated_at: new Date().toISOString(),
       },
       nonInteractive: true,
     });
 
-    expect(selection.main_harness).toBe("claude-code");
+    expect(selection.registered_harnesses).toEqual(["claude-code", "cursor"]);
   });
 
-  it("defaults main from detected platforms", async () => {
+  it("defaults from detected platforms", async () => {
     const service = await import("../../src/services/harness-config.ts");
     const selection = await service.resolveHarnessSelection({
       detected: ["cursor", "codex"],
       nonInteractive: true,
     });
 
-    expect(selection.main_harness).toBe("cursor");
+    expect(selection.registered_harnesses).toEqual(["cursor", "codex"]);
   });
 
-  it("skips prompts when only one harness is detected", async () => {
-    const originalIsTTY = process.stdin.isTTY;
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
-
-    promptMock
-      .mockResolvedValueOnce({ main_harness: "claude-code" })
-      .mockResolvedValueOnce({ alias_harnesses: [] });
-
-    try {
-      const service = await import("../../src/services/harness-config.ts");
-      const selection = await service.resolveHarnessSelection({
-        detected: ["claude-code"],
-      });
-
-      expect(selection).toEqual({
-        main_harness: "claude-code",
-        alias_harnesses: [],
-      });
-      expect(promptMock).not.toHaveBeenCalled();
-      expect(aliasPromptMock).not.toHaveBeenCalled();
-    } finally {
-      Object.defineProperty(process.stdin, "isTTY", {
-        value: originalIsTTY,
-        configurable: true,
-      });
-    }
-  });
-
-  it("defaults main to first registered platform when nothing else available", async () => {
+  it("defaults to first registered platform when nothing else available", async () => {
     const service = await import("../../src/services/harness-config.ts");
     const selection = await service.resolveHarnessSelection({
       nonInteractive: true,
     });
 
-    // First registered platform should be claude-code
-    expect(selection.main_harness).toBe("claude-code");
+    expect(selection.registered_harnesses).toEqual(["claude-code"]);
   });
 
   it("throws on unsupported harness", async () => {
@@ -175,142 +82,28 @@ describe("harness config service", () => {
     ).rejects.toThrow("Unsupported harness: nonexistent-harness");
   });
 
-  it("uses custom messages in interactive mode", async () => {
-    const originalIsTTY = process.stdin.isTTY;
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
-
-    searchPromptMock.mockResolvedValueOnce("cursor");
-    aliasPromptMock.mockResolvedValueOnce([]);
-
-    try {
-      const service = await import("../../src/services/harness-config.ts");
-      await service.resolveHarnessSelection({
-        mainMessage: "Pick your main",
-        nonInteractive: false,
-      });
-
-      const mainQuestion = searchPromptMock.mock.calls[0]?.[0] as {
-        message?: string;
-      };
-      expect(mainQuestion?.message).toBe("Pick your main");
-    } finally {
-      Object.defineProperty(process.stdin, "isTTY", {
-        value: originalIsTTY,
-        configurable: true,
-      });
-    }
-  });
-
-  it("uses a searchable main prompt and includes the current defaults in the prompt context", async () => {
-    const originalIsTTY = process.stdin.isTTY;
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
-
-    searchPromptMock.mockResolvedValueOnce("cursor");
-    aliasPromptMock.mockResolvedValueOnce(["codex"]);
-
-    try {
-      const service = await import("../../src/services/harness-config.ts");
-      const selection = await service.resolveHarnessSelection({
-        current: {
-          main_harness: "claude-code",
-          alias_harnesses: ["codex"],
-          updated_at: new Date().toISOString(),
-        },
-      });
-
-      expect(selection).toEqual({
-        main_harness: "cursor",
-        alias_harnesses: ["codex"],
-      });
-      expect(searchPromptMock).toHaveBeenCalledTimes(1);
-
-      const mainPrompt = searchPromptMock.mock.calls[0]?.[0] as {
-        message?: string;
-        source?: (term?: string) => Promise<Array<{ value: string }>>;
-      };
-      expect(mainPrompt.message).toContain("Current main: claude-code");
-      expect(mainPrompt.message).toContain("aliases: codex");
-
-      const defaultChoices = await mainPrompt.source?.();
-      expect(defaultChoices?.[0]?.value).toBe("claude-code");
-    } finally {
-      Object.defineProperty(process.stdin, "isTTY", {
-        value: originalIsTTY,
-        configurable: true,
-      });
-    }
-  });
-
-  it("passes alias defaults through the searchable multi-select prompt", async () => {
-    const originalIsTTY = process.stdin.isTTY;
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
-
-    searchPromptMock.mockResolvedValueOnce("claude-code");
-    aliasPromptMock.mockResolvedValueOnce(["cursor", "codex", "copilot-cli"]);
-
-    try {
-      const service = await import("../../src/services/harness-config.ts");
-      const selection = await service.resolveHarnessSelection({
-        current: {
-          main_harness: "claude-code",
-          alias_harnesses: ["cursor", "codex", "copilot-cli"],
-          updated_at: new Date().toISOString(),
-        },
-      });
-
-      expect(selection).toEqual({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor", "codex", "copilot-cli"],
-      });
-      expect(aliasPromptMock).toHaveBeenCalledTimes(1);
-
-      const aliasPrompt = aliasPromptMock.mock.calls[0]?.[0] as {
-        default?: string[];
-        choices?: Array<{ value: string }>;
-        message?: string;
-      };
-      expect(aliasPrompt?.message).toContain("Select additional harnesses");
-      expect(aliasPrompt?.default).toEqual(["cursor", "codex", "copilot-cli"]);
-      expect(
-        (aliasPrompt?.choices as Array<{ value: string }>).map(
-          (choice) => choice.value,
-        ),
-      ).toContain("copilot-cli");
-    } finally {
-      Object.defineProperty(process.stdin, "isTTY", {
-        value: originalIsTTY,
-        configurable: true,
-      });
-    }
-  });
-
-  it("deduplicates alias_harnesses", async () => {
+  it("deduplicates aliases-only input", async () => {
     const service = await import("../../src/services/harness-config.ts");
     const selection = await service.resolveHarnessSelection({
       aliases: ["codex", "cursor", "codex", "copilot-cli", "cursor"],
       nonInteractive: true,
     });
 
-    expect(selection.alias_harnesses).toEqual(["codex", "cursor", "copilot-cli"]);
+    expect(selection.registered_harnesses).toEqual([
+      "codex",
+      "cursor",
+      "copilot-cli",
+    ]);
   });
 
-  it("returns empty aliases when none provided and no detected", async () => {
+  it("returns a single-item set when only main is provided", async () => {
     const service = await import("../../src/services/harness-config.ts");
     const selection = await service.resolveHarnessSelection({
       main: "claude-code",
       nonInteractive: true,
     });
 
-    expect(selection.alias_harnesses).toEqual([]);
+    expect(selection.registered_harnesses).toEqual(["claude-code"]);
   });
 
   it("uses the wizard when required args are missing on an interactive TTY", async () => {

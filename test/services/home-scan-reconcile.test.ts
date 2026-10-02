@@ -25,7 +25,7 @@ describe("home scan reconcile", () => {
       );
 
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({ main_harness: "opencode", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["opencode"] });
 
       const { rescanResourceTrackedDirectories } = await import(
         "../../src/services/resource-tracked-directories.ts"
@@ -99,7 +99,7 @@ describe("home scan reconcile", () => {
       writeFileSync(agentPath, "# agent-creator\n", "utf-8");
 
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
-      setHarnessPreference({ main_harness: "opencode", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["opencode"] });
 
       const { createPlugin, setPluginTags } = await import(
         "../../src/models/plugin-model.ts"

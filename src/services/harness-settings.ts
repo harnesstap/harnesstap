@@ -15,7 +15,10 @@ import {
   normalizeGitUrl,
   projectNameFromUrl,
 } from "./git.js";
-import { syncProject as defaultSyncProject } from "./project-sync.js";
+import {
+  normalizeRegisteredHarnesses,
+  registeredHarnessesOf,
+} from "./harness-targets.js";
 
 export type MaterializationStrategy = "symlink-preferred" | "copy";
 
@@ -28,15 +31,13 @@ export interface HarnessCatalogEntry {
 }
 
 export interface HarnessSettingsGlobal {
-  main_harness: string | null;
-  alias_harnesses: string[];
+  registered_harnesses: string[];
 }
 
 export interface HarnessSettingsProject {
   available: boolean;
   override: boolean;
-  main_harness?: string | null;
-  alias_harnesses?: string[];
+  registered_harnesses?: string[];
   materialization_strategy?: MaterializationStrategy;
   reason?: string;
 }
@@ -48,39 +49,18 @@ export interface HarnessSettingsPayload {
 }
 
 export interface PutHarnessSettingsInput {
-  global: { main_harness: string; alias_harnesses: string[] };
+  global: { registered_harnesses: string[] };
   project?: {
     path: string;
     override: boolean;
-    main_harness?: string;
-    alias_harnesses?: string[];
+    registered_harnesses?: string[];
     materialization_strategy?: MaterializationStrategy;
   };
-}
-
-export interface PutHarnessSettingsMirrorSummary {
-  main_harness: string;
-  alias_harnesses: string[];
-  platforms_synced: string[];
-  files_written: number;
-  surface_warnings: Array<{
-    harness: string;
-    path: string;
-    category: string;
-    message: string;
-    alias_harnesses: string[];
-  }>;
 }
 
 export interface PutHarnessSettingsResult {
   global: HarnessSettingsGlobal;
   project?: HarnessSettingsProject;
-  mirror?: PutHarnessSettingsMirrorSummary;
-  mirror_error?: string;
-}
-
-export interface HarnessSettingsPutDeps {
-  syncProject: typeof defaultSyncProject;
 }
 
 function catalog(): HarnessCatalogEntry[] {
@@ -93,14 +73,11 @@ function catalog(): HarnessCatalogEntry[] {
   }));
 }
 
-function assertKnownHarnesses(main: string, aliases: string[]): void {
+function assertKnownHarnesses(harnesses: string[]): void {
   const known = new Set(getAllPlatforms().map((p) => p.id));
-  if (!known.has(main)) {
-    throw new Error(`Unknown harness: ${main}`);
-  }
-  for (const alias of aliases) {
-    if (!known.has(alias)) {
-      throw new Error(`Unknown harness: ${alias}`);
+  for (const harness of harnesses) {
+    if (!known.has(harness)) {
+      throw new Error(`Unknown harness: ${harness}`);
     }
   }
 }
@@ -123,8 +100,7 @@ function projectBlock(projectPath: string): HarnessSettingsProject {
   return {
     available: true,
     override: true,
-    main_harness: config.main_harness,
-    alias_harnesses: config.alias_harnesses,
+    registered_harnesses: registeredHarnessesOf(config),
     materialization_strategy: config.materialization_strategy,
   };
 }
@@ -133,8 +109,7 @@ export function getHarnessSettings(projectPath?: string): HarnessSettingsPayload
   const preference = getHarnessPreference();
   return {
     global: {
-      main_harness: preference?.main_harness ?? null,
-      alias_harnesses: preference?.alias_harnesses ?? [],
+      registered_harnesses: registeredHarnessesOf(preference),
     },
     ...(projectPath ? { project: projectBlock(projectPath) } : {}),
     harnesses: catalog(),
@@ -143,13 +118,13 @@ export function getHarnessSettings(projectPath?: string): HarnessSettingsPayload
 
 export async function putHarnessSettings(
   input: PutHarnessSettingsInput,
-  deps?: HarnessSettingsPutDeps,
 ): Promise<PutHarnessSettingsResult> {
-  const sync = deps?.syncProject ?? defaultSyncProject;
-  assertKnownHarnesses(input.global.main_harness, input.global.alias_harnesses);
+  const globalRegistered = normalizeRegisteredHarnesses(input.global.registered_harnesses);
+  if (globalRegistered.length === 0) {
+    throw new Error("global.registered_harnesses must include at least one harness");
+  }
+  assertKnownHarnesses(globalRegistered);
 
-  // Validate project fields before any preference / project mutations so a
-  // failing project path cannot leave a partially written global preference.
   type ValidatedProject =
     | {
         root: string;
@@ -160,8 +135,7 @@ export async function putHarnessSettings(
         root: string;
         gitOrigin: string;
         override: true;
-        main: string;
-        aliases: string[];
+        registered: string[];
         strategy: MaterializationStrategy;
       };
 
@@ -175,18 +149,20 @@ export async function putHarnessSettings(
     if (!input.project.override) {
       validatedProject = { root, gitOrigin, override: false };
     } else {
-      const main = input.project.main_harness;
-      if (!main || typeof main !== "string") {
-        throw new Error("Project main_harness is required when override is enabled");
+      const registered = normalizeRegisteredHarnesses(
+        input.project.registered_harnesses ?? [],
+      );
+      if (registered.length === 0) {
+        throw new Error(
+          "Project registered_harnesses is required when override is enabled",
+        );
       }
-      const aliases = input.project.alias_harnesses ?? [];
-      assertKnownHarnesses(main, aliases);
+      assertKnownHarnesses(registered);
       validatedProject = {
         root,
         gitOrigin,
         override: true,
-        main,
-        aliases,
+        registered,
         strategy:
           input.project.materialization_strategy === "copy"
             ? "copy"
@@ -196,14 +172,12 @@ export async function putHarnessSettings(
   }
 
   const savedGlobal = setHarnessPreference({
-    main_harness: input.global.main_harness,
-    alias_harnesses: input.global.alias_harnesses,
+    registered_harnesses: globalRegistered,
   });
 
   const result: PutHarnessSettingsResult = {
     global: {
-      main_harness: savedGlobal.main_harness,
-      alias_harnesses: savedGlobal.alias_harnesses,
+      registered_harnesses: registeredHarnessesOf(savedGlobal),
     },
   };
 
@@ -225,32 +199,16 @@ export async function putHarnessSettings(
 
   const savedProject = setProjectHarnessConfig({
     project_id: project.id,
-    main_harness: validatedProject.main,
-    alias_harnesses: validatedProject.aliases,
+    registered_harnesses: validatedProject.registered,
     materialization_strategy: validatedProject.strategy,
   });
 
   result.project = {
     available: true,
     override: true,
-    main_harness: savedProject.main_harness,
-    alias_harnesses: savedProject.alias_harnesses,
+    registered_harnesses: registeredHarnessesOf(savedProject),
     materialization_strategy: savedProject.materialization_strategy,
   };
-
-  try {
-    const mirror = await sync({ projectRoot: validatedProject.root });
-    result.mirror = {
-      main_harness: mirror.main_harness,
-      alias_harnesses: mirror.alias_harnesses,
-      platforms_synced: mirror.platforms_synced,
-      files_written: mirror.files_written,
-      surface_warnings: mirror.surface_warnings,
-    };
-  } catch (error) {
-    result.mirror_error =
-      error instanceof Error ? error.message : String(error);
-  }
 
   return result;
 }

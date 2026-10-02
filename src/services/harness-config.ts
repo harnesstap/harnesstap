@@ -1,15 +1,23 @@
 import { getAllPlatforms, getPlatformIds } from "../platforms/registry.js";
 import type { HarnessPreference, HarnessSelection } from "../types.js";
-import { promptForSearchableChoice } from "./wizards/shared.js";
+import {
+  normalizeRegisteredHarnesses,
+  registeredFromLegacyParts,
+  registeredHarnessesOf,
+} from "./harness-targets.js";
 import { promptForSearchableMultiSelect } from "./wizards/searchable-multi-select.js";
 
 export interface ResolveHarnessSelectionOptions {
   current?: HarnessPreference | HarnessSelection;
   detected?: string[];
+  harnesses?: string[];
   main?: string;
   aliases?: string[];
   nonInteractive?: boolean;
+  message?: string;
+  /** @deprecated Use `message`. */
   mainMessage?: string;
+  /** @deprecated Ignored; aliases are part of the registered set. */
   aliasMessage?: string;
 }
 
@@ -25,30 +33,26 @@ function validateHarnesses(harnesses: string[]): void {
   }
 }
 
-function pickDefaultMain(
-  current: HarnessPreference | HarnessSelection | undefined,
-  detected: string[],
-): string {
-  if (current?.main_harness) return current.main_harness;
+function defaultRegistered(
+  options: ResolveHarnessSelectionOptions,
+): string[] {
+  if (options.harnesses && options.harnesses.length > 0) {
+    return normalizeRegisteredHarnesses(options.harnesses);
+  }
+  const fromFlags = registeredFromLegacyParts(options.main, options.aliases);
+  if (fromFlags.length > 0) {
+    return fromFlags;
+  }
+  const current = registeredHarnessesOf(options.current);
+  if (current.length > 0) {
+    return current;
+  }
+  const detected = unique(options.detected ?? []);
   if (detected.length > 0) {
-    const firstDetected = detected[0];
-    if (firstDetected) return firstDetected;
+    return detected;
   }
-
   const first = getPlatformIds()[0];
-  if (!first) {
-    throw new Error("No harnesses are registered");
-  }
-  return first;
-}
-
-function normalizeSelection(selection: HarnessSelection): HarnessSelection {
-  return {
-    main_harness: selection.main_harness,
-    alias_harnesses: unique(selection.alias_harnesses).filter(
-      (harness) => harness !== selection.main_harness,
-    ),
-  };
+  return first ? [first] : [];
 }
 
 function formatCurrentHarnessSummary(
@@ -57,40 +61,23 @@ function formatCurrentHarnessSummary(
   if (!current) {
     return undefined;
   }
-
-  return `Current main: ${current.main_harness} | aliases: ${current.alias_harnesses.join(", ") || "(none)"}`;
+  const registered = registeredHarnessesOf(current);
+  return `Current harnesses: ${registered.join(", ") || "(none)"}`;
 }
 
 export async function resolveHarnessSelection(
   options: ResolveHarnessSelectionOptions = {},
 ): Promise<HarnessSelection> {
-  const detected = unique(options.detected ?? []);
-  const current = options.current;
-  const defaultMain = options.main ?? pickDefaultMain(current, detected);
-  const defaultAliases = unique(
-    options.aliases ??
-      current?.alias_harnesses ??
-      detected.filter((harness) => harness !== defaultMain),
-  ).filter((harness) => harness !== defaultMain);
-
-  validateHarnesses([defaultMain, ...defaultAliases]);
+  const registered = defaultRegistered(options);
+  validateHarnesses(registered);
 
   if (options.nonInteractive || !process.stdin.isTTY) {
-    return normalizeSelection({
-      main_harness: defaultMain,
-      alias_harnesses: defaultAliases,
-    });
+    return { registered_harnesses: registered };
   }
 
-  if (
-    detected.length === 1
-    && detected[0] === defaultMain
-    && defaultAliases.length === 0
-  ) {
-    return normalizeSelection({
-      main_harness: defaultMain,
-      alias_harnesses: [],
-    });
+  const detected = unique(options.detected ?? []);
+  if (detected.length === 1 && detected[0] && registered.length <= 1) {
+    return { registered_harnesses: [detected[0]] };
   }
 
   const harnesses = getAllPlatforms().map((platform) => ({
@@ -98,30 +85,24 @@ export async function resolveHarnessSelection(
     value: platform.id,
   }));
 
-  const currentSummary = formatCurrentHarnessSummary(current);
-  const main_harness = await promptForSearchableChoice({
+  const currentSummary = formatCurrentHarnessSummary(options.current);
+  const selected = await promptForSearchableMultiSelect({
     message: [
-      options.mainMessage ?? "Select the main harness",
+      options.message
+      ?? options.mainMessage
+      ?? "Select harnesses to keep in sync",
       currentSummary,
     ].filter(Boolean).join("\n"),
-    default: defaultMain,
+    default: registered,
     choices: harnesses,
-  });
-  const aliasChoices = harnesses.filter((choice) => choice.value !== main_harness);
-  const alias_harnesses = await promptForSearchableMultiSelect({
-    message: [
-      options.aliasMessage ??
-      "Select additional harnesses to keep in sync as aliases",
-      currentSummary,
-    ].filter(Boolean).join("\n"),
-    default: defaultAliases.filter((harness) => harness !== main_harness),
-    choices: aliasChoices,
     pageSize: 10,
     loop: false,
   });
 
-  return normalizeSelection({
-    main_harness,
-    alias_harnesses,
-  });
+  const next = normalizeRegisteredHarnesses(selected);
+  if (next.length === 0) {
+    throw new Error("Select at least one harness.");
+  }
+  validateHarnesses(next);
+  return { registered_harnesses: next };
 }

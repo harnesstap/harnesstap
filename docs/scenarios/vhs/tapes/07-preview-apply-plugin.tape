@@ -2,7 +2,7 @@ Output docs/scenarios/vhs/output/07-preview-apply-plugin.gif
 Source docs/scenarios/vhs/tapes/_shared.tape
 Require ht
 
-Type "ht init --main codex --aliases claude-code,cursor"
+Type "ht init --harnesses codex,claude-code,cursor"
 Enter
 Sleep 1500ms
 

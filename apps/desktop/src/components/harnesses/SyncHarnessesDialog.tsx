@@ -11,7 +11,6 @@ import { HarnessIcon } from "../HarnessIcons";
 
 export interface SyncHarnessesDialogProps {
   open: boolean;
-  mainName: string;
   preview: HarnessSyncPreviewState;
   syncing: boolean;
   onConfirm: () => void;
@@ -101,7 +100,6 @@ function PreviewBody({ preview }: { preview: HarnessSyncPreviewState }): ReactNo
 
 export function SyncHarnessesDialog({
   open,
-  mainName,
   preview,
   syncing,
   onConfirm,
@@ -112,7 +110,7 @@ export function SyncHarnessesDialog({
     <ConfirmDialog
       open={open}
       title="Sync harnesses"
-      description={syncHarnessesConfirmBody(mainName)}
+      description={syncHarnessesConfirmBody()}
       confirmLabel={syncing ? "Syncing…" : "Sync"}
       confirmBusy={syncing}
       confirmDisabled={counting}

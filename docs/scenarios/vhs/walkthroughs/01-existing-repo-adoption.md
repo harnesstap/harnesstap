@@ -10,7 +10,7 @@ Tape: [../tapes/01-existing-repo-adoption.tape](../tapes/01-existing-repo-adopti
 
 ## Commands
 
-1. `ht init --main codex --aliases claude-code,cursor` — initialise HarnessTap and set harness preferences
+1. `ht init --harnesses codex,claude-code,cursor` — initialise HarnessTap and set harness preferences
 2. `ht scan .` — detect existing resources
 3. `ht resource list` — review discovered resources
 4. `ht plugin list --search foundation --remote-only` — browse catalog plugins

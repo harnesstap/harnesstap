@@ -6,6 +6,8 @@ import { isClaudeLocalMcpResource } from "./claude-local-mcp.js";
 export interface HarnessScanSlice {
   platformId: string;
   resources: ResourceCreateInput[];
+  /** identity → mtime ms; used by last-write conflict policy. */
+  mtimesMs?: ReadonlyMap<string, number>;
 }
 
 export interface UnionConflict {
@@ -19,6 +21,8 @@ export interface UnionHarnessResourcesResult {
   conflicts: UnionConflict[];
 }
 
+export type HarnessUnionConflictPolicy = "last-write";
+
 export function resourceFingerprint(resource: ResourceCreateInput): string {
   return hashResourceBody({
     type: resource.type,
@@ -27,43 +31,67 @@ export function resourceFingerprint(resource: ResourceCreateInput): string {
   });
 }
 
+function mtimeOf(
+  slice: HarnessScanSlice,
+  identity: string,
+): number {
+  return slice.mtimesMs?.get(identity) ?? Number.NEGATIVE_INFINITY;
+}
+
 /**
  * Union on-disk resources from every configured harness.
- * Same `type:name:namespace` keeps the main harness copy when content differs.
+ * Same `type:name:namespace` keeps the newest mtime; equal/missing mtimes
+ * keep the later slice (registered-set order).
  */
 export function unionHarnessResources(
   slices: readonly HarnessScanSlice[],
-  mainHarness: string,
+  _conflictPolicy: HarnessUnionConflictPolicy = "last-write",
 ): UnionHarnessResourcesResult {
-  const ordered = [
-    ...slices.filter((slice) => slice.platformId === mainHarness),
-    ...slices.filter((slice) => slice.platformId !== mainHarness),
-  ];
   const byIdentity = new Map<
     string,
-    { resource: ResourceCreateInput; platformId: string }
+    { resource: ResourceCreateInput; platformId: string; mtime: number }
   >();
   const conflicts: UnionConflict[] = [];
 
-  for (const slice of ordered) {
+  for (const slice of slices) {
     for (const resource of slice.resources) {
       const identity = resourceIdentity(resource);
       const existing = byIdentity.get(identity);
+      const mtime = mtimeOf(slice, identity);
       if (!existing) {
         byIdentity.set(identity, {
           resource,
           platformId: slice.platformId,
+          mtime,
         });
         continue;
       }
       if (resourceFingerprint(existing.resource) === resourceFingerprint(resource)) {
+        if (mtime > existing.mtime) {
+          existing.mtime = mtime;
+          existing.platformId = slice.platformId;
+        }
         continue;
       }
-      conflicts.push({
-        identity,
-        winnerPlatformId: existing.platformId,
-        loserPlatformId: slice.platformId,
-      });
+      const takeIncoming = mtime >= existing.mtime;
+      if (takeIncoming) {
+        conflicts.push({
+          identity,
+          winnerPlatformId: slice.platformId,
+          loserPlatformId: existing.platformId,
+        });
+        byIdentity.set(identity, {
+          resource,
+          platformId: slice.platformId,
+          mtime,
+        });
+      } else {
+        conflicts.push({
+          identity,
+          winnerPlatformId: existing.platformId,
+          loserPlatformId: slice.platformId,
+        });
+      }
     }
   }
 

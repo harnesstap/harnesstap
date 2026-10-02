@@ -15,6 +15,7 @@ import {
 import {
   assertSupportedHarnessTargets,
   parsePlatformFilter,
+  registeredHarnessesOf,
   uniqueHarnessTargets,
 } from "../../services/harness-targets.js";
 import { resolveApplyConflictPolicy, promptMaterializationConflict } from "../../services/materialization-conflicts.js";
@@ -51,10 +52,7 @@ function resolveDestinationPlatforms(harnessOption?: string): string[] {
 
   const preference = getHarnessPreference();
   if (preference) {
-    const preferredTargets = uniqueHarnessTargets([
-      preference.main_harness,
-      ...preference.alias_harnesses,
-    ]);
+    const preferredTargets = registeredHarnessesOf(preference);
     assertSupportedHarnessTargets(preferredTargets);
     return preferredTargets;
   }

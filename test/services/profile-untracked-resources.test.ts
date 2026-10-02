@@ -104,7 +104,7 @@ describe("profile-untracked-resources service", () => {
       "profile-untracked-discard-mismatch",
     );
     try {
-      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["cursor"] });
       const profile = createPlugin({ name: "work" });
       setPluginTags(profile.id, ["profile"]);
       setActiveProfileName("work");
@@ -144,7 +144,7 @@ describe("profile-untracked-resources service", () => {
       "profile-untracked-discard-all-mismatch",
     );
     try {
-      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["cursor"] });
       const profile = createPlugin({ name: "work" });
       setPluginTags(profile.id, ["profile"]);
       setActiveProfileName("work");
@@ -207,7 +207,7 @@ describe("profile-untracked-resources service", () => {
         },
       );
 
-      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["cursor"] });
       const profile = createPlugin({ name: "work" });
       setPluginTags(profile.id, ["profile"]);
       setActiveProfileName("work");
@@ -264,9 +264,7 @@ describe("profile-untracked-resources service", () => {
       "profile-untracked-discard-multi-harness",
     );
     try {
-      setHarnessPreference({
-        main_harness: "cursor",
-        alias_harnesses: ["claude-code"],
+      setHarnessPreference({ registered_harnesses: ["cursor", "claude-code"],
       });
       const profile = createPlugin({ name: "work" });
       setPluginTags(profile.id, ["profile"]);
@@ -315,9 +313,7 @@ describe("profile-untracked-resources service", () => {
       "profile-untracked-discard-skills-cursor",
     );
     try {
-      setHarnessPreference({
-        main_harness: "cursor",
-        alias_harnesses: ["claude-code"],
+      setHarnessPreference({ registered_harnesses: ["cursor", "claude-code"],
       });
       const profile = createPlugin({ name: "work" });
       setPluginTags(profile.id, ["profile"]);

@@ -18,7 +18,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Initialize local HarnessTap state",
     examples: [
       "init",
-      "init --main claude-code --aliases cursor,codex",
+      "init --harnesses claude-code,cursor,codex",
       "init --format json",
     ],
   },
@@ -681,8 +681,9 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "harness.set": {
-    description: "Set global harness preferences",
+    description: "Set global registered harnesses",
     examples: [
+      "harness set --harnesses claude-code,cursor,codex",
       "harness set --main claude-code --aliases cursor,codex",
     ],
   },
@@ -695,9 +696,9 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "harness.sync": {
     description:
-      "Union resources from configured harnesses (main + aliases) and materialize with main-wins conflicts",
+      "Union resources from registered harnesses and materialize with last-write conflicts",
     details:
-      "Scans every configured harness, unions portable types (skills, MCP, rules, host plugin install trees, and other serializer-supported resources), prefers the main harness when the same identity differs, and emits shared skill paths when multiple targets can read them. Claude and Cursor plugin trees are copied into each native root (they do not share a runtime plugin directory). Skills, agents, and commands inside those plugins are also materialized into `.agents` (and equivalent folders) for OpenCode and other harnesses that do not load Cursor/Claude plugin roots. Matching CLAUDE.md and AGENTS.md share one file: AGENTS.md is canonical and CLAUDE.md links to it unless copy mode is set. Configure with `harnessSync.pluginResources` in config.jsonc (`symlink`, `copy`, or `clone`) or `--plugin-resources`. Default scope is the home directory. This is not mirror-from-main.",
+      "Scans every registered harness, unions portable types (skills, MCP, rules, host plugin install trees, and other serializer-supported resources), keeps the newest on-disk copy when the same identity differs (later registered harness on ties), and emits shared skill paths when multiple targets can read them. Claude and Cursor plugin trees are copied into each native root (they do not share a runtime plugin directory). Skills, agents, and commands inside those plugins are also materialized into `.agents` (and equivalent folders) for OpenCode and other harnesses that do not load Cursor/Claude plugin roots. Matching CLAUDE.md and AGENTS.md share one file: AGENTS.md is canonical and CLAUDE.md links to it unless copy mode is set. Configure with `harnessSync.pluginResources` in config.jsonc (`symlink`, `copy`, or `clone`) or `--plugin-resources`. Default scope is the home directory. This is not copy-from-one-harness mirror.",
     examples: [
       "harness sync",
       "harness sync --dry-run --format json",
@@ -706,10 +707,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "harness.project.set": {
-    description: "Set project-scoped harness preferences",
+    description: "Set project-scoped registered harnesses",
     examples: [
-      "harness project set --main claude-code",
-      "harness project set --project . --aliases cursor",
+      "harness project set --harnesses claude-code,cursor",
+      "harness project set --project . --harnesses cursor",
     ],
   },
   "harness.project.status": {

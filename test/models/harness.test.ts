@@ -22,18 +22,19 @@ describe("harness model", () => {
       const harness = await import("../../src/models/harness.ts");
 
       const preference = harness.setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor", "copilot-cli"],
+        registered_harnesses: ["claude-code", "cursor", "copilot-cli"],
       });
 
-      expect(preference.main_harness).toBe("claude-code");
-      expect(preference.alias_harnesses).toEqual(["cursor", "copilot-cli"]);
+      expect(preference.registered_harnesses).toEqual([
+        "claude-code",
+        "cursor",
+        "copilot-cli",
+      ]);
       expect(preference.updated_at).toBeDefined();
 
       const retrieved = harness.getHarnessPreference();
       expect(retrieved).toEqual({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor", "copilot-cli"],
+        registered_harnesses: ["claude-code", "cursor", "copilot-cli"],
         updated_at: preference.updated_at,
       });
     } finally {
@@ -41,18 +42,21 @@ describe("harness model", () => {
     }
   });
 
-  it("normalizes alias_harnesses by removing duplicates and excluding main", async () => {
+  it("normalizes registered_harnesses by dropping empties and duplicates", async () => {
     const context = await createInitializedTestContext("harness-normalize");
 
     try {
       const harness = await import("../../src/models/harness.ts");
 
       const preference = harness.setHarnessPreference({
-        main_harness: "cursor",
-        alias_harnesses: ["cursor", "cursor", "codex", "copilot-cli", "cursor"],
+        registered_harnesses: ["cursor", "cursor", "codex", "copilot-cli", "cursor"],
       });
 
-      expect(preference.alias_harnesses).toEqual(["codex", "copilot-cli"]);
+      expect(preference.registered_harnesses).toEqual([
+        "cursor",
+        "codex",
+        "copilot-cli",
+      ]);
     } finally {
       await context.cleanup();
     }
@@ -65,21 +69,25 @@ describe("harness model", () => {
       const harness = await import("../../src/models/harness.ts");
 
       harness.setHarnessPreference({
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+        registered_harnesses: ["claude-code", "cursor"],
       });
 
       const updated = harness.setHarnessPreference({
-        main_harness: "cursor",
-        alias_harnesses: ["claude-code", "codex"],
+        registered_harnesses: ["cursor", "claude-code", "codex"],
       });
 
-      expect(updated.main_harness).toBe("cursor");
-      expect(updated.alias_harnesses).toEqual(["claude-code", "codex"]);
+      expect(updated.registered_harnesses).toEqual([
+        "cursor",
+        "claude-code",
+        "codex",
+      ]);
 
       const retrieved = harness.getHarnessPreference();
-      expect(retrieved?.main_harness).toBe("cursor");
-      expect(retrieved?.alias_harnesses).toEqual(["claude-code", "codex"]);
+      expect(retrieved?.registered_harnesses).toEqual([
+        "cursor",
+        "claude-code",
+        "codex",
+      ]);
     } finally {
       await context.cleanup();
     }
@@ -100,21 +108,18 @@ describe("harness model", () => {
 
       const config = harness.setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+        registered_harnesses: ["claude-code", "cursor"],
         materialization_strategy: "symlink-preferred",
       });
 
       expect(config.project_id).toBe(project.id);
-      expect(config.main_harness).toBe("claude-code");
-      expect(config.alias_harnesses).toEqual(["cursor"]);
+      expect(config.registered_harnesses).toEqual(["claude-code", "cursor"]);
       expect(config.materialization_strategy).toBe("symlink-preferred");
 
       const retrieved = harness.getProjectHarnessConfig(project.id);
       expect(retrieved).toEqual({
         project_id: project.id,
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+        registered_harnesses: ["claude-code", "cursor"],
         materialization_strategy: "symlink-preferred",
         updated_at: config.updated_at,
       });
@@ -138,7 +143,7 @@ describe("harness model", () => {
 
       const config = harness.setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: "claude-code",
+        registered_harnesses: ["claude-code"],
       });
 
       expect(config.materialization_strategy).toBe("symlink-preferred");
@@ -162,7 +167,7 @@ describe("harness model", () => {
 
       const config = harness.setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: "claude-code",
+        registered_harnesses: ["claude-code"],
         materialization_strategy: "copy",
       });
 
@@ -187,26 +192,24 @@ describe("harness model", () => {
 
       harness.setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: "claude-code",
+        registered_harnesses: ["claude-code"],
         materialization_strategy: "symlink-preferred",
       });
 
       const updated = harness.setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: "cursor",
-        alias_harnesses: ["codex"],
+        registered_harnesses: ["cursor", "codex"],
         materialization_strategy: "copy",
       });
 
-      expect(updated.main_harness).toBe("cursor");
-      expect(updated.alias_harnesses).toEqual(["codex"]);
+      expect(updated.registered_harnesses).toEqual(["cursor", "codex"]);
       expect(updated.materialization_strategy).toBe("copy");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("normalizes project harness config aliases", async () => {
+  it("normalizes project harness config registered set", async () => {
     const context = await createInitializedTestContext("harness-project-normalize");
 
     try {
@@ -221,11 +224,10 @@ describe("harness model", () => {
 
       const config = harness.setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor", "claude-code", "codex", "cursor"],
+        registered_harnesses: ["claude-code", "cursor", "claude-code", "codex", "cursor"],
       });
 
-      expect(config.alias_harnesses).toEqual(["cursor", "codex"]);
+      expect(config.registered_harnesses).toEqual(["claude-code", "cursor", "codex"]);
     } finally {
       await context.cleanup();
     }
@@ -244,11 +246,10 @@ describe("harness model", () => {
       });
       harness.setProjectHarnessConfig({
         project_id: project.id,
-        main_harness: "claude-code",
-        alias_harnesses: ["cursor"],
+        registered_harnesses: ["claude-code", "cursor"],
       });
-      expect(harness.getProjectHarnessConfig(project.id)?.main_harness).toBe(
-        "claude-code",
+      expect(harness.getProjectHarnessConfig(project.id)?.registered_harnesses).toEqual(
+        ["claude-code", "cursor"],
       );
 
       expect(harness.deleteProjectHarnessConfig(project.id)).toBe(true);

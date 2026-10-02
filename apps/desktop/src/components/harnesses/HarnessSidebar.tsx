@@ -4,7 +4,6 @@ import {
   diskPresenceLabel,
   harnessResourceCount,
   KEEP_ONE_HARNESS_HINT,
-  roleOf,
   type HarnessEntry,
   type HarnessId,
   type HarnessSelection,
@@ -141,7 +140,6 @@ export function HarnessSidebar({
           <ul className="resources-list" aria-label="Harnesses">
             {rows.map((entry) => {
               const selected = selectedId === entry.id;
-              const role = roleOf(selection, entry.id);
               const removable = canRemoveHarness(selection, entry.id);
               return (
                 <li className="resources-list-item" key={entry.id}>
@@ -162,7 +160,6 @@ export function HarnessSidebar({
                       <span className="resources-list-name harness-list-name">
                         <HarnessIcon id={entry.id} tooltip={false} />
                         {entry.name}
-                        {role === "main" ? <span className="badge">main</span> : null}
                       </span>
                       <span className="resources-list-desc muted">{rowSubtitle(entry)}</span>
                     </button>

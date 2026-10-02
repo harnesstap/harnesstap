@@ -366,9 +366,7 @@ describe("global-profile-cleanup service", () => {
       "global-profile-cleanup-skills-cursor-remove",
     );
     try {
-      setHarnessPreference({
-        main_harness: "cursor",
-        alias_harnesses: ["claude-code"],
+      setHarnessPreference({ registered_harnesses: ["cursor", "claude-code"],
       });
       const profile = createPlugin({ name: "work" });
       setPluginTags(profile.id, ["profile"]);

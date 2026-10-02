@@ -3,8 +3,31 @@ import {
   putHarnessSettings,
   type PutHarnessSettingsInput,
 } from "../services/harness-settings.js";
+import { registeredFromLegacyParts } from "../services/harness-targets.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
+
+function asStringArray(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
+function parseRegistered(record: Record<string, unknown>): string[] | "invalid" | undefined {
+  if (record.registered_harnesses !== undefined) {
+    const parsed = asStringArray(record.registered_harnesses);
+    return parsed ?? "invalid";
+  }
+  if (record.main_harness !== undefined || record.alias_harnesses !== undefined) {
+    if (record.alias_harnesses !== undefined && !Array.isArray(record.alias_harnesses)) {
+      return "invalid";
+    }
+    const main = typeof record.main_harness === "string" ? record.main_harness : null;
+    const aliases = asStringArray(record.alias_harnesses);
+    return registeredFromLegacyParts(main, aliases);
+  }
+  return undefined;
+}
 
 export function handleHarnessSettingsGet(
   request: Request,
@@ -51,30 +74,28 @@ export async function handleHarnessSettingsPut(
       { status: 400 },
     );
   }
-  const g = global as Record<string, unknown>;
-  if (typeof g.main_harness !== "string" || !g.main_harness.trim()) {
+  const registered = parseRegistered(global as Record<string, unknown>);
+  if (registered === "invalid") {
     return jsonResponse(
-      { error: "invalid_main_harness", message: "global.main_harness is required" },
+      {
+        error: "invalid_registered_harnesses",
+        message: "global.registered_harnesses must be an array",
+      },
       { status: 400 },
     );
   }
-  if (
-    g.alias_harnesses !== undefined
-    && !Array.isArray(g.alias_harnesses)
-  ) {
+  if (!registered || registered.length === 0) {
     return jsonResponse(
-      { error: "invalid_aliases", message: "global.alias_harnesses must be an array" },
+      {
+        error: "invalid_registered_harnesses",
+        message: "global.registered_harnesses must include at least one harness",
+      },
       { status: 400 },
     );
   }
 
   const input: PutHarnessSettingsInput = {
-    global: {
-      main_harness: g.main_harness.trim(),
-      alias_harnesses: Array.isArray(g.alias_harnesses)
-        ? g.alias_harnesses.filter((v): v is string => typeof v === "string")
-        : [],
-    },
+    global: { registered_harnesses: registered },
   };
 
   if (record.project !== undefined) {
@@ -97,19 +118,20 @@ export async function handleHarnessSettingsPut(
         { status: 400 },
       );
     }
+    const projectRegistered = parseRegistered(p);
+    if (projectRegistered === "invalid") {
+      return jsonResponse(
+        {
+          error: "invalid_registered_harnesses",
+          message: "project.registered_harnesses must be an array",
+        },
+        { status: 400 },
+      );
+    }
     input.project = {
       path: p.path.trim(),
       override: p.override,
-      ...(typeof p.main_harness === "string"
-        ? { main_harness: p.main_harness }
-        : {}),
-      ...(Array.isArray(p.alias_harnesses)
-        ? {
-            alias_harnesses: p.alias_harnesses.filter(
-              (v): v is string => typeof v === "string",
-            ),
-          }
-        : {}),
+      ...(projectRegistered ? { registered_harnesses: projectRegistered } : {}),
       ...(p.materialization_strategy === "copy"
         || p.materialization_strategy === "symlink-preferred"
         ? { materialization_strategy: p.materialization_strategy }

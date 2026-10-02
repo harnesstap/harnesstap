@@ -577,15 +577,13 @@ export interface HarnessCatalogEntry {
 }
 
 export interface HarnessSettingsGlobal {
-  main_harness: string | null;
-  alias_harnesses: string[];
+  registered_harnesses: string[];
 }
 
 export interface HarnessSettingsProject {
   available: boolean;
   override: boolean;
-  main_harness?: string | null;
-  alias_harnesses?: string[];
+  registered_harnesses?: string[];
   materialization_strategy?: MaterializationStrategy;
   reason?: string;
 }
@@ -597,35 +595,18 @@ export interface HarnessSettingsPayload {
 }
 
 export interface PutHarnessSettingsInput {
-  global: { main_harness: string; alias_harnesses: string[] };
+  global: { registered_harnesses: string[] };
   project?: {
     path: string;
     override: boolean;
-    main_harness?: string;
-    alias_harnesses?: string[];
+    registered_harnesses?: string[];
     materialization_strategy?: MaterializationStrategy;
   };
-}
-
-export interface PutHarnessSettingsMirrorSummary {
-  main_harness: string;
-  alias_harnesses: string[];
-  platforms_synced: string[];
-  files_written: number;
-  surface_warnings: Array<{
-    harness: string;
-    path: string;
-    category: string;
-    message: string;
-    alias_harnesses: string[];
-  }>;
 }
 
 export interface PutHarnessSettingsResult {
   global: HarnessSettingsGlobal;
   project?: HarnessSettingsProject;
-  mirror?: PutHarnessSettingsMirrorSummary;
-  mirror_error?: string;
 }
 
 export interface ProfileDetailResource {
