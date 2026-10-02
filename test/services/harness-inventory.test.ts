@@ -442,7 +442,7 @@ describe("getHarnessInventory", () => {
         settingsPath,
         JSON.stringify({ "cursor.skills.includeThirdPartyPlugins": false }),
       );
-      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      setHarnessPreference({ registered_harnesses: ["cursor"] });
       mkdirSync(join(context.homeDir, ".cursor", "plugins"), { recursive: true });
 
       const inventory = getHarnessInventory(context.homeDir);
