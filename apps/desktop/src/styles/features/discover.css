@@ -7,6 +7,13 @@
   min-height: var(--icon-action-size-lg);
 }
 
+.source-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
 .source-master-row {
   font-weight: 600;
 }
@@ -78,6 +85,10 @@
   align-self: center;
 }
 
+.sources-hit.resource-row {
+  align-items: center;
+}
+
 .sources-pin-plugin-list {
   list-style: none;
   margin: 0;
@@ -112,6 +123,8 @@
   gap: 0.75rem;
   flex: 1 1 auto;
   min-height: 0;
+  overflow: auto;
+  overscroll-behavior: none;
 }
 
 .sources-workspace .resources-panel-body {
@@ -143,6 +156,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: none;
 }
 
 .sources-preview .library-field-row,

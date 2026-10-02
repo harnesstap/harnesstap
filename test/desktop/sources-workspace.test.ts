@@ -228,9 +228,13 @@ describe("sources workspace chrome", () => {
     );
     expect(designLock).toContain("**Manage marketplaces**");
     expect(designLock).toContain("Marketplace filter rows are checkboxes only");
+    expect(designLock).toContain("not pinned to the title line");
   });
 
   test("main Discover list pane scrolls", () => {
+    const list = cssBlock(stylesSource, ".sources-list");
+    expect(list).toContain("overflow: auto");
+    expect(list).toContain("min-height: 0");
     const incoming = cssBlock(
       stylesSource,
       ".sources-workspace .m-crossfade-incoming",
@@ -449,6 +453,8 @@ describe("sources search list and preview", () => {
     expect(listPaneSource).toContain("InUseMark");
     const hitTrailing = cssBlock(stylesSource, ".sources-hit .resource-row-trailing");
     expect(hitTrailing).toContain("align-self: center;");
+    const hitRow = cssBlock(stylesSource, ".sources-hit.resource-row");
+    expect(hitRow).toContain("align-items: center;");
     expect(workspaceSource).toContain("onOpenInLibrary");
     expect(appSource).toContain("onOpenInLibrary=");
     expect(appSource).toContain("setLibraryFocusPlugin");
