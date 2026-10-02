@@ -222,13 +222,6 @@ export function partitionProfileInventory(
       drifted: onHarness && drifted,
       ...(onHarness && driftChange ? { driftChange } : {}),
     };
-    if (!item.driftChange && item.drifted && resource.source) {
-      item.driftChange = {
-        path: resource.source,
-        type: "modified",
-        resource: { type: resource.type, name: resource.name },
-      };
-    }
     if (onHarness) {
       active.push(item);
     } else {

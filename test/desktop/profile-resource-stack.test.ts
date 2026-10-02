@@ -144,6 +144,14 @@ describe("Profile resources pane chrome", () => {
     join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
     "utf8",
   );
+  const fileDiffModalSource = readFileSync(
+    join(import.meta.dir, "../../apps/desktop/src/components/FileDiffModal.tsx"),
+    "utf8",
+  );
+  const inventoryRowSource = readFileSync(
+    join(import.meta.dir, "../../apps/desktop/src/components/live/InventoryRow.tsx"),
+    "utf8",
+  );
 
   it("renders the resolved profile stack instead of live/target overlap", () => {
     expect(liveStateSource).toContain("resolveProfileResourceStack");
@@ -196,6 +204,10 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain('title="View changes"');
     expect(liveStateSource).toContain("FileDiff");
     expect(liveStateSource).toContain('label="Add"');
+    expect(inventoryRowSource).toContain("drifted && onDiff && item.driftChange");
+    expect(fileDiffModalSource).not.toContain("Green = would add");
+    expect(fileDiffModalSource).not.toContain("file-diff-legend");
+    expect(fileDiffModalSource).toContain("userFacingManagedPath");
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("If the live copy differs");
     expect(designSource).toContain("Target preview does not use the Not in profile amber tint");
