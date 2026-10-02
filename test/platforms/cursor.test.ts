@@ -319,13 +319,10 @@ describe("CursorSerializer", () => {
     const serializer = new CursorSerializer();
     const resources = await serializer.scanGlobal(fixtureHome);
     const pins = resources.filter((resource) => resource.type === "plugin");
-    expect(pins.map((pin) => pin.origin_ref)).toEqual(
-      expect.arrayContaining([
-        "active-plugin@cursor-public",
-        "homemade@local",
-        "agent-demo@cursor-public",
-      ]),
-    );
+    expect(pins.map((pin) => pin.origin_ref).sort()).toEqual([
+      "active-plugin@cursor-public",
+      "homemade@local",
+    ]);
   });
 
   it("scans and serializes subagent files under .cursor/agents/", async () => {

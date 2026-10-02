@@ -58,6 +58,10 @@ describe("host-native MCP", () => {
         join(installPath, "mcp.json"),
         JSON.stringify({ mcpServers: { slack: { command: "slack-mcp" } } }),
       );
+      writeTextFile(
+        join(context.homeDir, ".cursor", "plugins", "installed.json"),
+        JSON.stringify({ plugins: ["slack@cursor-public"] }),
+      );
 
       expect([...listHostNativeMcpNames(context.homeDir, "cursor")]).toContain("slack");
     } finally {

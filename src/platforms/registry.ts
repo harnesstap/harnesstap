@@ -117,8 +117,9 @@ const PLATFORMS: PlatformDefinition[] = [
       skills: "~/.cursor/skills-cursor/",
     },
     relatedLocations: [
-      // Inventory grouping only: Cursor does not load Claude's plugin install
-      // tree at runtime. Harness sync still copies plugins into ~/.cursor/plugins/.
+      // Shown on the Cursor harness only while Cursor still loads third-party
+      // Plugins, Skills, and other configs. Cursor does not load Claude's
+      // plugin install tree as its own plugins.
       { path: "~/.claude/plugins/", surfaces: ["plugins"] },
       { path: "~/.claude/skills/", surfaces: ["skills"] },
     ],

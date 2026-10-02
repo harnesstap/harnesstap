@@ -271,8 +271,8 @@ common package format. Host-specific manifests stay native:
 | ------- | ----------- | ------ |
 | Install root | `~/.claude/plugins/` (`cache/…`, `installed_plugins.json`) | `~/.cursor/plugins/` (`cache/`, `local/`, `marketplaces/`) |
 | Manifest | `.claude-plugin/plugin.json` (also reads `.cursor-plugin/` and root `plugin.json` for version) | `.cursor-plugin/plugin.json` or Agent Plugins root `plugin.json` (also inventories `.claude-plugin/` once the tree is in Cursor's root) |
-| Enablement | `enabledPlugins` in `~/.claude/settings.json` plus `installed_plugins.json` | IDE Customize / `/plugin` / MCP `plugin-<name>-<name>` folders; HarnessTap cannot flip Cursor enabled state |
-| Loads the other host's tree? | No | No (Desktop may *list* `~/.claude/plugins/` as a related location) |
+| Enablement | `enabledPlugins` in `~/.claude/settings.json` plus `installed_plugins.json` | Cursor install records (`installed.json`, `state.vscdb` `cursor.plugins.*`, MCP `plugin-<name>-<name>` folders, recently-used skills); HarnessTap cannot flip Cursor enabled state |
+| Loads the other host's tree? | No | No (Desktop lists `~/.claude/` / `~/.agents/` on Cursor only while third-party Plugins/Skills/configs are enabled) |
 
 `ht harness sync` therefore **dual-writes** native trees (copy files into both
 roots when both harnesses are in the Settings active set). It does not install

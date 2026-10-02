@@ -109,6 +109,25 @@ describe("inventoryLocationsForPlatform", () => {
     ]);
   });
 
+  it("omits Cursor .claude and .agents trees when third-party import is disabled", () => {
+    const cursor = getPlatform("cursor");
+    if (!cursor) throw new Error("cursor missing from registry");
+
+    const paths = inventoryLocationsForPlatform(cursor, undefined, {
+      includeForeignHarnessTrees: false,
+    }).map((location) => location.path);
+
+    expect(paths).toEqual([
+      "~/.cursor/rules/",
+      "~/.cursor/skills/",
+      "~/.cursor/mcp.json",
+      "~/.cursor/agents/",
+      "~/.cursor/hooks.json",
+      "~/.cursor/plugins/",
+      "~/.cursor/skills-cursor/",
+    ]);
+  });
+
   it("lists ~/.agents/skills as shared for project .agents harnesses without that global path", () => {
     const pi = getPlatform("pi");
     if (!pi) throw new Error("pi missing from registry");
@@ -401,6 +420,44 @@ describe("getHarnessInventory", () => {
         disk: "absent",
         locations: [],
       });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not list Claude or .agents locations on Cursor when third-party loading is off", async () => {
+    const context = await createInitializedTestContext("harness-inventory-cursor-native");
+    try {
+      const { getHarnessInventory } = await import(
+        "../../src/services/harness-inventory.ts"
+      );
+      const { setHarnessPreference } = await import("../../src/models/harness.ts");
+      const settingsPath = join(
+        context.homeDir,
+        ".config",
+        "Cursor",
+        "User",
+        "settings.json",
+      );
+      mkdirSync(join(settingsPath, ".."), { recursive: true });
+      writeFileSync(
+        settingsPath,
+        JSON.stringify({ "cursor.skills.includeThirdPartyPlugins": false }),
+      );
+      setHarnessPreference({ main_harness: "cursor", alias_harnesses: [] });
+      mkdirSync(join(context.homeDir, ".cursor", "plugins"), { recursive: true });
+
+      const inventory = getHarnessInventory(context.homeDir);
+      const cursor = inventory.harnesses.find((entry) => entry.id === "cursor");
+      expect(cursor?.locations.map((location) => location.path)).toEqual([
+        "~/.cursor/rules/",
+        "~/.cursor/skills/",
+        "~/.cursor/mcp.json",
+        "~/.cursor/agents/",
+        "~/.cursor/hooks.json",
+        "~/.cursor/plugins/",
+        "~/.cursor/skills-cursor/",
+      ]);
     } finally {
       await context.cleanup();
     }
