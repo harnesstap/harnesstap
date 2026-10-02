@@ -553,7 +553,7 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile stash pop` / `profile stash apply` — same pull/apply flags as `profile use`
 - `profile add-resource <name> --selector <type:name> --scope <home|project>` — adopt one untracked on-disk resource
 - `profile add-all-resources <name> --scope <home|project>` — adopt every untracked material resource in the scope
-- `profile commit-resource <name> --path <path>` or `--selector <type:name>` — snapshot live disk into the profile library
+- `profile commit-resource <name> --path <path>` or `--selector <type:name>` — snapshot live disk into the profile library (skills as 1:1 files; MCP, settings, and hooks JSON as all resources in that file)
 - `profile remove-resource <name> --selector <type:name>` — detach a material resource from the profile stack
 - `profile restore-file <name> --path <path>` — overwrite the live managed file with the profile snapshot
 - `profile file-diff <name> --path <path>` — unified diff of live content vs after-apply snapshot

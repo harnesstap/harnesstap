@@ -10,7 +10,12 @@ import {
   resolvePluginSelector,
 } from "../models/plugin-model.js";
 import { isProfilePlugin } from "../constants/profile.js";
-import type { Resource, ResourceType } from "../types.js";
+import {
+  MATERIAL_RESOURCE_TYPES,
+  type PlatformPaths,
+  type Resource,
+  type ResourceType,
+} from "../types.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { markPluginDirty } from "./plugin-versioning.js";
 import { collectProfilePluginIds } from "./profile-apply.js";
@@ -29,6 +34,7 @@ import {
 import { getAllPlatforms } from "../platforms/registry.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { sourceMatchesManagedPath } from "./mcp-target.js";
+import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { normalizeManagedPath } from "./profile-untracked-resources.js";
 
 function profileHasResource(
@@ -178,6 +184,45 @@ export function resourceKeyFromManagedPath(
   return null;
 }
 
+function collectRegistryFilePaths(
+  pick: (paths: PlatformPaths) => Array<string | undefined>,
+): string[] {
+  const seen = new Set<string>();
+  const entries: string[] = [];
+  for (const platform of getAllPlatforms()) {
+    for (const group of [platform.projectPaths, platform.globalPaths]) {
+      for (const raw of pick(group)) {
+        if (!raw || raw.endsWith("/")) {
+          continue;
+        }
+        const stripped = normalizeManagedPath(raw).replace(/^~\//, "");
+        const key = stripped.toLowerCase();
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        entries.push(stripped);
+      }
+    }
+  }
+  return entries;
+}
+
+function pathMatchesKnownFile(path: string, known: string[], rootPath?: string): boolean {
+  const stripped = normalizeManagedPath(path, rootPath).replace(/^~\//, "");
+  return known.some((candidate) => stripped === candidate);
+}
+
+const REGISTRY_MCP_FILE_PATHS = collectRegistryFilePaths((paths) => [paths.mcp]);
+
+const REGISTRY_AGGREGATE_FILE_PATHS = collectRegistryFilePaths((paths) => [
+  paths.mcp,
+  paths.settings,
+  paths.hooks,
+  paths.permissions,
+  ...(paths.pathAlternates?.settings ?? []),
+]);
+
 /** Aggregate MCP config files (many mcp_server resources per path). */
 export function isMcpConfigManagedPath(path: string, rootPath?: string): boolean {
   const normalized = normalizeManagedPath(path, rootPath);
@@ -185,23 +230,19 @@ export function isMcpConfigManagedPath(path: string, rootPath?: string): boolean
   if (/(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(normalized)) {
     return true;
   }
-  // Also accept any registry-declared MCP path (opencode.json, config.toml, …).
-  const stripped = normalized.replace(/^~\//, "");
-  for (const platform of getAllPlatforms()) {
-    for (const candidate of [
-      platform.projectPaths.mcp,
-      platform.globalPaths.mcp,
-    ]) {
-      if (!candidate) {
-        continue;
-      }
-      const candidateNorm = normalizeManagedPath(candidate).replace(/^~\//, "");
-      if (stripped === candidateNorm) {
-        return true;
-      }
-    }
+  return pathMatchesKnownFile(path, REGISTRY_MCP_FILE_PATHS, rootPath);
+}
+
+/**
+ * Shared harness config files that hold many resources (settings, hooks,
+ * permissions, MCP JSON/TOML). Commit snapshots every live resource bound
+ * to the path rather than mapping 1:1 like SKILL.md.
+ */
+export function isAggregateConfigManagedPath(path: string, rootPath?: string): boolean {
+  if (isMcpConfigManagedPath(path, rootPath) || isMergeableHostConfigPath(path)) {
+    return true;
   }
-  return false;
+  return pathMatchesKnownFile(path, REGISTRY_AGGREGATE_FILE_PATHS, rootPath);
 }
 
 async function scanForCommit(input: {
@@ -226,7 +267,13 @@ async function scanForCommit(input: {
   return { originRef, scanned };
 }
 
-async function commitMcpConfigFromLive(input: {
+const MATERIAL_RESOURCE_TYPE_SET = new Set<string>(MATERIAL_RESOURCE_TYPES);
+
+function resourceLiveKey(resource: { type: string; name: string }): string {
+  return `${resource.type}:${resource.name}`;
+}
+
+async function commitAggregateConfigFromLive(input: {
   profileSelector: string;
   path: string;
   scope: ProfileApplyPreviewScope;
@@ -245,15 +292,13 @@ async function commitMcpConfigFromLive(input: {
   const matching = scanned
     .map((result) => ({
       ...result,
-      resources: result.resources.filter(
-        (resource) =>
-          resource.type === "mcp_server"
-          && sourceMatchesManagedPath(resource.source, input.path, originRef),
+      resources: result.resources.filter((resource) =>
+        sourceMatchesManagedPath(resource.source, input.path, originRef),
       ),
     }))
     .filter((result) => result.resources.length > 0);
 
-  const liveNames = new Set<string>();
+  const liveKeys = new Set<string>();
   const committed: ProfileContentsResource[] = [];
 
   if (matching.length > 0) {
@@ -264,10 +309,10 @@ async function commitMcpConfigFromLive(input: {
 
     markPluginDirty(profilePlugin.id);
     for (const resource of persisted.resolved) {
-      if (resource.type !== "mcp_server") {
+      if (!MATERIAL_RESOURCE_TYPE_SET.has(resource.type)) {
         continue;
       }
-      liveNames.add(resource.name);
+      liveKeys.add(resourceLiveKey(resource));
       if (!profileHasResource(input.profileSelector, resource.type, resource.name)) {
         addResourceToPlugin(profilePlugin.id, resource.id);
       }
@@ -275,18 +320,18 @@ async function commitMcpConfigFromLive(input: {
     }
   }
 
-  // Live file is source of truth for this path: drop profile MCP servers that
+  // Live file is source of truth for this path: drop profile resources that
   // were bound to this path but are no longer on disk.
   const merged = mergePluginsForApply(collectProfilePluginIds(profilePlugin));
   let removedAny = false;
   for (const resource of merged.resources) {
-    if (resource.type !== "mcp_server") {
+    if (!MATERIAL_RESOURCE_TYPE_SET.has(resource.type)) {
       continue;
     }
     if (!sourceMatchesManagedPath(resource.source, input.path, originRef)) {
       continue;
     }
-    if (liveNames.has(resource.name)) {
+    if (liveKeys.has(resourceLiveKey(resource))) {
       continue;
     }
     if (!removedAny) {
@@ -297,12 +342,12 @@ async function commitMcpConfigFromLive(input: {
   }
 
   if (matching.length === 0 && committed.length === 0) {
-    // Empty live MCP file is a valid commit (clears path-owned servers).
+    // Empty live aggregate file is a valid commit (clears path-owned resources).
     return [];
   }
 
   if (committed.length === 0 && matching.length > 0) {
-    throw new Error(`Could not commit MCP servers from: ${input.path}`);
+    throw new Error(`Could not commit resources from: ${input.path}`);
   }
   return committed;
 }
@@ -420,7 +465,7 @@ export async function commitManagedResourceFromLive(input: {
 
 /**
  * Commit a managed path from live disk into the profile library.
- * Supports 1:1 material paths and aggregate MCP config files.
+ * Supports 1:1 material paths and aggregate harness config files.
  */
 export async function commitManagedPathFromLive(input: {
   profileSelector: string;
@@ -449,8 +494,8 @@ export async function commitManagedPathFromLive(input: {
     return [resource];
   }
 
-  if (isMcpConfigManagedPath(input.path)) {
-    return commitMcpConfigFromLive({
+  if (isAggregateConfigManagedPath(input.path)) {
+    return commitAggregateConfigFromLive({
       profileSelector: input.profileSelector,
       path: input.path,
       scope: input.scope,
