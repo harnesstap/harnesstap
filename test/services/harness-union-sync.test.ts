@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
@@ -68,13 +68,16 @@ describe("syncConfiguredHarnesses", () => {
       });
 
       writeTextFile(
-        join(context.projectDir, ".agents/skills/shared/SKILL.md"),
-        "---\nname: shared\n---\nshared body\n",
-      );
-      writeTextFile(
         join(context.projectDir, ".grok/skills/shared/SKILL.md"),
         "---\nname: shared\n---\ngrok body\n",
       );
+      const agentsSkill = join(context.projectDir, ".agents/skills/shared/SKILL.md");
+      writeTextFile(
+        agentsSkill,
+        "---\nname: shared\n---\nshared body\n",
+      );
+      const newer = Date.now() / 1000 + 60;
+      utimesSync(agentsSkill, newer, newer);
 
       const { syncConfiguredHarnesses } = await import(
         "../../src/services/harness-union-sync.ts"

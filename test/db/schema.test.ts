@@ -155,7 +155,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 31 }]);
+      expect(versionRows).toEqual([{ version: 32 }]);
     } finally {
       await context.cleanup();
     }

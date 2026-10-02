@@ -209,7 +209,7 @@ export function registrySurfaceTabId(surface: string): string | null {
 export function defaultSelectedHarness(
   inventory: HarnessInventory | null,
 ): HarnessId | null {
-  return inventory?.selection?.main ?? null;
+  return inventory?.selection?.registered[0] ?? null;
 }
 
 export function harnessResourceCount(entry: HarnessEntry): number {

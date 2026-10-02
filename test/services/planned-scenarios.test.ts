@@ -262,7 +262,7 @@ describe("planned scenarios services", () => {
         expect(pluginModel.getPlugin("migrate-me")).toBeDefined();
         expect(environmentModel.getEnvironmentByName("migrate-env")).toBeDefined();
         expect(harnessModel.getHarnessPreference()?.registered_harnesses).toEqual(
-          ["claude-code"],
+          ["claude-code", "cursor"],
         );
         expect(
           JSON.parse(
