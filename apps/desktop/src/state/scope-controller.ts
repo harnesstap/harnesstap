@@ -750,7 +750,7 @@ export function useScopeController(input: ScopeControllerInput) {
         const selector = resource.id ?? `${resource.type}:${resource.name}`;
         await openResourcePath(client.baseUrl, client.token, {
           selector,
-          pathHint: resource.source ?? null,
+          pathHint: resource.filesystem_path ?? resource.source ?? null,
         });
       } catch (error) {
         setResourceActionError(messageOf(error, "Could not open resource in editor"));

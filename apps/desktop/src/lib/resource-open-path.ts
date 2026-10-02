@@ -32,23 +32,23 @@ function firstAbsolutePath(resource: LibraryResourceDetail): string {
     return source;
   }
   const originRef = resource.origin_ref?.trim() ?? "";
-  if (originRef && isAbsoluteFilesystemPath(originRef)) {
+  if (originRef && isAbsoluteFilesystemPath(originRef) && pathFileName(originRef).includes(".")) {
     return originRef;
   }
   return "";
 }
 
-/** Path shown in the inspect Path field. Plugin-relative sources stay short. */
+/** Path shown in the inspect Path field. Live files use the resolved absolute path. */
 export function resourcePathDisplay(resource: LibraryResourceDetail): string {
   if (isPluginTypeResource(resource.type)) {
     return resource.install_path?.trim() ?? "";
   }
   const source = resource.source.trim();
   const absolute = firstAbsolutePath(resource);
-  if (absolute && isAbsoluteFilesystemPath(source)) {
+  if (absolute) {
     return packageDirectoryDisplayPath(absolute);
   }
-  const candidate = absolute || source;
+  const candidate = source;
   if (isPackageEntryFileName(pathFileName(candidate))) {
     return packageDirectoryDisplayPath(candidate);
   }

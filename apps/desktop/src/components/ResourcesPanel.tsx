@@ -701,7 +701,7 @@ export function ResourcesPanel({
             kind: "resource",
             selector: entry.id,
             label,
-            pathHint: entry.source,
+            pathHint: entry.filesystem_path ?? entry.source,
           },
         });
         return;

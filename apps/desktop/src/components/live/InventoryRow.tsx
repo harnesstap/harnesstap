@@ -10,7 +10,6 @@ import {
   type ResourceHoverModel,
 } from "../../lib/resource-hover";
 import { ButtonSpinner } from "../ButtonSpinner";
-import { ChromeTooltip } from "../ChromeTooltip";
 import { IconActionButton } from "../IconActionButton";
 import { Checkbox } from "../ui/checkbox";
 import { ResourceHoverCard } from "../ui/resource-hover-card";
@@ -163,20 +162,17 @@ export function InventoryRow({
           </span>
         ) : null}
         {drifted ? (
-          <ChromeTooltip content="Active, differs from disk" side="top">
-            <span
-              className="inventory-chip-status inventory-status-glyph m-status"
-              aria-label="Active, differs from disk"
-              role="img"
-            >
-              <CircleAlert size={CHIP_STATUS_GLYPH_PX} strokeWidth={2} aria-hidden />
-            </span>
-          </ChromeTooltip>
+          <span
+            className="inventory-chip-status inventory-status-glyph m-status"
+            aria-label="Active, differs from disk"
+            role="img"
+          >
+            <CircleAlert size={CHIP_STATUS_GLYPH_PX} strokeWidth={2} aria-hidden />
+          </span>
         ) : null}
         <button
           type="button"
           className="inventory-chip-name"
-          title={item.label}
           onClick={(event) => {
             event.stopPropagation();
             activateChip();

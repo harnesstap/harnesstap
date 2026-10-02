@@ -28,9 +28,11 @@ function marketplaceAgent(
 }
 
 describe("resourceOpenPath", () => {
-  it("keeps a short Path label but opens the resolved absolute file", () => {
+  it("shows and opens the resolved marketplace agent file, not agents/devx.md", () => {
     const resource = marketplaceAgent();
-    expect(resourcePathDisplay(resource)).toBe("agents/devx.md");
+    expect(resourcePathDisplay(resource)).toBe(
+      "/home/ada/.cursor/plugins/cache/teads-plugins/devx/agents/devx.md",
+    );
     expect(resourceOpenPath(resource)).toBe(
       "/home/ada/.cursor/plugins/cache/teads-plugins/devx/agents/devx.md",
     );
@@ -94,5 +96,20 @@ describe("resourceOpenPath", () => {
     expect(resourceOpenPath(resource)).toBe(
       "/Users/christophe.oudar/.claude/skills/agent-development",
     );
+  });
+
+  it("opens the shared ~/.agents/AGENTS.md file instead of a bare AGENTS.md label", () => {
+    const resource = marketplaceAgent({
+      type: "instruction",
+      name: "agents-instructions",
+      namespace: null,
+      source: "AGENTS.md",
+      filesystem_path: "/home/ada/.agents/AGENTS.md",
+      origin_kind: "local_snapshot",
+      origin_ref: "/home/ada",
+    });
+    expect(resourcePathDisplay(resource)).toBe("/home/ada/.agents/AGENTS.md");
+    expect(resourceOpenPath(resource)).toBe("/home/ada/.agents/AGENTS.md");
+    expect(resourceOpenUsesSelector(resource)).toBe(true);
   });
 });

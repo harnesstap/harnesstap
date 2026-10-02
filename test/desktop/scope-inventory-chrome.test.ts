@@ -5,6 +5,14 @@ import { readDesktopShellSource, readLiveInventorySource } from "../helpers/desk
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const liveStateSource = readLiveInventorySource();
+const inventoryRowSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/live/InventoryRow.tsx"),
+  "utf8",
+);
+const hoverCardSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/ui/resource-hover-card.tsx"),
+  "utf8",
+);
 const appSource = readDesktopShellSource();
 const addModalSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/ScopeAddToProfileModal.tsx"),
@@ -200,6 +208,16 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("opens the full-screen profile edit pane");
     expect(designSource).toContain("**Active** section header has labeled **Edit**");
     expect(designSource).not.toContain("`Active · N files differ`");
+  });
+
+  it("uses one hover card on Active chips instead of nested native titles", () => {
+    expect(inventoryRowSource).toContain("ResourceHoverCard");
+    expect(inventoryRowSource).toContain("model.showName = true");
+    expect(inventoryRowSource).not.toContain("title={item.label}");
+    expect(inventoryRowSource).not.toMatch(/className="inventory-chip-name"[\s\S]{0,80}title=/);
+    expect(hoverCardSource).toContain("wrap");
+    expect(hoverCardSource).toMatch(/extra\.map\([\s\S]*wrap/);
+    expect(hoverCardSource).toMatch(/model\.path[\s\S]{0,200}wrap/);
   });
 
   it("keeps a FAB that opens pick-from-library and Create for the library flow", () => {

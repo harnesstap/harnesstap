@@ -10,11 +10,14 @@ export const PROJECT_NOT_TRACKED_WARNING =
   "Project is not tracked yet. Bootstrap or apply to create a snapshot.";
 
 export function resourceDetailTarget(
-  resource: Pick<ProfileContentsResource, "id" | "type" | "name" | "source">,
+  resource: Pick<
+    ProfileContentsResource,
+    "id" | "type" | "name" | "source" | "filesystem_path"
+  >,
 ): ResourceDetailTarget {
   return {
     selector: resource.id ?? `${resource.type}:${resource.name}`,
     label: resource.name,
-    pathHint: resource.source,
+    pathHint: resource.filesystem_path ?? resource.source,
   };
 }

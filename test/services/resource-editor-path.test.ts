@@ -22,6 +22,7 @@ import {
 } from "../../src/services/resource-editor-path.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { getHarnesstapDir } from "../../src/db/connection.ts";
+import { hostPluginPackageDir } from "../../src/services/package-cache/paths.ts";
 
 describe("resource-editor-path service", () => {
   const tempDirs: string[] = [];
@@ -127,6 +128,65 @@ describe("resource-editor-path service", () => {
     }
   });
 
+  it("opens agents/devx.md from a native install when the canonical cache copy has no file", async () => {
+    const context = await createInitializedTestContext("resource-editor-canonical-miss");
+    try {
+      const nativeRoot = join(
+        context.homeDir,
+        ".claude",
+        "plugins",
+        "cache",
+        "teads-plugins",
+        "devx",
+      );
+      mkdirSync(join(nativeRoot, "agents"), { recursive: true });
+      writeFileSync(
+        join(nativeRoot, "plugin.json"),
+        JSON.stringify({ name: "devx", version: "1.0.0" }),
+        "utf-8",
+      );
+      const absolutePath = join(nativeRoot, "agents", "devx.md");
+      writeFileSync(absolutePath, "# DevX agent\n", "utf-8");
+
+      const canonicalRoot = hostPluginPackageDir(
+        getHarnesstapDir(),
+        "teads-plugins",
+        "devx",
+        "devx",
+      );
+      mkdirSync(canonicalRoot, { recursive: true });
+      writeFileSync(
+        join(canonicalRoot, "plugin.json"),
+        JSON.stringify({ name: "devx", version: "1.0.0" }),
+        "utf-8",
+      );
+
+      const resource = createResource({
+        type: "agent",
+        name: "devx",
+        namespace: "devx",
+        description: "General DevX guide",
+        content: "# DevX agent",
+        metadata: {},
+        source: "agents/devx.md",
+        origin_kind: "marketplace_link",
+        origin_ref: "devx@teads-plugins",
+      });
+
+      expect(
+        resolveExistingResourceFilesystemPath(resource, "agents/devx.md"),
+      ).toBe(absolutePath);
+      expect(
+        resolveResourceEditorPath({
+          selector: "agent:devx@devx",
+          pathHint: "agents/devx.md",
+        }),
+      ).toBe(absolutePath);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("does not write editor-scratch when a live disk path is missing", async () => {
     const context = await createInitializedTestContext("resource-editor-missing-live");
     try {
@@ -196,6 +256,43 @@ describe("resource-editor-path service", () => {
       expect(toContentsResource(resource)).toMatchObject({
         source: "~/.agents/skills/agent-development/SKILL.md",
         filesystem_path: canonical,
+      });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("resolves a bare AGENTS.md live source to ~/.agents/AGENTS.md", async () => {
+    const context = await createInitializedTestContext("resource-editor-agents-md");
+    try {
+      const agentsDir = join(context.homeDir, ".agents");
+      mkdirSync(agentsDir, { recursive: true });
+      const liveFile = join(agentsDir, "AGENTS.md");
+      writeFileSync(liveFile, "# global agents\n", "utf-8");
+
+      const resource = createResource({
+        type: "instruction",
+        name: "agents-instructions",
+        description: "",
+        content: "# stale snapshot",
+        metadata: { content_status: "live" },
+        source: "AGENTS.md",
+        origin_kind: "local_snapshot",
+        origin_ref: context.homeDir,
+      });
+
+      expect(resolveExistingResourceFilesystemPath(resource, "AGENTS.md")).toBe(
+        liveFile,
+      );
+      expect(
+        resolveResourceEditorPath({
+          selector: resource.id,
+          pathHint: "AGENTS.md",
+        }),
+      ).toBe(liveFile);
+      expect(toContentsResource(resource)).toMatchObject({
+        source: "AGENTS.md",
+        filesystem_path: liveFile,
       });
     } finally {
       await context.cleanup();

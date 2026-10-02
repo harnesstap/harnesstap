@@ -779,7 +779,7 @@ export function resourceDetailTargetFor(
     kind: "resource",
     selector: row.id || `${row.type}:${row.name}`,
     label: harnessResourceDisplayName(row, duplicateNames),
-    pathHint: row.source,
+    pathHint: row.filesystem_path ?? row.source,
   };
 }
 
