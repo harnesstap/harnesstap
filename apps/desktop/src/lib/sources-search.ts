@@ -248,6 +248,44 @@ export function discoverSourcesRefreshing(input: {
   return false;
 }
 
+/** Header copy while marketplace catalogs are in flight. Hidden when none are fetching. */
+export function discoverMarketplaceRefreshCopy(input: {
+  marketplaceIds: readonly string[];
+  inflightIds: ReadonlySet<string>;
+}): string | null {
+  const total = input.marketplaceIds.length;
+  if (total === 0) {
+    return null;
+  }
+  let inflight = 0;
+  for (const id of input.marketplaceIds) {
+    if (input.inflightIds.has(id)) {
+      inflight += 1;
+    }
+  }
+  if (inflight === 0) {
+    return null;
+  }
+  return `Refreshing ${total - inflight}/${total} marketplaces`;
+}
+
+export function nextMarketplaceHitsOnRefresh<
+  T extends { plugins: readonly unknown[]; error: string | null },
+>(input: {
+  current: Record<string, T>;
+  marketplaceIds: readonly string[];
+  inventoryReady: boolean;
+}): Record<string, T | { plugins: []; error: null }> {
+  if (!input.inventoryReady && input.marketplaceIds.length === 0) {
+    return input.current;
+  }
+  const next: Record<string, T | { plugins: []; error: null }> = {};
+  for (const id of input.marketplaceIds) {
+    next[id] = input.current[id] ?? { plugins: [], error: null };
+  }
+  return next;
+}
+
 export function marketplaceHitKey(identity: {
   marketplace: string;
   plugin: string;

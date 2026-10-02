@@ -8,7 +8,9 @@ import {
   filterDiscoverGroups,
   discoverListEmptyCopy,
   discoverListIsSearching,
+  discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
+  nextMarketplaceHitsOnRefresh,
   presenceForCloud,
   presenceForMarketplace,
   sourcesHitFetchKey,
@@ -813,5 +815,73 @@ describe("discoverSourcesRefreshing", () => {
         inflightIds: new Set(["local"]),
       }),
     ).toBe(false);
+  });
+});
+
+describe("discoverMarketplaceRefreshCopy", () => {
+  test("returns null when no marketplaces are in flight", () => {
+    expect(
+      discoverMarketplaceRefreshCopy({
+        marketplaceIds: ["mkt:acme", "mkt:beta"],
+        inflightIds: new Set(),
+      }),
+    ).toBeNull();
+    expect(
+      discoverMarketplaceRefreshCopy({
+        marketplaceIds: [],
+        inflightIds: new Set(["mkt:acme"]),
+      }),
+    ).toBeNull();
+  });
+
+  test("counts completed marketplaces of the current wave", () => {
+    expect(
+      discoverMarketplaceRefreshCopy({
+        marketplaceIds: [
+          "mkt:one",
+          "mkt:two",
+          "mkt:three",
+          "mkt:four",
+        ],
+        inflightIds: new Set(["mkt:three", "mkt:four"]),
+      }),
+    ).toBe("Refreshing 2/4 marketplaces");
+    expect(
+      discoverMarketplaceRefreshCopy({
+        marketplaceIds: ["mkt:acme"],
+        inflightIds: new Set(["mkt:acme"]),
+      }),
+    ).toBe("Refreshing 0/1 marketplaces");
+  });
+});
+
+describe("nextMarketplaceHitsOnRefresh", () => {
+  test("keeps cached hits when marketplace inventory is not ready yet", () => {
+    const current = {
+      "mkt:acme": { plugins: [{ name: "focus" }], error: null },
+    };
+    expect(
+      nextMarketplaceHitsOnRefresh({
+        current,
+        marketplaceIds: [],
+        inventoryReady: false,
+      }),
+    ).toEqual(current);
+  });
+
+  test("keeps last-good plugins for still-checked marketplaces", () => {
+    expect(
+      nextMarketplaceHitsOnRefresh({
+        current: {
+          "mkt:acme": { plugins: [{ name: "focus" }], error: null },
+          "mkt:gone": { plugins: [{ name: "old" }], error: null },
+        },
+        marketplaceIds: ["mkt:acme", "mkt:beta"],
+        inventoryReady: true,
+      }),
+    ).toEqual({
+      "mkt:acme": { plugins: [{ name: "focus" }], error: null },
+      "mkt:beta": { plugins: [], error: null },
+    });
   });
 });
