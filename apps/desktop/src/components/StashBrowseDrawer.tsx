@@ -402,7 +402,7 @@ export function StashBrowseDrawer({
                                           resource.id
                                           ?? `${resource.type}:${resource.name}`,
                                         label: resource.name,
-                                        pathHint: resource.source,
+                                        pathHint: resource.filesystem_path ?? resource.source,
                                       })
                                     }
                                   />

@@ -618,7 +618,7 @@ export function EditProfilePane({
               setInspectTarget({
                 selector: resource.id,
                 label: resourceDisplayName(resource, collidingPluginNames),
-                pathHint: resource.source,
+                pathHint: resource.filesystem_path ?? resource.source,
               });
             }}
             disabled={controlsDisabled}

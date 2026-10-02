@@ -201,6 +201,43 @@ describe("resource-editor-path service", () => {
       await context.cleanup();
     }
   });
+
+  it("resolves a bare AGENTS.md live source to ~/.agents/AGENTS.md", async () => {
+    const context = await createInitializedTestContext("resource-editor-agents-md");
+    try {
+      const agentsDir = join(context.homeDir, ".agents");
+      mkdirSync(agentsDir, { recursive: true });
+      const liveFile = join(agentsDir, "AGENTS.md");
+      writeFileSync(liveFile, "# global agents\n", "utf-8");
+
+      const resource = createResource({
+        type: "instruction",
+        name: "agents-instructions",
+        description: "",
+        content: "# stale snapshot",
+        metadata: { content_status: "live" },
+        source: "AGENTS.md",
+        origin_kind: "local_snapshot",
+        origin_ref: context.homeDir,
+      });
+
+      expect(resolveExistingResourceFilesystemPath(resource, "AGENTS.md")).toBe(
+        liveFile,
+      );
+      expect(
+        resolveResourceEditorPath({
+          selector: resource.id,
+          pathHint: "AGENTS.md",
+        }),
+      ).toBe(liveFile);
+      expect(toContentsResource(resource)).toMatchObject({
+        source: "AGENTS.md",
+        filesystem_path: liveFile,
+      });
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
 
 describe("POST /v1/open-path relative plugin sources", () => {

@@ -260,6 +260,7 @@ export function ResourceHoverCard({
           icon={<FileText size={ICON_SIZE} aria-hidden />}
           text={formatHoverPath(model.path)}
           mono
+          wrap
         />
       ) : null}
       {firstHarnessId !== undefined ? (
@@ -273,6 +274,7 @@ export function ResourceHoverCard({
           key={`${extra.kind}-${extra.text}`}
           icon={<ExtraHoverIcon extra={extra} />}
           text={extra.text}
+          wrap
         />
       ))}
     </div>

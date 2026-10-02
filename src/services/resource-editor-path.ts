@@ -36,6 +36,30 @@ function isOpenableFile(path: string): boolean {
   }
 }
 
+function isExistingDirectory(path: string): boolean {
+  if (!existsSync(path)) {
+    return false;
+  }
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function uniquePaths(paths: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const path of paths) {
+    if (!path || seen.has(path)) {
+      continue;
+    }
+    seen.add(path);
+    out.push(path);
+  }
+  return out;
+}
+
 function extensionForResourceType(type: string): string {
   switch (type) {
     case "skill":
@@ -112,6 +136,31 @@ function installRootsForResource(
   return installRoot ? [installRoot] : [];
 }
 
+function originDirectory(
+  resource: Pick<Resource, "origin_ref">,
+): string | null {
+  const originRef = resource.origin_ref?.trim();
+  if (!originRef || !looksLikeFilesystemSource(originRef) || isPluginRefHint(originRef)) {
+    return null;
+  }
+  const expanded = expandUserPath(originRef);
+  return isExistingDirectory(expanded) ? expanded : null;
+}
+
+/** Plugin install trees, origin dir, then the shared `~/.agents` hub. */
+function lookupRootsForResource(
+  resource: Pick<Resource, "origin_ref">,
+): string[] {
+  const roots = [...installRootsForResource(resource)];
+  const originDir = originDirectory(resource);
+  if (originDir) {
+    roots.push(originDir);
+    roots.push(join(originDir, ".agents"));
+  }
+  roots.push(join(resolveHomeRoot(), ".agents"));
+  return uniquePaths(roots);
+}
+
 function canonicalizeExistingPath(path: string): string {
   try {
     return realpathSync(path);
@@ -156,7 +205,7 @@ export function resolveExistingResourceFilesystemPath(
   resource: Pick<Resource, "source" | "origin_ref">,
   pathHint?: string | null,
 ): string | null {
-  const roots = installRootsForResource(resource);
+  const roots = lookupRootsForResource(resource);
   for (const candidate of candidatePaths(resource, pathHint)) {
     const resolved = resolveExistingEditorPath(candidate, roots);
     if (resolved) {
@@ -208,7 +257,7 @@ export function resolveResourceEditorPath(input: {
   }
 
   const resource = result.resource;
-  const roots = installRootsForResource(resource);
+  const roots = lookupRootsForResource(resource);
   const candidates = candidatePaths(resource, input.pathHint);
   for (const candidate of candidates) {
     const resolved = resolveExistingEditorPath(candidate, roots);

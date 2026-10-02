@@ -95,4 +95,19 @@ describe("resourceOpenPath", () => {
       "/Users/christophe.oudar/.claude/skills/agent-development",
     );
   });
+
+  it("opens the shared ~/.agents/AGENTS.md file instead of a bare AGENTS.md label", () => {
+    const resource = marketplaceAgent({
+      type: "instruction",
+      name: "agents-instructions",
+      namespace: null,
+      source: "AGENTS.md",
+      filesystem_path: "/home/ada/.agents/AGENTS.md",
+      origin_kind: "local_snapshot",
+      origin_ref: "/home/ada",
+    });
+    expect(resourcePathDisplay(resource)).toBe("/home/ada/.agents/AGENTS.md");
+    expect(resourceOpenPath(resource)).toBe("/home/ada/.agents/AGENTS.md");
+    expect(resourceOpenUsesSelector(resource)).toBe(true);
+  });
 });

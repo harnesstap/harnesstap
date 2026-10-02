@@ -5,6 +5,14 @@ import {
 } from "./resource-display";
 import type { LibraryResourceDetail } from "./types";
 
+function isBareRelativeSource(path: string): boolean {
+  const trimmed = path.trim();
+  if (!trimmed || isAbsoluteFilesystemPath(trimmed)) {
+    return false;
+  }
+  return !trimmed.includes("/") && !trimmed.includes("\\");
+}
+
 function isAbsoluteFilesystemPath(path: string): boolean {
   const trimmed = path.trim();
   if (!trimmed) {
@@ -32,7 +40,7 @@ function firstAbsolutePath(resource: LibraryResourceDetail): string {
     return source;
   }
   const originRef = resource.origin_ref?.trim() ?? "";
-  if (originRef && isAbsoluteFilesystemPath(originRef)) {
+  if (originRef && isAbsoluteFilesystemPath(originRef) && pathFileName(originRef).includes(".")) {
     return originRef;
   }
   return "";
@@ -45,7 +53,10 @@ export function resourcePathDisplay(resource: LibraryResourceDetail): string {
   }
   const source = resource.source.trim();
   const absolute = firstAbsolutePath(resource);
-  if (absolute && isAbsoluteFilesystemPath(source)) {
+  if (
+    absolute
+    && (isAbsoluteFilesystemPath(source) || isBareRelativeSource(source))
+  ) {
     return packageDirectoryDisplayPath(absolute);
   }
   const candidate = absolute || source;
