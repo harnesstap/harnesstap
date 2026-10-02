@@ -34,7 +34,7 @@ export function isApplyStepActive(events: ProfileSwitchStepEvent[]): boolean {
   );
 }
 
-function stepClassName(state: ReturnType<typeof stepState>): string {
+export function switchStepClassName(state: ReturnType<typeof stepState>): string {
   switch (state) {
     case "current":
       return "cur m-status";
@@ -92,7 +92,7 @@ export function ApplyProgressStrip({
         {orderedSwitchSteps(scope).map((step) => {
           const state = stepState(step, events);
           return (
-            <li key={step} className={stepClassName(state)}>
+            <li key={step} className={switchStepClassName(state)}>
               {SWITCH_STEP_LABELS[step]}
               {state === "failed" ? " (failed)" : ""}
             </li>
