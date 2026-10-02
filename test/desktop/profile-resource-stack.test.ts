@@ -205,6 +205,10 @@ describe("Profile resources pane chrome", () => {
     expect(liveStateSource).toContain("FileDiff");
     expect(liveStateSource).toContain('label="Add"');
     expect(inventoryRowSource).toContain("drifted && onDiff && item.driftChange");
+    expect(inventoryRowSource).toContain("item.section === \"not_in_profile\"");
+    expect(inventoryRowSource).toContain("item.driftChange");
+    expect(liveStateSource).toContain("item.resource.type");
+    expect(liveStateSource).toContain("item.resource.name");
     expect(fileDiffModalSource).not.toContain("Green = would add");
     expect(fileDiffModalSource).not.toContain("file-diff-legend");
     expect(fileDiffModalSource).toContain("userFacingManagedPath");

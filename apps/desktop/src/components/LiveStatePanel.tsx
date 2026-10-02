@@ -6,6 +6,7 @@ import {
   CircleDashed,
   Diff,
   ExternalLink,
+  FileDiff,
   FolderCog,
   Info,
   Minus,
@@ -29,6 +30,7 @@ import {
   flattenProfileResourceList,
   groupFileChangesByResource,
   groupInstallGaps,
+  inferFileChangeResource,
   installGapQuietVerb,
   installGapRowPresentation,
   installGapStatusLabel,
@@ -892,11 +894,14 @@ function FileChangeRowActions({
       {canDiff && onDiffFileChange ? (
         <IconActionButton
           className="file-change-diff-btn"
-          label={`Show diff for ${change.path}`}
-          title="Show diff"
+          label={`View changes for ${change.path}`}
+          title="View changes"
           disabled={busy}
-          onClick={() => onDiffFileChange(change)}
-          icon={<Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+          onClick={() => {
+            const resource = change.resource ?? inferFileChangeResource(change.path);
+            onDiffFileChange(resource ? { ...change, resource } : change);
+          }}
+          icon={<FileDiff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
         />
       ) : null}
       {canAdd && onAddFileChange ? (
@@ -2075,9 +2080,19 @@ export function LiveStatePanel({
               onDiffFileChange
                 ? (item) => {
                     const change = item.driftChange;
-                    if (change?.path) {
-                      onDiffFileChange(change);
+                    if (!change?.path) {
+                      return;
                     }
+                    onDiffFileChange({
+                      ...change,
+                      resource: {
+                        type: item.resource.type,
+                        name: item.resource.name,
+                        ...(change.resource?.origin_kind != null
+                          ? { origin_kind: change.resource.origin_kind }
+                          : {}),
+                      },
+                    });
                   }
                 : undefined
             }

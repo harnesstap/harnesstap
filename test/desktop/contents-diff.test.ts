@@ -17,6 +17,7 @@ import {
   summarizeStackChanges,
   uniqueFileChanges,
   inferFileChangeType,
+  inferFileChangeResource,
   managedPathFromResourceSource,
   compositionTypeCounts,
   filterProfileResourceList,
@@ -368,6 +369,20 @@ describe("contents-diff helpers", () => {
   it("counts instruction types from File changes paths without resource metadata", () => {
     expect(inferFileChangeType(".claude/CLAUDE.md")).toBe("instruction");
     expect(inferFileChangeType(".codex/AGENTS.md")).toBe("instruction");
+    expect(inferFileChangeType(".cursor/mcp.json")).toBe("mcp_server");
+    expect(inferFileChangeType("~/.claude.json")).toBe("mcp_server");
+    expect(inferFileChangeType("opencode.json")).toBe("mcp_server");
+    expect(inferFileChangeType(".codex/agents/helper.toml")).toBe("agent");
+    expect(inferFileChangeType(".claude/agents/helper.md")).toBe("agent");
+    expect(inferFileChangeResource(".codex/agents/helper.toml")).toEqual({
+      type: "agent",
+      name: "helper",
+    });
+    expect(inferFileChangeResource(".agents/skills/last30days/SKILL.md")).toEqual({
+      type: "skill",
+      name: "last30days",
+    });
+    expect(inferFileChangeResource(".cursor/mcp.json")).toBeNull();
     expect(
       Object.fromEntries(
         countPendingApplyResourceTypes({
@@ -685,6 +700,9 @@ describe("managedPathFromResourceSource", () => {
     expect(
       managedPathFromResourceSource(".cursor/skills/dolibarr-api/SKILL.md"),
     ).toBe(".cursor/skills/dolibarr-api/SKILL.md");
+    expect(managedPathFromResourceSource("opencode.json")).toBe("opencode.json");
+    expect(managedPathFromResourceSource("~/.cursor/mcp.json")).toBe(".cursor/mcp.json");
+    expect(managedPathFromResourceSource("manual")).toBeNull();
   });
 });
 

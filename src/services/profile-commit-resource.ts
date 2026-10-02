@@ -64,6 +64,7 @@ interface ManagedDirPrefix {
 
 const SKILL_REMAINDER = /^([^/]+)\/SKILL\.md$/i;
 const MARKDOWN_REMAINDER = /^([^/]+)\.md$/i;
+const AGENT_REMAINDER = /^([^/]+)\.(md|toml)$/i;
 const RULE_REMAINDER = /^([^/]+)\.(md|mdc)$/i;
 
 function toManagedDirPrefix(raw: string | undefined): string | null {
@@ -144,7 +145,7 @@ function resourceKeyFromDirRemainder(
       return match?.[1] ? { type: "skill", name: match[1] } : null;
     }
     case "agents": {
-      const match = remainder.match(MARKDOWN_REMAINDER);
+      const match = remainder.match(AGENT_REMAINDER);
       return match?.[1] ? { type: "agent", name: match[1] } : null;
     }
     case "commands": {

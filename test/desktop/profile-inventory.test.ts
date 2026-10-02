@@ -211,6 +211,79 @@ describe("partitionProfileInventory", () => {
       .toEqual(["not_in_profile", "inactive", "active"]);
   });
 
+  it("attaches View-changes file diffs to Active MCP and subagent chips", () => {
+    const stacked = contents({
+      resources: [
+        {
+          type: "mcp_server",
+          name: "alpha",
+          source: "~/.cursor/mcp.json",
+        },
+        {
+          type: "mcp_server",
+          name: "beta",
+          source: "manual",
+        },
+        {
+          type: "agent",
+          name: "helper",
+          source: "agents/helper.toml",
+        },
+      ],
+      type_counts: { mcp_server: 2, agent: 1 },
+      stack_resource_count: 3,
+    });
+    const liveStacked = contents({
+      resources: stacked.resources,
+      type_counts: stacked.type_counts,
+      stack_resource_count: 3,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(liveStacked, { selectedProfile: "work" }),
+      notStaged: [],
+      fileChanges: [
+        { path: ".cursor/mcp.json", type: "modified" },
+        { path: ".codex/agents/helper.toml", type: "modified" },
+      ],
+    });
+
+    const alpha = parts.active.find((row) => row.resource.name === "alpha");
+    const beta = parts.active.find((row) => row.resource.name === "beta");
+    const helper = parts.active.find((row) => row.resource.name === "helper");
+    expect(alpha?.drifted).toBe(true);
+    expect(alpha?.driftChange?.path).toBe(".cursor/mcp.json");
+    expect(beta?.drifted).toBe(true);
+    expect(beta?.driftChange?.path).toBe(".cursor/mcp.json");
+    expect(helper?.drifted).toBe(true);
+    expect(helper?.driftChange?.path).toBe(".codex/agents/helper.toml");
+  });
+
+  it("attaches a scoped MCP file diff on Not in profile chips", () => {
+    const parts = partitionProfileInventory({
+      profileRows: [],
+      liveRows: flattenProfileResourceList(
+        contents({
+          resources: [{ type: "mcp_server", name: "extra", source: "~/.cursor/mcp.json" }],
+        }),
+        { selectedProfile: "work" },
+      ),
+      notStaged: [
+        {
+          type: "mcp_server",
+          name: "extra",
+          source: "~/.cursor/mcp.json",
+          not_staged_kind: "add",
+        },
+      ],
+      fileChanges: [{ path: ".cursor/mcp.json", type: "modified" }],
+    });
+
+    expect(parts.notInProfile).toHaveLength(1);
+    expect(parts.notInProfile[0]?.drifted).toBe(false);
+    expect(parts.notInProfile[0]?.driftChange?.path).toBe(".cursor/mcp.json");
+  });
+
   it("does not invent a View-changes path for fingerprint updates without apply file changes", () => {
     const parts = partitionProfileInventory({
       profileRows: flattenProfileResourceList(profile, { selectedProfile: "work" }),

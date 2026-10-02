@@ -41,8 +41,10 @@ export function fileChangeRowActions(
       canDrop = hasResource && opts.profileHasResource;
       break;
     case "add":
+      // Missing live file that Apply would write — preview expected vs empty.
       canAdd = false;
       canDrop = hasResource && opts.profileHasResource;
+      canDiff = true;
       break;
     default: {
       const _never: never = mapped.action;

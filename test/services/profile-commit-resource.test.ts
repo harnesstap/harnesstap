@@ -33,6 +33,12 @@ describe("profile-commit-resource", () => {
       resourceKeyFromManagedPath(".claude/agents/helper.md"),
     ).toEqual({ type: "agent", name: "helper" });
     expect(
+      resourceKeyFromManagedPath(".codex/agents/helper.toml"),
+    ).toEqual({ type: "agent", name: "helper" });
+    expect(
+      resourceKeyFromManagedPath("~/.codex/agents/helper.toml"),
+    ).toEqual({ type: "agent", name: "helper" });
+    expect(
       resourceKeyFromManagedPath(".cursor/rules/always.mdc"),
     ).toEqual({ type: "rule", name: "always" });
     expect(isMcpConfigManagedPath(".cursor/mcp.json")).toBe(true);
