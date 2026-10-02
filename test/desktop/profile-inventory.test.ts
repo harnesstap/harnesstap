@@ -6,8 +6,10 @@ import {
   collectTypeTabAttention,
   countInventoryTypeTabs,
   filterProfileInventoryItems,
+  groupProfileInventoryByType,
   inventoryMembershipCaption,
   partitionProfileInventory,
+  type ProfileInventoryItem,
   profileInventoryOpenTarget,
   planProfileDiskSnapshot,
   profileDiskSnapshotHasWork,
@@ -47,6 +49,29 @@ describe("PROFILE_INVENTORY_SECTION_ORDER", () => {
       "inactive",
       "active",
     ]);
+  });
+});
+
+describe("groupProfileInventoryByType", () => {
+  it("clusters items in type-tab order and folds plugin pins into Plugins", () => {
+    const item = (type: string, name: string): ProfileInventoryItem => ({
+      section: "active",
+      key: `${type}:${name}`,
+      type,
+      label: name,
+      resource: { type, name },
+      drifted: false,
+    });
+    const groups = groupProfileInventoryByType([
+      item("skill", "ship"),
+      item("plugin_pin", "devx"),
+      item("rule", "quiet"),
+      item("plugin", "pack"),
+      item("skill", "docs"),
+    ]);
+    expect(groups.map((group) => group.type)).toEqual(["plugin", "skill", "rule"]);
+    expect(groups[0]?.items.map((row) => row.label)).toEqual(["devx", "pack"]);
+    expect(groups[1]?.items.map((row) => row.label)).toEqual(["ship", "docs"]);
   });
 });
 
@@ -184,6 +209,48 @@ describe("partitionProfileInventory", () => {
     expect(parts.active[0]?.driftChange?.path).toBe("skills/ship/SKILL.md");
     expect([...parts.notInProfile, ...parts.inactive, ...parts.active].map((row) => row.section))
       .toEqual(["not_in_profile", "inactive", "active"]);
+  });
+
+  it("does not invent a View-changes path for fingerprint updates without apply file changes", () => {
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(profile, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(live, { selectedProfile: "work" }),
+      notStaged: [
+        {
+          type: "skill",
+          name: "ship",
+          id: "ship-id",
+          source: "~/.claude/skills/ship/SKILL.md",
+          not_staged_kind: "update",
+        },
+      ],
+    });
+
+    expect(parts.active[0]?.resource.name).toBe("ship");
+    expect(parts.active[0]?.drifted).toBe(true);
+    expect(parts.active[0]?.driftChange).toBeUndefined();
+  });
+
+  it("labels hook chips as Event: script basename", () => {
+    const hook: ProfileContentsResource = {
+      type: "hook",
+      name: "SessionStart-1",
+      source: "~/.claude/settings.json",
+      hook: {
+        event: "sessionStart",
+        script: "~/.claude/hooks/ponytail-activate.js",
+      },
+    };
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(
+        contents({ resources: [hook], type_counts: { hook: 1 }, stack_resource_count: 1 }),
+      ),
+      liveRows: [],
+      notStaged: [],
+    });
+    expect(parts.inactive.map((row) => row.label)).toEqual([
+      "SessionStart: ponytail-activate.js",
+    ]);
   });
 });
 

@@ -167,4 +167,40 @@ describe("previewProfileApply cross-harness adds", () => {
       await context.cleanup();
     }
   });
+
+  it("does not list an identical-content skill relocate when live is already at ~/.claude/skills", async () => {
+    const context = await createInitializedTestContext("preview-skill-live-path");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      const skill = createResource({
+        type: "skill",
+        name: "dolibarr-api",
+        description: "",
+        content: "# dolibarr-api",
+        metadata: {},
+        source: "~/.claude/skills/dolibarr-api/SKILL.md",
+      });
+      addResourceToPlugin(profile.id, skill.id);
+
+      await applyProfilePlugin("work", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+
+      const preview = await previewProfileApply({
+        profile: "work",
+        scope: "home",
+        harness: "claude-code,cursor",
+      });
+
+      expect(
+        preview.files.changes.filter((change) =>
+          change.path.includes("dolibarr-api"),
+        ),
+      ).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

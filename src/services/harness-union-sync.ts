@@ -60,6 +60,7 @@ import {
 } from "./scanner.js";
 import {
   flattenUniqueFiles,
+  pinSkillEmitsToExistingLivePaths,
   preferSharedSkillEmits,
 } from "./shared-emit-paths.js";
 
@@ -235,7 +236,12 @@ export async function syncConfiguredHarnesses(
     rootPath,
     serializeOptions,
   );
-  const preferred = preferSharedSkillEmits(generated, platforms, target);
+  const preferred = pinSkillEmitsToExistingLivePaths(
+    rootPath,
+    preferSharedSkillEmits(generated, platforms, target),
+    platforms,
+    target,
+  );
 
   const extraResults: ApplyResult[] = [];
   let skillHubPlans: ReturnType<typeof planPluginSkillHub> = [];
@@ -259,7 +265,12 @@ export async function syncConfiguredHarnesses(
         serializeOptions,
       );
       extraResults.push(
-        ...preferSharedSkillEmits(extraGenerated, portablePlatforms, target),
+        ...pinSkillEmitsToExistingLivePaths(
+          rootPath,
+          preferSharedSkillEmits(extraGenerated, portablePlatforms, target),
+          portablePlatforms,
+          target,
+        ),
       );
     }
     skillHubPlans = planPluginSkillHub(

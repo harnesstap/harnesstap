@@ -192,10 +192,26 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).not.toContain("<Cloud size={16}");
   });
 
+  test("shows cached Discover hits immediately and header marketplace refresh progress", () => {
+    expect(workspaceSource).toContain("readDiscoverCatalogCache");
+    expect(workspaceSource).toContain("writeDiscoverCatalogCache");
+    expect(workspaceSource).toContain("discoverMarketplaceRefreshCopy");
+    expect(workspaceSource).toContain("nextMarketplaceHitsOnRefresh");
+    expect(workspaceSource).toContain("plugins: current[row.id]?.plugins ?? []");
+    expect(workspaceSource).not.toMatch(
+      /Promise\.all\(\[\s*fetchMarketplaces/,
+    );
+    expect(workspaceSource).toContain("{marketplaceRefreshCopy}");
+    expect(workspaceSource).toContain("aria-live=\"polite\"");
+    expect(sourcesSearchSource).toContain("Refreshing ${total - inflight}/${total} marketplaces");
+    expect(sourcesSearchSource).not.toContain("—");
+  });
+
   test("places workspace back before the Discover title like Library and Environments", () => {
     expect(workspaceSource).toContain("resources-panel-title-cluster");
     expect(workspaceSource).toContain("WorkspaceBackButton");
-    expect(workspaceSource).toContain("<span>Discover</span>");
+    expect(workspaceSource).toContain("Discover");
+    expect(workspaceSource).toContain("marketplaceRefreshCopy");
     expect(workspaceSource).toContain('aria-label="Discover"');
     expect(appSource).toContain("canWorkspaceBack={nav.hasHistory}");
     expect(appSource).toContain("onWorkspaceBack={nav.back}");
@@ -233,6 +249,20 @@ describe("sources workspace chrome", () => {
     );
     expect(designLock).toContain("Choose folder");
     expect(designLock).toContain("multi-select dropdown");
+  });
+
+  test("Add marketplace infers type instead of asking for platforms", () => {
+    expect(marketplacePanelSource).toContain("fetchMarketplaceTypeDetection");
+    expect(marketplacePanelSource).toContain('data-testid="marketplace-type-status"');
+    expect(marketplacePanelSource).toContain("Detecting type…");
+    expect(marketplacePanelSource).not.toContain("marketplace-platform-");
+    expect(marketplacePanelSource).not.toContain("<legend>Platforms</legend>");
+    const designLock = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+      "utf8",
+    );
+    expect(designLock).toContain("Type is inferred on URL/path change");
+    expect(designLock).not.toContain("and **Platforms**.");
   });
 
   test("keeps the marketplace panel open and shows a warning when refresh fails", () => {
@@ -434,7 +464,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(workspaceSource).toContain("cloudAuthenticated");
     expect(workspaceSource).toContain("setCloudAuthRequired(false)");
     expect(workspaceSource).toContain(
-      "[baseUrl, token, query, checkedRows, cloudAuthenticated]",
+      "[baseUrl, token, query, checkedRows, cloudAuthenticated, sourceInventoryReady]",
     );
   });
 

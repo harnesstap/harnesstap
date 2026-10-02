@@ -1,6 +1,8 @@
+import { formatResourceDisplayName } from "./resource-display";
 import { filterContentsResourcesBySearch } from "./resource-search";
 import {
   ALL_RESOURCE_TYPE_TAB,
+  RESOURCE_TYPE_TAB_ORDER,
   countResourceTypeTabs,
   foldResourceTypeTab,
   type TypeTabAttention,
@@ -17,8 +19,15 @@ export const PROFILE_INVENTORY_SECTION_ORDER = [
   "active",
 ] as const;
 
-/** Fixed row height for virtualization (type icon + name + action). */
-export const INVENTORY_ROW_HEIGHT_PX = 40;
+/** Compact chip height for wrap clusters (name + trailing icon actions). */
+export const INVENTORY_CHIP_HEIGHT_PX = 26;
+
+/**
+ * Wrap chips have no stable row height. Virtualize type-subsection blocks
+ * only when a status panel has this many items or more; otherwise paint the
+ * wrap like Harnesses.
+ */
+export const INVENTORY_CHIP_VIRTUALIZE_MIN_ITEMS = 80;
 
 /** Parallel Add all / Activate all workers per tick. */
 export const MUTATION_CHUNK_SIZE = 4;
@@ -187,7 +196,7 @@ export function partitionProfileInventory(
       section: "not_in_profile",
       key: `not-in-profile:${key}`,
       type: resource.type,
-      label: resource.name,
+      label: formatResourceDisplayName(resource),
       resource,
       drifted: false,
     });
@@ -206,20 +215,13 @@ export function partitionProfileInventory(
       section: onHarness ? "active" : "inactive",
       key: row.key,
       type: row.type,
-      label: resource.name,
+      label: formatResourceDisplayName(resource),
       resource,
       pluginId: row.kind === "resource" ? row.pluginId : undefined,
       pluginName: row.kind === "resource" ? row.pluginName : undefined,
       drifted: onHarness && drifted,
       ...(onHarness && driftChange ? { driftChange } : {}),
     };
-    if (!item.driftChange && item.drifted && resource.source) {
-      item.driftChange = {
-        path: resource.source,
-        type: "modified",
-        resource: { type: resource.type, name: resource.name },
-      };
-    }
     if (onHarness) {
       active.push(item);
     } else {
@@ -294,6 +296,42 @@ export function inventoryMembershipCaption(
     return null;
   }
   return `in ${owner}`;
+}
+
+export interface ProfileInventoryTypeGroup {
+  type: string;
+  items: ProfileInventoryItem[];
+}
+
+/** Type-tab order inside a status panel. Pins fold into Plugins. */
+export function groupProfileInventoryByType(
+  items: readonly ProfileInventoryItem[],
+): ProfileInventoryTypeGroup[] {
+  const buckets = new Map<string, ProfileInventoryItem[]>();
+  for (const item of items) {
+    const type = foldResourceTypeTab(item.type);
+    const list = buckets.get(type);
+    if (list) {
+      list.push(item);
+    } else {
+      buckets.set(type, [item]);
+    }
+  }
+  const groups: ProfileInventoryTypeGroup[] = [];
+  const seen = new Set<string>();
+  for (const type of RESOURCE_TYPE_TAB_ORDER) {
+    const list = buckets.get(type);
+    if (list && list.length > 0) {
+      groups.push({ type, items: list });
+      seen.add(type);
+    }
+  }
+  for (const [type, list] of buckets) {
+    if (!seen.has(type) && list.length > 0) {
+      groups.push({ type, items: list });
+    }
+  }
+  return groups;
 }
 
 export function filterProfileInventoryItems(

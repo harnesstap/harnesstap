@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { getPlatform } from "../platforms/registry.js";
 import type { SerializedFile, SerializerTarget } from "../types.js";
 import type { ApplyResult } from "./applier.js";
@@ -179,39 +181,121 @@ export function preferSharedSkillEmits(
   }
 
   for (const name of skillNames) {
-    const rewritten: SerializedFile[] = [];
-    const seenRel = new Set<string>();
-    for (const result of next) {
-      const parsed = result.files
-        .map((file) => parseSkillEmitPath(file.path))
-        .find((entry) => entry?.name === name);
-      if (!parsed) continue;
-      for (const file of rewriteSkillTree(
-        result.files,
-        parsed.skillsDir,
-        preferredDir,
-        name,
-      )) {
-        const rel = file.path.slice(`${preferredDir}${name}/`.length);
-        if (seenRel.has(rel)) continue;
-        seenRel.add(rel);
-        rewritten.push(file);
-      }
-    }
-    if (rewritten.length === 0) continue;
+    placeSkillOnHost(next, host, name, preferredDir, consume);
+  }
 
-    for (const result of next) {
-      if (consume.get(result.platformId)?.has(preferredDir)) {
-        result.files = dropSkillTree(result.files, name);
-      }
+  return next;
+}
+
+function existingSkillConsumeDir(
+  rootPath: string,
+  name: string,
+  consumeDirs: readonly string[],
+): string | undefined {
+  let best: string | undefined;
+  let bestRank = -1;
+  for (const dir of consumeDirs) {
+    if (!existsSync(join(rootPath, `${dir}${name}/SKILL.md`))) {
+      continue;
     }
-    const seen = new Set(host.files.map((file) => file.path.replace(/\\/g, "/")));
-    for (const file of rewritten) {
-      const path = file.path.replace(/\\/g, "/");
-      if (seen.has(path)) continue;
-      seen.add(path);
-      host.files.push({ ...file, path });
+    const rank = sharedSkillDirRank(dir);
+    if (rank > bestRank) {
+      best = dir;
+      bestRank = rank;
     }
+  }
+  return best;
+}
+
+function placeSkillOnHost(
+  results: ApplyResult[],
+  host: ApplyResult,
+  name: string,
+  destDir: string,
+  consume: ReadonlyMap<string, ReadonlySet<string>>,
+): void {
+  const rewritten: SerializedFile[] = [];
+  const seenRel = new Set<string>();
+  for (const result of results) {
+    const parsed = result.files
+      .map((file) => parseSkillEmitPath(file.path))
+      .find((entry) => entry?.name === name);
+    if (!parsed) continue;
+    for (const file of rewriteSkillTree(
+      result.files,
+      parsed.skillsDir,
+      destDir,
+      name,
+    )) {
+      const rel = file.path.slice(`${destDir}${name}/`.length);
+      if (seenRel.has(rel)) continue;
+      seenRel.add(rel);
+      rewritten.push(file);
+    }
+  }
+  if (rewritten.length === 0) {
+    return;
+  }
+
+  for (const result of results) {
+    if (consume.get(result.platformId)?.has(destDir)) {
+      result.files = dropSkillTree(result.files, name);
+    }
+  }
+  const seen = new Set(host.files.map((file) => file.path.replace(/\\/g, "/")));
+  for (const file of rewritten) {
+    const path = file.path.replace(/\\/g, "/");
+    if (seen.has(path)) continue;
+    seen.add(path);
+    host.files.push({ ...file, path });
+  }
+}
+
+/**
+ * When the skill already lives under a harness consume dir, emit there
+ * (and drop sibling copies). Apply writes in place instead of a fake relocate.
+ */
+export function pinSkillEmitsToExistingLivePaths(
+  rootPath: string,
+  results: ApplyResult[],
+  platformIds: readonly string[],
+  target: SerializerTarget,
+): ApplyResult[] {
+  const consumeDirs = [
+    ...new Set(platformIds.flatMap((id) => skillConsumeDirs(id, target))),
+  ];
+  if (consumeDirs.length === 0) {
+    return results;
+  }
+
+  const consume = new Map(
+    platformIds.map((id) => [id, new Set(skillConsumeDirs(id, target))]),
+  );
+  const skillNames = new Set<string>();
+  for (const result of results) {
+    for (const file of result.files) {
+      const parsed = parseSkillEmitPath(file.path);
+      if (parsed) skillNames.add(parsed.name);
+    }
+  }
+
+  const next = results.map((result) => ({
+    platformId: result.platformId,
+    files: [...result.files],
+  }));
+
+  for (const name of skillNames) {
+    const existingDir = existingSkillConsumeDir(rootPath, name, consumeDirs);
+    if (!existingDir) {
+      continue;
+    }
+    const host =
+      next.find((result) => consume.get(result.platformId)?.has(existingDir))
+      ?? next[0];
+    if (!host) {
+      continue;
+    }
+    placeSkillOnHost(next, host, name, existingDir, consume);
   }
 
   return next;

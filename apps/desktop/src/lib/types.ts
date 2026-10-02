@@ -29,6 +29,13 @@ export interface LibraryResource {
   type: string;
   namespace: string | null;
   description: string | null;
+  /** Hook event/command used for inventory chip labels. */
+  hook?: {
+    event: string;
+    script: string;
+    matcher?: string;
+    type?: string;
+  };
   /** On-disk path or import origin label. */
   source?: string | null;
   /** Canonical live file when `source` is a hub symlink or scan alias. */
@@ -294,6 +301,12 @@ export interface ProfileContentsResource {
   filesystem_path?: string | null;
   origin_kind?: string;
   origin_ref?: string;
+  hook?: {
+    event: string;
+    script: string;
+    matcher?: string;
+    type?: string;
+  };
   /** Present on not-staged rows: add is missing from the profile; update differs on disk. */
   not_staged_kind?: "add" | "update";
 }
@@ -706,6 +719,15 @@ export interface MarketplacePluginsResult {
 export interface MarketplaceSourceBranchesResult {
   branches: string[];
   defaultBranch: string | null;
+}
+
+export type MarketplaceTypeDetectStatus = "inferred" | "ambiguous" | "error";
+
+export interface MarketplaceTypeDetectResult {
+  status: MarketplaceTypeDetectStatus;
+  platforms: PluginMarketplacePlatform[];
+  manifests: string[];
+  message: string;
 }
 
 export interface ProfilePluginAddRequest {

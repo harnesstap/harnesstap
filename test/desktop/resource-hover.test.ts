@@ -114,6 +114,29 @@ describe("resource hover model", () => {
     });
   });
 
+  it("uses a short hook chip name and puts matcher/type/command in extras", () => {
+    const resource: ProfileContentsResource = {
+      type: "hook",
+      name: "PreToolUse-Bash",
+      source: "~/.claude/settings.json",
+      hook: {
+        event: "PreToolUse",
+        script: "rtk hook claude",
+        matcher: "Bash",
+        type: "command",
+      },
+    };
+    expect(hoverModelFromProfileResource(resource)).toMatchObject({
+      type: "hook",
+      name: "PreToolUse: rtk",
+      extra: [
+        { kind: "note", text: "matcher: Bash" },
+        { kind: "note", text: "type: command" },
+        { kind: "note", text: "rtk hook claude" },
+      ],
+    });
+  });
+
   it("uses the canonical live skill folder instead of a ~/.agents scan source", () => {
     const resource: ProfileContentsResource = {
       type: "skill",

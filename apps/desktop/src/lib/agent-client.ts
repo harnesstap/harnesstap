@@ -36,6 +36,7 @@ import type {
   MarketplaceListResult,
   MarketplacePluginsResult,
   MarketplaceSourceBranchesResult,
+  MarketplaceTypeDetectResult,
   ProfileApplyPreview,
   ProfileApplyPreviewRequest,
   ProfileAddAllResourcesRequest,
@@ -676,6 +677,22 @@ export async function fetchMarketplaceSourceBranches(
     return throwAgentError(response, "Could not list git branches");
   }
   return (await response.json()) as MarketplaceSourceBranchesResult;
+}
+
+export async function fetchMarketplaceTypeDetection(
+  baseUrl: string,
+  token: string | null,
+  source: string,
+): Promise<MarketplaceTypeDetectResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/marketplaces/detect?url=${encodeURIComponent(source)}`,
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not detect marketplace type");
+  }
+  return (await response.json()) as MarketplaceTypeDetectResult;
 }
 
 export async function fetchMarketplacePlugins(

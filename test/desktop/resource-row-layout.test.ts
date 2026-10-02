@@ -35,14 +35,17 @@ describe("resource row layout", () => {
     const list = { getBoundingClientRect: () => ({ top: 120 }) };
     const scroll = { getBoundingClientRect: () => ({ top: 40 }), scrollTop: 80 };
     expect(listScrollMargin(list, scroll)).toBe(160);
-    expect(inventorySectionSource).toContain("listScrollMargin");
-    expect(inventorySectionSource).toContain("ResizeObserver");
+    expect(inventorySectionSource).toContain("groupProfileInventoryByType");
+    expect(inventorySectionSource).toContain("INVENTORY_CHIP_VIRTUALIZE_MIN_ITEMS");
     expect(inventorySectionSource).toContain("inventory-section-collapse");
     expect(inventorySectionSource).not.toContain('addEventListener("scroll"');
+    expect(inventorySectionSource).toContain("listScrollMargin");
+    expect(inventorySectionSource).toContain("ResizeObserver");
     expect(stylesSource).toContain(".inventory-section.contents-block");
     expect(stylesSource).toContain(
       ".inventory-section-collapse[data-state=\"open\"] > .m-collapse-inner",
     );
+    expect(stylesSource).toContain(".inventory-chip-cluster");
   });
 
   it("does not lock virtual wrappers to the estimated height", () => {
@@ -67,11 +70,11 @@ describe("resource row layout", () => {
     expect(virtualInner).not.toMatch(/height:\s*100%/);
 
     const inventoryBlocks = [
-      ...stylesSource.matchAll(/\.resource-row\.inventory-row \{[^}]+\}/g),
+      ...stylesSource.matchAll(/\.inventory-chip \{[^}]+\}/g),
     ].map((match) => match[0]);
     expect(inventoryBlocks.length).toBeGreaterThan(0);
     for (const block of inventoryBlocks) {
-      expect(block).toContain("height: auto;");
+      expect(block).toContain("height: 26px;");
       expect(block).not.toMatch(/^\s*height:\s*calc/m);
     }
   });
@@ -84,10 +87,12 @@ describe("resource row layout", () => {
     expect(libraryListSource).not.toContain("height: `${virtualRow.size}px`");
     expect(libraryListSource).not.toContain("height,");
 
-    for (const source of [inventorySectionSource, addModalSource]) {
-      expect(source).toContain("measureElement");
-      expect(source).toContain("resourceRowVirtualStyle");
-      expect(source).not.toContain("height: `${virtualRow.size}px`");
-    }
+    expect(addModalSource).toContain("measureElement");
+    expect(addModalSource).toContain("resourceRowVirtualStyle");
+    expect(addModalSource).not.toContain("height: `${virtualRow.size}px`");
+    expect(inventorySectionSource).toContain("measureElement");
+    expect(inventorySectionSource).toContain("resourceRowVirtualStyle");
+    expect(inventorySectionSource).toContain("virtualizeGroups");
+    expect(inventorySectionSource).not.toContain("height: `${virtualRow.size}px`");
   });
 });

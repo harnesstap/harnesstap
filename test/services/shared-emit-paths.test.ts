@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   flattenUniqueFiles,
+  pinSkillEmitsToExistingLivePaths,
   preferSharedSkillEmits,
   skillConsumeDirs,
 } from "../../src/services/shared-emit-paths.ts";
@@ -96,5 +100,48 @@ describe("preferSharedSkillEmits", () => {
     expect(paths).toContain(
       ".claude/plugins/cache/demo/demo/1.0.0/skills/hello/SKILL.md",
     );
+  });
+});
+
+describe("pinSkillEmitsToExistingLivePaths", () => {
+  it("keeps an identical skill at the live user path instead of relocating it", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-pin-skill-live-"));
+    try {
+      mkdirSync(join(root, ".claude/skills/dolibarr-api"), { recursive: true });
+      writeFileSync(
+        join(root, ".claude/skills/dolibarr-api/SKILL.md"),
+        "# dolibarr-api\n",
+        "utf-8",
+      );
+
+      const pinned = pinSkillEmitsToExistingLivePaths(
+        root,
+        preferSharedSkillEmits(
+          [
+            {
+              platformId: "claude-code",
+              files: [
+                { path: ".claude/skills/dolibarr-api/SKILL.md", content: "# dolibarr-api\n" },
+              ],
+            },
+            {
+              platformId: "cursor",
+              files: [
+                { path: ".cursor/skills/dolibarr-api/SKILL.md", content: "# dolibarr-api\n" },
+              ],
+            },
+          ],
+          ["claude-code", "cursor"],
+          "global",
+        ),
+        ["claude-code", "cursor"],
+        "global",
+      );
+
+      const paths = flattenUniqueFiles(pinned).map((file) => file.path);
+      expect(paths).toEqual([".claude/skills/dolibarr-api/SKILL.md"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

@@ -629,11 +629,6 @@
   min-width: 0;
 }
 
-.resource-row.inventory-row {
-  align-items: center;
-  height: auto;
-}
-
 .resource-summary {
   display: flex;
   flex-wrap: wrap;

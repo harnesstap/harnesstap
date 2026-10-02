@@ -12,6 +12,7 @@ import {
 } from "../services/host-marketplaces.js";
 import { addMarketplace } from "../services/marketplace-registry.js";
 import { listMarketplaceSourceBranches } from "../services/marketplace-source-branches.js";
+import { detectMarketplaceType } from "../services/marketplace-type-detect.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
 
@@ -169,6 +170,24 @@ export function handleMarketplacesBranches(
       { status: 400 },
     );
   }
+}
+
+export async function handleMarketplacesDetect(
+  request: Request,
+  token: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) return authError;
+
+  const source = new URL(request.url).searchParams.get("url") ?? "";
+  if (!source.trim()) {
+    return jsonResponse(
+      { error: "invalid_url", message: "url is required" },
+      { status: 400 },
+    );
+  }
+
+  return jsonResponse(await detectMarketplaceType(source));
 }
 
 export function handleMarketplacePluginsList(

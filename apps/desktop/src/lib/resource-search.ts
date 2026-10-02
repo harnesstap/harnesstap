@@ -205,7 +205,7 @@ export function filterContentsResourcesBySearch(
       return false;
     }
     return matchesListSearchQuery(
-      `${resource.name} ${resource.type} ${resource.source}`,
+      `${resource.name} ${formatResourceDisplayName(resource)} ${resource.type} ${resource.source}`,
       textQuery,
     );
   });

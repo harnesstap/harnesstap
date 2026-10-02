@@ -5,24 +5,36 @@ import {
   profileInventoryOpenTarget,
   type ProfileInventoryItem,
 } from "../../lib/profile-inventory";
-import { hoverModelFromProfileResource } from "../../lib/resource-hover";
+import {
+  hoverModelFromProfileResource,
+  type ResourceHoverModel,
+} from "../../lib/resource-hover";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { IconActionButton } from "../IconActionButton";
-import { TypeIcon } from "../TypeIcon";
 import { Checkbox } from "../ui/checkbox";
-import {
-  ResourceRowDescription,
-  ResourceRowIdentity,
-  ResourceRowLeading,
-  ResourceRowRoot,
-  ResourceRowTrailing,
-} from "../ui/resource-row";
+import { ResourceHoverCard } from "../ui/resource-hover-card";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
-import { ICON_SIZE, resourceDetailTarget } from "./shared";
+import { resourceDetailTarget } from "./shared";
 
-function stopRowActivate(event: MouseEvent) {
+const CHIP_STATUS_GLYPH_PX = 12;
+const CHIP_ACTION_ICON_PX = 14;
+
+function stopChipActivate(event: MouseEvent) {
   event.stopPropagation();
+}
+
+function chipHover(
+  item: ProfileInventoryItem,
+  profileName: string | null,
+): ResourceHoverModel {
+  const model = hoverModelFromProfileResource(item.resource);
+  model.showName = true;
+  const caption = inventoryMembershipCaption(item.pluginName, profileName);
+  if (caption) {
+    model.extra = [...model.extra, { kind: "note", text: caption }];
+  }
+  return model;
 }
 
 export interface InventoryRowProps {
@@ -57,7 +69,6 @@ export function InventoryRow({
   onDiff,
 }: InventoryRowProps) {
   const inProfile = item.section !== "not_in_profile";
-  const membershipCaption = inventoryMembershipCaption(item.pluginName, profileName);
   const drifted = item.section === "active" && item.drifted;
   const showActivate =
     !editMode && item.section === "inactive" && selectedIsActive && Boolean(onActivate);
@@ -75,40 +86,38 @@ export function InventoryRow({
 
   let action: ReactNode = null;
   if (pending) {
-    action = <ButtonSpinner size={ICON_SIZE} />;
-  } else if (drifted && onDiff) {
+    action = <ButtonSpinner size={CHIP_ACTION_ICON_PX} />;
+  } else if (drifted && onDiff && item.driftChange) {
     action = (
       <IconActionButton
         className="file-change-diff-btn"
         label={`View changes for ${item.label}`}
         title="View changes"
         onClick={onDiff}
-        icon={<FileDiff size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        icon={<FileDiff size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
       />
     );
   } else if (item.section === "not_in_profile" && (onAdd || onDiscard)) {
     action = (
-      <span className="inventory-row-not-in-profile-actions">
+      <span className="inventory-chip-not-in-profile-actions">
         {onAdd ? (
           <IconActionButton
             className="untracked-add-btn"
-            showLabel
-            spinnerSize={ICON_SIZE}
+            spinnerSize={CHIP_ACTION_ICON_PX}
             label="Add"
             title={`Add ${item.label} to this profile`}
             onClick={onAdd}
-            icon={<Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+            icon={<Plus size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
           />
         ) : null}
         {onDiscard ? (
           <IconActionButton
             className="profile-remove-action"
-            showLabel
-            spinnerSize={ICON_SIZE}
+            spinnerSize={CHIP_ACTION_ICON_PX}
             label="Discard"
             title={`Discard ${item.label} from live setup`}
             onClick={onDiscard}
-            icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+            icon={<X size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
           />
         ) : null}
       </span>
@@ -116,31 +125,32 @@ export function InventoryRow({
   } else if (showActivate && onActivate) {
     action = (
       <IconActionButton
-        showLabel
-        spinnerSize={ICON_SIZE}
+        spinnerSize={CHIP_ACTION_ICON_PX}
         label="Activate"
         title={`Activate ${item.label}`}
         onClick={onActivate}
-        icon={<Power size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+        icon={<Power size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
       />
     );
   }
 
+  const activateChip = showSelect && onToggleSelected ? onToggleSelected : openRow;
+
   return (
-    <ResourceRowRoot
-      hover={hoverModelFromProfileResource(item.resource)}
-      testId={`resource-row-${item.resource.name}`}
-      className={[
-        "inventory-row",
-        drifted ? "inventory-row-drifted m-status" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      onActivate={showSelect && onToggleSelected ? onToggleSelected : openRow}
-    >
-      <ResourceRowLeading className="inventory-row-lead">
+    <ResourceHoverCard model={chipHover(item, profileName)}>
+      <div
+        className={[
+          "inventory-chip",
+          drifted ? "inventory-chip-drifted m-status" : "",
+          selected ? "is-selected" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-testid={`resource-row-${item.resource.name}`}
+        onClick={activateChip}
+      >
         {showSelect && onToggleSelected ? (
-          <span className="resource-row-checkbox" onClick={stopRowActivate}>
+          <span className="resource-row-checkbox" onClick={stopChipActivate}>
             <Checkbox
               data-testid={`inventory-row-select-${item.key}`}
               aria-label={`Select ${item.label}`}
@@ -155,28 +165,31 @@ export function InventoryRow({
         {drifted ? (
           <ChromeTooltip content="Active, differs from disk" side="top">
             <span
-              className="inventory-row-icon inventory-status-glyph m-status"
+              className="inventory-chip-status inventory-status-glyph m-status"
               aria-label="Active, differs from disk"
               role="img"
             >
-              <CircleAlert size={ICON_SIZE} strokeWidth={2} aria-hidden />
+              <CircleAlert size={CHIP_STATUS_GLYPH_PX} strokeWidth={2} aria-hidden />
             </span>
           </ChromeTooltip>
         ) : null}
-        <span className="inventory-row-icon" aria-hidden>
-          <TypeIcon type={item.type} />
-        </span>
-      </ResourceRowLeading>
-      <ResourceRowIdentity label={item.label}>
-        {membershipCaption ? (
-          <ResourceRowDescription>{membershipCaption}</ResourceRowDescription>
+        <button
+          type="button"
+          className="inventory-chip-name"
+          title={item.label}
+          onClick={(event) => {
+            event.stopPropagation();
+            activateChip();
+          }}
+        >
+          {item.label}
+        </button>
+        {action ? (
+          <span className="inventory-chip-actions" onClick={stopChipActivate}>
+            {action}
+          </span>
         ) : null}
-      </ResourceRowIdentity>
-      <ResourceRowTrailing>
-        <span className="inventory-row-action" onClick={stopRowActivate}>
-          {action}
-        </span>
-      </ResourceRowTrailing>
-    </ResourceRowRoot>
+      </div>
+    </ResourceHoverCard>
   );
 }
