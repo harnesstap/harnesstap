@@ -50,7 +50,11 @@ describe("refreshGitSource GitHub auth", () => {
     });
     expect(result.ok).toBe(true);
     const clone = seen.find((args) => args.includes("clone")) ?? [];
-    expect(clone.some((arg) => arg.includes("AUTHORIZATION: bearer ghu_clone"))).toBe(true);
+    const extra = clone.find((arg) => arg.includes("AUTHORIZATION: basic "));
+    expect(extra).toBeDefined();
+    const encoded = extra?.split("AUTHORIZATION: basic ")[1] ?? "";
+    expect(Buffer.from(encoded, "base64").toString("utf8")).toBe("x-access-token:ghu_clone");
+    expect(clone.join(" ")).not.toContain("AUTHORIZATION: bearer");
     expect(clone).toContain("https://github.com/acme/private.git");
     expect(clone.join(" ")).not.toContain("ghu_clone@github.com");
   });

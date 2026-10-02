@@ -4,6 +4,7 @@ import path from "node:path";
 import { saveGithubSession } from "../../src/config/github-session.ts";
 import {
   githubGitConfigArgs,
+  githubGitHttpAuthorizationHeader,
   githubHttpsRemoteForAuth,
   resetGithubTokenLookups,
   resolveGithubAccessToken,
@@ -97,9 +98,16 @@ describe("resolveGithubAccessToken", () => {
 });
 
 describe("github git auth helpers", () => {
-  it("adds an extraheader and never a token in the URL", () => {
+  it("adds a basic x-access-token extraheader and never a token in the URL", () => {
     const args = githubGitConfigArgs("ghu_secret");
-    expect(args.join(" ")).toContain("AUTHORIZATION: bearer ghu_secret");
+    const extra = args.find((arg) => arg.includes("AUTHORIZATION: basic "));
+    expect(extra).toBe(
+      `http.https://github.com/.extraheader=${githubGitHttpAuthorizationHeader("ghu_secret")}`,
+    );
+    expect(args).toContain("http.https://github.com/.extraheader=");
+    const encoded = extra?.split("AUTHORIZATION: basic ")[1] ?? "";
+    expect(Buffer.from(encoded, "base64").toString("utf8")).toBe("x-access-token:ghu_secret");
+    expect(args.join(" ")).not.toContain("AUTHORIZATION: bearer");
     expect(args.join(" ")).not.toContain("ghu_secret@github.com");
     expect(githubHttpsRemoteForAuth("git@github.com:acme/private.git", "ghu_secret")).toBe(
       "https://github.com/acme/private.git",

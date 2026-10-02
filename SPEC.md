@@ -430,7 +430,7 @@ Repositories may declare named profiles, environments, and plugin composition in
 
 ### `github` subcommands
 
-GitHub login is **not** HarnessTap Cloud `auth`. It stores a GitHub App user-to-server token for private GitHub content (marketplace detect, clone, `ls-remote`). Tokens are never written into clone URLs; git uses an `http.extraHeader` Authorization bearer. Device flow uses the public App client id (`Iv23liiaeCAUoGKe2uUx`, override `HARNESSTAP_GITHUB_APP_CLIENT_ID`). The App client secret is never committed; if GitHub requires it for token exchange or refresh, set `HARNESSTAP_GITHUB_APP_CLIENT_SECRET`.
+GitHub login is **not** HarnessTap Cloud `auth`. It stores a GitHub App user-to-server token for private GitHub content (marketplace detect, clone, `ls-remote`). Tokens are never written into clone URLs; git uses an `http.extraHeader` Authorization basic value (`x-access-token:<token>`). Device flow uses the public App client id (`Iv23liiaeCAUoGKe2uUx`, override `HARNESSTAP_GITHUB_APP_CLIENT_ID`). The App client secret is never committed; if GitHub requires it for token exchange or refresh, set `HARNESSTAP_GITHUB_APP_CLIENT_SECRET`. Private Contents also require the App to be installed on the target account or org.
 
 Credential precedence for GitHub HTTPS reads: `HARNESSTAP_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKEN` → stored `github-session.json` → `gh auth token` → ambient Git.
 

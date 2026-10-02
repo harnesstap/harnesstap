@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { spawnSync } from "node:child_process";
 import {
   loadGithubSession,
@@ -159,6 +160,17 @@ export async function ensureGithubSessionAccess(
   }
 }
 
+/**
+ * Git HTTPS Authorization extraheader for GitHub tokens (PAT, OAuth, App
+ * user-to-server `ghu_`, installation `ghs_`). GitHub git-over-HTTP expects
+ * Basic `x-access-token:TOKEN`, not Bearer. A rejected Bearer is worse than
+ * anonymous access for public remotes.
+ */
+export function githubGitHttpAuthorizationHeader(token: string): string {
+  const basic = Buffer.from(`x-access-token:${token}`, "utf8").toString("base64");
+  return `AUTHORIZATION: basic ${basic}`;
+}
+
 export function githubGitConfigArgs(token: string | null | undefined): string[] {
   const args = ["-c", "protocol.file.allow=always"];
   if (!token) {
@@ -168,10 +180,9 @@ export function githubGitConfigArgs(token: string | null | undefined): string[] 
   if (!sanitized) {
     return args;
   }
-  args.push(
-    "-c",
-    `http.https://github.com/.extraheader=AUTHORIZATION: bearer ${sanitized}`,
-  );
+  const extraHeader = `http.https://github.com/.extraheader=${githubGitHttpAuthorizationHeader(sanitized)}`;
+  // Clear any inherited extraheader, then set ours (same pattern as `gh`).
+  args.push("-c", "http.https://github.com/.extraheader=", "-c", extraHeader);
   return args;
 }
 

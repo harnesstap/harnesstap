@@ -103,7 +103,11 @@ describe("listMarketplaceSourceBranches", () => {
         defaultBranch: "main",
       });
       const args = seen[0] ?? [];
-      expect(args.some((arg) => arg.includes("AUTHORIZATION: bearer ghu_detect"))).toBe(true);
+      const extra = args.find((arg) => arg.includes("AUTHORIZATION: basic "));
+      expect(extra).toBeDefined();
+      const encoded = extra?.split("AUTHORIZATION: basic ")[1] ?? "";
+      expect(Buffer.from(encoded, "base64").toString("utf8")).toBe("x-access-token:ghu_detect");
+      expect(args.join(" ")).not.toContain("AUTHORIZATION: bearer");
       expect(args).toContain("https://github.com/acme/private.git");
       expect(args.join(" ")).not.toContain("ghu_detect@");
     } finally {
