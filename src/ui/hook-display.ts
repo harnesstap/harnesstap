@@ -54,12 +54,7 @@ export interface HookDisplayInput {
   matcher?: string | null;
   hookType?: string | null;
   hook?: HookInventoryWire | null;
-  metadata?: {
-    event?: unknown;
-    script?: unknown;
-    matcher?: unknown;
-    hook_entry?: unknown;
-  } | null;
+  metadata?: unknown;
 }
 
 function compactEventKey(value: string): string {
@@ -77,13 +72,18 @@ export function normalizeHookEventName(event: string): string {
     return known;
   }
   if (/^[A-Za-z][A-Za-z0-9]*$/.test(trimmed)) {
-    return `${trimmed[0]!.toUpperCase()}${trimmed.slice(1)}`;
+    return capitalizeFirst(trimmed);
   }
   return trimmed
     .split(/[_\-\s]+/)
     .filter(Boolean)
-    .map((part) => `${part[0]!.toUpperCase()}${part.slice(1)}`)
+    .map(capitalizeFirst)
     .join("");
+}
+
+function capitalizeFirst(value: string): string {
+  const head = value.slice(0, 1);
+  return `${head.toUpperCase()}${value.slice(1)}`;
 }
 
 export function eventFromHookResourceName(name: string | null | undefined): string | undefined {
@@ -177,8 +177,22 @@ function hookEntryType(entry: unknown): string {
   return stringField((entry as { type?: unknown }).type);
 }
 
+type HookMetadataFields = {
+  event?: unknown;
+  script?: unknown;
+  matcher?: unknown;
+  hook_entry?: unknown;
+};
+
+function asHookMetadata(value: unknown): HookMetadataFields | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as HookMetadataFields;
+}
+
 export function hookDisplayInputFromResource(resource: HookDisplayInput): HookDisplayInput {
-  const metadata = resource.metadata ?? undefined;
+  const metadata = asHookMetadata(resource.metadata);
   const hook = resource.hook ?? undefined;
   const event = resource.event ?? hook?.event ?? stringField(metadata?.event);
   const script =
@@ -210,10 +224,7 @@ export function hookInventoryWireFromResource(resource: {
   if (resource.type !== "hook") {
     return undefined;
   }
-  const metadata =
-    resource.metadata && typeof resource.metadata === "object" && !Array.isArray(resource.metadata)
-      ? (resource.metadata as HookDisplayInput["metadata"])
-      : undefined;
+  const metadata = asHookMetadata(resource.metadata);
   const event = stringField(metadata?.event);
   const script = stringField(metadata?.script) || stringField(resource.content);
   if (!event && !script) {

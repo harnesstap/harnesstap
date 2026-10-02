@@ -73,7 +73,7 @@ export type ResourceDisplaySource = {
   source?: string | null;
   content?: string | null;
   hook?: HookDisplayInput["hook"];
-  metadata?: HookDisplayInput["metadata"];
+  metadata?: unknown;
 };
 
 export function resourceHumanName(resource: ResourceDisplaySource): string {
