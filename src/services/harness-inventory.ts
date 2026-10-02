@@ -9,6 +9,7 @@ import type {
   RelatedPlatformLocation,
   Resource,
 } from "../types.js";
+import { hookInventoryWireFromResource } from "../ui/hook-display.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { inventorySourceForMatching } from "./claude-local-mcp.js";
 import { isPluginTranslatedResource } from "./plugin-translation-marker.js";
@@ -55,6 +56,12 @@ export interface HarnessLocationResource {
   origin_kind: string;
   namespace: string;
   origin_ref: string | null;
+  hook?: {
+    event: string;
+    script: string;
+    matcher?: string;
+    type?: string;
+  };
 }
 
 export interface HarnessLocationEntry {
@@ -402,6 +409,7 @@ export function classifyDiskPresence(input: {
 
 function toLocationResource(resource: Resource): HarnessLocationResource {
   const filesystemPath = resolveExistingResourceFilesystemPath(resource);
+  const hook = hookInventoryWireFromResource(resource);
   return {
     id: resource.id,
     type: resource.type,
@@ -412,6 +420,7 @@ function toLocationResource(resource: Resource): HarnessLocationResource {
     origin_kind: resource.origin_kind,
     namespace: resource.namespace ?? "",
     origin_ref: resource.origin_ref || null,
+    ...(hook ? { hook } : {}),
   };
 }
 

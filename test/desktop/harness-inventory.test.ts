@@ -43,7 +43,7 @@ function row(
   type: string,
   name: string,
   source: string,
-  extra: Partial<Pick<HarnessResourceRow, "id" | "namespace" | "origin_kind" | "origin_ref">> = {},
+  extra: Partial<Pick<HarnessResourceRow, "id" | "namespace" | "origin_kind" | "origin_ref" | "hook">> = {},
 ): HarnessResourceRow {
   return {
     id: extra.id ?? `${type}-${extra.origin_ref ?? name}`,
@@ -54,6 +54,7 @@ function row(
     origin_kind: extra.origin_kind ?? null,
     namespace: extra.namespace ?? null,
     origin_ref: extra.origin_ref ?? null,
+    ...(extra.hook ? { hook: extra.hook } : {}),
   };
 }
 
@@ -580,6 +581,18 @@ describe("filterHarnessLocations", () => {
     expect(harnessResourceBadgeLabel(colliding[0]!, dupes)).toBe(
       "superpowers@claude-plugins-official",
     );
+    expect(
+      harnessResourceBadgeLabel(
+        row("hook", "SessionStart-1", "~/.claude/settings.json", {
+          hook: {
+            event: "sessionStart",
+            script: "~/.claude/hooks/ponytail-activate.js",
+            matcher: "",
+            type: "command",
+          },
+        }),
+      ),
+    ).toBe("SessionStart: ponytail-activate.js");
   });
 
   it("omits empty harness sections and type groups with no resources", () => {
@@ -729,6 +742,54 @@ describe("parseHarnessInventory", () => {
         harnesses: [],
       }),
     ).toEqual({ selection: null, catalog: [] });
+  });
+
+  it("keeps hook inventory fields for chip labels", () => {
+    const parsed = parseHarnessInventory({
+      global: { main_harness: "claude-code", alias_harnesses: [] },
+      root: "/home/tester",
+      harnesses: [
+        {
+          id: "claude-code",
+          name: "Claude Code",
+          supported: true,
+          supports: ["hooks"],
+          disk: "detected",
+          locations: [
+            {
+              path: "~/.claude/settings.json",
+              surfaces: ["hooks"],
+              on_disk: true,
+              resources: [
+                {
+                  id: "h1",
+                  type: "hook",
+                  name: "PreToolUse-Bash",
+                  description: "",
+                  source: "~/.claude/settings.json",
+                  origin_kind: null,
+                  origin_ref: null,
+                  hook: {
+                    event: "PreToolUse",
+                    script: "rtk hook claude",
+                    matcher: "Bash",
+                    type: "command",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const hookRow = parsed.catalog[0]?.locations[0]?.resources[0];
+    expect(hookRow?.hook).toEqual({
+      event: "PreToolUse",
+      script: "rtk hook claude",
+      matcher: "Bash",
+      type: "command",
+    });
+    expect(harnessResourceBadgeLabel(hookRow!)).toBe("PreToolUse: rtk");
   });
 
   it("rejects a body with an unknown disk value", () => {

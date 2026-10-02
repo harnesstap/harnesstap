@@ -7,7 +7,11 @@ import {
 import { relatedHarnessesForResourceType } from "./harness-meta";
 import { libraryFilterType } from "./library-list";
 import { isPluginTypeResource } from "./plugin-ref-detail";
-import { packageDirectoryDisplayPath } from "./resource-display";
+import {
+  formatHookInventoryTooltipLines,
+  formatResourceDisplayName,
+  packageDirectoryDisplayPath,
+} from "./resource-display";
 import { resourceDisplayName } from "./resource-search";
 import type {
   DriftFileChange,
@@ -125,6 +129,25 @@ export function resourceHoverCardHasContent(model: ResourceHoverModel): boolean 
   return false;
 }
 
+export function hookHoverExtras(resource: {
+  type?: string | null;
+  name?: string | null;
+  hook?: {
+    event: string;
+    script: string;
+    matcher?: string;
+    type?: string;
+  };
+}): ResourceHoverExtra[] {
+  if (resource.type !== "hook") {
+    return [];
+  }
+  return formatHookInventoryTooltipLines({
+    name: resource.name,
+    hook: resource.hook,
+  }).map((text) => ({ kind: "note" as const, text }));
+}
+
 export function hoverModelFromLibraryResource(
   resource: LibraryResource,
   duplicateNames?: ReadonlySet<string>,
@@ -134,7 +157,7 @@ export function hoverModelFromLibraryResource(
     type: filterType,
     name: resourceDisplayName(resource, duplicateNames),
     harnessIds: [...relatedHarnessesForResourceType(filterType)],
-    extra: [],
+    extra: hookHoverExtras(resource),
   };
   const path = listRowHoverPath(resource);
   if (path) {
@@ -157,9 +180,9 @@ export function hoverModelFromProfileResource(
 ): ResourceHoverModel {
   const model: ResourceHoverModel = {
     type: resource.type,
-    name: resource.name,
+    name: formatResourceDisplayName(resource),
     harnessIds: [...relatedHarnessesForResourceType(resource.type)],
-    extra: [],
+    extra: hookHoverExtras(resource),
   };
   const path = listRowHoverPath(resource);
   if (path) {

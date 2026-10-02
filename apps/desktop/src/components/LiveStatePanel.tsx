@@ -49,6 +49,7 @@ import {
   resolveProfileResourceStack,
 } from "../lib/profile-resource-stack";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
+import { formatResourceDisplayName } from "../lib/resource-display";
 import {
   hoverModelFromContentsDiffItem,
   hoverModelFromFileChangeChild,
@@ -570,11 +571,11 @@ function UntrackedResourceRow({
       {canOpen && onOpenResource ? (
         <ResourceRowIdentity
           type={resource.type}
-          label={resource.name}
+          label={formatResourceDisplayName(resource)}
           onOpen={() =>
             onOpenResource({
               selector,
-              label: resource.name,
+              label: formatResourceDisplayName(resource),
               pathHint: resource.source,
             })
           }
@@ -584,7 +585,7 @@ function UntrackedResourceRow({
           </ResourceRowDescription>
         </ResourceRowIdentity>
       ) : (
-        <ResourceRowIdentity type={resource.type} label={resource.name}>
+        <ResourceRowIdentity type={resource.type} label={formatResourceDisplayName(resource)}>
           <ResourceRowDescription>
             {typeLabel} · {statusLabel}
           </ResourceRowDescription>
@@ -719,7 +720,7 @@ function ProfileMembershipResourceRow({
         <TypeIcon type={resource.type} />
       </ResourceRowLeading>
       <ResourceRowIdentity
-        label={resource.name}
+        label={formatResourceDisplayName(resource)}
         onOpen={() => onOpenResource(resourceDetailTarget(resource))}
       />
       {membershipCaption || nested ? (
