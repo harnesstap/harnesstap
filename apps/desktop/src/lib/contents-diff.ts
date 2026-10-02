@@ -114,23 +114,33 @@ function fileChangePathBasename(path: string): string {
   return slash === -1 ? path : path.slice(slash + 1);
 }
 
+function isMcpConfigFileChangePath(path: string): boolean {
+  const normalized = path.replace(/\\/g, "/");
+  return (
+    /(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(normalized)
+    || /(^|\/)\.claude\.json$/i.test(normalized)
+    || /(^|\/)opencode\.json$/i.test(normalized)
+    || /(^|\/)\.codex\/config\.toml$/i.test(normalized)
+    || /(^|\/)\.grok\/config\.toml$/i.test(normalized)
+    || /(^|\/)\.config\/goose\/config\.ya?ml$/i.test(normalized)
+    || /(^|\/)\.config\/muse\/settings\.json$/i.test(normalized)
+    || /(^|\/)\.dsh\/cordis\.patch\.yml$/i.test(normalized)
+  );
+}
+
 /**
  * Map a File changes path to a resource type when apply preview omits
  * `resource` metadata (instruction files are often path-only).
  */
 export function inferFileChangeType(path: string): string | undefined {
   const normalized = path.replace(/\\/g, "/");
-  if (
-    /(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(normalized)
-    || /(^|\/)\.claude\.json$/i.test(normalized)
-    || /(^|\/)opencode\.json$/i.test(normalized)
-  ) {
+  if (isMcpConfigFileChangePath(normalized)) {
     return "mcp_server";
   }
   if (/(^|\/)skills\/[^/]+\/SKILL\.md$/i.test(normalized)) {
     return "skill";
   }
-  if (/(^|\/)agents\/[^/]+\.(md|toml)$/i.test(normalized)) {
+  if (/(^|\/)(agents|\.agent-presets)\/[^/]+\.(md|toml)$/i.test(normalized)) {
     return "agent";
   }
   if (/(^|\/)commands?\/[^/]+\.md$/i.test(normalized)) {
@@ -164,7 +174,9 @@ export function inferFileChangeResource(
       return match?.[1] ? { type, name: match[1] } : null;
     }
     case "agent": {
-      const match = normalized.match(/(?:^|\/)agents\/([^/]+)\.(md|toml)$/i);
+      const match = normalized.match(
+        /(?:^|\/)(?:agents|\.agent-presets)\/([^/]+?)(?:\.agent)?\.(md|toml)$/i,
+      );
       return match?.[1] ? { type, name: match[1] } : null;
     }
     case "command": {
@@ -206,6 +218,17 @@ function normalizeComparablePath(path: string): string {
   return path.replace(/\\/g, "/").replace(/^~\//, "").replace(/^\.\//, "");
 }
 
+function pathsReferToSameManagedFile(left: string, right: string): boolean {
+  if (left === right) {
+    return true;
+  }
+  return left.endsWith(`/${right}`) || right.endsWith(`/${left}`);
+}
+
+function namesEqualIgnoreCase(left: string, right: string): boolean {
+  return left.toLowerCase() === right.toLowerCase();
+}
+
 function resourceManagedPathCandidates(
   resource: Pick<ProfileContentsResource, "source" | "filesystem_path">,
 ): string[] {
@@ -228,7 +251,7 @@ function resourceManagedPathCandidates(
 
 function fileChangeLeafName(path: string): string | null {
   const base = fileChangePathBasename(path.replace(/\\/g, "/"));
-  const match = base.match(/^(.+)\.(md|toml)$/i);
+  const match = base.match(/^(.+?)(?:\.agent)?\.(md|toml)$/i);
   return match?.[1] ?? null;
 }
 
@@ -237,24 +260,53 @@ export function fileChangeMatchesResource(
   resource: Pick<ProfileContentsResource, "type" | "name" | "source" | "filesystem_path">,
   change: DriftFileChange,
 ): boolean {
-  if (change.resource?.type === resource.type && change.resource.name === resource.name) {
+  if (
+    change.resource?.type === resource.type
+    && namesEqualIgnoreCase(change.resource.name, resource.name)
+  ) {
     return true;
   }
   const changePath = normalizeComparablePath(change.path);
   const resourcePaths = resourceManagedPathCandidates(resource);
-  if (resourcePaths.includes(changePath)) {
+  if (resourcePaths.some((path) => pathsReferToSameManagedFile(path, changePath))) {
     return true;
   }
   if (resource.type === "mcp_server" && inferFileChangeType(change.path) === "mcp_server") {
-    const pinnedMcpPaths = resourcePaths.filter(
-      (path) => inferFileChangeType(path) === "mcp_server",
-    );
-    return pinnedMcpPaths.length === 0 || pinnedMcpPaths.includes(changePath);
+    return true;
   }
   if (resource.type === "agent" && inferFileChangeType(change.path) === "agent") {
-    return fileChangeLeafName(change.path) === resource.name;
+    const leaf = fileChangeLeafName(change.path);
+    if (!leaf) {
+      return false;
+    }
+    if (namesEqualIgnoreCase(leaf, resource.name)) {
+      return true;
+    }
+    return resourcePaths.some((path) => {
+      const sourceLeaf = fileChangeLeafName(path);
+      return sourceLeaf !== null && namesEqualIgnoreCase(sourceLeaf, leaf);
+    });
   }
   return false;
+}
+
+export function preferredFileChangeForResource(
+  resource: Pick<ProfileContentsResource, "type" | "name" | "source" | "filesystem_path">,
+  fileChanges: DriftFileChange[],
+): DriftFileChange | undefined {
+  const matches = fileChanges.filter((change) => fileChangeMatchesResource(resource, change));
+  if (matches.length === 0) {
+    return undefined;
+  }
+  const resourcePaths = resourceManagedPathCandidates(resource);
+  return (
+    matches.find((change) =>
+      resourcePaths.some((path) =>
+        pathsReferToSameManagedFile(path, normalizeComparablePath(change.path)),
+      ),
+    )
+    ?? matches[0]
+  );
 }
 
 function pluginKey(plugin: { id: string; name: string; version: string }): string {

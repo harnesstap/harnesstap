@@ -259,6 +259,122 @@ describe("partitionProfileInventory", () => {
     expect(helper?.driftChange?.path).toBe(".codex/agents/helper.toml");
   });
 
+  it("attaches View changes when MCP drift is on another harness config than the chip source", () => {
+    const stacked = contents({
+      resources: [
+        {
+          type: "mcp_server",
+          name: "devel",
+          source: "~/.cursor/mcp.json",
+        },
+      ],
+      type_counts: { mcp_server: 1 },
+      stack_resource_count: 1,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [
+        {
+          type: "mcp_server",
+          name: "devel",
+          source: "~/.cursor/mcp.json",
+          not_staged_kind: "update",
+        },
+      ],
+      fileChanges: [{ path: ".claude.json", type: "modified" }],
+    });
+
+    expect(parts.active[0]?.drifted).toBe(true);
+    expect(parts.active[0]?.driftChange?.path).toBe(".claude.json");
+  });
+
+  it("attaches View changes for portable MCP chips onto Codex aggregate config", () => {
+    const stacked = contents({
+      resources: [{ type: "mcp_server", name: "devel", source: "manual" }],
+      type_counts: { mcp_server: 1 },
+      stack_resource_count: 1,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [],
+      fileChanges: [{ path: ".codex/config.toml", type: "modified" }],
+    });
+
+    expect(parts.active[0]?.drifted).toBe(true);
+    expect(parts.active[0]?.driftChange?.path).toBe(".codex/config.toml");
+  });
+
+  it("attaches View changes for Active MCP and subagent chips drifted only via not-staged updates", () => {
+    const stacked = contents({
+      resources: [
+        {
+          type: "mcp_server",
+          name: "devel",
+          source: "manual",
+        },
+        {
+          type: "agent",
+          name: "Researcher",
+          source: "manual",
+        },
+      ],
+      type_counts: { mcp_server: 1, agent: 1 },
+      stack_resource_count: 2,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [
+        {
+          type: "mcp_server",
+          name: "devel",
+          source: "~/.cursor/mcp.json",
+          filesystem_path: "~/.cursor/mcp.json",
+          not_staged_kind: "update",
+        },
+        {
+          type: "agent",
+          name: "Researcher",
+          source: "~/.claude/agents/researcher.md",
+          filesystem_path: "~/.claude/agents/researcher.md",
+          not_staged_kind: "update",
+        },
+      ],
+    });
+
+    const mcp = parts.active.find((row) => row.resource.name === "devel");
+    const agent = parts.active.find((row) => row.resource.name === "Researcher");
+    expect(mcp?.drifted).toBe(true);
+    expect(mcp?.driftChange?.path).toBe(".cursor/mcp.json");
+    expect(agent?.drifted).toBe(true);
+    expect(agent?.driftChange?.path).toBe(".claude/agents/researcher.md");
+  });
+
+  it("attaches View changes when a subagent chip name differs from the agent filename", () => {
+    const stacked = contents({
+      resources: [
+        {
+          type: "agent",
+          name: "Researcher",
+          source: "manual",
+        },
+      ],
+      type_counts: { agent: 1 },
+      stack_resource_count: 1,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [],
+      fileChanges: [{ path: ".claude/agents/researcher.md", type: "modified" }],
+    });
+
+    expect(parts.active[0]?.drifted).toBe(true);
+    expect(parts.active[0]?.driftChange?.path).toBe(".claude/agents/researcher.md");
+  });
+
   it("attaches a scoped MCP file diff on Not in profile chips", () => {
     const parts = partitionProfileInventory({
       profileRows: [],
