@@ -20,6 +20,7 @@ import { truncateResourceContent } from "../services/resource-show.js";
 import { isLiveLibraryRef } from "../services/live-library-ref.js";
 import { parseUntrackedResourceSelector } from "../services/untracked-resource.js";
 import { MATERIAL_RESOURCE_TYPES, type MaterialResourceType } from "../types.js";
+import { hookInventoryWireFromResource } from "../ui/hook-display.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
 
@@ -37,18 +38,22 @@ export function handleLibraryPlugins(): Response {
 
 export function handleLibraryResources(): Response {
   return jsonResponse({
-    resources: listResources().map((resource) => ({
-      id: resource.id,
-      name: resource.name,
-      type: resource.type,
-      namespace: resource.namespace ?? null,
-      description: resource.description ?? null,
-      source: resource.source,
-      filesystem_path: resolveExistingResourceFilesystemPath(resource),
-      updated_at: resource.updated_at,
-      origin_kind: resource.origin_kind,
-      origin_ref: resource.origin_ref || null,
-    })),
+    resources: listResources().map((resource) => {
+      const hook = hookInventoryWireFromResource(resource);
+      return {
+        id: resource.id,
+        name: resource.name,
+        type: resource.type,
+        namespace: resource.namespace ?? null,
+        description: resource.description ?? null,
+        source: resource.source,
+        filesystem_path: resolveExistingResourceFilesystemPath(resource),
+        updated_at: resource.updated_at,
+        origin_kind: resource.origin_kind,
+        origin_ref: resource.origin_ref || null,
+        ...(hook ? { hook } : {}),
+      };
+    }),
   });
 }
 

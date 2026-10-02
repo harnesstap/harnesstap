@@ -19,6 +19,7 @@ import {
 } from "../../lib/harness-plugin-pull";
 import { HARNESS_OPEN_LOCATION_LABEL } from "../../lib/harness-location-open";
 import {
+  hookHoverExtras,
   listRowHoverPath,
   type ResourceHoverModel,
 } from "../../lib/resource-hover";
@@ -56,7 +57,7 @@ function badgeHover(
     showName: true,
     path: listRowHoverPath(row),
     harnessIds: [],
-    extra: [],
+    extra: hookHoverExtras(row),
   };
 }
 

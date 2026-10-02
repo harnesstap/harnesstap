@@ -210,6 +210,28 @@ describe("partitionProfileInventory", () => {
     expect([...parts.notInProfile, ...parts.inactive, ...parts.active].map((row) => row.section))
       .toEqual(["not_in_profile", "inactive", "active"]);
   });
+
+  it("labels hook chips as Event: script basename", () => {
+    const hook: ProfileContentsResource = {
+      type: "hook",
+      name: "SessionStart-1",
+      source: "~/.claude/settings.json",
+      hook: {
+        event: "sessionStart",
+        script: "~/.claude/hooks/ponytail-activate.js",
+      },
+    };
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(
+        contents({ resources: [hook], type_counts: { hook: 1 }, stack_resource_count: 1 }),
+      ),
+      liveRows: [],
+      notStaged: [],
+    });
+    expect(parts.inactive.map((row) => row.label)).toEqual([
+      "SessionStart: ponytail-activate.js",
+    ]);
+  });
 });
 
 describe("filterProfileInventoryItems", () => {

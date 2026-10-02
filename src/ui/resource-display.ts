@@ -1,3 +1,18 @@
+import {
+  formatHookInventoryLabel,
+  hookDisplayInputFromResource,
+  type HookDisplayInput,
+} from "./hook-display.js";
+
+export {
+  formatHookInventoryLabel,
+  formatHookInventoryTooltipLines,
+  hookCommandShortToken,
+  hookInventoryWireFromResource,
+  normalizeHookEventName,
+} from "./hook-display.js";
+export type { HookDisplayInput, HookInventoryWire } from "./hook-display.js";
+
 export const AGENTS_INSTRUCTIONS_RESOURCE_NAME = "agents-instructions";
 export const AGENTS_MD_DISPLAY_NAME = "Agent instructions (AGENTS.md)";
 export const GLOBAL_SCOPE_LABEL = "global";
@@ -52,11 +67,23 @@ export function isAgentsMdResource(resource: {
   return source === "AGENTS.md" || source.endsWith("/AGENTS.md");
 }
 
-export function resourceHumanName(resource: {
+export type ResourceDisplaySource = {
   name: string;
+  type?: string | null;
   source?: string | null;
-}): string {
-  return isAgentsMdResource(resource) ? AGENTS_MD_DISPLAY_NAME : resource.name;
+  content?: string | null;
+  hook?: HookDisplayInput["hook"];
+  metadata?: unknown;
+};
+
+export function resourceHumanName(resource: ResourceDisplaySource): string {
+  if (isAgentsMdResource(resource)) {
+    return AGENTS_MD_DISPLAY_NAME;
+  }
+  if (resource.type === "hook") {
+    return formatHookInventoryLabel(hookDisplayInputFromResource(resource));
+  }
+  return resource.name;
 }
 
 export type PluginDisplayOptions = {
@@ -93,12 +120,9 @@ export function duplicatePluginNames(
 }
 
 export function formatResourceDisplayName(
-  resource: {
-    name: string;
-    type?: string | null;
+  resource: ResourceDisplaySource & {
     namespace?: string | null;
     origin_ref?: string | null;
-    source?: string | null;
   },
   options?: PluginDisplayOptions,
 ): string {

@@ -4,15 +4,22 @@ export {
   GLOBAL_SCOPE_LABEL,
   containedFileStem,
   duplicatePluginNames,
+  formatHookInventoryLabel,
+  formatHookInventoryTooltipLines,
   formatOriginDisplayLabel,
   formatOriginKindLabel,
   formatResourceDisplayName,
   formatResourceScopeLabel,
   groupedOriginKind,
+  hookInventoryWireFromResource,
   inferContainedFileType,
   isAgentsMdResource,
   isPackageEntryFileName,
   packageDirectoryDisplayPath,
   resourceHumanName,
 } from "../../../../src/ui/resource-display.ts";
-export type { PluginDisplayOptions } from "../../../../src/ui/resource-display.ts";
+export type {
+  HookDisplayInput,
+  HookInventoryWire,
+  PluginDisplayOptions,
+} from "../../../../src/ui/resource-display.ts";

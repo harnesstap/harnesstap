@@ -26,6 +26,16 @@ describe("resource display labels", () => {
       }),
     ).toBe(AGENTS_MD_DISPLAY_NAME);
     expect(resourceHumanName({ name: "ship", source: "SKILL.md" })).toBe("ship");
+    expect(
+      resourceHumanName({
+        name: "SessionStart-1",
+        type: "hook",
+        metadata: {
+          event: "sessionStart",
+          script: "~/.claude/hooks/ponytail-activate.js",
+        },
+      }),
+    ).toBe("SessionStart: ponytail-activate.js");
   });
 
   it("keeps namespace on the human name without changing the stored id", () => {
