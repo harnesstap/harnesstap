@@ -180,7 +180,7 @@
   padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.5rem;
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -536,9 +536,10 @@
 .live-toolbar {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
   align-items: flex-start;
+  margin: 0 0 0.15rem;
 }
 
 .live-toolbar-identity {
@@ -595,10 +596,22 @@
   padding-bottom: calc(var(--space-8) * 2 + var(--space-2));
 }
 
+.scope-inventory-live-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0 0 0.4rem;
+}
+
+.scope-inventory-live-header .list-search,
+.scope-inventory-live-header .list-search-row {
+  margin: 0;
+}
+
 .scope-inventory-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 
 .scope-inventory-fab {
@@ -643,7 +656,7 @@
   gap: 0.35rem;
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 32px;
+  min-height: 24px;
   padding: 0;
   cursor: pointer;
   text-align: left;
@@ -678,33 +691,94 @@
   color: var(--muted);
 }
 
-.inventory-row-lead {
+.inventory-chip-cluster .resource-hover-card-host {
   display: inline-flex;
-  flex-direction: row;
-  align-items: center;
-  align-self: center;
-  gap: 0.4rem;
-  min-height: 14px;
+  max-width: 100%;
 }
 
-.inventory-row .resource-row-identity-main {
-  min-height: 14px;
+.inventory-chip {
+  display: inline-flex;
   align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  height: 26px;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  font-size: var(--text-meta);
+  line-height: var(--leading-tight);
+  cursor: pointer;
 }
 
-.inventory-row-icon {
+.inventory-chip:hover {
+  background: var(--surface-hover);
+}
+
+.inventory-chip:focus-visible,
+.inventory-chip:focus-within {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.inventory-chip.is-selected {
+  background: var(--surface-selected);
+}
+
+.inventory-chip-drifted {
+  border-color: var(--yellow);
+}
+
+.inventory-chip-status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 14px;
   height: 14px;
   flex: 0 0 14px;
+  color: var(--yellow);
 }
 
-.inventory-row-icon svg {
+.inventory-chip-status svg {
   display: block;
-  width: 14px;
-  height: 14px;
+}
+
+.inventory-chip-name {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-meta);
+  min-width: 0;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inventory-chip-name:focus-visible {
+  outline: none;
+}
+
+.inventory-chip-actions,
+.inventory-chip-not-in-profile-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.inventory-chip .icon-action {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
 }
 
 .inventory-row-remove-slot {
@@ -715,18 +789,6 @@
   min-width: var(--icon-action-size);
   height: var(--icon-action-size);
   flex-shrink: 0;
-}
-
-.inventory-row-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.inventory-row-not-in-profile-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
 }
 
 .inventory-row-lead-action {
@@ -749,6 +811,7 @@
 .scope-inventory-list .contents-header {
   background: transparent;
   font-weight: 500;
+  padding: 0.4rem 0.5rem;
 }
 
 .scope-add-modal {
@@ -1562,10 +1625,10 @@
   padding-left: 1.1rem;
 }
 
-/* Status color changes ease (m-status recipe): switch steps, inventory rows and
+/* Status color changes ease (m-status recipe): switch steps, inventory chips and
    their status glyphs, and the amber attention section header. */
 .steps li,
-.inventory-row-drifted,
+.inventory-chip-drifted,
 .inventory-status-glyph,
 .not-staged-status-glyph,
 .contents-block,
@@ -1827,23 +1890,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-}
-
-.resource-row.inventory-row {
-  min-height: calc(var(--space-8) + var(--space-2));
-  height: auto;
-  align-items: center;
-}
-
-.inventory-row .resource-row-name {
-  text-decoration: none;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-}
-
-.inventory-row:hover {
-  background: var(--surface-hover);
+  margin: 0 0 0.1rem;
 }
 
 .inventory-section.contents-block {
@@ -1860,9 +1907,49 @@
   width: 100%;
 }
 
+.inventory-section-chips,
+.inventory-section-virtual .inventory-type-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inventory-section-chips {
+  padding: 0.4rem 0.5rem;
+}
+
+.inventory-section .contents-body {
+  padding: 0.4rem 0.5rem;
+}
+
+.inventory-type-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.inventory-type-heading {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--text-meta);
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 0;
+}
+
+.inventory-chip-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .inventory-section-hint {
   margin: 0;
-  padding: 0 var(--space-3) var(--space-2);
+  padding: 0.15rem 0.5rem 0.25rem;
   font-size: var(--text-meta);
 }
 

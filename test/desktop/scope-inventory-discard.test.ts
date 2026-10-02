@@ -37,7 +37,7 @@ const designSource = readFileSync(
 );
 
 function notInProfileActionBlock(): string {
-  const start = inventoryRowSource.indexOf("inventory-row-not-in-profile-actions");
+  const start = inventoryRowSource.indexOf("inventory-chip-not-in-profile-actions");
   const end = inventoryRowSource.indexOf("} else if (showActivate");
   return inventoryRowSource.slice(start, end);
 }
@@ -71,12 +71,12 @@ describe("scope inventory discard controls", () => {
     expect(actions.indexOf('label="Add"')).toBeLessThan(
       actions.indexOf('label="Discard"'),
     );
-    expect(inventoryRowSource).toContain("inventory-row-not-in-profile-actions");
+    expect(inventoryRowSource).toContain("inventory-chip-not-in-profile-actions");
     expect(shellSource).toContain("discardResourceTitle");
     expect(shellSource).toContain("discardAllTitle");
     expect(shellSource).toContain("DiscardPathList");
     expect(shellSource).toContain("onDiscardResource");
-    expect(designSource).toContain("Row **Add** (`Plus`) then **Discard**");
+    expect(designSource).toContain("Chip **Add** (`Plus`, icon-only) then **Discard**");
     expect(designSource).not.toContain(
       "Row **Discard** (`X`, `profile-remove-action`) then **Add**",
     );

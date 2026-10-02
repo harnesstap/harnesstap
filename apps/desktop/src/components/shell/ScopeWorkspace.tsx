@@ -13,7 +13,6 @@ import { useRegisterCommands } from "../../state/command-registry";
 import { useStatusStore } from "../../state/status-store";
 import { toast } from "../../state/toast-store";
 import { EditProfilePane } from "../EditProfilePane";
-import { ButtonSpinner } from "../ButtonSpinner";
 import { FieldIdentityIcon } from "../FieldIdentityIcon";
 import { IconActionButton } from "../IconActionButton";
 import { LiveStatePanel } from "../LiveStatePanel";
@@ -300,23 +299,16 @@ export function ScopeWorkspace({
             </div>
             {selectedProfile ? (
               <div className="live-toolbar-actions">
-                <button
-                  type="button"
-                  className={["btn", "primary", ctrl.overwritingWithSetup ? "is-busy" : ""]
-                    .filter(Boolean)
-                    .join(" ")}
+                <IconActionButton
+                  primary
+                  busy={ctrl.overwritingWithSetup}
+                  spinnerSize={16}
                   onClick={() => setSetupOverwriteOpen(true)}
                   disabled={!connected || switching || ctrl.overwritingWithSetup}
-                  aria-busy={ctrl.overwritingWithSetup || undefined}
+                  label="Overwrite"
                   title="Overwrite with current setup"
-                >
-                  {ctrl.overwritingWithSetup ? "Overwriting…" : "Overwrite"}
-                  {ctrl.overwritingWithSetup ? (
-                    <ButtonSpinner size={16} />
-                  ) : (
-                    <HardDriveUpload size={16} strokeWidth={2} aria-hidden="true" />
-                  )}
-                </button>
+                  icon={<HardDriveUpload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                />
                 <IconActionButton
                   className="status-edit-action"
                   onClick={() => {

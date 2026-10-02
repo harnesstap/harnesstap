@@ -192,7 +192,7 @@ describe("Profile resources pane chrome", () => {
   });
 
   it("locks drifted Active rows and centered file diffs", () => {
-    expect(liveStateSource).toContain("inventory-row-drifted");
+    expect(liveStateSource).toContain("inventory-chip-drifted");
     expect(liveStateSource).toContain('title="View changes"');
     expect(liveStateSource).toContain("FileDiff");
     expect(liveStateSource).toContain('label="Add"');
