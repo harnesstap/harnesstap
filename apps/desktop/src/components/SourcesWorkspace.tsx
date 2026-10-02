@@ -39,14 +39,20 @@ import {
   type SourcesPane,
 } from "../lib/sources-pane";
 import {
+  readDiscoverCatalogCache,
+  writeDiscoverCatalogCache,
+} from "../lib/discover-catalog-cache";
+import {
   applyOriginOutdated,
   cloudHitIsInLibrary,
   cloudSelectorKey,
   discoverListIsSearching,
+  discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
   filterDiscoverGroups,
   marketplaceHitKey,
   mergeSourcesHits,
+  nextMarketplaceHitsOnRefresh,
   sourcesHitFetchKey,
   type CloudPluginInput,
   type MarketplaceSourceInput,
@@ -189,8 +195,15 @@ export function SourcesWorkspace({
   const [query, setQuery] = useState("");
   const [showInLibrary, setShowInLibrary] = useState(false);
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
-  const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>([]);
-  const [scope, setScope] = useState<CatalogScope | null>(null);
+  const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>(
+    () => readDiscoverCatalogCache()?.marketplaces ?? [],
+  );
+  const [scope, setScope] = useState<CatalogScope | null>(
+    () => readDiscoverCatalogCache()?.scope ?? null,
+  );
+  const [sourceInventoryReady, setSourceInventoryReady] = useState(
+    () => readDiscoverCatalogCache()?.sourceInventoryReady ?? false,
+  );
   const [checkedIds, setCheckedIds] = useState<string[]>(["local"]);
   const [checksTouched, setChecksTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -241,19 +254,27 @@ export function SourcesWorkspace({
     Record<string, SourcesInstallState>
   >({});
   const [sidebarConfirmOpen, setSidebarConfirmOpen] = useState(false);
-  const [localHeads, setLocalHeads] = useState<LibraryPluginHead[]>([]);
-  const [localResources, setLocalResources] = useState<LibraryResource[]>([]);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [localHeads, setLocalHeads] = useState<LibraryPluginHead[]>(
+    () => readDiscoverCatalogCache()?.localHeads ?? [],
+  );
+  const [localResources, setLocalResources] = useState<LibraryResource[]>(
+    () => readDiscoverCatalogCache()?.localResources ?? [],
+  );
+  const [localError, setLocalError] = useState<string | null>(
+    () => readDiscoverCatalogCache()?.localError ?? null,
+  );
   const [marketplaceHits, setMarketplaceHits] = useState<
     Record<
       string,
       { plugins: MarketplaceSourceInput["plugins"]; error: string | null }
     >
-  >({});
-  const [cloudPlugins, setCloudPlugins] = useState<CatalogPluginSearchHit[]>([]);
+  >(() => readDiscoverCatalogCache()?.marketplaceHits ?? {});
+  const [cloudPlugins, setCloudPlugins] = useState<CatalogPluginSearchHit[]>(
+    () => readDiscoverCatalogCache()?.cloudPlugins ?? [],
+  );
   const [cloudErrors, setCloudErrors] = useState<
     Array<{ sourceLabel: string; message: string }>
-  >([]);
+  >(() => readDiscoverCatalogCache()?.cloudErrors ?? []);
   const [cloudRequestError, setCloudRequestError] = useState<string | null>(null);
   const [cloudAuthRequired, setCloudAuthRequired] = useState(false);
   const [pulledCloudKeys, setPulledCloudKeys] = useState<Set<string>>(
@@ -266,7 +287,7 @@ export function SourcesWorkspace({
     PluginOriginCheckRow[]
   >([]);
   const [fetchedSourceIds, setFetchedSourceIds] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set(readDiscoverCatalogCache()?.fetchedSourceIds ?? []),
   );
   const [inflightSourceIds, setInflightSourceIds] = useState<Set<string>>(
     () => new Set(),
@@ -325,22 +346,31 @@ export function SourcesWorkspace({
 
   useEffect(() => {
     if (!baseUrl) {
-      setMarketplaces([]);
-      setScope(null);
       return;
     }
     let cancelled = false;
-    void Promise.all([
-      fetchMarketplaces(baseUrl, token),
-      fetchCatalogScope(baseUrl, token),
-    ])
-      .then(([marketplaceResult, nextScope]) => {
+    void fetchMarketplaces(baseUrl, token)
+      .then((marketplaceResult) => {
         if (cancelled) {
           return;
         }
         setMarketplaces(marketplaceResult.marketplaces);
-        setScope(nextScope);
+        setSourceInventoryReady(true);
         setError(null);
+      })
+      .catch((loadError: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        setSourceInventoryReady(true);
+        setError(errorMessage(loadError, "Could not load sources."));
+      });
+    void fetchCatalogScope(baseUrl, token)
+      .then((nextScope) => {
+        if (cancelled) {
+          return;
+        }
+        setScope(nextScope);
       })
       .catch((loadError: unknown) => {
         if (cancelled) {
@@ -360,15 +390,6 @@ export function SourcesWorkspace({
 
   useEffect(() => {
     if (!baseUrl) {
-      setLocalHeads([]);
-      setLocalResources([]);
-      setLocalError(null);
-      setMarketplaceHits({});
-      setCloudPlugins([]);
-      setCloudErrors([]);
-      setCloudRequestError(null);
-      setCloudAuthRequired(false);
-      setFetchedSourceIds(new Set());
       setInflightSourceIds(new Set());
       return;
     }
@@ -435,13 +456,13 @@ export function SourcesWorkspace({
         }),
     ];
 
-    setMarketplaceHits((current) => {
-      const next: typeof current = {};
-      for (const row of marketplaceRows) {
-        next[row.id] = current[row.id] ?? { plugins: [], error: null };
-      }
-      return next;
-    });
+    setMarketplaceHits((current) =>
+      nextMarketplaceHitsOnRefresh({
+        current,
+        marketplaceIds: marketplaceRows.map((row) => row.id),
+        inventoryReady: sourceInventoryReady,
+      }),
+    );
 
     for (const row of marketplaceRows) {
       pending.push(
@@ -472,7 +493,7 @@ export function SourcesWorkspace({
             setMarketplaceHits((current) => ({
               ...current,
               [row.id]: {
-                plugins: [],
+                plugins: current[row.id]?.plugins ?? [],
                 error: errorMessage(loadError, `Could not load ${row.label}.`),
               },
             }));
@@ -486,7 +507,7 @@ export function SourcesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, token, checkedRows, reloadKey]);
+  }, [baseUrl, token, checkedRows, reloadKey, sourceInventoryReady]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -496,10 +517,12 @@ export function SourcesWorkspace({
       (row) => row.kind === "cloud-org" || row.kind === "cloud-catalog",
     );
     if (cloudRows.length === 0) {
-      setCloudPlugins([]);
-      setCloudErrors([]);
-      setCloudRequestError(null);
-      setCloudAuthRequired(false);
+      if (sourceInventoryReady) {
+        setCloudPlugins([]);
+        setCloudErrors([]);
+        setCloudRequestError(null);
+        setCloudAuthRequired(false);
+      }
       setInflightSourceIds((current) => {
         const next = new Set(current);
         for (const id of [...current]) {
@@ -550,8 +573,6 @@ export function SourcesWorkspace({
           if (cancelled) {
             return;
           }
-          setCloudPlugins([]);
-          setCloudErrors([]);
           setCloudRequestError(
             errorMessage(loadError, "Could not search catalog plugins."),
           );
@@ -589,7 +610,7 @@ export function SourcesWorkspace({
         return next;
       });
     };
-  }, [baseUrl, token, query, checkedRows, cloudAuthenticated]);
+  }, [baseUrl, token, query, checkedRows, cloudAuthenticated, sourceInventoryReady]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -1179,6 +1200,43 @@ export function SourcesWorkspace({
     fetchedIds: fetchedSourceIds,
     inflightIds: inflightSourceIds,
   });
+  const marketplaceIds = checkedRows
+    .filter((row) => row.kind === "marketplace")
+    .map((row) => row.id);
+  const marketplaceRefreshCopy = discoverMarketplaceRefreshCopy({
+    marketplaceIds,
+    inflightIds: inflightSourceIds,
+  });
+
+  useEffect(() => {
+    if (!baseUrl) {
+      return;
+    }
+    writeDiscoverCatalogCache({
+      marketplaces,
+      scope,
+      marketplaceHits,
+      localHeads,
+      localResources,
+      localError,
+      cloudPlugins,
+      cloudErrors,
+      fetchedSourceIds: [...fetchedSourceIds],
+      sourceInventoryReady,
+    });
+  }, [
+    baseUrl,
+    marketplaces,
+    scope,
+    marketplaceHits,
+    localHeads,
+    localResources,
+    localError,
+    cloudPlugins,
+    cloudErrors,
+    fetchedSourceIds,
+    sourceInventoryReady,
+  ]);
 
   function handlePanelBack(): void {
     const current = paneRef.current;
@@ -1284,6 +1342,7 @@ export function SourcesWorkspace({
         .filter(Boolean)
         .join(" ")}
       aria-label="Discover"
+      aria-busy={marketplaceRefreshCopy || sidebarRefreshing ? true : undefined}
       data-testid="sources-workspace"
       data-sources-pane={pane.mode}
       data-origin-update-label="Update available"
@@ -1297,7 +1356,17 @@ export function SourcesWorkspace({
               onClick={handlePanelBack}
             />
             <div className="resources-panel-title">
-              <span>Discover</span>
+              <span>
+                Discover
+                {marketplaceRefreshCopy ? (
+                  <span
+                    className="muted resources-panel-scope"
+                    aria-live="polite"
+                  >
+                    {marketplaceRefreshCopy}
+                  </span>
+                ) : null}
+              </span>
               <span className="muted resources-panel-scope">
                 Find and add from local, marketplaces, and HarnessTap Cloud.
               </span>

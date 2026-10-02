@@ -192,10 +192,26 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).not.toContain("<Cloud size={16}");
   });
 
+  test("shows cached Discover hits immediately and header marketplace refresh progress", () => {
+    expect(workspaceSource).toContain("readDiscoverCatalogCache");
+    expect(workspaceSource).toContain("writeDiscoverCatalogCache");
+    expect(workspaceSource).toContain("discoverMarketplaceRefreshCopy");
+    expect(workspaceSource).toContain("nextMarketplaceHitsOnRefresh");
+    expect(workspaceSource).toContain("plugins: current[row.id]?.plugins ?? []");
+    expect(workspaceSource).not.toMatch(
+      /Promise\.all\(\[\s*fetchMarketplaces/,
+    );
+    expect(workspaceSource).toContain("{marketplaceRefreshCopy}");
+    expect(workspaceSource).toContain("aria-live=\"polite\"");
+    expect(sourcesSearchSource).toContain("Refreshing ${total - inflight}/${total} marketplaces");
+    expect(sourcesSearchSource).not.toContain("—");
+  });
+
   test("places workspace back before the Discover title like Library and Environments", () => {
     expect(workspaceSource).toContain("resources-panel-title-cluster");
     expect(workspaceSource).toContain("WorkspaceBackButton");
-    expect(workspaceSource).toContain("<span>Discover</span>");
+    expect(workspaceSource).toContain("Discover");
+    expect(workspaceSource).toContain("marketplaceRefreshCopy");
     expect(workspaceSource).toContain('aria-label="Discover"');
     expect(appSource).toContain("canWorkspaceBack={nav.hasHistory}");
     expect(appSource).toContain("onWorkspaceBack={nav.back}");
@@ -448,7 +464,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(workspaceSource).toContain("cloudAuthenticated");
     expect(workspaceSource).toContain("setCloudAuthRequired(false)");
     expect(workspaceSource).toContain(
-      "[baseUrl, token, query, checkedRows, cloudAuthenticated]",
+      "[baseUrl, token, query, checkedRows, cloudAuthenticated, sourceInventoryReady]",
     );
   });
 
