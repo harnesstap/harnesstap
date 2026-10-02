@@ -87,7 +87,7 @@ export function InventoryRow({
   let action: ReactNode = null;
   if (pending) {
     action = <ButtonSpinner size={CHIP_ACTION_ICON_PX} />;
-  } else if (drifted && onDiff) {
+  } else if (drifted && onDiff && item.driftChange) {
     action = (
       <IconActionButton
         className="file-change-diff-btn"

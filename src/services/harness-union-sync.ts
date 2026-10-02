@@ -60,7 +60,6 @@ import {
 } from "./scanner.js";
 import {
   flattenUniqueFiles,
-  preferSharedSkillEmits,
 } from "./shared-emit-paths.js";
 
 export type HarnessUnionSyncCode =
@@ -235,7 +234,7 @@ export async function syncConfiguredHarnesses(
     rootPath,
     serializeOptions,
   );
-  const preferred = preferSharedSkillEmits(generated, platforms, target);
+  const preferred = generated;
 
   const extraResults: ApplyResult[] = [];
   let skillHubPlans: ReturnType<typeof planPluginSkillHub> = [];
@@ -258,9 +257,7 @@ export async function syncConfiguredHarnesses(
         rootPath,
         serializeOptions,
       );
-      extraResults.push(
-        ...preferSharedSkillEmits(extraGenerated, portablePlatforms, target),
-      );
+      extraResults.push(...extraGenerated);
     }
     skillHubPlans = planPluginSkillHub(
       extracted.skills,

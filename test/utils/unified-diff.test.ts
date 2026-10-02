@@ -33,7 +33,10 @@ describe("buildUnifiedDiffLines", () => {
 
   it("reports when contents match", () => {
     const lines = buildUnifiedDiffLines("same.txt", "x\n", "x\n");
-    expect(lines.map((line) => line.text)).toContain("(no content differences)");
+    const texts = lines.map((line) => line.text);
+    expect(texts).toContain("(no content differences)");
+    expect(texts.some((text) => text.startsWith("--- live/"))).toBe(false);
+    expect(texts.some((text) => text.startsWith("+++ after-apply/"))).toBe(false);
   });
 });
 
