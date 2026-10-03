@@ -3,8 +3,61 @@ import { join } from "node:path";
 import { listCursorPluginPinCreateInputs } from "../../src/plugins/cursor-installed.ts";
 import { CursorSerializer } from "../../src/platforms/cursor.ts";
 import { ClaudeCodeSerializer } from "../../src/platforms/claude-code.ts";
+import { generateFiles } from "../../src/services/applier.ts";
+import type { Resource, SurfaceWarning } from "../../src/types.ts";
 import { makeResource } from "../helpers/resources.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
+
+function writeDemoModPin(home: string): { pin: Resource; pinRoot: string } {
+  const pinRoot = ".claude/plugins/cache/demo-market/demo/1.0.0";
+  writeTextFile(
+    join(home, pinRoot, ".claude-plugin/plugin.json"),
+    JSON.stringify({ name: "demo", version: "1.0.0", description: "Demo plugin" }),
+  );
+  writeTextFile(
+    join(home, pinRoot, "skills/hello/SKILL.md"),
+    "---\nname: hello\n---\nHello from Claude.\n",
+  );
+  writeTextFile(
+    join(home, pinRoot, "hooks/hooks.json"),
+    JSON.stringify({ hooks: { SessionStart: "./register.js" } }),
+  );
+  writeTextFile(
+    join(home, pinRoot, "hooks/register.js"),
+    "export function register() {}\n",
+  );
+  writeTextFile(
+    join(home, ".claude/plugins/installed_plugins.json"),
+    JSON.stringify({
+      version: 2,
+      plugins: {
+        "demo@demo-market": [
+          {
+            scope: "user",
+            installPath: "cache/demo-market/demo/1.0.0",
+            version: "1.0.0",
+          },
+        ],
+      },
+    }),
+  );
+  return {
+    pinRoot,
+    pin: makeResource({
+      type: "plugin",
+      name: "demo",
+      namespace: "demo-market",
+      origin_kind: "marketplace_link",
+      origin_ref: "demo@demo-market",
+      content: "{}",
+      metadata: {
+        source_kind: "marketplace",
+        marketplace_name: "demo-market",
+        resolved_version: "1.0.0",
+      },
+    }),
+  };
+}
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/cursor-plugins-home");
 
@@ -208,6 +261,75 @@ describe("host plugin serialize", () => {
       expect(listCursorPluginPinCreateInputs(home).map((pin) => pin.origin_ref)).toEqual([
         "ported@demo-market",
       ]);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("omits Claude mods from Cursor emit and keeps them on Claude", async () => {
+    const home = createTempDir("host-plugin-claude-mods-");
+    try {
+      const { pin, pinRoot } = writeDemoModPin(home);
+      const cursorWarnings: SurfaceWarning[] = [];
+      const claudeWarnings: SurfaceWarning[] = [];
+      const serializeOptions = { target: "global" as const, projectRoot: home };
+
+      const cursorFiles = await new CursorSerializer().serialize(
+        [pin],
+        home,
+        { ...serializeOptions, surfaceWarnings: cursorWarnings },
+      );
+      expect(
+        cursorFiles.some((file) =>
+          file.path.endsWith("skills/hello/SKILL.md"),
+        ),
+      ).toBe(true);
+      expect(
+        cursorFiles.some((file) => file.path.endsWith("hooks/register.js")),
+      ).toBe(false);
+      expect(
+        cursorFiles.some((file) => file.path.endsWith("hooks/hooks.json")),
+      ).toBe(false);
+      expect(cursorWarnings).toHaveLength(1);
+      expect(cursorWarnings[0]?.category).toBe("claude-mod");
+      expect(cursorWarnings[0]?.alias_harnesses).toEqual(["cursor"]);
+
+      const claudeFiles = await new ClaudeCodeSerializer().serialize(
+        [pin],
+        home,
+        { ...serializeOptions, surfaceWarnings: claudeWarnings },
+      );
+      expect(
+        claudeFiles.some((file) =>
+          file.path === `${pinRoot}/hooks/register.js`,
+        ),
+      ).toBe(true);
+      expect(
+        claudeFiles.some((file) =>
+          file.path === `${pinRoot}/hooks/hooks.json`,
+        ),
+      ).toBe(true);
+      expect(claudeWarnings).toHaveLength(0);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("surfaces claude-mod warnings from generateFiles for Cursor only", async () => {
+    const home = createTempDir("host-plugin-generate-warnings-");
+    try {
+      const { pin } = writeDemoModPin(home);
+      const cursorResults = await generateFiles([pin], ["cursor"], home, {
+        target: "global",
+        projectRoot: home,
+      });
+      expect(cursorResults[0]?.surface_warnings?.[0]?.category).toBe("claude-mod");
+
+      const claudeResults = await generateFiles([pin], ["claude-code"], home, {
+        target: "global",
+        projectRoot: home,
+      });
+      expect(claudeResults[0]?.surface_warnings ?? []).toHaveLength(0);
     } finally {
       cleanupDir(home);
     }

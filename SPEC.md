@@ -138,6 +138,7 @@ Use this table to disambiguate overlapping words.
 | **Environment-side** | Runtime how: env vars, models, permissions, secret refs | Environment values; satisfies `needs[]` |
 | **Dependency** | A required plugin from marketplace, path, git, or catalog | `plugin` / `plugin_pin` resources — not the material rows inside a plugin |
 | **Marketplace** | Third-party source of host plugins (Claude marketplace, Cursor packs, etc.) | `marketplace` commands; `plugin_pin` provenance |
+| **Mod** | Claude Code in-process plugin handlers (`hooks.json` loading JS/TS) inside a **host plugin** tree | Not a library type. Pin emit gated by registry `hostPluginRuntimeModules` |
 
 | Term | Use for | Do not use for |
 | --- | --- | --- |
@@ -725,7 +726,15 @@ The local workspace is the single SQLite library at `~/.harnesstap/harnesstap.db
 
 Harness support splits between a registry and serializers. The registry declares capability flags and default project/global paths. Serializers implement scan, canonicalization, aliasing rules, and write behavior.
 
-Not every host surface round-trips through apply or mirror. Static resources (skills, instructions, rules, MCP, commands, agents) bridge faithfully; hooks with install-time `${*_PLUGIN_ROOT}` paths, OpenCode `.mjs` server plugins, pi extensions, runtime mode state, and host-specific statusline integrations do not. Registry metadata such as `skillEmission: instruction-only` and project `cursor_skill_mode` control how skills are re-emitted per harness. See [Portability limits](docs/portability-limits.md) for the full fidelity matrix, workarounds (`resource sync`, plugin pins, `mirror --reference`), and related scenarios 31–34.
+Not every host surface round-trips through apply or mirror. Static resources (skills, instructions, rules, MCP, commands, agents) bridge faithfully; hooks with install-time `${*_PLUGIN_ROOT}` paths, Claude Code **mods** (in-process `hooks.json` + JS/TS modules), OpenCode `.mjs` server plugins, pi extensions, runtime mode state, and host-specific statusline integrations do not. Registry metadata such as `skillEmission: instruction-only`, `hostPluginRuntimeModules`, and project `cursor_skill_mode` control how skills and host-plugin trees are re-emitted per harness. See [Portability limits](docs/portability-limits.md) for the full fidelity matrix, workarounds (`resource sync`, plugin pins, `mirror --reference`), and related scenarios 31–34.
+
+### Host plugin runtime modules (Claude mods)
+
+A Claude Code **mod** is a **host plugin** that registers in-process event handlers (typically `hooks/hooks.json` pointing at `hooks/register.js`), not a HarnessTap resource type. Settings-style hooks (command, HTTP, prompt) stay `hook` resources; the JS/TS module is extra pin payload.
+
+`apply` / `harness sync` copy pin install trees through `emitHostPluginTrees`. Platforms with `hostPluginRuntimeModules: true` (Claude Code only) receive the full tree, including modules and Claude enablement files. Dual-write targets without the flag (Cursor today) still get portable files from the same pin — skills, commands, agents, MCP, manifests, and declarative hook entries — and omit runtime modules plus any `hooks.json` pointers that would dangle. Skipping a module emits a `surface_warnings` entry. Pins with no modules are unchanged.
+
+Composition of mod modules into library resources is out of scope; pin fidelity is the supported path. When another harness documents the same `hooks.json` + module layout, turn `hostPluginRuntimeModules` on for that platform.
 
 ### Native serializers
 

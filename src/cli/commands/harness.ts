@@ -207,6 +207,11 @@ async function handleHarnessSyncCommand(opts: {
         `${result.conflicts.length} conflict${result.conflicts.length === 1 ? "" : "s"} resolved with last-write (newest on-disk copy)`,
       );
     }
+    for (const warning of result.surface_warnings) {
+      ui.warn(
+        `${warning.harness} surface ${warning.path} is not rematerialized to ${warning.alias_harnesses.join(", ")}: ${warning.message}`,
+      );
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.exitCode = 1;

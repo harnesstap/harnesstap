@@ -13,6 +13,7 @@ import type {
   ResourceCreateInput,
   SerializerTarget,
   SnapshotState,
+  SurfaceWarning,
 } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
@@ -95,6 +96,7 @@ export interface SyncConfiguredHarnessesResult {
   conflicts: UnionConflict[];
   files: string[];
   plugin_resource_mode: PluginResourceMode;
+  surface_warnings: SurfaceWarning[];
 }
 
 function resolvePluginResourceMode(
@@ -306,6 +308,9 @@ export async function syncConfiguredHarnesses(
     conflicts: unioned.conflicts,
     files: filePaths,
     plugin_resource_mode: pluginResourceMode,
+    surface_warnings: [...preferred, ...extraResults].flatMap(
+      (result) => result.surface_warnings ?? [],
+    ),
   };
 
   if (options.dryRun) {

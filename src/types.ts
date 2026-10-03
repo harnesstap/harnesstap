@@ -584,6 +584,11 @@ export interface PlatformDefinition {
   hostManagedPaths?: HostManagedPaths;
   /** Cross-harness or shared home paths shown on the Harnesses inventory. */
   relatedLocations?: readonly RelatedPlatformLocation[];
+  /**
+   * When true, host-plugin pin trees may include in-process hook modules
+   * (Claude Code mods: hooks.json + JS/TS). Default off.
+   */
+  hostPluginRuntimeModules?: boolean;
 }
 
 /** @deprecated Use PluginOrigin */
@@ -620,6 +625,15 @@ export interface SerializedResourceOwnership {
 
 export type SerializerTarget = "project" | "global";
 
+/** Same shape as MirrorSurfaceWarning in harness-surface-gaps. */
+export interface SurfaceWarning {
+  harness: string;
+  path: string;
+  category: string;
+  message: string;
+  alias_harnesses: string[];
+}
+
 export interface SerializeOptions {
   target?: SerializerTarget;
   skillCursorMode?: CursorSkillMode;
@@ -627,6 +641,7 @@ export interface SerializeOptions {
   skillSourceRoot?: string;
   /** Apply/preview root; used to merge live host configs and skill files. */
   projectRoot?: string;
+  surfaceWarnings?: SurfaceWarning[];
 }
 
 export interface PlatformSerializer {

@@ -144,4 +144,31 @@ describe("pinSkillEmitsToExistingLivePaths", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("keeps surface_warnings when remapping emit paths", () => {
+    const warning = {
+      harness: "claude-code",
+      path: "hooks/register.js",
+      category: "claude-mod",
+      message: "mods skipped",
+      alias_harnesses: ["cursor"],
+    };
+    const pinned = pinSkillEmitsToExistingLivePaths(
+      "/tmp/ht-no-live-skills",
+      preferSharedSkillEmits(
+        [
+          {
+            platformId: "cursor",
+            files: [{ path: ".cursor/rules/demo.mdc", content: "rule" }],
+            surface_warnings: [warning],
+          },
+        ],
+        ["cursor"],
+        "project",
+      ),
+      ["cursor"],
+      "project",
+    );
+    expect(pinned[0]?.surface_warnings).toEqual([warning]);
+  });
 });
