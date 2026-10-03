@@ -49,22 +49,21 @@ function walkNamedPluginRoot(
   if (depth > PLUGIN_ROOT_WALK_MAX_DEPTH || !isDirectory(dir)) {
     return undefined;
   }
-  let entries: ReturnType<typeof readdirSync>;
   try {
-    entries = readdirSync(dir, { withFileTypes: true });
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || PLUGIN_ROOT_WALK_SKIP.has(entry.name)) {
+        continue;
+      }
+      const child = join(dir, entry.name);
+      if (entry.name === pluginName && looksLikePluginRoot(child)) {
+        return child;
+      }
+      const nested = walkNamedPluginRoot(child, pluginName, depth + 1);
+      if (nested) return nested;
+    }
   } catch {
     return undefined;
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory() || PLUGIN_ROOT_WALK_SKIP.has(entry.name)) {
-      continue;
-    }
-    const child = join(dir, entry.name);
-    if (entry.name === pluginName && looksLikePluginRoot(child)) {
-      return child;
-    }
-    const nested = walkNamedPluginRoot(child, pluginName, depth + 1);
-    if (nested) return nested;
   }
   return undefined;
 }
@@ -96,7 +95,7 @@ function commandContents(pluginRoot: string): CatalogPluginContent[] {
     if (!isDirectory(dir)) continue;
     let entries: string[];
     try {
-      entries = readdirSync(dir);
+      entries = readdirSync(dir, { encoding: "utf8" });
     } catch {
       continue;
     }
