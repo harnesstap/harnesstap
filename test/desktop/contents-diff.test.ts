@@ -427,6 +427,36 @@ describe("contents-diff helpers", () => {
         { path: ".claude/agents/researcher.md", type: "modified" },
       ),
     ).toBe(true);
+    expect(
+      fileChangeMatchesResource(
+        { type: "agent", name: "code-reviewer", source: "manual" },
+        { path: ".claude/agents/planner.md", type: "modified" },
+      ),
+    ).toBe(false);
+    expect(
+      fileChangeMatchesResource(
+        {
+          type: "permission",
+          name: "allow-Bash(jk:*)",
+          source: "~/.claude/settings.json",
+        },
+        { path: ".claude/settings.json", type: "modified" },
+      ),
+    ).toBe(true);
+    expect(
+      fileChangeMatchesResource(
+        { type: "hook", name: "SessionStart-1", source: "manual" },
+        { path: ".claude/settings.json", type: "modified" },
+      ),
+    ).toBe(true);
+    expect(
+      fileChangeMatchesResource(
+        { type: "permission", name: "allow-Bash(jk:*)", source: "manual" },
+        { path: ".cursor/mcp.json", type: "modified" },
+      ),
+    ).toBe(false);
+    expect(managedPathFromResourceSource("/Users/christophe.oudar/.claude/agents/code-reviewer.md"))
+      .toBe(".claude/agents/code-reviewer.md");
   });
 
   it("filters file changes by selected kinds; empty selection shows all", () => {

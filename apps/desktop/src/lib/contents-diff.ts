@@ -196,6 +196,36 @@ export function inferFileChangeResource(
   }
 }
 
+const ABSOLUTE_MANAGED_MARKERS = [
+  "/.claude/",
+  "/.codex/",
+  "/.cursor/",
+  "/.config/",
+  "/.agents/",
+  "/.grok/",
+  "/.goose/",
+  "/.dsh/",
+  "/.minimax/",
+] as const;
+
+function managedRelativeFromAbsolute(absolute: string): string | null {
+  for (const marker of ABSOLUTE_MANAGED_MARKERS) {
+    const index = absolute.indexOf(marker);
+    if (index !== -1) {
+      return absolute.slice(index + 1);
+    }
+  }
+  return null;
+}
+
+function isHostSettingsFileChangePath(path: string): boolean {
+  const normalized = path.replace(/\\/g, "/");
+  return (
+    /(^|\/)\.claude\/settings\.json$/i.test(normalized)
+    || /(^|\/)\.config\/muse\/settings\.json$/i.test(normalized)
+  );
+}
+
 /** Normalize a library source path to a home/project-relative managed path. */
 export function managedPathFromResourceSource(
   source: string | null | undefined,
@@ -208,6 +238,12 @@ export function managedPathFromResourceSource(
     normalized = normalized.slice(2);
   }
   normalized = normalized.replace(/^\.\//, "");
+  if (normalized.startsWith("/")) {
+    const relative = managedRelativeFromAbsolute(normalized);
+    if (relative) {
+      return relative;
+    }
+  }
   if (!normalized.includes("/") && !/\.[A-Za-z0-9]+$/.test(normalized)) {
     return null;
   }
@@ -227,6 +263,17 @@ function pathsReferToSameManagedFile(left: string, right: string): boolean {
 
 function namesEqualIgnoreCase(left: string, right: string): boolean {
   return left.toLowerCase() === right.toLowerCase();
+}
+
+function compactAgentName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function agentNamesCompatible(resourceName: string, leaf: string): boolean {
+  if (namesEqualIgnoreCase(resourceName, leaf)) {
+    return true;
+  }
+  return compactAgentName(resourceName) === compactAgentName(leaf);
 }
 
 function resourceManagedPathCandidates(
@@ -268,24 +315,26 @@ export function fileChangeMatchesResource(
   }
   const changePath = normalizeComparablePath(change.path);
   const resourcePaths = resourceManagedPathCandidates(resource);
-  if (resourcePaths.some((path) => pathsReferToSameManagedFile(path, changePath))) {
+  if (
+    resource.type !== "agent"
+    && resourcePaths.some((path) => pathsReferToSameManagedFile(path, changePath))
+  ) {
     return true;
   }
   if (resource.type === "mcp_server" && inferFileChangeType(change.path) === "mcp_server") {
     return true;
   }
+  if (
+    (resource.type === "permission"
+      || resource.type === "hook"
+      || resource.type === "env_var")
+    && isHostSettingsFileChangePath(change.path)
+  ) {
+    return true;
+  }
   if (resource.type === "agent" && inferFileChangeType(change.path) === "agent") {
     const leaf = fileChangeLeafName(change.path);
-    if (!leaf) {
-      return false;
-    }
-    if (namesEqualIgnoreCase(leaf, resource.name)) {
-      return true;
-    }
-    return resourcePaths.some((path) => {
-      const sourceLeaf = fileChangeLeafName(path);
-      return sourceLeaf !== null && namesEqualIgnoreCase(sourceLeaf, leaf);
-    });
+    return Boolean(leaf && agentNamesCompatible(resource.name, leaf));
   }
   return false;
 }

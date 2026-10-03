@@ -174,4 +174,157 @@ describe("getManagedFileDiff", () => {
       await context.cleanup();
     }
   });
+
+  it("scopes settings.json diffs to the selected permission, not sibling hooks", async () => {
+    const context = await createInitializedTestContext("managed-file-diff-permission-scope");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "permission",
+          name: "allow-Bash(jk:*)",
+          description: "",
+          content: "",
+          metadata: { action: "allow", pattern: "Bash(jk:*)" },
+          source: "~/.claude/settings.json",
+        }).id,
+      );
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "hook",
+          name: "SessionStart-1",
+          description: "",
+          content: "ponytail",
+          metadata: { event: "SessionStart", script: "ponytail" },
+          source: "~/.claude/settings.json",
+        }).id,
+      );
+      await applyProfilePlugin("work", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+
+      const relative = ".claude/settings.json";
+      mkdirSync(join(context.homeDir, ".claude"), { recursive: true });
+      writeFileSync(
+        join(context.homeDir, relative),
+        `${JSON.stringify(
+          {
+            permissions: { allow: ["Bash(jk:*)"] },
+          },
+          null,
+          2,
+        )}\n`,
+        "utf-8",
+      );
+
+      const full = await getManagedFileDiff({
+        profileSelector: "work",
+        path: relative,
+        scope: "home",
+        harness: "claude-code",
+      });
+      expect(full.expected).toContain("SessionStart");
+      expect(full.expected).toContain("ponytail");
+      expect(full.current).not.toContain("ponytail");
+
+      const scopedPermission = await getManagedFileDiff({
+        profileSelector: "work",
+        path: relative,
+        scope: "home",
+        harness: "claude-code",
+        resource: { type: "permission", name: "allow-Bash(jk:*)" },
+      });
+      expect(scopedPermission.expected).toContain("Bash(jk:*)");
+      expect(scopedPermission.expected).not.toContain("ponytail");
+      expect(scopedPermission.expected).not.toContain("SessionStart");
+      expect(scopedPermission.current).toContain("Bash(jk:*)");
+      expect(scopedPermission.current).not.toContain("ponytail");
+      expect(scopedPermission.expected).toBe(scopedPermission.current);
+
+      const scopedHook = await getManagedFileDiff({
+        profileSelector: "work",
+        path: relative,
+        scope: "home",
+        harness: "claude-code",
+        resource: { type: "hook", name: "SessionStart-1" },
+      });
+      expect(scopedHook.expected).toContain("ponytail");
+      expect(scopedHook.expected).not.toContain("Bash(jk:*)");
+      expect(scopedHook.current).not.toContain("ponytail");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("resolves a live absolute subagent path onto the clicked agent file", async () => {
+    const context = await createInitializedTestContext("managed-file-diff-agent-path");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "agent",
+          name: "code-reviewer",
+          description: "review",
+          content: "Review the diff carefully.",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "agent",
+          name: "planner",
+          description: "plan",
+          content: "Plan the work.",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+      await applyProfilePlugin("work", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+
+      const reviewerRelative = ".claude/agents/code-reviewer.md";
+      const plannerRelative = ".claude/agents/planner.md";
+      const reviewerAbsolute = join(context.homeDir, reviewerRelative);
+      const plannerAbsolute = join(context.homeDir, plannerRelative);
+      mkdirSync(join(context.homeDir, ".claude", "agents"), { recursive: true });
+      writeFileSync(reviewerAbsolute, "---\nname: code-reviewer\n---\n\n# live reviewer\n", "utf-8");
+      writeFileSync(plannerAbsolute, "---\nname: planner\n---\n\n# live planner\n", "utf-8");
+
+      const fromAbsolute = await getManagedFileDiff({
+        profileSelector: "work",
+        path: reviewerAbsolute,
+        scope: "home",
+        harness: "claude-code",
+        resource: { type: "agent", name: "code-reviewer" },
+      });
+      expect(fromAbsolute.path).toBe(reviewerRelative);
+      expect(fromAbsolute.current).toContain("live reviewer");
+      expect(fromAbsolute.current).not.toContain("live planner");
+      expect(fromAbsolute.expected).toContain("Review the diff carefully.");
+
+      const fromSibling = await getManagedFileDiff({
+        profileSelector: "work",
+        path: plannerAbsolute,
+        scope: "home",
+        harness: "claude-code",
+        resource: { type: "agent", name: "code-reviewer" },
+      });
+      expect(fromSibling.path).toBe(reviewerRelative);
+      expect(fromSibling.current).toContain("live reviewer");
+      expect(fromSibling.current).not.toContain("live planner");
+      expect(fromSibling.expected).not.toContain("Plan the work.");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
