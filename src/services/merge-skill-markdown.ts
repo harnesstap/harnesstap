@@ -35,6 +35,9 @@ export function mergeSkillMarkdown(
   if (!live) {
     return generated;
   }
+  if (normalizeNewlines(live) === normalizeNewlines(generated)) {
+    return live;
+  }
   const liveParsed = matter(normalizeNewlines(live));
   const generatedParsed = matter(normalizeNewlines(generated));
   const data: Record<string, unknown> = {

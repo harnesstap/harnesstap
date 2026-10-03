@@ -83,8 +83,9 @@ function mergeEnvRecord(
 
 /**
  * Overlay profile-managed Claude settings keys onto the live file.
- * Unrelated top-level keys (model, alwaysThinkingEnabled, …) are kept.
- * `env` is merged key-wise; `permissions` and `hooks` are replaced when present
+ * Unrelated top-level keys (model, alwaysThinkingEnabled, and similar) are kept.
+ * `env` is merged key-wise. `permissions` overlays allow/deny/ask lists and
+ * keeps extra live keys such as defaultMode. `hooks` are replaced when present
  * in the generated overlay.
  */
 export function mergeClaudeSettingsContent(
@@ -107,6 +108,10 @@ export function mergeClaudeSettingsContent(
   for (const [key, value] of Object.entries(generated)) {
     if (key === "env") {
       merged.env = mergeEnvRecord(existing.env, value);
+      continue;
+    }
+    if (key === "permissions") {
+      merged.permissions = mergeEnvRecord(existing.permissions, value);
       continue;
     }
     merged[key] = value;

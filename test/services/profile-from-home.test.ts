@@ -159,8 +159,12 @@ describe("profile-from-home service", () => {
       });
 
       expect(result.resources.map((resource) => resource.id)).toEqual([existing.id]);
-      expect(result.resources[0]?.content).toBe("# Incoming");
-      expect(pluginModel.getPluginResources(result.plugin.id)[0]?.content).toBe("# Incoming");
+      expect(result.resources[0]?.content).toBe(
+        "---\nname: research\ndescription: Home helper\n---\n# Incoming",
+      );
+      expect(pluginModel.getPluginResources(result.plugin.id)[0]?.content).toBe(
+        "---\nname: research\ndescription: Home helper\n---\n# Incoming",
+      );
     } finally {
       await context.cleanup();
     }

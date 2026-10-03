@@ -390,7 +390,7 @@ describe("ClaudeCodeSerializer", () => {
     }
   });
 
-  it("omits unsupported ask permissions from Claude settings output", async () => {
+  it("serializes ask permissions into Claude settings.json", async () => {
     const serializer = new ClaudeCodeSerializer();
     const files = await serializer.serialize(
       [
@@ -403,7 +403,11 @@ describe("ClaudeCodeSerializer", () => {
       ".",
     );
 
-    expect(files).toEqual([]);
+    expect(files).toHaveLength(1);
+    expect(files[0]?.path).toBe(".claude/settings.json");
+    expect(JSON.parse(files[0]?.content ?? "{}")).toEqual({
+      permissions: { ask: ["Read(*)"] },
+    });
   });
 
   it("scans hooks from home ~/.claude/settings.json", async () => {

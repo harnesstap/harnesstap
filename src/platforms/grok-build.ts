@@ -4,10 +4,7 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { formatTransportToml } from "../services/toml/write.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
-import {
-  canonicalAgentFromResource,
-  emitMarkdownAgent,
-} from "../services/agent-bridge.js";
+import { serializedAgentDocument } from "../services/agent-bridge.js";
 import type {
   AgentMetadata,
   HookMetadata,
@@ -523,13 +520,13 @@ export class GrokBuildSerializer extends BaseSerializer {
       if (!agentsPath) continue;
       files.push({
         path: `${agentsPath}${r.name}.md`,
-        content: emitMarkdownAgent(
-          canonicalAgentFromResource({
+        content: serializedAgentDocument(
+          {
             name: r.name,
             description: r.description,
             content: r.content,
             metadata: r.metadata as AgentMetadata,
-          }),
+          },
           "generic",
         ),
       });
