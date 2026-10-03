@@ -218,14 +218,6 @@ function managedRelativeFromAbsolute(absolute: string): string | null {
   return null;
 }
 
-function isHostSettingsFileChangePath(path: string): boolean {
-  const normalized = path.replace(/\\/g, "/");
-  return (
-    /(^|\/)\.claude\/settings\.json$/i.test(normalized)
-    || /(^|\/)\.config\/muse\/settings\.json$/i.test(normalized)
-  );
-}
-
 /** Normalize a library source path to a home/project-relative managed path. */
 export function managedPathFromResourceSource(
   source: string | null | undefined,
@@ -302,11 +294,27 @@ function fileChangeLeafName(path: string): string | null {
   return match?.[1] ?? null;
 }
 
+const SHARED_FILE_RESOURCE_TYPES = new Set(["mcp_server", "permission", "hook", "env_var"]);
+
+function affectedResourceMatches(
+  resource: Pick<ProfileContentsResource, "type" | "name">,
+  change: DriftFileChange,
+): boolean {
+  return (change.affected_resources ?? []).some(
+    (entry) =>
+      entry.type === resource.type
+      && namesEqualIgnoreCase(entry.name, resource.name),
+  );
+}
+
 /** True when a File changes row is the disk diff for this inventory resource. */
 export function fileChangeMatchesResource(
   resource: Pick<ProfileContentsResource, "type" | "name" | "source" | "filesystem_path">,
   change: DriftFileChange,
 ): boolean {
+  if (SHARED_FILE_RESOURCE_TYPES.has(resource.type)) {
+    return affectedResourceMatches(resource, change);
+  }
   if (
     change.resource?.type === resource.type
     && namesEqualIgnoreCase(change.resource.name, resource.name)
@@ -318,17 +326,6 @@ export function fileChangeMatchesResource(
   if (
     resource.type !== "agent"
     && resourcePaths.some((path) => pathsReferToSameManagedFile(path, changePath))
-  ) {
-    return true;
-  }
-  if (resource.type === "mcp_server" && inferFileChangeType(change.path) === "mcp_server") {
-    return true;
-  }
-  if (
-    (resource.type === "permission"
-      || resource.type === "hook"
-      || resource.type === "env_var")
-    && isHostSettingsFileChangePath(change.path)
   ) {
     return true;
   }

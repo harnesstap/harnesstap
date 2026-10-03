@@ -412,13 +412,21 @@ describe("contents-diff helpers", () => {
     expect(
       fileChangeMatchesResource(
         { type: "mcp_server", name: "devel", source: "~/.cursor/mcp.json" },
-        { path: ".claude.json", type: "modified" },
+        {
+          path: ".claude.json",
+          type: "modified",
+          affected_resources: [{ type: "mcp_server", name: "devel" }],
+        },
       ),
     ).toBe(true);
     expect(
       fileChangeMatchesResource(
         { type: "mcp_server", name: "devel", source: "manual" },
-        { path: ".codex/config.toml", type: "modified" },
+        {
+          path: ".codex/config.toml",
+          type: "modified",
+          affected_resources: [{ type: "mcp_server", name: "devel" }],
+        },
       ),
     ).toBe(true);
     expect(
@@ -440,13 +448,21 @@ describe("contents-diff helpers", () => {
           name: "allow-Bash(jk:*)",
           source: "~/.claude/settings.json",
         },
-        { path: ".claude/settings.json", type: "modified" },
+        {
+          path: ".claude/settings.json",
+          type: "modified",
+          affected_resources: [{ type: "permission", name: "allow-Bash(jk:*)" }],
+        },
       ),
     ).toBe(true);
     expect(
       fileChangeMatchesResource(
         { type: "hook", name: "SessionStart-1", source: "manual" },
-        { path: ".claude/settings.json", type: "modified" },
+        {
+          path: ".claude/settings.json",
+          type: "modified",
+          affected_resources: [{ type: "hook", name: "SessionStart-1" }],
+        },
       ),
     ).toBe(true);
     expect(
@@ -457,6 +473,39 @@ describe("contents-diff helpers", () => {
     ).toBe(false);
     expect(managedPathFromResourceSource("/Users/christophe.oudar/.claude/agents/code-reviewer.md"))
       .toBe(".claude/agents/code-reviewer.md");
+  });
+
+  it("does not match shared-file diffs onto chips with an empty scoped content delta", () => {
+    expect(
+      fileChangeMatchesResource(
+        { type: "mcp_server", name: "devel", source: "~/.cursor/mcp.json" },
+        { path: ".claude.json", type: "modified" },
+      ),
+    ).toBe(false);
+    expect(
+      fileChangeMatchesResource(
+        { type: "mcp_server", name: "devel", source: "~/.claude.json" },
+        {
+          path: ".claude.json",
+          type: "modified",
+          affected_resources: [{ type: "mcp_server", name: "other" }],
+        },
+      ),
+    ).toBe(false);
+    expect(
+      fileChangeMatchesResource(
+        {
+          type: "permission",
+          name: "allow-Bash(jk:*)",
+          source: "~/.claude/settings.json",
+        },
+        {
+          path: ".claude/settings.json",
+          type: "modified",
+          affected_resources: [{ type: "permission", name: "allow-Read" }],
+        },
+      ),
+    ).toBe(false);
   });
 
   it("filters file changes by selected kinds; empty selection shows all", () => {

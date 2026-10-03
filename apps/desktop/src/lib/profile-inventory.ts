@@ -40,6 +40,8 @@ export const MUTATION_CHUNK_SIZE = 4;
 export type ProfileInventorySectionId =
   (typeof PROFILE_INVENTORY_SECTION_ORDER)[number];
 
+const SHARED_FILE_RESOURCE_TYPES = new Set(["mcp_server", "permission", "hook", "env_var"]);
+
 export interface ProfileInventoryItem {
   section: ProfileInventorySectionId;
   key: string;
@@ -192,19 +194,16 @@ function synthesizeTypedDriftChange(
   resource: ProfileContentsResource,
   liveUpdate?: ProfileContentsResource,
 ): DriftFileChange | undefined {
-  if (resource.type !== "mcp_server" && resource.type !== "agent") {
+  if (resource.type !== "agent") {
     return undefined;
   }
-  let path = (liveUpdate ? managedDriftPath(liveUpdate) : null)
+  const rawPath = (liveUpdate ? managedDriftPath(liveUpdate) : null)
     ?? managedDriftPath(resource);
-  if (!path || inferFileChangeType(path) !== resource.type) {
+  if (!rawPath || inferFileChangeType(rawPath) !== "agent") {
     return undefined;
-  }
-  if (resource.type === "agent") {
-    path = agentPathForResource(path, resource.name);
   }
   return {
-    path,
+    path: agentPathForResource(rawPath, resource.name),
     type: "modified",
     resource: { type: resource.type, name: resource.name },
   };
@@ -269,7 +268,9 @@ export function partitionProfileInventory(
     const onHarness = rowAliases(row).some((alias) => liveKeys.has(alias));
     const liveUpdate = notStagedUpdates.get(key);
     const driftChange = fileChangeForResource(resource, fileChanges, liveUpdate);
-    const drifted = driftedKeys.has(key) || Boolean(driftChange);
+    const fingerprintDrift =
+      !SHARED_FILE_RESOURCE_TYPES.has(resource.type) && driftedKeys.has(key);
+    const drifted = fingerprintDrift || Boolean(driftChange);
     const item: ProfileInventoryItem = {
       section: onHarness ? "active" : "inactive",
       key: row.key,

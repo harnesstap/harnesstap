@@ -1,0 +1,5 @@
+kind: Fixed
+body: Hide Desktop View changes when a chip's scoped file diff is empty, and do not mark that chip yellow as a content change.
+time: 2026-10-03T04:50:00Z
+custom:
+  Issue: ""

@@ -28,6 +28,17 @@ function mcpServersWrapperKey(
   return null;
 }
 
+/** Server keys in an aggregate MCP JSON config (`mcpServers` / `mcp_servers` / `mcp`). */
+export function mcpServerNamesFromConfig(content: string): string[] {
+  try {
+    const document = JSON.parse(content) as unknown;
+    const servers = mcpServersRecord(document);
+    return servers ? Object.keys(servers) : [];
+  } catch {
+    return [];
+  }
+}
+
 function mcpServersRecord(document: unknown): Record<string, unknown> | null {
   if (!isRecord(document)) {
     return null;

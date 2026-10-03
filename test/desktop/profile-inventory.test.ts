@@ -243,7 +243,14 @@ describe("partitionProfileInventory", () => {
       liveRows: flattenProfileResourceList(liveStacked, { selectedProfile: "work" }),
       notStaged: [],
       fileChanges: [
-        { path: ".cursor/mcp.json", type: "modified" },
+        {
+          path: ".cursor/mcp.json",
+          type: "modified",
+          affected_resources: [
+            { type: "mcp_server", name: "alpha" },
+            { type: "mcp_server", name: "beta" },
+          ],
+        },
         { path: ".codex/agents/helper.toml", type: "modified" },
       ],
     });
@@ -257,6 +264,42 @@ describe("partitionProfileInventory", () => {
     expect(beta?.driftChange?.path).toBe(".cursor/mcp.json");
     expect(helper?.drifted).toBe(true);
     expect(helper?.driftChange?.path).toBe(".codex/agents/helper.toml");
+  });
+
+  it("hides View changes and yellow when MCP scoped diff on a shared file is empty", () => {
+    const stacked = contents({
+      resources: [
+        {
+          type: "mcp_server",
+          name: "devel",
+          source: "~/.cursor/mcp.json",
+        },
+      ],
+      type_counts: { mcp_server: 1 },
+      stack_resource_count: 1,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [
+        {
+          type: "mcp_server",
+          name: "devel",
+          source: "~/.cursor/mcp.json",
+          not_staged_kind: "update",
+        },
+      ],
+      fileChanges: [
+        {
+          path: ".claude.json",
+          type: "modified",
+          affected_resources: [{ type: "mcp_server", name: "other" }],
+        },
+      ],
+    });
+
+    expect(parts.active[0]?.drifted).toBe(false);
+    expect(parts.active[0]?.driftChange).toBeUndefined();
   });
 
   it("attaches View changes when MCP drift is on another harness config than the chip source", () => {
@@ -282,7 +325,13 @@ describe("partitionProfileInventory", () => {
           not_staged_kind: "update",
         },
       ],
-      fileChanges: [{ path: ".claude.json", type: "modified" }],
+      fileChanges: [
+        {
+          path: ".claude.json",
+          type: "modified",
+          affected_resources: [{ type: "mcp_server", name: "devel" }],
+        },
+      ],
     });
 
     expect(parts.active[0]?.drifted).toBe(true);
@@ -299,7 +348,13 @@ describe("partitionProfileInventory", () => {
       profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
       liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
       notStaged: [],
-      fileChanges: [{ path: ".codex/config.toml", type: "modified" }],
+      fileChanges: [
+        {
+          path: ".codex/config.toml",
+          type: "modified",
+          affected_resources: [{ type: "mcp_server", name: "devel" }],
+        },
+      ],
     });
 
     expect(parts.active[0]?.drifted).toBe(true);
@@ -346,10 +401,46 @@ describe("partitionProfileInventory", () => {
 
     const mcp = parts.active.find((row) => row.resource.name === "devel");
     const agent = parts.active.find((row) => row.resource.name === "Researcher");
-    expect(mcp?.drifted).toBe(true);
-    expect(mcp?.driftChange?.path).toBe(".cursor/mcp.json");
+    expect(mcp?.drifted).toBe(false);
+    expect(mcp?.driftChange).toBeUndefined();
     expect(agent?.drifted).toBe(true);
     expect(agent?.driftChange?.path).toBe(".claude/agents/researcher.md");
+  });
+
+  it("hides View changes when a permission sibling changed the shared settings file", () => {
+    const stacked = contents({
+      resources: [
+        {
+          type: "permission",
+          name: "allow-Bash(jk:*)",
+          source: "~/.claude/settings.json",
+        },
+      ],
+      type_counts: { permission: 1 },
+      stack_resource_count: 1,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [
+        {
+          type: "permission",
+          name: "allow-Bash(jk:*)",
+          source: "~/.claude/settings.json",
+          not_staged_kind: "update",
+        },
+      ],
+      fileChanges: [
+        {
+          path: ".claude/settings.json",
+          type: "modified",
+          affected_resources: [{ type: "permission", name: "allow-Read" }],
+        },
+      ],
+    });
+
+    expect(parts.active[0]?.drifted).toBe(false);
+    expect(parts.active[0]?.driftChange).toBeUndefined();
   });
 
   it("attaches View changes when a subagent chip name differs from the agent filename", () => {
@@ -396,7 +487,16 @@ describe("partitionProfileInventory", () => {
       profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
       liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
       notStaged: [],
-      fileChanges: [{ path: ".claude/settings.json", type: "modified" }],
+      fileChanges: [
+        {
+          path: ".claude/settings.json",
+          type: "modified",
+          affected_resources: [
+            { type: "permission", name: "allow-Bash(jk:*)" },
+            { type: "hook", name: "SessionStart-1" },
+          ],
+        },
+      ],
     });
 
     const permission = parts.active.find((row) => row.resource.name === "allow-Bash(jk:*)");
@@ -461,7 +561,13 @@ describe("partitionProfileInventory", () => {
           not_staged_kind: "add",
         },
       ],
-      fileChanges: [{ path: ".cursor/mcp.json", type: "modified" }],
+      fileChanges: [
+        {
+          path: ".cursor/mcp.json",
+          type: "modified",
+          affected_resources: [{ type: "mcp_server", name: "extra" }],
+        },
+      ],
     });
 
     expect(parts.notInProfile).toHaveLength(1);

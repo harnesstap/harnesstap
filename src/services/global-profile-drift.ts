@@ -13,6 +13,7 @@ import {
 } from "./profile-apply.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { withAffectedResources } from "./scoped-file-content-delta.js";
 import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
 import {
@@ -375,11 +376,19 @@ export async function detectGlobalProfileStatus(input: {
   for (const file of expectedApply.expected_files ?? []) {
     const current = readGlobalFile(homeRoot, file.path);
     if (current === null) {
-      changes.push({ path: file.path, type: "deleted" });
+      changes.push(
+        withAffectedResources({ path: file.path, type: "deleted" }, file.content, null),
+      );
       continue;
     }
     if (!fileContentsEquivalentForDrift(file.path, current, file.content)) {
-      changes.push({ path: file.path, type: "modified" });
+      changes.push(
+        withAffectedResources(
+          { path: file.path, type: "modified" },
+          file.content,
+          current,
+        ),
+      );
     }
   }
 

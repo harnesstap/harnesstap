@@ -9,6 +9,8 @@ export interface DriftFileChange {
   type: DriftChangeType;
   platform?: string;
   resource?: { type: string; name: string };
+  /** Resources in this shared file whose scoped content actually changed. */
+  affected_resources?: Array<{ type: string; name: string }>;
 }
 
 export interface ProjectDriftReport {

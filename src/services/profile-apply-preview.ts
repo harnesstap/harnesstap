@@ -21,6 +21,7 @@ import {
 } from "./global-profile-status-panel.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { withAffectedResources } from "./scoped-file-content-delta.js";
 import {
   collectOwnedPreviewResources,
   expectedFileMatchesLiveForPreview,
@@ -179,11 +180,19 @@ function compareExpectedFiles(
       continue;
     }
     if (current === null) {
-      changes.push({ path: file.path, type: "deleted" });
+      changes.push(
+        withAffectedResources({ path: file.path, type: "deleted" }, file.content, null),
+      );
       continue;
     }
     if (!fileContentsEquivalentForDrift(file.path, current, file.content)) {
-      changes.push({ path: file.path, type: "modified" });
+      changes.push(
+        withAffectedResources(
+          { path: file.path, type: "modified" },
+          file.content,
+          current,
+        ),
+      );
     }
   }
   return changes;
