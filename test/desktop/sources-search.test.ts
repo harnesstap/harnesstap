@@ -10,6 +10,7 @@ import {
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
+  marketplaceIdsNeedingCatalogFetch,
   nextMarketplaceHitsOnRefresh,
   presenceForCloud,
   presenceForMarketplace,
@@ -821,6 +822,60 @@ describe("discoverListIsSearching", () => {
         visibleCount: 3,
       }),
     ).toBe(false);
+  });
+
+  test("is true while a refresh search or load is in flight even if sources already fetched", () => {
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["mkt:acme", "mkt:beta"],
+        fetchedIds: new Set(["mkt:acme", "mkt:beta"]),
+        inflightIds: new Set(["mkt:beta"]),
+        visibleCount: 0,
+      }),
+    ).toBe(true);
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["local", "org:cloud"],
+        fetchedIds: new Set(["local"]),
+        inflightIds: new Set(["org:cloud"]),
+        visibleCount: 0,
+      }),
+    ).toBe(true);
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["mkt:acme"],
+        fetchedIds: new Set(["mkt:acme"]),
+        inflightIds: new Set(["mkt:acme"]),
+        visibleCount: 4,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("marketplaceIdsNeedingCatalogFetch", () => {
+  const hits = {
+    "mkt:acme": { plugins: [{ name: "focus" }], error: null },
+    "mkt:empty": { plugins: [], error: null },
+  };
+
+  test("reuses non-empty cached marketplace catalogs on reopen", () => {
+    expect(
+      marketplaceIdsNeedingCatalogFetch({
+        marketplaceIds: ["mkt:acme", "mkt:beta", "mkt:empty"],
+        hits,
+        bypassCache: false,
+      }),
+    ).toEqual(["mkt:beta", "mkt:empty"]);
+  });
+
+  test("refetches every marketplace when bypassing cache", () => {
+    expect(
+      marketplaceIdsNeedingCatalogFetch({
+        marketplaceIds: ["mkt:acme", "mkt:beta"],
+        hits,
+        bypassCache: true,
+      }),
+    ).toEqual(["mkt:acme", "mkt:beta"]);
   });
 });
 

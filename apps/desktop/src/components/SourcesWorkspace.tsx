@@ -39,6 +39,7 @@ import {
   type SourcesPane,
 } from "../lib/sources-pane";
 import {
+  persistableDiscoverMarketplaceHits,
   readDiscoverCatalogCache,
   writeDiscoverCatalogCache,
 } from "../lib/discover-catalog-cache";
@@ -51,6 +52,7 @@ import {
   discoverSourcesRefreshing,
   filterDiscoverGroups,
   marketplaceHitKey,
+  marketplaceIdsNeedingCatalogFetch,
   mergeSourcesHits,
   nextMarketplaceHitsOnRefresh,
   sourcesHitFetchKey,
@@ -294,6 +296,8 @@ export function SourcesWorkspace({
   const [inflightSourceIds, setInflightSourceIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const marketplaceHitsRef = useRef(marketplaceHits);
+  marketplaceHitsRef.current = marketplaceHits;
   const [activeHit, setActiveHit] = useState<SourcesHit | null>(null);
   const [treeFiles, setTreeFiles] = useState<SourcesTreeFile[]>([]);
   const [treeLoading, setTreeLoading] = useState(false);
@@ -401,7 +405,22 @@ export function SourcesWorkspace({
     const marketplaceRows = checkedRows.filter(
       (row) => row.kind === "marketplace",
     );
-    const libraryIds = ["local", ...marketplaceRows.map((row) => row.id)];
+    const fetchMarketplaceIds = new Set(
+      marketplaceIdsNeedingCatalogFetch({
+        marketplaceIds: marketplaceRows.map((row) => row.id),
+        hits: marketplaceHitsRef.current,
+        bypassCache: false,
+      }),
+    );
+    const reuseMarketplaceIds = marketplaceRows
+      .map((row) => row.id)
+      .filter((id) => !fetchMarketplaceIds.has(id));
+    const libraryIds = [
+      "local",
+      ...marketplaceRows
+        .map((row) => row.id)
+        .filter((id) => fetchMarketplaceIds.has(id)),
+    ];
     setInflightSourceIds((current) => {
       const next = new Set(current);
       for (const id of libraryIds) {
@@ -466,7 +485,14 @@ export function SourcesWorkspace({
       }),
     );
 
+    if (reuseMarketplaceIds.length > 0) {
+      markFetched(reuseMarketplaceIds);
+    }
+
     for (const row of marketplaceRows) {
+      if (!fetchMarketplaceIds.has(row.id)) {
+        continue;
+      }
       pending.push(
         fetchMarketplacePlugins(baseUrl, token, row.label)
           .then((result) => {
@@ -620,7 +646,7 @@ export function SourcesWorkspace({
       return;
     }
     let cancelled = false;
-    void fetchPluginOriginCheck(baseUrl, token, { refresh: true })
+    void fetchPluginOriginCheck(baseUrl, token)
       .then((report) => {
         if (!cancelled) {
           setOriginCheckRows(report.results);
@@ -1196,6 +1222,7 @@ export function SourcesWorkspace({
   const listSearching = discoverListIsSearching({
     checkedIds: checkedRows.map((row) => row.id),
     fetchedIds: fetchedSourceIds,
+    inflightIds: inflightSourceIds,
     visibleCount: visibleHitCount,
   });
   const sidebarRefreshing = discoverSourcesRefreshing({
@@ -1217,7 +1244,7 @@ export function SourcesWorkspace({
     writeDiscoverCatalogCache({
       marketplaces,
       scope,
-      marketplaceHits,
+      marketplaceHits: persistableDiscoverMarketplaceHits(marketplaceHits),
       localHeads,
       localResources,
       localError,

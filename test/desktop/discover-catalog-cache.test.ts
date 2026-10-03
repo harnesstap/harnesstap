@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   clearDiscoverCatalogCache,
+  persistableDiscoverMarketplaceHits,
   readDiscoverCatalogCache,
   writeDiscoverCatalogCache,
 } from "../../apps/desktop/src/lib/discover-catalog-cache.ts";
@@ -79,5 +80,28 @@ describe("discover catalog session cache", () => {
     first?.fetchedSourceIds.push("mkt:mutated");
     expect(readDiscoverCatalogCache()?.marketplaces).toHaveLength(1);
     expect(readDiscoverCatalogCache()?.fetchedSourceIds).toEqual(["mkt:acme"]);
+  });
+
+  test("does not persist empty unfetched marketplace hits as a complete catalog", () => {
+    expect(
+      persistableDiscoverMarketplaceHits({
+        "mkt:acme": { plugins: [{ name: "focus" }], error: null },
+        "mkt:pending": { plugins: [], error: null },
+        "mkt:failed": { plugins: [], error: "Could not load beta." },
+      }),
+    ).toEqual({
+      "mkt:acme": { plugins: [{ name: "focus" }], error: null },
+      "mkt:failed": { plugins: [], error: "Could not load beta." },
+    });
+    writeDiscoverCatalogCache({
+      marketplaceHits: {
+        "mkt:acme": { plugins: [{ name: "focus" }], error: null },
+        "mkt:pending": { plugins: [], error: null },
+      },
+      fetchedSourceIds: ["mkt:acme", "mkt:pending"],
+    });
+    expect(Object.keys(readDiscoverCatalogCache()?.marketplaceHits ?? {})).toEqual([
+      "mkt:acme",
+    ]);
   });
 });

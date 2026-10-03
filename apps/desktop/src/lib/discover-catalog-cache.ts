@@ -71,6 +71,16 @@ export function readDiscoverCatalogCache(): DiscoverCatalogCacheSnapshot | null 
   return snapshot ? cloneSnapshot(snapshot) : null;
 }
 
+export function persistableDiscoverMarketplaceHits(
+  hits: DiscoverCatalogCacheSnapshot["marketplaceHits"],
+): DiscoverCatalogCacheSnapshot["marketplaceHits"] {
+  return Object.fromEntries(
+    Object.entries(hits).filter(
+      ([, hit]) => hit.plugins.length > 0 || hit.error !== null,
+    ),
+  );
+}
+
 export function writeDiscoverCatalogCache(
   patch: Partial<DiscoverCatalogCacheSnapshot>,
 ): void {
@@ -78,9 +88,9 @@ export function writeDiscoverCatalogCache(
   snapshot = cloneSnapshot({
     ...base,
     ...patch,
-    marketplaceHits: patch.marketplaceHits
-      ? { ...patch.marketplaceHits }
-      : base.marketplaceHits,
+    marketplaceHits: persistableDiscoverMarketplaceHits(
+      patch.marketplaceHits ? patch.marketplaceHits : base.marketplaceHits,
+    ),
     fetchedSourceIds: patch.fetchedSourceIds
       ? [...patch.fetchedSourceIds]
       : base.fetchedSourceIds,

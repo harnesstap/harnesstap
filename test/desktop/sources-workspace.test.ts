@@ -259,6 +259,14 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("aria-live=\"polite\"");
     expect(sourcesSearchSource).toContain("Refreshing ${total - inflight}/${total} marketplaces");
     expect(sourcesSearchSource).not.toContain("—");
+    expect(workspaceSource).toContain("inflightIds: inflightSourceIds");
+    expect(workspaceSource).toContain("marketplaceIdsNeedingCatalogFetch");
+    expect(workspaceSource).toContain("persistableDiscoverMarketplaceHits");
+    expect(workspaceSource).toContain("bypassCache: false");
+    expect(workspaceSource).toContain("fetchPluginOriginCheck(baseUrl, token)");
+    expect(workspaceSource).not.toContain(
+      "fetchPluginOriginCheck(baseUrl, token, { refresh: true })",
+    );
   });
 
   test("places workspace back before the Discover title like Library and Environments", () => {

@@ -223,16 +223,39 @@ export function discoverListEmptyCopy(input: {
   };
 }
 
-/** Searching… only when checked sources have never completed a fetch and the list is empty. */
+/** In-progress list body when the visible list is empty: first fetch, refresh, or search. */
 export function discoverListIsSearching(input: {
   checkedIds: readonly string[];
   fetchedIds: ReadonlySet<string>;
+  inflightIds?: ReadonlySet<string>;
   visibleCount: number;
 }): boolean {
   if (input.visibleCount > 0) {
     return false;
   }
+  const inflight = input.inflightIds;
+  if (inflight) {
+    for (const id of input.checkedIds) {
+      if (inflight.has(id)) {
+        return true;
+      }
+    }
+  }
   return input.checkedIds.some((id) => !input.fetchedIds.has(id));
+}
+
+/** Skip network for marketplaces that already have a non-empty cached plugin list. */
+export function marketplaceIdsNeedingCatalogFetch(input: {
+  marketplaceIds: readonly string[];
+  hits: Record<string, { plugins: readonly unknown[] }>;
+  bypassCache?: boolean;
+}): string[] {
+  if (input.bypassCache) {
+    return [...input.marketplaceIds];
+  }
+  return input.marketplaceIds.filter(
+    (id) => (input.hits[id]?.plugins.length ?? 0) === 0,
+  );
 }
 
 /** Sidebar spinner for a refetch of sources that already have a first result. */
