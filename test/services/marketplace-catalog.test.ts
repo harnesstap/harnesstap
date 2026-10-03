@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { addMarketplace } from "../../src/services/marketplace-registry.js";
 import {
+  ensureMarketplaceCatalog,
   listCatalogPlugins,
   refreshMarketplaceCatalog,
   searchCatalogPlugins,
@@ -133,5 +134,39 @@ describe("marketplace-catalog", () => {
     expect(plugins.map((p) => p.name).sort()).toEqual(["alpha", "beta", "gamma"]);
     expect(plugins.find((p) => p.name === "alpha")?.version).toBe("2.0.0");
     expect(plugins.filter((p) => p.name === "alpha")).toHaveLength(1);
+  });
+
+  it("reuses a fresh on-disk catalog instead of cloning the marketplace again", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-home-"));
+    const repo = initLocalMarketplaceRepo();
+    addMarketplace(home, {
+      name: "local-market",
+      url: repo,
+      platforms: ["claude-code"],
+    });
+    expect(
+      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+    ).toEqual(["alpha", "beta"]);
+
+    writeFileSync(
+      join(repo, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "local-market",
+        plugins: [{ name: "gamma", version: "9.0.0" }],
+      }),
+    );
+    spawnSync("git", ["add", "."], { cwd: repo });
+    spawnSync(
+      "git",
+      ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "stale"],
+      { cwd: repo },
+    );
+
+    expect(
+      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+    ).toEqual(["alpha", "beta"]);
+    expect(
+      refreshMarketplaceCatalog(home, { name: "local-market", force: false }).message,
+    ).toBe("Catalog is up to date");
   });
 });

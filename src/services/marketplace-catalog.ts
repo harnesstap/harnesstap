@@ -365,6 +365,18 @@ export function listCatalogPlugins(
   return stored?.plugins ?? [];
 }
 
+/** Refresh from git only when the on-disk catalog is missing or stale, then list. */
+export function ensureMarketplaceCatalog(
+  harnesstapDir: string,
+  options: ListCatalogPluginsOptions & { force?: boolean },
+): CatalogPlugin[] {
+  refreshMarketplaceCatalog(harnesstapDir, {
+    name: options.name,
+    force: options.force ?? false,
+  });
+  return listCatalogPlugins(harnesstapDir, { name: options.name });
+}
+
 export function listCatalogPluginBranchVersions(
   harnesstapDir: string,
   marketplace: string,

@@ -3,10 +3,9 @@ import { join, relative, sep } from "node:path";
 import { isInvalidPreviewPath } from "../utils/preview-path.js";
 import { builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
 import {
-  listCatalogPlugins,
+  ensureMarketplaceCatalog,
   listPluginsFromMarketplaceRoot,
   marketplaceCacheDir,
-  refreshMarketplaceCatalog,
 } from "./marketplace-catalog.js";
 import { listVisibleMarketplaces } from "./host-marketplaces.js";
 
@@ -55,8 +54,7 @@ function collectFiles(root: string, dir: string, files: string[]): void {
 }
 
 function ensureCatalogPlugins(harnesstapDir: string, marketplace: string) {
-  refreshMarketplaceCatalog(harnesstapDir, { name: marketplace, force: false });
-  return listCatalogPlugins(harnesstapDir, { name: marketplace });
+  return ensureMarketplaceCatalog(harnesstapDir, { name: marketplace });
 }
 
 function previewFromRoot(

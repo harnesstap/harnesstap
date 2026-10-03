@@ -2,7 +2,7 @@ import { parseTrackedBranches, type PluginMarketplacePlatform } from "../config/
 import { getHarnesstapDir } from "../db/connection.js";
 import { builtinMarketplaceGitUrl } from "../services/builtin-marketplaces.js";
 import {
-  listCatalogPlugins,
+  ensureMarketplaceCatalog,
   listPluginsFromMarketplaceRoot,
   refreshMarketplaceCatalog,
 } from "../services/marketplace-catalog.js";
@@ -209,12 +209,11 @@ export function handleMarketplacePluginsList(
     );
   }
 
-  const plugins = entry.managed
-    ? listCatalogPlugins(harnesstapDir, { name: entry.name })
-    : entry.contentRoot
+  const plugins =
+    entry.contentRoot && !entry.managed
       ? listPluginsFromMarketplaceRoot(entry.contentRoot, entry.name, entry.platforms)
-      : builtinMarketplaceGitUrl(entry.name)
-        ? listCatalogPlugins(harnesstapDir, { name: entry.name })
+      : entry.managed || builtinMarketplaceGitUrl(entry.name)
+        ? ensureMarketplaceCatalog(harnesstapDir, { name: entry.name })
         : [];
   return jsonResponse({ marketplace: entry.name, plugins });
 }
