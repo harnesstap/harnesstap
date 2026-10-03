@@ -5,7 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { addMarketplace } from "../../src/services/marketplace-registry.js";
 import { refreshMarketplaceCatalog } from "../../src/services/marketplace-catalog.js";
-import { previewMarketplacePlugin } from "../../src/services/marketplace-plugin-tree.js";
+import {
+  filterOpenableMarketplacePlugins,
+  previewMarketplacePlugin,
+} from "../../src/services/marketplace-plugin-tree.js";
 
 const HELLO_CONTENT = "hello from marketplace\n";
 
@@ -236,6 +239,90 @@ describe("previewMarketplacePlugin", () => {
         plugin: "missing-plugin",
       }),
     ).toEqual({ status: "not_found" });
+  });
+
+  it("previews a catalog plugin whose marketplace source path differs from its name", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
+    const cacheDir = join(home, "cache", "marketplaces", "claude-plugins");
+    mkdirSync(join(cacheDir, ".claude-plugin"), { recursive: true });
+    mkdirSync(join(cacheDir, "plugins", "devx", "skills"), { recursive: true });
+    writeFileSync(
+      join(cacheDir, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "claude-plugins",
+        plugins: [{ name: "devx-team", source: "./plugins/devx" }],
+      }),
+    );
+    writeFileSync(join(cacheDir, "plugins", "devx", "skills", "hello.md"), "hello from devx\n");
+    writeStoredCatalog(cacheDir, "devx-team", "claude-plugins");
+
+    const result = previewMarketplacePlugin(home, {
+      marketplace: "claude-plugins",
+      plugin: "devx-team",
+    });
+    expect(result).toEqual({
+      status: "ok",
+      files: [{ path: "skills/hello.md", kind: "file" }],
+    });
+  });
+
+  it("returns empty files for a listed remote-only marketplace plugin", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
+    const cacheDir = join(home, "cache", "marketplaces", "claude-plugins");
+    mkdirSync(join(cacheDir, ".claude-plugin"), { recursive: true });
+    writeFileSync(
+      join(cacheDir, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "claude-plugins",
+        plugins: [
+          {
+            name: "devx-team",
+            source: { source: "github", repo: "acme/devx-team" },
+          },
+        ],
+      }),
+    );
+    writeStoredCatalog(cacheDir, "devx-team", "claude-plugins");
+
+    expect(
+      previewMarketplacePlugin(home, {
+        marketplace: "claude-plugins",
+        plugin: "devx-team",
+      }),
+    ).toEqual({ status: "ok", files: [] });
+  });
+
+  it("omits catalog plugins that are gone from the marketplace manifest", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
+    const cacheDir = join(home, "cache", "marketplaces", "claude-plugins");
+    mkdirSync(join(cacheDir, ".claude-plugin"), { recursive: true });
+    mkdirSync(join(cacheDir, "plugins", "devx"), { recursive: true });
+    writeFileSync(
+      join(cacheDir, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "claude-plugins",
+        plugins: [{ name: "devx-team", source: "./plugins/devx" }],
+      }),
+    );
+    writeFileSync(
+      join(cacheDir, "catalog.json"),
+      `${JSON.stringify({
+        marketplaceName: "claude-plugins",
+        marketplaceEntryName: "claude-plugins",
+        plugins: [
+          { name: "devx-team", ref: "devx-team@claude-plugins" },
+          { name: "stale-plugin", ref: "stale-plugin@claude-plugins" },
+        ],
+        refreshedAt: "2026-01-01T00:00:00.000Z",
+      }, null, 2)}\n`,
+    );
+
+    expect(
+      filterOpenableMarketplacePlugins(cacheDir, [
+        { name: "devx-team", ref: "devx-team@claude-plugins" },
+        { name: "stale-plugin", ref: "stale-plugin@claude-plugins" },
+      ]).map((plugin) => plugin.name),
+    ).toEqual(["devx-team"]);
   });
 
   it("returns not_found when the plugin directory is missing", () => {

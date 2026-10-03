@@ -502,6 +502,81 @@ describe("agent marketplace routes", () => {
     expect(denied.status).toBe(401);
   });
 
+  function makeNameVsPathMarketplaceGitRepo(): string {
+    const root = mkdtempSync(join(tmpdir(), "ht-mkt-name-path-"));
+    tempDirs.push(root);
+    mkdirSync(join(root, ".claude-plugin"), { recursive: true });
+    mkdirSync(join(root, "plugins", "devx", "skills"), { recursive: true });
+    writeFileSync(
+      join(root, ".claude-plugin/marketplace.json"),
+      JSON.stringify({
+        name: "claude-plugins",
+        plugins: [
+          {
+            name: "devx-team",
+            version: "1.0.0",
+            description: "DevX team plugin",
+            source: "./plugins/devx",
+          },
+          {
+            name: "gone-plugin",
+            version: "0.0.1",
+            source: "./plugins/missing",
+          },
+        ],
+      }),
+    );
+    writeFileSync(
+      join(root, "plugins", "devx", "skills", "hello.md"),
+      "hello from devx\n",
+    );
+    spawnSync("git", ["init"], { cwd: root, stdio: "ignore" });
+    spawnSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+    spawnSync(
+      "git",
+      ["-c", "user.email=e2e@test", "-c", "user.name=e2e", "commit", "-m", "init"],
+      { cwd: root, stdio: "ignore" },
+    );
+    return root;
+  }
+
+  it("opens a listed marketplace plugin whose source path differs from its name", async () => {
+    const server = await withServer();
+    const repo = makeNameVsPathMarketplaceGitRepo();
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "claude-plugins",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(add.status).toBe(200);
+
+    const listed = await fetch(`${server.url}/v1/marketplaces/claude-plugins/plugins`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(listed.status).toBe(200);
+    const pluginBody = (await listed.json()) as {
+      plugins: Array<{ name: string }>;
+    };
+    expect(pluginBody.plugins.map((plugin) => plugin.name)).toEqual(["devx-team"]);
+
+    const tree = await fetch(
+      `${server.url}/v1/marketplaces/claude-plugins/plugins/devx-team/tree`,
+      { headers: { Authorization: `Bearer ${server.token}` } },
+    );
+    expect(tree.status).toBe(200);
+    await expect(tree.json()).resolves.toEqual({
+      files: [{ path: "skills/hello.md", kind: "file" }],
+    });
+  });
+
   it("lists marketplace plugin tree files", async () => {
     const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();

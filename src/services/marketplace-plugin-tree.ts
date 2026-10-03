@@ -1,13 +1,22 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 import { isInvalidPreviewPath } from "../utils/preview-path.js";
 import { builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
 import {
+  type VisibleMarketplaceEntry,
+  listVisibleMarketplaces,
+} from "./host-marketplaces.js";
+import {
+  isRelativePluginSourcePath,
+  parseMarketplacePluginSource,
+} from "./host-plugin-source.js";
+import {
+  type CatalogPlugin,
   ensureMarketplaceCatalog,
   listPluginsFromMarketplaceRoot,
   marketplaceCacheDir,
+  readMarketplaceManifest,
 } from "./marketplace-catalog.js";
-import { listVisibleMarketplaces } from "./host-marketplaces.js";
 
 export type MarketplaceTreeFile = { path: string; kind: "file" };
 
@@ -17,8 +26,30 @@ export type MarketplacePluginTreeResult =
   | { status: "not_found" }
   | { status: "invalid_path" };
 
+type MarketplacePreviewTarget =
+  | { kind: "dir"; path: string }
+  | { kind: "remote" }
+  | { kind: "missing" };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function isDirectory(path: string): boolean {
   return existsSync(path) && statSync(path).isDirectory();
+}
+
+function containedRelativeDir(root: string, sourcePath: string): string | undefined {
+  const trimmed = sourcePath.trim().replaceAll("\\", "/");
+  if (!trimmed || !isRelativePluginSourcePath(trimmed)) {
+    return undefined;
+  }
+  const relativePath = trimmed.replace(/^\.\//, "");
+  if (!relativePath || relativePath.split("/").includes("..")) {
+    return undefined;
+  }
+  const absolute = join(root, relativePath);
+  return isDirectory(absolute) ? absolute : undefined;
 }
 
 function resolvePluginDirectory(cacheDir: string, pluginName: string): string | undefined {
@@ -38,6 +69,67 @@ function resolvePluginDirectory(cacheDir: string, pluginName: string): string | 
     if (isDirectory(nested)) return nested;
   }
   return undefined;
+}
+
+function manifestPluginEntries(root: string): unknown[] {
+  const raw = readMarketplaceManifest(root);
+  if (!isRecord(raw) || !Array.isArray(raw.plugins)) {
+    return [];
+  }
+  return raw.plugins;
+}
+
+function pluginEntryName(entry: unknown): string | undefined {
+  if (!isRecord(entry)) return undefined;
+  if (typeof entry.name === "string" && entry.name.length > 0) {
+    return entry.name;
+  }
+  const parsed = parseMarketplacePluginSource(entry);
+  const path = parsed?.path?.replace(/[/\\]+$/, "");
+  if (!path) return undefined;
+  const derived = basename(path);
+  return derived.length > 0 ? derived : undefined;
+}
+
+function findManifestPluginEntry(root: string, pluginName: string): unknown | undefined {
+  for (const entry of manifestPluginEntries(root)) {
+    if (pluginEntryName(entry) === pluginName) {
+      return entry;
+    }
+  }
+  return undefined;
+}
+
+function resolvePreviewTarget(root: string, pluginName: string): MarketplacePreviewTarget {
+  const entry = findManifestPluginEntry(root, pluginName);
+  if (entry !== undefined) {
+    const source = parseMarketplacePluginSource(entry);
+    if (source?.url) {
+      const localDir = source.path ? containedRelativeDir(root, source.path) : undefined;
+      if (localDir) {
+        return { kind: "dir", path: localDir };
+      }
+      return { kind: "remote" };
+    }
+    if (source?.path) {
+      const fromSource = containedRelativeDir(root, source.path);
+      if (fromSource) {
+        return { kind: "dir", path: fromSource };
+      }
+      return { kind: "missing" };
+    }
+    const listedByName = resolvePluginDirectory(root, pluginName);
+    if (listedByName) {
+      return { kind: "dir", path: listedByName };
+    }
+    return { kind: "remote" };
+  }
+
+  const byName = resolvePluginDirectory(root, pluginName);
+  if (byName) {
+    return { kind: "dir", path: byName };
+  }
+  return { kind: "missing" };
 }
 
 function collectFiles(root: string, dir: string, files: string[]): void {
@@ -62,11 +154,24 @@ function previewFromRoot(
   plugin: string,
   path?: string,
 ): MarketplacePluginTreeResult {
-  const pluginRoot = resolvePluginDirectory(cacheDir, plugin);
-  if (!pluginRoot) {
-    return { status: "not_found" };
+  const target = resolvePreviewTarget(cacheDir, plugin);
+  switch (target.kind) {
+    case "missing":
+      return { status: "not_found" };
+    case "remote":
+      if (path?.trim()) {
+        return { status: "not_found" };
+      }
+      return { status: "ok", files: [] };
+    case "dir":
+      break;
+    default: {
+      const _exhaustive: never = target;
+      return _exhaustive;
+    }
   }
 
+  const pluginRoot = target.path;
   const requestedPath = path?.trim();
   if (!requestedPath) {
     const files: string[] = [];
@@ -94,6 +199,45 @@ function previewFromRoot(
   };
 }
 
+function catalogHasPlugin(plugins: CatalogPlugin[], pluginName: string): boolean {
+  return plugins.some((plugin) => plugin.name === pluginName);
+}
+
+function listedMarketplacePlugins(
+  harnesstapDir: string,
+  entry: VisibleMarketplaceEntry,
+): CatalogPlugin[] {
+  if (entry.contentRoot && !entry.managed) {
+    return listPluginsFromMarketplaceRoot(
+      entry.contentRoot,
+      entry.name,
+      entry.platforms,
+    );
+  }
+  if (entry.managed || builtinMarketplaceGitUrl(entry.name)) {
+    return ensureMarketplaceCatalog(harnesstapDir, { name: entry.name });
+  }
+  return [];
+}
+
+export function filterOpenableMarketplacePlugins(
+  root: string,
+  plugins: CatalogPlugin[],
+): CatalogPlugin[] {
+  return plugins.filter(
+    (plugin) => resolvePreviewTarget(root, plugin.name).kind !== "missing",
+  );
+}
+
+export function listMarketplacePlugins(
+  harnesstapDir: string,
+  entry: VisibleMarketplaceEntry,
+): CatalogPlugin[] {
+  const plugins = listedMarketplacePlugins(harnesstapDir, entry);
+  const root = entry.contentRoot ?? marketplaceCacheDir(harnesstapDir, entry.name);
+  return filterOpenableMarketplacePlugins(root, plugins);
+}
+
 export function previewMarketplacePlugin(
   harnesstapDir: string,
   input: { marketplace: string; plugin: string; path?: string },
@@ -104,12 +248,8 @@ export function previewMarketplacePlugin(
 
   if (visible && !visible.managed) {
     if (visible.contentRoot) {
-      const plugins = listPluginsFromMarketplaceRoot(
-        visible.contentRoot,
-        visible.name,
-        visible.platforms,
-      );
-      if (!plugins.some((plugin) => plugin.name === input.plugin)) {
+      const plugins = listMarketplacePlugins(harnesstapDir, visible);
+      if (!catalogHasPlugin(plugins, input.plugin)) {
         return { status: "not_found" };
       }
       return previewFromRoot(visible.contentRoot, input.plugin, input.path);
@@ -120,10 +260,11 @@ export function previewMarketplacePlugin(
   }
 
   const plugins = ensureCatalogPlugins(harnesstapDir, input.marketplace);
-  if (!plugins.some((plugin) => plugin.name === input.plugin)) {
+  const cacheDir = marketplaceCacheDir(harnesstapDir, input.marketplace);
+  const openable = filterOpenableMarketplacePlugins(cacheDir, plugins);
+  if (!catalogHasPlugin(openable, input.plugin)) {
     return { status: "not_found" };
   }
 
-  const cacheDir = marketplaceCacheDir(harnesstapDir, input.marketplace);
   return previewFromRoot(cacheDir, input.plugin, input.path);
 }
