@@ -212,6 +212,9 @@ describe("Profile resources pane chrome", () => {
     expect(fileDiffModalSource).not.toContain("Green = would add");
     expect(fileDiffModalSource).not.toContain("file-diff-legend");
     expect(fileDiffModalSource).toContain("userFacingManagedPath");
+    expect(fileDiffModalSource).toContain("No content change for this permission.");
+    expect(fileDiffModalSource).toContain("No content change for this hook.");
+    expect(fileDiffModalSource).toContain("noContentChangeCopy");
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("If the live copy differs");
     expect(designSource).toContain("Target preview does not use the Not in profile amber tint");

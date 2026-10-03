@@ -168,6 +168,26 @@ function managedDriftPath(
   );
 }
 
+function agentPathForResource(path: string, resourceName: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  const slash = normalized.lastIndexOf("/");
+  const base = slash === -1 ? normalized : normalized.slice(slash + 1);
+  const match = base.match(/^(.+?)(?:\.agent)?\.(md|toml)$/i);
+  if (!match?.[1] || !match[2]) {
+    return path;
+  }
+  const leaf = match[1];
+  if (leaf.toLowerCase() === resourceName.toLowerCase()) {
+    return path;
+  }
+  const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (compact(leaf) === compact(resourceName)) {
+    return path;
+  }
+  const dir = slash === -1 ? "" : normalized.slice(0, slash + 1);
+  return `${dir}${resourceName}.${match[2]}`;
+}
+
 function synthesizeTypedDriftChange(
   resource: ProfileContentsResource,
   liveUpdate?: ProfileContentsResource,
@@ -175,10 +195,13 @@ function synthesizeTypedDriftChange(
   if (resource.type !== "mcp_server" && resource.type !== "agent") {
     return undefined;
   }
-  const path = (liveUpdate ? managedDriftPath(liveUpdate) : null)
+  let path = (liveUpdate ? managedDriftPath(liveUpdate) : null)
     ?? managedDriftPath(resource);
   if (!path || inferFileChangeType(path) !== resource.type) {
     return undefined;
+  }
+  if (resource.type === "agent") {
+    path = agentPathForResource(path, resource.name);
   }
   return {
     path,

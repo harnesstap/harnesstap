@@ -24,6 +24,23 @@ function userFacingManagedPath(path: string, scope: ViewScope): string {
   return normalized;
 }
 
+function noContentChangeCopy(resource: { type: string; name: string } | null): string {
+  switch (resource?.type) {
+    case "permission":
+      return "No content change for this permission.";
+    case "hook":
+      return "No content change for this hook.";
+    case "env_var":
+      return "No content change for this env var.";
+    case "mcp_server":
+      return "No content change for this MCP.";
+    case "agent":
+      return "No content change for this subagent.";
+    default:
+      return "No content change.";
+  }
+}
+
 export interface FileDiffModalProps {
   open: boolean;
   path: string | null;
@@ -145,7 +162,7 @@ export function FileDiffModal({
               <h2 id={titleId} className="mono">
                 {shownPath}
               </h2>
-              {resource?.type === "mcp_server" && resource.name ? (
+              {resource?.name ? (
                 <p className="muted file-diff-resource">{resource.name}</p>
               ) : null}
             </div>
@@ -167,6 +184,10 @@ export function FileDiffModal({
               <div className="banner error" role="alert">
                 <div>{error}</div>
               </div>
+            ) : showDiffChrome && changeCounts.added === 0 && changeCounts.removed === 0 ? (
+              <p className="muted" role="status">
+                {noContentChangeCopy(resource)}
+              </p>
             ) : (
               <pre className="file-diff-content" aria-label={`Live to after-apply diff for ${shownPath}${resource?.name ? ` (${resource.name})` : ""}`}>
                 {lines.map((line, index) => (

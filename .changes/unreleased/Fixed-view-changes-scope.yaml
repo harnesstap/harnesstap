@@ -1,0 +1,5 @@
+kind: Fixed
+body: Scope Desktop View changes on shared settings.json to the clicked permission or hook, and resolve live subagent paths so Active chips open a real diff.
+time: 2026-10-03T03:10:00Z
+custom:
+  Issue: ""

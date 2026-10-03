@@ -375,6 +375,75 @@ describe("partitionProfileInventory", () => {
     expect(parts.active[0]?.driftChange?.path).toBe(".claude/agents/researcher.md");
   });
 
+  it("attaches View changes for permission and hook chips onto Claude settings.json", () => {
+    const stacked = contents({
+      resources: [
+        {
+          type: "permission",
+          name: "allow-Bash(jk:*)",
+          source: "~/.claude/settings.json",
+        },
+        {
+          type: "hook",
+          name: "SessionStart-1",
+          source: "manual",
+        },
+      ],
+      type_counts: { permission: 1, hook: 1 },
+      stack_resource_count: 2,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [],
+      fileChanges: [{ path: ".claude/settings.json", type: "modified" }],
+    });
+
+    const permission = parts.active.find((row) => row.resource.name === "allow-Bash(jk:*)");
+    const hook = parts.active.find((row) => row.resource.name === "SessionStart-1");
+    expect(permission?.drifted).toBe(true);
+    expect(permission?.driftChange?.path).toBe(".claude/settings.json");
+    expect(hook?.drifted).toBe(true);
+    expect(hook?.driftChange?.path).toBe(".claude/settings.json");
+  });
+
+  it("does not attach a sibling subagent file to the clicked chip", () => {
+    const stacked = contents({
+      resources: [
+        { type: "agent", name: "code-reviewer", source: "manual" },
+        { type: "agent", name: "planner", source: "manual" },
+      ],
+      type_counts: { agent: 2 },
+      stack_resource_count: 2,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [
+        {
+          type: "agent",
+          name: "code-reviewer",
+          source: "manual",
+          filesystem_path: "/Users/christophe.oudar/.claude/agents/planner.md",
+          not_staged_kind: "update",
+        },
+        {
+          type: "agent",
+          name: "planner",
+          source: "manual",
+          filesystem_path: "/Users/christophe.oudar/.claude/agents/planner.md",
+          not_staged_kind: "update",
+        },
+      ],
+      fileChanges: [{ path: ".claude/agents/planner.md", type: "modified" }],
+    });
+
+    const reviewer = parts.active.find((row) => row.resource.name === "code-reviewer");
+    const planner = parts.active.find((row) => row.resource.name === "planner");
+    expect(reviewer?.driftChange?.path).toBe(".claude/agents/code-reviewer.md");
+    expect(planner?.driftChange?.path).toBe(".claude/agents/planner.md");
+  });
+
   it("attaches a scoped MCP file diff on Not in profile chips", () => {
     const parts = partitionProfileInventory({
       profileRows: [],
