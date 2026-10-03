@@ -3,10 +3,7 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { listCursorPluginPinCreateInputs } from "../plugins/cursor-installed.js";
 import { emitHostPluginTrees } from "../services/host-plugin-serialize.js";
-import {
-  canonicalAgentFromResource,
-  emitMarkdownAgent,
-} from "../services/agent-bridge.js";
+import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import {
   emitCursorMcpServerEntry,
@@ -314,15 +311,15 @@ export class CursorSerializer extends BaseSerializer {
           if (!agentsPath) break;
           files.push({
             path: join(agentsPath, `${r.name}.md`),
-            content: emitMarkdownAgent(
-              canonicalAgentFromResource({
-                name: r.name,
-                description: r.description,
-                content: r.content,
-                metadata: r.metadata as AgentMetadata,
-              }),
-              "cursor",
-            ),
+            content: serializedAgentDocument(
+            {
+              name: r.name,
+              description: r.description,
+              content: r.content,
+              metadata: r.metadata as AgentMetadata,
+            },
+            "cursor",
+          ),
           });
           break;
         }

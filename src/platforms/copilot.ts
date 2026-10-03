@@ -2,10 +2,7 @@ import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { listInstalledCopilotPluginPinCreateInputs } from "../plugins/copilot-installed.js";
-import {
-  canonicalAgentFromResource,
-  emitMarkdownAgent,
-} from "../services/agent-bridge.js";
+import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
 import type {
   AgentMetadata,
@@ -222,13 +219,13 @@ export class CopilotSerializer extends BaseSerializer {
       for (const r of agents) {
         files.push({
           path: join(agentsDir, `${r.name}.md`),
-          content: emitMarkdownAgent(
-            canonicalAgentFromResource({
+          content: serializedAgentDocument(
+            {
               name: r.name,
               description: r.description,
               content: r.content,
               metadata: r.metadata as AgentMetadata,
-            }),
+            },
             "generic",
           ),
         });

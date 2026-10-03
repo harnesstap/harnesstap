@@ -198,7 +198,7 @@ export abstract class BaseSerializer implements PlatformSerializer {
           this.makeResource(
             "agent",
             normalized.name,
-            normalized.content,
+            raw,
             source,
             normalized.metadata,
             normalized.description,
@@ -269,13 +269,13 @@ export abstract class BaseSerializer implements PlatformSerializer {
         const parsed = this.tryParseFrontmatter(raw);
         if (!parsed) continue;
 
-        const { data, content } = parsed;
+        const { data } = parsed;
         const { scripts, references } = listSkillAuxiliaryFiles(entryPath);
         resources.push(
           this.makeResource(
             "skill",
             (data["name"] as string) || entry,
-            content.trim(),
+            raw,
             this.prefixedRelativePath(fullPath, skillMd, sourcePrefix),
             {
               scripts,
@@ -324,7 +324,9 @@ export abstract class BaseSerializer implements PlatformSerializer {
       name: resource.name,
       description: resource.description,
     };
-    const generated = this.emitFrontmatter(fm, resource.content);
+    const generated = resource.content.startsWith("---")
+      ? resource.content
+      : this.emitFrontmatter(fm, resource.content);
     const liveRoot = options.projectRoot;
     const live = liveRoot
       ? this.readFile(join(liveRoot, skillMdPath))

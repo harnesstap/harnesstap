@@ -95,6 +95,35 @@ describe("mergeClaudeSettingsContent", () => {
     expect(merged.permissions.allow).toEqual(["Bash(*)"]);
     expect(merged.env).toEqual({ KEEP: "yes", DEMO_KEY: "new" });
   });
+
+  it("keeps extra live permission keys such as defaultMode", () => {
+    const live = JSON.stringify(
+      {
+        permissions: {
+          allow: ["Read(*)"],
+          deny: [],
+          defaultMode: "acceptEdits",
+        },
+      },
+      null,
+      2,
+    );
+    const generated = JSON.stringify(
+      {
+        permissions: { allow: ["Read(*)"], ask: ["Edit(*)"] },
+      },
+      null,
+      2,
+    );
+
+    const merged = JSON.parse(mergeClaudeSettingsContent(live, generated)) as {
+      permissions: { allow: string[]; ask: string[]; defaultMode: string };
+    };
+
+    expect(merged.permissions.allow).toEqual(["Read(*)"]);
+    expect(merged.permissions.ask).toEqual(["Edit(*)"]);
+    expect(merged.permissions.defaultMode).toBe("acceptEdits");
+  });
 });
 
 describe("mergeMuseSettingsContent", () => {
@@ -191,6 +220,11 @@ describe("mergeSkillMarkdown", () => {
     expect(merged).toContain("allowed-tools: Read");
     expect(merged).toContain("# Dolibarr Developer Skill");
     expect(merged).toContain("Lots of live guidance.");
+  });
+
+  it("returns live bytes when the generated snapshot already matches", () => {
+    const live = "---\nname: ship\ndescription: d\n---\n\n# live body\n";
+    expect(mergeSkillMarkdown(live, live)).toBe(live);
   });
 
   it("replaces the body when the profile snapshot is a real rewrite", () => {

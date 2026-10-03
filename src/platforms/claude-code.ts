@@ -3,10 +3,7 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { listInstalledPluginPinCreateInputs } from "../plugins/claude-installed.js";
 import { emitHostPluginTrees } from "../services/host-plugin-serialize.js";
-import {
-  canonicalAgentFromResource,
-  emitMarkdownAgent,
-} from "../services/agent-bridge.js";
+import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import { localMcpCreateInputsFromDocument } from "../services/claude-local-mcp.js";
 import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
@@ -28,6 +25,34 @@ import type {
   PermissionMetadata,
   SerializeOptions,
 } from "../types.js";
+
+const CLAUDE_PERMISSION_ACTIONS = ["allow", "deny", "ask"] as const;
+
+function claudePermissionInputs(
+  settings: {
+    permissions?: {
+      allow?: string[];
+      deny?: string[];
+      ask?: string[];
+    };
+  },
+  source: string,
+): ResourceCreateInput[] {
+  const resources: ResourceCreateInput[] = [];
+  for (const action of CLAUDE_PERMISSION_ACTIONS) {
+    for (const pattern of settings.permissions?.[action] ?? []) {
+      resources.push({
+        type: "permission",
+        name: `${action}-${pattern}`,
+        description: "",
+        content: "",
+        source,
+        metadata: { action, pattern } satisfies PermissionMetadata,
+      });
+    }
+  }
+  return resources;
+}
 
 function emitClaudeMcpServerEntry(meta: McpServerMetadata): Record<string, unknown> {
   const entry: Record<string, unknown> = {};
@@ -144,34 +169,14 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     if (settingsContent) {
       try {
         const settings = JSON.parse(settingsContent) as {
-          permissions?: { allow?: string[]; deny?: string[] };
+          permissions?: { allow?: string[]; deny?: string[]; ask?: string[] };
           env?: Record<string, string>;
           hooks?: Record<string, unknown>;
         };
 
-        // Permissions
-        for (const pattern of settings.permissions?.allow ?? []) {
-          resources.push(
-            this.makeResource(
-              "permission",
-              `allow-${pattern}`,
-              "",
-              ".claude/settings.json",
-              { action: "allow", pattern } satisfies PermissionMetadata,
-            ),
-          );
-        }
-        for (const pattern of settings.permissions?.deny ?? []) {
-          resources.push(
-            this.makeResource(
-              "permission",
-              `deny-${pattern}`,
-              "",
-              ".claude/settings.json",
-              { action: "deny", pattern } satisfies PermissionMetadata,
-            ),
-          );
-        }
+        resources.push(
+          ...claudePermissionInputs(settings, ".claude/settings.json"),
+        );
 
         // Env vars
         for (const [key, value] of Object.entries(settings.env ?? {})) {
@@ -297,32 +302,13 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     if (settingsContent) {
       try {
         const settings = JSON.parse(settingsContent) as {
-          permissions?: { allow?: string[]; deny?: string[] };
+          permissions?: { allow?: string[]; deny?: string[]; ask?: string[] };
           env?: Record<string, string>;
         };
 
-        for (const pattern of settings.permissions?.allow ?? []) {
-          resources.push(
-            this.makeResource(
-              "permission",
-              `allow-${pattern}`,
-              "",
-              "~/.claude/settings.json",
-              { action: "allow", pattern } satisfies PermissionMetadata,
-            ),
-          );
-        }
-        for (const pattern of settings.permissions?.deny ?? []) {
-          resources.push(
-            this.makeResource(
-              "permission",
-              `deny-${pattern}`,
-              "",
-              "~/.claude/settings.json",
-              { action: "deny", pattern } satisfies PermissionMetadata,
-            ),
-          );
-        }
+        resources.push(
+          ...claudePermissionInputs(settings, "~/.claude/settings.json"),
+        );
 
         for (const [key, value] of Object.entries(settings.env ?? {})) {
           resources.push(
@@ -493,13 +479,31 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       if (permissions.length > 0) {
         const allow: string[] = [];
         const deny: string[] = [];
+        const ask: string[] = [];
         for (const r of permissions) {
           const meta = r.metadata as PermissionMetadata;
-          if (meta.action === "allow") allow.push(meta.pattern);
-          else if (meta.action === "deny") deny.push(meta.pattern);
+          switch (meta.action) {
+            case "allow":
+              allow.push(meta.pattern);
+              break;
+            case "deny":
+              deny.push(meta.pattern);
+              break;
+            case "ask":
+              ask.push(meta.pattern);
+              break;
+            default: {
+              const neverAction: never = meta.action;
+              throw new Error(`Unsupported permission action: ${String(neverAction)}`);
+            }
+          }
         }
-        if (allow.length > 0 || deny.length > 0) {
-          settings["permissions"] = { allow, deny };
+        if (allow.length > 0 || deny.length > 0 || ask.length > 0) {
+          settings["permissions"] = {
+            ...(allow.length > 0 ? { allow } : {}),
+            ...(deny.length > 0 ? { deny } : {}),
+            ...(ask.length > 0 ? { ask } : {}),
+          };
         }
       }
       if (envVars.length > 0) {
@@ -531,17 +535,15 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     // Agents → .claude/agents/{name}.md
     for (const r of byType.get("agent") ?? []) {
       if (!agentsPath) continue;
-      const content = r.content.startsWith("---")
-        ? r.content
-        : emitMarkdownAgent(
-            canonicalAgentFromResource({
-              name: r.name,
-              description: r.description,
-              content: r.content,
-              metadata: r.metadata as AgentMetadata,
-            }),
-            "claude",
-          );
+      const content = serializedAgentDocument(
+        {
+          name: r.name,
+          description: r.description,
+          content: r.content,
+          metadata: r.metadata as AgentMetadata,
+        },
+        "claude",
+      );
       files.push({ path: `${agentsPath}${r.name}.md`, content });
     }
 

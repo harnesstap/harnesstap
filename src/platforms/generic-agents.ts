@@ -1,10 +1,7 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
-import {
-  canonicalAgentFromResource,
-  emitMarkdownAgent,
-} from "../services/agent-bridge.js";
+import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
 import type {
@@ -375,13 +372,13 @@ export class GenericAgentsSerializer extends BaseSerializer {
       for (const r of agents) {
         files.push({
           path: `${agentsPath}${r.name}.md`,
-          content: emitMarkdownAgent(
-            canonicalAgentFromResource({
+          content: serializedAgentDocument(
+            {
               name: r.name,
               description: r.description,
               content: r.content,
               metadata: r.metadata as AgentMetadata,
-            }),
+            },
             "generic",
           ),
         });

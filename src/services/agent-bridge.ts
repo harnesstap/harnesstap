@@ -199,6 +199,34 @@ export function emitMarkdownAgent(
   return matter.stringify(agent.instructions, Object.fromEntries(nonEmpty));
 }
 
+/**
+ * Emit a complete live agent document as-is so overwrite/commit round-trips
+ * extra frontmatter. Library rows without a full document still canonicalize.
+ */
+export function serializedAgentDocument(
+  resource: {
+    name: string;
+    description: string;
+    content: string;
+    metadata: AgentMetadata;
+  },
+  flavor: MarkdownAgentFlavor | "codex-toml",
+): string {
+  if (resource.content.startsWith("---")) {
+    return resource.content;
+  }
+  if (flavor === "codex-toml") {
+    if (
+      resource.metadata.wire_format === "codex-toml"
+      && parseCodexAgentToml(resource.content)
+    ) {
+      return resource.content;
+    }
+    return emitCodexAgentToml(canonicalAgentFromResource(resource));
+  }
+  return emitMarkdownAgent(canonicalAgentFromResource(resource), flavor);
+}
+
 export function canonicalAgentFromResource(resource: {
   name: string;
   description: string;

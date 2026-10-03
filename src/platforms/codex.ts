@@ -4,10 +4,7 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { formatTransportToml } from "../services/toml/write.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
-import {
-  canonicalAgentFromResource,
-  emitCodexAgentToml,
-} from "../services/agent-bridge.js";
+import { serializedAgentDocument } from "../services/agent-bridge.js";
 import type {
   AgentMetadata,
   EnvVarMetadata,
@@ -506,15 +503,17 @@ export class CodexSerializer extends BaseSerializer {
     // Agents → .codex/agents/{name}.toml
     for (const r of resources.filter((r) => r.type === "agent")) {
       if (!agentsPath) continue;
-      const agent = canonicalAgentFromResource({
-        name: r.name,
-        description: r.description,
-        content: r.content,
-        metadata: r.metadata as AgentMetadata,
-      });
       files.push({
         path: `${agentsPath}${r.name}.toml`,
-        content: emitCodexAgentToml(agent),
+        content: serializedAgentDocument(
+          {
+            name: r.name,
+            description: r.description,
+            content: r.content,
+            metadata: r.metadata as AgentMetadata,
+          },
+          "codex-toml",
+        ),
       });
     }
 

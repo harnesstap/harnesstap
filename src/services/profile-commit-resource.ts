@@ -41,6 +41,7 @@ function profileHasResource(
   profileSelector: string,
   resourceType: string,
   resourceName: string,
+  namespace?: string,
 ): Resource | null {
   const profilePlugin = resolvePluginSelector(profileSelector);
   if (!profilePlugin || !isProfilePlugin(profilePlugin)) {
@@ -50,7 +51,9 @@ function profileHasResource(
   return (
     merged.resources.find(
       (resource) =>
-        resource.type === resourceType && resource.name === resourceName,
+        resource.type === resourceType
+        && resource.name === resourceName
+        && (namespace === undefined || (resource.namespace ?? "") === namespace),
     ) ?? null
   );
 }
@@ -224,6 +227,29 @@ const REGISTRY_AGGREGATE_FILE_PATHS = collectRegistryFilePaths((paths) => [
   ...(paths.pathAlternates?.settings ?? []),
 ]);
 
+const REGISTRY_INSTRUCTION_FILE_PATHS = collectRegistryFilePaths((paths) => [
+  paths.instructions,
+  paths.legacy_instructions,
+]);
+
+const INSTRUCTION_FILE_BASENAMES = new Set(
+  [
+    "CLAUDE.md",
+    "AGENTS.md",
+    "AGENTS.local.md",
+    "AGENT.md",
+    "GEMINI.md",
+    "AmazonQ.md",
+    "CONVENTIONS.md",
+    "JULES.md",
+    ".windsurfrules",
+    ".cursorrules",
+    ".goosehints",
+    ".rules",
+    "copilot-instructions.md",
+  ].map((name) => name.toLowerCase()),
+);
+
 /** Aggregate MCP config files (many mcp_server resources per path). */
 export function isMcpConfigManagedPath(path: string, rootPath?: string): boolean {
   const normalized = normalizeManagedPath(path, rootPath);
@@ -244,6 +270,30 @@ export function isAggregateConfigManagedPath(path: string, rootPath?: string): b
     return true;
   }
   return pathMatchesKnownFile(path, REGISTRY_AGGREGATE_FILE_PATHS, rootPath);
+}
+
+export function isInstructionManagedPath(path: string, rootPath?: string): boolean {
+  if (pathMatchesKnownFile(path, REGISTRY_INSTRUCTION_FILE_PATHS, rootPath)) {
+    return true;
+  }
+  const basename = normalizeManagedPath(path, rootPath).split("/").pop()?.toLowerCase();
+  return Boolean(basename && INSTRUCTION_FILE_BASENAMES.has(basename));
+}
+
+export function isPluginRegistryManagedPath(path: string, rootPath?: string): boolean {
+  const normalized = normalizeManagedPath(path, rootPath).replace(/^~\//, "");
+  return (
+    /(^|\/)\.claude\/plugins\/installed_plugins\.json$/i.test(normalized)
+    || /(^|\/)\.cursor\/plugins\/(installed_plugins\.json|installed\.json)$/i.test(normalized)
+  );
+}
+
+function isSourceBoundCommitPath(path: string, rootPath?: string): boolean {
+  return (
+    isAggregateConfigManagedPath(path, rootPath)
+    || isInstructionManagedPath(path, rootPath)
+    || isPluginRegistryManagedPath(path, rootPath)
+  );
 }
 
 async function scanForCommit(input: {
@@ -268,10 +318,21 @@ async function scanForCommit(input: {
   return { originRef, scanned };
 }
 
-const MATERIAL_RESOURCE_TYPE_SET = new Set<string>(MATERIAL_RESOURCE_TYPES);
+const COMMITTABLE_RESOURCE_TYPE_SET = new Set<string>([
+  ...MATERIAL_RESOURCE_TYPES,
+  "plugin",
+]);
 
-function resourceLiveKey(resource: { type: string; name: string }): string {
-  return `${resource.type}:${resource.name}`;
+function resourceLiveKey(resource: {
+  type: string;
+  name: string;
+  namespace?: string;
+  origin_ref?: string;
+}): string {
+  if (resource.type === "plugin") {
+    return `plugin:${resource.origin_ref || `${resource.namespace ?? ""}:${resource.name}`}`;
+  }
+  return `${resource.type}:${resource.namespace ?? ""}:${resource.name}`;
 }
 
 async function commitAggregateConfigFromLive(input: {
@@ -310,11 +371,18 @@ async function commitAggregateConfigFromLive(input: {
 
     markPluginDirty(profilePlugin.id);
     for (const resource of persisted.resolved) {
-      if (!MATERIAL_RESOURCE_TYPE_SET.has(resource.type)) {
+      if (!COMMITTABLE_RESOURCE_TYPE_SET.has(resource.type)) {
         continue;
       }
       liveKeys.add(resourceLiveKey(resource));
-      if (!profileHasResource(input.profileSelector, resource.type, resource.name)) {
+      if (
+        !profileHasResource(
+          input.profileSelector,
+          resource.type,
+          resource.name,
+          resource.namespace,
+        )
+      ) {
         addResourceToPlugin(profilePlugin.id, resource.id);
       }
       committed.push(toContentsResource(resource));
@@ -326,7 +394,7 @@ async function commitAggregateConfigFromLive(input: {
   const merged = mergePluginsForApply(collectProfilePluginIds(profilePlugin));
   let removedAny = false;
   for (const resource of merged.resources) {
-    if (!MATERIAL_RESOURCE_TYPE_SET.has(resource.type)) {
+    if (!COMMITTABLE_RESOURCE_TYPE_SET.has(resource.type)) {
       continue;
     }
     if (!sourceMatchesManagedPath(resource.source, input.path, originRef)) {
@@ -495,7 +563,7 @@ export async function commitManagedPathFromLive(input: {
     return [resource];
   }
 
-  if (isAggregateConfigManagedPath(input.path)) {
+  if (isSourceBoundCommitPath(input.path)) {
     return commitAggregateConfigFromLive({
       profileSelector: input.profileSelector,
       path: input.path,

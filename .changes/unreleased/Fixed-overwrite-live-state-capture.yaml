@@ -1,0 +1,5 @@
+kind: Fixed
+body: Snapshot instruction files, plugin registries, Claude ask permissions, live skill and subagent documents, and extra settings permission keys when overwriting a profile from disk.
+time: 2026-10-03T05:10:00Z
+custom:
+  Issue: ""
