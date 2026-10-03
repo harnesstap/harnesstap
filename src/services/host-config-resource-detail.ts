@@ -22,6 +22,58 @@ function parseJsonObject(content: string): Record<string, unknown> | null {
   }
 }
 
+const PERMISSION_RESOURCE_TYPES = ["permission", "hook", "env_var"] as const;
+
+/** Permission, hook, and env var identities present in a shared settings file. */
+export function hostConfigResourcesFromContent(
+  content: string,
+): Array<{ type: (typeof PERMISSION_RESOURCE_TYPES)[number]; name: string }> {
+  const resources: Array<{
+    type: (typeof PERMISSION_RESOURCE_TYPES)[number];
+    name: string;
+  }> = [];
+  const seen = new Set<string>();
+  const add = (
+    type: (typeof PERMISSION_RESOURCE_TYPES)[number],
+    name: string,
+  ) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+    const key = `${type}:${trimmed}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    resources.push({ type, name: trimmed });
+  };
+
+  const document = parseJsonObject(content);
+  if (document && isRecord(document.permissions)) {
+    for (const action of PERMISSION_ACTIONS) {
+      const list = document.permissions[action];
+      if (!Array.isArray(list)) {
+        continue;
+      }
+      for (const pattern of list) {
+        if (typeof pattern === "string" && pattern.trim()) {
+          add("permission", `${action}-${pattern}`);
+        }
+      }
+    }
+  }
+  for (const hook of hookResourcesFromContent(content)) {
+    add("hook", hook.name);
+  }
+  if (document && isRecord(document.env)) {
+    for (const name of Object.keys(document.env)) {
+      add("env_var", name);
+    }
+  }
+  return resources;
+}
+
 export function parsePermissionResourceName(
   name: string,
 ): Pick<PermissionMetadata, "action" | "pattern"> | null {

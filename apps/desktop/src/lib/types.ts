@@ -327,6 +327,8 @@ export interface DriftFileChange {
   type: "added" | "modified" | "deleted";
   platform?: string;
   resource?: { type: string; name: string; origin_kind?: string | null };
+  /** Resources in this shared file whose scoped content actually changed. */
+  affected_resources?: Array<{ type: string; name: string }>;
 }
 
 export interface GlobalProfilePanelStatus {
