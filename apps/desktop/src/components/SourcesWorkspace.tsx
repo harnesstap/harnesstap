@@ -1469,6 +1469,8 @@ export function SourcesWorkspace({
       <ManageMarketplacesModal
         open={manageMarketplacesOpen}
         marketplaces={marketplaces}
+        baseUrl={baseUrl}
+        token={token}
         busy={busy}
         disabled={controlsDisabled}
         onClose={() => setManageMarketplacesOpen(false)}

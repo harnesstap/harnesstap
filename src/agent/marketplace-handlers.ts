@@ -11,6 +11,7 @@ import {
   toMarketplaceListEntry,
 } from "../services/host-marketplaces.js";
 import { addMarketplace } from "../services/marketplace-registry.js";
+import { checkMarketplacesReachability } from "../services/marketplace-reachability.js";
 import { listMarketplaceSourceBranches } from "../services/marketplace-source-branches.js";
 import { detectMarketplaceType } from "../services/marketplace-type-detect.js";
 import { requireAgentBearerAuth } from "./auth.js";
@@ -45,6 +46,32 @@ function parsePlatforms(value: unknown): PluginMarketplacePlatform[] | Response 
     platforms.push(item as PluginMarketplacePlatform);
   }
   return platforms;
+}
+
+export async function handleMarketplacesReachability(
+  request: Request,
+  token: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) return authError;
+
+  const listed = listVisibleMarketplaces(getHarnesstapDir());
+  const byName = await checkMarketplacesReachability(listed);
+  return jsonResponse({
+    marketplaces: listed.map((entry) => {
+      const result = byName[entry.name];
+      if (result?.status === "healthy") {
+        return { name: entry.name, status: "healthy" as const };
+      }
+      return {
+        name: entry.name,
+        status: "error" as const,
+        reason: result?.status === "error"
+          ? result.reason
+          : "Could not check reachability",
+      };
+    }),
+  });
 }
 
 export function handleMarketplacesList(request: Request, token: string): Response {

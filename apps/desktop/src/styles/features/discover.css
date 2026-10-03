@@ -279,6 +279,31 @@
   flex: 1 1 auto;
 }
 
+.marketplace-row-reachability {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: var(--text-meta);
+  color: var(--muted);
+}
+
+.marketplace-row-reachability[data-status="healthy"] {
+  color: var(--green);
+}
+
+.marketplace-row-reachability[data-status="error"] {
+  color: var(--red);
+}
+
+.marketplace-row-reachability-reason {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
 .manage-marketplaces-row .source-row-actions {
   padding-left: 0;
   flex-shrink: 0;
