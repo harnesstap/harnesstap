@@ -34,6 +34,7 @@ import type {
   MarketplaceAddRequest,
   MarketplaceAddResult,
   MarketplaceListResult,
+  MarketplaceReachabilityListResult,
   MarketplacePluginsResult,
   MarketplaceSourceBranchesResult,
   MarketplaceTypeDetectResult,
@@ -645,6 +646,20 @@ export async function fetchMarketplaces(
     return throwAgentError(response, "Could not list marketplaces");
   }
   return (await response.json()) as MarketplaceListResult;
+}
+
+export async function fetchMarketplaceReachability(
+  baseUrl: string,
+  token: string | null,
+  signal?: AbortSignal,
+): Promise<MarketplaceReachabilityListResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/marketplaces/reachability", {
+    signal,
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not check marketplace reachability");
+  }
+  return (await response.json()) as MarketplaceReachabilityListResult;
 }
 
 export async function addMarketplace(

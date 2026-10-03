@@ -693,6 +693,16 @@ export interface MarketplaceListResult {
   marketplaces: PluginMarketplaceEntry[];
 }
 
+export interface MarketplaceReachabilityEntry {
+  name: string;
+  status: "healthy" | "error";
+  reason?: string;
+}
+
+export interface MarketplaceReachabilityListResult {
+  marketplaces: MarketplaceReachabilityEntry[];
+}
+
 export interface MarketplaceAddRequest {
   url: string;
   name: string;
