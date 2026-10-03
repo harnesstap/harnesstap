@@ -1,15 +1,11 @@
 import { parseTrackedBranches, type PluginMarketplacePlatform } from "../config/settings.js";
 import { getHarnesstapDir } from "../db/connection.js";
-import { builtinMarketplaceGitUrl } from "../services/builtin-marketplaces.js";
-import {
-  ensureMarketplaceCatalog,
-  listPluginsFromMarketplaceRoot,
-  refreshMarketplaceCatalog,
-} from "../services/marketplace-catalog.js";
 import {
   listVisibleMarketplaces,
   toMarketplaceListEntry,
 } from "../services/host-marketplaces.js";
+import { refreshMarketplaceCatalog } from "../services/marketplace-catalog.js";
+import { listMarketplacePlugins } from "../services/marketplace-plugin-tree.js";
 import { addMarketplace } from "../services/marketplace-registry.js";
 import { listMarketplaceSourceBranches } from "../services/marketplace-source-branches.js";
 import { detectMarketplaceType } from "../services/marketplace-type-detect.js";
@@ -209,11 +205,6 @@ export function handleMarketplacePluginsList(
     );
   }
 
-  const plugins =
-    entry.contentRoot && !entry.managed
-      ? listPluginsFromMarketplaceRoot(entry.contentRoot, entry.name, entry.platforms)
-      : entry.managed || builtinMarketplaceGitUrl(entry.name)
-        ? ensureMarketplaceCatalog(harnesstapDir, { name: entry.name })
-        : [];
+  const plugins = listMarketplacePlugins(harnesstapDir, entry);
   return jsonResponse({ marketplace: entry.name, plugins });
 }
