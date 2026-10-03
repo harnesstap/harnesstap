@@ -22,6 +22,7 @@ export interface SourcesHit {
   version?: string;
   description?: string;
   tags?: string[];
+  contents?: Array<{ type: string; name: string; description?: string }>;
   sourceId: string;
   sourceLabel: string;
   presence: Presence;
@@ -78,6 +79,7 @@ export interface MarketplaceSourceInput {
     version?: string;
     description?: string;
     tags?: string[];
+    contents?: Array<{ type: string; name: string; description?: string }>;
   }>;
 }
 
@@ -218,7 +220,7 @@ export function discoverListEmptyCopy(input: {
   }
   return {
     message: "Search to add",
-    hint: "Type a name or description.",
+    hint: "Type a name, description, or skill.",
     action: null,
   };
 }
@@ -555,7 +557,7 @@ function localStandaloneHit(
 
 function marketplacePluginHit(
   source: MarketplaceSourceInput,
-  plugin: { name: string; version?: string; description?: string; tags?: string[] },
+  plugin: MarketplaceSourceInput["plugins"][number],
   resources: MarketplacePresenceResource[],
 ): SourcesHit {
   return {
@@ -566,6 +568,9 @@ function marketplacePluginHit(
     ...(plugin.version !== undefined ? { version: plugin.version } : {}),
     ...(plugin.description ? { description: plugin.description } : {}),
     ...(plugin.tags && plugin.tags.length > 0 ? { tags: plugin.tags } : {}),
+    ...(plugin.contents && plugin.contents.length > 0
+      ? { contents: plugin.contents }
+      : {}),
     sourceId: source.sourceId,
     sourceLabel: source.sourceLabel,
     presence: presenceForMarketplace(
@@ -625,6 +630,11 @@ function hitMatchesQuery(hit: SourcesHit, query: string): boolean {
   }
   for (const tag of hit.tags ?? []) {
     if (matchQuery(tag, query)) {
+      return true;
+    }
+  }
+  for (const content of hit.contents ?? []) {
+    if (matchQuery(content.name, query) || matchQuery(content.description ?? "", query)) {
       return true;
     }
   }

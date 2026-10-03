@@ -21,6 +21,40 @@ describe("marketplace-catalog-parse", () => {
     ]);
   });
 
+  it("parses marketplace tags, description, and relative source path", () => {
+    const parsed = parseClaudeMarketplaceManifest({
+      name: "teads-plugins",
+      plugins: [
+        {
+          name: "code-review-workflow",
+          source: "./innovation-general/code-and-code-review/code-review-workflow",
+          tags: ["code-review", "github"],
+        },
+        {
+          name: "infosec-workflows",
+          description: "Security design discussion",
+          source: "./teams/infosec/workflows",
+          tags: ["security"],
+        },
+      ],
+    });
+    expect(parsed.plugins).toEqual([
+      {
+        name: "code-review-workflow",
+        ref: "code-review-workflow@teads-plugins",
+        sourcePath: "innovation-general/code-and-code-review/code-review-workflow",
+        tags: ["code-review", "github"],
+      },
+      {
+        name: "infosec-workflows",
+        ref: "infosec-workflows@teads-plugins",
+        description: "Security design discussion",
+        sourcePath: "teams/infosec/workflows",
+        tags: ["security"],
+      },
+    ]);
+  });
+
   it("returns empty plugins for invalid Claude shape", () => {
     expect(parseClaudeMarketplaceManifest({ name: "x", plugins: {} }).plugins).toEqual([]);
   });
@@ -47,5 +81,13 @@ describe("marketplace-catalog-parse", () => {
       { name: "alpha", version: "2.0.0", ref: "alpha@team", description: "newer" },
       { name: "beta", version: "1.0.0", ref: "beta@team" },
     ]);
+  });
+
+  it("unions tags when merging the same plugin across branches", () => {
+    const merged = mergeCatalogPluginsByIdentity([
+      { name: "alpha", version: "1.0.0", ref: "alpha@team", tags: ["review"] },
+      { name: "alpha", version: "2.0.0", ref: "alpha@team", tags: ["slack", "review"] },
+    ]);
+    expect(merged[0]?.tags).toEqual(["slack", "review"]);
   });
 });

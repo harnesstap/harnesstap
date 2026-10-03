@@ -12,23 +12,27 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
   loadSettings,
-  parseTrackedBranches,
   type PluginMarketplacePlatform,
+  parseTrackedBranches,
 } from "../config/settings.js";
 import { refreshGitSource } from "../plugins/refresh.js";
 import { runCommandWithTimeout } from "../utils/run-command-with-timeout.js";
 import {
+  builtinMarketplaceEntry,
+  builtinMarketplaceGitUrl,
+} from "./builtin-marketplaces.js";
+import {
+  catalogPluginMatchesQuery,
+  enrichCatalogPlugins,
+} from "./marketplace-catalog-index.js";
+import {
   type CatalogPlugin,
-  type ParsedMarketplaceCatalog,
   mergeCatalogPluginsByIdentity,
+  type ParsedMarketplaceCatalog,
   parseClaudeMarketplaceManifest,
   parseCursorMarketplaceManifest,
 } from "./marketplace-catalog-parse.js";
 import { listMarketplaces } from "./marketplace-registry.js";
-import {
-  builtinMarketplaceEntry,
-  builtinMarketplaceGitUrl,
-} from "./builtin-marketplaces.js";
 
 export type { CatalogPlugin } from "./marketplace-catalog-parse.js";
 
@@ -362,7 +366,8 @@ export function listCatalogPlugins(
   options: ListCatalogPluginsOptions,
 ): CatalogPlugin[] {
   const stored = readStoredCatalog(marketplaceCatalogPath(harnesstapDir, options.name));
-  return stored?.plugins ?? [];
+  const plugins = stored?.plugins ?? [];
+  return enrichCatalogPlugins(marketplaceCacheDir(harnesstapDir, options.name), plugins);
 }
 
 /** Refresh from git only when the on-disk catalog is missing or stale, then list. */
@@ -401,8 +406,11 @@ export function listPluginsFromMarketplaceRoot(
     return [];
   }
 
-  return catalogWithRegistryIdentity(parseManifest(manifest.platform, raw), registryName)
-    .plugins;
+  const plugins = catalogWithRegistryIdentity(
+    parseManifest(manifest.platform, raw),
+    registryName,
+  ).plugins;
+  return enrichCatalogPlugins(root, plugins);
 }
 
 export function readMarketplaceManifest(root: string): unknown | undefined {
@@ -416,11 +424,7 @@ export function readMarketplaceManifest(root: string): unknown | undefined {
 }
 
 function pluginMatchesQuery(plugin: CatalogPlugin, query: string): boolean {
-  const needle = query.toLowerCase();
-  if (plugin.name.toLowerCase().includes(needle)) return true;
-  if (plugin.ref.toLowerCase().includes(needle)) return true;
-  if (plugin.description?.toLowerCase().includes(needle)) return true;
-  return false;
+  return catalogPluginMatchesQuery(plugin, query);
 }
 
 function listCatalogSearchMarketplaces(

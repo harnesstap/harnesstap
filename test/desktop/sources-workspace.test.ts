@@ -380,6 +380,8 @@ describe("sources search list and preview", () => {
     expect(workspaceSource).toContain("fetchLibraryPluginHeads");
     expect(workspaceSource).toContain("fetchLibraryResources");
     expect(workspaceSource).toContain("fetchMarketplacePlugins");
+    expect(workspaceSource).toContain("plugin.tags");
+    expect(workspaceSource).toContain("plugin.contents");
     expect(workspaceSource).toContain("searchCatalogPlugins");
     expect(listPaneSource).toContain("presenceLabel");
     expect(sourcesSearchSource).toContain("In library");

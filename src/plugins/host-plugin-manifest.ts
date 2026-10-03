@@ -15,6 +15,7 @@ export interface HostPluginManifest {
   name?: string;
   version?: string;
   description?: string;
+  keywords?: string[];
   repository?: string;
   homepage?: string;
   $schema?: string;

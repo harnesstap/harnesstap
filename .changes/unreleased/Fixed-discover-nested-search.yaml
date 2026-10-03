@@ -1,0 +1,5 @@
+kind: Fixed
+body: Discover and plugin search match nested skill and command names and descriptions, and list the containing marketplace plugin.
+time: 2026-10-03T07:00:00Z
+custom:
+  Issue: ""

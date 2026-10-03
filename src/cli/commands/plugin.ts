@@ -2682,7 +2682,7 @@ pluginCmd
   .option("--plugin <name>", "Plugin to attach the selected plugin pin to")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--no-interactive", "Disable interactive browse picker")
-  .description("Search marketplace catalogs for plugins")
+  .description("Search marketplace catalogs for plugins by name, tags, and nested skills/commands")
   .action(async (query: string | undefined, opts: {
     refresh?: boolean;
     format?: string;

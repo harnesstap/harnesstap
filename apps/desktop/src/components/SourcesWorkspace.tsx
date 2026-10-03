@@ -508,6 +508,12 @@ export function SourcesWorkspace({
                   ...(plugin.description
                     ? { description: plugin.description }
                     : {}),
+                  ...(plugin.tags && plugin.tags.length > 0
+                    ? { tags: plugin.tags }
+                    : {}),
+                  ...(plugin.contents && plugin.contents.length > 0
+                    ? { contents: plugin.contents }
+                    : {}),
                 })),
                 error: null,
               },

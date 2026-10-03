@@ -64,6 +64,126 @@ describe("marketplace-catalog", () => {
     expect(searchCatalogPlugins(home, "slack").map((p) => p.name)).toEqual(["alpha"]);
   });
 
+  it("search matches plugin.json and nested skill/command names and descriptions", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-home-"));
+    const repo = mkdtempSync(join(tmpdir(), "ht-mkt-nested-"));
+    mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
+    mkdirSync(
+      join(repo, "plugins", "code-review-workflow", ".claude-plugin"),
+      { recursive: true },
+    );
+    mkdirSync(
+      join(repo, "plugins", "code-review-workflow", "skills", "request-slack-review"),
+      { recursive: true },
+    );
+    mkdirSync(join(repo, "plugins", "code-review-workflow", "commands"), {
+      recursive: true,
+    });
+    mkdirSync(join(repo, "plugins", "design-doc", "skills", "confluence-slack-summary"), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(repo, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "claude-plugins",
+        plugins: [
+          {
+            name: "code-review-workflow",
+            source: "./plugins/code-review-workflow",
+            tags: ["code-review"],
+          },
+          {
+            name: "design-doc",
+            source: "./plugins/design-doc",
+            tags: ["documentation"],
+          },
+          { name: "unrelated", version: "1.0.0" },
+        ],
+      }),
+    );
+    writeFileSync(
+      join(repo, "plugins", "code-review-workflow", ".claude-plugin", "plugin.json"),
+      JSON.stringify({
+        name: "code-review-workflow",
+        description: "End-to-end code review workflow.",
+        keywords: ["request-slack-review"],
+      }),
+    );
+    writeFileSync(
+      join(
+        repo,
+        "plugins",
+        "code-review-workflow",
+        "skills",
+        "request-slack-review",
+        "SKILL.md",
+      ),
+      "---\nname: request-slack-review\ndescription: Request a Slack code review from the owning team.\n---\n\n# Request Slack review\n",
+    );
+    writeFileSync(
+      join(repo, "plugins", "code-review-workflow", "commands", "open-pr.md"),
+      "---\ndescription: Open a draft GitHub PR\n---\n\n# open-pr\n",
+    );
+    mkdirSync(join(repo, "plugins", "design-doc", ".claude-plugin"), { recursive: true });
+    writeFileSync(
+      join(repo, "plugins", "design-doc", ".claude-plugin", "plugin.json"),
+      JSON.stringify({
+        name: "design-doc",
+        description: "Scaffold architecture docs.",
+      }),
+    );
+    writeFileSync(
+      join(
+        repo,
+        "plugins",
+        "design-doc",
+        "skills",
+        "confluence-slack-summary",
+        "SKILL.md",
+      ),
+      "---\nname: confluence-slack-summary\ndescription: Summarize a design doc and create a Slack draft.\n---\n\n# Summary\n",
+    );
+    spawnSync("git", ["init"], { cwd: repo });
+    spawnSync("git", ["add", "."], { cwd: repo });
+    spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "init"], {
+      cwd: repo,
+    });
+    spawnSync("git", ["branch", "-M", "main"], { cwd: repo });
+    addMarketplace(home, {
+      name: "claude-plugins",
+      url: repo,
+      platforms: ["claude-code"],
+    });
+    refreshMarketplaceCatalog(home, { name: "claude-plugins", force: true });
+
+    const listed = listCatalogPlugins(home, { name: "claude-plugins" });
+    const review = listed.find((plugin) => plugin.name === "code-review-workflow");
+    expect(review?.description).toBe("End-to-end code review workflow.");
+    expect(review?.tags).toEqual(
+      expect.arrayContaining(["code-review", "request-slack-review"]),
+    );
+    expect(review?.contents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "skill",
+          name: "request-slack-review",
+        }),
+        expect.objectContaining({ type: "command", name: "open-pr" }),
+      ]),
+    );
+
+    expect(searchCatalogPlugins(home, "slack").map((plugin) => plugin.name).sort()).toEqual([
+      "code-review-workflow",
+      "design-doc",
+    ]);
+    expect(searchCatalogPlugins(home, "request-slack-review").map((plugin) => plugin.name)).toEqual([
+      "code-review-workflow",
+    ]);
+    expect(searchCatalogPlugins(home, "open a draft").map((plugin) => plugin.name)).toEqual([
+      "code-review-workflow",
+    ]);
+  });
+
   it("uses registry name for plugin refs when manifest name differs", () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo("acme-plugins");

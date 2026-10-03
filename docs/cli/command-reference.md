@@ -337,7 +337,7 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin list` — local plugins plus streamed remote catalog plugins (default); use `--local-only` for local plugins only
 - `plugin show <name>`
 - `plugin editor [name]` — open a plugin definition file in your system editor
-- `plugin search [query]` — search marketplace catalogs for plugins
+- `plugin search [query]` — search marketplace catalogs for plugins (name, tags, plugin.json, nested skills/commands)
 - `plugin add <ref>` — import a GitHub `plugin.json` package into the library (`https://github.com/owner/repo`, `owner/repo`, or `gh:owner/repo`)
 - `plugin add <ref> --to <plugin>` — add a dependency to a plugin (`ref`: local name, `org/catalog/name`, `name@marketplace`, or git URL)
 - `plugin edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
