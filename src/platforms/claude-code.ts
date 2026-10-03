@@ -558,6 +558,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         layout: "claude-code",
         homeRoot: projectRoot,
         files,
+        surfaceWarnings: options?.surfaceWarnings,
       });
     }
 

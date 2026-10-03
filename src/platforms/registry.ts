@@ -11,6 +11,7 @@ type PlatformDefOptions = {
   skillEmission?: PlatformDefinition["skillEmission"];
   hostManagedPaths?: PlatformDefinition["hostManagedPaths"];
   relatedLocations?: PlatformDefinition["relatedLocations"];
+  hostPluginRuntimeModules?: boolean;
 };
 
 function def(
@@ -37,6 +38,9 @@ function def(
       : {}),
     ...(normalized.relatedLocations
       ? { relatedLocations: normalized.relatedLocations }
+      : {}),
+    ...(normalized.hostPluginRuntimeModules
+      ? { hostPluginRuntimeModules: true }
       : {}),
   };
 }
@@ -75,7 +79,7 @@ const PLATFORMS: PlatformDefinition[] = [
     commands: "~/.claude/commands/",
     settings: "~/.claude/settings.json",
     plugins: "~/.claude/plugins/",
-  }),
+  }, { hostPluginRuntimeModules: true }),
 
   def("codex", "Codex", [
     "instructions", "skills", "rules", "mcp", "permissions",

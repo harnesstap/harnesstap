@@ -367,6 +367,7 @@ export class CursorSerializer extends BaseSerializer {
         layout: "cursor",
         homeRoot: options.projectRoot ?? projectRoot,
         files,
+        surfaceWarnings: options?.surfaceWarnings,
       });
     }
 

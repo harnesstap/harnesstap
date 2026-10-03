@@ -1,0 +1,5 @@
+kind: Added
+body: Omit Claude Code mod modules (in-process hooks.json + JS/TS) from non-Claude host plugin dual-write; keep portable pin files and warn.
+time: 2026-10-03T19:00:00Z
+custom:
+  Issue: ""

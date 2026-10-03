@@ -25,6 +25,7 @@ import type {
   Resource,
   SerializedFile,
   SerializeOptions,
+  SurfaceWarning,
 } from "../types.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 import {
@@ -43,6 +44,7 @@ import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 export interface ApplyResult {
   platformId: string;
   files: SerializedFile[];
+  surface_warnings?: SurfaceWarning[];
 }
 
 export type ConflictPolicy = "prompt" | "replace" | "skip";
@@ -260,11 +262,13 @@ export async function generateFiles(
       target,
     );
     const serializer = getPlatformSerializer(pid);
+    const surfaceWarnings: SurfaceWarning[] = [];
     let files = await serializer.serialize(platformResources, projectRoot, {
       target,
       skillCursorMode: options.skillCursorMode,
       skillSourceRoot,
       projectRoot,
+      surfaceWarnings,
     });
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudePluginExtensions(files, claudeConfig, projectRoot);
@@ -278,7 +282,11 @@ export async function generateFiles(
         skillSourceRoot,
       },
     });
-    results.push({ platformId: pid, files });
+    results.push({
+      platformId: pid,
+      files,
+      ...(surfaceWarnings.length > 0 ? { surface_warnings: surfaceWarnings } : {}),
+    });
   }
 
   return pinSkillEmitsToExistingLivePaths(

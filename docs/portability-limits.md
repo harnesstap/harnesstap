@@ -38,7 +38,7 @@ paths for supported harnesses:
 | Type | Notes |
 | ---- | ----- |
 | **Skills** | `SKILL.md` bodies and frontmatter; emitted to harness-native skill dirs unless `skillEmission` is `instruction-only` (see below). When the scan origin is still available (`origin_ref` / `skillSourceRoot`), `scripts/` and `reference(s)/` files are copied alongside `SKILL.md`. |
-| **Hooks** | Imported from plugin `hooks/hooks.json`, harness `hooks.json` files (Cursor, Codex), and Claude `.claude/settings.json`. Nested PostToolUse matchers are preserved on emit for Claude Code, Cursor, and Codex. |
+| **Hooks** | Imported from plugin `hooks/hooks.json`, harness `hooks.json` files (Cursor, Codex), and Claude `.claude/settings.json`. Nested PostToolUse matchers are preserved on emit for Claude Code, Cursor, and Codex. **Declarative** command / HTTP / prompt entries only — not in-process Claude **mods** (see below). |
 | **Instructions** | `AGENTS.md`, `CLAUDE.md`, `.windsurfrules`, `.github/copilot-instructions.md`, and similar always-on context files. Shared `AGENTS.md` is canonicalized once during scan. |
 | **Rules** | `.cursor/rules/*.mdc`, `.claude/rules/`, `.windsurf/rules/`, `.clinerules/`, `.kiro/steering/`, and directory-based rule trees. |
 | **MCP servers** | stdio and HTTP transports from `.mcp.json`, Claude user `~/.claude.json`, `.codex/config.toml`, and harness-specific MCP config files. |
@@ -156,6 +156,7 @@ Examples of surfaces that stay on their native harness:
 
 | Surface | Native harness | Mirror behavior |
 | ------- | -------------- | --------------- |
+| **Claude Code mods** (`hooks.json` + JS/TS module) | Claude Code | Pin dual-write keeps portable files on other hosts; modules and dangling loader pointers are omitted (registry `hostPluginRuntimeModules`). |
 | **OpenCode server plugins** (`.js`, `.mjs`) | OpenCode | Registered in `opencode.json`; not copied to alias harnesses. |
 | **Pi extensions** (`pi-extension/`) | Pi | Installed via Pi CLI; not emitted to other harnesses. |
 | **Gemini extension manifest** (`gemini-extension.json`) | Gemini CLI / Antigravity | Extension metadata applies to Gemini-family hosts only. |
@@ -286,11 +287,45 @@ target serializer. `harnessSync.pluginResources` (`symlink` / `copy` /
 tree, independent copies, or copy-on-write clones.
 
 Portable inside a copied tree: skills, `mcp.json`, Agent Plugins root
-`plugin.json`, and whichever host manifests were already present. Not portable:
-Claude `installed_plugins.json` / marketplace git metadata, Cursor enablement
-and `agent plugin marketplace add` auth, hooks that assume
-`${CLAUDE_PLUGIN_ROOT}` or `${CURSOR_PLUGIN_ROOT}`, and host-only plugin
-config (Claude extra known marketplaces, Cursor app MCP folders).
+`plugin.json`, declarative `hooks.json` entries, and whichever host manifests
+were already present. Not portable: Claude Code **mod** modules (`register.js`
+and loader pointers; see below), Claude `installed_plugins.json` / marketplace
+git metadata, Cursor enablement and `agent plugin marketplace add` auth, hooks
+that assume `${CLAUDE_PLUGIN_ROOT}` or `${CURSOR_PLUGIN_ROOT}`, and host-only
+plugin config (Claude extra known marketplaces, Cursor app MCP folders).
+
+### Claude Code mods in host plugin pins
+
+A [Claude Code mod](https://code.claude.com/docs/en/plugins/mods/overview) is
+still a host plugin: marketplace install, `plugin.json`, plus in-process
+handlers. Typical files:
+
+```text
+hooks/hooks.json    # points at the module (not a settings-style hook list)
+hooks/register.js   # or .ts / .mjs / .cjs; may be named in hooks.json
+```
+
+HarnessTap does **not** add a `mod` resource type. Pin apply copies the install
+tree and filters by registry flag `hostPluginRuntimeModules` (Claude Code on;
+Cursor and others off until a host documents the same layout):
+
+| File in the pin | Claude Code | Cursor (and other dual-write roots) |
+| --------------- | ----------- | ----------------------------------- |
+| Skills, commands, agents, MCP, manifests | Copied | Copied |
+| JS/TS under `hooks/` and other module paths named by `hooks.json` | Copied | Omitted |
+| `hooks.json` that only loads a module | Copied | Omitted |
+| `hooks.json` mixing declarative hooks and a module loader | Copied | Module entries stripped; remaining declarative entries kept. Empty after strip → file omitted |
+| Unparseable `hooks.json` with module files in `hooks/` | Copied as-is | JSON omitted along with the module files |
+
+A skipped module produces one `surface_warnings` line per pin (human and JSON),
+same family as other host-only surfaces. Dry-run lists skipped paths without
+writing. Pins with no modules stay byte-identical to the previous copy.
+
+This slice is **pin fidelity only**. Scanning `register.js` into the library and
+re-emitting it from composed HarnessTap plugins is a later change.
+
+Mods run with the user's permissions inside Claude Code. HarnessTap only decides
+which files land on disk; it does not sandbox them.
 
 ### Dual-mode scan for plugin-only repos
 

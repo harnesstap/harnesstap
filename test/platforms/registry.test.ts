@@ -208,4 +208,11 @@ describe("platform registry", () => {
     const registry = await import("../../src/platforms/registry.ts");
     expect(registry.detectPlatforms("/some/path")).toEqual([]);
   });
+
+  it("enables host plugin runtime modules only on Claude Code", async () => {
+    const registry = await import("../../src/platforms/registry.ts");
+    expect(registry.getPlatform("claude-code")?.hostPluginRuntimeModules).toBe(true);
+    expect(registry.getPlatform("cursor")?.hostPluginRuntimeModules).toBeUndefined();
+    expect(registry.getPlatform("codex")?.hostPluginRuntimeModules).toBeUndefined();
+  });
 });

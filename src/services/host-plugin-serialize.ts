@@ -1,15 +1,18 @@
 import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { getPlatform } from "../platforms/registry.js";
 import type {
   PluginDependencyMetadata,
   Resource,
   SerializedFile,
+  SurfaceWarning,
 } from "../types.js";
 import type {
   InstalledPluginRecord,
   InstalledPluginsFile,
 } from "../plugins/claude-installed.js";
 import { parsePluginRef } from "../plugins/host-plugin-manifest.js";
+import { filterHostPluginRuntimeFiles } from "./host-plugin-runtime-modules.js";
 import { resolveInstallRoot } from "./resource-sync.js";
 import { mergeClaudeSettingsContent } from "./merged-host-config.js";
 
@@ -183,6 +186,7 @@ export interface EmitHostPluginTreesOptions {
   layout: HostPluginLayout;
   homeRoot: string;
   files?: SerializedFile[];
+  surfaceWarnings?: SurfaceWarning[];
 }
 
 /**
@@ -207,10 +211,24 @@ export function emitHostPluginTrees(
     if (!sourceRoot || !existsSync(sourceRoot)) continue;
 
     const relativeRoot = hostPluginRelativeRoot(options.layout, resource);
-    for (const file of collectPluginTextFiles(sourceRoot)) {
+    const collected = collectPluginTextFiles(sourceRoot);
+    const allowRuntimeModules =
+      getPlatform(options.layout)?.hostPluginRuntimeModules === true;
+    const filtered = filterHostPluginRuntimeFiles(collected, allowRuntimeModules);
+    for (const file of filtered.files) {
       files.push({
         path: `${relativeRoot}/${file.relativePath}`,
         content: file.content,
+      });
+    }
+    if (filtered.skippedModules.length > 0) {
+      options.surfaceWarnings?.push({
+        harness: "claude-code",
+        path: filtered.skippedModules[0] ?? "hooks/",
+        category: "claude-mod",
+        message:
+          "Claude Code mods (in-process hooks.json + JS/TS) are not emitted to hosts without hostPluginRuntimeModules.",
+        alias_harnesses: [options.layout],
       });
     }
 

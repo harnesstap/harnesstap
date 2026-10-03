@@ -170,7 +170,7 @@ export function preferSharedSkillEmits(
   }
 
   const next = results.map((result) => ({
-    platformId: result.platformId,
+    ...result,
     files: [...result.files],
   }));
   const host =
@@ -280,7 +280,7 @@ export function pinSkillEmitsToExistingLivePaths(
   }
 
   const next = results.map((result) => ({
-    platformId: result.platformId,
+    ...result,
     files: [...result.files],
   }));
 
