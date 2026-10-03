@@ -1,11 +1,22 @@
 import { basename } from "node:path";
 import semver from "semver";
 
+export type CatalogPluginContentType = "skill" | "command";
+
+export interface CatalogPluginContent {
+  type: CatalogPluginContentType;
+  name: string;
+  description?: string;
+}
+
 export interface CatalogPlugin {
   name: string;
   version?: string;
   ref: string;
   description?: string;
+  tags?: string[];
+  sourcePath?: string;
+  contents?: CatalogPluginContent[];
 }
 
 export interface ParsedMarketplaceCatalog {
@@ -50,6 +61,31 @@ function resolveDescription(entry: Record<string, unknown>): string | undefined 
     : undefined;
 }
 
+function resolveTags(entry: Record<string, unknown>): string[] | undefined {
+  const tags = entry.tags;
+  if (!Array.isArray(tags)) return undefined;
+  const next = tags.filter(
+    (tag): tag is string => typeof tag === "string" && tag.trim().length > 0,
+  );
+  return next.length > 0 ? next : undefined;
+}
+
+export function normalizeMarketplaceSourcePath(value: string): string {
+  return value.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+}
+
+function resolveSourcePath(entry: Record<string, unknown>): string | undefined {
+  const source = entry.source;
+  if (typeof source === "string" && source.trim().length > 0) {
+    return normalizeMarketplaceSourcePath(source);
+  }
+  const path = entry.path;
+  if (typeof path === "string" && path.trim().length > 0) {
+    return normalizeMarketplaceSourcePath(path);
+  }
+  return undefined;
+}
+
 function parsePluginEntry(
   entry: unknown,
   marketplaceName: string,
@@ -62,6 +98,8 @@ function parsePluginEntry(
 
   const version = resolveVersion(entry);
   const description = resolveDescription(entry);
+  const tags = resolveTags(entry);
+  const sourcePath = resolveSourcePath(entry);
   const ref = buildRef(name, marketplaceName);
 
   return {
@@ -69,6 +107,8 @@ function parsePluginEntry(
     ...(version !== undefined ? { version } : {}),
     ref,
     ...(description !== undefined ? { description } : {}),
+    ...(tags !== undefined ? { tags } : {}),
+    ...(sourcePath !== undefined ? { sourcePath } : {}),
   };
 }
 
@@ -135,11 +175,27 @@ function preferCatalogPlugin(current: CatalogPlugin, incoming: CatalogPlugin): C
 
   const chosen = preferIncoming ? incoming : current;
   const other = preferIncoming ? current : incoming;
+  const tags = uniqueStrings([...(chosen.tags ?? []), ...(other.tags ?? [])]);
+  const contents = chosen.contents?.length ? chosen.contents : other.contents;
   return {
     ...chosen,
     version: chosen.version ?? other.version,
     description: chosen.description ?? other.description,
+    sourcePath: chosen.sourcePath ?? other.sourcePath,
+    ...(tags.length > 0 ? { tags } : {}),
+    ...(contents && contents.length > 0 ? { contents } : {}),
   };
+}
+
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  for (const value of values) {
+    if (seen.has(value)) continue;
+    seen.add(value);
+    next.push(value);
+  }
+  return next;
 }
 
 /** One catalog row per plugin name; later copies (other branches) merge into the first. */

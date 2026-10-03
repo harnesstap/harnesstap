@@ -796,7 +796,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "plugin.search": {
-    description: "Search marketplace catalogs for plugins",
+    description: "Search marketplace catalogs for plugins by name, tags, and nested skills/commands",
     examples: [
       "plugin search typescript",
       "plugin search --refresh --format json",

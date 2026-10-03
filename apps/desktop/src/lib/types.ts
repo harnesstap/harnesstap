@@ -716,11 +716,19 @@ export interface MarketplaceAddResult {
   refresh: { ok: boolean; message: string };
 }
 
+export interface CatalogPluginContent {
+  type: "skill" | "command";
+  name: string;
+  description?: string;
+}
+
 export interface CatalogPlugin {
   name: string;
   version?: string;
   ref: string;
   description?: string;
+  tags?: string[];
+  contents?: CatalogPluginContent[];
 }
 
 export interface MarketplacePluginsResult {

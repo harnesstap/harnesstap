@@ -401,6 +401,49 @@ describe("mergeSourcesHits", () => {
     ).toEqual(["Focus"]);
   });
 
+  test("marketplace search matches nested skill or command name and description", () => {
+    const groups = mergeSourcesHits({
+      query: "slack",
+      sourceOrder: ["mkt:claude-plugins"],
+      marketplaces: [
+        {
+          sourceId: "mkt:claude-plugins",
+          sourceLabel: "claude-plugins",
+          marketplaceName: "claude-plugins",
+          plugins: [
+            {
+              name: "code-review-workflow",
+              description: "End-to-end code review workflow.",
+              contents: [
+                {
+                  type: "skill",
+                  name: "request-slack-review",
+                  description: "Request a Slack code review from the owning team.",
+                },
+              ],
+            },
+            {
+              name: "design-doc",
+              description: "Scaffold architecture docs.",
+              contents: [
+                {
+                  type: "skill",
+                  name: "confluence-slack-summary",
+                  description: "Summarize a design doc and create a Slack draft.",
+                },
+              ],
+            },
+            { name: "unrelated", description: "Kubernetes helpers" },
+          ],
+        },
+      ],
+    });
+    expect(groups.flatMap((group) => group.hits).map((hit) => hit.name)).toEqual([
+      "code-review-workflow",
+      "design-doc",
+    ]);
+  });
+
   test("marketplace search matches name or description such as slack", () => {
     const groups = mergeSourcesHits({
       query: "slack",
@@ -786,7 +829,7 @@ describe("discoverListEmptyCopy", () => {
   test("keeps search empty copy when showing in-library hits", () => {
     expect(discoverListEmptyCopy({ query: "", showInLibrary: true })).toEqual({
       message: "Search to add",
-      hint: "Type a name or description.",
+      hint: "Type a name, description, or skill.",
       action: null,
     });
     expect(
