@@ -475,6 +475,39 @@ describe("contents-diff helpers", () => {
       .toBe(".claude/agents/code-reviewer.md");
   });
 
+  it("does not match skill or subagent chips onto an empty scoped content delta", () => {
+    expect(
+      fileChangeMatchesResource(
+        {
+          type: "skill",
+          name: "ubiquitous-language",
+          source: "~/.claude/skills/ubiquitous-language/SKILL.md",
+        },
+        {
+          path: ".claude/skills/ubiquitous-language/SKILL.md",
+          type: "modified",
+          resource: { type: "skill", name: "ubiquitous-language" },
+          affected_resources: [],
+        },
+      ),
+    ).toBe(false);
+    expect(
+      fileChangeMatchesResource(
+        {
+          type: "agent",
+          name: "code-reviewer",
+          source: "~/.claude/agents/code-reviewer.md",
+        },
+        {
+          path: ".claude/agents/code-reviewer.md",
+          type: "modified",
+          resource: { type: "agent", name: "code-reviewer" },
+          affected_resources: [],
+        },
+      ),
+    ).toBe(false);
+  });
+
   it("does not match shared-file diffs onto chips with an empty scoped content delta", () => {
     expect(
       fileChangeMatchesResource(

@@ -9,7 +9,11 @@ import {
   useDialogDismiss,
 } from "../lib/dialog-dismiss";
 import type { ProfileFileDiffResult, ViewScope } from "../lib/types";
-import { buildUnifiedDiffLines, countUnifiedDiffChanges } from "../lib/unified-diff";
+import {
+  buildUnifiedDiffLines,
+  countUnifiedDiffChanges,
+  fileDiffHasContentChange,
+} from "../lib/unified-diff";
 import { Presence } from "./motion/Presence";
 import { motionClass } from "./motion/motion-utils";
 
@@ -125,6 +129,12 @@ export function FileDiffModal({
   }, [diff]);
 
   const changeCounts = useMemo(() => countUnifiedDiffChanges(lines), [lines]);
+  const hasContentChange = useMemo(() => {
+    if (!diff) {
+      return false;
+    }
+    return fileDiffHasContentChange(diff.path, diff.current ?? "", diff.expected);
+  }, [diff]);
   const showDiffChrome = !loading && !error && diff !== null;
   const shownPath = userFacingManagedPath(path ?? "", scope);
 
@@ -184,7 +194,7 @@ export function FileDiffModal({
               <div className="banner error" role="alert">
                 <div>{error}</div>
               </div>
-            ) : showDiffChrome && changeCounts.added === 0 && changeCounts.removed === 0 ? (
+            ) : showDiffChrome && !hasContentChange ? (
               <p className="muted" role="status">
                 {noContentChangeCopy(resource)}
               </p>

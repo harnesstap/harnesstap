@@ -1,4 +1,4 @@
-import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { fileDiffHasContentChange } from "../utils/unified-diff.js";
 import {
   hostConfigResourcesFromContent,
   scopeHostConfigToResource,
@@ -12,7 +12,10 @@ import {
   isClaudeUserJsonPath,
   isMuseSettingsPath,
 } from "./merged-host-config.js";
-import { isMcpConfigManagedPath } from "./profile-commit-resource.js";
+import {
+  isMcpConfigManagedPath,
+  resourceKeyFromManagedPath,
+} from "./profile-commit-resource.js";
 import type { DriftFileChange } from "./project-drift.js";
 
 export interface ManagedFileResourceIdentity {
@@ -39,6 +42,11 @@ function collectIdentities(
     order.push(resource);
   };
 
+  const mapped = resourceKeyFromManagedPath(path);
+  if (mapped) {
+    add(mapped);
+  }
+
   const inspectMcp =
     isMcpConfigManagedPath(path) || isClaudeUserJsonPath(path);
   const inspectHost = isClaudeSettingsPath(path) || isMuseSettingsPath(path);
@@ -61,29 +69,41 @@ function collectIdentities(
   return order;
 }
 
+function scopedBodies(
+  expected: string,
+  current: string | null,
+  resource: ManagedFileResourceIdentity,
+): { expected: string; current: string | null } {
+  if (resource.type === "mcp_server") {
+    return {
+      expected: scopeMcpConfigToServer(expected, resource.name) ?? expected,
+      current: scopeMcpConfigToServer(current, resource.name),
+    };
+  }
+  if (
+    resource.type === "permission"
+    || resource.type === "hook"
+    || resource.type === "env_var"
+  ) {
+    return {
+      expected: scopeHostConfigToResource(expected, resource) ?? expected,
+      current: scopeHostConfigToResource(current, resource),
+    };
+  }
+  return { expected, current };
+}
+
 function scopedContentsDiffer(
   path: string,
   expected: string,
   current: string | null,
   resource: ManagedFileResourceIdentity,
 ): boolean {
-  if (current === null) {
+  const scoped = scopedBodies(expected, current, resource);
+  if (scoped.current === null) {
     return true;
   }
-  if (resource.type === "mcp_server") {
-    const scopedExpected = scopeMcpConfigToServer(expected, resource.name) ?? expected;
-    const scopedCurrent = scopeMcpConfigToServer(current, resource.name);
-    if (scopedCurrent === null) {
-      return true;
-    }
-    return !fileContentsEquivalentForDrift(path, scopedCurrent, scopedExpected);
-  }
-  const scopedExpected = scopeHostConfigToResource(expected, resource) ?? expected;
-  const scopedCurrent = scopeHostConfigToResource(current, resource);
-  if (scopedCurrent === null) {
-    return true;
-  }
-  return !fileContentsEquivalentForDrift(path, scopedCurrent, scopedExpected);
+  return fileDiffHasContentChange(path, scoped.current, scoped.expected);
 }
 
 /** Resource identities in a shared config whose scoped live vs expected content differs. */
@@ -112,8 +132,5 @@ export function withAffectedResources(
     expected,
     current,
   });
-  if (affected_resources.length === 0) {
-    return change;
-  }
   return { ...change, affected_resources };
 }

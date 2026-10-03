@@ -315,6 +315,9 @@ export function fileChangeMatchesResource(
   if (SHARED_FILE_RESOURCE_TYPES.has(resource.type)) {
     return affectedResourceMatches(resource, change);
   }
+  if (change.affected_resources !== undefined) {
+    return affectedResourceMatches(resource, change);
+  }
   if (
     change.resource?.type === resource.type
     && namesEqualIgnoreCase(change.resource.name, resource.name)

@@ -8,8 +8,6 @@ import {
   type TypeTabAttention,
 } from "./resource-type-tabs";
 import {
-  inferFileChangeType,
-  managedPathFromResourceSource,
   preferredFileChangeForResource,
   type ProfileResourceListRow,
 } from "./contents-diff";
@@ -41,6 +39,11 @@ export type ProfileInventorySectionId =
   (typeof PROFILE_INVENTORY_SECTION_ORDER)[number];
 
 const SHARED_FILE_RESOURCE_TYPES = new Set(["mcp_server", "permission", "hook", "env_var"]);
+const CONTENT_DELTA_CHIP_TYPES = new Set([
+  ...SHARED_FILE_RESOURCE_TYPES,
+  "skill",
+  "agent",
+]);
 
 export interface ProfileInventoryItem {
   section: ProfileInventorySectionId;
@@ -161,54 +164,6 @@ export function coveredProfileMembershipKeys(
   return keys;
 }
 
-function managedDriftPath(
-  resource: Pick<ProfileContentsResource, "source" | "filesystem_path">,
-): string | null {
-  return (
-    managedPathFromResourceSource(resource.filesystem_path)
-    ?? managedPathFromResourceSource(resource.source)
-  );
-}
-
-function agentPathForResource(path: string, resourceName: string): string {
-  const normalized = path.replace(/\\/g, "/");
-  const slash = normalized.lastIndexOf("/");
-  const base = slash === -1 ? normalized : normalized.slice(slash + 1);
-  const match = base.match(/^(.+?)(?:\.agent)?\.(md|toml)$/i);
-  if (!match?.[1] || !match[2]) {
-    return path;
-  }
-  const leaf = match[1];
-  if (leaf.toLowerCase() === resourceName.toLowerCase()) {
-    return path;
-  }
-  const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
-  if (compact(leaf) === compact(resourceName)) {
-    return path;
-  }
-  const dir = slash === -1 ? "" : normalized.slice(0, slash + 1);
-  return `${dir}${resourceName}.${match[2]}`;
-}
-
-function synthesizeTypedDriftChange(
-  resource: ProfileContentsResource,
-  liveUpdate?: ProfileContentsResource,
-): DriftFileChange | undefined {
-  if (resource.type !== "agent") {
-    return undefined;
-  }
-  const rawPath = (liveUpdate ? managedDriftPath(liveUpdate) : null)
-    ?? managedDriftPath(resource);
-  if (!rawPath || inferFileChangeType(rawPath) !== "agent") {
-    return undefined;
-  }
-  return {
-    path: agentPathForResource(rawPath, resource.name),
-    type: "modified",
-    resource: { type: resource.type, name: resource.name },
-  };
-}
-
 function fileChangeForResource(
   resource: ProfileContentsResource,
   fileChanges: DriftFileChange[],
@@ -219,7 +174,6 @@ function fileChangeForResource(
     ?? (liveUpdate
       ? preferredFileChangeForResource(liveUpdate, fileChanges)
       : undefined)
-    ?? synthesizeTypedDriftChange(resource, liveUpdate)
   );
 }
 
@@ -269,7 +223,7 @@ export function partitionProfileInventory(
     const liveUpdate = notStagedUpdates.get(key);
     const driftChange = fileChangeForResource(resource, fileChanges, liveUpdate);
     const fingerprintDrift =
-      !SHARED_FILE_RESOURCE_TYPES.has(resource.type) && driftedKeys.has(key);
+      !CONTENT_DELTA_CHIP_TYPES.has(resource.type) && driftedKeys.has(key);
     const drifted = fingerprintDrift || Boolean(driftChange);
     const item: ProfileInventoryItem = {
       section: onHarness ? "active" : "inactive",

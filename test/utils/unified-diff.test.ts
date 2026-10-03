@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   buildUnifiedDiffLines,
   countUnifiedDiffChanges,
+  fileDiffHasContentChange,
 } from "../../src/utils/unified-diff.ts";
 
 describe("buildUnifiedDiffLines", () => {
@@ -48,5 +49,10 @@ describe("countUnifiedDiffChanges", () => {
       "keep\nnew\n",
     );
     expect(countUnifiedDiffChanges(lines)).toEqual({ added: 1, removed: 1 });
+  });
+
+  it("treats a trailing newline as no content change", () => {
+    expect(fileDiffHasContentChange("SKILL.md", "body", "body\n")).toBe(false);
+    expect(fileDiffHasContentChange("SKILL.md", "body\n", "live\n")).toBe(true);
   });
 });
