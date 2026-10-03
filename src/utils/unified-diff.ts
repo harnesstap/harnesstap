@@ -187,6 +187,18 @@ export function buildUnifiedDiffLines(
   return result;
 }
 
+/** True when FileDiff would show a non-empty live → after-apply body. */
+export function fileDiffHasContentChange(
+  path: string,
+  current: string,
+  expected: string,
+): boolean {
+  const { added, removed } = countUnifiedDiffChanges(
+    buildUnifiedDiffLines(path, current, expected),
+  );
+  return added > 0 || removed > 0;
+}
+
 export function countUnifiedDiffChanges(lines: UnifiedDiffLine[]): {
   added: number;
   removed: number;

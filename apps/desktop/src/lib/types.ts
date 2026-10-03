@@ -327,7 +327,7 @@ export interface DriftFileChange {
   type: "added" | "modified" | "deleted";
   platform?: string;
   resource?: { type: string; name: string; origin_kind?: string | null };
-  /** Resources in this shared file whose scoped content actually changed. */
+  /** Resources whose scoped FileDiff body actually changed. */
   affected_resources?: Array<{ type: string; name: string }>;
 }
 

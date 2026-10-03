@@ -21,11 +21,13 @@ import {
   resourceTypeTabTooltip,
   visibleResourceTypeTabs,
 } from "../../apps/desktop/src/lib/resource-type-tabs.ts";
+import { fileDiffHasContentChange } from "../../apps/desktop/src/lib/unified-diff.ts";
 import type {
   DriftFileChange,
   ProfileContents,
   ProfileContentsResource,
 } from "../../apps/desktop/src/lib/types.ts";
+import { affectedResourcesForManagedFileDiff } from "../../src/services/scoped-file-content-delta.ts";
 
 function contents(
   overrides: Partial<ProfileContents> = {},
@@ -302,6 +304,89 @@ describe("partitionProfileInventory", () => {
     expect(parts.active[0]?.driftChange).toBeUndefined();
   });
 
+  it("hides View changes and yellow when a skill or subagent scoped diff is +0 -0", () => {
+    const skillPath = ".claude/skills/ubiquitous-language/SKILL.md";
+    const agentPath = ".claude/agents/code-reviewer.md";
+    const skillBody = "---\nname: ubiquitous-language\n---\n\n# ubiquitous-language";
+    const agentBody = "---\nname: code-reviewer\n---\n\nReview the diff.";
+    const skillExpected = skillBody;
+    const skillCurrent = `${skillBody}\n`;
+    const agentExpected = agentBody;
+    const agentCurrent = `${agentBody}\n`;
+
+    expect(fileDiffHasContentChange(skillPath, skillCurrent, skillExpected)).toBe(false);
+    expect(fileDiffHasContentChange(agentPath, agentCurrent, agentExpected)).toBe(false);
+
+    const skillAffected = affectedResourcesForManagedFileDiff({
+      path: skillPath,
+      expected: skillExpected,
+      current: skillCurrent,
+    });
+    const agentAffected = affectedResourcesForManagedFileDiff({
+      path: agentPath,
+      expected: agentExpected,
+      current: agentCurrent,
+    });
+    expect(skillAffected).toEqual([]);
+    expect(agentAffected).toEqual([]);
+
+    const stacked = contents({
+      resources: [
+        {
+          type: "skill",
+          name: "ubiquitous-language",
+          source: `~/${skillPath}`,
+        },
+        {
+          type: "agent",
+          name: "code-reviewer",
+          source: `~/${agentPath}`,
+        },
+      ],
+      type_counts: { skill: 1, agent: 1 },
+      stack_resource_count: 2,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [
+        {
+          type: "skill",
+          name: "ubiquitous-language",
+          source: `~/${skillPath}`,
+          not_staged_kind: "update",
+        },
+        {
+          type: "agent",
+          name: "code-reviewer",
+          source: `~/${agentPath}`,
+          not_staged_kind: "update",
+        },
+      ],
+      fileChanges: [
+        {
+          path: skillPath,
+          type: "modified",
+          resource: { type: "skill", name: "ubiquitous-language" },
+          affected_resources: skillAffected,
+        },
+        {
+          path: agentPath,
+          type: "modified",
+          resource: { type: "agent", name: "code-reviewer" },
+          affected_resources: agentAffected,
+        },
+      ],
+    });
+
+    const skill = parts.active.find((row) => row.resource.name === "ubiquitous-language");
+    const agent = parts.active.find((row) => row.resource.name === "code-reviewer");
+    expect(skill?.drifted).toBe(false);
+    expect(skill?.driftChange).toBeUndefined();
+    expect(agent?.drifted).toBe(false);
+    expect(agent?.driftChange).toBeUndefined();
+  });
+
   it("attaches View changes when MCP drift is on another harness config than the chip source", () => {
     const stacked = contents({
       resources: [
@@ -403,8 +488,8 @@ describe("partitionProfileInventory", () => {
     const agent = parts.active.find((row) => row.resource.name === "Researcher");
     expect(mcp?.drifted).toBe(false);
     expect(mcp?.driftChange).toBeUndefined();
-    expect(agent?.drifted).toBe(true);
-    expect(agent?.driftChange?.path).toBe(".claude/agents/researcher.md");
+    expect(agent?.drifted).toBe(false);
+    expect(agent?.driftChange).toBeUndefined();
   });
 
   it("hides View changes when a permission sibling changed the shared settings file", () => {
@@ -540,7 +625,9 @@ describe("partitionProfileInventory", () => {
 
     const reviewer = parts.active.find((row) => row.resource.name === "code-reviewer");
     const planner = parts.active.find((row) => row.resource.name === "planner");
-    expect(reviewer?.driftChange?.path).toBe(".claude/agents/code-reviewer.md");
+    expect(reviewer?.drifted).toBe(false);
+    expect(reviewer?.driftChange).toBeUndefined();
+    expect(planner?.drifted).toBe(true);
     expect(planner?.driftChange?.path).toBe(".claude/agents/planner.md");
   });
 
@@ -591,7 +678,7 @@ describe("partitionProfileInventory", () => {
     });
 
     expect(parts.active[0]?.resource.name).toBe("ship");
-    expect(parts.active[0]?.drifted).toBe(true);
+    expect(parts.active[0]?.drifted).toBe(false);
     expect(parts.active[0]?.driftChange).toBeUndefined();
   });
 

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Hide Desktop View changes and yellow drift on skill and subagent chips when the scoped FileDiff body is empty.
+time: 2026-10-03T06:55:00Z
+custom:
+  Issue: ""

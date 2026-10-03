@@ -9,7 +9,7 @@ export interface DriftFileChange {
   type: DriftChangeType;
   platform?: string;
   resource?: { type: string; name: string };
-  /** Resources in this shared file whose scoped content actually changed. */
+  /** Resources whose scoped FileDiff body actually changed. */
   affected_resources?: Array<{ type: string; name: string }>;
 }
 

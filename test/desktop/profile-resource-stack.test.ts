@@ -215,6 +215,8 @@ describe("Profile resources pane chrome", () => {
     expect(fileDiffModalSource).toContain("No content change for this permission.");
     expect(fileDiffModalSource).toContain("No content change for this hook.");
     expect(fileDiffModalSource).toContain("noContentChangeCopy");
+    expect(fileDiffModalSource).toContain("fileDiffHasContentChange");
+    expect(fileDiffModalSource).not.toContain("changeCounts.added === 0 && changeCounts.removed === 0");
     expect(designSource).toContain("File apply diffs are the same centered");
     expect(designSource).toContain("If the live copy differs");
     expect(designSource).toContain("Target preview does not use the Not in profile amber tint");
