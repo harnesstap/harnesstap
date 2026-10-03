@@ -53,6 +53,7 @@ import {
   handleMarketplacesBranches,
   handleMarketplacesDetect,
   handleMarketplacesList,
+  handleMarketplacesReachability,
 } from "./marketplace-handlers.js";
 import { handleOpenPath } from "./open-path-handlers.js";
 import {
@@ -629,6 +630,8 @@ export function createAgentFetchHandler(
       response = await handleTelemetryPut(request, token);
     } else if (method === "GET" && url.pathname === "/v1/marketplaces") {
       response = handleMarketplacesList(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/marketplaces/reachability") {
+      response = await handleMarketplacesReachability(request, token);
     } else if (method === "GET" && url.pathname === "/v1/marketplaces/branches") {
       response = handleMarketplacesBranches(request, token);
     } else if (method === "GET" && url.pathname === "/v1/marketplaces/detect") {

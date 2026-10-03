@@ -218,6 +218,10 @@ describe("sources workspace chrome", () => {
     expect(modalSource).toContain("marketplaces.map");
     expect(modalSource).toContain('label="Edit"');
     expect(modalSource).toContain('label="Remove"');
+    expect(modalSource).toContain("fetchMarketplaceReachability");
+    expect(modalSource).toContain("Healthy");
+    expect(modalSource).toContain("Error");
+    expect(modalSource).toContain("marketplace-row-reachability-reason");
     expect(modalSource).not.toContain("entry.managed");
     expect(modalSource).not.toContain("removable");
     expect(workspaceSource).toContain("marketplaces={marketplaces}");

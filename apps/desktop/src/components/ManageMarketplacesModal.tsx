@@ -1,8 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Pencil, Trash2, X } from "lucide-react";
+import { fetchMarketplaceReachability } from "../lib/agent-client";
 import { shouldCloseDialogOnBackdrop } from "../lib/dialog-dismiss";
 import type { PluginMarketplaceEntry } from "../lib/types";
 import { useOverlayLayer } from "../state/overlay-stack";
+import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
@@ -10,9 +12,16 @@ import { motionClass } from "./motion/motion-utils";
 
 const ACTION_ICON_SIZE = 16;
 
+type ReachabilityState =
+  | { status: "checking" }
+  | { status: "healthy" }
+  | { status: "error"; reason: string };
+
 export interface ManageMarketplacesModalProps {
   open: boolean;
   marketplaces: PluginMarketplaceEntry[];
+  baseUrl: string | null;
+  token: string | null;
   busy?: boolean;
   disabled?: boolean;
   onClose: () => void;
@@ -20,9 +29,59 @@ export interface ManageMarketplacesModalProps {
   onRemove: (name: string) => void;
 }
 
+function reachabilityCopy(status: ReachabilityState["status"]): string {
+  switch (status) {
+    case "checking":
+      return "Checking";
+    case "healthy":
+      return "Healthy";
+    case "error":
+      return "Error";
+    default: {
+      const neverStatus: never = status;
+      return neverStatus;
+    }
+  }
+}
+
+function MarketplaceReachabilityMark({
+  name,
+  state,
+}: {
+  name: string;
+  state: ReachabilityState | undefined;
+}) {
+  const status = state?.status ?? "checking";
+  const reason = state?.status === "error" ? state.reason : undefined;
+  const label = reachabilityCopy(status);
+  const mark = (
+    <span
+      className={
+        status === "checking"
+          ? "marketplace-row-reachability"
+          : "marketplace-row-reachability m-status"
+      }
+      data-status={status}
+      data-testid={`manage-marketplace-reachability-${name}`}
+      aria-label={reason ? `${label}. ${reason}` : label}
+    >
+      <span className="marketplace-row-reachability-label">{label}</span>
+      {reason ? (
+        <span className="marketplace-row-reachability-reason">{reason}</span>
+      ) : null}
+    </span>
+  );
+  if (!reason) {
+    return mark;
+  }
+  return <ChromeTooltip content={reason}>{mark}</ChromeTooltip>;
+}
+
 export function ManageMarketplacesModal({
   open,
   marketplaces,
+  baseUrl,
+  token,
   busy = false,
   disabled = false,
   onClose,
@@ -31,6 +90,9 @@ export function ManageMarketplacesModal({
 }: ManageMarketplacesModalProps) {
   const titleId = useId();
   const [pendingName, setPendingName] = useState<string | null>(null);
+  const [reachability, setReachability] = useState<Record<string, ReachabilityState>>(
+    {},
+  );
   const controlsDisabled = disabled || busy;
   const confirmOpen = pendingName !== null;
   const layerRef = useOverlayLayer<HTMLDivElement>({
@@ -38,12 +100,80 @@ export function ManageMarketplacesModal({
     onClose,
     closeDisabled: busy || confirmOpen,
   });
+  const marketplaceKey = useMemo(
+    () => marketplaces.map((entry) => `${entry.name}\0${entry.url}`).join("|"),
+    [marketplaces],
+  );
 
   useEffect(() => {
     if (!open) {
       setPendingName(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setReachability({});
+      return;
+    }
+
+    const names = marketplaces.map((entry) => entry.name);
+    setReachability(
+      Object.fromEntries(names.map((name) => [name, { status: "checking" as const }])),
+    );
+
+    if (!baseUrl) {
+      setReachability(
+        Object.fromEntries(
+          names.map((name) => [
+            name,
+            { status: "error" as const, reason: "Could not check reachability" },
+          ]),
+        ),
+      );
+      return;
+    }
+
+    const abort = new AbortController();
+    void fetchMarketplaceReachability(baseUrl, token, abort.signal)
+      .then((result) => {
+        if (abort.signal.aborted) {
+          return;
+        }
+        const next: Record<string, ReachabilityState> = {};
+        for (const row of result.marketplaces) {
+          next[row.name] =
+            row.status === "healthy"
+              ? { status: "healthy" }
+              : { status: "error", reason: row.reason?.trim() || "Could not check reachability" };
+        }
+        for (const name of names) {
+          if (!next[name]) {
+            next[name] = { status: "error", reason: "Could not check reachability" };
+          }
+        }
+        setReachability(next);
+      })
+      .catch((error: unknown) => {
+        if (abort.signal.aborted) {
+          return;
+        }
+        const reason =
+          error instanceof Error && error.name === "AbortError"
+            ? null
+            : "Could not check reachability";
+        if (!reason) {
+          return;
+        }
+        setReachability(
+          Object.fromEntries(names.map((name) => [name, { status: "error" as const, reason }])),
+        );
+      });
+
+    return () => {
+      abort.abort();
+    };
+  }, [open, baseUrl, token, marketplaceKey, marketplaces]);
 
   const close = () => {
     if (busy || confirmOpen) {
@@ -108,6 +238,10 @@ export function ManageMarketplacesModal({
                         {entry.url ? (
                           <span className="marketplace-row-url muted">{entry.url}</span>
                         ) : null}
+                        <MarketplaceReachabilityMark
+                          name={entry.name}
+                          state={reachability[entry.name]}
+                        />
                       </div>
                       <div className="source-row-actions">
                         <IconActionButton

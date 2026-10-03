@@ -618,4 +618,48 @@ describe("agent marketplace routes", () => {
     );
     expect(denied.status).toBe(401);
   });
+
+  it("reports healthy and error reachability for listed marketplaces", async () => {
+    const server = await withServer();
+    const localOk = mkdtempSync(join(tmpdir(), "ht-mkt-reach-ok-"));
+    mkdirSync(join(localOk, "plugins"), { recursive: true });
+    const localMissing = join(tmpdir(), `ht-mkt-reach-missing-${Date.now()}`);
+    writeFileSync(
+      join(process.env.HARNESSTAP_HOME ?? "", "config.json"),
+      `${JSON.stringify({
+        plugins: {
+          refreshMaxAgeHours: 24,
+          marketplaces: [
+            { name: "local-ok", url: localOk, platforms: ["claude-code"] },
+            { name: "local-missing", url: localMissing, platforms: ["claude-code"] },
+            {
+              name: "remote-down",
+              url: "https://127.0.0.1:1/nope.git",
+              platforms: ["claude-code"],
+            },
+          ],
+        },
+      }, null, 2)}\n`,
+    );
+
+    const denied = await fetch(`${server.url}/v1/marketplaces/reachability`);
+    expect(denied.status).toBe(401);
+
+    const ok = await fetch(`${server.url}/v1/marketplaces/reachability`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(ok.status).toBe(200);
+    const body = (await ok.json()) as {
+      marketplaces: Array<{ name: string; status: string; reason?: string }>;
+    };
+    const byName = Object.fromEntries(body.marketplaces.map((row) => [row.name, row]));
+    expect(byName["local-ok"]).toEqual({ name: "local-ok", status: "healthy" });
+    expect(byName["local-missing"]).toEqual({
+      name: "local-missing",
+      status: "error",
+      reason: "Local directory is missing",
+    });
+    expect(byName["remote-down"]?.status).toBe("error");
+    expect(byName["remote-down"]?.reason?.length).toBeGreaterThan(0);
+  });
 });
