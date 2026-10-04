@@ -57,6 +57,43 @@ async function waitForLibraryLoaded(): Promise<void> {
   );
 }
 
+async function addMarketplacePluginFromDiscover(ref: string): Promise<void> {
+  const pluginName = ref.split("@")[0] ?? ref;
+  const discoverNav = await $('button[aria-label="Discover"]');
+  await discoverNav.waitForDisplayed();
+  await discoverNav.click();
+  await waitForTestId("sources-workspace");
+
+  const hit = await $(`[data-testid^="sources-hit-"][data-testid*="plugin:${pluginName}"]`);
+  await hit.waitForDisplayed({ timeout: 30000 });
+  await hit.click();
+
+  const addToLibrary = await $("button*=Add to Library");
+  await addToLibrary.waitForDisplayed({ timeout: 15000 });
+  await addToLibrary.click();
+
+  await browser.waitUntil(
+    async () => !(await addToLibrary.isExisting()) || !(await addToLibrary.isDisplayed()),
+    { timeout: 30000, timeoutMsg: "Add to Library did not finish" },
+  );
+}
+
+async function addLibraryPluginOnEditProfile(pluginName: string): Promise<void> {
+  await clickTestId("edit-profile-composition-fab");
+  const search = await $(".scope-add-modal input[type='search']");
+  await search.waitForDisplayed();
+  await search.setValue(pluginName);
+  const row = await waitForTestId(`scope-add-row-${pluginName}`);
+  await row.$("button[role='checkbox']").click();
+  const addBtn = await $(".scope-add-modal button.primary");
+  await addBtn.waitForDisplayed();
+  await addBtn.click();
+  await browser.waitUntil(
+    async () => !(await $(".scope-add-modal").isDisplayed()),
+    { timeout: 15000, timeoutMsg: "Add to profile modal did not close" },
+  );
+}
+
 async function submitCreateProfile(): Promise<void> {
   await clickTestId("create-profile-submit");
   const submit = await $(byTestId("create-profile-submit"));
@@ -72,25 +109,6 @@ async function assertResourceRows(names: readonly string[]): Promise<void> {
     const row = await $(byTestId(`resource-row-${name}`));
     await row.waitForDisplayed();
   }
-}
-
-async function selectPluginIfNeeded(ref: string): Promise<void> {
-  const trigger = await waitForTestId("edit-plugin-ref");
-  const label = ref.split("@")[0];
-  const current = await trigger.getText();
-  if (current.includes(label)) {
-    return;
-  }
-  await trigger.click();
-  const byValue = await $(`[role="option"][data-value="${ref}"]`);
-  if (await byValue.isExisting()) {
-    await byValue.waitForDisplayed();
-    await byValue.click();
-    return;
-  }
-  const fallback = await $(`//div[@role='option'][contains(.,'${label}')]`);
-  await fallback.waitForDisplayed();
-  await fallback.click();
 }
 
 describe("Golden path", () => {
@@ -166,13 +184,15 @@ describe("Golden path", () => {
   });
 
   it("pins marketplace plugin on inactive base profile", async () => {
+    await addMarketplacePluginFromDiscover(DEMO_PLUGIN_REF);
+    await clickTestId("view-project");
     await clickTestId(`edit-profile-${PROFILE_BASE}`);
-    await waitForTestId("edit-plugin-ref");
+    const pluginName = DEMO_PLUGIN_REF.split("@")[0] ?? DEMO_PLUGIN_REF;
+    await addLibraryPluginOnEditProfile(pluginName);
 
-    await selectPluginIfNeeded(DEMO_PLUGIN_REF);
-    await clickTestId("edit-plugin-add");
-
-    const pinRow = await $(byTestId(`create-resource-${DEMO_PLUGIN_REF}`));
+    const pinRow = await $(
+      `${byTestId(`create-resource-${pluginName}`)}, ${byTestId(`create-resource-${DEMO_PLUGIN_REF}`)}`,
+    );
     await pinRow.waitForDisplayed({ timeout: 30000 });
     const checked = await pinRow.$("button[data-state='checked']");
     await expect(checked).toBeDisplayed();

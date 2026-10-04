@@ -170,10 +170,12 @@ describe("profile edit save and discard", () => {
     expect(editSource).toContain("Undo");
   });
 
-  test("points marketplace empty copy at Discover", () => {
-    expect(compositionFieldsSource).toContain(
+  test("drops marketplace pin dropdowns in favor of the composition FAB", () => {
+    expect(compositionFieldsSource).not.toContain("Marketplace plugins");
+    expect(compositionFieldsSource).not.toContain(
       "No marketplaces registered. Add one in Discover.",
     );
-    expect(compositionFieldsSource).not.toContain("Add one in Settings.");
+    expect(editSource).toContain('data-testid="edit-profile-composition-fab"');
+    expect(designSource).toContain("edit-profile Composition lists that profile’s members");
   });
 });

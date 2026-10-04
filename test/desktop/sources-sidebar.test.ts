@@ -11,7 +11,7 @@ import {
 } from "../../apps/desktop/src/lib/sources-sidebar.ts";
 
 describe("buildSourceRows", () => {
-  test("orders local, marketplaces, default org, other orgs, then registered catalogs", () => {
+  test("orders marketplaces, default org, other orgs, then registered catalogs", () => {
     const rows = buildSourceRows({
       marketplaces: [{ name: "teads" }, { name: "demo" }],
       defaultOrg: "harnesstap-cloud",
@@ -23,7 +23,6 @@ describe("buildSourceRows", () => {
     });
 
     expect(rows.map((row) => row.id)).toEqual([
-      "local",
       "mkt:teads",
       "mkt:demo",
       "org:harnesstap-cloud",
@@ -33,7 +32,6 @@ describe("buildSourceRows", () => {
       "cat:acme/default",
     ]);
     expect(rows.map((row) => row.kind)).toEqual([
-      "local",
       "marketplace",
       "marketplace",
       "cloud-org",
@@ -43,7 +41,6 @@ describe("buildSourceRows", () => {
       "cloud-catalog",
     ]);
     expect(rows.map((row) => row.label)).toEqual([
-      "Local",
       "teads",
       "demo",
       "harnesstap-cloud",
@@ -54,7 +51,7 @@ describe("buildSourceRows", () => {
     ]);
   });
 
-  test("local and default org are not removable; default org forbids disconnect", () => {
+  test("default org is not removable and forbids disconnect", () => {
     const rows = buildSourceRows({
       marketplaces: [{ name: "demo" }],
       defaultOrg: "harnesstap-cloud",
@@ -62,7 +59,6 @@ describe("buildSourceRows", () => {
       registered: [{ org: "acme", catalog: "internal" }],
     });
     const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
-    expect(byId.local).toMatchObject({ removable: false });
     expect(byId["org:harnesstap-cloud"]).toMatchObject({
       removable: false,
       disconnectForbidden: true,
@@ -99,7 +95,6 @@ describe("buildSourceRows", () => {
       registered: [],
     });
     expect(rows.map((row) => row.id)).toEqual([
-      "local",
       "org:harnesstap-cloud",
       "org:acme",
     ]);
@@ -135,7 +130,7 @@ describe("isSourcesFilterActive", () => {
   });
 
   test("is active when a default-checked source is unchecked", () => {
-    expect(isSourcesFilterActive("", ["local"], rows)).toBe(true);
+    expect(isSourcesFilterActive("", ["org:acme"], rows)).toBe(true);
     expect(
       isSourcesFilterActive(
         "",
@@ -143,6 +138,11 @@ describe("isSourcesFilterActive", () => {
         rows,
       ),
     ).toBe(true);
+  });
+
+  test("is active when Not in my library is checked", () => {
+    expect(isSourcesFilterActive("", defaults, rows, false)).toBe(false);
+    expect(isSourcesFilterActive("", defaults, rows, true)).toBe(true);
   });
 
 });
@@ -165,7 +165,7 @@ describe("sourceCheckState", () => {
   });
 
   test("is mixed when some sources are checked", () => {
-    expect(sourceCheckState(["local"], rows)).toBe("mixed");
+    expect(sourceCheckState(["mkt:demo"], rows)).toBe("mixed");
   });
 });
 
@@ -184,7 +184,7 @@ describe("nextCheckedSourceIds", () => {
 
   test("reselects every source from none or mixed", () => {
     expect(nextCheckedSourceIds([], rows)).toEqual(defaults);
-    expect(nextCheckedSourceIds(["local"], rows)).toEqual(defaults);
+    expect(nextCheckedSourceIds(["mkt:demo"], rows)).toEqual(defaults);
   });
 });
 
@@ -206,24 +206,24 @@ describe("nextCheckedSourceIdsForChild", () => {
   const defaults = defaultCheckedSourceIds(rows);
 
   test("starts a specific selection from All", () => {
-    expect(nextCheckedSourceIdsForChild(defaults, rows, "local")).toEqual([
-      "local",
+    expect(nextCheckedSourceIdsForChild(defaults, rows, "mkt:demo")).toEqual([
+      "mkt:demo",
     ]);
   });
 
   test("toggles a child when selection is already mixed", () => {
-    expect(nextCheckedSourceIdsForChild(["local"], rows, "mkt:demo")).toEqual([
-      "local",
+    expect(nextCheckedSourceIdsForChild(["org:acme"], rows, "mkt:demo")).toEqual([
       "mkt:demo",
+      "org:acme",
     ]);
-    expect(nextCheckedSourceIdsForChild(["local", "mkt:demo"], rows, "local")).toEqual([
+    expect(nextCheckedSourceIdsForChild(["org:acme", "mkt:demo"], rows, "org:acme")).toEqual([
       "mkt:demo",
     ]);
   });
 });
 
 describe("groupSourceRows", () => {
-  test("splits rows into Local, Marketplaces, and Cloud and omits empty sections", () => {
+  test("splits rows into Marketplaces and Cloud and omits empty sections", () => {
     const rows = buildSourceRows({
       marketplaces: [{ name: "teads-plugins" }, { name: "demo" }],
       defaultOrg: "harnesstap-cloud",
@@ -232,19 +232,14 @@ describe("groupSourceRows", () => {
     });
     expect(groupSourceRows(rows)).toEqual([
       {
-        id: "local",
-        label: "Local",
-        rows: [rows[0]!],
-      },
-      {
         id: "marketplaces",
         label: "Marketplaces",
-        rows: [rows[1]!, rows[2]!],
+        rows: [rows[0]!, rows[1]!],
       },
       {
         id: "cloud",
         label: "Cloud",
-        rows: [rows[3]!, rows[4]!, rows[5]!],
+        rows: [rows[2]!, rows[3]!, rows[4]!],
       },
     ]);
   });
@@ -257,7 +252,6 @@ describe("groupSourceRows", () => {
       registered: [],
     });
     expect(groupSourceRows(rows).map((section) => section.id)).toEqual([
-      "local",
       "cloud",
     ]);
   });

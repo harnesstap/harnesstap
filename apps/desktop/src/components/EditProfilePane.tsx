@@ -1,41 +1,43 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Tag, X } from "lucide-react";
+import { Check, Plus, Tag, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AgentApiError,
-  addProfilePlugin,
   attachProfileComposition,
   detachProfileComposition,
   fetchLibraryPlugins,
   fetchLibraryResources,
-  fetchMarketplacePlugins,
-  fetchMarketplaces,
   fetchProfileDetail,
   patchProfileMetadata,
   renameProfile,
 } from "../lib/agent-client";
 import {
+  compositionExcludeKeys,
   isCompositionPluginPackage,
   mergeCompositionMembership,
+  pluginDetailCompositionEntries,
 } from "../lib/composition-membership";
 import { formatLastEditLine } from "../lib/library-timestamp";
 import { duplicatePluginNames } from "../lib/resource-display";
 import { resourceDisplayName } from "../lib/resource-search";
 import type {
-  CatalogPlugin,
   LibraryPlugin,
   LibraryResource,
-  PluginMarketplaceEntry,
   ProfileDetail,
 } from "../lib/types";
+import { ChromeTooltip } from "./ChromeTooltip";
 import { IconActionButton } from "./IconActionButton";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 import { ProfileDeleteControls } from "./parity/ProfileDeleteControls";
 import { ResourceDetailPane } from "./ResourceDetailPane";
+import {
+  ScopeAddToProfileModal,
+  type ScopeLibraryPick,
+} from "./ScopeAddToProfileModal";
 import { toast } from "../state/toast-store";
 import { useEscapeWhenNoLayer } from "../state/overlay-stack";
 
@@ -71,7 +73,6 @@ export function EditProfilePane({
   profileName,
   baseUrl,
   token,
-  projectPath = null,
   disabled = false,
   onClose,
   onProfileRenamed,
@@ -95,13 +96,7 @@ export function EditProfilePane({
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [resourceFilter, setResourceFilter] = useState("");
-  const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>([]);
-  const [marketplaceName, setMarketplaceName] = useState("");
-  const [catalogPlugins, setCatalogPlugins] = useState<CatalogPlugin[]>([]);
-  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
-  const [pluginsLoading, setPluginsLoading] = useState(false);
-  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
-  const [pluginRef, setPluginRef] = useState("");
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [inspectTarget, setInspectTarget] = useState<{
     selector: string;
     label: string;
@@ -190,74 +185,6 @@ export function EditProfilePane({
     };
   }, [baseUrl, libraryReloadKey, token]);
 
-  useEffect(() => {
-    if (!baseUrl) {
-      return;
-    }
-    let cancelled = false;
-    setMarketplaceLoading(true);
-    setMarketplaceError(null);
-    void fetchMarketplaces(baseUrl, token)
-      .then((result) => {
-        if (!cancelled) {
-          setMarketplaces(result.marketplaces);
-          setMarketplaceName(result.marketplaces[0]?.name ?? "");
-        }
-      })
-      .catch((loadError: unknown) => {
-        if (!cancelled) {
-          setMarketplaces([]);
-          setMarketplaceName("");
-          setMarketplaceError(
-            errorMessage(loadError, "Could not load marketplaces"),
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setMarketplaceLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [baseUrl, token]);
-
-  useEffect(() => {
-    if (!baseUrl || !marketplaceName) {
-      setCatalogPlugins([]);
-      setPluginRef("");
-      return;
-    }
-    let cancelled = false;
-    setPluginsLoading(true);
-    setMarketplaceError(null);
-    void fetchMarketplacePlugins(baseUrl, token, marketplaceName)
-      .then((result) => {
-        if (!cancelled) {
-          setCatalogPlugins(result.plugins);
-          setPluginRef(result.plugins[0]?.ref ?? "");
-        }
-      })
-      .catch((loadError: unknown) => {
-        if (!cancelled) {
-          setCatalogPlugins([]);
-          setPluginRef("");
-          setMarketplaceError(
-            errorMessage(loadError, "Could not load marketplace plugins"),
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setPluginsLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [baseUrl, marketplaceName, token]);
-
   const lastEditLine = useMemo(() => {
     const updatedAt = detail?.profile.updated_at;
     if (!updatedAt) {
@@ -304,6 +231,21 @@ export function EditProfilePane({
   const selectedMembershipIds = useMemo(
     () => [...new Set([...selectedPluginIds, ...selectedResourceIds])],
     [selectedPluginIds, selectedResourceIds],
+  );
+
+  const compositionMembers = useMemo(
+    () =>
+      pluginDetailCompositionEntries(
+        membership,
+        selectedMembershipIds,
+        detail?.resources ?? [],
+      ),
+    [detail, membership, selectedMembershipIds],
+  );
+
+  const compositionAddExcludeKeys = useMemo(
+    () => compositionExcludeKeys(compositionMembers),
+    [compositionMembers],
   );
 
   const runMutation = async (
@@ -425,21 +367,41 @@ export function EditProfilePane({
     );
   };
 
-  const addPluginPin = () => {
-    const ref = pluginRef.trim();
-    if (!baseUrl || !detail || !ref) {
+  const addLibraryItems = async (items: ScopeLibraryPick[]) => {
+    if (!baseUrl || !detail || disabled || busy) {
       return;
     }
-    void runMutation(
-      async () => {
-        await addProfilePlugin(baseUrl, token, profileName, {
-          ref,
-          ...(projectPath ? { projectPath } : {}),
-        });
-        return fetchProfileDetail(baseUrl, token, profileName);
-      },
-      { affectsApply: true },
-    );
+    setBusy(true);
+    setError(null);
+    try {
+      let next = detail;
+      for (const item of items) {
+        const entry = membership.find((row) => row.id === item.id);
+        if (!entry) {
+          continue;
+        }
+        next = isCompositionPluginPackage(entry)
+          ? await attachProfileComposition(baseUrl, token, profileName, {
+              pluginId: entry.id,
+            })
+          : await attachProfileComposition(baseUrl, token, profileName, {
+              resourceId: entry.id,
+            });
+      }
+      applyDetail(next);
+      await onMutated({
+        profileName,
+        affectsApply: true,
+      });
+    } catch (mutationError) {
+      const message = errorMessage(mutationError, "Could not add to profile");
+      setError(message);
+      throw mutationError instanceof Error
+        ? mutationError
+        : new Error(message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const toggleResource = (resourceId: string) => {
@@ -489,13 +451,6 @@ export function EditProfilePane({
   };
 
   const controlsDisabled = disabled || busy || loading;
-  const pluginControlsDisabled =
-    controlsDisabled
-    || !token
-    || marketplaceLoading
-    || pluginsLoading
-    || !pluginRef.trim()
-    || catalogPlugins.length === 0;
 
   return (
     <main className="edit-profile-pane" aria-label={`Edit ${profileName}`}>
@@ -520,11 +475,11 @@ export function EditProfilePane({
         <div className="edit-profile-header-actions">
           {detail && onRequestCut ? (
             <IconActionButton
-              label="Cut version"
+              label="Tag version"
               title={
                 detail.profile.dirty
-                  ? "Cut unpublished edits to a new version"
-                  : "Cut a new version (fork current state)"
+                  ? "Tag unpublished edits to a new version"
+                  : "Tag a new version (fork current state)"
               }
               disabled={controlsDisabled}
               onClick={() =>
@@ -591,25 +546,9 @@ export function EditProfilePane({
           </section>
 
           <PluginCompositionFields
-            showMarketplace={true}
-            marketplaceLoading={marketplaceLoading}
-            marketplaceError={marketplaceError}
-            marketplaces={marketplaces}
-            marketplaceName={marketplaceName}
-            onMarketplaceName={setMarketplaceName}
-            catalogPlugins={catalogPlugins}
-            pluginsLoading={pluginsLoading}
-            pluginRef={pluginRef}
-            onPluginRef={setPluginRef}
-            onPin={addPluginPin}
-            pinDisabled={pluginControlsDisabled}
-            marketplaceSelectId="edit-plugin-marketplace"
-            pluginSelectId="edit-plugin-ref"
-            pluginRefTestId="edit-plugin-ref"
-            pinTestId="edit-plugin-add"
             libraryLoading={libraryLoading}
             libraryError={libraryError}
-            resources={membership}
+            resources={compositionMembers}
             resourceFilter={resourceFilter}
             onResourceFilter={setResourceFilter}
             selectedIds={selectedMembershipIds}
@@ -622,6 +561,22 @@ export function EditProfilePane({
               });
             }}
             disabled={controlsDisabled}
+            emptyUnfilteredLabel="Nothing in this profile yet."
+            footer={
+              <ChromeTooltip content="Add to profile">
+                <button
+                  type="button"
+                  className="scope-inventory-fab icon-action primary"
+                  data-testid="edit-profile-composition-fab"
+                  aria-label="Add to profile"
+                  title="Add to profile"
+                  disabled={controlsDisabled}
+                  onClick={() => setAddModalOpen(true)}
+                >
+                  <Plus size={20} strokeWidth={2} aria-hidden />
+                </button>
+              </ChromeTooltip>
+            }
           />
           <EditProfileParitySlots
             profileName={profileName}
@@ -680,6 +635,18 @@ export function EditProfilePane({
               setLibraryError(errorMessage(loadError, "Could not load library"));
             });
         }}
+      />
+      <ScopeAddToProfileModal
+        open={addModalOpen}
+        disabled={controlsDisabled}
+        baseUrl={baseUrl}
+        token={token}
+        profileKeys={compositionAddExcludeKeys}
+        title="Add to profile"
+        addErrorFallback="Could not add to profile"
+        excludeProfileName={profileName}
+        onClose={() => setAddModalOpen(false)}
+        onAdd={addLibraryItems}
       />
       <ConfirmDialog
         open={discardOpen}

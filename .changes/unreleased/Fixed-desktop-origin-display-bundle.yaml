@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep desktop from bundling SQLite when showing plugin marketplace origin.
+time: 2026-10-04T05:20:00Z
+custom:
+  Issue: ""

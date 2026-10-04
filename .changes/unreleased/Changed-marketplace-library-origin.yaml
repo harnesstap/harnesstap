@@ -1,0 +1,5 @@
+kind: Changed
+body: Import marketplace plugins into the Library as upstream packages from that marketplace instead of wrapping them in an authored plugin.
+time: 2026-10-04T05:00:00Z
+custom:
+  Issue: ""

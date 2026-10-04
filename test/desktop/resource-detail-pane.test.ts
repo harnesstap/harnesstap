@@ -142,6 +142,7 @@ describe("resource inspect content preview", () => {
     expect(designSource).toContain("no type label beside those actions");
     expect(designSource).toContain("`(release)` for tagged/marketplace semver");
     expect(designSource).toContain("`(git)` for git commit hashes");
+    expect(designSource).toContain("tracked git branch");
     expect(designSource).toContain("Marketplace URL shows as a text link");
     expect(bodySource).toContain("ExternalTextLink");
   });

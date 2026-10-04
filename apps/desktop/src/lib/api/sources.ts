@@ -3,10 +3,7 @@ import type {
   PluginMarketplacePlatform,
 } from "../types";
 import { AgentApiError, agentFetch, throwAgentError } from "./http";
-import {
-  createLibraryPlugin,
-  patchLibraryPluginAttachments,
-} from "./library-plugins";
+import { importLibraryPluginFromMarketplace } from "./library-plugins";
 import type { PublishCatalogRef } from "./publish";
 
 export interface CatalogScope {
@@ -216,7 +213,10 @@ export interface CatalogPluginPullResult {
 export function isNameCollisionError(error: unknown): boolean {
   return (
     error instanceof AgentApiError
-    && (error.status === 409 || error.code === "name_collision")
+    && (error.status === 409
+      || error.code === "name_collision"
+      || error.code === "name_conflict"
+      || error.code === "plugin_exists")
   );
 }
 
@@ -243,22 +243,12 @@ export interface MarketplacePluginInstallResult {
   plugin: { name: string; id: string };
 }
 
-/** Copy a marketplace package into the Library as its own plugin (not a pin onto a host). */
+/** Copy a marketplace package into the Library as an upstream plugin. */
 export async function addMarketplacePluginToLibrary(
   baseUrl: string,
   token: string | null,
   input: { marketplace: string; plugin: string; as?: string },
 ): Promise<MarketplacePluginInstallResult> {
-  const name = input.as?.trim() || input.plugin;
-  const created = await createLibraryPlugin(baseUrl, token, { name });
-  await patchLibraryPluginAttachments(baseUrl, token, created.name, {
-    add: [
-      {
-        type: "plugin",
-        selector: `${input.plugin}@${input.marketplace}`,
-        sync: true,
-      },
-    ],
-  });
-  return { plugin: { name: created.name, id: created.id } };
+  const imported = await importLibraryPluginFromMarketplace(baseUrl, token, input);
+  return { plugin: { name: imported.plugin.name, id: imported.plugin.id } };
 }

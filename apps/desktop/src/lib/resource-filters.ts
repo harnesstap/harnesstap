@@ -1,7 +1,7 @@
 import { libraryFilterType } from "./library-list";
 import { groupedOriginKind } from "./resource-display";
 import { filterLibraryResourcesBySearch } from "./resource-search";
-import { RESOURCE_TYPE_TAB_ORDER } from "./resource-type-tabs";
+import { countResourceTypeTabs, RESOURCE_TYPE_TAB_ORDER } from "./resource-type-tabs";
 import type { LibraryResource } from "./types";
 
 export { formatOriginKindLabel } from "./resource-display";
@@ -181,6 +181,20 @@ export function applyLibraryResourceFilters<T extends LibraryResource>(
   }
 
   return next;
+}
+
+/** Type-tab counts for the current sidebar filters. Ignores the selected type tab. */
+export function libraryTypeTabCounts<T extends LibraryResource>(
+  resources: T[],
+  state: ResourceFilterState,
+  now: Date = new Date(),
+): Map<string, number> {
+  const matching = applyLibraryResourceFilters(
+    resources,
+    { ...state, type: null },
+    now,
+  );
+  return countResourceTypeTabs(matching.map((row) => libraryFilterType(row)));
 }
 
 export type NamespaceFacetOption =

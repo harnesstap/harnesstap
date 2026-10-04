@@ -99,6 +99,7 @@ export interface PluginHostCacheVersion {
   manifest_version: string | null;
   current: boolean;
   advertised: boolean;
+  git_ref?: string | null;
 }
 
 export interface LibraryResourceDetail {

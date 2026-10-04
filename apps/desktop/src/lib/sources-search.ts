@@ -120,6 +120,86 @@ export interface SourcesHitGroup {
   hits: SourcesHit[];
 }
 
+export interface DiscoverListGroupError {
+  message: string;
+  authRequired: boolean;
+}
+
+export type DiscoverListVirtualItem =
+  | {
+      key: string;
+      kind: "heading";
+      sourceId: string;
+      sourceLabel: string;
+      count: number;
+    }
+  | {
+      key: string;
+      kind: "error";
+      sourceId: string;
+      error: DiscoverListGroupError;
+    }
+  | {
+      key: string;
+      kind: "hit";
+      hit: SourcesHit;
+    };
+
+export const DISCOVER_LIST_HEADING_HEIGHT = 36;
+export const DISCOVER_LIST_ERROR_HEIGHT = 52;
+export const DISCOVER_LIST_ROW_HEIGHT = 56;
+
+export function flattenDiscoverListItems(input: {
+  groups: readonly SourcesHitGroup[];
+  groupErrors: Record<string, DiscoverListGroupError>;
+}): DiscoverListVirtualItem[] {
+  const items: DiscoverListVirtualItem[] = [];
+  for (const group of input.groups) {
+    const error = input.groupErrors[group.sourceId];
+    if (group.hits.length === 0 && error === undefined) {
+      continue;
+    }
+    items.push({
+      key: `heading:${group.sourceId}`,
+      kind: "heading",
+      sourceId: group.sourceId,
+      sourceLabel: group.sourceLabel,
+      count: group.hits.length,
+    });
+    if (error) {
+      items.push({
+        key: `error:${group.sourceId}`,
+        kind: "error",
+        sourceId: group.sourceId,
+        error,
+      });
+    }
+    for (const hit of group.hits) {
+      items.push({
+        key: hit.id,
+        kind: "hit",
+        hit,
+      });
+    }
+  }
+  return items;
+}
+
+export function discoverListItemEstimateSize(item: DiscoverListVirtualItem): number {
+  switch (item.kind) {
+    case "heading":
+      return DISCOVER_LIST_HEADING_HEIGHT;
+    case "error":
+      return DISCOVER_LIST_ERROR_HEIGHT;
+    case "hit":
+      return DISCOVER_LIST_ROW_HEIGHT;
+    default: {
+      const _exhaustive: never = item;
+      return _exhaustive;
+    }
+  }
+}
+
 export function sourcesHitFetchKey(hit: SourcesHit): string {
   const { identity } = hit;
   if (identity.marketplace) {
@@ -186,15 +266,40 @@ export function presenceLabel(presence: Presence): string {
   }
 }
 
+export function filterDiscoverGroups(
+  groups: SourcesHitGroup[],
+  notInLibrary: boolean,
+): SourcesHitGroup[] {
+  if (!notInLibrary) {
+    return groups;
+  }
+  return groups.map((group) => ({
+    ...group,
+    hits: group.hits.filter((hit) => hit.presence !== "in_library"),
+  }));
+}
+
 export function discoverListEmptyCopy(input: {
   query: string;
-}): { message: string; hint: string | null; action: "clear-search" | null } {
+  notInLibrary?: boolean;
+}): {
+  message: string;
+  hint: string | null;
+  action: "clear-search" | "clear-filters" | null;
+} {
   const trimmed = input.query.trim();
   if (trimmed.length > 0) {
     return {
       message: noResultsTitle(trimmed),
       hint: "Clear search to see every source again.",
       action: "clear-search",
+    };
+  }
+  if (input.notInLibrary) {
+    return {
+      message: "No results",
+      hint: "Clear filters to see every source again.",
+      action: "clear-filters",
     };
   }
   return {
@@ -210,9 +315,13 @@ export function discoverListIsSearching(input: {
   fetchedIds: ReadonlySet<string>;
   inflightIds?: ReadonlySet<string>;
   visibleCount: number;
+  searchPending?: boolean;
 }): boolean {
   if (input.visibleCount > 0) {
     return false;
+  }
+  if (input.searchPending) {
+    return true;
   }
   const inflight = input.inflightIds;
   if (inflight) {
@@ -392,7 +501,7 @@ function marketplaceQualifiedName(
   return `${pluginName}@${marketplaceName}`;
 }
 
-function nameMatchesMarketplacePlugin(
+export function nameMatchesMarketplacePlugin(
   resourceName: string,
   pluginName: string,
   marketplaceName: string,
@@ -450,24 +559,6 @@ export function mergeSourcesHits(input: MergeSourcesHitsInput): SourcesHitGroup[
   const seenCloudKeys = new Set<string>();
   const groupsById = new Map<string, SourcesHitGroup>();
 
-  if (input.local) {
-    const hits: SourcesHit[] = [];
-    for (const head of input.local.heads) {
-      const hit = localPluginHit(input.local, head);
-      if (hitMatchesQuery(hit, query)) hits.push(hit);
-    }
-    for (const resource of input.local.resources) {
-      if (!isStandaloneResourceType(resource.type)) continue;
-      const hit = localStandaloneHit(input.local, resource);
-      if (hitMatchesQuery(hit, query)) hits.push(hit);
-    }
-    groupsById.set(input.local.sourceId, {
-      sourceId: input.local.sourceId,
-      sourceLabel: input.local.sourceLabel,
-      hits,
-    });
-  }
-
   for (const marketplace of input.marketplaces ?? []) {
     const hits: SourcesHit[] = [];
     for (const plugin of marketplace.plugins) {
@@ -522,49 +613,6 @@ function slugFromSelector(
   }
   const parts = withoutVersion.split("/");
   return parts[2] ?? parts[parts.length - 1] ?? withoutVersion;
-}
-
-function localSelector(resource: LocalResourceInput): string {
-  return resource.namespace
-    ? `${resource.type}:${resource.name}@${resource.namespace}`
-    : `${resource.type}:${resource.name}`;
-}
-
-function localPluginHit(
-  source: { sourceId: string; sourceLabel: string },
-  head: LocalPluginHeadInput,
-): SourcesHit {
-  return {
-    id: `${source.sourceId}:plugin:${head.name}`,
-    kind: "plugin",
-    name: head.name,
-    typeLabel: "plugin",
-    ...(head.version !== undefined ? { version: head.version } : {}),
-    ...(head.description ? { description: head.description } : {}),
-    ...(head.tags && head.tags.length > 0 ? { tags: head.tags } : {}),
-    sourceId: source.sourceId,
-    sourceLabel: source.sourceLabel,
-    presence: "in_library",
-    identity: { localPluginName: head.name },
-  };
-}
-
-function localStandaloneHit(
-  source: { sourceId: string; sourceLabel: string },
-  resource: LocalResourceInput,
-): SourcesHit {
-  return {
-    id: `${source.sourceId}:standalone:${localSelector(resource)}`,
-    kind: "standalone",
-    name: resource.name,
-    typeLabel: resource.type,
-    ...(resource.description ? { description: resource.description } : {}),
-    ...(resource.tags && resource.tags.length > 0 ? { tags: resource.tags } : {}),
-    sourceId: source.sourceId,
-    sourceLabel: source.sourceLabel,
-    presence: "in_library",
-    identity: { localSelector: localSelector(resource) },
-  };
 }
 
 function marketplacePluginHit(

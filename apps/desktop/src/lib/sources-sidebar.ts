@@ -14,9 +14,7 @@ export function buildSourceRows(input: {
   connectedOrgs: string[];
   registered: Array<{ org: string; catalog: string }>;
 }): SourceRow[] {
-  const rows: SourceRow[] = [
-    { id: "local", kind: "local", label: "Local", removable: false },
-  ];
+  const rows: SourceRow[] = [];
 
   for (const marketplace of input.marketplaces) {
     rows.push({
@@ -65,7 +63,11 @@ export function isSourcesFilterActive(
   query: string,
   checkedIds: string[],
   rows: SourceRow[],
+  notInLibrary = false,
 ): boolean {
+  if (notInLibrary) {
+    return true;
+  }
   if (query.trim().length > 0) {
     return true;
   }

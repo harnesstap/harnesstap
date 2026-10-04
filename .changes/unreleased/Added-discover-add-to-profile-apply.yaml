@@ -1,0 +1,5 @@
+kind: Added
+body: Add a Discover control that copies a hit into the Library if needed, attaches it to the current profile, and applies that profile.
+time: 2026-10-04T04:15:00Z
+custom:
+  Issue: ""

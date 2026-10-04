@@ -27,6 +27,11 @@ describe("plugin origin update chrome", () => {
     expect(detailSource).toContain("CloudDownload");
   });
 
+  test("plugin package Origin shows the marketplace locator, not the raw enum", () => {
+    expect(detailSource).toContain("formatPluginOriginDisplay");
+    expect(detailSource).toContain("record.plugin.origin_locator");
+  });
+
   test("DESIGN.md locks Update all and plugin Update vs Sync", () => {
     expect(designSource).toContain("Update all");
     expect(designSource).toContain("whole plugin package");

@@ -1,0 +1,5 @@
+kind: Changed
+body: Rename desktop version-cut actions to "tag a version" so the UI matches Git vocabulary.
+time: 2026-10-04T04:46:00Z
+custom:
+  Issue: ""

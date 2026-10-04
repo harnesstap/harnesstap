@@ -4,6 +4,7 @@ import { fetchCatalogScope, type CatalogPluginSearchHit, type CatalogScope } fro
 import type { LibraryListEntry } from "../lib/library-list";
 import {
   DISCOVER_MARKETPLACE_HIT_SCHEMA,
+  marketplaceIdsNeedingCatalogFetch,
   type MarketplaceSourceInput,
 } from "../lib/sources-search";
 import type {
@@ -177,6 +178,7 @@ export interface DiscoverSnapshotStore {
   clear: () => void;
   applyCachePatch: (patch: Partial<DiscoverCatalogCacheSnapshot>) => void;
   loadSources: () => Promise<void>;
+  warm: () => Promise<void>;
   syncLocalFromLibraryPeek: () => void;
   loadFillIn: (marketplaceIds: string[]) => Promise<void>;
   invalidate: () => Promise<void>;
@@ -395,6 +397,17 @@ export function createDiscoverSnapshotStore(
       });
     },
     loadSources,
+    async warm() {
+      await loadSources();
+      const marketplaceIds = marketplaceIdsNeedingCatalogFetch({
+        marketplaceIds: state.marketplaces.map((entry) => `mkt:${entry.name}`),
+        hits: state.marketplaceHits,
+      });
+      if (marketplaceIds.length === 0) {
+        return;
+      }
+      await loadFillIn(marketplaceIds);
+    },
     syncLocalFromLibraryPeek,
     loadFillIn,
     async invalidate() {

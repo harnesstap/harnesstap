@@ -684,6 +684,25 @@ describe("POST /v1/library/plugins", () => {
   });
 });
 
+describe("POST /v1/library/plugins/import-marketplace", () => {
+  it("returns 401 without bearer", async () => {
+    const response = await handle("POST", "/v1/library/plugins/import-marketplace", {
+      token: null,
+      body: { marketplace: "claude-plugins", plugin: "alpha" },
+    });
+    expect(response.status).toBe(401);
+  });
+
+  it("returns 400 when marketplace or plugin is missing", async () => {
+    const response = await handle("POST", "/v1/library/plugins/import-marketplace", {
+      body: { marketplace: "claude-plugins" },
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("invalid_body");
+  });
+});
+
 describe("POST /v1/library/plugins/import-git", () => {
   it("returns 401 without bearer", async () => {
     const response = await handle("POST", "/v1/library/plugins/import-git", {

@@ -38,6 +38,8 @@ import {
   LIBRARY_TYPEAHEAD_MS,
   matchLibraryTypeahead,
   nextLibraryListIndex,
+  shouldRestoreLibraryRowFocus,
+  type LibraryListFocusSyncReason,
 } from "../../lib/library-list-nav";
 import { hoverModelFromLibraryResource } from "../../lib/resource-hover";
 import { resourceRowVirtualStyle } from "../../lib/resource-row-virtual";
@@ -92,8 +94,16 @@ export function LibraryResourceList({
   activeIndexRef.current = activeIndex;
   const virtualizerRef = useRef(virtualizer);
   virtualizerRef.current = virtualizer;
+  const prevLastSelectorRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
+    const reason: LibraryListFocusSyncReason =
+      prevLastSelectorRef.current === undefined
+        ? "mount"
+        : prevLastSelectorRef.current !== lastSelector
+          ? "last-selector"
+          : "rows";
+    prevLastSelectorRef.current = lastSelector;
     if (rows.length === 0) {
       setActiveIndex(0);
       onActiveSelectorChange?.(null);
@@ -108,12 +118,27 @@ export function LibraryResourceList({
     setActiveIndex(nextIndex);
     const active = rows[nextIndex];
     onActiveSelectorChange?.(active ? libraryRowSelector(active) : null);
-    if (lastIndex >= 0) {
-      virtualizerRef.current.scrollToIndex(lastIndex, { align: "auto" });
-      window.requestAnimationFrame(() => {
-        document.getElementById(`${listId}-option-${lastIndex}`)?.focus();
-      });
+    if (
+      lastIndex < 0
+      || !shouldRestoreLibraryRowFocus({
+        reason,
+        activeElement: document.activeElement,
+      })
+    ) {
+      return;
     }
+    virtualizerRef.current.scrollToIndex(lastIndex, { align: "auto" });
+    window.requestAnimationFrame(() => {
+      if (
+        !shouldRestoreLibraryRowFocus({
+          reason,
+          activeElement: document.activeElement,
+        })
+      ) {
+        return;
+      }
+      document.getElementById(`${listId}-option-${lastIndex}`)?.focus();
+    });
   }, [lastSelector, listId, onActiveSelectorChange, rows]);
 
   const moveTo = useCallback(

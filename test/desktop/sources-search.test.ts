@@ -6,6 +6,10 @@ import {
   matchQuery,
   mergeSourcesHits,
   discoverListEmptyCopy,
+  flattenDiscoverListItems,
+  discoverListItemEstimateSize,
+  DISCOVER_LIST_ROW_HEIGHT,
+  filterDiscoverGroups,
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
@@ -227,7 +231,7 @@ describe("presenceForMarketplace", () => {
 });
 
 describe("mergeSourcesHits", () => {
-  test("local plugins and standalone material resources appear; plugin refs and pins do not as standalone", () => {
+  test("omits local library inventory from discover hits", () => {
     const groups = mergeSourcesHits({
       sourceOrder: ["local"],
       local: {
@@ -249,14 +253,7 @@ describe("mergeSourcesHits", () => {
       },
     });
 
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.hits.map((hit) => ({ kind: hit.kind, name: hit.name }))).toEqual([
-      { kind: "plugin", name: "devx" },
-      { kind: "standalone", name: "ship" },
-    ]);
-    expect(groups[0]?.hits.every((hit) => hit.presence === "in_library")).toBe(
-      true,
-    );
+    expect(groups).toEqual([]);
   });
 
   test("marketplace and cloud inputs only produce plugin hits", () => {
@@ -356,16 +353,7 @@ describe("mergeSourcesHits", () => {
 
   test("empty query returns all; query filters name and description", () => {
     const input = {
-      sourceOrder: ["local", "org:acme"],
-      local: {
-        sourceId: "local",
-        sourceLabel: "Local",
-        heads: [{ name: "devx", description: "Engineering plugin" }],
-        resources: [
-          { name: "ship", type: "skill", description: "Deploy skill" },
-          { name: "dbt", type: "skill", description: "Models" },
-        ],
-      },
+      sourceOrder: ["org:acme"],
       cloud: [
         {
           sourceId: "org:acme",
@@ -378,6 +366,13 @@ describe("mergeSourcesHits", () => {
               catalogSlug: "default",
               description: "A focused profile",
             },
+            {
+              selector: "acme/default/ship@1.0.0",
+              name: "Ship",
+              orgSlug: "acme",
+              catalogSlug: "default",
+              description: "Deploy skill",
+            },
           ],
         },
       ],
@@ -385,15 +380,13 @@ describe("mergeSourcesHits", () => {
 
     const all = mergeSourcesHits({ ...input, query: "" });
     expect(all.flatMap((group) => group.hits).map((hit) => hit.name)).toEqual([
-      "devx",
-      "ship",
-      "dbt",
       "Focus",
+      "Ship",
     ]);
 
     const byName = mergeSourcesHits({ ...input, query: "ship" });
     expect(byName.flatMap((group) => group.hits).map((hit) => hit.name)).toEqual([
-      "ship",
+      "Ship",
     ]);
 
     const byDescription = mergeSourcesHits({ ...input, query: "focused" });
@@ -495,40 +488,26 @@ describe("mergeSourcesHits", () => {
     ]);
   });
 
-  test("standalone query matches type and namespace when name and description do not", () => {
-    const input = {
-      sourceOrder: ["local"],
-      local: {
-        sourceId: "local",
-        sourceLabel: "Local",
-        heads: [],
-        resources: [
-          {
-            name: "ship",
-            type: "skill",
-            namespace: "acme",
-            description: "Deploy",
-          },
-          {
-            name: "lint",
-            type: "rule",
-            namespace: "other",
-            description: "Style",
-          },
-        ],
-      },
-    };
-
+  test("standalone local matches are not listed; marketplace content still matches", () => {
     expect(
-      mergeSourcesHits({ ...input, query: "skill" })
-        .flatMap((group) => group.hits)
-        .map((hit) => hit.name),
-    ).toEqual(["ship"]);
-    expect(
-      mergeSourcesHits({ ...input, query: "acme" })
-        .flatMap((group) => group.hits)
-        .map((hit) => hit.name),
-    ).toEqual(["ship"]);
+      mergeSourcesHits({
+        sourceOrder: ["local"],
+        local: {
+          sourceId: "local",
+          sourceLabel: "Local",
+          heads: [],
+          resources: [
+            {
+              name: "ship",
+              type: "skill",
+              namespace: "acme",
+              description: "Deploy",
+            },
+          ],
+        },
+        query: "skill",
+      }).flatMap((group) => group.hits),
+    ).toEqual([]);
   });
 
   test("dedupes cloud org and registered catalog hits with the same org/catalog/slug", () => {
@@ -576,7 +555,7 @@ describe("mergeSourcesHits", () => {
     ]);
   });
 
-  test("preserves sourceOrder and puts plugins before standalone inside a group", () => {
+  test("preserves sourceOrder for remote sources and skips local", () => {
     const groups = mergeSourcesHits({
       sourceOrder: ["org:acme", "local", "mkt:teads"],
       local: {
@@ -614,15 +593,9 @@ describe("mergeSourcesHits", () => {
 
     expect(groups.map((group) => group.sourceId)).toEqual([
       "org:acme",
-      "local",
       "mkt:teads",
     ]);
-    expect(groups[1]?.hits.map((hit) => hit.kind)).toEqual([
-      "plugin",
-      "plugin",
-      "standalone",
-      "standalone",
-    ]);
+    expect(groups[1]?.hits.map((hit) => hit.kind)).toEqual(["plugin"]);
   });
 });
 
@@ -797,8 +770,8 @@ describe("mergeSourcesHits presence", () => {
       ["already", "in_library"],
     ]);
     expect(
-      groups.find((group) => group.sourceId === "local")?.hits.map((hit) => hit.name),
-    ).toEqual(["devx"]);
+      groups.find((group) => group.sourceId === "local"),
+    ).toBeUndefined();
   });
 
   test("keeps matching in-library plugins when searching", () => {
@@ -840,6 +813,40 @@ describe("mergeSourcesHits presence", () => {
   });
 });
 
+describe("filterDiscoverGroups", () => {
+  const groups = mergeSourcesHits({
+    sourceOrder: ["mkt:teads"],
+    marketplaces: [
+      {
+        sourceId: "mkt:teads",
+        sourceLabel: "teads",
+        marketplaceName: "teads",
+        plugins: [{ name: "ship" }, { name: "missing" }],
+      },
+    ],
+    libraryResources: [{ name: "ship", type: "plugin" }],
+  });
+
+  test("keeps in-library hits when the not-in-library filter is off", () => {
+    expect(
+      filterDiscoverGroups(groups, false).flatMap((group) =>
+        group.hits.map((hit) => [hit.name, hit.presence]),
+      ),
+    ).toEqual([
+      ["ship", "in_library"],
+      ["missing", "remote_only"],
+    ]);
+  });
+
+  test("drops in-library hits when the not-in-library filter is on", () => {
+    expect(
+      filterDiscoverGroups(groups, true).flatMap((group) =>
+        group.hits.map((hit) => [hit.name, hit.presence]),
+      ),
+    ).toEqual([["missing", "remote_only"]]);
+  });
+});
+
 describe("discoverListEmptyCopy", () => {
   test("prompts to search when the unfiltered list is empty", () => {
     expect(discoverListEmptyCopy({ query: "" })).toEqual({
@@ -848,6 +855,21 @@ describe("discoverListEmptyCopy", () => {
       action: null,
     });
     expect(discoverListEmptyCopy({ query: "ship" })).toEqual({
+      message: 'No results for "ship"',
+      hint: "Clear search to see every source again.",
+      action: "clear-search",
+    });
+  });
+
+  test("offers Clear filters when Not in my library hides every hit", () => {
+    expect(discoverListEmptyCopy({ query: "", notInLibrary: true })).toEqual({
+      message: "No results",
+      hint: "Clear filters to see every source again.",
+      action: "clear-filters",
+    });
+    expect(
+      discoverListEmptyCopy({ query: "ship", notInLibrary: true }),
+    ).toEqual({
       message: 'No results for "ship"',
       hint: "Clear search to see every source again.",
       action: "clear-search",
@@ -903,6 +925,25 @@ describe("discoverListIsSearching", () => {
         fetchedIds: new Set(["mkt:acme"]),
         inflightIds: new Set(["mkt:acme"]),
         visibleCount: 4,
+      }),
+    ).toBe(false);
+  });
+
+  test("is true while Discover search is pending on an empty list without catalog inflight", () => {
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["mkt:acme"],
+        fetchedIds: new Set(["mkt:acme"]),
+        visibleCount: 0,
+        searchPending: true,
+      }),
+    ).toBe(true);
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["mkt:acme"],
+        fetchedIds: new Set(["mkt:acme"]),
+        visibleCount: 4,
+        searchPending: true,
       }),
     ).toBe(false);
   });
@@ -1075,5 +1116,42 @@ describe("nextMarketplaceHitsOnRefresh", () => {
       "mkt:acme": { plugins: [{ name: "focus" }], error: null },
       "mkt:beta": { plugins: [], error: null },
     });
+  });
+});
+
+describe("flattenDiscoverListItems", () => {
+  const hit = {
+    id: "mkt:acme/focus",
+    kind: "plugin" as const,
+    name: "focus",
+    typeLabel: "plugin",
+    sourceId: "mkt:acme",
+    sourceLabel: "acme",
+    presence: "remote_only" as const,
+    identity: { marketplace: { marketplace: "acme", plugin: "focus" } },
+  };
+
+  test("skips empty groups without errors and sizes rows for the virtualizer", () => {
+    const items = flattenDiscoverListItems({
+      groups: [
+        { sourceId: "local", sourceLabel: "Local", hits: [] },
+        { sourceId: "mkt:acme", sourceLabel: "acme", hits: [hit] },
+        {
+          sourceId: "org:cloud",
+          sourceLabel: "cloud",
+          hits: [],
+        },
+      ],
+      groupErrors: {
+        "org:cloud": { message: "Sign in required", authRequired: true },
+      },
+    });
+    expect(items.map((item) => item.kind)).toEqual([
+      "heading",
+      "hit",
+      "heading",
+      "error",
+    ]);
+    expect(discoverListItemEstimateSize(items[1]!)).toBe(DISCOVER_LIST_ROW_HEIGHT);
   });
 });

@@ -8,6 +8,7 @@ import {
   formatOriginKindLabel,
   isResourceFilterStateActive,
   isUpdatedFilterValid,
+  libraryTypeTabCounts,
   resetResourceFilterState,
   resolveUpdatedAtBounds,
   type ResourceFilterState,
@@ -327,5 +328,34 @@ describe("filter state helpers", () => {
     expect(isResourceFilterStateActive(resetResourceFilterState())).toBe(
       false,
     );
+  });
+});
+
+describe("libraryTypeTabCounts", () => {
+  it("counts types after sidebar filters and ignores the selected type tab", () => {
+    const counts = libraryTypeTabCounts(rows, {
+      ...defaultResourceFilterState(),
+      type: "skill",
+      originKind: "local",
+    });
+    expect(counts.get("skill")).toBe(1);
+    expect(counts.get("rule")).toBe(1);
+    expect(counts.get("plugin")).toBeUndefined();
+    expect(counts.get("skill")! + (counts.get("rule") ?? 0)).toBe(2);
+  });
+
+  it("applies namespace and updated filters to type counts", () => {
+    const now = new Date(2026, 7, 8, 12, 0, 0);
+    const counts = libraryTypeTabCounts(
+      rows,
+      {
+        ...defaultResourceFilterState(),
+        namespace: { mode: "named", value: "team" },
+        updated: { preset: "7d", from: null, to: null },
+      },
+      now,
+    );
+    expect(counts.get("skill")).toBe(1);
+    expect(counts.has("rule")).toBe(false);
   });
 });

@@ -33,7 +33,7 @@ function writeStoredCatalog(
 }
 
 describe("searchDiscover", () => {
-  it("searches local inventory and stored marketplace catalogs without git refresh", async () => {
+  it("searches stored marketplace catalogs without git refresh and ignores local", async () => {
     ctx = await createInitializedTestContext("discover-search-local-mkt");
     const harnesstapDir = getHarnesstapDir();
     createResource({
@@ -68,19 +68,12 @@ describe("searchDiscover", () => {
     expect(refreshSpy).not.toHaveBeenCalled();
     refreshSpy.mockRestore();
 
-    expect(result.groups.map((group) => group.sourceId)).toEqual(["local", "mkt:acme"]);
-    const local = result.groups[0];
-    const marketplace = result.groups[1];
-    expect(local).toMatchObject({
-      sourceId: "local",
-      sourceLabel: "Local",
-    });
-    expect(local?.resources?.map((row) => row.name)).toEqual(["ship-skill"]);
-    expect(marketplace).toMatchObject({
+    expect(result.groups.map((group) => group.sourceId)).toEqual(["mkt:acme"]);
+    expect(result.groups[0]).toMatchObject({
       sourceId: "mkt:acme",
       sourceLabel: "acme",
     });
-    expect(marketplace?.plugins?.map((plugin) => plugin.name)).toEqual(["deploy-pack"]);
+    expect(result.groups[0]?.plugins?.map((plugin) => plugin.name)).toEqual(["deploy-pack"]);
   });
 
   it("omits unchecked sources and ignores unknown ids", async () => {
@@ -107,7 +100,7 @@ describe("searchDiscover", () => {
       q: "deploy",
       sourceIds: ["local", "org:acme", "cat:public", "mystery", "mkt:missing"],
     });
-    expect(localOnly.groups.map((group) => group.sourceId)).toEqual(["local"]);
+    expect(localOnly.groups.map((group) => group.sourceId)).toEqual([]);
 
     const marketplaceOnly = searchDiscover({
       q: "deploy",

@@ -23,6 +23,7 @@ const resourcesSource = read("components/ResourcesPanel.tsx");
 const sourcesWorkspaceSource = read("components/SourcesWorkspace.tsx");
 const recordActionsSource = read("components/SourcesRecordActions.tsx");
 const sourceSidebarSource = read("components/SourceSidebar.tsx");
+const manageMarketplacesSource = read("components/ManageMarketplacesModal.tsx");
 const pluginDetailSource = read("components/PluginPackageDetail.tsx");
 const resourceDetailSource = read("components/ResourceDetailBody.tsx");
 const pluginHostVersionSource = read("lib/plugin-host-version.ts");
@@ -283,13 +284,20 @@ describe("desktop icon chrome", () => {
   });
 
   test("Sources record actions label Add to Library and keep Pin icon-only", () => {
-    expect(recordActionsSource).toContain('label="Add to Library"');
+    expect(recordActionsSource).toContain("DISCOVER_ADD_TO_LIBRARY_LABEL");
+    expect(recordActionsSource).toContain("DISCOVER_ADD_TO_LIBRARY_TOOLTIP");
+    expect(recordActionsSource).toContain("DISCOVER_IN_LIBRARY_LINK_TOOLTIP");
+    expect(recordActionsSource).toContain("discoverAddToProfileLabel");
+    expect(recordActionsSource).toContain("showAddToProfile");
     expect(recordActionsSource).toContain("showLabel");
-    expect(recordActionsSource).toContain('label="Pin to plugin"');
+    expect(recordActionsSource).toMatch(
+      /showAddToProfile \? \([\s\S]*?primary\b[\s\S]*?discoverAddToProfileLabel/,
+    );
+    expect(recordActionsSource).toContain("label={compact ? DISCOVER_IN_LIBRARY_LINK_TOOLTIP : \"Pin to plugin\"}");
     expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
-    expect(sourceSidebarSource).toContain('label="Edit"');
-    expect(sourceSidebarSource).toContain('label="Remove"');
+    expect(manageMarketplacesSource).toContain('label="Edit"');
+    expect(manageMarketplacesSource).toContain('label="Remove"');
     expect(sourceSidebarSource).toContain('label="Disconnect"');
     expect(sourceSidebarSource).toContain('label="Unregister"');
   });

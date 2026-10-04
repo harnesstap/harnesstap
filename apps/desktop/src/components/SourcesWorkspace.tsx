@@ -29,7 +29,10 @@ import { fetchPluginOriginCheck, type PluginOriginCheckRow } from "../lib/api/pl
 import { workspaceBackEnabled, WORKSPACE_BACK_LABEL } from "../lib/screen-history";
 import { useRegisterCommands } from "../state/command-registry";
 import { discoverSnapshotStore } from "../state/discover-snapshot-store";
-import { useLibrarySnapshotStore } from "../state/library-snapshot-store";
+import {
+  librarySnapshotStore,
+  useLibrarySnapshotStore,
+} from "../state/library-snapshot-store";
 import {
   popSourcesPane,
   sourcesEscapeAction,
@@ -48,6 +51,7 @@ import {
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
+  filterDiscoverGroups,
   marketplaceHitKey,
   marketplaceIdsNeedingCatalogFetch,
   mergeSourcesHits,
@@ -58,8 +62,11 @@ import {
   type SourcesHitGroup,
 } from "../lib/sources-search";
 import {
+  discoverAttachTarget,
   sourcesAttachmentAdd,
   sourcesHitActions,
+  type DiscoverAttachTarget,
+  type DiscoverLibraryRow,
   type SourcesInstallState,
 } from "../lib/sources-record-actions";
 import {
@@ -192,6 +199,13 @@ export interface SourcesWorkspaceProps {
   onSuccess?: (message: string) => void;
   onSignIn?: () => void;
   onOpenInLibrary?: (selector: string) => void;
+  currentProfileName?: string | null;
+  onAddToProfileAndApply?: (item: {
+    kind: "plugin" | "resource";
+    id: string;
+    name: string;
+    type: string;
+  }) => Promise<void>;
   cloudAuthenticated?: boolean;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
@@ -206,6 +220,8 @@ export function SourcesWorkspace({
   onSuccess,
   onSignIn,
   onOpenInLibrary,
+  currentProfileName = null,
+  onAddToProfileAndApply,
   cloudAuthenticated = false,
   canWorkspaceBack = false,
   onWorkspaceBack,
@@ -219,6 +235,7 @@ export function SourcesWorkspace({
   const libraryPeek = useLibrarySnapshotStore((state) => state.peek);
   const libraryFull = useLibrarySnapshotStore((state) => state.full);
   const [query, setQuery] = useState("");
+  const [notInLibrary, setNotInLibrary] = useState(false);
   const [searchGroups, setSearchGroups] = useState<DiscoverSearchGroup[] | null>(
     null,
   );
@@ -227,7 +244,7 @@ export function SourcesWorkspace({
   const marketplaces = snapshot.marketplaces;
   const scope = snapshot.scope;
   const sourceInventoryReady = snapshot.sourceInventoryReady;
-  const [checkedIds, setCheckedIds] = useState<string[]>(["local"]);
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [checksTouched, setChecksTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -291,6 +308,44 @@ export function SourcesWorkspace({
     ];
   }, [createdHeads, snapshot.localHeads]);
   const localResources = snapshot.localResources;
+  const attachLibraryRows = useMemo(() => {
+    const rows: DiscoverLibraryRow[] = [];
+    const seen = new Set<string>();
+    const push = (row: DiscoverLibraryRow) => {
+      if (!row.id || seen.has(row.id)) {
+        return;
+      }
+      seen.add(row.id);
+      rows.push(row);
+    };
+    for (const entry of libraryFull ?? libraryPeek ?? []) {
+      push({
+        id: entry.id,
+        name: entry.name,
+        type: entry.type,
+        namespace: entry.namespace,
+        listKind: entry.listKind,
+      });
+    }
+    for (const head of localHeads) {
+      push({
+        id: head.id,
+        name: head.name,
+        type: "plugin",
+        listKind: "plugin-package",
+      });
+    }
+    for (const resource of localResources) {
+      push({
+        id: resource.id,
+        name: resource.name,
+        type: resource.type,
+        namespace: resource.namespace,
+        listKind: "resource",
+      });
+    }
+    return rows;
+  }, [libraryFull, libraryPeek, localHeads, localResources]);
   const localError = snapshot.localError;
   const marketplaceHits = snapshot.marketplaceHits;
   const [cloudPlugins, setCloudPlugins] = useState<CatalogPluginSearchHit[]>(
@@ -352,6 +407,7 @@ export function SourcesWorkspace({
 
   function resetSourcesFilters(): void {
     setQuery("");
+    setNotInLibrary(false);
     setChecksTouched(false);
     setCheckedIds(defaultCheckedSourceIds(rows));
   }
@@ -380,8 +436,11 @@ export function SourcesWorkspace({
     if (!baseUrl) {
       return;
     }
+    if (reloadKey === 0 && snapshot.sourceInventoryReady) {
+      return;
+    }
     void discoverSnapshotStore.loadSources();
-  }, [baseUrl, token, reloadKey]);
+  }, [baseUrl, token, reloadKey, snapshot.sourceInventoryReady]);
 
   const checkedRows = useMemo(
     () => rows.filter((row) => checkedIds.includes(row.id)),
@@ -591,16 +650,6 @@ export function SourcesWorkspace({
     const controller = new AbortController();
     let cancelled = false;
     const requestGeneration = ++searchGenerationRef.current;
-    const searchIds = checkedRows
-      .filter((row) => row.kind === "local" || row.kind === "marketplace")
-      .map((row) => row.id);
-    setInflightSourceIds((current) => {
-      const next = new Set(current);
-      for (const id of searchIds) {
-        next.add(id);
-      }
-      return next;
-    });
     const timer = window.setTimeout(() => {
       void fetchDiscoverSearch(baseUrl, token, {
         q: trimmed,
@@ -622,18 +671,6 @@ export function SourcesWorkspace({
             return;
           }
           setError(errorMessage(loadError, "Could not search Discover sources."));
-        })
-        .finally(() => {
-          if (cancelled || requestGeneration !== searchGenerationRef.current) {
-            return;
-          }
-          setInflightSourceIds((current) => {
-            const next = new Set(current);
-            for (const id of searchIds) {
-              next.delete(id);
-            }
-            return next;
-          });
         });
     }, SEARCH_DEBOUNCE_MS);
 
@@ -641,15 +678,8 @@ export function SourcesWorkspace({
       cancelled = true;
       controller.abort();
       window.clearTimeout(timer);
-      setInflightSourceIds((current) => {
-        const next = new Set(current);
-        for (const id of searchIds) {
-          next.delete(id);
-        }
-        return next;
-      });
     };
-  }, [baseUrl, token, query, checkedIds, checkedRows]);
+  }, [baseUrl, token, query, checkedIds]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -657,23 +687,26 @@ export function SourcesWorkspace({
       return;
     }
     let cancelled = false;
-    void fetchPluginOriginCheck(baseUrl, token)
-      .then((report) => {
-        if (!cancelled) {
-          setOriginCheckRows(report.results);
-          setOriginCheckError(null);
-        }
-      })
-      .catch((checkError: unknown) => {
-        if (!cancelled) {
-          setOriginCheckRows([]);
-          setOriginCheckError(
-            errorMessage(checkError, "Could not check plugins against origin"),
-          );
-        }
-      });
+    const timer = window.setTimeout(() => {
+      void fetchPluginOriginCheck(baseUrl, token)
+        .then((report) => {
+          if (!cancelled) {
+            setOriginCheckRows(report.results);
+            setOriginCheckError(null);
+          }
+        })
+        .catch((checkError: unknown) => {
+          if (!cancelled) {
+            setOriginCheckRows([]);
+            setOriginCheckError(
+              errorMessage(checkError, "Could not check plugins against origin"),
+            );
+          }
+        });
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [baseUrl, token, reloadKey]);
 
@@ -683,7 +716,6 @@ export function SourcesWorkspace({
   );
 
   const groups: SourcesHitGroup[] = useMemo(() => {
-    const localChecked = checkedRows.some((row) => row.id === "local");
     const useSearch = searchActive && searchGroups !== null;
     const searchById = useSearch
       ? new Map(searchGroups.map((group) => [group.sourceId, group]))
@@ -709,20 +741,6 @@ export function SourcesWorkspace({
     const merged = mergeSourcesHits({
       query,
       sourceOrder,
-      ...(localChecked
-        ? {
-            local: {
-              sourceId: "local",
-              sourceLabel: searchById?.get("local")?.sourceLabel ?? "Local",
-              heads: useSearch
-                ? (searchById?.get("local")?.heads ?? [])
-                : localHeads,
-              resources: useSearch
-                ? (searchById?.get("local")?.resources ?? [])
-                : localResources,
-            },
-          }
-        : {}),
       marketplaces: marketplaceInputs,
       cloud: cloudInputs,
       libraryHeads: localHeads,
@@ -752,7 +770,7 @@ export function SourcesWorkspace({
         originCheckRows,
       ),
     }));
-    return merged;
+    return filterDiscoverGroups(merged, notInLibrary);
   }, [
     checkedRows,
     cloudPlugins,
@@ -763,6 +781,7 @@ export function SourcesWorkspace({
     pulledCloudKeys,
     addedMarketplaceKeys,
     query,
+    notInLibrary,
     searchActive,
     searchGroups,
     sourceOrder,
@@ -1079,7 +1098,9 @@ export function SourcesWorkspace({
     setActionError(errorMessage(installError, fallback));
   };
 
-  const runAddToLibrary = async (hit: SourcesHit): Promise<string | null> => {
+  const runAddToLibrary = async (
+    hit: SourcesHit,
+  ): Promise<{ name: string; id: string } | null> => {
     if (!baseUrl) {
       return null;
     }
@@ -1097,7 +1118,11 @@ export function SourcesWorkspace({
       });
       setInstallByHit((current) => ({
         ...current,
-        [hit.id]: { ...current[hit.id], pulledName: result.plugin.name },
+        [hit.id]: {
+          ...current[hit.id],
+          pulledName: result.plugin.name,
+          addedId: result.plugin.id,
+        },
       }));
       setPulledCloudKeys((current) => {
         const next = new Set(current);
@@ -1106,7 +1131,7 @@ export function SourcesWorkspace({
       });
       setPullCollision(false);
       setPullAsName("");
-      return result.plugin.name;
+      return result.plugin;
     }
     if (hit.identity.marketplace) {
       const marketplace = hit.identity.marketplace;
@@ -1117,7 +1142,11 @@ export function SourcesWorkspace({
       });
       setInstallByHit((current) => ({
         ...current,
-        [hit.id]: { ...current[hit.id], addedName: result.plugin.name },
+        [hit.id]: {
+          ...current[hit.id],
+          addedName: result.plugin.name,
+          addedId: result.plugin.id,
+        },
       }));
       setAddedMarketplaceKeys((current) => {
         const next = new Set(current);
@@ -1126,9 +1155,56 @@ export function SourcesWorkspace({
       });
       setPullCollision(false);
       setPullAsName("");
-      return result.plugin.name;
+      return result.plugin;
     }
     setActionError("This item is already in your Library.");
+    return null;
+  };
+
+  const resolveAttachTarget = async (
+    hit: SourcesHit,
+  ): Promise<DiscoverAttachTarget | null> => {
+    const fromState = discoverAttachTarget(
+      hit,
+      installByHit[hit.id] ?? {},
+      attachLibraryRows,
+    );
+    if (fromState) {
+      return fromState;
+    }
+    if (!baseUrl) {
+      return null;
+    }
+    const actions = sourcesHitActions(hit, installByHit[hit.id]);
+    const librarySelector = actions.openInLibrarySelector;
+    if (librarySelector && hit.identity.localSelector) {
+      const detail = await fetchLibraryResourceDetail(
+        baseUrl,
+        token,
+        librarySelector,
+      );
+      return { kind: "resource", id: detail.id, name: detail.name };
+    }
+    if (librarySelector) {
+      const detail = await fetchLibraryPluginDetail(
+        baseUrl,
+        token,
+        librarySelector,
+      );
+      return {
+        kind: "plugin",
+        id: detail.plugin.id,
+        name: detail.plugin.name,
+      };
+    }
+    if (hit.identity.marketplace || hit.identity.cloud) {
+      const added = await runAddToLibrary(hit);
+      if (added) {
+        return { kind: "plugin", id: added.id, name: added.name };
+      }
+      return null;
+    }
+    setActionError("Could not add this item to the current profile.");
     return null;
   };
 
@@ -1140,13 +1216,43 @@ export function SourcesWorkspace({
     setActionError(null);
     setActionAuthRequired(false);
     try {
-      const name = await runAddToLibrary(hit);
-      if (name) {
-        onSuccess?.(`Added ${name} to Library.`);
+      const added = await runAddToLibrary(hit);
+      if (added) {
+        onSuccess?.(`Added ${added.name} to Library.`);
+        void librarySnapshotStore.invalidate();
         refresh();
       }
     } catch (addError: unknown) {
       applyInstallError(addError, "Could not add to Library.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onAddToProfile = async (hit: SourcesHit) => {
+    if (!baseUrl || busy) {
+      return;
+    }
+    if (!currentProfileName || !onAddToProfileAndApply) {
+      setActionError("No profile selected.");
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    setActionAuthRequired(false);
+    try {
+      const target = await resolveAttachTarget(hit);
+      if (!target) {
+        return;
+      }
+      await onAddToProfileAndApply({
+        ...target,
+        type: target.kind === "plugin" ? "plugin" : hit.typeLabel,
+      });
+      void librarySnapshotStore.invalidate();
+      refresh();
+    } catch (addError: unknown) {
+      applyInstallError(addError, "Could not add to the current profile.");
     } finally {
       setBusy(false);
     }
@@ -1207,9 +1313,12 @@ export function SourcesWorkspace({
       authRequired: actionAuthRequired,
       collision: pullCollision,
       asName: pullAsName,
+      hitName: hit.name,
+      currentProfileName,
       onAsNameChange: setPullAsName,
       onSignIn,
       onAddToLibrary: () => void onAddToLibrary(hit),
+      onAddToProfile: () => void onAddToProfile(hit),
       onPinToPlugin: () => {
         resetActionState();
         setPinError(null);
@@ -1253,6 +1362,7 @@ export function SourcesWorkspace({
     fetchedIds: fetchedIdsForList,
     inflightIds: inflightSourceIds,
     visibleCount: visibleHitCount,
+    searchPending: searchActive && searchGroups === null,
   });
   const sidebarRefreshing = discoverSourcesRefreshing({
     fetchedIds: fetchedIdsForList,
@@ -1297,6 +1407,7 @@ export function SourcesWorkspace({
             groupErrors={groupErrors}
             loading={listSearching}
             query={query}
+            notInLibrary={notInLibrary}
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
@@ -1304,6 +1415,7 @@ export function SourcesWorkspace({
               applyListQueryOrChecks(() => setQuery(""));
             }}
             onClearQuery={() => applyListQueryOrChecks(() => setQuery(""))}
+            onClearFilters={() => applyListQueryOrChecks(resetSourcesFilters)}
             recordActions={recordActionsProps}
           />
         );
@@ -1402,7 +1514,7 @@ export function SourcesWorkspace({
                 ) : null}
               </span>
               <span className="muted resources-panel-scope">
-                Find and add from local, marketplaces, and HarnessTap Cloud.
+                Find and add from marketplaces and HarnessTap Cloud.
               </span>
             </div>
           </div>
@@ -1452,6 +1564,10 @@ export function SourcesWorkspace({
           }}
           onClear={() => {
             applyListQueryOrChecks(resetSourcesFilters);
+          }}
+          notInLibrary={notInLibrary}
+          onNotInLibraryChange={(next) => {
+            applyListQueryOrChecks(() => setNotInLibrary(next));
           }}
           rows={rows}
           checkedIds={checkedIds}

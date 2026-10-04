@@ -384,11 +384,11 @@ export function ScopeWorkspace({
                         ctrl.openCutForProfile(selectedProfile, selectedProfileSummary?.version ?? "")
                       }
                       disabled={!connected || !token || switching || !selectedProfileSummary?.version}
-                      label={`Cut version for ${selectedProfile}`}
+                      label={`Tag version for ${selectedProfile}`}
                       title={
                         selectedProfileSummary?.dirty
-                          ? "Cut unpublished edits to a new version"
-                          : "Cut a new version (fork current state)"
+                          ? "Tag unpublished edits to a new version"
+                          : "Tag a new version (fork current state)"
                       }
                       icon={<Tag size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
                     />

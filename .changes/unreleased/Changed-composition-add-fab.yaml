@@ -1,0 +1,5 @@
+kind: Changed
+body: Drop marketplace pin dropdowns from plugin and profile composition and add an Add FAB on the edit profile pane.
+time: 2026-10-04T04:40:00Z
+custom:
+  Issue: ""

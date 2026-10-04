@@ -27,6 +27,8 @@ export interface SourceSidebarProps {
   query: string;
   onQueryChange: (query: string) => void;
   onClear: () => void;
+  notInLibrary: boolean;
+  onNotInLibraryChange: (notInLibrary: boolean) => void;
   rows: SourceRow[];
   checkedIds: string[];
   onToggle: (id: string) => void;
@@ -88,6 +90,8 @@ export function SourceSidebar({
   query,
   onQueryChange,
   onClear,
+  notInLibrary,
+  onNotInLibraryChange,
   rows,
   checkedIds,
   onToggle,
@@ -113,6 +117,7 @@ export function SourceSidebar({
     query,
     checkedIds,
     rows,
+    notInLibrary,
   );
   const checkState = sourceCheckState(checkedIds, rows);
   const masterChecked = sourceMasterChecked(checkState);
@@ -177,6 +182,23 @@ export function SourceSidebar({
             onClick={() => applySidebarChange(() => onClear())}
             icon={<FilterX size={ACTION_ICON_SIZE} aria-hidden />}
           />
+        </div>
+        <div className="source-row">
+          <div className="source-row-check">
+            <Checkbox
+              id="source-not-in-library"
+              checked={notInLibrary}
+              disabled={controlsDisabled}
+              onCheckedChange={(checked) =>
+                applySidebarChange(() =>
+                  onNotInLibraryChange(checked === true),
+                )
+              }
+            />
+            <Label htmlFor="source-not-in-library" className="font-normal">
+              Not in my library
+            </Label>
+          </div>
         </div>
       </div>
       {error ? (

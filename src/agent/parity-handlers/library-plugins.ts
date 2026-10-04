@@ -20,7 +20,6 @@ import {
   PluginAttachmentHintError,
   validatePluginAttachmentType,
 } from "../../services/plugin-composition.js";
-import { ensureUpstreamPluginResources } from "../../services/plugin-package-hydrate.js";
 import { runPluginDoctor } from "../../services/plugin-doctor.js";
 import {
   applyPluginEditScripting,
@@ -28,10 +27,19 @@ import {
   type PluginEditScriptRemove,
 } from "../../services/plugin-edit.js";
 import {
+  GitPluginImportError,
+  importPluginFromGitHubRef,
+} from "../../services/plugin-git-import.js";
+import {
+  importPluginFromMarketplace,
+  MarketplacePluginImportError,
+} from "../../services/plugin-marketplace-import.js";
+import {
   assertAuthored,
   getPluginOrigin,
   PluginProvenanceError,
 } from "../../services/plugin-origin.js";
+import { ensureUpstreamPluginResources } from "../../services/plugin-package-hydrate.js";
 import {
   cutPluginVersion,
   listPluginVersionHistory,
@@ -39,10 +47,6 @@ import {
   rollbackPluginVersion,
 } from "../../services/plugin-versioning.js";
 import { toContentsResource } from "../../services/profile-contents.js";
-import {
-  GitPluginImportError,
-  importPluginFromGitHubRef,
-} from "../../services/plugin-git-import.js";
 import { trackPluginUsed } from "../../telemetry/index.js";
 import type { Plugin, Resource, ResourceType } from "../../types.js";
 import { requireAgentBearerAuth } from "../auth.js";
@@ -143,6 +147,7 @@ export function toPluginHead(plugin: {
   dirty: boolean;
   org_slug: string;
   catalog_slug: string;
+  origin_locator?: string;
 }): {
   id: string;
   name: string;
@@ -150,6 +155,7 @@ export function toPluginHead(plugin: {
   tags: string[];
   description: string | null;
   origin: "authored" | "upstream" | "catalog";
+  origin_locator: string;
   dirty: boolean;
   org_slug: string;
   catalog_slug: string;
@@ -161,6 +167,7 @@ export function toPluginHead(plugin: {
     tags: plugin.tags,
     description: plugin.description || null,
     origin: getPluginOrigin(plugin.id),
+    origin_locator: plugin.origin_locator ?? "",
     dirty: plugin.dirty,
     org_slug: plugin.org_slug,
     catalog_slug: plugin.catalog_slug,
@@ -177,6 +184,7 @@ export function buildPluginDetail(plugin: Plugin) {
       description: plugin.description ?? "",
       tags: plugin.tags,
       origin: getPluginOrigin(plugin.id),
+      origin_locator: plugin.origin_locator ?? "",
       dirty: plugin.dirty,
       frozen_at: plugin.frozen_at ?? null,
       default_environment_id: plugin.default_environment_id ?? null,
@@ -450,6 +458,66 @@ export async function tryHandle(
         {
           error: "invalid_body",
           message: error instanceof Error ? error.message : "could not create plugin",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (method === "POST" && pathname === "/v1/library/plugins/import-marketplace") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readJsonBody(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (
+      !isRecord(parsed.value)
+      || typeof parsed.value.marketplace !== "string"
+      || typeof parsed.value.plugin !== "string"
+      || !parsed.value.marketplace.trim()
+      || !parsed.value.plugin.trim()
+    ) {
+      return jsonResponse(
+        { error: "invalid_body", message: "marketplace and plugin are required" },
+        { status: 400 },
+      );
+    }
+    const alias =
+      typeof parsed.value.as === "string" ? parsed.value.as.trim() : "";
+    try {
+      const imported = await importPluginFromMarketplace({
+        marketplace: parsed.value.marketplace,
+        plugin: parsed.value.plugin,
+        ...(alias ? { as: alias } : {}),
+      });
+      return jsonResponse({
+        plugin: toPluginHead(imported.plugin),
+        origin_locator: imported.origin_locator,
+        origin_fingerprint: imported.origin_fingerprint,
+        created: imported.created,
+      });
+    } catch (error) {
+      if (error instanceof MarketplacePluginImportError) {
+        const status =
+          error.code === "name_conflict"
+            ? 409
+            : error.code === "invalid_ref"
+              || error.code === "marketplace_not_found"
+              || error.code === "plugin_not_found"
+              ? 400
+              : 502;
+        return jsonResponse(
+          { error: error.code, message: error.message },
+          { status },
+        );
+      }
+      return jsonResponse(
+        {
+          error: "import_failed",
+          message: error instanceof Error ? error.message : "could not import plugin",
         },
         { status: 400 },
       );

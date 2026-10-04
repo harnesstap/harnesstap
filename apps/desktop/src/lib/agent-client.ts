@@ -943,7 +943,7 @@ export async function cutProfile(
     },
   );
   if (!response.ok) {
-    return throwAgentError(response, "Could not cut profile version");
+    return throwAgentError(response, "Could not tag profile version");
   }
   return (await response.json()) as ProfileCutResult;
 }

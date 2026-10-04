@@ -159,6 +159,31 @@ describe("library row geometry", () => {
   });
 });
 
+describe("plugin package origin facet", () => {
+  it("maps authored packages to Local and marketplace packages to Marketplace", () => {
+    const authored: LibraryPluginHead = {
+      ...pluginHead,
+      id: "p-authored",
+      name: "mine",
+      origin: "authored",
+    };
+    const upstream: LibraryPluginHead = {
+      ...pluginHead,
+      id: "p-up",
+      name: "code-review-workflow",
+      origin: "upstream",
+      origin_locator: "code-review-workflow@claude-plugins",
+    };
+    const entries = mergeLibraryList([], [authored, upstream]);
+    const byName = Object.fromEntries(entries.map((row) => [row.name, row]));
+    expect(byName.mine?.origin_kind).toBe("manual");
+    expect(byName["code-review-workflow"]?.origin_kind).toBe("marketplace_link");
+    expect(byName["code-review-workflow"]?.origin_ref).toBe(
+      "code-review-workflow@claude-plugins",
+    );
+  });
+});
+
 describe("scoped library rows", () => {
   it("parses <base>@<profile> names", () => {
     expect(parseLibraryScopeName("api")).toEqual({

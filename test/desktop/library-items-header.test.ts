@@ -176,5 +176,36 @@ describe("library items header design lock", () => {
     expect(designSource).toContain("labeled **Pull**");
     expect(designSource).toContain("labeled **Sync**");
     expect(designSource).toContain("labeled **Write**");
+    expect(designSource).toContain(
+      "Filtering must keep focus in the sidebar search field",
+    );
+    expect(designSource).toContain(
+      "Type tabs stay visible when the filtered list is empty",
+    );
+    expect(designSource).toContain(
+      "Type tab counts follow sidebar filters",
+    );
+  });
+});
+
+describe("library type tabs on empty lists", () => {
+  test("still renders type tabs when filters empty the list", () => {
+    const renderList = sliceBetween(
+      panelSource,
+      "function renderList()",
+      "function renderMainPane()",
+    );
+    const tabsIdx = renderList.indexOf("<ResourceTypeTabs");
+    const filterEmptyIdx = renderList.indexOf("noResultsTitle");
+    const typeEmptyIdx = renderList.indexOf("No resources to show");
+    const listIdx = renderList.indexOf("LibraryResourceList");
+    expect(tabsIdx).toBeGreaterThan(-1);
+    expect(filterEmptyIdx).toBeGreaterThan(tabsIdx);
+    expect(typeEmptyIdx).toBeGreaterThan(tabsIdx);
+    expect(listIdx).toBeGreaterThan(tabsIdx);
+  });
+
+  test("counts type tabs from sidebar-filtered rows", () => {
+    expect(panelSource).toContain("libraryTypeTabCounts");
   });
 });
