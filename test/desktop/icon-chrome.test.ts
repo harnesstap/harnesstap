@@ -284,6 +284,8 @@ describe("desktop icon chrome", () => {
 
   test("Sources record actions label Add to Library and keep Pin icon-only", () => {
     expect(recordActionsSource).toContain('label="Add to Library"');
+    expect(recordActionsSource).toContain("discoverAddToProfileLabel");
+    expect(recordActionsSource).toContain("showAddToProfile");
     expect(recordActionsSource).toContain("showLabel");
     expect(recordActionsSource).toContain('label="Pin to plugin"');
     expect(recordActionsSource).not.toContain('label="Attach to plugin"');

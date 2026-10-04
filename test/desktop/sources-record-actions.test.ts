@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
+  discoverActionHelper,
+  discoverAddToProfileLabel,
+  discoverAttachTarget,
   sourcesAttachmentAdd,
   sourcesHitActions,
 } from "../../apps/desktop/src/lib/sources-record-actions.ts";
@@ -61,6 +64,7 @@ describe("sourcesHitActions", () => {
   test("Cloud remote-only shows Add to Library and Pin, Open in Library after add", () => {
     const remote = sourcesHitActions(cloudHit("remote_only"));
     expect(remote.showAddToLibrary).toBe(true);
+    expect(remote.showAddToProfile).toBe(true);
     expect(remote.showPinToPlugin).toBe(true);
     expect(remote.showOpenInLibrary).toBe(false);
     expect(remote.openInLibrarySelector).toBeNull();
@@ -76,6 +80,7 @@ describe("sourcesHitActions", () => {
   test("Cloud in-library hides Add to Library and opens the catalog plugin name", () => {
     const actions = sourcesHitActions(cloudHit("in_library"));
     expect(actions.showAddToLibrary).toBe(false);
+    expect(actions.showAddToProfile).toBe(true);
     expect(actions.showPinToPlugin).toBe(true);
     expect(actions.showOpenInLibrary).toBe(true);
     expect(actions.openInLibrarySelector).toBe("focus");
@@ -84,6 +89,7 @@ describe("sourcesHitActions", () => {
   test("Marketplace Add to Library uses name@marketplace with sync, Open in Library after add", () => {
     const before = sourcesHitActions(marketplaceHit());
     expect(before.showAddToLibrary).toBe(true);
+    expect(before.showAddToProfile).toBe(true);
     expect(before.showPinToPlugin).toBe(true);
     expect(before.showOpenInLibrary).toBe(false);
     expect(sourcesAttachmentAdd(marketplaceHit())).toEqual({
@@ -103,6 +109,7 @@ describe("sourcesHitActions", () => {
   test("Local plugin pins as a nested plugin ref", () => {
     const actions = sourcesHitActions(localPluginHit());
     expect(actions.showAddToLibrary).toBe(false);
+    expect(actions.showAddToProfile).toBe(true);
     expect(actions.showPinToPlugin).toBe(true);
     expect(actions.showOpenInLibrary).toBe(true);
     expect(actions.openInLibrarySelector).toBe("team");
@@ -115,6 +122,7 @@ describe("sourcesHitActions", () => {
   test("Local standalone folds Attach into Pin", () => {
     const actions = sourcesHitActions(standaloneHit());
     expect(actions.showAddToLibrary).toBe(false);
+    expect(actions.showAddToProfile).toBe(true);
     expect(actions.showPinToPlugin).toBe(true);
     expect(actions.showOpenInLibrary).toBe(true);
     expect(actions.openInLibrarySelector).toBe("skill:hello@ns");
@@ -122,5 +130,46 @@ describe("sourcesHitActions", () => {
       type: "skill",
       selector: "skill:hello@ns",
     });
+  });
+});
+
+describe("discover add to profile", () => {
+  test("labels Add to the current profile and apply", () => {
+    expect(discoverAddToProfileLabel("work")).toBe("Add to work");
+    expect(discoverAddToProfileLabel(null)).toBe("Add to profile");
+    expect(discoverActionHelper("work")).toBe(
+      "Add copies it into your Library. Add to work attaches it and applies. Pin links it into one of your plugins.",
+    );
+  });
+
+  test("resolves a marketplace add from install state, else the library package", () => {
+    expect(
+      discoverAttachTarget(marketplaceHit(), {
+        addedName: "demo",
+        addedId: "plg_1",
+      }, []),
+    ).toEqual({ kind: "plugin", id: "plg_1", name: "demo" });
+
+    expect(
+      discoverAttachTarget(
+        { ...marketplaceHit(), presence: "in_library" },
+        {},
+        [{ id: "plg_lib", name: "demo", type: "plugin", listKind: "plugin-package" }],
+      ),
+    ).toEqual({ kind: "plugin", id: "plg_lib", name: "demo" });
+  });
+
+  test("resolves standalone library resources from the local selector", () => {
+    expect(
+      discoverAttachTarget(standaloneHit(), {}, [
+        {
+          id: "res_1",
+          name: "hello",
+          type: "skill",
+          namespace: "ns",
+          listKind: "resource",
+        },
+      ]),
+    ).toEqual({ kind: "resource", id: "res_1", name: "hello" });
   });
 });

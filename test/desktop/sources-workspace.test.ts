@@ -478,6 +478,9 @@ describe("sources search list and preview", () => {
 
   test("plugin tree and preview expose labeled Add to Library, pin, and Open in Library", () => {
     expect(recordActionsSource).toContain('label="Add to Library"');
+    expect(recordActionsSource).toContain("discoverAddToProfileLabel");
+    expect(recordActionsSource).toContain("onAddToProfile");
+    expect(recordActionsSource).toContain("showAddToProfile");
     expect(recordActionsSource).toContain('label="Pin to plugin"');
     expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
@@ -494,6 +497,21 @@ describe("sources search list and preview", () => {
     expect(workspaceSource).toContain("onOpenInLibrary");
     expect(appSource).toContain("onOpenInLibrary=");
     expect(appSource).toContain("setLibraryFocusPlugin");
+  });
+
+  test("Discover can add a hit to the current profile and apply", () => {
+    expect(workspaceSource).toContain("currentProfileName");
+    expect(workspaceSource).toContain("onAddToProfileAndApply");
+    expect(workspaceSource).toContain("discoverAttachTarget");
+    expect(workspaceSource).toContain("onAddToProfile:");
+    expect(appSource).toContain("currentProfileName=");
+    expect(appSource).toContain("onAddToProfileAndApply=");
+    expect(appSource).toContain("apply: \"always\"");
+    const attach = appSource.slice(
+      appSource.indexOf("const handleAttachLibraryItem"),
+    );
+    expect(attach).toContain('options?.apply === "always"');
+    expect(attach).toContain("runSwitch(true, selectedProfile");
   });
 });
 
@@ -614,6 +632,8 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Connect catalog");
     expect(designSource).toContain("--icon-action-size-lg");
     expect(designSource).toContain("Add to Library");
+    expect(designSource).toContain("Add to {current profile}");
+    expect(designSource).toContain("attaches it and applies");
     expect(designSource).toContain("Pin to plugin");
     expect(designSource).toContain("Create plugin");
     expect(designSource).toContain("No results for");
