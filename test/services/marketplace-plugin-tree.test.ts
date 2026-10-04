@@ -7,6 +7,7 @@ import { addMarketplace } from "../../src/services/marketplace-registry.js";
 import { refreshMarketplaceCatalog } from "../../src/services/marketplace-catalog.js";
 import {
   filterOpenableMarketplacePlugins,
+  listMarketplacePlugins,
   previewMarketplacePlugin,
 } from "../../src/services/marketplace-plugin-tree.js";
 
@@ -50,6 +51,23 @@ function writeStoredCatalog(
     }, null, 2)}\n`,
   );
 }
+
+describe("listMarketplacePlugins", () => {
+  it("returns catalog plugins even when plugin directories are missing", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
+    const cacheDir = join(home, "cache", "marketplaces", "local-market");
+    writeStoredCatalog(cacheDir, "ghost");
+
+    const plugins = listMarketplacePlugins(home, {
+      name: "local-market",
+      url: "https://example.com/local-market",
+      platforms: ["claude-code"],
+      managed: true,
+    });
+
+    expect(plugins.map((plugin) => plugin.name)).toEqual(["ghost"]);
+  });
+});
 
 describe("previewMarketplacePlugin", () => {
   it("lists files under plugins/<name> from a refreshed marketplace cache", () => {

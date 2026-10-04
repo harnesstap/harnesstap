@@ -233,9 +233,7 @@ export function listMarketplacePlugins(
   harnesstapDir: string,
   entry: VisibleMarketplaceEntry,
 ): CatalogPlugin[] {
-  const plugins = listedMarketplacePlugins(harnesstapDir, entry);
-  const root = entry.contentRoot ?? marketplaceCacheDir(harnesstapDir, entry.name);
-  return filterOpenableMarketplacePlugins(root, plugins);
+  return listedMarketplacePlugins(harnesstapDir, entry);
 }
 
 export function previewMarketplacePlugin(
@@ -250,6 +248,10 @@ export function previewMarketplacePlugin(
     if (visible.contentRoot) {
       const plugins = listMarketplacePlugins(harnesstapDir, visible);
       if (!catalogHasPlugin(plugins, input.plugin)) {
+        return { status: "not_found" };
+      }
+      const openable = filterOpenableMarketplacePlugins(visible.contentRoot, plugins);
+      if (!catalogHasPlugin(openable, input.plugin)) {
         return { status: "not_found" };
       }
       return previewFromRoot(visible.contentRoot, input.plugin, input.path);
