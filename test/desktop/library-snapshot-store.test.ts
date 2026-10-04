@@ -260,6 +260,69 @@ describe("library snapshot store", () => {
     expect(calls.some((input) => input?.q === "hit")).toBe(true);
   });
 
+  it("returns to idle after overlapping loadFull requests both settle", async () => {
+    const first = deferred<LibraryInventoryResult>();
+    const second = deferred<LibraryInventoryResult>();
+    const calls: Deferred<LibraryInventoryResult>[] = [first, second];
+    const store = storeWith(() => calls.shift()?.promise ?? unused());
+
+    const firstRequest = store.loadFull();
+    const secondRequest = store.loadFull();
+    expect(store.getState().status).toBe("loading-full");
+
+    first.resolve(inventory([entry("stale-full")]));
+    await firstRequest;
+    expect(store.getState().full).toBeNull();
+    expect(store.getState().status).toBe("loading-full");
+
+    second.resolve(inventory([entry("fresh-full")]));
+    await secondRequest;
+    expect(store.getState().full).toEqual([entry("fresh-full")]);
+    expect(store.getState().status).toBe("idle");
+  });
+
+  it("returns to idle when invalidate overlaps an in-flight loadFull", async () => {
+    const overlapping = deferred<LibraryInventoryResult>();
+    const peekAfter = deferred<LibraryInventoryResult>();
+    const fullAfter = deferred<LibraryInventoryResult>();
+    let peekLoads = 0;
+    let fullLoads = 0;
+    const store = storeWith((_baseUrl, _token, input) => {
+      if (input?.limit !== undefined) {
+        peekLoads += 1;
+        if (peekLoads === 1) {
+          return inventory([entry("peek")], { skill: 1 });
+        }
+        return peekAfter.promise;
+      }
+      fullLoads += 1;
+      if (fullLoads === 1) {
+        return inventory([entry("full")], { skill: 1 });
+      }
+      if (fullLoads === 2) {
+        return overlapping.promise;
+      }
+      return fullAfter.promise;
+    });
+
+    await store.loadPeek();
+    await store.loadFull();
+    const refreshing = store.loadFull();
+    expect(store.getState().status).toBe("refreshing");
+
+    const invalidating = store.invalidate();
+    overlapping.resolve(inventory([entry("stale-full")], { skill: 1 }));
+    await refreshing;
+
+    peekAfter.resolve(inventory([entry("peek-2")], { skill: 1 }));
+    fullAfter.resolve(inventory([entry("full-2")], { skill: 1 }));
+    await invalidating;
+
+    expect(store.getState().peek).toEqual([entry("peek-2")]);
+    expect(store.getState().full).toEqual([entry("full-2")]);
+    expect(store.getState().status).toBe("idle");
+  });
+
   it("does not fetch until a client is set", async () => {
     let fetches = 0;
     const store = createLibrarySnapshotStore({

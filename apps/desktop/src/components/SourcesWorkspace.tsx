@@ -32,6 +32,7 @@ import { fetchPluginOriginCheck, type PluginOriginCheckRow } from "../lib/api/pl
 import { workspaceBackEnabled, WORKSPACE_BACK_LABEL } from "../lib/screen-history";
 import { useRegisterCommands } from "../state/command-registry";
 import { discoverSnapshotStore } from "../state/discover-snapshot-store";
+import { useLibrarySnapshotStore } from "../state/library-snapshot-store";
 import {
   popSourcesPane,
   sourcesEscapeAction,
@@ -220,6 +221,8 @@ export function SourcesWorkspace({
     discoverSnapshotStore.getState,
     discoverSnapshotStore.getState,
   );
+  const libraryPeek = useLibrarySnapshotStore((state) => state.peek);
+  const libraryFull = useLibrarySnapshotStore((state) => state.full);
   const [query, setQuery] = useState("");
   const [searchGroups, setSearchGroups] = useState<DiscoverSearchGroup[] | null>(
     null,
@@ -421,7 +424,7 @@ export function SourcesWorkspace({
       return;
     }
     discoverSnapshotStore.syncLocalFromLibraryPeek();
-  }, [baseUrl]);
+  }, [baseUrl, libraryPeek, libraryFull]);
 
   useEffect(() => {
     if (!baseUrl) {

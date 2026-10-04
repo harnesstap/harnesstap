@@ -445,10 +445,10 @@ export function ResourcesPanel({
     [originOutdatedIds, snapshotRows],
   );
   const entries = useMemo(() => {
-    if (searchQuery.length === 0) {
+    if (searchQuery.length === 0 || searchRows === null) {
       return snapshotEntries;
     }
-    return overlayOriginOutdated(searchRows ?? [], originOutdatedIds);
+    return overlayOriginOutdated(searchRows, originOutdatedIds);
   }, [originOutdatedIds, searchQuery, searchRows, snapshotEntries]);
   const outdatedCount = useMemo(
     () => snapshotEntries.filter((entry) => entry.originOutdated).length,
@@ -463,7 +463,9 @@ export function ResourcesPanel({
   const typeCounts = useMemo(
     () =>
       typeCountsToMap(
-        searchQuery.length > 0 ? (searchTypeCounts ?? {}) : storeTypeCounts,
+        searchQuery.length > 0 && searchTypeCounts !== null
+          ? searchTypeCounts
+          : storeTypeCounts,
       ),
     [searchQuery, searchTypeCounts, storeTypeCounts],
   );

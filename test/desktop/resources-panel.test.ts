@@ -17,6 +17,9 @@ describe("ResourcesPanel library snapshot", () => {
     expect(panelSource).toContain("librarySnapshotStore.loadFull");
     expect(panelSource).toContain("useLibrarySnapshotStore");
     expect(panelSource).toContain("visibleLibraryRows");
+    expect(panelSource).toContain(
+      "searchQuery.length === 0 || searchRows === null",
+    );
   });
 
   test("debounces agent search at 250ms", () => {

@@ -379,6 +379,8 @@ describe("sources search list and preview", () => {
   test("merges checked sources with mergeSourcesHits and presence badges", () => {
     expect(workspaceSource).toContain("mergeSourcesHits");
     expect(workspaceSource).toContain("syncLocalFromLibraryPeek");
+    expect(workspaceSource).toContain("useLibrarySnapshotStore");
+    expect(workspaceSource).toContain("[baseUrl, libraryPeek, libraryFull]");
     expect(workspaceSource).toContain("loadFillIn");
     expect(workspaceSource).toContain("fetchDiscoverSearch");
     expect(workspaceSource).not.toContain("fetchLibraryPluginHeads");
