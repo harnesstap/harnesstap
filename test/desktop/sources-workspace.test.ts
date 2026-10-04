@@ -117,17 +117,15 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("function resetSourcesFilters");
     expect(workspaceSource).toContain("resetSourcesFilters()");
     expect(workspaceSource).toContain("applyListQueryOrChecks(resetSourcesFilters)");
-    expect(workspaceSource).toContain("setShowInLibrary(false)");
+    expect(workspaceSource).not.toContain("setShowInLibrary");
   });
 
-  test("sidebar Show in library is an opt-in checkbox off by default", () => {
-    expect(sidebarSource).toContain("Show in library");
-    expect(sidebarSource).toContain("id=\"source-show-in-library\"");
-    expect(workspaceSource).toContain(
-      "const [showInLibrary, setShowInLibrary] = useState(false)",
-    );
-    expect(workspaceSource).toContain("filterDiscoverGroups");
-    expect(workspaceSource).toContain("showInLibrary={showInLibrary}");
+  test("Discover always lists in-library hits without a Show in library filter", () => {
+    expect(sidebarSource).not.toContain("Show in library");
+    expect(sidebarSource).not.toContain("id=\"source-show-in-library\"");
+    expect(workspaceSource).not.toContain("showInLibrary");
+    expect(workspaceSource).not.toContain("filterDiscoverGroups");
+    expect(listPaneSource).not.toContain("onShowInLibrary");
     expect(listPaneSource).toContain("discoverListEmptyCopy");
     expect(listPaneSource).toContain('testId="discover-empty"');
     expect(listPaneSource).toContain('className="discover-empty"');
@@ -137,10 +135,9 @@ describe("sources workspace chrome", () => {
       "const [fetchedSourceIds, setFetchedSourceIds] = useState<Set<string>>(",
     );
     expect(workspaceSource).toContain("discoverListIsSearching");
-    expect(sourcesSearchSource).toContain("filterDiscoverGroups");
-    expect(sourcesSearchSource).toContain('hit.presence !== "in_library"');
-    expect(sourcesSearchSource).toContain("You're caught up");
-    expect(sourcesSearchSource).toContain("Nothing left to discover.");
+    expect(sourcesSearchSource).not.toContain("filterDiscoverGroups");
+    expect(sourcesSearchSource).toContain("Search to add");
+    expect(sourcesSearchSource).toContain("Type a name, description, or skill.");
     expect(stylesSource).toContain(".sources-workspace .discover-empty");
     expect(stylesSource).toContain("min-height: 12rem");
   });
@@ -254,8 +251,7 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("readDiscoverCatalogCache");
     expect(workspaceSource).toContain("writeDiscoverCatalogCache");
     expect(workspaceSource).toContain("discoverMarketplaceRefreshCopy");
-    expect(workspaceSource).toContain("nextMarketplaceHitsOnRefresh");
-    expect(workspaceSource).toContain("plugins: current[row.id]?.plugins ?? []");
+    expect(workspaceSource).toContain("discoverSnapshotStore.loadFillIn");
     expect(workspaceSource).not.toMatch(
       /Promise\.all\(\[\s*fetchMarketplaces/,
     );
@@ -265,8 +261,12 @@ describe("sources workspace chrome", () => {
     expect(sourcesSearchSource).not.toContain("—");
     expect(workspaceSource).toContain("inflightIds: inflightSourceIds");
     expect(workspaceSource).toContain("marketplaceIdsNeedingCatalogFetch");
-    expect(workspaceSource).toContain("persistableDiscoverMarketplaceHits");
-    expect(workspaceSource).toContain("bypassCache: false");
+    expect(workspaceSource).toContain("bypassCache");
+    expect(workspaceSource).toContain('testId="discover-refresh"');
+    expect(workspaceSource).toContain('label="Refresh sources"');
+    expect(workspaceSource).toContain("maxAgeMs: marketplaceRefreshMaxAgeMs");
+    expect(workspaceSource).toContain("marketplaceRefreshMaxAgeMinutes");
+    expect(sourcesSearchSource).toContain("DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS");
     expect(workspaceSource).toContain("fetchPluginOriginCheck(baseUrl, token)");
     expect(workspaceSource).not.toContain(
       "fetchPluginOriginCheck(baseUrl, token, { refresh: true })",
@@ -377,12 +377,17 @@ describe("sources workspace chrome", () => {
 describe("sources search list and preview", () => {
   test("merges checked sources with mergeSourcesHits and presence badges", () => {
     expect(workspaceSource).toContain("mergeSourcesHits");
-    expect(workspaceSource).toContain("fetchLibraryPluginHeads");
-    expect(workspaceSource).toContain("fetchLibraryResources");
-    expect(workspaceSource).toContain("fetchMarketplacePlugins");
+    expect(workspaceSource).toContain("syncLocalFromLibraryPeek");
+    expect(workspaceSource).toContain("loadFillIn");
+    expect(workspaceSource).toContain("fetchDiscoverSearch");
+    expect(workspaceSource).not.toContain("fetchLibraryPluginHeads");
+    expect(workspaceSource).not.toContain("fetchLibraryResources");
+    expect(workspaceSource).not.toContain("fetchMarketplacePlugins");
     expect(workspaceSource).toContain("plugin.tags");
     expect(workspaceSource).toContain("plugin.contents");
     expect(workspaceSource).toContain("searchCatalogPlugins");
+    expect(workspaceSource).toContain("AbortController");
+    expect(workspaceSource).toContain("SEARCH_DEBOUNCE_MS");
     expect(listPaneSource).toContain("presenceLabel");
     expect(sourcesSearchSource).toContain("In library");
     expect(sourcesSearchSource).toContain("Remote only");
@@ -584,9 +589,10 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Discover re-click");
     expect(designSource).toContain("Clear filters");
     expect(designSource).toContain("every source checkbox checked");
-    expect(designSource).toContain("Show in library");
-    expect(designSource).toContain("You're caught up");
-    expect(designSource).toContain("Nothing left to discover.");
+    expect(designSource).not.toContain("Show in library");
+    expect(designSource).toContain("always includes hits already in the library");
+    expect(designSource).toContain("Search to add");
+    expect(designSource).toContain("Type a name, description, or skill.");
     expect(designSource).toContain("discover-empty");
     expect(designSource).toContain("Add marketplace");
     expect(designSource).toContain("Connect catalog");

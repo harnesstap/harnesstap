@@ -1,22 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   fetchLibraryResourceDetail,
-  fetchLibraryResources,
   fetchMarketplaces,
-  fetchMarketplacePlugins,
 } from "../lib/agent-client";
 import { unregisterCatalog } from "../lib/api/publish";
 import { removeMarketplace } from "../lib/api/marketplace-remove";
 import {
+  fetchDiscoverSearch,
+  type DiscoverSearchGroup,
+  type DiscoverSearchMarketplacePlugin,
+} from "../lib/api/discover-search";
+import {
   fetchLibraryPluginDetail,
-  fetchLibraryPluginHeads,
   patchLibraryPluginAttachments,
   type LibraryPluginHead,
 } from "../lib/api/library-plugins";
 import {
   disconnectCatalogOrgApi,
   fetchCatalogPluginPreview,
-  fetchCatalogScope,
   fetchMarketplacePluginPreview,
   isCloudAuthError,
   isCloudAuthMessage,
@@ -25,12 +26,12 @@ import {
   pullCatalogPlugin,
   searchCatalogPlugins,
   type CatalogPluginSearchHit,
-  type CatalogScope,
   type SourcePreviewResult,
 } from "../lib/api/sources";
 import { fetchPluginOriginCheck, type PluginOriginCheckRow } from "../lib/api/plugin-origin-update";
 import { workspaceBackEnabled, WORKSPACE_BACK_LABEL } from "../lib/screen-history";
 import { useRegisterCommands } from "../state/command-registry";
+import { discoverSnapshotStore } from "../state/discover-snapshot-store";
 import {
   popSourcesPane,
   sourcesEscapeAction,
@@ -39,7 +40,6 @@ import {
   type SourcesPane,
 } from "../lib/sources-pane";
 import {
-  persistableDiscoverMarketplaceHits,
   readDiscoverCatalogCache,
   writeDiscoverCatalogCache,
 } from "../lib/discover-catalog-cache";
@@ -47,14 +47,14 @@ import {
   applyOriginOutdated,
   cloudHitIsInLibrary,
   cloudSelectorKey,
+  DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS,
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
-  filterDiscoverGroups,
   marketplaceHitKey,
   marketplaceIdsNeedingCatalogFetch,
+  marketplaceRefreshMaxAgeMsFromMinutes,
   mergeSourcesHits,
-  nextMarketplaceHitsOnRefresh,
   sourcesHitFetchKey,
   type CloudPluginInput,
   type MarketplaceSourceInput,
@@ -73,12 +73,13 @@ import {
   nextCheckedSourceIdsForChild,
   type SourceRow,
 } from "../lib/sources-sidebar";
-import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
+import type { PluginMarketplaceEntry } from "../lib/types";
 import { Cloud, Store, ArrowLeft, List } from "lucide-react";
 import { ConnectCatalogPanel } from "./ConnectCatalogPanel";
 import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
+import { WorkspaceRefreshButton } from "./WorkspaceRefreshButton";
 import { ManageMarketplacesModal } from "./ManageMarketplacesModal";
 import { MarketplaceEditPanel } from "./MarketplaceEditPanel";
 import { PinToPluginPanel } from "./PinToPluginPanel";
@@ -105,6 +106,25 @@ function isPreviewFileList(
 
 function previewContent(result: SourcePreviewResult): string | null {
   return "content" in result ? result.content : null;
+}
+
+function marketplacePluginsFromSearch(
+  plugins: DiscoverSearchMarketplacePlugin[] | undefined,
+): MarketplaceSourceInput["plugins"] {
+  if (!plugins) {
+    return [];
+  }
+  return plugins.map((plugin) => ({
+    name: plugin.name,
+    ...(plugin.version ? { version: plugin.version } : {}),
+    ...(plugin.description ? { description: plugin.description } : {}),
+    ...(plugin.tags && plugin.tags.length > 0 ? { tags: plugin.tags } : {}),
+    ...(plugin.contents && Array.isArray(plugin.contents) && plugin.contents.length > 0
+      ? {
+          contents: plugin.contents as MarketplaceSourceInput["plugins"][number]["contents"],
+        }
+      : {}),
+  }));
 }
 
 function toCloudPluginInput(plugin: CatalogPluginSearchHit): CloudPluginInput {
@@ -195,23 +215,29 @@ export function SourcesWorkspace({
   onWorkspaceBack,
   disconnected = false,
 }: SourcesWorkspaceProps) {
+  const snapshot = useSyncExternalStore(
+    discoverSnapshotStore.subscribe,
+    discoverSnapshotStore.getState,
+    discoverSnapshotStore.getState,
+  );
   const [query, setQuery] = useState("");
-  const [showInLibrary, setShowInLibrary] = useState(false);
+  const [searchGroups, setSearchGroups] = useState<DiscoverSearchGroup[] | null>(
+    null,
+  );
+  const searchGenerationRef = useRef(0);
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
-  const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>(
-    () => readDiscoverCatalogCache()?.marketplaces ?? [],
+  const marketplaces = snapshot.marketplaces;
+  const [marketplaceRefreshMaxAgeMs, setMarketplaceRefreshMaxAgeMs] = useState(
+    DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS,
   );
-  const [scope, setScope] = useState<CatalogScope | null>(
-    () => readDiscoverCatalogCache()?.scope ?? null,
-  );
-  const [sourceInventoryReady, setSourceInventoryReady] = useState(
-    () => readDiscoverCatalogCache()?.sourceInventoryReady ?? false,
-  );
+  const scope = snapshot.scope;
+  const sourceInventoryReady = snapshot.sourceInventoryReady;
   const [checkedIds, setCheckedIds] = useState<string[]>(["local"]);
   const [checksTouched, setChecksTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const bypassCatalogCacheRef = useRef(false);
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [manageMarketplacesOpen, setManageMarketplacesOpen] = useState(false);
   const [marketplaceMode, setMarketplaceMode] = useState<"add" | "edit">("add");
@@ -258,21 +284,20 @@ export function SourcesWorkspace({
     Record<string, SourcesInstallState>
   >({});
   const [sidebarConfirmOpen, setSidebarConfirmOpen] = useState(false);
-  const [localHeads, setLocalHeads] = useState<LibraryPluginHead[]>(
-    () => readDiscoverCatalogCache()?.localHeads ?? [],
-  );
-  const [localResources, setLocalResources] = useState<LibraryResource[]>(
-    () => readDiscoverCatalogCache()?.localResources ?? [],
-  );
-  const [localError, setLocalError] = useState<string | null>(
-    () => readDiscoverCatalogCache()?.localError ?? null,
-  );
-  const [marketplaceHits, setMarketplaceHits] = useState<
-    Record<
-      string,
-      { plugins: MarketplaceSourceInput["plugins"]; error: string | null }
-    >
-  >(() => readDiscoverCatalogCache()?.marketplaceHits ?? {});
+  const [createdHeads, setCreatedHeads] = useState<LibraryPluginHead[]>([]);
+  const localHeads = useMemo(() => {
+    if (createdHeads.length === 0) {
+      return snapshot.localHeads;
+    }
+    const ids = new Set(snapshot.localHeads.map((head) => head.id));
+    return [
+      ...snapshot.localHeads,
+      ...createdHeads.filter((head) => !ids.has(head.id)),
+    ];
+  }, [createdHeads, snapshot.localHeads]);
+  const localResources = snapshot.localResources;
+  const localError = snapshot.localError;
+  const marketplaceHits = snapshot.marketplaceHits;
   const [cloudPlugins, setCloudPlugins] = useState<CatalogPluginSearchHit[]>(
     () => readDiscoverCatalogCache()?.cloudPlugins ?? [],
   );
@@ -332,7 +357,6 @@ export function SourcesWorkspace({
 
   function resetSourcesFilters(): void {
     setQuery("");
-    setShowInLibrary(false);
     setChecksTouched(false);
     setCheckedIds(defaultCheckedSourceIds(rows));
   }
@@ -348,6 +372,13 @@ export function SourcesWorkspace({
 
   const refresh = useCallback(() => {
     setReloadKey((value) => value + 1);
+    void discoverSnapshotStore.loadSources();
+  }, []);
+
+  const refreshSources = useCallback(async () => {
+    bypassCatalogCacheRef.current = true;
+    setReloadKey((value) => value + 1);
+    await discoverSnapshotStore.invalidate();
   }, []);
 
   useEffect(() => {
@@ -355,28 +386,18 @@ export function SourcesWorkspace({
       return;
     }
     let cancelled = false;
+    void discoverSnapshotStore.loadSources();
     void fetchMarketplaces(baseUrl, token)
       .then((marketplaceResult) => {
         if (cancelled) {
           return;
         }
-        setMarketplaces(marketplaceResult.marketplaces);
-        setSourceInventoryReady(true);
+        setMarketplaceRefreshMaxAgeMs(
+          marketplaceRefreshMaxAgeMsFromMinutes(
+            marketplaceResult.marketplaceRefreshMaxAgeMinutes,
+          ),
+        );
         setError(null);
-      })
-      .catch((loadError: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        setSourceInventoryReady(true);
-        setError(errorMessage(loadError, "Could not load sources."));
-      });
-    void fetchCatalogScope(baseUrl, token)
-      .then((nextScope) => {
-        if (cancelled) {
-          return;
-        }
-        setScope(nextScope);
       })
       .catch((loadError: unknown) => {
         if (cancelled) {
@@ -393,6 +414,14 @@ export function SourcesWorkspace({
     () => rows.filter((row) => checkedIds.includes(row.id)),
     [rows, checkedIds],
   );
+  const searchActive = query.trim().length > 0;
+
+  useEffect(() => {
+    if (!baseUrl) {
+      return;
+    }
+    discoverSnapshotStore.syncLocalFromLibraryPeek();
+  }, [baseUrl]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -401,33 +430,32 @@ export function SourcesWorkspace({
     }
 
     let cancelled = false;
-    const localChecked = checkedRows.some((row) => row.kind === "local");
     const marketplaceRows = checkedRows.filter(
       (row) => row.kind === "marketplace",
     );
-    const fetchMarketplaceIds = new Set(
-      marketplaceIdsNeedingCatalogFetch({
-        marketplaceIds: marketplaceRows.map((row) => row.id),
-        hits: marketplaceHitsRef.current,
-        bypassCache: false,
-      }),
-    );
-    const reuseMarketplaceIds = marketplaceRows
-      .map((row) => row.id)
-      .filter((id) => !fetchMarketplaceIds.has(id));
-    const libraryIds = [
-      "local",
-      ...marketplaceRows
-        .map((row) => row.id)
-        .filter((id) => fetchMarketplaceIds.has(id)),
-    ];
-    setInflightSourceIds((current) => {
-      const next = new Set(current);
-      for (const id of libraryIds) {
-        next.add(id);
+    setFetchedSourceIds((current) => {
+      if (current.has("local")) {
+        return current;
       }
+      const next = new Set(current);
+      next.add("local");
       return next;
     });
+
+    if (!sourceInventoryReady || searchActive) {
+      return;
+    }
+
+    const fetchMarketplaceIds = marketplaceIdsNeedingCatalogFetch({
+      marketplaceIds: marketplaceRows.map((row) => row.id),
+      hits: marketplaceHitsRef.current,
+      bypassCache: bypassCatalogCacheRef.current,
+      maxAgeMs: marketplaceRefreshMaxAgeMs,
+    });
+    bypassCatalogCacheRef.current = false;
+    const reuseMarketplaceIds = marketplaceRows
+      .map((row) => row.id)
+      .filter((id) => !fetchMarketplaceIds.includes(id));
     const markFetched = (ids: string[]) => {
       if (cancelled) {
         return;
@@ -447,101 +475,37 @@ export function SourcesWorkspace({
         return next;
       });
     };
-    const pending: Promise<void>[] = [
-      Promise.all([
-        fetchLibraryPluginHeads(baseUrl, token),
-        fetchLibraryResources(baseUrl, token),
-      ])
-        .then(([heads, resources]) => {
-          if (cancelled) {
-            return;
-          }
-          setLocalHeads(heads);
-          setLocalResources(resources);
-          setLocalError(null);
-        })
-        .catch((loadError: unknown) => {
-          if (cancelled) {
-            return;
-          }
-          if (localChecked) {
-            setLocalHeads([]);
-            setLocalResources([]);
-            setLocalError(errorMessage(loadError, "Could not load library."));
-          } else {
-            setLocalError(null);
-          }
-        })
-        .finally(() => {
-          markFetched(["local"]);
-        }),
-    ];
-
-    setMarketplaceHits((current) =>
-      nextMarketplaceHitsOnRefresh({
-        current,
-        marketplaceIds: marketplaceRows.map((row) => row.id),
-        inventoryReady: sourceInventoryReady,
-      }),
-    );
 
     if (reuseMarketplaceIds.length > 0) {
       markFetched(reuseMarketplaceIds);
     }
 
-    for (const row of marketplaceRows) {
-      if (!fetchMarketplaceIds.has(row.id)) {
-        continue;
-      }
-      pending.push(
-        fetchMarketplacePlugins(baseUrl, token, row.label)
-          .then((result) => {
-            if (cancelled) {
-              return;
-            }
-            setMarketplaceHits((current) => ({
-              ...current,
-              [row.id]: {
-                plugins: result.plugins.map((plugin) => ({
-                  name: plugin.name,
-                  ...(plugin.version ? { version: plugin.version } : {}),
-                  ...(plugin.description
-                    ? { description: plugin.description }
-                    : {}),
-                  ...(plugin.tags && plugin.tags.length > 0
-                    ? { tags: plugin.tags }
-                    : {}),
-                  ...(plugin.contents && plugin.contents.length > 0
-                    ? { contents: plugin.contents }
-                    : {}),
-                })),
-                error: null,
-              },
-            }));
-            markFetched([row.id]);
-          })
-          .catch((loadError: unknown) => {
-            if (cancelled) {
-              return;
-            }
-            setMarketplaceHits((current) => ({
-              ...current,
-              [row.id]: {
-                plugins: current[row.id]?.plugins ?? [],
-                error: errorMessage(loadError, `Could not load ${row.label}.`),
-              },
-            }));
-            markFetched([row.id]);
-          }),
-      );
+    if (fetchMarketplaceIds.length === 0) {
+      return;
     }
 
-    void Promise.allSettled(pending);
+    setInflightSourceIds((current) => {
+      const next = new Set(current);
+      for (const id of fetchMarketplaceIds) {
+        next.add(id);
+      }
+      return next;
+    });
+    void discoverSnapshotStore.loadFillIn(fetchMarketplaceIds).finally(() => {
+      markFetched(fetchMarketplaceIds);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, token, checkedRows, reloadKey, sourceInventoryReady]);
+  }, [
+    baseUrl,
+    checkedRows,
+    reloadKey,
+    searchActive,
+    sourceInventoryReady,
+    marketplaceRefreshMaxAgeMs,
+  ]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -647,6 +611,76 @@ export function SourcesWorkspace({
   }, [baseUrl, token, query, checkedRows, cloudAuthenticated, sourceInventoryReady]);
 
   useEffect(() => {
+    const trimmed = query.trim();
+    if (!baseUrl || trimmed.length === 0) {
+      setSearchGroups(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+    const requestGeneration = ++searchGenerationRef.current;
+    const searchIds = checkedRows
+      .filter((row) => row.kind === "local" || row.kind === "marketplace")
+      .map((row) => row.id);
+    setInflightSourceIds((current) => {
+      const next = new Set(current);
+      for (const id of searchIds) {
+        next.add(id);
+      }
+      return next;
+    });
+    const timer = window.setTimeout(() => {
+      void fetchDiscoverSearch(baseUrl, token, {
+        q: trimmed,
+        sources: checkedIds,
+        signal: controller.signal,
+      })
+        .then((result) => {
+          if (cancelled || requestGeneration !== searchGenerationRef.current) {
+            return;
+          }
+          setSearchGroups(result.groups);
+        })
+        .catch((loadError: unknown) => {
+          if (
+            cancelled
+            || requestGeneration !== searchGenerationRef.current
+            || (loadError instanceof Error && loadError.name === "AbortError")
+          ) {
+            return;
+          }
+          setError(errorMessage(loadError, "Could not search Discover sources."));
+        })
+        .finally(() => {
+          if (cancelled || requestGeneration !== searchGenerationRef.current) {
+            return;
+          }
+          setInflightSourceIds((current) => {
+            const next = new Set(current);
+            for (const id of searchIds) {
+              next.delete(id);
+            }
+            return next;
+          });
+        });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
+      setInflightSourceIds((current) => {
+        const next = new Set(current);
+        for (const id of searchIds) {
+          next.delete(id);
+        }
+        return next;
+      });
+    };
+  }, [baseUrl, token, query, checkedIds, checkedRows]);
+
+  useEffect(() => {
     if (!baseUrl) {
       setOriginCheckRows([]);
       return;
@@ -679,13 +713,19 @@ export function SourcesWorkspace({
 
   const groups: SourcesHitGroup[] = useMemo(() => {
     const localChecked = checkedRows.some((row) => row.id === "local");
+    const useSearch = searchActive && searchGroups !== null;
+    const searchById = useSearch
+      ? new Map(searchGroups.map((group) => [group.sourceId, group]))
+      : null;
     const marketplaceInputs: MarketplaceSourceInput[] = checkedRows
       .filter((row) => row.kind === "marketplace")
       .map((row) => ({
         sourceId: row.id,
         sourceLabel: row.label,
         marketplaceName: row.label,
-        plugins: marketplaceHits[row.id]?.plugins ?? [],
+        plugins: useSearch
+          ? marketplacePluginsFromSearch(searchById?.get(row.id)?.plugins)
+          : (marketplaceHits[row.id]?.plugins ?? []),
       }));
     const cloudInputs = checkedRows
       .filter((row) => row.kind === "cloud-org" || row.kind === "cloud-catalog")
@@ -702,9 +742,13 @@ export function SourcesWorkspace({
         ? {
             local: {
               sourceId: "local",
-              sourceLabel: "Local",
-              heads: localHeads,
-              resources: localResources,
+              sourceLabel: searchById?.get("local")?.sourceLabel ?? "Local",
+              heads: useSearch
+                ? (searchById?.get("local")?.heads ?? [])
+                : localHeads,
+              resources: useSearch
+                ? (searchById?.get("local")?.resources ?? [])
+                : localResources,
             },
           }
         : {}),
@@ -737,7 +781,7 @@ export function SourcesWorkspace({
         originCheckRows,
       ),
     }));
-    return filterDiscoverGroups(merged, showInLibrary);
+    return merged;
   }, [
     checkedRows,
     cloudPlugins,
@@ -748,7 +792,8 @@ export function SourcesWorkspace({
     pulledCloudKeys,
     addedMarketplaceKeys,
     query,
-    showInLibrary,
+    searchActive,
+    searchGroups,
     sourceOrder,
   ]);
 
@@ -1225,14 +1270,21 @@ export function SourcesWorkspace({
     (sum, group) => sum + group.hits.length,
     0,
   );
+  const fetchedIdsForList = useMemo(() => {
+    const next = new Set(fetchedSourceIds);
+    for (const id of snapshot.fetchedSourceIds) {
+      next.add(id);
+    }
+    return next;
+  }, [fetchedSourceIds, snapshot.fetchedSourceIds]);
   const listSearching = discoverListIsSearching({
     checkedIds: checkedRows.map((row) => row.id),
-    fetchedIds: fetchedSourceIds,
+    fetchedIds: fetchedIdsForList,
     inflightIds: inflightSourceIds,
     visibleCount: visibleHitCount,
   });
   const sidebarRefreshing = discoverSourcesRefreshing({
-    fetchedIds: fetchedSourceIds,
+    fetchedIds: fetchedIdsForList,
     inflightIds: inflightSourceIds,
   });
   const marketplaceIds = checkedRows
@@ -1248,30 +1300,11 @@ export function SourcesWorkspace({
       return;
     }
     writeDiscoverCatalogCache({
-      marketplaces,
-      scope,
-      marketplaceHits: persistableDiscoverMarketplaceHits(marketplaceHits),
-      localHeads,
-      localResources,
-      localError,
       cloudPlugins,
       cloudErrors,
       fetchedSourceIds: [...fetchedSourceIds],
-      sourceInventoryReady,
     });
-  }, [
-    baseUrl,
-    marketplaces,
-    scope,
-    marketplaceHits,
-    localHeads,
-    localResources,
-    localError,
-    cloudPlugins,
-    cloudErrors,
-    fetchedSourceIds,
-    sourceInventoryReady,
-  ]);
+  }, [baseUrl, cloudPlugins, cloudErrors, fetchedSourceIds]);
 
   function handlePanelBack(): void {
     const current = paneRef.current;
@@ -1294,7 +1327,6 @@ export function SourcesWorkspace({
             groupErrors={groupErrors}
             loading={listSearching}
             query={query}
-            showInLibrary={showInLibrary}
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
@@ -1302,9 +1334,6 @@ export function SourcesWorkspace({
               applyListQueryOrChecks(() => setQuery(""));
             }}
             onClearQuery={() => applyListQueryOrChecks(() => setQuery(""))}
-            onShowInLibrary={() =>
-              applyListQueryOrChecks(() => setShowInLibrary(true))
-            }
             recordActions={recordActionsProps}
           />
         );
@@ -1408,6 +1437,13 @@ export function SourcesWorkspace({
             </div>
           </div>
           <div className="resources-panel-header-actions">
+            <WorkspaceRefreshButton
+              testId="discover-refresh"
+              label="Refresh sources"
+              iconSize={20}
+              disabled={controlsDisabled}
+              onRefresh={refreshSources}
+            />
             <IconActionButton
               primary
               label="Add marketplace"
@@ -1447,17 +1483,13 @@ export function SourcesWorkspace({
           onClear={() => {
             applyListQueryOrChecks(resetSourcesFilters);
           }}
-          showInLibrary={showInLibrary}
-          onShowInLibraryChange={(next) => {
-            applyListQueryOrChecks(() => setShowInLibrary(next));
-          }}
           rows={rows}
           checkedIds={checkedIds}
           onToggle={onToggle}
           onToggleAll={onToggleAll}
           disabled={controlsDisabled}
           busy={busy}
-          error={error}
+          error={error ?? snapshot.error}
           originCheckError={originCheckError}
           onRetryOriginCheck={refresh}
           refreshing={sidebarRefreshing}
@@ -1536,7 +1568,7 @@ export function SourcesWorkspace({
         }}
         onConfirm={(pluginName) => void onPinConfirm(pluginName)}
         onCreated={(plugin) => {
-          setLocalHeads((current) => {
+          setCreatedHeads((current) => {
             if (current.some((head) => head.id === plugin.id)) {
               return current;
             }
