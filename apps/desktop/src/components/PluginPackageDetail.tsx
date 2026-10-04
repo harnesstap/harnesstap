@@ -780,31 +780,6 @@ export function PluginPackageDetail({
     }
   }
 
-  const runPatch = async (
-    body: Parameters<typeof patchLibraryPluginAttachments>[3],
-  ) => {
-    if (!baseUrl || !selector || busy || disabled) {
-      return;
-    }
-    setBusy(true);
-    setDetailError(null);
-    try {
-      const next = await patchLibraryPluginAttachments(
-        baseUrl,
-        token,
-        selector,
-        body,
-      );
-      setDetail(next);
-      onSuccess(`Updated plugin ${next.plugin.name}`);
-      refreshAfterMutation();
-    } catch (error: unknown) {
-      setDetailError(errorMessage(error, "Could not update plugin composition"));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const toggleMembership = (id: string) => {
     const entry = membership.find((row) => row.id === id);
     if (!entry || pickersDisabled || !baseUrl || !selector) {
