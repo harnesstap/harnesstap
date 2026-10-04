@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep marketplace plugin listing working when a nested SKILL.md description contains an unquoted colon.
+time: 2026-10-03T14:50:00Z
+custom:
+  Issue: ""

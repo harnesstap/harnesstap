@@ -33,7 +33,7 @@ export function ParityChrome({
       aria-current={workspaceFocus === "environments" ? "page" : undefined}
     >
       <Puzzle size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-      <span className="header-focus-label">Environments</span>
+      <span className="header-focus-label">Env</span>
     </button>
   );
   if (!iconOnly) {

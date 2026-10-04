@@ -48,7 +48,6 @@ import {
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
-  filterDiscoverGroups,
   marketplaceHitKey,
   marketplaceIdsNeedingCatalogFetch,
   mergeSourcesHits,
@@ -220,7 +219,6 @@ export function SourcesWorkspace({
   const libraryPeek = useLibrarySnapshotStore((state) => state.peek);
   const libraryFull = useLibrarySnapshotStore((state) => state.full);
   const [query, setQuery] = useState("");
-  const [showInLibrary, setShowInLibrary] = useState(false);
   const [searchGroups, setSearchGroups] = useState<DiscoverSearchGroup[] | null>(
     null,
   );
@@ -354,7 +352,6 @@ export function SourcesWorkspace({
 
   function resetSourcesFilters(): void {
     setQuery("");
-    setShowInLibrary(false);
     setChecksTouched(false);
     setCheckedIds(defaultCheckedSourceIds(rows));
   }
@@ -755,7 +752,7 @@ export function SourcesWorkspace({
         originCheckRows,
       ),
     }));
-    return filterDiscoverGroups(merged, showInLibrary);
+    return merged;
   }, [
     checkedRows,
     cloudPlugins,
@@ -768,7 +765,6 @@ export function SourcesWorkspace({
     query,
     searchActive,
     searchGroups,
-    showInLibrary,
     sourceOrder,
   ]);
 
@@ -1301,7 +1297,6 @@ export function SourcesWorkspace({
             groupErrors={groupErrors}
             loading={listSearching}
             query={query}
-            showInLibrary={showInLibrary}
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
@@ -1309,9 +1304,6 @@ export function SourcesWorkspace({
               applyListQueryOrChecks(() => setQuery(""));
             }}
             onClearQuery={() => applyListQueryOrChecks(() => setQuery(""))}
-            onShowInLibrary={() =>
-              applyListQueryOrChecks(() => setShowInLibrary(true))
-            }
             recordActions={recordActionsProps}
           />
         );
@@ -1460,10 +1452,6 @@ export function SourcesWorkspace({
           }}
           onClear={() => {
             applyListQueryOrChecks(resetSourcesFilters);
-          }}
-          showInLibrary={showInLibrary}
-          onShowInLibraryChange={(next) => {
-            applyListQueryOrChecks(() => setShowInLibrary(next));
           }}
           rows={rows}
           checkedIds={checkedIds}

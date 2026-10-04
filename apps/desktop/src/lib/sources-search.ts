@@ -186,36 +186,15 @@ export function presenceLabel(presence: Presence): string {
   }
 }
 
-export function filterDiscoverGroups(
-  groups: SourcesHitGroup[],
-  showInLibrary: boolean,
-): SourcesHitGroup[] {
-  if (showInLibrary) {
-    return groups;
-  }
-  return groups.map((group) => ({
-    ...group,
-    hits: group.hits.filter((hit) => hit.presence !== "in_library"),
-  }));
-}
-
 export function discoverListEmptyCopy(input: {
   query: string;
-  showInLibrary: boolean;
-}): { message: string; hint: string | null; action: "clear-search" | "show-library" | null } {
+}): { message: string; hint: string | null; action: "clear-search" | null } {
   const trimmed = input.query.trim();
   if (trimmed.length > 0) {
     return {
       message: noResultsTitle(trimmed),
-      hint: "Clear search to see items still to add.",
+      hint: "Clear search to see every source again.",
       action: "clear-search",
-    };
-  }
-  if (!input.showInLibrary) {
-    return {
-      message: "You're caught up",
-      hint: "Nothing left to discover. Turn on Show in library.",
-      action: "show-library",
     };
   }
   return {
@@ -246,20 +225,51 @@ export function discoverListIsSearching(input: {
   return input.checkedIds.some((id) => !input.fetchedIds.has(id));
 }
 
+/** Skip network for marketplaces that already have a current catalog snapshot. */
 export const DISCOVER_MARKETPLACE_HIT_SCHEMA = 1;
+export const DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS = 60 * 60 * 1000;
 
-/** Skip network for marketplaces that already have a non-empty cached plugin list. */
+export function marketplaceRefreshMaxAgeMsFromMinutes(
+  minutes: number | undefined,
+): number {
+  if (typeof minutes === "number" && minutes > 0) {
+    return minutes * 60 * 1000;
+  }
+  return DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS;
+}
+
 export function marketplaceIdsNeedingCatalogFetch(input: {
   marketplaceIds: readonly string[];
-  hits: Record<string, { plugins: readonly unknown[] }>;
+  hits: Record<
+    string,
+    { plugins: readonly unknown[]; schema?: number; fetchedAt?: string }
+  >;
   bypassCache?: boolean;
+  now?: Date;
+  maxAgeMs?: number;
 }): string[] {
   if (input.bypassCache) {
     return [...input.marketplaceIds];
   }
-  return input.marketplaceIds.filter(
-    (id) => (input.hits[id]?.plugins.length ?? 0) === 0,
-  );
+  const nowMs = (input.now ?? new Date()).getTime();
+  const maxAgeMs = input.maxAgeMs ?? DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS;
+  return input.marketplaceIds.filter((id) => {
+    const hit = input.hits[id];
+    if ((hit?.plugins.length ?? 0) === 0) {
+      return true;
+    }
+    if (hit?.schema !== DISCOVER_MARKETPLACE_HIT_SCHEMA) {
+      return true;
+    }
+    if (!hit.fetchedAt) {
+      return true;
+    }
+    const fetchedMs = new Date(hit.fetchedAt).getTime();
+    if (Number.isNaN(fetchedMs)) {
+      return true;
+    }
+    return nowMs - fetchedMs > maxAgeMs;
+  });
 }
 
 /** Sidebar spinner for a refetch of sources that already have a first result. */

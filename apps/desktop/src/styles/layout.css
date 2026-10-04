@@ -11,7 +11,7 @@
   container-type: inline-size;
   container-name: app-header;
   display: grid;
-  grid-template-columns: max-content max-content max-content minmax(180px, 1fr) max-content;
+  grid-template-columns: max-content max-content max-content minmax(280px, 1fr) max-content;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
@@ -21,20 +21,17 @@
 }
 
 .app-header-brand {
+  display: flex;
+  align-items: center;
   flex: 0 0 auto;
   min-width: max-content;
-  white-space: nowrap;
   padding-left: var(--space-4);
 }
 
-.app-header-brand h1 {
-  overflow: visible;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: var(--text-value);
-  font-weight: 600;
+.app-header-logo {
+  display: block;
+  width: var(--icon-action-size);
+  height: var(--icon-action-size);
 }
 
 .header-status {
@@ -60,7 +57,7 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  min-width: 180px;
+  min-width: 280px;
 }
 
 .header-project-cluster .header-focus-btn,
@@ -195,7 +192,7 @@
 }
 
 .header-focus-spacer {
-  min-width: 180px;
+  min-width: 280px;
 }
 
 .layout {

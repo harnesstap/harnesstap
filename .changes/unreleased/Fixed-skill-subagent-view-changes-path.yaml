@@ -1,0 +1,5 @@
+kind: Fixed
+body: Prefer the clicked skill or subagent harness path in FileDiff, and omit leftover extra-harness copies from File changes when the resource is still owned.
+time: 2026-10-03T23:40:00Z
+custom:
+  Issue: ""

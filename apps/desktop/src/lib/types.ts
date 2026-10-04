@@ -691,6 +691,7 @@ export interface PluginMarketplaceEntry {
 
 export interface MarketplaceListResult {
   marketplaces: PluginMarketplaceEntry[];
+  marketplaceRefreshMaxAgeMinutes: number;
 }
 
 export interface MarketplaceReachabilityEntry {

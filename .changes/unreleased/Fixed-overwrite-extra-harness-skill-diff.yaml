@@ -1,0 +1,5 @@
+kind: Fixed
+body: Overwrite with current setup now snapshots the chosen harness skill or subagent file, and File changes no longer keep leftover extra-harness copies that still differ after another copy matches.
+time: 2026-10-03T23:50:00Z
+custom:
+  Issue: ""

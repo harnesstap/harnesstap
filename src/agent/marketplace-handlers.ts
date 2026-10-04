@@ -1,4 +1,8 @@
-import { parseTrackedBranches, type PluginMarketplacePlatform } from "../config/settings.js";
+import {
+  loadSettings,
+  parseTrackedBranches,
+  type PluginMarketplacePlatform,
+} from "../config/settings.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import {
   listVisibleMarketplaces,
@@ -77,6 +81,8 @@ export function handleMarketplacesList(request: Request, token: string): Respons
   const harnesstapDir = getHarnesstapDir();
   return jsonResponse({
     marketplaces: listVisibleMarketplaces(harnesstapDir).map(toMarketplaceListEntry),
+    marketplaceRefreshMaxAgeMinutes:
+      loadSettings(harnesstapDir).plugins.marketplaceRefreshMaxAgeMinutes,
   });
 }
 

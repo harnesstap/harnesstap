@@ -91,6 +91,12 @@ describe("Harnesses workspace sidebar width", () => {
     );
   });
 
+  it("refreshes harness inventory from the sidebar action cluster", () => {
+    expect(sidebarSource).toContain('testId="harnesses-refresh"');
+    expect(sidebarSource).toContain('label="Refresh harnesses"');
+    expect(workspaceSource).toContain("onRefresh={ctrl.refresh}");
+  });
+
   it("documents the harness list column vs the Library filter track", () => {
     expect(designSource).toContain("not the 220px Library filter track");
     expect(designSource).toContain("reserved trash slot");

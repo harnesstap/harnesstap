@@ -24,16 +24,9 @@ describe("noResultsTitle", () => {
 });
 
 describe("discoverEmptyKind", () => {
-  test("prefers clearing search over showing library hits", () => {
-    expect(
-      discoverEmptyKind({ query: "ship", showInLibrary: false }),
-    ).toBe("clear-search");
-    expect(
-      discoverEmptyKind({ query: "", showInLibrary: false }),
-    ).toBe("show-library");
-    expect(
-      discoverEmptyKind({ query: "", showInLibrary: true }),
-    ).toBeNull();
+  test("offers clear-search only when a query is present", () => {
+    expect(discoverEmptyKind({ query: "ship" })).toBe("clear-search");
+    expect(discoverEmptyKind({ query: "" })).toBeNull();
   });
 });
 

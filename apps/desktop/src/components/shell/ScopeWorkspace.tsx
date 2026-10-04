@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { FileDiff, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { FileDiff, HardDriveDownload, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
@@ -21,7 +21,9 @@ import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
 import { Collapse } from "../motion/Collapse";
 import { PendingApprovalsStrip } from "../PendingApprovalsStrip";
 import { ProfileDeleteControls } from "../parity/ProfileDeleteControls";
+import { ProjectHistoryControl } from "../parity/ProjectHistoryControl";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
 import { Banner } from "./Banner";
 import { ProfilesRail } from "./ProfilesRail";
 
@@ -74,6 +76,7 @@ export function ScopeWorkspace({
     editingProfile,
     activeProfile,
     projectPath,
+    projectReady,
     preview,
     applyPreview,
   } = ctrl;
@@ -95,6 +98,9 @@ export function ScopeWorkspace({
   });
   const editCloseGuardRef = useRef<(() => boolean) | null>(null);
   const [setupOverwriteOpen, setSetupOverwriteOpen] = useState(false);
+  const refreshLiveStatus = useCallback(async () => {
+    return ctrl.refreshStatus("full");
+  }, [ctrl]);
   useRegisterCommands(
     "scope",
     useMemo(
@@ -297,68 +303,108 @@ export function ScopeWorkspace({
                 </div>
               ) : null}
             </div>
-            {selectedProfile ? (
-              <div className="live-toolbar-actions">
-                <IconActionButton
-                  primary
-                  busy={ctrl.overwritingWithSetup}
-                  spinnerSize={16}
-                  onClick={() => setSetupOverwriteOpen(true)}
-                  disabled={!connected || switching || ctrl.overwritingWithSetup}
-                  label="Overwrite"
-                  title="Overwrite with current setup"
-                  icon={<HardDriveUpload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                />
-                <IconActionButton
-                  className="status-edit-action"
-                  onClick={() => {
-                    ctrl.setInventoryEditMode(false);
-                    ctrl.setPreviewChanges(false);
-                    ctrl.openEditProfile(selectedProfile);
-                  }}
+            <div className="live-toolbar-actions">
+                <WorkspaceRefreshButton
+                  testId="live-status-refresh"
+                  label="Refresh live status"
+                  iconSize={HEADER_ICON_SIZE}
                   disabled={!connected || switching}
-                  label={`Edit ${selectedProfile}`}
-                  title={`Edit ${selectedProfile}`}
-                  icon={<Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                  onRefresh={refreshLiveStatus}
                 />
-                <IconActionButton
-                  className="status-edit-action"
-                  onClick={() => {
-                    ctrl.setPreviewChanges((value) => !value);
-                    ctrl.setInventoryEditMode(false);
-                  }}
-                  disabled={!connected || switching}
-                  label="Preview changes"
-                  title="Preview changes"
-                  aria-pressed={ctrl.previewChanges}
-                  icon={<FileDiff size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                />
-                <IconActionButton
-                  className="status-edit-action"
-                  onClick={() =>
-                    ctrl.openCutForProfile(selectedProfile, selectedProfileSummary?.version ?? "")
-                  }
-                  disabled={!connected || !token || switching || !selectedProfileSummary?.version}
-                  label={`Cut version for ${selectedProfile}`}
-                  title={
-                    selectedProfileSummary?.dirty
-                      ? "Cut unpublished edits to a new version"
-                      : "Cut a new version (fork current state)"
-                  }
-                  icon={<Tag size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                />
-                <div className="live-toolbar-remove">
-                  <ProfileDeleteControls
-                    profileName={selectedProfile}
-                    baseUrl={baseUrl}
-                    token={token}
-                    disabled={!connected || switching}
-                    variant="icon"
-                    onDeleted={ctrl.handleProfileDeleted}
-                  />
-                </div>
+                {scope === "project" && projectPath ? (
+                  <>
+                    <IconActionButton
+                      data-testid="project-install"
+                      label="Install"
+                      title="Install project config"
+                      busy={ctrl.installBusy}
+                      disabled={
+                        !connected
+                        || !token
+                        || switching
+                        || bootstrapBusy
+                        || !projectReady
+                      }
+                      onClick={() => void ctrl.runProjectInstall()}
+                      icon={<HardDriveDownload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                    />
+                    <ProjectHistoryControl
+                      baseUrl={baseUrl}
+                      token={token}
+                      connected={connected}
+                      switching={switching || ctrl.installBusy}
+                      projectPath={projectPath}
+                      onSuccess={(message) => toast({ tone: "success", title: message })}
+                      onProfilesChanged={() => {
+                        void ctrl.refreshProfiles();
+                        void ctrl.refreshStatus("full");
+                      }}
+                    />
+                  </>
+                ) : null}
+                {selectedProfile ? (
+                  <>
+                    <IconActionButton
+                      primary
+                      busy={ctrl.overwritingWithSetup}
+                      spinnerSize={16}
+                      onClick={() => setSetupOverwriteOpen(true)}
+                      disabled={!connected || switching || ctrl.overwritingWithSetup}
+                      label="Overwrite"
+                      title="Overwrite with current setup"
+                      icon={<HardDriveUpload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                    />
+                    <IconActionButton
+                      className="status-edit-action"
+                      onClick={() => {
+                        ctrl.setInventoryEditMode(false);
+                        ctrl.setPreviewChanges(false);
+                        ctrl.openEditProfile(selectedProfile);
+                      }}
+                      disabled={!connected || switching}
+                      label={`Edit ${selectedProfile}`}
+                      title={`Edit ${selectedProfile}`}
+                      icon={<Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                    />
+                    <IconActionButton
+                      className="status-edit-action"
+                      onClick={() => {
+                        ctrl.setPreviewChanges((value) => !value);
+                        ctrl.setInventoryEditMode(false);
+                      }}
+                      disabled={!connected || switching}
+                      label="Preview changes"
+                      title="Preview changes"
+                      aria-pressed={ctrl.previewChanges}
+                      icon={<FileDiff size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                    />
+                    <IconActionButton
+                      className="status-edit-action"
+                      onClick={() =>
+                        ctrl.openCutForProfile(selectedProfile, selectedProfileSummary?.version ?? "")
+                      }
+                      disabled={!connected || !token || switching || !selectedProfileSummary?.version}
+                      label={`Cut version for ${selectedProfile}`}
+                      title={
+                        selectedProfileSummary?.dirty
+                          ? "Cut unpublished edits to a new version"
+                          : "Cut a new version (fork current state)"
+                      }
+                      icon={<Tag size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+                    />
+                    <div className="live-toolbar-remove">
+                      <ProfileDeleteControls
+                        profileName={selectedProfile}
+                        baseUrl={baseUrl}
+                        token={token}
+                        disabled={!connected || switching}
+                        variant="icon"
+                        onDeleted={ctrl.handleProfileDeleted}
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
-            ) : null}
           </div>
 
           {statusError && (

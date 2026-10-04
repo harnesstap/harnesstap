@@ -27,8 +27,6 @@ export interface SourceSidebarProps {
   query: string;
   onQueryChange: (query: string) => void;
   onClear: () => void;
-  showInLibrary: boolean;
-  onShowInLibraryChange: (showInLibrary: boolean) => void;
   rows: SourceRow[];
   checkedIds: string[];
   onToggle: (id: string) => void;
@@ -90,8 +88,6 @@ export function SourceSidebar({
   query,
   onQueryChange,
   onClear,
-  showInLibrary,
-  onShowInLibraryChange,
   rows,
   checkedIds,
   onToggle,
@@ -117,7 +113,6 @@ export function SourceSidebar({
     query,
     checkedIds,
     rows,
-    showInLibrary,
   );
   const checkState = sourceCheckState(checkedIds, rows);
   const masterChecked = sourceMasterChecked(checkState);
@@ -182,23 +177,6 @@ export function SourceSidebar({
             onClick={() => applySidebarChange(() => onClear())}
             icon={<FilterX size={ACTION_ICON_SIZE} aria-hidden />}
           />
-        </div>
-        <div className="source-row">
-          <div className="source-row-check">
-            <Checkbox
-              id="source-show-in-library"
-              checked={showInLibrary}
-              disabled={controlsDisabled}
-              onCheckedChange={(checked) =>
-                applySidebarChange(() =>
-                  onShowInLibraryChange(checked === true),
-                )
-              }
-            />
-            <Label htmlFor="source-show-in-library" className="font-normal">
-              Show in library
-            </Label>
-          </div>
         </div>
       </div>
       {error ? (

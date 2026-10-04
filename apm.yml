@@ -1,0 +1,7 @@
+name: harnesstap
+version: 1.0.0
+default_profile: project default
+profiles:
+  - name: project default
+    source: local
+    selector: project default

@@ -93,6 +93,9 @@ function findExpectedManagedFile(input: {
   );
 
   if (ONE_TO_ONE_DIFF_TYPES.has(resource.type)) {
+    if (byPath && resourceMatchesFile(resource, byPath.path, input.rootPath)) {
+      return byPath;
+    }
     return byIdentity ?? byPath;
   }
 

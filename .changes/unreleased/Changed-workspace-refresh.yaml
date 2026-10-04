@@ -1,0 +1,5 @@
+kind: Changed
+body: Move desktop refresh onto each workspace navbar and scope it to that view.
+time: 2026-10-03T16:00:00Z
+custom:
+  Issue: ""

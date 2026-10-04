@@ -327,4 +327,55 @@ describe("getManagedFileDiff", () => {
       await context.cleanup();
     }
   });
+
+  it("keeps the clicked harness path when the same subagent exists on another harness", async () => {
+    const context = await createInitializedTestContext("managed-file-diff-harness-path");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
+        profile.id,
+        createResource({
+          type: "agent",
+          name: "executor",
+          description: "implement",
+          content: "Implement the change.",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+      await applyProfilePlugin("work", {
+        harness: "claude-code,cursor",
+        conflictPolicy: "replace",
+      });
+
+      const claudeRelative = ".claude/agents/executor.md";
+      const cursorRelative = ".cursor/agents/executor.md";
+      mkdirSync(join(context.homeDir, ".claude", "agents"), { recursive: true });
+      mkdirSync(join(context.homeDir, ".cursor", "agents"), { recursive: true });
+      writeFileSync(
+        join(context.homeDir, claudeRelative),
+        "---\nname: executor\n---\n\nImplement the change.\n",
+        "utf-8",
+      );
+      writeFileSync(
+        join(context.homeDir, cursorRelative),
+        "---\nname: executor\n---\n---\nname: executor\n---\n\nImplement the change.\n",
+        "utf-8",
+      );
+
+      const result = await getManagedFileDiff({
+        profileSelector: "work",
+        path: cursorRelative,
+        scope: "home",
+        harness: "claude-code,cursor",
+        resource: { type: "agent", name: "executor" },
+      });
+      expect(result.path).toBe(cursorRelative);
+      expect(result.current).toContain("---\nname: executor\n---\n---\n");
+      expect(result.expected).not.toContain("---\nname: executor\n---\n---\n");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

@@ -11,8 +11,10 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  loadSettings,
+  DEFAULT_MARKETPLACE_REFRESH_MAX_AGE_MINUTES,
   type PluginMarketplacePlatform,
+  loadSettings,
+  marketplaceRefreshMaxAgeMs,
   parseTrackedBranches,
 } from "../config/settings.js";
 import { refreshGitSource } from "../plugins/refresh.js";
@@ -79,6 +81,10 @@ export function marketplaceCatalogPath(harnesstapDir: string, name: string): str
   return join(marketplaceCacheDir(harnesstapDir, name), "catalog.json");
 }
 
+export const MARKETPLACE_CATALOG_MAX_AGE_MS = marketplaceRefreshMaxAgeMs(
+  DEFAULT_MARKETPLACE_REFRESH_MAX_AGE_MINUTES,
+);
+
 export function relocateMarketplaceCache(
   harnesstapDir: string,
   fromName: string,
@@ -99,10 +105,10 @@ function isGooseOnly(platforms: PluginMarketplacePlatform[]): boolean {
   return platforms.length === 1 && platforms[0] === "goose";
 }
 
-function catalogIsFresh(catalogPath: string, maxAgeHours: number): boolean {
+function catalogIsFresh(catalogPath: string, maxAgeMs: number): boolean {
   if (!existsSync(catalogPath)) return false;
   const ageMs = Date.now() - statSync(catalogPath).mtimeMs;
-  return ageMs < maxAgeHours * 60 * 60 * 1000;
+  return ageMs < maxAgeMs;
 }
 
 function readStoredCatalog(catalogPath: string): StoredMarketplaceCatalog | undefined {
@@ -283,8 +289,11 @@ export function refreshMarketplaceCatalog(
   const cacheDir = marketplaceCacheDir(harnesstapDir, entry.name);
   const catalogPath = marketplaceCatalogPath(harnesstapDir, entry.name);
   const settings = loadSettings(harnesstapDir);
+  const maxAgeMs = marketplaceRefreshMaxAgeMs(
+    settings.plugins.marketplaceRefreshMaxAgeMinutes,
+  );
 
-  if (!options.force && catalogIsFresh(catalogPath, settings.plugins.refreshMaxAgeHours)) {
+  if (!options.force && catalogIsFresh(catalogPath, maxAgeMs)) {
     const stored = readStoredCatalog(catalogPath);
     return {
       ok: true,

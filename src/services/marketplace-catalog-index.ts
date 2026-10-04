@@ -140,8 +140,14 @@ export function enrichCatalogPlugin(
   );
   const tags = uniqueStrings([...(plugin.tags ?? []), ...keywords]);
 
+  let skills: ReturnType<typeof discoverSkillPackage> = [];
+  try {
+    skills = discoverSkillPackage(pluginRoot);
+  } catch {
+    skills = [];
+  }
   const contents: CatalogPluginContent[] = [
-    ...discoverSkillPackage(pluginRoot).map((skill) => ({
+    ...skills.map((skill) => ({
       type: "skill" as const,
       name: skill.name,
       ...(skill.description ? { description: skill.description } : {}),

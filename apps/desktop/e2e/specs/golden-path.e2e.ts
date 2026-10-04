@@ -130,7 +130,7 @@ describe("Golden path", () => {
 
   it("refreshes and shows global user resources", async () => {
     await clickTestId("view-global");
-    await clickTestId("header-refresh");
+    await clickTestId("live-status-refresh");
     await assertResourceRows(USER_RESOURCE_NAMES);
   });
 
@@ -161,7 +161,7 @@ describe("Golden path", () => {
       expect.stringContaining(isolation.project),
     );
 
-    await clickTestId("header-refresh");
+    await clickTestId("live-status-refresh");
     await assertResourceRows(PROJECT_RESOURCE_NAMES);
   });
 

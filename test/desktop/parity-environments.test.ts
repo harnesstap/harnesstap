@@ -131,6 +131,8 @@ describe("environments workspace chrome", () => {
     expect(workspaceSource).toContain("<WorkspaceBackButton");
     expect(workspaceSource).toContain("hidden");
     expect(workspaceSource).not.toContain("hidden={!canWorkspaceBack}");
+    expect(workspaceSource).toContain('testId="environments-refresh"');
+    expect(workspaceSource).toContain('label="Refresh environments"');
     expect(workspaceSource).toContain('label="Create environment"');
     expect(workspaceSource).toContain("primary");
   });

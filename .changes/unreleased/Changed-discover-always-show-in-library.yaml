@@ -1,0 +1,5 @@
+kind: Changed
+body: Always list in-library plugins in Discover and remove the Show in library filter.
+time: 2026-10-03T23:55:00Z
+custom:
+  Issue: ""

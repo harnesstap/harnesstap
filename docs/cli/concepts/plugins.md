@@ -137,10 +137,13 @@ Refresh policy for marketplace metadata is configured in `~/.harnesstap/config.j
 ```jsonc
 {
   "plugins": {
-    "refreshMaxAgeHours": 24
+    "refreshMaxAgeHours": 24,
+    "marketplaceRefreshMaxAgeMinutes": 60
   }
 }
 ```
+
+`marketplaceRefreshMaxAgeMinutes` (default `60`) is how long Discover and managed marketplace catalogs reuse a last refresh before git-fetching again. `refreshMaxAgeHours` is for plugin origin check/update.
 
 `resource sync` uses cached metadata unless it is stale; pass `--force` to refresh regardless.
 

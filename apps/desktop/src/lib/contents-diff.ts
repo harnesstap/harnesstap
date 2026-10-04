@@ -318,6 +318,9 @@ export function fileChangeMatchesResource(
   if (change.affected_resources !== undefined) {
     return affectedResourceMatches(resource, change);
   }
+  if (change.type === "added") {
+    return false;
+  }
   if (
     change.resource?.type === resource.type
     && namesEqualIgnoreCase(change.resource.name, resource.name)

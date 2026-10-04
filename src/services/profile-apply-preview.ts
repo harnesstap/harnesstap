@@ -200,8 +200,10 @@ function compareExpectedFiles(
 
 /**
  * Hide "would add" gaps for alternate harness materializations when the same
- * profile resource is already present on disk under another harness path.
- * Apply still writes those files; File changes stays transparent.
+ * profile resource is already present on disk under another harness path, and
+ * leftover extra-harness copies when apply still keeps that resource elsewhere,
+ * including extra-harness content noise when another copy already matches.
+ * Apply still writes or deletes those files; File changes stays transparent.
  */
 export function omitTransparentCrossHarnessAdds(
   rootPath: string,
@@ -221,19 +223,47 @@ export function omitTransparentCrossHarnessAdds(
   }
 
   return changes.filter((change) => {
-    if (change.type !== "deleted") {
-      return true;
-    }
     const mapped = resourceKeyFromManagedPath(change.path);
     if (!mapped) {
       return true;
     }
     const siblings = siblingPathsByResource.get(`${mapped.type}:${mapped.name}`) ?? [];
-    const materializedElsewhere = siblings.some(
-      (path) =>
-        path !== change.path && readRootFile(rootPath, path) !== null,
-    );
-    return !materializedElsewhere;
+    switch (change.type) {
+      case "deleted": {
+        const materializedElsewhere = siblings.some(
+          (path) =>
+            path !== change.path && readRootFile(rootPath, path) !== null,
+        );
+        return !materializedElsewhere;
+      }
+      case "added":
+        return siblings.length === 0;
+      case "modified": {
+        const siblingMatches = siblings.some((path) => {
+          if (path === change.path) {
+            return false;
+          }
+          const expected = expectedFiles.find((file) => file.path === path);
+          if (!expected) {
+            return false;
+          }
+          const current = readRootFile(rootPath, path);
+          if (current === null) {
+            return false;
+          }
+          return fileContentsEquivalentForDrift(
+            path,
+            current,
+            expected.content,
+          );
+        });
+        return !siblingMatches;
+      }
+      default: {
+        const neverType: never = change.type;
+        return neverType;
+      }
+    }
   });
 }
 
@@ -303,14 +333,14 @@ function buildPreviewFileChanges(
 ): DriftFileChange[] {
   const mapped = withMappedResources(
     omitMergeableHostConfigRemovals(
-      withManagedRemovals(
+      omitTransparentCrossHarnessAdds(
         rootPath,
-        omitTransparentCrossHarnessAdds(
+        expectedFiles,
+        withManagedRemovals(
           rootPath,
-          expectedFiles,
           compareExpectedFiles(rootPath, expectedFiles),
+          removedFiles,
         ),
-        removedFiles,
       ),
     ),
   );

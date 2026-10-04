@@ -475,6 +475,23 @@ describe("contents-diff helpers", () => {
       .toBe(".claude/agents/code-reviewer.md");
   });
 
+  it("does not match leftover extra-harness skill copies onto Active chips", () => {
+    expect(
+      fileChangeMatchesResource(
+        {
+          type: "skill",
+          name: "ubiquitous-language",
+          source: "~/.cursor/skills/ubiquitous-language/SKILL.md",
+        },
+        {
+          path: ".cursor/skills/ubiquitous-language/SKILL.md",
+          type: "added",
+          resource: { type: "skill", name: "ubiquitous-language" },
+        },
+      ),
+    ).toBe(false);
+  });
+
   it("does not match skill or subagent chips onto an empty scoped content delta", () => {
     expect(
       fileChangeMatchesResource(

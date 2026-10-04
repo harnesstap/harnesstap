@@ -13,7 +13,7 @@ import {
   type SourcesHit,
   type SourcesHitGroup,
 } from "../lib/sources-search";
-import { FilterX, Library, LogIn } from "lucide-react";
+import { FilterX, LogIn } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { InUseMark } from "./InUseMark";
 import { IconActionButton } from "./IconActionButton";
@@ -35,13 +35,11 @@ export interface SourcesListPaneProps {
   groupErrors: Record<string, SourcesGroupError>;
   loading: boolean;
   query: string;
-  showInLibrary?: boolean;
   disabled?: boolean;
   onOpenHit: (hit: SourcesHit) => void;
   onSignIn?: () => void;
   onClearSearch?: () => void;
   onClearQuery?: () => void;
-  onShowInLibrary?: () => void;
   recordActions?: (hit: SourcesHit) => SourcesRecordActionsProps;
 }
 
@@ -88,13 +86,11 @@ export function SourcesListPane({
   groupErrors,
   loading,
   query,
-  showInLibrary = false,
   disabled = false,
   onOpenHit,
   onSignIn,
   onClearSearch,
   onClearQuery,
-  onShowInLibrary,
   recordActions,
 }: SourcesListPaneProps) {
   const visible = groups.filter(
@@ -106,7 +102,7 @@ export function SourcesListPane({
   }
 
   if (visible.length === 0) {
-    const empty = discoverListEmptyCopy({ query, showInLibrary });
+    const empty = discoverListEmptyCopy({ query });
     const clearSearch = onClearQuery ?? onClearSearch;
     const action =
       empty.action === "clear-search" && clearSearch
@@ -115,13 +111,7 @@ export function SourcesListPane({
             onClick: clearSearch,
             icon: <FilterX size={16} aria-hidden />,
           }
-        : empty.action === "show-library" && onShowInLibrary
-          ? {
-              label: "Show in library",
-              onClick: onShowInLibrary,
-              icon: <Library size={16} aria-hidden />,
-            }
-          : undefined;
+        : undefined;
     return (
       <EmptyState
         className="discover-empty"
