@@ -101,8 +101,8 @@ describe("library items header actions", () => {
   });
 
   test("reloads without replacing existing rows with Loading", () => {
-    expect(panelSource).toContain("setRefreshing(true)");
-    expect(panelSource).toContain("hasRowsRef.current");
+    expect(panelSource).toContain('status === "refreshing"');
+    expect(panelSource).toContain("peek == null && full == null && !error");
     expect(panelSource).toContain("LibraryResourceList");
     expect(panelSource).toContain("noResultsTitle");
     expect(panelSource).toContain('showBack={false}');
