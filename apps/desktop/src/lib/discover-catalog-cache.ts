@@ -1,40 +1,12 @@
-import type { LibraryPluginHead } from "./api/library-plugins";
-import type { CatalogPluginSearchHit, CatalogScope } from "./api/sources";
-import type { MarketplaceSourceInput } from "./sources-search";
-import type { LibraryResource, PluginMarketplaceEntry } from "./types";
+import {
+  discoverSnapshotStore,
+  persistableDiscoverMarketplaceHits,
+  type DiscoverCatalogCacheSnapshot,
+  type DiscoverMarketplaceHitCache,
+} from "../state/discover-snapshot-store";
 
-export interface DiscoverMarketplaceHitCache {
-  plugins: MarketplaceSourceInput["plugins"];
-  error: string | null;
-}
-
-export interface DiscoverCatalogCacheSnapshot {
-  marketplaces: PluginMarketplaceEntry[];
-  scope: CatalogScope | null;
-  marketplaceHits: Record<string, DiscoverMarketplaceHitCache>;
-  localHeads: LibraryPluginHead[];
-  localResources: LibraryResource[];
-  localError: string | null;
-  cloudPlugins: CatalogPluginSearchHit[];
-  cloudErrors: Array<{ sourceLabel: string; message: string }>;
-  fetchedSourceIds: string[];
-  sourceInventoryReady: boolean;
-}
-
-const EMPTY_SNAPSHOT: DiscoverCatalogCacheSnapshot = {
-  marketplaces: [],
-  scope: null,
-  marketplaceHits: {},
-  localHeads: [],
-  localResources: [],
-  localError: null,
-  cloudPlugins: [],
-  cloudErrors: [],
-  fetchedSourceIds: [],
-  sourceInventoryReady: false,
-};
-
-let snapshot: DiscoverCatalogCacheSnapshot | null = null;
+export type { DiscoverCatalogCacheSnapshot, DiscoverMarketplaceHitCache };
+export { persistableDiscoverMarketplaceHits };
 
 function cloneSnapshot(
   value: DiscoverCatalogCacheSnapshot,
@@ -54,6 +26,8 @@ function cloneSnapshot(
         {
           plugins: hit.plugins.map((plugin) => ({ ...plugin })),
           error: hit.error,
+          ...(hit.schema !== undefined ? { schema: hit.schema } : {}),
+          ...(hit.fetchedAt !== undefined ? { fetchedAt: hit.fetchedAt } : {}),
         },
       ]),
     ),
@@ -68,35 +42,30 @@ function cloneSnapshot(
 }
 
 export function readDiscoverCatalogCache(): DiscoverCatalogCacheSnapshot | null {
-  return snapshot ? cloneSnapshot(snapshot) : null;
-}
-
-export function persistableDiscoverMarketplaceHits(
-  hits: DiscoverCatalogCacheSnapshot["marketplaceHits"],
-): DiscoverCatalogCacheSnapshot["marketplaceHits"] {
-  return Object.fromEntries(
-    Object.entries(hits).filter(
-      ([, hit]) => hit.plugins.length > 0 || hit.error !== null,
-    ),
-  );
+  const state = discoverSnapshotStore.getState();
+  if (!state.hydrated) {
+    return null;
+  }
+  return cloneSnapshot({
+    marketplaces: state.marketplaces,
+    scope: state.scope,
+    marketplaceHits: state.marketplaceHits,
+    localHeads: state.localHeads,
+    localResources: state.localResources,
+    localError: state.localError,
+    cloudPlugins: state.cloudPlugins,
+    cloudErrors: state.cloudErrors,
+    fetchedSourceIds: state.fetchedSourceIds,
+    sourceInventoryReady: state.sourceInventoryReady,
+  });
 }
 
 export function writeDiscoverCatalogCache(
   patch: Partial<DiscoverCatalogCacheSnapshot>,
 ): void {
-  const base = snapshot ? cloneSnapshot(snapshot) : cloneSnapshot(EMPTY_SNAPSHOT);
-  snapshot = cloneSnapshot({
-    ...base,
-    ...patch,
-    marketplaceHits: persistableDiscoverMarketplaceHits(
-      patch.marketplaceHits ? patch.marketplaceHits : base.marketplaceHits,
-    ),
-    fetchedSourceIds: patch.fetchedSourceIds
-      ? [...patch.fetchedSourceIds]
-      : base.fetchedSourceIds,
-  });
+  discoverSnapshotStore.applyCachePatch(patch);
 }
 
 export function clearDiscoverCatalogCache(): void {
-  snapshot = null;
+  discoverSnapshotStore.clear();
 }
