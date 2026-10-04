@@ -208,6 +208,19 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.workspace-keep {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-keep[hidden] {
+  display: none;
+}
+
 .profiles-rail {
   border-right: 1px solid var(--border);
   background: var(--surface);

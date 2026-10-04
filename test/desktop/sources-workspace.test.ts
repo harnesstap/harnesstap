@@ -102,11 +102,13 @@ describe("sources workspace chrome", () => {
   test("SourcesWorkspace is rendered from App when workspaceFocus is sources", () => {
     expect(appSource).toContain("SourcesWorkspace");
     expect(appSource).toContain('case "discover":');
+    expect(appSource).toContain("workspace-keep");
+    expect(appSource).toContain("discoverKept");
     expect(workspaceSource).toContain("export function SourcesWorkspace");
     expect(workspaceSource).toContain("homeResetNonce");
   });
 
-  test("source sidebar groups checkboxes under Local, Marketplaces, and Cloud", () => {
+  test("source sidebar groups checkboxes under Marketplaces and Cloud", () => {
     expect(sidebarSource).toContain("groupSourceRows");
     expect(sidebarSource).toContain("resource-filter-section-label");
     expect(sidebarSource).toContain("{section.label}");
@@ -121,16 +123,21 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("function resetSourcesFilters");
     expect(workspaceSource).toContain("resetSourcesFilters()");
     expect(workspaceSource).toContain("applyListQueryOrChecks(resetSourcesFilters)");
+    expect(workspaceSource).toContain("setNotInLibrary(false)");
     expect(workspaceSource).not.toContain("setShowInLibrary");
   });
 
-  test("Discover always lists in-library hits without a Show in library filter", () => {
+  test("Discover lists remote hits including those already in the library", () => {
     expect(sidebarSource).not.toContain("Show in library");
-    expect(sidebarSource).not.toContain("id=\"source-show-in-library\"");
+    expect(sidebarSource).toContain("Not in my library");
+    expect(sidebarSource).toContain('id="source-not-in-library"');
     expect(workspaceSource).not.toContain("showInLibrary");
-    expect(workspaceSource).not.toContain("filterDiscoverGroups");
+    expect(workspaceSource).toContain("notInLibrary");
+    expect(workspaceSource).toContain("filterDiscoverGroups");
     expect(listPaneSource).not.toContain("showInLibrary");
+    expect(listPaneSource).toContain("notInLibrary");
     expect(listPaneSource).toContain("discoverListEmptyCopy");
+    expect(listPaneSource).toContain("Clear filters");
     expect(listPaneSource).toContain('testId="discover-empty"');
     expect(listPaneSource).toContain('className="discover-empty"');
     expect(listPaneSource).toContain("EmptyState");
@@ -139,7 +146,7 @@ describe("sources workspace chrome", () => {
       "const [fetchedSourceIds, setFetchedSourceIds] = useState<Set<string>>(",
     );
     expect(workspaceSource).toContain("discoverListIsSearching");
-    expect(sourcesSearchSource).not.toContain("filterDiscoverGroups");
+    expect(sourcesSearchSource).toContain("filterDiscoverGroups");
     expect(sourcesSearchSource).toContain('hit.presence !== "in_library"');
     expect(sourcesSearchSource).toContain("Search to add");
     expect(sourcesSearchSource).toContain("Type a name, description, or skill.");
@@ -414,6 +421,8 @@ describe("sources search list and preview", () => {
     expect(listPaneSource).toContain("presenceLabel");
     expect(sourcesSearchSource).toContain("In library");
     expect(sourcesSearchSource).toContain("Remote only");
+    expect(listPaneSource).toContain("useVirtualizer");
+    expect(listPaneSource).toContain("flattenDiscoverListItems");
     expect(listPaneSource).toContain('data-testid="sources-list"');
     expect(listPaneSource).toContain("sources-hit-");
     expect(listPaneSource).toContain('data-testid="sources-presence"');
@@ -486,17 +495,16 @@ describe("sources search list and preview", () => {
   });
 
   test("plugin tree and preview expose labeled Add to Library, pin, and Open in Library", () => {
-    expect(recordActionsSource).toContain('label="Add to Library"');
+    expect(recordActionsSource).toContain("DISCOVER_ADD_TO_LIBRARY_LABEL");
     expect(recordActionsSource).toContain('label={discoverAddToProfileLabel()}');
     expect(recordActionsSource).toContain("discoverAddToProfileTooltip");
     expect(recordActionsSource).toContain("showAddToProfile");
     expect(recordActionsSource).toMatch(
       /showAddToProfile \? \([\s\S]*?primary\b[\s\S]*?label=\{discoverAddToProfileLabel\(\)\}/,
     );
-    expect(recordActionsSource).not.toMatch(
-      /showAddToLibrary \? \([\s\S]*?primary\b[\s\S]*?label="Add to Library"/,
-    );
-    expect(recordActionsSource).toContain('label="Pin to plugin"');
+    expect(recordActionsSource).toContain("variant === \"list\"");
+    expect(recordActionsSource).toContain("showOpenInLibrary = !compact && actions.showOpenInLibrary");
+    expect(recordActionsSource).toContain("<Link size={16}");
     expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
     expect(recordActionsSource).toContain("discover-action-helper");
@@ -639,7 +647,9 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Discover re-click");
     expect(designSource).toContain("Clear filters");
     expect(designSource).toContain("every source checkbox checked");
-    expect(designSource).toContain("always includes hits already in the library");
+    expect(designSource).toContain("including hits already in the library");
+    expect(designSource).toContain("Not in my library");
+    expect(designSource).toContain("unchecked by default");
     expect(designSource).toContain("Search to add");
     expect(designSource).toContain("Type a name, description, or skill.");
     expect(designSource).toContain("discover-empty");
@@ -647,7 +657,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Connect catalog");
     expect(designSource).toContain("--icon-action-size-lg");
     expect(designSource).toContain("Add to Library");
-    expect(designSource).toContain("Add to my profile");
+    expect(designSource).toContain("Add to profile");
     expect(designSource).toContain("Add {plugin} to current profile {profile}");
     expect(designSource).toContain("Pin to plugin");
     expect(designSource).toContain("Create plugin");
@@ -660,7 +670,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Cloud browse overlay");
     expect(designSource).toContain("Update available");
     expect(designSource).toContain("No Update button on Discover");
-    expect(designSource).toContain("Local, Marketplaces, and Cloud");
+    expect(designSource).toContain("Marketplaces and Cloud");
     expect(designSource).toContain("All sources");
     expect(designSource).toContain("indeterminate");
   });
@@ -679,7 +689,7 @@ describe("sources origin update badges", () => {
     expect(listPaneSource).toContain("pill warn");
     expect(recordActionsSource).not.toContain("showUpdate");
     expect(recordActionsSource).toContain("Pin to plugin");
-    expect(recordActionsSource).toContain("Add to Library");
+    expect(recordActionsSource).toContain("DISCOVER_ADD_TO_LIBRARY_LABEL");
   });
 
   test("clears origin check rows when origin check fails", () => {

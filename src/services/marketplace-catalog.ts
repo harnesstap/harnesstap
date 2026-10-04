@@ -44,12 +44,15 @@ export interface MarketplacePluginBranchVersion {
   branch: string;
 }
 
+export const MARKETPLACE_CATALOG_INDEX_VERSION = 1;
+
 export interface StoredMarketplaceCatalog extends ParsedMarketplaceCatalog {
   marketplaceEntryName: string;
   manifestName?: string;
   refreshedAt: string;
   sha?: string;
   pluginVersions?: MarketplacePluginBranchVersion[];
+  indexVersion?: number;
 }
 
 export interface RefreshMarketplaceCatalogOptions {
@@ -352,12 +355,16 @@ export function refreshMarketplaceCatalog(
 
   const catalog = {
     ...defaultCatalog.catalog,
-    plugins: mergeCatalogPluginsByIdentity(pluginBatches.flat()),
+    plugins: enrichCatalogPlugins(
+      cacheDir,
+      mergeCatalogPluginsByIdentity(pluginBatches.flat()),
+    ),
   };
   const stored: StoredMarketplaceCatalog = {
     ...catalog,
     marketplaceEntryName: entry.name,
     refreshedAt: new Date().toISOString(),
+    indexVersion: MARKETPLACE_CATALOG_INDEX_VERSION,
     ...(refresh.sha ? { sha: refresh.sha } : {}),
     ...(pluginVersions.length > 0 ? { pluginVersions } : {}),
   };
@@ -370,13 +377,35 @@ export function refreshMarketplaceCatalog(
   };
 }
 
+function persistIndexedCatalog(
+  harnesstapDir: string,
+  name: string,
+  stored: StoredMarketplaceCatalog,
+): StoredMarketplaceCatalog {
+  if (stored.indexVersion === MARKETPLACE_CATALOG_INDEX_VERSION) {
+    return stored;
+  }
+  const next: StoredMarketplaceCatalog = {
+    ...stored,
+    plugins: enrichCatalogPlugins(
+      marketplaceCacheDir(harnesstapDir, name),
+      stored.plugins,
+    ),
+    indexVersion: MARKETPLACE_CATALOG_INDEX_VERSION,
+  };
+  writeStoredCatalog(marketplaceCatalogPath(harnesstapDir, name), next);
+  return next;
+}
+
 export function listCatalogPlugins(
   harnesstapDir: string,
   options: ListCatalogPluginsOptions,
 ): CatalogPlugin[] {
   const stored = readStoredCatalog(marketplaceCatalogPath(harnesstapDir, options.name));
-  const plugins = stored?.plugins ?? [];
-  return enrichCatalogPlugins(marketplaceCacheDir(harnesstapDir, options.name), plugins);
+  if (!stored) {
+    return [];
+  }
+  return persistIndexedCatalog(harnesstapDir, options.name, stored).plugins;
 }
 
 /** Refresh from git only when the on-disk catalog is missing or stale, then list. */

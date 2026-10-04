@@ -284,17 +284,16 @@ describe("desktop icon chrome", () => {
   });
 
   test("Sources record actions label Add to Library and keep Pin icon-only", () => {
-    expect(recordActionsSource).toContain('label="Add to Library"');
+    expect(recordActionsSource).toContain("DISCOVER_ADD_TO_LIBRARY_LABEL");
+    expect(recordActionsSource).toContain("DISCOVER_ADD_TO_LIBRARY_TOOLTIP");
+    expect(recordActionsSource).toContain("DISCOVER_IN_LIBRARY_LINK_TOOLTIP");
     expect(recordActionsSource).toContain("discoverAddToProfileLabel");
     expect(recordActionsSource).toContain("showAddToProfile");
     expect(recordActionsSource).toContain("showLabel");
     expect(recordActionsSource).toMatch(
       /showAddToProfile \? \([\s\S]*?primary\b[\s\S]*?discoverAddToProfileLabel/,
     );
-    expect(recordActionsSource).not.toMatch(
-      /showAddToLibrary \? \([\s\S]*?primary\b[\s\S]*?label="Add to Library"/,
-    );
-    expect(recordActionsSource).toContain('label="Pin to plugin"');
+    expect(recordActionsSource).toContain("label={compact ? DISCOVER_IN_LIBRARY_LINK_TOOLTIP : \"Pin to plugin\"}");
     expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
     expect(manageMarketplacesSource).toContain('label="Edit"');

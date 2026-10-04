@@ -37,7 +37,10 @@ export const DISCOVER_ACTION_HELPER =
 
 export const PIN_TO_PLUGIN_TOOLTIP = "Link into an authored plugin";
 
-export const DISCOVER_ADD_TO_PROFILE_LABEL = "Add to my profile";
+export const DISCOVER_ADD_TO_PROFILE_LABEL = "Add to profile";
+export const DISCOVER_ADD_TO_LIBRARY_LABEL = "Add to Library";
+export const DISCOVER_ADD_TO_LIBRARY_TOOLTIP = "Add to library";
+export const DISCOVER_IN_LIBRARY_LINK_TOOLTIP = "Add to a profile";
 
 export function discoverAddToProfileLabel(): string {
   return DISCOVER_ADD_TO_PROFILE_LABEL;
@@ -57,7 +60,7 @@ export function discoverActionHelper(profileName: string | null): string {
   if (!profileName) {
     return DISCOVER_ACTION_HELPER;
   }
-  return "Add copies it into your Library. Add to my profile attaches it and applies. Pin links it into one of your plugins.";
+  return "Add copies it into your Library. Add to profile attaches it and applies. Pin links it into one of your plugins.";
 }
 
 export function cloudAttachSelector(hit: SourcesHit): string | null {

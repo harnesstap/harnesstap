@@ -51,6 +51,7 @@ import {
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
+  filterDiscoverGroups,
   marketplaceHitKey,
   marketplaceIdsNeedingCatalogFetch,
   mergeSourcesHits,
@@ -234,6 +235,7 @@ export function SourcesWorkspace({
   const libraryPeek = useLibrarySnapshotStore((state) => state.peek);
   const libraryFull = useLibrarySnapshotStore((state) => state.full);
   const [query, setQuery] = useState("");
+  const [notInLibrary, setNotInLibrary] = useState(false);
   const [searchGroups, setSearchGroups] = useState<DiscoverSearchGroup[] | null>(
     null,
   );
@@ -242,7 +244,7 @@ export function SourcesWorkspace({
   const marketplaces = snapshot.marketplaces;
   const scope = snapshot.scope;
   const sourceInventoryReady = snapshot.sourceInventoryReady;
-  const [checkedIds, setCheckedIds] = useState<string[]>(["local"]);
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [checksTouched, setChecksTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -405,6 +407,7 @@ export function SourcesWorkspace({
 
   function resetSourcesFilters(): void {
     setQuery("");
+    setNotInLibrary(false);
     setChecksTouched(false);
     setCheckedIds(defaultCheckedSourceIds(rows));
   }
@@ -433,8 +436,11 @@ export function SourcesWorkspace({
     if (!baseUrl) {
       return;
     }
+    if (reloadKey === 0 && snapshot.sourceInventoryReady) {
+      return;
+    }
     void discoverSnapshotStore.loadSources();
-  }, [baseUrl, token, reloadKey]);
+  }, [baseUrl, token, reloadKey, snapshot.sourceInventoryReady]);
 
   const checkedRows = useMemo(
     () => rows.filter((row) => checkedIds.includes(row.id)),
@@ -681,23 +687,26 @@ export function SourcesWorkspace({
       return;
     }
     let cancelled = false;
-    void fetchPluginOriginCheck(baseUrl, token)
-      .then((report) => {
-        if (!cancelled) {
-          setOriginCheckRows(report.results);
-          setOriginCheckError(null);
-        }
-      })
-      .catch((checkError: unknown) => {
-        if (!cancelled) {
-          setOriginCheckRows([]);
-          setOriginCheckError(
-            errorMessage(checkError, "Could not check plugins against origin"),
-          );
-        }
-      });
+    const timer = window.setTimeout(() => {
+      void fetchPluginOriginCheck(baseUrl, token)
+        .then((report) => {
+          if (!cancelled) {
+            setOriginCheckRows(report.results);
+            setOriginCheckError(null);
+          }
+        })
+        .catch((checkError: unknown) => {
+          if (!cancelled) {
+            setOriginCheckRows([]);
+            setOriginCheckError(
+              errorMessage(checkError, "Could not check plugins against origin"),
+            );
+          }
+        });
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [baseUrl, token, reloadKey]);
 
@@ -707,7 +716,6 @@ export function SourcesWorkspace({
   );
 
   const groups: SourcesHitGroup[] = useMemo(() => {
-    const localChecked = checkedRows.some((row) => row.id === "local");
     const useSearch = searchActive && searchGroups !== null;
     const searchById = useSearch
       ? new Map(searchGroups.map((group) => [group.sourceId, group]))
@@ -733,20 +741,6 @@ export function SourcesWorkspace({
     const merged = mergeSourcesHits({
       query,
       sourceOrder,
-      ...(localChecked
-        ? {
-            local: {
-              sourceId: "local",
-              sourceLabel: searchById?.get("local")?.sourceLabel ?? "Local",
-              heads: useSearch
-                ? (searchById?.get("local")?.heads ?? [])
-                : localHeads,
-              resources: useSearch
-                ? (searchById?.get("local")?.resources ?? [])
-                : localResources,
-            },
-          }
-        : {}),
       marketplaces: marketplaceInputs,
       cloud: cloudInputs,
       libraryHeads: localHeads,
@@ -776,7 +770,7 @@ export function SourcesWorkspace({
         originCheckRows,
       ),
     }));
-    return merged;
+    return filterDiscoverGroups(merged, notInLibrary);
   }, [
     checkedRows,
     cloudPlugins,
@@ -787,6 +781,7 @@ export function SourcesWorkspace({
     pulledCloudKeys,
     addedMarketplaceKeys,
     query,
+    notInLibrary,
     searchActive,
     searchGroups,
     sourceOrder,
@@ -1412,6 +1407,7 @@ export function SourcesWorkspace({
             groupErrors={groupErrors}
             loading={listSearching}
             query={query}
+            notInLibrary={notInLibrary}
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
@@ -1419,6 +1415,7 @@ export function SourcesWorkspace({
               applyListQueryOrChecks(() => setQuery(""));
             }}
             onClearQuery={() => applyListQueryOrChecks(() => setQuery(""))}
+            onClearFilters={() => applyListQueryOrChecks(resetSourcesFilters)}
             recordActions={recordActionsProps}
           />
         );
@@ -1517,7 +1514,7 @@ export function SourcesWorkspace({
                 ) : null}
               </span>
               <span className="muted resources-panel-scope">
-                Find and add from local, marketplaces, and HarnessTap Cloud.
+                Find and add from marketplaces and HarnessTap Cloud.
               </span>
             </div>
           </div>
@@ -1567,6 +1564,10 @@ export function SourcesWorkspace({
           }}
           onClear={() => {
             applyListQueryOrChecks(resetSourcesFilters);
+          }}
+          notInLibrary={notInLibrary}
+          onNotInLibraryChange={(next) => {
+            applyListQueryOrChecks(() => setNotInLibrary(next));
           }}
           rows={rows}
           checkedIds={checkedIds}

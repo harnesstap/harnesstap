@@ -4,7 +4,6 @@ import {
   type VisibleMarketplaceEntry,
   listVisibleMarketplaces,
 } from "./host-marketplaces.js";
-import { queryLibraryInventory } from "./library-inventory.js";
 import {
   type CatalogPlugin,
   listCatalogPlugins,
@@ -79,47 +78,6 @@ function parseDiscoverSourceId(sourceId: string): ParsedDiscoverSourceId {
   return { kind: "unknown", sourceId };
 }
 
-function localGroup(q: string, sourceId: string): DiscoverSearchGroup {
-  const inventory = queryLibraryInventory({ q, type: null });
-  const heads: DiscoverSearchHead[] = [];
-  const resources: DiscoverSearchResource[] = [];
-  for (const row of inventory.rows) {
-    switch (row.listKind) {
-      case "plugin-package":
-        heads.push({
-          name: row.name,
-          version: row.version,
-          description: row.description,
-          origin: row.pluginOrigin,
-          id: row.id,
-          tags: row.tags,
-        });
-        break;
-      case "resource":
-        resources.push({
-          name: row.name,
-          type: row.type,
-          description: row.description,
-          namespace: row.namespace,
-          origin_kind: row.origin_kind,
-          id: row.id,
-          tags: row.tags,
-        });
-        break;
-      default: {
-        const exhaustive: never = row.listKind;
-        return exhaustive;
-      }
-    }
-  }
-  return {
-    sourceId,
-    sourceLabel: "Local",
-    heads,
-    resources,
-  };
-}
-
 function marketplacePluginsForEntry(
   harnesstapDir: string,
   entry: VisibleMarketplaceEntry,
@@ -173,9 +131,6 @@ export function searchDiscover(input: {
   for (const sourceId of input.sourceIds) {
     const parsed = parseDiscoverSourceId(sourceId);
     switch (parsed.kind) {
-      case "local":
-        groups.push(localGroup(input.q, parsed.sourceId));
-        break;
       case "marketplace": {
         const group = marketplaceGroup(
           input.q,
@@ -188,6 +143,7 @@ export function searchDiscover(input: {
         }
         break;
       }
+      case "local":
       case "cloud-org":
       case "cloud-catalog":
       case "unknown":

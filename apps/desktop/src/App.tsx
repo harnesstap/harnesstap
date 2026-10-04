@@ -84,7 +84,7 @@ export function App() {
     librarySnapshotStore.setClient({ baseUrl: client.baseUrl, token: client.token });
     void librarySnapshotStore.loadPeek();
     discoverSnapshotStore.setClient({ baseUrl: client.baseUrl, token: client.token });
-    void discoverSnapshotStore.loadSources();
+    void discoverSnapshotStore.warm();
     void statusStore.refreshProfiles(projectPath);
     void statusStore.refreshStatus("full", projectPath);
     void statusStore.refreshStash();
@@ -196,10 +196,24 @@ export function App() {
   );
 
   const attachProfileName = selectedProfile ?? activeProfile;
+  const discoverActive = nav.destination === "discover";
+  const [discoverKept, setDiscoverKept] = useState(discoverActive);
+  if (discoverActive && !discoverKept) {
+    setDiscoverKept(true);
+  }
   const onAddToProfile = useCallback(
     (resource: ProfileContentsResource) =>
       ctrl.handleAddResource(resource, attachProfileName ?? undefined),
     [attachProfileName, ctrl.handleAddResource],
+  );
+  const onAddToProfileAndApply = useCallback(
+    (item: {
+      kind: "plugin" | "resource";
+      id: string;
+      name: string;
+      type: string;
+    }) => ctrl.handleAttachLibraryItem(item, { apply: "always" }),
+    [ctrl.handleAttachLibraryItem],
   );
   const onFocusPluginConsumed = useCallback(() => setLibraryFocusPlugin(null), []);
   const onFocusResourceConsumed = useCallback(() => setLibraryFocusResource(null), []);
@@ -260,25 +274,7 @@ export function App() {
           />
         );
       case "discover":
-        return (
-          <MemoSourcesWorkspace
-            baseUrl={client?.baseUrl ?? null}
-            token={client?.token ?? null}
-            disabled={switching}
-            disconnected={shellDisconnected}
-            homeResetNonce={nav.resetNonce}
-            cloudAuthenticated={Boolean(cloud.cloudAuth?.authenticated)}
-            onSignIn={openCloudAccount}
-            canWorkspaceBack={nav.hasHistory}
-            onWorkspaceBack={nav.back}
-            onOpenInLibrary={openInLibrary}
-            currentProfileName={attachProfileName}
-            onAddToProfileAndApply={(item) =>
-              ctrl.handleAttachLibraryItem(item, { apply: "always" })
-            }
-            onSuccess={onSuccessToast}
-          />
-        );
+        return null;
       case "harnesses":
         return (
           <MemoHarnessesWorkspace
@@ -382,6 +378,29 @@ export function App() {
           }`}
         >
           {renderWorkspace()}
+          {discoverKept ? (
+            <div
+              className="workspace-keep"
+              hidden={!discoverActive}
+              aria-hidden={!discoverActive}
+            >
+              <MemoSourcesWorkspace
+                baseUrl={client?.baseUrl ?? null}
+                token={client?.token ?? null}
+                disabled={switching}
+                disconnected={shellDisconnected}
+                homeResetNonce={nav.resetNonce}
+                cloudAuthenticated={Boolean(cloud.cloudAuth?.authenticated)}
+                onSignIn={openCloudAccount}
+                canWorkspaceBack={nav.hasHistory}
+                onWorkspaceBack={nav.back}
+                onOpenInLibrary={openInLibrary}
+                currentProfileName={attachProfileName}
+                onAddToProfileAndApply={onAddToProfileAndApply}
+                onSuccess={onSuccessToast}
+              />
+            </div>
+          ) : null}
         </div>
 
         <AppOverlays

@@ -127,6 +127,15 @@
   overscroll-behavior: none;
 }
 
+.sources-list-virtual {
+  position: relative;
+  width: 100%;
+}
+
+.sources-list-virtual .resources-type-heading {
+  padding-top: 0.5rem;
+}
+
 .sources-workspace .resources-panel-body {
   display: flex;
   flex-direction: column;

@@ -135,14 +135,14 @@ describe("sourcesHitActions", () => {
 });
 
 describe("discover add to profile", () => {
-  test("labels Add to my profile with a current-profile tooltip", () => {
-    expect(discoverAddToProfileLabel()).toBe("Add to my profile");
+  test("labels Add to profile with a current-profile tooltip", () => {
+    expect(discoverAddToProfileLabel()).toBe("Add to profile");
     expect(discoverAddToProfileTooltip("demo", "work")).toBe(
       "Add demo to current profile work",
     );
     expect(discoverAddToProfileTooltip("demo", null)).toBe("No profile selected");
     expect(discoverActionHelper("work")).toBe(
-      "Add copies it into your Library. Add to my profile attaches it and applies. Pin links it into one of your plugins.",
+      "Add copies it into your Library. Add to profile attaches it and applies. Pin links it into one of your plugins.",
     );
   });
 

@@ -41,7 +41,7 @@ describe("library and discover prefetch on connect", () => {
     expect(connectedEffect).toContain("client.token");
     expect(connectedEffect).toContain("void librarySnapshotStore.loadPeek()");
     expect(connectedEffect).toContain("discoverSnapshotStore.setClient");
-    expect(connectedEffect).toContain("void discoverSnapshotStore.loadSources()");
+    expect(connectedEffect).toContain("void discoverSnapshotStore.warm()");
     expect(connectedEffect).toContain("librarySnapshotStore.clear()");
     expect(connectedEffect).toContain("discoverSnapshotStore.clear()");
     expect(connectedEffect).not.toContain("fetchMarketplacePlugins");

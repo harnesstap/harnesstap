@@ -1,7 +1,10 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, Library, Pin, Plus } from "lucide-react";
+import { Download, Library, Link, Pin, Plus } from "lucide-react";
 import {
+  DISCOVER_ADD_TO_LIBRARY_LABEL,
+  DISCOVER_ADD_TO_LIBRARY_TOOLTIP,
+  DISCOVER_IN_LIBRARY_LINK_TOOLTIP,
   discoverActionHelper,
   discoverAddToProfileLabel,
   discoverAddToProfileTooltip,
@@ -51,6 +54,11 @@ export function SourcesRecordActions({
   const controlsDisabled = disabled || busy;
   const compact = variant === "list";
   const showHelper = variant === "detail";
+  const showAddToLibrary = actions.showAddToLibrary;
+  const showPinToPlugin = compact
+    ? actions.showPinToPlugin && !actions.showAddToLibrary
+    : actions.showPinToPlugin;
+  const showOpenInLibrary = !compact && actions.showOpenInLibrary;
   return (
     <div
       className="sources-record-actions"
@@ -89,27 +97,28 @@ export function SourcesRecordActions({
             icon={<Plus size={16} aria-hidden />}
           />
         ) : null}
-        {actions.showAddToLibrary ? (
+        {showAddToLibrary ? (
           <IconActionButton
-            showLabel
+            showLabel={!compact}
             busy={busy}
             spinnerSize={14}
             disabled={controlsDisabled || (collision && !asName.trim())}
-            label="Add to Library"
+            label={compact ? DISCOVER_ADD_TO_LIBRARY_TOOLTIP : DISCOVER_ADD_TO_LIBRARY_LABEL}
+            title={compact ? DISCOVER_ADD_TO_LIBRARY_TOOLTIP : undefined}
             onClick={onAddToLibrary}
             icon={<Download size={16} aria-hidden />}
           />
         ) : null}
-        {actions.showPinToPlugin ? (
+        {showPinToPlugin ? (
           <IconActionButton
-            label="Pin to plugin"
-            title={PIN_TO_PLUGIN_TOOLTIP}
+            label={compact ? DISCOVER_IN_LIBRARY_LINK_TOOLTIP : "Pin to plugin"}
+            title={compact ? DISCOVER_IN_LIBRARY_LINK_TOOLTIP : PIN_TO_PLUGIN_TOOLTIP}
             disabled={controlsDisabled}
             onClick={onPinToPlugin}
-            icon={<Pin size={16} aria-hidden />}
+            icon={compact ? <Link size={16} aria-hidden /> : <Pin size={16} aria-hidden />}
           />
         ) : null}
-        {actions.showOpenInLibrary ? (
+        {showOpenInLibrary ? (
           <IconActionButton
             primary={!actions.showAddToLibrary && !actions.showAddToProfile}
             showLabel={!actions.showAddToLibrary && !actions.showAddToProfile}

@@ -178,6 +178,29 @@ describe("discover snapshot store", () => {
     ]);
   });
 
+  it("warm loads sources then fills marketplace catalogs", async () => {
+    let pluginFetches = 0;
+    const library = await seededLibrary([pluginPackage("focus")]);
+    const store = storeWith({
+      library,
+      fetchMarketplaces: async () => marketplacesResult(["acme", "tools"]),
+      fetchMarketplacePlugins: async (_baseUrl, _token, name) => {
+        pluginFetches += 1;
+        return pluginsResult(name, `${name}-plugin`);
+      },
+    });
+
+    await store.warm();
+
+    expect(pluginFetches).toBe(2);
+    expect(store.getState().marketplaceHits["mkt:acme"]?.plugins[0]?.name).toBe(
+      "acme-plugin",
+    );
+    expect(store.getState().marketplaceHits["mkt:tools"]?.plugins[0]?.name).toBe(
+      "tools-plugin",
+    );
+  });
+
   it("loadFillIn is the only method that fetches marketplace plugins", async () => {
     let pluginFetches = 0;
     const library = await seededLibrary([pluginPackage("focus")]);

@@ -186,6 +186,74 @@ describe("marketplace-catalog", () => {
     ]);
   });
 
+  it("lists from the stored catalog index without walking plugin roots again", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-home-"));
+    const repo = mkdtempSync(join(tmpdir(), "ht-mkt-index-"));
+    mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
+    mkdirSync(join(repo, "plugins", "notes", "skills", "summarize"), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(repo, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "notes-market",
+        plugins: [{ name: "notes", source: "./plugins/notes" }],
+      }),
+    );
+    writeFileSync(
+      join(repo, "plugins", "notes", "skills", "summarize", "SKILL.md"),
+      "---\nname: summarize\ndescription: First summary.\n---\n\n# Summarize\n",
+    );
+    spawnSync("git", ["init"], { cwd: repo });
+    spawnSync("git", ["add", "."], { cwd: repo });
+    spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "init"], {
+      cwd: repo,
+    });
+    spawnSync("git", ["branch", "-M", "main"], { cwd: repo });
+    addMarketplace(home, {
+      name: "notes-market",
+      url: repo,
+      platforms: ["claude-code"],
+    });
+    refreshMarketplaceCatalog(home, { name: "notes-market", force: true });
+
+    const first = listCatalogPlugins(home, { name: "notes-market" });
+    expect(first[0]?.contents).toEqual([
+      expect.objectContaining({ type: "skill", name: "summarize" }),
+    ]);
+
+    writeFileSync(
+      join(repo, "plugins", "notes", "skills", "summarize", "SKILL.md"),
+      "---\nname: summarize\ndescription: Changed on disk.\n---\n\n# Summarize\n",
+    );
+    mkdirSync(join(home, "cache", "marketplaces", "notes-market", "plugins", "notes", "skills", "summarize"), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(
+        home,
+        "cache",
+        "marketplaces",
+        "notes-market",
+        "plugins",
+        "notes",
+        "skills",
+        "summarize",
+        "SKILL.md",
+      ),
+      "---\nname: summarize\ndescription: Changed in cache.\n---\n\n# Summarize\n",
+    );
+
+    const second = listCatalogPlugins(home, { name: "notes-market" });
+    expect(second[0]?.contents).toEqual([
+      expect.objectContaining({
+        type: "skill",
+        name: "summarize",
+        description: "First summary.",
+      }),
+    ]);
+  });
+
   it("uses registry name for plugin refs when manifest name differs", () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo("acme-plugins");
