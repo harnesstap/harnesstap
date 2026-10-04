@@ -55,12 +55,21 @@ export interface HostPluginCacheVersion {
   manifest_version: string | null;
   current: boolean;
   advertised: boolean;
+  git_ref: string | null;
 }
 
 export interface HostPluginVersionInfo {
   current_version: string | null;
   advertised_version: string | null;
   available_versions: HostPluginCacheVersion[];
+}
+
+function gitRefForVersion(
+  snapshot: { git_refs: Record<string, string> } | null,
+  version: string,
+): string | null {
+  const value = snapshot?.git_refs[version]?.trim();
+  return value ? value : null;
 }
 
 export function isCacheVersionDirectoryName(name: string): boolean {
@@ -317,6 +326,7 @@ export function listHostPluginVersions(
       manifest_version: row.manifest_version,
       current: row.version === current_version,
       advertised: advertised_version === row.version,
+      git_ref: gitRefForVersion(snapshot, row.version),
     });
   }
   if (
@@ -333,6 +343,7 @@ export function listHostPluginVersions(
         manifest.version !== "unknown" ? manifest.version : null,
       current: true,
       advertised: advertised_version === current_version,
+      git_ref: gitRefForVersion(snapshot, current_version),
     });
   }
 
@@ -350,6 +361,7 @@ export function listHostPluginVersions(
       manifest_version: null,
       current: version === current_version,
       advertised: advertised_version === version,
+      git_ref: gitRefForVersion(snapshot, version),
     });
   }
 
@@ -363,12 +375,14 @@ export function listHostPluginVersions(
           manifest_version: null,
           current: version === current_version,
           advertised: advertised_version === version,
+          git_ref: gitRefForVersion(snapshot, version),
         };
       }
       return {
         ...row,
         current: version === current_version,
         advertised: advertised_version === version,
+        git_ref: gitRefForVersion(snapshot, version),
       };
     },
   );

@@ -29,7 +29,10 @@ import { fetchPluginOriginCheck, type PluginOriginCheckRow } from "../lib/api/pl
 import { workspaceBackEnabled, WORKSPACE_BACK_LABEL } from "../lib/screen-history";
 import { useRegisterCommands } from "../state/command-registry";
 import { discoverSnapshotStore } from "../state/discover-snapshot-store";
-import { useLibrarySnapshotStore } from "../state/library-snapshot-store";
+import {
+  librarySnapshotStore,
+  useLibrarySnapshotStore,
+} from "../state/library-snapshot-store";
 import {
   popSourcesPane,
   sourcesEscapeAction,
@@ -58,8 +61,11 @@ import {
   type SourcesHitGroup,
 } from "../lib/sources-search";
 import {
+  discoverAttachTarget,
   sourcesAttachmentAdd,
   sourcesHitActions,
+  type DiscoverAttachTarget,
+  type DiscoverLibraryRow,
   type SourcesInstallState,
 } from "../lib/sources-record-actions";
 import {
@@ -192,6 +198,13 @@ export interface SourcesWorkspaceProps {
   onSuccess?: (message: string) => void;
   onSignIn?: () => void;
   onOpenInLibrary?: (selector: string) => void;
+  currentProfileName?: string | null;
+  onAddToProfileAndApply?: (item: {
+    kind: "plugin" | "resource";
+    id: string;
+    name: string;
+    type: string;
+  }) => Promise<void>;
   cloudAuthenticated?: boolean;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
@@ -206,6 +219,8 @@ export function SourcesWorkspace({
   onSuccess,
   onSignIn,
   onOpenInLibrary,
+  currentProfileName = null,
+  onAddToProfileAndApply,
   cloudAuthenticated = false,
   canWorkspaceBack = false,
   onWorkspaceBack,
@@ -291,6 +306,44 @@ export function SourcesWorkspace({
     ];
   }, [createdHeads, snapshot.localHeads]);
   const localResources = snapshot.localResources;
+  const attachLibraryRows = useMemo(() => {
+    const rows: DiscoverLibraryRow[] = [];
+    const seen = new Set<string>();
+    const push = (row: DiscoverLibraryRow) => {
+      if (!row.id || seen.has(row.id)) {
+        return;
+      }
+      seen.add(row.id);
+      rows.push(row);
+    };
+    for (const entry of libraryFull ?? libraryPeek ?? []) {
+      push({
+        id: entry.id,
+        name: entry.name,
+        type: entry.type,
+        namespace: entry.namespace,
+        listKind: entry.listKind,
+      });
+    }
+    for (const head of localHeads) {
+      push({
+        id: head.id,
+        name: head.name,
+        type: "plugin",
+        listKind: "plugin-package",
+      });
+    }
+    for (const resource of localResources) {
+      push({
+        id: resource.id,
+        name: resource.name,
+        type: resource.type,
+        namespace: resource.namespace,
+        listKind: "resource",
+      });
+    }
+    return rows;
+  }, [libraryFull, libraryPeek, localHeads, localResources]);
   const localError = snapshot.localError;
   const marketplaceHits = snapshot.marketplaceHits;
   const [cloudPlugins, setCloudPlugins] = useState<CatalogPluginSearchHit[]>(
@@ -1050,7 +1103,9 @@ export function SourcesWorkspace({
     setActionError(errorMessage(installError, fallback));
   };
 
-  const runAddToLibrary = async (hit: SourcesHit): Promise<string | null> => {
+  const runAddToLibrary = async (
+    hit: SourcesHit,
+  ): Promise<{ name: string; id: string } | null> => {
     if (!baseUrl) {
       return null;
     }
@@ -1068,7 +1123,11 @@ export function SourcesWorkspace({
       });
       setInstallByHit((current) => ({
         ...current,
-        [hit.id]: { ...current[hit.id], pulledName: result.plugin.name },
+        [hit.id]: {
+          ...current[hit.id],
+          pulledName: result.plugin.name,
+          addedId: result.plugin.id,
+        },
       }));
       setPulledCloudKeys((current) => {
         const next = new Set(current);
@@ -1077,7 +1136,7 @@ export function SourcesWorkspace({
       });
       setPullCollision(false);
       setPullAsName("");
-      return result.plugin.name;
+      return result.plugin;
     }
     if (hit.identity.marketplace) {
       const marketplace = hit.identity.marketplace;
@@ -1088,7 +1147,11 @@ export function SourcesWorkspace({
       });
       setInstallByHit((current) => ({
         ...current,
-        [hit.id]: { ...current[hit.id], addedName: result.plugin.name },
+        [hit.id]: {
+          ...current[hit.id],
+          addedName: result.plugin.name,
+          addedId: result.plugin.id,
+        },
       }));
       setAddedMarketplaceKeys((current) => {
         const next = new Set(current);
@@ -1097,9 +1160,56 @@ export function SourcesWorkspace({
       });
       setPullCollision(false);
       setPullAsName("");
-      return result.plugin.name;
+      return result.plugin;
     }
     setActionError("This item is already in your Library.");
+    return null;
+  };
+
+  const resolveAttachTarget = async (
+    hit: SourcesHit,
+  ): Promise<DiscoverAttachTarget | null> => {
+    const fromState = discoverAttachTarget(
+      hit,
+      installByHit[hit.id] ?? {},
+      attachLibraryRows,
+    );
+    if (fromState) {
+      return fromState;
+    }
+    if (!baseUrl) {
+      return null;
+    }
+    const actions = sourcesHitActions(hit, installByHit[hit.id]);
+    const librarySelector = actions.openInLibrarySelector;
+    if (librarySelector && hit.identity.localSelector) {
+      const detail = await fetchLibraryResourceDetail(
+        baseUrl,
+        token,
+        librarySelector,
+      );
+      return { kind: "resource", id: detail.id, name: detail.name };
+    }
+    if (librarySelector) {
+      const detail = await fetchLibraryPluginDetail(
+        baseUrl,
+        token,
+        librarySelector,
+      );
+      return {
+        kind: "plugin",
+        id: detail.plugin.id,
+        name: detail.plugin.name,
+      };
+    }
+    if (hit.identity.marketplace || hit.identity.cloud) {
+      const added = await runAddToLibrary(hit);
+      if (added) {
+        return { kind: "plugin", id: added.id, name: added.name };
+      }
+      return null;
+    }
+    setActionError("Could not add this item to the current profile.");
     return null;
   };
 
@@ -1111,13 +1221,43 @@ export function SourcesWorkspace({
     setActionError(null);
     setActionAuthRequired(false);
     try {
-      const name = await runAddToLibrary(hit);
-      if (name) {
-        onSuccess?.(`Added ${name} to Library.`);
+      const added = await runAddToLibrary(hit);
+      if (added) {
+        onSuccess?.(`Added ${added.name} to Library.`);
+        void librarySnapshotStore.invalidate();
         refresh();
       }
     } catch (addError: unknown) {
       applyInstallError(addError, "Could not add to Library.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onAddToProfile = async (hit: SourcesHit) => {
+    if (!baseUrl || busy) {
+      return;
+    }
+    if (!currentProfileName || !onAddToProfileAndApply) {
+      setActionError("No profile selected.");
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    setActionAuthRequired(false);
+    try {
+      const target = await resolveAttachTarget(hit);
+      if (!target) {
+        return;
+      }
+      await onAddToProfileAndApply({
+        ...target,
+        type: target.kind === "plugin" ? "plugin" : hit.typeLabel,
+      });
+      void librarySnapshotStore.invalidate();
+      refresh();
+    } catch (addError: unknown) {
+      applyInstallError(addError, "Could not add to the current profile.");
     } finally {
       setBusy(false);
     }
@@ -1178,9 +1318,12 @@ export function SourcesWorkspace({
       authRequired: actionAuthRequired,
       collision: pullCollision,
       asName: pullAsName,
+      hitName: hit.name,
+      currentProfileName,
       onAsNameChange: setPullAsName,
       onSignIn,
       onAddToLibrary: () => void onAddToLibrary(hit),
+      onAddToProfile: () => void onAddToProfile(hit),
       onPinToPlugin: () => {
         resetActionState();
         setPinError(null);

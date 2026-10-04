@@ -13,7 +13,10 @@ import {
   resolvedVersionFromInstallRoot,
   retargetHostPluginVersion,
 } from "../../src/services/host-plugin-versions.ts";
-import { parseMarketplacePluginSource } from "../../src/services/host-plugin-source.ts";
+import {
+  parseMarketplacePluginSource,
+  writeHostPluginSourceSnapshot,
+} from "../../src/services/host-plugin-source.ts";
 import {
   resolveInstallRoot,
   switchHostPluginCacheVersion,
@@ -276,6 +279,49 @@ describe("host plugin cache versions", () => {
       expect(info.available_versions.find((row) => row.version === "6.1.1")?.path).toBe(
         "",
       );
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+
+  it("exposes the git branch name for versions from local and remote git sources", async () => {
+    const ctx = await createInitializedTestContext("host-plugin-versions-branch");
+    try {
+      writePluginCache(ctx.homeDir, "team-git", "demo", "1.0.0");
+      writeInstalled(
+        ctx.homeDir,
+        "demo@team-git",
+        "cache/team-git/demo/1.0.0",
+        "1.0.0",
+      );
+      writeHostPluginSourceSnapshot(
+        "demo@team-git",
+        {
+          source_url: "https://github.com/acme/plugins.git",
+          source_ref: "main",
+          advertised_version: "2.0.0",
+          git_refs: {
+            "1.0.0": "main",
+            "1.1.0-dev": "develop",
+            "2.0.0": "v2.0.0",
+          },
+          fetched_at: "2026-10-03T00:00:00.000Z",
+        },
+        join(ctx.homeDir, ".harnesstap"),
+      );
+
+      const info = listHostPluginVersions("demo@team-git", ctx.homeDir);
+      expect(info.available_versions.find((row) => row.version === "1.0.0")).toMatchObject({
+        git_ref: "main",
+      });
+      expect(
+        info.available_versions.find((row) => row.version === "1.1.0-dev"),
+      ).toMatchObject({
+        git_ref: "develop",
+      });
+      expect(info.available_versions.find((row) => row.version === "2.0.0")).toMatchObject({
+        git_ref: "v2.0.0",
+      });
     } finally {
       await ctx.cleanup();
     }

@@ -947,7 +947,10 @@ export function useScopeController(input: ScopeControllerInput) {
   }, [activatingResources, activeProfile, runSwitch, selectedProfile]);
 
   const handleAttachLibraryItem = useCallback(
-    async (item: { kind: "plugin" | "resource"; id: string; name: string; type: string }) => {
+    async (
+      item: { kind: "plugin" | "resource"; id: string; name: string; type: string },
+      options?: { apply?: "auto" | "always" },
+    ) => {
       if (!client || !selectedProfile) {
         return;
       }
@@ -960,6 +963,13 @@ export function useScopeController(input: ScopeControllerInput) {
           item.kind === "plugin" ? { pluginId: item.id } : { resourceId: item.id },
         );
         await refreshProfilePreview();
+        if (options?.apply === "always") {
+          await runSwitch(true, selectedProfile, {
+            progressLabel: "Applying to match profile",
+            successToast: `Added ${item.name} to ${selectedProfile} and applied`,
+          });
+          return;
+        }
         await maybeAutoReapplyAfterMutation({
           profileName: selectedProfile,
           affectsApply: true,
@@ -970,7 +980,7 @@ export function useScopeController(input: ScopeControllerInput) {
         throw error;
       }
     },
-    [client, maybeAutoReapplyAfterMutation, refreshProfilePreview, selectedProfile],
+    [client, maybeAutoReapplyAfterMutation, refreshProfilePreview, runSwitch, selectedProfile],
   );
 
   const handleDiscardResource = useCallback(
@@ -1350,10 +1360,10 @@ export function useScopeController(input: ScopeControllerInput) {
       }
       toast({
         tone: "success",
-        title: `Cut version for ${cutRows.map((row) => row.name).join(", ")}`,
+        title: `Tagged version for ${cutRows.map((row) => row.name).join(", ")}`,
       });
     } catch (error) {
-      setSwitchError(messageOf(error, "Could not cut profile version"));
+      setSwitchError(messageOf(error, "Could not tag profile version"));
     } finally {
       setCutBusy(false);
     }

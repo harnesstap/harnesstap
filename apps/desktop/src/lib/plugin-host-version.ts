@@ -42,10 +42,34 @@ export function formatHostPluginVersionId(version: string): string {
   return trimmed;
 }
 
+export function hostPluginVersionBranchName(
+  version: string,
+  gitRef?: string | null,
+): string | null {
+  const trimmed = gitRef?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed === version || trimmed === `v${version}`) {
+    return null;
+  }
+  if (isGitShaVersion(trimmed)) {
+    return null;
+  }
+  return trimmed;
+}
+
 export function formatHostPluginVersionOption(
-  row: Pick<PluginHostCacheVersion, "version" | "manifest_version" | "advertised">,
+  row: Pick<
+    PluginHostCacheVersion,
+    "version" | "manifest_version" | "advertised" | "git_ref"
+  >,
 ): string {
   const notes: string[] = [hostPluginVersionKind(row.version)];
+  const branch = hostPluginVersionBranchName(row.version, row.git_ref);
+  if (branch) {
+    notes.push(branch);
+  }
   if (row.advertised) {
     notes.push("marketplace");
   }
@@ -66,7 +90,12 @@ export function hostPluginVersionHint(
 }
 
 export function hostPluginVersionOptions(
-  rows: Array<Pick<PluginHostCacheVersion, "version" | "manifest_version" | "advertised">>,
+  rows: Array<
+    Pick<
+      PluginHostCacheVersion,
+      "version" | "manifest_version" | "advertised" | "git_ref"
+    >
+  >,
 ): Array<{ value: string; label: string; title?: string }> {
   return rows.map((row) => {
     const label = formatHostPluginVersionOption(row);

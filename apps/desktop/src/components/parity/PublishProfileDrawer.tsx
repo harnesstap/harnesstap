@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useState } from "react";
-import { LogIn, Scissors, Upload, X } from "lucide-react";
+import { LogIn, Tag, Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { AgentApiError } from "../../lib/api/http";
@@ -333,7 +333,7 @@ export function PublishProfileDrawer({
                 ))}
                 {dirty ? (
                   <div className="banner error" role="alert">
-                    This profile has unpublished edits. Cut a version before publishing.
+                    This profile has unpublished edits. Tag a version before publishing.
                   </div>
                 ) : null}
                 {error ? (
@@ -419,8 +419,8 @@ export function PublishProfileDrawer({
                   onClick={() => onRequestCut?.(profileName, profileVersion)}
                   disabled={disabled || busy}
                 >
-                  <Scissors size={16} aria-hidden />
-                  Cut version
+                  <Tag size={16} aria-hidden />
+                  Tag version
                 </button>
               ) : null}
               {!authRequired ? (

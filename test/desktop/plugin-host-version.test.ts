@@ -57,6 +57,42 @@ describe("plugin host version labels", () => {
     ).toBe("6fd450765978 (git, marketplace)");
   });
 
+  it("includes the git branch name when selecting a version from a git source", () => {
+    const sha = "6fd4507659784c351abbd2bc264c7162cfd386dc";
+    expect(
+      formatHostPluginVersionOption({
+        version: "1.0.0",
+        manifest_version: "1.0.0",
+        advertised: false,
+        git_ref: "main",
+      }),
+    ).toBe("1.0.0 (release, main)");
+    expect(
+      formatHostPluginVersionOption({
+        version: "1.1.0-dev",
+        manifest_version: "1.1.0-dev",
+        advertised: false,
+        git_ref: "develop",
+      }),
+    ).toBe("1.1.0-dev (release, develop)");
+    expect(
+      formatHostPluginVersionOption({
+        version: sha,
+        manifest_version: null,
+        advertised: false,
+        git_ref: "main",
+      }),
+    ).toBe("6fd450765978 (git, main)");
+    expect(
+      formatHostPluginVersionOption({
+        version: "2.0.0",
+        manifest_version: "2.0.0",
+        advertised: true,
+        git_ref: "v2.0.0",
+      }),
+    ).toBe("2.0.0 (release, marketplace)");
+  });
+
   it("hints when the marketplace catalog disagrees with the install", () => {
     expect(hostPluginVersionHint("6.1.1", "5.1.0")).toBe("Marketplace lists 6.1.1.");
     expect(hostPluginVersionHint("5.1.0", "5.1.0")).toBeNull();
@@ -82,13 +118,18 @@ describe("plugin host version labels", () => {
     expect(
       hostPluginVersionOptions([
         { version: "6.3.0", manifest_version: "6.3.0", advertised: true },
-        { version: "5.1.0", manifest_version: "5.1.0", advertised: false },
-        { version: sha, manifest_version: null, advertised: false },
+        {
+          version: "5.1.0",
+          manifest_version: "5.1.0",
+          advertised: false,
+          git_ref: "main",
+        },
+        { version: sha, manifest_version: null, advertised: false, git_ref: "develop" },
       ]),
     ).toEqual([
       { value: "6.3.0", label: "6.3.0 (release, marketplace)" },
-      { value: "5.1.0", label: "5.1.0 (release)" },
-      { value: sha, label: "6fd450765978 (git)", title: sha },
+      { value: "5.1.0", label: "5.1.0 (release, main)" },
+      { value: sha, label: "6fd450765978 (git, develop)", title: sha },
     ]);
   });
 

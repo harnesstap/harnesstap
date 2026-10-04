@@ -272,6 +272,10 @@ export function App() {
             canWorkspaceBack={nav.hasHistory}
             onWorkspaceBack={nav.back}
             onOpenInLibrary={openInLibrary}
+            currentProfileName={attachProfileName}
+            onAddToProfileAndApply={(item) =>
+              ctrl.handleAttachLibraryItem(item, { apply: "always" })
+            }
             onSuccess={onSuccessToast}
           />
         );

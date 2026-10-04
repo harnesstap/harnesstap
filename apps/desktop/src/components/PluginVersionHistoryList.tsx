@@ -65,7 +65,7 @@ export function PluginVersionHistoryList({
       </ul>
       {onlyHead ? (
         <p className="muted">
-          No frozen versions yet. Cut version to freeze the current head.
+          No frozen versions yet. Tag a version to freeze the current head.
         </p>
       ) : null}
     </div>

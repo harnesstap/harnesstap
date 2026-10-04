@@ -78,7 +78,7 @@
 }
 
 .sources-hit .sources-record-action-cluster {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .sources-hit .resource-row-trailing {

@@ -1,25 +1,26 @@
 import semver from "semver";
+import { isProfilePlugin } from "../constants/profile.js";
 import type { CatalogPlugin } from "../services/catalog-types.js";
 import { formatPluginVersionLabel } from "../services/plugin-versioning.js";
-import { isProfilePlugin } from "../constants/profile.js";
 import type { Plugin } from "../types.js";
-import * as format from "./format.js";
 import {
   catalogPluginKey,
   formatCatalogScopePath,
   formatCatalogSelectionLabel,
 } from "./catalog-list-render.js";
-import { formatVersionWithDrift } from "./version-render.js";
+import * as format from "./format.js";
+import { matchesListSearchQuery, parseListSearchQuery } from "./list-search.js";
 import {
   computeMaxVisibleTableRows,
   renderFoldedHintLine,
   resolveSectionViewport,
-  VIEWPORT_CHROME_LINES,
   type SectionViewport,
+  VIEWPORT_CHROME_LINES,
 } from "./list-viewport.js";
-import { matchesListSearchQuery, parseListSearchQuery } from "./list-search.js";
-import { renderTable, type Column } from "./table.js";
+import { formatPluginOriginDisplay } from "./plugin-origin-display.js";
+import { type Column, renderTable } from "./table.js";
 import { icons, terminalColumns, theme } from "./theme.js";
+import { formatVersionWithDrift } from "./version-render.js";
 
 export function formatLocalPluginListName(
   plugin: Pick<Plugin, "name" | "tags">,
@@ -383,7 +384,10 @@ function renderLocalSectionTable(
     name: formatLocalPluginListName(row.plugin, {
       selected: row.plugin.id === activePluginId,
     }),
-    origin: row.plugin.origin || "authored",
+    origin: formatPluginOriginDisplay(
+      row.plugin.origin || "authored",
+      row.plugin.origin_locator,
+    ),
     version: formatPluginVersionLabel(row.plugin.version, row.plugin.dirty),
     ...(opts.profileMode
       ? {

@@ -26,7 +26,8 @@ describe("ResourcesPanel library snapshot", () => {
     expect(panelSource).toContain("LIBRARY_SEARCH_DEBOUNCE_MS = 250");
     expect(panelSource).toContain("librarySnapshotStore.search");
     expect(panelSource).toContain("new AbortController()");
-    expect(panelSource).toContain(
+    expect(panelSource).toContain("type: null");
+    expect(panelSource).not.toContain(
       "type: typeTab === ALL_RESOURCE_TYPE_TAB ? null : typeTab",
     );
   });

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   discoverActionHelper,
   discoverAddToProfileLabel,
+  discoverAddToProfileTooltip,
   discoverAttachTarget,
   sourcesAttachmentAdd,
   sourcesHitActions,
@@ -134,11 +135,14 @@ describe("sourcesHitActions", () => {
 });
 
 describe("discover add to profile", () => {
-  test("labels Add to the current profile and apply", () => {
-    expect(discoverAddToProfileLabel("work")).toBe("Add to work");
-    expect(discoverAddToProfileLabel(null)).toBe("Add to profile");
+  test("labels Add to my profile with a current-profile tooltip", () => {
+    expect(discoverAddToProfileLabel()).toBe("Add to my profile");
+    expect(discoverAddToProfileTooltip("demo", "work")).toBe(
+      "Add demo to current profile work",
+    );
+    expect(discoverAddToProfileTooltip("demo", null)).toBe("No profile selected");
     expect(discoverActionHelper("work")).toBe(
-      "Add copies it into your Library. Add to work attaches it and applies. Pin links it into one of your plugins.",
+      "Add copies it into your Library. Add to my profile attaches it and applies. Pin links it into one of your plugins.",
     );
   });
 

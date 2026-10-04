@@ -1,23 +1,64 @@
 import type { LibraryPluginAttachmentAdd } from "./api/library-plugins";
-import type { SourcesHit } from "./sources-search";
+import { nameMatchesMarketplacePlugin, type SourcesHit } from "./sources-search";
 
 export interface SourcesInstallState {
   pulledName?: string;
   addedName?: string;
+  addedId?: string;
   pinnedTargetName?: string;
 }
 
 export interface SourcesHitActions {
   showAddToLibrary: boolean;
+  showAddToProfile: boolean;
   showPinToPlugin: boolean;
   showOpenInLibrary: boolean;
   openInLibrarySelector: string | null;
+}
+
+export type DiscoverAttachKind = "plugin" | "resource";
+
+export interface DiscoverAttachTarget {
+  kind: DiscoverAttachKind;
+  id: string;
+  name: string;
+}
+
+export interface DiscoverLibraryRow {
+  id: string;
+  name: string;
+  type: string;
+  namespace?: string | null;
+  listKind?: string;
 }
 
 export const DISCOVER_ACTION_HELPER =
   "Add copies it into your Library. Pin links it into one of your plugins.";
 
 export const PIN_TO_PLUGIN_TOOLTIP = "Link into an authored plugin";
+
+export const DISCOVER_ADD_TO_PROFILE_LABEL = "Add to my profile";
+
+export function discoverAddToProfileLabel(): string {
+  return DISCOVER_ADD_TO_PROFILE_LABEL;
+}
+
+export function discoverAddToProfileTooltip(
+  pluginName: string,
+  profileName: string | null,
+): string {
+  if (!profileName) {
+    return "No profile selected";
+  }
+  return `Add ${pluginName} to current profile ${profileName}`;
+}
+
+export function discoverActionHelper(profileName: string | null): string {
+  if (!profileName) {
+    return DISCOVER_ACTION_HELPER;
+  }
+  return "Add copies it into your Library. Add to my profile attaches it and applies. Pin links it into one of your plugins.";
+}
 
 export function cloudAttachSelector(hit: SourcesHit): string | null {
   const identity = hit.identity.cloud;
@@ -57,6 +98,87 @@ function libraryNameFromState(state: SourcesInstallState): string | null {
   return state.addedName ?? state.pulledName ?? state.pinnedTargetName ?? null;
 }
 
+function isPluginPackageRow(row: DiscoverLibraryRow): boolean {
+  if (row.listKind === "plugin-package") {
+    return true;
+  }
+  if (row.listKind === "resource") {
+    return false;
+  }
+  return row.type === "plugin";
+}
+
+function findPluginPackage(
+  rows: DiscoverLibraryRow[],
+  matches: (row: DiscoverLibraryRow) => boolean,
+): DiscoverAttachTarget | null {
+  const row = rows.find((entry) => isPluginPackageRow(entry) && matches(entry));
+  if (!row) {
+    return null;
+  }
+  return { kind: "plugin", id: row.id, name: row.name };
+}
+
+function resourceSelector(row: DiscoverLibraryRow): string {
+  return row.namespace
+    ? `${row.type}:${row.name}@${row.namespace}`
+    : `${row.type}:${row.name}`;
+}
+
+export function discoverAttachTarget(
+  hit: SourcesHit,
+  state: SourcesInstallState,
+  libraryRows: DiscoverLibraryRow[],
+): DiscoverAttachTarget | null {
+  const addedName = libraryNameFromState(state);
+  if (state.addedId && addedName) {
+    return { kind: "plugin", id: state.addedId, name: addedName };
+  }
+
+  if (hit.identity.marketplace) {
+    const marketplace = hit.identity.marketplace;
+    return findPluginPackage(libraryRows, (row) =>
+      nameMatchesMarketplacePlugin(
+        row.name,
+        marketplace.plugin,
+        marketplace.marketplace,
+      ),
+    );
+  }
+
+  if (hit.identity.cloud) {
+    const cloudName = hit.identity.cloud.name;
+    return findPluginPackage(
+      libraryRows,
+      (row) => row.name === cloudName || row.name === addedName,
+    );
+  }
+
+  if (hit.identity.localPluginName) {
+    const localName = hit.identity.localPluginName;
+    return findPluginPackage(libraryRows, (row) => row.name === localName);
+  }
+
+  if (hit.identity.localSelector) {
+    const selector = hit.identity.localSelector;
+    const row = libraryRows.find(
+      (entry) =>
+        entry.listKind !== "plugin-package"
+        && resourceSelector(entry) === selector,
+    );
+    if (!row) {
+      return null;
+    }
+    return { kind: "resource", id: row.id, name: row.name };
+  }
+
+  return null;
+}
+
+function withAddToProfile(actions: Omit<SourcesHitActions, "showAddToProfile">): SourcesHitActions {
+  return { ...actions, showAddToProfile: true };
+}
+
 export function sourcesHitActions(
   hit: SourcesHit,
   state: SourcesInstallState = {},
@@ -64,12 +186,12 @@ export function sourcesHitActions(
   switch (hit.kind) {
     case "standalone": {
       const selector = hit.identity.localSelector ?? null;
-      return {
+      return withAddToProfile({
         showAddToLibrary: false,
         showPinToPlugin: true,
         showOpenInLibrary: Boolean(selector),
         openInLibrarySelector: selector,
-      };
+      });
     }
     case "plugin":
       break;
@@ -82,31 +204,31 @@ export function sourcesHitActions(
   if (hit.identity.marketplace) {
     const added = libraryNameFromState(state);
     const inLibrary = hit.presence === "in_library" || Boolean(added);
-    return {
+    return withAddToProfile({
       showAddToLibrary: !inLibrary,
       showPinToPlugin: true,
       showOpenInLibrary: inLibrary,
       openInLibrarySelector: added ?? hit.identity.marketplace.plugin,
-    };
+    });
   }
 
   if (hit.identity.cloud) {
     const added = libraryNameFromState(state);
     const inLibrary = hit.presence === "in_library" || Boolean(added);
     const openSelector = added ?? (inLibrary ? hit.identity.cloud.name : null);
-    return {
+    return withAddToProfile({
       showAddToLibrary: !inLibrary,
       showPinToPlugin: true,
       showOpenInLibrary: Boolean(openSelector),
       openInLibrarySelector: openSelector,
-    };
+    });
   }
 
   const localName = hit.identity.localPluginName ?? null;
-  return {
+  return withAddToProfile({
     showAddToLibrary: false,
     showPinToPlugin: true,
     showOpenInLibrary: Boolean(localName),
     openInLibrarySelector: localName,
-  };
+  });
 }

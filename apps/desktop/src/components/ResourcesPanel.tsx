@@ -80,14 +80,13 @@ import {
   applyLibraryResourceFilters,
   defaultResourceFilterState,
   isResourceFilterStateActive,
+  libraryTypeTabCounts,
   resetResourceFilterState,
   type ResourceFilterState,
 } from "../lib/resource-filters";
 import { duplicatePluginNames } from "../lib/resource-display";
 import { resourceDisplayName } from "../lib/resource-search";
 import {
-  ALL_RESOURCE_TYPE_TAB,
-  countResourceTypeTabs,
   resolveResourceTypeTab,
   resourceTypeTabLabel,
 } from "../lib/resource-type-tabs";
@@ -110,16 +109,6 @@ function errorMessage(error: unknown, fallback: string): string {
     return error.message;
   }
   return fallback;
-}
-
-function typeCountsToMap(counts: Record<string, number>): Map<string, number> {
-  const types: string[] = [];
-  for (const [type, count] of Object.entries(counts)) {
-    for (let i = 0; i < count; i += 1) {
-      types.push(type);
-    }
-  }
-  return countResourceTypeTabs(types);
 }
 
 function overlayOriginOutdated(
@@ -284,9 +273,7 @@ export function ResourcesPanel({
   const {
     peek,
     full,
-    typeCounts: storeTypeCounts,
     searchRows,
-    searchTypeCounts,
     status,
     error,
     searchError,
@@ -294,9 +281,7 @@ export function ResourcesPanel({
   } = useLibrarySnapshotStore((state) => ({
     peek: state.peek,
     full: state.full,
-    typeCounts: state.typeCounts,
     searchRows: state.searchRows,
-    searchTypeCounts: state.searchTypeCounts,
     status: state.status,
     error: state.error,
     searchError: state.searchError,
@@ -463,12 +448,12 @@ export function ResourcesPanel({
 
   const typeCounts = useMemo(
     () =>
-      typeCountsToMap(
-        searchQuery.length > 0 && searchTypeCounts !== null
-          ? searchTypeCounts
-          : storeTypeCounts,
-      ),
-    [searchQuery, searchTypeCounts, storeTypeCounts],
+      libraryTypeTabCounts(entries, {
+        ...filterState,
+        search: "",
+        type: null,
+      }),
+    [entries, filterState],
   );
   const typeTab = resolveResourceTypeTab(filterState.type, typeCounts);
 
@@ -485,7 +470,7 @@ export function ResourcesPanel({
     const timer = window.setTimeout(() => {
       void librarySnapshotStore.search({
         q,
-        type: typeTab === ALL_RESOURCE_TYPE_TAB ? null : typeTab,
+        type: null,
         signal: controller.signal,
       });
     }, LIBRARY_SEARCH_DEBOUNCE_MS);
@@ -493,7 +478,7 @@ export function ResourcesPanel({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [baseUrl, filterState.search, typeTab]);
+  }, [baseUrl, filterState.search]);
 
   const filteredEntries = useMemo(
     () =>
@@ -998,84 +983,91 @@ export function ResourcesPanel({
     if (showSkeleton) {
       return <SkeletonRow count={8} height={40} />;
     }
-    if (listRows.length === 0) {
-      if (libraryEmpty) {
-        return (
-          <EmptyState
-            title="Nothing in the library yet"
-            body="Import items or create a resource."
-            action={{
-              label: "Create resource",
-              primary: true,
-              disabled: disabled || !baseUrl,
-              onClick: () => setCreateModalOpen(true),
-              icon: <Plus size={16} aria-hidden />,
-            }}
-          >
-            <IconActionButton
-              label="Import"
-              showLabel
-              disabled={disabled || !baseUrl}
-              onClick={() => setImportOpen(true)}
-              icon={<FolderDown size={16} aria-hidden />}
-            />
-          </EmptyState>
-        );
-      }
-      if (isResourceFilterStateActive(filterState)) {
-        return (
-          <EmptyState
-            title={noResultsTitle(filterState.search)}
-            body="Clear filters to see everything."
-            action={{
-              label: "Clear filters",
-              onClick: () => applyFilterChange(resetResourceFilterState()),
-              icon: <FilterX size={16} aria-hidden />,
+    if (libraryEmpty) {
+      return (
+        <EmptyState
+          title="Nothing in the library yet"
+          body="Import items or create a resource."
+          action={{
+            label: "Create resource",
+            primary: true,
+            disabled: disabled || !baseUrl,
+            onClick: () => setCreateModalOpen(true),
+            icon: <Plus size={16} aria-hidden />,
+          }}
+        >
+          <IconActionButton
+            label="Import"
+            showLabel
+            disabled={disabled || !baseUrl}
+            onClick={() => setImportOpen(true)}
+            icon={<FolderDown size={16} aria-hidden />}
+          />
+        </EmptyState>
+      );
+    }
+    const typeTabs = libraryEditMode ? (
+      <div className="library-list-toolbar">
+        <span className="library-edit-check-slot">
+          <Checkbox
+            data-testid="library-select-all"
+            aria-label="Select all"
+            checked={selectAllState}
+            disabled={disabled || visibleRowIds.length === 0}
+            onCheckedChange={() => {
+              setSelectedIds((current) =>
+                toggleSelectAllVisible(visibleRowIds, current),
+              );
             }}
           />
+        </span>
+        <ResourceTypeTabs
+          counts={typeCounts}
+          value={typeTab}
+          disabled={disabled}
+          overflow="collapse"
+          onChange={(next) => applyFilterChange({ ...filterState, type: next })}
+        />
+      </div>
+    ) : (
+      <ResourceTypeTabs
+        counts={typeCounts}
+        value={typeTab}
+        disabled={disabled}
+        overflow="collapse"
+        onChange={(next) => applyFilterChange({ ...filterState, type: next })}
+      />
+    );
+    if (listRows.length === 0) {
+      if (isResourceFilterStateActive(filterState)) {
+        return (
+          <>
+            {typeTabs}
+            <EmptyState
+              title={noResultsTitle(filterState.search)}
+              body="Clear filters to see everything."
+              action={{
+                label: "Clear filters",
+                onClick: () => applyFilterChange(resetResourceFilterState()),
+                icon: <FilterX size={16} aria-hidden />,
+              }}
+            />
+          </>
         );
       }
       return (
-        <EmptyState
-          title="No resources to show"
-          body="Try another type tab."
-        />
+        <>
+          {typeTabs}
+          <EmptyState
+            title="No resources to show"
+            body="Try another type tab."
+          />
+        </>
       );
     }
     return (
       <>
-        {libraryEditMode ? (
-          <div className="library-list-toolbar">
-            <span className="library-edit-check-slot">
-              <Checkbox
-                data-testid="library-select-all"
-                aria-label="Select all"
-                checked={selectAllState}
-                disabled={disabled || visibleRowIds.length === 0}
-                onCheckedChange={() => {
-                  setSelectedIds((current) =>
-                    toggleSelectAllVisible(visibleRowIds, current),
-                  );
-                }}
-              />
-            </span>
-            <ResourceTypeTabs
-              counts={typeCounts}
-              value={typeTab}
-              disabled={disabled}
-              overflow="collapse"
-              onChange={(next) => applyFilterChange({ ...filterState, type: next })}
-            />
-          </div>
-        ) : (
-          <ResourceTypeTabs
-            counts={typeCounts}
-            value={typeTab}
-            disabled={disabled}
-            overflow="collapse"
-            onChange={(next) => applyFilterChange({ ...filterState, type: next })}
-          />
-        )}
+        {typeTabs}
         <LibraryResourceList
           rows={listRows}
           inUseIndex={inUseIndex}

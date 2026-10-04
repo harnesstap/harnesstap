@@ -79,6 +79,10 @@ const sourcesApiSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/lib/api/sources.ts"),
   "utf8",
 );
+const libraryPluginsApiSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/lib/api/library-plugins.ts"),
+  "utf8",
+);
 const sourcesSearchSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/lib/sources-search.ts"),
   "utf8",
@@ -286,9 +290,11 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain('data-testid="sources-workspace"');
   });
 
-  test("plugin-detail Pin plugin still exists", () => {
-    expect(pluginDetailSource).toContain("onPin={pinMarketplacePlugin}");
-    expect(compositionSource).toContain('label="Pin plugin"');
+  test("plugin-detail composition has no marketplace pin dropdowns", () => {
+    expect(pluginDetailSource).not.toContain("onPin={pinMarketplacePlugin}");
+    expect(pluginDetailSource).not.toContain("fetchMarketplacePlugins");
+    expect(compositionSource).not.toContain('label="Pin plugin"');
+    expect(compositionSource).not.toContain("Marketplace plugins");
   });
 
   test("Add marketplace picks a local git folder and lists tracked branches", () => {
@@ -471,6 +477,9 @@ describe("sources search list and preview", () => {
     expect(sourcesApiSource).not.toContain("/v1/profiles/cloud/pull");
     expect(workspaceSource).toContain("pullCatalogPlugin");
     expect(workspaceSource).toContain("addMarketplacePluginToLibrary");
+    expect(sourcesApiSource).toContain("importLibraryPluginFromMarketplace");
+    expect(libraryPluginsApiSource).toContain("/v1/library/plugins/import-marketplace");
+    expect(sourcesApiSource).not.toContain("createLibraryPlugin");
     expect(workspaceSource).not.toContain("/v1/profiles/cloud/pull");
     expect(pluginTreeSource).not.toContain("/v1/profiles/cloud/pull");
     expect(previewPaneSource).not.toContain("/v1/profiles/cloud/pull");
@@ -478,9 +487,15 @@ describe("sources search list and preview", () => {
 
   test("plugin tree and preview expose labeled Add to Library, pin, and Open in Library", () => {
     expect(recordActionsSource).toContain('label="Add to Library"');
-    expect(recordActionsSource).toContain("discoverAddToProfileLabel");
-    expect(recordActionsSource).toContain("onAddToProfile");
+    expect(recordActionsSource).toContain('label={discoverAddToProfileLabel()}');
+    expect(recordActionsSource).toContain("discoverAddToProfileTooltip");
     expect(recordActionsSource).toContain("showAddToProfile");
+    expect(recordActionsSource).toMatch(
+      /showAddToProfile \? \([\s\S]*?primary\b[\s\S]*?label=\{discoverAddToProfileLabel\(\)\}/,
+    );
+    expect(recordActionsSource).not.toMatch(
+      /showAddToLibrary \? \([\s\S]*?primary\b[\s\S]*?label="Add to Library"/,
+    );
     expect(recordActionsSource).toContain('label="Pin to plugin"');
     expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
@@ -632,8 +647,8 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Connect catalog");
     expect(designSource).toContain("--icon-action-size-lg");
     expect(designSource).toContain("Add to Library");
-    expect(designSource).toContain("Add to {current profile}");
-    expect(designSource).toContain("attaches it and applies");
+    expect(designSource).toContain("Add to my profile");
+    expect(designSource).toContain("Add {plugin} to current profile {profile}");
     expect(designSource).toContain("Pin to plugin");
     expect(designSource).toContain("Create plugin");
     expect(designSource).toContain("No results for");

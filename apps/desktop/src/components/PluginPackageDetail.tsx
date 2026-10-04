@@ -17,7 +17,6 @@ import {
   Pencil,
   Play,
   Plus,
-  Scissors,
   Stethoscope,
   Tag,
   TextQuote,
@@ -32,8 +31,6 @@ import {
   fetchEnvironments,
   fetchLibraryPlugins,
   fetchLibraryResources,
-  fetchMarketplacePlugins,
-  fetchMarketplaces,
 } from "../lib/agent-client";
 import {
   compositionExcludeKeys,
@@ -67,12 +64,11 @@ import {
   type PluginDetailMode,
   type PluginPackageAction,
 } from "../lib/plugin-history";
+import { formatPluginOriginDisplay } from "../lib/resource-display";
 import type {
-  CatalogPlugin,
   LibraryEnvironment,
   LibraryPlugin,
   LibraryResource,
-  PluginMarketplaceEntry,
 } from "../lib/types";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -125,7 +121,7 @@ type PluginEditingField =
 const APPLY_TOOLTIP = "Apply plugin graph";
 const UPDATE_TOOLTIP = "Update from origin";
 const DELETE_TOOLTIP = "Remove from library";
-const CUT_TOOLTIP = "Cut a new version";
+const CUT_TOOLTIP = "Tag a new version";
 const FORK_TOOLTIP = "Fork to edit locally";
 const DOCTOR_TOOLTIP = "Run Doctor";
 const HISTORY_TOOLTIP = "Browse versions";
@@ -221,14 +217,6 @@ export function PluginPackageDetail({
   const [resourceFilter, setResourceFilter] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [libraryEpoch, setLibraryEpoch] = useState(0);
-
-  const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>([]);
-  const [marketplaceName, setMarketplaceName] = useState("");
-  const [catalogPlugins, setCatalogPlugins] = useState<CatalogPlugin[]>([]);
-  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
-  const [pluginsLoading, setPluginsLoading] = useState(false);
-  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
-  const [pluginRef, setPluginRef] = useState("");
 
   const [environments, setEnvironments] = useState<LibraryEnvironment[]>([]);
   const [busy, setBusy] = useState(false);
@@ -504,72 +492,6 @@ export function PluginPackageDetail({
       cancelled = true;
     };
   }, [baseUrl, token]);
-
-  useEffect(() => {
-    if (!baseUrl) {
-      return;
-    }
-    let cancelled = false;
-    setMarketplaceLoading(true);
-    setMarketplaceError(null);
-    void fetchMarketplaces(baseUrl, token)
-      .then((result) => {
-        if (!cancelled) {
-          setMarketplaces(result.marketplaces);
-          setMarketplaceName(result.marketplaces[0]?.name ?? "");
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setMarketplaces([]);
-          setMarketplaceName("");
-          setMarketplaceError(errorMessage(error, "Could not load marketplaces"));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setMarketplaceLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [baseUrl, token]);
-
-  useEffect(() => {
-    if (!baseUrl || !marketplaceName) {
-      setCatalogPlugins([]);
-      setPluginRef("");
-      return;
-    }
-    let cancelled = false;
-    setPluginsLoading(true);
-    setMarketplaceError(null);
-    void fetchMarketplacePlugins(baseUrl, token, marketplaceName)
-      .then((result) => {
-        if (!cancelled) {
-          setCatalogPlugins(result.plugins);
-          setPluginRef(result.plugins[0]?.ref ?? "");
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setCatalogPlugins([]);
-          setPluginRef("");
-          setMarketplaceError(
-            errorMessage(error, "Could not load marketplace plugins"),
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setPluginsLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [baseUrl, marketplaceName, token]);
 
   const membership = useMemo(
     () =>
@@ -977,23 +899,6 @@ export function PluginPackageDetail({
     }
   };
 
-  const pinMarketplacePlugin = () => {
-    const ref = pluginRef.trim();
-    if (!ref) {
-      return;
-    }
-    const catalog = catalogPlugins.find((entry) => entry.ref === ref);
-    void runPatch({
-      add: [
-        {
-          type: "plugin",
-          selector: ref,
-          ...(catalog?.version ? { version: catalog.version } : {}),
-        },
-      ],
-    });
-  };
-
   const cutErrors = detail
     ? validateCutRows([
         {
@@ -1013,11 +918,11 @@ export function PluginPackageDetail({
     try {
       const version = cutVersion.trim();
       await cutLibraryPlugin(baseUrl, token, detail.plugin.name, version);
-      onSuccess(`Cut plugin ${detail.plugin.name}@${version}`);
+      onSuccess(`Tagged plugin ${detail.plugin.name}@${version}`);
       setCutOpen(false);
       refreshAfterMutation();
     } catch (error: unknown) {
-      setDetailError(errorMessage(error, "Could not cut plugin version"));
+      setDetailError(errorMessage(error, "Could not tag plugin version"));
       setCutOpen(false);
     } finally {
       setConfirmBusy(false);
@@ -1096,14 +1001,6 @@ export function PluginPackageDetail({
       setRollbackBusy(false);
     }
   };
-
-  const pluginControlsDisabled =
-    pickersDisabled
-    || !token
-    || marketplaceLoading
-    || pluginsLoading
-    || !pluginRef.trim()
-    || catalogPlugins.length === 0;
 
   const versionSuffix = (() => {
     switch (historyMode) {
@@ -1303,12 +1200,12 @@ export function PluginPackageDetail({
             key="cut"
             disabled={clusterLocked}
             title={CUT_TOOLTIP}
-            label="Cut version"
+            label="Tag version"
             onClick={() => {
               setCutVersion("");
               setCutOpen(true);
             }}
-            icon={<Scissors size={16} aria-hidden />}
+            icon={<Tag size={16} aria-hidden />}
           />
         );
       case "fork":
@@ -1489,7 +1386,10 @@ export function PluginPackageDetail({
         icon={<MapPin size={16} aria-hidden />}
         fieldName="Origin"
         readOnly
-        display={record.plugin.origin}
+        display={formatPluginOriginDisplay(
+          record.plugin.origin,
+          record.plugin.origin_locator,
+        )}
         editing={false}
         onStartEdit={() => undefined}
       />
@@ -1581,21 +1481,6 @@ export function PluginPackageDetail({
         </div>
       </LibraryFieldRow>
       <PluginCompositionFields
-        showMarketplace={Boolean(authored)}
-        marketplaceLoading={marketplaceLoading}
-        marketplaceError={marketplaceError}
-        marketplaces={marketplaces}
-        marketplaceName={marketplaceName}
-        onMarketplaceName={setMarketplaceName}
-        catalogPlugins={catalogPlugins}
-        pluginsLoading={pluginsLoading}
-        pluginRef={pluginRef}
-        onPluginRef={setPluginRef}
-        onPin={pinMarketplacePlugin}
-        pinDisabled={pluginControlsDisabled}
-        pinBusy={busy}
-        marketplaceSelectId="plugin-marketplace"
-        pluginSelectId="plugin-ref"
         libraryLoading={libraryLoading}
         libraryError={libraryError}
         resources={compositionMembers}
@@ -1700,9 +1585,9 @@ export function PluginPackageDetail({
 
       <ConfirmDialog
         open={cutOpen}
-        title="Cut plugin version"
+        title="Tag plugin version"
         description="Freeze the current working state under a new semver version. The previous version is kept in history."
-        confirmLabel="Cut version"
+        confirmLabel="Tag version"
         confirmDisabled={!cutValid}
         confirmBusy={confirmBusy}
         onConfirm={() => {

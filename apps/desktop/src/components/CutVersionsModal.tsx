@@ -37,14 +37,14 @@ export function CutVersionsModal({
   return (
     <ConfirmDialog
       open={open}
-      title="Cut profile version"
+      title="Tag profile version"
       description={
         <p className="muted">
           Freeze the current working state under a new semver version. The
           previous version is kept in history.
         </p>
       }
-      confirmLabel="Cut version"
+      confirmLabel="Tag version"
       confirmDisabled={confirmDisabled}
       confirmBusy={busy}
       onConfirm={onConfirm}

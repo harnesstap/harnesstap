@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
   isLibraryListNavKey,
@@ -5,6 +7,7 @@ import {
   LIBRARY_TYPEAHEAD_MS,
   matchLibraryTypeahead,
   nextLibraryListIndex,
+  shouldRestoreLibraryRowFocus,
 } from "../../apps/desktop/src/lib/library-list-nav.ts";
 
 describe("library list keyboard nav", () => {
@@ -27,5 +30,50 @@ describe("library list keyboard nav", () => {
     expect(isLibraryTypeaheadChar("s")).toBe(true);
     expect(isLibraryTypeaheadChar("Enter")).toBe(false);
     expect(LIBRARY_TYPEAHEAD_MS).toBe(500);
+  });
+
+  it("does not steal focus from the filter when the last-opened row is still in the list", () => {
+    const filter = { tagName: "INPUT", isContentEditable: false };
+    expect(
+      shouldRestoreLibraryRowFocus({ reason: "rows", activeElement: filter }),
+    ).toBe(false);
+    expect(
+      shouldRestoreLibraryRowFocus({
+        reason: "mount",
+        activeElement: filter,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRestoreLibraryRowFocus({
+        reason: "last-selector",
+        activeElement: filter,
+      }),
+    ).toBe(false);
+  });
+
+  it("restores row focus after Back when the filter is not being typed", () => {
+    expect(
+      shouldRestoreLibraryRowFocus({ reason: "mount", activeElement: null }),
+    ).toBe(true);
+    expect(
+      shouldRestoreLibraryRowFocus({
+        reason: "last-selector",
+        activeElement: { tagName: "BUTTON", isContentEditable: false },
+      }),
+    ).toBe(true);
+    expect(
+      shouldRestoreLibraryRowFocus({ reason: "rows", activeElement: null }),
+    ).toBe(false);
+  });
+
+  it("gates LibraryResourceList row restore through shouldRestoreLibraryRowFocus", () => {
+    const listSource = readFileSync(
+      join(
+        import.meta.dir,
+        "../../apps/desktop/src/components/library/LibraryResourceList.tsx",
+      ),
+      "utf8",
+    );
+    expect(listSource).toContain("shouldRestoreLibraryRowFocus");
   });
 });

@@ -32,8 +32,9 @@ describe("plugin composition fields", () => {
   test("package detail and edit profile share one unified membership picker", () => {
     expect(packagesSource).toContain("PluginCompositionFields");
     expect(editSource).toContain("PluginCompositionFields");
-    expect(editSource).toContain('pluginRefTestId="edit-plugin-ref"');
-    expect(editSource).toContain('pinTestId="edit-plugin-add"');
+    expect(editSource).not.toContain("pluginRefTestId");
+    expect(editSource).not.toContain("pinTestId");
+    expect(editSource).not.toContain("showMarketplace");
     expect(editSource).toContain("mergeCompositionMembership");
     expect(packagesSource).toContain("mergeCompositionMembership");
     expect(editSource).not.toContain("pluginRows={pluginRows}");
@@ -95,8 +96,36 @@ describe("plugin composition fields", () => {
     expect(packagesSource).toContain('aria-label="Add to plugin"');
     expect(packagesSource).toContain('title="Add to plugin"');
     expect(packagesSource).toContain("ScopeAddToProfileModal");
-    expect(editSource).toContain("resources={membership}");
-    expect(editSource).not.toContain("plugin-composition-fab");
+    expect(packagesSource).not.toContain("pinMarketplacePlugin");
+    expect(packagesSource).not.toContain("fetchMarketplacePlugins");
+  });
+
+  test("edit profile composition lists members and keeps an add FAB", () => {
+    expect(editSource).toContain("pluginDetailCompositionEntries");
+    expect(editSource).toContain("resources={compositionMembers}");
+    expect(editSource).not.toContain("resources={membership}");
+    expect(editSource).toContain('data-testid="edit-profile-composition-fab"');
+    expect(editSource).toContain('aria-label="Add to profile"');
+    expect(editSource).toContain('title="Add to profile"');
+    expect(editSource).toContain("ScopeAddToProfileModal");
+    expect(editSource).not.toContain("addPluginPin");
+    expect(editSource).not.toContain("fetchMarketplacePlugins");
+    expect(editSource).not.toContain("fetchMarketplaces");
+  });
+
+  test("composition fields have no marketplace pin dropdowns", () => {
+    expect(pickersSource).not.toContain("Marketplace plugins");
+    const fieldsSource = readFileSync(
+      join(
+        import.meta.dir,
+        "../../apps/desktop/src/components/parity/PluginCompositionFields.tsx",
+      ),
+      "utf8",
+    );
+    expect(fieldsSource).not.toContain("Marketplace plugins");
+    expect(fieldsSource).not.toContain("showMarketplace");
+    expect(fieldsSource).not.toContain("Pin plugin");
+    expect(fieldsSource).not.toContain("edit-plugin-pin");
   });
 
   test("type tabs with a positive count are not disabled", () => {

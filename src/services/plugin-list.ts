@@ -5,36 +5,37 @@ import {
   resolveCatalogScope,
 } from "../config/catalog.js";
 import { listPlugins } from "../models/plugin-model.js";
-import { formatPluginVersionLabel } from "./plugin-versioning.js";
 import type { Plugin } from "../types.js";
-import { parseOutputFormat, printJson } from "../utils/output-format.js";
 import { renderCatalogListChunk } from "../ui/catalog-list-render.js";
-import { formatLocalPluginListName } from "../ui/plugin-list-render.js";
-import type { Column } from "../ui/table.js";
 import { ui } from "../ui/index.js";
+import { formatLocalPluginListName } from "../ui/plugin-list-render.js";
+import { formatPluginOriginDisplay } from "../ui/plugin-origin-display.js";
+import type { Column } from "../ui/table.js";
+import { parseOutputFormat, printJson } from "../utils/output-format.js";
+import { getActiveProfileName } from "./active-profile.js";
 import { listPluginsInScope } from "./catalog-client.js";
-import { renderCatalogPluginPreviewShow } from "./catalog-plugin-preview.js";
-import { rankCatalogSearchResults } from "./catalog-search-rank.js";
 import {
   buildCatalogListSources,
   listCatalogPluginsFromSources,
   streamCatalogPlugins,
 } from "./catalog-list-stream.js";
+import { renderCatalogPluginPreviewShow } from "./catalog-plugin-preview.js";
+import { rankCatalogSearchResults } from "./catalog-search-rank.js";
 import type { CatalogPlugin } from "./catalog-types.js";
+import {
+  promptMaterializationConflict,
+  resolveApplyConflictPolicy,
+} from "./materialization-conflicts.js";
 import {
   applyPluginsGlobally,
   catalogSearchSelectors,
   promptCatalogSearchApplyScope,
 } from "./plugin-search-apply.js";
-import {
-  promptMaterializationConflict,
-  resolveApplyConflictPolicy,
-} from "./materialization-conflicts.js";
-import { getActiveProfileName } from "./active-profile.js";
-import { runInteractivePluginListBrowse as promptInteractivePluginListBrowse } from "./wizards/interactive-plugin-list-browse.js";
-import type { InteractivePluginListBrowseSelection } from "./wizards/interactive-plugin-list-browse.js";
+import { formatPluginVersionLabel } from "./plugin-versioning.js";
 import { runInteractiveCatalogSearch } from "./wizards/interactive-catalog-search.js";
-import { shouldUseWizard, isPromptCancellationError } from "./wizards/shared.js";
+import type { InteractivePluginListBrowseSelection } from "./wizards/interactive-plugin-list-browse.js";
+import { runInteractivePluginListBrowse as promptInteractivePluginListBrowse } from "./wizards/interactive-plugin-list-browse.js";
+import { isPromptCancellationError, shouldUseWizard } from "./wizards/shared.js";
 
 export interface PluginListInstallContext {
   as?: string;
@@ -168,7 +169,7 @@ export function renderLocalPluginListTable(
     rows: plugins.map((plugin) => ({
       ...(opts.showId ? { id: plugin.id } : {}),
       name: formatLocalPluginListName(plugin, { static: true }),
-      origin: plugin.origin || "authored",
+      origin: formatPluginOriginDisplay(plugin.origin || "authored", plugin.origin_locator),
       version: formatPluginVersionLabel(plugin.version, plugin.dirty),
       description: plugin.description ?? "",
     })),

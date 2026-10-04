@@ -9,6 +9,7 @@ export interface LibraryPluginHead {
   tags: string[];
   description: string | null;
   origin: PluginOrigin;
+  origin_locator?: string;
   dirty: boolean;
   org_slug: string;
   catalog_slug: string;
@@ -21,6 +22,7 @@ export interface LibraryPluginDetailPlugin {
   description: string;
   tags: string[];
   origin: PluginOrigin;
+  origin_locator?: string;
   dirty: boolean;
   frozen_at: string | null;
   default_environment_id: string | null;
@@ -158,6 +160,38 @@ export async function importLibraryPluginFromGit(
   return (await response.json()) as LibraryGitImportResult;
 }
 
+export interface LibraryMarketplaceImportResult {
+  plugin: LibraryPluginHead;
+  origin_locator: string;
+  origin_fingerprint: string;
+  created: boolean;
+}
+
+export async function importLibraryPluginFromMarketplace(
+  baseUrl: string,
+  token: string | null,
+  input: { marketplace: string; plugin: string; as?: string },
+): Promise<LibraryMarketplaceImportResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    "/v1/library/plugins/import-marketplace",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        marketplace: input.marketplace,
+        plugin: input.plugin,
+        ...(input.as?.trim() ? { as: input.as.trim() } : {}),
+      }),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not import marketplace plugin");
+  }
+  return (await response.json()) as LibraryMarketplaceImportResult;
+}
+
 export async function patchLibraryPlugin(
   baseUrl: string,
   token: string | null,
@@ -291,7 +325,7 @@ export async function cutLibraryPlugin(
     },
   );
   if (!response.ok) {
-    return throwAgentError(response, "Could not cut plugin version");
+    return throwAgentError(response, "Could not tag plugin version");
   }
   return (await response.json()) as {
     plugin: { id: string; name: string; version: string; dirty: boolean };

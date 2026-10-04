@@ -23,6 +23,7 @@ const resourcesSource = read("components/ResourcesPanel.tsx");
 const sourcesWorkspaceSource = read("components/SourcesWorkspace.tsx");
 const recordActionsSource = read("components/SourcesRecordActions.tsx");
 const sourceSidebarSource = read("components/SourceSidebar.tsx");
+const manageMarketplacesSource = read("components/ManageMarketplacesModal.tsx");
 const pluginDetailSource = read("components/PluginPackageDetail.tsx");
 const resourceDetailSource = read("components/ResourceDetailBody.tsx");
 const pluginHostVersionSource = read("lib/plugin-host-version.ts");
@@ -287,11 +288,17 @@ describe("desktop icon chrome", () => {
     expect(recordActionsSource).toContain("discoverAddToProfileLabel");
     expect(recordActionsSource).toContain("showAddToProfile");
     expect(recordActionsSource).toContain("showLabel");
+    expect(recordActionsSource).toMatch(
+      /showAddToProfile \? \([\s\S]*?primary\b[\s\S]*?discoverAddToProfileLabel/,
+    );
+    expect(recordActionsSource).not.toMatch(
+      /showAddToLibrary \? \([\s\S]*?primary\b[\s\S]*?label="Add to Library"/,
+    );
     expect(recordActionsSource).toContain('label="Pin to plugin"');
     expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
-    expect(sourceSidebarSource).toContain('label="Edit"');
-    expect(sourceSidebarSource).toContain('label="Remove"');
+    expect(manageMarketplacesSource).toContain('label="Edit"');
+    expect(manageMarketplacesSource).toContain('label="Remove"');
     expect(sourceSidebarSource).toContain('label="Disconnect"');
     expect(sourceSidebarSource).toContain('label="Unregister"');
   });

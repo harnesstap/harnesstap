@@ -4,15 +4,16 @@ import {
   getPluginResources,
   resolvePluginSelector,
 } from "../models/plugin-model.js";
-import { listDependencies } from "./plugin-dependency.js";
-import { formatPluginVersionLabel } from "./plugin-versioning.js";
-import { formatRelativeTimeWithAbsolute, shortenId } from "../ui/format.js";
-import { renderPanel } from "../ui/panel.js";
-import { renderSubheader } from "../ui/section.js";
-import { renderTable, type Column } from "../ui/table.js";
-import { theme } from "../ui/theme.js";
 import type { Plugin, Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
+import { formatRelativeTimeWithAbsolute, shortenId } from "../ui/format.js";
+import { renderPanel } from "../ui/panel.js";
+import { formatPluginOriginDisplay } from "../ui/plugin-origin-display.js";
+import { renderSubheader } from "../ui/section.js";
+import { type Column, renderTable } from "../ui/table.js";
+import { theme } from "../ui/theme.js";
+import { listDependencies } from "./plugin-dependency.js";
+import { formatPluginVersionLabel } from "./plugin-versioning.js";
 
 export type PluginShowRenderOptions = {
   showId?: boolean;
@@ -46,8 +47,11 @@ function formatDependencyConstraint(versionConstraint: string): string {
   return versionConstraint.trim() || "*";
 }
 
-function formatOriginLabel(origin: Plugin["origin"] | undefined): string {
-  return origin || "authored";
+function formatOriginLabel(
+  origin: Plugin["origin"] | undefined,
+  originLocator?: string | null,
+): string {
+  return formatPluginOriginDisplay(origin || "authored", originLocator);
 }
 
 function makeIdColumn(showId: boolean, width = 12): Column[] {
@@ -103,7 +107,7 @@ export function renderPluginShow(
       rows: [
         ["Description", plugin.description || "—"],
         ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "—"],
-        ["Origin", formatOriginLabel(plugin.origin)],
+        ["Origin", formatOriginLabel(plugin.origin, plugin.origin_locator)],
         ...(opts?.profileExtras
           ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
           : []),
@@ -165,7 +169,7 @@ export function renderPluginListShow(
     rows: [
       ["Description", plugin.description || "—"],
       ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "—"],
-      ["Origin", formatOriginLabel(plugin.origin)],
+      ["Origin", formatOriginLabel(plugin.origin, plugin.origin_locator)],
       ...(opts?.profileExtras
         ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
         : []),

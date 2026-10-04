@@ -396,7 +396,7 @@ function marketplaceQualifiedName(
   return `${pluginName}@${marketplaceName}`;
 }
 
-function nameMatchesMarketplacePlugin(
+export function nameMatchesMarketplacePlugin(
   resourceName: string,
   pluginName: string,
   marketplaceName: string,

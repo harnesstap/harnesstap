@@ -1,8 +1,10 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, Library, Pin } from "lucide-react";
+import { Download, Library, Pin, Plus } from "lucide-react";
 import {
-  DISCOVER_ACTION_HELPER,
+  discoverActionHelper,
+  discoverAddToProfileLabel,
+  discoverAddToProfileTooltip,
   PIN_TO_PLUGIN_TOOLTIP,
   type SourcesHitActions,
 } from "../lib/sources-record-actions";
@@ -18,9 +20,12 @@ export interface SourcesRecordActionsProps {
   authRequired?: boolean;
   collision?: boolean;
   asName?: string;
+  hitName?: string;
+  currentProfileName?: string | null;
   onAsNameChange?: (value: string) => void;
   onSignIn?: () => void;
   onAddToLibrary?: () => void;
+  onAddToProfile?: () => void;
   onPinToPlugin?: () => void;
   onOpenInLibrary?: () => void;
 }
@@ -34,9 +39,12 @@ export function SourcesRecordActions({
   authRequired = false,
   collision = false,
   asName = "",
+  hitName = "",
+  currentProfileName = null,
   onAsNameChange,
   onSignIn,
   onAddToLibrary,
+  onAddToProfile,
   onPinToPlugin,
   onOpenInLibrary,
 }: SourcesRecordActionsProps) {
@@ -68,9 +76,21 @@ export function SourcesRecordActions({
         </div>
       ) : null}
       <div className="library-detail-actions sources-record-action-cluster">
-        {actions.showAddToLibrary ? (
+        {actions.showAddToProfile ? (
           <IconActionButton
             primary
+            showLabel
+            busy={busy}
+            spinnerSize={14}
+            disabled={controlsDisabled || !currentProfileName || (collision && !asName.trim())}
+            label={discoverAddToProfileLabel()}
+            title={discoverAddToProfileTooltip(hitName, currentProfileName)}
+            onClick={onAddToProfile}
+            icon={<Plus size={16} aria-hidden />}
+          />
+        ) : null}
+        {actions.showAddToLibrary ? (
+          <IconActionButton
             showLabel
             busy={busy}
             spinnerSize={14}
@@ -91,8 +111,8 @@ export function SourcesRecordActions({
         ) : null}
         {actions.showOpenInLibrary ? (
           <IconActionButton
-            primary={!actions.showAddToLibrary}
-            showLabel={!actions.showAddToLibrary}
+            primary={!actions.showAddToLibrary && !actions.showAddToProfile}
+            showLabel={!actions.showAddToLibrary && !actions.showAddToProfile}
             label="Open in Library"
             disabled={controlsDisabled || !actions.openInLibrarySelector}
             onClick={onOpenInLibrary}
@@ -102,7 +122,7 @@ export function SourcesRecordActions({
       </div>
       {showHelper ? (
         <p className="muted sources-action-helper" data-testid="discover-action-helper">
-          {DISCOVER_ACTION_HELPER}
+          {discoverActionHelper(currentProfileName)}
         </p>
       ) : null}
     </div>

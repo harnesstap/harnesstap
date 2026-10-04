@@ -18,6 +18,7 @@ export {
   packageDirectoryDisplayPath,
   resourceHumanName,
 } from "../../../../src/ui/resource-display.ts";
+export { formatPluginOriginDisplay } from "../../../../src/ui/plugin-origin-display.ts";
 export type {
   HookDisplayInput,
   HookInventoryWire,
