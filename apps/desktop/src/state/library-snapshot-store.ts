@@ -170,8 +170,10 @@ export function createLibrarySnapshotStore(
         error: errorMessage(error, "Could not load library inventory"),
       });
     } finally {
-      peekInFlight = Math.max(0, peekInFlight - 1);
-      setState({ status: settleStatus() });
+      if (isCurrent("peek", requestGeneration, snapshotGeneration)) {
+        peekInFlight = Math.max(0, peekInFlight - 1);
+        setState({ status: settleStatus() });
+      }
     }
   };
 
@@ -205,8 +207,10 @@ export function createLibrarySnapshotStore(
         error: errorMessage(error, "Could not load library inventory"),
       });
     } finally {
-      fullInFlight = Math.max(0, fullInFlight - 1);
-      setState({ status: settleStatus() });
+      if (isCurrent("full", requestGeneration, snapshotGeneration)) {
+        fullInFlight = Math.max(0, fullInFlight - 1);
+        setState({ status: settleStatus() });
+      }
     }
   };
 
@@ -288,6 +292,8 @@ export function createLibrarySnapshotStore(
       peekGeneration += 1;
       fullGeneration += 1;
       searchGeneration += 1;
+      peekInFlight = 0;
+      fullInFlight = 0;
       setState({ generation: state.generation + 1 });
       if (!client) {
         return;

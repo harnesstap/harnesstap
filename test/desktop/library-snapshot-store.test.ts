@@ -189,6 +189,31 @@ describe("library snapshot store", () => {
     expect(store.getState().generation).toBeGreaterThan(0);
   });
 
+  it("does not mark idle when a dropped peek resolves after clear starts a new load", async () => {
+    const first = deferred<LibraryInventoryResult>();
+    const second = deferred<LibraryInventoryResult>();
+    const calls: Deferred<LibraryInventoryResult>[] = [first, second];
+    const store = storeWith(() => calls.shift()?.promise ?? unused());
+
+    const firstRequest = store.loadPeek();
+    expect(store.getState().status).toBe("loading-peek");
+
+    store.clear();
+    const secondRequest = store.loadPeek();
+    expect(store.getState().status).toBe("loading-peek");
+
+    first.resolve(inventory([entry("stale")]));
+    await firstRequest;
+
+    expect(store.getState().status).toBe("loading-peek");
+    expect(store.getState().peek).toBeNull();
+
+    second.resolve(inventory([entry("fresh")]));
+    await secondRequest;
+    expect(store.getState().status).toBe("idle");
+    expect(store.getState().peek).toEqual([entry("fresh")]);
+  });
+
   it("clear empties peek and full", async () => {
     const store = storeWith(async (_baseUrl, _token, input) => {
       if (input?.limit !== undefined) {
