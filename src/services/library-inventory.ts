@@ -5,6 +5,7 @@ import {
   duplicatePluginNames,
   formatResourceDisplayName,
 } from "../ui/resource-display.js";
+import { hookInventoryWireFromResource } from "../ui/hook-display.js";
 import {
   matchesListSearchQuery,
   parseListSearchQuery,
@@ -92,6 +93,7 @@ function namespaceForRow(namespace: string): string | null {
 }
 
 function resourceToInventoryRow(resource: Resource): LibraryInventoryRow {
+  const hook = hookInventoryWireFromResource(resource);
   return {
     listKind: "resource",
     id: resource.id,
@@ -103,6 +105,7 @@ function resourceToInventoryRow(resource: Resource): LibraryInventoryRow {
     updated_at: resource.updated_at,
     origin_kind: resource.origin_kind,
     origin_ref: resource.origin_ref || null,
+    ...(hook ? { hook } : {}),
   };
 }
 

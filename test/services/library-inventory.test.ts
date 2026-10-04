@@ -73,6 +73,27 @@ describe("queryLibraryInventory", () => {
     expect(found.rows[0]).not.toHaveProperty("filesystem_path");
   });
 
+  it("wires hook inventory fields so search matches Desktop display labels", async () => {
+    ctx = await createInitializedTestContext("inv-hook");
+    createResource({
+      type: "hook",
+      name: "SessionStart-1",
+      description: "",
+      content: "echo unused",
+      metadata: {
+        event: "sessionStart",
+        script: "~/.claude/hooks/ponytail-activate.js",
+      },
+      source: "manual",
+    });
+    const found = queryLibraryInventory({ q: "ponytail", type: null });
+    expect(found.rows.map((row) => row.name)).toEqual(["SessionStart-1"]);
+    expect(found.rows[0]?.hook).toEqual({
+      event: "sessionStart",
+      script: "~/.claude/hooks/ponytail-activate.js",
+    });
+  });
+
   it("filters by Library type-tab key plugin vs plugin_ref", async () => {
     ctx = await createInitializedTestContext("inv-type");
     createPlugin({ name: "pack" });
