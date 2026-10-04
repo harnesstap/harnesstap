@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import {
-  fetchLibraryResourceDetail,
-  fetchMarketplaces,
-} from "../lib/agent-client";
+import { fetchLibraryResourceDetail } from "../lib/agent-client";
 import { unregisterCatalog } from "../lib/api/publish";
 import { removeMarketplace } from "../lib/api/marketplace-remove";
 import {
@@ -48,13 +45,12 @@ import {
   applyOriginOutdated,
   cloudHitIsInLibrary,
   cloudSelectorKey,
-  DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS,
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
+  filterDiscoverGroups,
   marketplaceHitKey,
   marketplaceIdsNeedingCatalogFetch,
-  marketplaceRefreshMaxAgeMsFromMinutes,
   mergeSourcesHits,
   sourcesHitFetchKey,
   type CloudPluginInput,
@@ -224,15 +220,13 @@ export function SourcesWorkspace({
   const libraryPeek = useLibrarySnapshotStore((state) => state.peek);
   const libraryFull = useLibrarySnapshotStore((state) => state.full);
   const [query, setQuery] = useState("");
+  const [showInLibrary, setShowInLibrary] = useState(false);
   const [searchGroups, setSearchGroups] = useState<DiscoverSearchGroup[] | null>(
     null,
   );
   const searchGenerationRef = useRef(0);
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
   const marketplaces = snapshot.marketplaces;
-  const [marketplaceRefreshMaxAgeMs, setMarketplaceRefreshMaxAgeMs] = useState(
-    DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS,
-  );
   const scope = snapshot.scope;
   const sourceInventoryReady = snapshot.sourceInventoryReady;
   const [checkedIds, setCheckedIds] = useState<string[]>(["local"]);
@@ -360,6 +354,7 @@ export function SourcesWorkspace({
 
   function resetSourcesFilters(): void {
     setQuery("");
+    setShowInLibrary(false);
     setChecksTouched(false);
     setCheckedIds(defaultCheckedSourceIds(rows));
   }
@@ -388,29 +383,7 @@ export function SourcesWorkspace({
     if (!baseUrl) {
       return;
     }
-    let cancelled = false;
     void discoverSnapshotStore.loadSources();
-    void fetchMarketplaces(baseUrl, token)
-      .then((marketplaceResult) => {
-        if (cancelled) {
-          return;
-        }
-        setMarketplaceRefreshMaxAgeMs(
-          marketplaceRefreshMaxAgeMsFromMinutes(
-            marketplaceResult.marketplaceRefreshMaxAgeMinutes,
-          ),
-        );
-        setError(null);
-      })
-      .catch((loadError: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        setError(errorMessage(loadError, "Could not load sources."));
-      });
-    return () => {
-      cancelled = true;
-    };
   }, [baseUrl, token, reloadKey]);
 
   const checkedRows = useMemo(
@@ -453,7 +426,6 @@ export function SourcesWorkspace({
       marketplaceIds: marketplaceRows.map((row) => row.id),
       hits: marketplaceHitsRef.current,
       bypassCache: bypassCatalogCacheRef.current,
-      maxAgeMs: marketplaceRefreshMaxAgeMs,
     });
     bypassCatalogCacheRef.current = false;
     const reuseMarketplaceIds = marketplaceRows
@@ -507,7 +479,6 @@ export function SourcesWorkspace({
     reloadKey,
     searchActive,
     sourceInventoryReady,
-    marketplaceRefreshMaxAgeMs,
   ]);
 
   useEffect(() => {
@@ -784,7 +755,7 @@ export function SourcesWorkspace({
         originCheckRows,
       ),
     }));
-    return merged;
+    return filterDiscoverGroups(merged, showInLibrary);
   }, [
     checkedRows,
     cloudPlugins,
@@ -797,6 +768,7 @@ export function SourcesWorkspace({
     query,
     searchActive,
     searchGroups,
+    showInLibrary,
     sourceOrder,
   ]);
 
@@ -1329,6 +1301,7 @@ export function SourcesWorkspace({
             groupErrors={groupErrors}
             loading={listSearching}
             query={query}
+            showInLibrary={showInLibrary}
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
@@ -1336,6 +1309,9 @@ export function SourcesWorkspace({
               applyListQueryOrChecks(() => setQuery(""));
             }}
             onClearQuery={() => applyListQueryOrChecks(() => setQuery(""))}
+            onShowInLibrary={() =>
+              applyListQueryOrChecks(() => setShowInLibrary(true))
+            }
             recordActions={recordActionsProps}
           />
         );
@@ -1484,6 +1460,10 @@ export function SourcesWorkspace({
           }}
           onClear={() => {
             applyListQueryOrChecks(resetSourcesFilters);
+          }}
+          showInLibrary={showInLibrary}
+          onShowInLibraryChange={(next) => {
+            applyListQueryOrChecks(() => setShowInLibrary(next));
           }}
           rows={rows}
           checkedIds={checkedIds}

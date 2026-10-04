@@ -117,15 +117,17 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("function resetSourcesFilters");
     expect(workspaceSource).toContain("resetSourcesFilters()");
     expect(workspaceSource).toContain("applyListQueryOrChecks(resetSourcesFilters)");
-    expect(workspaceSource).not.toContain("setShowInLibrary");
+    expect(workspaceSource).toContain("setShowInLibrary(false)");
   });
 
-  test("Discover always lists in-library hits without a Show in library filter", () => {
-    expect(sidebarSource).not.toContain("Show in library");
-    expect(sidebarSource).not.toContain("id=\"source-show-in-library\"");
-    expect(workspaceSource).not.toContain("showInLibrary");
-    expect(workspaceSource).not.toContain("filterDiscoverGroups");
-    expect(listPaneSource).not.toContain("onShowInLibrary");
+  test("sidebar Show in library is an opt-in checkbox off by default", () => {
+    expect(sidebarSource).toContain("Show in library");
+    expect(sidebarSource).toContain("id=\"source-show-in-library\"");
+    expect(workspaceSource).toContain(
+      "const [showInLibrary, setShowInLibrary] = useState(false)",
+    );
+    expect(workspaceSource).toContain("filterDiscoverGroups");
+    expect(workspaceSource).toContain("showInLibrary={showInLibrary}");
     expect(listPaneSource).toContain("discoverListEmptyCopy");
     expect(listPaneSource).toContain('testId="discover-empty"');
     expect(listPaneSource).toContain('className="discover-empty"');
@@ -135,9 +137,10 @@ describe("sources workspace chrome", () => {
       "const [fetchedSourceIds, setFetchedSourceIds] = useState<Set<string>>(",
     );
     expect(workspaceSource).toContain("discoverListIsSearching");
-    expect(sourcesSearchSource).not.toContain("filterDiscoverGroups");
-    expect(sourcesSearchSource).toContain("Search to add");
-    expect(sourcesSearchSource).toContain("Type a name, description, or skill.");
+    expect(sourcesSearchSource).toContain("filterDiscoverGroups");
+    expect(sourcesSearchSource).toContain('hit.presence !== "in_library"');
+    expect(sourcesSearchSource).toContain("You're caught up");
+    expect(sourcesSearchSource).toContain("Nothing left to discover.");
     expect(stylesSource).toContain(".sources-workspace .discover-empty");
     expect(stylesSource).toContain("min-height: 12rem");
   });
@@ -265,9 +268,6 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("bypassCache");
     expect(workspaceSource).toContain('testId="discover-refresh"');
     expect(workspaceSource).toContain('label="Refresh sources"');
-    expect(workspaceSource).toContain("maxAgeMs: marketplaceRefreshMaxAgeMs");
-    expect(workspaceSource).toContain("marketplaceRefreshMaxAgeMinutes");
-    expect(sourcesSearchSource).toContain("DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS");
     expect(workspaceSource).toContain("fetchPluginOriginCheck(baseUrl, token)");
     expect(workspaceSource).not.toContain(
       "fetchPluginOriginCheck(baseUrl, token, { refresh: true })",
@@ -592,10 +592,9 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Discover re-click");
     expect(designSource).toContain("Clear filters");
     expect(designSource).toContain("every source checkbox checked");
-    expect(designSource).not.toContain("Show in library");
-    expect(designSource).toContain("always includes hits already in the library");
-    expect(designSource).toContain("Search to add");
-    expect(designSource).toContain("Type a name, description, or skill.");
+    expect(designSource).toContain("Show in library");
+    expect(designSource).toContain("You're caught up");
+    expect(designSource).toContain("Nothing left to discover.");
     expect(designSource).toContain("discover-empty");
     expect(designSource).toContain("Add marketplace");
     expect(designSource).toContain("Connect catalog");
