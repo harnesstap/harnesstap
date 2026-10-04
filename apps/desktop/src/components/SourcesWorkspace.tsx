@@ -591,16 +591,6 @@ export function SourcesWorkspace({
     const controller = new AbortController();
     let cancelled = false;
     const requestGeneration = ++searchGenerationRef.current;
-    const searchIds = checkedRows
-      .filter((row) => row.kind === "local" || row.kind === "marketplace")
-      .map((row) => row.id);
-    setInflightSourceIds((current) => {
-      const next = new Set(current);
-      for (const id of searchIds) {
-        next.add(id);
-      }
-      return next;
-    });
     const timer = window.setTimeout(() => {
       void fetchDiscoverSearch(baseUrl, token, {
         q: trimmed,
@@ -622,18 +612,6 @@ export function SourcesWorkspace({
             return;
           }
           setError(errorMessage(loadError, "Could not search Discover sources."));
-        })
-        .finally(() => {
-          if (cancelled || requestGeneration !== searchGenerationRef.current) {
-            return;
-          }
-          setInflightSourceIds((current) => {
-            const next = new Set(current);
-            for (const id of searchIds) {
-              next.delete(id);
-            }
-            return next;
-          });
         });
     }, SEARCH_DEBOUNCE_MS);
 
@@ -641,15 +619,8 @@ export function SourcesWorkspace({
       cancelled = true;
       controller.abort();
       window.clearTimeout(timer);
-      setInflightSourceIds((current) => {
-        const next = new Set(current);
-        for (const id of searchIds) {
-          next.delete(id);
-        }
-        return next;
-      });
     };
-  }, [baseUrl, token, query, checkedIds, checkedRows]);
+  }, [baseUrl, token, query, checkedIds]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -1253,6 +1224,7 @@ export function SourcesWorkspace({
     fetchedIds: fetchedIdsForList,
     inflightIds: inflightSourceIds,
     visibleCount: visibleHitCount,
+    searchPending: searchActive && searchGroups === null,
   });
   const sidebarRefreshing = discoverSourcesRefreshing({
     fetchedIds: fetchedIdsForList,

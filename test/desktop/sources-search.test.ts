@@ -906,6 +906,25 @@ describe("discoverListIsSearching", () => {
       }),
     ).toBe(false);
   });
+
+  test("is true while Discover search is pending on an empty list without catalog inflight", () => {
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["mkt:acme"],
+        fetchedIds: new Set(["mkt:acme"]),
+        visibleCount: 0,
+        searchPending: true,
+      }),
+    ).toBe(true);
+    expect(
+      discoverListIsSearching({
+        checkedIds: ["mkt:acme"],
+        fetchedIds: new Set(["mkt:acme"]),
+        visibleCount: 4,
+        searchPending: true,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("marketplaceIdsNeedingCatalogFetch", () => {

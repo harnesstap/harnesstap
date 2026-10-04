@@ -210,9 +210,13 @@ export function discoverListIsSearching(input: {
   fetchedIds: ReadonlySet<string>;
   inflightIds?: ReadonlySet<string>;
   visibleCount: number;
+  searchPending?: boolean;
 }): boolean {
   if (input.visibleCount > 0) {
     return false;
+  }
+  if (input.searchPending) {
+    return true;
   }
   const inflight = input.inflightIds;
   if (inflight) {

@@ -374,6 +374,22 @@ describe("sources workspace chrome", () => {
 });
 
 describe("sources search list and preview", () => {
+  test("does not refresh marketplace catalogs when searching", () => {
+    const designSource = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+      "utf8",
+    );
+    expect(workspaceSource).toContain("if (!sourceInventoryReady || searchActive)");
+    expect(workspaceSource).toContain(
+      "searchPending: searchActive && searchGroups === null",
+    );
+    expect(workspaceSource).not.toMatch(/const searchIds =/);
+    expect(workspaceSource).toContain("fetchDiscoverSearch");
+    expect(designSource).toContain(
+      "Search does not git-refresh marketplace catalogs or show that header copy.",
+    );
+  });
+
   test("merges checked sources with mergeSourcesHits and presence badges", () => {
     expect(workspaceSource).toContain("mergeSourcesHits");
     expect(workspaceSource).toContain("syncLocalFromLibraryPeek");

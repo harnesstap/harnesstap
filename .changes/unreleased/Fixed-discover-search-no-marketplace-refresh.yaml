@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep Discover search on stored marketplace catalogs instead of git-refreshing them or showing marketplace refresh progress.
+time: 2026-10-04T03:50:00Z
+custom:
+  Issue: ""
