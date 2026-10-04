@@ -65,11 +65,7 @@ export function isSourcesFilterActive(
   query: string,
   checkedIds: string[],
   rows: SourceRow[],
-  showInLibrary = false,
 ): boolean {
-  if (showInLibrary) {
-    return true;
-  }
   if (query.trim().length > 0) {
     return true;
   }

@@ -110,6 +110,29 @@ describe("loadSettings", () => {
     expect(loadSettings(dir).plugins.refreshMaxAgeHours).toBe(24);
   });
 
+  it("defaults marketplaceRefreshMaxAgeMinutes to 60 when config missing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    expect(loadSettings(dir).plugins.marketplaceRefreshMaxAgeMinutes).toBe(60);
+  });
+
+  it("reads marketplaceRefreshMaxAgeMinutes from config.jsonc", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      JSON.stringify({ plugins: { marketplaceRefreshMaxAgeMinutes: 15 } }),
+    );
+    expect(loadSettings(dir).plugins.marketplaceRefreshMaxAgeMinutes).toBe(15);
+  });
+
+  it("falls back to default for invalid marketplaceRefreshMaxAgeMinutes", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({ plugins: { marketplaceRefreshMaxAgeMinutes: -1 } }),
+    );
+    expect(loadSettings(dir).plugins.marketplaceRefreshMaxAgeMinutes).toBe(60);
+  });
+
   it("reads pluginVersionHistoryLimit from config.jsonc", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
@@ -178,6 +201,7 @@ describe("plugins.marketplaces", () => {
     saveSettings(dir, {
       plugins: {
         refreshMaxAgeHours: 24,
+        marketplaceRefreshMaxAgeMinutes: 60,
         marketplaces: [
           {
             name: "demo",
@@ -213,6 +237,7 @@ describe("plugins.marketplaces", () => {
     saveSettings(dir, {
       plugins: {
         refreshMaxAgeHours: 24,
+        marketplaceRefreshMaxAgeMinutes: 60,
         marketplaces: [
           {
             name: "demo",
@@ -245,6 +270,7 @@ describe("plugins.marketplaces", () => {
     saveSettings(dir, {
       plugins: {
         refreshMaxAgeHours: 12,
+        marketplaceRefreshMaxAgeMinutes: 60,
         marketplaces: [],
       },
       pluginVersionHistoryLimit: 10,

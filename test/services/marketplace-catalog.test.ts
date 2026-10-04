@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
@@ -7,6 +7,8 @@ import { addMarketplace } from "../../src/services/marketplace-registry.js";
 import {
   ensureMarketplaceCatalog,
   listCatalogPlugins,
+  MARKETPLACE_CATALOG_MAX_AGE_MS,
+  marketplaceCatalogPath,
   refreshMarketplaceCatalog,
   searchCatalogPlugins,
 } from "../../src/services/marketplace-catalog.js";
@@ -288,5 +290,81 @@ describe("marketplace-catalog", () => {
     expect(
       refreshMarketplaceCatalog(home, { name: "local-market", force: false }).message,
     ).toBe("Catalog is up to date");
+  });
+
+  it("refreshes the on-disk catalog when it is older than 60 minutes", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-home-"));
+    const repo = initLocalMarketplaceRepo();
+    addMarketplace(home, {
+      name: "local-market",
+      url: repo,
+      platforms: ["claude-code"],
+    });
+    expect(
+      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+    ).toEqual(["alpha", "beta"]);
+
+    writeFileSync(
+      join(repo, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "local-market",
+        plugins: [{ name: "gamma", version: "9.0.0" }],
+      }),
+    );
+    spawnSync("git", ["add", "."], { cwd: repo });
+    spawnSync(
+      "git",
+      ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "newer"],
+      { cwd: repo },
+    );
+
+    const catalogPath = marketplaceCatalogPath(home, "local-market");
+    const stale = (Date.now() - MARKETPLACE_CATALOG_MAX_AGE_MS - 1) / 1000;
+    utimesSync(catalogPath, stale, stale);
+
+    expect(
+      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+    ).toEqual(["gamma"]);
+  });
+
+  it("uses marketplaceRefreshMaxAgeMinutes from toolkit options", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-home-"));
+    const repo = initLocalMarketplaceRepo();
+    writeFileSync(
+      join(home, "config.jsonc"),
+      JSON.stringify({
+        plugins: {
+          marketplaceRefreshMaxAgeMinutes: 1,
+          marketplaces: [
+            { name: "local-market", url: repo, platforms: ["claude-code"] },
+          ],
+        },
+      }),
+    );
+    expect(
+      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+    ).toEqual(["alpha", "beta"]);
+
+    writeFileSync(
+      join(repo, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "local-market",
+        plugins: [{ name: "gamma", version: "9.0.0" }],
+      }),
+    );
+    spawnSync("git", ["add", "."], { cwd: repo });
+    spawnSync(
+      "git",
+      ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "newer"],
+      { cwd: repo },
+    );
+
+    const catalogPath = marketplaceCatalogPath(home, "local-market");
+    const stale = (Date.now() - 61 * 1000) / 1000;
+    utimesSync(catalogPath, stale, stale);
+
+    expect(
+      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+    ).toEqual(["gamma"]);
   });
 });

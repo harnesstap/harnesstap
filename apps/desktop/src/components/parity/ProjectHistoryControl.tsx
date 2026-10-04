@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { History } from "lucide-react";
+import { IconActionButton } from "../IconActionButton";
 import { ProjectHistoryDrawer } from "./ProjectHistoryDrawer";
 
 const HEADER_ICON_SIZE = 18;
@@ -28,17 +29,13 @@ export function ProjectHistoryControl({
 
   return (
     <>
-      <button
-        type="button"
-        className="header-focus-btn"
+      <IconActionButton
         data-testid="open-project-history"
         onClick={() => setHistoryOpen(true)}
         disabled={chromeDisabled}
-        aria-label="History"
-        title="History"
-      >
-        <History size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-      </button>
+        label="History"
+        icon={<History size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
+      />
       <ProjectHistoryDrawer
         open={historyOpen}
         baseUrl={baseUrl}

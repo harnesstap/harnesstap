@@ -68,7 +68,7 @@ export interface HarnessesWorkspaceProps {
   disconnected?: boolean;
   /** Bump while mounted to return to the inventory entrypoint (header re-click). */
   homeResetNonce?: number;
-  /** Bump when the header refresh rescans library roots; refetch harness inventory. */
+  /** Bump when Library tracked directories change; refetch harness inventory. */
   inventoryReloadKey?: number;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
@@ -561,6 +561,7 @@ export function HarnessesWorkspace({
           onSelect={(id) => dispatch({ type: "select", id })}
           onAdd={openAdd}
           onDetect={startDetect}
+          onRefresh={ctrl.refresh}
           onToggleEdit={() => dispatch({ type: "toggle-edit" })}
           onRemove={(id) => openOverlay({ kind: "remove", id })}
           syncLabel={syncing ? "Syncing…" : "Sync harnesses"}

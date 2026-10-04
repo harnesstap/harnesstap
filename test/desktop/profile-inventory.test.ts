@@ -304,6 +304,35 @@ describe("partitionProfileInventory", () => {
     expect(parts.active[0]?.driftChange).toBeUndefined();
   });
 
+  it("hides View changes when a leftover extra-harness skill copy would be deleted", () => {
+    const stacked = contents({
+      resources: [
+        {
+          type: "skill",
+          name: "ubiquitous-language",
+          source: "~/.cursor/skills/ubiquitous-language/SKILL.md",
+        },
+      ],
+      type_counts: { skill: 1 },
+      stack_resource_count: 1,
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      liveRows: flattenProfileResourceList(stacked, { selectedProfile: "work" }),
+      notStaged: [],
+      fileChanges: [
+        {
+          path: ".cursor/skills/ubiquitous-language/SKILL.md",
+          type: "added",
+          resource: { type: "skill", name: "ubiquitous-language" },
+        },
+      ],
+    });
+
+    expect(parts.active[0]?.drifted).toBe(false);
+    expect(parts.active[0]?.driftChange).toBeUndefined();
+  });
+
   it("hides View changes and yellow when a skill or subagent scoped diff is +0 -0", () => {
     const skillPath = ".claude/skills/ubiquitous-language/SKILL.md";
     const agentPath = ".claude/agents/code-reviewer.md";

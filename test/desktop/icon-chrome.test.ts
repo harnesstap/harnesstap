@@ -87,7 +87,7 @@ describe("desktop icon chrome", () => {
   test("locks Designer voice: short tooltips, no em dash UI copy", () => {
     expect(designSource).toContain("No em dashes in Desktop system/UI strings");
     expect(designSource).toContain("One idea per string");
-    expect(appSource).toContain('title="Refresh live status"');
+    expect(appSource).toContain('label="Refresh live status"');
     expect(appSource).toContain('title="Install project config"');
     expect(appSource).not.toContain("rescanning tracked directories");
     expect(appSource).not.toContain("ht install");

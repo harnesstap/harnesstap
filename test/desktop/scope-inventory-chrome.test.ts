@@ -155,6 +155,29 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("Ghost **Add all**");
   });
 
+  it("places Project Install and History on the live-toolbar before Overwrite", () => {
+    const toolbar = appSource.slice(
+      appSource.indexOf('className="live-toolbar-actions"'),
+      appSource.indexOf("live-toolbar-remove"),
+    );
+    expect(toolbar).toContain('testId="live-status-refresh"');
+    expect(toolbar).toContain('data-testid="project-install"');
+    expect(toolbar).toContain('title="Install project config"');
+    expect(toolbar).toContain("HardDriveDownload");
+    expect(toolbar).toContain("ProjectHistoryControl");
+    expect(toolbar).toContain("ctrl.runProjectInstall");
+    const refreshIdx = toolbar.indexOf('testId="live-status-refresh"');
+    const installIdx = toolbar.indexOf('data-testid="project-install"');
+    const historyIdx = toolbar.indexOf("ProjectHistoryControl");
+    const overwriteIdx = toolbar.indexOf('title="Overwrite with current setup"');
+    expect(refreshIdx).toBeGreaterThan(-1);
+    expect(installIdx).toBeGreaterThan(refreshIdx);
+    expect(historyIdx).toBeGreaterThan(installIdx);
+    expect(overwriteIdx).toBeGreaterThan(historyIdx);
+    expect(designSource).toContain("Install project config");
+    expect(designSource).toContain("live-state toolbar");
+  });
+
   it("opens profile edit from the header pencil after Overwrite; Active Edit toggles row mode", () => {
     expect(appSource).toContain("inventoryEditMode");
     expect(appSource).toContain("live-toolbar-identity");

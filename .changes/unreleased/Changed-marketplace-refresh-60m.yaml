@@ -1,0 +1,5 @@
+kind: Changed
+body: Refresh marketplace catalogs automatically after plugins.marketplaceRefreshMaxAgeMinutes (default 60) unless they were already refreshed in that window.
+time: 2026-10-03T12:00:00Z
+custom:
+  Issue: ""

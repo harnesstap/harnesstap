@@ -3,7 +3,7 @@
 .project-picker {
   position: relative;
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 16rem;
 }
 
 .project-picker-trigger {
@@ -37,7 +37,8 @@
   z-index: var(--z-menu);
   top: calc(100% + 4px);
   left: 0;
-  right: 0;
+  min-width: 22rem;
+  width: max(100%, 22rem);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;

@@ -23,6 +23,7 @@ export interface PluginMarketplaceEntry {
 export interface HarnesstapSettings {
   plugins: {
     refreshMaxAgeHours: number;
+    marketplaceRefreshMaxAgeMinutes: number;
     marketplaces: PluginMarketplaceEntry[];
   };
   pluginVersionHistoryLimit: number;
@@ -38,8 +39,18 @@ const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
   "copilot-cli",
 ]);
 
+export const DEFAULT_MARKETPLACE_REFRESH_MAX_AGE_MINUTES = 60;
+
+export function marketplaceRefreshMaxAgeMs(minutes: number): number {
+  return minutes * 60 * 1000;
+}
+
 const DEFAULTS: HarnesstapSettings = {
-  plugins: { refreshMaxAgeHours: 24, marketplaces: [] },
+  plugins: {
+    refreshMaxAgeHours: 24,
+    marketplaceRefreshMaxAgeMinutes: DEFAULT_MARKETPLACE_REFRESH_MAX_AGE_MINUTES,
+    marketplaces: [],
+  },
   pluginVersionHistoryLimit: 10,
   harnessSync: { pluginResources: DEFAULT_PLUGIN_RESOURCE_MODE },
 };
@@ -231,6 +242,7 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
       harnessSync?: { pluginResources?: unknown };
     };
     const hours = raw.plugins?.refreshMaxAgeHours;
+    const marketplaceMinutes = raw.plugins?.marketplaceRefreshMaxAgeMinutes;
     const limit = raw.pluginVersionHistoryLimit;
     const pluginResources = raw.harnessSync?.pluginResources;
     return {
@@ -239,6 +251,10 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
           typeof hours === "number" && hours > 0
             ? hours
             : DEFAULTS.plugins.refreshMaxAgeHours,
+        marketplaceRefreshMaxAgeMinutes:
+          typeof marketplaceMinutes === "number" && marketplaceMinutes > 0
+            ? marketplaceMinutes
+            : DEFAULTS.plugins.marketplaceRefreshMaxAgeMinutes,
         marketplaces: parseMarketplaces(raw.plugins?.marketplaces),
       },
       pluginVersionHistoryLimit:

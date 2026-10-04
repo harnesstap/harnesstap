@@ -300,6 +300,7 @@ async function scanForCommit(input: {
   scope: ProfileApplyPreviewScope;
   projectPath?: string;
   harness?: string;
+  path?: string;
 }): Promise<{ originRef: string; scanned: ScanResult[] }> {
   const originRef =
     input.scope === "project"
@@ -312,7 +313,9 @@ async function scanForCommit(input: {
     input.scope === "project"
       ? await scanProject(originRef)
       : await scanHomeDefaults(
-          input.harness ? resolveRegisteredScanTargets(input.harness)[0] : undefined,
+          input.path || !input.harness
+            ? undefined
+            : resolveRegisteredScanTargets(input.harness)[0],
           originRef,
         );
   return { originRef, scanned };
@@ -470,10 +473,15 @@ export async function commitManagedResourceFromLive(input: {
   const matching = scanned
     .map((result) => ({
       ...result,
-      resources: result.resources.filter(
-        (resource) =>
-          resource.type === resourceType && resource.name === resourceName,
-      ),
+      resources: result.resources.filter((resource) => {
+        if (resource.type !== resourceType || resource.name !== resourceName) {
+          return false;
+        }
+        if (!input.path) {
+          return true;
+        }
+        return sourceMatchesManagedPath(resource.source, input.path, originRef);
+      }),
     }))
     .filter((result) => result.resources.length > 0);
 

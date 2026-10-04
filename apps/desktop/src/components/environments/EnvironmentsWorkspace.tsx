@@ -6,6 +6,7 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
+import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
 import {
   deleteEnvironment,
   environmentApplyAvailable,
@@ -279,18 +280,28 @@ export function EnvironmentsWorkspace({
               </span>
             </div>
           </div>
-          <IconActionButton
-            label="Create environment"
-            primary
-            data-testid="create-environment"
-            disabled={controlsDisabled || !baseUrl}
-            onClick={() => {
-              setDrawerMode("create");
-              setEditName(undefined);
-              setDrawerOpen(true);
-            }}
-            icon={<Plus size={ACTION_ICON_SIZE} aria-hidden />}
-          />
+          <div className="resources-panel-header-actions">
+            <WorkspaceRefreshButton
+              testId="environments-refresh"
+              label="Refresh environments"
+              disabled={controlsDisabled || !baseUrl}
+              onRefresh={() => {
+                refresh();
+              }}
+            />
+            <IconActionButton
+              label="Create environment"
+              primary
+              data-testid="create-environment"
+              disabled={controlsDisabled || !baseUrl}
+              onClick={() => {
+                setDrawerMode("create");
+                setEditName(undefined);
+                setDrawerOpen(true);
+              }}
+              icon={<Plus size={ACTION_ICON_SIZE} aria-hidden />}
+            />
+          </div>
         </div>
       </div>
 

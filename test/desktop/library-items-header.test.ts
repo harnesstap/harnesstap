@@ -107,6 +107,21 @@ describe("library items header actions", () => {
     expect(panelSource).toContain("noResultsTitle");
     expect(panelSource).toContain('showBack={false}');
   });
+
+  test("title refresh rescans tracked directories then invalidates the library snapshot", () => {
+    const title = sliceBetween(
+      headerRow,
+      'className="resources-panel-title"',
+      "resources-panel-header-actions",
+    );
+    expect(title).toContain('testId="library-refresh"');
+    expect(panelSource).toContain("rescanResourceTrackedDirectories");
+    expect(panelSource).toContain("librarySnapshotStore.invalidate");
+    expect(headerRow.slice(headerRow.indexOf("resources-panel-header-actions"))).not.toContain(
+      "library-refresh",
+    );
+    expect(designSource).toContain("Library title spinner");
+  });
 });
 
 describe("library items header action styles", () => {

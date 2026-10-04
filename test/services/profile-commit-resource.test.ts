@@ -208,6 +208,59 @@ describe("profile-commit-resource", () => {
     }
   });
 
+  it("commits the requested harness skill file when another copy also exists", async () => {
+    const context = await createInitializedTestContext("profile-commit-skill-path");
+    try {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      const skill = createResource({
+        type: "skill",
+        name: "skillify",
+        description: "",
+        content: "---\nname: skillify\n---\n\n# original\n",
+        metadata: {},
+        source: "~/.claude/skills/skillify/SKILL.md",
+      });
+      addResourceToPlugin(profile.id, skill.id);
+
+      await applyProfilePlugin("work", {
+        harness: "claude-code,cursor",
+        conflictPolicy: "replace",
+      });
+
+      mkdirSync(join(context.homeDir, ".claude/skills/skillify"), {
+        recursive: true,
+      });
+      mkdirSync(join(context.homeDir, ".cursor/skills/skillify"), {
+        recursive: true,
+      });
+      const claudeBody = "---\nname: skillify\n---\n\n# claude live\n";
+      const cursorBody = "---\nname: skillify\n---\n\n# cursor live\n";
+      writeFileSync(
+        join(context.homeDir, ".claude/skills/skillify/SKILL.md"),
+        claudeBody,
+        "utf-8",
+      );
+      writeFileSync(
+        join(context.homeDir, ".cursor/skills/skillify/SKILL.md"),
+        cursorBody,
+        "utf-8",
+      );
+
+      await commitManagedPathFromLive({
+        profileSelector: "work",
+        path: ".cursor/skills/skillify/SKILL.md",
+        scope: "home",
+        harness: "claude-code,cursor",
+      });
+
+      expect(getResource(skill.id)?.content).toContain("# cursor live");
+      expect(getResource(skill.id)?.content).not.toContain("# claude live");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("commits live mcp.json into profile mcp_server resources", async () => {
     const context = await createInitializedTestContext("profile-commit-mcp");
     try {

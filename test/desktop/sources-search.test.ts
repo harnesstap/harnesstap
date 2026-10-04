@@ -5,12 +5,13 @@ import {
   isStandaloneResourceType,
   matchQuery,
   mergeSourcesHits,
-  filterDiscoverGroups,
   discoverListEmptyCopy,
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
   marketplaceIdsNeedingCatalogFetch,
+  DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS,
+  DISCOVER_MARKETPLACE_HIT_SCHEMA,
   nextMarketplaceHitsOnRefresh,
   presenceForCloud,
   presenceForMarketplace,
@@ -758,85 +759,97 @@ describe("applyOriginOutdated", () => {
   });
 });
 
-describe("filterDiscoverGroups", () => {
-  const groups = mergeSourcesHits({
-    sourceOrder: ["local", "mkt:teads"],
-    local: {
-      sourceId: "local",
-      sourceLabel: "Local",
-      heads: [{ name: "devx", version: "1.0.0" }],
-      resources: [],
-    },
-    marketplaces: [
-      {
-        sourceId: "mkt:teads",
-        sourceLabel: "teads",
-        marketplaceName: "teads",
-        plugins: [
-          { name: "ship", version: "2.0.0" },
-          { name: "already", version: "1.0.0" },
-        ],
+describe("mergeSourcesHits presence", () => {
+  test("keeps in-library marketplace hits in the unfiltered list", () => {
+    const groups = mergeSourcesHits({
+      sourceOrder: ["local", "mkt:teads"],
+      local: {
+        sourceId: "local",
+        sourceLabel: "Local",
+        heads: [{ name: "devx", version: "1.0.0" }],
+        resources: [],
       },
-    ],
-    libraryResources: [
-      {
-        name: "already@teads",
-        type: "plugin",
-        origin_kind: "marketplace_link",
-      },
-    ],
-  });
-
-  test("hides in-library hits by default", () => {
-    const filtered = filterDiscoverGroups(groups, false);
-    expect(filtered.find((group) => group.sourceId === "local")?.hits).toEqual(
-      [],
-    );
+      marketplaces: [
+        {
+          sourceId: "mkt:teads",
+          sourceLabel: "teads",
+          marketplaceName: "teads",
+          plugins: [
+            { name: "ship", version: "2.0.0" },
+            { name: "already", version: "1.0.0" },
+          ],
+        },
+      ],
+      libraryResources: [
+        {
+          name: "already@teads",
+          type: "plugin",
+          origin_kind: "marketplace_link",
+        },
+      ],
+    });
     expect(
-      filtered
+      groups
         .find((group) => group.sourceId === "mkt:teads")
-        ?.hits.map((hit) => hit.name),
-    ).toEqual(["ship"]);
+        ?.hits.map((hit) => [hit.name, hit.presence]),
+    ).toEqual([
+      ["ship", "remote_only"],
+      ["already", "in_library"],
+    ]);
+    expect(
+      groups.find((group) => group.sourceId === "local")?.hits.map((hit) => hit.name),
+    ).toEqual(["devx"]);
   });
 
-  test("keeps in-library hits when Show in library is on", () => {
-    const shown = filterDiscoverGroups(groups, true);
-    expect(shown).toEqual(groups);
+  test("keeps matching in-library plugins when searching", () => {
+    const searched = mergeSourcesHits({
+      query: "slack",
+      sourceOrder: ["mkt:teads"],
+      marketplaces: [
+        {
+          sourceId: "mkt:teads",
+          sourceLabel: "teads-plugins",
+          marketplaceName: "teads-plugins",
+          plugins: [
+            {
+              name: "code-review-workflow",
+              description: "End-to-end code review workflow.",
+              contents: [
+                {
+                  type: "skill",
+                  name: "request-slack-review",
+                  description: "Request a Slack code review from the owning team.",
+                },
+              ],
+            },
+            { name: "unrelated", description: "Kubernetes helpers" },
+          ],
+        },
+      ],
+      libraryResources: [
+        {
+          name: "code-review-workflow@teads-plugins",
+          type: "plugin",
+          origin_kind: "marketplace_link",
+        },
+      ],
+    });
     expect(
-      shown.find((group) => group.sourceId === "mkt:teads")?.hits.map(
-        (hit) => hit.presence,
-      ),
-    ).toEqual(["remote_only", "in_library"]);
+      searched.flatMap((group) => group.hits).map((hit) => [hit.name, hit.presence]),
+    ).toEqual([["code-review-workflow", "in_library"]]);
   });
 });
 
 describe("discoverListEmptyCopy", () => {
-  test("explains an empty Discover list when in-library rows are hidden", () => {
-    expect(discoverListEmptyCopy({ query: "", showInLibrary: false })).toEqual({
-      message: "You're caught up",
-      hint: "Nothing left to discover. Turn on Show in library.",
-      action: "show-library",
-    });
-    expect(
-      discoverListEmptyCopy({ query: "ship", showInLibrary: false }),
-    ).toEqual({
-      message: 'No results for "ship"',
-      hint: "Clear search to see items still to add.",
-      action: "clear-search",
-    });
-  });
-
-  test("keeps search empty copy when showing in-library hits", () => {
-    expect(discoverListEmptyCopy({ query: "", showInLibrary: true })).toEqual({
+  test("prompts to search when the unfiltered list is empty", () => {
+    expect(discoverListEmptyCopy({ query: "" })).toEqual({
       message: "Search to add",
       hint: "Type a name, description, or skill.",
       action: null,
     });
-    expect(
-      discoverListEmptyCopy({ query: "missing", showInLibrary: true }),
-    ).toEqual({
-      message: 'No results for "missing"',
-      hint: "Clear search to see items still to add.",
+    expect(discoverListEmptyCopy({ query: "ship" })).toEqual({
+      message: 'No results for "ship"',
+      hint: "Clear search to see every source again.",
       action: "clear-search",
     });
   });
@@ -901,14 +914,72 @@ describe("marketplaceIdsNeedingCatalogFetch", () => {
     "mkt:empty": { plugins: [], error: null },
   };
 
-  test("reuses non-empty cached marketplace catalogs on reopen", () => {
+  test("reuses current-schema cached marketplace catalogs fetched within 60 minutes", () => {
+    const now = new Date("2026-10-03T12:00:00.000Z");
     expect(
       marketplaceIdsNeedingCatalogFetch({
-        marketplaceIds: ["mkt:acme", "mkt:beta", "mkt:empty"],
-        hits,
+        marketplaceIds: ["mkt:acme", "mkt:beta", "mkt:empty", "mkt:stale"],
+        hits: {
+          "mkt:acme": {
+            plugins: [{ name: "focus" }],
+            error: null,
+            schema: DISCOVER_MARKETPLACE_HIT_SCHEMA,
+            fetchedAt: now.toISOString(),
+          },
+          "mkt:empty": { plugins: [], error: null },
+          "mkt:stale": { plugins: [{ name: "old" }], error: null },
+        },
         bypassCache: false,
+        now,
       }),
-    ).toEqual(["mkt:beta", "mkt:empty"]);
+    ).toEqual(["mkt:beta", "mkt:empty", "mkt:stale"]);
+  });
+
+  test("refetches marketplace catalogs older than 60 minutes", () => {
+    const now = new Date("2026-10-03T12:00:00.000Z");
+    const staleAt = new Date(
+      now.getTime() - DISCOVER_MARKETPLACE_CACHE_MAX_AGE_MS - 1,
+    ).toISOString();
+    expect(
+      marketplaceIdsNeedingCatalogFetch({
+        marketplaceIds: ["mkt:acme"],
+        hits: {
+          "mkt:acme": {
+            plugins: [{ name: "focus" }],
+            error: null,
+            schema: DISCOVER_MARKETPLACE_HIT_SCHEMA,
+            fetchedAt: staleAt,
+          },
+        },
+        bypassCache: false,
+        now,
+      }),
+    ).toEqual(["mkt:acme"]);
+  });
+
+  test("uses a configured marketplace refresh max age", () => {
+    const now = new Date("2026-10-03T12:00:00.000Z");
+    const fifteenMinutesMs = 15 * 60 * 1000;
+    expect(
+      marketplaceIdsNeedingCatalogFetch({
+        marketplaceIds: ["mkt:fresh", "mkt:stale"],
+        hits: {
+          "mkt:fresh": {
+            plugins: [{ name: "focus" }],
+            schema: DISCOVER_MARKETPLACE_HIT_SCHEMA,
+            fetchedAt: new Date(now.getTime() - fifteenMinutesMs + 1).toISOString(),
+          },
+          "mkt:stale": {
+            plugins: [{ name: "old" }],
+            schema: DISCOVER_MARKETPLACE_HIT_SCHEMA,
+            fetchedAt: new Date(now.getTime() - fifteenMinutesMs - 1).toISOString(),
+          },
+        },
+        bypassCache: false,
+        now,
+        maxAgeMs: fifteenMinutesMs,
+      }),
+    ).toEqual(["mkt:stale"]);
   });
 
   test("refetches every marketplace when bypassing cache", () => {

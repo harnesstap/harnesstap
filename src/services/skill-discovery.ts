@@ -20,18 +20,69 @@ function isDirectory(path: string): boolean {
   }
 }
 
+function scalarString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function parseSkillFrontmatterFallback(raw: string): {
+  data: Record<string, string>;
+  content: string;
+} {
+  if (!raw.startsWith("---")) {
+    return { data: {}, content: raw };
+  }
+  const end = raw.indexOf("\n---", 3);
+  if (end === -1) {
+    return { data: {}, content: raw };
+  }
+  const data: Record<string, string> = {};
+  for (const line of raw.slice(4, end).split("\n")) {
+    const separator = line.indexOf(":");
+    if (separator <= 0) continue;
+    const key = line.slice(0, separator).trim();
+    if (!key) continue;
+    let value = line.slice(separator + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    data[key] = value;
+  }
+  return {
+    data,
+    content: raw.slice(end + 4).replace(/^\n/, ""),
+  };
+}
+
+function parseSkillMarkdown(raw: string): {
+  data: Record<string, unknown>;
+  content: string;
+} {
+  try {
+    const parsed = matter(raw);
+    return { data: parsed.data as Record<string, unknown>, content: parsed.content };
+  } catch {
+    return parseSkillFrontmatterFallback(raw);
+  }
+}
+
 function readSkillMd(skillDir: string): { name: string; description: string; body: string } | null {
   const skillPath = join(skillDir, "SKILL.md");
   if (!existsSync(skillPath)) return null;
-  const raw = readFileSync(skillPath, "utf-8");
-  const parsed = matter(raw);
+  let raw: string;
+  try {
+    raw = readFileSync(skillPath, "utf-8");
+  } catch {
+    return null;
+  }
+  const parsed = parseSkillMarkdown(raw);
   const dirName = skillDir.split(/[/\\]/).pop() ?? "skill";
+  const name = scalarString(parsed.data.name);
   return {
-    name:
-      typeof parsed.data.name === "string" && parsed.data.name.trim()
-        ? parsed.data.name.trim()
-        : dirName,
-    description: typeof parsed.data.description === "string" ? parsed.data.description : "",
+    name: name || dirName,
+    description: scalarString(parsed.data.description),
     body: parsed.content,
   };
 }

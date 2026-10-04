@@ -353,16 +353,12 @@ export function App() {
           switching={switching}
           bootstrapBusy={bootstrapBusy}
           migrateBusy={migrateBusy}
-          installBusy={ctrl.installBusy}
           projectPath={projectPath}
           projectReady={projectReady}
           cloudAuth={cloud.cloudAuth}
           onDestinationClick={onHeaderDestinationClick}
           onSelectProject={selectProject}
           onBrowseProject={() => void browseProject()}
-          onProjectInstall={() => void ctrl.runProjectInstall()}
-          onProfilesChanged={onProfilesChanged}
-          onLibraryChanged={onLibraryChanged}
           onOpenMigrateExport={() => overlays.openOverlay("migrateExport")}
           onOpenMigrateImport={() => overlays.openOverlay("migrateImport")}
           onOpenSettings={() => overlays.openOverlay("settings")}

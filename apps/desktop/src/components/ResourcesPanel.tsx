@@ -19,7 +19,7 @@ import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesMod
 import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
-import { ButtonSpinner } from "./ButtonSpinner";
+import { WorkspaceRefreshButton } from "./WorkspaceRefreshButton";
 import { Banner } from "./shell/Banner";
 import { SkeletonRow } from "./shell/Skeleton";
 import type { ApplyPluginResult } from "../lib/api/apply-plugin";
@@ -27,6 +27,7 @@ import {
   AgentApiError,
   fetchProfileDetail,
   fetchProfiles,
+  rescanResourceTrackedDirectories,
 } from "../lib/agent-client";
 import { deleteLibraryPlugin } from "../lib/api/library-plugins";
 import {
@@ -140,7 +141,7 @@ function overlayOriginOutdated(
 export interface ResourcesPanelProps {
   baseUrl: string | null;
   token: string | null;
-  /** Bump to force a library reload (e.g. after header refresh rescans tracked dirs). */
+  /** Bump to force a library reload (e.g. after a tracked-directory rescan). */
   reloadKey?: number;
   /** Bump while mounted to return to the unfiltered list (header re-click). */
   homeResetNonce?: number;
@@ -769,6 +770,21 @@ export function ResourcesPanel({
     setResourcesReloadKey((value) => value + 1);
   }
 
+  async function refreshLibrary(): Promise<boolean> {
+    if (!baseUrl) {
+      return false;
+    }
+    try {
+      await rescanResourceTrackedDirectories(baseUrl, token);
+    } catch (scanError: unknown) {
+      setActionError(errorMessage(scanError, "Could not rescan tracked directories"));
+      return false;
+    }
+    await librarySnapshotStore.invalidate();
+    reloadLibrary();
+    return true;
+  }
+
   function openBulkDelete(): void {
     if (selectedEntries.length === 0 || bulkDeleteBusy) {
       return;
@@ -1142,11 +1158,13 @@ export function ResourcesPanel({
             <div className="resources-panel-title">
               <span>
                 Library
-                {refreshing ? (
-                  <span className="resources-panel-refreshing" aria-hidden>
-                    <ButtonSpinner size={14} />
-                  </span>
-                ) : null}
+                <WorkspaceRefreshButton
+                  testId="library-refresh"
+                  label="Refresh library"
+                  className="resources-panel-refreshing"
+                  disabled={disabled || !baseUrl}
+                  onRefresh={refreshLibrary}
+                />
               </span>
               <span className="muted resources-panel-scope">
                 All registered resources and plugins

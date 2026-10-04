@@ -1,29 +1,22 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
   Cable,
-  Check,
   Download,
   FolderGit2,
   Globe,
-  HardDriveDownload,
   Library,
   PackageSearch,
-  RefreshCw,
   Settings,
   Upload,
   User,
 } from "lucide-react";
-import { rescanResourceTrackedDirectories } from "../../lib/agent-client";
 import type { HeaderDestination } from "../../lib/header-destination";
 import type { CloudAuthStatus } from "../../lib/types";
 import type { AgentClient } from "../../state/agent-session";
 import type { Destination, Scope } from "../../state/navigation";
-import { statusStore } from "../../state/status-store";
-import { toast } from "../../state/toast-store";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { IconActionButton } from "../IconActionButton";
 import { ParityChrome } from "../parity/ParityChrome";
-import { ProjectHistoryControl } from "../parity/ProjectHistoryControl";
 import { ProjectPicker } from "../ProjectPicker";
 import {
   refreshDesktopUpdateStatus,
@@ -31,6 +24,7 @@ import {
   useDesktopUpdateStatus,
 } from "../UpdateAvailableControl";
 import { HeaderMoreMenu } from "./HeaderMoreMenu";
+import markUrl from "../../../app-icon.svg";
 
 const HEADER_ICON_SIZE = 18;
 export const HEADER_DEST_ICONS_PX = 960;
@@ -75,16 +69,12 @@ export interface AppHeaderProps {
   switching: boolean;
   bootstrapBusy: boolean;
   migrateBusy: boolean;
-  installBusy: boolean;
   projectPath: string;
   projectReady: boolean;
   cloudAuth: CloudAuthStatus | null;
   onDestinationClick: (clicked: HeaderDestination) => void;
   onSelectProject: (path: string) => void;
   onBrowseProject: () => void;
-  onProjectInstall: () => void;
-  onProfilesChanged: () => void;
-  onLibraryChanged: () => void;
   onOpenMigrateExport: () => void;
   onOpenMigrateImport: () => void;
   onOpenSettings: () => void;
@@ -100,16 +90,12 @@ export function AppHeader({
   switching,
   bootstrapBusy,
   migrateBusy,
-  installBusy,
   projectPath,
   projectReady,
   cloudAuth,
   onDestinationClick,
   onSelectProject,
   onBrowseProject,
-  onProjectInstall,
-  onProfilesChanged,
-  onLibraryChanged,
   onOpenMigrateExport,
   onOpenMigrateImport,
   onOpenSettings,
@@ -121,8 +107,6 @@ export function AppHeader({
   const headerWidth = useElementWidth(headerRef);
   const iconDestinations = headerWidth <= HEADER_DEST_ICONS_PX;
   const updateAvailable = useDesktopUpdateStatus()?.updateAvailable === true;
-  const [refreshPhase, setRefreshPhase] = useState<"idle" | "loading" | "success">("idle");
-  const refreshFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // The Update menu item only mounts while More is open, so the header owns the check.
   useEffect(() => {
@@ -131,47 +115,6 @@ export function AppHeader({
     }
     void refreshDesktopUpdateStatus(baseUrl, token);
   }, [baseUrl, connected, token]);
-
-  useEffect(() => {
-    return () => {
-      if (refreshFeedbackTimerRef.current) {
-        clearTimeout(refreshFeedbackTimerRef.current);
-      }
-    };
-  }, []);
-
-  const onRefreshClick = useCallback(async () => {
-    if (refreshPhase === "loading") {
-      return;
-    }
-    if (refreshFeedbackTimerRef.current) {
-      clearTimeout(refreshFeedbackTimerRef.current);
-      refreshFeedbackTimerRef.current = null;
-    }
-    setRefreshPhase("loading");
-    let rescanOk = true;
-    if (client && client.token) {
-      try {
-        await rescanResourceTrackedDirectories(client.baseUrl, client.token);
-        onLibraryChanged();
-      } catch (error) {
-        rescanOk = false;
-        statusStore.setStatusError(
-          error instanceof Error ? error.message : "Could not rescan tracked directories",
-        );
-      }
-    }
-    const statusOk = await statusStore.refreshStatus("full", projectPath);
-    if (!rescanOk || !statusOk) {
-      setRefreshPhase("idle");
-      return;
-    }
-    setRefreshPhase("success");
-    refreshFeedbackTimerRef.current = setTimeout(() => {
-      setRefreshPhase("idle");
-      refreshFeedbackTimerRef.current = null;
-    }, 1200);
-  }, [client, onLibraryChanged, projectPath, refreshPhase]);
 
   const projectTooltip = !projectPath
     ? "Choose a project directory"
@@ -190,7 +133,7 @@ export function AppHeader({
         .join(" ")}
     >
       <div className="app-header-brand">
-        <h1>HarnessTap</h1>
+        <img className="app-header-logo" src={markUrl} alt="HarnessTap" />
       </div>
       <div className="header-focus-controls" role="navigation" aria-label="Destinations">
         {maybeTooltip(
@@ -243,7 +186,7 @@ export function AppHeader({
             aria-current={destination === "harnesses" ? "page" : undefined}
           >
             <Cable size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-            <span className="header-focus-label">Harnesses</span>
+            <span className="header-focus-label">Harness</span>
           </button>,
         )}
       </div>
@@ -298,28 +241,6 @@ export function AppHeader({
             onSelect={onSelectProject}
             onBrowse={onBrowseProject}
           />
-          {projectPath ? (
-            <IconActionButton
-              data-testid="project-install"
-              label="Install"
-              title="Install project config"
-              busy={installBusy}
-              disabled={!connected || !token || switching || bootstrapBusy || !projectReady}
-              onClick={onProjectInstall}
-              icon={<HardDriveDownload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-            />
-          ) : null}
-          {projectPath ? (
-            <ProjectHistoryControl
-              baseUrl={baseUrl}
-              token={token}
-              connected={connected}
-              switching={switching || installBusy}
-              projectPath={projectPath}
-              onSuccess={(message) => toast({ tone: "success", title: message })}
-              onProfilesChanged={onProfilesChanged}
-            />
-          ) : null}
         </div>
       ) : (
         <div className="header-project-cluster header-focus-spacer" aria-hidden />
@@ -328,39 +249,6 @@ export function AppHeader({
         className="header-status"
         data-testid={connected ? "agent-connected" : undefined}
       >
-        <IconActionButton
-          className={[
-            "refresh-action",
-            refreshPhase === "loading" ? "is-loading" : "",
-            refreshPhase === "success" ? "is-success" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          data-testid="header-refresh"
-          onClick={() => void onRefreshClick()}
-          disabled={!connected || switching || refreshPhase === "loading"}
-          busy={refreshPhase === "loading"}
-          label={
-            refreshPhase === "success"
-              ? "Refreshed"
-              : refreshPhase === "loading"
-                ? "Refreshing"
-                : "Refresh live status"
-          }
-          title="Refresh live status"
-          icon={
-            refreshPhase === "success" ? (
-              <Check size={HEADER_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
-            ) : (
-              <RefreshCw
-                className="refresh-spinner"
-                size={HEADER_ICON_SIZE}
-                strokeWidth={2}
-                aria-hidden="true"
-              />
-            )
-          }
-        />
         <IconActionButton
           data-testid="open-settings"
           onClick={onOpenSettings}

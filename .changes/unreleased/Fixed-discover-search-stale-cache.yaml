@@ -1,0 +1,5 @@
+kind: Fixed
+body: Refetch stale Discover marketplace catalogs and keep search matches that are already in the library.
+time: 2026-10-03T23:45:00Z
+custom:
+  Issue: ""

@@ -89,6 +89,59 @@ describe("omitTransparentCrossHarnessAdds", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("hides leftover extra-harness copies when the resource is still expected", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-cross-harness-extra-"));
+    try {
+      const expected = [
+        { path: ".claude/skills/ubiquitous-language/SKILL.md", content: "# glossary\n" },
+        { path: ".agents/skills/ubiquitous-language/SKILL.md", content: "# glossary\n" },
+      ];
+      const changes: DriftFileChange[] = [
+        {
+          path: ".cursor/skills/ubiquitous-language/SKILL.md",
+          type: "added",
+        },
+      ];
+      expect(omitTransparentCrossHarnessAdds(root, expected, changes)).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("hides extra-harness content diffs when another copy already matches", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-cross-harness-extra-mod-"));
+    try {
+      mkdirSync(join(root, ".claude/skills/skillify"), { recursive: true });
+      mkdirSync(join(root, ".cursor/skills/skillify"), { recursive: true });
+      writeFileSync(
+        join(root, ".claude/skills/skillify/SKILL.md"),
+        "---\nname: skillify\n---\n\n# skillify\n",
+        "utf-8",
+      );
+      writeFileSync(
+        join(root, ".cursor/skills/skillify/SKILL.md"),
+        "---\nname: skillify\n---\n---\nname: skillify\n---\n\n# skillify\n",
+        "utf-8",
+      );
+      const expected = [
+        {
+          path: ".claude/skills/skillify/SKILL.md",
+          content: "---\nname: skillify\n---\n\n# skillify\n",
+        },
+        {
+          path: ".cursor/skills/skillify/SKILL.md",
+          content: "---\nname: skillify\n---\n\n# skillify\n",
+        },
+      ];
+      const changes: DriftFileChange[] = [
+        { path: ".cursor/skills/skillify/SKILL.md", type: "modified" },
+      ];
+      expect(omitTransparentCrossHarnessAdds(root, expected, changes)).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("withManagedRemovals", () => {

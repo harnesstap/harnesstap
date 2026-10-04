@@ -110,7 +110,7 @@ describe("desktop header chrome", () => {
   test("exposes Harnesses as a workspace destination after Environments", () => {
     expect(appSource).toContain('aria-label="Harnesses"');
     expect(appSource).toContain('onDestinationClick("harnesses")');
-    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harnesses<\/span>/);
+    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harness<\/span>/);
     expect(appSource).toContain("<MemoHarnessesWorkspace");
     expect(appSource).toContain("inventoryReloadKey={libraryReloadKey}");
     expect(appSource).toContain('case "harnesses":');
@@ -124,7 +124,7 @@ describe("desktop header chrome", () => {
 
   test("DESIGN.md lists inventories as destinations and Global/Project as Scope", () => {
     expect(designSource).toContain(
-      "Header destinations (equal-weight primary nav): **Library | Discover | Environments | Harnesses**",
+      "Header destinations (equal-weight primary nav): **Library | Discover | Env | Harness**",
     );
     expect(designSource).toContain("quieter **Scope** segmented switch");
     expect(designSource).toMatch(/\|\s*Discover\s*\|/);
@@ -144,21 +144,20 @@ describe("desktop header chrome", () => {
     expect(paritySource).toContain('aria-label="Environments"');
   });
 
-  test("labels header destinations Library, Discover, Environments, Harnesses, Global, and Project", () => {
+  test("labels header destinations Library, Discover, Env, Harness, Global, and Project", () => {
     expect(appSource).toMatch(/<Library[\s\S]*\/>\s*<span className="header-focus-label">Library<\/span>/);
     expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*<span className="header-focus-label">Discover<\/span>/);
-    expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*<span className="header-focus-label">Environments<\/span>/);
-    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harnesses<\/span>/);
+    expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*<span className="header-focus-label">Env<\/span>/);
+    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harness<\/span>/);
     expect(appSource).toMatch(/<Globe[\s\S]*\/>\s*<span className="header-focus-label">Global<\/span>/);
     expect(appSource).toMatch(/<FolderGit2[\s\S]*\/>\s*<span className="header-focus-label">Project<\/span>/);
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");
     expect(cssSource).toContain(".header-focus-btn.labeled");
-    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Environments | Harnesses**");
+    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Env | Harness**");
     expect(designSource).toContain("Header destinations show icon plus name");
     expect(appSource).toContain("header-scope");
     expect(appSource).toContain('id="header-scope-label"');
-    expect(appSource).toContain("Refresh live status");
     expect(appSource).toContain('label="Settings"');
     expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
     expect(appSource).toContain('aria-current={destination === "library" ? "page" : undefined}');
@@ -168,13 +167,46 @@ describe("desktop header chrome", () => {
     expect(appSource).not.toContain('title="Discover"');
     expect(paritySource).not.toContain('title="Environments"');
     expect(cssSource).toContain("container-type: inline-size");
-    expect(cssSource).toContain("minmax(180px, 1fr)");
+    expect(cssSource).toContain("minmax(280px, 1fr)");
     expect(cssSource).toContain(
-      "grid-template-columns: max-content max-content max-content minmax(180px, 1fr) max-content",
+      "grid-template-columns: max-content max-content max-content minmax(280px, 1fr) max-content",
     );
     expect(cssSource).not.toContain("minmax(0, auto)");
+    expect(cssSource).toContain(".project-picker {");
+    expect(cssSource).toContain("min-width: 16rem");
+    expect(cssSource).toContain(".project-picker-menu");
+    expect(cssSource).toContain("min-width: 22rem");
     expect(designSource).toContain("Window minimum size is 960×600");
     expect(designSource).toContain("do not shrink or clip into the Scope divider");
+  });
+
+  test("keeps only the project picker in the top navbar project cluster", () => {
+    const header = sliceBetween(
+      appSource,
+      "export function AppHeader",
+      "export function AppOverlays",
+    );
+    expect(header).toContain("<ProjectPicker");
+    expect(header).not.toContain('data-testid="project-install"');
+    expect(header).not.toContain("ProjectHistoryControl");
+    expect(header).not.toContain("HardDriveDownload");
+    expect(designSource).toContain("Project picker appears only when Project");
+    expect(designSource).toContain("live-state toolbar");
+  });
+
+  test("replaces the HarnessTap wordmark with the brand mark", () => {
+    const brandBlock = sliceBetween(
+      appSource,
+      'className="app-header-brand"',
+      "header-focus-controls",
+    );
+    expect(brandBlock).toContain("app-header-logo");
+    expect(brandBlock).toContain('alt="HarnessTap"');
+    expect(brandBlock).toContain("{markUrl}");
+    expect(appSource).toContain("app-icon.svg");
+    expect(brandBlock).not.toContain("<h1>HarnessTap</h1>");
+    expect(cssSource).toContain(".app-header-logo");
+    expect(designSource).toContain("Brand is the Flow Split mark");
   });
 
   test("destination cluster does not clip the last primary nav control", () => {
@@ -190,7 +222,7 @@ describe("desktop header chrome", () => {
     expect(destBlock).not.toContain("min-width: 0");
   });
 
-  test("header utilities are Refresh, Settings, and More; Export, Import, and Account live in More", () => {
+  test("header utilities are Settings and More; Export, Import, and Account live in More", () => {
     const utilities = sliceBetween(
       appSource,
       'className="header-status"',
@@ -206,12 +238,29 @@ describe("desktop header chrome", () => {
     expect(utilities).not.toContain('label="Import setup"');
     expect(utilities).not.toContain('label="Account"');
     expect(utilities).not.toContain('variant="icon"');
+    expect(utilities).not.toContain('data-testid="header-refresh"');
+    expect(utilities).not.toContain("Refresh live status");
     expect(appSource).not.toContain("HEADER_UTILITIES_COLLAPSE_PX");
     expect(appSource).not.toContain("utilitiesCollapsed");
     expect(cssSource).not.toContain("@container app-header (max-width: 1100px)");
     expect(cssSource).toContain("@container app-header (max-width: 960px)");
     expect(appSource).toContain("attention={updateAvailable}");
-    expect(designSource).toContain("Header utilities are Refresh, Settings, and More (Ellipsis) at every width");
+    expect(designSource).toContain("Header utilities are Settings and More (Ellipsis) at every width");
+  });
+
+  test("scopes refresh to each workspace navbar", () => {
+    const header = sliceBetween(
+      appSource,
+      "export function AppHeader",
+      "export function AppOverlays",
+    );
+    expect(header).not.toContain("Refresh live status");
+    expect(header).not.toContain("header-refresh");
+    expect(appSource).toContain('testId="live-status-refresh"');
+    expect(appSource).toContain("Refresh live status");
+    expect(appSource).toContain('refreshStatus("full")');
+    expect(designSource).toContain("Refresh lives on each workspace navbar");
+    expect(designSource).toContain("Library title spinner");
   });
 
   test("first-load skeletons are separate rows with a column gap", () => {

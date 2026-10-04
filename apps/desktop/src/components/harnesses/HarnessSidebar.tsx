@@ -13,6 +13,7 @@ import { EmptyState } from "../EmptyState";
 import { HarnessIcon } from "../HarnessIcons";
 import { IconActionButton } from "../IconActionButton";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
 
 const ICON_SIZE = 16;
 const SKELETON_COUNT = 4;
@@ -28,6 +29,7 @@ export interface HarnessSidebarProps {
   onSelect: (id: HarnessId) => void;
   onAdd: () => void;
   onDetect: () => void;
+  onRefresh: () => void | Promise<void>;
   onToggleEdit: () => void;
   /** Trash click; the workspace opens the confirm dialog. */
   onRemove: (id: HarnessId) => void;
@@ -60,6 +62,7 @@ export function HarnessSidebar({
   onSelect,
   onAdd,
   onDetect,
+  onRefresh,
   onToggleEdit,
   onRemove,
   syncLabel,
@@ -81,6 +84,12 @@ export function HarnessSidebar({
     >
       <div className="resource-filter-section">
         <div className="harness-sidebar-actions">
+          <WorkspaceRefreshButton
+            testId="harnesses-refresh"
+            label="Refresh harnesses"
+            disabled={disabled || working}
+            onRefresh={onRefresh}
+          />
           <IconActionButton
             label="Add harness"
             primary
