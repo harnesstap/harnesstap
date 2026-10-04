@@ -1302,9 +1302,8 @@ export function SourcesWorkspace({
     writeDiscoverCatalogCache({
       cloudPlugins,
       cloudErrors,
-      fetchedSourceIds: [...fetchedSourceIds],
     });
-  }, [baseUrl, cloudPlugins, cloudErrors, fetchedSourceIds]);
+  }, [baseUrl, cloudPlugins, cloudErrors]);
 
   function handlePanelBack(): void {
     const current = paneRef.current;

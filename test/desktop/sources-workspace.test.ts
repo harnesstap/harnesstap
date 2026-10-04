@@ -250,6 +250,7 @@ describe("sources workspace chrome", () => {
   test("shows cached Discover hits immediately and header marketplace refresh progress", () => {
     expect(workspaceSource).toContain("readDiscoverCatalogCache");
     expect(workspaceSource).toContain("writeDiscoverCatalogCache");
+    expect(workspaceSource).not.toContain("fetchedSourceIds: [...fetchedSourceIds]");
     expect(workspaceSource).toContain("discoverMarketplaceRefreshCopy");
     expect(workspaceSource).toContain("discoverSnapshotStore.loadFillIn");
     expect(workspaceSource).not.toMatch(

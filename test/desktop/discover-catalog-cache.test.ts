@@ -61,6 +61,20 @@ describe("discover catalog session cache", () => {
     expect(cached?.fetchedSourceIds).toEqual(["mkt:acme", "mkt:beta"]);
   });
 
+  test("omitting fetchedSourceIds keeps fill-in ids already in the store", () => {
+    writeDiscoverCatalogCache({
+      fetchedSourceIds: ["local", "mkt:acme"],
+    });
+    writeDiscoverCatalogCache({
+      cloudPlugins: [],
+      cloudErrors: [],
+    });
+    expect(readDiscoverCatalogCache()?.fetchedSourceIds).toEqual([
+      "local",
+      "mkt:acme",
+    ]);
+  });
+
   test("returns a copy so callers cannot mutate the stored snapshot", () => {
     writeDiscoverCatalogCache({
       marketplaces: [
