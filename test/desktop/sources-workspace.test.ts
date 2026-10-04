@@ -253,9 +253,9 @@ describe("sources workspace chrome", () => {
   test("shows cached Discover hits immediately and header marketplace refresh progress", () => {
     expect(workspaceSource).toContain("readDiscoverCatalogCache");
     expect(workspaceSource).toContain("writeDiscoverCatalogCache");
+    expect(workspaceSource).not.toContain("fetchedSourceIds: [...fetchedSourceIds]");
     expect(workspaceSource).toContain("discoverMarketplaceRefreshCopy");
-    expect(workspaceSource).toContain("nextMarketplaceHitsOnRefresh");
-    expect(workspaceSource).toContain("plugins: current[row.id]?.plugins ?? []");
+    expect(workspaceSource).toContain("discoverSnapshotStore.loadFillIn");
     expect(workspaceSource).not.toMatch(
       /Promise\.all\(\[\s*fetchMarketplaces/,
     );
@@ -265,8 +265,9 @@ describe("sources workspace chrome", () => {
     expect(sourcesSearchSource).not.toContain("—");
     expect(workspaceSource).toContain("inflightIds: inflightSourceIds");
     expect(workspaceSource).toContain("marketplaceIdsNeedingCatalogFetch");
-    expect(workspaceSource).toContain("persistableDiscoverMarketplaceHits");
-    expect(workspaceSource).toContain("bypassCache: false");
+    expect(workspaceSource).toContain("bypassCache");
+    expect(workspaceSource).toContain('testId="discover-refresh"');
+    expect(workspaceSource).toContain('label="Refresh sources"');
     expect(workspaceSource).toContain("fetchPluginOriginCheck(baseUrl, token)");
     expect(workspaceSource).not.toContain(
       "fetchPluginOriginCheck(baseUrl, token, { refresh: true })",
@@ -377,12 +378,19 @@ describe("sources workspace chrome", () => {
 describe("sources search list and preview", () => {
   test("merges checked sources with mergeSourcesHits and presence badges", () => {
     expect(workspaceSource).toContain("mergeSourcesHits");
-    expect(workspaceSource).toContain("fetchLibraryPluginHeads");
-    expect(workspaceSource).toContain("fetchLibraryResources");
-    expect(workspaceSource).toContain("fetchMarketplacePlugins");
+    expect(workspaceSource).toContain("syncLocalFromLibraryPeek");
+    expect(workspaceSource).toContain("useLibrarySnapshotStore");
+    expect(workspaceSource).toContain("[baseUrl, libraryPeek, libraryFull]");
+    expect(workspaceSource).toContain("loadFillIn");
+    expect(workspaceSource).toContain("fetchDiscoverSearch");
+    expect(workspaceSource).not.toContain("fetchLibraryPluginHeads");
+    expect(workspaceSource).not.toContain("fetchLibraryResources");
+    expect(workspaceSource).not.toContain("fetchMarketplacePlugins");
     expect(workspaceSource).toContain("plugin.tags");
     expect(workspaceSource).toContain("plugin.contents");
     expect(workspaceSource).toContain("searchCatalogPlugins");
+    expect(workspaceSource).toContain("AbortController");
+    expect(workspaceSource).toContain("SEARCH_DEBOUNCE_MS");
     expect(listPaneSource).toContain("presenceLabel");
     expect(sourcesSearchSource).toContain("In library");
     expect(sourcesSearchSource).toContain("Remote only");

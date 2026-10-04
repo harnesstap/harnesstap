@@ -246,6 +246,8 @@ export function discoverListIsSearching(input: {
   return input.checkedIds.some((id) => !input.fetchedIds.has(id));
 }
 
+export const DISCOVER_MARKETPLACE_HIT_SCHEMA = 1;
+
 /** Skip network for marketplaces that already have a non-empty cached plugin list. */
 export function marketplaceIdsNeedingCatalogFetch(input: {
   marketplaceIds: readonly string[];

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep library snapshot status idle after overlapping loads and keep Library search results until the first agent response.
+time: 2026-10-04T02:10:00Z
+custom:
+  Issue: ""

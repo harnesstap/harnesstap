@@ -38,6 +38,8 @@ import { handleProfileRemoveResource } from "./profile-remove-resource-handlers.
 import { handleEnvironmentsList } from "./environment-handlers.js";
 import { handleMigrateDetectImportScope, handleMigrateExport, handleMigrateImport } from "./migrate-handlers.js";
 import { handleHarnessInventoryGet } from "./harness-inventory-handlers.js";
+import { handleDiscoverSearch } from "./discover-search-handlers.js";
+import { handleLibraryInventory } from "./library-inventory-handlers.js";
 import {
   handleHarnessSettingsGet,
   handleHarnessSettingsPut,
@@ -651,9 +653,13 @@ export function createAgentFetchHandler(
       response = await handleMigrateExport(request, token);
     } else if (method === "POST" && url.pathname === "/v1/migrate/import") {
       response = await handleMigrateImport(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/discover/search") {
+      response = handleDiscoverSearch(request, token);
     } else if (method === "GET" && url.pathname === "/v1/library/plugins") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryPlugins();
+    } else if (method === "GET" && url.pathname === "/v1/library/inventory") {
+      response = handleLibraryInventory(request, token);
     } else if (method === "GET" && url.pathname === "/v1/library/resources") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryResources();

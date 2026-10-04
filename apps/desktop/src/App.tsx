@@ -24,6 +24,8 @@ import { useOverlays } from "./state/overlays";
 import { useProject } from "./state/project";
 import { useScopeController } from "./state/scope-controller";
 import { useProjectScopePreload } from "./state/project-scope-preload";
+import { discoverSnapshotStore } from "./state/discover-snapshot-store";
+import { librarySnapshotStore } from "./state/library-snapshot-store";
 import { statusStore, useStatusPolling } from "./state/status-store";
 import { useTelemetryConsent } from "./state/telemetry-consent";
 import { toast } from "./state/toast-store";
@@ -53,6 +55,8 @@ export function App() {
 
   const onLibraryChanged = useCallback(() => {
     setLibraryReloadKey((value) => value + 1);
+    void librarySnapshotStore.invalidate();
+    void discoverSnapshotStore.invalidate();
   }, []);
 
   const ctrl = useScopeController({
@@ -73,8 +77,14 @@ export function App() {
 
   useEffect(() => {
     if (!connected || !client) {
+      librarySnapshotStore.clear();
+      discoverSnapshotStore.clear();
       return;
     }
+    librarySnapshotStore.setClient({ baseUrl: client.baseUrl, token: client.token });
+    void librarySnapshotStore.loadPeek();
+    discoverSnapshotStore.setClient({ baseUrl: client.baseUrl, token: client.token });
+    void discoverSnapshotStore.loadSources();
     void statusStore.refreshProfiles(projectPath);
     void statusStore.refreshStatus("full", projectPath);
     void statusStore.refreshStash();

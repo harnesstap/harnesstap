@@ -20,19 +20,15 @@ import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceTypeTabs } from "./ResourceTypeTabs";
 import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { Banner } from "./shell/Banner";
 import { SkeletonRow } from "./shell/Skeleton";
 import type { ApplyPluginResult } from "../lib/api/apply-plugin";
 import {
   AgentApiError,
-  fetchLibraryResources,
   fetchProfileDetail,
   fetchProfiles,
 } from "../lib/agent-client";
-import {
-  deleteLibraryPlugin,
-  fetchLibraryPluginHeads,
-  type LibraryPluginHead,
-} from "../lib/api/library-plugins";
+import { deleteLibraryPlugin } from "../lib/api/library-plugins";
 import {
   fetchPluginOriginCheck,
   postPluginOriginUpdate,
@@ -53,7 +49,6 @@ import {
   libraryFilterType,
   libraryRowSelector,
   libraryRowTreatAsScoped,
-  mergeLibraryList,
   type LibraryListEntry,
 } from "../lib/library-list";
 import {
@@ -90,13 +85,21 @@ import {
 import { duplicatePluginNames } from "../lib/resource-display";
 import { resourceDisplayName } from "../lib/resource-search";
 import {
+  ALL_RESOURCE_TYPE_TAB,
   countResourceTypeTabs,
   resolveResourceTypeTab,
   resourceTypeTabLabel,
 } from "../lib/resource-type-tabs";
 import { workspaceBackEnabled } from "../lib/screen-history";
 import { useEscapeWhenNoLayer } from "../state/overlay-stack";
+import {
+  librarySnapshotStore,
+  useLibrarySnapshotStore,
+  visibleLibraryRows,
+} from "../state/library-snapshot-store";
 import type { LibraryResource, ProfileDetail, ProfileSummary } from "../lib/types";
+
+const LIBRARY_SEARCH_DEBOUNCE_MS = 250;
 
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof AgentApiError) {
@@ -106,6 +109,32 @@ function errorMessage(error: unknown, fallback: string): string {
     return error.message;
   }
   return fallback;
+}
+
+function typeCountsToMap(counts: Record<string, number>): Map<string, number> {
+  const types: string[] = [];
+  for (const [type, count] of Object.entries(counts)) {
+    for (let i = 0; i < count; i += 1) {
+      types.push(type);
+    }
+  }
+  return countResourceTypeTabs(types);
+}
+
+function overlayOriginOutdated(
+  rows: readonly LibraryListEntry[],
+  originOutdatedIds: ReadonlySet<string>,
+): LibraryListEntry[] {
+  return rows.map((row) => {
+    if (row.listKind !== "plugin-package") {
+      return row;
+    }
+    const originOutdated = originOutdatedIds.has(row.id);
+    if (row.originOutdated === originOutdated) {
+      return row;
+    }
+    return { ...row, originOutdated };
+  });
 }
 
 export interface ResourcesPanelProps {
@@ -160,12 +189,10 @@ export function ResourcesPanel({
   autoOpenTrackedDirectories = false,
   disconnected = false,
 }: ResourcesPanelProps) {
-  const [resources, setResources] = useState<LibraryResource[]>([]);
-  const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [dismissedStoreError, setDismissedStoreError] = useState<string | null>(
+    null,
+  );
   const [originOutdatedIds, setOriginOutdatedIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -249,55 +276,39 @@ export function ResourcesPanel({
     || loadRecentProjects()[0]?.path
     || "";
   const filterRef = useRef<HTMLInputElement>(null);
-  const hasRowsRef = useRef(false);
   const seenRowIdsRef = useRef<Set<string>>(new Set());
   const cancelFieldEditRef = useRef<(() => void) | null>(null);
   const [lastSelector, setLastSelector] = useState<string | null>(null);
   const [enteringIds, setEnteringIds] = useState<Set<string>>(() => new Set());
+  const {
+    peek,
+    full,
+    typeCounts: storeTypeCounts,
+    searchRows,
+    searchTypeCounts,
+    status,
+    error,
+    searchError,
+    snapshotRows,
+  } = useLibrarySnapshotStore((state) => ({
+    peek: state.peek,
+    full: state.full,
+    typeCounts: state.typeCounts,
+    searchRows: state.searchRows,
+    searchTypeCounts: state.searchTypeCounts,
+    status: state.status,
+    error: state.error,
+    searchError: state.searchError,
+    snapshotRows: visibleLibraryRows(state),
+  }));
+  const refreshing = status === "refreshing";
+  const showSkeleton = peek == null && full == null && !error;
 
   useEffect(() => {
     if (!baseUrl) {
-      setResources([]);
-      setPlugins([]);
       return;
     }
-    let cancelled = false;
-    if (hasRowsRef.current) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    setError(null);
-    void Promise.all([
-      fetchLibraryResources(baseUrl, token),
-      fetchLibraryPluginHeads(baseUrl, token),
-    ])
-      .then(([nextResources, nextPlugins]) => {
-        if (!cancelled) {
-          setResources(nextResources);
-          setPlugins(nextPlugins);
-          hasRowsRef.current =
-            nextResources.length > 0 || nextPlugins.length > 0;
-        }
-      })
-      .catch((loadError: unknown) => {
-        if (!cancelled) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Could not load library resources",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-          setRefreshing(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
+    void librarySnapshotStore.loadFull();
   }, [baseUrl, token, resourcesReloadKey, reloadKey]);
 
   useEffect(() => {
@@ -368,7 +379,7 @@ export function ResourcesPanel({
       return;
     }
     let cancelled = false;
-    void fetchPluginOriginCheck(baseUrl, token, { refresh: true })
+    void fetchPluginOriginCheck(baseUrl, token)
       .then((report) => {
         if (cancelled) {
           return;
@@ -428,39 +439,74 @@ export function ResourcesPanel({
     onFocusResourceConsumed?.();
   }, [focusResourceSelector, onFocusResourceConsumed]);
 
-  const entries = useMemo(
-    () => mergeLibraryList(resources, plugins, originOutdatedIds),
-    [resources, plugins, originOutdatedIds],
+  const searchQuery = filterState.search.trim();
+  const snapshotEntries = useMemo(
+    () => overlayOriginOutdated(snapshotRows, originOutdatedIds),
+    [originOutdatedIds, snapshotRows],
   );
+  const entries = useMemo(() => {
+    if (searchQuery.length === 0 || searchRows === null) {
+      return snapshotEntries;
+    }
+    return overlayOriginOutdated(searchRows, originOutdatedIds);
+  }, [originOutdatedIds, searchQuery, searchRows, snapshotEntries]);
   const outdatedCount = useMemo(
-    () => entries.filter((entry) => entry.originOutdated).length,
-    [entries],
+    () => snapshotEntries.filter((entry) => entry.originOutdated).length,
+    [snapshotEntries],
   );
 
   const pickerResources = useMemo<LibraryResource[]>(
-    () => entries.filter((entry) => entry.listKind !== "plugin-package"),
-    [entries],
+    () => snapshotEntries.filter((entry) => entry.listKind !== "plugin-package"),
+    [snapshotEntries],
   );
 
-  const typeFacetEntries = useMemo(
-    () => applyLibraryResourceFilters(entries, { ...filterState, type: null }),
-    [entries, filterState],
-  );
   const typeCounts = useMemo(
-    () => countResourceTypeTabs(typeFacetEntries.map((entry) => libraryFilterType(entry))),
-    [typeFacetEntries],
+    () =>
+      typeCountsToMap(
+        searchQuery.length > 0 && searchTypeCounts !== null
+          ? searchTypeCounts
+          : storeTypeCounts,
+      ),
+    [searchQuery, searchTypeCounts, storeTypeCounts],
   );
   const typeTab = resolveResourceTypeTab(filterState.type, typeCounts);
 
+  useEffect(() => {
+    if (!baseUrl) {
+      return;
+    }
+    const q = filterState.search.trim();
+    if (q.length === 0) {
+      void librarySnapshotStore.search({ q: "", type: null });
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void librarySnapshotStore.search({
+        q,
+        type: typeTab === ALL_RESOURCE_TYPE_TAB ? null : typeTab,
+        signal: controller.signal,
+      });
+    }, LIBRARY_SEARCH_DEBOUNCE_MS);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [baseUrl, filterState.search, typeTab]);
+
   const filteredEntries = useMemo(
     () =>
-      applyLibraryResourceFilters(entries, { ...filterState, type: typeTab }),
+      applyLibraryResourceFilters(entries, {
+        ...filterState,
+        search: "",
+        type: typeTab,
+      }),
     [filterState, entries, typeTab],
   );
 
   const collidingPluginNames = useMemo(
-    () => duplicatePluginNames(entries),
-    [entries],
+    () => duplicatePluginNames(snapshotEntries),
+    [snapshotEntries],
   );
 
   const listRows = useMemo(
@@ -487,11 +533,11 @@ export function ResourcesPanel({
     }
     const fromList = listRows.filter((row) => selectedIds.has(row.id));
     const listed = new Set(fromList.map((row) => row.id));
-    const rest = entries.filter(
+    const rest = snapshotEntries.filter(
       (entry) => selectedIds.has(entry.id) && !listed.has(entry.id),
     );
     return [...fromList, ...rest];
-  }, [entries, listRows, selectedIds]);
+  }, [listRows, selectedIds, snapshotEntries]);
   const selectAllState = selectAllCheckboxState(visibleRowIds, selectedIds);
 
   useEffect(() => {
@@ -507,7 +553,7 @@ export function ResourcesPanel({
   }, [listRows]);
 
   useEffect(() => {
-    const known = new Set(entries.map((entry) => entry.id));
+    const known = new Set(snapshotEntries.map((entry) => entry.id));
     setSelectedIds((current) => {
       if (current.size === 0) {
         return current;
@@ -515,9 +561,11 @@ export function ResourcesPanel({
       const next = pruneSelectedIds(current, known);
       return next.size === current.size ? current : next;
     });
-  }, [entries]);
+  }, [snapshotEntries]);
 
-  const libraryEmpty = resources.length === 0 && plugins.length === 0;
+  const libraryEmpty = snapshotEntries.length === 0;
+  const storeErrorBanner =
+    error && dismissedStoreError !== error ? error : null;
   const paneConfirmOpen = confirmOpen || originUpdateConfirmOpen || bulkDeleteOpen;
 
   function setLibraryEditMode(next: boolean): void {
@@ -918,7 +966,7 @@ export function ResourcesPanel({
   }
 
   function renderList(): ReactNode {
-    if (error) {
+    if (error && peek == null && full == null) {
       return (
         <EmptyState
           title="Could not load the library"
@@ -931,7 +979,7 @@ export function ResourcesPanel({
         />
       );
     }
-    if (loading && listRows.length === 0) {
+    if (showSkeleton) {
       return <SkeletonRow count={8} height={40} />;
     }
     if (listRows.length === 0) {
@@ -1156,11 +1204,11 @@ export function ResourcesPanel({
       <div className="resources-panel-layout">
         <div>
           <ResourceFilterSidebar
-            resources={entries}
+            resources={snapshotEntries}
             state={filterState}
             onChange={applyFilterChange}
             onClear={() => applyFilterChange(resetResourceFilterState())}
-            disabled={disabled || loading || Boolean(error)}
+            disabled={disabled || showSkeleton || Boolean(error)}
             searchInputRef={filterRef}
           />
         </div>
@@ -1169,6 +1217,20 @@ export function ResourcesPanel({
             <div className="banner error" role="alert">
               {actionError}
             </div>
+          ) : null}
+          {storeErrorBanner && (peek != null || full != null) ? (
+            <Banner
+              tone="error"
+              message={storeErrorBanner}
+              onRetry={() => reloadLibrary()}
+              onDismiss={() => setDismissedStoreError(storeErrorBanner)}
+            />
+          ) : null}
+          {searchError ? (
+            <Banner
+              tone="error"
+              message={searchError}
+            />
           ) : null}
           {pane.mode === "list" ? (
             <div className="library-list-pane">

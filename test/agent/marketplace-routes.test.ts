@@ -72,7 +72,23 @@ describe("agent marketplace routes", () => {
           managed: false,
         },
       ],
+      marketplaceRefreshMaxAgeMinutes: 60,
     });
+  });
+
+  it("returns marketplaceRefreshMaxAgeMinutes from toolkit options", async () => {
+    const server = await withServer();
+    writeFileSync(
+      join(process.env.HARNESSTAP_HOME ?? "", "config.jsonc"),
+      JSON.stringify({ plugins: { marketplaceRefreshMaxAgeMinutes: 15 } }),
+    );
+
+    const ok = await fetch(`${server.url}/v1/marketplaces`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(ok.status).toBe(200);
+    const listed = (await ok.json()) as { marketplaceRefreshMaxAgeMinutes: number };
+    expect(listed.marketplaceRefreshMaxAgeMinutes).toBe(15);
   });
 
   it("lists Claude known_marketplaces that are not in the HarnessTap registry", async () => {
@@ -565,7 +581,7 @@ describe("agent marketplace routes", () => {
     const pluginBody = (await listed.json()) as {
       plugins: Array<{ name: string }>;
     };
-    expect(pluginBody.plugins.map((plugin) => plugin.name)).toEqual(["devx-team"]);
+    expect(pluginBody.plugins.map((plugin) => plugin.name)).toEqual(["devx-team", "gone-plugin"]);
 
     const tree = await fetch(
       `${server.url}/v1/marketplaces/claude-plugins/plugins/devx-team/tree`,
@@ -575,6 +591,13 @@ describe("agent marketplace routes", () => {
     await expect(tree.json()).resolves.toEqual({
       files: [{ path: "skills/hello.md", kind: "file" }],
     });
+
+    const missingTree = await fetch(
+      `${server.url}/v1/marketplaces/claude-plugins/plugins/gone-plugin/tree`,
+      { headers: { Authorization: `Bearer ${server.token}` } },
+    );
+    expect(missingTree.status).toBe(404);
+    await expect(missingTree.json()).resolves.toEqual({ error: "not_found" });
   });
 
   it("lists marketplace plugin tree files", async () => {
