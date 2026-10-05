@@ -20,6 +20,7 @@ import {
   presenceForCloud,
   presenceForMarketplace,
   sourcesHitFetchKey,
+  sourcesHitRowDetail,
   sourcesHitUpdateBadge,
 } from "../../apps/desktop/src/lib/sources-search.ts";
 import type { PluginOriginCheckRow } from "../../apps/desktop/src/lib/api/plugin-origin-update.ts";
@@ -1116,6 +1117,19 @@ describe("nextMarketplaceHitsOnRefresh", () => {
       "mkt:acme": { plugins: [{ name: "focus" }], error: null },
       "mkt:beta": { plugins: [], error: null },
     });
+  });
+});
+
+describe("sourcesHitRowDetail", () => {
+  test("keeps version and description and omits the resource type", () => {
+    expect(
+      sourcesHitRowDetail({
+        version: "1.2.0",
+        description: "Ship it",
+      }),
+    ).toBe("1.2.0 · Ship it");
+    expect(sourcesHitRowDetail({ description: "Ship it" })).toBe("Ship it");
+    expect(sourcesHitRowDetail({ version: "  " })).toBeNull();
   });
 });
 

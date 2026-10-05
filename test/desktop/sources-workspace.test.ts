@@ -418,7 +418,9 @@ describe("sources search list and preview", () => {
     expect(workspaceSource).toContain("searchCatalogPlugins");
     expect(workspaceSource).toContain("AbortController");
     expect(workspaceSource).toContain("SEARCH_DEBOUNCE_MS");
-    expect(listPaneSource).toContain("presenceLabel");
+    expect(listPaneSource).toContain("SourcesPresenceIcon");
+    expect(listPaneSource).toContain("sourcesHitRowDetail");
+    expect(listPaneSource).not.toContain("hit.version ?? hit.typeLabel");
     expect(sourcesSearchSource).toContain("In library");
     expect(sourcesSearchSource).toContain("Remote only");
     expect(listPaneSource).toContain("useVirtualizer");
@@ -512,7 +514,10 @@ describe("sources search list and preview", () => {
     expect(previewPaneSource).toContain("SourcesRecordActions");
     expect(listPaneSource).toContain("ResourceRowRoot");
     expect(listPaneSource).toContain("ResourceRowTrailing");
-    expect(listPaneSource).toContain("InUseMark");
+    expect(listPaneSource).not.toContain("InUseMark");
+    expect(listPaneSource).not.toContain("ResourceRowLeading");
+    expect(pluginTreeSource).toContain('fieldName="Description"');
+    expect(pluginTreeSource).toContain("hit.description");
     const hitTrailing = cssBlock(stylesSource, ".sources-hit .resource-row-trailing");
     expect(hitTrailing).toContain("align-self: center;");
     const hitRow = cssBlock(stylesSource, ".sources-hit.resource-row");
