@@ -46,8 +46,9 @@ jobs:
       - name: Install JS deps and Chromium
         run: |
           bun install
-          cd apps/desktop && bun install
-          cd apps/desktop && bunx playwright install --with-deps chromium
+          cd apps/desktop
+          bun install
+          bunx playwright install --with-deps chromium
       - name: Start demo agent and Vite
         run: |
           HT_DEMO_ROOT=/tmp/htdemo HARNESSTAP_AGENT_PORT=7474 \
