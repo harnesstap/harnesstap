@@ -266,6 +266,25 @@ export function presenceLabel(presence: Presence): string {
   }
 }
 
+/** Discover row subtitle: version and description. Type stays on the row icon. */
+export function sourcesHitRowDetail(
+  hit: Pick<SourcesHit, "version" | "description">,
+): string | null {
+  const parts: string[] = [];
+  const version = hit.version?.trim();
+  if (version) {
+    parts.push(version);
+  }
+  const description = hit.description?.trim();
+  if (description) {
+    parts.push(description);
+  }
+  if (parts.length === 0) {
+    return null;
+  }
+  return parts.join(" · ");
+}
+
 export function filterDiscoverGroups(
   groups: SourcesHitGroup[],
   notInLibrary: boolean,

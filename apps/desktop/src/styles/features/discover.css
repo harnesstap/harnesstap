@@ -89,6 +89,32 @@
   align-items: center;
 }
 
+.sources-hit-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.sources-presence {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-top: 0.05rem;
+  color: var(--muted);
+}
+
+.sources-hit-summary .pill {
+  flex: 0 0 auto;
+}
+
+.sources-hit-summary-text {
+  min-width: 0;
+}
+
 .sources-pin-plugin-list {
   list-style: none;
   margin: 0;

@@ -1,9 +1,8 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   ResourceRowDescription,
   ResourceRowIdentity,
-  ResourceRowLeading,
   ResourceRowRoot,
   ResourceRowTrailing,
 } from "@/components/ui/resource-row";
@@ -13,17 +12,19 @@ import {
   flattenDiscoverListItems,
   hoverModelFromSourcesHit,
   presenceLabel,
+  sourcesHitRowDetail,
   sourcesHitUpdateBadge,
   DISCOVER_LIST_ROW_HEIGHT,
   type DiscoverListGroupError,
   type DiscoverListVirtualItem,
+  type Presence,
   type SourcesHit,
   type SourcesHitGroup,
 } from "../lib/sources-search";
 import { resourceRowVirtualStyle } from "../lib/resource-row-virtual";
-import { FilterX, LogIn } from "lucide-react";
+import { Cloud, FilterX, Library, LogIn } from "lucide-react";
+import { ChromeTooltip } from "./ChromeTooltip";
 import { EmptyState, type EmptyStateAction } from "./EmptyState";
-import { InUseMark } from "./InUseMark";
 import { IconActionButton } from "./IconActionButton";
 import { Skeleton } from "./shell/Skeleton";
 import {
@@ -88,6 +89,37 @@ export function SourcesSignInPrompt({
   );
 }
 
+const PRESENCE_ICON_SIZE = 14;
+
+function presenceGlyph(presence: Presence): ReactNode {
+  switch (presence) {
+    case "in_library":
+      return <Library size={PRESENCE_ICON_SIZE} aria-hidden />;
+    case "remote_only":
+      return <Cloud size={PRESENCE_ICON_SIZE} aria-hidden />;
+    default: {
+      const neverPresence: never = presence;
+      return neverPresence;
+    }
+  }
+}
+
+export function SourcesPresenceIcon({ presence }: { presence: Presence }) {
+  const label = presenceLabel(presence);
+  return (
+    <ChromeTooltip content={label}>
+      <span
+        className="sources-presence"
+        data-testid="sources-presence"
+        role="img"
+        aria-label={label}
+      >
+        {presenceGlyph(presence)}
+      </span>
+    </ChromeTooltip>
+  );
+}
+
 function DiscoverListItem({
   item,
   disabled,
@@ -119,8 +151,8 @@ function DiscoverListItem({
       );
     case "hit": {
       const hit = item.hit;
-      const inLibrary = hit.presence === "in_library";
       const actions = recordActions?.(hit);
+      const detail = sourcesHitRowDetail(hit);
       return (
         <div className="resources-list-item">
           <ResourceRowRoot
@@ -130,25 +162,17 @@ function DiscoverListItem({
             disabled={disabled}
             onActivate={() => onOpenHit(hit)}
           >
-            {inLibrary ? (
-              <ResourceRowLeading>
-                <InUseMark membership={{ onGlobal: false, projectCount: 0 }} />
-              </ResourceRowLeading>
-            ) : null}
             <ResourceRowIdentity
               type={hit.kind === "plugin" ? "plugin" : hit.typeLabel}
               label={hit.name}
               onOpen={() => onOpenHit(hit)}
             >
-              <ResourceRowDescription>
-                <span className="badge" data-testid="sources-presence">
-                  {presenceLabel(hit.presence)}
-                </span>
+              <ResourceRowDescription className="sources-hit-summary">
+                <SourcesPresenceIcon presence={hit.presence} />
                 <SourcesOriginUpdateBadge hit={hit} />
-                {hit.version || hit.typeLabel
-                  ? ` · ${hit.version ?? hit.typeLabel}`
-                  : null}
-                {hit.description ? ` · ${hit.description}` : null}
+                {detail ? (
+                  <span className="sources-hit-summary-text">{detail}</span>
+                ) : null}
               </ResourceRowDescription>
             </ResourceRowIdentity>
             {actions ? (

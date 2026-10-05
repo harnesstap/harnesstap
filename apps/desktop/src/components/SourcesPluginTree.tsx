@@ -1,4 +1,4 @@
-import { AlignLeft, FileCode2, Package } from "lucide-react";
+import { AlignLeft, FileCode2, Package, TextQuote } from "lucide-react";
 import type { SourcesHit } from "../lib/sources-search";
 import { presenceLabel } from "../lib/sources-search";
 import { DiscoverDetailChrome } from "./discover/DiscoverDetailChrome";
@@ -48,6 +48,15 @@ export function SourcesPluginTree({
       typeLabel="plugin"
     >
       <div className="sources-plugin-tree">
+        <LibraryFieldRow
+          icon={<TextQuote size={16} aria-hidden />}
+          fieldName="Description"
+          readOnly
+          display={hit.description?.trim() || undefined}
+          placeholder="No description"
+          editing={false}
+          onStartEdit={() => undefined}
+        />
         <LibraryFieldRow
           icon={<Package size={16} aria-hidden />}
           fieldName="Source"
