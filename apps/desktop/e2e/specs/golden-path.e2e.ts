@@ -97,6 +97,22 @@ async function addMarketplaceFromDiscover(): Promise<void> {
   );
 }
 
+async function revealDiscoverPluginHit(pluginName: string): Promise<WebdriverIO.Element> {
+  const marketLabel = await $(`label=${MARKETPLACE_NAME}`);
+  if (await marketLabel.isExisting()) {
+    await marketLabel.waitForDisplayed();
+    await marketLabel.click();
+  }
+
+  const search = await $('input[aria-label="Search to add"]');
+  await search.waitForDisplayed();
+  await search.setValue(pluginName);
+
+  const hit = await $(`[data-testid^="sources-hit-"][data-testid*="plugin:${pluginName}"]`);
+  await hit.waitForDisplayed({ timeout: 30000 });
+  return hit;
+}
+
 async function addMarketplacePluginFromDiscover(ref: string): Promise<void> {
   const pluginName = ref.split("@")[0] ?? ref;
   const discoverNav = await $('button[aria-label="Discover"]');
@@ -104,8 +120,7 @@ async function addMarketplacePluginFromDiscover(ref: string): Promise<void> {
   await discoverNav.click();
   await waitForTestId("sources-workspace");
 
-  const hit = await $(`[data-testid^="sources-hit-"][data-testid*="plugin:${pluginName}"]`);
-  await hit.waitForDisplayed({ timeout: 30000 });
+  const hit = await revealDiscoverPluginHit(pluginName);
   await hit.click();
 
   const addToLibrary = await $("button*=Add to Library");
@@ -166,8 +181,7 @@ describe("Golden path", () => {
   it("registers marketplace from Discover", async () => {
     await addMarketplaceFromDiscover();
     const pluginName = DEMO_PLUGIN_REF.split("@")[0] ?? DEMO_PLUGIN_REF;
-    const hit = await $(`[data-testid^="sources-hit-"][data-testid*="plugin:${pluginName}"]`);
-    await hit.waitForDisplayed({ timeout: 30000 });
+    await revealDiscoverPluginHit(pluginName);
   });
 
   it("refreshes and shows global user resources", async () => {
