@@ -47,6 +47,7 @@ describe("desktop visual check", () => {
     expect(workflow).toContain("visual:");
     expect(workflow).toContain("bun run desktop:check");
     expect(workflow).toContain("demo-home.sh");
+    expect(workflow).toContain("pull_request:");
   });
 
   test("reduced motion CSS clears animations instead of 0.01ms stubs", () => {
