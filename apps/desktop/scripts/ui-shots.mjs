@@ -181,8 +181,9 @@ async function clickFirstDiscoverRow(page) {
 }
 
 async function openMoreItem(page, name) {
-  await page.getByTestId("header-more").click({ timeout: T });
-  await page.getByRole("menuitem", { name }).first().click({ timeout: T });
+  await pressEscape(page);
+  await page.getByTestId("header-more").click({ timeout: 10_000 });
+  await page.getByRole("menuitem", { name }).first().click({ timeout: 10_000 });
 }
 
 /**
