@@ -1008,6 +1008,28 @@ export async function patchProfileMetadata(
   return (await response.json()) as ProfileDetail;
 }
 
+export async function patchProfileResourceHarnessScope(
+  baseUrl: string,
+  token: string | null,
+  name: string,
+  body: { resourceId: string; harnessScope: "all" | string[] },
+): Promise<ProfileDetail> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(name)}/attachments`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not update harness scope");
+  }
+  return (await response.json()) as ProfileDetail;
+}
+
 export async function attachProfileComposition(
   baseUrl: string,
   token: string | null,

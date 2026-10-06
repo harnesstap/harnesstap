@@ -1,6 +1,10 @@
 import { getPluginById, mergePluginsById, type MergedPluginContent } from "../models/plugin-model.js";
 import { getEnvironmentResources } from "../models/environment.js";
 import type { ClaudePluginConfig, Resource } from "../types.js";
+import {
+  applyIncomingHarnessScope,
+  incomingScopeByPluginId,
+} from "./harness-scope-graph.js";
 
 function resourceKey(resource: Pick<Resource, "type" | "name">): string {
   return `${resource.type}:${resource.name}`;
@@ -65,6 +69,7 @@ export function mergePluginsForApply(pluginIds: string[]): MergedPluginContent {
     resources: [],
     pluginPins: [],
   };
+  const incoming = incomingScopeByPluginId(pluginIds);
 
   for (const pluginId of pluginIds) {
     const plugin = getPluginById(pluginId);
@@ -72,14 +77,24 @@ export function mergePluginsForApply(pluginIds: string[]): MergedPluginContent {
       throw new Error(`Plugin not found: ${pluginId}`);
     }
 
-    merged = mergeMergedContent(merged, mergePluginsById([pluginId]));
+    const own = mergePluginsById([pluginId]);
+    const parentIncoming = incoming.get(pluginId);
+    merged = mergeMergedContent(merged, {
+      ...own,
+      resources: parentIncoming
+        ? applyIncomingHarnessScope(own.resources, parentIncoming)
+        : own.resources,
+    });
 
     if (plugin.default_environment_id) {
+      const envResources = getEnvironmentResources(plugin.default_environment_id);
       merged = {
         ...merged,
         resources: mergeResources(
           merged.resources,
-          getEnvironmentResources(plugin.default_environment_id),
+          parentIncoming
+            ? applyIncomingHarnessScope(envResources, parentIncoming)
+            : envResources,
         ),
       };
     }

@@ -21,6 +21,12 @@ import type {
   Resource,
 } from "../types.js";
 import { satisfiesConstraint, parseVersionConstraint } from "../services/plugin-constraints.js";
+import {
+  HARNESS_SCOPE_ALL,
+  parseHarnessScope,
+  serializeHarnessScope,
+  type HarnessScope,
+} from "../services/harness-scope.js";
 
 interface PluginRow {
   id: string;
@@ -61,6 +67,7 @@ interface ResourceRow {
   created_at: string;
   updated_at: string;
   order: number;
+  harness_scope?: string;
 }
 
 export interface MergedPluginContent {
@@ -240,14 +247,26 @@ export function mergePluginsById(pluginIds: string[]): MergedPluginContent {
   };
 }
 
+function mapAttachedResource(row: ResourceRow): Resource {
+  return {
+    ...mapResourceRow(row),
+    harness_scope: parseHarnessScope(row.harness_scope),
+  };
+}
+
 function copyResourcesToPlugin(pluginId: string, resources: Resource[]): void {
   const db = getDb();
   let order = 0;
   for (const resource of resources) {
     db.prepare(
-      `INSERT OR REPLACE INTO plugin_resources (plugin_id, resource_id, "order")
-       VALUES (?, ?, ?)`,
-    ).run(pluginId, resource.id, order);
+      `INSERT OR REPLACE INTO plugin_resources (plugin_id, resource_id, "order", harness_scope)
+       VALUES (?, ?, ?, ?)`,
+    ).run(
+      pluginId,
+      resource.id,
+      order,
+      serializeHarnessScope(resource.harness_scope ?? HARNESS_SCOPE_ALL),
+    );
     order += 1;
   }
 }
@@ -640,7 +659,11 @@ export function deletePlugin(pluginId: string): boolean {
   return result.changes > 0;
 }
 
-export function addResourceToPlugin(pluginId: string, resourceId: string): void {
+export function addResourceToPlugin(
+  pluginId: string,
+  resourceId: string,
+  harnessScope: HarnessScope = HARNESS_SCOPE_ALL,
+): void {
   const db = getDb();
   const maxOrder = db
     .prepare(
@@ -649,8 +672,40 @@ export function addResourceToPlugin(pluginId: string, resourceId: string): void 
     .get(pluginId) as { max_order: number };
 
   db.prepare(
-    'INSERT OR IGNORE INTO plugin_resources (plugin_id, resource_id, "order") VALUES (?, ?, ?)',
-  ).run(pluginId, resourceId, maxOrder.max_order + 1);
+    `INSERT OR IGNORE INTO plugin_resources (plugin_id, resource_id, "order", harness_scope)
+     VALUES (?, ?, ?, ?)`,
+  ).run(
+    pluginId,
+    resourceId,
+    maxOrder.max_order + 1,
+    serializeHarnessScope(harnessScope),
+  );
+}
+
+export function setPluginResourceHarnessScope(
+  pluginId: string,
+  resourceId: string,
+  harnessScope: HarnessScope,
+): void {
+  const db = getDb();
+  db.prepare(
+    `UPDATE plugin_resources SET harness_scope = ?
+     WHERE plugin_id = ? AND resource_id = ?`,
+  ).run(serializeHarnessScope(harnessScope), pluginId, resourceId);
+}
+
+export function getPluginResourceHarnessScope(
+  pluginId: string,
+  resourceId: string,
+): HarnessScope {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT harness_scope FROM plugin_resources
+       WHERE plugin_id = ? AND resource_id = ?`,
+    )
+    .get(pluginId, resourceId) as { harness_scope?: string } | undefined;
+  return parseHarnessScope(row?.harness_scope);
 }
 
 export function removeResourceFromPlugin(pluginId: string, resourceId: string): void {
@@ -684,14 +739,14 @@ export function getPluginResources(pluginId: string): Resource[] {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT r.*, lr."order" FROM resources r
+      `SELECT r.*, lr."order", lr.harness_scope FROM resources r
        JOIN plugin_resources lr ON lr.resource_id = r.id
        WHERE lr.plugin_id = ?
        ORDER BY lr."order"`,
     )
     .all(pluginId) as ResourceRow[];
 
-  return rows.map(mapResourceRow);
+  return rows.map(mapAttachedResource);
 }
 
 export function ensurePluginClaudeMarketplace(

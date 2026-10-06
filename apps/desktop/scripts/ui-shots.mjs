@@ -298,7 +298,45 @@ const SCREENS = [
     },
     after: pressEscape,
   },
+  {
+    name: "harness-scope-all-rest",
+    run: async (page) => {
+      await openHarnessScopeGallery(page, "all-rest");
+    },
+  },
+  {
+    name: "harness-scope-all-hover",
+    run: async (page) => {
+      await openHarnessScopeGallery(page, "all-hover");
+    },
+  },
+  {
+    name: "harness-scope-subset",
+    run: async (page) => {
+      await openHarnessScopeGallery(page, "subset");
+    },
+  },
+  {
+    name: "harness-scope-orphaned",
+    run: async (page) => {
+      await openHarnessScopeGallery(page, "orphaned");
+    },
+  },
+  {
+    name: "harness-scope-popover",
+    run: async (page) => {
+      await openHarnessScopeGallery(page, "popover");
+      await page.getByTestId("harness-scope-popover").waitFor({ timeout: T });
+    },
+  },
 ];
+
+async function openHarnessScopeGallery(page, state) {
+  const url = new URL(page.url());
+  url.search = `visual=harness-scope&state=${state}`;
+  await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.getByTestId("harness-scope-gallery").waitFor({ timeout: T });
+}
 
 async function waitForConnected(page) {
   await settle(page);

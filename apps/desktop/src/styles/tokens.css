@@ -46,7 +46,9 @@
   --space-8: 2rem;
 
   /* type */
+  /* type */
   --text-micro: 12px;   /* eyebrows, pill counts only */
+  --text-scope-plus: 11px; /* harness-scope +N */
   --text-meta: 13px;    /* dense metadata, mono paths, timestamps */
   --text-body: 14px;    /* list rows, controls, form labels */
   --text-value: 16px;   /* field values, primary copy */

@@ -285,11 +285,15 @@ export interface ProfileContentsPlugin {
   name: string;
   version: string;
   resources: ProfileContentsResource[];
+  harness_scope?: "all" | string[];
+  attachment_id?: string;
 }
 
 export interface ProfileContentsPin {
   ref: string;
   version_constraint: string;
+  harness_scope?: "all" | string[];
+  attachment_id?: string;
 }
 
 export interface ProfileContentsResource {
@@ -310,6 +314,7 @@ export interface ProfileContentsResource {
   };
   /** Present on not-staged rows: add is missing from the profile; update differs on disk. */
   not_staged_kind?: "add" | "update";
+  harness_scope?: "all" | string[];
 }
 
 export interface ProfileContents {

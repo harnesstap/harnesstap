@@ -78,7 +78,10 @@ describe("profile contents and apply preview", () => {
         ]),
       );
       expect(contents?.plugin_pins).toEqual([
-        { ref: "demo@demo-market", version_constraint: "1.0.0" },
+        expect.objectContaining({
+          ref: "demo@demo-market",
+          version_constraint: "1.0.0",
+        }),
       ]);
       expect(contents?.mcp_servers).toEqual(["docs"]);
     } finally {

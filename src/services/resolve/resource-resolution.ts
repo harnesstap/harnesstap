@@ -10,6 +10,11 @@ import type {
 } from "../../types.js";
 import { previewConflictContent, SingletonConflictError } from "./types.js";
 import type { ResourceDecision, ResourceSide, SelectedPlugin } from "./types.js";
+import {
+  applyIncomingHarnessScope,
+  incomingScopeByPluginId,
+} from "../harness-scope-graph.js";
+import { HARNESS_SCOPE_ALL } from "../harness-scope.js";
 
 interface Candidate {
   resource: Resource;
@@ -95,9 +100,13 @@ export function resolveResources(input: {
   const ordered = [...input.selected].sort(
     (a, b) => a.depth - b.depth || a.declarationIndex - b.declarationIndex,
   );
+  const incoming = incomingScopeByPluginId(ordered.map((plugin) => plugin.pluginId));
 
   for (const plugin of ordered) {
-    const attached = getPluginResources(plugin.pluginId);
+    const attached = applyIncomingHarnessScope(
+      getPluginResources(plugin.pluginId),
+      incoming.get(plugin.pluginId) ?? HARNESS_SCOPE_ALL,
+    );
     for (let index = 0; index < attached.length; index += 1) {
       const resource = attached[index];
       if (!resource || !isMaterial(resource.type)) continue;

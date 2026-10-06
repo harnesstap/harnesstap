@@ -98,15 +98,17 @@ function resourceFromRow(row: ProfileResourceListRow): ProfileContentsResource {
       return {
         type: "plugin",
         name: row.plugin.name,
-        id: row.plugin.id,
+        id: row.plugin.attachment_id ?? row.plugin.id,
         source: row.plugin.id,
+        ...(row.plugin.harness_scope ? { harness_scope: row.plugin.harness_scope } : {}),
       };
     case "pin":
       return {
         type: "plugin_pin",
         name: row.pin.ref,
-        id: row.pin.ref,
+        id: row.pin.attachment_id ?? row.pin.ref,
         source: row.pin.version_constraint,
+        ...(row.pin.harness_scope ? { harness_scope: row.pin.harness_scope } : {}),
       };
     case "resource":
       return row.resource;

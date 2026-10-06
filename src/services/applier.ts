@@ -41,6 +41,7 @@ import {
   mergeResolvedEnvironmentIntoResources,
 } from "./environment-cascade.js";
 import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
+import { resourceAppliesToHarness } from "./harness-scope.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -251,7 +252,7 @@ export async function generateFiles(
   const homeRoot = resolveHomeRoot();
   for (const pid of platforms) {
     const platformResources = omitHostPluginBundledSkills(
-      serializedResources,
+      serializedResources.filter((resource) => resourceAppliesToHarness(resource, pid)),
       pid,
       homeRoot,
       target,

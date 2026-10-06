@@ -11,6 +11,11 @@ import {
 import type { ClaudePluginConfig, Plugin } from "../types.js";
 import { assertAuthored } from "./plugin-origin.js";
 import { resolveComposition } from "./resolve/index.js";
+import {
+  HARNESS_SCOPE_ALL,
+  parseHarnessScope,
+  serializeHarnessScope,
+} from "./harness-scope.js";
 
 export type PluginVersionErrorCode =
   | "invalid_version"
@@ -57,6 +62,8 @@ interface PluginRow {
 
 interface PluginWorkingSnapshotPayload {
   resource_ids: string[];
+  /** resource id → serialized scope. Missing keys mean All. */
+  harness_scopes?: Record<string, string>;
   description: string;
   tags: string[];
   claude_config: string;
@@ -122,7 +129,15 @@ function captureWorkingSnapshot(pluginId: string): void {
     throw new PluginVersionError("not_found", `Plugin not found: ${pluginId}`);
   }
 
-  const resourceIds = getPluginResources(pluginId).map((resource) => resource.id);
+  const attached = getPluginResources(pluginId);
+  const resourceIds = attached.map((resource) => resource.id);
+  const harnessScopes: Record<string, string> = {};
+  for (const resource of attached) {
+    const serialized = serializeHarnessScope(resource.harness_scope ?? HARNESS_SCOPE_ALL);
+    if (serialized !== "all") {
+      harnessScopes[resource.id] = serialized;
+    }
+  }
   const resolvedSet = (() => {
     try {
       return resolveComposition({ rootSelectors: [`${row.name}@${row.version}`] })
@@ -136,6 +151,7 @@ function captureWorkingSnapshot(pluginId: string): void {
   })();
   const payload: PluginWorkingSnapshotPayload = {
     resource_ids: resourceIds,
+    ...(Object.keys(harnessScopes).length > 0 ? { harness_scopes: harnessScopes } : {}),
     description: row.description,
     tags: JSON.parse(row.tags) as string[],
     claude_config: row.claude_config,
@@ -166,15 +182,24 @@ function ensureWorkingSnapshot(pluginId: string): void {
   }
 }
 
-function copySnapshotAttachments(pluginId: string, resourceIds: string[]): void {
+function copySnapshotAttachments(
+  pluginId: string,
+  resourceIds: string[],
+  harnessScopes?: Record<string, string>,
+): void {
   const db = getDb();
   for (let order = 0; order < resourceIds.length; order += 1) {
     const resourceId = resourceIds[order];
     if (!resourceId) continue;
     db.prepare(
-      `INSERT OR REPLACE INTO plugin_resources (plugin_id, resource_id, "order")
-       VALUES (?, ?, ?)`,
-    ).run(pluginId, resourceId, order);
+      `INSERT OR REPLACE INTO plugin_resources (plugin_id, resource_id, "order", harness_scope)
+       VALUES (?, ?, ?, ?)`,
+    ).run(
+      pluginId,
+      resourceId,
+      order,
+      serializeHarnessScope(parseHarnessScope(harnessScopes?.[resourceId])),
+    );
   }
 }
 
@@ -408,7 +433,7 @@ export function cutPluginVersion(input: {
       frozenId,
     );
 
-    copySnapshotAttachments(frozenId, payload.resource_ids);
+    copySnapshotAttachments(frozenId, payload.resource_ids, payload.harness_scopes);
     db.prepare("DELETE FROM plugin_working_snapshots WHERE plugin_id = ?").run(
       headRow.id,
     );
@@ -517,9 +542,21 @@ export function rollbackPluginVersion(input: {
     if (headRow.dirty === 0) {
       captureWorkingSnapshot(headRow.id);
     }
-    const resourceIds = getPluginResources(frozenRow.id).map((resource) => resource.id);
+    const frozenAttached = getPluginResources(frozenRow.id);
+    const resourceIds = frozenAttached.map((resource) => resource.id);
+    const harnessScopes: Record<string, string> = {};
+    for (const resource of frozenAttached) {
+      const serialized = serializeHarnessScope(resource.harness_scope ?? HARNESS_SCOPE_ALL);
+      if (serialized !== "all") {
+        harnessScopes[resource.id] = serialized;
+      }
+    }
     db.prepare("DELETE FROM plugin_resources WHERE plugin_id = ?").run(headRow.id);
-    copySnapshotAttachments(headRow.id, resourceIds);
+    copySnapshotAttachments(
+      headRow.id,
+      resourceIds,
+      Object.keys(harnessScopes).length > 0 ? harnessScopes : undefined,
+    );
     const now = new Date().toISOString();
     db.prepare(
       `UPDATE plugins
