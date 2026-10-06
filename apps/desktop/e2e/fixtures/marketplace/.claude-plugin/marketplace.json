@@ -4,7 +4,8 @@
     {
       "name": "demo-plugin",
       "version": "1.0.0",
-      "description": "HarnessTap desktop E2E demo plugin"
+      "description": "HarnessTap desktop E2E demo plugin",
+      "source": "./plugins/demo-plugin"
     }
   ]
 }
