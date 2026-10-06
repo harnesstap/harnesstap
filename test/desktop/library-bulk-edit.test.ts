@@ -107,14 +107,13 @@ describe("library bulk-edit chrome", () => {
     expect(listSource).toContain("libraryEditMode");
     expect(listSource).toContain("resource-row-checkbox");
     expect(listSource).toContain("data-testid={`library-row-select-${entry.id}`}");
-    const leading = sliceBetween(
-      listSource,
-      "<ResourceRowLeading>",
-      "</ResourceRowLeading>",
-    );
-    expect(leading.indexOf("libraryEditMode")).toBeLessThan(
-      leading.indexOf("InUseMark"),
-    );
+    expect(listSource).toContain("library-row-shell");
+    const checkboxIdx = listSource.indexOf("library-row-select-${entry.id}");
+    const optionIdx = listSource.indexOf('role="option"', checkboxIdx);
+    const markIdx = listSource.indexOf("<InUseMark", checkboxIdx);
+    expect(checkboxIdx).toBeGreaterThan(-1);
+    expect(optionIdx).toBeGreaterThan(checkboxIdx);
+    expect(markIdx).toBeGreaterThan(optionIdx);
   });
 
   test("select-all checkbox sits before the type tabs", () => {

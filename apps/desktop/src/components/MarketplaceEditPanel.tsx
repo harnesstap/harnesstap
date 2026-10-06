@@ -378,6 +378,7 @@ export function MarketplaceEditPanel({
               .filter(Boolean)
               .join(" ")}
             type="button"
+            data-testid={mode === "add" ? "marketplace-add" : "marketplace-save"}
             onClick={() => void onSubmit()}
             disabled={!canSubmit || controlsDisabled}
             aria-busy={busy}

@@ -62,19 +62,14 @@ export function InUseMark({
   }
   return (
     <ChromeTooltip content={tooltip}>
-      <button
-        type="button"
+      <span
         className="in-use-mark"
         data-testid="library-in-use"
         data-kind={kind}
         aria-label={tooltip}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-        }}
       >
         <InUseMarkGlyph kind={kind} />
-      </button>
+      </span>
     </ChromeTooltip>
   );
 }

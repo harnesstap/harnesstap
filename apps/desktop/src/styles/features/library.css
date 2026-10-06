@@ -742,10 +742,20 @@
   min-width: 20px;
 }
 
-.resource-row-leading:has(.library-edit-check-slot) {
-  width: auto;
-  min-width: 0;
+.library-row-shell {
+  display: flex;
+  align-items: center;
   gap: 0.4rem;
+  min-width: 0;
+}
+
+.library-row-shell .resource-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.library-row-shell.is-editing .library-edit-check-slot {
+  margin-left: 0.35rem;
 }
 
 .resource-row-identity {

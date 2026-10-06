@@ -342,6 +342,7 @@ describe("header re-click home", () => {
     expect(resourcesPanelSource).toContain(
       "homeResetNonceSeen.current === homeResetNonce",
     );
+    expect(resourcesPanelSource).toContain("leaveToList()");
   });
 
   test("Environments reset clears the name filter and selection", () => {

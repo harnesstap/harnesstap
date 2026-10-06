@@ -149,28 +149,20 @@ async function openLibrary(page) {
 }
 
 async function clickFirstLibraryRow(page) {
-  const named = main(page).getByRole("button", { name: /^formatter@/ });
-  if (await named.count()) {
-    await named.first().click({ timeout: T });
-    return;
-  }
-  await main(page)
-    .getByRole("listitem")
-    .first()
-    .getByRole("button")
-    .first()
-    .click({ timeout: T });
+  const row = main(page).locator("[data-testid^='resource-row-']").first();
+  await row.waitFor({ state: "visible", timeout: T });
+  await row.click({ timeout: T });
 }
 
 async function clickFirstDiscoverRow(page) {
-  await main(page)
-    .getByRole("list")
-    .first()
-    .getByRole("listitem")
-    .first()
-    .getByRole("button")
-    .first()
-    .click({ timeout: T });
+  const hit = main(page).locator("[data-testid^='sources-hit-']").first();
+  await hit.waitFor({ state: "visible", timeout: T });
+  await hit.click({ timeout: T });
+}
+
+async function openMoreItem(page, name) {
+  await page.getByTestId("header-more").click({ timeout: T });
+  await page.getByRole("menuitem", { name }).first().click({ timeout: T });
 }
 
 /**
@@ -206,7 +198,7 @@ const SCREENS = [
     name: "library-create-picker",
     run: async (page) => {
       await openLibrary(page);
-      await page.getByRole("button", { name: /create resource/i }).first().click({ timeout: T });
+      await page.getByTestId("library-list-fab").click({ timeout: T });
     },
     after: pressEscape,
   },
@@ -229,10 +221,9 @@ const SCREENS = [
     },
   },
   {
-    name: "settings-harnesses",
+    name: "harnesses",
     run: async (page) => {
-      await openSettings(page);
-      await openSettingsTab(page, "Harnesses");
+      await clickHeader(page, /^harnesses$/i);
     },
   },
   {
@@ -253,21 +244,21 @@ const SCREENS = [
   {
     name: "export",
     run: async (page) => {
-      await clickHeader(page, /^export setup$/i);
+      await openMoreItem(page, /^export setup$/i);
     },
     after: pressEscape,
   },
   {
     name: "import",
     run: async (page) => {
-      await clickHeader(page, /^import setup$/i);
+      await openMoreItem(page, /^import setup$/i);
     },
     after: pressEscape,
   },
   {
     name: "account",
     run: async (page) => {
-      await clickHeader(page, /^account$/i);
+      await openMoreItem(page, /^account/i);
     },
     after: pressEscape,
   },
@@ -368,7 +359,10 @@ async function walkViewport(browser, viewport, config, report) {
   });
   page.on("console", (message) => {
     if (message.type() === "error") {
-      report.consoleErrors.push(`[${tag}] ${message.text()}`);
+      const url = message.location()?.url;
+      report.consoleErrors.push(
+        `[${tag}] ${message.text()}${url ? ` ${url}` : ""}`,
+      );
     }
   });
 

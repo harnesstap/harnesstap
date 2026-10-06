@@ -647,6 +647,8 @@ export function ResourcesPanel({
     homeResetNonceSeen.current = homeResetNonce;
     applyFilterChangeRef.current(defaultResourceFilterState());
     setLibraryEditMode(false);
+    setCreateModalOpen(false);
+    leaveToList();
   }, [homeResetNonce]);
 
   // Back on Esc while no dialog is open; open layers take Esc first.

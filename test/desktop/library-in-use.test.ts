@@ -274,6 +274,7 @@ describe("library in-use chrome", () => {
     expect(listSource).not.toContain("inUseKind === \"none\"");
     expect(markSource).toContain("export function InUseMark");
     expect(markSource).toContain("ChromeTooltip");
+    expect(markSource).not.toContain('type="button"');
     expect(markSource).toContain("in-use-mark-spacer");
     expect(markSource).toContain('data-kind="none"');
     expect(markSource).toContain("size={10}");

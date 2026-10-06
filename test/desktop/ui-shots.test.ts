@@ -30,6 +30,10 @@ describe("desktop visual check", () => {
     expect(shots).toContain("compareShot");
     expect(shots).toContain("getAnimations");
     expect(shots).toContain("FRAME_BUDGET_MS = 32");
+    expect(shots).toContain("openMoreItem");
+    expect(shots).toContain("library-list-fab");
+    expect(shots).toContain("header-more");
+    expect(shots).toContain('name: "harnesses"');
   });
 
   test("desktop:check runs shots, compare, axe, reduced motion, and trace", () => {
