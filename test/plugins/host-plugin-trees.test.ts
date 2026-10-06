@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { listCursorPluginPinCreateInputs } from "../../src/plugins/cursor-installed.ts";
 import { CursorSerializer } from "../../src/platforms/cursor.ts";
 import { ClaudeCodeSerializer } from "../../src/platforms/claude-code.ts";
-import { generateFiles } from "../../src/services/applier.ts";
+import { generateFiles, materializeFiles } from "../../src/services/applier.ts";
 import type { Resource, SurfaceWarning } from "../../src/types.ts";
 import { makeResource } from "../helpers/resources.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
@@ -99,7 +100,7 @@ describe("listCursorPluginPinCreateInputs", () => {
 });
 
 describe("host plugin serialize", () => {
-  it("copies a Claude install tree into Cursor cache and keeps Claude manifests", async () => {
+  it("copies a Claude install tree into Cursor local plugins and keeps Claude manifests", async () => {
     const home = createTempDir("host-plugin-claude-to-cursor-");
     try {
       writeTextFile(
@@ -157,14 +158,22 @@ describe("host plugin serialize", () => {
         file.path.endsWith("skills/hello/SKILL.md"),
       );
       expect(skill?.path).toBe(
-        ".cursor/plugins/cache/demo-market/demo/1.0.0/skills/hello/SKILL.md",
+        ".cursor/plugins/local/demo/skills/hello/SKILL.md",
       );
       expect(skill?.content).toContain("Hello from Claude");
+      const sidecar = files.find((file) =>
+        file.path.endsWith(".harnesstap-plugin.json"),
+      );
+      expect(sidecar?.path).toBe(".cursor/plugins/local/demo/.harnesstap-plugin.json");
+      expect(sidecar?.content).toContain("demo@demo-market");
       expect(
         files.some((file) =>
           file.path.endsWith(".claude-plugin/plugin.json"),
         ),
       ).toBe(true);
+      expect(
+        files.some((file) => file.path.includes(".cursor/plugins/cache/")),
+      ).toBe(false);
       expect(
         files.some((file) => file.path === ".cursor/plugins/installed_plugins.json"),
       ).toBe(false);
@@ -330,6 +339,129 @@ describe("host plugin serialize", () => {
         projectRoot: home,
       });
       expect(claudeResults[0]?.surface_warnings ?? []).toHaveLength(0);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("disambiguates two Cursor pins that share a plugin name", async () => {
+    const home = createTempDir("host-plugin-cursor-folders-");
+    try {
+      for (const marketplace of ["alpha", "beta"]) {
+        writeTextFile(
+          join(home, `.claude/plugins/cache/${marketplace}/demo/1.0.0/.claude-plugin/plugin.json`),
+          JSON.stringify({ name: "demo", version: "1.0.0" }),
+        );
+        writeTextFile(
+          join(home, `.claude/plugins/installed_plugins.json`),
+          JSON.stringify({
+            version: 2,
+            plugins: {
+              "demo@alpha": [{ scope: "user", installPath: "cache/alpha/demo/1.0.0", version: "1.0.0" }],
+              "demo@beta": [{ scope: "user", installPath: "cache/beta/demo/1.0.0", version: "1.0.0" }],
+            },
+          }),
+        );
+      }
+      const files = await new CursorSerializer().serialize(
+        ["alpha", "beta"].map((marketplace) =>
+          makeResource({
+            type: "plugin",
+            name: "demo",
+            namespace: marketplace,
+            origin_kind: "marketplace_link",
+            origin_ref: `demo@${marketplace}`,
+            content: "{}",
+            metadata: {
+              source_kind: "marketplace",
+              marketplace_name: marketplace,
+              resolved_version: "1.0.0",
+            },
+          }),
+        ),
+        home,
+        { target: "global", projectRoot: home },
+      );
+      const paths = files.map((file) => file.path);
+      expect(paths.some((path) => path.startsWith(".cursor/plugins/local/demo--alpha/"))).toBe(true);
+      expect(paths.some((path) => path.startsWith(".cursor/plugins/local/demo--beta/"))).toBe(true);
+      await materializeFiles(files, home, { conflictPolicy: "replace" });
+      const alphaOnly = files.filter((file) => file.path.includes("/demo--alpha/"));
+      const renamed = alphaOnly.map((file) => ({
+        ...file,
+        path: file.path.replace("/demo--alpha/", "/demo/"),
+      }));
+      await materializeFiles(renamed, home, { conflictPolicy: "replace" });
+      expect(existsSync(join(home, ".cursor/plugins/local/demo--alpha"))).toBe(false);
+      expect(existsSync(join(home, ".cursor/plugins/local/demo/.harnesstap-plugin.json"))).toBe(true);
+      expect(existsSync(join(home, ".cursor/plugins/local/demo--beta/.harnesstap-plugin.json"))).toBe(true);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("replaces a managed local plugin directory and keeps the marketplace identity", async () => {
+    const home = createTempDir("host-plugin-cursor-replace-");
+    try {
+      const { pin } = writeDemoModPin(home);
+      writeTextFile(
+        join(home, ".cursor/plugins/local/demo/skills/stale/SKILL.md"),
+        "stale\n",
+      );
+      const files = await new CursorSerializer().serialize([pin], home, {
+        target: "global",
+        projectRoot: home,
+      });
+      await materializeFiles(files, home, { conflictPolicy: "replace" });
+      expect(existsSync(join(home, ".cursor/plugins/local/demo/skills/stale/SKILL.md"))).toBe(false);
+      expect(readFileSync(join(home, ".cursor/plugins/local/demo/skills/hello/SKILL.md"), "utf8")).toContain(
+        "Hello from Claude",
+      );
+      expect(listCursorPluginPinCreateInputs(home).map((row) => row.origin_ref)).toEqual([
+        "demo@demo-market",
+      ]);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("skips the local copy when Cursor already enabled that plugin from cache", async () => {
+    const home = createTempDir("host-plugin-cursor-shadow-");
+    try {
+      const { pin } = writeDemoModPin(home);
+      writeTextFile(
+        join(home, ".cursor/plugins/cache/demo-market/demo/1.0.0/.claude-plugin/plugin.json"),
+        JSON.stringify({ name: "demo", version: "1.0.0" }),
+      );
+      writeTextFile(
+        join(home, ".cursor/plugins/installed.json"),
+        JSON.stringify({ plugins: ["demo@demo-market"] }),
+      );
+      const warnings: SurfaceWarning[] = [];
+      const files = await new CursorSerializer().serialize([pin], home, {
+        target: "global",
+        projectRoot: home,
+        surfaceWarnings: warnings,
+      });
+      expect(files.some((file) => file.path.startsWith(".cursor/plugins/local/"))).toBe(false);
+      expect(warnings.some((warning) => warning.category === "cursor-local-plugin")).toBe(true);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("warns that project apply does not write Cursor local plugins", async () => {
+    const home = createTempDir("host-plugin-cursor-project-");
+    try {
+      const { pin } = writeDemoModPin(home);
+      const warnings: SurfaceWarning[] = [];
+      const files = await new CursorSerializer().serialize([pin], home, {
+        target: "project",
+        projectRoot: home,
+        surfaceWarnings: warnings,
+      });
+      expect(files.some((file) => file.path.includes("plugins/local"))).toBe(false);
+      expect(warnings.map((warning) => warning.category)).toContain("cursor-local-plugin");
     } finally {
       cleanupDir(home);
     }

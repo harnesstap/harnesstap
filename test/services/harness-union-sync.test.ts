@@ -169,7 +169,7 @@ describe("syncConfiguredHarnesses", () => {
 
       const cursorCopy = join(
         context.homeDir,
-        ".cursor/plugins/cache/demo-market/demo/1.0.0/skills/hello/SKILL.md",
+        ".cursor/plugins/local/demo/skills/hello/SKILL.md",
       );
       expect(existsSync(cursorCopy)).toBe(true);
       expect(readFileSync(cursorCopy, "utf8")).toContain("Claude plugin skill");

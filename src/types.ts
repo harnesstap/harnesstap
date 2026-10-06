@@ -613,6 +613,8 @@ export type DeckJsonLayer = DeckJsonPlugin;
 export interface SerializedFile {
   path: string;
   content: string;
+  /** `base64` when the file is not UTF-8 text. Omitted content is UTF-8. */
+  encoding?: "utf8" | "base64";
   ownership?: SerializedResourceOwnership[];
 }
 

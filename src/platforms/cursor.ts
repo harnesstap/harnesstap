@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { listCursorPluginPinCreateInputs } from "../plugins/cursor-installed.js";
-import { emitHostPluginTrees } from "../services/host-plugin-serialize.js";
+import { isHostPluginPinResource, emitHostPluginTrees } from "../services/host-plugin-serialize.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import {
@@ -368,6 +368,17 @@ export class CursorSerializer extends BaseSerializer {
         homeRoot: options.projectRoot ?? projectRoot,
         files,
         surfaceWarnings: options?.surfaceWarnings,
+      });
+    }
+
+    if (resources.some(isHostPluginPinResource)) {
+      options?.surfaceWarnings?.push({
+        harness: "cursor",
+        path: ".cursor/plugins/local",
+        category: "cursor-local-plugin",
+        message:
+          "Cursor local plugins are user-wide. Project apply does not copy them into ~/.cursor/plugins/local.",
+        alias_harnesses: [],
       });
     }
 
