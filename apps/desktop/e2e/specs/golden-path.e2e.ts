@@ -72,6 +72,18 @@ async function openScope(): Promise<void> {
   await clickTestId("view-global");
 }
 
+async function openEditProfile(name: string): Promise<void> {
+  await waitForTestId(`profile-rail-${name}`);
+  const testId = `edit-profile-${name}`;
+  await browser.execute((id: string) => {
+    const el = document.querySelector(`[data-testid="${id}"]`);
+    if (!(el instanceof HTMLElement)) {
+      throw new Error(`missing ${id}`);
+    }
+    el.click();
+  }, testId);
+}
+
 async function addMarketplaceFromDiscover(): Promise<void> {
   const discoverNav = await $('button[aria-label="Discover"]');
   await discoverNav.waitForDisplayed();
@@ -231,7 +243,7 @@ describe("Golden path", () => {
   it("pins marketplace plugin on inactive base profile", async () => {
     await addMarketplacePluginFromDiscover(DEMO_PLUGIN_REF);
     await openScope();
-    await clickTestId(`edit-profile-${PROFILE_BASE}`);
+    await openEditProfile(PROFILE_BASE);
     const pluginName = DEMO_PLUGIN_REF.split("@")[0] ?? DEMO_PLUGIN_REF;
     await addLibraryPluginOnEditProfile(pluginName);
 
