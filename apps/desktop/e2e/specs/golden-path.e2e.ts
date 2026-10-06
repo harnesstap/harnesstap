@@ -230,7 +230,7 @@ describe("Golden path", () => {
 
   it("pins marketplace plugin on inactive base profile", async () => {
     await addMarketplacePluginFromDiscover(DEMO_PLUGIN_REF);
-    await clickTestId("view-project");
+    await openScope();
     await clickTestId(`edit-profile-${PROFILE_BASE}`);
     const pluginName = DEMO_PLUGIN_REF.split("@")[0] ?? DEMO_PLUGIN_REF;
     await addLibraryPluginOnEditProfile(pluginName);
