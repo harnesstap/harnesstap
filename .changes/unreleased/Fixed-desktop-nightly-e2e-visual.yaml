@@ -1,0 +1,5 @@
+kind: Fixed
+body: Restore Desktop nightly e2e and visual coverage after Library, Discover, and header UI changes.
+time: 2026-10-06T02:10:00Z
+custom:
+  Issue: ""

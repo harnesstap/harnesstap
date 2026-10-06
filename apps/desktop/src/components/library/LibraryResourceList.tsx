@@ -244,6 +244,27 @@ export function LibraryResourceList({
               className="resources-list-virtual-item"
               style={resourceRowVirtualStyle(virtualRow.start)}
             >
+              <div
+                className={[
+                  "library-row-shell",
+                  libraryEditMode ? "is-editing" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+              {libraryEditMode ? (
+                <span className="resource-row-checkbox library-edit-check-slot">
+                  <Checkbox
+                    data-testid={`library-row-select-${entry.id}`}
+                    aria-label={`Select ${label}`}
+                    checked={selectedIds?.has(entry.id) ?? false}
+                    disabled={disabled}
+                    onCheckedChange={() => {
+                      onToggleSelected?.(entry.id);
+                    }}
+                  />
+                </span>
+              ) : null}
               <ResourceRowRoot
                 id={`${listId}-option-${virtualRow.index}`}
                 role="option"
@@ -269,19 +290,6 @@ export function LibraryResourceList({
                 }}
               >
                 <ResourceRowLeading>
-                  {libraryEditMode ? (
-                    <span className="resource-row-checkbox library-edit-check-slot">
-                      <Checkbox
-                        data-testid={`library-row-select-${entry.id}`}
-                        aria-label={`Select ${label}`}
-                        checked={selectedIds?.has(entry.id) ?? false}
-                        disabled={disabled}
-                        onCheckedChange={() => {
-                          onToggleSelected?.(entry.id);
-                        }}
-                      />
-                    </span>
-                  ) : null}
                   <InUseMark membership={inUse} />
                 </ResourceRowLeading>
                 <ResourceRowIdentity
@@ -305,6 +313,7 @@ export function LibraryResourceList({
                   ) : null}
                 </ResourceRowIdentity>
               </ResourceRowRoot>
+              </div>
             </div>
           );
         })}

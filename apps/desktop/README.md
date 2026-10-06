@@ -55,7 +55,7 @@ Terminal 3 — screenshot walk (Playwright + system Chrome):
 bun run desktop:shots
 ```
 
-`scripts/ui-shots.mjs` installs `scripts/tauri-shim.js` via `addInitScript`, which fakes `window.__TAURI_INTERNALS__` so `invoke`/`listen`/`open` resolve instead of throwing (the folder dialog returns the demo project path, `read_agent_token` returns the demo token). It then walks Global/Project scope, Library list/detail/create picker, Discover list/tree, Environments, the Settings tabs, and the Export/Import/Account overlays at 1440×900 and 960×640, writing PNGs to `e2e/artifacts/shots/` (gitignored). Exit code is 1 if any `pageerror` fired.
+`scripts/ui-shots.mjs` installs `scripts/tauri-shim.js` via `addInitScript`, which fakes `window.__TAURI_INTERNALS__` so `invoke`/`listen`/`open` resolve instead of throwing (the folder dialog returns the demo project path, `read_agent_token` returns the demo token). It then walks Global/Project scope, Library list/detail/create picker, Discover list/tree, Environments, Harnesses, the Settings tabs, and the Export/Import/Account overlays at 1440×900 and 960×640, writing PNGs to `e2e/artifacts/shots/` (gitignored). Exit code is 1 if any `pageerror` fired.
 
 Knobs: `SHOTS_BASE_URL` (default `http://127.0.0.1:5173/`), `SHOTS_AGENT_PORT`, `SHOTS_TOKEN_PATH`, `SHOTS_PROJECT_PATH`, `SHOTS_OUT`, `SHOTS_CHROME_CHANNEL=chrome` or `SHOTS_CHROME_PATH=/usr/bin/google-chrome-stable` (falls back to Playwright's bundled Chromium; `bunx playwright install chromium` if neither is available), `--viewports 1440x900,960x640`, `--reduced-motion`.
 
@@ -85,7 +85,7 @@ bun run desktop:shots
 bun run desktop:check
 ```
 
-`scripts/ui-shots.mjs` shims Tauri IPC, walks Global/Project, Library, Discover, Environments, Settings, and Export/Import/Account at 1440×900 and 960×640, and writes PNGs to `e2e/artifacts/shots/` (gitignored). `--compare` diffs those against committed baselines in `e2e/visual/` (`pixelmatch`, 0.2% pixels). `--axe` fails on axe-core `serious` / `critical`. `--reduced-motion` asserts `document.getAnimations().length === 0` after each screen. `--trace` records rAF frame times for palette open/close and a list scroll and fails if any frame exceeds 32ms. `--update-baselines` copies the latest shots into `e2e/visual/`.
+`scripts/ui-shots.mjs` shims Tauri IPC, walks Global/Project, Library, Discover, Environments, Harnesses, Settings, and Export/Import/Account (More menu) at 1440×900 and 960×640, and writes PNGs to `e2e/artifacts/shots/` (gitignored). `--compare` diffs those against committed baselines in `e2e/visual/` (`pixelmatch`, 0.2% pixels). `--axe` fails on axe-core `serious` / `critical`. `--reduced-motion` asserts `document.getAnimations().length === 0` after each screen. `--trace` records rAF frame times for palette open/close and a list scroll and fails if any frame exceeds 32ms. `--update-baselines` copies the latest shots into `e2e/visual/`.
 
 `bun run desktop:check` is shots + compare + axe + reduced-motion + trace. Nightly: `.github/workflows/desktop-e2e.yml` `visual` job (web mode, no Tauri).
 
@@ -147,4 +147,4 @@ bun run desktop:e2e:build   # debug build with --features e2e
 bun run desktop:e2e         # WebdriverIO golden path
 ```
 
-Uses isolated `HOME` / `HARNESSTAP_HOME` and `HARNESSTAP_E2E_PROJECT_PATH` (only honored when built with Cargo feature `e2e`). CI: `.github/workflows/desktop-e2e.yml` (Ubuntu, nightly / manual — not a PR gate yet).
+Uses isolated `HOME` / `HARNESSTAP_HOME` and `HARNESSTAP_E2E_PROJECT_PATH` (only honored when built with Cargo feature `e2e`). CI: `.github/workflows/desktop-e2e.yml` (Ubuntu, nightly, manual, and pull requests).

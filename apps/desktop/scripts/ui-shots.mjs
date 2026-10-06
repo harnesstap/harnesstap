@@ -116,7 +116,27 @@ async function pressEscape(page) {
   await page.waitForTimeout(150);
 }
 
+async function dismissResourceTypeModal(page) {
+  const close = page.getByTestId("resource-type-close");
+  if (await close.isVisible().catch(() => false)) {
+    await close.click({ timeout: T });
+    await page
+      .getByTestId("resource-type-modal")
+      .waitFor({ state: "hidden", timeout: T })
+      .catch(() => {});
+  }
+  await pressEscape(page);
+}
+
 async function clickHeader(page, name) {
+  const typeClose = page.getByTestId("resource-type-close");
+  if (await typeClose.isVisible().catch(() => false)) {
+    await typeClose.click({ timeout: T });
+    await page
+      .getByTestId("resource-type-modal")
+      .waitFor({ state: "hidden", timeout: T })
+      .catch(() => {});
+  }
   await page.getByRole("button", { name }).first().click({ timeout: T });
 }
 
@@ -149,34 +169,34 @@ async function openLibrary(page) {
 }
 
 async function clickFirstLibraryRow(page) {
-  const named = main(page).getByRole("button", { name: /^formatter@/ });
-  if (await named.count()) {
-    await named.first().click({ timeout: T });
-    return;
-  }
-  await main(page)
-    .getByRole("listitem")
-    .first()
-    .getByRole("button")
-    .first()
-    .click({ timeout: T });
+  const row = main(page).locator("[data-testid^='resource-row-']").first();
+  await row.waitFor({ state: "visible", timeout: T });
+  await row.click({ timeout: T });
 }
 
 async function clickFirstDiscoverRow(page) {
-  await main(page)
-    .getByRole("list")
-    .first()
-    .getByRole("listitem")
-    .first()
-    .getByRole("button")
-    .first()
-    .click({ timeout: T });
+  const hit = main(page).locator("[data-testid^='sources-hit-']").first();
+  await hit.waitFor({ state: "visible", timeout: T });
+  await hit.click({ timeout: T });
+}
+
+async function openMoreItem(page, name) {
+  await pressEscape(page);
+  await page.getByTestId("header-more").click({ timeout: 10_000 });
+  await page.getByRole("menuitem", { name }).first().click({ timeout: 10_000 });
 }
 
 /**
  * Each step drives the page to a screen; the harness screenshots after it
  * returns. `after` runs post-screenshot (e.g. Escape to close an overlay).
  */
+async function waitForResourceRows(page) {
+  await main(page)
+    .locator("[data-testid^='resource-row-']")
+    .first()
+    .waitFor({ state: "visible", timeout: 15_000 });
+}
+
 const SCREENS = [
   {
     name: "scope-global",
@@ -188,12 +208,14 @@ const SCREENS = [
     name: "scope-project",
     run: async (page) => {
       await clickHeader(page, /project scope/i);
+      await waitForResourceRows(page);
     },
   },
   {
     name: "library-list",
     run: async (page) => {
       await openLibrary(page);
+      await waitForResourceRows(page);
     },
   },
   {
@@ -206,14 +228,20 @@ const SCREENS = [
     name: "library-create-picker",
     run: async (page) => {
       await openLibrary(page);
-      await page.getByRole("button", { name: /create resource/i }).first().click({ timeout: T });
+      await page.getByTestId("library-list-fab").click({ timeout: T });
     },
-    after: pressEscape,
+    after: dismissResourceTypeModal,
   },
   {
     name: "discover-list",
     run: async (page) => {
       await clickHeader(page, /^discover$/i);
+      await page.getByTestId("sources-workspace").waitFor({ timeout: T });
+      await page
+        .locator("[data-testid^='sources-hit-']")
+        .first()
+        .waitFor({ state: "visible", timeout: 15_000 });
+      await page.waitForTimeout(SETTLE_MS);
     },
   },
   {
@@ -229,10 +257,9 @@ const SCREENS = [
     },
   },
   {
-    name: "settings-harnesses",
+    name: "harnesses",
     run: async (page) => {
-      await openSettings(page);
-      await openSettingsTab(page, "Harnesses");
+      await clickHeader(page, /^harnesses$/i);
     },
   },
   {
@@ -253,21 +280,21 @@ const SCREENS = [
   {
     name: "export",
     run: async (page) => {
-      await clickHeader(page, /^export setup$/i);
+      await openMoreItem(page, /^export setup$/i);
     },
     after: pressEscape,
   },
   {
     name: "import",
     run: async (page) => {
-      await clickHeader(page, /^import setup$/i);
+      await openMoreItem(page, /^import setup$/i);
     },
     after: pressEscape,
   },
   {
     name: "account",
     run: async (page) => {
-      await clickHeader(page, /^account$/i);
+      await openMoreItem(page, /^account/i);
     },
     after: pressEscape,
   },
@@ -368,7 +395,10 @@ async function walkViewport(browser, viewport, config, report) {
   });
   page.on("console", (message) => {
     if (message.type() === "error") {
-      report.consoleErrors.push(`[${tag}] ${message.text()}`);
+      const url = message.location()?.url;
+      report.consoleErrors.push(
+        `[${tag}] ${message.text()}${url ? ` ${url}` : ""}`,
+      );
     }
   });
 

@@ -1,5 +1,8 @@
 import { expect } from "expect-webdriverio";
-import type { E2EIsolation } from "../helpers/isolation.ts";
+import {
+  loadE2EIsolationPaths,
+  type E2EIsolationPaths,
+} from "../helpers/isolation.ts";
 import {
   DEMO_PLUGIN_REF,
   MARKETPLACE_NAME,
@@ -14,6 +17,10 @@ function byTestId(id: string): string {
   return `[data-testid="${id}"]`;
 }
 
+function isolation(): E2EIsolationPaths {
+  return loadE2EIsolationPaths();
+}
+
 async function waitForTestId(id: string): Promise<WebdriverIO.Element> {
   const el = await $(byTestId(id));
   await el.waitForDisplayed();
@@ -22,6 +29,15 @@ async function waitForTestId(id: string): Promise<WebdriverIO.Element> {
 
 async function clickTestId(id: string): Promise<void> {
   const el = await waitForTestId(id);
+  await el.click();
+}
+
+async function clickEnabledTestId(id: string): Promise<void> {
+  const el = await waitForTestId(id);
+  await browser.waitUntil(
+    async () => el.isEnabled(),
+    { timeout: 30000, timeoutMsg: `${id} never became enabled` },
+  );
   await el.click();
 }
 
@@ -42,11 +58,6 @@ async function toggleCreateResource(name: string): Promise<void> {
   await row.$("label").click();
 }
 
-async function toggleCreatePlugin(name: string): Promise<void> {
-  const row = await waitForTestId(`create-plugin-${name}`);
-  await row.$("label").click();
-}
-
 async function waitForLibraryLoaded(): Promise<void> {
   await browser.waitUntil(
     async () => {
@@ -57,6 +68,70 @@ async function waitForLibraryLoaded(): Promise<void> {
   );
 }
 
+async function openScope(): Promise<void> {
+  await clickTestId("view-global");
+}
+
+async function openEditProfile(name: string): Promise<void> {
+  await waitForTestId(`profile-rail-${name}`);
+  const testId = `edit-profile-${name}`;
+  await browser.execute((id: string) => {
+    const el = document.querySelector(`[data-testid="${id}"]`);
+    if (!(el instanceof HTMLElement)) {
+      throw new Error(`missing ${id}`);
+    }
+    el.click();
+  }, testId);
+}
+
+async function addMarketplaceFromDiscover(): Promise<void> {
+  const discoverNav = await $('button[aria-label="Discover"]');
+  await discoverNav.waitForDisplayed();
+  await discoverNav.click();
+  await waitForTestId("sources-workspace");
+
+  await clickTestId("open-add-marketplace");
+  await waitForTestId("marketplace-edit-panel");
+
+  const urlInput = await waitForTestId("marketplace-url");
+  await urlInput.setValue(isolation().marketplaceRepo);
+
+  const nameInput = await waitForTestId("marketplace-name");
+  await nameInput.setValue(MARKETPLACE_NAME);
+
+  await clickEnabledTestId("marketplace-add");
+  await browser.waitUntil(
+    async () => {
+      const panel = await $(byTestId("marketplace-edit-panel"));
+      return !(await panel.isExisting()) || !(await panel.isDisplayed());
+    },
+    { timeout: 30000, timeoutMsg: "Add marketplace panel did not close" },
+  );
+}
+
+async function ensureAllDiscoverSources(): Promise<void> {
+  const allBox = await $("#source-all");
+  await allBox.waitForExist({ timeout: 15000 });
+  const state = await allBox.getAttribute("data-state");
+  if (state !== "checked") {
+    const label = await $("label=All sources");
+    await label.waitForDisplayed();
+    await label.click();
+  }
+}
+
+async function revealDiscoverPluginHit(pluginName: string): Promise<WebdriverIO.Element> {
+  await ensureAllDiscoverSources();
+
+  const search = await $('input[aria-label="Search to add"]');
+  await search.waitForDisplayed();
+  await search.setValue(pluginName);
+
+  const hit = await $(`[data-testid^="sources-hit-"][data-testid*="plugin:${pluginName}"]`);
+  await hit.waitForDisplayed({ timeout: 30000 });
+  return hit;
+}
+
 async function addMarketplacePluginFromDiscover(ref: string): Promise<void> {
   const pluginName = ref.split("@")[0] ?? ref;
   const discoverNav = await $('button[aria-label="Discover"]');
@@ -64,8 +139,7 @@ async function addMarketplacePluginFromDiscover(ref: string): Promise<void> {
   await discoverNav.click();
   await waitForTestId("sources-workspace");
 
-  const hit = await $(`[data-testid^="sources-hit-"][data-testid*="plugin:${pluginName}"]`);
-  await hit.waitForDisplayed({ timeout: 30000 });
+  const hit = await revealDiscoverPluginHit(pluginName);
   await hit.click();
 
   const addToLibrary = await $("button*=Add to Library");
@@ -111,43 +185,26 @@ async function assertResourceRows(names: readonly string[]): Promise<void> {
   }
 }
 
+async function openLibraryCreate(): Promise<void> {
+  const libraryNav = await $('button[aria-label="Library"]');
+  await libraryNav.waitForDisplayed();
+  await libraryNav.click();
+  await clickTestId("library-list-fab");
+}
+
 describe("Golden path", () => {
-  let isolation: E2EIsolation;
-
-  before(() => {
-    isolation = browser.e2eIsolation;
-  });
-
   it("waits for agent connection", async () => {
     await waitForTestId("agent-connected");
   });
 
-  it("registers marketplace from settings", async () => {
-    await clickTestId("open-settings");
-    await waitForTestId("settings-drawer");
-
-    const urlInput = await waitForTestId("marketplace-url");
-    await urlInput.setValue(isolation.marketplaceRepo);
-
-    const nameInput = await waitForTestId("marketplace-name");
-    await nameInput.setValue(MARKETPLACE_NAME);
-
-    await clickTestId("marketplace-add");
-    await waitForTestId(`marketplace-row-${MARKETPLACE_NAME}`);
-
-    const closeBtn = await $(
-      `${byTestId("settings-drawer")} button[aria-label="Close settings"]`,
-    );
-    await closeBtn.waitForDisplayed();
-    await closeBtn.click();
-    await browser.waitUntil(
-      async () => !(await $(byTestId("settings-drawer")).isDisplayed()),
-      { timeout: 10000, timeoutMsg: "Settings drawer did not close" },
-    );
+  it("registers marketplace from Discover", async () => {
+    await addMarketplaceFromDiscover();
+    const pluginName = DEMO_PLUGIN_REF.split("@")[0] ?? DEMO_PLUGIN_REF;
+    await revealDiscoverPluginHit(pluginName);
   });
 
   it("refreshes and shows global user resources", async () => {
-    await clickTestId("view-global");
+    await openScope();
     await clickTestId("live-status-refresh");
     await assertResourceRows(USER_RESOURCE_NAMES);
   });
@@ -176,7 +233,7 @@ describe("Golden path", () => {
     const projectPath = await waitForTestId("project-path");
     await expect(projectPath).toHaveAttribute(
       "title",
-      expect.stringContaining(isolation.project),
+      expect.stringContaining(isolation().project),
     );
 
     await clickTestId("live-status-refresh");
@@ -185,8 +242,8 @@ describe("Golden path", () => {
 
   it("pins marketplace plugin on inactive base profile", async () => {
     await addMarketplacePluginFromDiscover(DEMO_PLUGIN_REF);
-    await clickTestId("view-project");
-    await clickTestId(`edit-profile-${PROFILE_BASE}`);
+    await openScope();
+    await openEditProfile(PROFILE_BASE);
     const pluginName = DEMO_PLUGIN_REF.split("@")[0] ?? DEMO_PLUGIN_REF;
     await addLibraryPluginOnEditProfile(pluginName);
 
@@ -205,6 +262,7 @@ describe("Golden path", () => {
       await doneBtn.click();
     }
 
+    await openScope();
     await clickTestId("open-create-profile");
     await waitForTestId("create-profile-name");
 
@@ -214,7 +272,7 @@ describe("Golden path", () => {
     await clickTestId("create-source-compose");
     await waitForLibraryLoaded();
 
-    await toggleCreatePlugin(PROFILE_BASE);
+    await toggleCreateResource(PROFILE_BASE);
     await submitCreateProfile();
     await waitForTestId(`profile-rail-${PROFILE_CHILD}`);
   });
@@ -222,11 +280,7 @@ describe("Golden path", () => {
   it("creates a rule resource through the create-resource flow", async () => {
     const ruleName = `e2e-rule-${Date.now()}`;
 
-    const libraryNav = await $('button[aria-label="Library"]');
-    await libraryNav.waitForDisplayed();
-    await libraryNav.click();
-
-    await clickTestId("library-create-resource");
+    await openLibraryCreate();
     await waitForTestId("resource-type-modal");
 
     await clickTestId("resource-type-option-rule");
@@ -257,7 +311,7 @@ describe("Golden path", () => {
     const discardDialogSelector =
       "//h2[normalize-space()='Discard this resource?']/ancestor::div[@role='dialog']";
 
-    await clickTestId("library-create-resource");
+    await openLibraryCreate();
     await waitForTestId("resource-type-modal");
     await clickTestId("resource-type-option-env_var");
     await waitForTestId("resource-create-panel");

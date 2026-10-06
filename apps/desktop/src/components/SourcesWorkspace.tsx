@@ -1530,6 +1530,7 @@ export function SourcesWorkspace({
               primary
               label="Add marketplace"
               title="Add marketplace"
+              data-testid="open-add-marketplace"
               disabled={controlsDisabled}
               onClick={() => {
                 setMarketplaceMode("add");

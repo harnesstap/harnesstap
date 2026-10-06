@@ -30,6 +30,10 @@ describe("desktop visual check", () => {
     expect(shots).toContain("compareShot");
     expect(shots).toContain("getAnimations");
     expect(shots).toContain("FRAME_BUDGET_MS = 32");
+    expect(shots).toContain("openMoreItem");
+    expect(shots).toContain("library-list-fab");
+    expect(shots).toContain("header-more");
+    expect(shots).toContain('name: "harnesses"');
   });
 
   test("desktop:check runs shots, compare, axe, reduced motion, and trace", () => {
@@ -43,6 +47,7 @@ describe("desktop visual check", () => {
     expect(workflow).toContain("visual:");
     expect(workflow).toContain("bun run desktop:check");
     expect(workflow).toContain("demo-home.sh");
+    expect(workflow).toContain("pull_request:");
   });
 
   test("reduced motion CSS clears animations instead of 0.01ms stubs", () => {
