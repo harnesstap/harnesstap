@@ -116,7 +116,27 @@ async function pressEscape(page) {
   await page.waitForTimeout(150);
 }
 
+async function dismissResourceTypeModal(page) {
+  const close = page.getByTestId("resource-type-close");
+  if (await close.isVisible().catch(() => false)) {
+    await close.click({ timeout: T });
+    await page
+      .getByTestId("resource-type-modal")
+      .waitFor({ state: "hidden", timeout: T })
+      .catch(() => {});
+  }
+  await pressEscape(page);
+}
+
 async function clickHeader(page, name) {
+  const typeClose = page.getByTestId("resource-type-close");
+  if (await typeClose.isVisible().catch(() => false)) {
+    await typeClose.click({ timeout: T });
+    await page
+      .getByTestId("resource-type-modal")
+      .waitFor({ state: "hidden", timeout: T })
+      .catch(() => {});
+  }
   await page.getByRole("button", { name }).first().click({ timeout: T });
 }
 
@@ -200,12 +220,18 @@ const SCREENS = [
       await openLibrary(page);
       await page.getByTestId("library-list-fab").click({ timeout: T });
     },
-    after: pressEscape,
+    after: dismissResourceTypeModal,
   },
   {
     name: "discover-list",
     run: async (page) => {
       await clickHeader(page, /^discover$/i);
+      await page.getByTestId("sources-workspace").waitFor({ timeout: T });
+      await page
+        .locator("[data-testid^='sources-hit-']")
+        .first()
+        .waitFor({ state: "visible", timeout: 15_000 });
+      await page.waitForTimeout(SETTLE_MS);
     },
   },
   {
