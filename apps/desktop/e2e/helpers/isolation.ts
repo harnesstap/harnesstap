@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { PROJECT_RESOURCE_NAMES, USER_RESOURCE_NAMES } from "./seed.ts";
@@ -13,6 +21,13 @@ export interface E2EIsolation {
   env: Record<string, string>;
   cleanup(): void;
 }
+
+export interface E2EIsolationPaths {
+  project: string;
+  marketplaceRepo: string;
+}
+
+export const E2E_ISOLATION_STATE_PATH = join(tmpdir(), "harnesstap-e2e-isolation.json");
 
 function writeTextFile(filePath: string, content: string): void {
   mkdirSync(dirname(filePath), { recursive: true });
@@ -84,8 +99,12 @@ export function createE2EIsolation(repoRoot: string): E2EIsolation {
     HOME: home,
     HARNESSTAP_HOME: harnesstapHome,
     HARNESSTAP_E2E_PROJECT_PATH: project,
+    HARNESSTAP_E2E_MARKETPLACE_REPO: marketplaceRepo,
     HARNESSTAP_TELEMETRY: "0",
   };
+
+  const paths: E2EIsolationPaths = { project, marketplaceRepo };
+  writeFileSync(E2E_ISOLATION_STATE_PATH, `${JSON.stringify(paths)}\n`, "utf-8");
 
   return {
     root,
@@ -95,7 +114,24 @@ export function createE2EIsolation(repoRoot: string): E2EIsolation {
     marketplaceRepo,
     env,
     cleanup() {
+      rmSync(E2E_ISOLATION_STATE_PATH, { force: true });
       rmSync(root, { recursive: true, force: true });
     },
   };
+}
+
+/** Paths for specs. WDIO workers do not keep custom `browser` fields from `onPrepare`. */
+export function loadE2EIsolationPaths(): E2EIsolationPaths {
+  const project = process.env.HARNESSTAP_E2E_PROJECT_PATH;
+  const marketplaceRepo = process.env.HARNESSTAP_E2E_MARKETPLACE_REPO;
+  if (project && marketplaceRepo) {
+    return { project, marketplaceRepo };
+  }
+  if (existsSync(E2E_ISOLATION_STATE_PATH)) {
+    const parsed = JSON.parse(readFileSync(E2E_ISOLATION_STATE_PATH, "utf-8")) as E2EIsolationPaths;
+    if (parsed.project && parsed.marketplaceRepo) {
+      return parsed;
+    }
+  }
+  throw new Error("E2E isolation paths were not published by onPrepare");
 }

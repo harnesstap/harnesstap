@@ -1,5 +1,8 @@
 import { expect } from "expect-webdriverio";
-import type { E2EIsolation } from "../helpers/isolation.ts";
+import {
+  loadE2EIsolationPaths,
+  type E2EIsolationPaths,
+} from "../helpers/isolation.ts";
 import {
   DEMO_PLUGIN_REF,
   MARKETPLACE_NAME,
@@ -14,12 +17,8 @@ function byTestId(id: string): string {
   return `[data-testid="${id}"]`;
 }
 
-function isolation(): E2EIsolation {
-  const value = browser.e2eIsolation;
-  if (!value) {
-    throw new Error("E2E isolation was not attached to the browser");
-  }
-  return value;
+function isolation(): E2EIsolationPaths {
+  return loadE2EIsolationPaths();
 }
 
 async function waitForTestId(id: string): Promise<WebdriverIO.Element> {
@@ -47,11 +46,6 @@ async function toggleCreateResource(name: string): Promise<void> {
     row = await $(byTestId(`create-resource-${name}`));
   }
   await row.waitForDisplayed();
-  await row.$("label").click();
-}
-
-async function toggleCreatePlugin(name: string): Promise<void> {
-  const row = await waitForTestId(`create-plugin-${name}`);
   await row.$("label").click();
 }
 
@@ -236,7 +230,7 @@ describe("Golden path", () => {
     await clickTestId("create-source-compose");
     await waitForLibraryLoaded();
 
-    await toggleCreatePlugin(PROFILE_BASE);
+    await toggleCreateResource(PROFILE_BASE);
     await submitCreateProfile();
     await waitForTestId(`profile-rail-${PROFILE_CHILD}`);
   });

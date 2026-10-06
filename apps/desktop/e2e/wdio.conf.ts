@@ -88,11 +88,10 @@ export const config = {
     Object.assign(process.env, e2eIsolation.env);
   },
 
-  before: async () => {
-    if (!e2eIsolation) {
-      throw new Error("E2E isolation was not initialized in onPrepare");
+  onWorkerStart: async () => {
+    if (e2eIsolation) {
+      Object.assign(process.env, e2eIsolation.env);
     }
-    browser.e2eIsolation = e2eIsolation;
   },
 
   afterTest: async (test: { title: string }, _context: unknown, { error }: { error?: Error }) => {
