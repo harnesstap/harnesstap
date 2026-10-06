@@ -189,6 +189,13 @@ async function openMoreItem(page, name) {
  * Each step drives the page to a screen; the harness screenshots after it
  * returns. `after` runs post-screenshot (e.g. Escape to close an overlay).
  */
+async function waitForResourceRows(page) {
+  await main(page)
+    .locator("[data-testid^='resource-row-']")
+    .first()
+    .waitFor({ state: "visible", timeout: 15_000 });
+}
+
 const SCREENS = [
   {
     name: "scope-global",
@@ -200,12 +207,14 @@ const SCREENS = [
     name: "scope-project",
     run: async (page) => {
       await clickHeader(page, /project scope/i);
+      await waitForResourceRows(page);
     },
   },
   {
     name: "library-list",
     run: async (page) => {
       await openLibrary(page);
+      await waitForResourceRows(page);
     },
   },
   {
