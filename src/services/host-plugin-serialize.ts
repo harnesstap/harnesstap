@@ -1,5 +1,13 @@
 import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { listCursorPluginInstalls } from "../plugins/cursor-inventory.js";
+import {
+  CURSOR_LOCAL_PLUGIN_SIDECAR,
+  CURSOR_LOCAL_PLUGINS_RELATIVE_ROOT,
+  cursorLocalPluginFolderName,
+  cursorLocalPluginSidecarContent,
+  sanitizeCursorLocalFolderSegment,
+} from "../plugins/cursor-local-plugin.js";
 import { getPlatform } from "../platforms/registry.js";
 import type {
   PluginDependencyMetadata,
@@ -63,23 +71,49 @@ function isLocalMarketplace(marketplace: string): boolean {
 export function hostPluginRelativeRoot(
   layout: HostPluginLayout,
   resource: Resource,
+  cursorFolder?: string,
 ): string {
   const marketplace = marketplaceName(resource);
   const version = versionDirName(resource);
   if (layout === "cursor") {
-    if (isLocalMarketplace(marketplace)) {
-      return `.cursor/plugins/local/${resource.name}`;
-    }
-    return `.cursor/plugins/cache/${marketplace}/${resource.name}/${version}`;
+    const folder = cursorFolder ?? sanitizeCursorLocalFolderSegment(resource.name);
+    return `${CURSOR_LOCAL_PLUGINS_RELATIVE_ROOT}/${folder}`;
   }
   const mp = isLocalMarketplace(marketplace) ? "local" : marketplace;
   return `.claude/plugins/cache/${mp}/${resource.name}/${version}`;
 }
 
-function collectPluginTextFiles(
+/** Folder names for one Cursor emit. Duplicate plugin names keep the marketplace. */
+export function assignCursorLocalPluginFolders(
+  resources: readonly Resource[],
+): Map<string, string> {
+  const pins = resources.filter(isHostPluginPinResource);
+  const nameCounts = new Map<string, number>();
+  for (const resource of pins) {
+    nameCounts.set(resource.name, (nameCounts.get(resource.name) ?? 0) + 1);
+  }
+  const assigned = new Map<string, string>();
+  const used = new Set<string>();
+  for (const resource of pins) {
+    const duplicate = (nameCounts.get(resource.name) ?? 0) > 1;
+    let folder = cursorLocalPluginFolderName(
+      resource.name,
+      marketplaceName(resource),
+      duplicate,
+    );
+    if (used.has(folder)) {
+      folder = `${folder}--${sanitizeCursorLocalFolderSegment(pluginRef(resource))}`;
+    }
+    used.add(folder);
+    assigned.set(pluginRef(resource), folder);
+  }
+  return assigned;
+}
+
+function collectPluginFiles(
   root: string,
-): Array<{ relativePath: string; content: string }> {
-  const files: Array<{ relativePath: string; content: string }> = [];
+): Array<{ relativePath: string; content: string; encoding?: "utf8" | "base64" }> {
+  const files: Array<{ relativePath: string; content: string; encoding?: "utf8" | "base64" }> = [];
   const stack = [root];
   while (stack.length > 0) {
     const dir = stack.pop();
@@ -94,6 +128,7 @@ function collectPluginTextFiles(
       if (SKIP_DIR_NAMES.has(entry.name) || entry.name.startsWith(".refresh")) {
         continue;
       }
+      if (entry.name === CURSOR_LOCAL_PLUGIN_SIDECAR) continue;
       const absolute = join(dir, entry.name);
       if (entry.isDirectory()) {
         stack.push(absolute);
@@ -101,11 +136,19 @@ function collectPluginTextFiles(
       }
       if (!entry.isFile()) continue;
       try {
-        const content = readFileSync(absolute, "utf-8");
+        const bytes = readFileSync(absolute);
         const relativePath = relative(root, absolute).split(sep).join("/");
-        files.push({ relativePath, content });
+        if (bytes.includes(0)) {
+          files.push({
+            relativePath,
+            content: bytes.toString("base64"),
+            encoding: "base64",
+          });
+          continue;
+        }
+        files.push({ relativePath, content: bytes.toString("utf8") });
       } catch {
-        // Skip unreadable or binary files; host plugin trees are text manifests.
+        // Skip unreadable files.
       }
     }
   }
@@ -182,6 +225,15 @@ function mergeEnabledPlugin(
   upsertSerializedFile(files, settingsPath, merged);
 }
 
+function shadowedCursorMarketplaceNames(homeRoot: string): Set<string> {
+  const names = new Set<string>();
+  for (const install of listCursorPluginInstalls(homeRoot)) {
+    if (install.scope === "local" || !install.enabled) continue;
+    names.add(install.name);
+  }
+  return names;
+}
+
 export interface EmitHostPluginTreesOptions {
   layout: HostPluginLayout;
   homeRoot: string;
@@ -201,17 +253,37 @@ export function emitHostPluginTrees(
 ): SerializedFile[] {
   const files = options.files ? [...options.files] : [];
   const installedPath = ".claude/plugins/installed_plugins.json";
+  const cursorFolders = options.layout === "cursor"
+    ? assignCursorLocalPluginFolders(resources)
+    : null;
+  const shadowedNames = options.layout === "cursor"
+    ? shadowedCursorMarketplaceNames(options.homeRoot)
+    : null;
 
   for (const resource of resources) {
     if (!isHostPluginPinResource(resource)) continue;
     const originRef = pluginRef(resource);
+    if (shadowedNames?.has(resource.name)) {
+      options.surfaceWarnings?.push({
+        harness: "cursor",
+        path: `${CURSOR_LOCAL_PLUGINS_RELATIVE_ROOT}/${resource.name}`,
+        category: "cursor-local-plugin",
+        message: `Cursor already runs ${resource.name} from a marketplace install, which takes precedence over ~/.cursor/plugins/local. Left that install in place.`,
+        alias_harnesses: [],
+      });
+      continue;
+    }
     const sourceRoot = resolveInstallRoot(originRef, options.homeRoot, undefined, {
       preferCanonicalPackage: false,
     });
     if (!sourceRoot || !existsSync(sourceRoot)) continue;
 
-    const relativeRoot = hostPluginRelativeRoot(options.layout, resource);
-    const collected = collectPluginTextFiles(sourceRoot);
+    const relativeRoot = hostPluginRelativeRoot(
+      options.layout,
+      resource,
+      cursorFolders?.get(originRef),
+    );
+    const collected = collectPluginFiles(sourceRoot);
     const allowRuntimeModules =
       getPlatform(options.layout)?.hostPluginRuntimeModules === true;
     const filtered = filterHostPluginRuntimeFiles(collected, allowRuntimeModules);
@@ -219,6 +291,13 @@ export function emitHostPluginTrees(
       files.push({
         path: `${relativeRoot}/${file.relativePath}`,
         content: file.content,
+        ...(file.encoding === "base64" ? { encoding: "base64" as const } : {}),
+      });
+    }
+    if (options.layout === "cursor") {
+      files.push({
+        path: `${relativeRoot}/${CURSOR_LOCAL_PLUGIN_SIDECAR}`,
+        content: cursorLocalPluginSidecarContent(originRef),
       });
     }
     if (filtered.skippedModules.length > 0) {

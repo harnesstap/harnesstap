@@ -36,6 +36,7 @@ import { getPlatformSerializer } from "./platform-serializers.js";
 import { detectPlatforms, scanPlatform } from "./scanner.js";
 import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
+import { findCursorLocalPluginDirectory } from "../plugins/cursor-local-plugin.js";
 import { resolveCanonicalHostPluginRoot } from "./package-cache/index.js";
 import { resolveInstallRoot } from "./resource-sync.js";
 
@@ -383,6 +384,10 @@ function collectPluginInstallCandidates(
   const installPaths = new Set<string>();
   if (installRoot && existsSync(installRoot)) {
     installPaths.add(installRoot);
+  }
+  const cursorLocal = findCursorLocalPluginDirectory(homeRoot, originRef);
+  if (cursorLocal) {
+    installPaths.add(cursorLocal);
   }
   const { marketplace } = parsePluginRef(originRef);
   const metadata = resource.metadata as { resolved_version?: string };

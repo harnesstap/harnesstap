@@ -13,6 +13,11 @@ export interface PluginInstall {
   scope: PluginScope;
   enabled: boolean;
   installPath?: string;
+  /**
+   * How Cursor is treating a `plugins/local` copy. Marketplace cache installs
+   * leave this unset.
+   */
+  cursorLoad?: "present" | "pending_reload" | "loaded" | "shadowed" | "rejected";
   metadata?: {
     description?: string;
     repository?: string;

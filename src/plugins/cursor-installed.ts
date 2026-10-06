@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import type { ResourceCreateInput } from "../types.js";
-import { listCursorPluginInstalls } from "./providers/cursor.js";
+import { listCursorPluginInstalls } from "./cursor-inventory.js";
 import {
   dedupePluginInstalls,
   hasInstallPath,

@@ -35,6 +35,7 @@ import {
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { omitHostPluginBundledSkills } from "./host-plugin-material.js";
 import { gateDeployFiles } from "./deploy-gate.js";
+import { pruneManagedCursorLocalPlugins } from "../plugins/cursor-local-plugin.js";
 import {
   type EnvironmentFragment,
   mergeResolvedEnvironmentIntoResources,
@@ -194,20 +195,14 @@ function removeMaterializedFiles(rootPath: string, filePaths: string[]): void {
   removeGlobalMaterializedFiles(rootPath, filePaths);
 }
 
-function readExistingFileContent(fullPath: string): string | null {
-  if (!existsSync(fullPath)) {
-    return null;
-  }
+function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boolean {
+  if (!existsSync(fullPath)) return false;
   try {
-    return readFileSync(fullPath, "utf-8");
+    const existing = readFileSync(fullPath);
+    return existing.equals(serializedFileBytes(file));
   } catch {
-    return null;
+    return false;
   }
-}
-
-function fileContentMatchesExisting(fullPath: string, expectedContent: string): boolean {
-  const existingContent = readExistingFileContent(fullPath);
-  return existingContent !== null && existingContent === expectedContent;
 }
 
 function isGenerateFilesOptions(
@@ -300,14 +295,22 @@ export async function generateFiles(
 /**
  * Write serialized files to disk, creating directories as needed.
  */
+function serializedFileBytes(file: SerializedFile): Buffer {
+  if (file.encoding === "base64") {
+    return Buffer.from(file.content, "base64");
+  }
+  return Buffer.from(file.content, "utf-8");
+}
+
 export function writeFiles(
   files: SerializedFile[],
   projectRoot: string,
 ): void {
+  pruneManagedCursorLocalPlugins(projectRoot, files);
   for (const file of files) {
     const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
     mkdirSync(dirname(fullPath), { recursive: true });
-    writeFileSync(fullPath, file.content, "utf-8");
+    writeFileSync(fullPath, serializedFileBytes(file));
   }
 }
 
@@ -332,7 +335,7 @@ export async function planMaterializationConflicts(
       }];
     }
     if (!existsSync(fullPath)) return [];
-    if (fileContentMatchesExisting(fullPath, file.content)) return [];
+    if (fileContentMatchesExisting(fullPath, file)) return [];
     const owners = findImportedSnapshotOwnersByFile(file.path);
     return [{
       path: file.path,
@@ -429,6 +432,7 @@ export async function materializeFiles(
     };
   }
 
+  pruneManagedCursorLocalPlugins(rootPath, files);
   for (const file of files) {
     const decision = decisions.get(file.path);
     if (decision === "skip") {
@@ -436,12 +440,12 @@ export async function materializeFiles(
       continue;
     }
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
-    if (fileContentMatchesExisting(fullPath, file.content)) {
+    if (fileContentMatchesExisting(fullPath, file)) {
       writtenFiles.push(file.path);
       continue;
     }
     mkdirSync(dirname(fullPath), { recursive: true });
-    writeFileSync(fullPath, file.content, "utf-8");
+    writeFileSync(fullPath, serializedFileBytes(file));
     writtenFiles.push(file.path);
   }
 

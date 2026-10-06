@@ -95,7 +95,7 @@ describe("CursorPluginProvider", () => {
     expect(demo?.status).toBe("unknown");
   });
 
-  it("does not install plugins; Cursor has no agent plugin install command", async () => {
+  it("fails install when the plugin tree is not on disk", async () => {
     const provider = new CursorPluginProvider();
     const result = await provider.install(
       {
@@ -106,8 +106,7 @@ describe("CursorPluginProvider", () => {
       { ref: "superpowers@superpowers-dev" },
     );
 
-    expect(result.status).toBe("unsupported");
-    expect(result.message).toMatch(/agent plugin marketplace/i);
-    expect(result.message).toMatch(/IDE|Customize|\/plugin/i);
+    expect(result.status).toBe("failed");
+    expect(result.message).toMatch(/No on-disk plugin tree/i);
   });
 });

@@ -270,14 +270,17 @@ common package format. Host-specific manifests stay native:
 
 | Surface | Claude Code | Cursor |
 | ------- | ----------- | ------ |
-| Install root | `~/.claude/plugins/` (`cache/…`, `installed_plugins.json`) | `~/.cursor/plugins/` (`cache/`, `local/`, `marketplaces/`) |
+| Install root | `~/.claude/plugins/` (`cache/…`, `installed_plugins.json`) | HarnessTap writes `~/.cursor/plugins/local/<folder>/`. Cursor's own marketplace installs stay in `cache/` and `marketplaces/` |
 | Manifest | `.claude-plugin/plugin.json` (also reads `.cursor-plugin/` and root `plugin.json` for version) | `.cursor-plugin/plugin.json` or Agent Plugins root `plugin.json` (also inventories `.claude-plugin/` once the tree is in Cursor's root) |
-| Enablement | `enabledPlugins` in `~/.claude/settings.json` plus `installed_plugins.json` | Cursor install records (`installed.json`, `state.vscdb` `cursor.plugins.*`, MCP `plugin-<name>-<name>` folders, recently-used skills); HarnessTap cannot flip Cursor enabled state |
+| Enablement | `enabledPlugins` in `~/.claude/settings.json` plus `installed_plugins.json` | Local folders load on Reload Window. Marketplace enablement stays in Cursor install records (`installed.json`, `state.vscdb` `cursor.plugins.*`). A marketplace plugin of the same name takes precedence over `plugins/local` |
 | Loads the other host's tree? | No | No (Desktop lists `~/.claude/` / `~/.agents/` on Cursor only while third-party Plugins/Skills/configs are enabled) |
 
 `ht harness sync` therefore **dual-writes** native trees (copy files into both
-roots when both harnesses are in the Settings active set). It does not install
-once into Claude and expect Cursor to run it from `~/.claude/plugins/`.
+roots when both harnesses are in the Settings active set). Cursor's copy is
+`~/.cursor/plugins/local/<name>/`, or `<name>--<marketplace>/` when two pins
+share a name, plus `.harnesstap-plugin.json` recording `origin_ref`. It does not
+install once into Claude and expect Cursor to run it from `~/.claude/plugins/`,
+and it does not write `~/.cursor/plugins/cache/`.
 
 Harnesses that do not load those roots (OpenCode, Codex, Gemini, and similar)
 get the **portable extract**: skills land in `~/.agents/skills/` (and native
@@ -351,7 +354,7 @@ shared `AGENTS.md` instruction resources.
 
 ### Cursor plugin marketplaces
 
-`cursor-public` is Cursor's built-in public marketplace. HarnessTap treats it as a native git source at `https://github.com/cursor/plugins` (marketplace manifest `.cursor-plugin/marketplace.json`; each plugin is a relative path in that repo). Library **Pull** clones or fetches that repo even when Cursor has not installed the marketplace. The checkout lives under the Claude host marketplace root (`~/.claude/plugins/marketplaces/cursor-public`) and is recorded in Claude `known_marketplaces.json`, so Claude Code can install from `plugin@cursor-public` refs. `ht harness sync` copies those trees onto Cursor. Other Cursor marketplaces are still registered with `agent plugin marketplace add` during apply and when `plugin add` targets the active profile. `agent plugin` has no install command; install from Cursor Customize or `/plugin`, then inventory `~/.cursor/plugins/`. Missing `agent` auth or a failed `marketplace list` skips host registration instead of failing apply. HarnessTap never sends `marketplace add` for `cursor-public` (Cursor already has it).
+`cursor-public` is Cursor's built-in public marketplace. HarnessTap treats it as a native git source at `https://github.com/cursor/plugins` (marketplace manifest `.cursor-plugin/marketplace.json`; each plugin is a relative path in that repo). Library **Pull** clones or fetches that repo even when Cursor has not installed the marketplace. The checkout lives under the Claude host marketplace root (`~/.claude/plugins/marketplaces/cursor-public`) and is recorded in Claude `known_marketplaces.json`, so Claude Code can install from `plugin@cursor-public` refs. `ht harness sync` copies those trees into `~/.cursor/plugins/local/`. Other Cursor marketplaces are still registered with `agent plugin marketplace add` during apply and when `plugin add` targets the active profile. `agent plugin` has no install command; a marketplace install still happens in Cursor Customize or `/plugin`, and that install takes precedence over a local copy of the same name. Missing `agent` auth or a failed `marketplace list` skips host registration instead of failing apply. HarnessTap never sends `marketplace add` for `cursor-public` (Cursor already has it).
 
 ### Copilot plugin install
 

@@ -12,6 +12,7 @@ const PLUGIN_MANIFEST_PATHS = new Set([
 export interface HostPluginTreeFile {
   relativePath: string;
   content: string;
+  encoding?: "utf8" | "base64";
 }
 
 export interface FilterHostPluginRuntimeFilesResult {
@@ -44,6 +45,7 @@ export function filterHostPluginRuntimeFiles(
   }
 
   for (const file of files) {
+    if (file.encoding === "base64") continue;
     const path = posixPath(file.relativePath);
     collectModulePathsFromJsonFile(file.content, path, modulePaths);
   }
@@ -61,7 +63,7 @@ export function filterHostPluginRuntimeFiles(
       continue;
     }
 
-    if (!isLoaderJsonPath(path)) {
+    if (file.encoding === "base64" || !isLoaderJsonPath(path)) {
       nextFiles.push(file);
       continue;
     }

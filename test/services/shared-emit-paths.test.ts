@@ -73,7 +73,7 @@ describe("preferSharedSkillEmits", () => {
           platformId: "cursor",
           files: [
             {
-              path: ".cursor/plugins/cache/demo/demo/1.0.0/skills/hello/SKILL.md",
+              path: ".cursor/plugins/local/demo/skills/hello/SKILL.md",
               content: "plugin",
             },
             { path: ".agents/skills/hello/SKILL.md", content: "native" },
@@ -95,7 +95,7 @@ describe("preferSharedSkillEmits", () => {
     const files = flattenUniqueFiles(preferred);
     const paths = files.map((file) => file.path).sort();
     expect(paths).toContain(
-      ".cursor/plugins/cache/demo/demo/1.0.0/skills/hello/SKILL.md",
+      ".cursor/plugins/local/demo/skills/hello/SKILL.md",
     );
     expect(paths).toContain(
       ".claude/plugins/cache/demo/demo/1.0.0/skills/hello/SKILL.md",
