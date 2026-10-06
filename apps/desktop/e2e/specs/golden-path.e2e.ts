@@ -97,12 +97,19 @@ async function addMarketplaceFromDiscover(): Promise<void> {
   );
 }
 
-async function revealDiscoverPluginHit(pluginName: string): Promise<WebdriverIO.Element> {
-  const marketLabel = await $(`label=${MARKETPLACE_NAME}`);
-  if (await marketLabel.isExisting()) {
-    await marketLabel.waitForDisplayed();
-    await marketLabel.click();
+async function ensureAllDiscoverSources(): Promise<void> {
+  const allBox = await $("#source-all");
+  await allBox.waitForExist({ timeout: 15000 });
+  const state = await allBox.getAttribute("data-state");
+  if (state !== "checked") {
+    const label = await $("label=All sources");
+    await label.waitForDisplayed();
+    await label.click();
   }
+}
+
+async function revealDiscoverPluginHit(pluginName: string): Promise<WebdriverIO.Element> {
+  await ensureAllDiscoverSources();
 
   const search = await $('input[aria-label="Search to add"]');
   await search.waitForDisplayed();
