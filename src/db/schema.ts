@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 32;
+const SCHEMA_VERSION = 33;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -283,12 +283,25 @@ const MIGRATIONS: Record<number, Migration> = {
       ON plugin_pin_materializations(scope, root_path, relative_path);
   `,
   32: migrateHarnessTablesToRegisteredSet,
+  33: migratePluginResourcesHarnessScope,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
   return (
     db.prepare(`PRAGMA table_info(${name})`).all() as Array<{ name: string }>
   ).map((column) => column.name);
+}
+
+function migratePluginResourcesHarnessScope(db: SqliteDatabase): void {
+  if (!tableExists(db, "plugin_resources")) {
+    return;
+  }
+  if (tableColumns(db, "plugin_resources").includes("harness_scope")) {
+    return;
+  }
+  db.exec(
+    `ALTER TABLE plugin_resources ADD COLUMN harness_scope TEXT NOT NULL DEFAULT 'all'`,
+  );
 }
 
 function combineLegacyRegisteredJson(main: string, aliasesJson: string): string {

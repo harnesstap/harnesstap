@@ -505,6 +505,10 @@ export function ScopeWorkspace({
                 actionsEnabled ? () => ctrl.handleActivateResources() : undefined
               }
               onAttachLibraryItem={actionsEnabled ? ctrl.handleAttachLibraryItem : undefined}
+              onHarnessScopeChange={
+                actionsEnabled ? ctrl.handleHarnessScopeChange : undefined
+              }
+              projectPath={ctrl.projectPath}
               addingResourceKey={ctrl.addingResourceKey}
               addingAllResources={ctrl.addingAllResources}
               activatingResources={ctrl.activatingResources}

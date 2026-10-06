@@ -639,6 +639,7 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age,
 - `environments`, `environment_resources`, `environment_secret_refs` — named how-value bundles.
 - `projects`, `project_layers` — tracked directories and applied plugins.
 - `resources` — canonical configuration items (including `plugin_pin` and `plugin` composition resource types).
+- `plugin_resources.harness_scope` — TEXT NOT NULL DEFAULT `all` (schema v33). Missing or `all` means every registered harness.
 - `imported_snapshots`, `imported_snapshot_installs` — plugin/skill-package import install records.
 - `harness_preferences`, `project_harnesses`, `snapshots`, `global_apply_snapshots`, `global_apply_snapshot_installs`, `schema_version`.
 
@@ -692,7 +693,7 @@ A **plugin** is the primary composable unit.
 
 **Body:**
 
-- Ordered context-side **resources** (instructions, skills, rules, MCP servers, hooks, agents, commands).
+- Ordered context-side **resources** (instructions, skills, rules, MCP servers, hooks, agents, commands). Each `plugin_resources` row may store `harness_scope`: the sentinel `all` (default; missing on older profiles too) or a JSON list of harness slugs. Apply writes that resource only to scoped harnesses. Checking every registered harness normalizes back to `all`. Nested `plugin` refs AND the parent ref's scope with the child's own memberships.
 - Composition attachments: **`plugin_pin`** refs (host marketplace/local) and **`plugin`** refs (other plugins, local or published).
 - Optional Claude marketplace/plugin config and `needs[]` contract keys.
 - Optional `default_environment_id` for environment cascade on apply.
@@ -784,6 +785,10 @@ When one supported harness already exists in a project, it is the default regist
 Plugin resources with `never_synced` or `stale` status warn by default; pass `--sync-plugins` to refresh before materialize.
 
 When generated files already exist, `apply` uses `--on-conflict replace|skip|prompt` (default: `prompt` on TTY, otherwise `replace`).
+
+Compile and apply both run `generateFiles`, which omits a resource from a harness serializer when that resource's `harness_scope` is a subset that does not include the harness.
+
+Desktop profile inventory (Active and Inactive rows) can set per-resource harness scope. Default is All. Toggles apply live and mark the profile dirty; the sidebar Apply writes the scoped files. Shared native folders (same emit path for a resource type) share one checkbox. Closing the picker with zero harnesses restores the previous selection.
 
 ### Global profile apply
 

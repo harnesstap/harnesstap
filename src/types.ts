@@ -179,6 +179,10 @@ export interface PluginOverrides {
   resources: Record<string, string>;
 }
 
+export type ResourceHarnessScope =
+  | { readonly kind: "all" }
+  | { readonly kind: "subset"; readonly harnesses: readonly string[] };
+
 export interface Resource {
   id: string;
   type: ResourceType;
@@ -194,6 +198,11 @@ export interface Resource {
   content_blob_ref: string;
   created_at: string;
   updated_at: string;
+  /**
+   * Plugin-membership harness scope. Present when the resource was loaded from
+   * `plugin_resources`. Missing means All.
+   */
+  harness_scope?: ResourceHarnessScope;
 }
 
 export type ResourceCreateInput = Pick<
@@ -339,6 +348,8 @@ export interface PluginResource {
   plugin_id: string;
   resource_id: string;
   order: number;
+  /** `all` sentinel or JSON array of harness slugs. Missing on disk means All. */
+  harness_scope?: string;
 }
 
 /** Composition dependency edge on a plugin (name + version constraint). */

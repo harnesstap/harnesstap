@@ -10,6 +10,7 @@ import {
   commitProfileResource,
   cutProfile,
   openResourcePath,
+  patchProfileResourceHarnessScope,
   removeProfileResource,
   renameProfile,
   restoreProfileFile,
@@ -34,7 +35,9 @@ import {
   planProfileDiskSnapshot,
   profileDiskSnapshotHasWork,
   settleInChunks,
+  type ProfileInventoryItem,
 } from "../lib/profile-inventory";
+import type { HarnessScope } from "../lib/harness-scope-ui";
 import {
   applyProfileRailOrder,
   loadProfileRailOrder,
@@ -983,6 +986,32 @@ export function useScopeController(input: ScopeControllerInput) {
     [client, maybeAutoReapplyAfterMutation, refreshProfilePreview, runSwitch, selectedProfile],
   );
 
+  const handleHarnessScopeChange = useCallback(
+    async (item: ProfileInventoryItem, scope: HarnessScope) => {
+      if (!client || !selectedProfile || !item.resource.id) {
+        return;
+      }
+      setResourceActionError(null);
+      try {
+        await patchProfileResourceHarnessScope(
+          client.baseUrl,
+          client.token,
+          selectedProfile,
+          {
+            resourceId: item.resource.id,
+            harnessScope: scope.kind === "all" ? "all" : [...scope.harnesses],
+          },
+        );
+        await loadPreviewFor(selectedProfile);
+        await refreshStatus("full");
+      } catch (error) {
+        setResourceActionError(messageOf(error, "Could not update harness scope"));
+        throw error;
+      }
+    },
+    [client, loadPreviewFor, refreshStatus, selectedProfile],
+  );
+
   const handleDiscardResource = useCallback(
     async (resource: ProfileContentsResource) => {
       const profileName =
@@ -1557,6 +1586,7 @@ export function useScopeController(input: ScopeControllerInput) {
     handleAddAllResources,
     handleActivateResources,
     handleAttachLibraryItem,
+    handleHarnessScopeChange,
     handleCommitManagedChanges,
     handleOpenResourceInEditor,
     handleRemoveResourceFromProfile,

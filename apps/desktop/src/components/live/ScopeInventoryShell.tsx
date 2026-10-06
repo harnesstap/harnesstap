@@ -34,6 +34,7 @@ import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { DiscardPathList } from "./DiscardPathList";
 import { InventorySection } from "./InventorySection";
 import { LiveHeader } from "./LiveHeader";
+import type { HarnessScope, SerializerTarget } from "../../lib/harness-scope-ui";
 
 export interface ScopeInventoryShellProps {
   search: string;
@@ -69,6 +70,10 @@ export interface ScopeInventoryShellProps {
   onOpenAddModal: () => void;
   addingAllResources?: boolean;
   activatingResources?: boolean;
+  registeredHarnesses?: readonly string[];
+  harnessNames?: Readonly<Record<string, string>>;
+  scopeTarget?: SerializerTarget;
+  onHarnessScopeChange?: (item: ProfileInventoryItem, scope: HarnessScope) => void;
 }
 
 function batchLabel(
@@ -109,6 +114,10 @@ export function ScopeInventoryShell({
   onOpenAddModal,
   addingAllResources = false,
   activatingResources = false,
+  registeredHarnesses,
+  harnessNames,
+  scopeTarget,
+  onHarnessScopeChange,
 }: ScopeInventoryShellProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [moves, setMoves] = useState<Map<string, ProfileInventorySectionId>>(
@@ -614,6 +623,10 @@ export function ScopeInventoryShell({
                 onToggleSelected={
                   editMode && onRemoveFromProfile ? toggleSelected : undefined
                 }
+                registeredHarnesses={registeredHarnesses}
+                harnessNames={harnessNames}
+                scopeTarget={scopeTarget}
+                onHarnessScopeChange={onHarnessScopeChange}
               />
             );
           })}

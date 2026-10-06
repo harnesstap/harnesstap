@@ -28,6 +28,7 @@ import { Collapse } from "../motion/Collapse";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { InventoryRow } from "./InventoryRow";
 import { ICON_SIZE } from "./shared";
+import type { HarnessScope, SerializerTarget } from "../../lib/harness-scope-ui";
 
 export function inventorySectionTitle(section: ProfileInventorySectionId): string {
   switch (section) {
@@ -99,6 +100,10 @@ export interface InventorySectionProps {
   onDiff?: (item: ProfileInventoryItem) => void;
   selectedIds?: ReadonlySet<string>;
   onToggleSelected?: (item: ProfileInventoryItem) => void;
+  registeredHarnesses?: readonly string[];
+  harnessNames?: Readonly<Record<string, string>>;
+  scopeTarget?: SerializerTarget;
+  onHarnessScopeChange?: (item: ProfileInventoryItem, scope: HarnessScope) => void;
 }
 
 export function InventorySection({
@@ -132,6 +137,10 @@ export function InventorySection({
   onDiff,
   selectedIds,
   onToggleSelected,
+  registeredHarnesses,
+  harnessNames,
+  scopeTarget,
+  onHarnessScopeChange,
 }: InventorySectionProps) {
   const title = inventorySectionTitle(section);
   const listRef = useRef<HTMLDivElement>(null);
@@ -218,6 +227,14 @@ export function InventorySection({
         selected={selectedIds?.has(item.key) ?? false}
         onToggleSelected={
           onToggleSelected ? () => onToggleSelected(item) : undefined
+        }
+        registeredHarnesses={registeredHarnesses}
+        harnessNames={harnessNames}
+        scopeTarget={scopeTarget}
+        onHarnessScopeChange={
+          onHarnessScopeChange
+            ? (scope) => onHarnessScopeChange(item, scope)
+            : undefined
         }
       />
     );

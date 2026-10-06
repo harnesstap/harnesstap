@@ -7,6 +7,7 @@ import {
   createPlugin,
   getPluginResources,
 } from "../../src/models/plugin-model.ts";
+import { setHarnessPreference } from "../../src/models/harness.ts";
 import { createResource } from "../../src/models/resource.ts";
 
 describe("agent profile edit routes", () => {
@@ -45,6 +46,9 @@ describe("agent profile edit routes", () => {
 
   it("gets, patches, attaches, and detaches profile composition", async () => {
     const server = await withServer();
+    setHarnessPreference({
+      registered_harnesses: ["claude-code", "cursor", "codex"],
+    });
     const profile = createPlugin({
       name: "focus",
       description: "before",
@@ -131,6 +135,27 @@ describe("agent profile edit routes", () => {
       resources: Array<{ id: string; name: string }>;
     };
     expect(withResource.resources.some((row) => row.id === skill.id)).toBe(true);
+
+    const scopeResponse = await fetch(
+      `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,
+      {
+        method: "PATCH",
+        headers: authHeaders(server.token),
+        body: JSON.stringify({
+          resourceId: skill.id,
+          harnessScope: ["claude-code"],
+        }),
+      },
+    );
+    expect(scopeResponse.status).toBe(200);
+    const scoped = (await scopeResponse.json()) as {
+      resources: Array<{ id: string; harness_scope?: "all" | string[] }>;
+      profile: { dirty: boolean };
+    };
+    expect(scoped.profile.dirty).toBe(true);
+    expect(
+      scoped.resources.find((row) => row.id === skill.id)?.harness_scope,
+    ).toEqual(["claude-code"]);
 
     const detachResource = await fetch(
       `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,

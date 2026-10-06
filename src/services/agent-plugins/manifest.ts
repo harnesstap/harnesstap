@@ -4,6 +4,7 @@ import { listDependencies } from "../plugin-dependency.js";
 import { getPluginOverrides } from "../plugin-overrides.js";
 import { AP_SCHEMA_URL } from "./validate.js";
 import type { DependencySourceKind, PluginOverrides } from "../../types.js";
+import { resourceHarnessScope } from "../harness-scope.js";
 
 export const HT_EXTENSION_NAMESPACE = "com.harnesstap";
 export const HT_EXTENSION_SCHEMA = "urn:harnesstap:ap-extension:v1";
@@ -26,6 +27,8 @@ export interface HarnesstapExtension {
   defaultEnvironment?: string;
   /** Relative paths into `com.harnesstap/`, omitted for absent types. */
   components: Record<string, string>;
+  /** `type:name` → harness slugs. Omitted keys and missing field mean All. */
+  harnessScopes?: Record<string, string[]>;
 }
 
 export interface ApManifest {
@@ -57,10 +60,18 @@ export function buildApManifest(pluginId: string): ApManifest {
   const plugin = getPluginById(pluginId);
   if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
-  const present = new Set(getPluginResources(pluginId).map((resource) => resource.type));
+  const attached = getPluginResources(pluginId);
+  const present = new Set(attached.map((resource) => resource.type));
   const components: Record<string, string> = {};
   for (const [type, layout] of Object.entries(COMPONENT_LAYOUT)) {
     if (present.has(type as never)) components[layout.key] = layout.path;
+  }
+  const harnessScopes: Record<string, string[]> = {};
+  for (const resource of attached) {
+    const scope = resourceHarnessScope(resource);
+    if (scope.kind === "subset") {
+      harnessScopes[`${resource.type}:${resource.name}`] = [...scope.harnesses];
+    }
   }
 
   const defaultEnvironment = plugin.default_environment_id
@@ -80,6 +91,7 @@ export function buildApManifest(pluginId: string): ApManifest {
     needs: plugin.needs ?? [],
     ...(defaultEnvironment ? { defaultEnvironment } : {}),
     components,
+    ...(Object.keys(harnessScopes).length > 0 ? { harnessScopes } : {}),
   };
 
   return {

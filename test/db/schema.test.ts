@@ -46,7 +46,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(32);
+      expect(versionRow.version).toBe(33);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -155,7 +155,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 32 }]);
+      expect(versionRows).toEqual([{ version: 33 }]);
     } finally {
       await context.cleanup();
     }
@@ -205,6 +205,13 @@ describe("initializeSchema", () => {
       context.schema.initializeSchema(context.connection.getDb());
       const db = context.connection.getDb();
       const now = new Date().toISOString();
+      expect(
+        (
+          db
+            .prepare("PRAGMA table_info(plugin_resources)")
+            .all() as Array<{ name: string }>
+        ).map((column) => column.name),
+      ).toContain("harness_scope");
 
       db.prepare(
         `INSERT INTO plugins (
@@ -565,7 +572,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(32);
+        expect(version).toBe(33);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -592,7 +599,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(32);
+      expect(version).toBe(33);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -630,7 +637,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(32);
+      expect(version).toBe(33);
 
       const tables = db
         .prepare(
@@ -695,7 +702,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(32);
+      expect(version).toBe(33);
 
       const columns = db
         .prepare("PRAGMA table_info(resource_materializations)")
@@ -791,7 +798,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(32);
+      expect(version).toBe(33);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")

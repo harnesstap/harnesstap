@@ -10,6 +10,7 @@ import {
   listPluginDependencies,
   removeResourceFromPlugin,
   resolvePluginSelector,
+  setPluginResourceHarnessScope,
   setPluginTags,
   updatePluginDescription,
 } from "../models/plugin-model.js";
@@ -24,12 +25,19 @@ import {
 import { markPluginDirty } from "./plugin-versioning.js";
 import { ProfileRenameError, ProfileReservedNameError } from "./profile-commands.js";
 import { toContentsResource } from "./profile-contents.js";
+import {
+  normalizeScopeToRegistered,
+  parseHarnessScope,
+} from "./harness-scope.js";
+import { getHarnessPreference } from "../models/harness.js";
+import { registeredHarnessesOf } from "./harness-targets.js";
 
 export interface ProfileDetailResource {
   id: string;
   type: string;
   name: string;
   source: string;
+  harness_scope?: "all" | string[];
 }
 
 export interface ProfileDetailDependency {
@@ -229,4 +237,21 @@ export function detachProfileAttachment(
     return getProfileDetail(profile.name);
   }
   throw new Error("resourceId or dependencyName is required");
+}
+
+export function setProfileResourceHarnessScope(
+  selector: string,
+  resourceId: string,
+  rawScope: unknown,
+): ProfileDetail {
+  const profile = resolveProfilePlugin(selector);
+  const attached = getPluginResources(profile.id).find((entry) => entry.id === resourceId);
+  if (!attached) {
+    throw new Error(`Attachment not found on profile: ${resourceId}`);
+  }
+  const registered = registeredHarnessesOf(getHarnessPreference());
+  const normalized = normalizeScopeToRegistered(parseHarnessScope(rawScope), registered);
+  setPluginResourceHarnessScope(profile.id, resourceId, normalized);
+  markPluginDirty(profile.id);
+  return getProfileDetail(profile.name);
 }

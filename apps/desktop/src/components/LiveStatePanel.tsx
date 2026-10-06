@@ -102,15 +102,20 @@ import {
   filterProfileInventoryItems,
   inventoryMembershipCaption,
   partitionProfileInventory,
+  type ProfileInventoryItem,
 } from "../lib/profile-inventory";
+import {
+  scopeTarget as serializerTargetForView,
+  type HarnessScope,
+} from "../lib/harness-scope-ui";
 import { ScopeInventoryShell } from "./live/ScopeInventoryShell";
 import { ConflictRecoveryChoices, isResourceConflictChooser } from "./live/ConflictRecoveryChoices";
 import { ScopeAddToProfileModal } from "./ScopeAddToProfileModal";
 import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceCreatePanel } from "./ResourceCreatePanel";
 import type { CreateResourceType } from "../lib/resource-create-schema";
-import { fetchLibraryResources } from "../lib/agent-client";
-import type { LibraryResource } from "../lib/types";
+import { fetchHarnessSettings, fetchLibraryResources } from "../lib/agent-client";
+import type { HarnessSettingsPayload, LibraryResource } from "../lib/types";
 
 const ICON_SIZE = 14;
 const STACK_CHANGES_SUBTITLE = "What apply would add or remove.";
@@ -1440,6 +1445,10 @@ export interface LiveStatePanelProps {
     name: string;
     type: string;
   }) => Promise<void>;
+  onHarnessScopeChange?: (
+    item: ProfileInventoryItem,
+    scope: HarnessScope,
+  ) => Promise<void> | void;
   addingResourceKey?: string | null;
   addingAllResources?: boolean;
   activatingResources?: boolean;
@@ -1473,6 +1482,7 @@ export interface LiveStatePanelProps {
   onSuccess?: (message: string) => void;
   onLibraryChanged?: () => void;
   onOpenPlugin?: (pluginName: string) => void;
+  projectPath?: string | null;
 }
 
 export function LiveStatePanel({
@@ -1526,6 +1536,8 @@ export function LiveStatePanel({
   onSuccess,
   onLibraryChanged,
   onOpenPlugin,
+  onHarnessScopeChange,
+  projectPath = null,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
@@ -1536,6 +1548,56 @@ export function LiveStatePanel({
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createType, setCreateType] = useState<CreateResourceType | null>(null);
   const [pickerResources, setPickerResources] = useState<LibraryResource[]>([]);
+  const [harnessSettings, setHarnessSettings] = useState<HarnessSettingsPayload | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!baseUrl) {
+      return;
+    }
+    let cancelled = false;
+    void fetchHarnessSettings(
+      baseUrl,
+      token,
+      view === "project" ? projectPath : undefined,
+    )
+      .then((payload) => {
+        if (!cancelled) {
+          setHarnessSettings(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHarnessSettings(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, projectPath, token, view]);
+
+  const registeredHarnesses = useMemo(() => {
+    if (!harnessSettings) {
+      return [];
+    }
+    if (
+      view === "project"
+      && harnessSettings.project?.override
+      && harnessSettings.project.registered_harnesses
+    ) {
+      return harnessSettings.project.registered_harnesses;
+    }
+    return harnessSettings.global.registered_harnesses;
+  }, [harnessSettings, view]);
+  const harnessNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const entry of harnessSettings?.harnesses ?? []) {
+      names[entry.id] = entry.name;
+    }
+    return names;
+  }, [harnessSettings]);
+  const scopeTarget = serializerTargetForView(view);
   const openResource = (target: ResourceDetailTarget) => {
     setDetailTarget(target);
   };
@@ -2106,6 +2168,10 @@ export function LiveStatePanel({
             onOpenAddModal={() => setAddModalOpen(true)}
             addingAllResources={addingAllResources}
             activatingResources={activatingResources}
+            registeredHarnesses={registeredHarnesses}
+            harnessNames={harnessNames}
+            scopeTarget={scopeTarget}
+            onHarnessScopeChange={onHarnessScopeChange}
           />
         )
       )}

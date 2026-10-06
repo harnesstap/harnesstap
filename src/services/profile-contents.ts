@@ -11,6 +11,15 @@ import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { formatResourceTypeSummary } from "./project-status-payload.js";
 import { collectProfilePluginIds } from "./profile-apply.js";
 import { resolveExistingResourceFilesystemPath } from "./resource-editor-path.js";
+import { harnessScopeWire, resourceHarnessScope } from "./harness-scope.js";
+
+function optionalScopeWire(
+  resource: Resource | undefined,
+): { harness_scope: "all" | string[] } | Record<string, never> {
+  if (!resource) return {};
+  const scope = resourceHarnessScope(resource);
+  return scope.kind === "all" ? {} : { harness_scope: harnessScopeWire(scope) };
+}
 
 export interface ProfileContentsResource {
   id: string;
@@ -30,6 +39,8 @@ export interface ProfileContentsResource {
   };
   /** Present on not-staged rows: add is missing from the profile; update differs on disk. */
   not_staged_kind?: "add" | "update";
+  /** `all` sentinel or a subset of harness slugs. Missing means All. */
+  harness_scope?: "all" | string[];
 }
 
 export interface ProfileContentsPlugin {
@@ -37,11 +48,15 @@ export interface ProfileContentsPlugin {
   name: string;
   version: string;
   resources: ProfileContentsResource[];
+  harness_scope?: "all" | string[];
+  attachment_id?: string;
 }
 
 export interface ProfileContentsPin {
   ref: string;
   version_constraint: string;
+  harness_scope?: "all" | string[];
+  attachment_id?: string;
 }
 
 export interface ProfileContents {
@@ -64,6 +79,7 @@ function materialResources(resources: Resource[]): Resource[] {
 export function toContentsResource(resource: Resource): ProfileContentsResource {
   const filesystemPath = resolveExistingResourceFilesystemPath(resource);
   const hook = hookInventoryWireFromResource(resource);
+  const scope = resourceHarnessScope(resource);
   return {
     id: resource.id,
     type: resource.type,
@@ -73,6 +89,7 @@ export function toContentsResource(resource: Resource): ProfileContentsResource 
     ...(resource.origin_ref ? { origin_ref: resource.origin_ref } : {}),
     ...(filesystemPath ? { filesystem_path: filesystemPath } : {}),
     ...(hook ? { hook } : {}),
+    ...(scope.kind === "all" ? {} : { harness_scope: harnessScopeWire(scope) }),
   };
 }
 
@@ -150,16 +167,31 @@ export function buildProfileContents(profileName: string): ProfileContents | nul
   const merged = mergePluginsForApply(pluginIds);
   const resources = materialResources(merged.resources);
   const summary = formatResourceTypeSummary(resources);
-  const plugins = merged.plugins.map((entry) => ({
-    id: entry.id,
-    name: entry.name,
-    version: entry.version,
-    resources: resourcesForPlugin(entry.id),
-  }));
-  const pluginPins = merged.pluginPins.map((pin) => ({
-    ref: pin.ref,
-    version_constraint: pin.version_constraint,
-  }));
+  const rootAttached = getPluginResources(plugin.id);
+  const plugins = merged.plugins.map((entry) => {
+    const attachment = rootAttached.find(
+      (resource) => resource.type === "plugin" && resource.name === entry.name,
+    );
+    return {
+      id: entry.id,
+      name: entry.name,
+      version: entry.version,
+      resources: resourcesForPlugin(entry.id),
+      ...(attachment?.id ? { attachment_id: attachment.id } : {}),
+      ...optionalScopeWire(attachment),
+    };
+  });
+  const pluginPins = merged.pluginPins.map((pin) => {
+    const attachment = rootAttached.find(
+      (resource) => resource.name === pin.ref || resource.origin_ref === pin.ref,
+    );
+    return {
+      ref: pin.ref,
+      version_constraint: pin.version_constraint,
+      ...(attachment?.id ? { attachment_id: attachment.id } : {}),
+      ...optionalScopeWire(attachment),
+    };
+  });
   const contentsResources = resources.map(toContentsResource);
 
   return {

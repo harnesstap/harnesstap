@@ -70,6 +70,7 @@ import {
 } from "./profile-create-handlers.js";
 import {
   handleProfileAttach,
+  handleProfileAttachmentPatch,
   handleProfileDetach,
   handleProfileDetail,
   handleProfilePatch,
@@ -729,6 +730,12 @@ export function createAgentFetchHandler(
         );
       } else if (method === "DELETE" && profileAttachmentMatch) {
         response = await handleProfileDetach(
+          request,
+          token,
+          decodeURIComponent(profileAttachmentMatch[1] ?? ""),
+        );
+      } else if (method === "PATCH" && profileAttachmentMatch) {
+        response = await handleProfileAttachmentPatch(
           request,
           token,
           decodeURIComponent(profileAttachmentMatch[1] ?? ""),

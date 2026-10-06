@@ -1,0 +1,5 @@
+kind: Added
+body: Scope a profile resource to a subset of harnesses. Default All is a sentinel. Apply writes only to scoped harnesses.
+time: 2026-10-06T04:47:00Z
+custom:
+  Issue: ""

@@ -7,6 +7,7 @@ import {
   attachProfileResource,
   detachProfileAttachment,
   getProfileDetail,
+  setProfileResourceHarnessScope,
   updateProfileMetadata,
 } from "../services/profile-edit.js";
 import { requireAgentBearerAuth } from "./auth.js";
@@ -235,6 +236,55 @@ export async function handleProfileDetach(
         ...(typeof resourceId === "string" ? { resourceId } : {}),
         ...(typeof dependencyName === "string" ? { dependencyName } : {}),
       }),
+    );
+  } catch (error) {
+    return profileEditErrorResponse(error);
+  }
+}
+
+export async function handleProfileAttachmentPatch(
+  request: Request,
+  token: string,
+  name: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "invalid_json" }, { status: 400 });
+  }
+  if (!isRecord(body)) {
+    return jsonResponse({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const resourceId = body.resourceId;
+  if (typeof resourceId !== "string" || !resourceId.trim()) {
+    return jsonResponse(
+      {
+        error: "invalid_body",
+        message: "resourceId is required",
+      },
+      { status: 400 },
+    );
+  }
+  if (body.harnessScope === undefined) {
+    return jsonResponse(
+      {
+        error: "invalid_body",
+        message: "harnessScope is required",
+      },
+      { status: 400 },
+    );
+  }
+
+  try {
+    return jsonResponse(
+      setProfileResourceHarnessScope(name, resourceId.trim(), body.harnessScope),
     );
   } catch (error) {
     return profileEditErrorResponse(error);

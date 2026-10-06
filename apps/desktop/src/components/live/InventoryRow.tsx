@@ -15,6 +15,8 @@ import { Checkbox } from "../ui/checkbox";
 import { ResourceHoverCard } from "../ui/resource-hover-card";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { resourceDetailTarget } from "./shared";
+import { HarnessScopeControl } from "./HarnessScopeControl";
+import { parseStoredHarnessScope, type HarnessScope, type SerializerTarget } from "../../lib/harness-scope-ui";
 
 const CHIP_STATUS_GLYPH_PX = 12;
 const CHIP_ACTION_ICON_PX = 14;
@@ -50,6 +52,11 @@ export interface InventoryRowProps {
   onOpenResource: (target: ResourceDetailTarget) => void;
   onOpenPlugin?: (pluginName: string) => void;
   onDiff?: () => void;
+  registeredHarnesses?: readonly string[];
+  harnessNames?: Readonly<Record<string, string>>;
+  scopeTarget?: SerializerTarget;
+  onHarnessScopeChange?: (scope: HarnessScope) => void;
+  scopePopoverOpen?: boolean;
 }
 
 export function InventoryRow({
@@ -66,8 +73,29 @@ export function InventoryRow({
   onOpenResource,
   onOpenPlugin,
   onDiff,
+  registeredHarnesses = [],
+  harnessNames,
+  scopeTarget = "global",
+  onHarnessScopeChange,
+  scopePopoverOpen = false,
 }: InventoryRowProps) {
-  const inProfile = item.section !== "not_in_profile";
+  const inProfile = item.section === "active" || item.section === "inactive";
+  const showScope =
+    inProfile && Boolean(onHarnessScopeChange) && Boolean(item.resource.id);
+  const subsetScope = parseStoredHarnessScope(item.resource.harness_scope).kind === "subset";
+  const scopeControl = showScope && onHarnessScopeChange && item.resource.id ? (
+    <HarnessScopeControl
+      resourceName={item.label}
+      resourceType={item.type}
+      stored={item.resource.harness_scope}
+      registered={registeredHarnesses}
+      catalogNames={harnessNames}
+      target={scopeTarget}
+      disabled={pending}
+      onChange={onHarnessScopeChange}
+      initialOpen={scopePopoverOpen}
+    />
+  ) : null;
   const drifted = item.section === "active" && item.drifted;
   const showActivate =
     !editMode && item.section === "inactive" && selectedIsActive && Boolean(onActivate);
@@ -189,8 +217,10 @@ export function InventoryRow({
         >
           {item.label}
         </button>
-        {action ? (
+        {subsetScope ? scopeControl : null}
+        {action || (!subsetScope && scopeControl) ? (
           <span className="inventory-chip-actions" onClick={stopChipActivate}>
+            {!subsetScope ? scopeControl : null}
             {action}
           </span>
         ) : null}

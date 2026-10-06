@@ -3,6 +3,7 @@ import { getEnvironmentByName } from "../../models/environment.js";
 import {
   addResourceToPlugin,
   createPlugin,
+  setPluginResourceHarnessScope,
   setPluginTags,
 } from "../../models/plugin-model.js";
 import { createResource } from "../../models/resource.js";
@@ -30,6 +31,7 @@ import { readApPackageFiles } from "./files.js";
 import type { ApDependency, ApManifest, HarnesstapExtension } from "./manifest.js";
 import { COMPONENT_LAYOUT, HT_EXTENSION_NAMESPACE } from "./manifest.js";
 import { validateApManifest } from "./validate.js";
+import { parseHarnessScope } from "../harness-scope.js";
 
 const RESOURCE_SOURCE = "ap-package";
 
@@ -47,6 +49,8 @@ export interface ParsedApPackage {
   needs: string[];
   defaultEnvironment?: string;
   resources: ResourceCreateInput[];
+  /** `type:name` → harness slugs. Missing means All. */
+  harnessScopes?: Record<string, string[]>;
   /** Claude marketplace/plugin config from `com.harnesstap/claude.toml`. */
   claude?: ClaudePluginConfig;
 }
@@ -108,12 +112,30 @@ function parseDependencies(raw: unknown): ApDependency[] {
   return dependencies;
 }
 
+function parseHarnessScopes(raw: unknown): Record<string, string[]> {
+  if (!isRecord(raw)) return {};
+  const scopes: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const parsed = parseHarnessScope(value);
+    if (parsed.kind === "subset") {
+      scopes[key] = [...parsed.harnesses];
+    }
+  }
+  return scopes;
+}
+
 function parseExtension(
   raw: unknown,
   apName: string,
 ): Pick<
   HarnesstapExtension,
-  "sourceName" | "profile" | "dependencies" | "overrides" | "needs" | "defaultEnvironment"
+  | "sourceName"
+  | "profile"
+  | "dependencies"
+  | "overrides"
+  | "needs"
+  | "defaultEnvironment"
+  | "harnessScopes"
 > {
   if (!isRecord(raw)) {
     return {
@@ -125,6 +147,7 @@ function parseExtension(
     };
   }
 
+  const harnessScopes = parseHarnessScopes(raw.harnessScopes);
   return {
     sourceName: typeof raw.sourceName === "string" && raw.sourceName.length > 0
       ? raw.sourceName
@@ -138,6 +161,7 @@ function parseExtension(
     ...(typeof raw.defaultEnvironment === "string" && raw.defaultEnvironment.length > 0
       ? { defaultEnvironment: raw.defaultEnvironment }
       : {}),
+    ...(Object.keys(harnessScopes).length > 0 ? { harnessScopes } : {}),
   };
 }
 
@@ -448,6 +472,7 @@ export function parseApPackageFiles(files: ApPackageFiles): ParsedApPackage {
       ? { defaultEnvironment: extension.defaultEnvironment }
       : {}),
     resources,
+    ...(extension.harnessScopes ? { harnessScopes: extension.harnessScopes } : {}),
     ...(claude ? { claude } : {}),
   };
 }
@@ -513,6 +538,10 @@ export function importApPackageFiles(
   for (const resourceInput of parsed.resources) {
     const resource = createResource(resourceInput);
     addResourceToPlugin(plugin.id, resource.id);
+    const scope = parsed.harnessScopes?.[`${resource.type}:${resource.name}`];
+    if (scope && scope.length > 0) {
+      setPluginResourceHarnessScope(plugin.id, resource.id, parseHarnessScope(scope));
+    }
   }
 
   const embeddedNames = collectEmbeddedPackageNames(files);
