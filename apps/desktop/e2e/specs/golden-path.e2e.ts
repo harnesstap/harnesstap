@@ -32,6 +32,15 @@ async function clickTestId(id: string): Promise<void> {
   await el.click();
 }
 
+async function clickEnabledTestId(id: string): Promise<void> {
+  const el = await waitForTestId(id);
+  await browser.waitUntil(
+    async () => el.isEnabled(),
+    { timeout: 30000, timeoutMsg: `${id} never became enabled` },
+  );
+  await el.click();
+}
+
 async function ensureAllTypesVisible(): Promise<void> {
   const allTab = await $('[data-testid="resource-type-tab-all"]');
   if ((await allTab.isExisting()) && (await allTab.isDisplayed())) {
@@ -78,7 +87,7 @@ async function addMarketplaceFromDiscover(): Promise<void> {
   const nameInput = await waitForTestId("marketplace-name");
   await nameInput.setValue(MARKETPLACE_NAME);
 
-  await clickTestId("marketplace-add");
+  await clickEnabledTestId("marketplace-add");
   await browser.waitUntil(
     async () => {
       const panel = await $(byTestId("marketplace-edit-panel"));
