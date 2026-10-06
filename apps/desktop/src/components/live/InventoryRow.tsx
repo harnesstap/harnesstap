@@ -57,6 +57,7 @@ export interface InventoryRowProps {
   scopeTarget?: SerializerTarget;
   onHarnessScopeChange?: (scope: HarnessScope) => void;
   scopePopoverOpen?: boolean;
+  disableHover?: boolean;
 }
 
 export function InventoryRow({
@@ -78,6 +79,7 @@ export function InventoryRow({
   scopeTarget = "global",
   onHarnessScopeChange,
   scopePopoverOpen = false,
+  disableHover = false,
 }: InventoryRowProps) {
   const inProfile = item.section === "active" || item.section === "inactive";
   const showScope =
@@ -172,8 +174,7 @@ export function InventoryRow({
 
   const activateChip = showSelect && onToggleSelected ? onToggleSelected : openRow;
 
-  return (
-    <ResourceHoverCard model={chipHover(item, profileName)}>
+  const chip = (
       <div
         className={[
           "inventory-chip",
@@ -225,6 +226,14 @@ export function InventoryRow({
           </span>
         ) : null}
       </div>
+  );
+
+  if (disableHover) {
+    return chip;
+  }
+  return (
+    <ResourceHoverCard model={chipHover(item, profileName)}>
+      {chip}
     </ResourceHoverCard>
   );
 }

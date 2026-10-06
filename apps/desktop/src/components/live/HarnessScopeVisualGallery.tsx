@@ -99,6 +99,7 @@ function GalleryRow({
           scopeTarget="global"
           onHarnessScopeChange={noopScope}
           scopePopoverOpen={popoverOpen}
+          disableHover
         />
       </div>
     </div>
