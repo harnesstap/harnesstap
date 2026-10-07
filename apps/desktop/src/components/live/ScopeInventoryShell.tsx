@@ -11,7 +11,7 @@ import {
 } from "../../lib/profile-inventory";
 import type { ProfileContentsResource } from "../../lib/types";
 import { toast } from "../../state/toast-store";
-import { noResultsTitle } from "../../lib/empty-copy";
+import { catalogListEmptyKind, noResultsTitle } from "../../lib/empty-copy";
 import {
   collectDiscardPathRows,
   discardAllDescription,
@@ -44,6 +44,8 @@ export interface ScopeInventoryShellProps {
   typeTab: string | null;
   onTypeTab: (next: string | null) => void;
   items: ProfileInventoryItem[];
+  /** Unfiltered inventory size (All count before search and type). */
+  catalogCount: number;
   selectedProfile: string | null;
   selectedIsActive: boolean;
   editMode: boolean;
@@ -95,6 +97,7 @@ export function ScopeInventoryShell({
   typeTab,
   onTypeTab,
   items,
+  catalogCount,
   selectedProfile,
   selectedIsActive,
   editMode,
@@ -631,19 +634,31 @@ export function ScopeInventoryShell({
             );
           })}
           {displayed.length === 0 && !discardProgress && !addProgress ? (
-            <EmptyState
-              title={noResultsTitle(search)}
-              body="Clear the filter to see every resource."
-              action={
-                search.trim()
-                  ? {
-                      label: "Clear filter",
-                      onClick: () => onSearch(""),
-                      icon: <FilterX size={16} aria-hidden />,
-                    }
-                  : undefined
-              }
-            />
+            catalogListEmptyKind({
+              unfilteredCount: catalogCount,
+              visibleCount: displayed.length,
+              filterActive: search.trim().length > 0 || typeTab !== null,
+            }) === "filter-empty" ? (
+              <EmptyState
+                title={noResultsTitle(search)}
+                body="Clear the filter to see every resource."
+                action={
+                  search.trim()
+                    ? {
+                        label: "Clear filter",
+                        onClick: () => onSearch(""),
+                        icon: <FilterX size={16} aria-hidden />,
+                      }
+                    : undefined
+                }
+              />
+            ) : (
+              <EmptyState
+                title="No resources yet"
+                body="Add something to this profile."
+                testId="scope-inventory-empty"
+              />
+            )
           ) : null}
         </div>
       </div>

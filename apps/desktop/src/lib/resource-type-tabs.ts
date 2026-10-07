@@ -284,8 +284,16 @@ export function collapsedTypeTabFit({
 export function resourceTypeTabPillsText(
   type: string,
   counts: ReadonlyMap<string, number>,
+  options?: ResourceTypeTabOptions,
 ): string {
   const count = resourceTypeTabItemCount(type, counts);
+  if (
+    count <= 0
+    && emptyMode(options) === "disable"
+    && type !== ALL_RESOURCE_TYPE_TAB
+  ) {
+    return `No ${resourceTypeTabLabel(type)} found`;
+  }
   return `${count} ${resourceTypeTabLabel(type)}`;
 }
 

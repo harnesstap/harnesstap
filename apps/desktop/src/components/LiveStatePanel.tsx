@@ -2125,6 +2125,7 @@ export function LiveStatePanel({
             typeTab={inventoryTypeTab}
             onTypeTab={setInventoryType}
             items={filteredInventory}
+            catalogCount={inventoryItems.length}
             selectedProfile={selectedProfile}
             selectedIsActive={selectedIsActive}
             editMode={editMode}

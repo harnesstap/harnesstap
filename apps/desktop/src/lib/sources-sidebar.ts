@@ -1,3 +1,4 @@
+import { DEFAULT_NOT_IN_LIBRARY } from "./discover-not-in-library";
 import type { SourceKind } from "./sources-search";
 
 export interface SourceRow {
@@ -63,9 +64,9 @@ export function isSourcesFilterActive(
   query: string,
   checkedIds: string[],
   rows: SourceRow[],
-  notInLibrary = false,
+  notInLibrary = DEFAULT_NOT_IN_LIBRARY,
 ): boolean {
-  if (notInLibrary) {
+  if (notInLibrary !== DEFAULT_NOT_IN_LIBRARY) {
     return true;
   }
   if (query.trim().length > 0) {

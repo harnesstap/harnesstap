@@ -76,8 +76,13 @@ describe("Harnesses workspace sidebar width", () => {
     expect(sidebar).toContain("width: max-content");
     expect(sidebar).toContain("max-width: 16rem");
     expect(sidebar).toContain("min-width: 11rem");
-    const empty = cssBlock(stylesSource, ".harness-list-sidebar .empty-state");
-    expect(empty).toContain("max-width: 11rem");
+    expect(stylesSource).not.toContain(".harness-list-sidebar .empty-state");
+    expect(stylesSource).toContain(".harness-list-empty-hint");
+    expect(sidebarSource).toContain("None set up yet.");
+    expect(sidebarSource).not.toContain("harnesses-empty");
+    expect(workspaceSource).toContain('testId="harnesses-empty"');
+    expect(workspaceSource).toContain('label: "Detect harnesses"');
+    expect(workspaceSource).toContain("onClick: startDetect");
   });
 
   it("paints selected and hover chrome across the reserved trash slot", () => {

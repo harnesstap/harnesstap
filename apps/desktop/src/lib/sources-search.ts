@@ -298,15 +298,25 @@ export function filterDiscoverGroups(
   }));
 }
 
+export function countDiscoverHits(groups: readonly SourcesHitGroup[]): number {
+  let total = 0;
+  for (const group of groups) {
+    total += group.hits.length;
+  }
+  return total;
+}
+
 export function discoverListEmptyCopy(input: {
   query: string;
   notInLibrary?: boolean;
+  unfilteredCount?: number;
 }): {
   message: string;
   hint: string | null;
   action: "clear-search" | "clear-filters" | null;
 } {
   const trimmed = input.query.trim();
+  const catalogEmpty = input.unfilteredCount === 0;
   if (trimmed.length > 0) {
     return {
       message: noResultsTitle(trimmed),
@@ -314,7 +324,7 @@ export function discoverListEmptyCopy(input: {
       action: "clear-search",
     };
   }
-  if (input.notInLibrary) {
+  if (input.notInLibrary && !catalogEmpty) {
     return {
       message: "No results",
       hint: "Clear filters to see every source again.",

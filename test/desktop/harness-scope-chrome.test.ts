@@ -95,6 +95,10 @@ describe("harness scope desktop UX", () => {
     expect(shots).toContain("SHOTS_BASE_URL");
     expect(gallery).toContain("<main");
     expect(gallery).toContain("harness-scope-gallery");
+    expect(gallery).toContain('item("notes"');
+    expect(gallery).not.toContain("everywhere");
+    expect(gallery).not.toContain("All at rest");
+    expect(gallery).toContain("At rest");
     expect(control).toContain('role="group"');
     expect(control).toContain("HARNESS_SCOPE_COPY.useOn");
     expect(control).not.toContain('role="listbox"');

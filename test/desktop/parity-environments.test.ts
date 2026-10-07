@@ -108,7 +108,10 @@ describe("environments workspace chrome", () => {
     expect(workspaceSource).toContain("resource-detail-kv");
     expect(workspaceSource).toContain("harness-block");
     expect(workspaceSource).toContain("aria-current");
-    expect(workspaceSource).toContain("is-selected");
+    expect(workspaceSource).toContain("is-current");
+    expect(workspaceSource).toContain("inspectEnvironment");
+    expect(workspaceSource).toContain("environment-row-select-");
+    expect(workspaceSource).not.toContain("selectEnvironment");
     expect(stylesSource).toContain(".resources-list-env");
   });
 
@@ -141,7 +144,7 @@ describe("environments workspace chrome", () => {
     expect(workspaceSource).toContain("listLoading");
     expect(workspaceSource).toContain("SkeletonRow");
     expect(workspaceSource).toContain("m-skeleton");
-    expect(workspaceSource).toContain("selectEnvironment");
+    expect(workspaceSource).toContain("inspectEnvironment");
     expect(workspaceSource).toContain("setDetail(null)");
   });
 

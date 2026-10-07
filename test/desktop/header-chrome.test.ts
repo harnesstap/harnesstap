@@ -349,7 +349,7 @@ describe("header re-click home", () => {
     expect(environmentsSource).toContain("homeResetNonce");
     expect(environmentsSource).toContain("homeResetNonceSeen.current === homeResetNonce");
     expect(environmentsSource).toContain('setQuery("")');
-    expect(environmentsSource).toContain("setSelectedName(null)");
+    expect(environmentsSource).toContain("setInspectedName(null)");
   });
 
   test("Environments reset does not close the create/edit panel", () => {

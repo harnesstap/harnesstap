@@ -863,10 +863,19 @@ describe("discoverListEmptyCopy", () => {
   });
 
   test("offers Clear filters when Not in my library hides every hit", () => {
-    expect(discoverListEmptyCopy({ query: "", notInLibrary: true })).toEqual({
+    expect(
+      discoverListEmptyCopy({ query: "", notInLibrary: true, unfilteredCount: 3 }),
+    ).toEqual({
       message: "No results",
       hint: "Clear filters to see every source again.",
       action: "clear-filters",
+    });
+    expect(
+      discoverListEmptyCopy({ query: "", notInLibrary: true, unfilteredCount: 0 }),
+    ).toEqual({
+      message: "Search to add",
+      hint: "Type a name, description, or skill.",
+      action: null,
     });
     expect(
       discoverListEmptyCopy({ query: "ship", notInLibrary: true }),
