@@ -136,7 +136,10 @@ describe("plugin composition fields", () => {
       /<ResourceTypeTabs[\s\S]{0,160}disabled=\{disabled\}/,
     );
     expect(tabsSource).toContain("resourceTypeTabEmptyDisabled");
-    expect(tabsSource).toContain("const itemDisabled = empty;");
+    expect(tabsSource).toContain("resourceTypeTabLocksEmpty");
+    expect(tabsSource).toContain(
+      "const itemDisabled = empty && resourceTypeTabLocksEmpty(emptyMode);",
+    );
     expect(tabsSource).not.toContain("const itemDisabled = disabled || empty");
   });
 });
