@@ -246,7 +246,7 @@ export function HarnessScopeControl({
               data-testid="harness-scope-filter"
             />
           ) : null}
-          <div className="harness-scope-list" role="listbox" aria-multiselectable="true">
+          <div className="harness-scope-list" role="group" aria-label={HARNESS_SCOPE_COPY.useOn}>
             {filteredGroups.map((option) => {
               const checked = selectionFromGroups(draftSet, option.group);
               const isMain = Boolean(mainId && option.group.harnessIds.includes(mainId));

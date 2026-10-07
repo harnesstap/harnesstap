@@ -91,5 +91,12 @@ describe("harness scope desktop UX", () => {
     expect(shots).toContain("harness-scope-subset");
     expect(shots).toContain("harness-scope-orphaned");
     expect(shots).toContain("harness-scope-popover");
+    expect(shots).toContain('page.goto("about:blank"');
+    expect(shots).toContain("SHOTS_BASE_URL");
+    expect(gallery).toContain("<main");
+    expect(gallery).toContain("harness-scope-gallery");
+    expect(control).toContain('role="group"');
+    expect(control).toContain("HARNESS_SCOPE_COPY.useOn");
+    expect(control).not.toContain('role="listbox"');
   });
 });

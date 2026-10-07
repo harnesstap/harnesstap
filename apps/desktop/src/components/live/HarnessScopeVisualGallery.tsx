@@ -119,7 +119,7 @@ export function HarnessScopeVisualGallery(): ReactNode {
 
   return (
     <Tooltip.Provider delayDuration={400}>
-      <div
+      <main
         className={[
           "harness-scope-gallery",
           state === "all-hover" ? "is-scope-hover" : "",
@@ -127,6 +127,7 @@ export function HarnessScopeVisualGallery(): ReactNode {
           .filter(Boolean)
           .join(" ")}
         data-testid="harness-scope-gallery"
+        aria-label="Harness scope visual gallery"
       >
         {state === "all-rest" ? (
           <GalleryRow label="All at rest" inventoryItem={allItem} />
@@ -143,7 +144,7 @@ export function HarnessScopeVisualGallery(): ReactNode {
         {state === "popover" ? (
           <GalleryRow label="Popover" inventoryItem={allItem} popoverOpen />
         ) : null}
-      </div>
+      </main>
     </Tooltip.Provider>
   );
 }

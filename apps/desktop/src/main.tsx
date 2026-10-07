@@ -18,11 +18,13 @@ if (import.meta.env.VITE_E2E === "1") {
   void import("@wdio/tauri-plugin");
 }
 
-const visual = new URLSearchParams(window.location.search).get("visual");
-const root = (
-  <StrictMode>
-    {visual === "harness-scope" ? <HarnessScopeVisualGallery /> : <App />}
-  </StrictMode>
-);
+function Root() {
+  const visual = new URLSearchParams(window.location.search).get("visual");
+  return visual === "harness-scope" ? <HarnessScopeVisualGallery /> : <App />;
+}
 
-createRoot(document.getElementById("root")!).render(root);
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <Root />
+  </StrictMode>,
+);

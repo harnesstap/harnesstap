@@ -300,42 +300,50 @@ const SCREENS = [
   },
   {
     name: "harness-scope-all-rest",
-    run: async (page) => {
-      await openHarnessScopeGallery(page, "all-rest");
+    run: async (page, baseUrl) => {
+      await openHarnessScopeGallery(page, baseUrl, "all-rest");
     },
   },
   {
     name: "harness-scope-all-hover",
-    run: async (page) => {
-      await openHarnessScopeGallery(page, "all-hover");
+    run: async (page, baseUrl) => {
+      await openHarnessScopeGallery(page, baseUrl, "all-hover");
     },
   },
   {
     name: "harness-scope-subset",
-    run: async (page) => {
-      await openHarnessScopeGallery(page, "subset");
+    run: async (page, baseUrl) => {
+      await openHarnessScopeGallery(page, baseUrl, "subset");
     },
   },
   {
     name: "harness-scope-orphaned",
-    run: async (page) => {
-      await openHarnessScopeGallery(page, "orphaned");
+    run: async (page, baseUrl) => {
+      await openHarnessScopeGallery(page, baseUrl, "orphaned");
     },
   },
   {
     name: "harness-scope-popover",
-    run: async (page) => {
-      await openHarnessScopeGallery(page, "popover");
-      await page.getByTestId("harness-scope-popover").waitFor({ timeout: T });
+    run: async (page, baseUrl) => {
+      await openHarnessScopeGallery(page, baseUrl, "popover");
+      await page.getByTestId("harness-scope-popover").waitFor({ timeout: 15_000 });
     },
   },
 ];
 
-async function openHarnessScopeGallery(page, state) {
-  const url = new URL(page.url());
-  url.search = `visual=harness-scope&state=${state}`;
+/**
+ * Nightly visual starts at SHOTS_BASE_URL with no query. Gallery states are a
+ * dedicated `?visual=` mount, so leave the SPA via about:blank and reload from
+ * that base URL — `page.url()` after Settings/More overlays is not a reliable
+ * origin, and a query-only goto may not remount `main.tsx`.
+ */
+async function openHarnessScopeGallery(page, baseUrl, state) {
+  const url = new URL(baseUrl);
+  url.searchParams.set("visual", "harness-scope");
+  url.searchParams.set("state", state);
+  await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 15_000 });
   await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 30_000 });
-  await page.getByTestId("harness-scope-gallery").waitFor({ timeout: T });
+  await page.getByTestId("harness-scope-gallery").waitFor({ timeout: 15_000 });
 }
 
 async function waitForConnected(page) {
@@ -450,7 +458,7 @@ async function walkViewport(browser, viewport, config, report) {
       `${String(index + 1).padStart(2, "0")}-${screen.name}-${tag}.png`,
     );
     try {
-      await screen.run(page);
+      await screen.run(page, config.baseUrl);
       await settle(page);
       if (config.reducedMotion) {
         const running = await countAnimations(page);
