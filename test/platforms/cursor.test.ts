@@ -178,6 +178,69 @@ describe("CursorSerializer", () => {
     expect(files.map((file) => file.path)).toEqual([".cursor/skills/research/SKILL.md"]);
   });
 
+  it("keeps SKILL.md body when emitting global Cursor skills", async () => {
+    const serializer = new CursorSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "skill",
+          name: "brainstorming",
+          description: "You MUST use this before any creative work",
+          content: "# Brainstorming\n\nDo not skip this skill.\n",
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    const skillMd = files.find(
+      (file) => file.path === ".cursor/skills/brainstorming/SKILL.md",
+    );
+    expect(skillMd?.content).toContain("name: brainstorming");
+    expect(skillMd?.content).toContain("# Brainstorming");
+    expect(skillMd?.content).toContain("Do not skip this skill.");
+  });
+
+  it("copies companion skill files from a tilde-prefixed source under the home root", async () => {
+    const homeDir = createTempDir("cursor-skill-aux");
+
+    try {
+      writeTextFile(
+        join(homeDir, ".cursor/skills/ship/SKILL.md"),
+        "---\nname: ship\ndescription: Ship it\n---\n# Ship\n",
+      );
+      writeTextFile(join(homeDir, ".cursor/skills/ship/scripts/run.sh"), "#!/bin/sh\necho hi\n");
+
+      const serializer = new CursorSerializer();
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "skill",
+            name: "ship",
+            description: "Ship it",
+            content: "# Ship\n",
+            source: "~/.cursor/skills/ship/SKILL.md",
+            metadata: { scripts: ["run.sh"] },
+          }),
+        ],
+        homeDir,
+        { target: "global", projectRoot: homeDir },
+      );
+
+      expect(files.map((file) => file.path)).toEqual(
+        expect.arrayContaining([
+          ".cursor/skills/ship/SKILL.md",
+          ".cursor/skills/ship/scripts/run.sh",
+        ]),
+      );
+      expect(
+        files.find((file) => file.path === ".cursor/skills/ship/scripts/run.sh")?.content,
+      ).toContain("echo hi");
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+
   it("skips malformed rule frontmatter instead of aborting the scan", async () => {
     const projectDir = createTempDir("cursor-malformed");
 

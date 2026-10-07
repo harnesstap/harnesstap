@@ -1,0 +1,5 @@
+kind: Fixed
+body: Restore skill bodies (and companion files) when applying overflow library resources so harness SKILL.md files are not frontmatter-only stubs.
+time: 2026-10-07T05:50:00Z
+custom:
+  Issue: ""
