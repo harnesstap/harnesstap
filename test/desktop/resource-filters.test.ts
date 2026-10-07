@@ -9,6 +9,7 @@ import {
   isResourceFilterStateActive,
   isUpdatedFilterValid,
   libraryTypeTabCounts,
+  preferSnapshotLibraryTypeTabCounts,
   resetResourceFilterState,
   resolveUpdatedAtBounds,
   type ResourceFilterState,
@@ -357,5 +358,39 @@ describe("libraryTypeTabCounts", () => {
     );
     expect(counts.get("skill")).toBe(1);
     expect(counts.has("rule")).toBe(false);
+  });
+
+  it("uses snapshot totals when peek rows are only one type", () => {
+    const fromPeek = libraryTypeTabCounts(
+      [resource({ id: "a", name: "only", type: "agent" })],
+      defaultResourceFilterState(),
+    );
+    expect([...fromPeek.keys()]).toEqual(["agent"]);
+    const merged = preferSnapshotLibraryTypeTabCounts(
+      fromPeek,
+      { agent: 40, skill: 80, mcp_server: 5 },
+      defaultResourceFilterState(),
+    );
+    expect(merged.get("agent")).toBe(40);
+    expect(merged.get("skill")).toBe(80);
+    expect(merged.get("mcp_server")).toBe(5);
+  });
+
+  it("keeps row counts when Updated, Namespace, or Origin facets are on", () => {
+    const fromPeek = libraryTypeTabCounts(
+      [resource({ id: "a", name: "only", type: "agent" })],
+      defaultResourceFilterState(),
+    );
+    const state: ResourceFilterState = {
+      ...defaultResourceFilterState(),
+      originKind: "local",
+    };
+    const merged = preferSnapshotLibraryTypeTabCounts(
+      fromPeek,
+      { agent: 40, skill: 80 },
+      state,
+    );
+    expect([...merged.keys()]).toEqual(["agent"]);
+    expect(merged.get("agent")).toBe(1);
   });
 });

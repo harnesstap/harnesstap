@@ -12,6 +12,7 @@ import {
   collapsedTypeTabFit,
   resolveResourceTypeTab,
   resourceTypeTabEmptyDisabled,
+  resourceTypeTabLocksEmpty,
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
@@ -211,9 +212,9 @@ export function ResourceTypeTabs({
         const count = resourceTypeTabItemCount(type, counts);
         const caption = resourceTypeTabTooltip(type, counts, tabOptions);
         const empty = resourceTypeTabEmptyDisabled(type, counts);
-        const itemDisabled = empty;
+        const itemDisabled = empty && resourceTypeTabLocksEmpty(emptyMode);
         const emptyFace =
-          empty && emptyMode === "disable" && type !== ALL_RESOURCE_TYPE_TAB;
+          empty && resourceTypeTabLocksEmpty(emptyMode) && type !== ALL_RESOURCE_TYPE_TAB;
         const pillsText = resourceTypeTabPillsText(type, counts, tabOptions);
         const review = empty
           ? null

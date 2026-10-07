@@ -1,0 +1,5 @@
+kind: Fixed
+body: Show Library type tabs at count 0 and use inventory totals so a Subagents-only peek cannot hide other types.
+time: 2026-10-07T09:30:00Z
+custom:
+  Issue: ""

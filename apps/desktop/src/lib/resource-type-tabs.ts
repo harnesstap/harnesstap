@@ -41,8 +41,9 @@ const RESOURCE_TYPE_TAB_FOLD: Record<string, string> = {
 };
 
 /**
- * Alias / junk tabs. Hide entirely when empty, even if `emptyMode` is disable.
- * Real resource types stay visible and disabled when emptyMode is disable.
+ * Alias / junk tabs. Hide entirely when empty, even if emptyMode keeps
+ * canonical types. Real resource types stay visible when emptyMode is
+ * disable or show.
  */
 const RESOURCE_TYPE_TAB_HIDE_WHEN_EMPTY = new Set(["plugin_ref"]);
 
@@ -106,7 +107,22 @@ export function countResourceTypeTabs(
   return counts;
 }
 
-export type ResourceTypeTabEmptyMode = "hide" | "disable";
+/** Fold inventory `type_counts` records into tab keys (pins share Plugins). */
+export function typeTabCountsFromRecord(
+  record: Readonly<Record<string, number>>,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const [type, n] of Object.entries(record)) {
+    if (n <= 0) {
+      continue;
+    }
+    const folded = foldResourceTypeTab(type);
+    counts.set(folded, (counts.get(folded) ?? 0) + n);
+  }
+  return counts;
+}
+
+export type ResourceTypeTabEmptyMode = "hide" | "disable" | "show";
 
 export type ResourceTypeTabOptions = {
   /** When false, omit the All tab even if several types are present. Default true. */
@@ -114,8 +130,15 @@ export type ResourceTypeTabOptions = {
   /**
    * hide (default): presence-filter empty types.
    * disable: keep empty types visible and disabled (`No <type> found`).
+   * show: keep empty types visible and selectable (`0 Skills`).
    */
   emptyMode?: ResourceTypeTabEmptyMode;
+};
+
+/** Library type strip: every canonical type, including count 0. */
+export const LIBRARY_RESOURCE_TYPE_TAB_OPTIONS: ResourceTypeTabOptions = {
+  includeAll: true,
+  emptyMode: "show",
 };
 
 function includeAllTab(options?: ResourceTypeTabOptions): boolean {
@@ -124,6 +147,34 @@ function includeAllTab(options?: ResourceTypeTabOptions): boolean {
 
 function emptyMode(options?: ResourceTypeTabOptions): ResourceTypeTabEmptyMode {
   return options?.emptyMode ?? "hide";
+}
+
+function showsEmptyCanonicalTabs(mode: ResourceTypeTabEmptyMode): boolean {
+  switch (mode) {
+    case "hide":
+      return false;
+    case "disable":
+    case "show":
+      return true;
+    default: {
+      const neverMode: never = mode;
+      return neverMode;
+    }
+  }
+}
+
+function emptyTabUsesNoneFoundCopy(mode: ResourceTypeTabEmptyMode): boolean {
+  switch (mode) {
+    case "hide":
+    case "show":
+      return false;
+    case "disable":
+      return true;
+    default: {
+      const neverMode: never = mode;
+      return neverMode;
+    }
+  }
 }
 
 function extraPresentTabs(counts: ReadonlyMap<string, number>): string[] {
@@ -146,13 +197,13 @@ function presentResourceTypeTabs(counts: ReadonlyMap<string, number>): string[] 
 /**
  * Presence-filtered tabs: hide empty types. Show All only when at least two
  * types are present, unless `includeAll` is false.
- * `emptyMode: "disable"` keeps every canonical type visible (plus All).
+ * `emptyMode: "disable"` or `"show"` keeps every canonical type visible (plus All).
  */
 export function visibleResourceTypeTabs(
   counts: ReadonlyMap<string, number>,
   options?: ResourceTypeTabOptions,
 ): string[] {
-  if (emptyMode(options) === "disable") {
+  if (showsEmptyCanonicalTabs(emptyMode(options))) {
     const tabs = [
       ...RESOURCE_TYPE_TAB_ORDER.filter(
         (type) => tabHasItems(type, counts) || keepEmptyDisabledTab(type),
@@ -213,6 +264,23 @@ export function resourceTypeTabEmptyDisabled(
     return false;
   }
   return resourceTypeTabItemCount(type, counts) <= 0;
+}
+
+/** Empty pills are inert only in disable mode (Active inventory). */
+export function resourceTypeTabLocksEmpty(
+  mode: ResourceTypeTabEmptyMode,
+): boolean {
+  switch (mode) {
+    case "hide":
+    case "show":
+      return false;
+    case "disable":
+      return true;
+    default: {
+      const neverMode: never = mode;
+      return neverMode;
+    }
+  }
 }
 
 export function resourceTypeTabItemCount(
@@ -289,7 +357,7 @@ export function resourceTypeTabPillsText(
   const count = resourceTypeTabItemCount(type, counts);
   if (
     count <= 0
-    && emptyMode(options) === "disable"
+    && emptyTabUsesNoneFoundCopy(emptyMode(options))
     && type !== ALL_RESOURCE_TYPE_TAB
   ) {
     return `No ${resourceTypeTabLabel(type)} found`;
@@ -345,7 +413,10 @@ export function resourceTypeTabTooltip(
 ): string {
   const count = resourceTypeTabItemCount(type, counts);
   if (count <= 0) {
-    if (emptyMode(options) === "disable" && type !== ALL_RESOURCE_TYPE_TAB) {
+    if (
+      emptyTabUsesNoneFoundCopy(emptyMode(options))
+      && type !== ALL_RESOURCE_TYPE_TAB
+    ) {
       return `No ${resourceTypeTabLabel(type)} found`;
     }
     return resourceTypeTabLabel(type);

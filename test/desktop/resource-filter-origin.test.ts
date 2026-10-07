@@ -176,10 +176,15 @@ describe("library origin filter chrome", () => {
     expect(tabsSource).toContain("includeAll = true");
     expect(panelSource).toContain("<ResourceTypeTabs");
     expect(panelSource).not.toContain("includeAll={false}");
+    expect(panelSource).toContain('emptyMode="show"');
+    expect(panelSource).toContain("LIBRARY_RESOURCE_TYPE_TAB_OPTIONS");
+    expect(panelSource).toContain("preferSnapshotLibraryTypeTabCounts");
     expect(compositionSource).toContain("<ResourceTypeTabs");
     expect(compositionSource).not.toContain("includeAll={false}");
+    expect(compositionSource).not.toContain('emptyMode="show"');
     expect(liveStateSource).toContain("includeAll={true}");
     expect(liveStateSource).toContain("emptyMode=\"disable\"");
+    expect(liveStateSource).not.toContain('emptyMode="show"');
   });
 
   test("renders origin as a radio list, not a combobox", () => {
