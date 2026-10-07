@@ -40,11 +40,6 @@
   min-width: 0;
 }
 
-.environment-list-row .resource-row-checkbox {
-  flex-shrink: 0;
-  padding-left: 0.35rem;
-}
-
 .environment-skeleton-row {
   display: flex;
   flex-direction: column;
