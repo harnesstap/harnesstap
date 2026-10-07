@@ -10,12 +10,10 @@
   flex-shrink: 0;
 }
 
-.harness-list-sidebar .empty-state {
-  max-width: 11rem;
+.harness-list-empty-hint {
   margin: var(--space-4) 0 0;
-  padding: 0;
-  align-items: flex-start;
-  text-align: left;
+  padding: 0 var(--space-1);
+  font-size: var(--text-meta);
 }
 
 .harness-sync-controls {

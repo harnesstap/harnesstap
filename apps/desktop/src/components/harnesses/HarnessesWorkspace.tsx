@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { ScanSearch } from "lucide-react";
 import { harnessDisplayName } from "../../lib/harness-meta";
 import {
   availableHarnesses,
@@ -483,6 +484,14 @@ export function HarnessesWorkspace({
             <EmptyState
               title="No harnesses set up."
               body="Detect the harnesses on this machine or add one."
+              testId="harnesses-empty"
+              action={{
+                label: "Detect harnesses",
+                primary: true,
+                disabled: controlsDisabled,
+                onClick: startDetect,
+                icon: <ScanSearch size={16} aria-hidden />,
+              }}
             />
           ) : (
             <p className="muted">Select a harness to inspect it.</p>

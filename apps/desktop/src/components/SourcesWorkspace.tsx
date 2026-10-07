@@ -48,6 +48,7 @@ import {
   applyOriginOutdated,
   cloudHitIsInLibrary,
   cloudSelectorKey,
+  countDiscoverHits,
   discoverListIsSearching,
   discoverMarketplaceRefreshCopy,
   discoverSourcesRefreshing,
@@ -61,6 +62,11 @@ import {
   type SourcesHit,
   type SourcesHitGroup,
 } from "../lib/sources-search";
+import {
+  DEFAULT_NOT_IN_LIBRARY,
+  readNotInLibraryPreference,
+  writeNotInLibraryPreference,
+} from "../lib/discover-not-in-library";
 import {
   discoverAttachTarget,
   sourcesAttachmentAdd,
@@ -235,7 +241,7 @@ export function SourcesWorkspace({
   const libraryPeek = useLibrarySnapshotStore((state) => state.peek);
   const libraryFull = useLibrarySnapshotStore((state) => state.full);
   const [query, setQuery] = useState("");
-  const [notInLibrary, setNotInLibrary] = useState(false);
+  const [notInLibrary, setNotInLibrary] = useState(readNotInLibraryPreference);
   const [searchGroups, setSearchGroups] = useState<DiscoverSearchGroup[] | null>(
     null,
   );
@@ -405,9 +411,14 @@ export function SourcesWorkspace({
     }
   }, [rows, checksTouched]);
 
+  function setNotInLibraryPreference(next: boolean): void {
+    setNotInLibrary(next);
+    writeNotInLibraryPreference(next);
+  }
+
   function resetSourcesFilters(): void {
     setQuery("");
-    setNotInLibrary(false);
+    setNotInLibraryPreference(DEFAULT_NOT_IN_LIBRARY);
     setChecksTouched(false);
     setCheckedIds(defaultCheckedSourceIds(rows));
   }
@@ -715,7 +726,7 @@ export function SourcesWorkspace({
     [checkedRows],
   );
 
-  const groups: SourcesHitGroup[] = useMemo(() => {
+  const unfilteredGroups: SourcesHitGroup[] = useMemo(() => {
     const useSearch = searchActive && searchGroups !== null;
     const searchById = useSearch
       ? new Map(searchGroups.map((group) => [group.sourceId, group]))
@@ -770,7 +781,7 @@ export function SourcesWorkspace({
         originCheckRows,
       ),
     }));
-    return filterDiscoverGroups(merged, notInLibrary);
+    return merged;
   }, [
     checkedRows,
     cloudPlugins,
@@ -781,11 +792,18 @@ export function SourcesWorkspace({
     pulledCloudKeys,
     addedMarketplaceKeys,
     query,
-    notInLibrary,
     searchActive,
     searchGroups,
     sourceOrder,
   ]);
+  const groups: SourcesHitGroup[] = useMemo(
+    () => filterDiscoverGroups(unfilteredGroups, notInLibrary),
+    [notInLibrary, unfilteredGroups],
+  );
+  const unfilteredHitCount = useMemo(
+    () => countDiscoverHits(unfilteredGroups),
+    [unfilteredGroups],
+  );
 
   const groupErrors = useMemo(() => {
     const next: Record<string, SourcesGroupError> = {};
@@ -1408,6 +1426,7 @@ export function SourcesWorkspace({
             loading={listSearching}
             query={query}
             notInLibrary={notInLibrary}
+            unfilteredCount={unfilteredHitCount}
             disabled={controlsDisabled}
             onOpenHit={openHit}
             onSignIn={onSignIn}
@@ -1568,7 +1587,7 @@ export function SourcesWorkspace({
           }}
           notInLibrary={notInLibrary}
           onNotInLibraryChange={(next) => {
-            applyListQueryOrChecks(() => setNotInLibrary(next));
+            applyListQueryOrChecks(() => setNotInLibraryPreference(next));
           }}
           rows={rows}
           checkedIds={checkedIds}

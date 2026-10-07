@@ -108,7 +108,7 @@ function GalleryRow({
 
 export function HarnessScopeVisualGallery(): ReactNode {
   const state = galleryStateFromSearch();
-  const allItem = item("everywhere", undefined);
+  const allItem = item("notes", undefined);
   const subsetItem = item("subset-skill", [
     "claude-code",
     "cursor",
@@ -130,10 +130,10 @@ export function HarnessScopeVisualGallery(): ReactNode {
         aria-label="Harness scope visual gallery"
       >
         {state === "all-rest" ? (
-          <GalleryRow label="All at rest" inventoryItem={allItem} />
+          <GalleryRow label="At rest" inventoryItem={allItem} />
         ) : null}
         {state === "all-hover" ? (
-          <GalleryRow label="All on hover" inventoryItem={allItem} hover />
+          <GalleryRow label="On hover" inventoryItem={allItem} hover />
         ) : null}
         {state === "subset" ? (
           <GalleryRow label="Subset with +N" inventoryItem={subsetItem} />

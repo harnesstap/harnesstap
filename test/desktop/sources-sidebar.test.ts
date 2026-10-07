@@ -140,9 +140,9 @@ describe("isSourcesFilterActive", () => {
     ).toBe(true);
   });
 
-  test("is active when Not in my library is checked", () => {
-    expect(isSourcesFilterActive("", defaults, rows, false)).toBe(false);
-    expect(isSourcesFilterActive("", defaults, rows, true)).toBe(true);
+  test("is active when Not in my library differs from the default", () => {
+    expect(isSourcesFilterActive("", defaults, rows, true)).toBe(false);
+    expect(isSourcesFilterActive("", defaults, rows, false)).toBe(true);
   });
 
 });

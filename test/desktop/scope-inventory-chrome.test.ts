@@ -64,10 +64,13 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).not.toContain("resource-type-tab-empty");
     expect(liveStateSource).not.toContain("emptyTypesPillLabel");
     expect(designSource).not.toContain("`+N empty`");
-    expect(designSource).toContain("`0 Permissions`");
+    expect(designSource).not.toContain("`0 Permissions`");
     expect(designSource).toContain("`No Permissions found`");
+    expect(designSource).toContain("No resources yet");
+    expect(tabsSource).toContain("resourceTypeTabPillsText");
     expect(liveStateSource).toContain("attention={attention}");
     expect(liveStateSource).toContain("collectTypeTabAttention");
+    expect(liveStateSource).toContain("catalogCount={inventoryItems.length}");
     expect(liveStateSource).toContain("searchFilteredInventory");
     expect(liveStateSource).toContain("countInventoryTypeTabs(searchFilteredInventory)");
     expect(liveStateSource).not.toContain("countInventoryTypeTabs(inventoryItems)");

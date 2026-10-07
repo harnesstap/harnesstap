@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { Check, Copy, Eye, EyeOff, FilterX, Pencil, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -23,11 +23,16 @@ import {
 import { toast } from "../../state/toast-store";
 import { useRegisterCommands } from "../../state/command-registry";
 import { noResultsTitle } from "../../lib/empty-copy";
+import { pruneSelectedIds } from "../../lib/library-bulk-edit";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { EnvironmentDrawer } from "./EnvironmentDrawer";
 
 const ACTION_ICON_SIZE = 16;
 const LIST_SKELETON_COUNT = 6;
+
+function stopRowSelect(event: MouseEvent) {
+  event.stopPropagation();
+}
 
 export interface EnvironmentsWorkspaceProps {
   baseUrl: string | null;
@@ -72,7 +77,9 @@ export function EnvironmentsWorkspace({
   const listLoadedRef = useRef(false);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [inspectedName, setInspectedName] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const homeResetNonceSeen = useRef(homeResetNonce);
 
   useEffect(() => {
@@ -81,7 +88,9 @@ export function EnvironmentsWorkspace({
     }
     homeResetNonceSeen.current = homeResetNonce;
     setQuery("");
-    setSelectedName(null);
+    setInspectedName(null);
+    setEditMode(false);
+    setSelectedIds(new Set());
   }, [homeResetNonce]);
 
   useEffect(() => {
@@ -99,7 +108,7 @@ export function EnvironmentsWorkspace({
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [editName, setEditName] = useState<string | undefined>(undefined);
   const [busyName, setBusyName] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<EnvironmentListRow | null>(null);
+  const [deleteTargets, setDeleteTargets] = useState<EnvironmentListRow[]>([]);
   const [forceChecked, setForceChecked] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -167,15 +176,15 @@ export function EnvironmentsWorkspace({
   }, [baseUrl, token, reloadKey]);
 
   useEffect(() => {
-    if (!baseUrl || !selectedName) {
+    if (!baseUrl || !inspectedName) {
       setDetail(null);
       setDetailRefreshing(false);
       return;
     }
     let cancelled = false;
-    setDetail((current) => (current?.environment.name === selectedName ? current : null));
+    setDetail((current) => (current?.environment.name === inspectedName ? current : null));
     setDetailRefreshing(true);
-    void fetchEnvironment(baseUrl, token, selectedName)
+    void fetchEnvironment(baseUrl, token, inspectedName)
       .then((next) => {
         if (!cancelled) {
           setDetail(next);
@@ -199,24 +208,52 @@ export function EnvironmentsWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, token, selectedName, reloadKey]);
+  }, [baseUrl, token, inspectedName, reloadKey]);
 
   const filtered = useMemo(
     () => filterEnvironmentsByQuery(rows, query),
     [query, rows],
   );
-  const needsForce = deleteTarget ? environmentDeleteNeedsForce(deleteTarget) : false;
+  const needsForce = deleteTargets.some((row) => environmentDeleteNeedsForce(row));
+  const deleteNames = deleteTargets.map((row) => row.name);
   const referencedNames = detail?.references.plugins.map((plugin) => plugin.name) ?? [];
   const showListSkeleton = listLoading && rows.length === 0;
-  const showDetailSkeleton = Boolean(selectedName) && (!detail || detail.environment.name !== selectedName);
+  const showDetailSkeleton = Boolean(inspectedName) && (!detail || detail.environment.name !== inspectedName);
+  const knownIds = useMemo(() => new Set(filtered.map((row) => row.id)), [filtered]);
+  const selectedRows = useMemo(
+    () => rows.filter((row) => selectedIds.has(row.id)),
+    [rows, selectedIds],
+  );
 
-  const selectEnvironment = (name: string) => {
-    if (name === selectedName) {
+  useEffect(() => {
+    if (!editMode) {
+      setSelectedIds(new Set());
+    }
+  }, [editMode]);
+
+  useEffect(() => {
+    setSelectedIds((current) => pruneSelectedIds(current, knownIds));
+  }, [knownIds]);
+
+  const inspectEnvironment = (name: string) => {
+    if (name === inspectedName) {
       return;
     }
-    setSelectedName(name);
+    setInspectedName(name);
     setDetail(null);
     setDetailRefreshing(true);
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const onUse = async (name: string) => {
@@ -236,17 +273,31 @@ export function EnvironmentsWorkspace({
   };
 
   const onConfirmDelete = async () => {
-    if (!baseUrl || !deleteTarget) {
+    if (!baseUrl || deleteTargets.length === 0) {
       return;
     }
     setDeleteBusy(true);
     try {
-      await deleteEnvironment(baseUrl, token, deleteTarget.name, needsForce);
-      onSuccess(`Deleted environment ${deleteTarget.name}`);
-      if (selectedName === deleteTarget.name) {
-        setSelectedName(null);
+      const names = deleteTargets.map((row) => row.name);
+      for (const row of deleteTargets) {
+        await deleteEnvironment(baseUrl, token, row.name, needsForce);
       }
-      setDeleteTarget(null);
+      onSuccess(
+        names.length === 1
+          ? `Deleted environment ${names[0]}`
+          : `Deleted ${names.length} environments`,
+      );
+      if (inspectedName && names.includes(inspectedName)) {
+        setInspectedName(null);
+      }
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        for (const row of deleteTargets) {
+          next.delete(row.id);
+        }
+        return next;
+      });
+      setDeleteTargets([]);
       setForceChecked(false);
       refresh();
     } catch (deleteError: unknown) {
@@ -289,6 +340,34 @@ export function EnvironmentsWorkspace({
                 refresh();
               }}
             />
+            <IconActionButton
+              data-testid="environments-edit-mode"
+              label={editMode ? "Done" : "Edit"}
+              aria-pressed={editMode}
+              disabled={controlsDisabled || !baseUrl || rows.length === 0}
+              onClick={() => setEditMode((current) => !current)}
+              icon={
+                editMode
+                  ? <Check size={ACTION_ICON_SIZE} aria-hidden />
+                  : <Pencil size={ACTION_ICON_SIZE} aria-hidden />
+              }
+            />
+            {editMode ? (
+              <IconActionButton
+                className="profile-remove-action"
+                data-testid="environments-delete-selected"
+                label="Delete selected"
+                disabled={controlsDisabled || selectedRows.length === 0}
+                onClick={() => {
+                  if (selectedRows.length === 0) {
+                    return;
+                  }
+                  setDeleteTargets(selectedRows);
+                  setForceChecked(false);
+                }}
+                icon={<Trash2 size={ACTION_ICON_SIZE} aria-hidden />}
+              />
+            ) : null}
             <IconActionButton
               label="Create environment"
               primary
@@ -374,37 +453,56 @@ export function EnvironmentsWorkspace({
             ) : (
               <ul className="resources-list">
                 {filtered.map((row) => {
-                  const selected = selectedName === row.name;
+                  const inspected = inspectedName === row.name;
+                  const selected = selectedIds.has(row.id);
                   return (
                     <li className="resources-list-item" key={row.id}>
-                      <button
-                        type="button"
-                        className={[
-                          "resources-list-env",
-                          selected ? "is-selected" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                        disabled={controlsDisabled}
-                        aria-current={selected ? "true" : undefined}
-                        data-testid="environment-row"
-                        onClick={() => selectEnvironment(row.name)}
-                      >
-                        <span className="resources-list-name">
-                          {row.name}
-                          {row.is_global_active ? (
-                            <span className="badge">active</span>
-                          ) : null}
-                        </span>
-                        {row.description ? (
-                          <span className="resources-list-desc muted">
-                            {row.description}
+                      <div className="environment-list-row">
+                        {editMode ? (
+                          <span
+                            className="resource-row-checkbox"
+                            onClick={stopRowSelect}
+                          >
+                            <Checkbox
+                              data-testid={`environment-row-select-${row.name}`}
+                              aria-label={`Select ${row.name}`}
+                              checked={selected}
+                              disabled={controlsDisabled}
+                              onCheckedChange={() => {
+                                toggleSelected(row.id);
+                              }}
+                            />
                           </span>
                         ) : null}
-                        <span className="resources-list-desc muted">
-                          {row.value_count} values · {row.secret_ref_count} secrets
-                        </span>
-                      </button>
+                        <button
+                          type="button"
+                          className={[
+                            "resources-list-env",
+                            inspected ? "is-current" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          disabled={controlsDisabled}
+                          aria-current={inspected ? "true" : undefined}
+                          data-testid="environment-row"
+                          onClick={() => inspectEnvironment(row.name)}
+                        >
+                          <span className="resources-list-name">
+                            {row.name}
+                            {row.is_global_active ? (
+                              <span className="badge">active</span>
+                            ) : null}
+                          </span>
+                          {row.description ? (
+                            <span className="resources-list-desc muted">
+                              {row.description}
+                            </span>
+                          ) : null}
+                          <span className="resources-list-desc muted">
+                            {row.value_count} values · {row.secret_ref_count} secrets
+                          </span>
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -436,13 +534,13 @@ export function EnvironmentsWorkspace({
                 if (!row) {
                   return;
                 }
-                setDeleteTarget(row);
+                setDeleteTargets([row]);
                 setForceChecked(false);
               }}
               onOpenPlugin={onOpenPlugin}
             />
           ) : (
-            <p className="muted">Select an environment to inspect it.</p>
+            <p className="muted">Click an environment to inspect it.</p>
           )}
         </div>
       </div>
@@ -458,7 +556,7 @@ export function EnvironmentsWorkspace({
         onClose={() => setDrawerOpen(false)}
         onSaved={(message, name) => {
           onSuccess(message);
-          setSelectedName(name);
+          setInspectedName(name);
           setDetail(null);
           setDetailRefreshing(true);
           refresh();
@@ -466,12 +564,21 @@ export function EnvironmentsWorkspace({
       />
 
       <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title="Delete environment?"
+        open={deleteTargets.length > 0}
+        title={
+          deleteTargets.length > 1
+            ? `Delete ${deleteTargets.length} environments?`
+            : "Delete environment?"
+        }
         description={
           needsForce
-            ? `${deleteTarget?.name} is still the default environment for these plugins: ${referencedNames.join(", ") || "configured plugins"}. Deleting it will clear those defaults.`
-            : `This removes ${deleteTarget?.name} and its stored values. This cannot be undone.`
+            ? deleteTargets.length === 1
+              && deleteNames[0] === detail?.environment.name
+              ? `${deleteNames[0]} is still the default environment for these plugins: ${referencedNames.join(", ") || "configured plugins"}. Deleting it will clear those defaults.`
+              : "At least one is still the default for a plugin. Deleting will clear those defaults."
+            : deleteTargets.length > 1
+              ? "This removes the selected environments and their stored values. This cannot be undone."
+              : `This removes ${deleteNames[0]} and its stored values. This cannot be undone.`
         }
         confirmLabel={deleteBusy ? "Deleting…" : "Delete"}
         confirmDisabled={needsForce && !forceChecked}
@@ -479,7 +586,7 @@ export function EnvironmentsWorkspace({
         onConfirm={() => void onConfirmDelete()}
         onCancel={() => {
           if (!deleteBusy) {
-            setDeleteTarget(null);
+            setDeleteTargets([]);
             setForceChecked(false);
           }
         }}

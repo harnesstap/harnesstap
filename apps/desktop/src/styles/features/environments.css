@@ -28,6 +28,18 @@
   overscroll-behavior: none;
 }
 
+.environment-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.environment-list-row .resources-list-env {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .environment-skeleton-row {
   display: flex;
   flex-direction: column;

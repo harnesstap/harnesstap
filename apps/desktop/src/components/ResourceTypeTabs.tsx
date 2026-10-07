@@ -15,6 +15,7 @@ import {
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
+  resourceTypeTabPillsText,
   resourceTypeTabTooltip,
   TYPE_TABS_LESS_LABEL,
   typeTabsMoreLabel,
@@ -211,6 +212,9 @@ export function ResourceTypeTabs({
         const caption = resourceTypeTabTooltip(type, counts, tabOptions);
         const empty = resourceTypeTabEmptyDisabled(type, counts);
         const itemDisabled = empty;
+        const emptyFace =
+          empty && emptyMode === "disable" && type !== ALL_RESOURCE_TYPE_TAB;
+        const pillsText = resourceTypeTabPillsText(type, counts, tabOptions);
         const review = empty
           ? null
           : typeTabAttentionTooltip(attention?.get(type), type);
@@ -223,8 +227,14 @@ export function ResourceTypeTabs({
             <span className="resource-type-tab-face">
               <TabGlyph type={type} />
             </span>
-            <span className="resource-type-tab-count">{count}</span>
-            <span className="resource-type-tab-label">{label}</span>
+            {emptyFace ? (
+              <span className="resource-type-tab-label">{pillsText}</span>
+            ) : (
+              <>
+                <span className="resource-type-tab-count">{count}</span>
+                <span className="resource-type-tab-label">{label}</span>
+              </>
+            )}
           </>
         );
         const tooltip = compact

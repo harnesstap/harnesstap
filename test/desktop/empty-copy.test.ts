@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  catalogListEmptyKind,
   discoverEmptyKind,
   noResultsTitle,
 } from "../../apps/desktop/src/lib/empty-copy.ts";
@@ -20,6 +21,42 @@ describe("noResultsTitle", () => {
     expect(noResultsTitle("")).toBe("No results");
     expect(noResultsTitle("   ")).toBe("No results");
     expect(noResultsTitle(" ship ")).toBe('No results for "ship"');
+  });
+});
+
+describe("catalogListEmptyKind", () => {
+  test("treats All=0 as a real empty, not a filter miss", () => {
+    expect(
+      catalogListEmptyKind({
+        unfilteredCount: 0,
+        visibleCount: 0,
+        filterActive: false,
+      }),
+    ).toBe("catalog-empty");
+    expect(
+      catalogListEmptyKind({
+        unfilteredCount: 0,
+        visibleCount: 0,
+        filterActive: true,
+      }),
+    ).toBe("catalog-empty");
+  });
+
+  test("uses filter-miss copy only when a filter hid rows", () => {
+    expect(
+      catalogListEmptyKind({
+        unfilteredCount: 4,
+        visibleCount: 0,
+        filterActive: true,
+      }),
+    ).toBe("filter-empty");
+    expect(
+      catalogListEmptyKind({
+        unfilteredCount: 4,
+        visibleCount: 2,
+        filterActive: true,
+      }),
+    ).toBe("none");
   });
 });
 

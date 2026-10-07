@@ -459,12 +459,16 @@
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
-.resources-list-env:hover:not(:disabled):not(.is-selected) {
+.resources-list-env:hover:not(:disabled):not(.is-selected):not(.is-current) {
   background: var(--surface-hover);
 }
 
 .resources-list-env.is-selected {
   background: var(--surface-2);
+}
+
+.resources-list-env.is-current {
+  background: var(--surface-selected);
 }
 
 .resources-list-env:disabled {

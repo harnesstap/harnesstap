@@ -108,6 +108,16 @@ describe("resourceTypeTabPillsText", () => {
     const one = countResourceTypeTabs(["skill"]);
     expect(resourceTypeTabPillsText("skill", one)).toBe("1 Skills");
   });
+
+  it("labels empty disabled types as No <type> found", () => {
+    const counts = countResourceTypeTabs(["skill"]);
+    expect(resourceTypeTabPillsText("plugin", counts, { emptyMode: "disable" })).toBe(
+      "No Plugins found",
+    );
+    expect(resourceTypeTabPillsText("all", counts, { emptyMode: "disable" })).toBe(
+      "1 All",
+    );
+  });
 });
 
 describe("resource type tab aria-labels", () => {

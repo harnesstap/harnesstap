@@ -123,7 +123,9 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("function resetSourcesFilters");
     expect(workspaceSource).toContain("resetSourcesFilters()");
     expect(workspaceSource).toContain("applyListQueryOrChecks(resetSourcesFilters)");
-    expect(workspaceSource).toContain("setNotInLibrary(false)");
+    expect(workspaceSource).toContain("setNotInLibraryPreference(DEFAULT_NOT_IN_LIBRARY)");
+    expect(workspaceSource).toContain("readNotInLibraryPreference");
+    expect(workspaceSource).toContain("writeNotInLibraryPreference");
     expect(workspaceSource).not.toContain("setShowInLibrary");
   });
 
@@ -136,6 +138,8 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("filterDiscoverGroups");
     expect(listPaneSource).not.toContain("showInLibrary");
     expect(listPaneSource).toContain("notInLibrary");
+    expect(listPaneSource).toContain("unfilteredCount");
+    expect(workspaceSource).toContain("unfilteredHitCount");
     expect(listPaneSource).toContain("discoverListEmptyCopy");
     expect(listPaneSource).toContain("Clear filters");
     expect(listPaneSource).toContain('testId="discover-empty"');
@@ -654,7 +658,7 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("every source checkbox checked");
     expect(designSource).toContain("including hits already in the library");
     expect(designSource).toContain("Not in my library");
-    expect(designSource).toContain("unchecked by default");
+    expect(designSource).toContain("on by default");
     expect(designSource).toContain("Search to add");
     expect(designSource).toContain("Type a name, description, or skill.");
     expect(designSource).toContain("discover-empty");

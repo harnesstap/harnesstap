@@ -9,7 +9,6 @@ import {
   type HarnessSelection,
 } from "../../lib/harness-inventory";
 import type { HarnessesBusy } from "../../state/harnesses-controller";
-import { EmptyState } from "../EmptyState";
 import { HarnessIcon } from "../HarnessIcons";
 import { IconActionButton } from "../IconActionButton";
 import { ButtonSpinner } from "../ButtonSpinner";
@@ -98,14 +97,16 @@ export function HarnessSidebar({
             onClick={onAdd}
             icon={<Plus size={ICON_SIZE} aria-hidden />}
           />
-          <IconActionButton
-            label="Detect harnesses"
-            data-testid="detect-harnesses"
-            disabled={disabled || working}
-            busy={busy.kind === "detecting"}
-            onClick={onDetect}
-            icon={<ScanSearch size={ICON_SIZE} aria-hidden />}
-          />
+          {rows.length > 0 ? (
+            <IconActionButton
+              label="Detect harnesses"
+              data-testid="detect-harnesses"
+              disabled={disabled || working}
+              busy={busy.kind === "detecting"}
+              onClick={onDetect}
+              icon={<ScanSearch size={ICON_SIZE} aria-hidden />}
+            />
+          ) : null}
           <IconActionButton
             label={editing ? "Done" : "Edit"}
             data-testid="edit-harnesses"
@@ -133,18 +134,7 @@ export function HarnessSidebar({
             ))}
           </ul>
         ) : rows.length === 0 ? (
-          <EmptyState
-            title="No harnesses set up."
-            body="Detect the harnesses on this machine or add one."
-            testId="harnesses-empty"
-            action={{
-              label: "Detect harnesses",
-              primary: true,
-              disabled: disabled || working,
-              onClick: onDetect,
-              icon: <ScanSearch size={ICON_SIZE} aria-hidden />,
-            }}
-          />
+          <p className="muted harness-list-empty-hint">None set up yet.</p>
         ) : (
           <ul className="resources-list" aria-label="Harnesses">
             {rows.map((entry) => {

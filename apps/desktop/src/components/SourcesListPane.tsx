@@ -42,6 +42,7 @@ export interface SourcesListPaneProps {
   loading: boolean;
   query: string;
   notInLibrary?: boolean;
+  unfilteredCount?: number;
   disabled?: boolean;
   onOpenHit: (hit: SourcesHit) => void;
   onSignIn?: () => void;
@@ -197,6 +198,7 @@ export function SourcesListPane({
   loading,
   query,
   notInLibrary = false,
+  unfilteredCount,
   disabled = false,
   onOpenHit,
   onSignIn,
@@ -224,7 +226,7 @@ export function SourcesListPane({
   }
 
   if (items.length === 0) {
-    const empty = discoverListEmptyCopy({ query, notInLibrary });
+    const empty = discoverListEmptyCopy({ query, notInLibrary, unfilteredCount });
     const clearSearch = onClearQuery ?? onClearSearch;
     let action: EmptyStateAction | undefined;
     switch (empty.action) {
