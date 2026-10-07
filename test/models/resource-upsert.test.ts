@@ -107,6 +107,37 @@ describe("upsertResource", () => {
       await context.cleanup();
     }
   });
+
+  it("reloads overflow skill bodies from the content blob", async () => {
+    const context = await createInitializedTestContext("resource-upsert-overflow-blob");
+
+    try {
+      const { createResource, getResource } = await import("../../src/models/resource.ts");
+      const { getDb } = await import("../../src/db/connection.ts");
+      const body = `# Brainstorming\n\n${"Use this skill before creative work.\n".repeat(200)}`;
+      expect(body.length).toBeGreaterThan(4096);
+
+      const created = createResource({
+        type: "skill",
+        name: "brainstorming",
+        description: "You MUST use this before any creative work",
+        content: body,
+        metadata: {},
+        source: "skills/brainstorming/SKILL.md",
+      });
+
+      const stored = getDb()
+        .prepare("SELECT content FROM resources WHERE id = ?")
+        .get(created.id) as { content: string };
+      expect(stored.content).toBe("");
+
+      const reloaded = getResource(created.id);
+      expect(reloaded?.content).toBe(body);
+      expect(reloaded?.content).toContain("Use this skill before creative work.");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
 
 describe("resolveResource", () => {

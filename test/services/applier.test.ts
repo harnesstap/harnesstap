@@ -560,6 +560,56 @@ describe("applier services", () => {
     }
   });
 
+  it("writes full SKILL.md bodies for overflow library skills on Cursor and Codex", async () => {
+    const context = await createInitializedTestContext("applier-overflow-skill-body");
+
+    try {
+      const { createResource, getResource } = await import("../../src/models/resource.ts");
+      const applier = await import("../../src/services/applier.ts");
+      const body = `# Brainstorming\n\n${"You MUST use this before any creative work.\n".repeat(180)}`;
+      expect(body.length).toBeGreaterThan(4096);
+
+      const created = createResource({
+        type: "skill",
+        name: "brainstorming",
+        description: "You MUST use this before any creative work",
+        content: body,
+        metadata: {},
+        source: "skills/brainstorming/SKILL.md",
+      });
+      const reloaded = getResource(created.id);
+      if (!reloaded) {
+        throw new Error("expected brainstorming skill in the library");
+      }
+
+      const applied = await applier.applyToGlobal(
+        [reloaded],
+        ["cursor", "codex"],
+        context.homeDir,
+        { conflictPolicy: "replace" },
+      );
+
+      expect(applied.cancelled).toBe(false);
+      const cursorSkill = join(
+        context.homeDir,
+        ".cursor/skills/brainstorming/SKILL.md",
+      );
+      const codexSkill = join(
+        context.homeDir,
+        ".agents/skills/brainstorming/SKILL.md",
+      );
+      const cursorContent = readFileSync(cursorSkill, "utf-8");
+      const codexContent = readFileSync(codexSkill, "utf-8");
+      expect(cursorContent).toContain("name: brainstorming");
+      expect(cursorContent).toContain("# Brainstorming");
+      expect(cursorContent).toContain("You MUST use this before any creative work.");
+      expect(codexContent).toContain("# Brainstorming");
+      expect(codexContent.split("---").length).toBeGreaterThan(2);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("rejects global writes that escape through parent traversal", async () => {
     const context = await createInitializedTestContext("applier-parent-traversal");
 

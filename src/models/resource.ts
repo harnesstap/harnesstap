@@ -9,7 +9,7 @@ import type {
   ListableResourceType,
 } from "../types.js";
 import { LISTABLE_RESOURCE_TYPES } from "../types.js";
-import { writeBlob } from "../services/blob-store.js";
+import { readBlob, writeBlob } from "../services/blob-store.js";
 
 export type { ResourceCreateInput };
 import { hashResourceBody } from "../services/resource-hash.js";
@@ -94,10 +94,26 @@ export interface UpsertOptions {
   harnesstapDir?: string;
 }
 
+function hydrateOverflowContent(row: ResourceRow): string {
+  if (row.content.length > 0) {
+    return row.content;
+  }
+  const contentHash = row.content_hash?.trim() ?? "";
+  if (!contentHash.startsWith("sha256:")) {
+    return row.content;
+  }
+  try {
+    return readBlob(getHarnesstapDir(), contentHash);
+  } catch {
+    return row.content;
+  }
+}
+
 export function mapResourceRow(row: ResourceRow): Resource {
   return {
     ...row,
     type: row.type as ResourceType,
+    content: hydrateOverflowContent(row),
     metadata: JSON.parse(row.metadata) as ResourceMetadata,
     namespace: row.namespace ?? "",
     origin_kind: (row.origin_kind ?? "manual") as OriginKind,

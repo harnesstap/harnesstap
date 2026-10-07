@@ -311,8 +311,19 @@ export abstract class BaseSerializer implements PlatformSerializer {
     resource: Resource,
     sourceRoot: string,
   ): string | undefined {
-    const dir = dirname(join(sourceRoot, resource.source));
-    return existsSync(dir) ? dir : undefined;
+    const source = resource.source.replace(/\\/g, "/");
+    const relativeSource = source.startsWith("~/") ? source.slice(2) : source;
+    const candidates = [
+      dirname(join(sourceRoot, resource.source)),
+      dirname(join(sourceRoot, relativeSource)),
+    ];
+    for (const dir of candidates) {
+      if (existsSync(join(dir, "SKILL.md"))) {
+        return dir;
+      }
+    }
+    const fallback = candidates[0];
+    return fallback && existsSync(fallback) ? fallback : undefined;
   }
 
   protected emitSkillWithAuxiliary(
@@ -339,17 +350,24 @@ export abstract class BaseSerializer implements PlatformSerializer {
     ];
 
     const meta = resource.metadata as SkillMetadata;
+    const sourceRoots = [options.skillSourceRoot, options.projectRoot].filter(
+      (root): root is string => typeof root === "string" && root.length > 0,
+    );
     if (
-      !options.skillSourceRoot ||
+      sourceRoots.length === 0 ||
       (!meta.scripts?.length && !meta.references?.length)
     ) {
       return files;
     }
 
-    const sourceSkillDir = this.resolveSkillSourceDir(
-      resource,
-      options.skillSourceRoot,
-    );
+    let sourceSkillDir: string | undefined;
+    for (const root of sourceRoots) {
+      const resolved = this.resolveSkillSourceDir(resource, root);
+      if (resolved) {
+        sourceSkillDir = resolved;
+        break;
+      }
+    }
     if (!sourceSkillDir) return files;
 
     const targetPrefix = skillMdPath.replace(/\/SKILL\.md$/, "");
