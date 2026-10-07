@@ -3,9 +3,11 @@ import {
   ALL_RESOURCE_TYPE_TAB,
   collapsedTypeTabFit,
   countResourceTypeTabs,
+  LIBRARY_RESOURCE_TYPE_TAB_OPTIONS,
   resolveResourceTypeTab,
   RESOURCE_TYPE_TAB_ORDER,
   resourceTypeTabEmptyDisabled,
+  resourceTypeTabLocksEmpty,
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
@@ -13,6 +15,7 @@ import {
   resourceTypeTabTooltip,
   TYPE_TABS_LESS_LABEL,
   typeTabAttentionTooltip,
+  typeTabCountsFromRecord,
   typeTabsMoreLabel,
   visibleResourceTypeTabs,
 } from "../../apps/desktop/src/lib/resource-type-tabs.ts";
@@ -67,6 +70,24 @@ describe("visibleResourceTypeTabs", () => {
       "plugin",
       "skill",
     ]);
+  });
+
+  it("keeps empty types selectable when emptyMode is show", () => {
+    const counts = countResourceTypeTabs(["agent"]);
+    const tabs = visibleResourceTypeTabs(counts, { emptyMode: "show" });
+    expect(tabs[0]).toBe(ALL_RESOURCE_TYPE_TAB);
+    expect(tabs).toContain("agent");
+    expect(tabs).toContain("skill");
+    expect(tabs).toContain("plugin");
+    expect(tabs).toContain("mcp_server");
+    expect(tabs).not.toContain("plugin_ref");
+    expect(resourceTypeTabPillsText("skill", counts, { emptyMode: "show" })).toBe(
+      "0 Skills",
+    );
+    expect(resourceTypeTabPillsText("agent", counts, { emptyMode: "show" })).toBe(
+      "1 Subagents",
+    );
+    expect(resourceTypeTabEmptyDisabled("skill", counts)).toBe(true);
   });
 
   it("keeps empty types when emptyMode is disable", () => {
@@ -278,6 +299,28 @@ describe("resolveResourceTypeTab", () => {
     expect(resolveResourceTypeTab(ALL_RESOURCE_TYPE_TAB, counts, noAll)).toBe(
       "plugin",
     );
+  });
+
+  it("keeps All and empty types on Library show mode after a Subagents-only peek", () => {
+    const peek = countResourceTypeTabs(Array.from({ length: 40 }, () => "agent"));
+    expect(visibleResourceTypeTabs(peek)).toEqual(["agent"]);
+    const library = visibleResourceTypeTabs(peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS);
+    expect(library[0]).toBe(ALL_RESOURCE_TYPE_TAB);
+    expect(library).toContain("skill");
+    expect(resolveResourceTypeTab(null, peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS)).toBeNull();
+    expect(resolveResourceTypeTab("skill", peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS)).toBe(
+      "skill",
+    );
+    expect(resourceTypeTabLocksEmpty("show")).toBe(false);
+    expect(resourceTypeTabLocksEmpty("disable")).toBe(true);
+    const fromRecord = typeTabCountsFromRecord({
+      agent: 40,
+      skill: 12,
+      plugin_pin: 3,
+    });
+    expect(fromRecord.get("agent")).toBe(40);
+    expect(fromRecord.get("skill")).toBe(12);
+    expect(fromRecord.get("plugin")).toBe(3);
   });
 });
 

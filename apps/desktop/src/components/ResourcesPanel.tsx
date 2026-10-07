@@ -81,13 +81,16 @@ import {
   defaultResourceFilterState,
   isResourceFilterStateActive,
   libraryTypeTabCounts,
+  preferSnapshotLibraryTypeTabCounts,
   resetResourceFilterState,
   type ResourceFilterState,
 } from "../lib/resource-filters";
 import { duplicatePluginNames } from "../lib/resource-display";
 import { resourceDisplayName } from "../lib/resource-search";
 import {
+  LIBRARY_RESOURCE_TYPE_TAB_OPTIONS,
   resolveResourceTypeTab,
+  resourceTypeTabItemCount,
   resourceTypeTabLabel,
 } from "../lib/resource-type-tabs";
 import { workspaceBackEnabled } from "../lib/screen-history";
@@ -274,6 +277,8 @@ export function ResourcesPanel({
     peek,
     full,
     searchRows,
+    snapshotTypeCounts,
+    searchTypeCounts,
     status,
     error,
     searchError,
@@ -282,6 +287,8 @@ export function ResourcesPanel({
     peek: state.peek,
     full: state.full,
     searchRows: state.searchRows,
+    snapshotTypeCounts: state.typeCounts,
+    searchTypeCounts: state.searchTypeCounts,
     status: state.status,
     error: state.error,
     searchError: state.searchError,
@@ -446,16 +453,21 @@ export function ResourcesPanel({
     [snapshotEntries],
   );
 
-  const typeCounts = useMemo(
-    () =>
-      libraryTypeTabCounts(entries, {
-        ...filterState,
-        search: "",
-        type: null,
-      }),
-    [entries, filterState],
+  const typeCounts = useMemo(() => {
+    const fromRows = libraryTypeTabCounts(entries, {
+      ...filterState,
+      search: "",
+      type: null,
+    });
+    const snapshot =
+      searchQuery.length > 0 ? searchTypeCounts : snapshotTypeCounts;
+    return preferSnapshotLibraryTypeTabCounts(fromRows, snapshot, filterState);
+  }, [entries, filterState, searchQuery, searchTypeCounts, snapshotTypeCounts]);
+  const typeTab = resolveResourceTypeTab(
+    filterState.type,
+    typeCounts,
+    LIBRARY_RESOURCE_TYPE_TAB_OPTIONS,
   );
-  const typeTab = resolveResourceTypeTab(filterState.type, typeCounts);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -1027,6 +1039,7 @@ export function ResourcesPanel({
           counts={typeCounts}
           value={typeTab}
           disabled={disabled}
+          emptyMode="show"
           overflow="collapse"
           onChange={(next) => applyFilterChange({ ...filterState, type: next })}
         />
@@ -1036,11 +1049,24 @@ export function ResourcesPanel({
         counts={typeCounts}
         value={typeTab}
         disabled={disabled}
+        emptyMode="show"
         overflow="collapse"
         onChange={(next) => applyFilterChange({ ...filterState, type: next })}
       />
     );
     if (listRows.length === 0) {
+      const typeStillLoading =
+        full == null
+        && typeTab !== null
+        && resourceTypeTabItemCount(typeTab, typeCounts) > 0;
+      if (typeStillLoading) {
+        return (
+          <>
+            {typeTabs}
+            <SkeletonRow count={8} height={40} />
+          </>
+        );
+      }
       if (isResourceFilterStateActive(filterState)) {
         return (
           <>

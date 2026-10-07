@@ -1,7 +1,11 @@
 import { libraryFilterType } from "./library-list";
 import { groupedOriginKind } from "./resource-display";
 import { filterLibraryResourcesBySearch } from "./resource-search";
-import { countResourceTypeTabs, RESOURCE_TYPE_TAB_ORDER } from "./resource-type-tabs";
+import {
+  countResourceTypeTabs,
+  RESOURCE_TYPE_TAB_ORDER,
+  typeTabCountsFromRecord,
+} from "./resource-type-tabs";
 import type { LibraryResource } from "./types";
 
 export { formatOriginKindLabel } from "./resource-display";
@@ -195,6 +199,31 @@ export function libraryTypeTabCounts<T extends LibraryResource>(
     now,
   );
   return countResourceTypeTabs(matching.map((row) => libraryFilterType(row)));
+}
+
+function librarySidebarFacetsActive(state: ResourceFilterState): boolean {
+  if (state.updated.preset !== "all") return true;
+  if (state.namespace.mode !== "all") return true;
+  if (state.originKind !== null) return true;
+  return false;
+}
+
+/**
+ * Prefer inventory snapshot totals when sidebar facets are idle so a type-sorted
+ * peek (first 40 rows, often all Subagents) cannot hide other types.
+ */
+export function preferSnapshotLibraryTypeTabCounts(
+  fromRows: ReadonlyMap<string, number>,
+  snapshotCounts: Readonly<Record<string, number>> | null | undefined,
+  state: ResourceFilterState,
+): Map<string, number> {
+  if (librarySidebarFacetsActive(state)) {
+    return new Map(fromRows);
+  }
+  if (!snapshotCounts || Object.keys(snapshotCounts).length === 0) {
+    return new Map(fromRows);
+  }
+  return typeTabCountsFromRecord(snapshotCounts);
 }
 
 export type NamespaceFacetOption =

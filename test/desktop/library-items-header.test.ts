@@ -183,6 +183,9 @@ describe("library items header design lock", () => {
       "Type tabs stay visible when the filtered list is empty",
     );
     expect(designSource).toContain(
+      "Do not hide zero-count canonical types on Library",
+    );
+    expect(designSource).toContain(
       "Type tab counts follow sidebar filters",
     );
   });
