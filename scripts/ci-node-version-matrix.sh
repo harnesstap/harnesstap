@@ -116,7 +116,15 @@ run_cli "ht -V" ht -V
 run_cli "ht init --no-interactive" ht init --no-interactive
 
 npx_home="$(mktemp -d)"
-run_cli "npx --help" env HOME="$npx_home" npx --yes --package "$TARBALL" -- ht --help
-run_cli "npx -V" env HOME="$npx_home" npx --yes --package "$TARBALL" -- ht -V
+npx_env=(env HOME="$npx_home")
+npx_flags=(--yes --package "$TARBALL")
+if [[ "$IGNORE_SCRIPTS" == "true" ]]; then
+  # Node 20 has no better-sqlite3 12 prebuild; skip native install so npx can still
+  # launch dist/bin.js, which refuses before loading sqlite.
+  npx_env+=(npm_config_ignore_scripts=true)
+  npx_flags+=(--ignore-scripts)
+fi
+run_cli "npx --help" "${npx_env[@]}" npx "${npx_flags[@]}" -- ht --help
+run_cli "npx -V" "${npx_env[@]}" npx "${npx_flags[@]}" -- ht -V
 
 echo "G1 smoke passed for Node $(node -p 'process.versions.node') (supported=$SUPPORTED)"
