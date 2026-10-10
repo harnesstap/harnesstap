@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import {
   buildHooksJson,
+  commandReferencesPluginRoot,
   scanHooksFile,
 } from "../../src/services/hook-serialization.ts";
 import type { HookMetadata } from "../../src/types.ts";
@@ -113,6 +114,10 @@ describe("hook-serialization", () => {
   });
 
   it("omits plugin-root commands from user hook files", () => {
+    expect(
+      commandReferencesPluginRoot("node \".claude/skills/impeccable/scripts/hook.mjs\""),
+    ).toBe(false);
+    expect(commandReferencesPluginRoot("node ./hooks/ponytail-activate.js")).toBe(true);
     const rebuilt = buildHooksJson([
       {
         event: "SessionStart",

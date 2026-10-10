@@ -28,7 +28,10 @@ export function commandReferencesPluginRoot(command: string | undefined): boolea
   if (!command) {
     return false;
   }
-  return /CLAUDE_PLUGIN_ROOT/.test(command);
+  if (/CLAUDE_PLUGIN_ROOT/.test(command)) {
+    return true;
+  }
+  return /(?:^|[\s"'`=(])(?:\.\/)?hooks\//.test(command);
 }
 
 export function hookRequiresPluginRoot(

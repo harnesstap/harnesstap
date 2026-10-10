@@ -305,12 +305,12 @@ export async function generateFiles(
     );
     const serializer = getPlatformSerializer(pid);
     const surfaceWarnings: SurfaceWarning[] = [];
-    for (const resource of platformResources) {
+    const emitResources = platformResources.filter((resource) => {
       if (resource.type !== "hook") {
-        continue;
+        return true;
       }
       if (!hookRequiresPluginRoot(resource.metadata as HookMetadata)) {
-        continue;
+        return true;
       }
       surfaceWarnings.push({
         harness: pid,
@@ -320,8 +320,9 @@ export async function generateFiles(
           `Skipped hook ${resource.name}. It only works when the plugin is installed as a host plugin.`,
         alias_harnesses: [],
       });
-    }
-    let files = await serializer.serialize(platformResources, projectRoot, {
+      return false;
+    });
+    let files = await serializer.serialize(emitResources, projectRoot, {
       target,
       skillCursorMode: options.skillCursorMode,
       skillSourceRoot,

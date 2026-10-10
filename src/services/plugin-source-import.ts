@@ -3,7 +3,7 @@ import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { parse as parseToml } from "smol-toml";
 import { normalizeAgentInput } from "./agent-bridge.js";
-import { collectHookEntries } from "./hook-serialization.js";
+import { collectHookEntries, commandReferencesPluginRoot } from "./hook-serialization.js";
 import { scanSkillCommandMetadataResources } from "./skill-command-metadata.js";
 import { listSkillAuxiliaryFiles } from "./skill-auxiliary.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
@@ -855,7 +855,7 @@ function scanHooks(
         script: entry.command ?? "",
         imported_from: provenance,
         hook_entry: entry as Record<string, unknown>,
-        requires_plugin_root: true,
+        requires_plugin_root: commandReferencesPluginRoot(entry.command ?? ""),
       };
 
       if (typeof entry.commandWindows === "string") {
