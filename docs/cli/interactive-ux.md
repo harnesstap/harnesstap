@@ -1,6 +1,6 @@
 # Interactive list keyboard guide
 
-HarnessTap's TTY entity lists share one **table browser**: grouped tables, a search line, a dense folded footer, and a help line. Selection is shown only in the table (`>` marker and accent color)—there is no separate `Active:` / `Show:` line above the table.
+HarnessTap's TTY entity lists share one **table browser**: grouped tables, a search line, a dense folded footer, and a help line. Selection is shown only in the table (`>` marker and accent color): there is no separate `Active:` / `Show:` line above the table.
 
 ## Universal keys
 
@@ -25,7 +25,7 @@ skill (3)
 ┌──────────┬───────────┬─────────┐
 │ NAME     │ NAMESPACE │ UPDATED │
 ├──────────┼───────────┼─────────┤
-│ > beta   │ …         │ 1d ago  │
+│ > beta   │ ...         │ 1d ago  │
 └──────────┴───────────┴─────────┘
   ↑ 7 above · ↓ 4 more in skill · rule (1) · ↓ next type
 
@@ -55,7 +55,7 @@ Free text (no prefix) matches across the default fields for that list.
 
 Each prompt runs with one **intent**. **Enter** and **Esc** behavior depends on the intent.
 
-### `filter` — live search overlay
+### `filter`: live search overlay
 
 Used by: `resource list`, `environment list` (interactive `env ls`).
 
@@ -68,7 +68,7 @@ Used by: `resource list`, `environment list` (interactive `env ls`).
 
 Esc always exits with whatever is typed. An empty query means "no filter" and shows the full list. Help label: `esc exit`.
 
-**Resource list:** `ctrl+x` deletes the active resource (no edit shortcut — use `resource show` or re-import flows). **Environment list:** `ctrl+e` opens the environment editor; `ctrl+x` deletes after confirm.
+**Resource list:** `ctrl+x` deletes the active resource (no edit shortcut: use `resource show` or re-import flows). **Environment list:** `ctrl+e` opens the environment editor; `ctrl+x` deletes after confirm.
 
 **Resource columns:** NAME shows the bare resource name. NAMESPACE shows plugin or package provenance (marketplace-linked resources display as `marketplace/plugin`). Selectors and JSON output still use `name@namespace` where applicable.
 
@@ -76,7 +76,7 @@ Esc always exits with whatever is typed. An empty query means "no filter" and sh
 
 **Environment columns:** NAME, VALUES, SECRETS, REFS counts.
 
-### `pick-one` — pick one item
+### `pick-one`: pick one item
 
 Used by: `resource show`, `resource delete`, `plugin show`, `plugin delete`, `profile show`, `environment show`, `environment delete`.
 
@@ -88,7 +88,7 @@ Used by: `resource show`, `resource delete`, `plugin show`, `plugin delete`, `pr
 
 Help label: `esc cancel`.
 
-### `pick-many` — multi-select with detail view
+### `pick-many`: multi-select with detail view
 
 Used by: `plugin edit` interactive composition, catalog search apply (`plugin list` apply mode).
 
@@ -103,7 +103,7 @@ Used by: `plugin edit` interactive composition, catalog search apply (`plugin li
 
 When Enter opens a detail view, use **Ctrl+S** to save or apply. Help label: `esc cancel`.
 
-### `install` — plugin / profile list browser
+### `install`: plugin / profile list browser
 
 Used by: `plugin list`, `profile list` (interactive browse with local + remote sections).
 
@@ -122,7 +122,7 @@ Remote edit/delete requires authentication with `publish` scope in the plugin's 
 
 Help label: `esc cancel`.
 
-### `manage` — row actions with shortcuts
+### `manage`: row actions with shortcuts
 
 Used by: `environment edit`.
 
@@ -163,11 +163,11 @@ Prompts use consistent labels so Esc behavior is predictable.
 
 ## Tips
 
-- **Uppercase search** — all prompts accept shift-modified characters in the query. Matching is case-insensitive.
-- **Disable interactivity** — pass `--no-interactive` on supported commands for scripting and CI.
-- **JSON output** — many list commands accept `--format json` as a non-interactive alternative.
+- **Uppercase search**: all prompts accept shift-modified characters in the query. Matching is case-insensitive.
+- **Disable interactivity**: pass `--no-interactive` on supported commands for scripting and CI.
+- **JSON output**: many list commands accept `--format json` as a non-interactive alternative.
 
 ## Related
 
-- [Command reference](./command-reference.md) — `plugin list`, `resource list`, `environment list`, `plugin edit`, and other commands that use these prompts
-- [Getting started](./getting-started.md) — first-run workflow
+- [Command reference](./command-reference.md): `plugin list`, `resource list`, `environment list`, `plugin edit`, and other commands that use these prompts
+- [Getting started](./getting-started.md): first-run workflow

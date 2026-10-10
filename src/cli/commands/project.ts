@@ -259,7 +259,7 @@ async function handleScanCommand(
       return;
     }
 
-    const spin = createProgress("Scanning…");
+    const spin = createProgress("Scanning...");
     const persisted = await scanAndPersistPluginSource(projectRoot);
     spin.stop();
 
@@ -321,7 +321,7 @@ async function handleScanCommand(
     return;
   }
 
-  const spin = createProgress("Scanning…");
+  const spin = createProgress("Scanning...");
   const conflictPolicy = resolveScanConflictPolicy(opts);
   const merged = await persistMergedProjectScan(projectRoot, scanHarnessFilter, {
     conflictPolicy,
@@ -625,7 +625,7 @@ async function handleProjectSyncCommand(
   try {
     const result = await (async () => {
       if (format === "human" && !opts.dryRun) {
-        const spin = createProgress("Syncing…");
+        const spin = createProgress("Syncing...");
         const r = await syncProject({
           projectRoot,
           dryRun: false,
@@ -662,7 +662,7 @@ async function handleProjectSyncCommand(
   }
 }
 
-/** Registers scan and use — call before inline `config` group registration. */
+/** Registers scan and use: call before inline `config` group registration. */
 export function registerProjectCommandsBeforeConfig(root: Command): void {
   root
     .command("scan")
@@ -703,7 +703,7 @@ export function registerProjectCommandsBeforeConfig(root: Command): void {
     .action(handleUseCommand);
 }
 
-/** Registers mirror, history, revert, and status — call after `config` group. */
+/** Registers mirror, history, revert, and status: call after `config` group. */
 export function registerProjectCommandsAfterConfig(root: Command): void {
   root
     .command("mirror")

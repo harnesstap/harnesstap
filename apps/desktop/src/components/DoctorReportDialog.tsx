@@ -124,7 +124,7 @@ export function DoctorReportDialog({
         <div aria-busy={busy}>
           {busy ? (
             <p className="muted" role="status">
-              <ButtonSpinner /> Running…
+              <ButtonSpinner /> Running...
             </p>
           ) : null}
           {error ? (

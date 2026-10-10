@@ -8,12 +8,12 @@ import {
 
 describe("ui format", () => {
   it("truncates long strings with ellipsis", () => {
-    expect(truncate("hello world", 7)).toBe("hello …");
+    expect(truncate("hello world", 7)).toBe("hell...");
     expect(truncate("hello", 10)).toBe("hello");
   });
 
   it("shortens long IDs with ellipsis", () => {
-    expect(shortenId("abc123def456")).toContain("…");
+    expect(shortenId("abc123def456")).toContain("...");
     expect(shortenId("short")).toBe("short");
   });
 

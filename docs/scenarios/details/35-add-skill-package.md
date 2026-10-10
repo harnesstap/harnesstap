@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when you want to install skills from a GitHub repo or local skill
-package in one step — similar to `skills add`, but with HarnessTap library
+package in one step: similar to `skills add`, but with HarnessTap library
 import and optional plugin composition.
 
 Typical commands:

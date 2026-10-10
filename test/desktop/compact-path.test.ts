@@ -11,7 +11,7 @@ describe("compactHomePath", () => {
       "/Users/ada/very/long/nested/project/path/that/should/not/blow/the/picker";
     const compact = compactHomePath(path, 28);
     expect(compact.startsWith("~")).toBe(true);
-    expect(compact.includes("…")).toBe(true);
+    expect(compact.includes("...")).toBe(true);
     expect(compact.length).toBeLessThanOrEqual(28);
   });
 });

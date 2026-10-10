@@ -60,7 +60,7 @@ export function ConnectSplash({
           <div className="connect-splash-bar" aria-hidden="true">
             <div className="connect-splash-bar-fill m-skeleton" />
           </div>
-          <p className="muted">Starting the agent…</p>
+          <p className="muted">Starting the agent...</p>
         </div>
       );
     case "disconnected":
@@ -116,7 +116,7 @@ export function ReconnectBanner({ retryBusy, onRetry }: ReconnectBannerProps) {
     <Banner
       tone="info"
       className="connection-banner"
-      message="Reconnecting…"
+      message="Reconnecting..."
       onRetry={showRetry ? onRetry : undefined}
       retryBusy={retryBusy}
       role="status"

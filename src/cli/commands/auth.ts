@@ -39,7 +39,7 @@ async function handleCloudLoginCommand(
   try {
     const device = await requestDeviceCode(baseUrl);
     console.log(`Visit: ${deviceVerificationUri(baseUrl)}`);
-    console.log(`Code:  ${device.user_code}`);
+    console.log(`Code: ${device.user_code}`);
     const pollIntervalSeconds = device.interval ?? 5;
     const maxPolls = Math.ceil((device.expires_in ?? 600) / pollIntervalSeconds);
     const token = await pollDeviceToken(baseUrl, device.device_code, {

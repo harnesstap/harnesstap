@@ -129,7 +129,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Onboard a project from apm.yml (same as apply with no plugin selector)",
     details:
-      "Reads repo-root apm.yml, resolves dependencies.apm (including transitive dependencies.apm on fetched packages) / dependencies.mcp (including MCP Registry v0.1 identities such as io.github…), compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Registry strings are fetched from registry.modelcontextprotocol.io and converted to the same native MCP files HT already emits. Self-defined registry: false entries keep command/url as authored. --mcp <id> appends the identity to apm.yml then runs install; a failed install rolls the manifest write back. Target resolution: --target/--all/--harness, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. Declared targets: win over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
+      "Reads repo-root apm.yml, resolves dependencies.apm (including transitive dependencies.apm on fetched packages) / dependencies.mcp (including MCP Registry v0.1 identities such as io.github...), compiles local .apm/ primitives, writes apm.lock.yaml, and materializes resolved target harness directories. Registry strings are fetched from registry.modelcontextprotocol.io and converted to the same native MCP files HT already emits. Self-defined registry: false entries keep command/url as authored. --mcp <id> appends the identity to apm.yml then runs install; a failed install rolls the manifest write back. Target resolution: --target/--all/--harness, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. Declared targets: win over preference and folder detection. Fails closed when no target can be resolved. Commit the lockfile plus generated harness output. Same project-scope flags as apply. Does not take a plugin selector or --global.",
     examples: [
       "install",
       "install --project .",
@@ -161,7 +161,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   "mcp.show": {
     description: "Show one MCP Registry server and the native config HT would emit",
     details:
-      "Fetches GET /v0.1/servers/{id}/versions/latest (URL-encoded). Prefers a remote HTTP/SSE endpoint when the registry document has remotes; otherwise picks npm, then oci, then pypi, then nuget. Secret values stay ${VAR} placeholders — HT does not inject a GitHub PAT.",
+      "Fetches GET /v0.1/servers/{id}/versions/latest (URL-encoded). Prefers a remote HTTP/SSE endpoint when the registry document has remotes; otherwise picks npm, then oci, then pypi, then nuget. Secret values stay ${VAR} placeholders: HT does not inject a GitHub PAT.",
     examples: [
       "mcp show io.github.github/github-mcp-server",
       "mcp show io.github.github/github-mcp-server --format json",
@@ -205,7 +205,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description:
       "Export a CycloneDX or SPDX SBOM inventory from the existing lockfile",
     details:
-      "Inventory export only: reads apm.lock.yaml and serializes it. Never re-resolves, re-hashes, or touches the network. Default format is CycloneDX 1.5; --format spdx writes SPDX 2.3. This is not a security attestation — the document is unsigned and does not claim SLSA. --timestamp pins the document time; otherwise SOURCE_DATE_EPOCH, then the lockfile generated_at. Diagnostics go to stderr so stdout stays pipe-clean.",
+      "Inventory export only: reads apm.lock.yaml and serializes it. Never re-resolves, re-hashes, or touches the network. Default format is CycloneDX 1.5; --format spdx writes SPDX 2.3. This is not a security attestation: the document is unsigned and does not claim SLSA. --timestamp pins the document time; otherwise SOURCE_DATE_EPOCH, then the lockfile generated_at. Diagnostics go to stderr so stdout stays pipe-clean.",
     examples: [
       "lock export",
       "lock export --format cyclonedx -o sbom.json",

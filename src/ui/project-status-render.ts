@@ -54,7 +54,7 @@ function formatScanStatusLabel(status: ProjectScanComparisonStatus, payload: Pro
 function formatScanHint(payload: ProjectStatusPayload): string | undefined {
   const { comparison } = payload.project_resources;
   if (comparison.status === "no_harness_files") {
-    return "Scans project files on disk, not harness setup — see `ht harness status`";
+    return "Scans project files on disk, not harness setup: see `ht harness status`";
   }
   if (comparison.status === "not_scanned" || comparison.status === "stale") {
     return "run `ht scan` to import";
@@ -161,7 +161,7 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
       ],
       rows: payload.resolved.plugin_pins.map((pin) => ({
         ref: pin.ref,
-        constraint: pin.version_constraint || "—",
+        constraint: pin.version_constraint || ": ",
         status: pin.status,
       })),
     });

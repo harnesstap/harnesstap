@@ -159,7 +159,7 @@ export function PinToPluginPanel({
             aria-busy={confirming}
           >
             {confirming ? <ButtonSpinner size={16} /> : <Pin size={16} aria-hidden />}
-            {confirming ? "Working…" : confirmLabel}
+            {confirming ? "Working..." : confirmLabel}
           </button>
         </>
       }
@@ -241,7 +241,7 @@ export function PinToPluginPanel({
           aria-busy={createBusy}
         >
           {createBusy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
-          {createBusy ? "Creating…" : "Create plugin"}
+          {createBusy ? "Creating..." : "Create plugin"}
         </button>
       </div>
       {selectedName ? (

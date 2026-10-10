@@ -84,9 +84,9 @@ function batchLabel(
   total: number,
 ): string {
   if (verb === "Discarding" && done <= 0) {
-    return `${verb} ${total}…`;
+    return `${verb} ${total}...`;
   }
-  return `${verb} ${Math.min(done, total)} of ${total}…`;
+  return `${verb} ${Math.min(done, total)} of ${total}...`;
 }
 
 export function ScopeInventoryShell({

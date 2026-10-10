@@ -5,17 +5,17 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when you need to switch Slack workspaces, API tokens, or deployment
-targets across profiles/plugins — or when OAuth MCP servers do not respond after
+targets across profiles/plugins: or when OAuth MCP servers do not respond after
 an environment switch.
 
 ## Quick decision
 
-| You have… | HarnessTap can… |
+| You have... | HarnessTap can... |
 | --- | --- |
 | Bot token / PAT in MCP `env` or `headers` | Switch via `environment use` + re-apply |
-| OAuth MCP (browser login in Cursor/Claude) | **Not** switch sessions — re-auth in the host app |
+| OAuth MCP (browser login in Cursor/Claude) | **Not** switch sessions: re-auth in the host app |
 
-Full reference: **[Environments — MCP authentication limitations](../../cli/concepts/environments.md#mcp-authentication-limitations)**
+Full reference: **[Environments: MCP authentication limitations](../../cli/concepts/environments.md#mcp-authentication-limitations)**
 
 ## Static token workflow (supported)
 
@@ -50,12 +50,12 @@ ht profile use "global default" --dry-run
 
 After apply, open the target harness and complete OAuth there (Cursor MCP panel,
 `claude mcp`, Copilot `/mcp auth`, etc.). HarnessTap only writes server URL /
-transport — not OAuth tokens.
+transport: not OAuth tokens.
 
 ## Known gaps
 
 - **Shipped:** Cursor MCP scan/emit and HTTP `headers` round-trip (via `mcp-config-bridge`).
-- **OAuth sessions:** Browser OAuth tokens remain host-managed — environment switch does not re-auth for you.
+- **OAuth sessions:** Browser OAuth tokens remain host-managed: environment switch does not re-auth for you.
 
 Remaining limitations: [Known gaps and fix plan](../../cli/concepts/environments.md#known-gaps-and-fix-plan).
 

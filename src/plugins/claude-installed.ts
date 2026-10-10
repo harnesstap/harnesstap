@@ -154,7 +154,7 @@ export function loadInstalled(homeRoot: string): PluginInstall[] {
 /**
  * Build `plugin_pin` create inputs from Claude's installed_plugins.json.
  * Dedupes by ref; prefers user-scope installs when both exist.
- * Does not sync child resources — run `resource sync` for that.
+ * Does not sync child resources: run `resource sync` for that.
  */
 export function listInstalledPluginPinCreateInputs(
   homeRoot: string,

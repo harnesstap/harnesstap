@@ -17,7 +17,7 @@ harnesstap plugin show my-setup
 ```
 
 `plugin edit` is for local resources and plugin pins. `plugin pull` installs a
-plugin from the remote catalog instead — do not confuse the two.
+plugin from the remote catalog instead: do not confuse the two.
 
 This is where HarnessTap becomes useful as a setup optimizer rather than just
 a scanner: you can separate reusable instructions, skills, hooks, MCP config,

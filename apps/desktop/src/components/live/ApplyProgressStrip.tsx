@@ -63,7 +63,7 @@ export interface ApplyProgressStripProps {
 export function ApplyProgressStrip({
   scope,
   events,
-  label = "Applying…",
+  label = "Applying...",
   success = false,
   onCancel,
 }: ApplyProgressStripProps) {

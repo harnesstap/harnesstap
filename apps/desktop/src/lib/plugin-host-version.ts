@@ -2,7 +2,7 @@ import type { PluginHostCacheVersion } from "./types";
 
 export const LIBRARY_PULL_VERSIONS_TOOLTIP = "Fetch versions from source";
 
-/** Host cache dirs and git SHAs use 7–40 hex characters (same rule as the agent). */
+/** Host cache dirs and git SHAs use 7-40 hex characters (same rule as the agent). */
 const GIT_SHA_RE = /^[0-9a-f]{7,40}$/i;
 
 /** Short enough that `(git)` stays visible in the closed combobox. */

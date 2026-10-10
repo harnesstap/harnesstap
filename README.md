@@ -209,13 +209,13 @@ ht status .                  # confirm the final state
 
 ## Concept model
 
-HarnessTap keeps one library of **resources** — skills, rules, MCP servers, hooks, agents, commands. You group them into **plugins**. `ht apply <plugin>` (project) or `ht profile use <plugin>` (home) resolves the dependency graph and writes harness files. When two plugins disagree, the one closest to what you applied wins; genuine ambiguity is an error you fix with an override. An **environment** fills in the values a plugin needs — model, permissions, tokens by reference. Secrets are never stored in a plugin.
+HarnessTap keeps one library of **resources**: skills, rules, MCP servers, hooks, agents, commands. You group them into **plugins**. `ht apply <plugin>` (project) or `ht profile use <plugin>` (home) resolves the dependency graph and writes harness files. When two plugins disagree, the one closest to what you applied wins; genuine ambiguity is an error you fix with an override. An **environment** fills in the values a plugin needs: model, permissions, tokens by reference. Secrets are never stored in a plugin.
 
 | Concept | Role |
 | --- | --- |
 | **Resource** | Atomic instruction, skill, rule, MCP, hook, etc. |
 | **Plugin** | Versioned package of resources, optional dependencies, and a `needs` contract |
-| **Environment** | Named *how* values (and secret refs) — prod, staging, personal |
+| **Environment** | Named *how* values (and secret refs): prod, staging, personal |
 | **Profile** | A plugin tagged for machine-wide switching (`ht work`, `profile use`) |
 | **Workspace** | Local library at `~/.harnesstap` |
 
@@ -262,7 +262,7 @@ flowchart TB
 
 ## Catalog and Cloud
 
-Starter plugins such as `engineering-foundation` live in the **HarnessTap Cloud** public catalog — not inside the npm package. Bare names on `ht apply` resolve against that catalog (and any orgs you have connected).
+Starter plugins such as `engineering-foundation` live in the **HarnessTap Cloud** public catalog: not inside the npm package. Bare names on `ht apply` resolve against that catalog (and any orgs you have connected).
 
 ```bash
 ht plugin list --search foundation --remote-only
@@ -289,7 +289,7 @@ ht harness list --supported    # native serializers only
 ht harness set --harnesses claude-code,cursor,codex
 ```
 
-See the full matrix — resource types, skill emission, plugin support, and paths — in **[Supported harnesses](docs/supported-harnesses.md)**.
+See the full matrix: resource types, skill emission, plugin support, and paths: in **[Supported harnesses](docs/supported-harnesses.md)**.
 
 ---
 
@@ -303,13 +303,13 @@ Anonymous telemetry state (distinct id and first-run stamps) lives in `~/.harnes
 
 `ht init` also checks registered home folders (e.g. `~/.claude/`, `~/.codex/`) and imports supported resources it finds.
 
-Move a library between machines with `ht migrate export` / `import`. Older databases that cannot upgrade in place still open read-only for export — see [machine migration](docs/scenarios/details/28-machine-migration.md).
+Move a library between machines with `ht migrate export` / `import`. Older databases that cannot upgrade in place still open read-only for export: see [machine migration](docs/scenarios/details/28-machine-migration.md).
 
 ---
 
 ## Next steps
 
-| I want to… | Start here |
+| I want to... | Start here |
 | --- | --- |
 | Learn every command | [CLI reference](docs/cli/command-reference.md) |
 | Compose, doctor, or diff plugins | [Plugin concepts](docs/cli/concepts/plugins.md) · `ht plugin doctor` · `ht plugin from-project` |

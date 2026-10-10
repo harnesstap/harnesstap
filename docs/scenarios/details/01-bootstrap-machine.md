@@ -23,7 +23,7 @@ What this gives you:
 - a `global default` profile plugin (tagged `profile`) and
   `~/.harnesstap/active-profile.json` unless you pass `--no-default-profile`
 - imported resources from supported home-directory harness folders when
-  present (`~/.claude/`, `~/.codex/`, …)
+  present (`~/.claude/`, `~/.codex/`, ...)
 - a quick view of which harnesses the current release knows how to handle
 
 `init` does not run global apply. After bootstrap, run

@@ -2,7 +2,7 @@ import type { GlobalProfileStatus, GlobalProfileStatusDepth } from "./types";
 
 /**
  * Merge a status poll into previous UI state.
- * Fast polls wipe harness/plugin rows on the agent — keep the last full snapshot.
+ * Fast polls wipe harness/plugin rows on the agent: keep the last full snapshot.
  */
 export function mergeStatusUpdate(
   previous: GlobalProfileStatus | null,

@@ -360,7 +360,7 @@ export function EnvironmentDrawer({
                 aria-busy={busy}
               >
                 {busy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
-                {busy ? "Creating…" : "Create environment"}
+                {busy ? "Creating..." : "Create environment"}
               </button>
             ) : (
               <button
@@ -371,7 +371,7 @@ export function EnvironmentDrawer({
                 aria-busy={busy}
               >
                 {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
-                {busy ? "Saving…" : "Save environment"}
+                {busy ? "Saving..." : "Save environment"}
               </button>
             )}
           </>

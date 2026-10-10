@@ -15,7 +15,7 @@ function parseCoreParts(version: string): [number, number, number] | null {
 
 export function formatVersionWithDrift(current: string, latest: string | null): string {
   if (!current) {
-    return theme.muted("—");
+    return theme.muted(": ");
   }
   if (!latest) {
     return current;

@@ -318,7 +318,7 @@ function resolveConflictPolicy(
 }
 
 /**
- * Sync is about refreshing an upstream/catalog install tree — not about
+ * Sync is about refreshing an upstream/catalog install tree: not about
  * consumer plugins that merely attach the dependency. Local composition deps
  * gate on the named plugin's origin (authored → refuse).
  */

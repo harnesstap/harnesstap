@@ -317,8 +317,8 @@ export function isSelectorInCatalogScope(
 export function formatOutOfScopeMessage(selector: string): string {
   return [
     `Plugin ${selector} is not in your catalog scope.`,
-    `Connect the org:  ht plugin catalog connect org <slug>`,
-    `Connect one lib:  ht plugin catalog connect plugin ${selector}`,
+    `Connect the org: ht plugin catalog connect org <slug>`,
+    `Connect one lib: ht plugin catalog connect plugin ${selector}`,
   ].join("\n");
 }
 

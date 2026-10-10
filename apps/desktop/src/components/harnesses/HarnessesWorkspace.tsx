@@ -573,7 +573,7 @@ export function HarnessesWorkspace({
           onRefresh={ctrl.refresh}
           onToggleEdit={() => dispatch({ type: "toggle-edit" })}
           onRemove={(id) => openOverlay({ kind: "remove", id })}
-          syncLabel={syncing ? "Syncing…" : "Sync harnesses"}
+          syncLabel={syncing ? "Syncing..." : "Sync harnesses"}
           syncTitle={syncDisabledReason ?? syncHarnessesTooltip()}
           syncDisabled={syncDisabled}
           syncHidden={syncHidden}
@@ -632,7 +632,7 @@ export function HarnessesWorkspace({
         tone="destructive"
         title={removeCopy?.title ?? ""}
         description={removeCopy?.body ?? ""}
-        confirmLabel={saving ? "Removing…" : "Remove"}
+        confirmLabel={saving ? "Removing..." : "Remove"}
         confirmBusy={saving}
         onConfirm={() => void onConfirmRemove()}
         onCancel={() => {

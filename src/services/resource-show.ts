@@ -34,8 +34,8 @@ function resourceShowPanelRows(
   const panelRows: Array<[string, string]> = [
     ["Type", resource.type],
     ["Name", resourceHumanName(resource)],
-    ["Description", resource.description || "—"],
-    ["Path", path || "—"],
+    ["Description", resource.description || ": "],
+    ["Path", path || ": "],
     ["Origin", formatOriginDisplayLabel(
       resource.origin_kind,
       resource.origin_ref,
@@ -49,7 +49,7 @@ function resourceShowPanelRows(
   if (opts?.showAllFields) {
     panelRows.push(
       ["Source", resource.source],
-      ["Content hash", resource.content_hash || "—"],
+      ["Content hash", resource.content_hash || ": "],
       ["ID", resource.id],
       ["Created", resource.created_at],
       ["Metadata", JSON.stringify(resource.metadata)],
@@ -69,7 +69,7 @@ export function truncateResourceContent(
   const totalLines = lines.length;
   return [
     ...lines.slice(0, maxLines),
-    `… (${totalLines} lines in content)`,
+    `... (${totalLines} lines in content)`,
   ].join("\n");
 }
 

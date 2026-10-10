@@ -80,7 +80,7 @@ describe("renderFoldedHintLine", () => {
   it("truncates an overlong single segment", () => {
     const long = "plugin_pin_with_a_very_long_section_name (999)";
     const output = renderFoldedHintLine([long], 20);
-    expect(output.endsWith("…")).toBe(true);
+    expect(output.endsWith("...")).toBe(true);
     expect(output.length).toBeLessThanOrEqual(20);
   });
 });

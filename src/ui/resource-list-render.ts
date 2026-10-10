@@ -392,7 +392,7 @@ function makeResourceListColumns(
           width: 20,
           widthShare: 0.3,
           style: (value: string) =>
-            value ? theme.path(value) : theme.muted("—"),
+            value ? theme.path(value) : theme.muted(": "),
         } as const]
       : []),
     {
@@ -674,7 +674,7 @@ export function formatResourceSelectionLabel(resource: ResourceListRow): string 
 
 function renderHiddenRowsHint(hiddenCount: number): string {
   return theme.muted(
-    `  … and ${hiddenCount} more ${hiddenCount === 1 ? "resource" : "resources"} (use --all to show all)`,
+    `  ... and ${hiddenCount} more ${hiddenCount === 1 ? "resource" : "resources"} (use --all to show all)`,
   );
 }
 

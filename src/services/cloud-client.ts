@@ -150,7 +150,7 @@ function describeApiFailure(response: Response, body: unknown, text: string): st
   }
   const trimmed = text.trim();
   if (trimmed) {
-    const preview = trimmed.length > 240 ? `${trimmed.slice(0, 240)}…` : trimmed;
+    const preview = trimmed.length > 240 ? `${trimmed.slice(0, 240)}...` : trimmed;
     return `${response.status} ${preview}`;
   }
   return `${response.status} empty response (try again)`;

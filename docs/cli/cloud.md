@@ -177,6 +177,6 @@ Use the `--as` flag to install the plugin under a different local name to avoid 
 
 - [Compare plans](/pricing)
 - [Get started free](/signup)
-- [Command reference](/docs/cli/command-reference) — full CLI surface
-- [Scenario guides](/docs/cli/scenarios) — workflow walkthroughs
-- [Audit a project](/docs/cli/use/audit) — `ht audit --ci` for policy and Unicode gates after catalog apply
+- [Command reference](/docs/cli/command-reference): full CLI surface
+- [Scenario guides](/docs/cli/scenarios): workflow walkthroughs
+- [Audit a project](/docs/cli/use/audit): `ht audit --ci` for policy and Unicode gates after catalog apply

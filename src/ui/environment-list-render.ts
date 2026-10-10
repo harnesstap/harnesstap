@@ -199,7 +199,7 @@ export function renderEnvironmentListShow(row: EnvironmentListRow): string {
   return renderPanel({
     title: ["ENVIRONMENT", row.environment.name],
     rows: [
-      ["Description", row.environment.description || "—"],
+      ["Description", row.environment.description || ": "],
       ["Values", `${row.value_count}`],
       ["Secret refs", `${row.secret_ref_count}`],
       ["Plugin references", `${row.reference_count}`],

@@ -4,7 +4,7 @@ HarnessTap bridges agent configuration across harnesses by canonicalizing
 resources (skills, instructions, rules, MCP servers, hooks, agents, commands)
 and re-emitting them through per-harness serializers. Most static, file-based
 configuration round-trips faithfully. Some surfaces are runtime-only, host-specific,
-or require a plugin install tree — HarnessTap imports metadata where possible
+or require a plugin install tree: HarnessTap imports metadata where possible
 but does not claim full fidelity for those cases.
 
 This document summarizes what transfers well, what transfers partially, how
@@ -20,14 +20,14 @@ HarnessTap namespace:
 
 | Package content | Survives in other AP clients? | Notes |
 | ---- | ---- | ---- |
-| **Skills** (`skills/…/SKILL.md`) | Yes | Standard AP surface |
+| **Skills** (`skills/.../SKILL.md`) | Yes | Standard AP surface |
 | **MCP servers** (`mcp.json`) | Yes | Standard AP surface |
 | **Rules, hooks, agents, commands, instructions** | No (ignored) | Live under `com.harnesstap/` and `extensions["com.harnesstap"]` |
 | **Dependencies, overrides, profile, needs** | No (ignored) | HarnessTap extension fields only |
 | **Environment secret values** | Never packaged | `env.toml` holds keys and `${VAR}` references only |
 
 HarnessTap re-imports the full package (standard files plus the namespace). There
-is no second portable format — legacy `*.harnesstap.toml` transport files are
+is no second portable format: legacy `*.harnesstap.toml` transport files are
 rejected.
 
 ## Fully bridgeable
@@ -38,12 +38,12 @@ paths for supported harnesses:
 | Type | Notes |
 | ---- | ----- |
 | **Skills** | `SKILL.md` bodies and frontmatter; emitted to harness-native skill dirs unless `skillEmission` is `instruction-only` (see below). When the scan origin is still available (`origin_ref` / `skillSourceRoot`), `scripts/` and `reference(s)/` files are copied alongside `SKILL.md`. |
-| **Hooks** | Imported from plugin `hooks/hooks.json`, harness `hooks.json` files (Cursor, Codex), and Claude `.claude/settings.json`. Nested PostToolUse matchers are preserved on emit for Claude Code, Cursor, and Codex. **Declarative** command / HTTP / prompt entries only — not in-process Claude **mods** (see below). |
+| **Hooks** | Imported from plugin `hooks/hooks.json`, harness `hooks.json` files (Cursor, Codex), and Claude `.claude/settings.json`. Nested PostToolUse matchers are preserved on emit for Claude Code, Cursor, and Codex. **Declarative** command / HTTP / prompt entries only: not in-process Claude **mods** (see below). |
 | **Instructions** | `AGENTS.md`, `CLAUDE.md`, `.windsurfrules`, `.github/copilot-instructions.md`, and similar always-on context files. Shared `AGENTS.md` is canonicalized once during scan. |
 | **Rules** | `.cursor/rules/*.mdc`, `.claude/rules/`, `.windsurf/rules/`, `.clinerules/`, `.kiro/steering/`, and directory-based rule trees. |
 | **MCP servers** | stdio and HTTP transports from `.mcp.json`, Claude user `~/.claude.json`, `.codex/config.toml`, and harness-specific MCP config files. |
 | **Static commands** | Markdown (`.md`) and TOML (`.toml`) command definitions from `commands/` trees, plugin manifest pointers, and skill `scripts/command-metadata.json` sub-commands. |
-| **Agents** | Subagent manifests under harness `agents/` dirs. Codex uses `.toml` (`developer_instructions`); Claude/Cursor/Copilot use markdown + YAML. Cross-harness apply maps `model`, `reasoning_effort`, and read-only semantics; see [supported-harnesses — agent bridging](supported-harnesses.md#agent--subagent-bridging). |
+| **Agents** | Subagent manifests under harness `agents/` dirs. Codex uses `.toml` (`developer_instructions`); Claude/Cursor/Copilot use markdown + YAML. Cross-harness apply maps `model`, `reasoning_effort`, and read-only semantics; see [supported-harnesses: agent bridging](supported-harnesses.md#agent--subagent-bridging). |
 
 Plugin-source discovery covers `.cursor-plugin/`, `.claude-plugin/`, `.codex-plugin/`,
 and `.github/plugin/` manifests. Manifest `skills`, `commands`, and `hooks` pointers
@@ -72,7 +72,7 @@ Copilot CLI, VS Code).
 | OAuth HTTP MCP (browser login in IDE) | No | Token lives in host credential store, not in materialized `mcp.json` |
 | Per-host OAuth after `apply` | Manual | Log in separately in each target harness |
 
-Full detail, host storage locations, workarounds, and remaining gaps: [Environments — MCP authentication
+Full detail, host storage locations, workarounds, and remaining gaps: [Environments: MCP authentication
 limitations](./cli/concepts/environments.md#mcp-authentication-limitations).
 
 ### Claude Code MCP scopes
@@ -85,22 +85,22 @@ Claude Code stores MCP in two files. HarnessTap follows that split and does **no
 | **User** (all projects, this machine) | top-level `mcpServers` in `~/.claude.json` | Scan + merge-safe apply (global) |
 | **Local** (this project, this user) | `projects[<absPath>].mcpServers` in `~/.claude.json` | Scan / inventory only (dedicated source `~/.claude.json#local:<absPath>`). Never applied to `.mcp.json` or top-level user `mcpServers`. |
 
-`~/.claude.json` also holds OAuth session and per-project trust state. Apply overlays top-level `mcpServers` only and never deletes the file. Local-scope MCP is bound to the exact absolute project path Claude stored (typically the git root where `claude mcp add` ran). HarnessTap does not promote those servers into team `.mcp.json`, merge them into user-scope `mcpServers`, or copy them across harnesses on Sync harnesses. If `CLAUDE_CONFIG_DIR` is set, Claude reads `.claude.json` from that directory instead of `~/.claude.json` — HarnessTap still uses the home path.
+`~/.claude.json` also holds OAuth session and per-project trust state. Apply overlays top-level `mcpServers` only and never deletes the file. Local-scope MCP is bound to the exact absolute project path Claude stored (typically the git root where `claude mcp add` ran). HarnessTap does not promote those servers into team `.mcp.json`, merge them into user-scope `mcpServers`, or copy them across harnesses on Sync harnesses. If `CLAUDE_CONFIG_DIR` is set, Claude reads `.claude.json` from that directory instead of `~/.claude.json`: HarnessTap still uses the home path.
 
 ## Partially bridgeable
 
 ### MCP HTTP headers (Cursor)
 
 Cursor HTTP MCP servers often use a `headers` map (for example `Authorization:
-Bearer …`). HarnessTap round-trips `headers` through `McpServerMetadata` and
+Bearer ...`). HarnessTap round-trips `headers` through `McpServerMetadata` and
 `mcp-config-bridge`: scan/import preserves them, `${VAR}` substitution applies at
 apply time, and the Cursor serializer re-emits them in `.cursor/mcp.json`. OAuth
-access tokens in host keychains are still outside this path — see [MCP authentication
+access tokens in host keychains are still outside this path: see [MCP authentication
 and environments](#mcp-authentication-and-environments).
 
 ### Agent host-specific fields
 
-Claude Code subagents support rich frontmatter (`tools`, `disallowedTools`, `mcpServers`, `hooks`, `isolation`, `skills`, …) that other harnesses do not model. HarnessTap preserves unknown keys in `metadata.extra` for same-harness round-trip but does not translate them when applying a plugin to Codex or Cursor.
+Claude Code subagents support rich frontmatter (`tools`, `disallowedTools`, `mcpServers`, `hooks`, `isolation`, `skills`, ...) that other harnesses do not model. HarnessTap preserves unknown keys in `metadata.extra` for same-harness round-trip but does not translate them when applying a plugin to Codex or Cursor.
 
 ### Skill auxiliary files without scan origin
 
@@ -113,7 +113,7 @@ Agent Plugins package export.
 
 ### SKILL.md in-body harness paths
 
-Some plugins (including Impeccable) hardcode paths like `.claude/skills/foo/scripts/…`
+Some plugins (including Impeccable) hardcode paths like `.claude/skills/foo/scripts/...`
 inside `SKILL.md` bodies. HarnessTap does not rewrite those strings when applying
 to Codex, Cursor, or Windsurf. Prefer `ht add` or per-harness copies when scripts
 must run on every host.
@@ -142,7 +142,7 @@ GitHub Copilot discovers commands under `.github/copilot/commands/` with
 namespaced filenames. HarnessTap imports and emits command content, but
 Copilot's runtime may require specific naming conventions or a
 `copilot plugin install` step for plugin-packaged commands. Plugin apply to
-`github-copilot` uses `skillEmission: instruction-only` — skills merge into
+`github-copilot` uses `skillEmission: instruction-only`: skills merge into
 `.github/copilot-instructions.md` rather than `.agents/skills/`.
 
 ## Harness-specific surfaces and mirror warnings
@@ -161,7 +161,7 @@ Examples of surfaces that stay on their native harness:
 | **Pi extensions** (`pi-extension/`) | Pi | Installed via Pi CLI; not emitted to other harnesses. |
 | **Gemini extension manifest** (`gemini-extension.json`) | Gemini CLI / Antigravity | Extension metadata applies to Gemini-family hosts only. |
 | **Statusline hooks** | Claude Code (and similar) | Terminal chrome integrations; not part of the shared resource model. |
-| **Runtime mode / session config** | Host-specific | Environment variables and `~/.config/…` state are outside plugin resources. |
+| **Runtime mode / session config** | Host-specific | Environment variables and `~/.config/...` state are outside plugin resources. |
 | **Goose subagents / plan mode / MOIM / prompt templates** | Goose | Session workflows and per-turn env injection; not file-based plugin resources. |
 
 Warnings look like:
@@ -178,7 +178,7 @@ but no on-disk skills (common in superpowers-style layouts). This is separate
 from the empty-main fallback chain (main → plugin → `AGENTS.md`).
 
 **Platform detection:** symlinked `AGENTS.md` (for example pointing at
-`CLAUDE.md`) does not inflate the detected harness count — only real instruction
+`CLAUDE.md`) does not inflate the detected harness count: only real instruction
 files count as distinct AGENTS-based harnesses.
 
 ## Intentional per-host tailoring
@@ -229,7 +229,7 @@ Cursor keeps three distinct skill trees:
 | ---- | --------- | ---------- |
 | `~/.cursor/skills/` | User / personal skills | Global scan, persist, and apply |
 | `.agents/skills/` (project, `agents-skills` mode) | Project skills | Project scan / apply when configured |
-| `~/.cursor/skills-cursor/` | Cursor app-managed built-ins | **Inventory only** via `profile status` / apply-preview `host_managed.cursor` — never persisted, staged, applied, discarded, or removed from disk |
+| `~/.cursor/skills-cursor/` | Cursor app-managed built-ins | **Inventory only** via `profile status` / apply-preview `host_managed.cursor`: never persisted, staged, applied, discarded, or removed from disk |
 
 Name collisions between host-managed built-ins and user/profile skills appear as
 panel reason `cursor_host_skill_collision` (yellow) and do not flip
@@ -239,7 +239,7 @@ panel reason `cursor_host_skill_collision` (yellow) and do not flip
 
 DeepSeek Harness is a developer preview; the Cordis patch schema can change.
 
-- Live MCP is applied via `$DSH_HOME/cordis.patch.yml` only — not project MCP files.
+- Live MCP is applied via `$DSH_HOME/cordis.patch.yml` only: not project MCP files.
 - Live hooks are the home-patch `configPath` (`$DSH_HOME/hooks/harnesstap.json`); project `.dsh/hooks/` is scanned and written but not wired into Cordis.
 - User agent presets are persona-only and do not include shipped `standard` tools.
 - Plugin npm install is `web` profile only (`dsh plugin --profile web add`).
@@ -270,7 +270,7 @@ common package format. Host-specific manifests stay native:
 
 | Surface | Claude Code | Cursor |
 | ------- | ----------- | ------ |
-| Install root | `~/.claude/plugins/` (`cache/…`, `installed_plugins.json`) | HarnessTap writes `~/.cursor/plugins/local/<folder>/`. Cursor's own marketplace installs stay in `cache/` and `marketplaces/` |
+| Install root | `~/.claude/plugins/` (`cache/...`, `installed_plugins.json`) | HarnessTap writes `~/.cursor/plugins/local/<folder>/`. Cursor's own marketplace installs stay in `cache/` and `marketplaces/` |
 | Manifest | `.claude-plugin/plugin.json` (also reads `.cursor-plugin/` and root `plugin.json` for version) | `.cursor-plugin/plugin.json` or Agent Plugins root `plugin.json` (also inventories `.claude-plugin/` once the tree is in Cursor's root) |
 | Enablement | `enabledPlugins` in `~/.claude/settings.json` plus `installed_plugins.json` | Local folders load on Reload Window. Marketplace enablement stays in Cursor install records (`installed.json`, `state.vscdb` `cursor.plugins.*`). A marketplace plugin of the same name takes precedence over `plugins/local` |
 | Loads the other host's tree? | No | No (Desktop lists `~/.claude/` / `~/.agents/` on Cursor only while third-party Plugins/Skills/configs are enabled) |
@@ -333,7 +333,7 @@ which files land on disk; it does not sandbox them.
 ### Dual-mode scan for plugin-only repos
 
 Repos with `AGENTS.md` plus `.claude-plugin/plugin.json` but no `.claude/` tree
-are scanned automatically — plugin-source resources merge with harness files:
+are scanned automatically: plugin-source resources merge with harness files:
 
 ```bash
 harnesstap scan . --dry-run
@@ -370,8 +370,8 @@ copies.
 
 ## Related scenarios
 
-- [Scenario 31](./scenarios/details/31-dual-mode-plugin-import.md) — import dual-mode plugin repos
-- [Scenario 32](./scenarios/details/32-instruction-tier-apply.md) — apply to instruction-tier harnesses
-- [Scenario 33](./scenarios/details/33-mirror-plugin-fallback.md) — mirror with plugin-source fallback
-- [Scenario 34](./scenarios/details/34-portability-limits.md) — understand portability limits
-- [Scenario 39](./scenarios/details/39-mcp-auth-and-environments.md) — MCP auth, environments, account switching
+- [Scenario 31](./scenarios/details/31-dual-mode-plugin-import.md): import dual-mode plugin repos
+- [Scenario 32](./scenarios/details/32-instruction-tier-apply.md): apply to instruction-tier harnesses
+- [Scenario 33](./scenarios/details/33-mirror-plugin-fallback.md): mirror with plugin-source fallback
+- [Scenario 34](./scenarios/details/34-portability-limits.md): understand portability limits
+- [Scenario 39](./scenarios/details/39-mcp-auth-and-environments.md): MCP auth, environments, account switching

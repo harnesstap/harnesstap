@@ -96,7 +96,7 @@ const SUSPICIOUS_RANGES: RangeEntry[] = [
     end: 0xe01ef,
     severity: "critical",
     category: "variation-selector",
-    description: "Variation selector (SMP) — no legitimate use in prompt files",
+    description: "Variation selector (SMP): no legitimate use in prompt files",
   },
   {
     start: 0x200b,

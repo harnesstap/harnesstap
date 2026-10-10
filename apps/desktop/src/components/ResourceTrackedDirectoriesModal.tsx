@@ -208,7 +208,7 @@ export function ResourceTrackedDirectoriesModal({
   
           <div className="resource-tracked-dirs-body">
             {loading ? (
-              <p className="muted">Loading tracked directories…</p>
+              <p className="muted">Loading tracked directories...</p>
             ) : directories.length === 0 ? (
               <p className="muted">No tracked directories yet.</p>
             ) : (
@@ -384,7 +384,7 @@ export function ResourceTrackedDirectoriesModal({
               onClick={() => void handleAddDirectory()}
             >
               {adding ? <ButtonSpinner size={14} /> : <Plus size={14} aria-hidden />}
-              {adding ? "Adding…" : "Add directory"}
+              {adding ? "Adding..." : "Add directory"}
             </button>
             <button className="btn primary" type="button" onClick={onClose}>
               <Check size={16} aria-hidden />

@@ -4,7 +4,7 @@ description: Onboard a project from apm.yml.
 
 # Install a project (Use)
 
-`ht install` is the default onboarding command in a repo that already has `apm.yml`. It is the same loop as `ht apply` with no plugin selector — not a second resolver and not Microsoft's `apm` CLI.
+`ht install` is the default onboarding command in a repo that already has `apm.yml`. It is the same loop as `ht apply` with no plugin selector: not a second resolver and not Microsoft's `apm` CLI.
 
 A teammate who has never used HarnessTap can `git clone` and run:
 

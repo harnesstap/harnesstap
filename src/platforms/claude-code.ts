@@ -165,7 +165,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     resources.push(...projectMcp);
 
     // Local-scope MCP for this project lives in ~/.claude.json projects[absPath].
-    // Inventory/scan only — serialize never promotes these into .mcp.json.
+    // Inventory/scan only: serialize never promotes these into .mcp.json.
     const homeClaudeJson = this.readFile(
       join(resolveHomeRoot(), CLAUDE_USER_JSON_RELATIVE),
     );
@@ -179,7 +179,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
           ),
         );
       } catch {
-        // invalid JSON — skip
+        // invalid JSON: skip
       }
     }
 
@@ -219,7 +219,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
           ),
         );
       } catch {
-        // invalid JSON — skip
+        // invalid JSON: skip
       }
     }
 
@@ -315,7 +315,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
           ),
         );
       } catch {
-        // invalid JSON — skip
+        // invalid JSON: skip
       }
     }
 
@@ -351,7 +351,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
           ),
         );
       } catch {
-        // invalid JSON — skip
+        // invalid JSON: skip
       }
     }
 
@@ -404,7 +404,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         );
       }
     } catch {
-      // invalid JSON — skip
+      // invalid JSON: skip
     }
 
     return resources;

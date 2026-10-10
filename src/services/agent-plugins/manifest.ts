@@ -23,7 +23,7 @@ export interface HarnesstapExtension {
   dependencies: ApDependency[];
   overrides: PluginOverrides;
   needs: string[];
-  /** Environment *name*, never its local id — ids are not portable. */
+  /** Environment *name*, never its local id: ids are not portable. */
   defaultEnvironment?: string;
   /** Relative paths into `com.harnesstap/`, omitted for absent types. */
   components: Record<string, string>;

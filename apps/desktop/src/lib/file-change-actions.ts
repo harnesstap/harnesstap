@@ -23,7 +23,7 @@ export function fileChangeRowActions(
     ? fileChangeAbsolutePath(opts.rootPath, change.path)
     : null;
   const hasResource = Boolean(change.resource);
-  // `deleted` (+ would create) means the live file is missing — Open would 404.
+  // `deleted` (+ would create) means the live file is missing: Open would 404.
   const canOpen = Boolean(absolutePath) && change.type !== "deleted";
   let canAdd = false;
   let canDrop = false;
@@ -41,7 +41,7 @@ export function fileChangeRowActions(
       canDrop = hasResource && opts.profileHasResource;
       break;
     case "add":
-      // Missing live file that Apply would write — preview expected vs empty.
+      // Missing live file that Apply would write: preview expected vs empty.
       canAdd = false;
       canDrop = hasResource && opts.profileHasResource;
       canDiff = true;

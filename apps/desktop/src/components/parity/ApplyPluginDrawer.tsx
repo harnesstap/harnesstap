@@ -209,7 +209,7 @@ export function ApplyPluginDrawer({
               onClick={() => void runApply(false)}
             >
               {busy ? <ButtonSpinner size={16} /> : <Play size={16} aria-hidden />}
-              {busy ? "Applying…" : "Apply"}
+              {busy ? "Applying..." : "Apply"}
             </button>
           </>
         }

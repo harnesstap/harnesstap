@@ -234,7 +234,7 @@ async function handleMarketplaceShowCommand(
       message: `Select a plugin from ${name}`,
       choices: plugins.map((plugin) => ({
         name: plugin.description
-          ? `${plugin.name} — ${plugin.description}`
+          ? `${plugin.name}: ${plugin.description}`
           : plugin.name,
         value: plugin.ref,
         description: plugin.version ? `v${plugin.version}` : undefined,

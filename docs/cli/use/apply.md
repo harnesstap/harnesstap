@@ -4,7 +4,7 @@ description: Apply plugins and compile local APM primitives into harness directo
 
 # Apply to a project (Use)
 
-`ht apply` resolves a plugin graph and writes harness files. Catalog packages pull missing dependencies (including `source: "local"` edges) from the same catalog at the pinned version before materializing. With no plugin selector, it is the same loop as [`ht install`](./install.md): read `apm.yml`, resolve manifest dependencies, compile local primitives, write `apm.lock.yaml`, and materialize the **resolved** target harness directories — the same writers used for library plugins, not a second output tree.
+`ht apply` resolves a plugin graph and writes harness files. Catalog packages pull missing dependencies (including `source: "local"` edges) from the same catalog at the pinned version before materializing. With no plugin selector, it is the same loop as [`ht install`](./install.md): read `apm.yml`, resolve manifest dependencies, compile local primitives, write `apm.lock.yaml`, and materialize the **resolved** target harness directories: the same writers used for library plugins, not a second output tree.
 
 Default teammate onboarding in a repo that already has `apm.yml` is `ht install`. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Preview targets with `ht targets`. [`ht compile`](./compile.md) is the same apply-from-manifest loop under a named entry.
 
@@ -24,12 +24,12 @@ Source files live under `.apm/` (`agents`, `skills`, `commands`, `hooks`, plus `
 
 | Source | Resource | Typical harness output |
 | ------ | -------- | ---------------------- |
-| `.apm/skills/<name>/SKILL.md` | skill | `.claude/skills/`, `.agents/skills/`, … |
-| `.apm/agents/*` | agent | `.claude/agents/`, `.cursor/agents/`, … |
-| `.apm/commands/*` and `.apm/prompts/*` | command | `.claude/commands/`, … |
-| `.apm/hooks/*.json` | hook | `.claude/settings.json`, `.cursor/hooks.json`, … |
-| `.apm/instructions/*` with `applyTo` | rule | `.claude/rules/`, `.cursor/rules/`, … |
-| `.apm/instructions/*` without `applyTo` | instruction | `CLAUDE.md`, `AGENTS.md`, … |
+| `.apm/skills/<name>/SKILL.md` | skill | `.claude/skills/`, `.agents/skills/`, ... |
+| `.apm/agents/*` | agent | `.claude/agents/`, `.cursor/agents/`, ... |
+| `.apm/commands/*` and `.apm/prompts/*` | command | `.claude/commands/`, ... |
+| `.apm/hooks/*.json` | hook | `.claude/settings.json`, `.cursor/hooks.json`, ... |
+| `.apm/instructions/*` with `applyTo` | rule | `.claude/rules/`, `.cursor/rules/`, ... |
+| `.apm/instructions/*` without `applyTo` | instruction | `CLAUDE.md`, `AGENTS.md`, ... |
 
 Skill `scripts/` and `references/` ride along when the serializer emits a skill folder.
 
@@ -47,7 +47,7 @@ Harness selection is the same for `ht compile`, `ht targets`, `ht install`, and 
 
 Declared `targets:` wins over harness preference and machine-local folder detection so lockfile and harness ownership stay portable.
 
-`compilation.exclude` skips matching source paths. `compilation.strategy: distributed` is noted and ignored — apply/compile write the existing single-file root context (`AGENTS.md` / `CLAUDE.md`), not per-directory compile output.
+`compilation.exclude` skips matching source paths. `compilation.strategy: distributed` is noted and ignored: apply/compile write the existing single-file root context (`AGENTS.md` / `CLAUDE.md`), not per-directory compile output.
 
 ## Integrity
 

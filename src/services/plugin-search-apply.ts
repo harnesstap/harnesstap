@@ -41,7 +41,7 @@ export async function promptCatalogSearchApplyScope(): Promise<CatalogSearchAppl
     message: "Where should selected plugins be applied?",
     choices: [
       { name: "This project (current directory)", value: "project" },
-      { name: "Global (user home — ~/.claude, ~/.codex, …)", value: "global" },
+      { name: "Global (user home: ~/.claude, ~/.codex, ...)", value: "global" },
     ],
     default: "project",
   });

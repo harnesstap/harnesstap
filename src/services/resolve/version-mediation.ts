@@ -23,7 +23,7 @@ export function normalizeConstraint(raw: string): string {
 /**
  * AND every meaningful constraint into one range. semver treats a
  * space-separated range as a conjunction, so an empty intersection simply has
- * no satisfying version — no explicit range algebra needed.
+ * no satisfying version: no explicit range algebra needed.
  */
 export function intersectConstraints(constraints: string[]): string {
   const meaningful = constraints
