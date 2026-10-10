@@ -84,7 +84,26 @@ export class OpenCodeSerializer extends BaseSerializer {
     if (resource.source.includes(".opencode/commands/")) {
       return `.opencode/commands/${resource.name}.md`;
     }
+    if (resource.source.includes("/opencode/command/")) {
+      return `.config/opencode/command/${resource.name}.md`;
+    }
     return `${defaultCommandsPath}${resource.name}.md`;
+  }
+
+  private agentOutputPath(
+    resource: Resource,
+    defaultAgentsPath: string,
+  ): string {
+    if (resource.source.includes(".opencode/agent/")) {
+      return `.opencode/agent/${resource.name}.md`;
+    }
+    if (resource.source.includes(".opencode/agents/")) {
+      return `.opencode/agents/${resource.name}.md`;
+    }
+    if (resource.source.includes("/opencode/agent/")) {
+      return `.config/opencode/agent/${resource.name}.md`;
+    }
+    return `${defaultAgentsPath}${resource.name}.md`;
   }
 
   async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
@@ -128,14 +147,23 @@ export class OpenCodeSerializer extends BaseSerializer {
       );
     }
 
-    // 2.1 Agents: .opencode/agents/
-    resources.push(
-      ...this.scanAgentFilesAt(
-        join(projectRoot, ".opencode", "agents"),
-        ".opencode/agents/",
+    // 2.1 Agents: .opencode/agents/ and .opencode/agent/
+    const seenAgentNames = new Set<string>();
+    for (const agentsDir of [
+      this.platform.projectPaths.agents ?? ".opencode/agents/",
+      ...(this.platform.projectPaths.pathAlternates?.agents ?? []),
+    ]) {
+      const prefix = agentsDir.endsWith("/") ? agentsDir : `${agentsDir}/`;
+      for (const resource of this.scanAgentFilesAt(
+        join(projectRoot, agentsDir),
+        prefix,
         [".md"],
-      ),
-    );
+      )) {
+        if (seenAgentNames.has(resource.name)) continue;
+        seenAgentNames.add(resource.name);
+        resources.push(resource);
+      }
+    }
 
     // 2.2 Commands: .opencode/commands/ and .opencode/command/
     for (const commandsDir of [".opencode/commands", ".opencode/command"]) {
@@ -211,28 +239,50 @@ export class OpenCodeSerializer extends BaseSerializer {
       );
     }
 
-    resources.push(
-      ...this.scanAgentFilesAt(
-        join(homeRoot, ".config", "opencode", "agents"),
-        "~/.config/opencode/agents/",
+    const seenAgentNames = new Set<string>();
+    for (const agentsDir of [
+      this.platform.globalPaths.agents ?? "~/.config/opencode/agents/",
+      ...(this.platform.globalPaths.pathAlternates?.agents ?? []),
+    ]) {
+      const prefix = agentsDir.endsWith("/") ? agentsDir : `${agentsDir}/`;
+      for (const resource of this.scanAgentFilesAt(
+        this.resolveHomePath(homeRoot, agentsDir),
+        prefix,
         [".md"],
-      ),
-    );
+      )) {
+        if (seenAgentNames.has(resource.name)) continue;
+        seenAgentNames.add(resource.name);
+        resources.push(resource);
+      }
+    }
 
-    // Global commands
-    const globalCommandsDir = join(homeRoot, ".config", "opencode", "commands");
-    for (const file of this.listDir(globalCommandsDir)) {
-      if (!file.endsWith(".md")) continue;
-      const content = this.readFile(join(globalCommandsDir, file));
+    const seenCommandNames = new Set<string>();
+    for (const commandsDir of [
+      this.platform.globalPaths.commands ?? "~/.config/opencode/commands/",
+      ...(this.platform.globalPaths.pathAlternates?.commands ?? []),
+    ]) {
+      const prefix = commandsDir.endsWith("/") ? commandsDir : `${commandsDir}/`;
+      for (const file of this.listDir(this.resolveHomePath(homeRoot, commandsDir))) {
+        if (!file.endsWith(".md")) continue;
+        const content = this.readFile(
+          join(this.resolveHomePath(homeRoot, commandsDir), file),
+        );
+        if (!content) continue;
+        const name = file.replace(/\.md$/, "");
+        if (seenCommandNames.has(name)) continue;
+        seenCommandNames.add(name);
+        resources.push(
+          this.makeResource("command", name, content, `${prefix}${file}`),
+        );
+      }
+    }
+
+    for (const related of this.platform.relatedLocations ?? []) {
+      if (!related.surfaces.includes("instructions")) continue;
+      const content = this.readFile(this.resolveHomePath(homeRoot, related.path));
       if (!content) continue;
-      const name = file.replace(/\.md$/, "");
       resources.push(
-        this.makeResource(
-          "command",
-          name,
-          content,
-          `~/.config/opencode/commands/${file}`,
-        ),
+        this.makeResource("instruction", "agents-instructions", content, related.path),
       );
     }
 
@@ -317,11 +367,11 @@ export class OpenCodeSerializer extends BaseSerializer {
       }
     }
 
-    // .opencode/agents/
+    // .opencode/agents/ or .opencode/agent/
     if (agentsPath) {
       for (const r of agents) {
         files.push({
-          path: `${agentsPath}${r.name}.md`,
+          path: this.agentOutputPath(r, agentsPath),
           content: serializedAgentDocument(
             {
               name: r.name,

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Import OpenCode singular agent/ and command/ trees, Codex prompts as commands, shared ~/.agents/AGENTS.md on home scan, and Claude settings.model as model_config. Project scan defaults to the project namespace.
+time: 2026-10-10T04:40:00Z
+custom:
+  Issue: ""

@@ -345,4 +345,34 @@ describe("OpenCodeSerializer", () => {
       cleanupDir(homeDir);
     }
   });
+
+  it("scans singular .opencode/agent/ and round-trips that path", async () => {
+    const projectDir = createTempDir("opencode-agent-singular");
+    try {
+      writeTextFile(
+        join(projectDir, ".opencode", "agent", "reviewer.md"),
+        "# Reviewer\n",
+      );
+      const serializer = new OpenCodeSerializer();
+      const resources = await serializer.scan(projectDir);
+      const agent = resources.find((resource) => resource.type === "agent");
+      expect(agent?.name).toBe("reviewer");
+      expect(agent?.source).toBe(".opencode/agent/reviewer.md");
+
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "agent",
+            name: "reviewer",
+            content: "# Reviewer\n",
+            source: ".opencode/agent/reviewer.md",
+          }),
+        ],
+        ".",
+      );
+      expect(files.map((file) => file.path)).toContain(".opencode/agent/reviewer.md");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
 });

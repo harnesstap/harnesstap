@@ -306,7 +306,7 @@ async function handleScanCommand(
   const conflictPolicy = resolveScanConflictPolicy(opts);
   const merged = await persistMergedProjectScan(projectRoot, scanHarnessFilter, {
     conflictPolicy,
-    namespace: opts.namespace ?? "",
+    namespace: opts.namespace ?? "project",
     originRef: projectRoot,
   });
   spin.stop();

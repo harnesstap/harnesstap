@@ -491,4 +491,36 @@ describe("ClaudeCodeSerializer", () => {
       cleanupDir(projectDir);
     }
   });
+
+  it("scans settings.model as model_config and writes it back", async () => {
+    const projectDir = createTempDir("claude-model-config");
+    try {
+      writeTextFile(
+        join(projectDir, ".claude", "settings.json"),
+        `${JSON.stringify({ model: "sonnet" }, null, 2)}\n`,
+      );
+      const serializer = new ClaudeCodeSerializer();
+      const scanned = await serializer.scan(projectDir);
+      const model = scanned.find((resource) => resource.type === "model_config");
+      expect(model?.name).toBe("default");
+      expect(model?.metadata).toEqual({ model: "sonnet" });
+
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "model_config",
+            name: "default",
+            metadata: { model: "opus" },
+          }),
+        ],
+        ".",
+      );
+      const settings = JSON.parse(
+        files.find((file) => file.path === ".claude/settings.json")?.content ?? "{}",
+      );
+      expect(settings.model).toBe("opus");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
 });

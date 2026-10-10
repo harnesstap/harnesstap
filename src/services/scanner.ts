@@ -277,6 +277,8 @@ const SHARED_PROJECT_INSTRUCTION_NAMES = new Map<string, string>([
   ["AGENTS.md", "agents-instructions"],
 ]);
 
+const SHARED_HOME_AGENTS_MD = "~/.agents/AGENTS.md";
+
 const SHARED_PROJECT_SKILL_ROOT = ".agents/skills/";
 
 export const SHARED_SCAN_PLATFORM_ID = "shared";
@@ -331,6 +333,32 @@ async function readSharedProjectResources(
   return [
     ...readSharedProjectInstructions(projectRoot),
     ...await readSharedProjectSkills(projectRoot),
+  ];
+}
+
+function readSharedHomeInstructions(homeRoot: string): ResourceCreateInput[] {
+  const fullPath = join(homeRoot, ".agents", "AGENTS.md");
+  if (!existsSync(fullPath)) {
+    return [];
+  }
+  let content: string;
+  try {
+    content = readFileSync(fullPath, "utf-8");
+  } catch {
+    return [];
+  }
+  if (!content.trim()) {
+    return [];
+  }
+  return [
+    {
+      type: "instruction",
+      name: "agents-instructions",
+      description: "",
+      content,
+      metadata: {},
+      source: SHARED_HOME_AGENTS_MD,
+    },
   ];
 }
 
@@ -430,6 +458,16 @@ export async function scanHomeDefaults(
     : detected;
 
   const results: HomeScanResult[] = [];
+  if (!platformFilter) {
+    const sharedHome = readSharedHomeInstructions(homeRoot);
+    if (sharedHome.length > 0) {
+      results.push({
+        platformId: SHARED_SCAN_PLATFORM_ID,
+        discoveredPaths: [SHARED_HOME_AGENTS_MD],
+        resources: sharedHome,
+      });
+    }
+  }
   for (const result of platforms) {
     const serializer = getPlatformSerializer(result.platformId);
     try {
@@ -673,13 +711,14 @@ export function persistScanResults(
 export function reconcileLocalSnapshotScan(
   originRef: string,
   results: readonly ScanResult[],
+  namespace = "",
 ): Resource[] {
   const freshKeys = new Set<string>();
   for (const result of results) {
     for (const resource of result.resources) {
       const normalized = normalizeResourceInput({
         ...resource,
-        namespace: resource.namespace ?? "",
+        namespace: resource.namespace ?? namespace,
         origin_kind: resource.origin_kind ?? "local_snapshot",
         origin_ref: resource.origin_ref ?? originRef,
       });
@@ -740,11 +779,13 @@ export async function scanAndPersist(
 ): Promise<Resource[]> {
   const originRef = options?.originRef ?? projectRoot;
   const results = await scanProject(projectRoot, platformFilter);
+  const namespace = options?.namespace ?? "project";
   const persisted = persistScanResults(results, {
     ...options,
     originRef,
+    namespace,
   });
-  reconcileLocalSnapshotScan(originRef, results);
+  reconcileLocalSnapshotScan(originRef, results, namespace);
   return persisted.resolved;
 }
 
@@ -826,10 +867,14 @@ export async function persistMergedProjectScan(
   );
   const harness = dropHarnessSkillsDuplicatingPluginSource(rawHarness, plugin);
 
+  const originRef = options?.originRef ?? projectRoot;
+  const namespace = options?.namespace ?? "project";
   const harnessPersisted = persistScanResults(harness, {
     ...options,
-    originRef: options?.originRef ?? projectRoot,
+    originRef,
+    namespace,
   });
+  reconcileLocalSnapshotScan(originRef, harness, namespace);
 
   const pluginPersisted =
     plugin.length > 0

@@ -546,6 +546,7 @@ export interface PlatformPaths {
   /** Alternate on-disk paths checked during platform detection. */
   pathAlternates?: Partial<{
     commands: string[];
+    agents: string[];
     rules: string[];
     instructions: string[];
     skills: string[];

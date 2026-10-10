@@ -83,7 +83,7 @@ const PLATFORMS: PlatformDefinition[] = [
 
   def("codex", "Codex", [
     "instructions", "skills", "rules", "mcp", "permissions",
-    "hooks", "agents", "env_vars", "model_config",
+    "hooks", "agents", "commands", "env_vars", "model_config",
   ], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",
@@ -91,12 +91,14 @@ const PLATFORMS: PlatformDefinition[] = [
     permissions: ".codex/config.toml",
     hooks: ".codex/hooks.json",
     agents: ".codex/agents/",
+    commands: ".codex/prompts/",
     settings: ".codex/config.toml",
   }, {
     instructions: "~/.codex/AGENTS.md",
     skills: "~/.agents/skills/",
     settings: "~/.codex/config.toml",
     agents: "~/.codex/agents/",
+    commands: "~/.codex/prompts/",
   }),
 
   def("cursor", "Cursor", [
@@ -144,6 +146,7 @@ const PLATFORMS: PlatformDefinition[] = [
     commands: ".opencode/commands/",
     pathAlternates: {
       commands: [".opencode/command/"],
+      agents: [".opencode/agent/"],
       skills: [".agents/skills/"],
     },
     mcp: "opencode.json",
@@ -152,10 +155,15 @@ const PLATFORMS: PlatformDefinition[] = [
     agents: "~/.config/opencode/agents/",
     commands: "~/.config/opencode/commands/",
     settings: "~/.config/opencode/opencode.json",
+    pathAlternates: {
+      commands: ["~/.config/opencode/command/"],
+      agents: ["~/.config/opencode/agent/"],
+    },
   }, {
     relatedLocations: [
       { path: "~/.agents/skills/", surfaces: ["skills"] },
       { path: "~/.claude/skills/", surfaces: ["skills"] },
+      { path: "~/.agents/AGENTS.md", surfaces: ["instructions"] },
     ],
   }),
 

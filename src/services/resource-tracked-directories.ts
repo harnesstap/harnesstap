@@ -271,6 +271,7 @@ export async function addResourceTrackedDirectory(inputPath: string): Promise<{
   const imported = await scanAndPersist(resolved, undefined, {
     conflictPolicy: "skip",
     originRef: resolved,
+    namespace: "project",
   });
 
   const resourceCounts = countResourcesByOriginRef();
@@ -350,6 +351,7 @@ export async function rescanResourceTrackedDirectories(): Promise<ResourceTracke
       const resolvedResources = await scanAndPersist(resolved, undefined, {
         conflictPolicy: "skip",
         originRef: resolved,
+        namespace: "project",
       });
       const imported = resolvedResources.filter(
         (resource) => !beforeIds.has(resource.id),
