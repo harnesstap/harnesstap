@@ -8,7 +8,7 @@
 
 Scan existing setup → store canonical resources → compose **plugins** → share offline or via catalog → materialize into any supported harness.
 
-Use the **CLI** (`ht`) or **Desktop** — both talk to the same local library at `~/.harnesstap`.
+Use the **CLI** (`ht`) or **Desktop**. Both talk to the same local library at `~/.harnesstap`.
 
 <br />
 
@@ -92,7 +92,7 @@ bun install -g harnesstap
 ht init
 ```
 
-Or without a global install: `bunx harnesstap@latest init`.
+Or without a global install: `bun x harnesstap@latest init`.
 
 </details>
 
@@ -131,6 +131,8 @@ Default onboarding in a repo that already has `apm.yml`. Same loop as `ht apply`
 
 ### Project: scan and apply
 
+Available from 1.3. On 1.2, use `ht harness set`.
+
 ```bash
 ht init --harnesses codex,claude-code,cursor
 ht scan .
@@ -142,6 +144,8 @@ ht status .
 `ht apply engineering-foundation` resolves the public catalog when the plugin is not already local. When the repository has a git `origin`, apply stores a snapshot first; restore with `ht revert`.
 
 ### Machine: profile switch
+
+Available from 1.3. On 1.2, use `ht harness set`.
 
 ```bash
 ht init --harnesses claude-code,cursor,codex
@@ -184,11 +188,13 @@ Details, sidecar notes, and e2e: [apps/desktop/README.md](apps/desktop/README.md
 
 ## Demo
 
-Initialise HarnessTap, scan an existing repository, browse catalog plugins, apply one, and confirm the final state — all in about a minute.
+Initialise HarnessTap, scan an existing repository, browse catalog plugins, apply one, and confirm the final state, all in about a minute.
 
 [![Existing repo adoption walkthrough](docs/scenarios/vhs/output/01-existing-repo-adoption.gif)](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 [Full walkthrough →](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
+
+Available from 1.3. On 1.2, use `ht harness set`.
 
 ```bash
 ht init --harnesses codex,claude-code,cursor

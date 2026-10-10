@@ -15,7 +15,9 @@
     "ht": "./dist/bin.js"
   },
   "scripts": {
-    "build": "rm -rf dist && tsup",
+    "build": "bun scripts/generate-scenarios.ts && rm -rf dist && tsup",
+    "generate:scenarios": "bun scripts/generate-scenarios.ts",
+    "check:packaged-help": "bun scripts/check-packaged-help.ts",
     "build:sidecar": "bash scripts/build-sidecar.sh",
     "desktop:cleanup": "bash apps/desktop/scripts/cleanup-stale-dev.sh",
     "desktop:prepare-sidecar": "bash apps/desktop/scripts/prepare-sidecar.sh",

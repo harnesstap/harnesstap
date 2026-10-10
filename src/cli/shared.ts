@@ -68,10 +68,11 @@ export function failCaught(error: unknown, opts?: { exitCode?: number }): void {
   });
 }
 
+/** DS-6: packaged help and scenario playbooks always show `ht`. */
 export function formatScenarioCommand(path: string): string {
   const trimmed = path.trim();
   const stripped = trimmed.replace(/^(?:harnesstap|ht)\s+/, "");
-  return formatCommand(stripped);
+  return stripped.length > 0 ? `ht ${stripped}` : "ht";
 }
 
 export function collectRepeatedOption(value: string, previous: string[]): string[] {

@@ -32,7 +32,7 @@ ht init
 Or run without a global install:
 
 ```bash
-bunx harnesstap@latest init
+bun x harnesstap@latest init
 ```
 
 `ht` is shorthand for `harnesstap` throughout these docs.
