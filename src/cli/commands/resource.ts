@@ -33,6 +33,7 @@ import {
   resolveResourceListType,
   shouldUseInteractiveResourceList,
 } from "../handlers/resource-list.js";
+import { COMMAND_HELP_REGISTRY } from "../../services/cli-help-registry.js";
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
 import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_HELP, quoteName } from "../messages.js";
@@ -409,6 +410,13 @@ export function registerResourceCommands(root: Command): void {
         ui.danger(message.replace(/^Error:\s*/, "Error: "));
       }
     });
+
+  COMMAND_HELP_REGISTRY["resource.scope"] = {
+    description: "Add harnesses to a resource's scope",
+    examples: [
+      "resource scope filesystem --add cursor,codex",
+    ],
+  };
 
   registerResourceParityCommands(resourceCmd);
 }
