@@ -62,6 +62,12 @@ describe("mergeClaudeUserJsonContent", () => {
     expect(isClaudeUserJsonPath(".claude.json")).toBe(true);
     expect(isMergeableHostConfigPath(".claude.json")).toBe(true);
     expect(isMergeableHostConfigPath(".claude/settings.json")).toBe(true);
+    expect(isMergeableHostConfigPath(".codex/config.toml")).toBe(true);
+    expect(isMergeableHostConfigPath(".config/opencode/opencode.json")).toBe(true);
+    expect(isMergeableHostConfigPath(".cursor/mcp.json")).toBe(true);
+    expect(isMergeableHostConfigPath(".cursor/hooks.json")).toBe(true);
+    expect(isMergeableHostConfigPath(".claude/CLAUDE.md")).toBe(true);
+    expect(isMergeableHostConfigPath(".codex/AGENTS.md")).toBe(true);
   });
 });
 

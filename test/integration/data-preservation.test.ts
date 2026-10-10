@@ -205,6 +205,18 @@ describe("G4 data preservation", () => {
       createProfileCommand({ name: "work" });
       await switchProfile("work", { apply: applyOpts });
       assertSentinels(sentinels);
+      expect(readFileSync(join(context.homeDir, ".codex/config.toml"), "utf-8")).toContain(
+        'model = "gpt-5"',
+      );
+      expect(
+        readFileSync(join(context.homeDir, ".config/opencode/opencode.json"), "utf-8"),
+      ).toContain("$schema");
+      expect(readFileSync(join(context.homeDir, ".cursor/mcp.json"), "utf-8")).toContain(
+        "cursor-mcp",
+      );
+      expect(readFileSync(join(context.homeDir, ".claude/CLAUDE.md"), "utf-8")).toContain(
+        "CLAUDE-MD-MARKER",
+      );
       await switchProfile("global default", { apply: applyOpts });
       assertSentinels(sentinels);
 

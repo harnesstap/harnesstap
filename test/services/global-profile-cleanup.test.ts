@@ -127,16 +127,34 @@ describe("global-profile-cleanup service", () => {
     ).toEqual([]);
   });
 
-  it("expands removed MCP configs onto other harness dedicated MCP paths", () => {
+  it("does not plan whole-file removal of mergeable shared configs or instructions", () => {
+    expect(
+      planStaleGlobalProfileFiles(
+        "/tmp",
+        [],
+        [
+          ".codex/config.toml",
+          ".config/opencode/opencode.json",
+          ".cursor/mcp.json",
+          ".claude/CLAUDE.md",
+          ".codex/AGENTS.md",
+          ".cursor/hooks.json",
+        ],
+        ["cursor", "codex", "opencode", "claude-code"],
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not infer sibling MCP file deletion without an ownership record", () => {
     expect(
       expandStaleMcpConfigMirrors(
         [".cursor/mcp.json"],
         new Set(),
         ["cursor", "copilot-cli"],
+        "/tmp",
       ),
-    ).toEqual([".cursor/mcp.json", ".copilot/mcp-config.json"]);
+    ).toEqual([".cursor/mcp.json"]);
 
-    // Do not wipe sibling MCP configs when the incoming profile still manages MCP.
     expect(
       expandStaleMcpConfigMirrors(
         [".claude/CLAUDE.md"],
@@ -152,7 +170,7 @@ describe("global-profile-cleanup service", () => {
         [".cursor/mcp.json", ".claude/CLAUDE.md"],
         ["cursor", "copilot-cli"],
       ),
-    ).toContain(".copilot/mcp-config.json");
+    ).not.toContain(".copilot/mcp-config.json");
   });
 
   it("leaves not-staged skill directories on disk when re-applying the same profile", async () => {

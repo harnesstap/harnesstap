@@ -41,7 +41,9 @@ import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
 import {
   collectOtherProfilesSnapshotTrackedFiles,
   planStaleGlobalProfileFiles,
+  planStaleMergeableHostConfigFiles,
 } from "./global-profile-cleanup.js";
+import { rewriteStaleMergeableHostConfigs } from "./host-config-strip.js";
 import { substituteResourcesForApply } from "./environment-var-substitution.js";
 import { preparePluginPinsForApply, collectPluginPinsForPrepare } from "./plugin-pin-apply.js";
 import {
@@ -225,12 +227,31 @@ function removeStaleGlobalProfileFiles(
     previousTrackedFiles,
     harnesses,
   );
-  return removeGlobalMaterializedFiles(homeRoot, staleFiles, {
+  const mergeFiles = planStaleMergeableHostConfigFiles(
+    homeRoot,
+    desiredFiles,
+    previousTrackedFiles,
+    harnesses,
+  );
+  const removed = removeGlobalMaterializedFiles(homeRoot, staleFiles, {
     dryRun: options.dryRun,
     forceRemove: options.forceRemove,
     applyId: options.applyId,
     snapshotId: options.snapshotId,
   });
+  const rewritten = rewriteStaleMergeableHostConfigs(homeRoot, mergeFiles, {
+    applyId: removed.applyId,
+    snapshotId: options.snapshotId,
+    dryRun: options.dryRun,
+  });
+  return {
+    ...removed,
+    removed: [...removed.removed, ...rewritten.removed],
+    warnings: [
+      ...removed.warnings,
+      ...rewritten.rewritten.map((path) => `Updated ${path} (removed HarnessTap-managed keys).`),
+    ],
+  };
 }
 
 function warnSkippedRemovals(result: SafeFileRemovalResult): void {

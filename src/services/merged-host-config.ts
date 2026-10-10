@@ -1,7 +1,69 @@
+import { getAllPlatforms } from "../platforms/registry.js";
+import type { PlatformPaths } from "../types.js";
+
 export const CLAUDE_SETTINGS_RELATIVE = ".claude/settings.json";
 export const CLAUDE_USER_JSON_RELATIVE = ".claude.json";
 export const MUSE_SETTINGS_RELATIVE = ".config/muse/settings.json";
 export const MINIMAX_MCP_RELATIVE = ".minimax/mcp.json";
+
+const INSTRUCTION_BASENAMES = new Set([
+  "claude.md",
+  "agents.md",
+  "agent.md",
+  "gemini.md",
+  "amazonq.md",
+  "conventions.md",
+  "jules.md",
+  ".windsurfrules",
+  ".cursorrules",
+  ".goosehints",
+  ".rules",
+  "copilot-instructions.md",
+]);
+
+const MERGEABLE_FILE_RE =
+  /(^|\/)((\.?mcp(-config)?\.json)|mcp_config\.json|hooks\.json|config\.toml|opencode\.json|settings\.json)$/i;
+
+function addPathToSet(paths: Set<string>, raw: string | undefined): void {
+  if (!raw) {
+    return;
+  }
+  const normalized = normalizeHostConfigPath(raw);
+  if (!normalized || normalized.endsWith("/")) {
+    return;
+  }
+  paths.add(normalized);
+}
+
+function collectPathsFromGroup(paths: Set<string>, group: PlatformPaths): void {
+  addPathToSet(paths, group.settings);
+  addPathToSet(paths, group.mcp);
+  addPathToSet(paths, group.hooks);
+  addPathToSet(paths, group.permissions);
+  addPathToSet(paths, group.instructions);
+  addPathToSet(paths, group.legacy_instructions);
+  for (const alt of group.pathAlternates?.settings ?? []) {
+    addPathToSet(paths, alt);
+  }
+  for (const alt of group.pathAlternates?.instructions ?? []) {
+    addPathToSet(paths, alt);
+  }
+}
+
+let registryMergeablePaths: Set<string> | undefined;
+
+function registryHostConfigPaths(): Set<string> {
+  if (registryMergeablePaths) {
+    return registryMergeablePaths;
+  }
+  const paths = new Set<string>();
+  for (const platform of getAllPlatforms()) {
+    collectPathsFromGroup(paths, platform.projectPaths);
+    collectPathsFromGroup(paths, platform.globalPaths);
+  }
+  registryMergeablePaths = paths;
+  return paths;
+}
 
 export function normalizeHostConfigPath(path: string): string {
   return path.replace(/\\/g, "/").replace(/^\.\//, "").replace(/^~\//, "");
@@ -40,18 +102,37 @@ export function isMinimaxMcpPath(path: string): boolean {
 }
 
 /**
- * Shared host JSON that apply merges instead of replacing or deleting.
- * Claude `.claude/settings.json` and `~/.claude.json`, Muse
- * `~/.config/muse/settings.json`, and MiniMax `~/.minimax/mcp.json` hold
- * profile-managed keys alongside unrelated user settings / sessions.
+ * Shared host configs and instruction files that apply merges instead of
+ * replacing or deleting. Driven from platform registry settings/mcp/hooks/
+ * permissions/instructions paths, plus well-known config and markdown names.
  */
 export function isMergeableHostConfigPath(path: string): boolean {
-  return (
+  const normalized = normalizeHostConfigPath(path);
+  if (
     isClaudeSettingsPath(path)
     || isClaudeUserJsonPath(path)
     || isMuseSettingsPath(path)
     || isMinimaxMcpPath(path)
-  );
+  ) {
+    return true;
+  }
+  if (MERGEABLE_FILE_RE.test(normalized)) {
+    return true;
+  }
+  const basename = normalized.split("/").pop()?.toLowerCase() ?? "";
+  if (INSTRUCTION_BASENAMES.has(basename)) {
+    return true;
+  }
+  const registry = registryHostConfigPaths();
+  if (registry.has(normalized)) {
+    return true;
+  }
+  for (const known of registry) {
+    if (normalized.endsWith(`/${known}`)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function parseJsonObject(raw: string): Record<string, unknown> | null {

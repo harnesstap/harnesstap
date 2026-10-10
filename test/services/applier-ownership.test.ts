@@ -50,7 +50,7 @@ describe("applier ownership", () => {
         },
       ]);
       expect(mcpFile?.ownership?.[0]?.ownership_key).toBe("mcp_server:search");
-      expect(mcpFile?.ownership?.[0]?.action).toBe("delete-file");
+      expect(mcpFile?.ownership?.[0]?.action).toBe("edit-file");
     } finally {
       await context.cleanup();
     }

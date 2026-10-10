@@ -40,6 +40,7 @@ import { parsePluginRef } from "../plugins/claude-installed.js";
 import { findCursorLocalPluginDirectory } from "../plugins/cursor-local-plugin.js";
 import { resolveCanonicalHostPluginRoot } from "./package-cache/index.js";
 import { resolveInstallRoot } from "./resource-sync.js";
+import { tryEditAggregateContent } from "./host-config-strip.js";
 
 interface Candidate {
   scope: ResourceDeleteLocation["scope"];
@@ -498,101 +499,6 @@ function readTextIfExists(path: string): string | null {
     return readFileSync(path, "utf-8");
   } catch {
     return null;
-  }
-}
-
-function tryEditAggregateContent(
-  content: string,
-  resource: Resource,
-): { ok: true; content: string; emptied: boolean } | { ok: false; reason: string } {
-  try {
-    const parsed = JSON.parse(content) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return { ok: false, reason: "Shared file section cannot be identified" };
-    }
-    const obj = parsed as Record<string, unknown>;
-
-    // Cursor/Claude-style MCP: { mcpServers: { name: ... } }
-    if (
-      obj.mcpServers &&
-      typeof obj.mcpServers === "object" &&
-      !Array.isArray(obj.mcpServers)
-    ) {
-      const servers = { ...(obj.mcpServers as Record<string, unknown>) };
-      if (resource.name in servers) {
-        delete servers[resource.name];
-        const next: Record<string, unknown> = { ...obj };
-        if (Object.keys(servers).length === 0) {
-          delete next.mcpServers;
-        } else {
-          next.mcpServers = servers;
-        }
-        return {
-          ok: true,
-          content: `${JSON.stringify(next, null, 2)}\n`,
-          emptied: Object.keys(next).length === 0,
-        };
-      }
-    }
-
-    // Claude installed_plugins.json: { version, plugins: { "name@marketplace": [...] } }
-    if (isInstalledPluginsRegistry(obj)) {
-      const plugins = { ...(obj.plugins as Record<string, unknown>) };
-      const keys = matchingRecordKeys(plugins, resource);
-      if (keys.length === 0) {
-        return { ok: false, reason: "Shared file section cannot be identified" };
-      }
-      for (const key of keys) {
-        delete plugins[key];
-      }
-      const next: Record<string, unknown> = { ...obj, plugins };
-      return {
-        ok: true,
-        content: `${JSON.stringify(next, null, 2)}\n`,
-        emptied: Object.keys(next).length === 0,
-      };
-    }
-
-    // Claude settings.json: { enabledPlugins: { "name@marketplace": true } }
-    if (
-      obj.enabledPlugins &&
-      typeof obj.enabledPlugins === "object" &&
-      !Array.isArray(obj.enabledPlugins)
-    ) {
-      const enabled = { ...(obj.enabledPlugins as Record<string, unknown>) };
-      const keys = matchingRecordKeys(enabled, resource);
-      if (keys.length > 0) {
-        for (const key of keys) {
-          delete enabled[key];
-        }
-        const next: Record<string, unknown> = { ...obj };
-        if (Object.keys(enabled).length === 0) {
-          delete next.enabledPlugins;
-        } else {
-          next.enabledPlugins = enabled;
-        }
-        return {
-          ok: true,
-          content: `${JSON.stringify(next, null, 2)}\n`,
-          emptied: Object.keys(next).length === 0,
-        };
-      }
-    }
-
-    // Top-level keyed aggregate (some MCP layouts): { name: ... }
-    if (resource.name in obj) {
-      const next = { ...obj };
-      delete next[resource.name];
-      return {
-        ok: true,
-        content: `${JSON.stringify(next, null, 2)}\n`,
-        emptied: Object.keys(next).length === 0,
-      };
-    }
-
-    return { ok: false, reason: "Shared file section cannot be identified" };
-  } catch {
-    return { ok: false, reason: "Shared file section cannot be identified" };
   }
 }
 
