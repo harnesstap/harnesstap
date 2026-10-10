@@ -1,11 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { ulid } from "ulid";
 import { isEmptyBuiltinProfile } from "../constants/profile.js";
 import { getHarnesstapDir } from "../db/connection.js";
+import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
 import { getActiveProfileName } from "./active-profile.js";
 import type { ApplyProfilePluginOptions } from "./profile-apply.js";
 import { withProfileApplyLock } from "./profile-apply-lock.js";
+import { flattenLiveRestoreFiles } from "./snapshot-capture.js";
 import {
   buildProfileContents,
   type ProfileContents,
@@ -202,6 +204,99 @@ export interface StashClearedUntrackedResult {
 export interface StashProfileResult {
   entry: ProfileStashEntry;
   cleared: StashClearedUntrackedResult;
+}
+
+function readHomeFile(homeRoot: string, relativePath: string): string | null {
+  const fullPath = resolve(homeRoot, relativePath);
+  if (!existsSync(fullPath)) {
+    return null;
+  }
+  try {
+    return readFileSync(fullPath, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+function lastWrittenContent(profileName: string, relativePath: string): string | undefined {
+  const snapshot = getLatestGlobalApplySnapshotForProfile(profileName);
+  if (!snapshot?.state) {
+    return undefined;
+  }
+  return flattenLiveRestoreFiles(snapshot.state).find((file) => file.path === relativePath)?.content;
+}
+
+/**
+ * Stash modified managed files (the same set `--changes save` walks) and restore
+ * last-apply bytes when known. Never deletes the path.
+ */
+export async function stashManagedDriftChanges(input: {
+  changes: DriftFileChange[];
+  dryRun?: boolean;
+}): Promise<StashProfileResult> {
+  return withProfileApplyLock(async () => {
+    const profileName = resolveStashableActiveProfile();
+    const homeRoot = resolveHomeRoot();
+    const files: StashedFileSnapshot[] = [];
+    for (const change of input.changes) {
+      const current = readHomeFile(homeRoot, change.path);
+      if (current === null) {
+        continue;
+      }
+      files.push({ path: change.path, content: current });
+    }
+    if (files.length === 0) {
+      throw new ProfileStashError("No unsaved changes to stash.");
+    }
+
+    const contents = buildProfileContents(profileName) ?? emptyProfileContents();
+    const fileChanges = stashedFilesToDriftChanges(files);
+
+    if (!input.dryRun) {
+      for (const file of files) {
+        const previous = lastWrittenContent(profileName, file.path);
+        if (previous === undefined) {
+          continue;
+        }
+        const fullPath = resolve(homeRoot, file.path);
+        mkdirSync(dirname(fullPath), { recursive: true });
+        writeFileSync(fullPath, previous, "utf-8");
+      }
+    }
+
+    if (input.dryRun) {
+      return {
+        entry: {
+          id: "dry-run",
+          profile_name: profileName,
+          created_at: new Date().toISOString(),
+          contents,
+          file_changes: fileChanges,
+          stashed_files: files,
+        },
+        cleared: {
+          dry_run: true,
+          profile_name: profileName,
+          removed_files: [],
+        },
+      };
+    }
+
+    const entry = pushProfileStashEntry({
+      profile_name: profileName,
+      contents,
+      file_changes: fileChanges,
+      stashed_files: files,
+    });
+    return {
+      entry,
+      cleared: {
+        dry_run: false,
+        profile_name: profileName,
+        removed_files: [],
+      },
+    };
+  });
 }
 
 export async function stashProfileCommand(

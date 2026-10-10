@@ -14,7 +14,7 @@ import {
   type GlobalProfileStatus,
 } from "./global-profile-drift.js";
 import { commitManagedPathFromLive } from "./profile-commit-resource.js";
-import { stashProfileCommand } from "./profile-stash.js";
+import { stashManagedDriftChanges } from "./profile-stash.js";
 import {
   promptForChoice,
   promptForConfirmation,
@@ -117,10 +117,8 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
       return "continue";
     }
     case "stash": {
-      await stashProfileCommand({
-        harness: input.harness,
-        conflictPolicy: "replace",
-        pull: false,
+      await stashManagedDriftChanges({
+        changes: status.changes,
       });
       ui.success(stashedChangesLine(count, "ht profile stash pop"));
       return "continue";
