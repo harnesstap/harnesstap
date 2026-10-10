@@ -5,6 +5,7 @@ import { listCursorPluginPinCreateInputs } from "../plugins/cursor-installed.js"
 import { isHostPluginPinResource, emitHostPluginTrees } from "../services/host-plugin-serialize.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
+import { overlayJsonPreservingFormat } from "../services/format-preserving-config.js";
 import {
   emitCursorMcpServerEntry,
   parseMcpServersDocument,
@@ -338,18 +339,19 @@ export class CursorSerializer extends BaseSerializer {
 
     const hooks = resources.filter((r) => r.type === "hook");
     if (hooksPath && hooks.length > 0) {
+      const generated = buildHooksJson(
+        hooks.map((r) => ({
+          ...(r.metadata as HookMetadata),
+          name: r.name,
+        })),
+        { version: 1, shape: "flat" },
+      );
       files.push({
         path: hooksPath,
-        content: JSON.stringify(
-          buildHooksJson(
-            hooks.map((r) => ({
-              ...(r.metadata as HookMetadata),
-              name: r.name,
-            })),
-            { version: 1, shape: "flat" },
-          ),
-          null,
-          2,
+        content: overlayJsonPreservingFormat(
+          this.readFile(join(projectRoot, hooksPath)),
+          generated as unknown as Record<string, unknown>,
+          { mergeObjectKeys: ["hooks"] },
         ),
       });
     }
@@ -364,7 +366,11 @@ export class CursorSerializer extends BaseSerializer {
       }
       files.push({
         path: mcpPath,
-        content: JSON.stringify({ mcpServers }, null, 2),
+        content: overlayJsonPreservingFormat(
+          this.readFile(join(projectRoot, mcpPath)),
+          { mcpServers },
+          { mergeObjectKeys: ["mcpServers"] },
+        ),
       });
     }
 

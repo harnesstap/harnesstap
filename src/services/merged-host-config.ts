@@ -1,5 +1,9 @@
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths } from "../types.js";
+import {
+  overlayJsonPreservingFormat,
+  parseJsonObject,
+} from "./format-preserving-config.js";
 import { stripPluginRootCommandsFromHooksObject } from "./hook-serialization.js";
 
 export const CLAUDE_SETTINGS_RELATIVE = ".claude/settings.json";
@@ -136,33 +140,6 @@ export function isMergeableHostConfigPath(path: string): boolean {
   return false;
 }
 
-function parseJsonObject(raw: string): Record<string, unknown> | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      return null;
-    }
-    return parsed as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function mergeEnvRecord(
-  existing: unknown,
-  overlay: unknown,
-): Record<string, unknown> {
-  const base =
-    typeof existing === "object" && existing !== null && !Array.isArray(existing)
-      ? (existing as Record<string, unknown>)
-      : {};
-  const patch =
-    typeof overlay === "object" && overlay !== null && !Array.isArray(overlay)
-      ? (overlay as Record<string, unknown>)
-      : {};
-  return { ...base, ...patch };
-}
-
 /**
  * Overlay profile-managed Claude settings keys onto the live file.
  * Unrelated top-level keys (model, alwaysThinkingEnabled, and similar) are kept.
@@ -178,35 +155,17 @@ export function mergeClaudeSettingsContent(
   if (!generated) {
     return generatedRaw;
   }
-  if (!existingRaw) {
-    return `${JSON.stringify(generated, null, 2)}\n`;
-  }
-  const existing = parseJsonObject(existingRaw);
-  if (!existing) {
-    return `${JSON.stringify(generated, null, 2)}\n`;
-  }
-
-  const merged: Record<string, unknown> = { ...existing };
-  for (const [key, value] of Object.entries(generated)) {
-    if (key === "env") {
-      merged.env = mergeEnvRecord(existing.env, value);
-      continue;
-    }
-    if (key === "permissions") {
-      merged.permissions = mergeEnvRecord(existing.permissions, value);
-      continue;
-    }
-    merged[key] = value;
-  }
-  if (merged.hooks && typeof merged.hooks === "object" && !Array.isArray(merged.hooks)) {
-    merged.hooks = stripPluginRootCommandsFromHooksObject(
-      merged.hooks as Record<string, unknown>,
+  if (generated.hooks && typeof generated.hooks === "object" && !Array.isArray(generated.hooks)) {
+    generated.hooks = stripPluginRootCommandsFromHooksObject(
+      generated.hooks as Record<string, unknown>,
     );
-    if (Object.keys(merged.hooks as Record<string, unknown>).length === 0) {
-      delete merged.hooks;
+    if (Object.keys(generated.hooks as Record<string, unknown>).length === 0) {
+      delete generated.hooks;
     }
   }
-  return `${JSON.stringify(merged, null, 2)}\n`;
+  return overlayJsonPreservingFormat(existingRaw, generated, {
+    mergeObjectKeys: ["env", "permissions"],
+  });
 }
 
 /**
@@ -223,19 +182,10 @@ export function mergeClaudeUserJsonContent(
   if (!generated) {
     return existingRaw ?? generatedRaw;
   }
-  if (!existingRaw) {
-    return `${JSON.stringify(generated, null, 2)}\n`;
-  }
-  const existing = parseJsonObject(existingRaw);
-  if (!existing) {
-    return existingRaw;
-  }
-
-  const merged: Record<string, unknown> = { ...existing };
-  if (generated.mcpServers !== undefined) {
-    merged.mcpServers = mergeEnvRecord(existing.mcpServers, generated.mcpServers);
-  }
-  return `${JSON.stringify(merged, null, 2)}\n`;
+  return overlayJsonPreservingFormat(existingRaw, generated, {
+    mergeObjectKeys: ["mcpServers"],
+    onUnparseable: "keep",
+  });
 }
 
 /**
@@ -252,24 +202,11 @@ export function mergeMuseSettingsContent(
   if (!generated) {
     return generatedRaw;
   }
-  if (!existingRaw) {
-    return `${JSON.stringify({ schema_version: 1, ...generated }, null, 2)}\n`;
-  }
-  const existing = parseJsonObject(existingRaw);
-  if (!existing) {
-    return `${JSON.stringify({ schema_version: 1, ...generated }, null, 2)}\n`;
-  }
-
-  const merged: Record<string, unknown> = { ...existing };
-  for (const [key, value] of Object.entries(generated)) {
-    if (key === "mcp_servers") {
-      merged.mcp_servers = mergeEnvRecord(existing.mcp_servers, value);
-      continue;
-    }
-    merged[key] = value;
-  }
-  merged.schema_version = 1;
-  return `${JSON.stringify(merged, null, 2)}\n`;
+  return overlayJsonPreservingFormat(
+    existingRaw,
+    { schema_version: 1, ...generated },
+    { mergeObjectKeys: ["mcp_servers"] },
+  );
 }
 
 /**
@@ -284,21 +221,7 @@ export function mergeMinimaxMcpContent(
   if (!generated) {
     return generatedRaw;
   }
-  if (!existingRaw) {
-    return `${JSON.stringify(generated, null, 2)}\n`;
-  }
-  const existing = parseJsonObject(existingRaw);
-  if (!existing) {
-    return `${JSON.stringify(generated, null, 2)}\n`;
-  }
-
-  const merged: Record<string, unknown> = { ...existing };
-  for (const [key, value] of Object.entries(generated)) {
-    if (key === "mcpServers") {
-      merged.mcpServers = mergeEnvRecord(existing.mcpServers, value);
-      continue;
-    }
-    merged[key] = value;
-  }
-  return `${JSON.stringify(merged, null, 2)}\n`;
+  return overlayJsonPreservingFormat(existingRaw, generated, {
+    mergeObjectKeys: ["mcpServers"],
+  });
 }

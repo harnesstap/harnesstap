@@ -2,7 +2,10 @@ import { join } from "node:path";
 import { parse } from "smol-toml";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
-import { formatTransportToml } from "../services/toml/write.js";
+import {
+  overlayJsonPreservingFormat,
+  overlayTomlPreservingFormat,
+} from "../services/format-preserving-config.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
 import type {
@@ -555,9 +558,6 @@ export class GrokBuildSerializer extends BaseSerializer {
 
     if (managedCount > 0 && configPath) {
       const existingContent = this.readFile(join(projectRoot, configPath));
-      const existing = existingContent
-        ? (parseGrokConfig(existingContent) ?? {})
-        : {};
       const overlay: GrokConfigDocument = {};
 
       if (mcps.length > 0) {
@@ -573,23 +573,29 @@ export class GrokBuildSerializer extends BaseSerializer {
 
       files.push({
         path: configPath,
-        content: formatTransportToml(mergeConfigDocuments(existing, overlay)),
+        content: overlayTomlPreservingFormat(
+          existingContent,
+          overlay,
+          mergeConfigDocuments,
+        ),
       });
     }
 
     const hooks = resources.filter((r) => r.type === "hook");
     if (hooksPath && hooks.length > 0) {
+      const relativeHooksPath = hooksOutputPath(hooksPath);
+      const generated = buildHooksJson(
+        hooks.map((r) => ({
+          ...(r.metadata as HookMetadata),
+          name: r.name,
+        })),
+      );
       files.push({
-        path: hooksOutputPath(hooksPath),
-        content: JSON.stringify(
-          buildHooksJson(
-            hooks.map((r) => ({
-              ...(r.metadata as HookMetadata),
-              name: r.name,
-            })),
-          ),
-          null,
-          2,
+        path: relativeHooksPath,
+        content: overlayJsonPreservingFormat(
+          this.readFile(join(projectRoot, relativeHooksPath)),
+          generated as unknown as Record<string, unknown>,
+          { mergeObjectKeys: ["hooks"] },
         ),
       });
     }

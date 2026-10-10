@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
+import { parse as parseToml } from "smol-toml";
+import {
+  applyJsonObjectUpdatePreservingFormat,
+  applyTomlObjectUpdatePreservingFormat,
+} from "./format-preserving-config.js";
 import { getResource } from "../models/resource.js";
 import { listMaterializationsForRootPath } from "../models/resource-materialization.js";
 import { isPreexistingPath } from "../models/preexisting-path.js";
@@ -140,7 +144,7 @@ export function tryEditAggregateContent(
       }
       return {
         ok: true,
-        content: `${JSON.stringify(next, null, 2)}\n`,
+        content: applyJsonObjectUpdatePreservingFormat(content, next),
         emptied: Object.keys(next).length === 0,
       };
     } catch {
@@ -159,7 +163,7 @@ export function tryEditAggregateContent(
     }
     return {
       ok: true,
-      content: `${stringifyToml(next)}\n`,
+      content: applyTomlObjectUpdatePreservingFormat(content, next),
       emptied: Object.keys(next).length === 0,
     };
   } catch {

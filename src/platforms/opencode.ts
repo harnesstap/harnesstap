@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import { overlayJsonPreservingFormat } from "../services/format-preserving-config.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
 import type {
@@ -323,7 +324,7 @@ export class OpenCodeSerializer extends BaseSerializer {
 
   async serialize(
     resources: Resource[],
-    _projectRoot: string,
+    projectRoot: string,
     options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
@@ -423,13 +424,13 @@ export class OpenCodeSerializer extends BaseSerializer {
       }
       files.push({
         path: mcpPath,
-        content: JSON.stringify(
+        content: overlayJsonPreservingFormat(
+          this.readFile(join(projectRoot, mcpPath)),
           {
             $schema: "https://opencode.ai/config.json",
             mcp: mcpConfig,
           },
-          null,
-          2,
+          { mergeObjectKeys: ["mcp"] },
         ),
       });
     }
