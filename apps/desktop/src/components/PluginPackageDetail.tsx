@@ -1259,7 +1259,7 @@ export function PluginPackageDetail({
     switch (historyMode) {
       case "history":
         if (versionsLoading && versions.length === 0 && !versionsError) {
-          return <p className="muted">Loading versions…</p>;
+          return <p className="muted">Loading versions...</p>;
         }
         return (
           <PluginVersionHistoryList
@@ -1281,7 +1281,7 @@ export function PluginPackageDetail({
                   {frozenError}
                 </div>
               ) : null}
-              <p className="muted">Loading frozen version…</p>
+              <p className="muted">Loading frozen version...</p>
             </>
           );
         }
@@ -1301,7 +1301,7 @@ export function PluginPackageDetail({
       }
     }
     if (historyMode === "head" && detailLoading && !detail) {
-      return <p className="muted">Loading plugin…</p>;
+      return <p className="muted">Loading plugin...</p>;
     }
     if (historyMode === "head" && detailError && !detail) {
       return (

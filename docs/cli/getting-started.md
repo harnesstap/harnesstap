@@ -110,7 +110,7 @@ Anonymous CLI/Desktop analytics are off until you opt in. Desktop asks on first 
 
 ## Next steps
 
-- [Command reference](./command-reference.md) — grouped CLI surface and flags
-- [Concepts overview](./concepts/overview.md) — architecture and data model
-- [HarnessTap Cloud](./cloud.md) — authenticate and work with shared plugins
-- [Scenario guides](../scenarios/scenarios.md) — numbered playbooks (preview/apply, drift, mirror, migration, …)
+- [Command reference](./command-reference.md): grouped CLI surface and flags
+- [Concepts overview](./concepts/overview.md): architecture and data model
+- [HarnessTap Cloud](./cloud.md): authenticate and work with shared plugins
+- [Scenario guides](../scenarios/scenarios.md): numbered playbooks (preview/apply, drift, mirror, migration, ...)

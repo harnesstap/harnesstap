@@ -103,7 +103,7 @@ export function SourcesPluginTree({
           <section className="library-contained-resources" aria-label="Contained files">
             <h3 className="library-contained-heading">Contained files</h3>
             {loading ? (
-              <p className="muted">Loading files…</p>
+              <p className="muted">Loading files...</p>
             ) : (
               files.map((file) => (
                 <div key={file.path} className="library-contained-row">

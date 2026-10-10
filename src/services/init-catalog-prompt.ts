@@ -22,8 +22,8 @@ export async function maybePromptInitCatalogInstall(input: {
   const choice = await promptForChoice({
     message: "Browse public catalog plugins now?",
     choices: [
-      { name: "Yes — install a plugin into the local library", value: "yes" as const },
-      { name: "No — I'll use plugin list / apply later", value: "no" as const },
+      { name: "Yes: install a plugin into the local library", value: "yes" as const },
+      { name: "No: I'll use plugin list / apply later", value: "no" as const },
     ],
   });
 

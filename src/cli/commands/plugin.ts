@@ -504,7 +504,7 @@ export async function handleProjectApplyCommand(
 
   let applyBundle: Awaited<ReturnType<typeof resolveApplyPlugins>>;
   const pluginLabel = resolvedPluginNames.join(" + ");
-  const resolveSpin = createProgress(`Resolving ${pluginLabel}…`);
+  const resolveSpin = createProgress(`Resolving ${pluginLabel}...`);
   const recordedLock = readLockfile(projectRoot);
   const existingLock = opts.update ? undefined : recordedLock;
   const previousDeployedPaths = Object.keys(recordedLock?.deployed_file_hashes ?? {});
@@ -607,7 +607,7 @@ export async function handleProjectApplyCommand(
       progress: {
         onInstallStart: (ref) => {
           pluginProgressState.current?.stop();
-          pluginProgressState.current = createProgress(`Installing ${ref}…`);
+          pluginProgressState.current = createProgress(`Installing ${ref}...`);
         },
         onInstallComplete: (install) => {
           pluginProgressState.current?.stop();
@@ -616,7 +616,7 @@ export async function handleProjectApplyCommand(
         },
         onSyncStart: (ref) => {
           pluginProgressState.current?.stop();
-          pluginProgressState.current = createProgress(`Syncing ${ref}…`);
+          pluginProgressState.current = createProgress(`Syncing ${ref}...`);
         },
         onSyncComplete: () => {
           pluginProgressState.current?.stop();
@@ -640,7 +640,7 @@ export async function handleProjectApplyCommand(
 
   const compositionSpin = skipPluginSync
     ? resolveSpin
-    : createProgress(`Resolving ${pluginLabel}…`);
+    : createProgress(`Resolving ${pluginLabel}...`);
   try {
     applyBundle = await resolveApplyPlugins(
       resolvedPluginNames as [string, ...string[]],
@@ -668,7 +668,7 @@ export async function handleProjectApplyCommand(
       });
       if (recovered) {
         process.exitCode = 0;
-        ui.success("Constraint recovery applied. Re-applying…");
+        ui.success("Constraint recovery applied. Re-applying...");
         await handleProjectApplyCommand(
           resolvedPluginNames as [string, ...string[]],
           opts,
@@ -690,7 +690,7 @@ export async function handleProjectApplyCommand(
       });
       if (scaffolded) {
         process.exitCode = 0;
-        ui.success(`Created composition plugin ${scaffolded}. Re-applying…`);
+        ui.success(`Created composition plugin ${scaffolded}. Re-applying...`);
         await handleProjectApplyCommand([scaffolded], opts);
         return;
       }
@@ -800,7 +800,7 @@ export async function handleProjectApplyCommand(
       progress: {
         onInstallStart: (ref) => {
           pluginProgressState.current?.stop();
-          pluginProgressState.current = createProgress(`Installing ${ref}…`);
+          pluginProgressState.current = createProgress(`Installing ${ref}...`);
         },
         onInstallComplete: (install) => {
           pluginProgressState.current?.stop();
@@ -809,7 +809,7 @@ export async function handleProjectApplyCommand(
         },
         onSyncStart: (ref) => {
           pluginProgressState.current?.stop();
-          pluginProgressState.current = createProgress(`Syncing ${ref}…`);
+          pluginProgressState.current = createProgress(`Syncing ${ref}...`);
         },
         onSyncComplete: () => {
           pluginProgressState.current?.stop();
@@ -868,7 +868,7 @@ export async function handleProjectApplyCommand(
           });
           if (recovered) {
             process.exitCode = 0;
-            ui.success("Constraint recovery applied. Re-applying…");
+            ui.success("Constraint recovery applied. Re-applying...");
             await handleProjectApplyCommand(
               resolvedPluginNames as [string, ...string[]],
               opts,
@@ -890,7 +890,7 @@ export async function handleProjectApplyCommand(
           });
           if (scaffolded) {
             process.exitCode = 0;
-            ui.success(`Created composition plugin ${scaffolded}. Re-applying…`);
+            ui.success(`Created composition plugin ${scaffolded}. Re-applying...`);
             await handleProjectApplyCommand([scaffolded], opts);
             return;
           }
@@ -1009,7 +1009,7 @@ export async function handleProjectApplyCommand(
         }
       : claude;
 
-  const generateSpin = createProgress("Generating harness files…");
+  const generateSpin = createProgress("Generating harness files...");
   let generated: Awaited<ReturnType<typeof generateFiles>>;
   const gitOriginForApply = getGitOrigin(projectRoot);
   const projectForHarness = gitOriginForApply
@@ -1102,7 +1102,7 @@ export async function handleProjectApplyCommand(
   }
 
   // Ephemeral multi-selector roots (`ht plugin apply a b`) use a synthetic
-  // `__ht_ephemeral_root__…` name that is never reusable via lockIsUsable —
+  // `__ht_ephemeral_root__...` name that is never reusable via lockIsUsable : 
   // writing that lock would poison checked-in locks. Durable single-root
   // applies still record the resolved plugin set.
   if (!opts.dryRun && !applyBundle.resolution.root.ephemeral) {
@@ -1267,7 +1267,7 @@ export async function handleProjectApplyCommand(
       snapshotId = snapshot.id;
     }
   } else if (outputFormat === "human") {
-    ui.warn("No git remote origin — configuration snapshot will not be stored.");
+    ui.warn("No git remote origin: configuration snapshot will not be stored.");
     ui.hint("git remote add origin <url>");
     ui.hint("Snapshots and drift detection require a git repository with origin configured.");
   }
@@ -2441,7 +2441,7 @@ async function handlePluginSearchCommand(
       message: "Select a plugin to add",
       choices: plugins.map((plugin) => ({
         name: plugin.description
-          ? `${plugin.name} — ${plugin.description}`
+          ? `${plugin.name}: ${plugin.description}`
           : plugin.name,
         value: plugin.ref,
         description: plugin.version ? `v${plugin.version}` : undefined,
@@ -3249,7 +3249,7 @@ pluginCmd
 }
 
 /**
- * `ht layer …` keeps working for one release. It is hidden from help so the
+ * `ht layer ...` keeps working for one release. It is hidden from help so the
  * surface reads as one concept, and every invocation names the new spelling.
  */
 export function registerDeprecatedLayerAlias(root: Command): void {

@@ -310,7 +310,7 @@ export function ProfilesRail({
         <input
           className="profiles-filter"
           type="search"
-          placeholder="Filter profiles…"
+          placeholder="Filter profiles..."
           value={profileFilter}
           onChange={(event) => setProfileFilter(event.target.value)}
           disabled={!connected || switching || visibleProfiles.length === 0}
@@ -518,7 +518,7 @@ export function ProfilesRail({
           aria-busy={switching}
           title={ctrl.applyButtonTitle}
         >
-          {switching ? "Applying…" : ctrl.showReapply ? "Re-apply" : "Apply"}
+          {switching ? "Applying..." : ctrl.showReapply ? "Re-apply" : "Apply"}
           {switching ? (
             <ButtonSpinner size={16} />
           ) : ctrl.showReapply ? (

@@ -252,7 +252,7 @@ export function ProjectHarnessOverrideSection({
       {!projectPath ? (
         <p className="muted">Select a project to set a harness override.</p>
       ) : loading && harnesses.length === 0 && !error ? (
-        <p className="muted">Loading harness override…</p>
+        <p className="muted">Loading harness override...</p>
       ) : !projectAvailable ? (
         <>
           <div className="switch-after-create settings-override-toggle flex items-center gap-2">
@@ -352,7 +352,7 @@ export function ProjectHarnessOverrideSection({
               aria-busy={busy}
             >
               {busy ? <ButtonSpinner size={16} /> : <Save size={16} aria-hidden />}
-              {busy ? "Saving…" : "Save"}
+              {busy ? "Saving..." : "Save"}
             </button>
           </div>
         </>

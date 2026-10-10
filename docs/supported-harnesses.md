@@ -14,9 +14,9 @@ These are the atomic resources you scan, curate, attach to plugins, and re-emit 
 
 | Type | Description |
 | ---- | ----------- |
-| **instructions** | Always-on context files (`AGENTS.md`, `CLAUDE.md`, `.windsurfrules`, `.github/copilot-instructions.md`, …) |
+| **instructions** | Always-on context files (`AGENTS.md`, `CLAUDE.md`, `.windsurfrules`, `.github/copilot-instructions.md`, ...) |
 | **skills** | `SKILL.md` trees under harness-native skill directories |
-| **rules** | Path-scoped or always-on rules (`.cursor/rules/*.mdc`, `.claude/rules/`, `.kiro/steering/`, …) |
+| **rules** | Path-scoped or always-on rules (`.cursor/rules/*.mdc`, `.claude/rules/`, `.kiro/steering/`, ...) |
 | **mcp** | MCP server definitions from harness MCP config files |
 | **permissions** | Allow/deny patterns (Claude Code and Codex settings) |
 | **hooks** | Hook event definitions from settings or `hooks.json` |
@@ -39,11 +39,11 @@ Environments carry **how** values that override matching plugin resources during
 | **env_var** | Plain environment variable key/value pairs |
 | **model_config** | Default model and provider selection |
 | **permission** | Permission allow/deny overrides |
-| **secret_ref** | Indirection to secrets (`keychain`, `env`, `file`) — never embedded in exports |
+| **secret_ref** | Indirection to secrets (`keychain`, `env`, `file`): never embedded in exports |
 
 Only harnesses whose registry entry includes `env_vars`, `model_config`, and/or `permissions` **and** whose native serializer implements those surfaces receive environment values on disk. Today that means **Claude Code** and **Codex** for the full environment trio.
 
-All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}` substitution** from the environment cascade at apply time (tokens in MCP `env` / `args`). OAuth sessions managed by the host IDE are outside this path — see [Environments — MCP authentication limitations](cli/concepts/environments.md#mcp-authentication-limitations).
+All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}` substitution** from the environment cascade at apply time (tokens in MCP `env` / `args`). OAuth sessions managed by the host IDE are outside this path: see [Environments: MCP authentication limitations](cli/concepts/environments.md#mcp-authentication-limitations).
 
 | Harness | MCP scan/emit | Full env emission | MCP `${VAR}` substitution |
 | ------- | ------------- | ----------------- | ------------------------ |
@@ -72,7 +72,7 @@ All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}`
 
 Official Claude plugin cache trees at `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>` are also valid scan/sync roots when they have **no** `plugin.json` (LSP-only plugins such as `gopls-lsp`, whose `lspServers` live in the marketplace catalog). Name and version are taken from the cache path. If that directory is a marketplace checkout, import uses the nested `plugins/<name>` tree. Marketplace `source` / `path` values like `./plugins/gopls-lsp` resolve from the marketplace repo root, not from `.claude-plugin/`.
 
-Scanning a repo with both harness files and a plugin manifest merges both sources automatically. See [Portability limits — dual-mode scan](portability-limits.md#dual-mode-scan-for-plugin-only-repos).
+Scanning a repo with both harness files and a plugin manifest merges both sources automatically. See [Portability limits: dual-mode scan](portability-limits.md#dual-mode-scan-for-plugin-only-repos).
 
 ### Plugin install and sync providers
 
@@ -86,7 +86,7 @@ During `apply`, HarnessTap can **install** and **sync** plugins from host instal
 | **copilot-cli** | Copilot CLI marketplace / `copilot plugin` | `~/.copilot/installed-plugins/` |
 | **deepseek-harness** | `dsh plugin --profile web add` | `$DSH_HOME/profiles/web/` |
 
-Claude Code and Copilot CLI **home scan** also import installed marketplace plugins as `plugin_pin` library resources (pins only; use `resource sync` to materialize children). Claude reads `~/.claude/plugins/installed_plugins.json`. Cursor home scan inventories `~/.cursor/plugins/local/` (including HarnessTap copies, which keep `name@marketplace` in `.harnesstap-plugin.json`) plus cache/marketplace trees referenced by Cursor install records — not every cache directory, not HarnessTap host-plugin cache, not `~/.claude/plugins/cache`. Copilot CLI reads `~/.copilot/installed-plugins/<marketplace>/<plugin>/` when `~/.copilot/settings.json` or that install tree is present.
+Claude Code and Copilot CLI **home scan** also import installed marketplace plugins as `plugin_pin` library resources (pins only; use `resource sync` to materialize children). Claude reads `~/.claude/plugins/installed_plugins.json`. Cursor home scan inventories `~/.cursor/plugins/local/` (including HarnessTap copies, which keep `name@marketplace` in `.harnesstap-plugin.json`) plus cache/marketplace trees referenced by Cursor install records: not every cache directory, not HarnessTap host-plugin cache, not `~/.claude/plugins/cache`. Copilot CLI reads `~/.copilot/installed-plugins/<marketplace>/<plugin>/` when `~/.copilot/settings.json` or that install tree is present.
 
 `ht harness sync` (global) copies those install trees onto peer harnesses that have a native plugin root: Claude ←→ Cursor. Claude additionally records `installed_plugins.json` and `enabledPlugins` in `~/.claude/settings.json`. Cursor copies land in `~/.cursor/plugins/local/` as real directories (not symlinks) and are replaced on the next sync. Cursor does not load `~/.claude/plugins/`. Project apply does not write that user-wide folder. Claude **mods** (in-process `hooks.json` + JS/TS) copy only onto platforms with `hostPluginRuntimeModules` (Claude Code); Cursor still receives the portable rest of the pin. Desktop lists Claude plugin/skill trees on the Cursor harness only while Cursor still loads third-party Plugins, Skills, and other configs; when that setting is off, Harnesses does not attribute `~/.claude/` or `~/.agents/` to Cursor. When OpenCode (or another harness that does not load those plugin roots) is in the active set, the same sync also materializes plugin skills into `~/.agents/skills/` and agents/commands into that harness’s native folders. `harnessSync.pluginResources` in `config.jsonc` selects `symlink` (default), `copy`, or `clone` (copy-on-write, falls back to copy).
 
@@ -110,7 +110,7 @@ ht harness list --format json
 
 ## Skill emission modes
 
-Most harnesses emit skills to native skill directories. These harnesses declare `skillEmission: instruction-only` — skills merge into instructions or rules instead of a separate skill tree:
+Most harnesses emit skills to native skill directories. These harnesses declare `skillEmission: instruction-only`: skills merge into instructions or rules instead of a separate skill tree:
 
 | Harness | Emission target |
 | ------- | --------------- |
@@ -143,49 +143,49 @@ Legend for the **Resources** column: `instr` instructions · `skill` skills · `
 | ID | Name | Serializer | Resources | Skill emission | Plugin install |
 | -- | ---- | ---------- | --------- | -------------- | -------------- |
 | `claude-code` | Claude Code | Native | instr, skill, rule, mcp, perm, hook, agent, cmd, env, model | Native skills | Yes |
-| `codex` | Codex | Native | instr, skill, rule, mcp, perm, hook, agent, env, model | Native skills | — |
+| `codex` | Codex | Native | instr, skill, rule, mcp, perm, hook, agent, env, model | Native skills |: |
 | `cursor` | Cursor | Native | instr, skill, rule, mcp, hook, agent | Native skills | Yes |
-| `opencode` | OpenCode | Native | instr, skill, mcp, agent, cmd | Native skills | — |
-| `github-copilot` | GitHub Copilot | Native | instr, skill, mcp, agent | Instruction-only | — |
-| `copilot-cli` | Copilot CLI | Native | instr, skill, mcp, agent | Native skills | — |
-| `gemini-cli` | Gemini CLI | Native | instr, skill, cmd | Instruction-only | — |
-| `antigravity` | Antigravity | Generic | instr, skill, rule, mcp, cmd | Native skills | — |
-| `amazon-q` | Amazon Q Developer | Generic | instr, rule, mcp | — | — |
-| `windsurf` | Windsurf | Generic | instr, skill, rule, mcp | Instruction-only | — |
-| `cline` | Cline | Generic | instr, skill, rule, mcp | Instruction-only | — |
-| `roo` | Roo Code | Generic | instr, skill, rule, mcp | Native skills | — |
-| `continue` | Continue | Generic | instr, skill, mcp | Native skills | — |
+| `opencode` | OpenCode | Native | instr, skill, mcp, agent, cmd | Native skills |: |
+| `github-copilot` | GitHub Copilot | Native | instr, skill, mcp, agent | Instruction-only |: |
+| `copilot-cli` | Copilot CLI | Native | instr, skill, mcp, agent | Native skills |: |
+| `gemini-cli` | Gemini CLI | Native | instr, skill, cmd | Instruction-only |: |
+| `antigravity` | Antigravity | Generic | instr, skill, rule, mcp, cmd | Native skills |: |
+| `amazon-q` | Amazon Q Developer | Generic | instr, rule, mcp |: |: |
+| `windsurf` | Windsurf | Generic | instr, skill, rule, mcp | Instruction-only |: |
+| `cline` | Cline | Generic | instr, skill, rule, mcp | Instruction-only |: |
+| `roo` | Roo Code | Generic | instr, skill, rule, mcp | Native skills |: |
+| `continue` | Continue | Generic | instr, skill, mcp | Native skills |: |
 | `goose` | Goose | Native | instr, skill, mcp, hook, cmd | Native skills | Yes |
-| `trae` | Trae | Generic | instr, skill, rule, mcp | Native skills | — |
-| `openhands` | OpenHands | Generic | instr, skill, mcp | Native skills | — |
-| `kiro` | Kiro | Generic | instr, skill, rule | Instruction-only | — |
-| `warp` | Warp | Generic | instr, skill | Native skills | — |
-| `pi` | Pi | Generic | instr, skill | Native skills | — |
-| `aider` | Aider | Generic | instr | — | — |
-| `zed` | Zed | Generic | instr, skill | Native skills | — |
-| `devin` | Devin | Generic | instr, skill | Native skills | — |
-| `jules` | Jules | Generic | instr, skill | Native skills | — |
-| `cody` | Sourcegraph Cody | Generic | instr, mcp | — | — |
-| `grok-build` | Grok Build | Native | instr, skill, mcp, perm, hook, agent, cmd, model | Native skills | — |
+| `trae` | Trae | Generic | instr, skill, rule, mcp | Native skills |: |
+| `openhands` | OpenHands | Generic | instr, skill, mcp | Native skills |: |
+| `kiro` | Kiro | Generic | instr, skill, rule | Instruction-only |: |
+| `warp` | Warp | Generic | instr, skill | Native skills |: |
+| `pi` | Pi | Generic | instr, skill | Native skills |: |
+| `aider` | Aider | Generic | instr |: |: |
+| `zed` | Zed | Generic | instr, skill | Native skills |: |
+| `devin` | Devin | Generic | instr, skill | Native skills |: |
+| `jules` | Jules | Generic | instr, skill | Native skills |: |
+| `cody` | Sourcegraph Cody | Generic | instr, mcp |: |: |
+| `grok-build` | Grok Build | Native | instr, skill, mcp, perm, hook, agent, cmd, model | Native skills |: |
 | `deepseek-harness` | DeepSeek Harness | Native | instr, skill, mcp, perm, hook, agent, model | Native skills | Yes |
-| `muse-code` | Muse Code | Native | instr, skill, mcp, hook | Native skills | — |
-| `minimax-code` | MiniMax Code | Native | instr, skill, mcp | Native skills | — |
-| `amp` | Amp | Generic | instr, skill | Native skills | — |
-| `kilo` | Kilo Code | Generic | instr, skill | Native skills | — |
-| `augment` | Augment | Generic | instr, skill | Native skills | — |
-| `firebender` | Firebender | Generic | instr, skill | Native skills | — |
-| `junie` | Junie | Generic | instr, skill | Native skills | — |
-| `zencoder` | Zencoder | Generic | instr, skill | Native skills | — |
-| `deepagents` | Deep Agents | Generic | instr, skill | Native skills | — |
-| `qwen-code` | Qwen Code | Generic | instr, skill | Native skills | — |
-| `crush` | Crush | Generic | instr, skill | Native skills | — |
-| `droid` | Droid | Generic | instr, skill | Native skills | — |
-| `codebuddy` | CodeBuddy | Generic | instr, skill | Native skills | — |
-| `mux` | Mux | Generic | instr, skill | Native skills | — |
-| `kode` | Kode | Generic | instr, skill | Native skills | — |
-| `command-code` | Command Code | Generic | instr, skill | Native skills | — |
-| `cortex` | Cortex Code | Generic | instr, skill | Native skills | — |
-| `neovate` | Neovate | Generic | instr, skill | Native skills | — |
+| `muse-code` | Muse Code | Native | instr, skill, mcp, hook | Native skills |: |
+| `minimax-code` | MiniMax Code | Native | instr, skill, mcp | Native skills |: |
+| `amp` | Amp | Generic | instr, skill | Native skills |: |
+| `kilo` | Kilo Code | Generic | instr, skill | Native skills |: |
+| `augment` | Augment | Generic | instr, skill | Native skills |: |
+| `firebender` | Firebender | Generic | instr, skill | Native skills |: |
+| `junie` | Junie | Generic | instr, skill | Native skills |: |
+| `zencoder` | Zencoder | Generic | instr, skill | Native skills |: |
+| `deepagents` | Deep Agents | Generic | instr, skill | Native skills |: |
+| `qwen-code` | Qwen Code | Generic | instr, skill | Native skills |: |
+| `crush` | Crush | Generic | instr, skill | Native skills |: |
+| `droid` | Droid | Generic | instr, skill | Native skills |: |
+| `codebuddy` | CodeBuddy | Generic | instr, skill | Native skills |: |
+| `mux` | Mux | Generic | instr, skill | Native skills |: |
+| `kode` | Kode | Generic | instr, skill | Native skills |: |
+| `command-code` | Command Code | Generic | instr, skill | Native skills |: |
+| `cortex` | Cortex Code | Generic | instr, skill | Native skills |: |
+| `neovate` | Neovate | Generic | instr, skill | Native skills |: |
 
 ## On-disk paths (selected harnesses)
 
@@ -194,33 +194,33 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | Harness | Instructions | Skills | Rules | MCP | Agents | Commands | Settings |
 | ------- | ------------ | ------ | ----- | --- | ------ | -------- | -------- |
 | **claude-code** | `CLAUDE.md` | `.claude/skills/` | `.claude/rules/` | `.mcp.json` (project); `~/.claude.json` (user); local `projects[]` inventory-only | `.claude/agents/` | `.claude/commands/` | `.claude/settings.json` |
-| **codex** | `AGENTS.md` | `.agents/skills/` | — | `.codex/config.toml` | `.codex/agents/` | `.codex/prompts/` | `.codex/config.toml` |
-| **cursor** | `AGENTS.md` (+ legacy `.cursorrules`) | `.agents/skills/` | `.cursor/rules/` | `.cursor/mcp.json` | `.cursor/agents/` | — | — |
-| **opencode** | `AGENTS.md` | `.opencode/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | `opencode.json` | `.opencode/agents/` (also `.opencode/agent/`) | `.opencode/commands/` (also `.opencode/command/`) | — |
-| **github-copilot** | `.github/copilot-instructions.md` | `.agents/skills/` | — | (global `~/.copilot/mcp-config.json`) | `.github/agents/` | — | — |
-| **copilot-cli** | `AGENTS.md` | `.agents/skills/` | — | `.copilot/mcp-config.json` | `.github/agents/` | — | — |
-| **gemini-cli** | `AGENTS.md` | `.agents/skills/` | — | — | — | `commands/` | `gemini-extension.json` |
-| **antigravity** | `AGENTS.md` (+ `GEMINI.md`) | `.agents/skills/` | `.agents/rules/` | `.agents/mcp_config.json` | — | `.agents/workflows/` | — |
-| **amazon-q** | `AmazonQ.md` (+ `AGENTS.md`) | — | `.amazonq/rules/` | `.amazonq/mcp.json` | — | — | — |
-| **windsurf** | `.windsurfrules` | `.agents/skills/` | `.windsurf/rules/` | (global MCP config) | — | — | — |
-| **roo** | `AGENTS.md` | `.roo/skills/` | `.roomodes` | `.roo/mcp.json` | — | — | — |
-| **goose** | `AGENTS.md`, `.goosehints` | `.agents/skills/` (+ `.goose/skills/`) | — | `.config/goose/config.yaml` (project), `~/.config/goose/config.yaml` (global) | — | `recipes/*.yaml` | `~/.config/goose/config.yaml` |
-| **aider** | `CONVENTIONS.md` (+ `AGENTS.md`) | — | — | — | — | — | `.aider.conf.yml` |
-| **zed** | `AGENTS.md` (+ `.rules`) | `.agents/skills/` | — | — | — | — | — |
-| **devin** | `AGENTS.md` (+ `AGENTS.local.md`) | `.agents/skills/` | — | — | — | — | `.devin/config.json` |
-| **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
-| **deepseek-harness** | `AGENTS.md` (+ `CLAUDE.md`) | `.dsh/skills/` | — | `~/.dsh/cordis.patch.yml` (global) | `~/.dsh/.agent-presets/` | — | `~/.dsh/settings.yaml` |
-| **muse-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`, `.claude/CLAUDE.md`) | `.agents/skills/` | — | `~/.config/muse/settings.json` (`mcp_servers`, global only) | — | — | `~/.config/muse/settings.json` |
-| **minimax-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`) | `.minimax/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | project `.mcp.json`; user `~/.minimax/mcp.json` | — | — | `~/.minimax/config.yaml` (not rewritten) |
-| **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
+| **codex** | `AGENTS.md` | `.agents/skills/` |: | `.codex/config.toml` | `.codex/agents/` | `.codex/prompts/` | `.codex/config.toml` |
+| **cursor** | `AGENTS.md` (+ legacy `.cursorrules`) | `.agents/skills/` | `.cursor/rules/` | `.cursor/mcp.json` | `.cursor/agents/` |: |: |
+| **opencode** | `AGENTS.md` | `.opencode/skills/` (also reads `.agents/skills/`, `.claude/skills/`) |: | `opencode.json` | `.opencode/agents/` (also `.opencode/agent/`) | `.opencode/commands/` (also `.opencode/command/`) |: |
+| **github-copilot** | `.github/copilot-instructions.md` | `.agents/skills/` |: | (global `~/.copilot/mcp-config.json`) | `.github/agents/` |: |: |
+| **copilot-cli** | `AGENTS.md` | `.agents/skills/` |: | `.copilot/mcp-config.json` | `.github/agents/` |: |: |
+| **gemini-cli** | `AGENTS.md` | `.agents/skills/` |: |: |: | `commands/` | `gemini-extension.json` |
+| **antigravity** | `AGENTS.md` (+ `GEMINI.md`) | `.agents/skills/` | `.agents/rules/` | `.agents/mcp_config.json` |: | `.agents/workflows/` |: |
+| **amazon-q** | `AmazonQ.md` (+ `AGENTS.md`) |: | `.amazonq/rules/` | `.amazonq/mcp.json` |: |: |: |
+| **windsurf** | `.windsurfrules` | `.agents/skills/` | `.windsurf/rules/` | (global MCP config) |: |: |: |
+| **roo** | `AGENTS.md` | `.roo/skills/` | `.roomodes` | `.roo/mcp.json` |: |: |: |
+| **goose** | `AGENTS.md`, `.goosehints` | `.agents/skills/` (+ `.goose/skills/`) |: | `.config/goose/config.yaml` (project), `~/.config/goose/config.yaml` (global) |: | `recipes/*.yaml` | `~/.config/goose/config.yaml` |
+| **aider** | `CONVENTIONS.md` (+ `AGENTS.md`) |: |: |: |: |: | `.aider.conf.yml` |
+| **zed** | `AGENTS.md` (+ `.rules`) | `.agents/skills/` |: |: |: |: |: |
+| **devin** | `AGENTS.md` (+ `AGENTS.local.md`) | `.agents/skills/` |: |: |: |: | `.devin/config.json` |
+| **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` (also reads `.agents/skills/`, `.claude/skills/`) |: | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
+| **deepseek-harness** | `AGENTS.md` (+ `CLAUDE.md`) | `.dsh/skills/` |: | `~/.dsh/cordis.patch.yml` (global) | `~/.dsh/.agent-presets/` |: | `~/.dsh/settings.yaml` |
+| **muse-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`, `.claude/CLAUDE.md`) | `.agents/skills/` |: | `~/.config/muse/settings.json` (`mcp_servers`, global only) |: |: | `~/.config/muse/settings.json` |
+| **minimax-code** | `AGENTS.md` (also reads `CLAUDE.md`, `.agents/AGENTS.md`) | `.minimax/skills/` (also reads `.agents/skills/`, `.claude/skills/`) |: | project `.mcp.json`; user `~/.minimax/mcp.json` |: |: | `~/.minimax/config.yaml` (not rewritten) |
+| **cody** | `AGENTS.md` |: |: | (global `~/.config/sourcegraph/cody.json`) |: |: | `cody.json` |
 
-Claude Code **user** MCP lives in `~/.claude.json` (`mcpServers` at the top level). Global apply merge-overlays that key and leaves OAuth session and `projects` (local-scope MCP, trust) untouched. **Project** MCP remains `.mcp.json`. **Local** MCP (`projects[<absPath>].mcpServers`) is scanned for inventory with source `~/.claude.json#local:<absPath>` and is never applied. See [Portability limits — Claude Code MCP scopes](portability-limits.md#claude-code-mcp-scopes).
+Claude Code **user** MCP lives in `~/.claude.json` (`mcpServers` at the top level). Global apply merge-overlays that key and leaves OAuth session and `projects` (local-scope MCP, trust) untouched. **Project** MCP remains `.mcp.json`. **Local** MCP (`projects[<absPath>].mcpServers`) is scanned for inventory with source `~/.claude.json#local:<absPath>` and is never applied. See [Portability limits: Claude Code MCP scopes](portability-limits.md#claude-code-mcp-scopes).
 
-Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) and on Desktop **Harnesses** (app-managed panel) but never imports, applies, discards, or removes them from disk. Cursor plugin installs live under `~/.cursor/plugins/` and are listed only when Cursor's own install records say they are installed. When third-party Plugins/Skills/configs are enabled, Desktop Harnesses also lists related trees Cursor can read: Claude `~/.claude/plugins/` and `~/.claude/skills/`, plus the shared `~/.agents/skills/` hub. When that setting is off, those foreign trees are omitted from the Cursor harness.
+Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/`: HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) and on Desktop **Harnesses** (app-managed panel) but never imports, applies, discards, or removes them from disk. Cursor plugin installs live under `~/.cursor/plugins/` and are listed only when Cursor's own install records say they are installed. When third-party Plugins/Skills/configs are enabled, Desktop Harnesses also lists related trees Cursor can read: Claude `~/.claude/plugins/` and `~/.claude/skills/`, plus the shared `~/.agents/skills/` hub. When that setting is off, those foreign trees are omitted from the Cursor harness.
 
 Copilot CLI home state lives under `~/.copilot/`. Detection uses `~/.copilot/settings.json` and `~/.copilot/installed-plugins/` in addition to `~/.copilot/skills/` and `~/.copilot/mcp-config.json`. Installed plugins are imported as pins from `~/.copilot/installed-plugins/<marketplace>/<plugin>/`.
 
-Generic harnesses in the skills-only tier use harness-specific skill roots such as `.kilocode/skills/`, `.crush/skills/`, or `.factory/skills/` with `AGENTS.md` instructions — see the registry for the full list.
+Generic harnesses in the skills-only tier use harness-specific skill roots such as `.kilocode/skills/`, `.crush/skills/`, or `.factory/skills/` with `AGENTS.md` instructions: see the registry for the full list.
 
 ### Goose context engineering
 
@@ -234,7 +234,7 @@ HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/co
 | **Hooks** (plugin `hooks/hooks.json`) | `hook` resources; apply emits `.agents/plugins/harnesstap-plugin/` |
 | **MCP extensions** (`config.yaml` `extensions:`) | `mcp_server` resources via native serializer |
 | **Recipes** (`recipes/*.yaml`) | `command` resources |
-| **Subagents, plan mode, prompt templates, MOIM, memory extension** | Runtime-only — not plugin resources (see [portability limits](portability-limits.md)) |
+| **Subagents, plan mode, prompt templates, MOIM, memory extension** | Runtime-only: not plugin resources (see [portability limits](portability-limits.md)) |
 
 ### Antigravity notes
 
@@ -252,7 +252,7 @@ OpenCode discovers skills from its native trees plus Claude- and Agents-compatib
 | **Commands** (`.opencode/commands/`, `.opencode/command/`; global `~/.config/opencode/commands/`, `~/.config/opencode/command/`) | `command` resources |
 | **Shared home instructions** (`~/.agents/AGENTS.md`) | `instruction` resources (home scan) |
 | **MCP** (`opencode.json`) | `mcp_server` resources |
-| **Server plugins** (`.opencode/plugins/*.js`) | Not mirrored — see [Portability limits](portability-limits.md) |
+| **Server plugins** (`.opencode/plugins/*.js`) | Not mirrored: see [Portability limits](portability-limits.md) |
 
 ### Grok Build notes
 
@@ -267,26 +267,26 @@ Grok Build’s native layout under `.grok/` maps as follows:
 | **MCP** (`[mcp_servers]` in `.grok/config.toml`) | `mcp_server` resources |
 | **Permissions** (`[permission]` allow/deny/ask or `rules`) | `permission` resources |
 | **Commands** (`.agents/commands/`, `~/.agents/commands/`) | `command` resources (skills also appear as slash commands at runtime) |
-| **Default model** (`[models] default` in `~/.grok/config.toml`) | `model_config` on **global** apply only — project `.grok/config.toml` cannot carry `[models]` |
-| **Personas / roles / plugins / sandbox.toml** | Runtime/config-only — not plugin resources today |
+| **Default model** (`[models] default` in `~/.grok/config.toml`) | `model_config` on **global** apply only: project `.grok/config.toml` cannot carry `[models]` |
+| **Personas / roles / plugins / sandbox.toml** | Runtime/config-only: not plugin resources today |
 
 ### DeepSeek Harness notes
 
-DeepSeek Harness is a developer preview; the Cordis patch schema can change. Home files live under `$DSH_HOME` if set, otherwise `~/.dsh`. Detection uses distinctive `.dsh/skills/` or `.dsh/hooks/` — not `AGENTS.md` alone.
+DeepSeek Harness is a developer preview; the Cordis patch schema can change. Home files live under `$DSH_HOME` if set, otherwise `~/.dsh`. Detection uses distinctive `.dsh/skills/` or `.dsh/hooks/`: not `AGENTS.md` alone.
 
 | DeepSeek surface | HarnessTap support |
 | ---------------- | ------------------- |
 | **AGENTS.md** (`CLAUDE.md`) | `instruction` resources |
 | **Skills** (`.dsh/skills/`) | Native `skill` resources |
-| **MCP** (`$DSH_HOME/cordis.patch.yml` home patch) | Live MCP is global only — not project |
+| **MCP** (`$DSH_HOME/cordis.patch.yml` home patch) | Live MCP is global only: not project |
 | **Hooks** (`$DSH_HOME/cordis.patch.yml` `configPath`) | Live hooks are `$DSH_HOME/hooks/harnesstap.json` (Claude command subset via `@deepseek-ai/dsh-hooks-claude-code`); project `.dsh/hooks/` is scanned and written but not wired into Cordis |
-| **Agent presets** (`$DSH_HOME/.agent-presets/`) | Persona-only user presets — not a copy of shipped `standard` |
+| **Agent presets** (`$DSH_HOME/.agent-presets/`) | Persona-only user presets: not a copy of shipped `standard` |
 | **Permissions** | Named presets `workspace-write` and `danger-full-access` only |
-| **Plugin install** | `dsh plugin --profile web add` (`$DSH_HOME/profiles/web/`) — web profile only |
+| **Plugin install** | `dsh plugin --profile web add` (`$DSH_HOME/profiles/web/`): web profile only |
 
 ### Muse Code notes
 
-Muse Code (Meta) user settings live at `~/.config/muse/settings.json`. The file **must** include `"schema_version": 1` whenever it exists. HarnessTap merges `mcp_servers` and user `hooks` into that file and leaves model defaults, TUI, `runtime_capabilities`, telemetry, and `managed_hooks_path` alone. MCP is user-settings only — there is no documented project MCP path.
+Muse Code (Meta) user settings live at `~/.config/muse/settings.json`. The file **must** include `"schema_version": 1` whenever it exists. HarnessTap merges `mcp_servers` and user `hooks` into that file and leaves model defaults, TUI, `runtime_capabilities`, telemetry, and `managed_hooks_path` alone. MCP is user-settings only: there is no documented project MCP path.
 
 Detection uses distinctive `.muse/hooks.json` and/or `~/.config/muse/` (`settings.json` or the config directory). Shared `AGENTS.md` / `.agents/skills/` alone do not count as Muse. `muse init` only writes `AGENTS.md`; a Muse-only machine is still detected from the home config directory.
 
@@ -297,8 +297,8 @@ Detection uses distinctive `.muse/hooks.json` and/or `~/.config/muse/` (`setting
 | **Project hooks** (`<project>/.muse/hooks.json`) | `hook` resources |
 | **User hooks** (`hooks` in `~/.config/muse/settings.json`) | Merged into user settings |
 | **MCP** (`mcp_servers` in user settings; `stdio` / `streamable_http`) | `mcp_server` resources on **global** apply only |
-| **Memory** (`.agents/memory/`) | Skipped — not emitted day one |
-| **Workflows / observer agents** | Runtime-only — out of scope |
+| **Memory** (`.agents/memory/`) | Skipped: not emitted day one |
+| **Workflows / observer agents** | Runtime-only: out of scope |
 
 ### MiniMax Code notes
 
@@ -329,5 +329,5 @@ ht environment list                      # named environments (env vars, models,
 
 ## See also
 
-- [Portability limits](portability-limits.md) — fidelity matrix and workarounds
-- [CLI command reference](cli/command-reference.md) — full command surface
+- [Portability limits](portability-limits.md): fidelity matrix and workarounds
+- [CLI command reference](cli/command-reference.md): full command surface

@@ -509,7 +509,7 @@ export function EditProfilePane({
       </div>
 
       {error ? <div className="banner error">{error}</div> : null}
-      {loading && !detail ? <p className="muted">Loading profile…</p> : null}
+      {loading && !detail ? <p className="muted">Loading profile...</p> : null}
 
       {detail ? (
         <div className="edit-profile-body">

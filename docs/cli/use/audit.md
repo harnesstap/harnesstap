@@ -41,9 +41,9 @@ With no flags, audit scans lockfile-recorded deployed files (`local_deployed_fil
 
 Slice 1 evaluates:
 
-- **Sources** — `dependencies.allow` / `deny` against git hosts (`github.com/*`), catalog identities, and local paths
-- **Primitives** — `manifest.content_types.allow` (`skill`, `agent`, `command`, `hook`, `instruction`, `mcp`)
-- **Transitive MCP** — undeclared MCP from depth > 0 fails unless `mcp.allow` lists it or `mcp.trust_transitive: true`
+- **Sources**: `dependencies.allow` / `deny` against git hosts (`github.com/*`), catalog identities, and local paths
+- **Primitives**: `manifest.content_types.allow` (`skill`, `agent`, `command`, `hook`, `instruction`, `mcp`)
+- **Transitive MCP**: undeclared MCP from depth > 0 fails unless `mcp.allow` lists it or `mcp.trust_transitive: true`
 
 `enforcement: block` (and load/hash failures) fail `--ci` and abort `ht apply` before any byte is written. `enforcement: warn` reports violations without changing the exit code.
 

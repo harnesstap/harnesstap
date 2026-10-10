@@ -520,7 +520,7 @@ export function getPlatformIds(): string[] {
  * Returns platform IDs that have at least one recognizable file present.
  */
 export function detectPlatforms(projectRoot: string): string[] {
-  // This is a stub — actual detection reads the filesystem.
+  // This is a stub: actual detection reads the filesystem.
   // Implemented in the scanner service.
   void projectRoot;
   return [];

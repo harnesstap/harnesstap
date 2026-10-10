@@ -4,7 +4,7 @@ description: Named how-values, secret refs, environment cascade, and MCP authent
 
 # Environments
 
-An **environment** is a named bundle of *how* values — env vars, model defaults, permission overrides, and secret references — that plugins and profiles satisfy at apply time. Environments do not replace plugins; they parameterize the same context stack for different machines, accounts, or deployment targets. Fresh `ht init` and desktop agent boot seed a `default` environment when the library has none.
+An **environment** is a named bundle of *how* values: env vars, model defaults, permission overrides, and secret references: that plugins and profiles satisfy at apply time. Environments do not replace plugins; they parameterize the same context stack for different machines, accounts, or deployment targets. Fresh `ht init` and desktop agent boot seed a `default` environment when the library has none.
 
 ## Context vs environment
 
@@ -23,9 +23,9 @@ On `apply` and `profile use`, environment values merge with this precedence:
 home environment  ◂  plugin default environment  ◂  deck active environment
 ```
 
-- **Home** — fragments under `~/.harnesstap/environments/` (optional)
-- **Plugin default** — `default_environment_id` on a configured plugin
-- **Deck active** — pointer from `environment use` (global) or `environment use --local` (terminal session)
+- **Home**: fragments under `~/.harnesstap/environments/` (optional)
+- **Plugin default**: `default_environment_id` on a configured plugin
+- **Deck active**: pointer from `environment use` (global) or `environment use --local` (terminal session)
 
 Switch the active environment to change secrets and env vars without rebuilding the plugin stack:
 
@@ -45,7 +45,7 @@ Use `environment status` to see the active pointer and terminal drift. Use `envi
 | **env_var** | Plain key/value pairs | Yes (values) |
 | **model_config** | Default model and provider | Yes |
 | **permission** | Runtime permission overrides | Yes |
-| **secret_ref** | Indirection to a secret — never the plaintext value | Ref only (`KEY:provider:ref`) |
+| **secret_ref** | Indirection to a secret: never the plaintext value | Ref only (`KEY:provider:ref`) |
 
 ### Secret ref providers
 
@@ -95,7 +95,7 @@ MCP auth falls into two models. HarnessTap only controls the first.
 
 Credentials live in config or environment variables: API keys, bot tokens, Bearer headers, `${ENV_VAR}` / `${env:VAR}` expansion.
 
-HarnessTap can switch these across environments via `secret_ref` + apply. Keep tokens out of committed plugins — use placeholders and resolve at apply time.
+HarnessTap can switch these across environments via `secret_ref` + apply. Keep tokens out of committed plugins: use placeholders and resolve at apply time.
 
 ### OAuth 2.1 (host-managed, not switchable via environments)
 
@@ -108,7 +108,7 @@ Remote MCP servers (Linear, Slack hosted MCP, GitHub Copilot MCP, etc.) often us
 | **Copilot CLI** | `~/.copilot/mcp-config.json` | Keytar (`copilot-mcp-oauth`) or `~/.copilot/mcp-oauth-config/*.tokens.json` |
 | **VS Code family** | `.vscode/mcp.json` | VS Code Secret Storage API → OS keychain |
 
-OAuth config entries contain **server URL and transport only** — no access token. HarnessTap cannot swap OAuth sessions by changing environments because:
+OAuth config entries contain **server URL and transport only**: no access token. HarnessTap cannot swap OAuth sessions by changing environments because:
 
 1. Tokens are not in files HarnessTap materializes.
 2. Each host uses a private, undocumented credential schema.
@@ -124,10 +124,10 @@ flowchart LR
   end
 
   subgraph Disk[On disk]
-    McpJson[mcp.json — URL, env placeholders]
+    McpJson[mcp.json: URL, env placeholders]
   end
 
-  subgraph Host[Host runtime — outside HarnessTap]
+  subgraph Host[Host runtime: outside HarnessTap]
     OAuth[OAuth browser flow]
     Store[OS Keychain / host token files]
   end
@@ -144,10 +144,10 @@ flowchart LR
 | Approach | Trade-off |
 | --- | --- |
 | **Static token MCP** (bot token, PAT in `env` / `headers`) | Fully environment-switchable; you manage token rotation |
-| **Static OAuth client credentials** in Cursor `auth` block | `CLIENT_ID` / `CLIENT_SECRET` in `mcp.json` (or `${env:…}`); HarnessTap can swap via environments; access tokens still from browser OAuth |
-| **Stdio OAuth bridge** (`mcp-stdio`, `mcp-remote`) | Bridge owns OAuth; tokens on disk keyed by server URL — partial environment control |
+| **Static OAuth client credentials** in Cursor `auth` block | `CLIENT_ID` / `CLIENT_SECRET` in `mcp.json` (or `${env:...}`); HarnessTap can swap via environments; access tokens still from browser OAuth |
+| **Stdio OAuth bridge** (`mcp-stdio`, `mcp-remote`) | Bridge owns OAuth; tokens on disk keyed by server URL: partial environment control |
 | **Remote MCP gateway** | Gateway holds OAuth; HarnessTap swaps gateway API keys per environment |
-| **Per-host login** | Log in separately in each IDE/CLI after apply — no HarnessTap automation |
+| **Per-host login** | Log in separately in each IDE/CLI after apply: no HarnessTap automation |
 
 ### Cursor behavior ([official docs](https://cursor.com/docs/mcp))
 
@@ -164,28 +164,28 @@ Confirmed against Cursor's published MCP reference:
 | **OAuth access tokens** | Docs describe browser OAuth for SSE/HTTP; **do not document** where access/refresh tokens are persisted after login | Host-managed; not switchable via HarnessTap environments |
 | **Programmatic MCP** | Extension API `vscode.cursor.mcp.registerServer()` | Outside `mcp.json`; HarnessTap does not manage |
 
-Cursor's docs state that MCP servers "use environment variables for authentication" and that you should pass API keys through config — consistent with HarnessTap's static-auth / environment model. For SSE and Streamable HTTP, Cursor lists **OAuth** as the auth column; that session is separate from values in `mcp.json`.
+Cursor's docs state that MCP servers "use environment variables for authentication" and that you should pass API keys through config: consistent with HarnessTap's static-auth / environment model. For SSE and Streamable HTTP, Cursor lists **OAuth** as the auth column; that session is separate from values in `mcp.json`.
 
 ## Harness coverage for environments
 
 Full environment emission (`env_var`, `model_config`, `permission` written to harness settings files) is implemented for **Claude Code** and **Codex** only.
 
-Other harnesses still benefit from the cascade for **MCP `${VAR}` substitution** at apply time when their serializer emits MCP config (including **Cursor** — scan/emit of `.cursor/mcp.json` and global `~/.cursor/mcp.json`). See [Known gaps](#known-gaps-and-fix-plan) for remaining limitations.
+Other harnesses still benefit from the cascade for **MCP `${VAR}` substitution** at apply time when their serializer emits MCP config (including **Cursor**: scan/emit of `.cursor/mcp.json` and global `~/.cursor/mcp.json`). See [Known gaps](#known-gaps-and-fix-plan) for remaining limitations.
 
 ## Related
 
-- [Resources](./resources.md) — context vs environment resource types
-- [Plugins](./plugins.md) — `default_environment_id` and `needs[]`
-- [Profiles](./profiles.md) — global apply and home environment pointer
-- [Portability limits — MCP auth](../../portability-limits.md#mcp-authentication-and-environments)
-- [Supported harnesses](../../supported-harnesses.md) — per-harness MCP and environment matrix
-- [Command reference — environment](../command-reference.md#environment-e)
+- [Resources](./resources.md): context vs environment resource types
+- [Plugins](./plugins.md): `default_environment_id` and `needs[]`
+- [Profiles](./profiles.md): global apply and home environment pointer
+- [Portability limits: MCP auth](../../portability-limits.md#mcp-authentication-and-environments)
+- [Supported harnesses](../../supported-harnesses.md): per-harness MCP and environment matrix
+- [Command reference: environment](../command-reference.md#environment-e)
 
 ## Known gaps and fix plan
 
 Tracked limitations as of the current CLI. **Shipped** items are resolved in the CLI; **medium** items extend coverage or UX; **hard** items need host integration or new product surface.
 
-### Shipped — Cursor MCP parity
+### Shipped: Cursor MCP parity
 
 | Item | Resolution |
 | --- | --- |
@@ -196,21 +196,21 @@ Tracked limitations as of the current CLI. **Shipped** items are resolved in the
 | **`secret_ref` in supported-harnesses** | Environment resources table documents `secret_ref` and MCP substitution. |
 | **Environments concept page** | This document. |
 
-### Shipped — Claude user MCP
+### Shipped: Claude user MCP
 
 | Item | Resolution |
 | --- | --- |
 | **Claude global MCP scan/emit** | `ClaudeCodeSerializer.scanGlobal` imports top-level `mcpServers` from `~/.claude.json`. Global apply merge-overlays that key and leaves OAuth session, `projects`, and other host keys alone. |
 | **No dual-write** | Project apply still writes `.mcp.json` only. Local-scope `projects[<absPath>].mcpServers` is inventoried with source `~/.claude.json#local:<absPath>` and is never applied to `.mcp.json` or user `mcpServers`. |
 
-### Shipped — Claude local-scope MCP
+### Shipped: Claude local-scope MCP
 
 | Item | Resolution |
 | --- | --- |
 | **Claude local-scope scan** | `ClaudeCodeSerializer` inventories `projects[<absPath>].mcpServers` from `~/.claude.json` on project scan (matching path) and global scan (all projects). Dedicated source `~/.claude.json#local:<absPath>`. |
 | **No promotion** | Apply, profile use, and Sync harnesses never write local-scope servers into team `.mcp.json` or top-level user `mcpServers`. |
 
-### Medium — coverage and UX
+### Medium: coverage and UX
 
 | Gap | Impact | Proposed fix |
 | --- | --- | --- |
@@ -218,7 +218,7 @@ Tracked limitations as of the current CLI. **Shipped** items are resolved in the
 | **`environment create --from-project` captures plaintext secrets** | Import may pull literal tokens from scanned MCP `env` into `env_var` instead of promoting to `secret_ref`. | Wizard prompt: offer `secret_ref` promotion for keys matching MCP env / `needs[]`. |
 | **Copilot HTTP MCP auth fields** | Copilot may use auth blocks beyond `env`; not modeled in metadata. | Audit Copilot MCP schema; extend metadata if needed for round-trip. |
 
-### Hard — out of scope for near term
+### Hard: out of scope for near term
 
 | Gap | Why hard |
 | --- | --- |

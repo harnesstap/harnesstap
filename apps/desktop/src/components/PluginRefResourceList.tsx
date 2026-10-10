@@ -52,7 +52,7 @@ export function PluginRefResourceList({
     <section className="library-contained-resources" aria-label="Content">
       <h3 className="library-contained-heading">Content</h3>
       {filesLoading && rows.length === 0 ? (
-        <p className="muted">Loading files…</p>
+        <p className="muted">Loading files...</p>
       ) : groups.length === 0 ? (
         <div className="library-contained-empty">
           <p className="muted">{PLUGIN_REF_EMPTY_RESOURCES_COPY}</p>

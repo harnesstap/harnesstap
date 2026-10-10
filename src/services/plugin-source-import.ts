@@ -309,8 +309,8 @@ interface HostPluginCacheIdentity {
 
 /**
  * `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>` and the Cursor
- * equivalent. Official Claude LSP plugins (gopls-lsp, clangd-lsp, …) live here
- * with no `.claude-plugin/plugin.json` — metadata is in marketplace.json.
+ * equivalent. Official Claude LSP plugins (gopls-lsp, clangd-lsp, ...) live here
+ * with no `.claude-plugin/plugin.json`: metadata is in marketplace.json.
  */
 function parseHostPluginCacheIdentity(
   sourcePath: string,

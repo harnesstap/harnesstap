@@ -18,7 +18,7 @@ These are scanned from project and home harness files, curated in plugins, and w
 | --- | --- |
 | **instructions** | `AGENTS.md`, `CLAUDE.md`, `.windsurfrules`, `.github/copilot-instructions.md` |
 | **skills** | `SKILL.md` trees under harness-native skill directories |
-| **rules** | `.cursor/rules/*.mdc`, `.claude/rules/`, `.kiro/steering/`, … |
+| **rules** | `.cursor/rules/*.mdc`, `.claude/rules/`, `.kiro/steering/`, ... |
 | **mcp** | MCP server definitions from harness MCP config files |
 | **permissions** | Allow/deny patterns (Claude Code and Codex settings) |
 | **hooks** | Hook event definitions from settings or `hooks.json` |
@@ -45,7 +45,7 @@ Environments carry *how* values that override matching plugin resources during a
 | **permissions** | Runtime permission overrides |
 | **secret_ref** | Indirection to secrets (exported as refs, not plaintext) |
 
-See the full harness matrix — which types each harness supports — in [Supported harnesses](../../supported-harnesses.md). For env vars, secret refs, MCP token switching, and OAuth limits, see [Environments](./environments.md).
+See the full harness matrix: which types each harness supports: in [Supported harnesses](../../supported-harnesses.md). For env vars, secret refs, MCP token switching, and OAuth limits, see [Environments](./environments.md).
 
 ## Scan and import
 
@@ -69,7 +69,7 @@ ht add owner/repo --skill my-skill
 
 ## Canonical SQLite library
 
-Imported resources live in `~/.harnesstap/harnesstap.db` alongside plugins, environments, plugins, tracked projects, and snapshots. The database is the single source of truth for composition — on-disk harness files are **materialized views** produced by apply, mirror, or profile use.
+Imported resources live in `~/.harnesstap/harnesstap.db` alongside plugins, environments, plugins, tracked projects, and snapshots. The database is the single source of truth for composition: on-disk harness files are **materialized views** produced by apply, mirror, or profile use.
 
 Key resource commands:
 
@@ -107,7 +107,7 @@ ht resource show plugin_pin:formatter@my-marketplace
 
 Claude Code **home scan** (`init`, profile from home, `scan` of global defaults) also registers installed plugins from `~/.claude/plugins/installed_plugins.json` as `plugin_pin` resources. Cursor home scan registers plugins Cursor has installed under `~/.cursor/plugins/` (install records, not every cache directory). Copilot CLI home scan registers installed plugins from `~/.copilot/installed-plugins/`. That creates the pin in the library; run `resource sync` to materialize child skills/hooks from the install tree.
 
-Claude Code, Goose, and Copilot CLI have native plugin install/sync providers. Cursor inventories `~/.cursor/plugins/`. **cursor-public** is a native git marketplace (`https://github.com/cursor/plugins`); other Cursor marketplaces still use `agent plugin marketplace add`. HarnessTap installs a Cursor plugin by copying it into `~/.cursor/plugins/local/`; Reload Window loads it. Marketplace install in Customize or `/plugin` still takes precedence for the same plugin name. `ht harness sync` copies Claude and Cursor install trees onto each other (native roots; not a shared plugin directory) and also writes plugin skills/agents/commands into `.agents` (and equivalent folders) so OpenCode and similar harnesses can use them. Other harnesses may import plugin manifest metadata without full install-tree fidelity — see [Portability limits](../../portability-limits.md).
+Claude Code, Goose, and Copilot CLI have native plugin install/sync providers. Cursor inventories `~/.cursor/plugins/`. **cursor-public** is a native git marketplace (`https://github.com/cursor/plugins`); other Cursor marketplaces still use `agent plugin marketplace add`. HarnessTap installs a Cursor plugin by copying it into `~/.cursor/plugins/local/`; Reload Window loads it. Marketplace install in Customize or `/plugin` still takes precedence for the same plugin name. `ht harness sync` copies Claude and Cursor install trees onto each other (native roots; not a shared plugin directory) and also writes plugin skills/agents/commands into `.agents` (and equivalent folders) so OpenCode and similar harnesses can use them. Other harnesses may import plugin manifest metadata without full install-tree fidelity: see [Portability limits](../../portability-limits.md).
 
 ## Portability notes
 
@@ -117,11 +117,11 @@ Before relying on cross-harness apply, review [Portability limits](../../portabi
 
 ## Related
 
-- [Plugins](./plugins.md) — composing resources into applyable packages
-- [Projects](./projects.md) — scanning and applying in a repository
-- [Supported harnesses](../../supported-harnesses.md) — resource types per harness
-- [Portability limits](../../portability-limits.md) — fidelity caveats
-- [Command reference](../command-reference.md) — `resource` and `add` commands
-- [Scenario 31](../../scenarios/details/31-dual-mode-plugin-import.md) — dual-mode plugin import
-- [Scenario 35](../../scenarios/details/35-add-skill-package.md) — add skill packages
-- [Environments](./environments.md) — secret refs, cascade, MCP auth limits
+- [Plugins](./plugins.md): composing resources into applyable packages
+- [Projects](./projects.md): scanning and applying in a repository
+- [Supported harnesses](../../supported-harnesses.md): resource types per harness
+- [Portability limits](../../portability-limits.md): fidelity caveats
+- [Command reference](../command-reference.md): `resource` and `add` commands
+- [Scenario 31](../../scenarios/details/31-dual-mode-plugin-import.md): dual-mode plugin import
+- [Scenario 35](../../scenarios/details/35-add-skill-package.md): add skill packages
+- [Environments](./environments.md): secret refs, cascade, MCP auth limits

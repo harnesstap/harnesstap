@@ -6,7 +6,7 @@
 
 Use this when you maintain separate agent setups for work, personal, or
 client contexts and want one command to apply the right stack to your
-**machine home** harness files (`~/.claude/`, `~/.codex/`, …).
+**machine home** harness files (`~/.claude/`, `~/.codex/`, ...).
 
 Typical commands:
 
@@ -28,7 +28,7 @@ What this gives you:
 - root shorthand `ht <name>` when `<name>` is a profile plugin and not a
   reserved command (`ht default` still resolves to `global default`)
 
-`init` sets the active profile pointer only — it does **not** run global
+`init` sets the active profile pointer only: it does **not** run global
 apply. Run `profile use "global default"` (or `ht default`) after bootstrap to
 materialize home harness files.
 

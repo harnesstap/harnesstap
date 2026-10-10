@@ -106,7 +106,7 @@ export function renderFoldedHintLine(segments: string[], maxWidth: number): stri
   for (const segment of segments) {
     const piece =
       segment.length > normalizedWidth - HINT_INDENT.length
-        ? `${segment.slice(0, Math.max(0, normalizedWidth - HINT_INDENT.length - 1))}…`
+        ? `${segment.slice(0, Math.max(0, normalizedWidth - HINT_INDENT.length - 3))}...`
         : segment;
 
     const candidate =

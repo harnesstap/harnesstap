@@ -105,7 +105,7 @@ export function resolveFilesystemPackageRoot(
 }
 
 function failClosedMissing(label: string): never {
-  throw new ApmGraphError(`APM package ${label} is missing — apply aborted closed`);
+  throw new ApmGraphError(`APM package ${label} is missing: apply aborted closed`);
 }
 
 function linkParent(
@@ -204,7 +204,7 @@ async function visitFrame(
   const identity = apmDependencyIdentity(frame.dependency, frame.declaringRoot);
   if (frame.ancestors.includes(identity)) {
     throw new ApmGraphError(
-      `APM dependency cycle: ${[...frame.ancestors, identity].join(" → ")} — apply aborted closed`,
+      `APM dependency cycle: ${[...frame.ancestors, identity].join(" → ")}: apply aborted closed`,
     );
   }
 

@@ -39,12 +39,12 @@ export async function handlePluginCatalogListCommand(opts: {
 
   console.log(`Default catalog: ${payload.defaultOrg}`);
   console.log(`Cloud base URL: ${payload.cloudBaseUrl}`);
-  console.log(`Connected orgs: ${payload.connectedOrgs.length > 0 ? payload.connectedOrgs.join(", ") : "—"}`);
+  console.log(`Connected orgs: ${payload.connectedOrgs.length > 0 ? payload.connectedOrgs.join(", ") : ": "}`);
   console.log(
-    `Connected plugins: ${payload.connectedPlugins.length > 0 ? payload.connectedPlugins.join(", ") : "—"}`,
+    `Connected plugins: ${payload.connectedPlugins.length > 0 ? payload.connectedPlugins.join(", ") : ": "}`,
   );
   console.log(
-    `Registered publish catalogs: ${registered.length > 0 ? registered.map((entry) => `${entry.org}/${entry.catalog}`).join(", ") : "—"}`,
+    `Registered publish catalogs: ${registered.length > 0 ? registered.map((entry) => `${entry.org}/${entry.catalog}`).join(", ") : ": "}`,
   );
 }
 

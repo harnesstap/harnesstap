@@ -189,7 +189,7 @@ export function FileDiffModal({
   
           <div className="file-diff-body">
             {loading ? (
-              <p className="muted">Loading diff…</p>
+              <p className="muted">Loading diff...</p>
             ) : error ? (
               <div className="banner error" role="alert">
                 <div>{error}</div>

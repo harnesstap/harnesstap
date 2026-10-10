@@ -290,7 +290,7 @@ function makeLocalColumns(showId: boolean, profileMode: boolean): Column[] {
     header: "DESCRIPTION",
     width: 44,
     truncate: true,
-    transform: (value) => value || "—",
+    transform: (value) => value || ": ",
   });
   return columns;
 }
@@ -321,7 +321,7 @@ function makeRemoteColumns(highlightSelection: boolean): Column[] {
       width: 16,
       fitContent: true,
       transform: (value) =>
-        value ? format.formatRelativeTime(String(value)) : theme.muted("—"),
+        value ? format.formatRelativeTime(String(value)) : theme.muted(": "),
     },
   ];
 }
@@ -348,7 +348,7 @@ function formatRemoteCatalogVersion(
 ): string {
   const latestVersion = catalogPlugin.latestVersion;
   if (!latestVersion) {
-    return theme.muted("—");
+    return theme.muted(": ");
   }
 
   const installed = findInstalledLocalPlugin(catalogPlugin, localPlugins);

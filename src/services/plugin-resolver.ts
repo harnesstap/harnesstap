@@ -38,7 +38,7 @@ export function resolvePluginGraph(rootSelectors: string[]): PluginResolutionRes
     if (cached) {
       if (constraint && !satisfiesConstraint(constraint, cached.version)) {
         throw new Error(
-          `Plugin "${name}" was resolved to version ${cached.version} but "${requestedBy}" requires "${constraint}" — conflicting constraints`,
+          `Plugin "${name}" was resolved to version ${cached.version} but "${requestedBy}" requires "${constraint}": conflicting constraints`,
         );
       }
       return cached;
@@ -74,7 +74,7 @@ export function resolvePluginGraph(rootSelectors: string[]): PluginResolutionRes
     const parsed = parsePluginSelectorString(selector);
 
     if (parsed.kind === "id") {
-      // id-based lookup — if already resolved (by name), skip
+      // id-based lookup: if already resolved (by name), skip
       const plugin = getPlugin(selector);
       if (!plugin) {
         throw new Error(`No plugin found with id "${selector}"`);
@@ -84,7 +84,7 @@ export function resolvePluginGraph(rootSelectors: string[]): PluginResolutionRes
       if (cached) {
         if (cached.id !== plugin.id) {
           throw new Error(
-            `Plugin "${plugin.name}" was resolved to version ${cached.version} (id: ${cached.id}) but an explicit id selector "${selector}" targets version ${plugin.version} (id: ${plugin.id}) — conflicting selectors`,
+            `Plugin "${plugin.name}" was resolved to version ${cached.version} (id: ${cached.id}) but an explicit id selector "${selector}" targets version ${plugin.version} (id: ${plugin.id}): conflicting selectors`,
           );
         }
         return;

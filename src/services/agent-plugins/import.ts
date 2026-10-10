@@ -303,7 +303,7 @@ function parseMcpResources(files: ApPackageFiles): ResourceCreateInput[] {
   try {
     document = JSON.parse(fileText(entry)) as unknown;
   } catch {
-    throw new Error("Invalid mcp.json — expected JSON");
+    throw new Error("Invalid mcp.json: expected JSON");
   }
 
   const servers = parseMcpServersDocument(document);
@@ -436,14 +436,14 @@ function parseClaudeConfig(files: ApPackageFiles): ClaudePluginConfig | undefine
 export function parseApPackageFiles(files: ApPackageFiles): ParsedApPackage {
   const manifestEntry = files["plugin.json"];
   if (!manifestEntry) {
-    throw new Error("Missing plugin.json — not an Agent Plugins package");
+    throw new Error("Missing plugin.json: not an Agent Plugins package");
   }
 
   let manifestRaw: unknown;
   try {
     manifestRaw = JSON.parse(fileText(manifestEntry)) as unknown;
   } catch {
-    throw new Error("Invalid plugin.json — expected JSON");
+    throw new Error("Invalid plugin.json: expected JSON");
   }
 
   const { manifest: manifestWithSchema } = withDefaultedApSchema(manifestRaw);

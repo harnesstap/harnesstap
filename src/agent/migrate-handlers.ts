@@ -110,7 +110,7 @@ export async function handleMigrateExport(
       {
         error: "invalid_scope",
         message:
-          "Environments are no longer exported on their own — they are machine-local " +
+          "Environments are no longer exported on their own: they are machine-local " +
           "secret references. Use workspace to back them up with everything else.",
       },
       { status: 400 },
@@ -235,7 +235,7 @@ export async function handleMigrateImport(
         {
           error: "invalid_scope",
           message:
-            "Environments are no longer imported on their own — they are machine-local " +
+            "Environments are no longer imported on their own: they are machine-local " +
             "secret references. Use workspace to restore them with everything else.",
         },
         { status: 400 },

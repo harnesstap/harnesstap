@@ -1,0 +1,2 @@
+# G3 copy allowlist. One entry per line: relative/path:line:column
+# Expected to stay empty. Comments and blank lines are ignored.

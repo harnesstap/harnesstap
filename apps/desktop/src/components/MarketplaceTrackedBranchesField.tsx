@@ -92,7 +92,7 @@ export function MarketplaceTrackedBranchesField({
 
   const closedLabel = formatTrackedBranchesField(selected);
   const placeholder = loading
-    ? "Listing branches…"
+    ? "Listing branches..."
     : sourceReady
       ? "Leave empty for the default branch"
       : "Type a URL or path to list branches";
@@ -100,7 +100,7 @@ export function MarketplaceTrackedBranchesField({
   const emptyLabel = !sourceReady
     ? "Type a URL or path to list branches"
     : loading
-      ? "Listing branches…"
+      ? "Listing branches..."
       : options.length === 0
         ? "No branches found"
         : noResultsTitle(query);

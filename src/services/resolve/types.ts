@@ -283,7 +283,7 @@ export function previewConflictContent(content: string): string {
   }
   return [
     ...lines.slice(0, CONFLICT_PREVIEW_LINES),
-    `… (${lines.length} lines in content)`,
+    `... (${lines.length} lines in content)`,
   ].join("\n");
 }
 

@@ -322,7 +322,7 @@ export function CreateProfileDrawer({
               aria-busy={busy}
             >
               {busy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
-              {busy ? "Creating…" : "Create profile"}
+              {busy ? "Creating..." : "Create profile"}
             </button>
           ) : (
             <button
@@ -336,7 +336,7 @@ export function CreateProfileDrawer({
               aria-busy={busy}
             >
               {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
-              {busy ? "Previewing…" : "Continue"}
+              {busy ? "Previewing..." : "Continue"}
             </button>
           )}
         </>
@@ -412,7 +412,7 @@ export function CreateProfileDrawer({
           {source === "compose" ? (
             <div className="compose-library compose-library-unified">
               {libraryLoading ? (
-                <p className="muted">Loading local library…</p>
+                <p className="muted">Loading local library...</p>
               ) : libraryError ? (
                 <div className="banner error">{libraryError}</div>
               ) : (

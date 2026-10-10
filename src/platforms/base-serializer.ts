@@ -21,7 +21,7 @@ import type {
 
 /**
  * Base class for platform serializers.
- * Provides common filesystem helpers — subclasses implement scan() and serialize().
+ * Provides common filesystem helpers: subclasses implement scan() and serialize().
  */
 export abstract class BaseSerializer implements PlatformSerializer {
   abstract readonly platformId: string;

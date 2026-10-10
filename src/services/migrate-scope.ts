@@ -34,7 +34,7 @@ export interface MigrateExportCliOpts {
   workspace?: boolean;
   plugin?: string;
   resource?: string;
-  /** Deprecated — rejected by {@link rejectEnvironmentScope}. */
+  /** Deprecated: rejected by {@link rejectEnvironmentScope}. */
   environment?: string;
   includePlugins?: boolean;
   embedPlugins?: boolean;
@@ -47,7 +47,7 @@ export interface MigrateImportCliOpts {
   workspace?: boolean;
   plugin?: boolean;
   resource?: boolean;
-  /** Deprecated — rejected by {@link rejectEnvironmentScope}. */
+  /** Deprecated: rejected by {@link rejectEnvironmentScope}. */
   environment?: boolean | string;
 }
 
@@ -126,7 +126,7 @@ export function assertExclusiveScopeFlags(opts: {
 export function rejectEnvironmentScope(opts: { environment?: string | boolean }): void {
   if (opts.environment) {
     throw new Error(
-      "Environments are no longer exported on their own — they are machine-local " +
+      "Environments are no longer exported on their own: they are machine-local " +
         "secret references. Use --workspace to back them up with everything else.",
     );
   }
@@ -217,7 +217,7 @@ export function detectImportScopeFromFile(filePath: string): MigrateScope {
   if (statSync(resolved).isDirectory()) {
     if (!existsSync(join(resolved, "plugin.json"))) {
       throw new Error(
-        `${resolved} is a directory but has no plugin.json — expected an Agent Plugins package.`,
+        `${resolved} is a directory but has no plugin.json: expected an Agent Plugins package.`,
       );
     }
     return "plugin";

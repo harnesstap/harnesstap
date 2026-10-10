@@ -35,7 +35,7 @@ export function PluginCompositionFields({
       <div className="plugin-composition-pane">
         <div className="compose-library compose-library-unified">
           {libraryLoading ? (
-            <p className="muted">Loading local library…</p>
+            <p className="muted">Loading local library...</p>
           ) : libraryError ? (
             <div className="banner error">{libraryError}</div>
           ) : (

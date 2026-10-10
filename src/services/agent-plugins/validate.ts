@@ -66,7 +66,7 @@ export function validateApManifest(manifest: unknown): void {
   for (const key of Object.keys(document)) {
     if (!CORE_FIELDS.has(key)) {
       problems.push(
-        `unknown top-level field "${key}" — HarnessTap fields belong under extensions["com.harnesstap"]`,
+        `unknown top-level field "${key}": HarnessTap fields belong under extensions["com.harnesstap"]`,
       );
     }
   }

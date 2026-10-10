@@ -248,11 +248,11 @@ export const createRemoteCatalogListPrompt: (
     `${prefix} ${promptTheme.style.message(config.message, "idle")}`,
     theme.muted(`Catalog: ${config.scopeLabel}`),
     ...(isApplyMode
-      ? [theme.muted("Apply writes harness files — choose project or global scope after selecting")]
+      ? [theme.muted("Apply writes harness files: choose project or global scope after selecting")]
       : []),
     `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
     ...(isApplyMode ? [`Selected: ${checkedPlugins.size} to apply`] : []),
-    ...(loading && plugins.length === 0 ? [theme.muted("Loading plugins…")] : []),
+    ...(loading && plugins.length === 0 ? [theme.muted("Loading plugins...")] : []),
     "",
     tableSection,
     "",

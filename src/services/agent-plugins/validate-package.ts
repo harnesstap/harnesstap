@@ -26,7 +26,7 @@ function readPluginJson(files: ApPackageFiles): unknown {
   try {
     return JSON.parse(fileText(manifestEntry)) as unknown;
   } catch {
-    throw new Error("Invalid plugin.json — expected JSON");
+    throw new Error("Invalid plugin.json: expected JSON");
   }
 }
 

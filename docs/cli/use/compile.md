@@ -19,7 +19,7 @@ ht targets
 1. `--target` / `--all` / `--harness` on the command line (`--target` and `--harness` occupy the same slot and are mutually exclusive with `--all`)
 2. `targets:` (or singular `target`) in `apm.yml`, then `compilation.target` when those fields are omitted
 3. Project harness preference, then global harness preference (`ht init --harnesses` / `ht harness set`)
-4. Auto-detection from documented filesystem signals (`.cursor/`, `.claude/`, `CLAUDE.md`, …), then HT `detectPlatforms`
+4. Auto-detection from documented filesystem signals (`.cursor/`, `.claude/`, `CLAUDE.md`, ...), then HT `detectPlatforms`
 
 Preview the table with `ht targets` (or `ht targets --json`) before compiling. Pin `targets:` so every machine, CI job, and cloud agent writes the same files:
 
@@ -37,6 +37,6 @@ When nothing resolves after that chain, `ht compile` fails closed the same way a
 
 ## What compile does not do
 
-Compile does not take a plugin selector or `--global`. There is no `--watch` and no `--clean`. `compilation.strategy: distributed` is noted and ignored — output stays the existing single-file root context (`AGENTS.md` / `CLAUDE.md`). Use `ht harness list` for the 44-harness registry; `ht targets` is the apply-target preview.
+Compile does not take a plugin selector or `--global`. There is no `--watch` and no `--clean`. `compilation.strategy: distributed` is noted and ignored: output stays the existing single-file root context (`AGENTS.md` / `CLAUDE.md`). Use `ht harness list` for the 44-harness registry; `ht targets` is the apply-target preview.
 
 See also: [Install a project](./install.md), [Apply to a project](./apply.md), [Command reference](../command-reference.md).

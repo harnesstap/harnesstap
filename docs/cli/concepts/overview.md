@@ -21,8 +21,8 @@ flowchart TB
 
   subgraph Library[Local HarnessTap library]
     Resources[Canonical resources in SQLite]
-    Plugins[Plugins — the what]
-    Envs[Environments — the how]
+    Plugins[Plugins: the what]
+    Envs[Environments: the how]
     Packages[Agent Plugins packages]
   end
 
@@ -69,17 +69,17 @@ sequenceDiagram
 
 ## Concept model
 
-HarnessTap separates **context-side** configuration (skills, MCP, hooks, rules — what the model sees) from **environment-side** configuration (secrets, env vars, models — how it runs).
+HarnessTap separates **context-side** configuration (skills, MCP, hooks, rules: what the model sees) from **environment-side** configuration (secrets, env vars, models: how it runs).
 
 | Concept | Role |
 | --- | --- |
 | **Resource** | Atomic instruction, skill, rule, MCP server, hook, agent, command, etc. |
 | **Plugin** | Versioned package of *what* resources plus a `needs` contract |
-| **Environment** | Named *how* values (and secret refs) — prod, staging, personal |
+| **Environment** | Named *how* values (and secret refs): prod, staging, personal |
 | **Profile** | A plugin tagged for machine-wide switching (`ht work`, `profile use`) |
 | **Workspace** | Local library of plugins, resources, and environments at `~/.harnesstap` |
 | **Catalog** | Org-scoped published plugins you search and pull into the workspace |
-| **Account** | HarnessTap Cloud login identity (`auth login`, `--account`) — not a profile |
+| **Account** | HarnessTap Cloud login identity (`auth login`, `--account`): not a profile |
 | **GitHub session** | GitHub App login (`github login`) for private GitHub marketplace/repo reads |
 
 A **plugin** is the versioned context package you apply to projects or profiles. **Plugin pins** and nested **plugin** refs are dependencies attached during composition.
@@ -102,7 +102,7 @@ HarnessTap materializes configuration in two places:
 
 | Surface | Scope | Primary commands |
 | --- | --- | --- |
-| **Profiles** | Machine-wide home harness paths (`~/.claude/`, `~/.codex/`, …) | `profile use`, `ht <profile-name>` |
+| **Profiles** | Machine-wide home harness paths (`~/.claude/`, `~/.codex/`, ...) | `profile use`, `ht <profile-name>` |
 | **Projects** | Repository working tree | `apply`, `mirror`, `status --check` |
 
 Profiles answer "what stack runs on this machine by default?" Projects answer "what baseline does this repo get?" See [Profiles](./profiles.md) and [Projects](./projects.md).

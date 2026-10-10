@@ -232,7 +232,7 @@ export function MigrateImportDrawer({
               aria-busy={busy}
             >
               {busy ? <ButtonSpinner size={16} /> : <FolderDown size={16} aria-hidden />}
-              {busy ? "Importing…" : "Import"}
+              {busy ? "Importing..." : "Import"}
             </button>
           ) : (
             <button
@@ -245,7 +245,7 @@ export function MigrateImportDrawer({
               aria-busy={detecting}
             >
               {detecting ? <ButtonSpinner size={16} /> : <ChevronRight size={16} aria-hidden />}
-              {detecting ? "Detecting…" : "Next"}
+              {detecting ? "Detecting..." : "Next"}
             </button>
           )}
         </>
@@ -256,7 +256,7 @@ export function MigrateImportDrawer({
               <Label>Import file</Label>
               <div className="flex flex-wrap items-center gap-2">
                 <IconActionButton
-                  label="Choose file…"
+                  label="Choose file..."
                   onClick={() => void pickImportPath()}
                   disabled={controlsDisabled}
                   icon={<FolderDown size={16} aria-hidden />}

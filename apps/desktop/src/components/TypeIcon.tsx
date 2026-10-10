@@ -28,7 +28,7 @@ export function TypeIcon({ type }: { type: string }): ReactNode {
     case "package":
       return <Package size={ICON_SIZE} aria-hidden />;
     case "sparkles":
-      // Sparkles is the skill type glyph only — not status, not gaps, not agents.
+      // Sparkles is the skill type glyph only: not status, not gaps, not agents.
       return <Sparkles size={ICON_SIZE} aria-hidden />;
     case "plug":
       return <Plug size={ICON_SIZE} aria-hidden />;
