@@ -376,7 +376,7 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin create --skill <names>` — comma-separated skills to attach when using `--from`
 - `plugin create --all` — attach all discovered skills when using `--from`
 - `plugin create --exclude-category <names>` — exclude skill categories (repeatable or comma-separated)
-- `plugin create --on-conflict <policy>` - when the plugin exists: `replace`, `skip`, `prompt` or `cancel` (default `cancel`). `merge` is plugin import only. Aliases for one release: `overwrite` -> `replace`, `ignore` -> `skip`, `fail`/`abort` -> `cancel`.
+- `plugin create --on-conflict <policy>` - when the plugin exists: `replace`, `skip`, `prompt` or `cancel` (default `cancel`). `merge` is plugin import only. Aliases for one release: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
 - `plugin create --install` — opt-in hub install; requires `--global` or `--project`
 - `plugin create --dry-run` — preview configuration without writing
 - `plugin list --format json`
@@ -413,7 +413,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `plugin edit --clear-environment` — clear the configured plugin default environment
 - `apply --project <path>` — target project directory (default `.`)
 - `apply --target <slugs>` / `--all` / `--harness <slugs>` — APM target slugs or HarnessTap harness slugs (same resolution slot)
-- `apply --on-conflict <replace|skip|prompt|cancel>` - what to do when it already exists. Non-interactive apply still falls back to `replace` today; DS-6 default is `cancel` (W2-12). Aliases: `overwrite` -> `replace`, `ignore` -> `skip`, `fail`/`abort` -> `cancel`.
+- `apply --on-conflict <replace|skip|prompt|cancel>` - what to do when it already exists. Non-interactive apply still falls back to `replace` today; DS-6 default is `cancel` (W2-12). Aliases: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
 - `apply --dry-run` — show planned file writes only
 - `apply --explain` — print the resolution trail (selected versions and every resource decision)
 - `apply --update` — ignore `apm.lock.yaml` and re-resolve the dependency graph (including git `dependencies.apm` refs)
