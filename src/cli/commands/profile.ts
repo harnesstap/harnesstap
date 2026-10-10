@@ -3,7 +3,7 @@ import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
 import { getPlugin, resolvePluginSelector } from "../../models/plugin-model.js";
-import { SWITCH_CHANGES_FLAG_HELP } from "../../copy/cli.js";
+import { dryRunStashLine, SWITCH_CHANGES_FLAG_HELP } from "../../copy/cli.js";
 import { listAttachedPluginRefs } from "../../services/plugin-composition.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
 import { handlePluginListCommand } from "../../services/plugin-list.js";
@@ -45,7 +45,7 @@ import {
 import type { Plugin } from "../../types.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
-import { formatPluginLabel } from "../formatting.js";
+import { formatCount, formatPluginLabel } from "../formatting.js";
 import { configureCommandGroup } from "../help.js";
 import { handlePluginInstallCommand } from "../handlers/plugin-install.js";
 import {
@@ -62,38 +62,10 @@ import {
 } from "../shared.js";
 import {
   printApplyDryRun,
-  printApplySuccess,
-  removalSkipReason,
+  printApplyPayload,
 } from "../print-apply-summary.js";
 import { registerProfileCreateCommand } from "../handlers/profile-create.js";
 import { registerProfileParityCommands } from "./parity-register.js";
-import type { ApplyProfilePluginResult } from "../../services/profile-apply.js";
-
-function applyResultKv(payload: ApplyProfilePluginResult): Array<{ key: string; value: string }> {
-  return [
-    { key: "Files", value: `${payload.files.length}` },
-    { key: "Written", value: `${payload.written_files.length}` },
-    { key: "Skipped", value: `${payload.skipped_files.length}` },
-    { key: "Removed", value: `${payload.removed_files?.length ?? 0}` },
-    ...(payload.snapshot_id ? [{ key: "Snapshot", value: payload.snapshot_id }] : []),
-  ];
-}
-
-function printPlannedRemovals(payload: ApplyProfilePluginResult): void {
-  for (const path of payload.removed_files ?? []) {
-    console.log(`  remove ${path}`);
-  }
-  for (const skipped of payload.skipped_removals ?? []) {
-    if (skipped.reason === "missing") {
-      continue;
-    }
-    ui.warn(skipped.message);
-  }
-  if (payload.removal_backup && (payload.removed_files?.length ?? 0) > 0) {
-    ui.info(`Backup: ${payload.removal_backup}`);
-  }
-}
-
 async function handleProfilePullCommand(
   selector: string,
   opts: {
@@ -168,7 +140,7 @@ async function handleProfilePublishCommand(
     ui.warn(`Plugin "${plugin.name}" is not tagged as a profile.`);
   }
   warnProfilePublishValidation(plugin);
-  await handlePluginPublishCommand(pluginName, undefined, opts);
+  await handlePluginPublishCommand(pluginName, undefined, { ...opts, kind: "profile" });
 }
 
 export function registerProfileCommands(root: Command): void {
@@ -299,7 +271,7 @@ profileCmd
         ui.warn(
           `Active profile ${ui.theme.accent(status.active_profile)} has not been applied globally yet.`,
         );
-        ui.hint(`Run ${formatCommand(`profile use ${status.active_profile}`)} to materialize home harness files.`);
+        ui.hint(`Run ${formatCommand(["profile", "use", status.active_profile])} to materialize home harness files.`);
       } else if (!status.has_drift) {
         ui.success(`Global harness files are in sync with profile ${ui.theme.accent(status.active_profile)}.`);
       } else {
@@ -310,15 +282,17 @@ profileCmd
           ui.dim("Profile stack changed since the last global apply.");
         }
         if (status.changes.length > 0) {
-          ui.dim(`${status.changes.length} file(s) differ on disk.`);
+          ui.dim(
+            `${formatCount(status.changes.length, "file")} ${status.changes.length === 1 ? "differs" : "differ"} on disk.`,
+          );
         }
-        ui.hint(`Run ${formatCommand(`profile use ${status.active_profile}`)} to refresh global harness files.`);
+        ui.hint(`Run ${formatCommand(["profile", "use", status.active_profile])} to refresh global harness files.`);
       }
 
       const collisionCount = status.host_managed?.cursor?.collisions.length ?? 0;
       if (format !== "json" && collisionCount > 0) {
         ui.warn(
-          `${collisionCount} Cursor host-managed skill name collision(s) with user or profile skills.`,
+          `${formatCount(collisionCount, "Cursor host-managed skill name collision")} with user or profile skills.`,
         );
         ui.hint(
           "Cursor built-ins live under ~/.cursor/skills-cursor/ (read-only inventory). User skills belong in ~/.cursor/skills/.",
@@ -473,32 +447,7 @@ profileCmd
           console.log(`  - ${pulled.plugin_name} (${pulled.source})`);
         }
       }
-      const kept = (payload.skipped_removals ?? []).flatMap((entry) => {
-        const reason = removalSkipReason(entry.reason);
-        return reason ? [{ path: entry.path, reason }] : [];
-      });
-      const unchanged = Math.max(
-        0,
-        payload.files.length - payload.written_files.length,
-      );
-      if (payload.dry_run) {
-        printApplyDryRun({
-          wouldWrite: payload.written_files,
-          wouldRemove: payload.removed_files ?? [],
-          wouldKeep: kept,
-          unchanged,
-        });
-        return;
-      }
-      printApplySuccess({
-        name: payload.profile_name,
-        harnessCount: payload.harnesses.length,
-        wrote: payload.written_files.length,
-        removed: payload.removed_files?.length ?? 0,
-        kept,
-        unchanged,
-        snapshotId: payload.snapshot_id,
-      });
+      printApplyPayload(payload);
     } catch (err) {
       process.exitCode = 1;
       if (err instanceof PinnedPluginInstallConsentError) {
@@ -550,14 +499,25 @@ const stashCmd = profileCmd
         printJson(result);
         return;
       }
-      const dryPrefix = result.cleared.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
+      const stashCount = result.entry.contents.resources.length;
+      if (result.cleared.dry_run) {
+        console.log(dryRunStashLine(stashCount, result.entry.profile_name));
+        printApplyDryRun({
+          wouldWrite: [],
+          wouldRemove: result.cleared.removed_files ?? [],
+          wouldKeep: [],
+          unchanged: 0,
+          header: false,
+        });
+        return;
+      }
       ui.success(
-        `${dryPrefix}Stashed ${result.entry.contents.resources.length} untracked resource${result.entry.contents.resources.length === 1 ? "" : "s"} for profile ${ui.theme.accent(result.entry.profile_name)}.`,
+        `Stashed ${formatCount(stashCount, "untracked resource")} for profile ${ui.theme.accent(result.entry.profile_name)}.`,
       );
       if ((result.cleared.removed_files?.length ?? 0) > 0) {
-        ui.dim(`Removed ${result.cleared.removed_files?.length} managed file(s).`);
+        ui.dim(`Removed ${formatCount(result.cleared.removed_files?.length ?? 0, "managed file")}.`);
       }
-      ui.hint(`Restore with ${formatCommand("profile stash pop")}.`);
+      ui.hint(`Restore with ${formatCommand(["profile", "stash", "pop"])}.`);
     } catch (err) {
       process.exitCode = 1;
       fail(err instanceof Error ? err.message : String(err));
@@ -707,9 +667,17 @@ stashCmd
         ui.warn("Profile restore cancelled.");
         return;
       }
-      const dryPrefix = result.restored.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
+      if (result.restored.dry_run) {
+        printApplyDryRun({
+          wouldWrite: result.restored.restored_files,
+          wouldRemove: [],
+          wouldKeep: [],
+          unchanged: 0,
+        });
+        return;
+      }
       ui.success(
-        `${dryPrefix}Applied stashed profile ${ui.theme.accent(result.entry.profile_name)}.`,
+        `Applied stashed profile ${ui.theme.accent(result.entry.profile_name)}.`,
       );
     } catch (err) {
       process.exitCode = 1;
@@ -809,15 +777,10 @@ profileCmd
         );
         return;
       }
-      const dryPrefix = result.apply.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
-      ui.success(
-        `${dryPrefix}Switched to profile ${ui.theme.accent(result.apply.profile_name)} on ${result.apply.harnesses.join(", ") || "(none)"}`,
-      );
-      if (result.apply.default_environment_name) {
+      if (result.apply.default_environment_name && !result.apply.dry_run) {
         ui.info(`Default environment: ${result.apply.default_environment_name}`);
       }
-      ui.kvBlock(applyResultKv(result.apply));
-      printPlannedRemovals(result.apply);
+      printApplyPayload(result.apply);
     } catch (err) {
       process.exitCode = 1;
       if (err instanceof SwitchRestoreFailedError) {

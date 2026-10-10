@@ -14,6 +14,7 @@ import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
 import { renderCliError } from "../runtime.js";
+import { formatCount } from "../formatting.js";
 import { formatCommand } from "../shared.js";
 import { SCOPE_COPY, portableScopeTip, scopeLine } from "../../copy/scope.js";
 import { getHarnessPreference } from "../../models/harness.js";
@@ -155,7 +156,7 @@ function printHostManagedCollisions(preview: ProfileApplyPreview): void {
   const collisionCount = preview.host_managed?.cursor?.collisions.length ?? 0;
   if (collisionCount > 0) {
     ui.warn(
-      `${collisionCount} Cursor host-managed skill name collision(s) with user or profile skills.`,
+      `${formatCount(collisionCount, "Cursor host-managed skill name collision")} with user or profile skills.`,
     );
   }
 }
@@ -196,9 +197,13 @@ function printPortableMcpTips(preview: ProfileApplyPreview): void {
     if (extra.length === 0) {
       continue;
     }
-    const command = formatCommand(
-      `resource scope ${resource.name} --add ${extra.join(",")}`,
-    );
+    const command = formatCommand([
+      "resource",
+      "scope",
+      resource.name,
+      "--add",
+      extra.join(","),
+    ]);
     ui.hint(
       portableScopeTip({
         resourceName: resource.name,

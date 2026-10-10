@@ -11,6 +11,7 @@ import {
   isPromptCancellationError,
   promptForConfirmation,
 } from "../../services/wizards/shared.js";
+import { formatCount } from "../formatting.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 
@@ -64,7 +65,7 @@ export async function handlePluginCheckCommand(
         local: row.local_version,
         originRef: originRef(row),
       })),
-      summary: `${report.results.length} plugin${report.results.length === 1 ? "" : "s"}`,
+      summary: formatCount(report.results.length, "plugin"),
       empty: "No syncable working heads.",
     });
   }
@@ -164,7 +165,7 @@ function printUpdateHuman(rows: PluginOriginUpdateRow[]): void {
       version: row.local_version ?? "",
       message: row.message ?? "",
     })),
-    summary: `${rows.length} plugin${rows.length === 1 ? "" : "s"}`,
+    summary: formatCount(rows.length, "plugin"),
     empty: "No plugins updated.",
   });
 }

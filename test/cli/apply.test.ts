@@ -139,6 +139,8 @@ describe("CLI apply", () => {
       ]);
 
       expect(dryRun.stdout).toContain("CLAUDE.md");
+      expect(dryRun.stdout).toContain("Dry run. Nothing was changed.");
+      expect(dryRun.stdout).toContain("Would write");
 
       const applyResult = await runCli([
         "apply",

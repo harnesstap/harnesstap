@@ -136,7 +136,9 @@ async function promptScanConflicts(
   conflicts: Awaited<ReturnType<typeof persistScanResults>>["conflicts"],
 ): Promise<"overwrite" | "skip" | "cancel"> {
   if (conflicts.length === 0) return "skip";
-  ui.warn(`${conflicts.length} resource(s) differ from the library snapshot.`);
+  ui.warn(
+    `${formatCount(conflicts.length, "resource")} ${conflicts.length === 1 ? "differs" : "differ"} from the library snapshot.`,
+  );
   for (const conflict of conflicts) {
     ui.dim(
       `  ${conflict.incoming.type}:${conflict.incoming.name} (${conflict.platformId})`,
@@ -344,7 +346,7 @@ async function handleScanCommand(
     };
   } else if (harnessPersisted.conflicts.length > 0) {
     throw new Error(
-      `${harnessPersisted.conflicts.length} resource conflict(s). Use --overwrite or --skip-existing.`,
+      `${formatCount(harnessPersisted.conflicts.length, "resource conflict")}. Use --overwrite or --skip-existing.`,
     );
   }
 
@@ -564,12 +566,12 @@ async function handleProjectStatusCommand(
     }
     if (report.has_drift) {
       fail(
-        `Drift detected: ${report.changes.length} change(s) since snapshot ${report.snapshot_id}`,
+        `Drift detected: ${formatCount(report.changes.length, "change")} since snapshot ${report.snapshot_id}`,
       );
     }
     if (lockDrift && statusPayload.lock) {
       fail(
-        `Lock drift detected for root ${statusPayload.lock.root} (${statusPayload.lock.changes.length} version change(s)).`,
+        `Lock drift detected for root ${statusPayload.lock.root} (${formatCount(statusPayload.lock.changes.length, "version change")}).`,
       );
     }
     process.exitCode = 1;

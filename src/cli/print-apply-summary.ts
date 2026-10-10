@@ -8,10 +8,64 @@ import {
   keptReasonLabel,
   snapshotSavedUndoLine,
 } from "../copy/cli.js";
+import { ui } from "../ui/index.js";
 
 export interface ApplyKeptFile {
   path: string;
   reason: "modified" | "unmanaged";
+}
+
+export function keptFromSkippedRemovals(
+  skipped: readonly { path: string; reason: string }[] | undefined,
+): ApplyKeptFile[] {
+  return (skipped ?? []).flatMap((entry) => {
+    const reason = removalSkipReason(entry.reason);
+    return reason ? [{ path: entry.path, reason }] : [];
+  });
+}
+
+export function printApplyPayload(payload: {
+  profile_name: string;
+  harnesses: readonly string[];
+  files: readonly unknown[];
+  written_files: readonly string[];
+  removed_files?: readonly string[];
+  skipped_removals?: readonly { path: string; reason: string; message?: string }[];
+  snapshot_id?: string;
+  dry_run?: boolean;
+  removal_backup?: string;
+}): void {
+  const kept = keptFromSkippedRemovals(payload.skipped_removals);
+  const unchanged = Math.max(0, payload.files.length - payload.written_files.length);
+  if (payload.dry_run) {
+    printApplyDryRun({
+      wouldWrite: payload.written_files,
+      wouldRemove: payload.removed_files ?? [],
+      wouldKeep: kept,
+      unchanged,
+    });
+  } else {
+    printApplySuccess({
+      name: payload.profile_name,
+      harnessCount: payload.harnesses.length,
+      wrote: payload.written_files.length,
+      removed: payload.removed_files?.length ?? 0,
+      kept,
+      unchanged,
+      snapshotId: payload.snapshot_id,
+    });
+  }
+  for (const skipped of payload.skipped_removals ?? []) {
+    if (skipped.reason === "missing") {
+      continue;
+    }
+    if (skipped.message) {
+      ui.warn(skipped.message);
+    }
+  }
+  if (!payload.dry_run && payload.removal_backup && (payload.removed_files?.length ?? 0) > 0) {
+    ui.info(`Backup: ${payload.removal_backup}`);
+  }
 }
 
 export function printApplyDryRun(input: {
@@ -19,9 +73,12 @@ export function printApplyDryRun(input: {
   wouldRemove: readonly string[];
   wouldKeep: readonly ApplyKeptFile[];
   unchanged: number;
+  header?: string | false;
 }): void {
-  console.log(CLI_COPY.dryRunNothingChanged);
-  console.log("");
+  if (input.header !== false) {
+    console.log(input.header ?? CLI_COPY.dryRunNothingChanged);
+    console.log("");
+  }
   if (input.wouldWrite.length > 0) {
     console.log(dryRunSectionHeader("write", input.wouldWrite.length));
     for (const path of input.wouldWrite) {

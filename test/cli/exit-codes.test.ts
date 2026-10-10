@@ -170,6 +170,12 @@ describe("formatHintCommand", () => {
     expect(formatHintCommand(["profile", "use", "global default"])).toBe(
       'ht profile use "global default"',
     );
+    expect(formatCommand(["apply", "/tmp/my pack.tgz"])).toBe(
+      'ht apply "/tmp/my pack.tgz"',
+    );
+    expect(formatCommand(["mcp", "search", "github copilot", "--cursor", "abc"])).toBe(
+      'ht mcp search "github copilot" --cursor abc',
+    );
   });
 });
 

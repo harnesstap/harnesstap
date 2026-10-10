@@ -1663,7 +1663,7 @@ async function handlePluginEditorCommand(
     openPathInSystemEditor(definitionPath);
     ui.success(`Opened plugin definition ${ui.theme.accent(definitionPath)}`);
     ui.info(
-      `After editing, import changes with \`${formatCommand(`migrate import ${definitionPath}`)}\`.`,
+      `After editing, import changes with \`${formatCommand(["migrate", "import", definitionPath])}\`.`,
     );
   } catch (error) {
     process.exitCode = 1;
@@ -1958,10 +1958,10 @@ async function handlePluginFromProjectCommand(
         process.exitCode = 1;
         const parts = [];
         if (preview.conflicts.length > 0) {
-          parts.push(`${preview.conflicts.length} conflicting resource(s)`);
+          parts.push(`${formatCount(preview.conflicts.length, "conflicting resource")}`);
         }
         if (preview.newResources.length > 0) {
-          parts.push(`${preview.newResources.length} new resource(s)`);
+          parts.push(`${formatCount(preview.newResources.length, "new resource")}`);
         }
         fail(`Plugin "${resolvedName}" already exists with ${parts.join(" and ")}. Use --interactive to resolve conflicts.`);
         return;
@@ -1970,7 +1970,7 @@ async function handlePluginFromProjectCommand(
       // Show preview
       ui.info(`\nPlugin "${resolvedName}" already exists.`);
       if (preview.conflicts.length > 0) {
-        ui.info(`Conflicts: ${preview.conflicts.length} resource(s) would be replaced`);
+        ui.info(`Conflicts: ${formatCount(preview.conflicts.length, "resource")} would be replaced`);
       }
       if (preview.newResources.length > 0) {
         ui.info(`New resources: ${preview.newResources.length} would be added`);
@@ -2236,7 +2236,7 @@ async function handlePluginCreateCommand(
     ...(result.installedSkills.length > 0
       ? [{ key: "Installed", value: result.installedSkills.join(", ") }]
       : []),
-    { key: "Run", value: formatCommand(`plugin show ${result.plugin.name}`) },
+    { key: "Run", value: formatCommand(["plugin", "show", result.plugin.name]) },
   ]);
 }
 
@@ -2365,7 +2365,7 @@ function printPluginSearchResults(
       version: plugin.version ?? "",
       description: plugin.description ?? "",
     })),
-    summary: `${plugins.length} plugin${plugins.length === 1 ? "" : "s"}`,
+    summary: formatCount(plugins.length, "plugin"),
     empty: "No plugins matched your search.",
   });
 }
