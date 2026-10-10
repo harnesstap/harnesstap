@@ -24,7 +24,7 @@ import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { marketplaceUnreachable } from "../../copy/cli.js";
 import { configureCommandGroup } from "../help.js";
-import { collectRepeatedOption } from "../shared.js";
+import { collectRepeatedOption, fail } from "../shared.js";
 
 const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
   "claude-code",
@@ -93,8 +93,7 @@ async function handleMarketplaceAddCommand(
     await assertMarketplaceSourceReachable(url);
   } catch (error) {
     if (error instanceof MarketplaceSourceError) {
-      process.exitCode = 1;
-      ui.danger(error.message, error.hint ? { hint: error.hint } : undefined);
+      fail(error.message, error.hint ? { hint: error.hint } : undefined);
       return;
     }
     throw error;
@@ -115,15 +114,13 @@ async function handleMarketplaceAddCommand(
     });
     if (!refresh.ok && result.status === "added") {
       removeMarketplace(harnesstapDir, result.entry.name);
-      process.exitCode = 1;
-      ui.danger(marketplaceUnreachable(result.entry.url), {
+      fail(marketplaceUnreachable(result.entry.url), {
         hint: refresh.message,
       });
       return;
     }
     if (!refresh.ok) {
-      process.exitCode = 1;
-      ui.danger(marketplaceUnreachable(result.entry.url), {
+      fail(marketplaceUnreachable(result.entry.url), {
         hint: refresh.message,
       });
       return;
@@ -132,8 +129,7 @@ async function handleMarketplaceAddCommand(
     if (result.status === "added") {
       removeMarketplace(harnesstapDir, result.entry.name);
     }
-    process.exitCode = 1;
-    ui.danger(error instanceof Error ? error.message : String(error));
+    fail(error instanceof Error ? error.message : String(error));
     return;
   }
 

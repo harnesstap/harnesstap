@@ -606,10 +606,10 @@ export async function handleProjectApplyCommand(
       pluginProgressState.current?.stop();
       process.exitCode = 1;
       if (err instanceof PinnedPluginInstallConsentError) {
-        ui.danger(err.message, { hint: err.hint });
+        fail(err.message, { hint: err.hint });
         return;
       }
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
       return;
     }
     pluginProgressState.current?.stop();
