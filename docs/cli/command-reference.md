@@ -133,7 +133,7 @@ Apply plugins with top-level `apply` (not under this group). Onboard from repo-r
 - `use --dry-run` — preview global apply without writing
 - `use --force` — apply even when the profile is already active and in sync
 - `use --no-pull` — fail when composition refs are missing locally
-- `use --harness <slugs>` / `--on-conflict <replace|skip|prompt>` / `--account <name>` / `--base-url <url>` / `--format json`
+- `use --harness <slugs>` / `--on-conflict <replace|skip|prompt|cancel>` / `--account <name>` / `--base-url <url>` / `--format json`
 - `mirror --dry-run` — preview rematerialize writes
 - `mirror --from <slug>` — on-disk harness to copy from (`--force-shift-reference` is a deprecated alias)
 - `mirror --reference <strategy>` — reference source: disk, plugin, agents, auto (`main` is a deprecated alias of disk)
@@ -376,7 +376,7 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin create --skill <names>` — comma-separated skills to attach when using `--from`
 - `plugin create --all` — attach all discovered skills when using `--from`
 - `plugin create --exclude-category <names>` — exclude skill categories (repeatable or comma-separated)
-- `plugin create --on-conflict <policy>` — when the plugin exists: `cancel` (default), `merge`, or `overwrite`
+- `plugin create --on-conflict <policy>` - when the plugin exists: `replace`, `skip`, `prompt` or `cancel` (default `cancel`). `merge` is plugin import only. Aliases for one release: `overwrite` -> `replace`, `ignore` -> `skip`, `fail`/`abort` -> `cancel`.
 - `plugin create --install` — opt-in hub install; requires `--global` or `--project`
 - `plugin create --dry-run` — preview configuration without writing
 - `plugin list --format json`
@@ -413,6 +413,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `plugin edit --clear-environment` — clear the configured plugin default environment
 - `apply --project <path>` — target project directory (default `.`)
 - `apply --target <slugs>` / `--all` / `--harness <slugs>` — APM target slugs or HarnessTap harness slugs (same resolution slot)
+- `apply --on-conflict <replace|skip|prompt|cancel>` - what to do when it already exists. Non-interactive apply still falls back to `replace` today; DS-6 default is `cancel` (W2-12). Aliases: `overwrite` -> `replace`, `ignore` -> `skip`, `fail`/`abort` -> `cancel`.
 - `apply --dry-run` — show planned file writes only
 - `apply --explain` — print the resolution trail (selected versions and every resource decision)
 - `apply --update` — ignore `apm.lock.yaml` and re-resolve the dependency graph (including git `dependencies.apm` refs)
@@ -539,7 +540,7 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile use --force` — apply even when the profile is already active and in sync
 - `profile use --dry-run` — preview global file writes
 - `profile use --harness <slugs>` — comma-separated harness slugs (default: global harness preference)
-- `profile use --on-conflict <replace|skip|prompt>`
+- `profile use --on-conflict <replace|skip|prompt|cancel>`
 - `profile use --account <name>` — cloud account for auto-pull of missing published dependencies
 - `profile use --base-url <url>`
 - `profile use --no-pull` — fail when composition refs are missing locally
@@ -583,7 +584,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `resource show --show-id`
 - `resource show --all-fields`
 - `resource sync --overwrite`
-- `resource sync --on-conflict <overwrite|ignore|fail>` — default `fail`
+- `resource sync --on-conflict <replace|skip|prompt|cancel>` - default `cancel`. Aliases for one release: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
 - `resource sync --force`
 - `resource sync --dry-run`
 - `resource sync --prune` — remove orphaned child resources after sync

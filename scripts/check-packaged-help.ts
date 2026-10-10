@@ -72,6 +72,10 @@ function helpArgv(line: string): string[] | null {
   if (!TOP_LEVEL.has(path[0] ?? "")) {
     return null;
   }
+  // `ht resource scope <name> --add <harness,...>` (PR-9). Check the subcommand help once it exists.
+  if (path[0] === "resource" && path[1] === "scope") {
+    return ["resource", "scope", "--help"];
+  }
   return [...path, "--help"];
 }
 
@@ -132,6 +136,15 @@ for (const line of extractReadmeHtLines(readme)) {
     failures.push(`${line} -> ht ${argv.join(" ")} (exit ${result.status})\n${result.stderr}`);
   }
 }
+const scopeHelp = run(bin, ["resource", "scope", "--help"], env);
+if (scopeHelp.status !== 0) {
+  const text = `${scopeHelp.stderr ?? ""}\n${scopeHelp.stdout ?? ""}`;
+  const notShippedYet = /unknown command|too many arguments|error: unknown/i.test(text);
+  if (!notShippedYet) {
+    failures.push(`ht resource scope --help (exit ${scopeHelp.status})\n${text}`);
+  }
+}
+
 if (failures.length > 0) {
   console.error("G7: README commands failed --help:\n", failures.join("\n"));
   process.exit(1);

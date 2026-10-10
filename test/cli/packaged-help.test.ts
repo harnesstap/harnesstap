@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "bun:test";
+import { formatScenarioCommand } from "../../src/cli/shared.ts";
 import { loadScenarioGuide } from "../../src/services/scenario-guide.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
@@ -36,5 +37,14 @@ describe("G7 packaged help sources", () => {
     expect(readme).toContain("bun x harnesstap@latest init");
     expect(readme).not.toContain("bunx harnesstap");
     expect(readme).toContain("Available from 1.3. On 1.2, use `ht harness set`.");
+  });
+
+  it("formats the DS-1 scope tip command as ht", () => {
+    expect(formatScenarioCommand("resource scope filesystem --add cursor,codex")).toBe(
+      "ht resource scope filesystem --add cursor,codex",
+    );
+    expect(formatScenarioCommand("ht resource scope filesystem --add cursor,codex")).toBe(
+      "ht resource scope filesystem --add cursor,codex",
+    );
   });
 });
