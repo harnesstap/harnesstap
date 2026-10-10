@@ -1,5 +1,6 @@
 import { setTelemetryProduct, trackDesktopStartup } from "../telemetry/index.js";
 import { isMainModule } from "../utils/is-main-module.js";
+import { installAgentParentWatch } from "./parent-watch.js";
 import { startAgentServer } from "./serve.js";
 
 if (isMainModule(import.meta.url)) {
@@ -17,4 +18,9 @@ if (isMainModule(import.meta.url)) {
 
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
+  installAgentParentWatch({
+    parentPid: process.ppid,
+    onOrphan: shutdown,
+    stdin: process.stdin,
+  });
 }

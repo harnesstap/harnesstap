@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command as StdCommand;
+use std::process::Stdio;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
@@ -262,6 +263,10 @@ fn spawn_sidecar_via_process() -> Result<std::process::Child, String> {
     if let Ok(home) = std::env::var("HARNESSTAP_HOME") {
         command.env("HARNESSTAP_HOME", home);
     }
+    // Keep stdin open so ht-agent can watch for parent death (EOF).
+    command.stdin(Stdio::piped());
+    command.stdout(Stdio::null());
+    command.stderr(Stdio::inherit());
     command
         .spawn()
         .map_err(|error| format!("failed to spawn sidecar process: {error}"))
@@ -435,6 +440,15 @@ pub fn run() {
             // Dev ergonomics: when prepare-sidecar rewrites the binary + stamp,
             // restart the managed agent without relaunching Tauri.
             spawn_sidecar_reload_watcher(app.handle().clone());
+            // WDIO and `kill -TERM` do not always emit Tauri Exit. Stop the
+            // sidecar on SIGTERM/SIGINT so port 7474 is not left behind.
+            let handle = app.handle().clone();
+            let _ = ctrlc::set_handler(move || {
+                if let Some(state) = handle.try_state::<AppState>() {
+                    stop_managed_process(&state);
+                }
+                handle.exit(0);
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -447,12 +461,15 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building HarnessTap desktop")
         .run(|app, event| {
-            if let tauri::RunEvent::Exit = event {
-                // Kill the managed sidecar so quitting never leaves an
-                // orphaned ht-agent holding the port and state files.
-                if let Some(state) = app.try_state::<AppState>() {
-                    stop_managed_process(&state);
+            match event {
+                tauri::RunEvent::Exit | tauri::RunEvent::ExitRequested { .. } => {
+                    // Kill the managed sidecar so quitting never leaves an
+                    // orphaned ht-agent holding the port and state files.
+                    if let Some(state) = app.try_state::<AppState>() {
+                        stop_managed_process(&state);
+                    }
                 }
+                _ => {}
             }
         });
 }
