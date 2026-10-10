@@ -1,0 +1,5 @@
+kind: Changed
+body: Lazy-load CLI command groups so --help starts without the full bundle, and stamp non-release builds with a -dev+sha version suffix.
+time: 2026-10-10T18:15:00Z
+custom:
+  Issue: ""
