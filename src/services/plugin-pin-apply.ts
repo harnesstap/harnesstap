@@ -38,6 +38,10 @@ import {
   selectCursorMarketplacesToEnsure,
 } from "./cursor-marketplace-bootstrap.js";
 import { listMarketplaces } from "./marketplace-registry.js";
+import {
+  installPinnedPluginsHint,
+  installPinnedPluginsNeedsYes,
+} from "../copy/cli.js";
 
 export type { PluginConstraintPin, PluginValidationIssue };
 
@@ -74,6 +78,16 @@ export interface SyncPluginPinsForApplyProgress extends InstallPluginPinsProgres
   onSyncComplete?: (ref: string) => void;
 }
 
+export class PinnedPluginInstallConsentError extends Error {
+  readonly hint: string;
+
+  constructor(profileName?: string) {
+    super(installPinnedPluginsNeedsYes());
+    this.name = "PinnedPluginInstallConsentError";
+    this.hint = installPinnedPluginsHint(profileName);
+  }
+}
+
 export interface SyncPluginPinsForApplyOptions {
   pins: PluginConstraintPin[];
   /** When true, refresh every pinned plugin (--sync-plugins). */
@@ -84,6 +98,9 @@ export interface SyncPluginPinsForApplyOptions {
   installPlatformId?: string;
   /** When true, stamp exact constraints without a local install tree. */
   ignoreMissingInstall?: boolean;
+  yes?: boolean;
+  interactive?: boolean;
+  profileName?: string;
   progress?: SyncPluginPinsForApplyProgress;
 }
 
@@ -105,6 +122,9 @@ export interface PreparePluginPinsForApplyOptions {
   scope?: PluginScope;
   installPlatformId?: string;
   ignoreMissingInstall?: boolean;
+  yes?: boolean;
+  interactive?: boolean;
+  profileName?: string;
   progress?: SyncPluginPinsForApplyProgress;
 }
 
@@ -152,6 +172,15 @@ export async function syncPluginPinsForApply(
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
   const scope = options.scope ?? "user";
   const pinsToInstall = options.pins.filter((pin) => pin.version_constraint);
+
+  if (
+    pinsToInstall.length > 0
+    && !options.ignoreMissingInstall
+    && options.interactive === false
+    && !options.yes
+  ) {
+    throw new PinnedPluginInstallConsentError(options.profileName);
+  }
 
   // --ignore-plugin-versions stamps exact constraints locally; skip marketplace
   // install attempts that can hang or fail without a real host install.
@@ -361,6 +390,9 @@ export async function preparePluginPinsForApply(
       scope: options.scope,
       installPlatformId: options.installPlatformId,
       ignoreMissingInstall: options.ignoreMissingInstall,
+      yes: options.yes,
+      interactive: options.interactive,
+      profileName: options.profileName,
       progress: options.progress,
     });
   }

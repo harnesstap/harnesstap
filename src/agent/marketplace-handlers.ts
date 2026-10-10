@@ -10,8 +10,15 @@ import {
 } from "../services/host-marketplaces.js";
 import { refreshMarketplaceCatalog } from "../services/marketplace-catalog.js";
 import { listMarketplacePlugins } from "../services/marketplace-plugin-tree.js";
-import { addMarketplace } from "../services/marketplace-registry.js";
+import {
+  addMarketplace,
+  removeMarketplace,
+} from "../services/marketplace-registry.js";
 import { checkMarketplacesReachability } from "../services/marketplace-reachability.js";
+import {
+  MarketplaceSourceError,
+  assertMarketplaceSourceReachable,
+} from "../services/marketplace-validate.js";
 import { listMarketplaceSourceBranches } from "../services/marketplace-source-branches.js";
 import { detectMarketplaceType } from "../services/marketplace-type-detect.js";
 import { requireAgentBearerAuth } from "./auth.js";
@@ -157,6 +164,17 @@ export async function handleMarketplacesAdd(
   }
 
   try {
+    await assertMarketplaceSourceReachable(url.trim());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const hint = error instanceof MarketplaceSourceError ? error.hint : undefined;
+    return jsonResponse(
+      { error: "marketplace_unreachable", message, ...(hint ? { hint } : {}) },
+      { status: 400 },
+    );
+  }
+
+  try {
     const harnesstapDir = getHarnesstapDir();
     const result = addMarketplace(harnesstapDir, {
       url: url.trim(),
@@ -168,6 +186,19 @@ export async function handleMarketplacesAdd(
       name: result.entry.name,
       force: true,
     });
+    if (!refresh.ok && result.status === "added") {
+      removeMarketplace(harnesstapDir, result.entry.name);
+      return jsonResponse(
+        { error: "marketplace_unreachable", message: refresh.message },
+        { status: 400 },
+      );
+    }
+    if (!refresh.ok) {
+      return jsonResponse(
+        { error: "marketplace_unreachable", message: refresh.message },
+        { status: 400 },
+      );
+    }
     return jsonResponse({ ...result, refresh });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

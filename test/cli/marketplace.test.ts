@@ -30,11 +30,12 @@ describe("CLI marketplace", () => {
     const context = await createTestContext("cli-mkt-add-list");
     try {
       await runCli(["init"]);
+      const repo = initLocalMarketplaceRepo();
       const add = await runCli(
         [
           "marketplace",
           "add",
-          "https://github.com/example/demo.git",
+          repo,
           "--name",
           "demo",
           "--platform",
@@ -88,11 +89,12 @@ describe("CLI marketplace", () => {
     const context = await createTestContext("cli-mkt-remove");
     try {
       await runCli(["init"]);
+      const repo = initLocalMarketplaceRepo();
       await runCli(
         [
           "marketplace",
           "add",
-          "https://github.com/example/demo.git",
+          repo,
           "--name",
           "demo",
           "--platform",
@@ -117,6 +119,58 @@ describe("CLI marketplace", () => {
       });
       const listed = JSON.parse(list.stdout);
       expect(listed.marketplaces).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects a bogus URL without saving", async () => {
+    const context = await createTestContext("cli-mkt-bogus-url");
+    try {
+      await runCli(["init"]);
+      const add = await runCli(
+        [
+          "marketplace",
+          "add",
+          "https://github.com/example/does-not-exist-ht.git",
+          "--name",
+          "bogus",
+          "--no-interactive",
+        ],
+        { isTTY: false },
+      );
+      expect(add.exitCode).toBe(1);
+      expect(`${add.stdout}\n${add.stderr}`).toContain("Couldn't reach");
+      const list = await runCli(["marketplace", "list", "--format", "json"], {
+        isTTY: false,
+      });
+      const payload = JSON.parse(list.stdout);
+      expect(
+        (payload.marketplaces as Array<{ name: string }>).some((row) => row.name === "bogus"),
+      ).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects a local path that is not a marketplace", async () => {
+    const context = await createTestContext("cli-mkt-empty-dir");
+    const empty = mkdtempSync(join(tmpdir(), "ht-cli-mkt-empty-"));
+    try {
+      await runCli(["init"]);
+      const add = await runCli(
+        ["marketplace", "add", empty, "--name", "empty"],
+        { isTTY: false },
+      );
+      expect(add.exitCode).toBe(1);
+      expect(`${add.stdout}\n${add.stderr}`).toContain("is not a marketplace");
+      const list = await runCli(["marketplace", "list", "--format", "json"], {
+        isTTY: false,
+      });
+      const payload = JSON.parse(list.stdout);
+      expect(
+        (payload.marketplaces as Array<{ name: string }>).some((row) => row.name === "empty"),
+      ).toBe(false);
     } finally {
       await context.cleanup();
     }

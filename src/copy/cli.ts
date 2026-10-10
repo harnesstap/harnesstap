@@ -27,3 +27,46 @@ export function quoted(name: string): string {
 export function skippedInvalidPluginExport(name: string): string {
   return `Warning: Skipped plugin ${quoted(name)}. Its version is not valid semver.`;
 }
+
+export function marketplaceUnreachable(source: string): string {
+  return `Error: Couldn't reach ${source}.`;
+}
+
+export function marketplaceUnreachableHint(): string {
+  return "Check the URL, or sign in with ht github login if it's private.";
+}
+
+export function marketplacePathMissing(path: string): string {
+  return `Error: Couldn't find a marketplace at ${quoted(path)}.`;
+}
+
+export function marketplacePathNotMarketplace(path: string): string {
+  return `Error: ${quoted(path)} is not a marketplace. It needs a marketplace.json file.`;
+}
+
+export function marketplaceAddFailedNothingSaved(): string {
+  return "Nothing was saved.";
+}
+
+export function installPinnedPluginsPrompt(names: string[]): string {
+  if (names.length === 1) {
+    const only = names[0];
+    return `Install pinned plugin ${quoted(only ?? "")} into the package cache?`;
+  }
+  return `Install ${String(names.length)} pinned plugins into the package cache?`;
+}
+
+export function installPinnedPluginsNeedsYes(): string {
+  return "Error: Pass --yes to install pinned plugins without a prompt.";
+}
+
+export function installPinnedPluginsHint(profileName?: string): string {
+  if (profileName) {
+    return `Run ht profile use ${quoted(profileName)} --yes to install them.`;
+  }
+  return "Run ht profile use --yes to install them.";
+}
+
+export function missingMarketplacePluginHint(pluginName: string): string {
+  return `Run ht profile use to install ${quoted(pluginName)}.`;
+}

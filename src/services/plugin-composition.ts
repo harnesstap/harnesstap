@@ -15,6 +15,8 @@ import {
   removeDependency,
 } from "./plugin-dependency.js";
 import { parseResourceSelector } from "./resource-selector.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
+import { installMarketplacePinIntoCache } from "./marketplace-pin-cache.js";
 import { syncPluginResource } from "./resource-sync.js";
 import type { Plugin, Resource, ResourceType } from "../types.js";
 import {
@@ -338,6 +340,17 @@ export async function addPluginAttachment(input: AddPluginAttachmentInput): Prom
       syncClaudeMarketplacePluginsAfterAdd(input.plugin, displayRef, input.version);
     }
     if (input.sync) {
+      if (parseDependencyRef(displayRef).source_kind === "marketplace") {
+        try {
+          installMarketplacePinIntoCache({
+            originRef: displayRef,
+            versionConstraint: input.version ?? "latest",
+            homeRoot: resolveHomeRoot(),
+          });
+        } catch {
+          // Sync still runs; missing trees stay stale.
+        }
+      }
       await syncPluginResource(resource, { policy: "overwrite" });
     }
     const versionLabel = input.version ? ` (${input.version})` : "";

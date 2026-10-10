@@ -1,8 +1,10 @@
 import { getHarnesstapDir } from "../db/connection.js";
+import { parsePluginRef } from "../plugins/claude-installed.js";
 import { getPluginProvider } from "../plugins/registry.js";
 import type { PluginScope } from "../plugins/types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import type { PluginConstraintPin } from "./plugin-apply-validation.js";
+import { installMarketplacePinIntoCache } from "./marketplace-pin-cache.js";
 
 export interface InstallPluginPinOptions {
   ref: string;
@@ -10,6 +12,7 @@ export interface InstallPluginPinOptions {
   installPlatformId?: string;
   homeRoot: string;
   projectRoot: string;
+  versionConstraint?: string;
 }
 
 export interface InstallPluginPinResult {
@@ -24,6 +27,27 @@ export async function installPluginPinAsync(
   options: InstallPluginPinOptions,
 ): Promise<InstallPluginPinResult> {
   const platformId = options.installPlatformId ?? "claude-code";
+  const { marketplace } = parsePluginRef(options.ref);
+  if (marketplace) {
+    try {
+      const cached = installMarketplacePinIntoCache({
+        originRef: options.ref,
+        versionConstraint: options.versionConstraint,
+        homeRoot: options.homeRoot,
+        harnesstapDir: getHarnesstapDir(),
+      });
+      return {
+        ref: options.ref,
+        platformId,
+        scope: options.scope,
+        status: "installed",
+        message: `Cached ${options.ref}@${cached.version}`,
+      };
+    } catch {
+      // Fall through to the host provider when the package cache cannot
+      // resolve the pin from a marketplace checkout.
+    }
+  }
   const provider = getPluginProvider(platformId);
   if (!provider) {
     return {
@@ -96,6 +120,7 @@ export async function installPluginPins(
       installPlatformId: options.installPlatformId,
       homeRoot,
       projectRoot: options.projectRoot,
+      versionConstraint: pin.version_constraint,
     });
     options.progress?.onInstallComplete?.(result);
     results.push(result);
