@@ -18,6 +18,7 @@ import {
   setActiveProfileName,
 } from "./active-profile.js";
 import { createProfileCommand, renameProfileCommand } from "./profile-commands.js";
+import { diskCaptureHarnessScope } from "./harness-scope.js";
 
 export interface EnsureDefaultProfileResult {
   plugin: Plugin;
@@ -101,7 +102,7 @@ export function seedDefaultProfileFromLibrary(): EnsureDefaultProfileResult {
   );
   if (attachedMaterial.length === 0) {
     for (const resource of libraryResourcesForDefaultProfile()) {
-      addResourceToPlugin(plugin.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id, diskCaptureHarnessScope(resource));
     }
   }
 

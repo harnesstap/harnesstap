@@ -693,7 +693,7 @@ A **plugin** is the primary composable unit.
 
 **Body:**
 
-- Ordered context-side **resources** (instructions, skills, rules, MCP servers, hooks, agents, commands). Each `plugin_resources` row may store `harness_scope`: the sentinel `all` (default; missing on older profiles too) or a JSON list of harness slugs. Apply writes that resource only to scoped harnesses. Checking every registered harness normalizes back to `all`. Nested `plugin` refs AND the parent ref's scope with the child's own memberships.
+- Ordered context-side **resources** (instructions, skills, rules, MCP servers, hooks, agents, commands). Each `plugin_resources` row may store `harness_scope`: the sentinel `all` (default; missing on older profiles too) or a JSON list of harness slugs. Apply writes that resource only to scoped harnesses. Checking every registered harness normalizes back to `all`. Nested `plugin` refs AND the parent ref's scope with the child's own memberships. Resources captured from disk at `ht init` (and other home scans) are attached with origin-harness scope so the first apply does not copy them onto other harnesses. Resources added later from Library or a catalog keep `all` unless the user sets a subset.
 - Composition attachments: **`plugin_pin`** refs (host marketplace/local) and **`plugin`** refs (other plugins, local or published).
 - Optional Claude marketplace/plugin config and `needs[]` contract keys.
 - Optional `default_environment_id` for environment cascade on apply.

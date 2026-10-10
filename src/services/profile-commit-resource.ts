@@ -35,6 +35,7 @@ import { getAllPlatforms } from "../platforms/registry.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { sourceMatchesManagedPath } from "./mcp-target.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
+import { diskCaptureHarnessScope } from "./harness-scope.js";
 import { normalizeManagedPath } from "./profile-untracked-resources.js";
 
 function profileHasResource(
@@ -386,7 +387,11 @@ async function commitAggregateConfigFromLive(input: {
           resource.namespace,
         )
       ) {
-        addResourceToPlugin(profilePlugin.id, resource.id);
+        addResourceToPlugin(
+          profilePlugin.id,
+          resource.id,
+          diskCaptureHarnessScope(resource),
+        );
       }
       committed.push(toContentsResource(resource));
     }

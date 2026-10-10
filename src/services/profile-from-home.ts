@@ -12,6 +12,7 @@ import {
   persistScanResults,
   scanHomeDefaults,
 } from "./scanner.js";
+import { diskCaptureHarnessScope } from "./harness-scope.js";
 
 export type ProfileConflictPolicy = "skip" | "overwrite";
 
@@ -137,7 +138,7 @@ export async function createProfileFromHome(input: {
   });
 
   for (const resource of persisted.resolved) {
-    addResourceToPlugin(plugin.id, resource.id);
+    addResourceToPlugin(plugin.id, resource.id, diskCaptureHarnessScope(resource));
   }
 
   return {

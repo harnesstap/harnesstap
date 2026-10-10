@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
+import { parse as parseToml } from "smol-toml";
 import { hasParentTraversalSegment } from "../utils/path-containment.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
@@ -171,6 +172,9 @@ function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): s
 }
 
 function shouldPreserveUnownedFile(path: string): boolean {
+  if (/\.(md|mdc)$/i.test(path)) {
+    return false;
+  }
   return (
     isMergeableHostConfigPath(path)
     || isAggregateConfigManagedPath(path)
@@ -208,6 +212,42 @@ function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boo
   } catch {
     return false;
   }
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+    .join(",")}}`;
+}
+
+function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): boolean {
+  if (fileContentMatchesExisting(fullPath, file)) {
+    return true;
+  }
+  if (!existsSync(fullPath)) {
+    return false;
+  }
+  try {
+    const live = readFileSync(fullPath, "utf-8");
+    const generated = file.content;
+    if (fullPath.endsWith(".json") || fullPath.endsWith(".jsonc")) {
+      return canonicalJson(JSON.parse(live)) === canonicalJson(JSON.parse(generated));
+    }
+    if (fullPath.endsWith(".toml")) {
+      return canonicalJson(parseToml(live)) === canonicalJson(parseToml(generated));
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 function isGenerateFilesOptions(
@@ -420,10 +460,14 @@ export async function materializeFiles(
         return false;
       }
       if (shouldPreserveUnownedFile(file.path)) {
-        return false;
+        const fullMergeable = assertMaterializedPathIsSafe(rootPath, file.path);
+        return semanticallyMatchesExisting(fullMergeable, file);
       }
       const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
-      return existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path);
+      return (
+        (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path))
+        || semanticallyMatchesExisting(fullPath, file)
+      );
     });
     const skippedPreexistingPaths = new Set(skippedPreexisting.map((file) => file.path));
     return {
@@ -471,8 +515,8 @@ export async function materializeFiles(
         continue;
       }
     }
-    if (fileContentMatchesExisting(fullPath, file)) {
-      writtenFiles.push(file.path);
+    if (semanticallyMatchesExisting(fullPath, file)) {
+      skippedFiles.push(file.path);
       continue;
     }
     mkdirSync(dirname(fullPath), { recursive: true });
@@ -552,6 +596,11 @@ export async function applyToGlobal(
     replaceOwnedSnapshotIds: options.replaceOwnedSnapshotIds,
   });
 
+  const ownedSkippedFiles = materialized.skippedFiles.filter((filePath) =>
+    isHarnessTapOwnedPath(homeRoot, filePath),
+  );
+  const persistedPaths = [...new Set([...materialized.writtenFiles, ...ownedSkippedFiles])];
+
   if (!materialized.cancelled) {
     persistWrittenMaterializations({
       scope: "global",
@@ -560,7 +609,7 @@ export async function applyToGlobal(
       platformResults: results.map((result) => ({
         platformId: result.platformId,
         files: result.files,
-        writtenPaths: materialized.writtenFiles.filter((filePath) =>
+        writtenPaths: persistedPaths.filter((filePath) =>
           result.files.some((file) => file.path === filePath),
         ),
       })),
@@ -568,7 +617,7 @@ export async function applyToGlobal(
   }
 
   if (!materialized.cancelled && options.snapshotId) {
-    removeImportedSnapshotOwnershipForFiles(materialized.writtenFiles, options.snapshotId);
+    removeImportedSnapshotOwnershipForFiles(persistedPaths, options.snapshotId);
     const existingInstalls = listImportedSnapshotInstalls(options.snapshotId);
     for (const result of results) {
       const previousFiles =
@@ -580,8 +629,11 @@ export async function applyToGlobal(
       );
       const preservedSkippedFiles = emittedFiles.filter(
         (filePath) =>
-          materialized.skippedFiles.includes(filePath) &&
-          previousFiles.includes(filePath),
+          materialized.skippedFiles.includes(filePath)
+          && (
+            previousFiles.includes(filePath)
+            || ownedSkippedFiles.includes(filePath)
+          ),
       );
       const installFiles = [...new Set([...writtenFiles, ...preservedSkippedFiles])];
       if (installFiles.length === 0) continue;

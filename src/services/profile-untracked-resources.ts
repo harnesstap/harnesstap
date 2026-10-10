@@ -37,6 +37,7 @@ import {
   type ScanResult,
 } from "./scanner.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { diskCaptureHarnessScope } from "./harness-scope.js";
 import type { DriftFileChange } from "./project-drift.js";
 
 const MATERIAL_RESOURCE_TYPE_SET = new Set<string>(MATERIAL_RESOURCE_TYPES);
@@ -454,7 +455,7 @@ export async function addResourceToProfile(input: {
 
   markPluginDirty(profilePlugin.id);
   if (!alreadyInProfile) {
-    addResourceToPlugin(profilePlugin.id, resource.id);
+    addResourceToPlugin(profilePlugin.id, resource.id, diskCaptureHarnessScope(resource));
   }
   touchPluginUpdatedAt(profilePlugin.id);
 
@@ -798,7 +799,7 @@ export async function addAllUntrackedResourcesToProfile(input: {
 
   markPluginDirty(profilePlugin.id);
   for (const resource of materialResources) {
-    addResourceToPlugin(profilePlugin.id, resource.id);
+    addResourceToPlugin(profilePlugin.id, resource.id, diskCaptureHarnessScope(resource));
   }
   touchPluginUpdatedAt(profilePlugin.id);
 
