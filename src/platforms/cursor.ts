@@ -340,7 +340,7 @@ export class CursorSerializer extends BaseSerializer {
               ...(r.metadata as HookMetadata),
               name: r.name,
             })),
-            { version: 1 },
+            { version: 1, shape: "flat" },
           ),
           null,
           2,

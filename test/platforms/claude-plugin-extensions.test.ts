@@ -38,10 +38,7 @@ describe("applyClaudePluginExtensions", () => {
       source: { source: "github", repo: "org/claude-plugins" },
       autoUpdate: true,
     });
-    expect(settings.enabledPlugins).toEqual({
-      "formatter@team-plugins": true,
-      "linter@team-plugins": false,
-    });
+    expect(settings.enabledPlugins).toBeUndefined();
   });
 
   it("preserves existing settings read from disk", () => {
@@ -70,7 +67,7 @@ describe("applyClaudePluginExtensions", () => {
     };
 
     expect(written.permissions.defaultMode).toBe("auto");
-    expect(written.enabledPlugins["demo@marketplace"]).toBe(true);
+    expect(written.enabledPlugins).toBeUndefined();
   });
 
   it("merges with generated settings from resources", () => {
@@ -99,6 +96,6 @@ describe("applyClaudePluginExtensions", () => {
     };
 
     expect(settings.permissions.allow).toEqual(["Bash(npm run *)"]);
-    expect(settings.enabledPlugins["tooling@plugins"]).toBe(true);
+    expect(settings.enabledPlugins).toBeUndefined();
   });
 });

@@ -94,6 +94,8 @@ export interface HookMetadata {
   timeout?: number;
   matcher?: string;
   hook_entry?: Record<string, unknown>;
+  /** True when the hook only works with CLAUDE_PLUGIN_ROOT (host plugin install). */
+  requires_plugin_root?: boolean;
 }
 
 export interface AgentMetadata {

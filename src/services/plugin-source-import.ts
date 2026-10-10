@@ -855,6 +855,7 @@ function scanHooks(
         script: entry.command ?? "",
         imported_from: provenance,
         hook_entry: entry as Record<string, unknown>,
+        requires_plugin_root: true,
       };
 
       if (typeof entry.commandWindows === "string") {
