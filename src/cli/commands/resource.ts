@@ -405,9 +405,7 @@ export function registerResourceCommands(root: Command): void {
           `Updated "${result.resourceName}" scope. ${scopeLine(result.scope)}.`,
         );
       } catch (err) {
-        process.exitCode = 1;
-        const message = err instanceof Error ? err.message : String(err);
-        ui.danger(message.replace(/^Error:\s*/, "Error: "));
+        fail(err instanceof Error ? err.message : String(err));
       }
     });
 
