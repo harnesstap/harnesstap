@@ -1,0 +1,5 @@
+kind: Fixed
+body: A no-op re-apply prints Everything is up to date without listing kept files or --force-remove. ht revert --dry-run uses Would restore / would remove.
+time: 2026-10-10T19:40:00Z
+custom:
+  Issue: ""
