@@ -16,6 +16,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("Database");
       expect(result.stdout).toContain("NEXT STEPS");
       expect(result.stdout).not.toContain("already exists");
+      expect(result.stdout).toContain("Pick your harnesses: ht harness set");
       expect(result.stdout).toContain("plugin list --search foundation");
       expect(result.stdout).toContain('profile use "global default"');
       expect(result.stdout).toContain("apply engineering-foundation");
@@ -187,6 +188,27 @@ describe("CLI init", () => {
       expect(rerun.stdout).toContain("already exists");
       expect(rerun.stdout).not.toContain("will be overwritten");
       expect(rerun.stdout).not.toContain("Existing harness defaults");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("hints bash completion when SHELL is bash", async () => {
+    const context = await createTestContext("cli-init-bash-completion");
+    try {
+      const result = await runCli(["init"], { env: { SHELL: "/bin/bash" } });
+      expect(result.stdout).toContain("init completion bash >> ~/.bashrc");
+      expect(result.stdout).not.toContain("init completion zsh >> ~/.zshrc");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("hints zsh completion when SHELL is zsh", async () => {
+    const context = await createTestContext("cli-init-zsh-completion");
+    try {
+      const result = await runCli(["init"], { env: { SHELL: "/bin/zsh" } });
+      expect(result.stdout).toContain("init completion zsh >> ~/.zshrc");
     } finally {
       await context.cleanup();
     }

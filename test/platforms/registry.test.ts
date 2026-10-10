@@ -21,6 +21,7 @@ describe("platform registry", () => {
     expect(codex?.supports.has("hooks")).toBe(true);
     expect(warp?.projectPaths.instructions).toBe("AGENTS.md");
     expect(warp?.projectPaths.skills).toBe(".agents/skills/");
+    expect(warp?.detectionPaths?.global).toEqual(["~/.warp"]);
     expect(registry.getPlatformIds()).toEqual(
       expect.arrayContaining(["claude-code", "codex", "cursor", "warp"]),
     );
@@ -123,6 +124,7 @@ describe("platform registry", () => {
 
     const jules = registry.getPlatform("jules");
     expect(jules?.projectPaths.pathAlternates?.instructions).toContain("JULES.md");
+    expect(jules?.detectionPaths?.global).toEqual(["~/.jules", "~/JULES.md"]);
 
     const cody = registry.getPlatform("cody");
     expect(cody?.projectPaths.settings).toBe("cody.json");

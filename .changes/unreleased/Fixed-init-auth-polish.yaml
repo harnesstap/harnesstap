@@ -1,0 +1,5 @@
+kind: Fixed
+body: Detect Warp and Jules from their own markers, require a registered harness set before global apply, share the resource-scope apply selector with Desktop, fix init next-step hints, and show a device-login waiting prompt.
+time: 2026-10-10T18:20:00Z
+custom:
+  Issue: ""

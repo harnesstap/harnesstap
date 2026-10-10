@@ -58,6 +58,7 @@ import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_HELP } from "../messages.js";
 import { renderCliError } from "../runtime.js";
 import {
   fail,
+  failCaught,
   formatCommand,
   formatHintCommand,
 } from "../shared.js";
@@ -463,7 +464,7 @@ profileCmd
         fail(err.message, { hint: err.hint });
         return;
       }
-      fail(err instanceof Error ? err.message : String(err));
+      failCaught(err);
     }
   });
 
