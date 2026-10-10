@@ -265,14 +265,14 @@ function warnSkippedRemovals(
   result: SafeFileRemovalResult,
   extraSkips: readonly SafeRemovalSkip[] = [],
 ): void {
+  const skipMessages = new Set(
+    mergeSafeRemovalSkips(result.skipped, extraSkips).map((skip) => skip.message),
+  );
   for (const warning of result.warnings) {
-    console.warn(ui.theme.warn(warning));
-  }
-  for (const skip of extraSkips) {
-    if (result.warnings.includes(skip.message)) {
+    if (skipMessages.has(warning)) {
       continue;
     }
-    console.warn(ui.theme.warn(skip.message));
+    console.warn(ui.theme.warn(warning));
   }
   const notice = formatRemovalBackupNotice(result, resolveHomeRoot());
   if (notice) {
@@ -783,9 +783,6 @@ export async function applyProfilePlugin(
       }
     } else {
       removal = plannedRemoval;
-      for (const skip of writeKeeps) {
-        console.warn(ui.theme.warn(skip.message));
-      }
     }
   }
   if (!applied.cancelled && defaultEnvironmentName) {

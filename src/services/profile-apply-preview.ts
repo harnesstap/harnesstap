@@ -50,9 +50,10 @@ import {
 } from "./resolve/types.js";
 import {
   emptyPlannedRemovals,
+  groupPlannedRemovals,
   type PlannedRemovalGroup,
   type PlannedRemovals,
-  plannedRemovalsFromApplyFields,
+  planSafeFileRemovals,
 } from "./safe-file-removal.js";
 import { detectPlatforms } from "./scanner.js";
 import { withAffectedResources } from "./scoped-file-content-delta.js";
@@ -318,26 +319,69 @@ function pushRemovalChange(
   next.push({ path, type: "added", removal_group });
 }
 
+function classifyPreviewRemovals(
+  rootPath: string,
+  removedFiles: string[] | undefined,
+  skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
+  extraPaths: readonly string[] = [],
+): PlannedRemovals {
+  const candidates = [
+    ...new Set([
+      ...(removedFiles ?? []),
+      ...(skippedRemovals ?? [])
+        .filter((skip) => skip.reason !== "missing")
+        .map((skip) => skip.path),
+      ...extraPaths,
+    ]),
+  ];
+  const groups = groupPlannedRemovals(planSafeFileRemovals(rootPath, candidates));
+  for (const skip of skippedRemovals ?? []) {
+    if (skip.reason === "missing") {
+      continue;
+    }
+    if (groups.owned_unmodified.includes(skip.path)) {
+      continue;
+    }
+    if (skip.reason === "modified" && !groups.owned_modified.includes(skip.path)) {
+      groups.owned_modified.push(skip.path);
+    }
+    if (
+      (skip.reason === "unmanaged" || skip.reason === "preexisting")
+      && !groups.unmanaged.includes(skip.path)
+    ) {
+      groups.unmanaged.push(skip.path);
+    }
+  }
+  return groups;
+}
+
 export function withManagedRemovals(
   rootPath: string,
   changes: DriftFileChange[],
   removedFiles: string[] | undefined,
   skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
 ): DriftFileChange[] {
-  const seen = new Set(changes.map((change) => change.path));
-  const next = [...changes];
-  for (const path of removedFiles ?? []) {
-    pushRemovalChange(next, seen, rootPath, path, "owned_unmodified");
+  const addedPaths = changes
+    .filter((change) => change.type === "added")
+    .map((change) => change.path);
+  const groups = classifyPreviewRemovals(
+    rootPath,
+    removedFiles,
+    skippedRemovals,
+    addedPaths,
+  );
+  const classified = changes.filter((change) => change.type !== "added");
+  const seen = new Set(classified.map((change) => change.path));
+  for (const path of groups.owned_unmodified) {
+    pushRemovalChange(classified, seen, rootPath, path, "owned_unmodified");
   }
-  for (const skip of skippedRemovals ?? []) {
-    if (skip.reason === "missing") {
-      continue;
-    }
-    const group: PlannedRemovalGroup =
-      skip.reason === "modified" ? "owned_modified" : "unmanaged";
-    pushRemovalChange(next, seen, rootPath, skip.path, group);
+  for (const path of groups.owned_modified) {
+    pushRemovalChange(classified, seen, rootPath, path, "owned_modified");
   }
-  return next;
+  for (const path of groups.unmanaged) {
+    pushRemovalChange(classified, seen, rootPath, path, "unmanaged");
+  }
+  return classified;
 }
 
 function targetPinRefs(pluginIds?: string[]): Set<string> {
@@ -399,13 +443,11 @@ function previewFilesResult(
 }
 
 function previewRemovals(
+  rootPath: string,
   removedFiles: string[] | undefined,
   skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
 ): PlannedRemovals {
-  return plannedRemovalsFromApplyFields({
-    removed_files: removedFiles,
-    skipped_removals: skippedRemovals,
-  });
+  return classifyPreviewRemovals(rootPath, removedFiles, skippedRemovals);
 }
 
 function isMaterialResource(resource: Resource): boolean {
@@ -665,6 +707,7 @@ async function previewHomeApply(
         collected.expectedApply?.skipped_removals,
       ),
       removals: previewRemovals(
+        collected.rootPath,
         collected.removedFiles,
         collected.expectedApply?.skipped_removals,
       ),
@@ -693,6 +736,7 @@ async function previewHomeApply(
       collected.expectedApply?.skipped_removals,
     ),
     removals: previewRemovals(
+      collected.rootPath,
       collected.removedFiles,
       collected.expectedApply?.skipped_removals,
     ),
@@ -719,6 +763,7 @@ async function previewProjectApply(
       collected.expectedApply?.skipped_removals,
     ),
     removals: previewRemovals(
+      collected.rootPath,
       collected.removedFiles,
       collected.expectedApply?.skipped_removals,
     ),

@@ -165,8 +165,37 @@ describe("withManagedRemovals", () => {
         {
           path: ".claude/skills/live/SKILL.md",
           type: "added",
-          removal_group: "owned_unmodified",
+          removal_group: "unmanaged",
         },
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("uses the shared ownership classifier so preview matches the confirm groups", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-preview-classifier-"));
+    try {
+      mkdirSync(join(root, ".claude/skills/user"), { recursive: true });
+      mkdirSync(join(root, ".claude/rules"), { recursive: true });
+      writeFileSync(join(root, ".claude/skills/user/SKILL.md"), "# user\n", "utf-8");
+      writeFileSync(join(root, ".claude/rules/security.md"), "# sec\n", "utf-8");
+
+      const changes = withManagedRemovals(
+        root,
+        [
+          { path: ".claude/skills/user/SKILL.md", type: "added" },
+          { path: ".claude/rules/security.md", type: "added" },
+        ],
+        [
+          ".claude/skills/user/SKILL.md",
+          ".claude/rules/security.md",
+        ],
+      );
+
+      expect(changes.map((change) => change.removal_group)).toEqual([
+        "unmanaged",
+        "unmanaged",
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });

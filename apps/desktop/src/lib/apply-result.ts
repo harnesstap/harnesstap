@@ -65,9 +65,21 @@ export function applyOutcomeFromUnknown(result: unknown): {
   const wrote = stringArray(apply.written_files).length;
   const removed = stringArray(apply.removed_files).length;
   const removals = parseRemovals(apply.removals);
-  const kept =
-    removals.owned_modified.length + removals.unmanaged.length
-    || skippedKeptCount(apply.skipped_removals);
+  const keptPaths = new Set([
+    ...removals.owned_modified,
+    ...removals.unmanaged,
+  ]);
+  if (Array.isArray(apply.skipped_removals)) {
+    for (const entry of apply.skipped_removals) {
+      if (!isRecord(entry) || entry.reason === "missing") {
+        continue;
+      }
+      if (typeof entry.path === "string" && entry.path.length > 0) {
+        keptPaths.add(entry.path);
+      }
+    }
+  }
+  const kept = keptPaths.size > 0 ? keptPaths.size : skippedKeptCount(apply.skipped_removals);
   const snapshotId =
     typeof apply.snapshot_id === "string"
       ? apply.snapshot_id
