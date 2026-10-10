@@ -68,7 +68,7 @@ function stripInvocationName(tokens: string[]): string[] {
 }
 
 function isHiddenCommand(command: Command): boolean {
-  return (command.description() as unknown) === false;
+  return command.hidden === true || (command.description() as unknown) === false;
 }
 
 function getVisibleSubcommands(command: Command): Command[] {

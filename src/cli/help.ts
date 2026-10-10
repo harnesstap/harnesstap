@@ -36,6 +36,7 @@ const PLUGIN_HELP_REMOTE_COMMANDS = new Set([
 function isHiddenHelpCommand(command: Command): boolean {
   return (
     command.name() === "__complete"
+    || command.hidden === true
     || (command.description() as unknown) === false
   );
 }
