@@ -370,14 +370,10 @@ export function withManagedRemovals(
   removedFiles: string[] | undefined,
   skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
 ): DriftFileChange[] {
-  const addedPaths = changes
-    .filter((change) => change.type === "added")
-    .map((change) => change.path);
   const groups = classifyPreviewRemovals(
     rootPath,
     removedFiles,
     skippedRemovals,
-    addedPaths,
   );
   const classified = changes.filter((change) => change.type !== "added");
   const seen = new Set(classified.map((change) => change.path));
