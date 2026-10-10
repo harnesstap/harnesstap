@@ -15,12 +15,17 @@ describe("captureManagedSnapshotState", () => {
         generated: [
           {
             platformId: "claude-code",
-            files: [{ path: "CLAUDE.md" }, { path: "KEEP.md" }],
+            files: [
+              { path: "CLAUDE.md", content: "# generated" },
+              { path: "KEEP.md", content: "# generated-keep" },
+            ],
           },
         ],
         extraPaths: ["gone.md"],
       });
-      expect(state.platform_files["claude-code"]?.["KEEP.md"]).toBe("keep-me");
+      expect(state.platform_files["claude-code"]?.["KEEP.md"]).toBe("# generated-keep");
+      expect(state.platform_files["claude-code"]?.["CLAUDE.md"]).toBe("# generated");
+      expect(state.disk_files?.["KEEP.md"]).toBe("keep-me");
       expect(state.absent_paths).toEqual(["CLAUDE.md", "gone.md"]);
     } finally {
       await context.cleanup();

@@ -48,7 +48,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(35);
+      expect(versionRow.version).toBe(36);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -82,7 +82,7 @@ describe("initializeSchema", () => {
         .prepare("PRAGMA table_info(global_apply_snapshots)")
         .all() as Array<{ name: string }>;
       expect(globalApplySnapshotColumns.map((column) => column.name)).toEqual(
-        expect.arrayContaining(["resolved_set"]),
+        expect.arrayContaining(["resolved_set", "state"]),
       );
 
       const projectColumns = context.connection
@@ -199,7 +199,99 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(35);
+      ).toBe(36);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("upgrades schema v34 through v36 with plugin semver and snapshot state", async () => {
+    const context = await createTestContext("schema-upgrade-v34-to-v36");
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (34);
+        CREATE TABLE plugins (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL,
+          org_slug TEXT NOT NULL DEFAULT '',
+          catalog_slug TEXT NOT NULL DEFAULT '',
+          origin TEXT NOT NULL DEFAULT 'authored',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          needs_config TEXT NOT NULL DEFAULT '[]',
+          overrides TEXT NOT NULL DEFAULT '{}',
+          default_environment_id TEXT,
+          ap_name TEXT NOT NULL DEFAULT '',
+          origin_locator TEXT,
+          origin_fingerprint TEXT,
+          origin_fingerprint_kind TEXT,
+          dirty INTEGER NOT NULL DEFAULT 0,
+          frozen_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE global_apply_snapshots (
+          id TEXT PRIMARY KEY,
+          profile_name TEXT NOT NULL,
+          plugin_ids TEXT NOT NULL DEFAULT '[]',
+          resolved_set TEXT NOT NULL DEFAULT '[]',
+          created_at TEXT NOT NULL
+        );
+      `);
+      db.prepare(
+        `INSERT INTO plugins (
+          id, name, version, origin_fingerprint, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run("p1", "ponytail", "9cc65d03aa2d", "9cc65d03aa2dffffffffffff", now, now);
+      db.prepare(
+        `INSERT INTO global_apply_snapshots (id, profile_name, created_at)
+         VALUES (?, ?, ?)`,
+      ).run("snap1", "global default", now);
+
+      context.schema.initializeSchema(db);
+
+      expect(
+        (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
+          .version,
+      ).toBe(36);
+      expect(
+        (db.prepare("SELECT version FROM plugins WHERE id = 'p1'").get() as { version: string })
+          .version,
+      ).toBe("0.0.0+git.9cc65d03aa2d");
+      const snapshotCols = db
+        .prepare("PRAGMA table_info(global_apply_snapshots)")
+        .all() as Array<{ name: string }>;
+      expect(snapshotCols.map((column) => column.name)).toContain("state");
+      expect(
+        (db.prepare("SELECT state FROM global_apply_snapshots WHERE id = 'snap1'").get() as {
+          state: string;
+        }).state,
+      ).toBe("{}");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("upgrades schema v34 to v36 when global_apply_snapshots is missing", async () => {
+    const context = await createTestContext("schema-upgrade-v34-no-snapshots");
+    try {
+      const db = context.connection.getDb();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (34);
+      `);
+
+      context.schema.initializeSchema(db);
+
+      expect(
+        (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
+          .version,
+      ).toBe(36);
     } finally {
       await context.cleanup();
     }
@@ -217,7 +309,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 35 }]);
+      expect(versionRows).toEqual([{ version: 36 }]);
     } finally {
       await context.cleanup();
     }
@@ -634,7 +726,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(35);
+        expect(version).toBe(36);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -661,7 +753,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(35);
+      expect(version).toBe(36);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -699,7 +791,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(35);
+      expect(version).toBe(36);
 
       const tables = db
         .prepare(
@@ -764,7 +856,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(35);
+      expect(version).toBe(36);
 
       const columns = db
         .prepare("PRAGMA table_info(resource_materializations)")
@@ -860,7 +952,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(35);
+      expect(version).toBe(36);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")

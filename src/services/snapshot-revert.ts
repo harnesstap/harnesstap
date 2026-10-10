@@ -11,7 +11,7 @@ import type { SerializedFile, SnapshotState } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import {
-  flattenSnapshotFiles,
+  flattenLiveRestoreFiles,
   snapshotAbsentPaths,
 } from "./snapshot-capture.js";
 import {
@@ -93,7 +93,7 @@ export function resolveRevertPlan(snapshotId: string): RevertPlan | { error: str
       rootPath: project.local_path,
       label: projectSnap.label,
       createdAt: projectSnap.created_at,
-      restoreFiles: flattenSnapshotFiles(projectSnap.state),
+      restoreFiles: flattenLiveRestoreFiles(projectSnap.state),
       absentPaths: snapshotAbsentPaths(projectSnap.state),
       hasCapturedState: capturedStateUseful(projectSnap.state),
     };
@@ -112,7 +112,7 @@ export function resolveRevertPlan(snapshotId: string): RevertPlan | { error: str
     rootPath: resolveHomeRoot(),
     label: globalSnap.profile_name,
     createdAt: globalSnap.created_at,
-    restoreFiles: state ? flattenSnapshotFiles(state) : [],
+    restoreFiles: state ? flattenLiveRestoreFiles(state) : [],
     absentPaths: state ? snapshotAbsentPaths(state) : [],
     hasCapturedState: capturedStateUseful(state),
   };

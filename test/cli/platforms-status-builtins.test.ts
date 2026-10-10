@@ -48,7 +48,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
       expect(platforms.stdout).toContain("cursor");
       expect(templates.stdout).toContain("engineering-foundation");
       expect(applied.stdout).toContain("Fetched harnesstap-cloud/engineering-foundation@1.0.0 from catalog");
-      expect(applied.stdout).toContain("[dry run]");
+      expect(applied.stdout).toContain("Dry run. Nothing was changed.");
     } finally {
       restoreFetch();
       await context.cleanup();

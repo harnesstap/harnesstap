@@ -40,6 +40,21 @@ export function flattenSnapshotFiles(state: SnapshotState): SerializedFile[] {
   return files;
 }
 
+/** Live bytes to restore on revert. New captures store those in disk_files. */
+export function flattenLiveRestoreFiles(state: SnapshotState): SerializedFile[] {
+  const hasLiveCapture =
+    (state.disk_files !== undefined && Object.keys(state.disk_files).length > 0)
+    || (state.absent_paths?.length ?? 0) > 0;
+  if (!hasLiveCapture) {
+    return flattenSnapshotFiles(state);
+  }
+  const files: SerializedFile[] = [];
+  for (const [path, content] of Object.entries(state.disk_files ?? {})) {
+    files.push({ path, content });
+  }
+  return files;
+}
+
 export function snapshotAbsentPaths(state: SnapshotState): string[] {
   return [...new Set(state.absent_paths ?? [])];
 }
@@ -62,7 +77,7 @@ export function captureManagedSnapshotState(input: {
   resources?: Resource[];
   generated: ReadonlyArray<{
     platformId: string;
-    files: ReadonlyArray<{ path: string }>;
+    files: ReadonlyArray<{ path: string; content?: string }>;
   }>;
   extraPaths?: readonly string[];
 }): SnapshotState {
@@ -81,9 +96,13 @@ export function captureManagedSnapshotState(input: {
       const live = readLiveFile(input.rootPath, file.path);
       if (live === undefined) {
         absent.push(file.path);
-        continue;
+      } else {
+        disk_files[file.path] = live;
       }
-      bucket[file.path] = live;
+      const expected = file.content ?? live;
+      if (expected !== undefined) {
+        bucket[file.path] = expected;
+      }
     }
     if (Object.keys(bucket).length > 0) {
       platform_files[result.platformId] = bucket;

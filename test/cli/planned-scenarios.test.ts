@@ -160,11 +160,6 @@ describe("CLI planned scenarios", () => {
       await runCli(["init"]);
 
       mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
-      writeFileSync(
-        join(context.projectDir, "CLAUDE.md"),
-        "# Main harness\n",
-        "utf-8",
-      );
       mkdirSync(join(context.projectDir, ".cursor"), { recursive: true });
 
       const pluginModel = await import("../../src/models/plugin-model.ts");
@@ -176,7 +171,7 @@ describe("CLI planned scenarios", () => {
           type: "instruction",
           name: "project-context",
           namespace: "sync-plugin",
-          content: "# Main harness\n",
+          content: "# Sync plugin\n",
         }),
       );
       pluginModel.addResourceToPlugin(plugin.id, resource.id);
@@ -293,7 +288,8 @@ describe("CLI planned scenarios", () => {
       });
 
       expect(result.exitCode ?? 0).toBe(0);
-      expect(result.stdout).toContain("CLAUDE.md");
+      expect(result.stdout).toContain("Applied");
+      expect(result.stdout).toContain("Wrote");
     } finally {
       await context.cleanup();
     }
