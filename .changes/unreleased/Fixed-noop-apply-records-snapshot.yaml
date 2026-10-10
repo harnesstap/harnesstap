@@ -1,0 +1,5 @@
+kind: Fixed
+body: Record a global apply snapshot on a successful no-op profile use so the profile counts as applied and in sync. Quote the profile name in status hints (ht profile use "global default") and show the real unchanged file count in Desktop instead of 0 unchanged.
+time: 2026-10-10T19:25:00Z
+custom:
+  Issue: ""
