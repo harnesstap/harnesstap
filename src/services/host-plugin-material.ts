@@ -97,9 +97,6 @@ export function omitHostPluginBundledSkills(
     return [...resources];
   }
   const pinResources = resources.filter((resource) => isHostPluginPinResource(resource));
-  if (pinResources.length === 0) {
-    return [...resources];
-  }
   const pins = new Set(
     pinResources.map((resource) => resource.origin_ref || resource.name),
   );
