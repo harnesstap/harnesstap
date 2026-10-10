@@ -59,7 +59,7 @@ describe("G9 harness config schema", () => {
               },
             ],
           },
-        }, null, 2)}\n`,
+        }, null, 4)}\n`,
       );
       writeFileSync(
         join(context.homeDir, ".cursor/hooks.json"),
@@ -70,7 +70,10 @@ describe("G9 harness config schema", () => {
           },
         }, null, 2)}\n`,
       );
-      writeFileSync(join(context.homeDir, ".codex/config.toml"), 'model = "gpt-5"\n');
+      writeFileSync(
+        join(context.homeDir, ".codex/config.toml"),
+        'model = "gpt-5"\nenv = { FOO = "bar" }\n',
+      );
       writeFileSync(
         join(context.homeDir, ".config/opencode/opencode.json"),
         `${JSON.stringify({ $schema: "https://opencode.ai/config.json", mcp: {} }, null, 2)}\n`,
@@ -83,9 +86,15 @@ describe("G9 harness config schema", () => {
       });
       await useProfileCommand("global default", { conflictPolicy: "replace", pull: false });
 
-      const claudeSettings = JSON.parse(
-        readFileSync(join(context.homeDir, ".claude/settings.json"), "utf-8"),
-      ) as { hooks?: unknown; enabledPlugins?: Record<string, boolean> };
+      const claudeSettingsRaw = readFileSync(
+        join(context.homeDir, ".claude/settings.json"),
+        "utf-8",
+      );
+      expect(claudeSettingsRaw).toContain('\n    "hooks"');
+      const claudeSettings = JSON.parse(claudeSettingsRaw) as {
+        hooks?: unknown;
+        enabledPlugins?: Record<string, boolean>;
+      };
       assertClaudeHooksWrapped(claudeSettings.hooks);
       expect(JSON.stringify(claudeSettings)).not.toContain("CLAUDE_PLUGIN_ROOT");
       expect(claudeSettings.enabledPlugins?.ponytail).toBeUndefined();
@@ -96,7 +105,10 @@ describe("G9 harness config schema", () => {
         );
       }
 
-      parseToml(readFileSync(join(context.homeDir, ".codex/config.toml"), "utf-8"));
+      const codexToml = readFileSync(join(context.homeDir, ".codex/config.toml"), "utf-8");
+      parseToml(codexToml);
+      expect(codexToml).toContain('env = { FOO = "bar" }');
+      expect(codexToml).not.toMatch(/\[env\]/);
       const opencode = JSON.parse(
         readFileSync(join(context.homeDir, ".config/opencode/opencode.json"), "utf-8"),
       ) as { $schema?: string };

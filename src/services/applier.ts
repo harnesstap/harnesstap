@@ -8,6 +8,11 @@ import {
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { parse as parseToml } from "smol-toml";
+import { canonicalJson, parseJsonObject } from "./format-preserving-config.js";
+import {
+  mcpServerMetadataEquivalent,
+  parseMcpServersDocument,
+} from "./mcp-config-bridge.js";
 import { hasParentTraversalSegment } from "../utils/path-containment.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
@@ -223,18 +228,42 @@ function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boo
   }
 }
 
-function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
+function stripMcpWrapperKeys(value: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...value };
+  delete next.mcpServers;
+  delete next.mcp_servers;
+  delete next.mcp;
+  return next;
+}
+
+function mcpJsonSemanticallyMatches(
+  liveObject: Record<string, unknown>,
+  generatedObject: Record<string, unknown>,
+): boolean {
+  const liveServers = parseMcpServersDocument(liveObject);
+  const generatedServers = parseMcpServersDocument(generatedObject);
+  const liveNames = Object.keys(liveServers).sort();
+  const generatedNames = Object.keys(generatedServers).sort();
+  if (liveNames.length === 0 && generatedNames.length === 0) {
+    return false;
   }
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
+  if (liveNames.length !== generatedNames.length) {
+    return false;
   }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
-    .join(",")}}`;
+  for (let index = 0; index < liveNames.length; index += 1) {
+    const name = liveNames[index];
+    const otherName = generatedNames[index];
+    if (name === undefined || otherName === undefined || name !== otherName) {
+      return false;
+    }
+    const liveMeta = liveServers[name];
+    const generatedMeta = generatedServers[name];
+    if (!liveMeta || !generatedMeta || !mcpServerMetadataEquivalent(liveMeta, generatedMeta)) {
+      return false;
+    }
+  }
+  return canonicalJson(stripMcpWrapperKeys(liveObject))
+    === canonicalJson(stripMcpWrapperKeys(generatedObject));
 }
 
 function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): boolean {
@@ -248,7 +277,13 @@ function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): bo
     const live = readFileSync(fullPath, "utf-8");
     const generated = file.content;
     if (fullPath.endsWith(".json") || fullPath.endsWith(".jsonc")) {
-      return canonicalJson(JSON.parse(live)) === canonicalJson(JSON.parse(generated));
+      const liveObject = parseJsonObject(live);
+      const generatedObject = parseJsonObject(generated);
+      if (!liveObject || !generatedObject) {
+        return false;
+      }
+      return canonicalJson(liveObject) === canonicalJson(generatedObject)
+        || mcpJsonSemanticallyMatches(liveObject, generatedObject);
     }
     if (fullPath.endsWith(".toml")) {
       return canonicalJson(parseToml(live)) === canonicalJson(parseToml(generated));
@@ -431,6 +466,9 @@ export function writeFiles(
   pruneManagedCursorLocalPlugins(projectRoot, files);
   for (const file of files) {
     const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
+    if (semanticallyMatchesExisting(fullPath, file)) {
+      continue;
+    }
     writeSerializedFile(fullPath, file);
   }
 }
