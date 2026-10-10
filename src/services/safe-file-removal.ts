@@ -93,8 +93,81 @@ function normalizeRelative(path: string): string {
   return path.replace(/\\/g, "/").replace(/^\.\//, "");
 }
 
-export function isHarnessTapOwnedPath(rootPath: string, relativePath: string): boolean {
+export type ManagedPathOwnership = "unowned" | "owned" | "modified";
+
+/**
+ * Ownership is manifest row plus current hash. A tracked path whose bytes no
+ * longer match what HarnessTap last wrote is `modified` and is never owned
+ * again until a later apply actually writes the file.
+ */
+export function classifyManagedPathOwnership(
+  rootPath: string,
+  relativePath: string,
+): ManagedPathOwnership {
+  const normalized = normalizeRelative(relativePath);
+  const owned = listMaterializationsForRootPath(rootPath, normalized);
+  if (owned.length === 0) {
+    return "unowned";
+  }
+  const fullPath = resolve(rootPath, normalized);
+  const diskHash = hashOnDiskFile(fullPath);
+  if (owned.some((row) => row.generated_hash === diskHash)) {
+    return "owned";
+  }
+  return "modified";
+}
+
+export function hasHarnessTapMaterialization(
+  rootPath: string,
+  relativePath: string,
+): boolean {
   return listMaterializationsForRootPath(rootPath, normalizeRelative(relativePath)).length > 0;
+}
+
+export function isHarnessTapOwnedPath(rootPath: string, relativePath: string): boolean {
+  return classifyManagedPathOwnership(rootPath, relativePath) === "owned";
+}
+
+export function skippedWriteKeepsForOwnership(
+  rootPath: string,
+  skippedFiles: readonly string[],
+): SafeRemovalSkip[] {
+  const seen = new Set<string>();
+  const skips: SafeRemovalSkip[] = [];
+  for (const rawPath of skippedFiles) {
+    const relativePath = normalizeRelative(rawPath);
+    if (!relativePath || seen.has(relativePath)) {
+      continue;
+    }
+    seen.add(relativePath);
+    if (classifyManagedPathOwnership(rootPath, relativePath) !== "modified") {
+      continue;
+    }
+    skips.push({
+      path: relativePath,
+      reason: "modified",
+      message: skipMessage(relativePath, "modified"),
+    });
+  }
+  return skips;
+}
+
+export function mergeSafeRemovalSkips(
+  ...lists: Array<readonly SafeRemovalSkip[] | undefined>
+): SafeRemovalSkip[] {
+  const seen = new Set<string>();
+  const merged: SafeRemovalSkip[] = [];
+  for (const list of lists) {
+    for (const skip of list ?? []) {
+      const key = `${skip.path}:${skip.reason}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      merged.push(skip);
+    }
+  }
+  return merged;
 }
 
 function skipMessage(path: string, reason: SafeRemovalSkipReason): string {
@@ -155,8 +228,8 @@ export function planSafeFileRemovals(
       continue;
     }
 
-    const owned = listMaterializationsForRootPath(rootPath, relativePath);
-    if (owned.length === 0) {
+    const ownership = classifyManagedPathOwnership(rootPath, relativePath);
+    if (ownership === "unowned") {
       if (options.forceRemove) {
         remove.push(relativePath);
         continue;
@@ -169,9 +242,7 @@ export function planSafeFileRemovals(
       continue;
     }
 
-    const diskHash = hashOnDiskFile(fullPath);
-    const hashMatches = owned.some((row) => row.generated_hash === diskHash);
-    if (hashMatches || options.forceRemove) {
+    if (ownership === "owned" || options.forceRemove) {
       remove.push(relativePath);
       continue;
     }

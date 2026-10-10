@@ -3,12 +3,22 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { recordResourceMaterialization } from "../../src/models/resource-materialization.ts";
-import { hashGeneratedContent } from "../../src/services/materialization-ownership.ts";
+import {
+  listMaterializationsForRootPath,
+  recordResourceMaterialization,
+} from "../../src/models/resource-materialization.ts";
+import {
+  hashGeneratedContent,
+  persistWrittenMaterializations,
+} from "../../src/services/materialization-ownership.ts";
 import { recordPreexistingPath } from "../../src/models/preexisting-path.ts";
 import {
+  classifyManagedPathOwnership,
   executeSafeFileRemovals,
+  isHarnessTapOwnedPath,
+  planSafeFileRemovals,
   restoreSafeRemovalBackup,
+  skippedWriteKeepsForOwnership,
 } from "../../src/services/safe-file-removal.ts";
 
 describe("safe file removal", () => {
@@ -104,6 +114,73 @@ describe("safe file removal", () => {
       });
       expect(restored).toContain(".cursor/skills/ship/SKILL.md");
       expect(readFileSync(skillPath, "utf-8")).toBe("# Ship\n");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("never re-owns a file whose hash no longer matches the last write", async () => {
+    const context = await createInitializedTestContext("ownership-hash-mismatch");
+    try {
+      const relative = ".claude/skills/cursor-only-skill/SKILL.md";
+      const full = join(context.homeDir, relative);
+      mkdirSync(join(full, ".."), { recursive: true });
+      const original = "---\nname: cursor-only-skill\n---\nCursor specific guidance.\n";
+      const edited = `${original}\nUSER-EDIT-SENTINEL\n`;
+      writeFileSync(full, original, "utf-8");
+
+      const resource = createResource({
+        type: "skill",
+        name: "cursor-only-skill",
+        description: "",
+        content: original,
+        metadata: {},
+        source: "manual",
+      });
+      const originalHash = hashGeneratedContent(original);
+      recordResourceMaterialization({
+        resource_id: resource.id,
+        scope: "global",
+        root_path: context.homeDir,
+        platform_id: "claude-code",
+        path: relative,
+        action: "delete-file",
+        ownership_key: "skill:cursor-only-skill",
+        generated_hash: originalHash,
+      });
+
+      writeFileSync(full, edited, "utf-8");
+      expect(classifyManagedPathOwnership(context.homeDir, relative)).toBe("modified");
+      expect(isHarnessTapOwnedPath(context.homeDir, relative)).toBe(false);
+
+      persistWrittenMaterializations({
+        scope: "global",
+        root_path: context.homeDir,
+        platformResults: [{
+          platformId: "claude-code",
+          files: [{
+            path: relative,
+            content: edited,
+            ownership: [{
+              resource_id: resource.id,
+              action: "delete-file",
+              ownership_key: "skill:cursor-only-skill",
+              managed_container: false,
+            }],
+          }],
+          writtenPaths: [],
+        }],
+      });
+      expect(listMaterializationsForRootPath(context.homeDir, relative)[0]?.generated_hash)
+        .toBe(originalHash);
+      expect(classifyManagedPathOwnership(context.homeDir, relative)).toBe("modified");
+
+      const planned = planSafeFileRemovals(context.homeDir, [relative]);
+      expect(planned.remove).toEqual([]);
+      expect(planned.skip.map((entry) => entry.reason)).toEqual(["modified"]);
+      expect(skippedWriteKeepsForOwnership(context.homeDir, [relative]).map((entry) => entry.reason))
+        .toEqual(["modified"]);
+      expect(readFileSync(full, "utf-8")).toBe(edited);
     } finally {
       await context.cleanup();
     }

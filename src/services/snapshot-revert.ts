@@ -5,7 +5,6 @@ import {
   listGlobalApplySnapshots,
 } from "../models/global-apply-snapshot.js";
 import { getProject } from "../models/project.js";
-import { listMaterializationsForRootPath } from "../models/resource-materialization.js";
 import { findSnapshotById } from "../models/snapshot.js";
 import type { SerializedFile, SnapshotState } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -17,8 +16,8 @@ import {
 import {
   backupAndRewriteFile,
   executeSafeFileRemovals,
+  classifyManagedPathOwnership,
   hashOnDiskFile,
-  isHarnessTapOwnedPath,
   restoreSafeRemovalBackup,
   type SafeRemovalSkip,
 } from "./safe-file-removal.js";
@@ -127,16 +126,14 @@ function shouldRestorePath(rootPath: string, file: SerializedFile): RestoreDecis
   if (onDisk === file.content) {
     return "unchanged";
   }
-  if (!isHarnessTapOwnedPath(rootPath, file.path)) {
+  const ownership = classifyManagedPathOwnership(rootPath, file.path);
+  if (ownership === "unowned") {
     return "skip-unmanaged";
   }
-  const diskHash = hashOnDiskFile(fullPath);
-  const rows = listMaterializationsForRootPath(rootPath, file.path);
-  const hashMatchesOwned = rows.some((row) => row.generated_hash === diskHash);
-  if (hashMatchesOwned) {
+  if (ownership === "owned") {
     return "write";
   }
-  if (diskHash === hashGeneratedContent(file.content)) {
+  if (hashOnDiskFile(fullPath) === hashGeneratedContent(file.content)) {
     return "unchanged";
   }
   return "skip-modified";
