@@ -58,7 +58,7 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain('? "Re-apply"');
     expect(appSource).toContain(': "Apply"');
     expect(appSource).toMatch(
-      /\{switching \? "Applying…" : (?:ctrl\.)?showReapply \? "Re-apply" : "Apply"\}[\s\S]{0,400}<(RotateCw|Check) /,
+      /\{switching \? "Applying..." : (?:ctrl\.)?showReapply \? "Re-apply" : "Apply"\}[\s\S]{0,400}<(RotateCw|Check) /,
     );
     expect(stylesSource).toContain(".rail-controls .btn");
     expect(stylesSource).toContain("width: 100%");

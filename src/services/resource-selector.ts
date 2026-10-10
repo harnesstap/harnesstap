@@ -29,7 +29,7 @@ export function parseResourceSelector(selector: string): ParsedResourceSelector 
     namePart = selector.slice(colonIndex + 1);
     const alias = LEGACY_TYPE_ALIASES[rawType];
     if (alias) {
-      deprecations.push(`${rawType}: is now ${alias}:: use ${alias}:${namePart}`);
+      deprecations.push(`${rawType}: is now ${alias}:. Use ${alias}:${namePart}`);
     }
     type = (alias ?? rawType) as ResourceType;
   }

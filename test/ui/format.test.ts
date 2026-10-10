@@ -13,7 +13,7 @@ describe("ui format", () => {
   });
 
   it("shortens long IDs with ellipsis", () => {
-    expect(shortenId("abc123def456")).toContain("...");
+    expect(shortenId("abc123def456")).toBe("abc1...f456");
     expect(shortenId("short")).toBe("short");
   });
 
