@@ -1,5 +1,6 @@
-import { existsSync } from "node:fs";
-import { getDbPath } from "../db/connection.js";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { getDbPath, getHarnesstapDir } from "../db/connection.js";
 import { bootstrapLocalLibrary } from "../services/bootstrap-local-library.js";
 import { setAgentFirstRun } from "./boot-state.js";
 import { type BunServerHandle, bunServe } from "./bun-runtime.js";
@@ -52,7 +53,29 @@ function isAddressInUseError(error: unknown): boolean {
   );
 }
 
+function assertHomeWritable(): void {
+  const dir = getHarnesstapDir();
+  try {
+    mkdirSync(dir, { recursive: true });
+    const probe = join(dir, ".write-probe");
+    writeFileSync(probe, "ok");
+    unlinkSync(probe);
+  } catch (error) {
+    const cause = error instanceof Error ? error : new Error(String(error));
+    const wrapped = new Error(
+      `HarnessTap data folder is not writable: ${dir}`,
+    );
+    (wrapped as Error & { code?: string }).code =
+      error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : "EACCES";
+    wrapped.cause = cause;
+    throw wrapped;
+  }
+}
+
 async function bootAgentDatabase(): Promise<void> {
+  assertHomeWritable();
   const firstRun = !existsSync(getDbPath());
   const result = await bootstrapLocalLibrary();
   setAgentFirstRun(firstRun || result.firstRun);
