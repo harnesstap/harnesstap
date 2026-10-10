@@ -282,6 +282,13 @@ jobs:
           name: desktop-visual-pr-artifacts
           path: apps/desktop/e2e/artifacts/
           if-no-files-found: ignore
+      - name: Upload container shots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-visual-container-shots
+          path: apps/desktop/e2e/artifacts/shots/[0-9]*.png
+          if-no-files-found: ignore
 
   validate:
     runs-on: ubuntu-latest

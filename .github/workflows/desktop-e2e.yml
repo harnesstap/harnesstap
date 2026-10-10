@@ -1,11 +1,17 @@
 name: desktop-e2e
 on:
   workflow_dispatch:
+    inputs:
+      update_baselines:
+        description: Write e2e/visual inside the pinned Playwright image
+        type: boolean
+        default: false
   schedule:
     - cron: "0 9 * * *"
 
 jobs:
   e2e:
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.update_baselines != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -47,6 +53,8 @@ jobs:
       - name: Git safe directory
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: ./.github/actions/desktop-visual
+        with:
+          update-baselines: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.update_baselines == 'true' }}
       - name: Upload visual artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,3 +62,16 @@ jobs:
           name: desktop-visual-artifacts
           path: apps/desktop/e2e/artifacts/
           if-no-files-found: ignore
+      - name: Upload container shots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-visual-container-shots
+          path: apps/desktop/e2e/artifacts/shots/[0-9]*.png
+          if-no-files-found: ignore
+      - name: Upload refreshed baselines
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.update_baselines == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-visual-baselines
+          path: apps/desktop/e2e/visual/*.png

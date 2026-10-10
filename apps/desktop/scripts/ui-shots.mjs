@@ -547,6 +547,11 @@ async function run() {
   }
 
   if (config.updateBaselines) {
+    if (process.env.SHOTS_PINNED_IMAGE !== "1") {
+      throw new Error(
+        "shots: --update-baselines only runs inside the pinned Playwright image (SHOTS_PINNED_IMAGE=1). Use apps/desktop/scripts/update-visual-baselines.sh or the desktop-visual CI job.",
+      );
+    }
     for (const file of report.written) {
       copyFileSync(file, baselinePathFor(file, config.baselineDir));
     }

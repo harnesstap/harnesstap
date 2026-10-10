@@ -62,6 +62,8 @@ describe("desktop visual check", () => {
     expect(workflow).toContain("schedule:");
     expect(workflow).not.toContain("pull_request:");
     expect(visualAction).toContain("bun run desktop:check");
+    expect(visualAction).toContain("apt-get install -y --no-install-recommends unzip");
+    expect(visualAction).toContain("SHOTS_PINNED_IMAGE");
   });
 
   test("G8 pins Playwright Chromium and fonts via a container image", () => {
@@ -72,6 +74,13 @@ describe("desktop visual check", () => {
     expect(ci).toContain("mcr.microsoft.com/playwright:v1.63.0-noble");
     expect(shots).toContain("chromium.executablePath()");
     expect(shots).not.toMatch(/existsSync\("\/usr\/bin\/google-chrome-stable"\)/);
+    expect(shots).toContain('SHOTS_PINNED_IMAGE !== "1"');
+    const updater = readFileSync(
+      join(root, "apps/desktop/scripts/update-visual-baselines.sh"),
+      "utf8",
+    );
+    expect(updater).toContain("command -v docker");
+    expect(updater).toContain("SHOTS_PINNED_IMAGE=1");
   });
 
   test("G8 requires visual on Desktop src PRs and uploads diff artifacts", () => {
