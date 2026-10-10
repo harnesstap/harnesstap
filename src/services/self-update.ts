@@ -91,10 +91,13 @@ export function normalizePublishedVersion(version: string): string {
 export function isNewerPublishedVersion(latest: string, current: string): boolean {
   const latestVersion = normalizePublishedVersion(latest);
   const currentVersion = normalizePublishedVersion(current);
-  if (!semver.valid(latestVersion) || !semver.valid(currentVersion)) {
+  const latestCore = semver.coerce(latestVersion)?.version;
+  const currentCore = semver.coerce(currentVersion)?.version;
+  if (!latestCore || !currentCore) {
     return false;
   }
-  return semver.gt(latestVersion, currentVersion);
+  // Same X.Y.Z: a `-dev+sha` build is not behind the matching published release.
+  return semver.gt(latestCore, currentCore);
 }
 
 export function detectCliInstallChannel(

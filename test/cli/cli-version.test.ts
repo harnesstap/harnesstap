@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import packageJson from "../../package.json";
 import { isRootVersionRequest } from "../../src/cli/runtime.ts";
+import { PACKAGE_VERSION } from "../../src/version.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI version flags", () => {
@@ -8,7 +8,7 @@ describe("CLI version flags", () => {
     for (const flag of ["-V", "--version", "--harnesstap-version"]) {
       const result = await runCli([flag]);
       expect(result.exitCode).toBeUndefined();
-      expect(result.stdout.trim()).toBe(packageJson.version);
+      expect(result.stdout.trim()).toBe(PACKAGE_VERSION);
       expect(result.stderr).toBe("");
     }
   });

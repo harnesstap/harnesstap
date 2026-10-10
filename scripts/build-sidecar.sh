@@ -25,8 +25,12 @@ cleanup() {
 trap cleanup EXIT
 
 # The compiled binary cannot read package.json at runtime (it is not in the
-# bunfs), so bake the version in the same way tsup does for the npm build.
-VERSION="$(cd "$ROOT" && bun --print 'require("./package.json").version')"
+# bunfs), so bake the version in the same way tsup does for the npm build
+# (package version, or `-dev+<sha>` unless HT_RELEASE=1).
+VERSION="$(
+  cd "$ROOT"
+  bun -e 'import { resolveBuildVersion } from "./src/version.ts"; console.log(resolveBuildVersion());'
+)"
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$ ]]; then
   echo "build-sidecar: unexpected package.json version: '$VERSION'" >&2
   exit 1

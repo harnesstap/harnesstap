@@ -193,6 +193,8 @@ jobs:
           bun run test:cli
           bun run test:docs
           bun run build
+        env:
+          HT_RELEASE: "1"
 
       - name: Set up Node for npm publish
         if: steps.resolve.outputs.skip != 'true'
