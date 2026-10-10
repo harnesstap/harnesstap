@@ -738,14 +738,14 @@ export async function applyProfilePlugin(
     );
     const hasChanges =
       applied.writtenFiles.length > 0 || plannedRemoval.removed.length > 0;
+    const snapshot = createGlobalApplySnapshot({
+      profile_name: profilePlugin.name,
+      plugin_ids: configuredPluginIds,
+      resolved_set: resolvedSet,
+      state: applied.preApplyState,
+    });
+    snapshotId = snapshot.id;
     if (hasChanges) {
-      const snapshot = createGlobalApplySnapshot({
-        profile_name: profilePlugin.name,
-        plugin_ids: configuredPluginIds,
-        resolved_set: resolvedSet,
-        state: applied.preApplyState,
-      });
-      snapshotId = snapshot.id;
       removal = removeStaleGlobalProfileFiles(
         homeRoot,
         desiredFiles,
@@ -758,17 +758,17 @@ export async function applyProfilePlugin(
         },
       );
       warnSkippedRemovals(removal);
-      for (const result of applied.results) {
-        const installFiles = result.files.map((file) => file.path);
-        if (installFiles.length === 0) continue;
-        recordGlobalApplySnapshotInstall({
-          snapshot_id: snapshot.id,
-          platform_id: result.platformId,
-          files: installFiles,
-        });
-      }
     } else {
       removal = plannedRemoval;
+    }
+    for (const result of applied.results) {
+      const installFiles = result.files.map((file) => file.path);
+      if (installFiles.length === 0) continue;
+      recordGlobalApplySnapshotInstall({
+        snapshot_id: snapshot.id,
+        platform_id: result.platformId,
+        files: installFiles,
+      });
     }
   }
   if (!applied.cancelled && defaultEnvironmentName) {
