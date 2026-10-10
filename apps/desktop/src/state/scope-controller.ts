@@ -72,7 +72,7 @@ import {
   type PreviewKey,
 } from "./status-store";
 import { toast } from "./toast-store";
-import { applySuccessToast } from "../lib/apply-result";
+import { applySuccessToast, type ApplySnapshotView } from "../lib/apply-result";
 import {
   emptyPlannedRemovals,
   riskyRemovalPaths,
@@ -188,7 +188,7 @@ export function useScopeController(input: ScopeControllerInput) {
     confirmOwnedOverwrite: boolean;
     options?: { progressLabel?: string; successToast?: string };
   } | null>(null);
-  const [applySnapshotId, setApplySnapshotId] = useState<string | null>(null);
+  const [applySnapshot, setApplySnapshot] = useState<ApplySnapshotView | null>(null);
   const [reapplyConfirmOpen, setReapplyConfirmOpen] = useState(false);
   const [pendingRestoreChange, setPendingRestoreChange] =
     useState<DriftFileChange | null>(null);
@@ -459,16 +459,13 @@ export function useScopeController(input: ScopeControllerInput) {
             setPendingTrust(trustFieldsFromUnknown(final.result));
             setSwitchSuccessHold(true);
             const applyToast = applySuccessToast(final.result);
-            if (applyToast.snapshotId) {
-              setApplySnapshotId(applyToast.snapshotId);
-            }
             toast({
               tone: "success",
               title: options?.successToast ?? applyToast.title,
-              action: applyToast.snapshotId
+              action: applyToast.snapshot
                 ? {
                     label: APPLY_RESULT_COPY.viewSnapshot,
-                    onClick: () => setApplySnapshotId(applyToast.snapshotId),
+                    onClick: () => setApplySnapshot(applyToast.snapshot),
                   }
                 : undefined,
             });
@@ -1624,8 +1621,8 @@ export function useScopeController(input: ScopeControllerInput) {
     setPendingRiskyRemovals,
     onKeepRiskyRemovals,
     onRemoveRiskyRemovalsToo,
-    applySnapshotId,
-    setApplySnapshotId,
+    applySnapshot,
+    setApplySnapshot,
     onCancelSwitch,
     runSwitch,
     maybeAutoReapplyAfterMutation,

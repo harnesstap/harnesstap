@@ -45,6 +45,7 @@ function parseArgs(argv) {
     updateBaselines: false,
     axe: false,
     trace: false,
+    only: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -62,11 +63,22 @@ function parseArgs(argv) {
       options.viewports = parseViewports(argv[++i]);
     } else if (arg.startsWith("--viewports=")) {
       options.viewports = parseViewports(arg.slice("--viewports=".length));
+    } else if (arg === "--only") {
+      options.only = parseOnly(argv[++i]);
+    } else if (arg.startsWith("--only=")) {
+      options.only = parseOnly(arg.slice("--only=".length));
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
   }
   return options;
+}
+
+function parseOnly(raw) {
+  if (!raw) {
+    throw new Error("--only needs a comma-separated list of screen names");
+  }
+  return raw.split(",").map((entry) => entry.trim()).filter(Boolean);
 }
 
 function parseViewports(raw) {
@@ -349,6 +361,17 @@ const SCREENS = [
       await page.getByTestId("risky-removal-dialog").waitFor({ state: "attached", timeout: 15_000 });
     },
   },
+  {
+    name: "action-toast",
+    run: async (page, baseUrl) => {
+      const url = new URL(baseUrl);
+      url.searchParams.set("visual", "action-toast");
+      await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 15_000 });
+      await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await page.getByTestId("action-toast-gallery").waitFor({ timeout: 15_000 });
+      await page.getByTestId("toast").waitFor({ timeout: 15_000 });
+    },
+  },
 ];
 
 /**
@@ -473,6 +496,9 @@ async function walkViewport(browser, viewport, config, report) {
 
   for (let index = 0; index < SCREENS.length; index++) {
     const screen = SCREENS[index];
+    if (config.only && !config.only.includes(screen.name)) {
+      continue;
+    }
     const file = path.join(
       config.outDir,
       `${String(index + 1).padStart(2, "0")}-${screen.name}-${tag}.png`,
@@ -530,6 +556,7 @@ async function run() {
     reducedMotion: args.reducedMotion,
     compare: args.compare,
     updateBaselines: args.updateBaselines,
+    only: args.only,
     axe: args.axe,
     trace: args.trace,
     token: null,

@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { ActionToastVisualGallery } from "./components/live/ActionToastVisualGallery";
 import { HarnessScopeVisualGallery } from "./components/live/HarnessScopeVisualGallery";
 import { RiskyRemovalVisualGallery } from "./components/live/RiskyRemovalVisualGallery";
 import "@fontsource/ibm-plex-sans/latin-400.css";
@@ -26,6 +27,9 @@ function Root() {
   }
   if (visual === "risky-removal") {
     return <RiskyRemovalVisualGallery />;
+  }
+  if (visual === "action-toast") {
+    return <ActionToastVisualGallery />;
   }
   return <App />;
 }
