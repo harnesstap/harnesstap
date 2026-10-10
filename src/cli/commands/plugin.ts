@@ -190,7 +190,10 @@ import {
   promptMaterializationConflict,
   resolveApplyConflictPolicy,
 } from "../../services/materialization-conflicts.js";
-import type { ApplyCommandOpts } from "../../services/apply-command-options.js";
+import {
+  validateApplyOnConflict,
+  type ApplyCommandOpts,
+} from "../../services/apply-command-options.js";
 import {
   PLUGIN_ATTACHMENT_TYPES,
   PluginAttachmentHintError,
@@ -422,6 +425,12 @@ export async function handleProjectApplyCommand(
   pluginNames: [string, ...string[]] | [],
   opts: ApplyCommandOpts,
 ): Promise<void> {
+  const conflictError = validateApplyOnConflict(opts.onConflict);
+  if (conflictError) {
+    fail(conflictError);
+    return;
+  }
+
   const db = getDb();
   initializeSchema(db);
 
