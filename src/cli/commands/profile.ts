@@ -16,6 +16,7 @@ import {
   showProfileCommand,
   useProfileCommand,
 } from "../../services/profile-commands.js";
+import { PinnedPluginInstallConsentError } from "../../services/plugin-pin-apply.js";
 import { detectGlobalProfileStatus } from "../../services/global-profile-drift.js";
 import { maybePromptProfilePluginDelete } from "../../services/profile-delete-prompt.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "../../services/profile-switch-prompt.js";
@@ -347,6 +348,7 @@ profileCmd
   .option("--force", "Apply even when the profile is already active and in sync")
   .option("--no-interactive", "Disable interactive prompts")
   .option("--interactive", "Enable interactive prompts")
+  .option("-y, --yes", "Install pinned marketplace plugins without a prompt")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Switch the active profile and apply globally to harness home paths")
   .action(async (name: string | undefined, opts: {
@@ -362,6 +364,7 @@ profileCmd
     forceRemove?: boolean;
     interactive?: boolean;
     noInteractive?: boolean;
+    yes?: boolean;
     format?: string;
   }) => {
     const db = getDb();
@@ -424,6 +427,8 @@ profileCmd
         baseUrl: opts.baseUrl,
         conflictPolicy,
         forceRemove: opts.forceRemove,
+        yes: Boolean(opts.yes),
+        interactive: opts.noInteractive === true ? false : opts.interactive,
         ...(conflictPolicy === "prompt"
           ? { conflictResolver: promptMaterializationConflict }
           : {}),
@@ -456,6 +461,10 @@ profileCmd
       printPlannedRemovals(payload);
     } catch (err) {
       process.exitCode = 1;
+      if (err instanceof PinnedPluginInstallConsentError) {
+        ui.danger(err.message, { hint: err.hint });
+        return;
+      }
       ui.danger(err instanceof Error ? err.message : String(err));
     }
   });

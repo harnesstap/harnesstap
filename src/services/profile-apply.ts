@@ -113,6 +113,8 @@ export interface ApplyProfilePluginOptions {
   recordActiveProfile?: boolean;
   forceUnicode?: boolean;
   forceRemove?: boolean;
+  yes?: boolean;
+  interactive?: boolean;
 }
 
 export interface ApplyProfilePluginResult {
@@ -566,6 +568,9 @@ export async function applyProfilePlugin(
     scope: "user",
     skipSync: skipPluginSync,
     ignoreMissingInstall: Boolean(options.dryRun),
+    yes: options.yes,
+    interactive: options.interactive,
+    profileName: profilePlugin.name,
   });
 
   let resolution = resolveComposition({ rootSelectors: [profilePlugin.name] });
@@ -616,6 +621,9 @@ export async function applyProfilePlugin(
       claudeConfig: merged.claude,
       scope: "user",
       skipSync: false,
+      yes: options.yes,
+      interactive: options.interactive,
+      profileName: profilePlugin.name,
     });
     if (
       additionalPrepare.installs.some(

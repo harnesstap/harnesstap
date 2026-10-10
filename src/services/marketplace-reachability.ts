@@ -94,7 +94,10 @@ function runGitAsync(
   }
 
   return new Promise((resolve) => {
-    const child = spawn("git", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("git", args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    });
     let stdout = "";
     let stderr = "";
     let settled = false;

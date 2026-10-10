@@ -19,6 +19,7 @@ export interface ApplyCommandOpts {
   explain?: boolean;
   update?: boolean;
   force?: boolean;
+  yes?: boolean;
 }
 
 export function addApplyCommandOptions(command: Command): Command {
@@ -70,5 +71,6 @@ export function addApplyCommandOptions(command: Command): Command {
     .option(
       "--force",
       "Override critical hidden-Unicode findings and continue apply",
-    );
+    )
+    .option("-y, --yes", "Install pinned marketplace plugins without a prompt");
 }

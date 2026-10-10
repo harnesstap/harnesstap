@@ -1,0 +1,5 @@
+kind: Fixed
+body: Validate marketplace add before saving, and install pinned marketplace plugins into the package cache on profile use and apply.
+time: 2026-10-10T05:10:00Z
+custom:
+  Issue: ""

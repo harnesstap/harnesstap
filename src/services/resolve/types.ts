@@ -357,7 +357,7 @@ function hintForAction(action: RecoveryAction): string {
         return `ht plugin pull ${action.pluginName}`;
       }
       if (action.sourceKind === "marketplace") {
-        return `ht plugin apply <root> --sync-plugins`;
+        return `Run ht profile use to install "${action.pluginName}".`;
       }
       return `ht plugin create ${action.pluginName}`;
     case "create-plugin":

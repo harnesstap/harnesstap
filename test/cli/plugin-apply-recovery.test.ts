@@ -28,10 +28,11 @@ describe("apply constraint recovery", () => {
       "--harness",
       "claude-code",
       "--no-interactive",
+      "--yes",
     ]);
 
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain("No local version of");
-    expect(result.stderr).toContain("--sync-plugins");
+    expect(result.stderr).toContain("ht profile use");
   });
 });

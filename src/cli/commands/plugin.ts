@@ -108,6 +108,7 @@ import {
 import {
   collectPluginPinsForPrepare,
   preparePluginPinsForApply,
+  PinnedPluginInstallConsentError,
   type SyncPluginPinsForApplyResult,
 } from "../../services/plugin-pin-apply.js";
 import { resolvePluginInstallScope, type InstallPluginPinResult } from "../../services/plugin-install.js";
@@ -562,6 +563,7 @@ export async function handleProjectApplyCommand(
     resolveSpin.stop();
     console.log(ui.theme.muted("Plugins"));
     const rootClaude = mergePluginsById(rootPluginIds).claude;
+    try {
     pluginPrepare = await preparePluginPinsForApply({
       pins: rootPluginPins,
       baseResources: [],
@@ -571,6 +573,8 @@ export async function handleProjectApplyCommand(
       syncAll: opts.syncPlugins,
       scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
       ignoreMissingInstall: Boolean(opts.ignorePluginVersions || opts.dryRun),
+      yes: Boolean(opts.yes),
+      interactive: opts.noInteractive === true ? false : opts.interactive,
       progress: {
         onInstallStart: (ref) => {
           pluginProgressState.current?.stop();
@@ -591,6 +595,16 @@ export async function handleProjectApplyCommand(
         },
       },
     });
+    } catch (err) {
+      pluginProgressState.current?.stop();
+      process.exitCode = 1;
+      if (err instanceof PinnedPluginInstallConsentError) {
+        ui.danger(err.message, { hint: err.hint });
+        return;
+      }
+      ui.danger(err instanceof Error ? err.message : String(err));
+      return;
+    }
     pluginProgressState.current?.stop();
     pluginValidationIssues = pluginPrepare.validationIssues;
   }
@@ -752,6 +766,8 @@ export async function handleProjectApplyCommand(
       syncAll: opts.syncPlugins,
       scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
       ignoreMissingInstall: opts.ignorePluginVersions,
+      yes: Boolean(opts.yes),
+      interactive: opts.noInteractive === true ? false : opts.interactive,
       progress: {
         onInstallStart: (ref) => {
           pluginProgressState.current?.stop();

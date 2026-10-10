@@ -13,11 +13,16 @@ import {
   removeMarketplace,
 } from "../../services/marketplace-registry.js";
 import {
+  MarketplaceSourceError,
+  assertMarketplaceSourceReachable,
+} from "../../services/marketplace-validate.js";
+import {
   promptForSearchableChoice,
   shouldUseBrowsePicker,
 } from "../../services/wizards/shared.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { marketplaceUnreachable } from "../../copy/cli.js";
 import { configureCommandGroup } from "../help.js";
 import { collectRepeatedOption } from "../shared.js";
 
@@ -83,6 +88,18 @@ async function handleMarketplaceAddCommand(
   const harnesstapDir = getHarnesstapDir();
   const name = opts.name?.trim() || deriveMarketplaceNameFromUrl(url);
   const platforms = parsePlatforms(opts.platform);
+
+  try {
+    await assertMarketplaceSourceReachable(url);
+  } catch (error) {
+    if (error instanceof MarketplaceSourceError) {
+      process.exitCode = 1;
+      ui.danger(error.message, error.hint ? { hint: error.hint } : undefined);
+      return;
+    }
+    throw error;
+  }
+
   const result = addMarketplace(harnesstapDir, {
     url,
     name,
@@ -92,16 +109,32 @@ async function handleMarketplaceAddCommand(
 
   let refresh: RefreshMarketplaceCatalogResult | undefined;
   try {
-    refresh = refreshMarketplaceCatalog(harnesstapDir, { name, force: true });
-    if (!refresh.ok) {
-      ui.warn("Marketplace added, but catalog refresh failed.", {
+    refresh = refreshMarketplaceCatalog(harnesstapDir, {
+      name: result.entry.name,
+      force: true,
+    });
+    if (!refresh.ok && result.status === "added") {
+      removeMarketplace(harnesstapDir, result.entry.name);
+      process.exitCode = 1;
+      ui.danger(marketplaceUnreachable(result.entry.url), {
         hint: refresh.message,
       });
+      return;
+    }
+    if (!refresh.ok) {
+      process.exitCode = 1;
+      ui.danger(marketplaceUnreachable(result.entry.url), {
+        hint: refresh.message,
+      });
+      return;
     }
   } catch (error) {
-    ui.warn("Marketplace added, but catalog refresh failed.", {
-      hint: error instanceof Error ? error.message : String(error),
-    });
+    if (result.status === "added") {
+      removeMarketplace(harnesstapDir, result.entry.name);
+    }
+    process.exitCode = 1;
+    ui.danger(error instanceof Error ? error.message : String(error));
+    return;
   }
 
   if (format === "json") {
