@@ -14,8 +14,10 @@ import { setHarnessPreference } from "../../src/models/harness.ts";
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { generateFiles } from "../../src/services/applier.ts";
 import {
+  diskCaptureHarnessScope,
   linkedHarnessGroups,
   normalizeScopeToRegistered,
+  originHarnessFromSourcePath,
   parseHarnessScope,
   serializeHarnessScope,
 } from "../../src/services/harness-scope.ts";
@@ -33,6 +35,17 @@ function createSkill(name: string, content: string) {
 }
 
 describe("harness-scope", () => {
+  it("maps disk-captured sources to their origin harness", () => {
+    expect(originHarnessFromSourcePath("~/.claude/CLAUDE.md")).toBe("claude-code");
+    expect(originHarnessFromSourcePath("~/.cursor/mcp.json")).toBe("cursor");
+    expect(originHarnessFromSourcePath("~/.codex/config.toml")).toBe("codex");
+    expect(originHarnessFromSourcePath("~/.cursor/skills/cursor-only-skill/SKILL.md")).toBe(
+      "cursor",
+    );
+    expect(diskCaptureHarnessScope({ source: "~/.claude/settings.json", origin_ref: "" }).kind)
+      .toBe("subset");
+  });
+
   it("treats missing and empty as All", () => {
     expect(parseHarnessScope(undefined).kind).toBe("all");
     expect(parseHarnessScope("all").kind).toBe("all");

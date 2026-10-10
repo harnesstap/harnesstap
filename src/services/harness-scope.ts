@@ -1,4 +1,4 @@
-import { getPlatform } from "../platforms/registry.js";
+import { getAllPlatforms, getPlatform } from "../platforms/registry.js";
 import type { PlatformPaths, Resource, SerializerTarget } from "../types.js";
 
 export type HarnessScope =
@@ -159,6 +159,92 @@ export function normalizeEmitPath(raw: string | undefined): string | undefined {
   let normalized = raw.replace(/\\/g, "/").replace(/\/+$/, "");
   if (!normalized) return undefined;
   return normalized;
+}
+
+function sourcePathCandidates(source: string): string[] {
+  const normalized = source.replace(/\\/g, "/");
+  const candidates = new Set<string>([normalized]);
+  if (normalized.startsWith("~/")) {
+    candidates.add(normalized.slice(2));
+  }
+  const homeMarker = normalized.match(
+    /(?:^|\/)(\.(?:claude|cursor|codex|agents|gemini|config|copilot|cline|minimax|kiro|windsurf|goose|amazonq)(?:\/.*)?)$/,
+  );
+  if (homeMarker?.[1]) {
+    candidates.add(homeMarker[1]);
+    candidates.add(`~/${homeMarker[1]}`);
+  }
+  return [...candidates];
+}
+
+function collectPlatformPathPrefixes(platform: ReturnType<typeof getAllPlatforms>[number]): string[] {
+  const prefixes: string[] = [];
+  for (const group of [platform.globalPaths, platform.projectPaths]) {
+    for (const value of Object.values(group)) {
+      if (typeof value === "string") {
+        const normalized = normalizeEmitPath(value);
+        if (normalized) prefixes.push(normalized);
+        continue;
+      }
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          const normalized = normalizeEmitPath(entry);
+          if (normalized) prefixes.push(normalized);
+        }
+      }
+    }
+    for (const alternates of Object.values(group.pathAlternates ?? {})) {
+      for (const entry of alternates ?? []) {
+        const normalized = normalizeEmitPath(entry);
+        if (normalized) prefixes.push(normalized);
+      }
+    }
+  }
+  return prefixes;
+}
+
+/**
+ * Map a disk-captured resource source path to the harness that owned it.
+ * Used so init-imported resources stay on their origin harness (DT-1).
+ */
+export function originHarnessFromSourcePath(source: string | undefined): string | undefined {
+  if (!source) {
+    return undefined;
+  }
+  const candidates = sourcePathCandidates(source);
+  let best: { id: string; score: number } | undefined;
+  for (const platform of getAllPlatforms()) {
+    for (const prefix of collectPlatformPathPrefixes(platform)) {
+      const prefixBare = prefix.startsWith("~/") ? prefix.slice(2) : prefix;
+      for (const candidate of candidates) {
+        const haystack = candidate.startsWith("~/") ? candidate.slice(2) : candidate;
+        if (
+          haystack === prefixBare
+          || haystack.startsWith(`${prefixBare}/`)
+          || candidate === prefix
+          || candidate.startsWith(`${prefix}/`)
+        ) {
+          const score = prefixBare.length;
+          if (!best || score > best.score) {
+            best = { id: platform.id, score };
+          }
+        }
+      }
+    }
+  }
+  return best?.id;
+}
+
+export function diskCaptureHarnessScope(
+  resource: Pick<Resource, "source" | "origin_ref">,
+): HarnessScope {
+  const origin =
+    originHarnessFromSourcePath(resource.source)
+    ?? originHarnessFromSourcePath(resource.origin_ref);
+  if (!origin) {
+    return HARNESS_SCOPE_ALL;
+  }
+  return { kind: "subset", harnesses: [origin] };
 }
 
 export function emitPathForResourceType(

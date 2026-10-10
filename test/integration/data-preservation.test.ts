@@ -193,12 +193,16 @@ describe("G4 data preservation", () => {
       });
       const sentinels = plantSentinels(context.homeDir);
       const applyOpts = { conflictPolicy: "replace" as const, pull: false };
-      await useProfileCommand("global default", applyOpts);
+      const first = await useProfileCommand("global default", applyOpts);
+      expect(first.written_files).toEqual([]);
+      expect(
+        readFileSync(join(context.homeDir, ".claude/CLAUDE.md"), "utf-8"),
+      ).not.toContain("CODEX-AGENTS-MARKER");
       const afterFirstApply = plantSentinels(context.homeDir);
       await useProfileCommand("global default", applyOpts);
       await applyProfilePlugin("global default", applyOpts);
       const third = await applyProfilePlugin("global default", applyOpts);
-      expect(third.written_files.length).toBeGreaterThanOrEqual(0);
+      expect(third.written_files).toEqual([]);
       assertSentinels(sentinels);
       assertSentinels(afterFirstApply);
 

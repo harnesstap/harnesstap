@@ -27,6 +27,7 @@ import {
   uniqueHarnessTargets,
 } from "./harness-targets.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { diskCaptureHarnessScope } from "./harness-scope.js";
 import { getActiveProfileName } from "./active-profile.js";
 
 export interface ProfileHarnessSyncChange {
@@ -235,7 +236,11 @@ export async function updateProfileFromMainHarness(input: {
     const existingAttachment = beforeSync.some(
       (attached) => attached.id === resource.id,
     );
-    addResourceToPlugin(profilePlugin.id, resource.id);
+    addResourceToPlugin(
+      profilePlugin.id,
+      resource.id,
+      diskCaptureHarnessScope(resource),
+    );
     if (!existingAttachment) {
       attachedResources += 1;
     }

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep disk-captured resources on their origin harness so the first apply after init is a no-op. Skip rewriting preexisting instruction files and skip writes when JSON or TOML already match semantically.
+time: 2026-10-10T01:10:00Z
+custom:
+  Issue: ""

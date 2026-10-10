@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
+import { parse as parseToml } from "smol-toml";
 import { hasParentTraversalSegment } from "../utils/path-containment.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
@@ -171,11 +172,10 @@ function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): s
 }
 
 function shouldPreserveUnownedFile(path: string): boolean {
-  return (
-    isMergeableHostConfigPath(path)
-    || isAggregateConfigManagedPath(path)
-    || isPluginRegistryManagedPath(path)
-  );
+  if (/\.(md|mdc)$/i.test(path) || isMergeableHostConfigPath(path)) {
+    return false;
+  }
+  return isAggregateConfigManagedPath(path) || isPluginRegistryManagedPath(path);
 }
 
 export function removeGlobalMaterializedFiles(
@@ -208,6 +208,42 @@ function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boo
   } catch {
     return false;
   }
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+    .join(",")}}`;
+}
+
+function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): boolean {
+  if (fileContentMatchesExisting(fullPath, file)) {
+    return true;
+  }
+  if (!existsSync(fullPath)) {
+    return false;
+  }
+  try {
+    const live = readFileSync(fullPath, "utf-8");
+    const generated = file.content;
+    if (fullPath.endsWith(".json") || fullPath.endsWith(".jsonc")) {
+      return canonicalJson(JSON.parse(live)) === canonicalJson(JSON.parse(generated));
+    }
+    if (fullPath.endsWith(".toml")) {
+      return canonicalJson(parseToml(live)) === canonicalJson(parseToml(generated));
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 function isGenerateFilesOptions(
@@ -420,10 +456,14 @@ export async function materializeFiles(
         return false;
       }
       if (shouldPreserveUnownedFile(file.path)) {
-        return false;
+        const fullMergeable = assertMaterializedPathIsSafe(rootPath, file.path);
+        return semanticallyMatchesExisting(fullMergeable, file);
       }
       const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
-      return existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path);
+      return (
+        (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path))
+        || semanticallyMatchesExisting(fullPath, file)
+      );
     });
     const skippedPreexistingPaths = new Set(skippedPreexisting.map((file) => file.path));
     return {
@@ -471,8 +511,8 @@ export async function materializeFiles(
         continue;
       }
     }
-    if (fileContentMatchesExisting(fullPath, file)) {
-      writtenFiles.push(file.path);
+    if (semanticallyMatchesExisting(fullPath, file)) {
+      skippedFiles.push(file.path);
       continue;
     }
     mkdirSync(dirname(fullPath), { recursive: true });

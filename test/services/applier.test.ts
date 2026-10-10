@@ -788,7 +788,8 @@ describe("applier services", () => {
 
       expect(result.cancelled).toBe(false);
       expect(result.conflicts).toEqual([]);
-      expect(result.writtenFiles).toContain(".copilot/skills/research/SKILL.md");
+      expect(result.writtenFiles).not.toContain(".copilot/skills/research/SKILL.md");
+      expect(result.skippedFiles).toContain(".copilot/skills/research/SKILL.md");
     } finally {
       await context.cleanup();
     }
