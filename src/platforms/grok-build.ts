@@ -594,7 +594,7 @@ export class GrokBuildSerializer extends BaseSerializer {
         path: relativeHooksPath,
         content: overlayJsonPreservingFormat(
           this.readFile(join(projectRoot, relativeHooksPath)),
-          generated as Record<string, unknown>,
+          generated as unknown as Record<string, unknown>,
           { mergeObjectKeys: ["hooks"] },
         ),
       });

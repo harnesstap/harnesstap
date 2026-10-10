@@ -636,7 +636,7 @@ export class CodexSerializer extends BaseSerializer {
         path: hooksPath,
         content: overlayJsonPreservingFormat(
           this.readFile(join(projectRoot, hooksPath)),
-          generated as Record<string, unknown>,
+          generated as unknown as Record<string, unknown>,
           { mergeObjectKeys: ["hooks"] },
         ),
       });
