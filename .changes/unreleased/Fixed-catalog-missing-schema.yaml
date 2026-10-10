@@ -1,0 +1,5 @@
+kind: Fixed
+body: Accept catalog packages whose plugin.json omits $schema; publish and authoring still require it.
+time: 2026-10-10T00:20:00Z
+custom:
+  Issue: ""

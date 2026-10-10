@@ -30,7 +30,7 @@ import type { ApPackageFile, ApPackageFiles } from "./files.js";
 import { readApPackageFiles } from "./files.js";
 import type { ApDependency, ApManifest, HarnesstapExtension } from "./manifest.js";
 import { COMPONENT_LAYOUT, HT_EXTENSION_NAMESPACE } from "./manifest.js";
-import { validateApManifest } from "./validate.js";
+import { validateApManifest, withDefaultedApSchema } from "./validate.js";
 import { parseHarnessScope } from "../harness-scope.js";
 
 const RESOURCE_SOURCE = "ap-package";
@@ -439,8 +439,9 @@ export function parseApPackageFiles(files: ApPackageFiles): ParsedApPackage {
     throw new Error("Invalid plugin.json — expected JSON");
   }
 
-  validateApManifest(manifestRaw);
-  const manifest = manifestRaw as ApManifest;
+  const { manifest: manifestWithSchema } = withDefaultedApSchema(manifestRaw);
+  validateApManifest(manifestWithSchema);
+  const manifest = manifestWithSchema as ApManifest;
 
   const extension = parseExtension(
     manifest.extensions?.[HT_EXTENSION_NAMESPACE],

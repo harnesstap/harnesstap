@@ -27,6 +27,35 @@ export class ManifestValidationError extends Error {
   }
 }
 
+/**
+ * Catalog packages may omit `$schema`. Default only when the field is missing
+ * or an empty string. A present non-string value is left alone so validation
+ * can reject it. A present non-empty string is never rewritten.
+ */
+export function withDefaultedApSchema(manifest: unknown): {
+  manifest: unknown;
+  defaulted: boolean;
+} {
+  if (typeof manifest !== "object" || manifest === null || Array.isArray(manifest)) {
+    return { manifest, defaulted: false };
+  }
+  const document = manifest as Record<string, unknown>;
+  const schema = document.$schema;
+  if (typeof schema === "string" && schema.length > 0) {
+    return { manifest, defaulted: false };
+  }
+  if (schema !== undefined && typeof schema !== "string") {
+    return { manifest, defaulted: false };
+  }
+  if (process.argv.includes("-v") || process.argv.includes("--verbose")) {
+    console.error(`plugin.json is missing $schema; defaulting to ${AP_SCHEMA_URL}`);
+  }
+  return {
+    manifest: { ...document, $schema: AP_SCHEMA_URL },
+    defaulted: true,
+  };
+}
+
 export function validateApManifest(manifest: unknown): void {
   if (typeof manifest !== "object" || manifest === null || Array.isArray(manifest)) {
     throw new ManifestValidationError(["manifest must be a JSON object"]);

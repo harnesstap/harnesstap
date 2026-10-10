@@ -237,6 +237,50 @@ describe("CLI cloud plugin workflows", () => {
     }
   });
 
+  it("project apply accepts a catalog package whose plugin.json omits $schema", async () => {
+    const context = await createTestContext("cli-project-apply-missing-schema");
+    try {
+      await runCli(["init"]);
+
+      const foundationBundle = makeApEnvelope({
+        name: "engineering-foundation",
+        description: "Shared baseline",
+        omitSchema: true,
+      });
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://harnesstap.com",
+        plugins: [{
+          orgSlug: "harnesstap-cloud",
+          slug: "engineering-foundation",
+          name: "Engineering foundation",
+          summary: "Shared baseline",
+          latestVersion: "1.0.0",
+          updatedAt: new Date().toISOString(),
+          tags: ["foundation"],
+          visibility: "public",
+        }],
+        bundle: foundationBundle,
+      });
+
+      initGitRepo(context.projectDir, "git@github.com:acme/demo.git");
+
+      const dryRun = await runCli([
+        "apply",
+        "engineering-foundation",
+        "--harness",
+        "claude-code",
+        "--dry-run",
+      ]);
+      expect(dryRun.exitCode).toBeUndefined();
+      expect(dryRun.stdout).toContain("Fetched harnesstap-cloud/engineering-foundation@1.0.0 from catalog");
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("project apply fetches a published selector when the plugin is not installed locally", async () => {
     const context = await createTestContext("cli-project-apply-remote-fetch");
     try {
