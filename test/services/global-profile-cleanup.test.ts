@@ -239,7 +239,6 @@ describe("global-profile-cleanup service", () => {
       expect(existsSync(skillAPath)).toBe(false);
       expect(existsSync(skillBPath)).toBe(true);
       expect(switched.removed_files).toContain(".claude/skills/skill-a/SKILL.md");
-      expect(switched.removed_files).toContain(".agents/skills/skill-a/SKILL.md");
       expect(switched.removed_files ?? []).not.toContain(
         ".claude/skills/skill-b/SKILL.md",
       );
@@ -269,7 +268,7 @@ describe("global-profile-cleanup service", () => {
       setPluginTags(profile2.id, ["profile"]);
 
       await applyProfilePlugin("with-skills", {
-        harness: "claude-code",
+        harness: "claude-code,codex",
         conflictPolicy: "replace",
       });
       setActiveProfileName("with-skills");
@@ -281,8 +280,7 @@ describe("global-profile-cleanup service", () => {
         ".agents/skills/unrelated/SKILL.md",
       );
       expect(existsSync(managedPath)).toBe(true);
-      mkdirSync(dirname(hubPath), { recursive: true });
-      writeFileSync(hubPath, "# Caveman hub", "utf-8");
+      expect(existsSync(hubPath)).toBe(true);
       mkdirSync(dirname(notStagedHubPath), { recursive: true });
       writeFileSync(notStagedHubPath, "# not staged", "utf-8");
 
@@ -353,9 +351,9 @@ describe("global-profile-cleanup service", () => {
       });
 
       expect(existsSync(cursorMcp)).toBe(false);
-      expect(existsSync(copilotMcp)).toBe(false);
+      expect(existsSync(copilotMcp)).toBe(true);
       expect(switched.removed_files).toContain(".cursor/mcp.json");
-      expect(switched.removed_files).toContain(".copilot/mcp-config.json");
+      expect(switched.removed_files ?? []).not.toContain(".copilot/mcp-config.json");
     } finally {
       await context.cleanup();
     }

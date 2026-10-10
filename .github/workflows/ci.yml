@@ -84,7 +84,9 @@ jobs:
               - 'src/plugins/**'
             services:
               - 'src/services/**'
+              - 'src/agent/**'
               - 'test/services/**'
+              - 'test/integration/**'
             cli:
               - 'src/ui/**'
               - 'test/cli/**'

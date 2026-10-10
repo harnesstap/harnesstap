@@ -44,9 +44,9 @@ describe("applier ownership", () => {
       expect(skillFile?.ownership).toEqual([
         {
           resource_id: skill.id,
-          action: "delete-directory",
+          action: "delete-file",
           ownership_key: "skill:ship",
-          managed_container: true,
+          managed_container: false,
         },
       ]);
       expect(mcpFile?.ownership?.[0]?.ownership_key).toBe("mcp_server:search");

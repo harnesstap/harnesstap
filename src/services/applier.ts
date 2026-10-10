@@ -1,10 +1,8 @@
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   realpathSync,
-  rmSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
@@ -42,6 +40,14 @@ import {
 } from "./environment-cascade.js";
 import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { resourceAppliesToHarness } from "./harness-scope.js";
+import { recordPreexistingPath } from "../models/preexisting-path.js";
+import {
+  executeSafeFileRemovals,
+  hashOnDiskFile,
+  isHarnessTapOwnedPath,
+  type SafeFileRemovalOptions,
+  type SafeFileRemovalResult,
+} from "./safe-file-removal.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -159,41 +165,26 @@ function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): s
   return fullPath;
 }
 
-function removeEmptyParentDirectory(filePath: string): void {
-  const parent = dirname(filePath);
-  try {
-    if (existsSync(parent) && readdirSync(parent).length === 0) {
-      rmSync(parent, { recursive: true, force: true });
-    }
-  } catch {
-    // Best-effort cleanup for empty skill directories.
-  }
-}
-
 export function removeGlobalMaterializedFiles(
   rootPath: string,
   filePaths: string[],
-): void {
-  for (const filePath of new Set(filePaths)) {
-    if (isCursorHostManagedSkillsPath(filePath)) {
-      continue;
-    }
-    const fullPath = assertMaterializedPathIsSafe(rootPath, filePath);
-    if (filePath.endsWith("/SKILL.md")) {
-      const skillDir = dirname(fullPath);
-      if (existsSync(skillDir)) {
-        rmSync(skillDir, { recursive: true, force: true });
-        removeEmptyParentDirectory(skillDir);
-        continue;
-      }
-    }
-    rmSync(fullPath, { force: true });
-    removeEmptyParentDirectory(fullPath);
+  options: SafeFileRemovalOptions = {},
+): SafeFileRemovalResult {
+  const filtered = [...new Set(filePaths)].filter(
+    (filePath) => !isCursorHostManagedSkillsPath(filePath),
+  );
+  for (const filePath of filtered) {
+    assertMaterializedPathIsSafe(rootPath, filePath);
   }
+  return executeSafeFileRemovals(rootPath, filtered, options);
 }
 
-function removeMaterializedFiles(rootPath: string, filePaths: string[]): void {
-  removeGlobalMaterializedFiles(rootPath, filePaths);
+function removeMaterializedFiles(
+  rootPath: string,
+  filePaths: string[],
+  options: SafeFileRemovalOptions = {},
+): SafeFileRemovalResult {
+  return removeGlobalMaterializedFiles(rootPath, filePaths, options);
 }
 
 function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boolean {
@@ -411,13 +402,25 @@ export async function materializeFiles(
   const skippedFiles: string[] = [];
 
   if (options.dryRun) {
+    const skippedPreexisting = files.filter((file) => {
+      if (decisions.get(file.path) === "skip") {
+        return false;
+      }
+      const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
+      return existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path);
+    });
+    const skippedPreexistingPaths = new Set(skippedPreexisting.map((file) => file.path));
     return {
       cancelled: false,
       writtenFiles: files
-        .filter((file) => decisions.get(file.path) !== "skip")
+        .filter((file) =>
+          decisions.get(file.path) !== "skip" && !skippedPreexistingPaths.has(file.path),
+        )
         .map((file) => file.path),
       skippedFiles: files
-        .filter((file) => decisions.get(file.path) === "skip")
+        .filter((file) =>
+          decisions.get(file.path) === "skip" || skippedPreexistingPaths.has(file.path),
+        )
         .map((file) => file.path),
       conflicts: conflicts.filter(
         (conflict) =>
@@ -441,6 +444,15 @@ export async function materializeFiles(
       continue;
     }
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
+    if (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path)) {
+      recordPreexistingPath({
+        root_path: rootPath,
+        path: file.path,
+        content_hash: hashOnDiskFile(fullPath) ?? "",
+      });
+      skippedFiles.push(file.path);
+      continue;
+    }
     if (fileContentMatchesExisting(fullPath, file)) {
       writtenFiles.push(file.path);
       continue;
@@ -571,7 +583,10 @@ export async function applyToGlobal(
           .filter((filePath) => !desiredFiles.has(filePath)),
       ),
     ];
-    removeMaterializedFiles(homeRoot, staleFiles);
+    removeMaterializedFiles(homeRoot, staleFiles, {
+      applyId: options.snapshotId,
+      snapshotId: options.snapshotId,
+    });
     removeImportedSnapshotOwnershipForFiles(staleFiles);
   }
 

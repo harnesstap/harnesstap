@@ -4,7 +4,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createProject } from "../../src/models/project.ts";
@@ -408,10 +408,10 @@ describe("resource disk cleanup", () => {
       const plan = await planResourceDiskDeletion(resource.id);
       expect(plan.can_delete_from_disk).toBe(true);
       expect(plan.confirmations).toContain("Modified file is protected");
-      expect(plan.locations[0]?.action).toBe("delete-directory");
+      expect(plan.locations[0]?.action).toBe("delete-file");
 
       const result = await executeResourceDiskDeletion(plan);
-      expect(result.deleted_files).toEqual([dirname(skillPath)]);
+      expect(result.deleted_files).toContain(skillPath);
       expect(existsSync(skillPath)).toBe(false);
     } finally {
       await context.cleanup();
@@ -442,12 +442,12 @@ describe("resource disk cleanup", () => {
 
       const plan = await planResourceDiskDeletion(resource.id);
       expect(plan.can_delete_from_disk).toBe(true);
-      expect(plan.locations.some((location) => location.path === dirname(skillPath))).toBe(
+      expect(plan.locations.some((location) => location.path === skillPath)).toBe(
         true,
       );
 
       const result = await executeResourceDiskDeletion(plan);
-      expect(result.deleted_files).toContain(dirname(skillPath));
+      expect(result.deleted_files).toContain(skillPath);
       expect(existsSync(skillPath)).toBe(false);
     } finally {
       await context.cleanup();

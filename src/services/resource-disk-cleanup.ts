@@ -6,6 +6,7 @@ import {
   readdirSync,
   realpathSync,
   renameSync,
+  rmdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -161,7 +162,7 @@ function inferActionFromPath(
   resource: Resource,
 ): MaterializationAction {
   if (resource.type === "skill" && absolutePath.endsWith(`${sep}SKILL.md`)) {
-    return "delete-directory";
+    return "delete-file";
   }
   if (
     resource.type === "plugin" &&
@@ -704,6 +705,13 @@ function evaluateCandidate(
           reason: "Surgical edit of shared source file",
         };
       }
+      if (resource.type === "skill" && candidate.path.endsWith("SKILL.md")) {
+        return {
+          ...base,
+          action: "delete-file",
+          reason: "Owned skill file",
+        };
+      }
       return {
         ...base,
         action: "protected",
@@ -714,6 +722,36 @@ function evaluateCandidate(
       ...base,
       action: "delete-file",
       reason: "Standalone file matches recorded content",
+    };
+  }
+
+  if (
+    candidate.action === "delete-directory"
+    && resource.type === "skill"
+    && (candidate.path.endsWith(`${sep}SKILL.md`) || candidate.path.endsWith("/SKILL.md"))
+  ) {
+    const content = readTextIfExists(candidate.path);
+    if (content === null) {
+      return {
+        ...base,
+        action: "protected",
+        reason: "Path is not a readable file",
+      };
+    }
+    if (candidate.generated_hash) {
+      const currentHash = hashGeneratedContent(content);
+      if (currentHash !== candidate.generated_hash) {
+        return {
+          ...base,
+          action: "delete-file",
+          reason: DISK_DELETE_HASH_MISMATCH_REASON,
+        };
+      }
+    }
+    return {
+      ...base,
+      action: "delete-file",
+      reason: "Owned skill file",
     };
   }
 
@@ -849,7 +887,7 @@ function removeEmptyParents(startPath: string, stopAt: string): void {
     if (resolve(parent) === stop) break;
     try {
       if (readdirSync(parent).length === 0) {
-        rmSync(parent, { recursive: true, force: true });
+        rmdirSync(parent);
         current = parent;
         continue;
       }
@@ -942,6 +980,25 @@ export async function executeResourceDiskDeletion(
             deletedFiles.push(location.path);
             break;
           }
+          const skillMd = location.path.endsWith(`${sep}SKILL.md`)
+            || location.path.endsWith("/SKILL.md")
+            ? location.path
+            : join(location.path, "SKILL.md");
+          if (existsSync(skillMd) && skillMd !== location.path) {
+            const existed = existsSync(skillMd);
+            if (existed) {
+              backups.push({
+                kind: "file",
+                path: skillMd,
+                content: readFileSync(skillMd, "utf-8"),
+                existed: true,
+              });
+              rmSync(skillMd, { force: true });
+              removeEmptyParents(skillMd, location.root_path);
+            }
+            deletedFiles.push(skillMd);
+            break;
+          }
           const entries = new Map<string, string>();
           const walk = (dir: string, prefix = ""): void => {
             for (const name of readdirSync(dir)) {
@@ -956,7 +1013,27 @@ export async function executeResourceDiskDeletion(
           };
           walk(location.path);
           backups.push({ kind: "directory", path: location.path, entries });
-          rmSync(location.path, { recursive: true, force: true });
+          const unlinkWalk = (dir: string): void => {
+            for (const name of readdirSync(dir)) {
+              const full = join(dir, name);
+              if (lstatSync(full).isDirectory()) {
+                unlinkWalk(full);
+                try {
+                  rmdirSync(full);
+                } catch {
+                  // Keep directories that still hold unmanaged files.
+                }
+              } else {
+                rmSync(full, { force: true });
+              }
+            }
+          };
+          unlinkWalk(location.path);
+          try {
+            rmdirSync(location.path);
+          } catch {
+            // Directory still has contents.
+          }
           removeEmptyParents(location.path, location.root_path);
           deletedFiles.push(location.path);
           break;

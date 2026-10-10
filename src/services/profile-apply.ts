@@ -10,6 +10,11 @@ import {
   type MaterializationConflict,
 } from "./applier.js";
 import {
+  formatRemovalBackupNotice,
+  type SafeFileRemovalResult,
+  type SafeRemovalSkip,
+} from "./safe-file-removal.js";
+import {
   getPluginById,
   getPluginByPublishedIdentity,
   mergePluginsById,
@@ -105,6 +110,7 @@ export interface ApplyProfilePluginOptions {
    */
   recordActiveProfile?: boolean;
   forceUnicode?: boolean;
+  forceRemove?: boolean;
 }
 
 export interface ApplyProfilePluginResult {
@@ -123,6 +129,8 @@ export interface ApplyProfilePluginResult {
   pulled_plugins?: Array<{ plugin_name: string; source: string }>;
   expected_files?: Array<{ path: string; content: string }>;
   removed_files?: string[];
+  skipped_removals?: SafeRemovalSkip[];
+  removal_backup?: string;
 }
 
 function collectProfileSnapshotTrackedFiles(profileName: string): string[] {
@@ -204,17 +212,46 @@ function removeStaleGlobalProfileFiles(
   desiredFiles: readonly string[],
   previousTrackedFiles: readonly string[],
   harnesses: string[],
-): string[] {
+  options: {
+    dryRun?: boolean;
+    forceRemove?: boolean;
+    applyId?: string;
+    snapshotId?: string;
+  } = {},
+): SafeFileRemovalResult {
   const staleFiles = planStaleGlobalProfileFiles(
     homeRoot,
     desiredFiles,
     previousTrackedFiles,
     harnesses,
   );
-  if (staleFiles.length > 0) {
-    removeGlobalMaterializedFiles(homeRoot, staleFiles);
+  return removeGlobalMaterializedFiles(homeRoot, staleFiles, {
+    dryRun: options.dryRun,
+    forceRemove: options.forceRemove,
+    applyId: options.applyId,
+    snapshotId: options.snapshotId,
+  });
+}
+
+function warnSkippedRemovals(result: SafeFileRemovalResult): void {
+  for (const warning of result.warnings) {
+    console.warn(ui.theme.warn(warning));
   }
-  return staleFiles;
+  const notice = formatRemovalBackupNotice(result, resolveHomeRoot());
+  if (notice) {
+    ui.info(notice);
+  }
+}
+
+function removalFields(result: SafeFileRemovalResult): Pick<
+  ApplyProfilePluginResult,
+  "removed_files" | "skipped_removals" | "removal_backup"
+> {
+  return {
+    ...(result.removed.length > 0 ? { removed_files: result.removed } : {}),
+    ...(result.skipped.length > 0 ? { skipped_removals: result.skipped } : {}),
+    ...(result.removed.length > 0 ? { removal_backup: result.backupDir } : {}),
+  };
 }
 
 function normalizeVersionConstraint(versionConstraint: string): string | undefined {
@@ -414,14 +451,14 @@ export async function clearGlobalProfileApply(
     CLEARED_GLOBAL_PROFILE_NAME,
     options,
   );
-  const removedFiles = planStaleGlobalProfileFiles(
-    homeRoot,
-    [],
-    previousTrackedFiles,
-    harnesses,
-  );
-
   if (options.dryRun) {
+    const planned = removeStaleGlobalProfileFiles(
+      homeRoot,
+      [],
+      previousTrackedFiles,
+      harnesses,
+      { dryRun: true, forceRemove: options.forceRemove },
+    );
     return {
       profile_name: CLEARED_GLOBAL_PROFILE_NAME,
       profile_plugin_id: CLEARED_GLOBAL_PROFILE_PLUGIN_ID,
@@ -434,18 +471,26 @@ export async function clearGlobalProfileApply(
       skipped_files: [],
       conflicts: [],
       expected_files: [],
-      ...(removedFiles.length > 0 ? { removed_files: removedFiles } : {}),
+      ...removalFields(planned),
     };
-  }
-
-  if (removedFiles.length > 0) {
-    removeGlobalMaterializedFiles(homeRoot, removedFiles);
   }
 
   const snapshot = createGlobalApplySnapshot({
     profile_name: CLEARED_GLOBAL_PROFILE_NAME,
     plugin_ids: [],
   });
+  const removed = removeStaleGlobalProfileFiles(
+    homeRoot,
+    [],
+    previousTrackedFiles,
+    harnesses,
+    {
+      forceRemove: options.forceRemove,
+      applyId: snapshot.id,
+      snapshotId: snapshot.id,
+    },
+  );
+  warnSkippedRemovals(removed);
 
   return {
     profile_name: CLEARED_GLOBAL_PROFILE_NAME,
@@ -459,7 +504,7 @@ export async function clearGlobalProfileApply(
     written_files: [],
     skipped_files: [],
     conflicts: [],
-    ...(removedFiles.length > 0 ? { removed_files: removedFiles } : {}),
+    ...removalFields(removed),
   };
 }
 
@@ -596,11 +641,12 @@ export async function applyProfilePlugin(
       dryRun: true,
     });
     const desiredFiles = files.map((file) => file.path);
-    const removedFiles = planStaleGlobalProfileFiles(
+    const plannedRemoval = removeStaleGlobalProfileFiles(
       homeRoot,
       desiredFiles,
       previousTrackedFiles,
       harnesses,
+      { dryRun: true, forceRemove: options.forceRemove },
     );
     return {
       profile_name: profilePlugin.name,
@@ -616,7 +662,7 @@ export async function applyProfilePlugin(
       expected_files: files.map((file) => ({ path: file.path, content: file.content })),
       ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
       ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
-      ...(removedFiles.length > 0 ? { removed_files: removedFiles } : {}),
+      ...removalFields(plannedRemoval),
     };
   }
 
@@ -632,20 +678,26 @@ export async function applyProfilePlugin(
     forceUnicode: options.forceUnicode,
   });
   let snapshotId: string | undefined;
-  let removedFiles: string[] = [];
+  let removal: SafeFileRemovalResult | undefined;
   if (!applied.cancelled) {
-    removedFiles = removeStaleGlobalProfileFiles(
-      homeRoot,
-      applied.results.flatMap((result) => result.files.map((file) => file.path)),
-      previousTrackedFiles,
-      harnesses,
-    );
     const snapshot = createGlobalApplySnapshot({
       profile_name: profilePlugin.name,
       plugin_ids: configuredPluginIds,
       resolved_set: resolvedSet,
     });
     snapshotId = snapshot.id;
+    removal = removeStaleGlobalProfileFiles(
+      homeRoot,
+      applied.results.flatMap((result) => result.files.map((file) => file.path)),
+      previousTrackedFiles,
+      harnesses,
+      {
+        forceRemove: options.forceRemove,
+        applyId: snapshot.id,
+        snapshotId: snapshot.id,
+      },
+    );
+    warnSkippedRemovals(removal);
     for (const result of applied.results) {
       const installFiles = result.files.map((file) => file.path);
       if (installFiles.length === 0) continue;
@@ -674,6 +726,6 @@ export async function applyProfilePlugin(
     conflicts: applied.conflicts.map((conflict) => conflict.path),
     ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
     ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
-    ...(removedFiles.length > 0 ? { removed_files: removedFiles } : {}),
+    ...(removal ? removalFields(removal) : {}),
   };
 }

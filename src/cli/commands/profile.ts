@@ -56,6 +56,32 @@ import { renderCliError } from "../runtime.js";
 import { formatCommand } from "../shared.js";
 import { registerProfileCreateCommand } from "../handlers/profile-create.js";
 import { registerProfileParityCommands } from "./parity-register.js";
+import type { ApplyProfilePluginResult } from "../../services/profile-apply.js";
+
+function applyResultKv(payload: ApplyProfilePluginResult): Array<{ key: string; value: string }> {
+  return [
+    { key: "Files", value: `${payload.files.length}` },
+    { key: "Written", value: `${payload.written_files.length}` },
+    { key: "Skipped", value: `${payload.skipped_files.length}` },
+    { key: "Removed", value: `${payload.removed_files?.length ?? 0}` },
+    ...(payload.snapshot_id ? [{ key: "Snapshot", value: payload.snapshot_id }] : []),
+  ];
+}
+
+function printPlannedRemovals(payload: ApplyProfilePluginResult): void {
+  for (const path of payload.removed_files ?? []) {
+    console.log(`  remove ${path}`);
+  }
+  for (const skipped of payload.skipped_removals ?? []) {
+    if (skipped.reason === "missing") {
+      continue;
+    }
+    ui.warn(skipped.message);
+  }
+  if (payload.removal_backup && (payload.removed_files?.length ?? 0) > 0) {
+    ui.info(`Backup: ${payload.removal_backup}`);
+  }
+}
 
 async function handleProfilePullCommand(
   selector: string,
@@ -302,7 +328,7 @@ profileCmd
   .argument("[name]", "Profile plugin name or selector")
   .option("--profile <name>", "Profile key from apm.yml")
   .option("--project <path>", "Project directory for apm.yml discovery", ".")
-  .option("--dry-run", "Show what would be written")
+  .option("--dry-run", "Show what would be written or removed")
   .option(
     "--harness <slugs>",
     "Comma-separated harness slugs (defaults to global harness preference)",
@@ -310,6 +336,10 @@ profileCmd
   .option(
     "--on-conflict <policy>",
     "When generated files already exist: replace, skip, or prompt",
+  )
+  .option(
+    "--force-remove",
+    "Also remove user-modified managed files and unmanaged files in the planned removal set",
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
@@ -329,6 +359,7 @@ profileCmd
     baseUrl?: string;
     pull?: boolean;
     force?: boolean;
+    forceRemove?: boolean;
     interactive?: boolean;
     noInteractive?: boolean;
     format?: string;
@@ -392,6 +423,7 @@ profileCmd
         account: opts.account,
         baseUrl: opts.baseUrl,
         conflictPolicy,
+        forceRemove: opts.forceRemove,
         ...(conflictPolicy === "prompt"
           ? { conflictResolver: promptMaterializationConflict }
           : {}),
@@ -420,12 +452,8 @@ profileCmd
           console.log(`  - ${pulled.plugin_name} (${pulled.source})`);
         }
       }
-      ui.kvBlock([
-        { key: "Files", value: `${payload.files.length}` },
-        { key: "Written", value: `${payload.written_files.length}` },
-        { key: "Skipped", value: `${payload.skipped_files.length}` },
-        ...(payload.snapshot_id ? [{ key: "Snapshot", value: payload.snapshot_id }] : []),
-      ]);
+      ui.kvBlock(applyResultKv(payload));
+      printPlannedRemovals(payload);
     } catch (err) {
       process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));
@@ -643,7 +671,7 @@ stashCmd
 profileCmd
   .command("switch")
   .argument("<name>", "Profile plugin name or selector")
-  .option("--dry-run", "Show what would be written")
+  .option("--dry-run", "Show what would be written or removed")
   .option(
     "--harness <slugs>",
     "Comma-separated harness slugs (defaults to global harness preference)",
@@ -651,6 +679,10 @@ profileCmd
   .option(
     "--on-conflict <policy>",
     "When generated files already exist: replace, skip, or prompt",
+  )
+  .option(
+    "--force-remove",
+    "Also remove user-modified managed files and unmanaged files in the planned removal set",
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
@@ -663,6 +695,7 @@ profileCmd
     dryRun?: boolean;
     harness?: string;
     onConflict?: string;
+    forceRemove?: boolean;
     account?: string;
     baseUrl?: string;
     pull?: boolean;
@@ -693,6 +726,7 @@ profileCmd
           account: opts.account,
           baseUrl: opts.baseUrl,
           conflictPolicy,
+          forceRemove: opts.forceRemove,
           ...(conflictPolicy === "prompt"
             ? { conflictResolver: promptMaterializationConflict }
             : {}),
@@ -722,14 +756,8 @@ profileCmd
       if (result.apply.default_environment_name) {
         ui.info(`Default environment: ${result.apply.default_environment_name}`);
       }
-      ui.kvBlock([
-        { key: "Files", value: `${result.apply.files.length}` },
-        { key: "Written", value: `${result.apply.written_files.length}` },
-        { key: "Skipped", value: `${result.apply.skipped_files.length}` },
-        ...(result.apply.snapshot_id
-          ? [{ key: "Snapshot", value: result.apply.snapshot_id }]
-          : []),
-      ]);
+      ui.kvBlock(applyResultKv(result.apply));
+      printPlannedRemovals(result.apply);
     } catch (err) {
       process.exitCode = 1;
       if (err instanceof SwitchRestoreFailedError) {

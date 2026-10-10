@@ -7,9 +7,10 @@ import type {
   SerializeOptions,
   SerializerTarget,
 } from "../types.js";
+import { getDb } from "../db/connection.js";
 import { formatResourceSelector } from "../models/resource.js";
 import {
-  replaceMaterializationsForPlatform,
+  recordResourceMaterialization,
 } from "../models/resource-materialization.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
@@ -31,14 +32,10 @@ function ownershipKey(resource: Pick<Resource, "type" | "name" | "namespace">): 
 
 function actionForPath(
   path: string,
-  resource: Resource,
   shared: boolean,
 ): MaterializationAction {
   if (shared || isMergeableHostConfigPath(path)) {
     return "edit-file";
-  }
-  if (resource.type === "skill" && path.endsWith("SKILL.md")) {
-    return "delete-directory";
   }
   return "delete-file";
 }
@@ -91,7 +88,7 @@ export async function attachResourceOwnership(
       if (!resource) {
         return [];
       }
-      const action = actionForPath(file.path, resource, shared);
+      const action = actionForPath(file.path, shared);
       return [{
         resource_id: resourceId,
         action,
@@ -133,12 +130,24 @@ export function persistWrittenMaterializations(input: {
       }));
     });
 
-    replaceMaterializationsForPlatform({
-      scope: input.scope,
-      project_id: projectId,
-      root_path: input.root_path,
-      platform_id: result.platformId,
-      entries,
-    });
+    for (const entry of entries) {
+      if (
+        !getDb().prepare("SELECT 1 as ok FROM resources WHERE id = ? LIMIT 1").get(entry.resource_id)
+      ) {
+        continue;
+      }
+      recordResourceMaterialization({
+        resource_id: entry.resource_id,
+        scope: input.scope,
+        project_id: projectId,
+        root_path: input.root_path,
+        platform_id: result.platformId,
+        path: entry.path,
+        action: entry.action,
+        ownership_key: entry.ownership_key,
+        generated_hash: entry.generated_hash,
+        managed_container: entry.managed_container,
+      });
+    }
   }
 }

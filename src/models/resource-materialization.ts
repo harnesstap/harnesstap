@@ -130,6 +130,53 @@ export function recordResourceMaterialization(input: {
   };
 }
 
+export function listMaterializationsForRoot(
+  rootPath: string,
+): ResourceMaterialization[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM resource_materializations
+       WHERE root_path = ?
+       ORDER BY path ASC`,
+    )
+    .all(rootPath) as ResourceMaterializationRow[];
+  return rows.map(rowToMaterialization);
+}
+
+export function listMaterializationsForRootPath(
+  rootPath: string,
+  relativePath: string,
+): ResourceMaterialization[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM resource_materializations
+       WHERE root_path = ?
+         AND path = ?`,
+    )
+    .all(rootPath, relativePath) as ResourceMaterializationRow[];
+  return rows.map(rowToMaterialization);
+}
+
+export function deleteMaterializationsForRootPaths(
+  rootPath: string,
+  relativePaths: readonly string[],
+): void {
+  if (relativePaths.length === 0) {
+    return;
+  }
+  const db = getDb();
+  const stmt = db.prepare(
+    `DELETE FROM resource_materializations
+     WHERE root_path = ?
+       AND path = ?`,
+  );
+  for (const relativePath of relativePaths) {
+    stmt.run(rootPath, relativePath);
+  }
+}
+
 export function listResourceMaterializations(
   resourceId: string,
 ): ResourceMaterialization[] {
