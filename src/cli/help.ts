@@ -1,4 +1,4 @@
-import type { Command } from "commander";
+import { Option, type Command } from "commander";
 import { getCommandHelpEntry } from "../services/cli-help-registry.js";
 import { ui } from "../ui/index.js";
 import { PACKAGE_VERSION } from "../version.js";
@@ -54,11 +54,28 @@ export function commandKeepsDefaultAction(command: Command): boolean {
   return command.name() === "init";
 }
 
-function isLeafHelpCommand(command: Command): boolean {
-  return (
-    commandKeepsDefaultAction(command)
-    || command.commands.every((sub) => isHiddenHelpCommand(sub))
-  );
+function commandUsageLine(cmd: Command): string {
+  const names: string[] = [];
+  let current: Command | null = cmd;
+  while (current?.parent) {
+    names.unshift(current.name());
+    current = current.parent;
+  }
+  const usage = cmd.usage().trim();
+  return formatCommand(`${names.join(" ")}${usage ? ` ${usage}` : ""}`);
+}
+
+function formatHelpArgName(name: string, required: boolean): string {
+  return required ? `<${name}>` : `[${name}]`;
+}
+
+function visibleHelpOptions(cmd: Command): Command["options"] {
+  const opts = cmd.options.filter((opt) => !opt.hidden);
+  const hasNoInteractive = opts.some((opt) => opt.long === "--no-interactive");
+  if (!hasNoInteractive) {
+    return opts;
+  }
+  return opts.filter((opt) => opt.long !== "--interactive");
 }
 
 function isCommandGroup(command: Command): boolean {
@@ -196,7 +213,8 @@ export function configureProgramHelp(program: Command): void {
     .description(
       "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
     )
-    .version(PACKAGE_VERSION, "-V, --harnesstap-version")
+    .version(PACKAGE_VERSION, "-V, --version")
+    .addOption(new Option("--harnesstap-version").hideHelp())
     .option("-v, --verbose", "Show verbose error output")
     .option("--no-color", "Disable color output")
     .option("--no-interactive", "Disable interactive prompts")
@@ -219,10 +237,11 @@ export function configureProgramHelp(program: Command): void {
         const isTopLevel = cmd.parent === null;
 
         if (!isTopLevel) {
+          const helpEntry = getCommandHelpEntry(cmd);
           const lines = [
             "",
             ui.theme.heading("USAGE"),
-            `  ${cmd.name()} ${cmd.usage()}`,
+            `  ${commandUsageLine(cmd)}`,
             "",
           ];
 
@@ -231,7 +250,6 @@ export function configureProgramHelp(program: Command): void {
             lines.push(description, "");
           }
 
-          const helpEntry = getCommandHelpEntry(cmd);
           if (helpEntry?.details?.trim()) {
             lines.push(helpEntry.details.trim(), "");
           }
@@ -239,18 +257,22 @@ export function configureProgramHelp(program: Command): void {
           const args = cmd.registeredArguments?.filter((arg) => arg.description) ?? [];
           if (args.length > 0) {
             lines.push(ui.theme.heading("ARGUMENTS"));
-            for (const arg of args) {
-              const name = arg.required ? `<${arg.name()}>` : `[${arg.name()}]`;
-              lines.push(`  ${ui.theme.flag(name)}  ${arg.description}`);
+            const requiredOffTty = new Set(helpEntry?.requiredOffTtyArgs ?? []);
+            const argNames = args.map((arg) =>
+              formatHelpArgName(arg.name(), arg.required || requiredOffTty.has(arg.name())),
+            );
+            const maxArgLength = Math.max(...argNames.map((name) => name.length));
+            for (let i = 0; i < args.length; i++) {
+              const arg = args[i];
+              const name = argNames[i];
+              if (!arg || !name) continue;
+              const padding = " ".repeat(Math.max(2, maxArgLength - name.length + 2));
+              lines.push(`  ${ui.theme.flag(name)}${padding}${arg.description}`);
             }
             lines.push("");
           }
 
-          if (
-            isLeafHelpCommand(cmd)
-            && helpEntry?.examples
-            && helpEntry.examples.length > 0
-          ) {
+          if (helpEntry?.examples && helpEntry.examples.length > 0) {
             lines.push(ui.theme.heading("EXAMPLES"));
             for (const example of helpEntry.examples) {
               lines.push(`  ${formatCommand(example)}`);
@@ -258,13 +280,17 @@ export function configureProgramHelp(program: Command): void {
             lines.push("");
           }
 
-          const opts = cmd.options.filter((opt) => !opt.hidden);
+          const opts = visibleHelpOptions(cmd);
           if (opts.length > 0) {
             lines.push(ui.theme.heading("OPTIONS"));
-            for (const opt of opts) {
-              const flags = opt.flags;
-              const desc = opt.description || "";
-              lines.push(`  ${ui.theme.flag(flags)}  ${desc}`);
+            const flagStrs = opts.map((opt) => opt.flags);
+            const maxFlagLength = Math.max(...flagStrs.map((flags) => flags.length));
+            for (let i = 0; i < opts.length; i++) {
+              const opt = opts[i];
+              const flags = flagStrs[i];
+              if (!opt || !flags) continue;
+              const padding = " ".repeat(Math.max(2, maxFlagLength - flags.length + 2));
+              lines.push(`  ${ui.theme.flag(flags)}${padding}${opt.description || ""}`);
             }
             lines.push("");
           }

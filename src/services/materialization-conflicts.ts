@@ -27,8 +27,7 @@ export function resolveApplyConflictPolicy(opts: {
     !process.stdin.isTTY ||
     !process.stdout.isTTY
   ) {
-    // W2-12 will switch this fallback to cancel. Today apply still replaces.
-    return "replace";
+    return "cancel";
   }
   return "prompt";
 }

@@ -211,6 +211,7 @@ describe("CLI help and command organization", () => {
       "audit",
       "compile",
       "deny",
+      "doctor",
       "history",
       "init",
       "install",

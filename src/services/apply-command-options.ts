@@ -1,5 +1,5 @@
-import type { Command } from "commander";
-import { ON_CONFLICT_HELP } from "../cli/on-conflict.js";
+import { Option, type Command } from "commander";
+import { ON_CONFLICT_APPLY_HELP } from "../cli/on-conflict.js";
 
 export interface ApplyCommandOpts {
   project: string;
@@ -29,11 +29,13 @@ export function addApplyCommandOptions(command: Command): Command {
     .option("--project <path>", "Project directory", ".")
     .option(
       "--harness <slugs>",
-      "Comma-separated HarnessTap harness slugs (same resolution slot as --target)",
+      "Comma-separated harness slugs",
     )
-    .option(
-      "-t, --target <slugs>",
-      "Comma-separated APM target slugs (cursor, claude, ...). Wins over apm.yml targets: and auto-detect",
+    .addOption(
+      new Option(
+        "-t, --target <slugs>",
+        "Hidden alias for --harness",
+      ).hideHelp(),
     )
     .option(
       "--all",
@@ -44,7 +46,7 @@ export function addApplyCommandOptions(command: Command): Command {
     .option("--interactive", "Prompt instead of relying on explicit flags")
     .option(
       "--ignore-plugin-versions",
-      "Skip validating plugin Claude plugin pins against installed versions",
+      "Skip checking Claude plugin pins against installed versions",
     )
     .option(
       "--strict-plugin-versions",
@@ -56,7 +58,7 @@ export function addApplyCommandOptions(command: Command): Command {
     )
     .option(
       "--on-conflict <policy>",
-      ON_CONFLICT_HELP,
+      ON_CONFLICT_APPLY_HELP,
     )
     .option(
       "--explain",

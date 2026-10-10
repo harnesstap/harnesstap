@@ -203,6 +203,19 @@ export async function runHarnesstapCli(
     console.log(PACKAGE_VERSION);
     return;
   }
+  const positional = argv.slice(2).find((token) => token !== "--" && !token.startsWith("-"));
+  if (positional === "uninstall") {
+    fail("HarnessTap has no uninstall command.", {
+      hint: "Remove the CLI with: npm uninstall -g harnesstap",
+    });
+    return;
+  }
+  if (positional === "version") {
+    fail("HarnessTap has no version command.", {
+      hint: "Print the version with: ht --version",
+    });
+    return;
+  }
   setTelemetryProduct("cli");
   maybeWarnCliTelemetry(getHarnesstapDir(), { argv });
   trackCliStartup();

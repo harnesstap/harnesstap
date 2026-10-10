@@ -1191,7 +1191,9 @@ export async function handleProjectApplyCommand(
     });
     spin.stop();
     if (materialized.cancelled) {
-      fail("Apply cancelled due to file conflicts");
+      fail("Apply cancelled due to file conflicts.", {
+        hint: CLI_HINTS.onConflictReplace,
+      });
       process.exitCode = 1;
       return;
     }
@@ -2553,7 +2555,6 @@ export function registerPluginCommands(root: Command): void {
   const pluginCmd = configureCommandGroup(
   root
     .command("plugin")
-    .alias("l")
     .description("Manage plugins (named bundles of resources that can be applied to a project)"),
 );
 
@@ -3254,5 +3255,5 @@ export function registerDeprecatedLayerAlias(root: Command): void {
       const rest = layerIdx >= 0 ? raw.slice(layerIdx + 1) : command.args;
       await root.parseAsync(["plugin", ...rest], { from: "user" });
     });
-  alias.helpOption(false);
+  alias.helpOption("-h, --help");
 }

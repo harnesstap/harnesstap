@@ -54,7 +54,7 @@ import {
 } from "../handlers/plugin-publish.js";
 import { handlePluginShowCommand } from "../handlers/plugin-show-command.js";
 import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
-import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_HELP } from "../messages.js";
+import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_APPLY_HELP } from "../messages.js";
 import { renderCliError } from "../runtime.js";
 import {
   fail,
@@ -320,7 +320,7 @@ profileCmd
   )
   .option(
     "--on-conflict <policy>",
-    ON_CONFLICT_HELP,
+    ON_CONFLICT_APPLY_HELP,
   )
   .option(
     "--force-remove",
@@ -467,7 +467,7 @@ const stashCmd = profileCmd
   )
   .option(
     "--on-conflict <policy>",
-    ON_CONFLICT_HELP,
+    ON_CONFLICT_APPLY_HELP,
   )
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Stash untracked on-disk resources for the active profile (like git stash -u)")
@@ -558,7 +558,7 @@ stashCmd
   )
   .option(
     "--on-conflict <policy>",
-    ON_CONFLICT_HELP,
+    ON_CONFLICT_APPLY_HELP,
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
@@ -622,7 +622,7 @@ stashCmd
   )
   .option(
     "--on-conflict <policy>",
-    ON_CONFLICT_HELP,
+    ON_CONFLICT_APPLY_HELP,
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
@@ -695,7 +695,7 @@ profileCmd
   )
   .option(
     "--on-conflict <policy>",
-    ON_CONFLICT_HELP,
+    ON_CONFLICT_APPLY_HELP,
   )
   .option(
     "--force-remove",
