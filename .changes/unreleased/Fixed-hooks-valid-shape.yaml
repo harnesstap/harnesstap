@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep Claude matcher-less hooks wrapped, write Cursor hooks.json flat, skip plugin-root hooks in global user configs, and drop phantom enabledPlugins unless the plugin is installed.
+time: 2026-10-10T01:40:00Z
+custom:
+  Issue: ""

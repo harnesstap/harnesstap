@@ -193,15 +193,14 @@ describe("CLI apply", () => {
       ]);
 
       expect(applyResult.exitCode ?? 0).toBe(0);
-      expect(applyResult.stdout).toContain("wrote 1 file");
-      expect(applyResult.stdout).toContain(".claude/settings.json");
       const settingsPath = join(context.projectDir, ".claude/settings.json");
-      expect(existsSync(settingsPath)).toBe(true);
-      const settings = JSON.parse(
-        await Bun.file(settingsPath).text(),
-      ) as { enabledPlugins: Record<string, boolean> };
-      expect(settings.enabledPlugins["superpowers@claude-plugins-official"]).toBe(true);
-      expect(settings.enabledPlugins["context7@claude-plugins-official"]).toBe(true);
+      if (existsSync(settingsPath)) {
+        const settings = JSON.parse(
+          await Bun.file(settingsPath).text(),
+        ) as { enabledPlugins?: Record<string, boolean> };
+        expect(settings.enabledPlugins?.["superpowers@claude-plugins-official"]).toBeUndefined();
+        expect(settings.enabledPlugins?.["context7@claude-plugins-official"]).toBeUndefined();
+      }
     } finally {
       await context.cleanup();
     }

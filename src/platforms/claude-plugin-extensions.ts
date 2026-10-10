@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { getInstalledPluginRecord } from "../plugins/claude-installed.js";
 import type { ClaudePluginConfig, SerializedFile } from "../types.js";
 
 const SETTINGS_PATH = ".claude/settings.json";
@@ -44,14 +45,31 @@ export function applyClaudePluginExtensions(
   }
 
   if (config.plugins && config.plugins.length > 0) {
-    const enabledPlugins = (settings.enabledPlugins as Record<string, boolean>) ?? {};
+    const enabledPlugins = {
+      ...((settings.enabledPlugins as Record<string, boolean> | undefined) ?? {}),
+    };
     for (const plugin of config.plugins) {
-      enabledPlugins[plugin.id] = plugin.enabled !== false;
+      if (getInstalledPluginRecord(projectRoot, plugin.id)) {
+        enabledPlugins[plugin.id] = plugin.enabled !== false;
+      } else {
+        delete enabledPlugins[plugin.id];
+      }
     }
-    settings.enabledPlugins = enabledPlugins;
+    if (Object.keys(enabledPlugins).length > 0) {
+      settings.enabledPlugins = enabledPlugins;
+    } else {
+      delete settings.enabledPlugins;
+    }
   }
 
-  const settingsContent = JSON.stringify(settings, null, 2);
+  const hasMarketplace =
+    settings.extraKnownMarketplaces
+    && typeof settings.extraKnownMarketplaces === "object"
+    && Object.keys(settings.extraKnownMarketplaces as Record<string, unknown>).length > 0;
+  const hasEnabled =
+    settings.enabledPlugins
+    && typeof settings.enabledPlugins === "object"
+    && Object.keys(settings.enabledPlugins as Record<string, unknown>).length > 0;
   const withoutSettings = files.filter((file) => file.path !== SETTINGS_PATH);
   const existingSettings = files.find((file) => file.path === SETTINGS_PATH);
 
@@ -59,20 +77,26 @@ export function applyClaudePluginExtensions(
     try {
       const generated = JSON.parse(existingSettings.content) as Record<string, unknown>;
       const overlay: Record<string, unknown> = { ...generated };
-      if (settings.extraKnownMarketplaces) {
+      if (hasMarketplace) {
         overlay.extraKnownMarketplaces = settings.extraKnownMarketplaces;
       }
-      if (settings.enabledPlugins) {
+      if (hasEnabled) {
         overlay.enabledPlugins = settings.enabledPlugins;
+      } else {
+        delete overlay.enabledPlugins;
       }
       return [
         ...withoutSettings,
         { path: SETTINGS_PATH, content: JSON.stringify(overlay, null, 2) },
       ];
     } catch {
-      return [...withoutSettings, { path: SETTINGS_PATH, content: settingsContent }];
+      return [...withoutSettings, { path: SETTINGS_PATH, content: JSON.stringify(settings, null, 2) }];
     }
   }
 
-  return [...withoutSettings, { path: SETTINGS_PATH, content: settingsContent }];
+  if (!hasMarketplace && !hasEnabled && Object.keys(settings).length === 0) {
+    return files;
+  }
+
+  return [...withoutSettings, { path: SETTINGS_PATH, content: JSON.stringify(settings, null, 2) }];
 }

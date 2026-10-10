@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import {
   buildHooksJson,
+  commandReferencesPluginRoot,
   scanHooksFile,
 } from "../../src/services/hook-serialization.ts";
 import type { HookMetadata } from "../../src/types.ts";
@@ -45,7 +46,7 @@ describe("hook-serialization", () => {
 
     const rebuilt = buildHooksJson(
       scanned.map((resource) => resource.metadata as HookMetadata),
-      { version: 1 },
+      { version: 1, shape: "flat" },
     );
     expect(rebuilt.version).toBe(1);
     expect(rebuilt.hooks.preToolUse).toEqual([
@@ -73,5 +74,62 @@ describe("hook-serialization", () => {
         }),
       ],
     });
+  });
+
+  it("wraps matcher-less Claude events in a hooks array", () => {
+    const rebuilt = buildHooksJson(
+      [
+        {
+          event: "SessionStart",
+          script: "echo session-start",
+          hook_entry: { type: "command", command: "echo session-start" },
+        },
+        {
+          event: "Stop",
+          script: "echo stop",
+        },
+      ],
+      { shape: "wrapped" },
+    );
+    expect(rebuilt.hooks.SessionStart).toEqual([
+      { hooks: [{ type: "command", command: "echo session-start" }] },
+    ]);
+    expect(rebuilt.hooks.Stop).toEqual([
+      { hooks: [{ command: "echo stop" }] },
+    ]);
+  });
+
+  it("keeps Cursor hooks.json flat", () => {
+    const rebuilt = buildHooksJson(
+      [
+        {
+          event: "sessionStart",
+          script: "echo session-start",
+          hook_entry: { command: "echo session-start" },
+        },
+      ],
+      { version: 1, shape: "flat" },
+    );
+    expect(rebuilt.hooks.sessionStart).toEqual([{ command: "echo session-start" }]);
+  });
+
+  it("omits plugin-root commands from user hook files", () => {
+    expect(
+      commandReferencesPluginRoot("node \".claude/skills/impeccable/scripts/hook.mjs\""),
+    ).toBe(false);
+    expect(commandReferencesPluginRoot("node ./hooks/ponytail-activate.js")).toBe(true);
+    const rebuilt = buildHooksJson([
+      {
+        event: "SessionStart",
+        script: 'node -e "require(process.env.CLAUDE_PLUGIN_ROOT + \'/hooks/x.js\')"',
+        requires_plugin_root: true,
+      },
+      {
+        event: "Stop",
+        script: "echo keep-me",
+      },
+    ]);
+    expect(rebuilt.hooks.SessionStart).toBeUndefined();
+    expect(rebuilt.hooks.Stop).toEqual([{ hooks: [{ command: "echo keep-me" }] }]);
   });
 });

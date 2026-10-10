@@ -1,5 +1,6 @@
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths } from "../types.js";
+import { stripPluginRootCommandsFromHooksObject } from "./hook-serialization.js";
 
 export const CLAUDE_SETTINGS_RELATIVE = ".claude/settings.json";
 export const CLAUDE_USER_JSON_RELATIVE = ".claude.json";
@@ -196,6 +197,14 @@ export function mergeClaudeSettingsContent(
       continue;
     }
     merged[key] = value;
+  }
+  if (merged.hooks && typeof merged.hooks === "object" && !Array.isArray(merged.hooks)) {
+    merged.hooks = stripPluginRootCommandsFromHooksObject(
+      merged.hooks as Record<string, unknown>,
+    );
+    if (Object.keys(merged.hooks as Record<string, unknown>).length === 0) {
+      delete merged.hooks;
+    }
   }
   return `${JSON.stringify(merged, null, 2)}\n`;
 }

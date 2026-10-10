@@ -110,8 +110,10 @@ describe("hook apply", () => {
       const settings = generated[0]?.files.find(
         (file) => file.path === ".claude/settings.json",
       );
-      expect(settings?.content).toContain("hook.mjs");
-      expect(settings?.content).toContain("Edit|Write");
+      expect(settings?.content ?? "").not.toContain("CLAUDE_PLUGIN_ROOT");
+      expect(generated[0]?.surface_warnings?.some((warning) =>
+        warning.category === "plugin-root-hook"
+      )).toBe(true);
     } finally {
       await context.cleanup();
     }

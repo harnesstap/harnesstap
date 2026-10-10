@@ -21,6 +21,7 @@ import { getResourcesByIds } from "../models/resource.js";
 import { applyClaudePluginExtensions } from "../platforms/claude-plugin-extensions.js";
 import type {
   ClaudePluginConfig,
+  HookMetadata,
   Resource,
   SerializedFile,
   SerializeOptions,
@@ -41,6 +42,7 @@ import {
 } from "./environment-cascade.js";
 import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { resourceAppliesToHarness } from "./harness-scope.js";
+import { hookRequiresPluginRoot } from "./hook-serialization.js";
 import { recordPreexistingPath } from "../models/preexisting-path.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import {
@@ -303,7 +305,24 @@ export async function generateFiles(
     );
     const serializer = getPlatformSerializer(pid);
     const surfaceWarnings: SurfaceWarning[] = [];
-    let files = await serializer.serialize(platformResources, projectRoot, {
+    const emitResources = platformResources.filter((resource) => {
+      if (resource.type !== "hook") {
+        return true;
+      }
+      if (!hookRequiresPluginRoot(resource.metadata as HookMetadata)) {
+        return true;
+      }
+      surfaceWarnings.push({
+        harness: pid,
+        path: ".claude/settings.json",
+        category: "plugin-root-hook",
+        message:
+          `Skipped hook ${resource.name}. It only works when the plugin is installed as a host plugin.`,
+        alias_harnesses: [],
+      });
+      return false;
+    });
+    let files = await serializer.serialize(emitResources, projectRoot, {
       target,
       skillCursorMode: options.skillCursorMode,
       skillSourceRoot,
