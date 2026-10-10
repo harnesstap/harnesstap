@@ -105,7 +105,7 @@ When Enter opens a detail view, use **Ctrl+S** to save or apply. Help label: `es
 
 ### `install` — plugin / profile list browser
 
-Used by: `plugin list`, `profile list` (interactive browse with local + remote sections).
+Used by: `plugin list`, `profile list` (interactive browse of local plugins; `--remote` adds catalog sections).
 
 | Key | Behavior |
 | --- | --- |
