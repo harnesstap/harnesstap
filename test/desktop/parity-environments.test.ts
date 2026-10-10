@@ -253,3 +253,11 @@ describe("formatEnvironmentClipboard", () => {
     ).toBe("REGION=us-west\nAPI_KEY=env:API_KEY");
   });
 });
+
+describe("single environment inspect", () => {
+  it("auto-selects the only environment instead of an empty inspect pane", () => {
+    expect(workspaceSource).toContain("nextRows.length === 1");
+    expect(workspaceSource).toContain("nextRows[0]!.name");
+    expect(workspaceSource).toContain("Click an environment to inspect it.");
+  });
+});

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop error and empty states stay lean. Tracked directories intro waits for a successful Library load. Discover shows one error with Retry and a sidebar warning. Modals focus the first field and tooltips stay off Close. Detect and Sync harnesses are global palette commands. Empty profiles say This profile is empty.
+time: 2026-10-10T18:20:00Z
+custom:
+  Issue: ""

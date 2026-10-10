@@ -159,13 +159,16 @@ export function flattenDiscoverListItems(input: {
     if (group.hits.length === 0 && error === undefined) {
       continue;
     }
-    items.push({
-      key: `heading:${group.sourceId}`,
-      kind: "heading",
-      sourceId: group.sourceId,
-      sourceLabel: group.sourceLabel,
-      count: group.hits.length,
-    });
+    // Hide a 0-count header while the source is errored (lean UI).
+    if (group.hits.length > 0 || error === undefined) {
+      items.push({
+        key: `heading:${group.sourceId}`,
+        kind: "heading",
+        sourceId: group.sourceId,
+        sourceLabel: group.sourceLabel,
+        count: group.hits.length,
+      });
+    }
     if (error) {
       items.push({
         key: `error:${group.sourceId}`,

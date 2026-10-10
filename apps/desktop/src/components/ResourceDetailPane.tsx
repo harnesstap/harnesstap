@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   ResourceDetailBody,
   type ResourceDetailTarget,
@@ -42,16 +42,7 @@ export function ResourceDetailPane({
     open,
     onClose,
     closeDisabled: busy || confirmOpen || fieldEditing,
-    initialFocusRef: closeRef,
   });
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
-  }, [open, target?.selector]);
 
   if (!open || !target) {
     return null;
