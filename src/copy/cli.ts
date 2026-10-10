@@ -70,3 +70,11 @@ export function installPinnedPluginsHint(profileName?: string): string {
 export function missingMarketplacePluginHint(pluginName: string): string {
   return `Run ht profile use to install ${quoted(pluginName)}.`;
 }
+
+export function skippedHostPluginHook(hookName: string): string {
+  return `Skipped hook ${hookName}. It only works when the plugin is installed as a host plugin.`;
+}
+
+export function skippedDuplicateCommand(name: string): string {
+  return `Skipped command ${quoted(name)}. A skill already uses that name.`;
+}

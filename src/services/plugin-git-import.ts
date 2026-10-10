@@ -1,4 +1,4 @@
-import { getHarnesstapDir } from "../db/connection.js";
+import { getDb, getHarnesstapDir } from "../db/connection.js";
 import {
   createPlugin,
   deletePlugin,
@@ -6,9 +6,12 @@ import {
   getPluginByName,
   updatePluginDescription,
 } from "../models/plugin-model.js";
+import { attachPluginPinToPlugin, findPluginResourceByPin } from "./plugin-composition.js";
+import { ingestHostPluginTreeIntoCache } from "./package-cache/host-plugin.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import { refreshGitSource } from "../plugins/refresh.js";
 import { trackPluginInstalled } from "../telemetry/index.js";
-import type { Plugin } from "../types.js";
+import type { Plugin, PluginPinMetadata } from "../types.js";
 import {
   applyCheckedPluginOrigin,
   gitOriginCacheDir,
@@ -128,6 +131,28 @@ export async function importPluginFromGitHubRef(
       origin_locator: url,
       origin_fingerprint: refresh.sha,
     });
+    const pinRef = `${scan.plugin_name}@local`;
+    const pinVersion = plugin.version || refresh.sha.slice(0, 12) || "0.0.0";
+    ingestHostPluginTreeIntoCache({
+      harnesstapDir: getHarnesstapDir(),
+      homeRoot: resolveHomeRoot(),
+      originRef: pinRef,
+      sourceInstallRoot: targetDir,
+      version: pinVersion,
+    });
+    attachPluginPinToPlugin(plugin.id, pinRef, pinVersion);
+    const pin = findPluginResourceByPin(pinRef, pinVersion) ?? findPluginResourceByPin(pinRef);
+    if (pin) {
+      const metadata: PluginPinMetadata = {
+        ...(pin.metadata as PluginPinMetadata),
+        resolved_version: pinVersion,
+        sync_status: "synced",
+        marketplace_name: "local",
+      };
+      getDb()
+        .prepare("UPDATE resources SET metadata = ?, origin_ref = ?, updated_at = ? WHERE id = ?")
+        .run(JSON.stringify(metadata), pinRef, new Date().toISOString(), pin.id);
+    }
     const updated = getPluginById(plugin.id) ?? plugin;
     if (created) {
       trackPluginInstalled({ pluginSlug: updated.name, source: "url" });

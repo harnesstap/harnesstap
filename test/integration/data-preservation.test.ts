@@ -130,6 +130,27 @@ function plantSentinels(home: string): {
   };
 
   for (const platform of getAllPlatforms()) {
+    const plugins = platform.globalPaths.plugins;
+    if (plugins?.startsWith("~/")) {
+      const root = tildeToHome(home, plugins);
+      if (existsSync(root)) {
+        addFile(join(root, SENTINEL_NAME), SENTINEL_BODY);
+        try {
+          for (const name of readdirSync(root)) {
+            const dir = join(root, name);
+            try {
+              if (statSync(dir).isDirectory()) {
+                addFile(join(dir, SENTINEL_NAME), SENTINEL_BODY);
+              }
+            } catch {
+              // ignore
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
     const skills = platform.globalPaths.skills;
     if (skills?.startsWith("~/")) {
       const root = tildeToHome(home, skills);

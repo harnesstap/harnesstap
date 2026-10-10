@@ -36,15 +36,34 @@ export function portableHarnessesForPluginFanout(
   return platforms.filter((id) => !isHostPluginTreePlatform(id));
 }
 
-function isHostPluginBundledSkill(
-  resource: Pick<Resource, "type" | "origin_kind" | "origin_ref">,
+const HOST_PLUGIN_BUNDLED_TYPES = new Set(["skill", "command", "agent", "hook"]);
+
+function isHostPluginBundledMaterial(
+  resource: Pick<Resource, "type" | "name" | "origin_kind" | "origin_ref">,
+  pins: ReadonlySet<string>,
   homeRoot: string,
 ): boolean {
-  if (resource.type !== "skill") return false;
-  if (resource.origin_kind !== "marketplace_link") return false;
+  if (!HOST_PLUGIN_BUNDLED_TYPES.has(resource.type)) {
+    return false;
+  }
   const originRef = resource.origin_ref?.trim() ?? "";
-  if (!originRef.includes("@")) return false;
-  return hostPluginPinIsInstalled(homeRoot, originRef);
+  if (originRef && pins.has(originRef)) {
+    return true;
+  }
+  if (pins.has(`${resource.name}@local`) || pins.has(resource.name)) {
+    return (
+      resource.origin_kind === "marketplace_link"
+      || resource.origin_kind === "local_snapshot"
+    );
+  }
+  if (
+    resource.origin_kind === "marketplace_link"
+    && originRef.includes("@")
+    && hostPluginPinIsInstalled(homeRoot, originRef)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -61,7 +80,14 @@ export function omitHostPluginBundledSkills(
   if (target !== "global" || !isHostPluginTreePlatform(platformId)) {
     return [...resources];
   }
-  return resources.filter((resource) => !isHostPluginBundledSkill(resource, homeRoot));
+  const pins = new Set(
+    resources
+      .filter((resource) => isHostPluginPinResource(resource))
+      .map((resource) => resource.origin_ref || resource.name),
+  );
+  return resources.filter(
+    (resource) => !isHostPluginBundledMaterial(resource, pins, homeRoot),
+  );
 }
 
 export interface ExtractedPluginSkill {
