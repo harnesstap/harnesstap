@@ -658,6 +658,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     examples: [
       "resource show caveman",
       "resource show skill:caveman --format json",
+      "resource show tiny-skill --full",
     ],
   },
   "resource.sync": {

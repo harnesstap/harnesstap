@@ -201,6 +201,7 @@ export function registerResourceCommands(root: Command): void {
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--show-id", "Show IDs in list-oriented human tables")
     .option("--all-fields", "Show all resource metadata fields")
+    .option("--full", "Show the full resource body instead of a truncated preview")
     .option("--interactive", "Prompt instead of relying on explicit flags")
     .description("Show a resource by name, selector, or ULID")
     .action(async (
@@ -209,6 +210,7 @@ export function registerResourceCommands(root: Command): void {
         format?: string;
         showId?: boolean;
         allFields?: boolean;
+        full?: boolean;
         interactive?: boolean;
         noInteractive?: boolean;
       },
@@ -265,7 +267,10 @@ export function registerResourceCommands(root: Command): void {
         process.exitCode = 1;
         return;
       }
-      printResourceShow(result.resource, { showAllFields: Boolean(opts.allFields) });
+      printResourceShow(result.resource, {
+        showAllFields: Boolean(opts.allFields),
+        full: Boolean(opts.full),
+      });
     });
 
   resourceCmd

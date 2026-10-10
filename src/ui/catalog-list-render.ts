@@ -10,8 +10,8 @@ import {
   VIEWPORT_CHROME_LINES,
 } from "./list-viewport.js";
 import { renderSubheader } from "./section.js";
-import { renderTable, type Column } from "./table.js";
-import { terminalColumns, theme } from "./theme.js";
+import { renderTable, resolveTableMaxWidth, type Column } from "./table.js";
+import { theme } from "./theme.js";
 
 export type CatalogListRow = CatalogPlugin & {
   selector: string;
@@ -65,12 +65,13 @@ function makeColumns(highlightSelection: boolean): Column[] {
       key: "visibility",
       header: "VIS",
       width: 8,
-      transform: (value) => String(value).slice(0, 4),
+      fitContent: true,
     },
     {
       key: "updatedAt",
       header: "UPDATED",
       width: 16,
+      fitContent: true,
       transform: (value) =>
         value ? format.formatRelativeTime(String(value)) : theme.muted("—"),
     },
@@ -172,7 +173,7 @@ function catalogTableLayout(maxWidth?: number): {
   wordWrap: true;
 } {
   return {
-    maxWidth: maxWidth ?? terminalColumns(),
+    maxWidth: resolveTableMaxWidth(maxWidth),
     wordWrap: true,
   };
 }
@@ -232,7 +233,7 @@ export function renderCatalogListViewport(
   const hints = renderCatalogViewportOverflowHints(
     viewport,
     rows.length,
-    opts.maxWidth ?? terminalColumns(),
+    resolveTableMaxWidth(opts.maxWidth),
   );
 
   return [
@@ -271,7 +272,7 @@ export function renderCatalogSearchViewport(
   const hints = renderCatalogViewportOverflowHints(
     viewport,
     baseRows.length,
-    opts.maxWidth ?? terminalColumns(),
+    resolveTableMaxWidth(opts.maxWidth),
   );
 
   return [
@@ -306,6 +307,7 @@ export function renderCatalogListTable(
     columns: makeColumns(Boolean(opts.selectedSelector)),
     rows,
     summary: `${rows.length} plugins`,
+    ...catalogTableLayout(),
   });
 }
 
@@ -324,5 +326,6 @@ export function renderCatalogSearchTable(
     columns: makeColumns(true),
     rows,
     summary: `${checkedCount} selected • ${rows.length} plugins`,
+    ...catalogTableLayout(),
   });
 }

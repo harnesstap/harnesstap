@@ -70,7 +70,7 @@ describe("resource show", () => {
     expect(truncated.split("\n")).toHaveLength(16);
     expect(truncated).toContain("line 15");
     expect(truncated).not.toContain("line 16");
-    expect(truncated).toContain("… (20 lines in content)");
+    expect(truncated).toContain("... (20 lines in content)");
   });
 
   it("keeps short content unchanged", () => {
@@ -104,7 +104,7 @@ describe("resource show", () => {
     expect(output).not.toContain("/Users/me/.claude/skills/archify/SKILL.md");
   });
 
-  it("lists skill package files under CONTENT", () => {
+  it("shows the SKILL.md body and package files under CONTENT", () => {
     const root = mkdtempSync(join(tmpdir(), "ht-skill-show-"));
     tempDirs.push(root);
     const skillDir = join(root, "last30days");
@@ -125,8 +125,25 @@ describe("resource show", () => {
     );
 
     expect(output).toContain(skillDir);
+    expect(output).toContain("# last30days");
     expect(output).toContain("SKILL.md");
     expect(output).toContain("references/notes.md");
     expect(output).not.toContain("Nothing loaded yet.");
+  });
+
+  it("shows the full skill body with full: true", () => {
+    const lines = Array.from({ length: 20 }, (_, index) => `line ${index + 1}`);
+    const output = renderResourceShow(
+      makeResource({
+        type: "skill",
+        name: "long-skill",
+        content: lines.join("\n"),
+        source: "/tmp/long-skill/SKILL.md",
+      }),
+      { full: true },
+    );
+
+    expect(output).toContain("line 20");
+    expect(output).not.toContain("lines in content");
   });
 });

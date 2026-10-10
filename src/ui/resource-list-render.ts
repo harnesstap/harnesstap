@@ -18,8 +18,8 @@ import {
   formatResourceScopeLabel,
   resourceHumanName,
 } from "./resource-display.js";
-import { renderTable, type Column } from "./table.js";
-import { terminalColumns, theme } from "./theme.js";
+import { renderTable, resolveTableMaxWidth, type Column } from "./table.js";
+import { theme } from "./theme.js";
 
 export {
   computeMaxVisibleRows,
@@ -189,7 +189,7 @@ export function renderGroupedResourceListViewport(
   const hasNamespace = hasListNamespace(visibleRows);
   const columns = makeResourceListColumns(opts.showId, false, hasNamespace, true);
 
-  const maxWidth = opts.maxWidth ?? terminalColumns();
+  const maxWidth = resolveTableMaxWidth(opts.maxWidth);
 
   return [
     renderResourceTypeSubheader(ctx.type, ctx.sectionRows.length),
@@ -236,7 +236,7 @@ export function renderGroupedPluginEditViewport(
   const hasNamespace = hasListNamespace(visibleRows);
   const columns = makeResourceListColumns(opts.showId, false, hasNamespace, true);
   const checkedCount = rows.filter((row) => row.checked).length;
-  const maxWidth = opts.maxWidth ?? terminalColumns();
+  const maxWidth = resolveTableMaxWidth(opts.maxWidth);
 
   return [
     renderResourceTypeSubheader(ctx.type, ctx.sectionRows.length),
@@ -338,7 +338,7 @@ function resourceListTableLayout(opts: ResourceListRenderOptions): {
   wordWrap: true;
 } {
   return {
-    maxWidth: opts.maxWidth ?? terminalColumns(),
+    maxWidth: resolveTableMaxWidth(opts.maxWidth),
     wordWrap: true,
   };
 }
@@ -399,7 +399,7 @@ function makeResourceListColumns(
       key: "updated_at",
       header: "UPDATED",
       width: 16,
-      widthShare: 0.15,
+      fitContent: true,
       transform: (value) => format.formatRelativeTime(String(value)),
       style: (value) => theme.muted(value),
     },
