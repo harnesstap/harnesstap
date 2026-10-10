@@ -12,7 +12,7 @@ import {
 } from "../../src/ui/resource-display.ts";
 
 describe("resource display labels", () => {
-  it("uses Agent instructions (AGENTS.md) for the canonical instruction", () => {
+  it("labels instructions as file plus harness or scope", () => {
     expect(resourceHumanName({ name: "agents-instructions" })).toBe(
       AGENTS_MD_DISPLAY_NAME,
     );
@@ -24,10 +24,29 @@ describe("resource display labels", () => {
         name: "agents-instructions",
         source: "~/.agents/AGENTS.md",
       }),
-    ).toBe("Agent instructions (~/.agents/AGENTS.md)");
+    ).toBe(AGENTS_MD_DISPLAY_NAME);
     expect(
-      resourceHumanName({ name: "opencode-instructions", source: "AGENTS.md" }),
-    ).toBe("Agent instructions (opencode-instructions)");
+      resourceHumanName({
+        type: "instruction",
+        name: "codex-instructions",
+        source: "AGENTS.md",
+      }),
+    ).toBe("AGENTS.md (Codex)");
+    expect(
+      resourceHumanName({
+        type: "instruction",
+        name: "agents-instructions",
+        source: "AGENTS.md",
+        namespace: "demo-app",
+      }),
+    ).toBe("AGENTS.md (demo-app)");
+    expect(
+      resourceHumanName({
+        type: "instruction",
+        name: "claude-instructions",
+        source: "CLAUDE.md",
+      }),
+    ).toBe("CLAUDE.md (Claude Code)");
     expect(resourceHumanName({ name: "ship", source: "SKILL.md" })).toBe("ship");
     expect(
       resourceHumanName({
@@ -45,9 +64,10 @@ describe("resource display labels", () => {
     expect(
       formatResourceDisplayName({
         name: "agents-instructions",
+        type: "instruction",
         namespace: "project default",
       }),
-    ).toBe(`${AGENTS_MD_DISPLAY_NAME}@project default`);
+    ).toBe("AGENTS.md (project default)");
     expect(formatResourceDisplayName({ name: "api" })).toBe("api");
   });
 

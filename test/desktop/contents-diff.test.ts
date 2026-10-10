@@ -186,7 +186,7 @@ describe("contents-diff helpers", () => {
         plugin: 2,
         plugin_pin: 1,
       }).map((row) => `${row.count} ${row.label}`),
-    ).toEqual(["2 plugins", "5 skills", "10 MCP", "1 plugin pin"]);
+    ).toEqual(["2 plugins", "5 skills", "10 MCPs", "1 plugin pin"]);
   });
 
   it("summarizes stack changes with add/remove/mixed tones", () => {
@@ -242,7 +242,7 @@ describe("contents-diff helpers", () => {
     ).toEqual([
       { type: "plugin", count: 1, label: "plugin", tone: "add" },
       { type: "skill", count: 2, label: "skills", tone: "mixed" },
-      { type: "mcp_server", count: 2, label: "MCP", tone: "mixed" },
+      { type: "mcp_server", count: 2, label: "MCPs", tone: "mixed" },
       { type: "instruction", count: 1, label: "instruction", tone: "remove" },
       { type: "command", count: 1, label: "command", tone: "add" },
     ]);

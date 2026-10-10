@@ -4,8 +4,8 @@ import {
   type ContentsDiffItem,
   type FileChangeResourceGroup,
 } from "./contents-diff";
-import { parseStoredHarnessScope } from "./harness-scope-ui";
 import { relatedHarnessesForResourceType } from "./harness-meta";
+import { parseStoredHarnessScope } from "./harness-scope-ui";
 import { libraryFilterType } from "./library-list";
 import { isPluginTypeResource } from "./plugin-ref-detail";
 import {
@@ -157,7 +157,7 @@ export function hoverModelFromLibraryResource(
   const model: ResourceHoverModel = {
     type: filterType,
     name: resourceDisplayName(resource, duplicateNames),
-    harnessIds: [...relatedHarnessesForResourceType(filterType)],
+    harnessIds: [],
     extra: hookHoverExtras(resource),
   };
   const path = listRowHoverPath(resource);
@@ -209,7 +209,7 @@ export function hoverModelFromContentsDiffItem(
   const model: ResourceHoverModel = {
     type: item.iconType,
     name: item.label,
-    harnessIds: [...relatedHarnessesForResourceType(item.iconType)],
+    harnessIds: [],
     extra: [],
   };
   const path = listRowHoverPath({ source: item.path });

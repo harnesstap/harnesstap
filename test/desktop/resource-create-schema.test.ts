@@ -13,6 +13,7 @@ import {
 
 describe("resource create schemas", () => {
   test("every creatable type has a schema", () => {
+    expect(getResourceCreateSchema("agent").title).toBe("Subagent");
     expect(CREATE_RESOURCE_TYPES).toHaveLength(11);
     for (const type of CREATE_RESOURCE_TYPES) {
       const schema = getResourceCreateSchema(type);

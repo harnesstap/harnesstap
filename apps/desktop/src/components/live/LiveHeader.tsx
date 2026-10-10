@@ -42,8 +42,8 @@ export interface LiveHeaderProps {
   attention: ReadonlyMap<string, TypeTabAttention>;
   typeTab: string | null;
   onTypeTab: (next: string | null) => void;
-  searchTrailing?: ReactNode;
   emptySurface?: TypeTabZeroSurface;
+  searchTrailing?: ReactNode;
 }
 
 export function LiveHeader({
@@ -53,8 +53,8 @@ export function LiveHeader({
   attention,
   typeTab,
   onTypeTab,
-  searchTrailing,
   emptySurface = "profile",
+  searchTrailing,
 }: LiveHeaderProps) {
   const searchField = (
     <ListSearchField
@@ -79,6 +79,7 @@ export function LiveHeader({
           includeAll={true}
           emptyMode="disable"
           emptySurface={emptySurface}
+          overflow="wrap"
           wide
           counts={typeCounts}
           attention={attention}

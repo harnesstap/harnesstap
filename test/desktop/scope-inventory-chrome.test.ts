@@ -76,7 +76,7 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("`No plugins in this profile yet`");
     expect(designSource).not.toContain("`No Permissions found`");
     expect(designSource).toContain("No resources yet");
-    expect(tabsSource).toContain("resourceTypeTabPillsText");
+    expect(tabsSource).toContain("resourceTypeTabUnit");
     expect(liveStateSource).toContain("attention={attention}");
     expect(liveStateSource).toContain("collectTypeTabAttention");
     expect(liveStateSource).toContain("catalogCount={inventoryItems.length}");
@@ -307,6 +307,8 @@ describe("Global/Project scope inventory chrome", () => {
     expect(tabsSource).toContain("{expanded ? overflowControl : null}");
     expect(tabsSource).toContain("resource-type-tab-count");
     expect(tabsSource).toContain("resource-type-tab-label");
+    expect(tabsSource).toContain("aria-disabled={itemDisabled || undefined}");
+    expect(tabsSource).not.toContain("disabled={itemDisabled}");
     expect(tabsSource).not.toContain('density="compact"');
     expect(liveStateSource).toContain("scope-inventory-pane");
     expect(liveStateSource).toMatch(/\bwide\b/);

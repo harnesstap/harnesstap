@@ -51,6 +51,13 @@ describe("hookCommandShortToken", () => {
       "ripwire-nudge.sh",
     );
   });
+
+  it("skips launchers and flags for the first meaningful token", () => {
+    expect(hookCommandShortToken("env say")).toBe("say");
+    expect(hookCommandShortToken("npx prettier --write")).toBe("prettier");
+    expect(hookCommandShortToken("pnpm dlx prettier")).toBe("prettier");
+    expect(hookCommandShortToken("uvx ruff check")).toBe("ruff");
+  });
 });
 
 describe("formatHookInventoryLabel", () => {
@@ -81,6 +88,18 @@ describe("formatHookInventoryLabel", () => {
         hookType: "command",
       }),
     ).toBe("PreToolUse: rtk");
+    expect(
+      formatHookInventoryLabel({
+        event: "Stop",
+        script: "env say",
+      }),
+    ).toBe("Stop: say");
+    expect(
+      formatHookInventoryLabel({
+        event: "PostToolUse",
+        script: "npx prettier",
+      }),
+    ).toBe("PostToolUse: prettier");
   });
 
   it("reads the event from a stored name when metadata event is missing", () => {

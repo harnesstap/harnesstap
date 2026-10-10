@@ -1048,7 +1048,8 @@ export function ResourcesPanel({
           value={typeTab}
           disabled={disabled}
           emptyMode="show"
-          overflow="collapse"
+          emptySurface="library"
+          overflow="wrap"
           onChange={(next) => applyFilterChange({ ...filterState, type: next })}
         />
       </div>
@@ -1058,7 +1059,8 @@ export function ResourcesPanel({
         value={typeTab}
         disabled={disabled}
         emptyMode="show"
-        overflow="collapse"
+        emptySurface="library"
+        overflow="wrap"
         onChange={(next) => applyFilterChange({ ...filterState, type: next })}
       />
     );

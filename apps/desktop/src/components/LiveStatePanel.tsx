@@ -2133,6 +2133,7 @@ export function LiveStatePanel({
             attention={inventoryAttention}
             typeTab={inventoryTypeTab}
             onTypeTab={setInventoryType}
+            emptySurface={view === "project" ? "project" : "profile"}
             items={filteredInventory}
             catalogCount={inventoryItems.length}
             selectedProfile={selectedProfile}

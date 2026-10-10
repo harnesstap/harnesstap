@@ -27,7 +27,11 @@ import {
   libraryBulkDeleteVisibleCount,
   pruneSelectedIds,
 } from "../../lib/library-bulk-edit";
-import { resourceTypeTabLabel, type TypeTabAttention } from "../../lib/resource-type-tabs";
+import {
+  resourceTypeTabLabel,
+  type TypeTabAttention,
+  type TypeTabZeroSurface,
+} from "../../lib/resource-type-tabs";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { EmptyState } from "../EmptyState";
@@ -44,6 +48,7 @@ export interface ScopeInventoryShellProps {
   attention: ReadonlyMap<string, TypeTabAttention>;
   typeTab: string | null;
   onTypeTab: (next: string | null) => void;
+  emptySurface?: TypeTabZeroSurface;
   items: ProfileInventoryItem[];
   /** Unfiltered inventory size (All count before search and type). */
   catalogCount: number;
@@ -97,6 +102,7 @@ export function ScopeInventoryShell({
   attention,
   typeTab,
   onTypeTab,
+  emptySurface = "profile",
   items,
   catalogCount,
   selectedProfile,
@@ -552,6 +558,7 @@ export function ScopeInventoryShell({
           attention={attention}
           typeTab={typeTab}
           onTypeTab={onTypeTab}
+          emptySurface={emptySurface}
         />
         <div className="enabled-list scope-inventory-list">
           {PROFILE_INVENTORY_SECTION_ORDER.map((section) => {
