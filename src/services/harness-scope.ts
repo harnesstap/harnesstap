@@ -207,12 +207,13 @@ function collectPlatformPathPrefixes(platform: ReturnType<typeof getAllPlatforms
  * Map a disk-captured resource source path to the harness that owned it.
  * Used so init-imported resources stay on their origin harness (DT-1).
  */
-export function originHarnessFromSourcePath(source: string | undefined): string | undefined {
+export function originHarnessesFromSourcePath(source: string | undefined): string[] {
   if (!source) {
-    return undefined;
+    return [];
   }
   const candidates = sourcePathCandidates(source);
-  let best: { id: string; score: number } | undefined;
+  let bestScore = -1;
+  const ids = new Set<string>();
   for (const platform of getAllPlatforms()) {
     for (const prefix of collectPlatformPathPrefixes(platform)) {
       const prefixBare = prefix.startsWith("~/") ? prefix.slice(2) : prefix;
@@ -225,26 +226,35 @@ export function originHarnessFromSourcePath(source: string | undefined): string 
           || candidate.startsWith(`${prefix}/`)
         ) {
           const score = prefixBare.length;
-          if (!best || score > best.score) {
-            best = { id: platform.id, score };
+          if (score > bestScore) {
+            bestScore = score;
+            ids.clear();
+            ids.add(platform.id);
+          } else if (score === bestScore) {
+            ids.add(platform.id);
           }
         }
       }
     }
   }
-  return best?.id;
+  return uniqueSorted([...ids]);
+}
+
+export function originHarnessFromSourcePath(source: string | undefined): string | undefined {
+  return originHarnessesFromSourcePath(source)[0];
 }
 
 export function diskCaptureHarnessScope(
   resource: Pick<Resource, "source" | "origin_ref">,
 ): HarnessScope {
-  const origin =
-    originHarnessFromSourcePath(resource.source)
-    ?? originHarnessFromSourcePath(resource.origin_ref);
-  if (!origin) {
+  const origins = uniqueSorted([
+    ...originHarnessesFromSourcePath(resource.source),
+    ...originHarnessesFromSourcePath(resource.origin_ref),
+  ]);
+  if (origins.length === 0) {
     return HARNESS_SCOPE_ALL;
   }
-  return { kind: "subset", harnesses: [origin] };
+  return { kind: "subset", harnesses: origins };
 }
 
 export function emitPathForResourceType(

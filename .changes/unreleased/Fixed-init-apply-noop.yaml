@@ -1,5 +1,5 @@
 kind: Fixed
-body: Keep disk-captured resources on their origin harness so the first apply after init is a no-op. Skip rewriting preexisting instruction files and skip writes when JSON or TOML already match semantically.
+body: Keep disk-captured resources on every matching origin harness so the first apply after init is a no-op. Skip rewriting preexisting instruction files, skip writes when JSON or TOML already match semantically, and treat owned skipped files as still installed.
 time: 2026-10-10T01:10:00Z
 custom:
   Issue: ""

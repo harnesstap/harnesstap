@@ -172,10 +172,14 @@ function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): s
 }
 
 function shouldPreserveUnownedFile(path: string): boolean {
-  if (/\.(md|mdc)$/i.test(path) || isMergeableHostConfigPath(path)) {
+  if (/\.(md|mdc)$/i.test(path)) {
     return false;
   }
-  return isAggregateConfigManagedPath(path) || isPluginRegistryManagedPath(path);
+  return (
+    isMergeableHostConfigPath(path)
+    || isAggregateConfigManagedPath(path)
+    || isPluginRegistryManagedPath(path)
+  );
 }
 
 export function removeGlobalMaterializedFiles(
@@ -592,6 +596,11 @@ export async function applyToGlobal(
     replaceOwnedSnapshotIds: options.replaceOwnedSnapshotIds,
   });
 
+  const ownedSkippedFiles = materialized.skippedFiles.filter((filePath) =>
+    isHarnessTapOwnedPath(homeRoot, filePath),
+  );
+  const persistedPaths = [...new Set([...materialized.writtenFiles, ...ownedSkippedFiles])];
+
   if (!materialized.cancelled) {
     persistWrittenMaterializations({
       scope: "global",
@@ -600,7 +609,7 @@ export async function applyToGlobal(
       platformResults: results.map((result) => ({
         platformId: result.platformId,
         files: result.files,
-        writtenPaths: materialized.writtenFiles.filter((filePath) =>
+        writtenPaths: persistedPaths.filter((filePath) =>
           result.files.some((file) => file.path === filePath),
         ),
       })),
@@ -608,7 +617,7 @@ export async function applyToGlobal(
   }
 
   if (!materialized.cancelled && options.snapshotId) {
-    removeImportedSnapshotOwnershipForFiles(materialized.writtenFiles, options.snapshotId);
+    removeImportedSnapshotOwnershipForFiles(persistedPaths, options.snapshotId);
     const existingInstalls = listImportedSnapshotInstalls(options.snapshotId);
     for (const result of results) {
       const previousFiles =
@@ -620,8 +629,11 @@ export async function applyToGlobal(
       );
       const preservedSkippedFiles = emittedFiles.filter(
         (filePath) =>
-          materialized.skippedFiles.includes(filePath) &&
-          previousFiles.includes(filePath),
+          materialized.skippedFiles.includes(filePath)
+          && (
+            previousFiles.includes(filePath)
+            || ownedSkippedFiles.includes(filePath)
+          ),
       );
       const installFiles = [...new Set([...writtenFiles, ...preservedSkippedFiles])];
       if (installFiles.length === 0) continue;

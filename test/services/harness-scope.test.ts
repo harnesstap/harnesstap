@@ -17,6 +17,7 @@ import {
   diskCaptureHarnessScope,
   linkedHarnessGroups,
   normalizeScopeToRegistered,
+  originHarnessesFromSourcePath,
   originHarnessFromSourcePath,
   parseHarnessScope,
   serializeHarnessScope,
@@ -39,6 +40,9 @@ describe("harness-scope", () => {
     expect(originHarnessFromSourcePath("~/.claude/CLAUDE.md")).toBe("claude-code");
     expect(originHarnessFromSourcePath("~/.cursor/mcp.json")).toBe("cursor");
     expect(originHarnessFromSourcePath("~/.codex/config.toml")).toBe("codex");
+    expect(originHarnessesFromSourcePath("~/.copilot/mcp-config.json")).toEqual(
+      expect.arrayContaining(["copilot-cli", "github-copilot"]),
+    );
     expect(originHarnessFromSourcePath("~/.cursor/skills/cursor-only-skill/SKILL.md")).toBe(
       "cursor",
     );

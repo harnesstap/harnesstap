@@ -90,6 +90,7 @@ jobs:
               - 'src/agent/**'
               - 'test/services/**'
               - 'test/integration/**'
+              - 'test/agent/init-apply-noop.test.ts'
             cli:
               - 'src/ui/**'
               - 'test/cli/**'

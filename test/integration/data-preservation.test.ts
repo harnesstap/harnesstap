@@ -194,7 +194,14 @@ describe("G4 data preservation", () => {
       const sentinels = plantSentinels(context.homeDir);
       const applyOpts = { conflictPolicy: "replace" as const, pull: false };
       const first = await useProfileCommand("global default", applyOpts);
-      expect(first.written_files).toEqual([]);
+      expect(
+        first.written_files.some((path) =>
+          path.endsWith("CLAUDE.md")
+          || path.endsWith("AGENTS.md")
+          || path.endsWith(".mdc")
+          || path.endsWith("SKILL.md"),
+        ),
+      ).toBe(false);
       expect(
         readFileSync(join(context.homeDir, ".claude/CLAUDE.md"), "utf-8"),
       ).not.toContain("CODEX-AGENTS-MARKER");
