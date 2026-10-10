@@ -54,7 +54,9 @@ function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: stri
       }
     }
     console.log("");
-    ui.dim(`Full doc: docs/scenarios/details/${scenario.filename}`);
+    ui.dim(
+      `Full doc: https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/${scenario.filename}`,
+    );
     ui.dim(`All scenarios: ${GUIDE_SCENARIOS_URL}`);
   } catch (err) {
     process.exitCode = 1;

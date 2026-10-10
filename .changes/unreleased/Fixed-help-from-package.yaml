@@ -1,0 +1,5 @@
+kind: Fixed
+body: Ship scenario playbooks in the CLI package so ht help works after npm install, and align README install examples with 1.3.
+time: 2026-10-10T06:10:00Z
+custom:
+  Issue: ""
