@@ -5,6 +5,7 @@ import { getPlatform } from "./registry.js";
 import { formatTransportToml } from "../services/toml/write.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
+import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
 import type {
   AgentMetadata,
   EnvVarMetadata,
@@ -507,7 +508,10 @@ export class CodexSerializer extends BaseSerializer {
     const hooksPath = this.toTargetRelativePath(targetPaths.hooks, target);
     const commandsPath = this.toTargetRelativePath(targetPaths.commands, target);
 
-    const instructions = resources.filter((r) => r.type === "instruction");
+    const instructions = filterInstructionsForTargetPath(
+      resources,
+      instructionsPath ? [instructionsPath, "AGENTS.md"] : ["AGENTS.md"],
+    );
     const mcps = this.mcpServersForTarget(resources, configPath);
     const permissions = resources.filter((r) => r.type === "permission");
     const envVars = resources.filter((r) => r.type === "env_var");

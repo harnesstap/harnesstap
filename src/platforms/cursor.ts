@@ -9,6 +9,7 @@ import {
   emitCursorMcpServerEntry,
   parseMcpServersDocument,
 } from "../services/mcp-config-bridge.js";
+import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
 import type {
   AgentMetadata,
   HookMetadata,
@@ -257,6 +258,11 @@ export class CursorSerializer extends BaseSerializer {
       switch (r.type) {
         case "instruction": {
           if (!rulesPath) break;
+          if (
+            filterInstructionsForTargetPath([r], ["AGENTS.md", ".cursorrules"]).length === 0
+          ) {
+            break;
+          }
           // Emit as always-apply .mdc rule
           const fm: Record<string, unknown> = {
             description: r.description || r.name,

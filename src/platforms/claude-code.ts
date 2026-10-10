@@ -12,6 +12,7 @@ import {
   mergeClaudeSettingsContent,
   mergeClaudeUserJsonContent,
 } from "../services/merged-host-config.js";
+import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import type {
   AgentMetadata,
@@ -438,8 +439,11 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       byType.set(r.type, list);
     }
 
-    // Instructions → CLAUDE.md
-    const instructions = byType.get("instruction") ?? [];
+    // Instructions → CLAUDE.md (skip instructions imported from other harness files)
+    const instructions = filterInstructionsForTargetPath(
+      byType.get("instruction") ?? [],
+      instructionsPath ? [instructionsPath, "CLAUDE.md"] : ["CLAUDE.md"],
+    );
     if (instructions.length > 0 && instructionsPath) {
       const combined = instructions.map((r) => r.content).join("\n\n");
       files.push({ path: instructionsPath, content: combined });

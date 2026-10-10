@@ -59,6 +59,7 @@ describe("platform registry", () => {
     expect(opencode?.relatedLocations).toEqual([
       { path: "~/.agents/skills/", surfaces: ["skills"] },
       { path: "~/.claude/skills/", surfaces: ["skills"] },
+      { path: "~/.agents/AGENTS.md", surfaces: ["instructions"] },
     ]);
 
     const githubCopilot = registry.getPlatform("github-copilot");

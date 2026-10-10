@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
+import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
 import type {
   AgentMetadata,
   PlatformDefinition,
@@ -340,7 +341,10 @@ export class OpenCodeSerializer extends BaseSerializer {
     const commandsPath = this.toTargetRelativePath(targetPaths.commands, target);
 
     // Group by type
-    const instructions = resources.filter((r) => r.type === "instruction");
+    const instructions = filterInstructionsForTargetPath(
+      resources,
+      instructionsPath ? [instructionsPath, "AGENTS.md"] : ["AGENTS.md"],
+    );
     const skills = resources.filter((r) => r.type === "skill");
     const mcps = this.mcpServersForTarget(resources, mcpPath);
     const agents = resources.filter((r) => r.type === "agent");
