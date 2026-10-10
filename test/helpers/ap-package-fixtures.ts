@@ -7,14 +7,15 @@ export function makeApEnvelope(input?: {
   description?: string;
   skillName?: string;
   skillBody?: string;
+  /** When true, omit plugin.json `$schema` (Cloud catalog bug / G2 fixture). */
+  omitSchema?: boolean;
 }): string {
   const name = input?.name ?? "remote-team";
   const version = input?.version ?? "1.0.0";
   const description = input?.description ?? "from cloud";
   const skillName = input?.skillName ?? "r";
   const skillBody = input?.skillBody ?? "#x";
-  const manifest = {
-    $schema: "https://agentplugins.org/schemas/v1/plugin.json",
+  const manifest: Record<string, unknown> = {
     name,
     version,
     description,
@@ -26,6 +27,9 @@ export function makeApEnvelope(input?: {
       },
     },
   };
+  if (!input?.omitSchema) {
+    manifest.$schema = "https://agentplugins.org/schemas/v1/plugin.json";
+  }
   return `${JSON.stringify(
     {
       schema: AP_PACKAGE_SCHEMA,

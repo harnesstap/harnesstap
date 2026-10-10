@@ -7,14 +7,15 @@
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "schemas"
   ],
   "bin": {
-    "harnesstap": "./dist/index.js",
-    "ht": "./dist/index.js"
+    "harnesstap": "./dist/bin.js",
+    "ht": "./dist/bin.js"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "rm -rf dist && tsup",
     "build:sidecar": "bash scripts/build-sidecar.sh",
     "desktop:cleanup": "bash apps/desktop/scripts/cleanup-stale-dev.sh",
     "desktop:prepare-sidecar": "bash apps/desktop/scripts/prepare-sidecar.sh",
@@ -29,8 +30,8 @@
     "desktop:shots": "cd apps/desktop && bun run shots",
     "desktop:check": "bash apps/desktop/scripts/desktop-check.sh",
     "dev": "tsup --watch",
-    "start": "bun src/index.ts",
-    "start:dist": "node dist/index.js",
+    "start": "bun src/bin.ts",
+    "start:dist": "node dist/bin.js",
     "link": "bun run build && bun link",
     "unlink": "bun unlink",
     "test": "bun test --timeout 30000",
@@ -75,12 +76,12 @@
   },
   "homepage": "https://github.com/harnesstap/harnesstap#readme",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "@inquirer/core": "^10.3.2",
     "@inquirer/search": "^3.2.2",
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^12.11.1",
     "chalk": "^5.4.1",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",

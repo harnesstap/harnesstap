@@ -33,9 +33,14 @@ const PLUGIN_HELP_REMOTE_COMMANDS = new Set([
   "publish",
 ]);
 
-function isHiddenHelpCommand(command: Command): boolean {
+function isCommanderHidden(command: Command): boolean {
+  return (command as unknown as { _hidden?: boolean })._hidden === true;
+}
+
+export function isHiddenHelpCommand(command: Command): boolean {
   return (
     command.name() === "__complete"
+    || isCommanderHidden(command)
     || (command.description() as unknown) === false
   );
 }
@@ -287,7 +292,7 @@ export function configureProgramHelp(program: Command): void {
           `  ${resolveInvocationName()} [options] [command]`,
           "",
           ui.theme.heading("OPTIONS"),
-          `  ${ui.theme.flag("-V, --harnesstap-version")}  output the version number`,
+          `  ${ui.theme.flag("-V, --version")}            output the version number`,
           `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
           `  ${ui.theme.flag("--no-color")}               disable color output`,
           `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,

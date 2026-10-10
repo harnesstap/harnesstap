@@ -4,7 +4,7 @@ This guide walks through install, a first catalog apply, and the follow-up scan/
 
 ## Requirements
 
-- **Node.js** 20 or later
+- **Node.js** 22.12 or later (Node 24 is supported)
 - **Bun** 1.3+ (optional; required only when contributing from source)
 
 ## Install

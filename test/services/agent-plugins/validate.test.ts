@@ -3,6 +3,7 @@ import {
   AP_SCHEMA_URL,
   ManifestValidationError,
   validateApManifest,
+  withDefaultedApSchema,
 } from "../../../src/services/agent-plugins/validate.ts";
 
 function base(): Record<string, unknown> {
@@ -18,6 +19,21 @@ describe("validateApManifest", () => {
     const manifest = base();
     delete manifest.$schema;
     expect(() => validateApManifest(manifest)).toThrow(/\$schema/);
+  });
+
+  it("defaults a missing or empty $schema without rewriting a present URL", () => {
+    expect(withDefaultedApSchema({ name: "hello", version: "1.0.0" })).toEqual({
+      manifest: { name: "hello", version: "1.0.0", $schema: AP_SCHEMA_URL },
+      defaulted: true,
+    });
+    expect(withDefaultedApSchema({ $schema: "", name: "hello", version: "1.0.0" }).defaulted).toBe(
+      true,
+    );
+    const kept = { $schema: "https://example.test/plugin.json", name: "hello", version: "1.0.0" };
+    expect(withDefaultedApSchema(kept)).toEqual({ manifest: kept, defaulted: false });
+    expect(withDefaultedApSchema({ $schema: 1, name: "hello", version: "1.0.0" }).defaulted).toBe(
+      false,
+    );
   });
 
   it("requires name and version", () => {

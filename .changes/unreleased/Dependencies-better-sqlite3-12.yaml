@@ -1,0 +1,5 @@
+kind: Dependencies
+body: Upgrade better-sqlite3 to 12.x so npm install uses Node 24 prebuilds, and print a clear rebuild hint when the native module was built for a different Node version.
+time: 2026-10-10T00:10:00Z
+custom:
+  Issue: ""

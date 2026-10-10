@@ -2,6 +2,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { isNativeModuleMismatch, reportNativeModuleMismatch } from "./native-module.js";
 import type { SqliteDatabase, SqliteDatabaseConstructor } from "./types.js";
 
 const require = createRequire(import.meta.url);
@@ -9,13 +10,24 @@ const require = createRequire(import.meta.url);
 let instance: SqliteDatabase | null = null;
 let instancePath: string | null = null;
 
+function loadBetterSqlite3(): SqliteDatabaseConstructor {
+  try {
+    return require("better-sqlite3") as SqliteDatabaseConstructor;
+  } catch (error) {
+    if (isNativeModuleMismatch(error)) {
+      reportNativeModuleMismatch();
+    }
+    throw error;
+  }
+}
+
 function resolveDatabaseConstructor(): SqliteDatabaseConstructor {
   if ("Bun" in globalThis) {
     return (require("bun:sqlite") as { Database: SqliteDatabaseConstructor })
       .Database;
   }
 
-  return require("better-sqlite3") as SqliteDatabaseConstructor;
+  return loadBetterSqlite3();
 }
 
 function usesBunSqlite(): boolean {

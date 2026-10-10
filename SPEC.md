@@ -259,7 +259,7 @@ Global options:
 
 | Flag | Behavior |
 | --- | --- |
-| `-V, --harnesstap-version` | Print CLI version |
+| `-V, --version` | Print CLI version (`--harnesstap-version` remains a hidden alias) |
 | `-v, --verbose` | Show stack traces on errors |
 | `--no-color` | Disable ANSI colors (also respects `NO_COLOR`) |
 | `--no-interactive` | Disable interactive prompts |
@@ -861,7 +861,7 @@ Use `migrate export` / `import` for workspace, plugin, or resource sharing.
 
 HarnessTap Cloud is the multiplayer control plane for **published plugins**. An **organization** owns **catalogs**; each catalog holds versioned plugins teams can search, review, and install. Offline workspace sharing uses `migrate`; catalogs are the default multiplayer distribution surface.
 
-**Wire format:** Cloud publish and download use the Agent Plugins package envelope exclusively (`urn:harnesstap:ap-package:v1`) — the same `{ schema, files }` document `migrate export --single-file` produces. Publish and related plugin routes live under `/api/plugins`; version bytes are served from catalog `…/versions/:version/package`. Every request carries `X-HarnessTap-CLI-Version` and `X-HarnessTap-API-Version`; every response returns `X-HarnessTap-API-Version` and `X-HarnessTap-Minimum-CLI-Version`. A CLI below the floor receives `426` with an upgrade instruction.
+**Wire format:** Cloud publish and download use the Agent Plugins package envelope exclusively (`urn:harnesstap:ap-package:v1`) — the same `{ schema, files }` document `migrate export --single-file` produces. Publish and related plugin routes live under `/api/plugins`; version bytes are served from catalog `…/versions/:version/package`. Every request carries `X-HarnessTap-CLI-Version` and `X-HarnessTap-API-Version`; every response returns `X-HarnessTap-API-Version` and `X-HarnessTap-Minimum-CLI-Version`. A CLI below the floor receives `426` with an upgrade instruction. Catalog download (`plugin pull`, bare-name `apply`) defaults a missing or empty `plugin.json` `$schema` to `https://agentplugins.org/schema/v1/plugin.schema.json`. Authoring, package export, and `plugin publish` still require and emit `$schema`. The envelope JSON Schema lives at `schemas/ap-package.v1.json`. Hidden `ht plugin validate-package <file>` checks a package the same way catalog import does; `--strict` applies publish rules.
 
 Authentication stores named accounts in `~/.harnesstap/cloud-accounts.json`. There is no `cloud-profiles.json` and no `--profile` flag — use `--account` on catalog and auth commands. Re-run `auth login` after upgrading from pre-account CLI builds.
 
@@ -932,7 +932,7 @@ bun run test:run
 bun run build
 ```
 
-`tsup` builds the CLI from `src/index.ts` into `dist/` as a Node 20 ESM CLI with declaration files and a `#!/usr/bin/env node` banner. `prepublishOnly` runs `bun run build`. The agent sidecar used by desktop is built with `bun run build:sidecar`.
+`tsup` builds the library from `src/index.ts` and the published bin from `src/bin.ts` into `dist/` as a Node 22 ESM CLI with declaration files. `dist/bin.js` has a `#!/usr/bin/env node` banner and a runtime Node version guard. The package `engines` field is `>=22.12.0`. `prepublishOnly` runs `bun run build`. The agent sidecar used by desktop is built with `bun run build:sidecar`.
 
 ## Known gaps and non-goals
 

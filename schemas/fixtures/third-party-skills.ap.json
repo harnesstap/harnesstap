@@ -1,0 +1,13 @@
+{
+  "schema": "urn:harnesstap:ap-package:v1",
+  "files": {
+    "plugin.json": {
+      "encoding": "utf8",
+      "content": "{\n  \"$schema\": \"https://agentplugins.org/schema/v1/plugin.schema.json\",\n  \"name\": \"hello\",\n  \"version\": \"1.0.0\"\n}\n"
+    },
+    "skills/hello/SKILL.md": {
+      "encoding": "utf8",
+      "content": "---\nname: hello\ndescription: Says hi\n---\n\n# Hello\n"
+    }
+  }
+}

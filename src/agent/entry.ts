@@ -1,7 +1,8 @@
 import { setTelemetryProduct, trackDesktopStartup } from "../telemetry/index.js";
+import { isMainModule } from "../utils/is-main-module.js";
 import { startAgentServer } from "./serve.js";
 
-if (import.meta.main) {
+if (isMainModule(import.meta.url)) {
   setTelemetryProduct("desktop");
   trackDesktopStartup();
   const server = await startAgentServer();

@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+  schedule:
+    - cron: "17 6 * * *"
 
 permissions:
   contents: read
@@ -12,6 +14,7 @@ permissions:
 
 jobs:
   docs-changed:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -107,7 +110,7 @@ jobs:
       - name: Resolve change flags
         id: resolve
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "schedule" ]; then
             for area in global core platforms plugins services cli docs desktop; do
               echo "${area}=true" >> "$GITHUB_OUTPUT"
             done
@@ -334,9 +337,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
-      - name: Rebuild better-sqlite3 for Node 20
+      - name: Rebuild better-sqlite3 for Node 22
         run: npm rebuild better-sqlite3
 
       - name: SQLite dual-runtime WAL write smoke
@@ -350,3 +353,68 @@ jobs:
 
       - name: Build distribution
         run: bun run build
+
+  pack-cli-tarball:
+    name: Pack CLI tarball
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Pack npm tarball
+        run: npm pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harnesstap-npm-tarball
+          path: harnesstap-*.tgz
+          if-no-files-found: error
+
+  node-version-matrix:
+    name: G1 Node ${{ matrix.image }}
+    needs: pack-cli-tarball
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: node:20-slim
+            supported: "false"
+            expect_install: "true"
+            check_gyp: "false"
+            ignore_scripts: "true"
+          - image: node:22.11-slim
+            supported: "false"
+            expect_install: "true"
+            check_gyp: "true"
+            ignore_scripts: "false"
+          - image: node:22-slim
+            supported: "true"
+            expect_install: "true"
+            check_gyp: "true"
+            ignore_scripts: "false"
+          - image: node:24-slim
+            supported: "true"
+            expect_install: "true"
+            check_gyp: "true"
+            ignore_scripts: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: harnesstap-npm-tarball
+          path: pack
+      - name: Smoke packed CLI in ${{ matrix.image }}
+        run: |
+          chmod +x scripts/ci-node-version-matrix.sh
+          docker run --rm \
+            -e SUPPORTED=${{ matrix.supported }} \
+            -e EXPECT_INSTALL=${{ matrix.expect_install }} \
+            -e CHECK_GYP=${{ matrix.check_gyp }} \
+            -e IGNORE_SCRIPTS=${{ matrix.ignore_scripts }} \
+            -v "$PWD/pack:/pack:ro" \
+            -v "$PWD/scripts/ci-node-version-matrix.sh:/ci-node-version-matrix.sh:ro" \
+            "${{ matrix.image }}" \
+            bash -lc 'export TARBALL="$(ls /pack/harnesstap-*.tgz | head -n 1)"; bash /ci-node-version-matrix.sh'

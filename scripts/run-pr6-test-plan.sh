@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CLI=(bun "$ROOT/dist/index.js")
+CLI=(bun "$ROOT/dist/bin.js")
 FIXTURE_PROJECT="$ROOT/test/fixtures/claude-plugins-project"
 FIXTURE_HOME="$ROOT/test/fixtures/claude-plugins-home"
 

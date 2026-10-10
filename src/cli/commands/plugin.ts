@@ -21,6 +21,7 @@ import {
   handlePluginPublishPlanCommand,
 } from "../handlers/plugin-publish.js";
 import { handlePluginShowCommand } from "../handlers/plugin-show-command.js";
+import { handlePluginValidatePackageCommand } from "../handlers/plugin-validate-package.js";
 import { handlePluginWhyCommand } from "../handlers/plugin-why.js";
 import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
 import {
@@ -3023,6 +3024,14 @@ pluginCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Run doctor checks against a plugin")
   .action(handlePluginDoctorCommand);
+
+pluginCmd
+  .command("validate-package", { hidden: true })
+  .argument("<file>", "Package directory, .zip, or .ap.json envelope")
+  .option("--strict", "Require plugin.json $schema (publish and authoring rules)")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Validate an Agent Plugins package the same way catalog import does")
+  .action(handlePluginValidatePackageCommand);
 
 pluginCmd
   .command("check")

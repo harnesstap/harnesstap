@@ -1,0 +1,5 @@
+kind: Fixed
+body: Run the published CLI on every supported Node version instead of silently exiting 0 on Node 20 and Node 22 below 22.12, refuse older Node with a clear error, and expose -V/--version from a build-time version string.
+time: 2026-10-10T00:00:00Z
+custom:
+  Issue: ""
