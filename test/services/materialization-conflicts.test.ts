@@ -10,6 +10,12 @@ describe("resolveApplyConflictPolicy", () => {
     expect(resolveApplyConflictPolicy({ onConflict: "ignore" })).toBe("skip");
   });
 
+  it("does not treat abort as an on-conflict alias", () => {
+    expect(() =>
+      resolveApplyConflictPolicy({ onConflict: "abort", noInteractive: true }),
+    ).toThrow("Invalid --on-conflict value: abort.");
+  });
+
   it("defaults to replace when non-interactive", () => {
     expect(resolveApplyConflictPolicy({ noInteractive: true })).toBe("replace");
   });
