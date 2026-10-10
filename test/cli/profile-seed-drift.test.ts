@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { runCli } from "../helpers/cli.ts";
@@ -84,6 +84,10 @@ describe("CLI profile drift from a seeded HOME", () => {
         join(context.homeDir, ".claude/skills/tiny-skill/SKILL.md"),
         `${TINY_SKILL}\nUSER EDIT\n`,
       );
+      writeFileSync(
+        join(context.homeDir, ".claude/skills/tiny-skill/notes.txt"),
+        "keep me\n",
+      );
 
       const status = await runCli(["profile", "status", "--format", "json"]);
       const payload = JSON.parse(status.stdout) as {
@@ -92,6 +96,35 @@ describe("CLI profile drift from a seeded HOME", () => {
       const paths = payload.changes.map((change) => change.path);
       expect(paths).toContain(".claude/skills/tiny-skill/SKILL.md");
       expect(paths).not.toContain(".agents/skills/tiny-skill/SKILL.md");
+
+      await runCli(["profile", "create", "work"]);
+      const stashed = await runCli([
+        "profile",
+        "use",
+        "work",
+        "--changes",
+        "stash",
+        "--no-interactive",
+      ]);
+      expect(`${stashed.stderr}${stashed.stdout}`).not.toContain("No untracked resources to stash");
+      expect(stashed.exitCode ?? 0).toBe(0);
+      expect(stashed.stdout).toContain("Stashed");
+      expect(readFileSync(join(context.homeDir, ".claude/skills/tiny-skill/SKILL.md"), "utf-8")).toBe(
+        TINY_SKILL,
+      );
+      expect(existsSync(join(context.homeDir, ".agents/skills/tiny-skill/SKILL.md"))).toBe(true);
+      expect(readFileSync(join(context.homeDir, ".agents/skills/tiny-skill/SKILL.md"), "utf-8")).toBe(
+        TINY_SKILL,
+      );
+      expect(readFileSync(join(context.homeDir, ".claude/skills/tiny-skill/notes.txt"), "utf-8")).toBe(
+        "keep me\n",
+      );
+
+      const popped = await runCli(["profile", "stash", "pop", "--no-interactive"]);
+      expect(popped.exitCode ?? 0).toBe(0);
+      expect(
+        readFileSync(join(context.homeDir, ".claude/skills/tiny-skill/SKILL.md"), "utf-8"),
+      ).toContain("USER EDIT");
     } finally {
       await context.cleanup();
     }
