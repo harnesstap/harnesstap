@@ -4,6 +4,7 @@ import {
   CLI_HINTS,
   DRY_RUN_NOTHING_CHANGED,
   formatHtCommand,
+  NATIVE_MODULE_MISMATCH_MESSAGE,
   marketplaceUnreachableHint,
   quoteCliArg,
 } from "../../src/copy/cli.ts";
@@ -22,6 +23,9 @@ describe("CLI copy helpers (DS-6)", () => {
   it("always prefixes command hints with ht", () => {
     expect(formatHtCommand("approve dep-hooks")).toBe("ht approve dep-hooks");
     expect(DRY_RUN_NOTHING_CHANGED).toBe("Dry run. Nothing was changed.");
+    expect(NATIVE_MODULE_MISMATCH_MESSAGE).toBe(
+      "HarnessTap was installed under a different Node.js version. Run: npm rebuild -g harnesstap",
+    );
   });
 
   it("keeps Wave 1 error copy next to marketplace strings", () => {
