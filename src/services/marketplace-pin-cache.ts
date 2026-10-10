@@ -1,12 +1,17 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { downloadHostPluginVersion } from "./host-plugin-source.js";
 import {
   ensureMarketplaceCatalog,
+  marketplaceCacheDir,
   refreshMarketplaceCatalog,
 } from "./marketplace-catalog.js";
 import { ingestHostPluginTreeIntoCache } from "./package-cache/host-plugin.js";
+import { isPluginInstallRoot } from "./plugin-source-import.js";
+import { resolveMarketplacePluginDirectory } from "./plugin-origin-apply.js";
 
 export function resolveCatalogPluginVersion(
   advertised: string | undefined,
@@ -38,6 +43,20 @@ export function installMarketplacePinIntoCache(input: {
   const catalog = ensureMarketplaceCatalog(harnesstapDir, { name: marketplace });
   const entry = catalog.find((plugin) => plugin.name === name);
   const version = resolveCatalogPluginVersion(entry?.version, input.versionConstraint);
+  const checkout = marketplaceCacheDir(harnesstapDir, marketplace);
+  const fromCatalog =
+    (entry?.sourcePath ? join(checkout, entry.sourcePath) : undefined)
+    ?? resolveMarketplacePluginDirectory(checkout, name);
+  if (fromCatalog && existsSync(fromCatalog) && isPluginInstallRoot(fromCatalog)) {
+    const cached = ingestHostPluginTreeIntoCache({
+      harnesstapDir,
+      homeRoot,
+      originRef: input.originRef,
+      sourceInstallRoot: fromCatalog,
+      version,
+    });
+    return { version, install_path: cached };
+  }
   const downloaded = downloadHostPluginVersion({
     originRef: input.originRef,
     version,
