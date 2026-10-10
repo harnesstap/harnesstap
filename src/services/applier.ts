@@ -422,6 +422,9 @@ export function writeFiles(
   pruneManagedCursorLocalPlugins(projectRoot, files);
   for (const file of files) {
     const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
+    if (semanticallyMatchesExisting(fullPath, file)) {
+      continue;
+    }
     writeSerializedFile(fullPath, file);
   }
 }
