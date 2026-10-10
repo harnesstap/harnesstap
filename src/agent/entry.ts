@@ -1,5 +1,6 @@
 import { setTelemetryProduct, trackDesktopStartup } from "../telemetry/index.js";
 import { PACKAGE_VERSION } from "../version.js";
+import { installAgentParentWatch } from "./parent-watch.js";
 import { startAgentServer } from "./serve.js";
 
 // Bun-only entry. isMainModule() realpaths argv[1], which fails for the compiled
@@ -30,4 +31,9 @@ if (import.meta.main) {
 
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
+  installAgentParentWatch({
+    parentPid: process.ppid,
+    onOrphan: shutdown,
+    stdin: process.stdin,
+  });
 }

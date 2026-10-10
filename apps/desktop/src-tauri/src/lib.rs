@@ -358,8 +358,9 @@ fn spawn_sidecar_via_shell(
 fn spawn_sidecar_via_process(log: &SidecarLog) -> Result<std::process::Child, String> {
     let path = sidecar_binary_path()?;
     let mut command = StdCommand::new(path);
+    // Keep stdin open so ht-agent can watch for parent death (EOF).
     command
-        .stdin(Stdio::null())
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     command.env("HARNESSTAP_AGENT_PORT", "7474");
@@ -598,6 +599,15 @@ pub fn run() {
             if let Ok(dir) = app.path().app_log_dir() {
                 let _ = fs::create_dir_all(dir);
             }
+            // WDIO and `kill -TERM` do not always emit Tauri Exit. Stop the
+            // sidecar on SIGTERM/SIGINT so port 7474 is not left behind.
+            let handle = app.handle().clone();
+            let _ = ctrlc::set_handler(move || {
+                if let Some(state) = handle.try_state::<AppState>() {
+                    stop_managed_process(&state);
+                }
+                handle.exit(0);
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -611,12 +621,15 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building HarnessTap desktop")
         .run(|app, event| {
-            if let tauri::RunEvent::Exit = event {
-                // Kill the managed sidecar so quitting never leaves an
-                // orphaned ht-agent holding the port and state files.
-                if let Some(state) = app.try_state::<AppState>() {
-                    stop_managed_process(&state);
+            match event {
+                tauri::RunEvent::Exit | tauri::RunEvent::ExitRequested { .. } => {
+                    // Kill the managed sidecar so quitting never leaves an
+                    // orphaned ht-agent holding the port and state files.
+                    if let Some(state) = app.try_state::<AppState>() {
+                        stop_managed_process(&state);
+                    }
                 }
+                _ => {}
             }
         });
 }

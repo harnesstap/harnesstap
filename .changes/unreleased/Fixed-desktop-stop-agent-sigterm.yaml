@@ -1,0 +1,5 @@
+kind: Fixed
+body: Stop the desktop agent on SIGTERM, SIGINT, and when the parent app dies so port 7474 is not left behind.
+time: 2026-10-10T18:20:00Z
+custom:
+  Issue: ""
