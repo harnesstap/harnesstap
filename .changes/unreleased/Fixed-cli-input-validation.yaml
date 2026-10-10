@@ -1,0 +1,5 @@
+kind: Fixed
+body: Require a profile name when non-interactive, reject invalid plugin names, and expand ~ in path args.
+time: 2026-10-10T05:40:00Z
+custom:
+  Issue: ""

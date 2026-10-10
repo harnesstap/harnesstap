@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { resolveUserPath } from "../../utils/user-path.js";
 import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
@@ -49,7 +49,7 @@ import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { makeIdColumn } from "../columns.js";
 import { formatCount } from "../formatting.js";
-import { CLI_ERRORS, ON_CONFLICT_HELP } from "../messages.js";
+import { ON_CONFLICT_HELP } from "../messages.js";
 import {
   fail,
   formatCommand,
@@ -215,9 +215,11 @@ async function handleScanCommand(
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
-  const projectRoot = resolve(path);
-  if (!existsSync(projectRoot)) {
-    fail(CLI_ERRORS.directoryNotFound(path));
+  let projectRoot: string;
+  try {
+    projectRoot = resolveUserPath(path, { mustExist: true });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
     return;
   }
   const detected = detectPlatforms(projectRoot);
@@ -384,7 +386,13 @@ function handleHistoryCommand(
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const projectRoot = resolve(path);
+  let projectRoot: string;
+  try {
+    projectRoot = resolveUserPath(path, { mustExist: true });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+    return;
+  }
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
     reportNoGitOrigin(formatCommand("history"));
@@ -477,9 +485,11 @@ async function handleProjectStatusCommand(
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const projectRoot = resolve(path);
-  if (!existsSync(projectRoot)) {
-    fail(CLI_ERRORS.directoryNotFound(path));
+  let projectRoot: string;
+  try {
+    projectRoot = resolveUserPath(path, { mustExist: true });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
     return;
   }
 
@@ -579,7 +589,13 @@ async function handleProjectSyncCommand(
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const projectRoot = resolve(path);
+  let projectRoot: string;
+  try {
+    projectRoot = resolveUserPath(path, { mustExist: true });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+    return;
+  }
   let referenceStrategy: ProjectReferenceStrategy;
   try {
     referenceStrategy = parseReferenceStrategy(opts.reference);

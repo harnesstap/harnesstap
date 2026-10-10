@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { resolve } from "node:path";
+import { resolveUserPath } from "../../utils/user-path.js";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { isProfilePlugin } from "../../constants/profile.js";
@@ -175,11 +175,17 @@ export async function handleApplyCommand(
 ): Promise<void> {
   const outputFormat = parseOutputFormat(opts.format);
   const platforms = resolveDestinationPlatforms(opts.harness);
-  const resolved = resolveApplyScope({
-    global: opts.global,
-    project: opts.project,
-    platforms,
-  });
+  let resolved: ReturnType<typeof resolveApplyScope>;
+  try {
+    resolved = resolveApplyScope({
+      global: opts.global,
+      project: opts.project,
+      platforms,
+    });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+    return;
+  }
 
   if (outputFormat === "human") {
     printDestination(resolved);
@@ -227,7 +233,7 @@ export async function handleInstallCommand(
   if (registryId) {
     try {
       const result = await withMcpManifestAppend({
-        projectRoot: resolve(opts.project),
+        projectRoot: resolveUserPath(opts.project, { mustExist: true }),
         registryId,
         dryRun: opts.dryRun,
         run: () => handleApplyCommand([], opts),

@@ -1,7 +1,7 @@
-import { resolve } from "node:path";
 import type { PlatformPaths } from "../types.js";
 import { getPlatform } from "../platforms/registry.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { resolveUserPath } from "../utils/user-path.js";
 import { ui } from "../ui/index.js";
 
 export type ApplyScope = "project" | "global";
@@ -32,7 +32,7 @@ export function resolveApplyScope(input: {
       destinationLine: `→ machine home ${paths.map((p) => `~/${p}`).join(", ")}`.trimEnd(),
     };
   }
-  const root = resolve(input.project ?? ".");
+  const root = resolveUserPath(input.project ?? ".", { mustExist: true });
   return { scope: "project", root, destinationLine: `→ project ${root}` };
 }
 

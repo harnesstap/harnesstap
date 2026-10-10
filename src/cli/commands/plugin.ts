@@ -1,6 +1,6 @@
 import { Option, type Command } from "commander";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolveUserPath } from "../../utils/user-path.js";
 import {
   CliUsageError,
   conflictingOptions,
@@ -184,14 +184,13 @@ import {
   promptMaterializationConflict,
   resolveApplyConflictPolicy,
 } from "../../services/materialization-conflicts.js";
-import {
-  type ApplyCommandOpts,
-} from "../../services/apply-command-options.js";
+import type { ApplyCommandOpts } from "../../services/apply-command-options.js";
 import {
   PLUGIN_ATTACHMENT_TYPES,
   PluginAttachmentHintError,
   validatePluginAttachmentType,
 } from "../../services/plugin-composition.js";
+import { isValidPluginDisplayName } from "../../services/plugin-display-name.js";
 import { createProgress, type ProgressHandle } from "../../ui/progress.js";
 import {
   isPromptCancellationError,
@@ -421,7 +420,13 @@ export async function handleProjectApplyCommand(
   initializeSchema(db);
 
   const outputFormat = parseOutputFormat(opts.format);
-  const projectRoot = resolve(opts.project);
+  let projectRoot: string;
+  try {
+    projectRoot = resolveUserPath(opts.project, { mustExist: true });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+    return;
+  }
 
   let resolvedPluginNames: string[] = pluginNames.length > 0 ? [...pluginNames] : [];
   let manifestGitLocks: ApmGitLockFields[] = [];
@@ -1875,7 +1880,13 @@ async function handlePluginFromProjectCommand(
       return;
     }
 
-    const projectRoot = resolve(opts.project);
+    let projectRoot: string;
+    try {
+      projectRoot = resolveUserPath(opts.project, { mustExist: true });
+    } catch (error) {
+      fail(error instanceof Error ? error.message : String(error));
+      return;
+    }
 
     // First, preview what would happen
     const { previewPluginFromProject } = await import("../../services/plugin-from-project.js");
@@ -2009,6 +2020,16 @@ async function handlePluginCreateCommand(
   const format = parseOutputFormat(opts.format);
   const db = getDb();
   initializeSchema(db);
+  const pluginName = name?.trim() ?? "";
+  if (!pluginName) {
+    fail(CLI_ERRORS.emptyPluginName);
+    return;
+  }
+  if (!isValidPluginDisplayName(pluginName)) {
+    fail(CLI_ERRORS.invalidPluginName(name));
+    return;
+  }
+  name = pluginName;
   const tags = opts.tags?.split(",").map((tag) => tag.trim()).filter(Boolean) ?? [];
   if (opts.profile) {
     tags.push(PROFILE_PLUGIN_TAG);
@@ -3180,7 +3201,7 @@ export function registerDeprecatedLayerAlias(root: Command): void {
       ui.warn("ht layer is now ht plugin. The old spelling works for one release.");
       const command = args[args.length - 1] as Command;
       const raw = process.argv.slice(2);
-      const layerIdx = raw.findIndex((arg) => arg === "layer");
+      const layerIdx = raw.indexOf("layer");
       const rest = layerIdx >= 0 ? raw.slice(layerIdx + 1) : command.args;
       await root.parseAsync(["plugin", ...rest], { from: "user" });
     });

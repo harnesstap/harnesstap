@@ -1,6 +1,4 @@
 import type { Command } from "commander";
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
 import {
   addApplyCommandOptions,
   type ApplyCommandOpts,
@@ -9,8 +7,8 @@ import { handleApplyCommand, type ApplyCommandActionOpts } from "./apply.js";
 import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
 import { previewApmTargets, TargetFlagError } from "../../services/apm-targets.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { resolveUserPath } from "../../utils/user-path.js";
 import { ui } from "../../ui/index.js";
-import { CLI_ERRORS } from "../messages.js";
 import {
   fail,
   failCaught,
@@ -43,9 +41,11 @@ export async function handleCompileCommand(
 }
 
 export function handleTargetsCommand(opts: TargetsCommandOpts): void {
-  const projectRoot = resolve(opts.project ?? ".");
-  if (!existsSync(projectRoot)) {
-    fail(CLI_ERRORS.directoryNotFound(opts.project ?? "."));
+  let projectRoot: string;
+  try {
+    projectRoot = resolveUserPath(opts.project ?? ".", { mustExist: true });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
     return;
   }
   const format = opts.json ? "json" : parseOutputFormat(opts.format);

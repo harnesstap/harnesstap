@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { resolveUserPath } from "../utils/user-path.js";
 import { listProfilePlugins } from "../constants/profile.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {
@@ -148,7 +148,7 @@ export async function resolveProfileUseSelection(input: {
     return { kind: "global", pluginName: input.name };
   }
 
-  const projectPath = resolve(input.project ?? process.cwd());
+  const projectPath = resolveUserPath(input.project ?? process.cwd());
   const config = findProjectConfig(projectPath);
 
   if (input.profile) {
@@ -172,27 +172,5 @@ export async function resolveProfileUseSelection(input: {
     return promptForProfileUseSelection(config);
   }
 
-  if (config) {
-    if (config.profiles.length === 0) {
-      return null;
-    }
-    if (config.profiles.length === 1) {
-      const [onlyProfile] = config.profiles;
-      if (!onlyProfile) {
-        return null;
-      }
-      return { kind: "project", profileKey: onlyProfile.name };
-    }
-    if (config.default_profile) {
-      const hasDefault = config.profiles.some(
-        (profile) => profile.name === config.default_profile,
-      );
-      if (hasDefault) {
-        return { kind: "project", profileKey: config.default_profile };
-      }
-    }
-    return null;
-  }
-
-  return null;
+  throw new Error("Pass a profile name.");
 }
