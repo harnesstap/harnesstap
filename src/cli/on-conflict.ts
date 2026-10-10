@@ -9,8 +9,9 @@ export const ON_CONFLICT_HELP =
 export const ON_CONFLICT_PLUGIN_IMPORT_HELP =
   "What to do when it already exists: replace, skip, prompt, cancel or merge";
 
-/** Same help line as ON_CONFLICT_HELP. Non-interactive apply still falls back to replace; W2-12 switches that default to cancel. */
-export const ON_CONFLICT_APPLY_HELP = ON_CONFLICT_HELP;
+/** Apply, profile, and project: non-interactive default is cancel. Pass --on-conflict replace in CI. */
+export const ON_CONFLICT_APPLY_HELP =
+  "What to do when it already exists: replace, skip, prompt or cancel. Non-interactive default: cancel";
 
 export const ON_CONFLICT_VALUE_HELP = {
   replace: "Replace the existing one",

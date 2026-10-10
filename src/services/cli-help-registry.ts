@@ -5,6 +5,8 @@ export interface CommandHelpEntry {
   /** Extra paragraphs shown under the short description on leaf-command help. */
   details?: string;
   examples?: string[];
+  /** Optional args that error without a TTY; help shows them as required. */
+  requiredOffTtyArgs?: string[];
 }
 
 export type CommandHelpRegistry = Record<string, CommandHelpEntry>;
@@ -13,6 +15,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   "help.scenario": {
     description: "Show a numbered scenario playbook from the docs",
     examples: ["help scenario 11", "help scenario 7 --format json"],
+  },
+  doctor: {
+    description: "Check Node, native modules, paths, and harness detection",
+    examples: ["doctor", "doctor --format json"],
   },
   init: {
     description: "Initialize local HarnessTap state",
@@ -47,6 +53,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "scan",
       "scan ./my-project --dry-run",
       "scan --harness claude-code",
+      "scan --format json",
     ],
   },
   mirror: {
@@ -118,11 +125,11 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "Resolve a plugin's dependency graph and materialize it into the project, or into machine home with --global",
     examples: [
       "apply base",
-      "apply base --target cursor",
       "apply base --harness claude-code",
       "apply work --global",
       "apply ./build/my-pkg",
       "apply base --format json",
+      "apply base --on-conflict replace",
     ],
   },
   install: {
@@ -196,8 +203,8 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "Prints the canonical target table (or JSON) using the same resolution order as ht compile / ht install: CLI flags, then targets: in apm.yml, then project/global harness preference, then filesystem auto-detect. --all includes the agent-skills meta-target row. Use this to preview the set before pinning targets: for portable lockfile / harness ownership.",
     examples: [
       "targets",
-      "targets --json",
-      "targets --all --json",
+      "targets --format json",
+      "targets --all --format json",
       "targets --project .",
     ],
   },
@@ -283,6 +290,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin show my-plugin",
       "plugin show my-plugin --format json",
     ],
+    requiredOffTtyArgs: ["name"],
   },
   "plugin.edit": {
     description:
@@ -303,6 +311,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin delete my-plugin",
       "plugin delete",
     ],
+    requiredOffTtyArgs: ["name"],
   },
   "plugin.catalog.list": {
     description: "Show default and connected catalog sources",
@@ -351,6 +360,14 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin catalog bindings my-plugin",
       "plugin catalog bindings my-plugin --add acme/default",
       "plugin catalog bindings my-plugin --clear",
+    ],
+  },
+  "plugin.publish": {
+    description: "Publish a local plugin to registered cloud catalogs",
+    examples: [
+      "plugin publish my-plugin",
+      "plugin publish my-plugin acme/default",
+      "plugin publish my-plugin --version 1.1.0",
     ],
   },
   "plugin.pull": {
@@ -476,6 +493,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "profile show work",
       "profile show work --format json",
     ],
+    requiredOffTtyArgs: ["name"],
   },
   "profile.status": {
     description:
@@ -648,7 +666,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "List imported resources in the local library",
     examples: [
       "resource list",
-      "resource list --type skill",
+      "resource list skill",
       "resource list --search caveman",
     ],
   },
@@ -659,6 +677,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "resource show caveman",
       "resource show skill:caveman --format json",
     ],
+    requiredOffTtyArgs: ["resource"],
   },
   "resource.sync": {
     description:
@@ -675,6 +694,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "resource delete caveman",
       "resource delete",
     ],
+    requiredOffTtyArgs: ["resource"],
   },
   "harness.list": {
     description: "List supported harnesses",
@@ -687,7 +707,6 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Set global registered harnesses",
     examples: [
       "harness set --harnesses claude-code,cursor,codex",
-      "harness set --main claude-code --aliases cursor,codex",
     ],
   },
   "harness.status": {

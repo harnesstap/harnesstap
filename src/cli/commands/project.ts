@@ -56,7 +56,7 @@ import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { makeIdColumn } from "../columns.js";
 import { formatCount } from "../formatting.js";
-import { ON_CONFLICT_HELP } from "../messages.js";
+import { ON_CONFLICT_APPLY_HELP } from "../messages.js";
 import {
   fail,
   formatCommand,
@@ -220,10 +220,12 @@ async function handleScanCommand(
     skipExisting?: boolean;
     namespace?: string;
     noInteractive?: boolean;
+    format?: string;
   },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
   let projectRoot: string;
   try {
     projectRoot = resolveUserPath(path, { mustExist: true });
@@ -247,6 +249,10 @@ async function handleScanCommand(
         ui.warn("--global is ignored with --dry-run");
       }
       const imports = await scanPluginSource(projectRoot);
+      if (format === "json") {
+        printJson({ dry_run: true, imports });
+        return;
+      }
       for (const result of imports) {
         const count = result.resources.length;
         const dryTag = ui.theme.muted("[dry run] ");
@@ -265,10 +271,14 @@ async function handleScanCommand(
     const persisted = await scanAndPersistPluginSource(projectRoot);
     spin.stop();
 
-    for (const result of persisted.imports) {
-      ui.success(`${result.plugin_name} ${ui.icons.bullet} ${formatCount(result.resources.length, "resource")}`);
-      for (const resource of result.resources) {
-        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+    if (format === "json") {
+      printJson(persisted);
+    } else {
+      for (const result of persisted.imports) {
+        ui.success(`${result.plugin_name} ${ui.icons.bullet} ${formatCount(result.resources.length, "resource")}`);
+        for (const resource of result.resources) {
+          console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+        }
       }
     }
 
@@ -316,6 +326,10 @@ async function handleScanCommand(
       scanHarnessFilter,
     );
     const harness = dropHarnessSkillsDuplicatingPluginSource(rawHarness, plugin);
+    if (format === "json") {
+      printJson({ dry_run: true, harness, plugin });
+      return;
+    }
     printProjectScanResults(harness, { dryRun: true });
     if (plugin.length > 0) {
       printPluginScanDryRun(plugin);
@@ -348,6 +362,14 @@ async function handleScanCommand(
     throw new Error(
       `${formatCount(harnessPersisted.conflicts.length, "resource conflict")}. Use --overwrite or --skip-existing.`,
     );
+  }
+
+  if (format === "json") {
+    printJson({
+      harness: harnessPersisted,
+      plugin: merged.scan.plugin,
+    });
+    return;
   }
 
   printProjectScanResults(merged.scan.harness, {
@@ -675,6 +697,7 @@ export function registerProjectCommandsBeforeConfig(root: Command): void {
     .option("--overwrite", "Overwrite library resources when scan content differs")
     .option("--skip-existing", "Keep existing library resources when scan content differs")
     .option("--namespace <name>", "Namespace for imported project resources")
+    .option("--format <mode>", "Output format: human or json", "human")
     .description(
       "Scan a project directory or plugin source and import configurations into the database",
     )
@@ -697,7 +720,7 @@ export function registerProjectCommandsBeforeConfig(root: Command): void {
     .option("--base-url <url>", "Cloud base URL for dependency pulls")
     .option(
       "--on-conflict <policy>",
-      ON_CONFLICT_HELP,
+      ON_CONFLICT_APPLY_HELP,
     )
     .option("--no-interactive", "Disable interactive prompts")
     .option("--interactive", "Enable interactive prompts")

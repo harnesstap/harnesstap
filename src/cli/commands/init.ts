@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import type { Command } from "commander";
+import { Option, type Command } from "commander";
 import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
@@ -364,8 +364,8 @@ export function registerInitCommands(root: Command): void {
     .description("Initialize the harnesstap database and config directory")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--harnesses <slugs>", "Comma-separated registered harness slugs")
-    .option("--main <slug>", "Deprecated: prepended to the registered set")
-    .option("--aliases <slugs>", "Deprecated: appended to the registered set")
+    .addOption(new Option("--main <slug>", "Deprecated: prepended to the registered set").hideHelp())
+    .addOption(new Option("--aliases <slugs>", "Deprecated: appended to the registered set").hideHelp())
     .option("--no-default-profile", "Skip creating and activating the global default profile plugin")
     .option(
       "--interactive",
