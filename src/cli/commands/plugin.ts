@@ -2632,19 +2632,21 @@ pluginCmd
   .alias("ls")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in human-readable tables")
-  .option("-s, --search <query>", "Filter by name, description, or tags (local and remote)")
-  .option("--local-only", "List only local plugins")
+  .option("-s, --search <query>", "Filter by name, description, or tags")
+  .option("--remote", "Include remote catalog plugins")
+  .addOption(new Option("--local-only", "List only local plugins").hideHelp())
   .option("--remote-only", "List only remote catalog plugins")
   .option("--tag <tag>", "Filter remote catalog plugins by tag")
   .option("--account <name>", "Cloud account to use for remote listing")
   .option("--base-url <url>", "HarnessTap Cloud base URL")
   .option("--no-interactive", "Disable interactive wizards")
   .option("--interactive", "Enable interactive wizards")
-  .description("List local plugins and optionally search the remote catalog")
+  .description("List local plugins (pass --remote to include the catalog)")
   .action(async (opts: {
     format?: string;
     showId?: boolean;
     search?: string;
+    remote?: boolean;
     localOnly?: boolean;
     remoteOnly?: boolean;
     tag?: string;
@@ -2658,6 +2660,7 @@ pluginCmd
     try {
       await handlePluginListCommand({
         search: opts.search,
+        remote: opts.remote,
         localOnly: opts.localOnly,
         remoteOnly: opts.remoteOnly,
         tag: opts.tag,

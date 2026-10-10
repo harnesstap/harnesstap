@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { filterLocalPlugins } from "../../src/services/plugin-list.js";
+import { filterLocalPlugins, pluginListIncludesRemote } from "../../src/services/plugin-list.js";
 import type { Plugin } from "../../src/types.js";
 
 function makePlugin(overrides: Partial<Plugin> = {}): Plugin {
@@ -48,5 +48,13 @@ describe("filterLocalPlugins", () => {
 
   it("is case-insensitive", () => {
     expect(filterLocalPlugins(plugins, "TEAM")).toEqual([plugins[0]]);
+  });
+});
+
+describe("pluginListIncludesRemote", () => {
+  it("is off by default and on with --remote or --remote-only", () => {
+    expect(pluginListIncludesRemote({})).toBe(false);
+    expect(pluginListIncludesRemote({ remote: true })).toBe(true);
+    expect(pluginListIncludesRemote({ remoteOnly: true })).toBe(true);
   });
 });

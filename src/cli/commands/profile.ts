@@ -1,4 +1,4 @@
-import type { Command } from "commander";
+import { Option, type Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
@@ -182,17 +182,19 @@ export function registerProfileCommands(root: Command): void {
 profileCmd
   .command("list")
   .alias("ls")
-  .option("-s, --search <query>", "Filter by name, description, or tags (local and remote)")
-  .option("--local-only", "List only local profile plugins")
+  .option("-s, --search <query>", "Filter by name, description, or tags")
+  .option("--remote", "Include remote catalog profile plugins")
+  .addOption(new Option("--local-only", "List only local profile plugins").hideHelp())
   .option("--remote-only", "List only remote catalog profile plugins")
   .option("--account <name>", "Cloud account to use for remote listing")
   .option("--base-url <url>", "HarnessTap Cloud base URL")
   .option("--no-interactive", "Disable interactive wizards")
   .option("--interactive", "Enable interactive wizards")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("List local profile plugins and remote catalog profiles")
+  .description("List local profile plugins (pass --remote to include the catalog)")
   .action(async (opts: {
     search?: string;
+    remote?: boolean;
     localOnly?: boolean;
     remoteOnly?: boolean;
     account?: string;
@@ -209,6 +211,7 @@ profileCmd
         localPluginsProvider: listProfilePluginsCommand,
         tag: PROFILE_PLUGIN_TAG,
         search: opts.search,
+        remote: opts.remote,
         localOnly: opts.localOnly,
         remoteOnly: opts.remoteOnly,
         format: parseOutputFormat(opts.format),
