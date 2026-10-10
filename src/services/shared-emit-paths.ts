@@ -3,6 +3,11 @@ import { join } from "node:path";
 import { getPlatform } from "../platforms/registry.js";
 import type { SerializedFile, SerializerTarget } from "../types.js";
 import type { ApplyResult } from "./applier.js";
+import { isPreexistingPath } from "../models/preexisting-path.js";
+import {
+  listMaterializationsForRoot,
+  listMaterializationsForRootPath,
+} from "../models/resource-materialization.js";
 
 const SKILL_FILE_RE = /^(.*)\/skills\/([^/]+)\/(.*)$/;
 
@@ -187,7 +192,21 @@ export function preferSharedSkillEmits(
   return next;
 }
 
-function existingSkillConsumeDir(
+function skillRelativePath(dir: string, name: string): string {
+  return `${dir}${name}/SKILL.md`.replace(/^\.\//, "");
+}
+
+function isUnmanagedLiveSkill(
+  rootPath: string,
+  relativePath: string,
+): boolean {
+  if (isPreexistingPath(rootPath, relativePath)) {
+    return true;
+  }
+  return listMaterializationsForRootPath(rootPath, relativePath).length === 0;
+}
+
+function existingUnmanagedSkillConsumeDir(
   rootPath: string,
   name: string,
   consumeDirs: readonly string[],
@@ -195,7 +214,11 @@ function existingSkillConsumeDir(
   let best: string | undefined;
   let bestRank = -1;
   for (const dir of consumeDirs) {
-    if (!existsSync(join(rootPath, `${dir}${name}/SKILL.md`))) {
+    const relative = skillRelativePath(dir, name);
+    if (!existsSync(join(rootPath, relative))) {
+      continue;
+    }
+    if (!isUnmanagedLiveSkill(rootPath, relative)) {
       continue;
     }
     const rank = sharedSkillDirRank(dir);
@@ -205,6 +228,20 @@ function existingSkillConsumeDir(
     }
   }
   return best;
+}
+
+export function collectManagedSkillPlacements(rootPath: string): Map<string, string> {
+  const placements = new Map<string, string>();
+  for (const row of listMaterializationsForRoot(rootPath)) {
+    const parsed = parseSkillEmitPath(row.path);
+    if (!parsed || parsed.rest !== "SKILL.md") {
+      continue;
+    }
+    if (!placements.has(parsed.name)) {
+      placements.set(parsed.name, parsed.skillsDir);
+    }
+  }
+  return placements;
 }
 
 function placeSkillOnHost(
@@ -260,6 +297,7 @@ export function pinSkillEmitsToExistingLivePaths(
   results: ApplyResult[],
   platformIds: readonly string[],
   target: SerializerTarget,
+  options?: { previousManagedPlacements?: ReadonlyMap<string, string> },
 ): ApplyResult[] {
   const consumeDirs = [
     ...new Set(platformIds.flatMap((id) => skillConsumeDirs(id, target))),
@@ -283,19 +321,27 @@ export function pinSkillEmitsToExistingLivePaths(
     ...result,
     files: [...result.files],
   }));
+  const previousManaged =
+    options?.previousManagedPlacements ?? collectManagedSkillPlacements(rootPath);
 
   for (const name of skillNames) {
-    const existingDir = existingSkillConsumeDir(rootPath, name, consumeDirs);
-    if (!existingDir) {
+    const unmanagedDir = existingUnmanagedSkillConsumeDir(
+      rootPath,
+      name,
+      consumeDirs,
+    );
+    const previousDir = previousManaged.get(name);
+    const destDir = unmanagedDir ?? previousDir;
+    if (!destDir) {
       continue;
     }
     const host =
-      next.find((result) => consume.get(result.platformId)?.has(existingDir))
+      next.find((result) => consume.get(result.platformId)?.has(destDir))
       ?? next[0];
     if (!host) {
       continue;
     }
-    placeSkillOnHost(next, host, name, existingDir, consume);
+    placeSkillOnHost(next, host, name, destDir, consume);
   }
 
   return next;

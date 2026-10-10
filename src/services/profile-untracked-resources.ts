@@ -602,7 +602,7 @@ async function discardScanResultsFromHarness(input: {
   if (paths.length === 0) {
     throw new Error("No managed files to remove for discard.");
   }
-  removeGlobalMaterializedFiles(input.originRef, paths);
+  removeGlobalMaterializedFiles(input.originRef, paths, { mode: "listed" });
 
   if (input.scope === "project") {
     const rescanned = await scanProject(input.originRef);
@@ -975,7 +975,7 @@ export function removeUntrackedStashFiles(
 ): string[] {
   const paths = files.map((file) => file.path);
   if (!dryRun) {
-    removeGlobalMaterializedFiles(homeRoot, paths);
+    removeGlobalMaterializedFiles(homeRoot, paths, { mode: "listed" });
   }
   return paths;
 }

@@ -413,7 +413,8 @@ describe("applier services", () => {
 
       expect(result.cancelled).toBe(false);
       expect(result.conflicts).toEqual([]);
-      expect(result.writtenFiles).toEqual([generated.files[0].path]);
+      expect(result.writtenFiles).toEqual([]);
+      expect(result.skippedFiles).toEqual([generated.files[0].path]);
       expect(resolver).not.toHaveBeenCalled();
       expect(readFileSync(targetPath, "utf-8")).toBe(generated.files[0].content);
     } finally {

@@ -45,6 +45,7 @@ import {
   generateFiles,
   materializeFiles,
 } from "../../services/applier.js";
+import { persistWrittenMaterializations } from "../../services/materialization-ownership.js";
 import { exportPluginDefinition } from "../../services/plugin-editor.js";
 import { importFromFile, inspectPluginExportFile } from "../../services/plugin-import.js";
 import { openPathInSystemEditor } from "../../services/open-path.js";
@@ -1134,6 +1135,16 @@ export async function handleProjectApplyCommand(
       process.exitCode = 1;
       return;
     }
+    persistWrittenMaterializations({
+      scope: "project",
+      project_id: null,
+      root_path: projectRoot,
+      platformResults: [{
+        platformId: result.platformId,
+        files: result.files,
+        writtenPaths: materialized.writtenFiles,
+      }],
+    });
     platformResults.push({
       platform: result.platformId,
       written_files: materialized.writtenFiles,

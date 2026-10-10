@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 33;
+const SCHEMA_VERSION = 34;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -284,6 +284,34 @@ const MIGRATIONS: Record<number, Migration> = {
   `,
   32: migrateHarnessTablesToRegisteredSet,
   33: migratePluginResourcesHarnessScope,
+  34: `
+    CREATE TABLE IF NOT EXISTS preexisting_paths (
+      id TEXT PRIMARY KEY,
+      root_path TEXT NOT NULL,
+      path TEXT NOT NULL,
+      content_hash TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      UNIQUE(root_path, path)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_preexisting_paths_root
+      ON preexisting_paths(root_path, path);
+
+    CREATE TABLE IF NOT EXISTS apply_removal_backups (
+      id TEXT PRIMARY KEY,
+      apply_id TEXT NOT NULL,
+      snapshot_id TEXT,
+      relative_path TEXT NOT NULL,
+      content BLOB NOT NULL,
+      mode INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_apply_removal_backups_apply
+      ON apply_removal_backups(apply_id);
+    CREATE INDEX IF NOT EXISTS idx_apply_removal_backups_snapshot
+      ON apply_removal_backups(snapshot_id);
+  `,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {

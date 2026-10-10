@@ -1,0 +1,5 @@
+kind: Fixed
+body: Stop apply and profile switch from deleting unmanaged skill files and folders. Removals require a matching ownership hash, skip preexisting and user-edited files unless --force-remove, prune only empty directories, and back up every removal into the apply snapshot and ~/.harnesstap/trash.
+time: 2026-10-10T00:30:00Z
+custom:
+  Issue: ""

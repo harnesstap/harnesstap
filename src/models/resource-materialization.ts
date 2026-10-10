@@ -31,6 +31,17 @@ function rowToMaterialization(
   };
 }
 
+function queryMaterializations(
+  sql: string,
+  params: unknown[],
+): ResourceMaterializationRow[] {
+  try {
+    return getDb().prepare(sql).all(...params) as ResourceMaterializationRow[];
+  } catch {
+    return [];
+  }
+}
+
 export function recordResourceMaterialization(input: {
   resource_id: string;
   scope: MaterializationScope;
@@ -128,6 +139,47 @@ export function recordResourceMaterialization(input: {
     created_at: now,
     updated_at: now,
   };
+}
+
+export function listMaterializationsForRoot(
+  rootPath: string,
+): ResourceMaterialization[] {
+  return queryMaterializations(
+    `SELECT * FROM resource_materializations
+     WHERE root_path = ?
+     ORDER BY path ASC`,
+    [rootPath],
+  ).map(rowToMaterialization);
+}
+
+export function listMaterializationsForRootPath(
+  rootPath: string,
+  relativePath: string,
+): ResourceMaterialization[] {
+  return queryMaterializations(
+    `SELECT * FROM resource_materializations
+     WHERE root_path = ?
+       AND path = ?`,
+    [rootPath, relativePath],
+  ).map(rowToMaterialization);
+}
+
+export function deleteMaterializationsForRootPaths(
+  rootPath: string,
+  relativePaths: readonly string[],
+): void {
+  if (relativePaths.length === 0) {
+    return;
+  }
+  const db = getDb();
+  const stmt = db.prepare(
+    `DELETE FROM resource_materializations
+     WHERE root_path = ?
+       AND path = ?`,
+  );
+  for (const relativePath of relativePaths) {
+    stmt.run(rootPath, relativePath);
+  }
 }
 
 export function listResourceMaterializations(
