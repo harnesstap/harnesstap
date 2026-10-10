@@ -1,0 +1,5 @@
+kind: Fixed
+body: Cap CLI tables, show skill bodies in resource show, and print --explain on global apply.
+time: 2026-10-10T18:10:00Z
+custom:
+  Issue: ""

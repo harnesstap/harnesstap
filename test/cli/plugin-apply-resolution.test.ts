@@ -167,6 +167,31 @@ describe("plugin apply resolution", () => {
     expect(result.stdout).toContain("nearest to root");
   });
 
+  it("prints the resolution trail with --explain on apply --global", async () => {
+    const base = createPlugin({ name: "base" });
+    attachInstruction(base.id, "FROM-BASE", "base");
+    const root = createPlugin({ name: "work", tags: ["profile"] });
+    attachInstruction(root.id, "FROM-ROOT", "work");
+    const rootPlugin = getPluginByName("work");
+    if (!rootPlugin) throw new Error("missing work");
+    await addPluginAttachment({ plugin: rootPlugin, selector: "plugin:base" });
+
+    const result = await runCli([
+      "apply",
+      "work",
+      "--global",
+      "--harness",
+      "cursor",
+      "--dry-run",
+      "--explain",
+    ]);
+
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(result.stdout).toContain("base@");
+    expect(result.stdout).toContain("instruction:context");
+    expect(result.stdout).toContain("nearest to root");
+  });
+
   it("errors on a singleton conflict at equal depth and names the fix", async () => {
     const a = createPlugin({ name: "a" });
     attachInstruction(a.id, "FROM-A", "a");

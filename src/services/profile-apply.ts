@@ -138,6 +138,7 @@ export interface ApplyProfilePluginResult {
   skipped_removals?: SafeRemovalSkip[];
   removal_backup?: string;
   removals?: PlannedRemovals;
+  resolution?: ResolutionResult;
 }
 
 function collectProfileSnapshotTrackedFiles(profileName: string): string[] {
@@ -699,6 +700,7 @@ export async function applyProfilePlugin(
       expected_files: files.map((file) => ({ path: file.path, content: file.content })),
       ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
       ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
+      resolution,
       ...removalFields(plannedRemoval),
     };
   }
@@ -781,6 +783,7 @@ export async function applyProfilePlugin(
     conflicts: applied.conflicts.map((conflict) => conflict.path),
     ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
     ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
+    resolution,
     ...(removal ? removalFields(removal) : {}),
   };
 }
