@@ -6,6 +6,7 @@ export {
   duplicatePluginNames,
   formatHookInventoryLabel,
   formatHookInventoryTooltipLines,
+  formatInstructionInventoryLabel,
   formatOriginDisplayLabel,
   formatOriginKindLabel,
   formatResourceDisplayName,

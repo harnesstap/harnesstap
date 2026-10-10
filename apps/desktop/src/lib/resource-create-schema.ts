@@ -1,3 +1,5 @@
+import { CREATE_RESOURCE_COPY } from "./ui-copy";
+
 export const CREATE_RESOURCE_TYPES = [
   "plugin",
   "instruction",
@@ -253,8 +255,8 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
   },
   agent: {
     type: "agent",
-    title: "Agent",
-    description: "A subagent definition with optional model settings.",
+    title: CREATE_RESOURCE_COPY.subagentTitle,
+    description: CREATE_RESOURCE_COPY.subagentDescription,
     fields: [
       nameField(),
       descriptionField(),

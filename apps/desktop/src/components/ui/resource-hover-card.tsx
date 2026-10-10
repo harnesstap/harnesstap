@@ -10,9 +10,9 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { FileText, Folder, Package, Store } from "lucide-react";
-import { labelForType } from "../../lib/contents-diff";
 import { harnessDisplayName } from "../../lib/harness-meta";
 import { formatOriginDisplayLabel } from "../../lib/resource-display";
+import { formatUserPath, hoverTypeLabel } from "../../lib/ui-copy";
 import { originFilterValue } from "../../lib/resource-filters";
 import {
   clampPointerHoverCardPosition,
@@ -237,7 +237,7 @@ export function ResourceHoverCard({
       {model.type !== undefined ? (
         <HoverCardRow
           icon={<TypeIcon type={model.type} />}
-          text={labelForType(model.type, 1)}
+          text={hoverTypeLabel(model.type)}
         />
       ) : null}
       {model.showName ? (
@@ -258,7 +258,7 @@ export function ResourceHoverCard({
       {model.path !== undefined ? (
         <HoverCardRow
           icon={<FileText size={ICON_SIZE} aria-hidden />}
-          text={formatHoverPath(model.path)}
+          text={formatHoverPath(formatUserPath(model.path))}
           mono
           wrap
         />

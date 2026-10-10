@@ -297,12 +297,14 @@
   color: var(--primary-foreground);
 }
 
-.resource-type-tab:disabled {
+.resource-type-tab:disabled,
+.resource-type-tab[aria-disabled="true"] {
   opacity: var(--opacity-disabled);
   cursor: not-allowed;
 }
 
-.resource-type-tab:disabled .resource-type-tab-disabled-host {
+.resource-type-tab:disabled .resource-type-tab-disabled-host,
+.resource-type-tab[aria-disabled="true"] .resource-type-tab-disabled-host {
   pointer-events: auto;
 }
 

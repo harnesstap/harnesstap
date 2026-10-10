@@ -127,7 +127,6 @@ export function ResolveOrderSettings({
       className="settings-section"
       data-testid="resolve-order-settings"
     >
-      <h3>Advanced</h3>
       <h4>Preserve last applied winners</h4>
       <p className="field-note muted">
         When two plugins provide the same resource, apply prefers the plugin

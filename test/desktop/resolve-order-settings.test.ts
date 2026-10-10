@@ -12,6 +12,7 @@ const source = readFileSync(
 
 describe("ResolveOrderSettings", () => {
   test("explains nearest-to-root vs last-in-stack and auto-checks on open", () => {
+    expect(source).not.toContain("<h3>Advanced</h3>");
     expect(source).toContain("Preserve last applied winners");
     expect(source).toContain("closer to the one you applied");
     expect(source).toContain("last-in-stack");

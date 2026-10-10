@@ -132,7 +132,7 @@ describe("resource list render", () => {
     expect(formatResourceListNamespace(row)).toBe("team-marketplace/cursor-team-kit");
   });
 
-  it("renders Agent instructions (AGENTS.md) in the NAME column", () => {
+  it("renders AGENTS.md (shared) in the NAME column", () => {
     const rows = toResourceListRows([{
       ...makeResourceInput({ type: "instruction", name: "agents-instructions", source: "AGENTS.md" }),
       id: "1",
@@ -140,7 +140,7 @@ describe("resource list render", () => {
       updated_at: "2026-01-02T00:00:00.000Z",
     }]);
     const output = renderGroupedResourceListTables(rows, { showId: false, maxWidth: 100 });
-    expect(output).toContain("Agent instructions (AGENTS.md)");
+    expect(output).toContain("AGENTS.md (shared)");
     expect(output).not.toContain("agents-instructions");
     expect(output).toContain("global");
   });

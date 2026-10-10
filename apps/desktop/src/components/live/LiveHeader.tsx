@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { ResourceTypeTabs } from "../ResourceTypeTabs";
 import type { TypeTabAttention } from "../../lib/resource-type-tabs";
+import type { TypeTabEmptySurface } from "../../lib/ui-copy";
 
 export function ListSearchField({
   value,
@@ -39,6 +40,7 @@ export interface LiveHeaderProps {
   attention: ReadonlyMap<string, TypeTabAttention>;
   typeTab: string | null;
   onTypeTab: (next: string | null) => void;
+  emptySurface?: TypeTabEmptySurface;
   searchTrailing?: ReactNode;
 }
 
@@ -49,6 +51,7 @@ export function LiveHeader({
   attention,
   typeTab,
   onTypeTab,
+  emptySurface = "profile",
   searchTrailing,
 }: LiveHeaderProps) {
   const searchField = (
@@ -73,6 +76,8 @@ export function LiveHeader({
         <ResourceTypeTabs
           includeAll={true}
           emptyMode="disable"
+          emptySurface={emptySurface}
+          overflow="wrap"
           wide
           counts={typeCounts}
           attention={attention}
