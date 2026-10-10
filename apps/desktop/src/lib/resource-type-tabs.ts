@@ -124,15 +124,19 @@ export function typeTabCountsFromRecord(
 
 export type ResourceTypeTabEmptyMode = "hide" | "disable" | "show";
 
+export type TypeTabZeroSurface = "profile" | "harness";
+
 export type ResourceTypeTabOptions = {
   /** When false, omit the All tab even if several types are present. Default true. */
   includeAll?: boolean;
   /**
    * hide (default): presence-filter empty types.
-   * disable: keep empty types visible and disabled (`No <type> found`).
+   * disable: keep empty types visible and disabled (`0 Plugins`).
    * show: keep empty types visible and selectable (`0 Skills`).
    */
   emptyMode?: ResourceTypeTabEmptyMode;
+  /** Muted zero-count tooltip on profile vs harness inventories. */
+  emptySurface?: TypeTabZeroSurface;
 };
 
 /** Library type strip: every canonical type, including count 0. */
@@ -163,7 +167,7 @@ function showsEmptyCanonicalTabs(mode: ResourceTypeTabEmptyMode): boolean {
   }
 }
 
-function emptyTabUsesNoneFoundCopy(mode: ResourceTypeTabEmptyMode): boolean {
+function emptyTabUsesZeroStateCopy(mode: ResourceTypeTabEmptyMode): boolean {
   switch (mode) {
     case "hide":
     case "show":
@@ -173,6 +177,36 @@ function emptyTabUsesNoneFoundCopy(mode: ResourceTypeTabEmptyMode): boolean {
     default: {
       const neverMode: never = mode;
       return neverMode;
+    }
+  }
+}
+
+/** `No plugins in this profile yet` / `No plugins on this harness yet`. */
+export function typeTabZeroStateCopy(
+  type: string,
+  surface: TypeTabZeroSurface,
+): string {
+  if (type === ALL_RESOURCE_TYPE_TAB) {
+    switch (surface) {
+      case "profile":
+        return "No resources yet";
+      case "harness":
+        return "No resources";
+      default: {
+        const neverSurface: never = surface;
+        return neverSurface;
+      }
+    }
+  }
+  const unit = resourceTypeTabUnit(type, 0);
+  switch (surface) {
+    case "profile":
+      return `No ${unit} in this profile yet`;
+    case "harness":
+      return `No ${unit} on this harness yet`;
+    default: {
+      const neverSurface: never = surface;
+      return neverSurface;
     }
   }
 }
@@ -355,13 +389,6 @@ export function resourceTypeTabPillsText(
   options?: ResourceTypeTabOptions,
 ): string {
   const count = resourceTypeTabItemCount(type, counts);
-  if (
-    count <= 0
-    && emptyTabUsesNoneFoundCopy(emptyMode(options))
-    && type !== ALL_RESOURCE_TYPE_TAB
-  ) {
-    return `No ${resourceTypeTabLabel(type)} found`;
-  }
   return `${count} ${resourceTypeTabLabel(type)}`;
 }
 
@@ -414,10 +441,10 @@ export function resourceTypeTabTooltip(
   const count = resourceTypeTabItemCount(type, counts);
   if (count <= 0) {
     if (
-      emptyTabUsesNoneFoundCopy(emptyMode(options))
+      emptyTabUsesZeroStateCopy(emptyMode(options))
       && type !== ALL_RESOURCE_TYPE_TAB
     ) {
-      return `No ${resourceTypeTabLabel(type)} found`;
+      return typeTabZeroStateCopy(type, options?.emptySurface ?? "profile");
     }
     return resourceTypeTabLabel(type);
   }

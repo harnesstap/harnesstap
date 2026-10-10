@@ -110,6 +110,7 @@ export function HarnessDetail({
         attention={NO_ATTENTION}
         typeTab={typeTab}
         onTypeTab={onTypeTab}
+        emptySurface="harness"
         searchTrailing={
           <HarnessFilterMenu
             entry={entry}

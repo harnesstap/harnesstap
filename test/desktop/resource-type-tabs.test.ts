@@ -17,6 +17,7 @@ import {
   typeTabAttentionTooltip,
   typeTabCountsFromRecord,
   typeTabsMoreLabel,
+  typeTabZeroStateCopy,
   visibleResourceTypeTabs,
 } from "../../apps/desktop/src/lib/resource-type-tabs.ts";
 import { resourceTypeGlyph } from "../../apps/desktop/src/lib/type-glyph.ts";
@@ -130,10 +131,10 @@ describe("resourceTypeTabPillsText", () => {
     expect(resourceTypeTabPillsText("skill", one)).toBe("1 Skills");
   });
 
-  it("labels empty disabled types as No <type> found", () => {
+  it("labels empty disabled types as 0 <type>", () => {
     const counts = countResourceTypeTabs(["skill"]);
     expect(resourceTypeTabPillsText("plugin", counts, { emptyMode: "disable" })).toBe(
-      "No Plugins found",
+      "0 Plugins",
     );
     expect(resourceTypeTabPillsText("all", counts, { emptyMode: "disable" })).toBe(
       "1 All",
@@ -177,10 +178,19 @@ describe("resource type tab aria-labels", () => {
     expect(resourceTypeTabTooltip("all", new Map([["skill", 0]]))).toBe("All");
   });
 
-  it("uses No <type> found for empty disabled tabs", () => {
+  it("uses muted zero-state copy for empty disabled tabs", () => {
     const counts = countResourceTypeTabs(["skill"]);
     expect(resourceTypeTabTooltip("plugin", counts, { emptyMode: "disable" })).toBe(
-      "No Plugins found",
+      "No plugins in this profile yet",
+    );
+    expect(
+      resourceTypeTabTooltip("plugin", counts, {
+        emptyMode: "disable",
+        emptySurface: "harness",
+      }),
+    ).toBe("No plugins on this harness yet");
+    expect(typeTabZeroStateCopy("plugin", "profile")).toBe(
+      "No plugins in this profile yet",
     );
     expect(resourceTypeTabTooltip("skill", counts, { emptyMode: "disable" })).toBe(
       "1 skill",
