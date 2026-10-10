@@ -55,6 +55,11 @@ function seedQaHome(home: string, project: string): void {
     `${JSON.stringify({ model: "sonnet", permissions: { allow: ["Read"] } }, null, 2)}\n`,
   );
   mkdirSync(join(home, ".cursor/skills/cursor-only-skill"), { recursive: true });
+  mkdirSync(join(home, ".cursor/rules"), { recursive: true });
+  writeFileSync(
+    join(home, ".cursor/rules/personal.mdc"),
+    "---\ndescription: User rule\nalwaysApply: true\n---\nUSER-MDC-MARKER\n",
+  );
   writeFileSync(
     join(home, ".cursor/skills/cursor-only-skill/SKILL.md"),
     "---\nname: cursor-only-skill\ndescription: Skill that only exists in Cursor\n---\nCursor specific guidance. CURSOR-ONLY-MARKER\n",
@@ -84,6 +89,10 @@ function seedQaHome(home: string, project: string): void {
 
   mkdirSync(join(project, ".claude/skills/proj-skill"), { recursive: true });
   mkdirSync(join(project, ".cursor/rules"), { recursive: true });
+  writeFileSync(
+    join(project, ".cursor/rules/personal.mdc"),
+    "---\ndescription: Project user rule\nalwaysApply: true\n---\nPROJ-USER-MDC-MARKER\n",
+  );
   mkdirSync(join(project, "src"), { recursive: true });
   writeFileSync(
     join(project, ".claude/skills/proj-skill/SKILL.md"),
@@ -160,6 +169,10 @@ function plantSentinels(home: string): {
     }
   }
   addFile(join(home, ".cursor/skills/cursor-only-skill/my-notes.md"), "my private notes\n");
+  addFile(
+    join(home, ".cursor/rules/personal.mdc"),
+    "---\ndescription: User rule\nalwaysApply: true\n---\nUSER-MDC-MARKER\n",
+  );
   return { files, configMarkers };
 }
 
@@ -257,6 +270,12 @@ describe("G4 data preservation", () => {
       expect(existsSync(
         join(context.homeDir, ".cursor/skills/cursor-only-skill/SKILL.md"),
       )).toBe(true);
+      expect(readFileSync(join(context.homeDir, ".cursor/rules/personal.mdc"), "utf-8")).toContain(
+        "USER-MDC-MARKER",
+      );
+      expect(
+        readFileSync(join(context.projectDir, ".cursor/rules/personal.mdc"), "utf-8"),
+      ).toContain("PROJ-USER-MDC-MARKER");
     } finally {
       await context.cleanup();
     }

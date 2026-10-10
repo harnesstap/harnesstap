@@ -1,0 +1,5 @@
+kind: Fixed
+body: Emit Cursor skills to one surface by default (.agents/skills) and list .cursor/mcp.json on MCP install dry runs. Quote package names in ht approve and ht deny hints.
+time: 2026-10-10T04:20:00Z
+custom:
+  Issue: ""

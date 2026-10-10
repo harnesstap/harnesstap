@@ -31,6 +31,7 @@ import {
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
 import { collectRepeatedOption, formatCommand } from "../shared.js";
+import { DRY_RUN_NOTHING_CHANGED } from "../../copy/cli.js";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { ui } from "../../ui/index.js";
@@ -1124,6 +1125,7 @@ export async function handleProjectApplyCommand(
       });
       return;
     }
+    console.log(DRY_RUN_NOTHING_CHANGED);
     for (const result of generated) {
       const dryTag = ui.theme.muted("[dry run] ");
       const verdict = ui.theme.success(

@@ -230,9 +230,9 @@ export async function handleInstallCommand(
         run: () => handleApplyCommand([], opts),
       });
       if (opts.dryRun && result.added) {
-        ui.info(`Would add ${registryId} to apm.yml dependencies.mcp`);
+        ui.info(`Would add "${registryId}" to apm.yml dependencies.mcp.`);
       } else if (result.added && (process.exitCode ?? 0) === 0) {
-        ui.info(`Added ${registryId} to apm.yml dependencies.mcp`);
+        ui.info(`Added "${registryId}" to apm.yml dependencies.mcp.`);
       }
     } catch (error) {
       process.exitCode = 1;

@@ -32,6 +32,7 @@ describe("filterMcpServersForTargetPath", () => {
     mcp("claude-user", "~/.claude.json"),
     mcp("claude-project", ".mcp.json"),
     mcp("portable", "manual"),
+    mcp("from-manifest", "apm.yml"),
     mcp("claude-local", claudeLocalMcpSource("/tmp/app")),
   ];
 
@@ -40,7 +41,7 @@ describe("filterMcpServersForTargetPath", () => {
       filterMcpServersForTargetPath(resources, ".copilot/mcp-config.json").map(
         (entry) => entry.name,
       ),
-    ).toEqual(["copilot-only", "portable"]);
+    ).toEqual(["copilot-only", "portable", "from-manifest"]);
   });
 
   it("keeps path-matched and portable servers for cursor", () => {
@@ -48,7 +49,7 @@ describe("filterMcpServersForTargetPath", () => {
       filterMcpServersForTargetPath(resources, ".cursor/mcp.json").map(
         (entry) => entry.name,
       ),
-    ).toEqual(["cursor-only", "portable"]);
+    ).toEqual(["cursor-only", "portable", "from-manifest"]);
   });
 
   it("does not dual-write Claude user and project MCP files", () => {
@@ -56,16 +57,16 @@ describe("filterMcpServersForTargetPath", () => {
       filterMcpServersForTargetPath(resources, "~/.claude.json").map(
         (entry) => entry.name,
       ),
-    ).toEqual(["claude-user", "portable"]);
+    ).toEqual(["claude-user", "portable", "from-manifest"]);
     expect(
       filterMcpServersForTargetPath(resources, ".mcp.json").map(
         (entry) => entry.name,
       ),
-    ).toEqual(["claude-project", "portable"]);
+    ).toEqual(["claude-project", "portable", "from-manifest"]);
   });
 
   it("returns all servers when target path is missing", () => {
-    expect(filterMcpServersForTargetPath(resources, undefined)).toHaveLength(5);
+    expect(filterMcpServersForTargetPath(resources, undefined)).toHaveLength(6);
   });
 
   it("never emits Claude local-scope MCP onto any target", () => {
@@ -73,12 +74,12 @@ describe("filterMcpServersForTargetPath", () => {
       filterMcpServersForTargetPath(resources, "~/.claude.json").map(
         (entry) => entry.name,
       ),
-    ).toEqual(["claude-user", "portable"]);
+    ).toEqual(["claude-user", "portable", "from-manifest"]);
     expect(
       filterMcpServersForTargetPath(resources, ".mcp.json").map(
         (entry) => entry.name,
       ),
-    ).toEqual(["claude-project", "portable"]);
+    ).toEqual(["claude-project", "portable", "from-manifest"]);
     expect(
       filterMcpServersForTargetPath(resources, undefined).map((entry) => entry.name),
     ).not.toContain("claude-local");

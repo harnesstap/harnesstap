@@ -274,8 +274,11 @@ describe("CLI apply", () => {
       expect(applyResult.exitCode ?? 0).toBe(0);
       expect(applyResult.stdout).toContain("cursor");
       expect(
-        existsSync(join(context.projectDir, ".cursor", "rules", "format-code.mdc")),
+        existsSync(join(context.projectDir, ".agents", "skills", "format-code", "SKILL.md")),
       ).toBe(true);
+      expect(
+        existsSync(join(context.projectDir, ".cursor", "rules", "format-code.mdc")),
+      ).toBe(false);
     } finally {
       await context.cleanup();
     }
