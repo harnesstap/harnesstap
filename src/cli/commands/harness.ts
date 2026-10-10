@@ -48,7 +48,13 @@ function handleHarnessListCommand(
     (platform) => !opts.supported || NATIVE_HARNESS_IDS.has(platform.id),
   );
   if (format === "json") {
-    printJson(platforms);
+    printJson(
+      platforms.map((platform) => ({
+        id: platform.id,
+        name: platform.name,
+        supports: [...platform.supports].sort(),
+      })),
+    );
     return;
   }
   const rows = platforms.map((p) => ({

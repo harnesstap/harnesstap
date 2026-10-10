@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep JSON stdout parseable on first run and serialize Set/Map fields instead of empty objects.
+time: 2026-10-10T05:10:00Z
+custom:
+  Issue: ""

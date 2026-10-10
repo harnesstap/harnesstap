@@ -1,5 +1,4 @@
 import { getHarnesstapDir } from "../db/connection.js";
-import { ui } from "../ui/index.js";
 import {
   formatCliTelemetryEnabledWarning,
   formatCliTelemetryUnsettledWarning,
@@ -19,10 +18,31 @@ export function setTelemetryNoticePrinterForTests(
   noticePrinter = printer;
 }
 
+function argvRequestsJson(argv: string[]): boolean {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--json" || arg === "--format=json") {
+      return true;
+    }
+    if (arg === "--format" && argv[i + 1] === "json") {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function maybeWarnCliTelemetry(
   harnesstapDir = getHarnesstapDir(),
+  opts?: { argv?: string[]; stdoutIsTTY?: boolean },
 ): void {
   try {
+    const argv = opts?.argv ?? process.argv;
+    const stdoutIsTTY = opts?.stdoutIsTTY ?? Boolean(process.stdout.isTTY);
+    const skipForMachineOutput = argvRequestsJson(argv) || !stdoutIsTTY;
+    if (skipForMachineOutput && !noticePrinter) {
+      return;
+    }
+
     const env = telemetryEnvFlag();
     if (env === false) {
       return;
@@ -40,7 +60,9 @@ export function maybeWarnCliTelemetry(
     const message = enabled
       ? formatCliTelemetryEnabledWarning()
       : formatCliTelemetryUnsettledWarning();
-    (noticePrinter ?? ((text: string) => ui.warn(text)))(message);
+    (noticePrinter ?? ((text: string) => {
+      console.error(text);
+    }))(message);
     updateTelemetryState(
       {
         cli_notice_shown_at: new Date().toISOString(),
