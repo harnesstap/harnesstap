@@ -21,6 +21,7 @@ import type {
 interface PluginManifest {
   name?: string;
   version?: string;
+  description?: string;
   commands?: string;
   hooks?: string;
   skills?: string;
@@ -39,6 +40,7 @@ interface MarketplaceManifest {
 interface ValidatedPluginManifest {
   name: string;
   version?: string;
+  description?: string;
   commands?: string;
   hooks?: string;
   skills?: string;
@@ -160,6 +162,7 @@ function validatePluginManifest(
 
   const name = manifest.name.trim();
   const version = manifest.version?.trim();
+  const description = manifest.description?.trim();
   const commands =
     typeof manifest.commands === "string" && manifest.commands.trim().length > 0
       ? manifest.commands.trim()
@@ -172,9 +175,14 @@ function validatePluginManifest(
     typeof manifest.skills === "string" && manifest.skills.trim().length > 0
       ? manifest.skills.trim()
       : undefined;
-  return version
-    ? { name, version, commands, hooks, skills }
-    : { name, commands, hooks, skills };
+  return {
+    name,
+    ...(version ? { version } : {}),
+    ...(description ? { description } : {}),
+    commands,
+    hooks,
+    skills,
+  };
 }
 
 function validateMarketplaceManifest(
@@ -1078,6 +1086,7 @@ function scanPluginRootAt(
     source_label: sourceLabel,
     plugin_name: pluginName,
     plugin_version: pluginVersion,
+    ...(manifest.description ? { plugin_description: manifest.description } : {}),
     metadata,
     resources,
   };

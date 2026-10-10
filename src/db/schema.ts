@@ -1,6 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
+import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 34;
+const SCHEMA_VERSION = 35;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -312,12 +313,41 @@ const MIGRATIONS: Record<number, Migration> = {
     CREATE INDEX IF NOT EXISTS idx_apply_removal_backups_snapshot
       ON apply_removal_backups(snapshot_id);
   `,
+  35: migrateNonSemverPluginVersions,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
   return (
     db.prepare(`PRAGMA table_info(${name})`).all() as Array<{ name: string }>
   ).map((column) => column.name);
+}
+
+function migrateNonSemverPluginVersions(db: SqliteDatabase): void {
+  if (!tableExists(db, "plugins")) {
+    return;
+  }
+  const columns = tableColumns(db, "plugins");
+  if (!columns.includes("version")) {
+    return;
+  }
+  const hasFingerprint = columns.includes("origin_fingerprint");
+  const rows = db
+    .prepare(
+      hasFingerprint
+        ? "SELECT id, version, origin_fingerprint FROM plugins"
+        : "SELECT id, version FROM plugins",
+    )
+    .all() as Array<{ id: string; version: string; origin_fingerprint?: string | null }>;
+  const update = db.prepare("UPDATE plugins SET version = ? WHERE id = ?");
+  for (const row of rows) {
+    const next = semverSafePluginVersion(
+      row.version,
+      row.origin_fingerprint ?? undefined,
+    );
+    if (next !== row.version) {
+      update.run(next, row.id);
+    }
+  }
 }
 
 function migratePluginResourcesHarnessScope(db: SqliteDatabase): void {

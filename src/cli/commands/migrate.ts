@@ -121,7 +121,10 @@ async function handleMigrateExportCommand(
 
   try {
     const resolved = resolveExportScope(exportOpts);
-    const result = exportScopedMigration(resolved, exportOpts);
+    const result = exportScopedMigration(resolved, {
+      ...exportOpts,
+      onSkip: (message) => ui.warn(message),
+    });
     if (format === "json") {
       if (result.scope === "workspace") {
         printJson({ ...result.manifest, output: result.output, scope: result.scope });

@@ -31,6 +31,7 @@ import {
   type OriginLocator,
 } from "./plugin-origin-locator.js";
 import { isPluginInstallRoot, scanPluginSource } from "./plugin-source-import.js";
+import { semverSafePluginVersion } from "./plugin-semver.js";
 
 export type PluginOriginApplyDeps = {
   downloadCatalogPackage?: (input: {
@@ -326,7 +327,7 @@ export async function applyCheckedPluginOrigin(
       }
       const scanned = await scanMarketplaceOrGit(pluginDir, plugin.name);
       resources = scanned.resources;
-      nextVersion = scanned.version || fingerprint.slice(0, 12);
+      nextVersion = semverSafePluginVersion(scanned.version, fingerprint);
       break;
     }
     case "git": {
@@ -337,7 +338,7 @@ export async function applyCheckedPluginOrigin(
       }
       const scanned = await scanMarketplaceOrGit(pluginDir, plugin.name);
       resources = scanned.resources;
-      nextVersion = scanned.version || fingerprint.slice(0, 12);
+      nextVersion = semverSafePluginVersion(scanned.version, fingerprint);
       break;
     }
     case "catalog": {

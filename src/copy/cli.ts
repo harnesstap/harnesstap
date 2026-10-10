@@ -19,3 +19,11 @@ export function quoteCliArg(value: string): string {
 export function formatHtCommand(path: string): string {
   return `ht ${path}`.trim();
 }
+
+export function quoted(name: string): string {
+  return `"${name}"`;
+}
+
+export function skippedInvalidPluginExport(name: string): string {
+  return `Warning: Skipped plugin ${quoted(name)}. Its version is not valid semver.`;
+}

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Store plugin add versions as valid semver (0.0.0+git.<sha> when needed), keep plugin.json descriptions, and skip invalid plugins on workspace export instead of aborting.
+time: 2026-10-10T04:20:00Z
+custom:
+  Issue: ""

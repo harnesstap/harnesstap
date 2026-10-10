@@ -48,7 +48,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(34);
+      expect(versionRow.version).toBe(35);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -145,6 +145,66 @@ describe("initializeSchema", () => {
     }
   });
 
+  it("rewrites non-semver plugin versions on upgrade to v35", async () => {
+    const context = await createTestContext("schema-semver-plugin-versions");
+    try {
+      const db = context.connection.getDb();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (34);
+        CREATE TABLE plugins (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL,
+          org_slug TEXT NOT NULL DEFAULT '',
+          catalog_slug TEXT NOT NULL DEFAULT '',
+          origin TEXT NOT NULL DEFAULT 'authored',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          needs_config TEXT NOT NULL DEFAULT '[]',
+          overrides TEXT NOT NULL DEFAULT '{}',
+          default_environment_id TEXT,
+          ap_name TEXT NOT NULL DEFAULT '',
+          origin_locator TEXT,
+          origin_fingerprint TEXT,
+          origin_fingerprint_kind TEXT,
+          dirty INTEGER NOT NULL DEFAULT 0,
+          frozen_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+      `);
+      const now = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO plugins (
+          id, name, version, origin_fingerprint, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run("p1", "ponytail", "9cc65d03aa2d", "9cc65d03aa2dffffffffffff", now, now);
+      db.prepare(
+        `INSERT INTO plugins (
+          id, name, version, origin_fingerprint, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run("p2", "ok", "1.2.3", null, now, now);
+
+      context.schema.initializeSchema(db);
+
+      const rows = db
+        .prepare("SELECT id, version FROM plugins ORDER BY id")
+        .all() as Array<{ id: string; version: string }>;
+      expect(rows).toEqual([
+        { id: "p1", version: "0.0.0+git.9cc65d03aa2d" },
+        { id: "p2", version: "1.2.3" },
+      ]);
+      expect(
+        (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
+          .version,
+      ).toBe(35);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("is idempotent when called multiple times", async () => {
     const context = await createTestContext("schema-idempotent");
 
@@ -157,7 +217,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 34 }]);
+      expect(versionRows).toEqual([{ version: 35 }]);
     } finally {
       await context.cleanup();
     }
@@ -574,7 +634,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(34);
+        expect(version).toBe(35);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -601,7 +661,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(34);
+      expect(version).toBe(35);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -639,7 +699,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(34);
+      expect(version).toBe(35);
 
       const tables = db
         .prepare(
@@ -704,7 +764,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(34);
+      expect(version).toBe(35);
 
       const columns = db
         .prepare("PRAGMA table_info(resource_materializations)")
@@ -800,7 +860,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(34);
+      expect(version).toBe(35);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")

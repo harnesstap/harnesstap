@@ -39,6 +39,7 @@ export interface MigrateExportCliOpts {
   includePlugins?: boolean;
   embedPlugins?: boolean;
   singleFile?: boolean;
+  onSkip?: (message: string) => void;
 }
 
 export interface MigrateImportCliOpts {
@@ -275,6 +276,7 @@ export function exportScopedMigration(
       const manifest = exportMigrationState({
         outputPath: resolved.outputPath,
         includePlugins,
+        ...(opts.onSkip ? { onSkip: opts.onSkip } : {}),
       });
       return {
         scope: "workspace",
