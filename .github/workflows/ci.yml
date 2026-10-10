@@ -381,19 +381,19 @@ jobs:
           - image: node:20-slim
             supported: "false"
             expect_install: "true"
-            check_gyp: "false"
+            check_gyp: "true"
           - image: node:22.11-slim
             supported: "false"
             expect_install: "true"
-            check_gyp: "false"
+            check_gyp: "true"
           - image: node:22-slim
             supported: "true"
             expect_install: "true"
-            check_gyp: "false"
+            check_gyp: "true"
           - image: node:24-slim
             supported: "true"
-            expect_install: "false"
-            check_gyp: "false"
+            expect_install: "true"
+            check_gyp: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
