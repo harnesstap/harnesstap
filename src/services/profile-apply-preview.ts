@@ -324,15 +324,8 @@ export function withManagedRemovals(
   removedFiles: string[] | undefined,
   skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
 ): DriftFileChange[] {
-  const modifiedKeeps = new Set(
-    (skippedRemovals ?? [])
-      .filter((skip) => skip.reason === "modified")
-      .map((skip) => skip.path),
-  );
-  const next = changes.filter(
-    (change) => !(modifiedKeeps.has(change.path) && change.type !== "added"),
-  );
-  const seen = new Set(next.map((change) => change.path));
+  const seen = new Set(changes.map((change) => change.path));
+  const next = [...changes];
   for (const path of removedFiles ?? []) {
     pushRemovalChange(next, seen, rootPath, path, "owned_unmodified");
   }
