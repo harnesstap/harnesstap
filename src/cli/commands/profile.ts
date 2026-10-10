@@ -53,7 +53,7 @@ import {
 } from "../handlers/plugin-publish.js";
 import { handlePluginShowCommand } from "../handlers/plugin-show-command.js";
 import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
-import { ON_CONFLICT_HELP } from "../messages.js";
+import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_HELP } from "../messages.js";
 import { renderCliError } from "../runtime.js";
 import {
   fail,
@@ -386,10 +386,7 @@ profileCmd
           format: opts.format,
         });
         if (!selection) {
-          process.exitCode = 1;
-          fail(
-            "Profile name is required. Pass a profile plugin name, --profile <key> from project config, or run interactively.",
-          );
+          fail(CLI_ERRORS.missingProfileName, { hint: CLI_HINTS.profileUseExample });
           return;
         }
         if (selection.kind === "project") {
@@ -405,8 +402,10 @@ profileCmd
         }
         name = selection.pluginName;
       } catch (err) {
-        process.exitCode = 1;
-        fail(err instanceof Error ? err.message : String(err));
+        const message = err instanceof Error ? err.message : String(err);
+        fail(message, {
+          hint: message === CLI_ERRORS.missingProfileName ? CLI_HINTS.profileUseExample : undefined,
+        });
         return;
       }
     }
