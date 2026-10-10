@@ -2,11 +2,8 @@ import { resolve } from "node:path";
 import { getDb } from "../db/connection.js";
 import { initializeSchema } from "../db/schema.js";
 import { ui } from "../ui/index.js";
-import {
-  applyHeaderLine,
-  applyWroteLine,
-  snapshotSavedUndoLine,
-} from "../copy/cli.js";
+import { printApplyPayload } from "../cli/print-apply-summary.js";
+import { formatCount } from "../copy/plurals.js";
 import { parseOutputFormat, printJson } from "../utils/output-format.js";
 import { MISSING_PROJECT_CONFIG_MESSAGE } from "./project-config-messages.js";
 import {
@@ -20,6 +17,7 @@ import {
   type ProjectProfileEntry,
   type ResolvedProjectConfig,
 } from "./project-config.js";
+
 export interface UseCommandOptions {
   profile?: string;
   project?: string;
@@ -98,7 +96,7 @@ function listProjectProfiles(config: ResolvedProjectConfig, format: "human" | "j
       { key: "default", header: "", width: 2 },
     ],
     rows,
-    summary: `${rows.length} profile${rows.length === 1 ? "" : "s"}`,
+    summary: formatCount(rows.length, "profile"),
   });
 }
 
@@ -128,22 +126,7 @@ export function renderProjectUseHuman(result: ProjectUseResult): void {
       console.log(`  - ${pulled.plugin_name} (${pulled.source})`);
     }
   }
-  if (result.dry_run) {
-    console.log("Dry run. Nothing was changed.");
-    return;
-  }
-  console.log(applyHeaderLine(result.profile_name, result.harnesses.length));
-  console.log(
-    applyWroteLine({
-      wrote: result.written_files.length,
-      removed: 0,
-      kept: 0,
-      unchanged: Math.max(0, result.files.length - result.written_files.length),
-    }),
-  );
-  if (result.snapshot_id) {
-    console.log(snapshotSavedUndoLine(`ht revert ${result.snapshot_id}`));
-  }
+  printApplyPayload(result);
 }
 
 function toProjectUseOptions(opts: UseCommandOptions): ProjectUseOptions {

@@ -43,11 +43,7 @@ import { parseCommaSeparatedList } from "./parse-flags.js";
 import { collectRepeatedOption } from "../shared.js";
 import { parseOnConflict, toPluginImportOnConflict } from "../on-conflict.js";
 import { ON_CONFLICT_HELP, ON_CONFLICT_PLUGIN_IMPORT_HELP } from "../messages.js";
-import {
-  printApplyDryRun,
-  printApplySuccess,
-  removalSkipReason,
-} from "../print-apply-summary.js";
+import { printApplyPayload } from "../print-apply-summary.js";
 
 function parsePluginSourceConflictPolicy(
   value: string | undefined,
@@ -509,29 +505,7 @@ export async function handleProfileCreateCommand(
         ui.warn("Profile apply cancelled.");
         return;
       }
-      const kept = (applied.skipped_removals ?? []).flatMap((entry) => {
-        const reason = removalSkipReason(entry.reason);
-        return reason ? [{ path: entry.path, reason }] : [];
-      });
-      const unchanged = Math.max(0, applied.files.length - applied.written_files.length);
-      if (applied.dry_run) {
-        printApplyDryRun({
-          wouldWrite: applied.written_files,
-          wouldRemove: applied.removed_files ?? [],
-          wouldKeep: kept,
-          unchanged,
-        });
-        return;
-      }
-      printApplySuccess({
-        name: applied.profile_name,
-        harnessCount: applied.harnesses.length,
-        wrote: applied.written_files.length,
-        removed: applied.removed_files?.length ?? 0,
-        kept,
-        unchanged,
-        snapshotId: applied.snapshot_id,
-      });
+      printApplyPayload(applied);
       return;
     } catch (err) {
       process.exitCode = 1;

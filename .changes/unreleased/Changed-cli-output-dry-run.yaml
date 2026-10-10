@@ -1,0 +1,5 @@
+kind: Changed
+body: Print DS-6 dry-run summaries with file lists, quote hint arguments, and use one plural helper for counts.
+time: 2026-10-10T18:45:00Z
+custom:
+  Issue: ""

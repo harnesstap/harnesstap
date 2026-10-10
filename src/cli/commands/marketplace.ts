@@ -26,6 +26,7 @@ import {
   marketplaceAddFailedNothingSaved,
   marketplaceUnreachable,
 } from "../../copy/cli.js";
+import { formatCount } from "../formatting.js";
 import { configureCommandGroup } from "../help.js";
 import { collectRepeatedOption, fail } from "../shared.js";
 
@@ -186,7 +187,7 @@ function handleMarketplaceListCommand(opts: { format?: string } = {}): void {
       url: entry.url,
       platforms: entry.platforms.join(", "),
     })),
-    summary: `${marketplaces.length} marketplace${marketplaces.length === 1 ? "" : "s"}`,
+    summary: formatCount(marketplaces.length, "marketplace"),
     empty: "No marketplaces configured.",
   });
 }
@@ -290,7 +291,7 @@ async function handleMarketplaceShowCommand(
       version: plugin.version ?? "",
       description: plugin.description ?? "",
     })),
-    summary: `${plugins.length} plugin${plugins.length === 1 ? "" : "s"}`,
+    summary: formatCount(plugins.length, "plugin"),
     empty: `No plugins in catalog for "${name}".`,
   });
 }

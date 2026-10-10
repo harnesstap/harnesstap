@@ -1,3 +1,7 @@
+import { formatCount } from "../copy/plurals.js";
+
+export { formatCount } from "../copy/plurals.js";
+
 export function truncate(value: string, width: number): string {
   if (value.length <= width) return value;
   if (width <= 3) return ".".repeat(Math.max(1, width));
@@ -27,10 +31,18 @@ export function formatRelativeTime(value: string | number | Date): string {
   const hour = 60 * minute;
   const day = 24 * hour;
 
-  if (diffMs < minute) return `${Math.max(1, Math.floor(diffMs / 1000))} seconds ago`;
-  if (diffMs < hour) return `${Math.floor(diffMs / minute)} minutes ago`;
-  if (diffMs < day) return `${Math.floor(diffMs / hour)} hours ago`;
-  if (diffMs <= 30 * day) return `${Math.floor(diffMs / day)} days ago`;
+  if (diffMs < minute) {
+    return `${formatCount(Math.max(1, Math.floor(diffMs / 1000)), "second")} ago`;
+  }
+  if (diffMs < hour) {
+    return `${formatCount(Math.floor(diffMs / minute), "minute")} ago`;
+  }
+  if (diffMs < day) {
+    return `${formatCount(Math.floor(diffMs / hour), "hour")} ago`;
+  }
+  if (diffMs <= 30 * day) {
+    return `${formatCount(Math.floor(diffMs / day), "day")} ago`;
+  }
   return formatAbsoluteTime(date);
 }
 
@@ -41,6 +53,3 @@ export function formatRelativeTimeWithAbsolute(value: string | number | Date): s
   return `${relative} (${absolute})`;
 }
 
-export function formatCount(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : plural}`;
-}

@@ -222,6 +222,20 @@ describe("ht mcp discovery", () => {
       servers: Array<{ server: { name: string } }>;
     };
     expect(searchPayload.servers[0]?.server.name).toBe(GITHUB_ID);
+
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      expect(url).toContain("search=");
+      return jsonResponse({
+        servers: [githubPayload()],
+        metadata: { nextCursor: "page-2", count: 1 },
+      });
+    }) as unknown as typeof fetch;
+
+    const paged = await runCli(["mcp", "search", "github"]);
+    expect(paged.exitCode ?? 0, paged.stderr || paged.stdout).toBe(0);
+    expect(paged.stdout).toContain("ht mcp search github --cursor page-2");
+    expect(paged.stdout).not.toContain("ht mcp list --cursor");
   });
 
   it("shows the emitted native metadata", async () => {

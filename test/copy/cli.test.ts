@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
+  applyWroteLine,
   CLI_ERRORS,
   CLI_HINTS,
+  dryRunWouldLine,
   DRY_RUN_NOTHING_CHANGED,
   formatHtCommand,
   NATIVE_MODULE_MISMATCH_MESSAGE,
@@ -26,6 +28,15 @@ describe("CLI copy helpers (DS-6)", () => {
     expect(NATIVE_MODULE_MISMATCH_MESSAGE).toBe(
       "HarnessTap was installed under a different Node.js version. Run: npm rebuild -g harnesstap",
     );
+  });
+
+  it("matches DS-6 apply and dry-run summary lines", () => {
+    expect(
+      dryRunWouldLine({ write: 3, remove: 1, keep: 2, unchanged: 28 }),
+    ).toBe("Would write 3, remove 1, keep 2. 28 unchanged.");
+    expect(
+      applyWroteLine({ wrote: 3, removed: 1, kept: 2, unchanged: 28 }),
+    ).toBe("Wrote 3, removed 1, kept 2, unchanged 28.");
   });
 
   it("keeps Wave 1 error copy next to marketplace strings", () => {

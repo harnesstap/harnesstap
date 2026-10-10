@@ -209,6 +209,9 @@ describe("CLI profile", () => {
         "claude-code",
       ]);
       expect(dryRun.stdout).toContain("Dry run. Nothing was changed.");
+      expect(dryRun.stdout).toMatch(/Would write \d+, remove \d+, keep \d+\. \d+ unchanged\./);
+      expect(dryRun.stdout).toMatch(/Would write \d+, remove \d+, keep \d+\. \d+ unchanged\./);
+      expect(dryRun.stdout).toMatch(/Would write \d+, remove \d+, keep \d+\. \d+ unchanged\./);
 
       const apply = await runCli([
         "profile",

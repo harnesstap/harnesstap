@@ -6,6 +6,7 @@ import {
   listScenarioSummaries,
   type ScenarioSummary,
 } from "./scenario-guide.js";
+import { formatCommand } from "../cli/shared.js";
 import { ui } from "../ui/index.js";
 
 export interface ConceptsGuidePayload {
@@ -37,7 +38,7 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
     commands: [
       {
         command: "plugin apply <plugin>",
-        purpose: "Materialize plugin(s) onto a project",
+        purpose: "Materialize plugins onto a project",
       },
       {
         command: "profile use <profile>",
@@ -75,10 +76,6 @@ export function buildHelpCommandPayload(): HelpCommandPayload {
   };
 }
 
-function formatCommand(command: string): string {
-  return ui.theme.command(command);
-}
-
 function printConceptSections(payload: ConceptsGuidePayload): void {
   console.log("");
   ui.subheader("CORE CONCEPTS");
@@ -96,7 +93,7 @@ function printConceptSections(payload: ConceptsGuidePayload): void {
   ui.subheader("COMMON COMMANDS");
   console.log("");
   for (const entry of payload.commands) {
-    console.log(`  ${formatCommand(entry.command)}  ${entry.purpose}`);
+    console.log(`  ${ui.theme.command(formatCommand(entry.command))}  ${entry.purpose}`);
   }
   console.log("");
   ui.subheader("ENVIRONMENT CASCADE");

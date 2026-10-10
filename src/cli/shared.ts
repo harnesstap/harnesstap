@@ -15,13 +15,6 @@ export function resolveInvocationName(): "harnesstap" | "ht" {
   return basename(process.argv[1] ?? "") === "ht" ? "ht" : "harnesstap";
 }
 
-/** DS-6: hints and follow-up commands always say `ht`. */
-export function formatCommand(path: string): string {
-  const trimmed = path.trim();
-  const stripped = trimmed.replace(/^(?:harnesstap|ht)\s+/, "");
-  return stripped.length > 0 ? `ht ${stripped}` : "ht";
-}
-
 export function shellQuote(value: string): string {
   if (value.length === 0) {
     return '""';
@@ -32,8 +25,18 @@ export function shellQuote(value: string): string {
   return `"${value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"`;
 }
 
-export function formatHintCommand(args: string[]): string {
-  return ["ht", ...args.map(shellQuote)].join(" ");
+/** DS-6: hints always say `ht` and shell-quote each argument (W2-1, W3-3). */
+export function formatCommand(pathOrArgs: string | readonly string[]): string {
+  if (typeof pathOrArgs === "string") {
+    const trimmed = pathOrArgs.trim();
+    const stripped = trimmed.replace(/^(?:harnesstap|ht)\s+/, "");
+    return stripped.length > 0 ? `ht ${stripped}` : "ht";
+  }
+  return ["ht", ...pathOrArgs.map(shellQuote)].join(" ");
+}
+
+export function formatHintCommand(args: readonly string[]): string {
+  return formatCommand(args);
 }
 
 export function fail(
