@@ -17,12 +17,43 @@ import {
   trackCliStartup,
 } from "../telemetry/index.js";
 import { ui } from "../ui/index.js";
+import { PACKAGE_VERSION } from "../version.js";
 import { program } from "./program.js";
 import {
   isGroupedCommandFallbackError,
   isVerboseMode,
   resolveInvocationName,
 } from "./shared.js";
+
+const ROOT_VERSION_FLAGS = new Set(["-V", "--version", "--harnesstap-version"]);
+const ROOT_PASSTHROUGH_FLAGS = new Set([
+  "-v",
+  "--verbose",
+  "--no-color",
+  "--no-interactive",
+]);
+
+export function isRootVersionRequest(argv: string[]): boolean {
+  const args = argv.slice(2);
+  let sawVersion = false;
+  for (const arg of args) {
+    if (arg === "--") {
+      return false;
+    }
+    if (ROOT_VERSION_FLAGS.has(arg)) {
+      sawVersion = true;
+      continue;
+    }
+    if (ROOT_PASSTHROUGH_FLAGS.has(arg)) {
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      continue;
+    }
+    return false;
+  }
+  return sawVersion;
+}
 
 function findContextCommand(argv: string[]): Command | null {
   const args = argv.slice(2);
@@ -144,6 +175,10 @@ export async function runHarnesstapCli(
 ): Promise<void> {
   program.name(resolveInvocationName());
   process.exitCode = 0;
+  if (isRootVersionRequest(argv)) {
+    console.log(PACKAGE_VERSION);
+    return;
+  }
   setTelemetryProduct("cli");
   maybeWarnCliTelemetry();
   trackCliStartup();

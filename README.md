@@ -16,7 +16,7 @@ Use the **CLI** (`ht`) or **Desktop** — both talk to the same local library at
 [![Docs](https://img.shields.io/badge/docs-harnesstap.com-0ea5e9)](https://harnesstap.com/docs)
 [![License](https://img.shields.io/github/license/harnesstap/harnesstap)](LICENSE)
 [![npm](https://img.shields.io/npm/v/harnesstap?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/harnesstap)
-[![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.12-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 
 <br />
 
@@ -67,7 +67,7 @@ Use the **CLI** (`ht`) or **Desktop** — both talk to the same local library at
 
 ## Install
 
-**Requirements:** Node.js 20+ to run the published CLI.
+**Requirements:** Node.js 22.12+ or 24 to run the published CLI.
 
 ### Recommended: npx (no global install)
 

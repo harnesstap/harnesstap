@@ -5,7 +5,7 @@ Thank you for your interest in contributing to `harnesstap`! This document provi
 ## Development Requirements
 
 - **Bun**: You need [Bun](https://bun.sh/) 1.3 or later to work on the repository (local development, CI, and builds).
-- **Node.js**: The package is built for Node 20 or later.
+- **Node.js**: The published CLI requires Node 22.12 or later (Node 24 is supported).
 
 ## Local Development
 
@@ -53,7 +53,7 @@ To run the CLI commands during development without having to build it first, you
 bun run start -- status .
 
 # Option 2: Execute the TypeScript file directly
-bun src/index.ts apply <plugin-name> --project .
+bun src/bin.ts apply <plugin-name> --project .
 ```
 
 ### Installing the current checkout globally

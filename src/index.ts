@@ -24,8 +24,6 @@ import {
 } from "./cli/commands/project.js";
 import { program } from "./cli/program.js";
 import { registerCommands } from "./cli/register-commands.js";
-import { renderCliError, runHarnesstapCli } from "./cli/runtime.js";
-import { isPromptCancellationError } from "./services/wizards/shared.js";
 
 registerEnvironmentCommands(program);
 registerMigrateCommands(program);
@@ -53,20 +51,5 @@ registerParityCommands(program);
 registerCommands(program);
 
 export { program } from "./cli/program.js";
-export { runHarnesstapCli } from "./cli/runtime.js";
-
-if (import.meta.main) {
-  try {
-    await runHarnesstapCli();
-  } catch (error) {
-    if (isPromptCancellationError(error)) {
-      process.exitCode = 0;
-    } else {
-      process.exitCode =
-        error && typeof error === "object" && "exitCode" in error
-          ? Number((error as { exitCode?: unknown }).exitCode) || 1
-          : 1;
-      renderCliError(error);
-    }
-  }
-}
+export { renderCliError, runHarnesstapCli } from "./cli/runtime.js";
+export { isPromptCancellationError } from "./services/wizards/shared.js";
