@@ -62,4 +62,35 @@ describe("fileContentsEquivalentForDrift", () => {
       fileContentsEquivalentForDrift(".copilot/mcp-config.json", live, serialized),
     ).toBe(true);
   });
+
+  it("matches Cursor MCP configs that only add type stdio", () => {
+    const live =
+      '{ "mcpServers": { "cursor-mcp": { "command": "node", "args": ["server.js"] } } }\n';
+    const generated = `${JSON.stringify(
+      {
+        mcpServers: {
+          "cursor-mcp": {
+            type: "stdio",
+            command: "node",
+            args: ["server.js"],
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`;
+    expect(fileContentsEquivalentForDrift(".cursor/mcp.json", live, generated)).toBe(true);
+  });
+
+  it("matches Codex config.toml after key reorder and formatting", () => {
+    const live = 'model = "gpt-5"\n[mcp_servers.codex-mcp]\ncommand = "uvx"\n';
+    const generated = `model = "gpt-5"
+
+[mcp_servers.codex-mcp]
+command = "uvx"
+`;
+    expect(
+      fileContentsEquivalentForDrift(".codex/config.toml", live, generated),
+    ).toBe(true);
+  });
 });
