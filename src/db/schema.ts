@@ -326,12 +326,24 @@ function migrateNonSemverPluginVersions(db: SqliteDatabase): void {
   if (!tableExists(db, "plugins")) {
     return;
   }
+  const columns = tableColumns(db, "plugins");
+  if (!columns.includes("version")) {
+    return;
+  }
+  const hasFingerprint = columns.includes("origin_fingerprint");
   const rows = db
-    .prepare("SELECT id, version, origin_fingerprint FROM plugins")
-    .all() as Array<{ id: string; version: string; origin_fingerprint: string | null }>;
+    .prepare(
+      hasFingerprint
+        ? "SELECT id, version, origin_fingerprint FROM plugins"
+        : "SELECT id, version FROM plugins",
+    )
+    .all() as Array<{ id: string; version: string; origin_fingerprint?: string | null }>;
   const update = db.prepare("UPDATE plugins SET version = ? WHERE id = ?");
   for (const row of rows) {
-    const next = semverSafePluginVersion(row.version, row.origin_fingerprint ?? undefined);
+    const next = semverSafePluginVersion(
+      row.version,
+      row.origin_fingerprint ?? undefined,
+    );
     if (next !== row.version) {
       update.run(next, row.id);
     }
