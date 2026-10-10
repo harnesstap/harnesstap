@@ -382,18 +382,22 @@ jobs:
             supported: "false"
             expect_install: "true"
             check_gyp: "false"
+            ignore_scripts: "true"
           - image: node:22.11-slim
             supported: "false"
             expect_install: "true"
-            check_gyp: "false"
+            check_gyp: "true"
+            ignore_scripts: "false"
           - image: node:22-slim
             supported: "true"
             expect_install: "true"
-            check_gyp: "false"
+            check_gyp: "true"
+            ignore_scripts: "false"
           - image: node:24-slim
             supported: "true"
-            expect_install: "false"
-            check_gyp: "false"
+            expect_install: "true"
+            check_gyp: "true"
+            ignore_scripts: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -407,6 +411,7 @@ jobs:
             -e SUPPORTED=${{ matrix.supported }} \
             -e EXPECT_INSTALL=${{ matrix.expect_install }} \
             -e CHECK_GYP=${{ matrix.check_gyp }} \
+            -e IGNORE_SCRIPTS=${{ matrix.ignore_scripts }} \
             -v "$PWD/pack:/pack:ro" \
             -v "$PWD/scripts/ci-node-version-matrix.sh:/ci-node-version-matrix.sh:ro" \
             "${{ matrix.image }}" \
