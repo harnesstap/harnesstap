@@ -1,9 +1,18 @@
+import { formatLastEditRelative } from "./library-timestamp";
 import {
   applyResultToastTitle,
   APPLY_RESULT_COPY,
   emptyPlannedRemovals,
   type PlannedRemovals,
 } from "./ui-copy";
+
+export type ApplySnapshotView = {
+  id: string;
+  takenAt: string;
+  wrote: number;
+  removed: number;
+  kept: number;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -77,15 +86,43 @@ export function applyOutcomeFromUnknown(result: unknown): {
   return { wrote, removed, kept, snapshotId, removals };
 }
 
-export function applySuccessToast(result: unknown): {
+export function applySuccessToast(
+  result: unknown,
+  takenAt: string = new Date().toISOString(),
+): {
   title: string;
-  snapshotId: string | null;
+  snapshot: ApplySnapshotView | null;
   viewSnapshotLabel: string;
 } {
   const outcome = applyOutcomeFromUnknown(result);
   return {
     title: applyResultToastTitle(outcome),
-    snapshotId: outcome.snapshotId,
+    snapshot: outcome.snapshotId
+      ? {
+          id: outcome.snapshotId,
+          takenAt,
+          wrote: outcome.wrote,
+          removed: outcome.removed,
+          kept: outcome.kept,
+        }
+      : null,
     viewSnapshotLabel: APPLY_RESULT_COPY.viewSnapshot,
+  };
+}
+
+export function applySnapshotDialogCopy(
+  snapshot: ApplySnapshotView,
+  now: Date = new Date(),
+): {
+  taken: string;
+  changed: string;
+  undo: string;
+} {
+  return {
+    taken: APPLY_RESULT_COPY.takenLine(
+      formatLastEditRelative(new Date(snapshot.takenAt), now),
+    ),
+    changed: applyResultToastTitle(snapshot),
+    undo: APPLY_RESULT_COPY.undoWith(snapshot.id),
   };
 }

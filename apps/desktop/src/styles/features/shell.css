@@ -243,9 +243,13 @@
 }
 
 .toast {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+  width: 100%;
+  box-sizing: border-box;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -298,18 +302,21 @@
 }
 
 .toast-title {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .toast-detail {
   font-size: var(--text-meta);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .toast-action {
-  flex: 0 0 auto;
+  align-self: start;
+  width: fit-content;
+  max-width: 100%;
   padding: 0.2rem 0.55rem;
   font-size: var(--text-meta);
+  white-space: nowrap;
 }
 
 .toast-close {

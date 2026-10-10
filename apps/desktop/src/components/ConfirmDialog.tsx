@@ -13,7 +13,8 @@ export interface ConfirmDialogProps {
   title: string;
   description: ReactNode;
   confirmLabel?: string;
-  cancelLabel?: string;
+  /** Empty or omitted still defaults to Cancel. Pass null to hide the cancel button. */
+  cancelLabel?: string | null;
   confirmDisabled?: boolean;
   confirmHint?: ReactNode;
   confirmBusy?: boolean;
@@ -60,8 +61,9 @@ export function ConfirmDialog({
   const titleId = useId();
   const descriptionId = useId();
   const anyBusy = confirmBusy || secondaryBusy || tertiaryBusy;
-  const cancelRef = useDialogDismiss(open, onCancel, anyBusy);
+  const dismissRef = useDialogDismiss(open, onCancel, anyBusy);
   const controlsDisabled = confirmDisabled || anyBusy;
+  const showCancel = Boolean(cancelLabel);
 
   return (
     <Presence
@@ -103,16 +105,18 @@ export function ConfirmDialog({
             </p>
           ) : null}
           <div className="dialog-actions">
-            <button
-              ref={cancelRef}
-              className="btn"
-              type="button"
-              onClick={onCancel}
-              disabled={anyBusy}
-            >
-              {cancelLabel ? <X size={16} aria-hidden /> : null}
-              {cancelLabel}
-            </button>
+            {showCancel ? (
+              <button
+                ref={dismissRef}
+                className="btn"
+                type="button"
+                onClick={onCancel}
+                disabled={anyBusy}
+              >
+                <X size={16} aria-hidden />
+                {cancelLabel}
+              </button>
+            ) : null}
             {tertiaryLabel && onTertiary ? (
               <button
                 className={["btn", tertiaryBusy ? "is-busy" : ""].filter(Boolean).join(" ")}
@@ -138,6 +142,7 @@ export function ConfirmDialog({
               </button>
             ) : null}
             <button
+              ref={showCancel ? undefined : dismissRef}
               className={[
                 "btn",
                 tone === "destructive" ? "destructive" : "primary",
