@@ -674,4 +674,51 @@ describe("CLI apply", () => {
       await context.cleanup();
     }
   });
+
+  it("rejects --on-conflict abort under --dry-run before writing apm.lock.yaml", async () => {
+    const context = await createTestContext("cli-apply-abort-dry-run");
+    try {
+      await runCli(["init", "--no-interactive"]);
+      const lockPath = join(context.projectDir, "apm.lock.yaml");
+      expect(existsSync(lockPath)).toBe(false);
+      const result = await runCli([
+        "apply",
+        "global default",
+        "--dry-run",
+        "--on-conflict",
+        "abort",
+        "--project",
+        context.projectDir,
+        "--no-interactive",
+      ]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Invalid --on-conflict value: abort.");
+      expect(result.stderr).toContain("Use replace, skip, prompt or cancel.");
+      expect(existsSync(lockPath)).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects --on-conflict bogus before writing apm.lock.yaml", async () => {
+    const context = await createTestContext("cli-apply-bogus-conflict");
+    try {
+      await runCli(["init", "--no-interactive"]);
+      const lockPath = join(context.projectDir, "apm.lock.yaml");
+      const result = await runCli([
+        "apply",
+        "global default",
+        "--on-conflict",
+        "bogus",
+        "--project",
+        context.projectDir,
+        "--no-interactive",
+      ]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Invalid --on-conflict value: bogus.");
+      expect(existsSync(lockPath)).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

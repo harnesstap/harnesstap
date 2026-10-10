@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { ON_CONFLICT_HELP } from "../cli/on-conflict.js";
+import { ON_CONFLICT_HELP, parseOnConflict } from "../cli/on-conflict.js";
 
 export interface ApplyCommandOpts {
   project: string;
@@ -22,6 +22,16 @@ export interface ApplyCommandOpts {
   force?: boolean;
   yes?: boolean;
   forceRemove?: boolean;
+}
+
+/** Validate --on-conflict before any apply writes (including --dry-run). */
+export function validateApplyOnConflict(onConflict?: string): string | undefined {
+  try {
+    parseOnConflict(onConflict);
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
 }
 
 export function addApplyCommandOptions(command: Command): Command {

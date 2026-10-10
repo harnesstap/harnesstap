@@ -1,0 +1,5 @@
+kind: Fixed
+body: Validate ht apply --on-conflict with parseOnConflict before any write, including --dry-run, so abort and unknown values exit 1 without touching apm.lock.yaml.
+time: 2026-10-10T18:55:00Z
+custom:
+  Issue: "369"
