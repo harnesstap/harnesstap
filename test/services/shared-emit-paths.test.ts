@@ -7,6 +7,7 @@ import {
   pinSkillEmitsToExistingLivePaths,
   preferSharedSkillEmits,
   skillConsumeDirs,
+  skillPlacementsFromPaths,
 } from "../../src/services/shared-emit-paths.ts";
 
 describe("preferSharedSkillEmits", () => {
@@ -170,5 +171,80 @@ describe("pinSkillEmitsToExistingLivePaths", () => {
       "project",
     );
     expect(pinned[0]?.surface_warnings).toEqual([warning]);
+  });
+
+  it("keeps every previous emit dir instead of collapsing onto .agents/skills", () => {
+    const pinned = pinSkillEmitsToExistingLivePaths(
+      "/tmp/ht-no-live-multi-skill",
+      preferSharedSkillEmits(
+        [
+          {
+            platformId: "opencode",
+            files: [{ path: ".opencode/skills/big-review/SKILL.md", content: "body" }],
+          },
+          {
+            platformId: "cursor",
+            files: [{ path: ".agents/skills/big-review/SKILL.md", content: "body" }],
+          },
+        ],
+        ["opencode", "cursor"],
+        "project",
+      ),
+      ["opencode", "cursor"],
+      "project",
+      {
+        previousManagedPlacements: skillPlacementsFromPaths([
+          ".opencode/skills/big-review/SKILL.md",
+          ".agents/skills/big-review/SKILL.md",
+        ]),
+      },
+    );
+    const paths = flattenUniqueFiles(pinned).map((file) => file.path).sort();
+    expect(paths).toEqual([
+      ".agents/skills/big-review/SKILL.md",
+      ".opencode/skills/big-review/SKILL.md",
+    ]);
+  });
+
+  it("does not relocate a previous .opencode emit after .agents/skills appears on disk", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-pin-skill-stable-"));
+    try {
+      mkdirSync(join(root, ".agents/skills"), { recursive: true });
+      mkdirSync(join(root, ".opencode/skills/big-review"), { recursive: true });
+      writeFileSync(
+        join(root, ".opencode/skills/big-review/SKILL.md"),
+        "body\n",
+        "utf-8",
+      );
+
+      const pinned = pinSkillEmitsToExistingLivePaths(
+        root,
+        preferSharedSkillEmits(
+          [
+            {
+              platformId: "opencode",
+              files: [{ path: ".opencode/skills/big-review/SKILL.md", content: "body\n" }],
+            },
+            {
+              platformId: "cursor",
+              files: [{ path: ".agents/skills/big-review/SKILL.md", content: "body\n" }],
+            },
+          ],
+          ["opencode", "cursor"],
+          "project",
+        ),
+        ["opencode", "cursor"],
+        "project",
+        {
+          previousManagedPlacements: skillPlacementsFromPaths([
+            ".opencode/skills/big-review/SKILL.md",
+          ]),
+        },
+      );
+      const paths = flattenUniqueFiles(pinned).map((file) => file.path);
+      expect(paths).toEqual([".opencode/skills/big-review/SKILL.md"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

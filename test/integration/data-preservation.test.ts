@@ -9,7 +9,9 @@ import {
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
+import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
+import { makeResourceInput } from "../helpers/resources.ts";
 import { getAllPlatforms } from "../../src/platforms/registry.ts";
 import { setHarnessPreference } from "../../src/models/harness.ts";
 import { createProfileCommand, useProfileCommand } from "../../src/services/profile-commands.ts";
@@ -311,6 +313,58 @@ describe("G4 data preservation", () => {
       expect(
         readFileSync(join(context.projectDir, ".cursor/rules/personal.mdc"), "utf-8"),
       ).toContain("PROJ-USER-MDC-MARKER");
+
+      initGitRepo(context.projectDir, "git@github.com:acme/g4-project-apply.git");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const plugin = pluginModel.createPlugin({ name: "g4-project" });
+      const skill = resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "g4-skill",
+          content: "---\nname: g4-skill\ndescription: G4\n---\nG4-SKILL-BODY\n",
+        }),
+      );
+      pluginModel.addResourceToPlugin(plugin.id, skill.id);
+      const projectApply = [
+        "apply",
+        "g4-project",
+        "--project",
+        context.projectDir,
+        "--harness",
+        "claude-code,cursor,opencode",
+      ];
+      const projectFirst = await runCli(projectApply);
+      expect(projectFirst.exitCode ?? 0).toBe(0);
+      const projectSkillDirs = [
+        join(context.projectDir, ".claude/skills/g4-skill"),
+        join(context.projectDir, ".opencode/skills/g4-skill"),
+        join(context.projectDir, ".agents/skills/g4-skill"),
+      ];
+      const projectSentinels: SentinelRecord[] = [];
+      for (const dir of projectSkillDirs) {
+        if (!existsSync(dir)) continue;
+        const path = join(dir, SENTINEL_NAME);
+        writeFileSync(path, SENTINEL_BODY);
+        const stat = statSync(path);
+        projectSentinels.push({
+          path,
+          content: readFileSync(path),
+          mode: stat.mode,
+        });
+      }
+      expect(projectSentinels.length).toBeGreaterThan(0);
+      const projectSecond = await runCli(projectApply);
+      expect(projectSecond.exitCode ?? 0).toBe(0);
+      mkdirSync(join(context.projectDir, ".agents/skills"), { recursive: true });
+      const projectThird = await runCli(projectApply);
+      expect(projectThird.exitCode ?? 0).toBe(0);
+      for (const record of projectSentinels) {
+        expect(existsSync(record.path)).toBe(true);
+        expect(readFileSync(record.path).equals(record.content)).toBe(true);
+        expect(statSync(record.path).mode).toBe(record.mode);
+      }
+      assertSentinels(sentinels);
     } finally {
       await context.cleanup();
     }

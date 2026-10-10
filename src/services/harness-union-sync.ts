@@ -60,6 +60,7 @@ import {
   scanPlatform,
 } from "./scanner.js";
 import {
+  collectManagedSkillPlacements,
   flattenUniqueFiles,
   pinSkillEmitsToExistingLivePaths,
   preferSharedSkillEmits,
@@ -232,17 +233,25 @@ export async function syncConfiguredHarnesses(
   const portablePlatforms = portableHarnessesForPluginFanout(platforms);
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
 
+  const previousSkillPlacements = collectManagedSkillPlacements(rootPath);
+  const skipSkillNames = new Set(previousSkillPlacements.keys());
+  const pinFromPrevious = previousSkillPlacements.size > 0
+    ? { previousManagedPlacements: previousSkillPlacements }
+    : undefined;
   const generated = await generateFiles(
     emitResources,
     platforms,
     rootPath,
-    serializeOptions,
+    pinFromPrevious
+      ? { ...serializeOptions, ...pinFromPrevious }
+      : serializeOptions,
   );
   const preferred = pinSkillEmitsToExistingLivePaths(
     rootPath,
-    preferSharedSkillEmits(generated, platforms, target),
+    preferSharedSkillEmits(generated, platforms, target, { skipSkillNames }),
     platforms,
     target,
+    pinFromPrevious,
   );
 
   const extraResults: ApplyResult[] = [];
@@ -264,14 +273,19 @@ export async function syncConfiguredHarnesses(
         toPortableEmitResources(extracted.resources),
         portablePlatforms,
         rootPath,
-        serializeOptions,
+        pinFromPrevious
+          ? { ...serializeOptions, ...pinFromPrevious }
+          : serializeOptions,
       );
       extraResults.push(
         ...pinSkillEmitsToExistingLivePaths(
           rootPath,
-          preferSharedSkillEmits(extraGenerated, portablePlatforms, target),
+          preferSharedSkillEmits(extraGenerated, portablePlatforms, target, {
+            skipSkillNames,
+          }),
           portablePlatforms,
           target,
+          pinFromPrevious,
         ),
       );
     }

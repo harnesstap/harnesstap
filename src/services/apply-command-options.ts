@@ -21,6 +21,7 @@ export interface ApplyCommandOpts {
   update?: boolean;
   force?: boolean;
   yes?: boolean;
+  forceRemove?: boolean;
 }
 
 export function addApplyCommandOptions(command: Command): Command {
@@ -73,5 +74,9 @@ export function addApplyCommandOptions(command: Command): Command {
       "--force",
       "Override critical hidden-Unicode findings and continue apply",
     )
-    .option("-y, --yes", "Install pinned marketplace plugins without a prompt");
+    .option("-y, --yes", "Install pinned marketplace plugins without a prompt")
+    .option(
+      "--force-remove",
+      "Also remove managed files you changed and unmanaged files in the way",
+    );
 }

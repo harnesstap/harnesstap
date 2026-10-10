@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
@@ -159,6 +159,40 @@ describe("lockfile", () => {
         [{ path: "skills/../escape.md", content: "# Hello\n" }],
       ),
     ).toThrow(/Unsafe local_deployed_file_hashes path/);
+  });
+
+  it("treats a missing lock entry as missing on disk, not missing from the new plan", async () => {
+    await buildGraph();
+    const result = resolveComposition({ rootSelectors: ["root"] });
+    const files = [
+      { path: "AGENTS.md", content: "# Hello\n" },
+      { path: ".opencode/skills/big-review/SKILL.md", content: "# skill\n" },
+    ];
+    writeLockfile(
+      ctx.projectDir,
+      lockfileFromResolution(result, { deployedFiles: files }),
+    );
+    const lock = readLockfile(ctx.projectDir);
+    const hashes = lock?.deployed_file_hashes;
+    if (!hashes) throw new Error("missing deployed_file_hashes");
+
+    mkdirSync(join(ctx.projectDir, ".opencode/skills/big-review"), { recursive: true });
+    writeFileSync(join(ctx.projectDir, "AGENTS.md"), "# Hello\n");
+    writeFileSync(
+      join(ctx.projectDir, ".opencode/skills/big-review/SKILL.md"),
+      "# skill\n",
+    );
+
+    const planWithoutOpencode = [{ path: "AGENTS.md", content: "# Hello\n" }];
+    expect(() =>
+      verifyDeployedFileHashes(hashes, planWithoutOpencode, {
+        rootPath: ctx.projectDir,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      verifyDeployedFileHashes(hashes, planWithoutOpencode),
+    ).toThrow(/missing/);
   });
 
   it("records declared_license from apply extras and round-trips it", async () => {

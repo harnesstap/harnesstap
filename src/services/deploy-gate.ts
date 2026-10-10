@@ -20,6 +20,7 @@ export interface DeployGateOptions {
   forceUnicode?: boolean;
   verifyHashes?: boolean;
   expectedHashes?: Record<string, string>;
+  rootPath?: string;
 }
 
 export interface DeployGateResult {
@@ -54,7 +55,11 @@ export function gateDeployFiles(
     options.expectedHashes &&
     Object.keys(options.expectedHashes).length > 0
   ) {
-    verifyDeployedFileHashes(options.expectedHashes, files);
+    verifyDeployedFileHashes(
+      options.expectedHashes,
+      files,
+      options.rootPath ? { rootPath: options.rootPath } : {},
+    );
   }
   return { findings };
 }
