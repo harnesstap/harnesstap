@@ -1,0 +1,5 @@
+kind: Fixed
+body: Treat untouched shared configs as in sync (semantic JSON/TOML/MCP compare, last-written hash when owned) and report the skill file that actually changed instead of a pinned .agents mirror. First apply no longer rewrites mcp.json just to add type stdio.
+time: 2026-10-10T19:10:00Z
+custom:
+  Issue: ""

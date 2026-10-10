@@ -117,6 +117,13 @@ export interface ApplyProfilePluginOptions {
   forceRemove?: boolean;
   yes?: boolean;
   interactive?: boolean;
+  /** When false, status/drift keeps per-harness skill paths. Default true. */
+  pinSkillEmits?: boolean;
+  /**
+   * Dry-run serialize: false compares the library snapshot to live files
+   * (status/drift). Default true keeps extra live skill body for apply/preview.
+   */
+  mergeLiveSkillMarkdown?: boolean;
 }
 
 export interface ApplyProfilePluginResult {
@@ -668,7 +675,8 @@ export async function applyProfilePlugin(
       target: "global",
       claudeConfig: merged.claude,
       resolvedEnvironment,
-      mergeLiveSkillMarkdown: false,
+      pinSkillEmits: options.pinSkillEmits,
+      mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
     });
     const files = generated.flatMap((result) => result.files);
     gateDeployFiles(files, { forceUnicode: options.forceUnicode });
