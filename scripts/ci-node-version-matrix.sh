@@ -17,6 +17,11 @@ if [[ ! -f "$TARBALL" ]]; then
   exit 1
 fi
 
+# npx must extract the package into a writable directory. The CI mount of /pack is read-only.
+work="$(mktemp -d)"
+cp "$TARBALL" "$work/"
+TARBALL="$(ls "$work"/harnesstap-*.tgz | head -n 1)"
+
 echo "Node $(node -p 'process.versions.node') on $(command -v node)"
 echo "npm $(npm -v)"
 
@@ -94,7 +99,7 @@ run_cli "ht -V" ht -V
 run_cli "ht init --no-interactive" ht init --no-interactive
 
 npx_home="$(mktemp -d)"
-run_cli "npx --help" env HOME="$npx_home" npx --yes "$TARBALL" --help
-run_cli "npx -V" env HOME="$npx_home" npx --yes "$TARBALL" -V
+run_cli "npx --help" env HOME="$npx_home" npx --yes --package "$TARBALL" -- ht --help
+run_cli "npx -V" env HOME="$npx_home" npx --yes --package "$TARBALL" -- ht -V
 
 echo "G1 smoke passed for Node $(node -p 'process.versions.node') (supported=$SUPPORTED)"
