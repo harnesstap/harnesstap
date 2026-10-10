@@ -386,7 +386,7 @@ export function collapsedTypeTabFit({
 export function resourceTypeTabPillsText(
   type: string,
   counts: ReadonlyMap<string, number>,
-  options?: ResourceTypeTabOptions,
+  _options?: ResourceTypeTabOptions,
 ): string {
   const count = resourceTypeTabItemCount(type, counts);
   return `${count} ${resourceTypeTabLabel(type)}`;
