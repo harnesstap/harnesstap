@@ -17,14 +17,17 @@ describe("resource display labels", () => {
       AGENTS_MD_DISPLAY_NAME,
     );
     expect(
-      resourceHumanName({ name: "other", source: "AGENTS.md" }),
+      resourceHumanName({ name: "agents-instructions", source: "AGENTS.md" }),
     ).toBe(AGENTS_MD_DISPLAY_NAME);
     expect(
       resourceHumanName({
-        name: "other",
-        source: "/Users/me/dev/harnesstap/AGENTS.md",
+        name: "agents-instructions",
+        source: "~/.agents/AGENTS.md",
       }),
-    ).toBe(AGENTS_MD_DISPLAY_NAME);
+    ).toBe("Agent instructions (~/.agents/AGENTS.md)");
+    expect(
+      resourceHumanName({ name: "opencode-instructions", source: "AGENTS.md" }),
+    ).toBe("Agent instructions (opencode-instructions)");
     expect(resourceHumanName({ name: "ship", source: "SKILL.md" })).toBe("ship");
     expect(
       resourceHumanName({
