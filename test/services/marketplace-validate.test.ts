@@ -54,6 +54,7 @@ describe("assertMarketplaceSourceReachable", () => {
       expect(error).toBeInstanceOf(MarketplaceSourceError);
       expect((error as MarketplaceSourceError).message).toContain("Couldn't reach");
       expect((error as MarketplaceSourceError).hint).toContain("ht github login");
+      expect((error as MarketplaceSourceError).hint).toContain("Nothing was saved.");
     }
   });
 });
