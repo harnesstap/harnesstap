@@ -18,7 +18,7 @@ export function resolveApplyConflictPolicy(opts: {
         ? "skip"
         : raw === "prompt"
           ? "prompt"
-          : raw === "fail" || raw === "abort" || raw === "cancel"
+          : raw === "fail" || raw === "cancel"
             ? "cancel"
             : undefined;
   if (mapped === "replace" || mapped === "skip" || mapped === "prompt" || mapped === "cancel") {

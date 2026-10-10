@@ -1,4 +1,4 @@
-/** Shared --on-conflict vocabulary (DS-6). Old values stay as aliases for one release. */
+/** Shared --on-conflict vocabulary (DS-6). Hidden aliases for one release: overwrite, ignore, fail. */
 
 export const ON_CONFLICT_VALUES = ["replace", "skip", "prompt", "cancel"] as const;
 export type OnConflictValue = (typeof ON_CONFLICT_VALUES)[number];
@@ -27,7 +27,6 @@ function mapAlias(value: string): string {
     case "ignore":
       return "skip";
     case "fail":
-    case "abort":
       return "cancel";
     default:
       return value;

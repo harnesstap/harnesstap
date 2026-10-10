@@ -121,6 +121,20 @@ describe("G6 CLI error contract", () => {
     }
   });
 
+  it("rejects --on-conflict abort with the invalid-value error", async () => {
+    const context = await createTestContext("cli-g6-abort-rejected");
+    try {
+      await runCli(["init", "--no-interactive"]);
+      const result = runPackedCli(context.homeDir, ["resource", "sync", "--on-conflict", "abort"]);
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain("Error:");
+      expect(result.stderr).toContain("Invalid --on-conflict value: abort.");
+      expect(result.stderr).toContain("Use replace, skip, prompt or cancel.");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("quotes names in duplicate-create copy and accepts --on-conflict replace", async () => {
     const context = await createTestContext("cli-g6-replace-alias");
     try {
@@ -195,5 +209,14 @@ describe("DS-6 central copy", () => {
     expect(SCOPE_COPY.mainHarnessTooltip).toBe(
       "Your main harness. It wins when harnesses disagree.",
     );
+  });
+});
+
+describe("parseOnConflict", () => {
+  it("rejects abort instead of aliasing it to cancel", async () => {
+    const { parseOnConflict } = await import("../../src/cli/on-conflict.ts");
+    expect(() => parseOnConflict("abort")).toThrow("Invalid --on-conflict value: abort.");
+    expect(() => parseOnConflict("abort")).toThrow("Use replace, skip, prompt or cancel.");
+    expect(parseOnConflict("fail")).toBe("cancel");
   });
 });

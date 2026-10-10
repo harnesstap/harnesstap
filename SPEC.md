@@ -467,7 +467,7 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 | --- | --- |
 | `--dry-run` | Preview global diff without writing |
 | `--harness <slugs>` | Override harness targets (default: global harness preference) |
-| `--on-conflict <policy>` | `replace` \| `skip` \| `prompt` \| `cancel` (aliases for one release: `overwrite`→`replace`, `ignore`→`skip`, `fail`/`abort`→`cancel`) |
+| `--on-conflict <policy>` | `replace` \| `skip` \| `prompt` \| `cancel` (aliases for one release: `overwrite`→`replace`, `ignore`→`skip`, `fail`→`cancel`) |
 | `--account <name>` | Cloud account for catalog resolution during dependency pull |
 | `--base-url <url>` | Cloud base URL for dependency pull |
 | `--no-pull` | Fail when composition refs are missing locally instead of auto-pull |
@@ -790,7 +790,7 @@ When one supported harness already exists in a project, it is the default regist
 
 Plugin resources with `never_synced` or `stale` status warn by default; pass `--sync-plugins` to refresh before materialize.
 
-When generated files already exist, `apply` uses `--on-conflict replace|skip|prompt|cancel` (default: `prompt` when interactive). Non-interactive apply still falls back to `replace` today; the DS-6 default is `cancel`. Old values `overwrite`, `ignore`, and `fail`/`abort` remain aliases for one release.
+When generated files already exist, `apply` uses `--on-conflict replace|skip|prompt|cancel` (default: `prompt` when interactive). Non-interactive apply still falls back to `replace` today; the DS-6 default is `cancel`. Old values `overwrite`, `ignore`, and `fail` remain aliases for one release.
 
 Compile and apply both run `generateFiles`, which omits a resource from a harness serializer when that resource's `harness_scope` is a subset that does not include the harness.
 
