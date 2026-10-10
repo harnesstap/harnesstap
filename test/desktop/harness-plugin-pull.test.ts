@@ -318,8 +318,8 @@ describe("makeHarnessPluginPullReport", () => {
       current: [],
       failed: [],
     });
-    expect(harnessPluginPullProgressCopy(0, 3)).toBe("Pulling 1 of 3…");
-    expect(harnessPluginPullProgressCopy(2, 3)).toBe("Pulling 3 of 3…");
-    expect(harnessPluginPullProgressCopy(0, 0)).toBe("Pulling…");
+    expect(harnessPluginPullProgressCopy(0, 3)).toBe("Pulling 1 of 3...");
+    expect(harnessPluginPullProgressCopy(2, 3)).toBe("Pulling 3 of 3...");
+    expect(harnessPluginPullProgressCopy(0, 0)).toBe("Pulling...");
   });
 });

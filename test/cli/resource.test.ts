@@ -3,6 +3,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { importBuiltinFixtures } from "../helpers/builtin-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { shortenId } from "../../src/ui/format.ts";
 
 describe("CLI resource", () => {
   it("lists, shows, and deletes resources", async () => {
@@ -83,7 +84,7 @@ describe("CLI resource", () => {
           content: "# OpenAPI MCP Baseline",
         }),
       );
-      const shortId = `${resource.id.slice(0, 6)}…${resource.id.slice(-4)}`;
+      const shortId = shortenId(resource.id);
 
       const hidden = await runCli(["resource", "list"]);
       const shown = await runCli(["resource", "list", "--show-id"]);
@@ -203,8 +204,8 @@ describe("CLI resource", () => {
 
       expect(limitedRows).toBe(10);
       expect(fullRows).toBe(12);
-      expect(limited.stdout).toContain("… and 2 more resources");
-      expect(full.stdout).not.toContain("… and");
+      expect(limited.stdout).toContain("... and 2 more resources");
+      expect(full.stdout).not.toContain("... and");
     } finally {
       await context.cleanup();
     }
