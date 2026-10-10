@@ -87,7 +87,12 @@ export abstract class BaseSerializer implements PlatformSerializer {
     resources: Resource[],
     targetMcpPath: string | undefined,
   ): Resource[] {
-    return filterMcpServersForTargetPath(resources, targetMcpPath);
+    return filterMcpServersForTargetPath(
+      resources,
+      targetMcpPath,
+      "",
+      this.platformId,
+    );
   }
 
   protected toTargetRelativePath(

@@ -271,7 +271,9 @@ export function HarnessScopeControl({
                   </span>
                   <span className="harness-scope-row-name">{label}</span>
                   {isMain && option.group.harnessIds.length === 1 ? (
-                    <span className="badge pill harness-scope-main">{HARNESS_SCOPE_COPY.main}</span>
+                    <ChromeTooltip content={HARNESS_SCOPE_COPY.mainTooltip}>
+                      <span className="badge pill harness-scope-main">{HARNESS_SCOPE_COPY.main}</span>
+                    </ChromeTooltip>
                   ) : null}
                 </label>
               );

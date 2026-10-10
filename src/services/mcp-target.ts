@@ -1,6 +1,10 @@
 import { getAllPlatforms } from "../platforms/registry.js";
-import type { Resource } from "../types.js";
+import type { McpServerMetadata, Resource } from "../types.js";
 import { isClaudeLocalMcpResource } from "./claude-local-mcp.js";
+import {
+  resourceAppliesToHarness,
+  resourceHarnessScope,
+} from "./harness-scope.js";
 
 function normalizePath(path: string, rootPath = ""): string {
   let normalized = path.replace(/\\/g, "/");
@@ -54,7 +58,6 @@ function collectKnownMcpConfigPaths(): string[] {
         continue;
       }
       const normalized = stripHomePrefix(candidate);
-      // Only treat settings paths as MCP when the filename is an MCP config.
       if (
         candidate === platform.projectPaths.mcp
         || candidate === platform.globalPaths.mcp
@@ -87,8 +90,48 @@ function isPortableMcpSource(source: string | undefined): boolean {
   );
 }
 
+export function harnessIdsForMcpPath(
+  targetMcpPath: string,
+  rootPath = "",
+): string[] {
+  const ids: string[] = [];
+  for (const platform of getAllPlatforms()) {
+    const candidates = [
+      platform.projectPaths.mcp,
+      platform.globalPaths.mcp,
+      platform.globalPaths.settings,
+      platform.projectPaths.settings,
+    ];
+    if (candidates.some((candidate) => sourceMatchesManagedPath(candidate, targetMcpPath, rootPath))) {
+      ids.push(platform.id);
+    }
+  }
+  return ids;
+}
+
+export function isPortableMcpResource(resource: Pick<Resource, "type" | "metadata">): boolean {
+  if (resource.type !== "mcp_server") {
+    return false;
+  }
+  const meta = resource.metadata as McpServerMetadata;
+  if (meta.transport !== "stdio" && meta.transport !== "http") {
+    return false;
+  }
+  if (meta.connection_type || meta.framing || meta.claude_mcp_scope === "local") {
+    return false;
+  }
+  for (const key of Object.keys(meta.env ?? {})) {
+    if (/claude|codex|opencode|cursor/i.test(key)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * MCP servers to emit into a harness MCP config path.
+ * Subset harness_scope wins. Unscoped resources keep source-path binding so
+ * disk-captured servers stay on their origin until the user adds scope.
  * - Path-matched sources stay on that file.
  * - `manual` / empty / `apm.yml` / package `mcp.json` sources stay portable (all targets).
  * - Sources pointing at a *different* known MCP file are excluded.
@@ -97,6 +140,7 @@ export function filterMcpServersForTargetPath(
   resources: Resource[],
   targetMcpPath: string | undefined,
   rootPath = "",
+  platformId?: string,
 ): Resource[] {
   const mcps = resources.filter(
     (resource) =>
@@ -106,14 +150,24 @@ export function filterMcpServersForTargetPath(
     return mcps;
   }
 
+  const targetHarnesses = platformId
+    ? [platformId]
+    : harnessIdsForMcpPath(targetMcpPath, rootPath);
+
   return mcps.filter((resource) => {
+    const scope = resourceHarnessScope(resource);
+    if (scope.kind === "subset") {
+      if (targetHarnesses.length === 0) {
+        return false;
+      }
+      return targetHarnesses.some((id) => resourceAppliesToHarness(resource, id));
+    }
     if (isPortableMcpSource(resource.source)) {
       return true;
     }
     if (sourceMatchesManagedPath(resource.source, targetMcpPath, rootPath)) {
       return true;
     }
-    // Bound to another harness MCP file — do not cross-write.
     if (sourcePointsAtKnownMcpPath(resource.source ?? "", rootPath)) {
       return false;
     }

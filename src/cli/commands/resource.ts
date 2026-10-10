@@ -33,6 +33,7 @@ import {
   resolveResourceListType,
   shouldUseInteractiveResourceList,
 } from "../handlers/resource-list.js";
+import { COMMAND_HELP_REGISTRY } from "../../services/cli-help-registry.js";
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
 import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_HELP, quoteName } from "../messages.js";
@@ -42,6 +43,11 @@ import {
   formatCommand,
 } from "../shared.js";
 import { registerResourceParityCommands } from "./parity-register.js";
+import {
+  addHarnessesToResourceScope,
+  parseHarnessIdList,
+} from "../../services/resource-scope.js";
+import { scopeLine } from "../../copy/scope.js";
 
 async function deleteLibraryResource(selector: string): Promise<void> {
   const result = resolveResource(selector);
@@ -363,6 +369,52 @@ export function registerResourceCommands(root: Command): void {
         }
       }
     });
+
+  resourceCmd
+    .command("scope")
+    .argument("<name>", "Resource name or selector")
+    .requiredOption(
+      "--add <harnesses>",
+      "Comma-separated harness ids to add to this resource's scope",
+    )
+    .option("--format <mode>", "Output format: human or json", "human")
+    .description("Add harnesses to a resource's scope")
+    .action((
+      name: string,
+      opts: { add: string; format?: string },
+    ) => {
+      const db = getDb();
+      initializeSchema(db);
+      const format = parseOutputFormat(opts.format);
+      const rawAdd = opts.add;
+      try {
+        const result = addHarnessesToResourceScope({
+          selector: name,
+          harnessIds: parseHarnessIdList(rawAdd),
+        });
+        if (format === "json") {
+          printJson({
+            name: result.resourceName,
+            type: result.resourceType,
+            scope: result.scope,
+            plugins_updated: result.pluginsUpdated,
+          });
+          return;
+        }
+        ui.success(
+          `Updated "${result.resourceName}" scope. ${scopeLine(result.scope)}.`,
+        );
+      } catch (err) {
+        fail(err instanceof Error ? err.message : String(err));
+      }
+    });
+
+  COMMAND_HELP_REGISTRY["resource.scope"] = {
+    description: "Add harnesses to a resource's scope",
+    examples: [
+      "resource scope filesystem --add cursor,codex",
+    ],
+  };
 
   registerResourceParityCommands(resourceCmd);
 }

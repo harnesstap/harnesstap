@@ -50,18 +50,20 @@ describe("harness scope desktop UX", () => {
   });
 
   it("uses locked copy without em dashes", () => {
-    expect(copy).toContain('useOn: "Use on"');
-    expect(copy).toContain('selectAll: "Select all"');
-    expect(copy).toContain('none: "None"');
-    expect(copy).toContain('main: "Main"');
+    expect(copy).toContain("SCOPE_COPY.useOn");
+    expect(copy).toContain("SCOPE_COPY.selectAll");
+    expect(copy).toContain("SCOPE_COPY.none");
+    expect(copy).toContain("SCOPE_COPY.main");
     expect(copy).toContain('filterPlaceholder: "Filter harnesses"');
-    expect(copy).toContain('emptyHint: "Pick at least one harness"');
+    expect(copy).toContain("SCOPE_COPY.emptyHint");
     expect(srcScope).toContain("These read the same folder, so they share one setting");
-    expect(copy).toContain('allTooltip: "On all harnesses. Pick which ones"');
-    expect(copy).toContain('orphanedTooltip: "Its harnesses are gone. Pick new ones"');
+    expect(copy).toContain("SCOPE_COPY.allTooltip");
+    expect(copy).toContain("SCOPE_COPY.orphanedTooltip");
+    expect(copy).toContain("SCOPE_COPY.mainTooltip");
     expect(copy).toContain("Harnesses for ${resourceName}");
-    expect(copy).toContain("Only on ${visible.join(\", \")}");
-    expect(copy).toContain("and ${extra} more");
+    expect(copy).toContain("formatHarnessList");
+    expect(copy).toContain("subsetScopeLine");
+    expect(control).toContain("HARNESS_SCOPE_COPY.mainTooltip");
     expect(copy).not.toContain("—");
     expect(control).not.toContain("—");
   });

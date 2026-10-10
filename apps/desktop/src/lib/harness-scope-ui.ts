@@ -11,6 +11,7 @@ import {
   type LinkedHarnessGroup,
 } from "../../../../src/services/harness-scope.ts";
 import { harnessDisplayName } from "./harness-meta";
+import { formatHarnessList, SCOPE_COPY, subsetScopeLine } from "../../../../src/copy/scope";
 
 export type SerializerTarget = "project" | "global";
 
@@ -27,15 +28,16 @@ export {
 export type { HarnessScope, LinkedHarnessGroup };
 
 export const HARNESS_SCOPE_COPY = {
-  useOn: "Use on",
-  selectAll: "Select all",
-  none: "None",
-  main: "Main",
+  useOn: SCOPE_COPY.useOn,
+  selectAll: SCOPE_COPY.selectAll,
+  none: SCOPE_COPY.none,
+  main: SCOPE_COPY.main,
+  mainTooltip: SCOPE_COPY.mainTooltip,
   filterPlaceholder: "Filter harnesses",
-  emptyHint: "Pick at least one harness",
-  linkedTooltip: LINKED_SHARED_FOLDER_TOOLTIP,
-  allTooltip: "On all harnesses. Pick which ones",
-  orphanedTooltip: "Its harnesses are gone. Pick new ones",
+  emptyHint: SCOPE_COPY.emptyHint,
+  linkedTooltip: SCOPE_COPY.linkedTooltip,
+  allTooltip: SCOPE_COPY.allTooltip,
+  orphanedTooltip: SCOPE_COPY.orphanedTooltip,
 } as const;
 
 export interface HarnessScopeOption {
@@ -52,12 +54,10 @@ export function harnessScopeAriaLabel(resourceName: string): string {
 }
 
 export function subsetScopeTooltip(ids: readonly string[], names: (id: string) => string): string {
-  const visible = ids.slice(0, 3).map(names);
-  const extra = ids.length - visible.length;
-  if (extra <= 0) {
-    return `Only on ${visible.join(", ")}`;
+  if (ids.length <= 3) {
+    return `Only on ${formatHarnessList(ids.map(names))}`;
   }
-  return `Only on ${visible.join(", ")} and ${extra} more`;
+  return subsetScopeLine(ids);
 }
 
 export function harnessScopeTooltip(
