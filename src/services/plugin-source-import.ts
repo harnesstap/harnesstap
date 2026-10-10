@@ -5,7 +5,7 @@ import { parse as parseToml } from "smol-toml";
 import { normalizeAgentInput } from "./agent-bridge.js";
 import { collectHookEntries, commandReferencesPluginRoot } from "./hook-serialization.js";
 import { scanSkillCommandMetadataResources } from "./skill-command-metadata.js";
-import { listSkillAuxiliaryFiles } from "./skill-auxiliary.js";
+import { skillMetadataFromDir } from "./skill-auxiliary.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import type {
   ResourceCreateInput,
@@ -524,8 +524,6 @@ function scanSkills(
       ...metadata,
       relativePath: relativePath(rootPath, skillPath),
     });
-    const { scripts, references } = listSkillAuxiliaryFiles(skillDir);
-
     const skillName = assertSafeImportedResourceName(
       (parsed.data["name"] as string) || entry,
       skillPath,
@@ -538,8 +536,7 @@ function scanSkills(
       content: parsed.content,
       source: provenance.relative_path,
       metadata: {
-        scripts,
-        references,
+        ...skillMetadataFromDir(skillDir),
         imported_from: provenance,
       },
     });

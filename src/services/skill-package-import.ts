@@ -11,7 +11,7 @@ import type {
   SkillMetadata,
 } from "../types.js";
 import { discoverSkillPackage, type DiscoveredSkill } from "./skill-discovery.js";
-import { listSkillAuxiliaryFiles } from "./skill-auxiliary.js";
+import { skillMetadataFromDir } from "./skill-auxiliary.js";
 
 export interface ImportSkillPackageResult {
   snapshot: ImportedSnapshot;
@@ -110,10 +110,8 @@ function buildSkillResource(input: {
     pluginName: input.pluginName,
     relativePath: input.skill.skillMdRelative,
   });
-  const { scripts, references } = listSkillAuxiliaryFiles(skillDir);
   const metadata: SkillMetadata & { imported_from: ImportedResourceProvenance } = {
-    scripts,
-    references,
+    ...skillMetadataFromDir(skillDir),
     imported_from: provenance,
   };
 

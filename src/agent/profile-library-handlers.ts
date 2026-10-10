@@ -277,7 +277,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const METADATA_KEYS_BY_TYPE: Record<MaterialResourceType, ReadonlySet<string>> = {
   instruction: new Set(),
-  skill: new Set(["scripts", "references"]),
+  skill: new Set(["scripts", "references", "companions"]),
   rule: new Set(["globs", "always_apply"]),
   mcp_server: new Set([
     "transport",
