@@ -2,10 +2,12 @@ import { describe, expect, it } from "bun:test";
 import { filterMcpServersForTargetPath } from "../../src/services/mcp-target.ts";
 import type { Resource } from "../../src/types.ts";
 import { claudeLocalMcpSource } from "../../src/services/claude-local-mcp.ts";
+import type { HarnessScope } from "../../src/services/harness-scope.ts";
 
 function mcp(
   name: string,
   source: string,
+  harnessScope?: HarnessScope,
 ): Resource {
   return {
     id: name,
@@ -22,6 +24,7 @@ function mcp(
     content_blob_ref: "",
     created_at: "",
     updated_at: "",
+    ...(harnessScope ? { harness_scope: harnessScope } : {}),
   };
 }
 
@@ -83,5 +86,24 @@ describe("filterMcpServersForTargetPath", () => {
     expect(
       filterMcpServersForTargetPath(resources, undefined).map((entry) => entry.name),
     ).not.toContain("claude-local");
+  });
+
+  it("fans a subset-scoped portable MCP only onto listed harnesses", () => {
+    const scoped = [
+      mcp("filesystem", "~/.claude.json", {
+        kind: "subset",
+        harnesses: ["claude-code", "cursor"],
+      }),
+    ];
+    expect(
+      filterMcpServersForTargetPath(scoped, ".cursor/mcp.json", "", "cursor").map(
+        (entry) => entry.name,
+      ),
+    ).toEqual(["filesystem"]);
+    expect(
+      filterMcpServersForTargetPath(scoped, ".copilot/mcp-config.json", "", "copilot-cli").map(
+        (entry) => entry.name,
+      ),
+    ).toEqual([]);
   });
 });

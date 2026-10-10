@@ -14,6 +14,16 @@ import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
 import { renderCliError } from "../runtime.js";
+import { formatCommand } from "../shared.js";
+import { SCOPE_COPY, portableScopeTip, scopeLine } from "../../copy/scope.js";
+import { getHarnessPreference } from "../../models/harness.js";
+import { collectProfilePluginIds } from "../../services/profile-apply.js";
+import { mergePluginsForApply } from "../../services/plugin-apply-merge.js";
+import { resolvePluginSelector } from "../../models/plugin-model.js";
+import { registeredHarnessesOf } from "../../services/harness-targets.js";
+import { resourceHarnessScope } from "../../services/harness-scope.js";
+import { isPortableMcpResource } from "../../services/mcp-target.js";
+import type { DriftFileChange } from "../../services/project-drift.js";
 
 const CLI_PREVIEW_SCOPES = ["home", "project", "both"] as const;
 type CliPreviewScope = (typeof CLI_PREVIEW_SCOPES)[number];
@@ -150,6 +160,55 @@ function printHostManagedCollisions(preview: ProfileApplyPreview): void {
   }
 }
 
+function previewChangeLabel(change: DriftFileChange): string {
+  switch (change.type) {
+    case "added":
+    case "modified":
+      return SCOPE_COPY.willWrite;
+    case "deleted":
+      return SCOPE_COPY.willRemove;
+    default: {
+      const unhandled: never = change.type;
+      return String(unhandled);
+    }
+  }
+}
+
+function printPortableMcpTips(preview: ProfileApplyPreview): void {
+  const plugin = resolvePluginSelector(preview.profile);
+  if (!plugin) {
+    return;
+  }
+  const registered = registeredHarnessesOf(getHarnessPreference());
+  if (registered.length === 0) {
+    return;
+  }
+  const resources = mergePluginsForApply(collectProfilePluginIds(plugin)).resources;
+  for (const resource of resources) {
+    if (!isPortableMcpResource(resource)) {
+      continue;
+    }
+    const scope = resourceHarnessScope(resource);
+    if (scope.kind !== "subset") {
+      continue;
+    }
+    const extra = registered.filter((id) => !scope.harnesses.includes(id));
+    if (extra.length === 0) {
+      continue;
+    }
+    const command = formatCommand(
+      `resource scope ${resource.name} --add ${extra.join(",")}`,
+    );
+    ui.hint(
+      portableScopeTip({
+        resourceName: resource.name,
+        targetIds: extra,
+        command,
+      }),
+    );
+  }
+}
+
 function printHumanPreview(preview: ProfileApplyPreview): void {
   ui.info(
     `Profile ${preview.profile}  scope=${preview.scope}  root=${preview.files.root_path}`,
@@ -175,7 +234,14 @@ function printHumanPreview(preview: ProfileApplyPreview): void {
     for (const plugin of contents.plugins) {
       ui.info(`plugin ${plugin.name}@${plugin.version}`);
       for (const resource of plugin.resources) {
-        ui.dim(`  ${resource.type}:${resource.name}`);
+        const scope = resource.harness_scope
+          ? scopeLine(
+              Array.isArray(resource.harness_scope)
+                ? { kind: "subset", harnesses: resource.harness_scope }
+                : { kind: "all" },
+            )
+          : SCOPE_COPY.appliesToAll;
+        ui.dim(`  ${resource.type}:${resource.name}  ${scope}`);
       }
     }
     for (const pin of contents.plugin_pins) {
@@ -193,7 +259,7 @@ function printHumanPreview(preview: ProfileApplyPreview): void {
       const resource = change.resource
         ? `  [${change.resource.type}:${change.resource.name}]`
         : "";
-      ui.info(`${change.type}  ${change.path}${resource}`);
+      ui.info(`${previewChangeLabel(change)}  ${change.path}${resource}`);
     }
   }
   printInstallGaps(preview);
@@ -202,7 +268,7 @@ function printHumanPreview(preview: ProfileApplyPreview): void {
     ? preview.not_staged
     : preview.untracked_resources;
   if (untracked.length > 0) {
-    ui.subheader("Untracked");
+    ui.subheader(SCOPE_COPY.notInProfile);
     for (const resource of untracked) {
       ui.info(`${resource.type}:${resource.name}  ${resource.source}`);
     }
@@ -218,6 +284,7 @@ function printHumanPreview(preview: ProfileApplyPreview): void {
   }
 
   printHostManagedCollisions(preview);
+  printPortableMcpTips(preview);
 }
 
 export async function handleProfilePreviewCommand(
