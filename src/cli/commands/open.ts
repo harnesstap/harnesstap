@@ -9,6 +9,7 @@ import * as openPath from "../../services/open-path.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
 import { renderCliError } from "../runtime.js";
+import { fail } from "../shared.js";
 
 export function registerOpenCommand(root: Command): void {
   COMMAND_HELP_REGISTRY.open = {
@@ -45,7 +46,7 @@ export function registerOpenCommand(root: Command): void {
         ui.success(`Opened ${resolvedPath}`);
       } catch (error) {
         process.exitCode = 1;
-        ui.danger(error instanceof Error ? error.message : String(error));
+        fail(error instanceof Error ? error.message : String(error));
       }
     });
 }

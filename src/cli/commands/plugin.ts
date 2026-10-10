@@ -29,8 +29,15 @@ import {
   resolveResourceListType,
 } from "../handlers/resource-list.js";
 import { configureCommandGroup } from "../help.js";
+import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_PLUGIN_IMPORT_HELP } from "../messages.js";
+import { parseOnConflict, toPluginImportOnConflict } from "../on-conflict.js";
 import { renderCliError } from "../runtime.js";
-import { collectRepeatedOption, formatCommand } from "../shared.js";
+import {
+  collectRepeatedOption,
+  fail,
+  failCaught,
+  formatCommand,
+} from "../shared.js";
 import { DRY_RUN_NOTHING_CHANGED } from "../../copy/cli.js";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
@@ -52,10 +59,11 @@ import { importFromFile, inspectPluginExportFile } from "../../services/plugin-i
 import { openPathInSystemEditor } from "../../services/open-path.js";
 import {
   createPlugin,
-  getPlugin,
-  listPlugins,
   deletePlugin,
+  getPlugin,
   getPluginById,
+  getPluginByName,
+  listPlugins,
   resolvePluginSelector,
   mergePluginsById,
   setPluginTags,
@@ -203,7 +211,6 @@ import {
 } from "../../services/plugin-marketplace-add.js";
 import { addDependency } from "../../services/plugin-dependency.js";
 import {
-  GitPluginImportError,
   importPluginFromGitHubRef,
   isGitHubPluginRef,
 } from "../../services/plugin-git-import.js";
@@ -228,11 +235,11 @@ import {
 async function deleteLocalPluginByName(nameOrId: string): Promise<void> {
   const plugin = getPlugin(nameOrId);
   if (!plugin) {
-    ui.danger(`Plugin not found: ${nameOrId}`);
+    fail(`Plugin not found: ${nameOrId}`);
     return;
   }
   if (!deletePlugin(plugin.id)) {
-    ui.danger(`Failed to delete plugin ${formatPluginLabel(plugin)}`);
+    fail(`Failed to delete plugin ${formatPluginLabel(plugin)}`);
     return;
   }
   ui.success(`Deleted plugin ${ui.theme.accent(formatPluginLabel(plugin))}`);
@@ -429,7 +436,7 @@ export async function handleProjectApplyCommand(
       });
     } catch (err) {
       process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
       return;
     }
     if (fromManifest && fromManifest.selectors.length > 0) {
@@ -455,7 +462,7 @@ export async function handleProjectApplyCommand(
 
   if (resolvedPluginNames.length === 0) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       "Provide at least one plugin name, plugin export path, or URL, or declare dependencies in apm.yml.",
       {
         hints: [
@@ -469,7 +476,7 @@ export async function handleProjectApplyCommand(
 
   if (opts.strictPluginVersions && opts.ignorePluginVersions) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       "Choose either --strict-plugin-versions or --ignore-plugin-versions, not both.",
     );
     return;
@@ -512,14 +519,14 @@ export async function handleProjectApplyCommand(
     resolveSpin.stop();
     process.exitCode = 1;
     if (err instanceof PluginResolveError || err instanceof PluginAmbiguityError) {
-      ui.danger(err.message, { hints: err.hints });
+      fail(err.message, { hints: err.hints });
       return;
     }
     if (err instanceof CatalogDependencyVersionError) {
-      ui.danger(err.message, { hints: err.hints });
+      fail(err.message, { hints: err.hints });
       return;
     }
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
     return;
   }
 
@@ -533,10 +540,10 @@ export async function handleProjectApplyCommand(
     resolveSpin.stop();
     process.exitCode = 1;
     if (err instanceof CatalogDependencyVersionError) {
-      ui.danger(err.message, { hints: err.hints });
+      fail(err.message, { hints: err.hints });
       return;
     }
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
     return;
   }
 
@@ -626,7 +633,7 @@ export async function handleProjectApplyCommand(
     compositionSpin.stop();
     process.exitCode = 1;
     if (err instanceof UnsatisfiableConstraintError) {
-      ui.danger(err.message, { hints: err.hints });
+      fail(err.message, { hints: err.hints });
       const recovered = await offerConstraintRecovery({
         error: err,
         rootName: resolvedPluginNames[0] ?? "",
@@ -649,7 +656,7 @@ export async function handleProjectApplyCommand(
       return;
     }
     if (err instanceof SingletonConflictError) {
-      ui.danger(err.message, { hints: err.hints });
+      fail(err.message, { hints: err.hints });
       const scaffolded = await offerConflictScaffold({
         error: err,
         attemptedSelectors: resolvedPluginNames as string[],
@@ -668,14 +675,14 @@ export async function handleProjectApplyCommand(
       return;
     }
     if (err instanceof PluginResolveError || err instanceof PluginAmbiguityError) {
-      ui.danger(err.message, { hints: err.hints });
+      fail(err.message, { hints: err.hints });
       return;
     }
     if (err instanceof CatalogDependencyVersionError) {
-      ui.danger(err.message, { hints: err.hints });
+      fail(err.message, { hints: err.hints });
       return;
     }
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
     return;
   }
   compositionSpin.stop();
@@ -690,7 +697,7 @@ export async function handleProjectApplyCommand(
     ) ?? applyBundle.plugins[0];
   if (!primaryPlugin) {
     process.exitCode = 1;
-    ui.danger("No plugin resolved for apply");
+    fail("No plugin resolved for apply");
     return;
   }
 
@@ -699,7 +706,7 @@ export async function handleProjectApplyCommand(
     platforms = resolveApplyHarnessTargets(projectRoot, opts);
   } catch (err) {
     process.exitCode = err instanceof TargetFlagError ? 2 : 1;
-    ui.danger(err instanceof Error ? err.message : String(err), {
+    fail(err instanceof Error ? err.message : String(err), {
       hints: [
         formatCommand("targets"),
         "Declare targets: in apm.yml or pass --target / --harness",
@@ -826,7 +833,7 @@ export async function handleProjectApplyCommand(
       } catch (err) {
         process.exitCode = 1;
         if (err instanceof UnsatisfiableConstraintError) {
-          ui.danger(err.message, { hints: err.hints });
+          fail(err.message, { hints: err.hints });
           const recovered = await offerConstraintRecovery({
             error: err,
             rootName: resolvedPluginNames[0] ?? "",
@@ -849,7 +856,7 @@ export async function handleProjectApplyCommand(
           return;
         }
         if (err instanceof SingletonConflictError) {
-          ui.danger(err.message, { hints: err.hints });
+          fail(err.message, { hints: err.hints });
           const scaffolded = await offerConflictScaffold({
             error: err,
             attemptedSelectors: resolvedPluginNames as string[],
@@ -867,7 +874,7 @@ export async function handleProjectApplyCommand(
           }
           return;
         }
-        ui.danger(err instanceof Error ? err.message : String(err));
+        fail(err instanceof Error ? err.message : String(err));
         return;
       }
     }
@@ -891,7 +898,7 @@ export async function handleProjectApplyCommand(
   applyResources = substituted.resources;
   if (opts.strict && substituted.missing.length > 0) {
     process.exitCode = 1;
-    ui.danger("Strict mode failed: unresolved environment variables.", {
+    fail("Strict mode failed: unresolved environment variables.", {
       hints: substituted.missing.map((key) => key),
     });
     return;
@@ -904,13 +911,12 @@ export async function handleProjectApplyCommand(
       for (const ref of pluginPrepare.unresolvedPins) {
         console.warn(
           ui.theme.warn(
-            `Plugin pin ${ref} is not installed locally. Run: harnesstap resource sync plugin_pin:${ref}`,
+            `Plugin pin ${ref} is not installed locally. Run: ht resource sync plugin:${ref}`,
           ),
         );
       }
       if (opts.strictPluginVersions) {
-        ui.danger("Plugin install failed — apply aborted");
-        process.exitCode = 2;
+        fail("Plugin install failed. Apply aborted.", { exitCode: 2 });
         return;
       }
     }
@@ -939,7 +945,7 @@ export async function handleProjectApplyCommand(
       }
       for (const violation of policyEvaluation.violations) {
         if (policyEvaluation.blocks) {
-          ui.danger(violation.message);
+          fail(violation.message);
         } else if (policyEvaluation.enforcement !== "off") {
           ui.warn(violation.message);
         }
@@ -949,12 +955,12 @@ export async function handleProjectApplyCommand(
   } catch (err) {
     process.exitCode = 1;
     if (err instanceof PolicyError) {
-      ui.danger(err.message, {
+      fail(err.message, {
         hints: ["Fix apm-policy.yml or the install plan, then re-apply"],
       });
       return;
     }
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
     return;
   }
 
@@ -1034,18 +1040,18 @@ export async function handleProjectApplyCommand(
   } catch (err) {
     process.exitCode = 1;
     if (err instanceof CriticalUnicodeError) {
-      ui.danger(err.message, {
+      fail(err.message, {
         hints: [formatCommand("apply --force")],
       });
       return;
     }
     if (err instanceof LockIntegrityError) {
-      ui.danger(err.message, {
+      fail(err.message, {
         hints: [formatCommand("apply --update")],
       });
       return;
     }
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
     return;
   }
 
@@ -1060,8 +1066,7 @@ export async function handleProjectApplyCommand(
       for (const issue of pluginValidationIssues) {
         console.warn(ui.theme.warn(issue.message));
       }
-      ui.danger("Plugin pin violations — apply aborted");
-      process.exitCode = 2;
+      fail("Plugin pin violations. Apply aborted.", { exitCode: 2 });
       return;
     }
   }
@@ -1176,7 +1181,7 @@ export async function handleProjectApplyCommand(
     });
     spin.stop();
     if (materialized.cancelled) {
-      ui.danger("Apply cancelled due to file conflicts");
+      fail("Apply cancelled due to file conflicts");
       process.exitCode = 1;
       return;
     }
@@ -1333,7 +1338,7 @@ async function handlePluginEditCommand(
         validatePluginAttachmentType(opts.type);
       } catch (error) {
         process.exitCode = 1;
-        ui.danger(error instanceof Error ? error.message : String(error));
+        fail(error instanceof Error ? error.message : String(error));
         return;
       }
     }
@@ -1342,11 +1347,11 @@ async function handlePluginEditCommand(
   } else {
     const resolvedType = resolveResourceListType(undefined, opts.type);
     if (resolvedType === "conflict") {
-      ui.danger(`Conflicting type filters: ${opts.type}`);
+      fail(`Conflicting type filters: ${opts.type}`);
       return;
     }
     if (resolvedType === "invalid") {
-      ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
+      fail(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
       return;
     }
     typeFilter = resolvedType;
@@ -1364,7 +1369,7 @@ async function handlePluginEditCommand(
 
   if (!resolvedName) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       scripting || listPlugins().length > 0
         ? "error: missing required argument 'name'"
         : `No plugins found. Create one with \`${formatCommand("plugin create <name>")}\` first.`,
@@ -1375,7 +1380,7 @@ async function handlePluginEditCommand(
   const plugin = getPlugin(resolvedName);
   if (!plugin) {
     process.exitCode = 1;
-    ui.danger(`Plugin not found: ${resolvedName}`);
+    fail(`Plugin not found: ${resolvedName}`);
     return;
   }
 
@@ -1489,11 +1494,11 @@ async function handlePluginEditCommand(
     } catch (error) {
       if (error instanceof PluginAttachmentHintError) {
         process.exitCode = 1;
-        ui.danger(error.message, { hints: error.hints });
+        fail(error.message, { hints: error.hints });
         return;
       }
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
       return;
     }
   }
@@ -1505,7 +1510,7 @@ async function handlePluginEditCommand(
 
   if (!shouldUseInteractivePluginEdit(opts)) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       `plugin edit requires an interactive terminal, or use \`${formatCommand("plugin edit <name> --add <selector> --type <type>")}\`, \`--remove\`, \`--apply <file>\`, \`--environment <name>\`, or \`--clear-environment\` for scripting.`,
     );
     return;
@@ -1575,7 +1580,7 @@ async function handlePluginEditorCommand(
   });
   if (!resolvedName) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       listPlugins().length > 0
         ? "error: missing required argument 'name'"
         : `No plugins found. Create one with \`${formatCommand("plugin create <name>")}\` first.`,
@@ -1586,7 +1591,7 @@ async function handlePluginEditorCommand(
   const plugin = getPlugin(resolvedName);
   if (!plugin) {
     process.exitCode = 1;
-    ui.danger(`Plugin not found: ${resolvedName}`);
+    fail(`Plugin not found: ${resolvedName}`);
     return;
   }
 
@@ -1609,10 +1614,10 @@ async function handlePluginEditorCommand(
   } catch (error) {
     process.exitCode = 1;
     if (error instanceof PluginProvenanceError) {
-      ui.danger(error.message, { hints: error.hints });
+      fail(error.message, { hints: error.hints });
       return;
     }
-    ui.danger(error instanceof Error ? error.message : String(error));
+    fail(error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -1636,13 +1641,8 @@ function resolveApplyHarnessTargets(
 function parsePluginSourceConflictPolicy(
   value: string | undefined,
 ): PluginSourceConflictPolicy | undefined {
-  if (!value) return undefined;
-  if (value === "cancel" || value === "merge" || value === "overwrite") {
-    return value;
-  }
-  throw new Error(
-    `Invalid --on-conflict value: ${value}. Use cancel, merge, or overwrite.`,
-  );
+  const parsed = parseOnConflict(value, { allowMerge: true });
+  return toPluginImportOnConflict(parsed);
 }
 
 function handlePluginCutCommand(
@@ -1656,7 +1656,7 @@ function handlePluginCutCommand(
   const plugin = getPlugin(pluginSelector);
   if (!plugin) {
     process.exitCode = 1;
-    ui.danger(`Plugin not found: ${pluginSelector}`);
+    fail(`Plugin not found: ${pluginSelector}`);
     return;
   }
 
@@ -1671,14 +1671,14 @@ function handlePluginCutCommand(
   } catch (err) {
     process.exitCode = 1;
     if (err instanceof PluginProvenanceError) {
-      ui.danger(err.message, { hints: err.hints });
+      fail(err.message, { hints: err.hints });
       return;
     }
     if (err instanceof PluginVersionError) {
-      ui.danger(err.message);
+      fail(err.message);
       return;
     }
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1721,7 +1721,7 @@ function handlePluginDiffCommand(
     );
   } catch (err) {
     process.exitCode = 1;
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1770,7 +1770,7 @@ async function handlePluginDoctorCommand(
     });
     if (!resolvedName) {
       process.exitCode = 1;
-      ui.danger(
+      fail(
         listPlugins().length > 0
           ? "error: missing required argument 'name'"
           : `No plugins found. Create one with \`${formatCommand("plugin create <name>")}\` first.`,
@@ -1841,7 +1841,7 @@ async function handlePluginDoctorCommand(
       process.exitCode = 1;
     }
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
   }
 }
@@ -1871,7 +1871,7 @@ async function handlePluginFromProjectCommand(
 
     if (!resolvedName) {
       process.exitCode = 1;
-      ui.danger("error: missing required argument 'name'");
+      fail("error: missing required argument 'name'");
       return;
     }
 
@@ -1903,7 +1903,7 @@ async function handlePluginFromProjectCommand(
         if (preview.newResources.length > 0) {
           parts.push(`${preview.newResources.length} new resource(s)`);
         }
-        ui.danger(`Plugin "${resolvedName}" already exists with ${parts.join(" and ")}. Use --interactive to resolve conflicts.`);
+        fail(`Plugin "${resolvedName}" already exists with ${parts.join(" and ")}. Use --interactive to resolve conflicts.`);
         return;
       }
 
@@ -1979,7 +1979,7 @@ async function handlePluginFromProjectCommand(
     );
   } catch (err) {
     process.exitCode = 1;
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -2016,6 +2016,24 @@ async function handlePluginCreateCommand(
   const version = opts.version ?? "1.0.0";
 
   if (!opts.from) {
+    const existing = getPluginByName(name, version);
+    if (existing) {
+      let policy: PluginSourceConflictPolicy = "cancel";
+      try {
+        policy = parsePluginSourceConflictPolicy(opts.onConflict) ?? "cancel";
+      } catch (error) {
+        fail(error instanceof Error ? error.message : String(error));
+        return;
+      }
+      if (policy === "overwrite") {
+        deletePlugin(existing.id);
+      } else {
+        fail(CLI_ERRORS.pluginAlreadyExists(name), {
+          hint: CLI_HINTS.onConflictReplace,
+        });
+        return;
+      }
+    }
     const plugin = createPlugin({
       name,
       version,
@@ -2402,7 +2420,7 @@ function handlePluginAddDependencyCommand(
   const plugin = getPlugin(targetName);
   if (!plugin) {
     process.exitCode = 1;
-    ui.danger(`Plugin not found: ${targetName}`);
+    fail(`Plugin not found: ${targetName}`);
     return;
   }
 
@@ -2489,7 +2507,7 @@ pluginCmd
   )
   .option(
     "--on-conflict <policy>",
-    "When plugin exists: cancel, merge, or overwrite (default: cancel)",
+    `${ON_CONFLICT_PLUGIN_IMPORT_HELP} (default: cancel). merge is plugin import only.`,
   )
   .option("--install", "Install selected skills to hub paths")
   .option("--global", "Install globally when --install is set")
@@ -2586,7 +2604,7 @@ pluginCmd
         return;
       }
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2609,7 +2627,7 @@ pluginCmd
       if (listPlugins().length > 0) {
         renderCliError(missingRequiredArg("name", "plugin show"));
       } else {
-        ui.danger(`No plugins found. Create one with \`${formatCommand("plugin create <name>")}\` first.`);
+        fail(`No plugins found. Create one with \`${formatCommand("plugin create <name>")}\` first.`);
       }
       return;
     }
@@ -2664,10 +2682,10 @@ pluginCmd
         error instanceof PluginAttachmentHintError
         || error instanceof PluginProvenanceError
       ) {
-        ui.danger(error.message, { hints: error.hints });
+        fail(error.message, { hints: error.hints });
         return;
       }
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2718,7 +2736,7 @@ pluginCmd
         const plugin = getPlugin(resolvedName);
         if (!plugin) {
           process.exitCode = 1;
-          ui.danger(`Plugin not found: ${resolvedName}`);
+          fail(`Plugin not found: ${resolvedName}`);
           return;
         }
         if (!deletePlugin(plugin.id)) {
@@ -2775,11 +2793,7 @@ pluginCmd
       await handlePluginAddCommand(ref, opts);
     } catch (error) {
       process.exitCode = 1;
-      if (error instanceof GitPluginImportError) {
-        ui.danger(error.message);
-        return;
-      }
-      renderCliError(error);
+      failCaught(error);
     }
   });
 
@@ -2801,7 +2815,7 @@ pluginCatalogCmd
       });
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2816,7 +2830,7 @@ pluginCatalogCmd
       if (target === "org") {
         if (!value) {
           process.exitCode = 1;
-          ui.danger("error: missing required argument 'slug' for org connect");
+          fail("error: missing required argument 'slug' for org connect");
           return;
         }
         await handlePluginCatalogConnectOrgCommand(value, opts);
@@ -2825,17 +2839,17 @@ pluginCatalogCmd
       if (target === "plugin") {
         if (!value) {
           process.exitCode = 1;
-          ui.danger("error: missing required argument 'org/catalog/plugin' for plugin connect");
+          fail("error: missing required argument 'org/catalog/plugin' for plugin connect");
           return;
         }
         await handlePluginCatalogConnectPluginCommand(value, opts);
         return;
       }
       process.exitCode = 1;
-      ui.danger("error: target must be 'org' or 'plugin'");
+      fail("error: target must be 'org' or 'plugin'");
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2849,7 +2863,7 @@ pluginCatalogCmd
       if (target === "org") {
         if (!value) {
           process.exitCode = 1;
-          ui.danger("error: missing required argument 'slug' for org disconnect");
+          fail("error: missing required argument 'slug' for org disconnect");
           return;
         }
         await handlePluginCatalogDisconnectOrgCommand(value);
@@ -2858,17 +2872,17 @@ pluginCatalogCmd
       if (target === "plugin") {
         if (!value) {
           process.exitCode = 1;
-          ui.danger("error: missing required argument 'org/catalog/plugin' for plugin disconnect");
+          fail("error: missing required argument 'org/catalog/plugin' for plugin disconnect");
           return;
         }
         await handlePluginCatalogDisconnectPluginCommand(value);
         return;
       }
       process.exitCode = 1;
-      ui.danger("error: target must be 'org' or 'plugin'");
+      fail("error: target must be 'org' or 'plugin'");
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2886,7 +2900,7 @@ pluginCatalogCmd
       });
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2902,7 +2916,7 @@ pluginCatalogCmd
       });
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2917,7 +2931,7 @@ pluginCatalogCmd
       });
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2955,7 +2969,7 @@ pluginCatalogCmd
       });
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -2968,7 +2982,7 @@ pluginCatalogCmd
       });
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 

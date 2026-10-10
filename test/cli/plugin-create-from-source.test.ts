@@ -50,7 +50,7 @@ describe("CLI plugin create --from", () => {
         "--yes",
       ]);
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/Plugin already exists/);
+      expect(result.stderr).toMatch(/A plugin named "dbt-expert" already exists/);
     } finally {
       await context.cleanup();
     }

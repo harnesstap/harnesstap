@@ -65,7 +65,7 @@ export interface ApplyResult {
   surface_warnings?: SurfaceWarning[];
 }
 
-export type ConflictPolicy = "prompt" | "replace" | "skip";
+export type ConflictPolicy = "prompt" | "replace" | "skip" | "cancel";
 export type ConflictResolution = "replace" | "skip" | "cancel";
 
 export interface ImportedSnapshotConflictOwner {
@@ -456,6 +456,10 @@ export async function materializeFiles(
     if (conflictPolicy === "skip") {
       decisions.set(conflict.path, "skip");
       continue;
+    }
+    if (conflictPolicy === "cancel") {
+      decisions.set(conflict.path, "cancel");
+      break;
     }
     if (
       !options.conflictResolver &&

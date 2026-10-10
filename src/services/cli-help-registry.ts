@@ -663,7 +663,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     examples: [
       "resource sync",
       "resource sync plugin:my-plugin --dry-run",
-      "resource sync --on-conflict overwrite",
+      "resource sync --on-conflict replace",
     ],
   },
   "resource.delete": {

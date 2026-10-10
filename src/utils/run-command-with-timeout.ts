@@ -19,6 +19,9 @@ export function runCommandWithTimeout(
     cwd: options?.cwd,
     timeout: timeoutMs,
     killSignal: "SIGTERM",
+    env: command === "git"
+      ? { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" }
+      : process.env,
   });
 
   const spawnError = result.error;

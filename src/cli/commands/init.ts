@@ -41,7 +41,11 @@ import {
   parseHarnessList,
   resolveAddScope,
 } from "../handlers/parse-flags.js";
-import { formatCommand } from "../shared.js";
+import {
+  fail,
+  failCaught,
+  formatCommand,
+} from "../shared.js";
 
 function printQuickStartGuide(): void {
   console.log("");
@@ -383,7 +387,7 @@ export function registerInitCommands(root: Command): void {
         process.stdout.write(renderShellCompletion(shell, root));
       } catch (err) {
         process.exitCode = 1;
-        ui.danger(err instanceof Error ? err.message : String(err));
+        fail(err instanceof Error ? err.message : String(err));
       }
     });
 
@@ -420,11 +424,10 @@ export function registerInitCommands(root: Command): void {
       try {
         await handleAddCommand(source, opts);
       } catch (err) {
-        process.exitCode = 1;
         if (isPromptCancellationError(err)) {
           return;
         }
-        ui.danger(err instanceof Error ? err.message : String(err));
+        failCaught(err);
       }
     });
 }

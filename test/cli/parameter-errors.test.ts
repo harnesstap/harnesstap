@@ -13,7 +13,8 @@ describe("parameter errors", () => {
 
       expect(r.exitCode).toBe(1);
       expect(r.stderr).toContain("missing required argument 'name'");
-      expect(r.stderr).toContain("USAGE");
+      expect(r.stderr).toContain("Run ht plugin show --help to see the options.");
+      expect(r.stderr).not.toContain("USAGE");
     } finally {
       await context.cleanup();
     }
@@ -39,7 +40,8 @@ describe("parameter errors", () => {
 
       expect(r.exitCode).toBe(1);
       expect(r.stderr).toContain("missing required argument 'name'");
-      expect(r.stderr).toContain("USAGE");
+      expect(r.stderr).toContain("Run ht plugin delete --help to see the options.");
+      expect(r.stderr).not.toContain("USAGE");
     } finally {
       await context.cleanup();
     }
@@ -54,7 +56,8 @@ describe("parameter errors", () => {
 
       expect(r.exitCode).toBe(1);
       expect(r.stderr).toContain("missing required argument 'resource'");
-      expect(r.stderr).toContain("USAGE");
+      expect(r.stderr).toContain("Run ht resource delete --help to see the options.");
+      expect(r.stderr).not.toContain("USAGE");
     } finally {
       await context.cleanup();
     }

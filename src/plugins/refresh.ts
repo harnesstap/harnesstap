@@ -9,6 +9,7 @@ import {
   DEFAULT_GIT_CLONE_TIMEOUT_MS,
   runCommandWithTimeout,
 } from "../utils/run-command-with-timeout.js";
+import { mapGitStderr } from "../utils/git-errors.js";
 import type { RunCommand } from "./run-command.js";
 
 export interface GitRefreshOptions {
@@ -40,7 +41,7 @@ export function refreshGitSource(opts: GitRefreshOptions): {
   if (clone.exitCode !== 0) {
     return {
       ok: false,
-      message: clone.stderr.trim() || "git clone failed",
+      message: mapGitStderr(clone.stderr.trim() || "git clone failed", opts.url),
     };
   }
 

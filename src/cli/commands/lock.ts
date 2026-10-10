@@ -8,9 +8,11 @@ import {
   resolveExportTimestamp,
 } from "../../services/export/timestamp.js";
 import { APM_LOCKFILE_FILENAME, lockfilePath, readLockfile } from "../../services/lockfile.js";
-import { ui } from "../../ui/index.js";
 import { configureCommandGroup } from "../help.js";
-import { formatCommand } from "../shared.js";
+import {
+  fail,
+  formatCommand,
+} from "../shared.js";
 
 export interface LockExportOpts {
   format?: string;
@@ -66,12 +68,12 @@ export function handleLockExportCommand(opts: LockExportOpts): void {
       || error instanceof LockExportError
       || error instanceof LockExportTimestampError
     ) {
-      ui.danger(error.message, {
+      fail(error.message, {
         hints: [formatCommand("apply"), formatCommand("install")],
       });
       return;
     }
-    ui.danger(error instanceof Error ? error.message : String(error));
+    fail(error instanceof Error ? error.message : String(error));
   }
 }
 

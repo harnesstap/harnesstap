@@ -9,7 +9,10 @@ import type { PolicyEvaluation } from "../../services/apm-policy.js";
 import { formatUnicodeFinding } from "../../services/unicode-scan.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
-import { formatCommand } from "../shared.js";
+import {
+  fail,
+  formatCommand,
+} from "../shared.js";
 
 export interface AuditCommandOpts {
   project?: string;
@@ -35,13 +38,13 @@ function printPolicy(policy: PolicyEvaluation): void {
   }
   for (const violation of policy.violations) {
     if (policy.enforcement === "block" || policy.status === "failed") {
-      ui.danger(violation.message);
+      fail(violation.message);
     } else {
       ui.warn(violation.message);
     }
   }
   if (policy.status === "failed") {
-    ui.danger(`Policy ${label}: failed`);
+    fail(`Policy ${label}: failed`);
     return;
   }
   if (policy.violations.length === 0) {
@@ -50,7 +53,7 @@ function printPolicy(policy: PolicyEvaluation): void {
   }
   const summary = `Policy ${label}: ${policy.violations.length} violation(s) (${policy.enforcement})`;
   if (policy.blocks) {
-    ui.danger(summary);
+    fail(summary);
   } else {
     ui.warn(summary);
   }
@@ -61,7 +64,7 @@ function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
     if (finding.severity === "info") continue;
     const line = formatUnicodeFinding(finding);
     if (finding.severity === "critical") {
-      ui.danger(line);
+      fail(line);
     } else {
       ui.warn(line);
     }
@@ -70,20 +73,20 @@ function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
   for (const issue of result.integrity.issues) {
     switch (issue.kind) {
       case "missing":
-        ui.danger(`missing ${issue.path}`);
+        fail(`missing ${issue.path}`);
         break;
       case "extra":
-        ui.danger(`extra ${issue.path}`);
+        fail(`extra ${issue.path}`);
         break;
       case "mismatch":
-        ui.danger(`hash mismatch ${issue.path}`);
+        fail(`hash mismatch ${issue.path}`);
         break;
       case "unsafe-path":
-        ui.danger(`unsafe path ${issue.path}`);
+        fail(`unsafe path ${issue.path}`);
         break;
       default: {
         const unhandled: never = issue.kind;
-        ui.danger(`integrity ${String(unhandled)} ${issue.path}`);
+        fail(`integrity ${String(unhandled)} ${issue.path}`);
       }
     }
   }
@@ -125,7 +128,7 @@ function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
   } else if (result.exitCode === 2) {
     ui.warn(summary);
   } else {
-    ui.danger(summary);
+    fail(summary);
   }
 }
 
@@ -161,14 +164,14 @@ export function handleAuditCommand(opts: AuditCommandOpts): void {
 
     printHuman(result, opts);
   } catch (error) {
-    process.exitCode = error instanceof AuditUsageError ? 2 : 1;
     if (error instanceof AuditUsageError) {
-      ui.danger(error.message, {
+      fail(error.message, {
         hints: [formatCommand("audit --help")],
+        exitCode: 2,
       });
       return;
     }
-    ui.danger(error instanceof Error ? error.message : String(error));
+    fail(error instanceof Error ? error.message : String(error));
   }
 }
 

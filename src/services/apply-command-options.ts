@@ -54,7 +54,7 @@ export function addApplyCommandOptions(command: Command): Command {
     )
     .option(
       "--on-conflict <policy>",
-      "When generated files already exist: replace, skip, or prompt (default: prompt on TTY, else replace)",
+      "What to do when it already exists: replace, skip, prompt or cancel (default: prompt when interactive; today replace when not)",
     )
     .option(
       "--explain",

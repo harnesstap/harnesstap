@@ -18,6 +18,7 @@ import {
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
+import { fail } from "../shared.js";
 
 async function handleGithubLoginCommand(): Promise<void> {
   try {
@@ -44,7 +45,7 @@ async function handleGithubLoginCommand(): Promise<void> {
     );
   } catch (err) {
     process.exitCode = 1;
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 

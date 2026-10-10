@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
@@ -48,7 +49,12 @@ import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { makeIdColumn } from "../columns.js";
 import { formatCount } from "../formatting.js";
-import { formatCommand, reportNoGitOrigin } from "../shared.js";
+import { CLI_ERRORS } from "../messages.js";
+import {
+  fail,
+  formatCommand,
+  reportNoGitOrigin,
+} from "../shared.js";
 
 function resolveScanConflictPolicy(opts: {
   overwrite?: boolean;
@@ -210,6 +216,10 @@ async function handleScanCommand(
   const db = getDb();
   initializeSchema(db);
   const projectRoot = resolve(path);
+  if (!existsSync(projectRoot)) {
+    fail(CLI_ERRORS.directoryNotFound(path));
+    return;
+  }
   const detected = detectPlatforms(projectRoot);
   const hasHarnessSignals =
     detected.length > 0 || hasSharedProjectResourceFiles(projectRoot);
@@ -430,7 +440,7 @@ function handleRevertCommand(snapshotId?: string): void {
   initializeSchema(db);
   if (!snapshotId) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       `Please provide a snapshot ID. Use \`${formatCommand("history --show-id")}\` or \`${formatCommand("history --format json")}\` to list them.`,
     );
     return;
@@ -438,13 +448,13 @@ function handleRevertCommand(snapshotId?: string): void {
   const snapshot = getSnapshot(snapshotId);
   if (!snapshot) {
     process.exitCode = 1;
-    ui.danger(`Snapshot not found: ${snapshotId}`);
+    fail(`Snapshot not found: ${snapshotId}`);
     return;
   }
   const project = getProject(snapshot.project_id);
   if (!project) {
     process.exitCode = 1;
-    ui.danger("Snapshot project not found.");
+    fail("Snapshot project not found.");
     return;
   }
   const files = Object.entries(snapshot.state.platform_files).flatMap(
@@ -468,6 +478,10 @@ async function handleProjectStatusCommand(
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(path);
+  if (!existsSync(projectRoot)) {
+    fail(CLI_ERRORS.directoryNotFound(path));
+    return;
+  }
 
   if (opts.check) {
     const gitOrigin = getGitOrigin(projectRoot);
@@ -521,12 +535,12 @@ async function handleProjectStatusCommand(
       return;
     }
     if (report.has_drift) {
-      ui.danger(
+      fail(
         `Drift detected: ${report.changes.length} change(s) since snapshot ${report.snapshot_id}`,
       );
     }
     if (lockDrift && statusPayload.lock) {
-      ui.danger(
+      fail(
         `Lock drift detected for root ${statusPayload.lock.root} (${statusPayload.lock.changes.length} version change(s)).`,
       );
     }
@@ -570,7 +584,7 @@ async function handleProjectSyncCommand(
   try {
     referenceStrategy = parseReferenceStrategy(opts.reference);
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
     return;
   }
@@ -610,7 +624,7 @@ async function handleProjectSyncCommand(
       console.log(dryTag + verdict);
     }
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -647,7 +661,7 @@ export function registerProjectCommandsBeforeConfig(root: Command): void {
     .option("--base-url <url>", "Cloud base URL for dependency pulls")
     .option(
       "--on-conflict <policy>",
-      "When generated files already exist: replace, skip, or prompt",
+      "What to do when it already exists: replace, skip, prompt or cancel",
     )
     .option("--no-interactive", "Disable interactive prompts")
     .option("--interactive", "Enable interactive prompts")

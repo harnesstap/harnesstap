@@ -257,7 +257,8 @@
       "--format",
       "json"
     ],
-    "requiresGitOrigin": true
+    "requiresGitOrigin": true,
+    "expectFailure": true
   },
   {
     "id": 28,
@@ -302,7 +303,8 @@
       "--format",
       "json"
     ],
-    "requiresGitOrigin": true
+    "requiresGitOrigin": true,
+    "expectFailure": true
   },
   {
     "id": 34,

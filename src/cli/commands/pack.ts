@@ -3,7 +3,11 @@ import { resolve } from "node:path";
 import { packProject, PackError } from "../../services/apm-pack.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
-import { formatCommand, isVerboseMode } from "../shared.js";
+import {
+  fail,
+  formatCommand,
+  isVerboseMode,
+} from "../shared.js";
 
 export interface PackCommandOpts {
   project?: string;
@@ -62,12 +66,12 @@ export function handlePackCommand(opts: PackCommandOpts): void {
   } catch (error) {
     process.exitCode = 1;
     if (error instanceof PackError) {
-      ui.danger(error.message, {
+      fail(error.message, {
         hints: [formatCommand("config init"), formatCommand("apply")],
       });
       return;
     }
-    ui.danger(error instanceof Error ? error.message : String(error));
+    fail(error instanceof Error ? error.message : String(error));
   }
 }
 

@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
-import { listEnvironments } from "../../models/environment.js";
+import { getEnvironmentByName, listEnvironments } from "../../models/environment.js";
 import { getPluginById, resolvePluginSelector } from "../../models/plugin-model.js";
 import {
   deleteEnvironmentCommand,
@@ -40,7 +40,13 @@ import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
-import { collectRepeatedOption, formatCommand } from "../shared.js";
+import { CLI_ERRORS, CLI_HINTS } from "../messages.js";
+import {
+  collectRepeatedOption,
+  fail,
+  failCaught,
+  formatCommand,
+} from "../shared.js";
 import {
   isPromptCancellationError,
   promptForConfirmation,
@@ -315,7 +321,7 @@ async function handleEnvironmentEditCommand(
 
   if (!resolvedName) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       scripting || listEnvironments().length > 0
         ? "error: missing required argument 'name'"
         : `No environments found. Create one with \`${formatCommand("environment create <name>")}\` first.`,
@@ -376,7 +382,7 @@ async function handleEnvironmentEditCommand(
 
   if (!shouldUseInteractiveEnvironmentEdit({ noInteractive, format: opts.format })) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       `environment edit requires an interactive terminal. Use scripting flags such as \`${formatCommand("environment edit <name> --var KEY=VALUE")}\` or \`${formatCommand("environment edit <name> --format json")}\` for a snapshot.`,
     );
     return;
@@ -539,7 +545,7 @@ function printEnvironmentCreateResult(
     if (captureResult.strict_failed) {
       process.exitCode = 1;
       if (opts.format === "human") {
-        ui.danger("Strict mode failed: missing required environment keys.");
+        fail("Strict mode failed: missing required environment keys.");
       }
     }
     return;
@@ -578,7 +584,7 @@ function printEnvironmentCreateResult(
   if (fromPluginResult.strict_failed) {
     process.exitCode = 1;
     if (opts.format === "human") {
-      ui.danger("Strict mode failed: missing required environment keys.");
+      fail("Strict mode failed: missing required environment keys.");
     }
   }
 }
@@ -604,6 +610,12 @@ async function handleEnvironmentCreateCommand(
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
+  if (!opts.refresh && !opts.dryRun && getEnvironmentByName(name)) {
+    fail(CLI_ERRORS.environmentAlreadyExists(name), {
+      hint: CLI_HINTS.onConflictReplace,
+    });
+    return;
+  }
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
     noInteractive: opts.yes,
@@ -752,7 +764,7 @@ async function handleEnvironmentStatusCommand(opts: {
     }
   } catch (err) {
     process.exitCode = 1;
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 // ── environment ──────────────────────────────────────────────────────────
@@ -813,8 +825,7 @@ environmentCmd
         ui.info("Operation cancelled.");
         return;
       }
-      process.exitCode = 1;
-      renderCliError(error);
+      failCaught(error);
     }
   });
 
@@ -910,7 +921,7 @@ environmentCmd
     });
     if (!resolvedName) {
       process.exitCode = 1;
-      ui.danger(
+      fail(
         listEnvironments().length > 0
           ? "error: missing required argument 'name'"
           : `No environments found. Create one with \`${formatCommand("environment create <name>")}\` first.`,

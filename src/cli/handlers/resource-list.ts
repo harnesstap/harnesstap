@@ -32,10 +32,11 @@ export function resolveResourceListType(
   if (!type) {
     return undefined;
   }
-  if (!RESOURCE_TYPES.includes(type as ResourceType)) {
+  const normalized = type === "plugin_pin" ? "plugin" : type;
+  if (!RESOURCE_TYPES.includes(normalized as ResourceType)) {
     return "invalid";
   }
-  return type as ResourceType;
+  return normalized as ResourceType;
 }
 
 export function shouldUseInteractiveResourceList(input: {

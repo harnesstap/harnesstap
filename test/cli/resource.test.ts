@@ -489,14 +489,14 @@ describe("CLI resource", () => {
       const hidden = await runCli(["resource", "show", "duplicate-name"]);
       const shown = await runCli(["resource", "show", "duplicate-name", "--show-id"]);
 
-      expect(hidden.stderr).toContain("Ambiguous resource selector: duplicate-name");
+      expect(hidden.stderr).toContain('Ambiguous resource selector: "duplicate-name"');
       expect(hidden.stdout).not.toContain("# First");
       expect(hidden.stdout).not.toContain("# Second");
       expect(hidden.stdout).toContain("TYPE");
       expect(hidden.stdout).toContain("NAME");
       expect(hidden.stdout).not.toMatch(/\|\s+ID\s+\|/);
 
-      expect(shown.stderr).toContain("Ambiguous resource selector: duplicate-name");
+      expect(shown.stderr).toContain('Ambiguous resource selector: "duplicate-name"');
       expect(shown.stdout).toMatch(/\|\s+ID\s+\|/);
     } finally {
       await context.cleanup();

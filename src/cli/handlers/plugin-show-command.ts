@@ -11,8 +11,9 @@ import {
 import { listAttachedPluginPins } from "../../services/plugin-composition.js";
 import { renderPluginShow } from "../../services/plugin-show-render.js";
 import { trackPluginUsed } from "../../telemetry/index.js";
-import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { CLI_ERRORS, CLI_HINTS } from "../messages.js";
+import { fail } from "../shared.js";
 
 export function handlePluginShowCommand(
   name: string,
@@ -24,7 +25,7 @@ export function handlePluginShowCommand(
   const format = parseOutputFormat(opts.format);
   const plugin = getPlugin(name);
   if (!plugin) {
-    ui.danger(`Plugin not found: ${name}`);
+    fail(CLI_ERRORS.pluginNotFound(name), { hint: CLI_HINTS.pluginList });
     return;
   }
   trackPluginUsed({

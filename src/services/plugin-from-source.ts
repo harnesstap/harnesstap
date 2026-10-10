@@ -158,7 +158,7 @@ function resolvePluginForConflict(input: {
     }
     default:
       throw new Error(
-        `Plugin already exists: ${input.name}@${input.version}. Pass --on-conflict merge or --on-conflict overwrite.`,
+        `A plugin named "${input.name}" already exists. Use --on-conflict replace to replace it.`,
       );
   }
 }
@@ -191,7 +191,7 @@ export async function createPluginFromSource(
       : "create";
     if (existing && onConflict === "cancel") {
       throw new Error(
-        `Plugin already exists: ${options.name}@${version}. Pass --on-conflict merge or --on-conflict overwrite.`,
+        `A plugin named "${options.name}" already exists. Use --on-conflict replace to replace it.`,
       );
     }
 

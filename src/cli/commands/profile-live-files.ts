@@ -4,6 +4,7 @@ import { CliUsageError } from "../../services/cli-errors.js";
 import { COMMAND_HELP_REGISTRY } from "../../services/cli-help-registry.js";
 import { ui } from "../../ui/index.js";
 import { renderCliError } from "../runtime.js";
+import { fail } from "../shared.js";
 import {
   handleProfileAddAllResourcesCommand,
   handleProfileAddResourceCommand,
@@ -45,7 +46,7 @@ async function runLiveAction(work: () => Promise<void>): Promise<void> {
       renderCliError(err);
       return;
     }
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 

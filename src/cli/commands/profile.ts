@@ -54,7 +54,10 @@ import {
 import { handlePluginShowCommand } from "../handlers/plugin-show-command.js";
 import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
 import { renderCliError } from "../runtime.js";
-import { formatCommand } from "../shared.js";
+import {
+  fail,
+  formatCommand,
+} from "../shared.js";
 import { registerProfileCreateCommand } from "../handlers/profile-create.js";
 import { registerProfileParityCommands } from "./parity-register.js";
 import type { ApplyProfilePluginResult } from "../../services/profile-apply.js";
@@ -151,7 +154,7 @@ async function handleProfilePublishCommand(
   const plugin = getPlugin(pluginName);
   if (!plugin) {
     process.exitCode = 1;
-    ui.danger(`Plugin not found: ${pluginName}`);
+    fail(`Plugin not found: ${pluginName}`);
     return;
   }
   if (!isProfilePlugin(plugin)) {
@@ -213,7 +216,7 @@ profileCmd
         return;
       }
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
   });
 
@@ -320,7 +323,7 @@ profileCmd
       }
     } catch (err) {
       process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
     }
   });
 
@@ -336,7 +339,7 @@ profileCmd
   )
   .option(
     "--on-conflict <policy>",
-    "When generated files already exist: replace, skip, or prompt",
+    "What to do when it already exists: replace, skip, prompt or cancel",
   )
   .option(
     "--force-remove",
@@ -383,7 +386,7 @@ profileCmd
         });
         if (!selection) {
           process.exitCode = 1;
-          ui.danger(
+          fail(
             "Profile name is required. Pass a profile plugin name, --profile <key> from project config, or run interactively.",
           );
           return;
@@ -402,7 +405,7 @@ profileCmd
         name = selection.pluginName;
       } catch (err) {
         process.exitCode = 1;
-        ui.danger(err instanceof Error ? err.message : String(err));
+        fail(err instanceof Error ? err.message : String(err));
         return;
       }
     }
@@ -462,10 +465,10 @@ profileCmd
     } catch (err) {
       process.exitCode = 1;
       if (err instanceof PinnedPluginInstallConsentError) {
-        ui.danger(err.message, { hint: err.hint });
+        fail(err.message, { hint: err.hint });
         return;
       }
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
     }
   });
 
@@ -478,7 +481,7 @@ const stashCmd = profileCmd
   )
   .option(
     "--on-conflict <policy>",
-    "When generated files already exist: replace, skip, or prompt",
+    "What to do when it already exists: replace, skip, prompt or cancel",
   )
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Stash untracked on-disk resources for the active profile (like git stash -u)")
@@ -520,7 +523,7 @@ const stashCmd = profileCmd
       ui.hint(`Restore with ${formatCommand("profile stash pop")}.`);
     } catch (err) {
       process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
     }
   });
 
@@ -558,7 +561,7 @@ stashCmd
   )
   .option(
     "--on-conflict <policy>",
-    "When generated files already exist: replace, skip, or prompt",
+    "What to do when it already exists: replace, skip, prompt or cancel",
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
@@ -609,7 +612,7 @@ stashCmd
       );
     } catch (err) {
       process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
     }
   });
 
@@ -622,7 +625,7 @@ stashCmd
   )
   .option(
     "--on-conflict <policy>",
-    "When generated files already exist: replace, skip, or prompt",
+    "What to do when it already exists: replace, skip, prompt or cancel",
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
@@ -673,7 +676,7 @@ stashCmd
       );
     } catch (err) {
       process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
     }
   });
 
@@ -687,7 +690,7 @@ profileCmd
   )
   .option(
     "--on-conflict <policy>",
-    "When generated files already exist: replace, skip, or prompt",
+    "What to do when it already exists: replace, skip, prompt or cancel",
   )
   .option(
     "--force-remove",
@@ -752,7 +755,7 @@ profileCmd
       }
       if (!result.ok) {
         process.exitCode = 1;
-        ui.danger(`Failed to switch to profile ${ui.theme.accent(name)}: ${result.apply_error}`);
+        fail(`Failed to switch to profile ${ui.theme.accent(name)}: ${result.apply_error}`);
         ui.info(
           `Restored previous profile ${ui.theme.accent(result.restored.profile_name)}.`,
         );
@@ -770,10 +773,10 @@ profileCmd
     } catch (err) {
       process.exitCode = 1;
       if (err instanceof SwitchRestoreFailedError) {
-        ui.danger(err.message);
+        fail(err.message);
         return;
       }
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
     }
   });
 
@@ -828,7 +831,7 @@ profileCmd
         ui.info("Operation cancelled.");
         return;
       }
-      ui.danger(err instanceof Error ? err.message : String(err));
+      fail(err instanceof Error ? err.message : String(err));
     }
   });
 

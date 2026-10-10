@@ -71,7 +71,7 @@ function resolveSyncHarnesses(
 
   if (!from) {
     throw new Error(
-      "No harnesses configured. Run harnesstap harness project set or harnesstap harness set.",
+      "No harnesses configured. Run ht harness project set or ht harness set.",
     );
   }
 
@@ -200,9 +200,9 @@ function emptyReferenceError(
 ): Error {
   return new Error(
     `Harness "${fromHarness}" has no on-disk resources in ${projectRoot}. ` +
-      "Try: harnesstap mirror --reference plugin " +
-      "or harnesstap scan . " +
-      "or harnesstap harness project set --harnesses claude-code,cursor",
+      "Try: ht mirror --reference plugin " +
+      "or ht scan . " +
+      "or ht harness project set --harnesses claude-code,cursor",
   );
 }
 

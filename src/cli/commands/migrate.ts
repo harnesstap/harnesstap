@@ -20,6 +20,7 @@ import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { formatCount } from "../formatting.js";
 import { configureCommandGroup } from "../help.js";
+import { fail, failCaught } from "../shared.js";
 
 function printMigrateExportHuman(result: ScopedExportResult): void {
   switch (result.scope) {
@@ -135,7 +136,7 @@ async function handleMigrateExportCommand(
     }
     printMigrateExportHuman(result);
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
   }
 }
@@ -173,7 +174,7 @@ async function handleMigrateImportCommand(
   }
 
   if (!importFile) {
-    ui.danger("Import file path is required.");
+    fail("Import file path is required.");
     process.exitCode = 1;
     return;
   }
@@ -187,8 +188,7 @@ async function handleMigrateImportCommand(
     }
     printMigrateImportHuman(result);
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
-    process.exitCode = 1;
+    failCaught(err);
   }
 }
 

@@ -7,7 +7,11 @@ import {
 } from "../../services/scenario-guide.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
-import { formatScenarioCommand, GUIDE_SCENARIOS_URL } from "../shared.js";
+import {
+  GUIDE_SCENARIOS_URL,
+  fail,
+  formatScenarioCommand,
+} from "../shared.js";
 
 function handleHelpCommand(opts: { format?: string }): void {
   const format = parseOutputFormat(opts.format);
@@ -54,7 +58,7 @@ function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: stri
     ui.dim(`All scenarios: ${GUIDE_SCENARIOS_URL}`);
   } catch (err) {
     process.exitCode = 1;
-    ui.danger(err instanceof Error ? err.message : String(err), {
+    fail(err instanceof Error ? err.message : String(err), {
       hints: [`ht help scenario 11`, `See ${GUIDE_SCENARIOS_URL}`],
     });
   }

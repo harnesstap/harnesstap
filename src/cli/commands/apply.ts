@@ -27,7 +27,10 @@ import { detectPlatforms } from "../../services/scanner.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
-import { formatCommand } from "../shared.js";
+import {
+  fail,
+  formatCommand,
+} from "../shared.js";
 import { trackPluginApplied } from "../../telemetry/index.js";
 import { CriticalUnicodeError } from "../../services/unicode-scan.js";
 import { handleProjectApplyCommand } from "./plugin.js";
@@ -70,14 +73,14 @@ async function handleGlobalApplyCommand(
   const outputFormat = parseOutputFormat(opts.format);
   if (plugins.length === 0) {
     process.exitCode = 1;
-    ui.danger("Provide exactly one plugin name for --global apply.", {
+    fail("Provide exactly one plugin name for --global apply.", {
       hints: [formatCommand("apply <plugin> --global")],
     });
     return;
   }
   if (plugins.length > 1) {
     process.exitCode = 1;
-    ui.danger("Global apply accepts exactly one plugin.", {
+    fail("Global apply accepts exactly one plugin.", {
       hints: [formatCommand("apply <plugin> --global")],
     });
     return;
@@ -86,14 +89,14 @@ async function handleGlobalApplyCommand(
   const selector = plugins[0];
   if (!selector) {
     process.exitCode = 1;
-    ui.danger("Provide exactly one plugin name for --global apply.");
+    fail("Provide exactly one plugin name for --global apply.");
     return;
   }
 
   const plugin = resolvePluginSelector(selector);
   if (!plugin) {
     process.exitCode = 1;
-    ui.danger(`Plugin not found: ${selector}`);
+    fail(`Plugin not found: ${selector}`);
     return;
   }
 
@@ -157,12 +160,12 @@ async function handleGlobalApplyCommand(
   } catch (err) {
     process.exitCode = 1;
     if (err instanceof CriticalUnicodeError) {
-      ui.danger(err.message, {
+      fail(err.message, {
         hints: [formatCommand("apply --global --force")],
       });
       return;
     }
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -211,7 +214,7 @@ export async function handleInstallCommand(
 ): Promise<void> {
   if (extraArgs.length > 0) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       "ht install does not take a plugin selector. It reads repo-root apm.yml.",
       {
         hints: [formatCommand("install"), formatCommand("apply <plugin>")],
@@ -236,7 +239,7 @@ export async function handleInstallCommand(
       }
     } catch (error) {
       process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
+      fail(error instanceof Error ? error.message : String(error));
     }
     return;
   }

@@ -47,7 +47,7 @@ describe("createPluginFromSource integration", () => {
           homeRoot: context.homeDir,
           harnesstapDir: join(context.homeDir, ".harnesstap"),
         }),
-      ).rejects.toThrow(/Plugin already exists/);
+      ).rejects.toThrow(/A plugin named "dbt-expert" already exists/);
     } finally {
       await context.cleanup();
     }

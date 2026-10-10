@@ -142,7 +142,7 @@ function resolveConfiguredSelection(projectRoot?: string): {
   if (registered.length === 0) {
     throw new HarnessUnionSyncError(
       "no_registered_harnesses",
-      "No harnesses configured. Run harnesstap harness set --harnesses <slugs>.",
+      "No harnesses configured. Run ht harness set --harnesses <slugs>.",
     );
   }
 

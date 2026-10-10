@@ -32,7 +32,11 @@ import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { parseHarnessList } from "../handlers/parse-flags.js";
 import { configureCommandGroup } from "../help.js";
-import { formatCommand, reportNoGitOrigin } from "../shared.js";
+import {
+  fail,
+  formatCommand,
+  reportNoGitOrigin,
+} from "../shared.js";
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
 
@@ -215,7 +219,7 @@ async function handleHarnessSyncCommand(opts: {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.exitCode = 1;
-    ui.danger(message, {
+    fail(message, {
       hints: [formatCommand("harness set --harnesses <slugs>")],
     });
   }
