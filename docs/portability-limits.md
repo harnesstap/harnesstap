@@ -215,9 +215,9 @@ in `project_harnesses`:
 
 | Mode | Behavior |
 | ---- | -------- |
-| `agent-requested` (default) | Skills emit as `.cursor/rules/*.mdc` with `alwaysApply: false`. |
+| `agents-skills` (default) | Skills emit to `.agents/skills/{name}/SKILL.md` only (one surface). |
+| `agent-requested` | Skills emit as `.cursor/rules/*.mdc` with `alwaysApply: false`. |
 | `always-on` | Skills emit as `.cursor/rules/*.mdc` with `alwaysApply: true`. |
-| `agents-skills` | Skills emit to `.agents/skills/{name}/SKILL.md` (Cursor's newer skills path). |
 
 Inspect current value with `harnesstap harness project status --project . --format json`.
 

@@ -655,6 +655,7 @@ export interface SurfaceWarning {
 
 export interface SerializeOptions {
   target?: SerializerTarget;
+  /** Cursor skill surface. Default is `agents-skills` (one SKILL.md tree, not also `.mdc`). */
   skillCursorMode?: CursorSkillMode;
   /** When set, skill auxiliary files are read from this tree (scan origin). */
   skillSourceRoot?: string;

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { formatHtCommand, quoteCliArg } from "../copy/cli.js";
 import { parseJsonc } from "../config/settings.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import { getPluginById, getPluginByName, getPluginResources } from "../models/plugin-model.js";
@@ -577,16 +578,16 @@ export function overlappingDeployedHashes(
 
 export function formatApproveRemedy(refs: string[]): string {
   if (refs.length === 0) {
-    return "ht approve <PACKAGE_REF>";
+    return formatHtCommand("approve <PACKAGE_REF>");
   }
-  return `ht approve ${refs.join(" ")}`;
+  return formatHtCommand(`approve ${refs.map(quoteCliArg).join(" ")}`);
 }
 
 export function formatDenyRemedy(refs: string[]): string {
   if (refs.length === 0) {
-    return "ht deny <PACKAGE_REF>";
+    return formatHtCommand("deny <PACKAGE_REF>");
   }
-  return `ht deny ${refs.join(" ")}`;
+  return formatHtCommand(`deny ${refs.map(quoteCliArg).join(" ")}`);
 }
 
 export function executableTrustResponseFields(

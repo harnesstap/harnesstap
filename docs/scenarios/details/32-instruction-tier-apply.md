@@ -44,9 +44,9 @@ as `skillCursorMode`:
 
 | `cursor_skill_mode` | Skill output |
 | ------------------- | ------------ |
-| `agent-requested` (default) | `.cursor/rules/*.mdc`, `alwaysApply: false` |
+| `agents-skills` (default) | `.agents/skills/{name}/SKILL.md` only |
+| `agent-requested` | `.cursor/rules/*.mdc`, `alwaysApply: false` |
 | `always-on` | `.cursor/rules/*.mdc`, `alwaysApply: true` |
-| `agents-skills` | `.agents/skills/{name}/SKILL.md` |
 
 ```bash
 harnesstap harness project status --project . --format json

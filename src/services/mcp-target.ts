@@ -74,13 +74,23 @@ function sourcePointsAtKnownMcpPath(source: string, rootPath = ""): boolean {
 
 function isPortableMcpSource(source: string | undefined): boolean {
   const trimmed = source?.trim();
-  return !trimmed || trimmed === "manual";
+  if (!trimmed || trimmed === "manual") {
+    return true;
+  }
+  const normalized = trimmed.replace(/\\/g, "/");
+  // Manifest and package identities are not bound to a harness MCP file.
+  return (
+    normalized === "apm.yml" ||
+    normalized.endsWith("/apm.yml") ||
+    normalized === "plugin.json" ||
+    normalized === "mcp.json"
+  );
 }
 
 /**
  * MCP servers to emit into a harness MCP config path.
  * - Path-matched sources stay on that file.
- * - `manual` / empty sources stay portable (all targets).
+ * - `manual` / empty / `apm.yml` / package `mcp.json` sources stay portable (all targets).
  * - Sources pointing at a *different* known MCP file are excluded.
  */
 export function filterMcpServersForTargetPath(
