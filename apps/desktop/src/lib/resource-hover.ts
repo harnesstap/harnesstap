@@ -4,6 +4,7 @@ import {
   type ContentsDiffItem,
   type FileChangeResourceGroup,
 } from "./contents-diff";
+import { parseStoredHarnessScope } from "./harness-scope-ui";
 import { relatedHarnessesForResourceType } from "./harness-meta";
 import { libraryFilterType } from "./library-list";
 import { isPluginTypeResource } from "./plugin-ref-detail";
@@ -175,13 +176,24 @@ export function hoverModelFromLibraryResource(
   return model;
 }
 
+/** Scope chip tooltip and hover card share this list for a profile resource. */
+export function harnessIdsForProfileResource(
+  resource: Pick<ProfileContentsResource, "type" | "harness_scope">,
+): string[] {
+  const scope = parseStoredHarnessScope(resource.harness_scope);
+  if (scope.kind === "subset") {
+    return [...scope.harnesses];
+  }
+  return [...relatedHarnessesForResourceType(resource.type)];
+}
+
 export function hoverModelFromProfileResource(
   resource: ProfileContentsResource,
 ): ResourceHoverModel {
   const model: ResourceHoverModel = {
     type: resource.type,
     name: formatResourceDisplayName(resource),
-    harnessIds: [...relatedHarnessesForResourceType(resource.type)],
+    harnessIds: harnessIdsForProfileResource(resource),
     extra: hookHoverExtras(resource),
   };
   const path = listRowHoverPath(resource);
