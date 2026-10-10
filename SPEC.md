@@ -259,7 +259,7 @@ Global options:
 
 | Flag | Behavior |
 | --- | --- |
-| `-V, --harnesstap-version` | Print CLI version |
+| `-V, --version` | Print CLI version (`--harnesstap-version` remains a hidden alias) |
 | `-v, --verbose` | Show stack traces on errors |
 | `--no-color` | Disable ANSI colors (also respects `NO_COLOR`) |
 | `--no-interactive` | Disable interactive prompts |
@@ -930,7 +930,7 @@ bun run test:run
 bun run build
 ```
 
-`tsup` builds the CLI from `src/index.ts` into `dist/` as a Node 20 ESM CLI with declaration files and a `#!/usr/bin/env node` banner. `prepublishOnly` runs `bun run build`. The agent sidecar used by desktop is built with `bun run build:sidecar`.
+`tsup` builds the library from `src/index.ts` and the published bin from `src/bin.ts` into `dist/` as a Node 22 ESM CLI with declaration files. `dist/bin.js` has a `#!/usr/bin/env node` banner and a runtime Node version guard. The package `engines` field is `>=22.12.0`. `prepublishOnly` runs `bun run build`. The agent sidecar used by desktop is built with `bun run build:sidecar`.
 
 ## Known gaps and non-goals
 

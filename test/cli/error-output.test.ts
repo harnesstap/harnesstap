@@ -5,7 +5,7 @@ import { describe, expect, it } from "bun:test";
 const repoRoot = resolve(import.meta.dirname, "../..");
 
 function runCliProcess(args: string[]) {
-  return spawnSync(process.execPath, [resolve(repoRoot, "src/index.ts"), ...args], {
+  return spawnSync(process.execPath, [resolve(repoRoot, "src/bin.ts"), ...args], {
     cwd: repoRoot,
     encoding: "utf-8",
     env: {

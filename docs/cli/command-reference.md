@@ -6,7 +6,7 @@ This page mirrors the grouped CLI surface exposed by `harnesstap --help`. Use it
 
 Available on `harnesstap` / `ht`:
 
-- `-V, --harnesstap-version` — print the HarnessTap CLI version
+- `-V, --version` prints the HarnessTap CLI version (`--harnesstap-version` is a hidden alias)
 - `-v, --verbose` — show verbose error output
 - `--no-color` — disable ANSI colors
 - `--no-interactive` — disable interactive prompts

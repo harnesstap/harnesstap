@@ -82,7 +82,7 @@ export HOME="$home_dir"
 export HARNESSTAP_HOME="$hd_dir"
 export HARNESSTAP_NO_INTERACTIVE=1
 cd "$project_dir"
-exec node "$ROOT/dist/index.js" "\$@"
+exec node "$ROOT/dist/bin.js" "\$@"
 EOF
 
   cp "$bin_dir/harnesstap" "$bin_dir/ht"

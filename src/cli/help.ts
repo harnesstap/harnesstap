@@ -287,7 +287,7 @@ export function configureProgramHelp(program: Command): void {
           `  ${resolveInvocationName()} [options] [command]`,
           "",
           ui.theme.heading("OPTIONS"),
-          `  ${ui.theme.flag("-V, --harnesstap-version")}  output the version number`,
+          `  ${ui.theme.flag("-V, --version")}            output the version number`,
           `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
           `  ${ui.theme.flag("--no-color")}               disable color output`,
           `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,

@@ -10,8 +10,12 @@ describe("published CLI bins", () => {
 
   it("publishes both harnesstap and ht", () => {
     expect(pkg.bin).toMatchObject({
-      harnesstap: "./dist/index.js",
-      ht: "./dist/index.js",
+      harnesstap: "./dist/bin.js",
+      ht: "./dist/bin.js",
     });
+  });
+
+  it("declares the supported Node engine floor", () => {
+    expect(pkg.engines.node).toBe(">=22.12.0");
   });
 });

@@ -24,6 +24,10 @@ describe("Task 8 cleanup: no chalk/log leakage outside src/ui/", () => {
     expect(indexSrc).not.toMatch(/\bchalk\b/);
   });
 
+  it("src/index.ts does not gate on import.meta.main", () => {
+    expect(indexSrc).not.toContain("import.meta.main");
+  });
+
   it("src/utils/logger.ts no longer exists", () => {
     expect(existsSync(resolve(root, "src/utils/logger.ts"))).toBe(false);
   });

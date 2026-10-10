@@ -4,9 +4,9 @@ Agent harness configuration toolkit. Follow these conventions when working in th
 
 ## Development
 
-- **Runtime**: Bun 1.3+ for local dev, CI, and builds; the published CLI targets Node 20+.
+- **Runtime**: Bun 1.3+ for local dev, CI, and builds; the published CLI targets Node 22.12+ and 24.
 - **Verify changes**: `bun run preflight` (lint + typecheck + tests + build).
-- **Run the CLI from source**: `bun run start -- <args>` or `bun src/index.ts`.
+- **Run the CLI from source**: `bun run start -- <args>` or `bun src/bin.ts`.
 - **Changelog**: Use Changie (`changie new`); do not edit `CHANGELOG.md` manually.
 
 ## Code style
