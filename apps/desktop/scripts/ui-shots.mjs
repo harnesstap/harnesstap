@@ -349,6 +349,19 @@ const SCREENS = [
       await page.getByTestId("risky-removal-dialog").waitFor({ state: "attached", timeout: 15_000 });
     },
   },
+  {
+    name: "file-change-groups",
+    run: async (page, baseUrl) => {
+      const url = new URL(baseUrl);
+      url.searchParams.set("visual", "file-change-groups");
+      await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 15_000 });
+      await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await page.getByTestId("file-change-groups-gallery").waitFor({ timeout: 15_000 });
+      await page.getByText("Kept. You changed it.", { exact: true }).waitFor({ timeout: 15_000 });
+      await page.getByText("Kept. Not made by HarnessTap.", { exact: true }).waitFor({ timeout: 15_000 });
+      await page.getByText("Will remove", { exact: true }).waitFor({ timeout: 15_000 });
+    },
+  },
 ];
 
 /**

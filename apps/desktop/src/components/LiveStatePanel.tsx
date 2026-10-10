@@ -976,7 +976,7 @@ function fileChangeKindBadge(kind: FileChangeKind): (typeof FILE_CHANGE_KIND_BAD
   }
 }
 
-function FileChangeKindChip({
+export function FileChangeKindChip({
   kind,
   count,
   removalGroup,
