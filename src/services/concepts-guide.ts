@@ -23,12 +23,12 @@ export interface HelpCommandPayload {
 export function buildConceptsGuidePayload(): ConceptsGuidePayload {
   return {
     concepts: [
-      { term: "resource", definition: "Single canonical item (skill, rule, MCP, hook, agent, …)" },
+      { term: "resource", definition: "Single canonical item (skill, rule, MCP, hook, agent, ...)" },
       { term: "plugin", definition: "Named bundle of resources you apply to projects" },
       { term: "profile", definition: "Plugin tagged profile; apply globally with profile use" },
       { term: "account", definition: "HarnessTap Cloud login identity stored locally" },
       { term: "environment", definition: "Named how-values (vars, secrets, model config)" },
-      { term: "harness", definition: "Target CLI (claude-code, codex, cursor, …)" },
+      { term: "harness", definition: "Target CLI (claude-code, codex, cursor, ...)" },
     ],
     harness_roles: [
       { term: "main harness", definition: "Canonical reference for imports and apply" },
