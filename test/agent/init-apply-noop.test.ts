@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { tryHandle as tryHandleApply } from "../../src/agent/parity-handlers/apply.ts";
+import { handleProfileApplyPreview } from "../../src/agent/profile-apply-preview-handlers.ts";
 import { tryHandle as tryHandleProfileDelete } from "../../src/agent/parity-handlers/profile-delete.ts";
 import { tryHandle as tryHandleResourceMutate } from "../../src/agent/parity-handlers/resource-mutate.ts";
 import { GLOBAL_DEFAULT_PROFILE_NAME } from "../../src/constants/profile.ts";
@@ -111,6 +112,25 @@ describe("sidecar HTTP: first apply after init is a no-op", () => {
     assertCapturedHomeUntouched(ctx.homeDir);
 
     createProfileCommand({ name: "work" });
+    const preview = await handleProfileApplyPreview(
+      authJsonRequest("/v1/profiles/apply-preview", "POST", {
+        profile: "work",
+        scope: "home",
+      }),
+      TOKEN,
+    );
+    expect(preview?.status).toBe(200);
+    const previewBody = (await preview?.json()) as {
+      removals?: {
+        owned_unmodified: string[];
+        owned_modified: string[];
+        unmanaged: string[];
+      };
+    };
+    expect(previewBody.removals).toBeDefined();
+    expect(Array.isArray(previewBody.removals?.owned_unmodified)).toBe(true);
+    expect(Array.isArray(previewBody.removals?.owned_modified)).toBe(true);
+    expect(Array.isArray(previewBody.removals?.unmanaged)).toBe(true);
     await switchProfile("work", { apply: { conflictPolicy: "replace", pull: false } });
     assertCapturedHomeUntouched(ctx.homeDir);
     await switchProfile(GLOBAL_DEFAULT_PROFILE_NAME, {

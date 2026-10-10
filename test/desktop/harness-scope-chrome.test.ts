@@ -54,6 +54,8 @@ describe("harness scope desktop UX", () => {
     expect(copy).toContain("SCOPE_COPY.selectAll");
     expect(copy).toContain("SCOPE_COPY.none");
     expect(copy).toContain("SCOPE_COPY.main");
+    expect(copy).toContain("HARNESS_MAIN_PILL_TOOLTIP");
+    expect(copy).toContain("mainTooltip");
     expect(copy).toContain('filterPlaceholder: "Filter harnesses"');
     expect(copy).toContain("SCOPE_COPY.emptyHint");
     expect(srcScope).toContain("These read the same folder, so they share one setting");
@@ -93,6 +95,7 @@ describe("harness scope desktop UX", () => {
     expect(shots).toContain("harness-scope-subset");
     expect(shots).toContain("harness-scope-orphaned");
     expect(shots).toContain("harness-scope-popover");
+    expect(shots).toContain("risky-removal-dialog");
     expect(shots).toContain('page.goto("about:blank"');
     expect(shots).toContain("SHOTS_BASE_URL");
     expect(gallery).toContain("<main");

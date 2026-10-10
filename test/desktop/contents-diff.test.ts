@@ -251,15 +251,27 @@ describe("contents-diff helpers", () => {
   it("maps file change types to apply verbs", () => {
     expect(fileChangeAction({ path: "a", type: "deleted" })).toEqual({
       action: "add",
-      label: "add",
+      label: "Will write",
     });
     expect(fileChangeAction({ path: "a", type: "modified" })).toEqual({
       action: "update",
-      label: "update",
+      label: "Will write",
     });
     expect(fileChangeAction({ path: "a", type: "added" })).toEqual({
       action: "remove",
-      label: "remove",
+      label: "Will remove",
+    });
+    expect(
+      fileChangeAction({ path: "a", type: "added", removal_group: "owned_modified" }),
+    ).toEqual({
+      action: "remove",
+      label: "Kept. You changed it.",
+    });
+    expect(
+      fileChangeAction({ path: "a", type: "added", removal_group: "unmanaged" }),
+    ).toEqual({
+      action: "remove",
+      label: "Kept. Not made by HarnessTap.",
     });
   });
 

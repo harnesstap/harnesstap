@@ -1,0 +1,5 @@
+kind: Added
+body: List apply removals in three groups on Desktop preview and View changes. Confirm before removing user-modified or unmanaged files. Result toast is Wrote N, removed M, kept K with View snapshot (DS-1/DS-6 copy).
+time: 2026-10-10T04:50:00Z
+custom:
+  Issue: ""

@@ -162,7 +162,11 @@ describe("withManagedRemovals", () => {
       );
 
       expect(changes).toEqual([
-        { path: ".claude/skills/live/SKILL.md", type: "added" },
+        {
+          path: ".claude/skills/live/SKILL.md",
+          type: "added",
+          removal_group: "owned_unmodified",
+        },
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });

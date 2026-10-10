@@ -394,6 +394,55 @@ export function restoreSafeRemovalBackup(input: {
   return restored;
 }
 
+export interface PlannedRemovals {
+  owned_unmodified: string[];
+  owned_modified: string[];
+  unmanaged: string[];
+}
+
+export type PlannedRemovalGroup = keyof PlannedRemovals;
+
+export function emptyPlannedRemovals(): PlannedRemovals {
+  return { owned_unmodified: [], owned_modified: [], unmanaged: [] };
+}
+
+export function groupPlannedRemovals(plan: SafeRemovalPlan): PlannedRemovals {
+  const groups = emptyPlannedRemovals();
+  groups.owned_unmodified.push(...plan.remove);
+  for (const skip of plan.skip) {
+    switch (skip.reason) {
+      case "modified":
+        groups.owned_modified.push(skip.path);
+        break;
+      case "unmanaged":
+      case "preexisting":
+        groups.unmanaged.push(skip.path);
+        break;
+      case "missing":
+        break;
+      default: {
+        const _exhaustive: never = skip.reason;
+        return _exhaustive;
+      }
+    }
+  }
+  return groups;
+}
+
+export function plannedRemovalsFromApplyFields(input: {
+  removed_files?: string[];
+  skipped_removals?: SafeRemovalSkip[];
+}): PlannedRemovals {
+  return groupPlannedRemovals({
+    remove: input.removed_files ?? [],
+    skip: input.skipped_removals ?? [],
+  });
+}
+
+export function riskyRemovalPaths(groups: PlannedRemovals): string[] {
+  return [...groups.owned_modified, ...groups.unmanaged];
+}
+
 export function formatRemovalBackupNotice(
   result: SafeFileRemovalResult,
   homeRoot: string,

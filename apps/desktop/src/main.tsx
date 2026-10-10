@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { HarnessScopeVisualGallery } from "./components/live/HarnessScopeVisualGallery";
+import { RiskyRemovalVisualGallery } from "./components/live/RiskyRemovalVisualGallery";
 import "@fontsource/ibm-plex-sans/latin-400.css";
 import "@fontsource/ibm-plex-sans/latin-500.css";
 import "@fontsource/ibm-plex-sans/latin-600.css";
@@ -20,7 +21,13 @@ if (import.meta.env.VITE_E2E === "1") {
 
 function Root() {
   const visual = new URLSearchParams(window.location.search).get("visual");
-  return visual === "harness-scope" ? <HarnessScopeVisualGallery /> : <App />;
+  if (visual === "harness-scope") {
+    return <HarnessScopeVisualGallery />;
+  }
+  if (visual === "risky-removal") {
+    return <RiskyRemovalVisualGallery />;
+  }
+  return <App />;
 }
 
 createRoot(document.getElementById("root")!).render(

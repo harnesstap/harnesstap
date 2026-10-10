@@ -76,6 +76,11 @@ describe("agent profile apply-preview routes", () => {
       contents: { stack_resource_count: number } | null;
       files: { expected_count: number; changes: unknown[] };
       harnesses?: Record<string, unknown>;
+      removals: {
+        owned_unmodified: string[];
+        owned_modified: string[];
+        unmanaged: string[];
+      };
     };
     expect(body.profile).toBe("work");
     expect(body.scope).toBe("home");
@@ -83,6 +88,11 @@ describe("agent profile apply-preview routes", () => {
     expect(body.contents?.stack_resource_count).toBe(1);
     expect(body.files.expected_count).toBeGreaterThan(0);
     expect(body.harnesses).toBeDefined();
+    expect(body.removals).toEqual({
+      owned_unmodified: expect.any(Array),
+      owned_modified: expect.any(Array),
+      unmanaged: expect.any(Array),
+    });
   });
 
   it("rejects project scope without projectPath", async () => {

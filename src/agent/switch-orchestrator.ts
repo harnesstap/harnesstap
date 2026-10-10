@@ -28,6 +28,7 @@ export interface AgentSwitchRequest {
   projectPath?: string;
   confirmOwnedOverwrite?: boolean;
   harness?: string;
+  forceRemove?: boolean;
 }
 
 export interface AgentSwitchStartResult {
@@ -99,6 +100,7 @@ async function runHomeSwitch(
       harness: request.harness,
       conflictPolicy: "replace",
       pull: false,
+      ...(request.forceRemove ? { forceRemove: true } : {}),
     },
     onStep,
     isCancelled: () => isAgentSwitchCancelled(session),

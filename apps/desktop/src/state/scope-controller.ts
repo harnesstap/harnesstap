@@ -22,7 +22,7 @@ import {
 } from "../lib/agent-client";
 import { postApply } from "../lib/api/apply-plugin";
 import { postApprove, postDeny } from "../lib/api/approve";
-import { formatScope, scopeToView, type Scope } from "../lib/api/scope";
+import { scopeToView, type Scope } from "../lib/api/scope";
 import { flattenProfileResourceList } from "../lib/contents-diff";
 import type { CutVersionRow } from "../lib/cut-versions-form";
 import {
@@ -72,6 +72,13 @@ import {
   type PreviewKey,
 } from "./status-store";
 import { toast } from "./toast-store";
+import { applySuccessToast } from "../lib/apply-result";
+import {
+  emptyPlannedRemovals,
+  riskyRemovalPaths,
+  APPLY_RESULT_COPY,
+  type PlannedRemovals,
+} from "../lib/ui-copy";
 
 /** Match CLI `ht profile list --search`: name, description, or tags. */
 export function filterProfilesByQuery(
@@ -175,6 +182,13 @@ export function useScopeController(input: ScopeControllerInput) {
   const [switchId, setSwitchId] = useState<string | null>(null);
   const [overwriteDialog, setOverwriteDialog] = useState(false);
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
+  const [pendingRiskyRemovals, setPendingRiskyRemovals] = useState<{
+    groups: PlannedRemovals;
+    profile: string;
+    confirmOwnedOverwrite: boolean;
+    options?: { progressLabel?: string; successToast?: string };
+  } | null>(null);
+  const [applySnapshotId, setApplySnapshotId] = useState<string | null>(null);
   const [reapplyConfirmOpen, setReapplyConfirmOpen] = useState(false);
   const [pendingRestoreChange, setPendingRestoreChange] =
     useState<DriftFileChange | null>(null);
@@ -384,11 +398,29 @@ export function useScopeController(input: ScopeControllerInput) {
     async (
       confirmOwnedOverwrite = false,
       requestedProfile?: string,
-      options?: { progressLabel?: string; successToast?: string },
+      options?: {
+        progressLabel?: string;
+        successToast?: string;
+        forceRemove?: boolean;
+        skipRiskyConfirm?: boolean;
+      },
     ) => {
       const targetProfile = requestedProfile ?? selectedProfile;
       if (!client || !targetProfile || !client.token) {
         return;
+      }
+      if (!options?.skipRiskyConfirm) {
+        const preview = await loadPreviewFor(targetProfile);
+        const groups = preview?.removals ?? emptyPlannedRemovals();
+        if (riskyRemovalPaths(groups).length > 0) {
+          setPendingRiskyRemovals({
+            groups,
+            profile: targetProfile,
+            confirmOwnedOverwrite,
+            options,
+          });
+          return;
+        }
       }
       setSwitching(true);
       setSwitchSuccessHold(false);
@@ -399,7 +431,11 @@ export function useScopeController(input: ScopeControllerInput) {
         const id = await startSwitch(
           client.baseUrl,
           client.token,
-          withScope({ profile: targetProfile, confirmOwnedOverwrite }),
+          withScope({
+            profile: targetProfile,
+            confirmOwnedOverwrite,
+            ...(options?.forceRemove ? { forceRemove: true } : {}),
+          }),
         );
         setSwitchId(id);
         subscribeSwitchEvents(
@@ -422,11 +458,19 @@ export function useScopeController(input: ScopeControllerInput) {
             }
             setPendingTrust(trustFieldsFromUnknown(final.result));
             setSwitchSuccessHold(true);
+            const applyToast = applySuccessToast(final.result);
+            if (applyToast.snapshotId) {
+              setApplySnapshotId(applyToast.snapshotId);
+            }
             toast({
               tone: "success",
-              title:
-                options?.successToast
-                ?? `Applied ${targetProfile} to ${formatScope(scope)}`,
+              title: options?.successToast ?? applyToast.title,
+              action: applyToast.snapshotId
+                ? {
+                    label: APPLY_RESULT_COPY.viewSnapshot,
+                    onClick: () => setApplySnapshotId(applyToast.snapshotId),
+                  }
+                : undefined,
             });
             window.setTimeout(() => {
               setSwitchSuccessHold(false);
@@ -455,8 +499,34 @@ export function useScopeController(input: ScopeControllerInput) {
         setSwitchError(messageOf(error, "Switch failed"));
       }
     },
-    [client, refreshStatus, scope, selectedProfile, skipOverwritePrompt, withScope],
+    [client, loadPreviewFor, refreshStatus, selectedProfile, skipOverwritePrompt, withScope],
   );
+
+  const onKeepRiskyRemovals = useCallback(() => {
+    const pending = pendingRiskyRemovals;
+    setPendingRiskyRemovals(null);
+    if (!pending) {
+      return;
+    }
+    void runSwitch(pending.confirmOwnedOverwrite, pending.profile, {
+      ...pending.options,
+      skipRiskyConfirm: true,
+      forceRemove: false,
+    });
+  }, [pendingRiskyRemovals, runSwitch]);
+
+  const onRemoveRiskyRemovalsToo = useCallback(() => {
+    const pending = pendingRiskyRemovals;
+    setPendingRiskyRemovals(null);
+    if (!pending) {
+      return;
+    }
+    void runSwitch(pending.confirmOwnedOverwrite, pending.profile, {
+      ...pending.options,
+      skipRiskyConfirm: true,
+      forceRemove: true,
+    });
+  }, [pendingRiskyRemovals, runSwitch]);
 
   const showReapply = shouldShowReapply({
     selectedProfile,
@@ -678,6 +748,10 @@ export function useScopeController(input: ScopeControllerInput) {
       }
       await loadPreviewFor(selectedProfile);
       await refreshStatus("full");
+      if (selectedProfile === activeProfile) {
+        await runSwitch(false, selectedProfile);
+        return;
+      }
       toast({ tone: "success", title: "Profile matches current setup" });
     } catch (error) {
       setAddResourceError(
@@ -693,6 +767,7 @@ export function useScopeController(input: ScopeControllerInput) {
     loadPreviewFor,
     overwritingWithSetup,
     refreshStatus,
+    runSwitch,
     selectedProfile,
     withScope,
   ]);
@@ -1545,6 +1620,12 @@ export function useScopeController(input: ScopeControllerInput) {
     skipOverwritePrompt,
     setSkipOverwritePrompt,
     onConfirmOverwrite,
+    pendingRiskyRemovals,
+    setPendingRiskyRemovals,
+    onKeepRiskyRemovals,
+    onRemoveRiskyRemovalsToo,
+    applySnapshotId,
+    setApplySnapshotId,
     onCancelSwitch,
     runSwitch,
     maybeAutoReapplyAfterMutation,

@@ -1,55 +1,61 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
+import { resolvePluginSelector } from "../models/plugin-model.js";
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
-import { resolvePluginSelector } from "../models/plugin-model.js";
 import type { McpServerMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
 import { generateFiles } from "./applier.js";
-import { getGitOrigin, normalizeGitUrl } from "./git.js";
-import {
-  buildHostManagedStatus,
-  profileSkillNameMap,
-  type HostManagedStatus,
-} from "./cursor-host-managed-skills.js";
-import {
-  buildHarnessLiveStatusMap,
-  declaredMcpFromExpectedFiles,
-  type HarnessLiveStatus,
-} from "./global-profile-status-panel.js";
-import { mergePluginsForApply } from "./plugin-apply-merge.js";
-import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
-import { withAffectedResources } from "./scoped-file-content-delta.js";
 import {
   collectOwnedPreviewResources,
   expectedFileMatchesLiveForPreview,
   omitInheritedPluginFileChanges,
 } from "./apply-preview-inherited.js";
 import {
+  buildHostManagedStatus,
+  type HostManagedStatus,
+  profileSkillNameMap,
+} from "./cursor-host-managed-skills.js";
+import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { getGitOrigin, normalizeGitUrl } from "./git.js";
+import {
+  buildHarnessLiveStatusMap,
+  declaredMcpFromExpectedFiles,
+  type HarnessLiveStatus,
+} from "./global-profile-status-panel.js";
+import {
+  isMergeableHostConfigPath,
+} from "./merged-host-config.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import {
+  type ApplyProfilePluginResult,
   applyProfilePlugin,
   clearGlobalProfileApply,
   collectProfilePluginIds,
-  type ApplyProfilePluginResult,
 } from "./profile-apply.js";
+import { resourceKeyFromManagedPath } from "./profile-commit-resource.js";
 import {
   buildProfileContents,
   type ProfileContents,
   type ProfileContentsResource,
 } from "./profile-contents.js";
-import { resourceKeyFromManagedPath } from "./profile-commit-resource.js";
-import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
+import type { DriftFileChange } from "./project-drift.js";
 import {
-  isMergeableHostConfigPath,
-} from "./merged-host-config.js";
-import { detectPlatforms } from "./scanner.js";
-import {
+  type RecoveryAction,
   SingletonConflictError,
   UnsatisfiableConstraintError,
-  type RecoveryAction,
 } from "./resolve/types.js";
+import {
+  emptyPlannedRemovals,
+  type PlannedRemovalGroup,
+  type PlannedRemovals,
+  plannedRemovalsFromApplyFields,
+} from "./safe-file-removal.js";
+import { detectPlatforms } from "./scanner.js";
+import { withAffectedResources } from "./scoped-file-content-delta.js";
 
 export type ProfileApplyPreviewScope = "home" | "project";
 
@@ -77,6 +83,8 @@ export interface ProfileApplyPreview {
     /** Resource identities owned by the target apply set (including inherited plugin material). */
     owned_resources?: Array<{ type: string; name: string }>;
   };
+  /** Planned whole-file removals grouped by ownership (DT-3). */
+  removals: PlannedRemovals;
   relative_to_active: boolean;
   warning?: string;
   recovery_actions?: RecoveryAction[];
@@ -293,25 +301,41 @@ function withMappedResources(changes: DriftFileChange[]): DriftFileChange[] {
  * expected → apply would delete). Skip paths that are already gone so Target
  * preview does not show phantom − rows.
  */
+function pushRemovalChange(
+  next: DriftFileChange[],
+  seen: Set<string>,
+  rootPath: string,
+  path: string,
+  removal_group: PlannedRemovalGroup,
+): void {
+  if (seen.has(path) || isMergeableHostConfigPath(path)) {
+    return;
+  }
+  if (readRootFile(rootPath, path) === null) {
+    return;
+  }
+  seen.add(path);
+  next.push({ path, type: "added", removal_group });
+}
+
 export function withManagedRemovals(
   rootPath: string,
   changes: DriftFileChange[],
   removedFiles: string[] | undefined,
+  skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
 ): DriftFileChange[] {
-  if (!removedFiles || removedFiles.length === 0) {
-    return changes;
-  }
   const seen = new Set(changes.map((change) => change.path));
   const next = [...changes];
-  for (const path of removedFiles) {
-    if (seen.has(path) || isMergeableHostConfigPath(path)) {
+  for (const path of removedFiles ?? []) {
+    pushRemovalChange(next, seen, rootPath, path, "owned_unmodified");
+  }
+  for (const skip of skippedRemovals ?? []) {
+    if (skip.reason === "missing") {
       continue;
     }
-    if (readRootFile(rootPath, path) === null) {
-      continue;
-    }
-    seen.add(path);
-    next.push({ path, type: "added" });
+    const group: PlannedRemovalGroup =
+      skip.reason === "modified" ? "owned_modified" : "unmanaged";
+    pushRemovalChange(next, seen, rootPath, skip.path, group);
   }
   return next;
 }
@@ -330,6 +354,7 @@ function buildPreviewFileChanges(
   expectedFiles: Array<{ path: string; content: string }>,
   removedFiles: string[] | undefined,
   pluginIds?: string[],
+  skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
 ): DriftFileChange[] {
   const mapped = withMappedResources(
     omitMergeableHostConfigRemovals(
@@ -340,6 +365,7 @@ function buildPreviewFileChanges(
           rootPath,
           compareExpectedFiles(rootPath, expectedFiles),
           removedFiles,
+          skippedRemovals,
         ),
       ),
     ),
@@ -356,6 +382,7 @@ function previewFilesResult(
   expectedFiles: Array<{ path: string; content: string }>,
   removedFiles: string[] | undefined,
   pluginIds?: string[],
+  skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
 ): ProfileApplyPreview["files"] {
   return {
     expected_count: expectedFiles.length,
@@ -364,10 +391,21 @@ function previewFilesResult(
       expectedFiles,
       removedFiles,
       pluginIds,
+      skippedRemovals,
     ),
     root_path: rootPath,
     owned_resources: collectOwnedPreviewResources(expectedFiles),
   };
+}
+
+function previewRemovals(
+  removedFiles: string[] | undefined,
+  skippedRemovals?: ApplyProfilePluginResult["skipped_removals"],
+): PlannedRemovals {
+  return plannedRemovalsFromApplyFields({
+    removed_files: removedFiles,
+    skipped_removals: skippedRemovals,
+  });
 }
 
 function isMaterialResource(resource: Resource): boolean {
@@ -569,7 +607,7 @@ async function previewHomeApply(
   profile: string,
   harness?: string,
 ): Promise<
-  Pick<ProfileApplyPreview, "harnesses" | "files" | "warning" | "recovery_actions">
+  Pick<ProfileApplyPreview, "harnesses" | "files" | "removals" | "warning" | "recovery_actions">
 > {
   const collected = await collectHomeExpectedManagedFiles(profile, harness);
 
@@ -596,6 +634,7 @@ async function previewHomeApply(
           changes: withMappedResources([]),
           root_path: collected.rootPath,
         },
+        removals: emptyPlannedRemovals(),
         ...spreadWarningFields(collected),
       };
     }
@@ -605,6 +644,7 @@ async function previewHomeApply(
         changes: withMappedResources([]),
         root_path: collected.rootPath,
       },
+      removals: emptyPlannedRemovals(),
       ...spreadWarningFields(collected),
     };
   }
@@ -622,6 +662,11 @@ async function previewHomeApply(
         collected.expectedFiles,
         collected.removedFiles,
         collected.pluginIds,
+        collected.expectedApply?.skipped_removals,
+      ),
+      removals: previewRemovals(
+        collected.removedFiles,
+        collected.expectedApply?.skipped_removals,
       ),
     };
   }
@@ -645,6 +690,11 @@ async function previewHomeApply(
       collected.expectedFiles,
       collected.removedFiles,
       collected.pluginIds,
+      collected.expectedApply?.skipped_removals,
+    ),
+    removals: previewRemovals(
+      collected.removedFiles,
+      collected.expectedApply?.skipped_removals,
     ),
   };
 }
@@ -653,7 +703,7 @@ async function previewProjectApply(
   profile: string,
   projectPath?: string,
   harness?: string,
-): Promise<Pick<ProfileApplyPreview, "files" | "warning" | "recovery_actions">> {
+): Promise<Pick<ProfileApplyPreview, "files" | "removals" | "warning" | "recovery_actions">> {
   const collected = await collectProjectExpectedManagedFiles(
     profile,
     projectPath,
@@ -666,6 +716,11 @@ async function previewProjectApply(
       collected.expectedFiles,
       collected.removedFiles,
       collected.pluginIds,
+      collected.expectedApply?.skipped_removals,
+    ),
+    removals: previewRemovals(
+      collected.removedFiles,
+      collected.expectedApply?.skipped_removals,
     ),
     ...spreadWarningFields(collected),
   };
@@ -697,6 +752,7 @@ export async function previewProfileApply(
       not_staged: notStaged,
       untracked_resources: notStaged,
       files: projectPreview.files,
+      removals: projectPreview.removals,
       relative_to_active: relativeToActive,
       ...spreadWarningFields(projectPreview),
     };
@@ -711,6 +767,7 @@ export async function previewProfileApply(
     untracked_resources: notStaged,
     ...(homePreview.harnesses ? { harnesses: homePreview.harnesses } : {}),
     files: homePreview.files,
+    removals: homePreview.removals,
     relative_to_active: relativeToActive,
     host_managed: buildHostManagedStatus({
       homeRoot: homePreview.files.root_path,

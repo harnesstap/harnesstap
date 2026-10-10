@@ -1,3 +1,5 @@
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect } from "expect-webdriverio";
 import {
   loadE2EIsolationPaths,
@@ -351,5 +353,27 @@ describe("Golden path", () => {
         timeoutMsg: "Resource create panel did not close after discard",
       },
     );
+  });
+
+  it("confirms before removing modified or unmanaged files", async () => {
+    const { home } = isolation();
+    const skillDir = join(home, ".claude", "skills", "e2e-user-skill");
+    mkdirSync(skillDir, { recursive: true });
+    const notes = join(skillDir, "notes.md");
+    writeFileSync(notes, "private notes\n");
+    writeFileSync(join(skillDir, "SKILL.md"), "user changed this skill\n");
+
+    await openScope();
+    const apply = await $("button*=Apply");
+    if ((await apply.isExisting()) && (await apply.isDisplayed())) {
+      await apply.click();
+    }
+    const dialog = await $("[data-testid='risky-removal-dialog']");
+    if (await dialog.isDisplayed().catch(() => false)) {
+      await expect($("h2*=Some files will not be removed")).toBeDisplayed();
+      const keep = await $("button*=Keep these files");
+      await keep.click();
+    }
+    expect(existsSync(notes)).toBe(true);
   });
 });

@@ -47,6 +47,7 @@ import {
   type StackChangeTone,
 } from "../lib/contents-diff";
 import { fileChangeRowActions } from "../lib/file-change-actions";
+import { PREVIEW_FILE_COPY, REMOVAL_GROUP_COPY } from "../lib/ui-copy";
 import {
   resolveProfileResourceStack,
 } from "../lib/profile-resource-stack";
@@ -285,9 +286,9 @@ const FILE_CHANGE_KIND_BADGES: Array<{
   label: string;
   Icon: typeof Plus;
 }> = [
-  { kind: "add", label: "Added", Icon: Plus },
-  { kind: "remove", label: "Removed", Icon: Minus },
-  { kind: "update", label: "Modified", Icon: Pencil },
+  { kind: "add", label: PREVIEW_FILE_COPY.willWrite, Icon: Plus },
+  { kind: "remove", label: PREVIEW_FILE_COPY.willRemove, Icon: Minus },
+  { kind: "update", label: PREVIEW_FILE_COPY.willWrite, Icon: Pencil },
 ];
 
 function FileChangeKindBadgeMark({ kind }: { kind: FileChangeKind }): ReactNode {
@@ -941,15 +942,20 @@ function FileChangeRowActions({
   );
 }
 
-const FILE_CHANGE_ADD_CHIP_TOOLTIP = "Will be written when you Apply";
-
-function fileChangeKindChipTooltip(kind: FileChangeKind): string | undefined {
+function fileChangeKindChipTooltip(
+  kind: FileChangeKind,
+  removalGroup?: DriftFileChange["removal_group"],
+): string | undefined {
+  if (removalGroup) {
+    return REMOVAL_GROUP_COPY[removalGroup];
+  }
   switch (kind) {
     case "add":
-      return FILE_CHANGE_ADD_CHIP_TOOLTIP;
-    case "remove":
+      return PREVIEW_FILE_COPY.willWrite;
     case "update":
-      return undefined;
+      return PREVIEW_FILE_COPY.willWrite;
+    case "remove":
+      return PREVIEW_FILE_COPY.willRemove;
     default: {
       const neverKind: never = kind;
       return neverKind;
@@ -973,12 +979,14 @@ function fileChangeKindBadge(kind: FileChangeKind): (typeof FILE_CHANGE_KIND_BAD
 function FileChangeKindChip({
   kind,
   count,
+  removalGroup,
 }: {
   kind: FileChangeKind;
   count: number;
+  removalGroup?: DriftFileChange["removal_group"];
 }): ReactNode {
   const meta = fileChangeKindBadge(kind);
-  const tooltip = fileChangeKindChipTooltip(kind);
+  const tooltip = fileChangeKindChipTooltip(kind, removalGroup);
   const Icon = meta.Icon;
   const chip = (
     <span
@@ -1219,7 +1227,11 @@ function FileChangeRows({
                         harnessIds={change.platform ? [change.platform] : []}
                       />
                       <ResourceRowTrailing>
-                        <FileChangeKindChip kind={kind} count={1} />
+                        <FileChangeKindChip
+                          kind={kind}
+                          count={1}
+                          removalGroup={change.removal_group}
+                        />
                         <FileChangeRowActions
                           change={change}
                           row={row}

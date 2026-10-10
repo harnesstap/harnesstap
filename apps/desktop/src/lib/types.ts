@@ -335,6 +335,7 @@ export interface DriftFileChange {
   resource?: { type: string; name: string; origin_kind?: string | null };
   /** Resources whose scoped FileDiff body actually changed. */
   affected_resources?: Array<{ type: string; name: string }>;
+  removal_group?: "owned_unmodified" | "owned_modified" | "unmanaged";
 }
 
 export interface GlobalProfilePanelStatus {
@@ -404,6 +405,12 @@ export type RecoveryAction =
   | { id: "clear-override"; label: string; rootName: string; pluginName: string }
   | { id: "tag-as-profile"; label: string; pluginName: string };
 
+export interface PlannedRemovals {
+  owned_unmodified: string[];
+  owned_modified: string[];
+  unmanaged: string[];
+}
+
 export interface ProfileApplyPreview {
   profile: string;
   scope: ViewScope;
@@ -419,6 +426,7 @@ export interface ProfileApplyPreview {
     root_path: string;
     owned_resources?: Array<{ type: string; name: string }>;
   };
+  removals?: PlannedRemovals;
   relative_to_active: boolean;
   warning?: string;
   recovery_actions?: RecoveryAction[];
