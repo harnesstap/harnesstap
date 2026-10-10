@@ -89,6 +89,52 @@ describe("OpenCodeSerializer", () => {
     expect(paths).not.toContain(".claude/skills/research/SKILL.md");
   });
 
+  it("maps home-relative OpenCode agents to .opencode/agent/ at project scope", async () => {
+    const serializer = new OpenCodeSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "agent",
+          name: "planner",
+          content: "# Planner",
+          source: "~/.config/opencode/agent/planner.md",
+        }),
+        makeResource({
+          type: "command",
+          name: "explain",
+          content: "# Explain",
+          source: "~/.config/opencode/command/explain.md",
+        }),
+      ],
+      ".",
+      { target: "project" },
+    );
+
+    const paths = files.map((file) => file.path);
+    expect(paths).toContain(".opencode/agent/planner.md");
+    expect(paths).toContain(".opencode/command/explain.md");
+    expect(paths.some((path) => path.startsWith(".config/opencode/"))).toBe(false);
+  });
+
+  it("keeps home-relative OpenCode agents under .config/opencode at global scope", async () => {
+    const serializer = new OpenCodeSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "agent",
+          name: "planner",
+          content: "# Planner",
+          source: "~/.config/opencode/agent/planner.md",
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    expect(files.map((file) => file.path)).toContain(".config/opencode/agent/planner.md");
+    expect(files.map((file) => file.path)).not.toContain(".opencode/agent/planner.md");
+  });
+
   it("serializes instructions joined with double newline", async () => {
     const serializer = new OpenCodeSerializer();
     const files = await serializer.serialize(
