@@ -287,4 +287,24 @@ describe("CodexSerializer", () => {
       cleanupDir(projectDir);
     }
   });
+
+  it("scans and serializes Codex prompts as commands", async () => {
+    const projectDir = createTempDir("codex-prompts");
+    try {
+      writeTextFile(join(projectDir, ".codex", "prompts", "ship.md"), "# Ship\n");
+      const serializer = new CodexSerializer();
+      const resources = await serializer.scan(projectDir);
+      const command = resources.find((resource) => resource.type === "command");
+      expect(command?.name).toBe("ship");
+      expect(command?.source).toBe(".codex/prompts/ship.md");
+
+      const files = await serializer.serialize(
+        [makeResource({ type: "command", name: "ship", content: "# Ship\n" })],
+        ".",
+      );
+      expect(files.map((file) => file.path)).toContain(".codex/prompts/ship.md");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
 });

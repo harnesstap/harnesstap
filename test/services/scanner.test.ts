@@ -816,4 +816,39 @@ describe("scanner services", () => {
       await context.cleanup();
     }
   });
+
+  it("imports ~/.agents/AGENTS.md on home scan", async () => {
+    const context = await createInitializedTestContext("scanner-home-agents-md");
+    try {
+      writeTextFile(`${context.homeDir}/.agents/AGENTS.md`, "# Shared home agents\n");
+      const scanner = await import("../../src/services/scanner.ts");
+      const result = await scanner.scanAndPersistHomeDefaults();
+      const instruction = result.resolved.find(
+        (resource) =>
+          resource.type === "instruction" && resource.name === "agents-instructions",
+      );
+      expect(instruction?.source).toBe("~/.agents/AGENTS.md");
+      expect(instruction?.namespace).toBe("");
+      expect(instruction?.content).toContain("Shared home agents");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("namespaces project scan resources as project by default", async () => {
+    const context = await createInitializedTestContext("scanner-project-namespace");
+    try {
+      writeTextFile(`${context.projectDir}/AGENTS.md`, "# Project agents\n");
+      const scanner = await import("../../src/services/scanner.ts");
+      const result = await scanner.persistMergedProjectScan(context.projectDir, undefined, {
+        originRef: context.projectDir,
+      });
+      const instruction = result.resources.find(
+        (resource) => resource.type === "instruction",
+      );
+      expect(instruction?.namespace).toBe("project");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

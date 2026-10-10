@@ -194,9 +194,9 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | Harness | Instructions | Skills | Rules | MCP | Agents | Commands | Settings |
 | ------- | ------------ | ------ | ----- | --- | ------ | -------- | -------- |
 | **claude-code** | `CLAUDE.md` | `.claude/skills/` | `.claude/rules/` | `.mcp.json` (project); `~/.claude.json` (user); local `projects[]` inventory-only | `.claude/agents/` | `.claude/commands/` | `.claude/settings.json` |
-| **codex** | `AGENTS.md` | `.agents/skills/` | — | `.codex/config.toml` | `.codex/agents/` | — | `.codex/config.toml` |
+| **codex** | `AGENTS.md` | `.agents/skills/` | — | `.codex/config.toml` | `.codex/agents/` | `.codex/prompts/` | `.codex/config.toml` |
 | **cursor** | `AGENTS.md` (+ legacy `.cursorrules`) | `.agents/skills/` | `.cursor/rules/` | `.cursor/mcp.json` | `.cursor/agents/` | — | — |
-| **opencode** | `AGENTS.md` | `.opencode/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | `opencode.json` | `.opencode/agents/` | `.opencode/commands/` | — |
+| **opencode** | `AGENTS.md` | `.opencode/skills/` (also reads `.agents/skills/`, `.claude/skills/`) | — | `opencode.json` | `.opencode/agents/` (also `.opencode/agent/`) | `.opencode/commands/` (also `.opencode/command/`) | — |
 | **github-copilot** | `.github/copilot-instructions.md` | `.agents/skills/` | — | (global `~/.copilot/mcp-config.json`) | `.github/agents/` | — | — |
 | **copilot-cli** | `AGENTS.md` | `.agents/skills/` | — | `.copilot/mcp-config.json` | `.github/agents/` | — | — |
 | **gemini-cli** | `AGENTS.md` | `.agents/skills/` | — | — | — | `commands/` | `gemini-extension.json` |
@@ -248,8 +248,9 @@ OpenCode discovers skills from its native trees plus Claude- and Agents-compatib
 | ---------------- | ------------------ |
 | **AGENTS.md** | `instruction` resources |
 | **Skills** (`.opencode/skills/`, also `.agents/skills/`, `.claude/skills/`; global `~/.config/opencode/skills/`, `~/.agents/skills/`, `~/.claude/skills/`) | Native `skill` resources; apply writes `.opencode/skills/` / `~/.config/opencode/skills/` only |
-| **Agents** (`.opencode/agents/`) | `agent` resources |
-| **Commands** (`.opencode/commands/`, `.opencode/command/`) | `command` resources |
+| **Agents** (`.opencode/agents/`, `.opencode/agent/`; global `~/.config/opencode/agents/`, `~/.config/opencode/agent/`) | `agent` resources |
+| **Commands** (`.opencode/commands/`, `.opencode/command/`; global `~/.config/opencode/commands/`, `~/.config/opencode/command/`) | `command` resources |
+| **Shared home instructions** (`~/.agents/AGENTS.md`) | `instruction` resources (home scan) |
 | **MCP** (`opencode.json`) | `mcp_server` resources |
 | **Server plugins** (`.opencode/plugins/*.js`) | Not mirrored — see [Portability limits](portability-limits.md) |
 

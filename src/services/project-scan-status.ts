@@ -44,10 +44,11 @@ function resourceDedupKey(
 function scanInputToComparableResource(
   input: ResourceCreateInput,
   projectRoot: string,
+  persistNamespace = "",
 ): Resource {
   const normalized = normalizeResourceInput({
     ...input,
-    namespace: input.namespace ?? "",
+    namespace: input.namespace ?? persistNamespace,
     origin_kind: "local_snapshot",
     origin_ref: projectRoot,
   });
@@ -85,7 +86,7 @@ function flattenHarnessScanResults(
 
   for (const result of results) {
     for (const resource of result.resources) {
-      const comparable = scanInputToComparableResource(resource, projectRoot);
+      const comparable = scanInputToComparableResource(resource, projectRoot, "project");
       const key = resourceDedupKey(comparable);
       if (seen.has(key)) {
         continue;

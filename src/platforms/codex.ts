@@ -5,6 +5,7 @@ import { getPlatform } from "./registry.js";
 import { formatTransportToml } from "../services/toml/write.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
+import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
 import type {
   AgentMetadata,
   EnvVarMetadata,
@@ -354,6 +355,23 @@ export class CodexSerializer extends BaseSerializer {
     return resources;
   }
 
+  private scanMarkdownCommandsAt(
+    dirPath: string,
+    sourcePrefix: string,
+  ): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
+    const prefix = sourcePrefix.endsWith("/") ? sourcePrefix : `${sourcePrefix}/`;
+    for (const file of this.listDir(dirPath)) {
+      if (!file.endsWith(".md")) continue;
+      const content = this.readFile(join(dirPath, file));
+      if (!content) continue;
+      resources.push(
+        this.makeResource("command", file.replace(/\.md$/, ""), content, `${prefix}${file}`),
+      );
+    }
+    return resources;
+  }
+
   private scanConfigAt(
     configPath: string,
     source: string,
@@ -409,6 +427,14 @@ export class CodexSerializer extends BaseSerializer {
       ),
     );
 
+    // 6. Prompts (commands): .codex/prompts/*.md
+    resources.push(
+      ...this.scanMarkdownCommandsAt(
+        join(projectRoot, ".codex", "prompts"),
+        ".codex/prompts/",
+      ),
+    );
+
     return resources;
   }
 
@@ -450,6 +476,13 @@ export class CodexSerializer extends BaseSerializer {
       ),
     );
 
+    resources.push(
+      ...this.scanMarkdownCommandsAt(
+        join(homeRoot, ".codex", "prompts"),
+        "~/.codex/prompts/",
+      ),
+    );
+
     return resources;
   }
 
@@ -473,8 +506,12 @@ export class CodexSerializer extends BaseSerializer {
       target,
     );
     const hooksPath = this.toTargetRelativePath(targetPaths.hooks, target);
+    const commandsPath = this.toTargetRelativePath(targetPaths.commands, target);
 
-    const instructions = resources.filter((r) => r.type === "instruction");
+    const instructions = filterInstructionsForTargetPath(
+      resources,
+      instructionsPath ? [instructionsPath, "AGENTS.md"] : ["AGENTS.md"],
+    );
     const mcps = this.mcpServersForTarget(resources, configPath);
     const permissions = resources.filter((r) => r.type === "permission");
     const envVars = resources.filter((r) => r.type === "env_var");
@@ -573,6 +610,15 @@ export class CodexSerializer extends BaseSerializer {
         path: configPath,
         content: formatTransportToml(mergeConfigDocuments(existing, overlay)),
       });
+    }
+
+    if (commandsPath) {
+      for (const resource of resources.filter((r) => r.type === "command")) {
+        files.push({
+          path: `${commandsPath}${resource.name}.md`,
+          content: resource.content,
+        });
+      }
     }
 
     const hooks = resources.filter((r) => r.type === "hook");

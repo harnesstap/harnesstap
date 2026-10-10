@@ -650,6 +650,7 @@ describe("profile-commit-resource", () => {
       });
 
       expect(committed.map((entry) => `${entry.type}:${entry.name}`).sort()).toEqual([
+        "model_config:default",
         "permission:allow-Read(*)",
         "permission:ask-Edit(*)",
       ]);

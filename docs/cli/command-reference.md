@@ -125,7 +125,7 @@ Apply plugins with top-level `apply` (not under this group). Onboard from repo-r
 - `scan --dry-run` — preview imports without writing to the DB
 - `scan --overwrite` — replace library rows when scan content differs
 - `scan --skip-existing` — keep existing rows when scan content differs
-- `scan --namespace <name>` — namespace for imported project resources
+- `scan --namespace <name>` — namespace for imported project resources (default: `project`; home scan stays empty / global)
 - `scan --global` — install imported plugin sources into global harness locations
 - `scan --harness <slugs>` — harness targets for `--global` plugin installs
 - `use --profile <key>` — profile key from `apm.yml` (required unless `--list`)

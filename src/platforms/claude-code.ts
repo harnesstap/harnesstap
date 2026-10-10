@@ -12,6 +12,7 @@ import {
   mergeClaudeSettingsContent,
   mergeClaudeUserJsonContent,
 } from "../services/merged-host-config.js";
+import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import type {
   AgentMetadata,
@@ -22,6 +23,7 @@ import type {
   SerializedFile,
   RuleMetadata,
   McpServerMetadata,
+  ModelConfigMetadata,
   PermissionMetadata,
   SerializeOptions,
 } from "../types.js";
@@ -52,6 +54,25 @@ function claudePermissionInputs(
     }
   }
   return resources;
+}
+
+function claudeModelConfigInput(
+  settings: { model?: unknown },
+  source: string,
+): ResourceCreateInput[] {
+  if (typeof settings.model !== "string" || settings.model.trim().length === 0) {
+    return [];
+  }
+  return [
+    {
+      type: "model_config",
+      name: "default",
+      description: "",
+      content: "",
+      source,
+      metadata: { model: settings.model } satisfies ModelConfigMetadata,
+    },
+  ];
 }
 
 function emitClaudeMcpServerEntry(meta: McpServerMetadata): Record<string, unknown> {
@@ -172,10 +193,12 @@ export class ClaudeCodeSerializer extends BaseSerializer {
           permissions?: { allow?: string[]; deny?: string[]; ask?: string[] };
           env?: Record<string, string>;
           hooks?: Record<string, unknown>;
+          model?: unknown;
         };
 
         resources.push(
           ...claudePermissionInputs(settings, ".claude/settings.json"),
+          ...claudeModelConfigInput(settings, ".claude/settings.json"),
         );
 
         // Env vars
@@ -304,10 +327,12 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         const settings = JSON.parse(settingsContent) as {
           permissions?: { allow?: string[]; deny?: string[]; ask?: string[] };
           env?: Record<string, string>;
+          model?: unknown;
         };
 
         resources.push(
           ...claudePermissionInputs(settings, "~/.claude/settings.json"),
+          ...claudeModelConfigInput(settings, "~/.claude/settings.json"),
         );
 
         for (const [key, value] of Object.entries(settings.env ?? {})) {
@@ -414,8 +439,11 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       byType.set(r.type, list);
     }
 
-    // Instructions → CLAUDE.md
-    const instructions = byType.get("instruction") ?? [];
+    // Instructions → CLAUDE.md (skip instructions imported from other harness files)
+    const instructions = filterInstructionsForTargetPath(
+      byType.get("instruction") ?? [],
+      instructionsPath ? [instructionsPath, "CLAUDE.md"] : ["CLAUDE.md"],
+    );
     if (instructions.length > 0 && instructionsPath) {
       const combined = instructions.map((r) => r.content).join("\n\n");
       files.push({ path: instructionsPath, content: combined });
@@ -467,12 +495,16 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       }
     }
 
-    // Permissions + env + hooks → .claude/settings.json
+    // Permissions + env + hooks + model → .claude/settings.json
     const permissions = byType.get("permission") ?? [];
     const envVars = byType.get("env_var") ?? [];
     const hooks = byType.get("hook") ?? [];
+    const modelConfigs = byType.get("model_config") ?? [];
     if (
-      (permissions.length > 0 || envVars.length > 0 || hooks.length > 0) &&
+      (permissions.length > 0 ||
+        envVars.length > 0 ||
+        hooks.length > 0 ||
+        modelConfigs.length > 0) &&
       settingsPath
     ) {
       const settings: Record<string, unknown> = {};
@@ -521,6 +553,12 @@ export class ClaudeCodeSerializer extends BaseSerializer {
             name: r.name,
           })),
         ).hooks;
+      }
+      if (modelConfigs.length > 0) {
+        const metadata = modelConfigs[0]?.metadata as ModelConfigMetadata;
+        if (metadata?.model) {
+          settings["model"] = metadata.model;
+        }
       }
       if (Object.keys(settings).length > 0) {
         const generated = JSON.stringify(settings, null, 2);
