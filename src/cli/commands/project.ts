@@ -49,7 +49,7 @@ import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { makeIdColumn } from "../columns.js";
 import { formatCount } from "../formatting.js";
-import { CLI_ERRORS } from "../messages.js";
+import { CLI_ERRORS, ON_CONFLICT_HELP } from "../messages.js";
 import {
   fail,
   formatCommand,
@@ -138,7 +138,7 @@ async function promptScanConflicts(
   return promptForChoice({
     message: "How should HarnessTap handle these conflicts?",
     choices: [
-      { name: "Overwrite library copies", value: "overwrite" as const },
+      { name: "Replace library copies", value: "overwrite" as const },
       { name: "Keep existing library copies", value: "skip" as const },
       { name: "Cancel scan", value: "cancel" as const },
     ],
@@ -661,7 +661,7 @@ export function registerProjectCommandsBeforeConfig(root: Command): void {
     .option("--base-url <url>", "Cloud base URL for dependency pulls")
     .option(
       "--on-conflict <policy>",
-      "What to do when it already exists: replace, skip, prompt or cancel",
+      ON_CONFLICT_HELP,
     )
     .option("--no-interactive", "Disable interactive prompts")
     .option("--interactive", "Enable interactive prompts")

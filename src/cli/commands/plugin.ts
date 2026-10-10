@@ -1910,7 +1910,7 @@ async function handlePluginFromProjectCommand(
       // Show preview
       ui.info(`\nPlugin "${resolvedName}" already exists.`);
       if (preview.conflicts.length > 0) {
-        ui.info(`Conflicts: ${preview.conflicts.length} resource(s) would be overwritten`);
+        ui.info(`Conflicts: ${preview.conflicts.length} resource(s) would be replaced`);
       }
       if (preview.newResources.length > 0) {
         ui.info(`New resources: ${preview.newResources.length} would be added`);
@@ -1920,7 +1920,7 @@ async function handlePluginFromProjectCommand(
       const action = await promptForChoice({
         message: "How do you want to proceed?",
         choices: [
-          { name: "Overwrite conflicting resources", value: "overwrite" },
+          { name: "Replace conflicting resources", value: "overwrite" },
           { name: "Create with a different name", value: "rename" },
           { name: "Cancel", value: "cancel" },
         ],
@@ -2162,7 +2162,7 @@ async function handlePluginCreateCommand(
   );
   console.log("");
   ui.kvBlock([
-    { key: "Attached", value: result.attachedSkills.join(", ") || "—" },
+    { key: "Attached", value: result.attachedSkills.join(", ") || "-" },
     ...(result.installedSkills.length > 0
       ? [{ key: "Installed", value: result.installedSkills.join(", ") }]
       : []),

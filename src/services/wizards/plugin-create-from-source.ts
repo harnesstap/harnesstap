@@ -111,7 +111,7 @@ export async function runPluginCreateFromSourceWizard(input: {
     message: `Plugin "${input.pluginName}@${input.pluginVersion}" already exists. How do you want to proceed?`,
     choices: [
       { name: "Merge new skills into existing plugin", value: "merge" as const },
-      { name: "Overwrite plugin (replace attachments from this import)", value: "overwrite" as const },
+      { name: "Replace plugin (replace attachments from this import)", value: "overwrite" as const },
       { name: "Cancel", value: "cancel" as const },
     ],
     default: "merge",

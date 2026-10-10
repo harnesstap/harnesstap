@@ -143,12 +143,57 @@ describe("G6 CLI error contract", () => {
 
 describe("formatHintCommand", () => {
   it("always uses ht and quotes resource scope args", async () => {
-    const { formatHintCommand } = await import("../../src/cli/shared.ts");
+    const { formatHintCommand, formatCommand } = await import("../../src/cli/shared.ts");
     expect(
       formatHintCommand(["resource", "scope", "filesystem", "--add", "claude-code,cursor"]),
     ).toBe("ht resource scope filesystem --add claude-code,cursor");
+    expect(formatCommand("resource scope filesystem --add claude-code,cursor")).toBe(
+      "ht resource scope filesystem --add claude-code,cursor",
+    );
+    expect(formatCommand("ht resource scope filesystem --add claude-code,cursor")).toBe(
+      "ht resource scope filesystem --add claude-code,cursor",
+    );
     expect(formatHintCommand(["profile", "use", "global default"])).toBe(
       'ht profile use "global default"',
+    );
+  });
+});
+
+describe("DS-6 central copy", () => {
+  it("matches designer error, hint, and conflict vocabulary", async () => {
+    const { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_HELP, ON_CONFLICT_VALUE_HELP, SCOPE_COPY } =
+      await import("../../src/cli/messages.ts");
+    expect(CLI_ERRORS.pluginAlreadyExists("demo-plugin")).toBe(
+      'A plugin named "demo-plugin" already exists.',
+    );
+    expect(CLI_HINTS.onConflictReplace).toBe("Use --on-conflict replace to replace it.");
+    expect(CLI_ERRORS.missingProfileName).toBe("Pass a profile name.");
+    expect(CLI_HINTS.profileUseExample).toBe('For example: ht profile use "global default"');
+    expect(CLI_ERRORS.noProfileNamed("work")).toBe('No profile named "work".');
+    expect(CLI_ERRORS.mcpNotInLibrary("github")).toBe('"github" isn\'t in your library.');
+    expect(CLI_HINTS.mcpSearch("github")).toBe("Run ht mcp search github to find it.");
+    expect(CLI_ERRORS.newerSchema).toBe("This data was saved by a newer HarnessTap.");
+    expect(CLI_HINTS.updateNpm).toBe("Update with: npm i -g harnesstap");
+    expect(CLI_HINTS.unsavedChanges).toBe("Run again with --changes save, stash or discard.");
+    expect(CLI_HINTS.scopeAdd("filesystem", "cursor,codex")).toBe(
+      "Run ht resource scope filesystem --add cursor,codex.",
+    );
+    expect(CLI_HINTS.portableMcpTip(
+      "filesystem",
+      "Cursor and Codex",
+      "ht resource scope filesystem --add cursor,codex",
+    )).toBe(
+      'Tip: "filesystem" also works on Cursor and Codex. Run ht resource scope filesystem --add cursor,codex.',
+    );
+    expect(ON_CONFLICT_HELP).toBe(
+      "What to do when it already exists: replace, skip, prompt or cancel",
+    );
+    expect(ON_CONFLICT_VALUE_HELP.replace).toBe("Replace the existing one");
+    expect(ON_CONFLICT_VALUE_HELP.skip).toBe("Keep the existing one and move on");
+    expect(ON_CONFLICT_VALUE_HELP.prompt).toBe("Ask each time");
+    expect(ON_CONFLICT_VALUE_HELP.cancel).toBe("Stop without changing anything");
+    expect(SCOPE_COPY.mainHarnessTooltip).toBe(
+      "Your main harness. It wins when harnesses disagree.",
     );
   });
 });
