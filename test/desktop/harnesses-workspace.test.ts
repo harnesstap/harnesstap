@@ -81,7 +81,7 @@ describe("Harnesses workspace sidebar width", () => {
     expect(sidebarSource).toContain("None set up yet.");
     expect(sidebarSource).not.toContain("harnesses-empty");
     expect(workspaceSource).toContain('testId="harnesses-empty"');
-    expect(workspaceSource).toContain('label: "Detect harnesses"');
+    expect(workspaceSource).toContain("DETECT_HARNESSES_COMMAND");
     expect(workspaceSource).toContain("onClick: startDetect");
   });
 

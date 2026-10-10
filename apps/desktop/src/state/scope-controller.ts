@@ -345,6 +345,10 @@ export function useScopeController(input: ScopeControllerInput) {
     setPreviewChanges(false);
   }, []);
 
+  useEffect(() => {
+    setInventoryEditMode(false);
+  }, [view]);
+
   const openEditProfile = useCallback((name: string) => {
     setProfileSelectionIntent("user");
     setSelectedProfile(name);

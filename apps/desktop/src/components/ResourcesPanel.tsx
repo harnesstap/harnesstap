@@ -199,18 +199,6 @@ export function ResourcesPanel({
   );
   const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
   const trackedDirsIntroAttempted = useRef(false);
-
-  useEffect(() => {
-    if (!autoOpenTrackedDirectories || trackedDirsIntroAttempted.current) {
-      return;
-    }
-    trackedDirsIntroAttempted.current = true;
-    if (hasSeenTrackedDirsIntro()) {
-      return;
-    }
-    markTrackedDirsIntroSeen();
-    setTrackedDirsOpen(true);
-  }, [autoOpenTrackedDirectories]);
   const [fieldEditing, setFieldEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
@@ -296,6 +284,26 @@ export function ResourcesPanel({
   }));
   const refreshing = status === "refreshing";
   const showSkeleton = peek == null && full == null && !error;
+  const libraryLoadFailed = Boolean(error) && peek == null && full == null;
+  const libraryLoadReady = peek != null || full != null;
+
+  useEffect(() => {
+    if (!autoOpenTrackedDirectories || trackedDirsIntroAttempted.current) {
+      return;
+    }
+    if (libraryLoadFailed) {
+      return;
+    }
+    if (!libraryLoadReady) {
+      return;
+    }
+    trackedDirsIntroAttempted.current = true;
+    if (hasSeenTrackedDirsIntro()) {
+      return;
+    }
+    markTrackedDirsIntroSeen();
+    setTrackedDirsOpen(true);
+  }, [autoOpenTrackedDirectories, libraryLoadFailed, libraryLoadReady]);
 
   useEffect(() => {
     if (!baseUrl) {

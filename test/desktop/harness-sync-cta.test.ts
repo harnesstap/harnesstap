@@ -45,7 +45,7 @@ describe("Harnesses sync CTA", () => {
   it("uses the Profiles Apply twin classes and locked copy", () => {
     expect(sidebarSource).toContain('className={["btn", "primary", "rail-apply-action"');
     expect(sidebarSource).toContain("ArrowLeftRight");
-    expect(workspaceSource).toContain("Sync harnesses");
+    expect(workspaceSource).toContain("SYNC_HARNESSES_COMMAND");
     expect(workspaceSource).toContain("Syncing…");
     expect(workspaceSource).toContain("<SyncHarnessesDialog");
     expect(dialogSource).toContain('title="Sync harnesses"');

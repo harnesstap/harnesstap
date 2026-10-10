@@ -25,6 +25,10 @@ import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { isListboxNavKey, nextListboxIndex } from "../../lib/listbox-nav";
 import { loadRecentProjects, projectDisplayName } from "../../lib/recent-projects";
 import {
+  DETECT_HARNESSES_COMMAND,
+  SYNC_HARNESSES_COMMAND,
+} from "../../lib/ui-copy";
+import {
   useCommands,
   useRegisterCommands,
 } from "../../state/command-registry";
@@ -46,6 +50,8 @@ export interface CommandPaletteHostProps {
   onSelectScope: (next: Scope) => void;
   onSelectProject: (path: string) => void;
   ensureProjectReady: (pathOverride?: string) => Promise<boolean>;
+  onDetectHarnesses: () => void;
+  onSyncHarnesses: () => void;
 }
 
 export function CommandPaletteHost({
@@ -55,6 +61,8 @@ export function CommandPaletteHost({
   onSelectScope,
   onSelectProject,
   ensureProjectReady,
+  onDetectHarnesses,
+  onSyncHarnesses,
 }: CommandPaletteHostProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [cheatSheetOpen, setCheatSheetOpen] = useState(false);
@@ -126,6 +134,20 @@ export function CommandPaletteHost({
         keywords: ["cloud", "sign in"],
         run: () => overlays.openOverlay("cloudAccount"),
       },
+      {
+        id: "harnesses-detect-global",
+        section: "actions",
+        label: DETECT_HARNESSES_COMMAND,
+        keywords: ["detect", "scan", "disk", "harness"],
+        run: onDetectHarnesses,
+      },
+      {
+        id: "harnesses-sync-global",
+        section: "actions",
+        label: SYNC_HARNESSES_COMMAND,
+        keywords: ["sync", "harness"],
+        run: onSyncHarnesses,
+      },
     ];
     const profiles: Command[] = ctrl.visibleProfiles.map((profile) => ({
       id: `profile-select-${profile.name}`,
@@ -178,8 +200,10 @@ export function CommandPaletteHost({
     ctrl.visibleProfiles,
     ensureProjectReady,
     nav,
+    onDetectHarnesses,
     onSelectProject,
     onSelectScope,
+    onSyncHarnesses,
     overlays,
     recentTick,
   ]);
@@ -456,7 +480,6 @@ function ShortcutCheatSheet({
   const rootRef = useOverlayLayer({
     open,
     onClose,
-    initialFocusRef: closeRef,
   });
 
   return (

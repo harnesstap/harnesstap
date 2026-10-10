@@ -38,6 +38,19 @@ describe("command palette wiring", () => {
     expect(sourcesSource).toContain("Add marketplace");
     expect(filterSource).toContain("data-workspace-filter");
     expect(appSource).toContain("useRegisterCommands");
+    expect(appSource).toContain("onDetectHarnesses");
+    expect(appSource).toContain("onSyncHarnesses");
+  });
+
+  test("palette registers Detect harnesses and Sync harnesses globally", () => {
+    const paletteSource = readFileSync(
+      join(root, "apps/desktop/src/components/shell/CommandPalette.tsx"),
+      "utf8",
+    );
+    expect(paletteSource).toContain("DETECT_HARNESSES_COMMAND");
+    expect(paletteSource).toContain("SYNC_HARNESSES_COMMAND");
+    expect(paletteSource).toContain("harnesses-detect-global");
+    expect(paletteSource).toContain("harnesses-sync-global");
   });
 
   test("DESIGN.md and README document the shortcut contract", () => {

@@ -12,6 +12,7 @@ import {
 import type { ProfileContentsResource } from "../../lib/types";
 import { toast } from "../../state/toast-store";
 import { catalogListEmptyKind, noResultsTitle } from "../../lib/empty-copy";
+import { EMPTY_PROFILE_COPY } from "../../lib/ui-copy";
 import {
   collectDiscardPathRows,
   discardAllDescription,
@@ -654,14 +655,15 @@ export function ScopeInventoryShell({
               />
             ) : (
               <EmptyState
-                title="No resources yet"
-                body="Add something to this profile."
+                title={EMPTY_PROFILE_COPY.title}
+                body={EMPTY_PROFILE_COPY.body}
                 testId="scope-inventory-empty"
               />
             )
           ) : null}
         </div>
       </div>
+      {!editMode || selectedItems.length > 0 ? (
       <ChromeTooltip
         content={editMode ? "Delete selected" : "Add to profile"}
       >
@@ -674,11 +676,7 @@ export function ScopeInventoryShell({
           ].join(" ")}
           data-testid="scope-inventory-fab"
           aria-label={editMode ? "Delete selected" : "Add to profile"}
-          disabled={
-            !selectedProfile
-            || bulkRemoveBusy
-            || (editMode && selectedItems.length === 0)
-          }
+          disabled={!selectedProfile || bulkRemoveBusy}
           onClick={() => {
             if (editMode) {
               if (selectedItems.length === 0 || bulkRemoveBusy) {
@@ -699,6 +697,7 @@ export function ScopeInventoryShell({
           )}
         </button>
       </ChromeTooltip>
+      ) : null}
       <ConfirmDialog
         open={pendingDiscard !== null}
         title={pendingDiscard ? discardResourceTitle(pendingDiscard) : ""}

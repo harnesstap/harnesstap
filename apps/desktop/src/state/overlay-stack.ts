@@ -100,6 +100,21 @@ export function tabbableElements(root: HTMLElement): HTMLElement[] {
   );
 }
 
+const FIELD_SELECTOR = [
+  "input:not([disabled]):not([type=\"hidden\"]):not([type=\"button\"]):not([type=\"submit\"]):not([type=\"reset\"]):not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[contenteditable=\"true\"]",
+  "[role=\"textbox\"]",
+].join(",");
+
+/** First field in the layer, else the first tabbable control. */
+export function preferredInitialFocus(root: HTMLElement): HTMLElement | null {
+  const tabbables = tabbableElements(root);
+  const field = tabbables.find((element) => element.matches(FIELD_SELECTOR));
+  return field ?? tabbables[0] ?? null;
+}
+
 /**
  * Where Tab should land inside a trapped layer. Returns `null` when the
  * browser's default move stays inside the layer.
@@ -251,7 +266,7 @@ export function useOverlayLayer<T extends HTMLElement = HTMLDivElement>(
       if (active instanceof HTMLElement && root.contains(active)) {
         return;
       }
-      tabbableElements(root)[0]?.focus();
+      preferredInitialFocus(root)?.focus();
     }, 0);
     return () => {
       window.clearTimeout(timer);

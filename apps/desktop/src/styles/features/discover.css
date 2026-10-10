@@ -29,6 +29,13 @@
   min-width: 0;
 }
 
+.source-row-error-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--danger, var(--text-muted));
+  margin-top: 0.1rem;
+}
+
 .source-row-actions {
   display: flex;
   flex-wrap: wrap;

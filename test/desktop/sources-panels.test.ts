@@ -112,6 +112,7 @@ describe("marketplaceSourceLooksResolvable", () => {
     expect(marketplaceSourceLooksResolvable("git@github.com:org/repo.git")).toBe(true);
     expect(marketplaceSourceLooksResolvable("/tmp/market")).toBe(true);
     expect(marketplaceSourceLooksResolvable("file:///tmp/market")).toBe(true);
+    expect(marketplaceSourceLooksResolvable("not a url")).toBe(false);
   });
 });
 
