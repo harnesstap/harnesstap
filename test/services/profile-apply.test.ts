@@ -125,10 +125,10 @@ describe("profile-apply service", () => {
       const skillCPath = join(context.homeDir, ".claude/skills/skill-c/SKILL.md");
 
       expect(existsSync(skillBPath)).toBe(false);
-      expect(existsSync(skillAPath)).toBe(false);
+      expect(existsSync(skillAPath)).toBe(true);
       expect(existsSync(skillCPath)).toBe(true);
       expect(switched.removed_files).toContain(".claude/skills/skill-b/SKILL.md");
-      expect(switched.removed_files).toContain(".claude/skills/skill-a/SKILL.md");
+      expect(switched.removed_files ?? []).not.toContain(".claude/skills/skill-a/SKILL.md");
     } finally {
       await context.cleanup();
     }

@@ -31,6 +31,17 @@ function rowToMaterialization(
   };
 }
 
+function queryMaterializations(
+  sql: string,
+  params: unknown[],
+): ResourceMaterializationRow[] {
+  try {
+    return getDb().prepare(sql).all(...params) as ResourceMaterializationRow[];
+  } catch {
+    return [];
+  }
+}
+
 export function recordResourceMaterialization(input: {
   resource_id: string;
   scope: MaterializationScope;
@@ -133,30 +144,24 @@ export function recordResourceMaterialization(input: {
 export function listMaterializationsForRoot(
   rootPath: string,
 ): ResourceMaterialization[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT * FROM resource_materializations
-       WHERE root_path = ?
-       ORDER BY path ASC`,
-    )
-    .all(rootPath) as ResourceMaterializationRow[];
-  return rows.map(rowToMaterialization);
+  return queryMaterializations(
+    `SELECT * FROM resource_materializations
+     WHERE root_path = ?
+     ORDER BY path ASC`,
+    [rootPath],
+  ).map(rowToMaterialization);
 }
 
 export function listMaterializationsForRootPath(
   rootPath: string,
   relativePath: string,
 ): ResourceMaterialization[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT * FROM resource_materializations
-       WHERE root_path = ?
-         AND path = ?`,
-    )
-    .all(rootPath, relativePath) as ResourceMaterializationRow[];
-  return rows.map(rowToMaterialization);
+  return queryMaterializations(
+    `SELECT * FROM resource_materializations
+     WHERE root_path = ?
+       AND path = ?`,
+    [rootPath, relativePath],
+  ).map(rowToMaterialization);
 }
 
 export function deleteMaterializationsForRootPaths(

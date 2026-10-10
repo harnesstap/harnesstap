@@ -41,6 +41,11 @@ import {
 import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { resourceAppliesToHarness } from "./harness-scope.js";
 import { recordPreexistingPath } from "../models/preexisting-path.js";
+import { isMergeableHostConfigPath } from "./merged-host-config.js";
+import {
+  isAggregateConfigManagedPath,
+  isPluginRegistryManagedPath,
+} from "./profile-commit-resource.js";
 import {
   executeSafeFileRemovals,
   hashOnDiskFile,
@@ -163,6 +168,14 @@ function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): s
   }
 
   return fullPath;
+}
+
+function shouldPreserveUnownedFile(path: string): boolean {
+  return (
+    isMergeableHostConfigPath(path)
+    || isAggregateConfigManagedPath(path)
+    || isPluginRegistryManagedPath(path)
+  );
 }
 
 export function removeGlobalMaterializedFiles(
@@ -406,6 +419,9 @@ export async function materializeFiles(
       if (decisions.get(file.path) === "skip") {
         return false;
       }
+      if (shouldPreserveUnownedFile(file.path)) {
+        return false;
+      }
       const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
       return existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path);
     });
@@ -450,8 +466,10 @@ export async function materializeFiles(
         path: file.path,
         content_hash: hashOnDiskFile(fullPath) ?? "",
       });
-      skippedFiles.push(file.path);
-      continue;
+      if (!shouldPreserveUnownedFile(file.path)) {
+        skippedFiles.push(file.path);
+        continue;
+      }
     }
     if (fileContentMatchesExisting(fullPath, file)) {
       writtenFiles.push(file.path);

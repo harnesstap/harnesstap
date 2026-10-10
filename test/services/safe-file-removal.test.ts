@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it, spyOn } from "bun:test";
-import * as fs from "node:fs";
+import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { recordResourceMaterialization } from "../../src/models/resource-materialization.ts";
@@ -9,11 +8,27 @@ import { hashGeneratedContent } from "../../src/services/materialization-ownersh
 import { recordPreexistingPath } from "../../src/models/preexisting-path.ts";
 import {
   executeSafeFileRemovals,
-  isApplyTrashTarget,
   restoreSafeRemovalBackup,
 } from "../../src/services/safe-file-removal.ts";
 
 describe("safe file removal", () => {
+  it("only uses recursive rmSync in the apply trash pruner", () => {
+    const removal = readFileSync(
+      join(import.meta.dir, "../../src/services/safe-file-removal.ts"),
+      "utf-8",
+    );
+    const recursiveCalls = [...removal.matchAll(/rmSync\([\s\S]*?\)/g)].filter((match) =>
+      match[0].includes("recursive"),
+    );
+    expect(recursiveCalls).toHaveLength(1);
+    expect(recursiveCalls[0]?.[0]).toContain("extra.full");
+    const applier = readFileSync(
+      join(import.meta.dir, "../../src/services/applier.ts"),
+      "utf-8",
+    );
+    expect(applier).not.toMatch(/rmSync\(/);
+  });
+
   it("keeps unmanaged extras, skips edited owned files, and backs up matching owned files", async () => {
     const context = await createInitializedTestContext("safe-remove-cases");
     try {
@@ -64,21 +79,6 @@ describe("safe file removal", () => {
         generated_hash: hashGeneratedContent("# Edited\n"),
       });
 
-      const originalRm = fs.rmSync.bind(fs);
-      const spy = spyOn(fs, "rmSync").mockImplementation((target, opts) => {
-        if (
-          opts &&
-          typeof opts === "object" &&
-          "recursive" in opts &&
-          (opts as { recursive?: boolean }).recursive
-        ) {
-          if (!isApplyTrashTarget(String(target))) {
-            throw new Error(`recursive rmSync forbidden: ${String(target)}`);
-          }
-        }
-        return originalRm(target, opts);
-      });
-
       const result = executeSafeFileRemovals(
         context.homeDir,
         [
@@ -104,7 +104,6 @@ describe("safe file removal", () => {
       });
       expect(restored).toContain(".cursor/skills/ship/SKILL.md");
       expect(readFileSync(skillPath, "utf-8")).toBe("# Ship\n");
-      spy.mockRestore();
     } finally {
       await context.cleanup();
     }

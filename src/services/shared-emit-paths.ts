@@ -212,7 +212,7 @@ function existingUnmanagedSkillConsumeDir(
   consumeDirs: readonly string[],
 ): string | undefined {
   let best: string | undefined;
-  let bestRank = Number.POSITIVE_INFINITY;
+  let bestRank = -1;
   for (const dir of consumeDirs) {
     const relative = skillRelativePath(dir, name);
     if (!existsSync(join(rootPath, relative))) {
@@ -222,7 +222,7 @@ function existingUnmanagedSkillConsumeDir(
       continue;
     }
     const rank = sharedSkillDirRank(dir);
-    if (rank < bestRank) {
+    if (rank > bestRank) {
       best = dir;
       bestRank = rank;
     }
@@ -342,14 +342,6 @@ export function pinSkillEmitsToExistingLivePaths(
       continue;
     }
     placeSkillOnHost(next, host, name, destDir, consume);
-    if (unmanagedDir) {
-      for (const result of next) {
-        if (result === host) {
-          continue;
-        }
-        result.files = dropSkillTree(result.files, name);
-      }
-    }
   }
 
   return next;

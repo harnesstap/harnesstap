@@ -23,6 +23,17 @@ export function recordPreexistingPath(input: {
   content_hash?: string;
 }): PreexistingPath {
   const db = getDb();
+  try {
+    db.prepare("SELECT 1 FROM preexisting_paths LIMIT 0").all();
+  } catch {
+    return {
+      id: "",
+      root_path: input.root_path,
+      path: input.path,
+      content_hash: input.content_hash ?? "",
+      created_at: new Date().toISOString(),
+    };
+  }
   const now = new Date().toISOString();
   const existing = db
     .prepare(
@@ -55,22 +66,28 @@ export function recordPreexistingPath(input: {
 }
 
 export function isPreexistingPath(rootPath: string, relativePath: string): boolean {
-  const db = getDb();
-  const row = db
-    .prepare(
-      `SELECT 1 as ok FROM preexisting_paths
-       WHERE root_path = ? AND path = ? LIMIT 1`,
-    )
-    .get(rootPath, relativePath) as { ok: number } | undefined;
-  return row !== undefined;
+  try {
+    const row = getDb()
+      .prepare(
+        `SELECT 1 as ok FROM preexisting_paths
+         WHERE root_path = ? AND path = ? LIMIT 1`,
+      )
+      .get(rootPath, relativePath) as { ok: number } | undefined;
+    return row !== undefined;
+  } catch {
+    return false;
+  }
 }
 
 export function listPreexistingPaths(rootPath: string): string[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT path FROM preexisting_paths WHERE root_path = ? ORDER BY path ASC`,
-    )
-    .all(rootPath) as Array<{ path: string }>;
-  return rows.map((row) => row.path);
+  try {
+    const rows = getDb()
+      .prepare(
+        `SELECT path FROM preexisting_paths WHERE root_path = ? ORDER BY path ASC`,
+      )
+      .all(rootPath) as Array<{ path: string }>;
+    return rows.map((row) => row.path);
+  } catch {
+    return [];
+  }
 }

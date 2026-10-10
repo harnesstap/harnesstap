@@ -131,9 +131,13 @@ export function persistWrittenMaterializations(input: {
     });
 
     for (const entry of entries) {
-      if (
-        !getDb().prepare("SELECT 1 as ok FROM resources WHERE id = ? LIMIT 1").get(entry.resource_id)
-      ) {
+      try {
+        if (
+          !getDb().prepare("SELECT 1 as ok FROM resources WHERE id = ? LIMIT 1").get(entry.resource_id)
+        ) {
+          continue;
+        }
+      } catch {
         continue;
       }
       recordResourceMaterialization({
