@@ -18,7 +18,7 @@
 //   --update-baselines
 //   --axe
 //   --trace
-import { existsSync, copyFileSync } from "node:fs";
+import { copyFileSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -93,13 +93,22 @@ async function readToken(tokenPath) {
 }
 
 function launchOptions() {
-  const options = { args: ["--no-sandbox"] };
+  // Pin Chromium to Playwright's browser (same build as mcr.microsoft.com/playwright).
+  // Do not fall back to system Chrome: font rasterization drifts across hosts.
+  const options = {
+    args: [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--font-render-hinting=none",
+      "--disable-lcd-text",
+    ],
+  };
   if (process.env.SHOTS_CHROME_CHANNEL) {
     options.channel = process.env.SHOTS_CHROME_CHANNEL;
   } else if (process.env.SHOTS_CHROME_PATH) {
     options.executablePath = process.env.SHOTS_CHROME_PATH;
-  } else if (existsSync("/usr/bin/google-chrome-stable")) {
-    options.executablePath = "/usr/bin/google-chrome-stable";
+  } else {
+    options.executablePath = chromium.executablePath();
   }
   return options;
 }

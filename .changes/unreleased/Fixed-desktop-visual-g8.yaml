@@ -1,0 +1,5 @@
+kind: Fixed
+body: Regenerate Desktop visual baselines in a pinned Playwright Chromium image and require the nightly visual job plus a PR check on apps/desktop/src (G8). Diff images upload as artifacts. Axe serious and critical stay at 0.
+time: 2026-10-10T04:20:00Z
+custom:
+  Issue: ""

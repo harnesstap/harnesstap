@@ -43,7 +43,7 @@
     "expect-webdriverio": "^6.0.1",
     "@axe-core/playwright": "^4.10.2",
     "pixelmatch": "^7.1.0",
-    "playwright": "^1.63.0",
+    "playwright": "1.63.0",
     "pngjs": "^7.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.0",
