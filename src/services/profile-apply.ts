@@ -15,7 +15,6 @@ import {
   listGlobalApplySnapshots,
   recordGlobalApplySnapshotInstall,
 } from "../models/global-apply-snapshot.js";
-import { getHarnessPreference } from "../models/harness.js";
 import {
   getPluginById,
   getPluginByPublishedIdentity,
@@ -43,12 +42,7 @@ import {
   planStaleGlobalProfileFiles,
   planStaleMergeableHostConfigFiles,
 } from "./global-profile-cleanup.js";
-import {
-  assertSupportedHarnessTargets,
-  parsePlatformFilter,
-  registeredHarnessesOf,
-  uniqueHarnessTargets,
-} from "./harness-targets.js";
+import { resolveRegisteredGlobalApplyHarnesses } from "./harness-targets.js";
 import { rewriteStaleMergeableHostConfigs } from "./host-config-strip.js";
 import { installPluginFromCatalog } from "./plugin-catalog-install.js";
 import {
@@ -67,7 +61,6 @@ import {
   type SafeFileRemovalResult,
   type SafeRemovalSkip,
 } from "./safe-file-removal.js";
-import { detectPlatforms } from "./scanner.js";
 
 /** HT library deps that belong in the profile stack (not host marketplace/git/path pins). */
 function isProfileStackDependency(ref: string): boolean {
@@ -439,20 +432,7 @@ function listResolvedPluginPins(
 }
 
 function resolveGlobalApplyHarnessTargets(harnessOption?: string): string[] {
-  const explicitTargets = uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
-  if (explicitTargets.length > 0) {
-    assertSupportedHarnessTargets(explicitTargets);
-    return explicitTargets;
-  }
-
-  const preference = getHarnessPreference();
-  if (preference) {
-    const preferredTargets = registeredHarnessesOf(preference);
-    assertSupportedHarnessTargets(preferredTargets);
-    return preferredTargets;
-  }
-
-  return uniqueHarnessTargets(detectPlatforms(resolveHomeRoot()));
+  return resolveRegisteredGlobalApplyHarnesses(harnessOption);
 }
 
 function writeHomeActiveEnvironment(name: string): string {

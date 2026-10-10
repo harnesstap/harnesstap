@@ -30,6 +30,8 @@ describe("CLI copy helpers (DS-6)", () => {
     );
     expect(CLI_HINTS.onConflictReplace).toBe("Use --on-conflict replace to replace it.");
     expect(CLI_HINTS.githubLogin).toBe(marketplaceUnreachableHint());
+    expect(CLI_ERRORS.noHarnesses).toBe("Not set up for any harness yet.");
+    expect(CLI_HINTS.harnessSet).toBe("Run ht harness set to pick your harnesses.");
   });
 
   it("quotes package refs in approve and deny hints", () => {

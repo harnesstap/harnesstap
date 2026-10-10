@@ -350,7 +350,9 @@ describe("profile-untracked-resources service", () => {
       expect(discarded.discarded_count).toBeGreaterThanOrEqual(1);
       expect(existsSync(join(claudeDir, "SKILL.md"))).toBe(false);
       expect(existsSync(join(cursorUserDir, "SKILL.md"))).toBe(false);
-      expect(existsSync(join(agentsDir, "SKILL.md"))).toBe(false);
+      // `.agents/skills` is a shared tree. Warp/Jules are not registered here,
+      // so discard must not treat that folder as a managed harness copy.
+      expect(existsSync(join(agentsDir, "SKILL.md"))).toBe(true);
       expect(existsSync(join(hostDir, "SKILL.md"))).toBe(true);
       expect(existsSync(cacheFile)).toBe(true);
     } finally {

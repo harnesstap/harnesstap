@@ -12,6 +12,7 @@ type PlatformDefOptions = {
   hostManagedPaths?: PlatformDefinition["hostManagedPaths"];
   relatedLocations?: PlatformDefinition["relatedLocations"];
   hostPluginRuntimeModules?: boolean;
+  detectionPaths?: PlatformDefinition["detectionPaths"];
 };
 
 function def(
@@ -42,6 +43,7 @@ function def(
     ...(normalized.hostPluginRuntimeModules
       ? { hostPluginRuntimeModules: true }
       : {}),
+    ...(normalized.detectionPaths ? { detectionPaths: normalized.detectionPaths } : {}),
   };
 }
 
@@ -137,6 +139,11 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: ".agents/skills/",
   }, {
     skills: "~/.agents/skills/",
+  }, {
+    detectionPaths: {
+      project: [".warp/"],
+      global: ["~/.warp"],
+    },
   }),
 
   def("opencode", "OpenCode", ["instructions", "skills", "mcp", "agents", "commands"], {
@@ -356,6 +363,11 @@ const PLATFORMS: PlatformDefinition[] = [
     },
   }, {
     skills: "~/.agents/skills/",
+  }, {
+    detectionPaths: {
+      project: ["JULES.md"],
+      global: ["~/.jules", "~/JULES.md"],
+    },
   }),
 
   def("cody", "Sourcegraph Cody", ["instructions", "mcp"], {

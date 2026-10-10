@@ -11,6 +11,7 @@ import {
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addDependency } from "../../src/services/plugin-dependency.ts";
+import { setHarnessPreference } from "../../src/models/harness.ts";
 import { previewProfileApply } from "../../src/services/profile-apply-preview.ts";
 
 let ctx: TestContext;
@@ -76,6 +77,7 @@ describe("previewProfileApply constraint recovery", () => {
     const profile = createPlugin({ name: "Teads (Default)", version: "1.0.1" });
     setPluginTags(profile.id, ["profile"]);
     addDependency(profile.id, "design-doc@teads-plugins", { versionConstraint: "*" });
+    setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
     const preview = await previewProfileApply({
       profile: "Teads (Default)",

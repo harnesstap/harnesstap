@@ -1,6 +1,8 @@
+import { CLI_ERRORS, CLI_HINTS } from "../copy/cli.js";
 import { getHarnessPreference, getProjectHarnessConfig } from "../models/harness.js";
 import { getProjectByLocalPath } from "../models/project.js";
 import { getAllPlatforms } from "../platforms/registry.js";
+import { CliUsageError } from "./cli-errors.js";
 import { detectHomePlatforms } from "./scanner.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 
@@ -46,6 +48,27 @@ export function assertSupportedHarnessTargets(harnesses: string[]): void {
   if (invalid.length > 0) {
     throw new Error(`Unsupported harness: ${invalid.join(", ")}`);
   }
+}
+
+/**
+ * Global apply / profile use targets: explicit `--harness`, else the
+ * registered set. Never falls back to filesystem detection of default
+ * harnesses (claude-code, warp, jules, …) when none are registered.
+ */
+export function resolveRegisteredGlobalApplyHarnesses(harnessOption?: string): string[] {
+  const explicitTargets = uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
+  if (explicitTargets.length > 0) {
+    assertSupportedHarnessTargets(explicitTargets);
+    return explicitTargets;
+  }
+
+  const preferredTargets = registeredHarnessesOf(getHarnessPreference());
+  if (preferredTargets.length > 0) {
+    assertSupportedHarnessTargets(preferredTargets);
+    return preferredTargets;
+  }
+
+  throw new CliUsageError(CLI_ERRORS.noHarnesses, [CLI_HINTS.harnessSetOrFlag]);
 }
 
 export function resolveScanGlobalHarnessTargets(
