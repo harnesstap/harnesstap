@@ -335,21 +335,30 @@ function classifyPreviewRemovals(
     ]),
   ];
   const groups = groupPlannedRemovals(planSafeFileRemovals(rootPath, candidates));
+  const pull = (list: string[], path: string) => {
+    const index = list.indexOf(path);
+    if (index >= 0) {
+      list.splice(index, 1);
+    }
+  };
   for (const skip of skippedRemovals ?? []) {
     if (skip.reason === "missing") {
       continue;
     }
-    if (groups.owned_unmodified.includes(skip.path)) {
+    if (skip.reason === "modified") {
+      pull(groups.owned_unmodified, skip.path);
+      pull(groups.unmanaged, skip.path);
+      if (!groups.owned_modified.includes(skip.path)) {
+        groups.owned_modified.push(skip.path);
+      }
       continue;
     }
-    if (skip.reason === "modified" && !groups.owned_modified.includes(skip.path)) {
-      groups.owned_modified.push(skip.path);
-    }
-    if (
-      (skip.reason === "unmanaged" || skip.reason === "preexisting")
-      && !groups.unmanaged.includes(skip.path)
-    ) {
-      groups.unmanaged.push(skip.path);
+    if (skip.reason === "unmanaged" || skip.reason === "preexisting") {
+      pull(groups.owned_unmodified, skip.path);
+      pull(groups.owned_modified, skip.path);
+      if (!groups.unmanaged.includes(skip.path)) {
+        groups.unmanaged.push(skip.path);
+      }
     }
   }
   return groups;
