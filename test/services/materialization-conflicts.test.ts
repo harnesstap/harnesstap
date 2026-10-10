@@ -6,6 +6,8 @@ describe("resolveApplyConflictPolicy", () => {
     expect(resolveApplyConflictPolicy({ onConflict: "skip" })).toBe("skip");
     expect(resolveApplyConflictPolicy({ onConflict: "replace" })).toBe("replace");
     expect(resolveApplyConflictPolicy({ onConflict: "prompt" })).toBe("prompt");
+    expect(resolveApplyConflictPolicy({ onConflict: "overwrite" })).toBe("replace");
+    expect(resolveApplyConflictPolicy({ onConflict: "ignore" })).toBe("skip");
   });
 
   it("defaults to replace when non-interactive", () => {

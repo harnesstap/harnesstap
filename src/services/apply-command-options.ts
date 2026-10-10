@@ -33,7 +33,7 @@ export function addApplyCommandOptions(command: Command): Command {
     )
     .option(
       "-t, --target <slugs>",
-      "Comma-separated APM target slugs (cursor, claude, …). Wins over apm.yml targets: and auto-detect",
+      "Comma-separated APM target slugs (cursor, claude, ...). Wins over apm.yml targets: and auto-detect",
     )
     .option(
       "--all",

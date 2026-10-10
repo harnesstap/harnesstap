@@ -1,28 +1,24 @@
+import { ON_CONFLICT_VALUE_HELP, parseOnConflict } from "../cli/on-conflict.js";
+import { ui } from "../ui/index.js";
 import type {
   ConflictPolicy,
   ConflictResolution,
   MaterializationConflict,
 } from "./applier.js";
-import { ui } from "../ui/index.js";
 import { promptForChoice } from "./wizards/shared.js";
 
 export function resolveApplyConflictPolicy(opts: {
   onConflict?: string;
   noInteractive?: boolean;
 }): ConflictPolicy {
-  const raw = opts.onConflict;
-  const mapped =
-    raw === "overwrite" || raw === "replace"
-      ? "replace"
-      : raw === "ignore" || raw === "skip"
-        ? "skip"
-        : raw === "prompt"
-          ? "prompt"
-          : raw === "fail" || raw === "cancel"
-            ? "cancel"
-            : undefined;
-  if (mapped === "replace" || mapped === "skip" || mapped === "prompt" || mapped === "cancel") {
-    return mapped;
+  const parsed = opts.onConflict ? parseOnConflict(opts.onConflict) : undefined;
+  if (
+    parsed === "replace" ||
+    parsed === "skip" ||
+    parsed === "prompt" ||
+    parsed === "cancel"
+  ) {
+    return parsed;
   }
   if (
     opts.noInteractive ||
@@ -53,9 +49,9 @@ export async function promptMaterializationConflict(
   return promptForChoice({
     message: `How should HarnessTap handle ${conflict.path}?`,
     choices: [
-      { name: "Replace existing file", value: "replace" as const },
-      { name: "Keep existing file", value: "skip" as const },
-      { name: "Cancel apply", value: "cancel" as const },
+      { name: ON_CONFLICT_VALUE_HELP.replace, value: "replace" as const },
+      { name: ON_CONFLICT_VALUE_HELP.skip, value: "skip" as const },
+      { name: ON_CONFLICT_VALUE_HELP.cancel, value: "cancel" as const },
     ],
   });
 }

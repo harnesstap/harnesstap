@@ -374,8 +374,11 @@ export function pinSkillEmitsToExistingLivePaths(
   const previousManaged =
     options?.previousManagedPlacements ?? collectManagedSkillPlacements(rootPath);
 
+  const consumeDirSet = new Set(consumeDirs);
   for (const name of skillNames) {
-    const previousDirs = [...(previousManaged.get(name) ?? [])];
+    const previousDirs = [...(previousManaged.get(name) ?? [])].filter((dir) =>
+      consumeDirSet.has(dir),
+    );
     if (previousDirs.length > 0) {
       placeSkillOnDirs(next, name, previousDirs, consume, next[0]);
       continue;

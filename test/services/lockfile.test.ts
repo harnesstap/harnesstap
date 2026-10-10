@@ -193,6 +193,14 @@ describe("lockfile", () => {
     expect(() =>
       verifyDeployedFileHashes(hashes, planWithoutOpencode),
     ).toThrow(/missing/);
+
+    expect(() =>
+      verifyDeployedFileHashes(
+        hashes,
+        [{ path: "AGENTS.md", content: "# Changed\n" }],
+        { rootPath: ctx.projectDir },
+      ),
+    ).toThrow(/Hash mismatch/);
   });
 
   it("records declared_license from apply extras and round-trips it", async () => {

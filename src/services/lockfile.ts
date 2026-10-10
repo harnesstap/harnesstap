@@ -240,21 +240,28 @@ export function diffDeployedFileHashes(
 
   for (const relativePath of Object.keys(expected).sort()) {
     const expectedHash = expected[relativePath];
-    const actualHash = options.rootPath
-      ? hashFileOnDisk(options.rootPath, relativePath)
-      : planned[relativePath];
-    if (actualHash === undefined) {
-      issues.push({ kind: "missing", path: relativePath, expected: expectedHash });
+    const plannedHash = planned[relativePath];
+    if (plannedHash !== undefined) {
+      if (expectedHash && normalizeDigest(expectedHash) !== normalizeDigest(plannedHash)) {
+        issues.push({
+          kind: "mismatch",
+          path: relativePath,
+          expected: normalizeDigest(expectedHash),
+          actual: normalizeDigest(plannedHash),
+        });
+      }
       continue;
     }
-    if (expectedHash && normalizeDigest(expectedHash) !== normalizeDigest(actualHash)) {
-      issues.push({
-        kind: "mismatch",
-        path: relativePath,
-        expected: normalizeDigest(expectedHash),
-        actual: normalizeDigest(actualHash),
-      });
+    // Path is in the lock but not in the new plan. With rootPath, that is only
+    // a lock failure when the file is also gone from disk (W1-1).
+    if (options.rootPath) {
+      const diskHash = hashFileOnDisk(options.rootPath, relativePath);
+      if (diskHash === undefined) {
+        issues.push({ kind: "missing", path: relativePath, expected: expectedHash });
+      }
+      continue;
     }
+    issues.push({ kind: "missing", path: relativePath, expected: expectedHash });
   }
 
   for (const relativePath of Object.keys(planned).sort()) {

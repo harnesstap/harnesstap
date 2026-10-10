@@ -247,4 +247,30 @@ describe("pinSkillEmitsToExistingLivePaths", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("drops previous emit dirs that the current harness set no longer consumes", () => {
+    const pinned = pinSkillEmitsToExistingLivePaths(
+      "/tmp/ht-no-live-narrow-skill",
+      preferSharedSkillEmits(
+        [
+          {
+            platformId: "copilot-cli",
+            files: [{ path: ".copilot/skills/team/SKILL.md", content: "body" }],
+          },
+        ],
+        ["copilot-cli"],
+        "global",
+      ),
+      ["copilot-cli"],
+      "global",
+      {
+        previousManagedPlacements: skillPlacementsFromPaths([
+          ".copilot/skills/team/SKILL.md",
+          ".cursor/skills/team/SKILL.md",
+        ]),
+      },
+    );
+    const paths = flattenUniqueFiles(pinned).map((file) => file.path).sort();
+    expect(paths).toEqual([".copilot/skills/team/SKILL.md"]);
+  });
 });
