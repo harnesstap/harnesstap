@@ -7,7 +7,7 @@ import {
   listContainedRegularFiles,
 } from "../utils/path-containment.js";
 import { parseHooksJsonContent } from "./hook-serialization.js";
-import { listSkillAuxiliaryFiles } from "./skill-auxiliary.js";
+import { skillMetadataFromDir } from "./skill-auxiliary.js";
 
 export const APM_NATIVE_PRIMITIVE_DIRS = ["agents", "skills", "commands", "hooks"] as const;
 export const APM_APPLY_PRIMITIVE_DIRS = [
@@ -149,10 +149,9 @@ function skillFromPath(
   const { data, content } = parseMarkdown(projectRoot, skillMdRelative);
   const skillDirRelative = skillMdRelative.replace(/\/SKILL\.md$/i, "");
   const dirName = skillDirRelative.split("/").pop() ?? "skill";
-  const aux = listSkillAuxiliaryFiles(join(projectRoot, skillDirRelative));
-  const metadata: SkillMetadata = {};
-  if (aux.scripts.length > 0) metadata.scripts = aux.scripts;
-  if (aux.references.length > 0) metadata.references = aux.references;
+  const metadata: SkillMetadata = skillMetadataFromDir(
+    join(projectRoot, skillDirRelative),
+  );
   return {
     name:
       typeof data.name === "string" && data.name.trim()

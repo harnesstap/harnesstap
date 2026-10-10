@@ -46,6 +46,11 @@ function seedQaHome(home: string, project: string): void {
     "---\nname: big-review\ndescription: Thorough review\n---\n# Big Review\nEND-OF-BIG-REVIEW-MARKER\n",
   );
   writeFileSync(join(home, ".claude/skills/big-review/scripts/lint.sh"), "#!/bin/sh\necho lint ok\n");
+  mkdirSync(join(home, ".claude/skills/big-review/references"), { recursive: true });
+  mkdirSync(join(home, ".claude/skills/big-review/assets"), { recursive: true });
+  writeFileSync(join(home, ".claude/skills/big-review/references/checklist.md"), "# checklist\n");
+  writeFileSync(join(home, ".claude/skills/big-review/NOTES.md"), "reviewer notes\n");
+  writeFileSync(join(home, ".claude/skills/big-review/assets/logo.txt"), "logo\n");
   writeFileSync(
     join(home, ".claude/CLAUDE.md"),
     "# Global Claude instructions\nPrefer small diffs. CLAUDE-MD-MARKER\n",
@@ -205,6 +210,15 @@ describe("G4 data preservation", () => {
       expect(
         readFileSync(join(context.homeDir, ".claude/CLAUDE.md"), "utf-8"),
       ).not.toContain("CODEX-AGENTS-MARKER");
+      expect(existsSync(join(context.homeDir, ".claude/skills/big-review/reference"))).toBe(
+        false,
+      );
+      expect(
+        existsSync(join(context.homeDir, ".claude/skills/big-review/references/checklist.md")),
+      ).toBe(true);
+      expect(existsSync(join(context.homeDir, ".claude/skills/big-review/NOTES.md"))).toBe(
+        true,
+      );
       const afterFirstApply = plantSentinels(context.homeDir);
       await useProfileCommand("global default", applyOpts);
       await applyProfilePlugin("global default", applyOpts);

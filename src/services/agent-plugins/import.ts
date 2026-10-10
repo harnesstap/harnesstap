@@ -270,10 +270,17 @@ function parseSkillResources(files: ApPackageFiles): ResourceCreateInput[] {
       ...listSkillAuxNames(files, skillName, "references"),
     ].filter((value, index, all) => all.indexOf(value) === index)
       .sort();
+    const companionPrefix = `skills/${skillName}/`;
+    const companions = Object.keys(files)
+      .filter((path) => path.startsWith(companionPrefix) && path !== `${companionPrefix}SKILL.md`)
+      .map((path) => path.slice(companionPrefix.length))
+      .filter((rest) => rest.length > 0 && !rest.split("/").some((segment) => segment.startsWith(".")))
+      .sort();
 
     const metadata: SkillMetadata = {};
     if (scripts.length > 0) metadata.scripts = scripts;
     if (references.length > 0) metadata.references = references;
+    if (companions.length > 0) metadata.companions = companions;
 
     resources.push({
       type: "skill",
