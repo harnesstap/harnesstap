@@ -166,6 +166,36 @@ export const SCOPE_COPY = {
   mainHarnessTooltip: "Your main harness. It wins when harnesses disagree.",
 } as const;
 
+export const SWITCH_CHANGES_VALUES = ["save", "stash", "discard"] as const;
+export type SwitchChangesValue = (typeof SWITCH_CHANGES_VALUES)[number];
+
+export const SWITCH_CHANGES_FLAG_HELP =
+  "What to do with unsaved changes: save, stash or discard";
+
+export function unsavedChangesLine(profileName: string, count: number): string {
+  return CLI_ERRORS.unsavedChanges(profileName, count);
+}
+
+export function unsavedChangesFlagHint(): string {
+  return CLI_HINTS.unsavedChanges;
+}
+
+export function savedChangesLine(profileName: string, count: number): string {
+  return `Saved ${count} changes to ${quoteName(profileName)}.`;
+}
+
+export function stashedChangesLine(count: number, popCommand: string): string {
+  return `Stashed ${count} changes. Bring them back with: ${popCommand}`;
+}
+
+export function discardedChangesLine(count: number): string {
+  return `Discarded ${count} changes.`;
+}
+
+export function discardConfirm(count: number): string {
+  return `Discard ${count} changes? A snapshot keeps a copy.`;
+}
+
 export const PREVIEW_LABELS = {
   willWrite: "Will write",
   upToDate: "Up to date",

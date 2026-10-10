@@ -649,8 +649,8 @@ describe("CLI profile", () => {
     }
   });
 
-  it("prompts to update the active profile from the main harness before switching", async () => {
-    const context = await createTestContext("cli-profile-switch-sync-prompt");
+  it("does not warn on switch when status has no managed-file drift", async () => {
+    const context = await createTestContext("cli-profile-switch-no-false-drift");
     try {
       const { mkdirSync, writeFileSync } = await import("node:fs");
 
@@ -697,15 +697,80 @@ describe("CLI profile", () => {
 
       const switchResult = await runCli(
         ["profile", "use", "profile-b", "--harness", "claude-code"],
-        {
-          isTTY: true,
-          promptResponses: [{ value: true }],
-        },
       );
 
-      expect(switchResult.stdout).toContain("out of sync");
-      expect(switchResult.stdout).toContain("Updated profile");
+      expect(switchResult.stdout).not.toContain("unsaved changes");
+      expect(switchResult.stdout).not.toContain("out of sync");
       expect(switchResult.stdout).toContain("Applied profile");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("requires --changes when switching with real drift", async () => {
+    const context = await createTestContext("cli-profile-switch-real-drift");
+    try {
+      const { writeFileSync } = await import("node:fs");
+
+      await runCli(["init", "--main", "claude-code"]);
+
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(
+        profileA.id,
+        createResource({
+          type: "skill",
+          name: "kept-skill",
+          description: "kept",
+          content: "# kept",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      const profileB = createPlugin({ name: "profile-b" });
+      setPluginTags(profileB.id, ["profile"]);
+      addResourceToPlugin(
+        profileB.id,
+        createResource({
+          type: "skill",
+          name: "other-skill",
+          description: "other",
+          content: "# other",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      await runCli(["profile", "use", "profile-a", "--harness", "claude-code"]);
+      writeFileSync(
+        join(context.homeDir, ".claude", "skills", "kept-skill", "SKILL.md"),
+        "---\nname: kept-skill\ndescription: kept\n---\n\n# edited",
+        "utf-8",
+      );
+
+      const blocked = await runCli([
+        "profile",
+        "use",
+        "profile-b",
+        "--harness",
+        "claude-code",
+      ]);
+      expect(blocked.exitCode).toBe(1);
+      expect(`${blocked.stderr}${blocked.stdout}`).toContain("unsaved change");
+      expect(`${blocked.stderr}${blocked.stdout}`).toContain("--changes save, stash or discard");
+
+      const discarded = await runCli([
+        "profile",
+        "use",
+        "profile-b",
+        "--harness",
+        "claude-code",
+        "--changes",
+        "discard",
+      ]);
+      expect(discarded.exitCode ?? 0).toBe(0);
+      expect(discarded.stdout).toContain("Discarded");
     } finally {
       await context.cleanup();
     }

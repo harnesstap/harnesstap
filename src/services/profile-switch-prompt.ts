@@ -1,93 +1,146 @@
-import { ui } from "../ui/index.js";
-import { formatCount } from "../ui/format.js";
 import {
-  detectActiveProfileHarnessSyncBeforeSwitch,
-  updateProfileFromMainHarness,
-  type ProfileHarnessSyncStatus,
-} from "./profile-harness-sync.js";
-import { shouldPromptProfileEnable } from "./profile-enable-prompt.js";
-import { promptForConfirmation } from "./wizards/shared.js";
+  discardConfirm,
+  discardedChangesLine,
+  SWITCH_CHANGES_VALUES,
+  type SwitchChangesValue,
+  savedChangesLine,
+  stashedChangesLine,
+  unsavedChangesFlagHint,
+  unsavedChangesLine,
+} from "../copy/cli.js";
+import { ui } from "../ui/index.js";
+import {
+  detectGlobalProfileStatus,
+  type GlobalProfileStatus,
+} from "./global-profile-drift.js";
+import { commitManagedPathFromLive } from "./profile-commit-resource.js";
+import { stashProfileCommand } from "./profile-stash.js";
+import {
+  promptForChoice,
+  promptForConfirmation,
+  shouldUseBrowsePicker,
+} from "./wizards/shared.js";
+
+export type SwitchChangesDecision = "continue" | "abort";
+
+export function parseSwitchChanges(
+  raw: string | undefined,
+): SwitchChangesValue | "invalid" | undefined {
+  if (raw === undefined || raw === "") {
+    return undefined;
+  }
+  if ((SWITCH_CHANGES_VALUES as readonly string[]).includes(raw)) {
+    return raw as SwitchChangesValue;
+  }
+  return "invalid";
+}
 
 export async function maybeSyncActiveProfileBeforeSwitch(input: {
   targetProfileName: string;
   harness?: string;
   yes?: boolean;
   format?: string;
-}): Promise<boolean> {
+  changes?: string;
+  noInteractive?: boolean;
+}): Promise<SwitchChangesDecision> {
   const format = input.format ?? "human";
-  if (format !== "human") {
-    return false;
-  }
 
-  let status: ProfileHarnessSyncStatus | null;
+  let status: GlobalProfileStatus;
   try {
-    status = await detectActiveProfileHarnessSyncBeforeSwitch({
-      targetProfileName: input.targetProfileName,
+    status = await detectGlobalProfileStatus({
       harness: input.harness,
+      depth: "full",
     });
   } catch (error) {
     ui.warn(error instanceof Error ? error.message : String(error));
-    return false;
+    return "continue";
   }
 
-  if (!status || status.in_sync) {
-    return false;
+  if (!status.active_profile || status.active_profile === input.targetProfileName) {
+    return "continue";
+  }
+  if (status.changes.length === 0) {
+    return "continue";
   }
 
-  if (!shouldPromptProfileEnable({ yes: input.yes, format })) {
-    ui.hint(
-      `Profile ${ui.theme.accent(status.active_profile)} differs from registered harnesses (${status.registered_harnesses.join(", ")}). Update it before switching to avoid losing on-disk changes.`,
-    );
-    return false;
+  const count = status.changes.length;
+  const parsedChanges = parseSwitchChanges(input.changes);
+  if (parsedChanges === "invalid") {
+    ui.danger('Error: Invalid --changes. Use save, stash or discard.');
+    return "abort";
   }
 
-  const added = status.changes.filter((change) => change.change === "added").length;
-  const modified = status.changes.filter((change) => change.change === "modified").length;
-  const removed = status.changes.filter((change) => change.change === "removed").length;
-  const summaryParts = [
-    added > 0 ? formatCount(added, "new resource") : "",
-    modified > 0 ? formatCount(modified, "modified resource") : "",
-    removed > 0 ? formatCount(removed, "removed resource") : "",
-  ].filter(Boolean);
+  const interactive =
+    !input.yes
+    && shouldUseBrowsePicker({
+      noInteractive: input.noInteractive,
+      format,
+    });
 
-  ui.warn(
-    `Profile ${ui.theme.accent(status.active_profile)} is out of sync with registered harnesses (${status.registered_harnesses.join(", ")}).`,
-  );
-  if (summaryParts.length > 0) {
-    ui.dim(summaryParts.join(", "));
+  let action: SwitchChangesValue | "cancel";
+  if (parsedChanges) {
+    action = parsedChanges;
+  } else if (!interactive) {
+    ui.danger(`Error: ${unsavedChangesLine(status.active_profile, count)}`);
+    ui.hint(unsavedChangesFlagHint());
+    return "abort";
+  } else {
+    ui.warn(unsavedChangesLine(status.active_profile, count));
+    action = await promptForChoice({
+      message: "What should HarnessTap do with them?",
+      choices: [
+        { name: `Save them to "${status.active_profile}"`, value: "save" as const },
+        { name: "Stash them", value: "stash" as const },
+        { name: "Discard them", value: "discard" as const },
+        { name: "Cancel", value: "cancel" as const },
+      ],
+    });
   }
 
-  const confirmed = await promptForConfirmation({
-    message: `Update profile ${status.active_profile} from registered harnesses before switching to ${input.targetProfileName}?`,
-    default: true,
-  });
-
-  if (!confirmed) {
-    return false;
+  switch (action) {
+    case "cancel":
+      return "abort";
+    case "save": {
+      for (const change of status.changes) {
+        try {
+          await commitManagedPathFromLive({
+            profileSelector: status.active_profile,
+            path: change.path,
+            scope: "home",
+            ...(input.harness ? { harness: input.harness } : {}),
+          });
+        } catch {
+          // Aggregate paths or unmapped files stay on disk; switch still proceeds.
+        }
+      }
+      ui.success(savedChangesLine(status.active_profile, count));
+      return "continue";
+    }
+    case "stash": {
+      await stashProfileCommand({
+        harness: input.harness,
+        conflictPolicy: "replace",
+        pull: false,
+      });
+      ui.success(stashedChangesLine(count, "ht profile stash pop"));
+      return "continue";
+    }
+    case "discard": {
+      if (interactive && parsedChanges !== "discard") {
+        const confirmed = await promptForConfirmation({
+          message: discardConfirm(count),
+          default: false,
+        });
+        if (!confirmed) {
+          return "abort";
+        }
+      }
+      ui.success(discardedChangesLine(count));
+      return "continue";
+    }
+    default: {
+      const unhandled: never = action;
+      throw new Error(`Unhandled switch changes action: ${String(unhandled)}`);
+    }
   }
-
-  const updated = await updateProfileFromMainHarness({
-    profileSelector: status.active_profile,
-    harness: status.registered_harnesses.join(","),
-  });
-
-  ui.success(
-    `Updated profile ${ui.theme.accent(updated.profile_name)} from ${updated.registered_harnesses.join(", ")}`,
-  );
-  if (updated.attached_resources > 0 || updated.removed_resources > 0) {
-    ui.dim(
-      [
-        updated.attached_resources > 0
-          ? formatCount(updated.attached_resources, "resource attached")
-          : "",
-        updated.removed_resources > 0
-          ? formatCount(updated.removed_resources, "resource removed")
-          : "",
-      ]
-        .filter(Boolean)
-        .join(", "),
-    );
-  }
-
-  return true;
 }

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Status and preview compare library skill content to disk instead of silently merging live SKILL.md. Commit writes every mirror of that skill. Profile switch warns only on real drift and offers save, stash, discard, or cancel via --changes.
+time: 2026-10-10T04:45:00Z
+custom:
+  Issue: ""

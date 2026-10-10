@@ -526,6 +526,7 @@ async function collectProjectExpectedManagedFiles(
     const generated = await generateFiles(material, platformIds, resolvedRoot, {
       target: "project",
       claudeConfig: merged.claude,
+      mergeLiveSkillMarkdown: false,
     });
     const expectedFiles = uniqueExpectedFiles(
       generated.flatMap((result) =>

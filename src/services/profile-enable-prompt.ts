@@ -87,12 +87,15 @@ export async function maybePromptProfileEnable(input: {
     status.active_profile
     && status.active_profile !== input.profileName
   ) {
-    await maybeSyncActiveProfileBeforeSwitch({
+    const sync = await maybeSyncActiveProfileBeforeSwitch({
       targetProfileName: input.profileName,
       harness: input.harness,
       yes: input.yes,
       format,
     });
+    if (sync === "abort") {
+      return;
+    }
   }
 
   const conflictPolicy = resolveApplyConflictPolicy({
