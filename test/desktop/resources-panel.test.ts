@@ -32,6 +32,14 @@ describe("ResourcesPanel library snapshot", () => {
     );
   });
 
+  test("opens tracked directories intro only after a successful load", () => {
+    expect(panelSource).toContain("libraryLoadFailed");
+    expect(panelSource).toContain("libraryLoadReady");
+    expect(panelSource).toContain("if (libraryLoadFailed)");
+    expect(panelSource).toContain("if (!libraryLoadReady)");
+    expect(panelSource).toContain("markTrackedDirsIntroSeen");
+  });
+
   test("checks plugin origin without forcing refresh", () => {
     expect(panelSource).toContain("fetchPluginOriginCheck(baseUrl, token)");
     expect(panelSource).not.toContain(

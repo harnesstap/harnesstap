@@ -434,6 +434,22 @@ describe("sources search list and preview", () => {
     expect(listPaneSource).toContain('data-testid="sources-presence"');
   });
 
+  test("Add marketplace keeps Name empty and shows inline copy for a bad URL", () => {
+    expect(marketplacePanelSource).toContain("MARKETPLACE_URL_INVALID");
+    expect(marketplacePanelSource).toContain("marketplaceSourceLooksResolvable(nextUrl)");
+    expect(marketplacePanelSource).toContain("urlInvalid");
+    expect(marketplacePanelSource).toContain("marketplace-url-error");
+  });
+
+  test("Discover load errors appear once in the list with Retry and a sidebar mark", () => {
+    expect(sidebarSource).toContain("sourceErrors");
+    expect(sidebarSource).toContain("source-row-error-mark");
+    expect(sidebarSource).toContain("AlertTriangle");
+    expect(workspaceSource).not.toContain("error={error ?? snapshot.error}");
+    expect(listPaneSource).toContain("onRetry");
+    expect(listPaneSource).toContain("Banner");
+  });
+
   test("Back and Esc pop the pane stack and dismiss confirm first", () => {
     expect(workspaceSource).toContain("popSourcesPane");
     expect(workspaceSource).toContain("sourcesEscapeAction");

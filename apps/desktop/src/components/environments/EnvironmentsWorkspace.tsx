@@ -155,6 +155,12 @@ export function EnvironmentsWorkspace({
         setRows(nextRows);
         listLoadedRef.current = true;
         setError(null);
+        setInspectedName((current) => {
+          if (current !== null) {
+            return current;
+          }
+          return nextRows.length === 1 ? nextRows[0]!.name : current;
+        });
       })
       .catch((loadError: unknown) => {
         if (!cancelled) {

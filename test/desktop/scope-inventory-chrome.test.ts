@@ -247,6 +247,8 @@ describe("Global/Project scope inventory chrome", () => {
   });
 
   it("keeps a FAB that opens pick-from-library and Create for the library flow", () => {
+    expect(liveStateSource).toContain("EMPTY_PROFILE_COPY");
+    expect(liveStateSource).toContain("!editMode || selectedItems.length > 0");
     expect(liveStateSource).toContain('data-testid="scope-inventory-fab"');
     expect(liveStateSource).toContain('editMode ? "Delete selected" : "Add to profile"');
     expect(liveStateSource).toContain('editMode ? "destructive" : "primary"');

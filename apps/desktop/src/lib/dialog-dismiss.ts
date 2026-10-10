@@ -15,8 +15,9 @@ export function shouldCloseDialogOnBackdrop(
 }
 
 /**
- * Register a dialog in the overlay layer stack. Returns a ref for the control
- * that receives initial focus (the dialog root is resolved from it).
+ * Register a dialog in the overlay layer stack. Returns a ref for a Close
+ * control when a caller still needs it; initial focus prefers the first
+ * field (or first tabbable) instead of Close.
  */
 export function useDialogDismiss(
   open: boolean,
@@ -28,7 +29,6 @@ export function useDialogDismiss(
     open,
     onClose,
     closeDisabled,
-    initialFocusRef: closeRef,
   });
   return closeRef;
 }

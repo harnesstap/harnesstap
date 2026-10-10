@@ -1172,9 +1172,11 @@ describe("flattenDiscoverListItems", () => {
     expect(items.map((item) => item.kind)).toEqual([
       "heading",
       "hit",
-      "heading",
       "error",
     ]);
     expect(discoverListItemEstimateSize(items[1]!)).toBe(DISCOVER_LIST_ROW_HEIGHT);
+    expect(items.some((item) => item.kind === "heading" && item.sourceId === "org:cloud")).toBe(
+      false,
+    );
   });
 });

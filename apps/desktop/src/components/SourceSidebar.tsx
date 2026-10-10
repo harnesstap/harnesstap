@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FilterX, Unlink, Unplug } from "lucide-react";
+import { AlertTriangle, FilterX, Unlink, Unplug } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { sourcesSidebarChangeAction } from "../lib/sources-pane";
@@ -14,6 +14,7 @@ import {
   type SourceRow,
 } from "../lib/sources-sidebar";
 import { noSpellcheckProps } from "../lib/no-spellcheck";
+import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { IconActionButton } from "./IconActionButton";
 
@@ -35,7 +36,7 @@ export interface SourceSidebarProps {
   onToggleAll: () => void;
   disabled?: boolean;
   busy?: boolean;
-  error?: string | null;
+  sourceErrors?: Readonly<Record<string, string>>;
   originCheckError?: string | null;
   onRetryOriginCheck?: () => void;
   refreshing?: boolean;
@@ -98,7 +99,7 @@ export function SourceSidebar({
   onToggleAll,
   disabled = false,
   busy = false,
-  error,
+  sourceErrors,
   originCheckError,
   onRetryOriginCheck,
   refreshing = false,
@@ -201,11 +202,6 @@ export function SourceSidebar({
           </div>
         </div>
       </div>
-      {error ? (
-        <div className="banner error" role="alert">
-          {error}
-        </div>
-      ) : null}
       {originCheckError ? (
         <Banner
           tone="error"
@@ -248,6 +244,7 @@ export function SourceSidebar({
                 checkedIds.includes(row.id),
               )}
               disabled={controlsDisabled}
+              sourceError={sourceErrors?.[row.id]}
               onToggle={() => applySidebarChange(() => onToggle(row.id))}
               onRequestDisconnectOrg={(org) => setPending({ kind: "org", org })}
               onRequestUnregisterCatalog={(selector) =>
@@ -278,6 +275,7 @@ function SourceRowItem({
   row,
   checked,
   disabled,
+  sourceError,
   onToggle,
   onRequestDisconnectOrg,
   onRequestUnregisterCatalog,
@@ -285,6 +283,7 @@ function SourceRowItem({
   row: SourceRow;
   checked: boolean;
   disabled: boolean;
+  sourceError?: string;
   onToggle: () => void;
   onRequestDisconnectOrg: (org: string) => void;
   onRequestUnregisterCatalog: (selector: string) => void;
@@ -301,6 +300,18 @@ function SourceRowItem({
         <Label htmlFor={`source-${row.id}`} className="font-normal">
           {row.label}
         </Label>
+        {sourceError ? (
+          <ChromeTooltip content={sourceError}>
+            <span
+              className="source-row-error-mark"
+              data-testid={`source-error-${row.id}`}
+              role="img"
+              aria-label={sourceError}
+            >
+              <AlertTriangle size={ACTION_ICON_SIZE} aria-hidden />
+            </span>
+          </ChromeTooltip>
+        ) : null}
       </div>
       <SourceRowActions
         row={row}

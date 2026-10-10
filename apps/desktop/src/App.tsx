@@ -50,6 +50,9 @@ export function App() {
   const [libraryFocusPlugin, setLibraryFocusPlugin] = useState<string | null>(null);
   const [libraryFocusResource, setLibraryFocusResource] = useState<string | null>(null);
   const [environmentCreateOpen, setEnvironmentCreateOpen] = useState(false);
+  const [pendingHarnessAction, setPendingHarnessAction] = useState<
+    "detect" | "sync" | null
+  >(null);
   const [pluginApplyBusy, setPluginApplyBusy] = useState(false);
   const [migrateBusy, setMigrateBusy] = useState(false);
 
@@ -116,6 +119,20 @@ export function App() {
   }, []);
 
   const goToLibrary = useCallback(() => nav.go("library"), [nav.go]);
+
+  const onDetectHarnesses = useCallback(() => {
+    nav.go("harnesses");
+    setPendingHarnessAction("detect");
+  }, [nav.go]);
+
+  const onSyncHarnesses = useCallback(() => {
+    nav.go("harnesses");
+    setPendingHarnessAction("sync");
+  }, [nav.go]);
+
+  const onPendingHarnessActionConsumed = useCallback(() => {
+    setPendingHarnessAction(null);
+  }, []);
 
   const openPluginInLibrary = useCallback(
     (pluginName: string) => {
@@ -290,6 +307,8 @@ export function App() {
             onSuccess={onSuccessToast}
             onHarnessesChanged={onHarnessesChanged}
             inventoryReloadKey={libraryReloadKey}
+            pendingAction={pendingHarnessAction}
+            onPendingActionConsumed={onPendingHarnessActionConsumed}
           />
         );
       case "library":
@@ -426,6 +445,8 @@ export function App() {
           onSelectScope={onSelectScope}
           onSelectProject={selectProject}
           ensureProjectReady={project.ensureProjectReady}
+          onDetectHarnesses={onDetectHarnesses}
+          onSyncHarnesses={onSyncHarnesses}
         />
       </div>
       </CommandRegistryProvider>

@@ -9,6 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { ScanSearch } from "lucide-react";
+import {
+  DETECT_HARNESSES_COMMAND,
+  SYNC_HARNESSES_COMMAND,
+} from "../../lib/ui-copy";
 import { harnessDisplayName } from "../../lib/harness-meta";
 import {
   availableHarnesses,
@@ -78,6 +82,8 @@ export interface HarnessesWorkspaceProps {
   onSuccess: (message: string) => void;
   /** Saved selection changed. App refreshes live status and the Library. */
   onHarnessesChanged?: () => void;
+  pendingAction?: "detect" | "sync" | null;
+  onPendingActionConsumed?: () => void;
 }
 
 export function HarnessesWorkspace({
@@ -93,6 +99,8 @@ export function HarnessesWorkspace({
   onNestedDepthChange,
   onSuccess,
   onHarnessesChanged,
+  pendingAction = null,
+  onPendingActionConsumed,
 }: HarnessesWorkspaceProps) {
   const ctrl = useHarnessesController({
     baseUrl,
@@ -296,16 +304,8 @@ export function HarnessesWorkspace({
           disabled: controlsDisabled || working || pullBusy || pullOpen,
           run: openAdd,
         },
-        {
-          id: "harnesses-detect",
-          section: "actions" as const,
-          label: "Detect harnesses",
-          keywords: ["harness", "scan", "disk"],
-          disabled: controlsDisabled || working || pullBusy || pullOpen,
-          run: startDetect,
-        },
       ],
-      [controlsDisabled, openAdd, pullBusy, pullOpen, startDetect, working],
+      [controlsDisabled, openAdd, pullBusy, pullOpen, working],
     ),
   );
 
@@ -416,14 +416,29 @@ export function HarnessesWorkspace({
     }
   };
 
-  const openSyncConfirm = () => {
+  const openSyncConfirm = useCallback(() => {
     if (syncHidden || syncDisabled) {
       return;
     }
     setSyncError(null);
     setSyncPreview({ kind: "loading" });
     openOverlay({ kind: "sync" });
-  };
+  }, [openOverlay, syncDisabled, syncHidden]);
+
+  useEffect(() => {
+    if (pendingAction === null) {
+      return;
+    }
+    if (pendingAction === "detect") {
+      startDetect();
+    } else if (pendingAction === "sync") {
+      openSyncConfirm();
+    } else {
+      const neverAction: never = pendingAction;
+      void neverAction;
+    }
+    onPendingActionConsumed?.();
+  }, [onPendingActionConsumed, openSyncConfirm, pendingAction, startDetect]);
 
   const onConfirmSync = async () => {
     setOverlay(NO_OVERLAY);
@@ -486,7 +501,7 @@ export function HarnessesWorkspace({
               body="Detect the harnesses on this machine or add one."
               testId="harnesses-empty"
               action={{
-                label: "Detect harnesses",
+                label: DETECT_HARNESSES_COMMAND,
                 primary: true,
                 disabled: controlsDisabled,
                 onClick: startDetect,
@@ -573,7 +588,7 @@ export function HarnessesWorkspace({
           onRefresh={ctrl.refresh}
           onToggleEdit={() => dispatch({ type: "toggle-edit" })}
           onRemove={(id) => openOverlay({ kind: "remove", id })}
-          syncLabel={syncing ? "Syncing…" : "Sync harnesses"}
+          syncLabel={syncing ? "Syncing…" : SYNC_HARNESSES_COMMAND}
           syncTitle={syncDisabledReason ?? syncHarnessesTooltip()}
           syncDisabled={syncDisabled}
           syncHidden={syncHidden}
