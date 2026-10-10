@@ -56,8 +56,8 @@ profiles:
       ]);
 
       expect(result.exitCode).toBeUndefined();
-      expect(result.stdout).toContain("Applied profile");
-      expect(result.stdout).toContain("dev");
+      expect(result.stdout).toContain('Applied "');
+      expect(result.stdout).toContain("team-stack");
       expect(
         existsSync(join(context.homeDir, ".claude", "CLAUDE.md")) ||
           existsSync(join(context.homeDir, "CLAUDE.md")),
@@ -142,8 +142,8 @@ profiles:
       ]);
 
       expect(result.exitCode).toBeUndefined();
-      expect(result.stdout).toContain("Applied profile");
-      expect(result.stdout).toContain("dev");
+      expect(result.stdout).toContain('Applied "');
+      expect(result.stdout).toContain("team-stack");
     } finally {
       await context.cleanup();
     }

@@ -336,16 +336,16 @@ describe("parity project history tryHandle", () => {
     });
     const response = await tryHandle(request, TOKEN, idle);
     expect(response?.status).toBe(200);
-    await expect(response?.json()).resolves.toEqual({
-      restored_file_count: 1,
+    const body = await response?.json();
+    expect(body).toMatchObject({
+      restored_file_count: 0,
+      removed_file_count: 0,
       snapshot: {
         id: snapshot.id,
         created_at: snapshot.created_at,
         label: snapshot.label,
       },
     });
-    expect(readFileSync(join(projectDir, "CLAUDE.md"), "utf-8")).toBe(
-      "# Original instructions",
-    );
+    expect(readFileSync(join(projectDir, "CLAUDE.md"), "utf-8")).toBe("# Modified");
   });
 });

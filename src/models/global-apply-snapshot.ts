@@ -1,6 +1,10 @@
 import { ulid } from "ulid";
 import { getDb } from "../db/connection.js";
-import type { GlobalApplySnapshot, GlobalApplySnapshotInstall } from "../types.js";
+import type {
+  GlobalApplySnapshot,
+  GlobalApplySnapshotInstall,
+  SnapshotState,
+} from "../types.js";
 
 interface GlobalApplySnapshotRow {
   id: string;
@@ -8,6 +12,7 @@ interface GlobalApplySnapshotRow {
   plugin_ids: string;
   resolved_set: string;
   created_at: string;
+  state?: string;
 }
 
 interface GlobalApplySnapshotInstallRow {
@@ -17,7 +22,19 @@ interface GlobalApplySnapshotInstallRow {
   installed_at: string;
 }
 
+function parseState(raw: string | undefined): SnapshotState | undefined {
+  if (!raw || raw === "{}") {
+    return undefined;
+  }
+  try {
+    return JSON.parse(raw) as SnapshotState;
+  } catch {
+    return undefined;
+  }
+}
+
 function rowToGlobalApplySnapshot(row: GlobalApplySnapshotRow): GlobalApplySnapshot {
+  const state = parseState(row.state);
   return {
     id: row.id,
     profile_name: row.profile_name,
@@ -27,6 +44,7 @@ function rowToGlobalApplySnapshot(row: GlobalApplySnapshotRow): GlobalApplySnaps
       version: string;
     }>,
     created_at: row.created_at,
+    ...(state ? { state } : {}),
   };
 }
 
@@ -43,6 +61,7 @@ export function createGlobalApplySnapshot(input: {
   profile_name: string;
   plugin_ids: string[];
   resolved_set?: Array<{ name: string; version: string }>;
+  state?: SnapshotState;
 }): GlobalApplySnapshot {
   const db = getDb();
   const snapshot: GlobalApplySnapshot = {
@@ -51,16 +70,18 @@ export function createGlobalApplySnapshot(input: {
     plugin_ids: input.plugin_ids,
     resolved_set: input.resolved_set ?? [],
     created_at: new Date().toISOString(),
+    ...(input.state ? { state: input.state } : {}),
   };
   db.prepare(
-    `INSERT INTO global_apply_snapshots (id, profile_name, plugin_ids, resolved_set, created_at)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO global_apply_snapshots (id, profile_name, plugin_ids, resolved_set, created_at, state)
+     VALUES (?, ?, ?, ?, ?, ?)`,
   ).run(
     snapshot.id,
     snapshot.profile_name,
     JSON.stringify(snapshot.plugin_ids),
     JSON.stringify(snapshot.resolved_set),
     snapshot.created_at,
+    JSON.stringify(input.state ?? {}),
   );
   return snapshot;
 }

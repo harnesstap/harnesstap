@@ -26,6 +26,7 @@ import type {
   Resource,
   SerializedFile,
   SerializeOptions,
+  SnapshotState,
   SurfaceWarning,
 } from "../types.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
@@ -58,6 +59,7 @@ import {
   type SafeFileRemovalOptions,
   type SafeFileRemovalResult,
 } from "./safe-file-removal.js";
+import { captureManagedSnapshotState } from "./snapshot-capture.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -100,6 +102,7 @@ export interface GenerateFilesOptions extends SerializeOptions {
 export interface GlobalApplyOptions extends GenerateFilesOptions, MaterializeFilesOptions {
   snapshotId?: string;
   forceUnicode?: boolean;
+  previousTrackedFiles?: readonly string[];
 }
 
 export interface MaterializationResult {
@@ -111,6 +114,7 @@ export interface MaterializationResult {
 
 export interface GlobalApplyResult extends MaterializationResult {
   results: ApplyResult[];
+  preApplyState: SnapshotState;
 }
 
 function isAutoReplaceConflict(
@@ -664,6 +668,11 @@ export async function applyToGlobal(
   });
   const allFiles = results.flatMap((result) => result.files);
   gateDeployFiles(allFiles, { forceUnicode: options.forceUnicode });
+  const preApplyState = captureManagedSnapshotState({
+    rootPath: homeRoot,
+    generated: results,
+    extraPaths: options.previousTrackedFiles,
+  });
   const materialized = await materializeFiles(allFiles, homeRoot, {
     conflictPolicy: options.conflictPolicy ?? "prompt",
     conflictResolver: options.conflictResolver,
@@ -738,6 +747,7 @@ export async function applyToGlobal(
   return {
     results,
     ...materialized,
+    preApplyState,
   };
 }
 

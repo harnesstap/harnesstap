@@ -52,7 +52,7 @@ import { withProfileApplyLock } from "../../services/profile-apply-lock.js";
 import { useProfileCommand } from "../../services/profile-commands.js";
 import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
-import type { SnapshotState } from "../../types.js";
+import { captureManagedSnapshotState } from "../../services/snapshot-capture.js";
 import {
   SingletonConflictError,
   UnsatisfiableConstraintError,
@@ -515,6 +515,14 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     );
   }
 
+  const capturedState = captureManagedSnapshotState({
+    rootPath: projectRoot,
+    plugins,
+    resources: substituted.resources,
+    generated,
+    extraPaths: previousDeployedPaths,
+  });
+
   const gitOrigin = getGitOrigin(projectRoot);
   // Ephemeral multi-plugin roots are deleted when resolveComposition returns,
   // so skip project-config binding (CLI uses a still-live bundle id).
@@ -526,24 +534,6 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
       local_path: projectRoot,
     });
     trackedProjectId = project.id;
-    const snapshotState: SnapshotState = {
-      plugins,
-      resources: substituted.resources,
-      platform_files: Object.fromEntries(
-        generated.map((result) => [
-          result.platformId,
-          Object.fromEntries(result.files.map((file) => [file.path, file.content])),
-        ]),
-      ),
-    };
-    createSnapshot({
-      project_id: project.id,
-      label:
-        parsed.plugins.length > 1
-          ? `Before applying: ${parsed.plugins.join(" + ")}`
-          : `Before applying: ${primaryPlugin.name}`,
-      state: snapshotState,
-    });
     applyConfiguredPluginToProject({
       project_id: project.id,
       configured_plugin_id: resolution.root.pluginId,
@@ -582,6 +572,26 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     { forceRemove: parsed.forceRemove },
   );
 
+  const wroteCount = platformResults.reduce(
+    (n, row) => n + row.written_files.length,
+    0,
+  );
+  let snapshotId: string | undefined;
+  if (
+    trackedProjectId
+    && (wroteCount > 0 || staleRemoved.removed.length > 0)
+  ) {
+    const snapshot = createSnapshot({
+      project_id: trackedProjectId,
+      label:
+        parsed.plugins.length > 1
+          ? `Before applying: ${parsed.plugins.join(" + ")}`
+          : `Before applying: ${primaryPlugin.name}`,
+      state: capturedState,
+    });
+    snapshotId = snapshot.id;
+  }
+
   if (!parsed.dryRun) {
     trackPluginApplied({
       pluginSlug: primaryPlugin.name,
@@ -596,6 +606,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     project_root: projectRoot,
     platforms: platformResults,
     removed_files: staleRemoved.removed,
+    snapshot_id: snapshotId,
     cancelled: false,
     ...executableTrustResponseFields(executableTrust),
   });

@@ -60,6 +60,11 @@ import {
   fail,
   formatCommand,
 } from "../shared.js";
+import {
+  printApplyDryRun,
+  printApplySuccess,
+  removalSkipReason,
+} from "../print-apply-summary.js";
 import { registerProfileCreateCommand } from "../handlers/profile-create.js";
 import { registerProfileParityCommands } from "./parity-register.js";
 import type { ApplyProfilePluginResult } from "../../services/profile-apply.js";
@@ -457,10 +462,6 @@ profileCmd
         ui.warn("Profile apply cancelled.");
         return;
       }
-      const dryPrefix = payload.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
-      ui.success(
-        `${dryPrefix}Applied profile ${ui.theme.accent(payload.profile_name)} to ${payload.harnesses.join(", ") || "(none)"}`,
-      );
       if (payload.default_environment_name) {
         ui.info(`Default environment: ${payload.default_environment_name}`);
       }
@@ -472,8 +473,32 @@ profileCmd
           console.log(`  - ${pulled.plugin_name} (${pulled.source})`);
         }
       }
-      ui.kvBlock(applyResultKv(payload));
-      printPlannedRemovals(payload);
+      const kept = (payload.skipped_removals ?? []).flatMap((entry) => {
+        const reason = removalSkipReason(entry.reason);
+        return reason ? [{ path: entry.path, reason }] : [];
+      });
+      const unchanged = Math.max(
+        0,
+        payload.files.length - payload.written_files.length,
+      );
+      if (payload.dry_run) {
+        printApplyDryRun({
+          wouldWrite: payload.written_files,
+          wouldRemove: payload.removed_files ?? [],
+          wouldKeep: kept,
+          unchanged,
+        });
+        return;
+      }
+      printApplySuccess({
+        name: payload.profile_name,
+        harnessCount: payload.harnesses.length,
+        wrote: payload.written_files.length,
+        removed: payload.removed_files?.length ?? 0,
+        kept,
+        unchanged,
+        snapshotId: payload.snapshot_id,
+      });
     } catch (err) {
       process.exitCode = 1;
       if (err instanceof PinnedPluginInstallConsentError) {

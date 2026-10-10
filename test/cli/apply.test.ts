@@ -98,8 +98,7 @@ describe("CLI apply", () => {
       ]);
 
       expect(applyResult.exitCode ?? 0).toBe(0);
-      expect(applyResult.stdout).toContain("claude-code");
-      expect(applyResult.stdout).toContain("codex");
+      expect(applyResult.stdout).toContain("2 harnesses");
       expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(true);
       expect(existsSync(`${context.projectDir}/AGENTS.md`)).toBe(true);
     } finally {
@@ -154,15 +153,14 @@ describe("CLI apply", () => {
         "git@github.com:acme/harnesstap-apply.git",
       );
 
-      expect(applyResult.stdout).toContain("claude-code");
-      expect(applyResult.stdout).toContain("wrote 1 file");
-      expect(applyResult.stdout).toContain("CLAUDE.md");
+      expect(applyResult.stdout).toContain("Wrote 1");
+      expect(applyResult.stdout).toMatch(/revert \S+/);
       expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(true);
       expect(project).toBeDefined();
       if (!project) {
         throw new Error("Expected applied project to be tracked");
       }
-      expect(snapshotModel.listSnapshots(project.id)).toHaveLength(2);
+      expect(snapshotModel.listSnapshots(project.id)).toHaveLength(1);
     } finally {
       await context.cleanup();
     }
@@ -272,7 +270,7 @@ describe("CLI apply", () => {
       ]);
 
       expect(applyResult.exitCode ?? 0).toBe(0);
-      expect(applyResult.stdout).toContain("cursor");
+      expect(applyResult.stdout).toContain("2 harnesses");
       expect(
         existsSync(join(context.projectDir, ".agents", "skills", "format-code", "SKILL.md")),
       ).toBe(true);
@@ -568,7 +566,7 @@ describe("CLI apply", () => {
         "claude-code",
       ]);
 
-      expect(applyResult.stdout).toContain("claude-code");
+      expect(applyResult.stdout).toContain("Wrote 1");
       expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(true);
       expect(projectModel.listProjects()).toEqual([]);
     } finally {

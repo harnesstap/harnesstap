@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 35;
+const SCHEMA_VERSION = 36;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -314,6 +314,9 @@ const MIGRATIONS: Record<number, Migration> = {
       ON apply_removal_backups(snapshot_id);
   `,
   35: migrateNonSemverPluginVersions,
+  36: `
+    ALTER TABLE global_apply_snapshots ADD COLUMN state TEXT NOT NULL DEFAULT '{}';
+  `,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {

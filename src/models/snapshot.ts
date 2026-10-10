@@ -42,6 +42,26 @@ export function getSnapshot(id: string): Snapshot | undefined {
   return row ? rowToSnapshot(row) : undefined;
 }
 
+/** Exact id, or a unique prefix of at least `minPrefix` characters. */
+export function findSnapshotById(id: string, minPrefix = 8): Snapshot | undefined {
+  const exact = getSnapshot(id);
+  if (exact) {
+    return exact;
+  }
+  if (id.length < minPrefix) {
+    return undefined;
+  }
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM snapshots WHERE id LIKE ?")
+    .all(`${id}%`) as SnapshotRow[];
+  if (rows.length !== 1) {
+    return undefined;
+  }
+  const row = rows[0];
+  return row ? rowToSnapshot(row) : undefined;
+}
+
 export function listSnapshots(projectId: string): Snapshot[] {
   const db = getDb();
   const rows = db
