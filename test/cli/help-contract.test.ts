@@ -1,18 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import type { Command } from "commander";
-import { commandKeepsDefaultAction } from "../../src/cli/help.ts";
+import { commandKeepsDefaultAction, isHiddenHelpCommand } from "../../src/cli/help.ts";
 import {
   COMMAND_HELP_REGISTRY,
   getCommandHelpEntry,
   resolveCommandHelpPath,
 } from "../../src/services/cli-help-registry.ts";
-
-function isHiddenHelpCommand(command: Command): boolean {
-  return (
-    command.name() === "__complete"
-    || (command.description() as unknown) === false
-  );
-}
 
 function isLeafCommand(command: Command): boolean {
   return command.commands.every((sub) => isHiddenHelpCommand(sub));

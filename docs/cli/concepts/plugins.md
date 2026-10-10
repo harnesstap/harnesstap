@@ -251,7 +251,7 @@ my-plugin/
     └── embedded/<name>/      # nested AP package per embed-on-export dependency
 ```
 
-`plugin.json` carries only Agent Plugins core fields at the top level (`$schema`, `name`, `version`, …). HarnessTap-specific data — dependencies, overrides, profile flag, needs, and pointers into `com.harnesstap/` — lives under `extensions["com.harnesstap"]`. Non-HarnessTap clients load `skills/` and `mcp.json` and ignore the namespace.
+`plugin.json` carries only Agent Plugins core fields at the top level (`$schema`, `name`, `version`, …). Catalog download defaults a missing or empty `$schema`; publish and local authoring still require it. HarnessTap-specific data — dependencies, overrides, profile flag, needs, and pointers into `com.harnesstap/` — lives under `extensions["com.harnesstap"]`. Non-HarnessTap clients load `skills/` and `mcp.json` and ignore the namespace.
 
 Two shapes, same content:
 

@@ -109,12 +109,44 @@ describe("parseApPackageFiles", () => {
     expect(parsed.resources[0]).toMatchObject({ type: "skill", name: "hello" });
   });
 
+  it("accepts a package whose plugin.json omits $schema", () => {
+    const parsed = parseApPackageFiles({
+      "plugin.json": {
+        encoding: "utf8",
+        content: JSON.stringify({ name: "hello", version: "1.0.0" }),
+      },
+    });
+    expect(parsed.name).toBe("hello");
+    expect(parsed.version).toBe("1.0.0");
+  });
+
+  it("accepts a package whose plugin.json has an empty $schema", () => {
+    const parsed = parseApPackageFiles({
+      "plugin.json": {
+        encoding: "utf8",
+        content: JSON.stringify({ $schema: "", name: "hello", version: "1.0.0" }),
+      },
+    });
+    expect(parsed.name).toBe("hello");
+  });
+
+  it("rejects a package whose $schema is present but not a string", () => {
+    expect(() =>
+      parseApPackageFiles({
+        "plugin.json": {
+          encoding: "utf8",
+          content: JSON.stringify({ $schema: 1, name: "hello", version: "1.0.0" }),
+        },
+      }),
+    ).toThrow(/\$schema/);
+  });
+
   it("rejects a package whose manifest fails validation", () => {
     expect(() =>
       parseApPackageFiles({
         "plugin.json": { encoding: "utf8", content: JSON.stringify({ name: "x" }) },
       }),
-    ).toThrow(/\$schema/);
+    ).toThrow(/version/);
   });
 
   it("rejects a package with no plugin.json", () => {
