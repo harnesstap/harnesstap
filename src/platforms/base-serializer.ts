@@ -3,7 +3,7 @@ import { dirname, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { normalizeAgentInput } from "../services/agent-bridge.js";
 import { mergeSkillMarkdown } from "../services/merge-skill-markdown.js";
-import { emitSkillAuxiliaryFiles, listSkillAuxiliaryFiles } from "../services/skill-auxiliary.js";
+import { emitSkillAuxiliaryFiles, skillMetadataFromDir } from "../services/skill-auxiliary.js";
 import { scanSkillCommandMetadataResources } from "../services/skill-command-metadata.js";
 import { filterMcpServersForTargetPath } from "../services/mcp-target.js";
 import type {
@@ -17,7 +17,6 @@ import type {
   PlatformPaths,
   SerializerTarget,
   SerializeOptions,
-  SkillMetadata,
 } from "../types.js";
 
 /**
@@ -270,17 +269,13 @@ export abstract class BaseSerializer implements PlatformSerializer {
         if (!parsed) continue;
 
         const { data } = parsed;
-        const { scripts, references } = listSkillAuxiliaryFiles(entryPath);
         resources.push(
           this.makeResource(
             "skill",
             (data["name"] as string) || entry,
             raw,
             this.prefixedRelativePath(fullPath, skillMd, sourcePrefix),
-            {
-              scripts,
-              references,
-            },
+            skillMetadataFromDir(entryPath),
             (data["description"] as string) || "",
           ),
         );
@@ -349,14 +344,10 @@ export abstract class BaseSerializer implements PlatformSerializer {
       },
     ];
 
-    const meta = resource.metadata as SkillMetadata;
     const sourceRoots = [options.skillSourceRoot, options.projectRoot].filter(
       (root): root is string => typeof root === "string" && root.length > 0,
     );
-    if (
-      sourceRoots.length === 0 ||
-      (!meta.scripts?.length && !meta.references?.length)
-    ) {
+    if (sourceRoots.length === 0) {
       return files;
     }
 
@@ -375,8 +366,6 @@ export abstract class BaseSerializer implements PlatformSerializer {
       ...emitSkillAuxiliaryFiles({
         sourceSkillDir,
         targetPrefix,
-        scripts: meta.scripts ?? [],
-        references: meta.references ?? [],
       }),
     );
     return files;
