@@ -1,3 +1,4 @@
+import { getAllPlatforms } from "../platforms/registry.js";
 import {
   formatHookInventoryLabel,
   hookDisplayInputFromResource,
@@ -14,8 +15,9 @@ export {
 export type { HookDisplayInput, HookInventoryWire } from "./hook-display.js";
 
 export const AGENTS_INSTRUCTIONS_RESOURCE_NAME = "agents-instructions";
-export const AGENTS_MD_DISPLAY_NAME = "Agent instructions (AGENTS.md)";
+export const AGENTS_MD_DISPLAY_NAME = "AGENTS.md (shared)";
 export const GLOBAL_SCOPE_LABEL = "global";
+export const SHARED_INSTRUCTION_SCOPE_LABEL = "shared";
 
 const LOCAL_ORIGIN_KINDS = new Set(["local", "local_snapshot", "manual"]);
 
@@ -71,14 +73,80 @@ export type ResourceDisplaySource = {
   name: string;
   type?: string | null;
   source?: string | null;
+  namespace?: string | null;
   content?: string | null;
   hook?: HookDisplayInput["hook"];
   metadata?: unknown;
 };
 
-export function resourceHumanName(resource: ResourceDisplaySource): string {
+function instructionFileName(resource: ResourceDisplaySource): string | null {
+  const source = (resource.source ?? "").replaceAll("\\", "/");
+  if (source) {
+    const base = source.split("/").filter(Boolean).at(-1);
+    if (base) {
+      return base;
+    }
+  }
   if (isAgentsMdResource(resource)) {
-    return AGENTS_MD_DISPLAY_NAME;
+    return "AGENTS.md";
+  }
+  if (resource.name === "claude-instructions") {
+    return "CLAUDE.md";
+  }
+  if (resource.name.endsWith("-instructions")) {
+    return "AGENTS.md";
+  }
+  return null;
+}
+
+function platformNameForInstructionResource(name: string): string | null {
+  if (!name.endsWith("-instructions") || name === AGENTS_INSTRUCTIONS_RESOURCE_NAME) {
+    return null;
+  }
+  const prefix = name.slice(0, -"-instructions".length);
+  const platforms = getAllPlatforms();
+  const exact = platforms.find((platform) => platform.id === prefix);
+  if (exact) {
+    return exact.name;
+  }
+  const withCli = platforms.find((platform) => platform.id === `${prefix}-cli`);
+  if (withCli) {
+    return withCli.name;
+  }
+  const withCode = platforms.find(
+    (platform) => platform.id === `${prefix}-code` || platform.id.startsWith(`${prefix}-`),
+  );
+  if (withCode) {
+    return withCode.name;
+  }
+  return null;
+}
+
+function instructionQualifier(resource: ResourceDisplaySource): string {
+  const namespace = resource.namespace?.trim() ?? "";
+  if (namespace.length > 0 && namespace !== GLOBAL_SCOPE_LABEL) {
+    return namespace;
+  }
+  const fromName = platformNameForInstructionResource(resource.name);
+  if (fromName) {
+    return fromName;
+  }
+  return SHARED_INSTRUCTION_SCOPE_LABEL;
+}
+
+export function formatInstructionInventoryLabel(
+  resource: ResourceDisplaySource,
+): string {
+  const file = instructionFileName(resource);
+  if (!file) {
+    return resource.name;
+  }
+  return `${file} (${instructionQualifier(resource)})`;
+}
+
+export function resourceHumanName(resource: ResourceDisplaySource): string {
+  if (resource.type === "instruction" || isAgentsMdResource(resource)) {
+    return formatInstructionInventoryLabel(resource);
   }
   if (resource.type === "hook") {
     return formatHookInventoryLabel(hookDisplayInputFromResource(resource));
@@ -127,6 +195,9 @@ export function formatResourceDisplayName(
   options?: PluginDisplayOptions,
 ): string {
   const base = resourceHumanName(resource);
+  if (resource.type === "instruction" || isAgentsMdResource(resource)) {
+    return base;
+  }
   if (resource.type === "plugin") {
     if (!options?.disambiguatePlugin) {
       return base;

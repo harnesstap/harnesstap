@@ -13,6 +13,7 @@ import {
   resourceTypeTabLabel,
   resourceTypeTabPillsText,
   resourceTypeTabTooltip,
+  resourceTypeTabUnit,
   TYPE_TABS_LESS_LABEL,
   typeTabAttentionTooltip,
   typeTabCountsFromRecord,
@@ -82,10 +83,10 @@ describe("visibleResourceTypeTabs", () => {
     expect(tabs).toContain("mcp_server");
     expect(tabs).not.toContain("plugin_ref");
     expect(resourceTypeTabPillsText("skill", counts, { emptyMode: "show" })).toBe(
-      "0 Skills",
+      "0 skills",
     );
     expect(resourceTypeTabPillsText("agent", counts, { emptyMode: "show" })).toBe(
-      "1 Subagents",
+      "1 subagent",
     );
     expect(resourceTypeTabEmptyDisabled("skill", counts)).toBe(true);
   });
@@ -106,7 +107,7 @@ describe("visibleResourceTypeTabs", () => {
     const pinsOnly = countResourceTypeTabs(["plugin_pin", "plugin_pin", "skill"]);
     expect(pinsOnly.get("plugin")).toBe(2);
     expect(pinsOnly.has("plugin_pin")).toBe(false);
-    expect(resourceTypeTabPillsText("plugin", pinsOnly)).toBe("2 Plugins");
+    expect(resourceTypeTabPillsText("plugin", pinsOnly)).toBe("2 plugins");
     const disabled = visibleResourceTypeTabs(pinsOnly, { emptyMode: "disable" });
     expect(disabled).toContain("plugin");
     expect(disabled).not.toContain("plugin_pin");
@@ -122,21 +123,24 @@ describe("visibleResourceTypeTabs", () => {
 describe("resourceTypeTabPillsText", () => {
   it("puts count before the type text", () => {
     const mixed = countResourceTypeTabs(["skill", "plugin", "plugin"]);
-    expect(resourceTypeTabPillsText("skill", mixed)).toBe("1 Skills");
-    expect(resourceTypeTabPillsText("plugin", mixed)).toBe("2 Plugins");
+    expect(resourceTypeTabPillsText("skill", mixed)).toBe("1 skill");
+    expect(resourceTypeTabPillsText("plugin", mixed)).toBe("2 plugins");
     expect(resourceTypeTabPillsText("all", mixed)).toBe("3 All");
 
     const one = countResourceTypeTabs(["skill"]);
-    expect(resourceTypeTabPillsText("skill", one)).toBe("1 Skills");
+    expect(resourceTypeTabPillsText("skill", one)).toBe("1 skill");
   });
 
-  it("labels empty disabled types as No <type> found", () => {
+  it("labels empty types as 0 plus the unit, never No <type> found", () => {
     const counts = countResourceTypeTabs(["skill"]);
     expect(resourceTypeTabPillsText("plugin", counts, { emptyMode: "disable" })).toBe(
-      "No Plugins found",
+      "0 plugins",
     );
     expect(resourceTypeTabPillsText("all", counts, { emptyMode: "disable" })).toBe(
       "1 All",
+    );
+    expect(resourceTypeTabPillsText("mcp_server", counts, { emptyMode: "show" })).toBe(
+      "0 MCPs",
     );
   });
 });
@@ -177,11 +181,23 @@ describe("resource type tab aria-labels", () => {
     expect(resourceTypeTabTooltip("all", new Map([["skill", 0]]))).toBe("All");
   });
 
-  it("uses No <type> found for empty disabled tabs", () => {
+  it("uses DT-19 empty-surface tooltips for zero-count tabs", () => {
     const counts = countResourceTypeTabs(["skill"]);
     expect(resourceTypeTabTooltip("plugin", counts, { emptyMode: "disable" })).toBe(
-      "No Plugins found",
+      "No plugins in this profile yet",
     );
+    expect(
+      resourceTypeTabTooltip("plugin", counts, {
+        emptyMode: "show",
+        emptySurface: "library",
+      }),
+    ).toBe("No plugins in your library yet");
+    expect(
+      resourceTypeTabTooltip("plugin", counts, {
+        emptyMode: "disable",
+        emptySurface: "project",
+      }),
+    ).toBe("No plugins in this project yet");
     expect(resourceTypeTabTooltip("skill", counts, { emptyMode: "disable" })).toBe(
       "1 skill",
     );
@@ -189,6 +205,24 @@ describe("resource type tab aria-labels", () => {
 });
 
 describe("resourceTypeTabEmptyDisabled", () => {
+  it("renders every canonical type tab at count 0", () => {
+    const counts = new Map<string, number>();
+    const tabs = visibleResourceTypeTabs(counts, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS);
+    expect(tabs[0]).toBe(ALL_RESOURCE_TYPE_TAB);
+    for (const type of RESOURCE_TYPE_TAB_ORDER) {
+      if (type === "plugin_ref") {
+        expect(tabs).not.toContain(type);
+        continue;
+      }
+      expect(tabs).toContain(type);
+      expect(resourceTypeTabItemCount(type, counts)).toBe(0);
+      expect(resourceTypeTabEmptyDisabled(type, counts)).toBe(true);
+      expect(
+        resourceTypeTabPillsText(type, counts, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS),
+      ).toBe(`0 ${resourceTypeTabUnit(type, 0)}`);
+    }
+  });
+
   it("never empty-disables a type with count > 0", () => {
     const counts = countResourceTypeTabs(["skill", "skill", "plugin"]);
     expect(resourceTypeTabEmptyDisabled("skill", counts)).toBe(false);
@@ -308,10 +342,8 @@ describe("resolveResourceTypeTab", () => {
     expect(library[0]).toBe(ALL_RESOURCE_TYPE_TAB);
     expect(library).toContain("skill");
     expect(resolveResourceTypeTab(null, peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS)).toBeNull();
-    expect(resolveResourceTypeTab("skill", peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS)).toBe(
-      "skill",
-    );
-    expect(resourceTypeTabLocksEmpty("show")).toBe(false);
+    expect(resolveResourceTypeTab("skill", peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS)).toBeNull();
+    expect(resourceTypeTabLocksEmpty("show")).toBe(true);
     expect(resourceTypeTabLocksEmpty("disable")).toBe(true);
     const fromRecord = typeTabCountsFromRecord({
       agent: 40,

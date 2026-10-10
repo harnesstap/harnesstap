@@ -16,8 +16,8 @@ import {
   resourceTypeTabGlyph,
   resourceTypeTabItemCount,
   resourceTypeTabLabel,
-  resourceTypeTabPillsText,
   resourceTypeTabTooltip,
+  resourceTypeTabUnit,
   TYPE_TABS_LESS_LABEL,
   typeTabsMoreLabel,
   visibleResourceTypeTabs,
@@ -25,6 +25,7 @@ import {
   type TypeTabAttention,
   typeTabAttentionTooltip,
 } from "../lib/resource-type-tabs";
+import type { TypeTabEmptySurface } from "../lib/ui-copy";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { TypeIcon } from "./TypeIcon";
 
@@ -39,6 +40,8 @@ export interface ResourceTypeTabsProps {
   /** Profile resources omits All; Library / Not staged / compose keep it. */
   includeAll?: boolean;
   emptyMode?: ResourceTypeTabEmptyMode;
+  /** DT-19 empty-pill tooltip. Default profile. */
+  emptySurface?: TypeTabEmptySurface;
   /** Inventory wide pills. Prefer `density`. */
   wide?: boolean;
   /** `compact` hides type text on a nowrap chip row. Do not use on Add to profile. */
@@ -116,6 +119,7 @@ export function ResourceTypeTabs({
   disabled = false,
   includeAll = true,
   emptyMode = "hide",
+  emptySurface = "profile",
   wide = false,
   density,
   overflow = "wrap",
@@ -126,7 +130,7 @@ export function ResourceTypeTabs({
   const moreMeasureRef = useRef<HTMLSpanElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [hiddenCount, setHiddenCount] = useState(0);
-  const tabOptions = { includeAll, emptyMode };
+  const tabOptions = { includeAll, emptyMode, emptySurface };
   const tabs = visibleResourceTypeTabs(counts, tabOptions);
   const resolved = resolveResourceTypeTab(value, counts, tabOptions);
   const resolvedDensity = resolveTabDensity(density, wide);
@@ -204,6 +208,12 @@ export function ResourceTypeTabs({
           onChange(includeAll ? null : (tabs[0] ?? null));
           return;
         }
+        if (
+          resourceTypeTabEmptyDisabled(next, counts)
+          && resourceTypeTabLocksEmpty(emptyMode)
+        ) {
+          return;
+        }
         onChange(next);
       }}
     >
@@ -213,9 +223,8 @@ export function ResourceTypeTabs({
         const caption = resourceTypeTabTooltip(type, counts, tabOptions);
         const empty = resourceTypeTabEmptyDisabled(type, counts);
         const itemDisabled = empty && resourceTypeTabLocksEmpty(emptyMode);
-        const emptyFace =
-          empty && resourceTypeTabLocksEmpty(emptyMode) && type !== ALL_RESOURCE_TYPE_TAB;
-        const pillsText = resourceTypeTabPillsText(type, counts, tabOptions);
+        const unitLabel =
+          type === ALL_RESOURCE_TYPE_TAB ? label : resourceTypeTabUnit(type, count);
         const review = empty
           ? null
           : typeTabAttentionTooltip(attention?.get(type), type);
@@ -228,19 +237,13 @@ export function ResourceTypeTabs({
             <span className="resource-type-tab-face">
               <TabGlyph type={type} />
             </span>
-            {emptyFace ? (
-              <span className="resource-type-tab-label">{pillsText}</span>
-            ) : (
-              <>
-                <span className="resource-type-tab-count">{count}</span>
-                <span className="resource-type-tab-label">{label}</span>
-              </>
-            )}
+            <span className="resource-type-tab-count">{count}</span>
+            <span className="resource-type-tab-label">{unitLabel}</span>
           </>
         );
         const tooltip = compact
           ? ariaLabel
-          : review ?? (empty ? caption : null);
+          : review ?? (empty && type !== ALL_RESOURCE_TYPE_TAB ? caption : null);
         const inner = tooltip ? (
           <ChromeTooltip content={tooltip} side="top">
             <span
@@ -263,7 +266,7 @@ export function ResourceTypeTabs({
             className="resource-type-tab"
             data-testid={`resource-type-tab-${type}`}
             aria-label={ariaLabel}
-            disabled={itemDisabled}
+            aria-disabled={itemDisabled || undefined}
             hidden={collapsedHidden}
           >
             {inner}

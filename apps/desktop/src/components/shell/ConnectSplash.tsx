@@ -4,6 +4,7 @@ import { open as openPath } from "@tauri-apps/plugin-shell";
 import { RefreshCw } from "lucide-react";
 import type { AgentPhase } from "../../state/agent-session";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { CONNECT_SPLASH_COPY } from "../../lib/ui-copy";
 import { Banner } from "./Banner";
 
 export const RECONNECT_RETRY_MS = 5000;
@@ -60,7 +61,7 @@ export function ConnectSplash({
           <div className="connect-splash-bar" aria-hidden="true">
             <div className="connect-splash-bar-fill m-skeleton" />
           </div>
-          <p className="muted">Starting the agent…</p>
+          <p className="muted">{CONNECT_SPLASH_COPY.starting}</p>
         </div>
       );
     case "disconnected":
@@ -68,7 +69,7 @@ export function ConnectSplash({
         <div className="connect-splash m-fade-in" data-testid="connect-splash">
           <h1>HarnessTap</h1>
           <p className="connect-splash-error" role="alert">
-            {error ?? "Could not connect to the agent."}
+            {error ?? CONNECT_SPLASH_COPY.unreachable}
           </p>
           <div className="connect-splash-actions">
             <button
@@ -79,11 +80,11 @@ export function ConnectSplash({
               aria-busy={retryBusy}
             >
               {retryBusy ? <ButtonSpinner size={16} /> : <RefreshCw size={16} aria-hidden />}
-              Retry
+              {CONNECT_SPLASH_COPY.retry}
             </button>
             {logPath ? (
               <button type="button" className="btn" onClick={onOpenLogs}>
-                Open logs
+                {CONNECT_SPLASH_COPY.openLogs}
               </button>
             ) : null}
           </div>

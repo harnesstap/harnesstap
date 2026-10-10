@@ -7,6 +7,7 @@ import {
   openResourcePath,
   removeResourceTrackedDirectory,
 } from "../lib/agent-client";
+import { harnessDisplayName } from "../lib/harness-meta";
 import type { ResourceTrackedDirectoryEntry } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { RelatedHarnessIcons } from "./HarnessIcons";
@@ -21,6 +22,10 @@ interface ResourceTrackedDirectoriesModalProps {
   disabled?: boolean;
   onClose: () => void;
   onChanged?: () => void;
+}
+
+function platformNames(ids: readonly string[]): string {
+  return ids.map((id) => harnessDisplayName(id)).join(", ");
 }
 
 function kindLabel(kind: ResourceTrackedDirectoryEntry["kind"]): string {
@@ -290,7 +295,7 @@ export function ResourceTrackedDirectoriesModal({
                         {entry.resource_count}{" "}
                         {entry.resource_count === 1 ? "resource" : "resources"}
                         {entry.platform_ids.length > 0
-                          ? ` · ${entry.platform_ids.join(", ")}`
+                          ? ` · ${platformNames(entry.platform_ids)}`
                           : null}
                         {hasFolders
                           ? ` · ${entry.folders.length} ${
@@ -338,7 +343,7 @@ export function ResourceTrackedDirectoriesModal({
                                   </span>
                                   {folder.platform_ids.length > 0 ? (
                                     <span className="resource-tracked-dirs-meta muted">
-                                      {folder.platform_ids.join(", ")}
+                                      {platformNames(folder.platform_ids)}
                                     </span>
                                   ) : null}
                                 </div>

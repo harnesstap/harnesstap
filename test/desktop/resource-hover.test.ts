@@ -36,7 +36,7 @@ describe("resource hover model", () => {
       path: "/Users/me/.claude/skills/ship",
       originKind: "marketplace_link",
       originIncludeRef: true,
-      harnessIds: ["claude-code", "cursor"],
+      harnessIds: [],
       extra: [],
     });
   });
@@ -52,7 +52,7 @@ describe("resource hover model", () => {
     expect(hoverModelFromLibraryResource(pluginRef)).toMatchObject({
       type: "plugin_ref",
       name: "devx@teads-plugins",
-      harnessIds: ["claude-code", "cursor"],
+      harnessIds: [],
     });
   });
 
@@ -94,7 +94,7 @@ describe("resource hover model", () => {
     expect(hoverModelFromLibraryResource(resource)).toEqual({
       type: "rule",
       name: "x@acme",
-      harnessIds: ["claude-code", "cursor"],
+      harnessIds: [],
       extra: [],
     });
   });
@@ -109,7 +109,7 @@ describe("resource hover model", () => {
       type: "command",
       name: "deploy",
       path: "/Users/me/.claude/commands/deploy.md",
-      harnessIds: ["claude-code"],
+      harnessIds: [],
       extra: [],
     });
   });
@@ -149,7 +149,7 @@ describe("resource hover model", () => {
       type: "skill",
       name: "instrument-llm-analytics",
       path: "/Users/christophe.oudar/.claude/plugins/cache/claude-plugins-official/posthog/1.1.58/skills/instrument-llm-analytics",
-      harnessIds: ["claude-code", "cursor"],
+      harnessIds: [],
       extra: [],
     });
     expect(
@@ -181,7 +181,7 @@ describe("resource hover model", () => {
       type: "command",
       name: "deploy",
       path: "/Users/me/.claude/commands/deploy.md",
-      harnessIds: ["claude-code"],
+      harnessIds: [],
       extra: [],
     });
   });
@@ -197,7 +197,7 @@ describe("resource hover model", () => {
     expect(hoverModelFromContentsDiffItem(item)).toEqual({
       type: "plugin_pin",
       name: "work@1",
-      harnessIds: ["claude-code", "cursor"],
+      harnessIds: [],
       extra: [],
     });
   });
