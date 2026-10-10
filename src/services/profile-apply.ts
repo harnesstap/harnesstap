@@ -63,6 +63,8 @@ import type { ResolutionResult } from "./resolve/types.js";
 import {
   formatRemovalBackupNotice,
   groupPlannedRemovals,
+  mergeSafeRemovalSkips,
+  skippedWriteKeepsForOwnership,
   type PlannedRemovals,
   type SafeFileRemovalResult,
   type SafeRemovalSkip,
@@ -259,9 +261,18 @@ function removeStaleGlobalProfileFiles(
   };
 }
 
-function warnSkippedRemovals(result: SafeFileRemovalResult): void {
+function warnSkippedRemovals(
+  result: SafeFileRemovalResult,
+  extraSkips: readonly SafeRemovalSkip[] = [],
+): void {
   for (const warning of result.warnings) {
     console.warn(ui.theme.warn(warning));
+  }
+  for (const skip of extraSkips) {
+    if (result.warnings.includes(skip.message)) {
+      continue;
+    }
+    console.warn(ui.theme.warn(skip.message));
   }
   const notice = formatRemovalBackupNotice(result, resolveHomeRoot());
   if (notice) {
@@ -269,17 +280,21 @@ function warnSkippedRemovals(result: SafeFileRemovalResult): void {
   }
 }
 
-function removalFields(result: SafeFileRemovalResult): Pick<
+function removalFields(
+  result: SafeFileRemovalResult,
+  extraSkips: readonly SafeRemovalSkip[] = [],
+): Pick<
   ApplyProfilePluginResult,
   "removed_files" | "skipped_removals" | "removal_backup" | "removals"
 > {
+  const skipped = mergeSafeRemovalSkips(result.skipped, extraSkips);
   return {
     ...(result.removed.length > 0 ? { removed_files: result.removed } : {}),
-    ...(result.skipped.length > 0 ? { skipped_removals: result.skipped } : {}),
+    ...(skipped.length > 0 ? { skipped_removals: skipped } : {}),
     ...(result.removed.length > 0 ? { removal_backup: result.backupDir } : {}),
     removals: groupPlannedRemovals({
       remove: result.removed,
-      skip: result.skipped,
+      skip: skipped,
     }),
   };
 }
@@ -685,6 +700,10 @@ export async function applyProfilePlugin(
       harnesses,
       { dryRun: true, forceRemove: options.forceRemove },
     );
+    const writeKeeps = skippedWriteKeepsForOwnership(
+      homeRoot,
+      materialized.skippedFiles,
+    );
     return {
       profile_name: profilePlugin.name,
       profile_plugin_id: profilePlugin.id,
@@ -699,7 +718,7 @@ export async function applyProfilePlugin(
       expected_files: files.map((file) => ({ path: file.path, content: file.content })),
       ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
       ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
-      ...removalFields(plannedRemoval),
+      ...removalFields(plannedRemoval, writeKeeps),
     };
   }
 
@@ -717,6 +736,9 @@ export async function applyProfilePlugin(
   });
   let snapshotId: string | undefined;
   let removal: SafeFileRemovalResult | undefined;
+  const writeKeeps = applied.cancelled
+    ? []
+    : skippedWriteKeepsForOwnership(homeRoot, applied.skippedFiles);
   if (!applied.cancelled) {
     const desiredFiles = applied.results.flatMap((result) =>
       result.files.map((file) => file.path),
@@ -749,7 +771,7 @@ export async function applyProfilePlugin(
           snapshotId: snapshot.id,
         },
       );
-      warnSkippedRemovals(removal);
+      warnSkippedRemovals(removal, writeKeeps);
       for (const result of applied.results) {
         const installFiles = result.files.map((file) => file.path);
         if (installFiles.length === 0) continue;
@@ -761,6 +783,9 @@ export async function applyProfilePlugin(
       }
     } else {
       removal = plannedRemoval;
+      for (const skip of writeKeeps) {
+        console.warn(ui.theme.warn(skip.message));
+      }
     }
   }
   if (!applied.cancelled && defaultEnvironmentName) {
@@ -781,6 +806,6 @@ export async function applyProfilePlugin(
     conflicts: applied.conflicts.map((conflict) => conflict.path),
     ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
     ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
-    ...(removal ? removalFields(removal) : {}),
+    ...(removal ? removalFields(removal, writeKeeps) : {}),
   };
 }

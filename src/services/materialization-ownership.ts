@@ -114,6 +114,8 @@ export function persistWrittenMaterializations(input: {
   const projectId = input.project_id ?? null;
 
   for (const result of input.platformResults) {
+    // Only rows for bytes we actually wrote. Skipping a live file must not
+    // rewrite generated_hash, or a later removal would treat user edits as owned.
     const writtenPaths = new Set(result.writtenPaths);
     const entries = result.files.flatMap((file) => {
       if (!writtenPaths.has(file.path) || !file.ownership?.length) {
