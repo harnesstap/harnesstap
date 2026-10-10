@@ -32,7 +32,10 @@ const ponytailLayoutFixture = join(
 
 function writePluginJsonRoot(root: string, name: string): void {
   mkdirSync(join(root, "skills", "mane"), { recursive: true });
-  writeFileSync(join(root, "plugin.json"), JSON.stringify({ name, version: "0.1.0" }));
+  writeFileSync(
+    join(root, "plugin.json"),
+    JSON.stringify({ name, version: "0.1.0", description: "Ponytail helpers" }),
+  );
   writeFileSync(
     join(root, "skills", "mane", "SKILL.md"),
     "---\nname: mane\ndescription: mane\n---\n# mane\n",
@@ -59,6 +62,8 @@ it("imports a root plugin.json package as a git-origin plugin", async () => {
   expect(imported.origin_fingerprint).toBe("abc123def456");
   expect(imported.created).toBe(true);
   const stored = getPluginByName("ponytail");
+  expect(stored?.version).toBe("0.1.0");
+  expect(stored?.description).toBe("Ponytail helpers");
   expect(stored?.origin).toBe("upstream");
   expect(stored?.origin_locator).toBe("https://github.com/DietrichGebert/ponytail.git");
   expect(stored?.origin_fingerprint).toBe("abc123def456");
@@ -75,6 +80,8 @@ it("imports one git-origin plugin when skills/<name> is not an AP package", asyn
   const resources = getPluginResources(imported.plugin.id);
   expect(resources.filter((r) => r.type === "skill").map((r) => r.name)).toEqual(["ponytail"]);
   expect(getPluginByName("ponytail")?.origin).toBe("upstream");
+  expect(getPluginByName("ponytail")?.version).toBe("0.0.0+git.abc123def456");
+  expect(getPluginByName("ponytail")?.description).toBe("Session helpers from ponytail");
 });
 
 it("fails closed when the clone has no plugin.json", async () => {

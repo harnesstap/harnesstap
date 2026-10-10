@@ -4,6 +4,7 @@ import {
   deletePlugin,
   getPluginById,
   getPluginByName,
+  updatePluginDescription,
 } from "../models/plugin-model.js";
 import { refreshGitSource } from "../plugins/refresh.js";
 import { trackPluginInstalled } from "../telemetry/index.js";
@@ -24,6 +25,10 @@ import {
   MISSING_PLUGIN_JSON_MESSAGE,
   normalizeGitHubPluginUrl,
 } from "./github-plugin-ref.js";
+import {
+  pluginDescriptionFromManifest,
+  semverSafePluginVersion,
+} from "./plugin-semver.js";
 
 export {
   GitPluginImportError,
@@ -103,11 +108,15 @@ export async function importPluginFromGitHubRef(
       );
     }
     plugin = existing;
+    const nextDescription = pluginDescriptionFromManifest(scan.plugin_description);
+    if (nextDescription && nextDescription !== existing.description) {
+      updatePluginDescription(existing.id, nextDescription);
+    }
   } else {
     plugin = createPlugin({
       name: scan.plugin_name,
-      version: scan.plugin_version || refresh.sha.slice(0, 12),
-      description: `Git origin ${url}`,
+      version: semverSafePluginVersion(scan.plugin_version, refresh.sha),
+      description: pluginDescriptionFromManifest(scan.plugin_description),
       origin: "upstream",
     });
     setPluginOrigin(plugin.id, "upstream");

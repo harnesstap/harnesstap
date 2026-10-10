@@ -101,6 +101,21 @@ describe("migrate workspace AP packages", () => {
     rmSync(extracted, { recursive: true, force: true });
   });
 
+  it("skips a plugin with an invalid manifest instead of aborting workspace export", () => {
+    createPlugin({ name: "broken", version: "9cc65d03aa2d" });
+    createPlugin({ name: "planner", version: "1.0.0" });
+    const skipped: string[] = [];
+    const archive = join(ctx.projectDir, "backup.tar.gz");
+    const manifest = exportMigrationState({
+      outputPath: archive,
+      includePlugins: false,
+      onSkip: (message) => skipped.push(message),
+    });
+    expect(manifest.plugins).toEqual(["planner"]);
+    expect(skipped.some((message) => message.includes("broken"))).toBe(true);
+    expect(existsSync(archive)).toBe(true);
+  });
+
   it("round-trips plugins and environments through the archive", async () => {
     createEnvironment({ name: "work", description: "Work env" });
     const plugin = createPlugin({ name: "planner", version: "1.0.0" });

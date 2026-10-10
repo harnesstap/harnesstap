@@ -509,6 +509,7 @@ export interface PluginSourceScanResult {
   source_label: string;
   plugin_name: string;
   plugin_version?: string;
+  plugin_description?: string;
   metadata: ImportedSnapshotMetadata;
   resources: ResourceCreateInput[];
 }

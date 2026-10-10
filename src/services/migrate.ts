@@ -32,6 +32,8 @@ import {
 } from "./agent-plugins/files.js";
 import { importApPackageFiles } from "./agent-plugins/import.js";
 import { slugifyApName } from "./agent-plugins/name.js";
+import { ManifestValidationError } from "./agent-plugins/validate.js";
+import { skippedInvalidPluginExport } from "../copy/cli.js";
 import {
   envelopeFromFiles,
   parseApEnvelope,
@@ -84,6 +86,7 @@ export type AnyMigrateManifest = MigrateManifestV1 | MigrateManifest;
 export interface MigrateExportOptions {
   outputPath: string;
   includePlugins?: boolean;
+  onSkip?: (message: string) => void;
 }
 
 export interface MigrateImportOptions {
@@ -185,9 +188,17 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
   const pluginNames: string[] = [];
   for (const plugin of plugins) {
     const slug = slugifyApName(plugin.name);
-    pluginNames.push(slug);
     const packageDir = join(pluginsDir, slug);
-    writeApPackageFiles(buildApPackageFiles(plugin.id), packageDir);
+    try {
+      writeApPackageFiles(buildApPackageFiles(plugin.id), packageDir);
+      pluginNames.push(slug);
+    } catch (error) {
+      if (error instanceof ManifestValidationError) {
+        opts.onSkip?.(skippedInvalidPluginExport(plugin.name));
+        continue;
+      }
+      throw error;
+    }
   }
 
   const environments = listEnvironmentDocuments();
