@@ -25,6 +25,7 @@ import { useProfileCommand } from "../../services/profile-commands.js";
 import { getHarnessPreference } from "../../models/harness.js";
 import { detectPlatforms } from "../../services/scanner.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
+import { explainPayload, renderExplain } from "../../services/resolve/explain.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
 import {
@@ -143,7 +144,12 @@ async function handleGlobalApplyCommand(
     }
 
     if (outputFormat === "json") {
-      printJson({ scope: "global", ...payload });
+      const { resolution, ...rest } = payload;
+      printJson({
+        scope: "global",
+        ...rest,
+        ...(opts.explain && resolution ? { explain: explainPayload(resolution) } : {}),
+      });
       return;
     }
 
@@ -151,6 +157,11 @@ async function handleGlobalApplyCommand(
       process.exitCode = 1;
       ui.warn("Apply cancelled.");
       return;
+    }
+
+    if (opts.explain && payload.resolution) {
+      console.log(renderExplain(payload.resolution));
+      console.log("");
     }
 
     const dryPrefix = payload.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";

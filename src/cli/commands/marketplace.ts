@@ -273,7 +273,7 @@ async function handleMarketplaceShowCommand(
       { key: "name", header: "NAME", width: 24 },
       { key: "ref", header: "REF", width: 32 },
       { key: "version", header: "VERSION", width: 12 },
-      { key: "description", header: "DESCRIPTION", width: 40 },
+      { key: "description", header: "DESCRIPTION", width: 40, truncate: true },
     ],
     rows: plugins.map((plugin) => ({
       name: plugin.name,

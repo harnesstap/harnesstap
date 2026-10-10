@@ -88,7 +88,7 @@ export function getTableChars() {
   return isTty() && !process.env.NO_COLOR
     ? {}
     : {
-        top: "+",
+        top: "-",
         "top-mid": "+",
         "top-left": "+",
         "top-right": "+",
