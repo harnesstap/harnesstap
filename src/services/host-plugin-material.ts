@@ -91,9 +91,15 @@ export function omitHostPluginBundledSkills(
   resources: readonly Resource[],
   platformId: string,
   homeRoot: string,
-  _target: SerializerTarget = "project",
+  target: SerializerTarget = "project",
 ): Resource[] {
   if (!isHostPluginTreePlatform(platformId)) {
+    return [...resources];
+  }
+  // Cursor project skills land in `.agents/skills/` for aliases. Only skip
+  // the global `~/.cursor/skills/` copies; Claude native skills duplicate the
+  // host plugin at both scopes.
+  if (platformId === "cursor" && target !== "global") {
     return [...resources];
   }
   const pinResources = resources.filter((resource) => isHostPluginPinResource(resource));
