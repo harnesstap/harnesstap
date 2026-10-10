@@ -15,6 +15,7 @@ import {
   MISSING_PLUGIN_JSON_MESSAGE,
   importPluginFromGitHubRef,
 } from "../../src/services/plugin-git-import.ts";
+import { listDependencies } from "../../src/services/plugin-dependency.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 
 let ctx: TestContext;
@@ -79,6 +80,8 @@ it("imports one git-origin plugin when skills/<name> is not an AP package", asyn
   expect(imported.origin_locator).toBe("https://github.com/DietrichGebert/ponytail.git");
   const resources = getPluginResources(imported.plugin.id);
   expect(resources.filter((r) => r.type === "skill").map((r) => r.name)).toEqual(["ponytail"]);
+  expect(resources.some((r) => r.type === "plugin" && r.origin_ref === "ponytail@local")).toBe(true);
+  expect(listDependencies(imported.plugin.id).some((dep) => dep.ref === "ponytail@local")).toBe(false);
   expect(getPluginByName("ponytail")?.origin).toBe("upstream");
   expect(getPluginByName("ponytail")?.version).toBe("0.0.0+git.abc123def456");
   expect(getPluginByName("ponytail")?.description).toBe("Session helpers from ponytail");

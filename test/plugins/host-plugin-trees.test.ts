@@ -450,6 +450,43 @@ describe("host plugin serialize", () => {
     }
   });
 
+  it("omits bundled skills and same-name commands on Claude and Cursor", async () => {
+    const home = createTempDir("host-plugin-omit-bundled-");
+    try {
+      const { pin } = writeDemoModPin(home);
+      const skill = makeResource({
+        type: "skill",
+        name: "hello",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@demo-market",
+        content: "# hello\n",
+      });
+      const command = makeResource({
+        type: "command",
+        name: "hello",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@demo-market",
+        content: "run hello",
+      });
+      const claude = await generateFiles([pin, skill, command], ["claude-code"], home, {
+        target: "global",
+      });
+      const cursor = await generateFiles([pin, skill, command], ["cursor"], home, {
+        target: "global",
+      });
+      const opencode = await generateFiles([pin, skill, command], ["opencode"], home, {
+        target: "global",
+      });
+      expect(claude[0]?.files.some((file) => file.path.includes(".claude/skills/hello"))).toBe(false);
+      expect(claude[0]?.files.some((file) => file.path.includes(".claude/commands/hello"))).toBe(false);
+      expect(claude[0]?.files.some((file) => file.path.includes("plugins"))).toBe(true);
+      expect(cursor[0]?.files.some((file) => file.path.includes(".cursor/skills/hello"))).toBe(false);
+      expect(opencode[0]?.files.some((file) => file.path.includes("skills/hello"))).toBe(true);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
   it("warns that project apply does not write Cursor local plugins", async () => {
     const home = createTempDir("host-plugin-cursor-project-");
     try {

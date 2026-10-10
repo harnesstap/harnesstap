@@ -35,6 +35,7 @@ import {
 } from "./materialization-ownership.js";
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { omitHostPluginBundledSkills } from "./host-plugin-material.js";
+import { skippedDuplicateCommand, skippedHostPluginHook } from "../copy/cli.js";
 import { gateDeployFiles } from "./deploy-gate.js";
 import { pruneManagedCursorLocalPlugins } from "../plugins/cursor-local-plugin.js";
 import {
@@ -306,7 +307,20 @@ export async function generateFiles(
     );
     const serializer = getPlatformSerializer(pid);
     const surfaceWarnings: SurfaceWarning[] = [];
+    const skillNames = new Set(
+      platformResources.filter((resource) => resource.type === "skill").map((resource) => resource.name),
+    );
     const emitResources = platformResources.filter((resource) => {
+      if (resource.type === "command" && skillNames.has(resource.name)) {
+        surfaceWarnings.push({
+          harness: pid,
+          path: "",
+          category: "duplicate-command",
+          message: skippedDuplicateCommand(resource.name),
+          alias_harnesses: [],
+        });
+        return false;
+      }
       if (resource.type !== "hook") {
         return true;
       }
@@ -317,8 +331,7 @@ export async function generateFiles(
         harness: pid,
         path: ".claude/settings.json",
         category: "plugin-root-hook",
-        message:
-          `Skipped hook ${resource.name}. It only works when the plugin is installed as a host plugin.`,
+        message: skippedHostPluginHook(resource.name),
         alias_harnesses: [],
       });
       return false;

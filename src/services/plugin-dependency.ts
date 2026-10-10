@@ -1,8 +1,10 @@
 import {
   addResourceToPlugin,
+  getPluginById,
   getPluginResources,
   removeResourceFromPlugin,
 } from "../models/plugin-model.js";
+import { isHostPluginPinResource } from "./host-plugin-serialize.js";
 import { findResourceByKey, normalizeResourceInput, upsertResource } from "../models/resource.js";
 import type { DependencySourceKind, PluginDependencyMetadata, Resource } from "../types.js";
 import {
@@ -101,7 +103,19 @@ export function dependenciesFromResources(resources: Resource[]): DependencyView
 }
 
 export function listDependencies(pluginId: string): DependencyView[] {
-  return dependenciesFromResources(getPluginResources(pluginId));
+  const plugin = getPluginById(pluginId);
+  return dependenciesFromResources(getPluginResources(pluginId)).filter((dependency) => {
+    if (!plugin) {
+      return true;
+    }
+    if (
+      dependency.name === plugin.name
+      && isHostPluginPinResource(dependency.resource)
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export function removeDependency(pluginId: string, nameOrRef: string): boolean {

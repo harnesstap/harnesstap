@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getPlatform } from "../platforms/registry.js";
 import type { Resource, ResourceCreateInput, SerializerTarget } from "../types.js";
-import { hostPluginPinIsInstalled } from "./host-native-mcp.js";
 import {
   type HostPluginLayout,
   isHostPluginPinResource,
@@ -36,15 +35,24 @@ export function portableHarnessesForPluginFanout(
   return platforms.filter((id) => !isHostPluginTreePlatform(id));
 }
 
-function isHostPluginBundledSkill(
-  resource: Pick<Resource, "type" | "origin_kind" | "origin_ref">,
-  homeRoot: string,
+const HOST_PLUGIN_BUNDLED_TYPES = new Set(["skill", "command", "agent", "hook"]);
+
+function isHostPluginBundledMaterial(
+  resource: Pick<Resource, "type" | "name" | "origin_kind" | "origin_ref">,
+  pins: ReadonlySet<string>,
 ): boolean {
-  if (resource.type !== "skill") return false;
-  if (resource.origin_kind !== "marketplace_link") return false;
+  if (!HOST_PLUGIN_BUNDLED_TYPES.has(resource.type)) return false;
   const originRef = resource.origin_ref?.trim() ?? "";
-  if (!originRef.includes("@")) return false;
-  return hostPluginPinIsInstalled(homeRoot, originRef);
+  if (originRef && pins.has(originRef)) {
+    return true;
+  }
+  if (resource.origin_kind === "marketplace_link" && originRef.includes("@")) {
+    return true;
+  }
+  if (pins.has(`${resource.name}@local`) || pins.has(resource.name)) {
+    return resource.origin_kind === "marketplace_link" || resource.origin_kind === "local_snapshot";
+  }
+  return false;
 }
 
 /**
@@ -61,7 +69,13 @@ export function omitHostPluginBundledSkills(
   if (target !== "global" || !isHostPluginTreePlatform(platformId)) {
     return [...resources];
   }
-  return resources.filter((resource) => !isHostPluginBundledSkill(resource, homeRoot));
+  void homeRoot;
+  const pins = new Set(
+    resources
+      .filter((resource) => isHostPluginPinResource(resource))
+      .map((resource) => resource.origin_ref || resource.name),
+  );
+  return resources.filter((resource) => !isHostPluginBundledMaterial(resource, pins));
 }
 
 export interface ExtractedPluginSkill {

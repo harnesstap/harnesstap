@@ -1,0 +1,5 @@
+kind: Fixed
+body: Install Claude-format plugins as host plugin trees on Claude Code and Cursor, and keep standalone skills only on harnesses that cannot load those roots.
+time: 2026-10-10T05:40:00Z
+custom:
+  Issue: ""
