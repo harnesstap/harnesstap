@@ -102,10 +102,12 @@ export function applyResultToastTitle(input: {
   return APPLY_RESULT_COPY.wroteRemovedKept(input.wrote, input.removed, input.kept);
 }
 
-/** Connect splash (DT-6). ASCII punctuation only. */
+/** Connect splash (DT-6). ASCII punctuation only. Never says sidecar. */
 export const CONNECT_SPLASH_COPY = {
-  couldNotConnect: "Could not connect to the agent.",
-  sidecarConnectionFailed: "Sidecar connection failed",
+  starting: "Starting the agent",
+  couldNotConnect: "Can't reach the HarnessTap agent",
+  sidecarConnectionFailed: "Can't reach the HarnessTap agent",
+  unreachable: "Can't reach the HarnessTap agent",
   retry: "Retry",
   openLogs: "Open logs",
   openLogsFailed(reason: string): string {
@@ -121,4 +123,13 @@ export const CONNECT_SPLASH_COPY = {
   detailsLogFile(path: string): string {
     return `Log file: ${path}`;
   },
+} as const;
+
+export const AGENT_START_COPY = {
+  newerSchema:
+    "This data was saved by a newer HarnessTap. Update the app to open it.",
+  portInUse:
+    "Port 7474 is already in use. Close the other HarnessTap process and try again.",
+  homeNotWritable:
+    "HarnessTap can't write to its data folder. Check folder permissions and try again.",
 } as const;
