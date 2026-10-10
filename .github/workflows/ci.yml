@@ -52,6 +52,7 @@ jobs:
       cli: ${{ steps.resolve.outputs.cli }}
       docs: ${{ steps.resolve.outputs.docs }}
       desktop: ${{ steps.resolve.outputs.desktop }}
+      desktop_visual: ${{ steps.resolve.outputs.desktop_visual }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -107,6 +108,17 @@ jobs:
               - 'apps/desktop/index.html'
               - 'apps/desktop/vite.config.ts'
               - '.github/workflows/ci.yml'
+            desktop_visual:
+              - 'apps/desktop/src/**'
+              - 'apps/desktop/e2e/visual/**'
+              - 'apps/desktop/scripts/ui-shots.mjs'
+              - 'apps/desktop/scripts/visual-compare.mjs'
+              - 'apps/desktop/scripts/desktop-check.sh'
+              - 'apps/desktop/scripts/demo-home.sh'
+              - 'apps/desktop/scripts/visual-pin.env'
+              - 'apps/desktop/scripts/update-visual-baselines.sh'
+              - '.github/actions/desktop-visual/**'
+              - '.github/workflows/desktop-e2e.yml'
 
       - name: Resolve change flags
         id: resolve
@@ -115,6 +127,8 @@ jobs:
             for area in global core platforms plugins services cli docs desktop; do
               echo "${area}=true" >> "$GITHUB_OUTPUT"
             done
+            # Nightly visual is desktop-e2e.yml; do not duplicate it on every main push.
+            echo "desktop_visual=false" >> "$GITHUB_OUTPUT"
           else
             echo "global=${{ steps.filter.outputs.global }}" >> "$GITHUB_OUTPUT"
             echo "core=${{ steps.filter.outputs.core }}" >> "$GITHUB_OUTPUT"
@@ -124,6 +138,7 @@ jobs:
             echo "cli=${{ steps.filter.outputs.cli }}" >> "$GITHUB_OUTPUT"
             echo "docs=${{ steps.filter.outputs.docs }}" >> "$GITHUB_OUTPUT"
             echo "desktop=${{ steps.filter.outputs.desktop }}" >> "$GITHUB_OUTPUT"
+            echo "desktop_visual=${{ steps.filter.outputs.desktop_visual }}" >> "$GITHUB_OUTPUT"
           fi
 
   test-core:
@@ -246,6 +261,35 @@ jobs:
       - name: Test linuxdeploy wrappers
         run: bun test apps/desktop/scripts
 
+  desktop-visual:
+    name: desktop-visual
+    needs: detect-changes
+    if: needs.detect-changes.outputs.desktop_visual == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: ./.github/actions/desktop-visual
+      - name: Upload visual artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-visual-pr-artifacts
+          path: apps/desktop/e2e/artifacts/
+          if-no-files-found: ignore
+      - name: Upload container shots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-visual-container-shots
+          path: apps/desktop/e2e/artifacts/shots/[0-9]*.png
+          if-no-files-found: ignore
+
   validate:
     runs-on: ubuntu-latest
     needs:
@@ -257,6 +301,7 @@ jobs:
       - test-cli
       - test-docs
       - desktop-typecheck
+      - desktop-visual
     if: always()
     steps:
       - name: Fail if required tests did not succeed
@@ -270,6 +315,7 @@ jobs:
           DETECT_CLI: ${{ needs.detect-changes.outputs.cli }}
           DETECT_DOCS: ${{ needs.detect-changes.outputs.docs }}
           DETECT_DESKTOP: ${{ needs.detect-changes.outputs.desktop }}
+          DETECT_DESKTOP_VISUAL: ${{ needs.detect-changes.outputs.desktop_visual }}
           TEST_CORE: ${{ needs.test-core.result }}
           TEST_PLATFORMS: ${{ needs.test-platforms.result }}
           TEST_PLUGINS: ${{ needs.test-plugins.result }}
@@ -277,6 +323,7 @@ jobs:
           TEST_CLI: ${{ needs.test-cli.result }}
           TEST_DOCS: ${{ needs.test-docs.result }}
           DESKTOP_TYPECHECK: ${{ needs.desktop-typecheck.result }}
+          DESKTOP_VISUAL: ${{ needs.desktop-visual.result }}
         run: |
           set -euo pipefail
           failed=0
@@ -320,6 +367,7 @@ jobs:
           check_required test-cli "$TEST_CLI" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_SERVICES" "$DETECT_CLI"
           check_required test-docs "$TEST_DOCS" "$DETECT_GLOBAL" "$DETECT_DOCS"
           check_required desktop-typecheck "$DESKTOP_TYPECHECK" "$DETECT_DESKTOP"
+          check_required desktop-visual "$DESKTOP_VISUAL" "$DETECT_DESKTOP_VISUAL"
           if [ "$failed" -ne 0 ]; then
             exit 1
           fi

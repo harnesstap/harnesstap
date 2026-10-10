@@ -18,7 +18,7 @@
 //   --update-baselines
 //   --axe
 //   --trace
-import { existsSync, copyFileSync } from "node:fs";
+import { copyFileSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -93,13 +93,22 @@ async function readToken(tokenPath) {
 }
 
 function launchOptions() {
-  const options = { args: ["--no-sandbox"] };
+  // Pin Chromium to Playwright's browser (same build as mcr.microsoft.com/playwright).
+  // Do not fall back to system Chrome: font rasterization drifts across hosts.
+  const options = {
+    args: [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--font-render-hinting=none",
+      "--disable-lcd-text",
+    ],
+  };
   if (process.env.SHOTS_CHROME_CHANNEL) {
     options.channel = process.env.SHOTS_CHROME_CHANNEL;
   } else if (process.env.SHOTS_CHROME_PATH) {
     options.executablePath = process.env.SHOTS_CHROME_PATH;
-  } else if (existsSync("/usr/bin/google-chrome-stable")) {
-    options.executablePath = "/usr/bin/google-chrome-stable";
+  } else {
+    options.executablePath = chromium.executablePath();
   }
   return options;
 }
@@ -538,6 +547,11 @@ async function run() {
   }
 
   if (config.updateBaselines) {
+    if (process.env.SHOTS_PINNED_IMAGE !== "1") {
+      throw new Error(
+        "shots: --update-baselines only runs inside the pinned Playwright image (SHOTS_PINNED_IMAGE=1). Use apps/desktop/scripts/update-visual-baselines.sh or the desktop-visual CI job.",
+      );
+    }
     for (const file of report.written) {
       copyFileSync(file, baselinePathFor(file, config.baselineDir));
     }

@@ -1,0 +1,85 @@
+name: Desktop visual G8
+description: Run ui-shots compare, axe, reduced-motion, and motion trace against pinned Chromium.
+
+inputs:
+  bun-version:
+    description: Bun version
+    required: false
+    default: "1.3.14"
+  update-baselines:
+    description: Write shots into e2e/visual (pinned image only)
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install unzip for setup-bun
+      shell: bash
+      run: |
+        set -euo pipefail
+        if command -v unzip >/dev/null 2>&1; then
+          exit 0
+        fi
+        apt-get update
+        apt-get install -y --no-install-recommends unzip
+
+    - name: Set up Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ inputs.bun-version }}
+
+    - name: Install JS deps
+      shell: bash
+      run: |
+        bun install --frozen-lockfile
+        cd apps/desktop
+        bun install --frozen-lockfile
+
+    - name: Install Chromium when not using the pinned Playwright image
+      shell: bash
+      run: |
+        set -euo pipefail
+        # The pinned mcr.microsoft.com/playwright image already has browsers.
+        if [ -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ] && [ -d "${PLAYWRIGHT_BROWSERS_PATH}" ]; then
+          echo "Using Playwright browsers at ${PLAYWRIGHT_BROWSERS_PATH}"
+          exit 0
+        fi
+        cd apps/desktop
+        bunx playwright install --with-deps chromium
+
+    - name: Start demo agent and Vite
+      shell: bash
+      run: |
+        set -euo pipefail
+        HT_DEMO_ROOT=/tmp/htdemo HARNESSTAP_AGENT_PORT=7474 \
+          bash apps/desktop/scripts/demo-home.sh &
+        for i in $(seq 1 40); do
+          curl -sf http://127.0.0.1:7474/v1/health && break
+          sleep 1
+        done
+        curl -sf http://127.0.0.1:7474/v1/health
+        cd apps/desktop && VITE_AGENT_URL=http://127.0.0.1:7474 \
+          bunx vite --host 127.0.0.1 --port 5173 --strictPort &
+        for i in $(seq 1 40); do
+          curl -sf http://127.0.0.1:5173/ >/dev/null && break
+          sleep 1
+        done
+        curl -sf http://127.0.0.1:5173/ >/dev/null
+
+    - name: Shots, compare, axe, reduced motion, trace
+      shell: bash
+      env:
+        SHOTS_BASE_URL: http://127.0.0.1:5173/
+        SHOTS_AGENT_PORT: "7474"
+        SHOTS_TOKEN_PATH: /tmp/htdemo/home/.harnesstap/agent-token
+        SHOTS_PROJECT_PATH: /tmp/htdemo/project
+        SHOTS_PINNED_IMAGE: "1"
+      run: |
+        set -euo pipefail
+        if [ "${{ inputs.update-baselines }}" = "true" ]; then
+          cd apps/desktop
+          node scripts/ui-shots.mjs --update-baselines --axe
+        else
+          bun run desktop:check
+        fi

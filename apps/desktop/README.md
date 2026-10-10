@@ -85,9 +85,9 @@ bun run desktop:shots
 bun run desktop:check
 ```
 
-`scripts/ui-shots.mjs` shims Tauri IPC, walks Global/Project, Library, Discover, Environments, Harnesses, Settings, and Export/Import/Account (More menu) at 1440×900 and 960×640, and writes PNGs to `e2e/artifacts/shots/` (gitignored). `--compare` diffs those against committed baselines in `e2e/visual/` (`pixelmatch`, 0.2% pixels). `--axe` fails on axe-core `serious` / `critical`. `--reduced-motion` asserts `document.getAnimations().length === 0` after each screen. `--trace` records rAF frame times for palette open/close and a list scroll and fails if any frame exceeds 32ms. `--update-baselines` copies the latest shots into `e2e/visual/`.
+`scripts/ui-shots.mjs` shims Tauri IPC, walks Global/Project, Library, Discover, Environments, Harnesses, Settings, and Export/Import/Account (More menu) at 1440×900 and 960×640, and writes PNGs to `e2e/artifacts/shots/` (gitignored). `--compare` diffs those against committed baselines in `e2e/visual/` (`pixelmatch`, 0.2% pixels). `--axe` fails on axe-core `serious` / `critical`. `--reduced-motion` asserts `document.getAnimations().length === 0` after each screen. `--trace` records rAF frame times for palette open/close and a list scroll and fails if any frame exceeds 32ms. `--update-baselines` copies the latest shots into `e2e/visual/`. Shots use Playwright's pinned Chromium (not system Chrome) so font rasterization matches CI.
 
-`bun run desktop:check` is shots + compare + axe + reduced-motion + trace. Nightly: `.github/workflows/desktop-e2e.yml` `visual` job (web mode, no Tauri).
+`bun run desktop:check` is shots + compare + axe + reduced-motion + trace. Guard G8: `.github/workflows/desktop-e2e.yml` `visual` job nightly, plus a required `desktop-visual` check on PRs that touch `apps/desktop/src/**`, both in `mcr.microsoft.com/playwright:v1.63.0-noble`. Diff images and container shots upload as artifacts. Refresh baselines only inside that image (`apps/desktop/scripts/update-visual-baselines.sh`, or dispatch desktop-e2e with `update_baselines=true`). Host `--update-baselines` is rejected.
 
 ## Build packaged app
 
