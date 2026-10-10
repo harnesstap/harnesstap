@@ -69,7 +69,7 @@ Review this.
         expect.objectContaining({
           name: "ship",
           skillMdRelative: ".apm/skills/ship/SKILL.md",
-          metadata: { scripts: ["go.sh"] },
+          metadata: { scripts: ["go.sh"], companions: ["scripts/go.sh"] },
         }),
       ]);
       expect(overlay?.primitives.map((primitive) => `${primitive.type}:${primitive.name}`).sort()).toEqual([
