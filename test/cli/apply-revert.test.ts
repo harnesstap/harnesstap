@@ -55,7 +55,16 @@ describe("apply revert snapshots (W1-20 / W2-3)", () => {
         "claude-code",
       ]);
       expect(second.stdout).toContain("Everything is up to date.");
+      expect(second.stdout).not.toContain("kept ");
+      expect(second.stdout).not.toContain("--force-remove");
       expect(second.stdout).not.toContain("Snapshot saved.");
+
+      const dryRevert = await runCli(["revert", snapshotId, "--dry-run"]);
+      expect(dryRevert.exitCode ?? 0).toBe(0);
+      expect(dryRevert.stdout).toContain("Would restore");
+      expect(dryRevert.stdout).toContain("would remove");
+      expect(dryRevert.stdout).not.toMatch(/^Restored /m);
+      expect(existsSync(claudeMd)).toBe(true);
 
       const revert = await runCli(["revert", snapshotId]);
       expect(revert.exitCode ?? 0).toBe(0);

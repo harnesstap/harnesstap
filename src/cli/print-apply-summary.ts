@@ -80,7 +80,9 @@ export function printApplySuccess(input: {
       unchanged: input.unchanged,
     }),
   );
-  printKeptFiles(input.kept);
+  if (input.wrote > 0 || input.removed > 0) {
+    printKeptFiles(input.kept);
+  }
   if (input.snapshotId) {
     console.log(snapshotSavedUndoLine(`ht revert ${input.snapshotId}`));
   }
