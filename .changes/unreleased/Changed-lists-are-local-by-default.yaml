@@ -1,0 +1,5 @@
+kind: Changed
+body: plugin list and profile list read local state by default. Pass --remote to include catalog results; --remote-only still lists catalog only. plugin search is unchanged.
+time: 2026-10-10T18:45:00Z
+custom:
+  Issue: ""

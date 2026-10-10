@@ -270,10 +270,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "plugin.list": {
     description:
-      "List local plugins plus streamed remote catalog plugins (default); use --local-only for local library only",
+      "List local plugins. Pass --remote to include catalog results, or --remote-only for catalog only.",
     examples: [
       "plugin list",
-      "plugin list --search foundation",
+      "plugin list --remote --search foundation",
       "plugin list --remote-only --tag profile",
     ],
   },
@@ -462,11 +462,11 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "profile.list": {
     description:
-      "List local profile plugins, then stream remote catalog plugins with tag=profile; marks active profile",
+      "List local profile plugins. Pass --remote to include catalog profiles with tag=profile. Marks the active profile.",
     examples: [
       "profile list",
       "profile list --search work",
-      "profile list --local-only",
+      "profile list --remote",
     ],
   },
   "profile.show": {

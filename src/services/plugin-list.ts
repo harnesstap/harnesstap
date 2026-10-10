@@ -51,6 +51,7 @@ export interface PluginListInstallContext {
 
 export interface HandlePluginListCommandOpts {
   search?: string;
+  remote?: boolean;
   localOnly?: boolean;
   remoteOnly?: boolean;
   tag?: string;
@@ -217,8 +218,14 @@ function renderLocalPluginListSection(
   return renderLocalPluginListTable(plugins, { showId: Boolean(opts.showId) });
 }
 
+export function pluginListIncludesRemote(
+  opts: Pick<HandlePluginListCommandOpts, "remote" | "remoteOnly">,
+): boolean {
+  return Boolean(opts.remote || opts.remoteOnly);
+}
+
 function shouldUseInteractivePluginListBrowse(opts: HandlePluginListCommandOpts): boolean {
-  if (opts.localOnly || opts.remoteOnly) {
+  if (opts.remoteOnly) {
     return false;
   }
   if ((opts.format ?? "human") !== "human") {
@@ -274,7 +281,9 @@ async function runInteractivePluginListBrowse(opts: HandlePluginListCommandOpts)
         localPlugins,
         profileMode: opts.profileMode,
         showId: Boolean(opts.showId),
-        listRemotePlugins: ({ q, limit }) => listRemotePluginsForBrowse(opts, { q, limit }),
+        listRemotePlugins: pluginListIncludesRemote(opts)
+          ? ({ q, limit }) => listRemotePluginsForBrowse(opts, { q, limit })
+          : async () => [],
         fetchRemotePluginShow: (plugin) => renderCatalogPluginPreviewShow(plugin, {
           account: opts.account,
           baseUrl: opts.baseUrl,
@@ -529,7 +538,7 @@ function printListSummaryFooter(
 export async function handlePluginListCommand(opts: HandlePluginListCommandOpts): Promise<void> {
   const format = opts.format ?? parseOutputFormat(undefined);
   const includeLocal = !opts.remoteOnly;
-  const includeRemote = !opts.localOnly;
+  const includeRemote = pluginListIncludesRemote(opts);
 
   if (shouldUseInteractivePluginListBrowse({ ...opts, format })) {
     await runInteractivePluginListBrowse({ ...opts, format });
@@ -550,7 +559,7 @@ export async function handlePluginListCommand(opts: HandlePluginListCommandOpts)
   const activeProfile = opts.profileMode ? getActiveProfileName() : null;
 
   if (format === "json") {
-    if (opts.profileMode && opts.localOnly) {
+    if (opts.profileMode && includeLocal && !includeRemote) {
       printJson({
         profiles: localPlugins.map((profile) => ({
           ...profile,
@@ -560,7 +569,7 @@ export async function handlePluginListCommand(opts: HandlePluginListCommandOpts)
       return;
     }
 
-    if (opts.localOnly) {
+    if (includeLocal && !includeRemote) {
       printJson(localPlugins);
       return;
     }

@@ -109,7 +109,7 @@ Examples:
 
 1. Local plugins may be created, composed, exported, and applied with **no** organization or catalog.
 2. `plugin publish` requires an active Cloud account and at least one **registered** publish catalog (`plugin catalog register`). By default it fans out to all registered catalogs; per-plugin allow lists are configured with `plugin catalog` / `plugin catalog bindings`.
-3. `plugin list --search` and `plugin pull` resolve against the CLI [catalog scope](#harnesstap-cloud) (default public org + connected catalogs + authenticated private plugins).
+3. `plugin list --search --remote` and `plugin pull` resolve against the CLI [catalog scope](#harnesstap-cloud) (default public org + connected catalogs + authenticated private plugins).
 
 Published plugins address as `org/catalog/name[@version]` on Cloud `/api/plugins` and the catalog package download routes.
 
@@ -130,7 +130,7 @@ Use this table to disambiguate overlapping words.
 | **`plugin` ref** | Dependency on another HarnessTap plugin (catalog/local) | `plugin edit --add plugin:name@^1.0` · `resources.type=plugin` |
 | **Profile** | Plugin tagged `profile`; global switch preset | `ht profile use <name>` · `plugins.tags` includes `profile` |
 | **Workspace** | Single local SQLite library; offline share via `migrate` | `~/.harnesstap/harnesstap.db` |
-| **Catalog** | Org-scoped published plugin collection (multiplayer) | `plugin list --search`, `plugin pull` · Cloud APIs |
+| **Catalog** | Org-scoped published plugin collection (multiplayer) | `plugin list --search --remote`, `plugin pull` · Cloud APIs |
 | **Account** | Cloud auth identity (tokens, org context) | `auth login`, `--account` · `cloud-accounts.json` |
 | **GitHub session** | GitHub App user-to-server token for private repo reads | `github login` · `github-session.json` |
 | **Project config** | Repo-declared profiles, environments, and plugin graph for `ht use` / `ht install` / `ht apply` | `apm.yml` · `config show|init`, `use`, `install`, `apply` |
@@ -324,7 +324,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | Command | Current behavior |
 | --- | --- |
 | `plugin create` | Creates a local plugin with optional description, tags, and version; or imports a skill package with `--from` (attach selected skills, optional `--install` to hub paths). |
-| `plugin list` | Lists local plugins, then streams remote catalog plugins from catalog scope ∪ registered publish catalogs (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). Dirty heads show a trailing `*` on the version. `--local-only` / `--remote-only`; `--search` filters local and remote. Interactive TTY browse can install a selected remote plugin. |
+| `plugin list` | Lists local plugins by default (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). Dirty heads show a trailing `*` on the version. `--remote` also streams catalog plugins from catalog scope ∪ registered publish catalogs; `--remote-only` skips the local section. `--search` filters the listed sources. Interactive TTY browse can install a selected remote plugin when `--remote` is set. |
 | `plugin show` | Shows plugin metadata, resources, dependencies, composition attachments, dirty/frozen state, and default environment when set. |
 | `plugin edit` | Edit composition attachments and default environment (interactive checkbox UI, or `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment` scripting). Marks the working head **dirty** after a cut. Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `plugin:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `plugin editor` | Opens the plugin definition in `$EDITOR` (or the system editor) for direct editing. |
@@ -447,7 +447,7 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 
 | Command | Current behavior |
 | --- | --- |
-| `profile list` | Lists local profile plugins, then streams remote catalog plugins with `tag=profile` (same discovery model as `plugin list`). Marks the active profile from `active-profile.json`. |
+| `profile list` | Lists local profile plugins by default. `--remote` streams catalog plugins with `tag=profile` (same discovery model as `plugin list --remote`). Marks the active profile from `active-profile.json`. |
 | `profile show <name>` | Same detail view as `plugin show`, plus active profile marker. |
 | `profile status` | Shows the active profile and whether global harness files match it (drift, pending apply, stack changes). `--check` exits `1` when out of sync. |
 | `profile preview <name>` | Dry-run apply delta (contents, files, install gaps) without writing. Inherited host-plugin material already deployed is not listed as stack or file changes. Host-native plugin MCP (Cursor `plugin-<name>-<name>` folders and plugin `mcp.json`) counts as present rather than a missing HarnessTap install. MCP install-gap rows are `missing` when the server is not installed (Desktop **+**) and `mismatch` when a live server exists with a different value (Desktop **!**). Shared Claude `.claude/settings.json` is merged (profile permissions/env/hooks overlay live keys); preview never treats that file as a whole-file delete. Shared Claude `~/.claude.json` is merge-overlaid for user-scope `mcpServers` the same way and is never deleted as a whole file. Skill files keep extra live frontmatter and body when the profile snapshot is a subset of the live SKILL.md. `not_staged` includes on-disk adds and live resources that differ from the selected profile snapshot (`not_staged_kind`: `add` \| `update`). |
@@ -479,8 +479,8 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 
 Remote catalog workflows live on **`plugin`**, not `cloud`:
 
-- `plugin list` — discover local and remote plugins (catalog scope ∪ registered publish catalogs)
-- `plugin list --search` — filter local and remote plugins
+- `plugin list` — discover local plugins
+- `plugin list --remote` / `plugin list --search --remote` — include catalog plugins (catalog scope ∪ registered publish catalogs)
 - `plugin pull` — fetch a published plugin + local import (distinct from `migrate import` on a local file)
 - `plugin publish` — export bundle + upload a versioned plugin to an org catalog
 
@@ -874,7 +874,7 @@ Authentication stores named accounts in `~/.harnesstap/cloud-accounts.json`. The
 
 - `auth login [account]` performs device authentication and saves a named cloud account.
 - `auth status`, `auth orgs`, and `auth logout` manage accounts and active org context.
-- `plugin list --search`, `plugin pull`, and `plugin publish` use the selected cloud account (`--account`).
+- `plugin list --search --remote`, `plugin pull`, and `plugin publish` use the selected cloud account (`--account`).
 - `profile list --search` and `profile pull` filter or validate profile-tagged plugins (`tag=profile`).
 
 Private GitHub marketplaces and git plugin sources use `github login` (or `HARNESSTAP_GITHUB_TOKEN` / `GH_TOKEN` / `GITHUB_TOKEN` / `gh auth token`). That session is not a Cloud account.
@@ -891,7 +891,7 @@ The CLI builds a **catalog scope** from:
 | Authenticated | Private and shared plugins in orgs the user belongs to |
 | Registered publish catalogs | `plugin catalog register org/catalog` — also included in `plugin list` / `profile list` remote discovery (supplemental queries per registered org/catalog) |
 
-`plugin list`, `profile list`, and `plugin list --search` / `profile list --search` query the union of catalog scope and registered catalogs (best-effort per source). Configuration persists under `catalog` in `~/.harnesstap/config.jsonc`.
+`plugin list --remote`, `profile list --remote`, and `plugin list --search --remote` / `profile list --search --remote` query the union of catalog scope and registered catalogs (best-effort per source). Without `--remote`, those list commands read local state only. Configuration persists under `catalog` in `~/.harnesstap/config.jsonc`.
 
 ### Publish registry and bindings
 

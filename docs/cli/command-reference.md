@@ -334,7 +334,7 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 ### Commands
 
 - `plugin create <name>`
-- `plugin list` — local plugins plus streamed remote catalog plugins (default); use `--local-only` for local plugins only
+- `plugin list` — local plugins by default; pass `--remote` to include streamed catalog plugins
 - `plugin show <name>`
 - `plugin editor [name]` — open a plugin definition file in your system editor
 - `plugin search [query]` — search marketplace catalogs for plugins (name, tags, plugin.json, nested skills/commands)
@@ -381,8 +381,8 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin create --dry-run` — preview configuration without writing
 - `plugin list --format json`
 - `plugin list --show-id`
-- `plugin list -s, --search <query>` — filter local and remote plugins by name, description, or tags
-- `plugin list --local-only` — list only local plugins
+- `plugin list -s, --search <query>` — filter listed plugins by name, description, or tags
+- `plugin list --remote` — include remote catalog plugins (local plus catalog)
 - `plugin list --remote-only` — skip local section; remote-only JSON emits a top-level array
 - `plugin list --tag <tag>` — filter remote catalog plugins by tag
 - `plugin list --account <name>` / `--base-url <url>` — cloud account and base URL for remote listing
@@ -520,8 +520,8 @@ Root shorthand: when the first non-option argument is not a known command and ma
 ### Important options
 
 - `profile list --format json`
-- `profile list -s, --search <query>` — filter local and remote profile plugins
-- `profile list --local-only` — list only local profile plugins
+- `profile list -s, --search <query>` — filter listed profile plugins
+- `profile list --remote` — include remote catalog profile plugins
 - `profile list --remote-only` — skip local section
 - `profile list --account <name>` / `--base-url <url>` / `--no-interactive`
 - `profile show --format json`

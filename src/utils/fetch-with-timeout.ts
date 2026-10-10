@@ -2,7 +2,7 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = 2;
 
 export const CATALOG_LIST_TIMEOUT_MESSAGE =
-  "Catalog request timed out (30s). Try again or use --local-only to skip remote listing.";
+  "Catalog request timed out (30s). Try again, or list local plugins without --remote.";
 
 export async function fetchWithTimeout(
   input: string | URL,
