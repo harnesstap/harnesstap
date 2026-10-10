@@ -20,7 +20,10 @@ import { bootstrapLocalLibrary } from "../../services/bootstrap-local-library.js
 import { resolveHarnessSelection } from "../../services/harness-config.js";
 import { assertSupportedHarnessTargets, registeredHarnessesOf } from "../../services/harness-targets.js";
 import { maybePromptInitCatalogInstall } from "../../services/init-catalog-prompt.js";
-import { maybePromptInitCompletionInstall } from "../../services/init-completion-install.js";
+import {
+  detectShellFromEnv,
+  maybePromptInitCompletionInstall,
+} from "../../services/init-completion-install.js";
 import { printResourceTrackedDirectoriesList } from "./resource-directories.js";
 import { listResourceTrackedDirectories } from "../../services/resource-tracked-directories.js";
 import { renderShellCompletion } from "../../services/shell-completion.js";
@@ -35,6 +38,7 @@ import {
 import { ui } from "../../ui/index.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { initCompletionHintLine, initPickHarnessesLine } from "../../copy/cli.js";
 import { formatCount } from "../formatting.js";
 import {
   parseCommaSeparatedList,
@@ -47,10 +51,11 @@ import {
   formatCommand,
 } from "../shared.js";
 
-function printQuickStartGuide(): void {
+function printQuickStartGuide(env: NodeJS.ProcessEnv = process.env): void {
   console.log("");
   ui.subheader("NEXT STEPS");
   console.log("");
+  console.log(`  ${initPickHarnessesLine()}`);
   console.log(`  ${formatCommand(`profile use "${GLOBAL_DEFAULT_PROFILE_NAME}"`)}`);
   console.log(
     `  ${formatCommand(`plugin list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`)}`,
@@ -59,7 +64,7 @@ function printQuickStartGuide(): void {
     `  ${formatCommand(`apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("help")}`);
-  ui.dim(`Enable tab completion: ${formatCommand("init completion zsh >> ~/.zshrc")}`);
+  ui.dim(initCompletionHintLine(detectShellFromEnv(env)));
 }
 
 async function handleAddCommand(

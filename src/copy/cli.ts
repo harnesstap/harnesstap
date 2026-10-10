@@ -127,6 +127,8 @@ export const CLI_HINTS = {
   forceRemove: "To remove them too, run: ht apply --force-remove",
   revert: "Snapshot saved. Undo with: ht revert",
   stashPop: "Bring them back with: ht profile stash pop",
+  harnessSet: "Run ht harness set to pick your harnesses.",
+  harnessSetOrFlag: "Run ht harness set, or pass --harness <slugs>.",
 } as const;
 
 export const CLI_ERRORS = {
@@ -154,6 +156,7 @@ export const CLI_ERRORS = {
   invalidFormat: (value: string): string => `Invalid --format value: ${value}. Use human or json.`,
   mcpNotInLibrary: (name: string): string => `${quoteName(name)} isn't in your library.`,
   newerSchema: "This data was saved by a newer HarnessTap.",
+  noHarnesses: "Not set up for any harness yet.",
   unsavedChanges: (name: string, count: number): string =>
     `${quoteName(name)} has ${count} unsaved change${count === 1 ? "" : "s"}.`,
   resourceSyncStale: (count: number): string =>
@@ -171,6 +174,28 @@ export type SwitchChangesValue = (typeof SWITCH_CHANGES_VALUES)[number];
 
 export const SWITCH_CHANGES_FLAG_HELP =
   "What to do with unsaved changes: save, stash or discard";
+
+export const DEVICE_LOGIN_WAITING =
+  "Waiting for you to approve in the browser. The code expires in 15 minutes. Press Ctrl+C to cancel.";
+
+export function initPickHarnessesLine(): string {
+  return `Pick your harnesses: ${formatHtCommand("harness set")}`;
+}
+
+export function initCompletionHintLine(
+  shell: "bash" | "zsh" | "fish" | undefined,
+): string {
+  switch (shell) {
+    case "bash":
+      return `Enable tab completion: ${formatHtCommand("init completion bash >> ~/.bashrc")}`;
+    case "zsh":
+      return `Enable tab completion: ${formatHtCommand("init completion zsh >> ~/.zshrc")}`;
+    case "fish":
+      return `Enable tab completion: ${formatHtCommand("init completion fish > ~/.config/fish/completions/ht.fish")}`;
+    default:
+      return `Enable tab completion: ${formatHtCommand("init completion <bash|zsh|fish>")}`;
+  }
+}
 
 export const CLI_COPY = {
   dryRunNothingChanged: DRY_RUN_NOTHING_CHANGED,

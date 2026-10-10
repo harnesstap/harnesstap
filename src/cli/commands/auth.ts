@@ -24,6 +24,7 @@ import {
   trackCloudConnectStarted,
   trackCloudConnected,
 } from "../../telemetry/index.js";
+import { printDeviceLoginInstructions } from "../../services/device-login-prompt.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
 import { CLI_ERRORS, CLI_HINTS } from "../messages.js";
@@ -38,14 +39,21 @@ async function handleCloudLoginCommand(
   trackCloudConnectStarted();
   try {
     const device = await requestDeviceCode(baseUrl);
-    console.log(`Visit: ${deviceVerificationUri(baseUrl)}`);
-    console.log(`Code:  ${device.user_code}`);
+    const waiting = printDeviceLoginInstructions({
+      verificationUri: deviceVerificationUri(baseUrl),
+      userCode: device.user_code,
+    });
     const pollIntervalSeconds = device.interval ?? 5;
     const maxPolls = Math.ceil((device.expires_in ?? 600) / pollIntervalSeconds);
-    const token = await pollDeviceToken(baseUrl, device.device_code, {
-      interval: pollIntervalSeconds,
-      maxPolls,
-    });
+    let token: Awaited<ReturnType<typeof pollDeviceToken>>;
+    try {
+      token = await pollDeviceToken(baseUrl, device.device_code, {
+        interval: pollIntervalSeconds,
+        maxPolls,
+      });
+    } finally {
+      waiting.stop();
+    }
     const now = Math.floor(Date.now() / 1000);
     const account = {
       cloudBaseUrl: baseUrl,

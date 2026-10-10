@@ -12,6 +12,11 @@ import { formatResourceTypeSummary } from "./project-status-payload.js";
 import { collectProfilePluginIds } from "./profile-apply.js";
 import { resolveExistingResourceFilesystemPath } from "./resource-editor-path.js";
 import { harnessScopeWire, resourceHarnessScope } from "./harness-scope.js";
+import {
+  registeredHarnessIds,
+  type ResourceApplySelector,
+  whereResourceAppliesNow,
+} from "./resource-apply-selector.js";
 
 function optionalScopeWire(
   resource: Resource | undefined,
@@ -41,6 +46,12 @@ export interface ProfileContentsResource {
   not_staged_kind?: "add" | "update";
   /** `all` sentinel or a subset of harness slugs. Missing means All. */
   harness_scope?: "all" | string[];
+  /**
+   * Resource scope intersected with registered harnesses (registered order).
+   * Empty when no harness is registered (`apply_not_set_up`).
+   */
+  apply_harnesses?: string[];
+  apply_not_set_up?: boolean;
 }
 
 export interface ProfileContentsPlugin {
@@ -76,10 +87,24 @@ function materialResources(resources: Resource[]): Resource[] {
   );
 }
 
-export function toContentsResource(resource: Resource): ProfileContentsResource {
+function applySelectorFields(selector: ResourceApplySelector): {
+  apply_harnesses: string[];
+  apply_not_set_up: boolean;
+} {
+  return {
+    apply_harnesses: selector.harnesses,
+    apply_not_set_up: selector.notSetUp,
+  };
+}
+
+export function toContentsResource(
+  resource: Resource,
+  registered?: readonly string[],
+): ProfileContentsResource {
   const filesystemPath = resolveExistingResourceFilesystemPath(resource);
   const hook = hookInventoryWireFromResource(resource);
   const scope = resourceHarnessScope(resource);
+  const apply = whereResourceAppliesNow(resource, registered);
   return {
     id: resource.id,
     type: resource.type,
@@ -90,6 +115,7 @@ export function toContentsResource(resource: Resource): ProfileContentsResource 
     ...(filesystemPath ? { filesystem_path: filesystemPath } : {}),
     ...(hook ? { hook } : {}),
     ...(scope.kind === "all" ? {} : { harness_scope: harnessScopeWire(scope) }),
+    ...applySelectorFields(apply),
   };
 }
 
@@ -104,13 +130,14 @@ export function toNotStagedContentsResource(
 }
 
 function toContentsResources(resources: Resource[]): ProfileContentsResource[] {
+  const registered = registeredHarnessIds();
   const order: string[] = [];
   const byKey = new Map<string, ProfileContentsResource>();
   for (const resource of materialResources(resources)) {
     const key = `${resource.type}:${resource.name}`;
     if (!byKey.has(key)) {
       order.push(key);
-      byKey.set(key, toContentsResource(resource));
+      byKey.set(key, toContentsResource(resource, registered));
     }
   }
   return order
@@ -192,7 +219,9 @@ export function buildProfileContents(profileName: string): ProfileContents | nul
       ...optionalScopeWire(attachment),
     };
   });
-  const contentsResources = resources.map(toContentsResource);
+  const contentsResources = resources.map((resource) =>
+    toContentsResource(resource, registeredHarnessIds()),
+  );
 
   return {
     plugins,

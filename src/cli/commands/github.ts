@@ -15,6 +15,7 @@ import {
   requestGithubDeviceCode,
   sessionFromDeviceToken,
 } from "../../services/github-device-flow.js";
+import { printDeviceLoginInstructions } from "../../services/device-login-prompt.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
@@ -23,14 +24,21 @@ import { fail } from "../shared.js";
 async function handleGithubLoginCommand(): Promise<void> {
   try {
     const device = await requestGithubDeviceCode();
-    console.log(`Visit: ${device.verification_uri}`);
-    console.log(`Code:  ${device.user_code}`);
+    const waiting = printDeviceLoginInstructions({
+      verificationUri: device.verification_uri,
+      userCode: device.user_code,
+    });
     const pollIntervalSeconds = device.interval ?? 5;
     const maxPolls = Math.ceil((device.expires_in ?? 900) / pollIntervalSeconds);
-    const token = await pollGithubDeviceToken(device.device_code, {
-      interval: pollIntervalSeconds,
-      maxPolls,
-    });
+    let token: Awaited<ReturnType<typeof pollGithubDeviceToken>>;
+    try {
+      token = await pollGithubDeviceToken(device.device_code, {
+        interval: pollIntervalSeconds,
+        maxPolls,
+      });
+    } finally {
+      waiting.stop();
+    }
     let identity: Awaited<ReturnType<typeof fetchGithubUser>> | undefined;
     try {
       identity = await fetchGithubUser(token.access_token);
