@@ -4,7 +4,7 @@ description: Pack an apm.yml project into an Agent Plugins 1.0 bundle.
 
 # Pack a bundle (Author)
 
-`ht pack` is the producer side of handing a project to a consumer without publishing to a catalog. From a tree that has `apm.yml`, it writes an **Agent Plugins 1.0** package — the same `plugin.json` layout HarnessTap already uses for publish, cut, migrate export, and apply-from-path. There is no second catalog package format and no `--format apm` legacy flag.
+`ht pack` is the producer side of handing a project to a consumer without publishing to a catalog. From a tree that has `apm.yml`, it writes an **Agent Plugins 1.0** package: the same `plugin.json` layout HarnessTap already uses for publish, cut, migrate export, and apply-from-path. There is no second catalog package format and no `--format apm` legacy flag.
 
 ```bash
 ht pack
@@ -34,7 +34,7 @@ The embedded `apm.lock.yaml` carries `pack.bundle_files`: SHA-256 for every pack
 
 ## Source layout
 
-When `.apm/` exists, local primitives are taken from `.apm/agents`, `.apm/skills`, `.apm/commands`, and `.apm/hooks`. Root-level `agents/` / `skills/` / `commands/` / `hooks/` are skipped with a warning. Without `.apm/`, those root directories are pack sources. Root `.mcp.json` (or `mcp.json`) is packed as `mcp.json` regardless of layout. `ht install` / `ht apply` use the same source-layout rule and compile those primitives into the consumer's target harness directories — see [Install a project](../use/install.md) and [Apply to a project](../use/apply.md).
+When `.apm/` exists, local primitives are taken from `.apm/agents`, `.apm/skills`, `.apm/commands`, and `.apm/hooks`. Root-level `agents/` / `skills/` / `commands/` / `hooks/` are skipped with a warning. Without `.apm/`, those root directories are pack sources. Root `.mcp.json` (or `mcp.json`) is packed as `mcp.json` regardless of layout. `ht install` / `ht apply` use the same source-layout rule and compile those primitives into the consumer's target harness directories: see [Install a project](../use/install.md) and [Apply to a project](../use/apply.md).
 
 Dependency files are packed only from lockfile-attested `deployed_files`, never from `apm_modules`. A hash mismatch or a missing attested file fails the pack. Symlinks in the bundle fail the pack. Critical hidden-Unicode (tag characters, bidi overrides, SMP variation selectors) fails the pack; warnings are printed and packing continues.
 

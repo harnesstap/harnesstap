@@ -164,7 +164,7 @@ export async function runConstraintRecovery(
         if (syncResult.unresolvedPins.length > 0) {
           const refs = syncResult.unresolvedPins.join(", ");
           throw new Error(
-            `Could not sync ${refs} from marketplace — no local install with a resolvable version was found. ` +
+            `Could not sync ${refs} from marketplace: no local install with a resolvable version was found. ` +
               `Install or update the plugin in Claude Code, then retry.`,
           );
         }

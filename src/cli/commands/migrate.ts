@@ -251,7 +251,7 @@ export function registerMigrateCommands(root: Command): void {
     .option("--resource <selector>", "Export one resource (type:name or type:name@namespace)")
     .option(
       "--environment <name>",
-      "Removed — environments are machine-local; use --workspace",
+      "Removed: environments are machine-local; use --workspace",
     )
     .option("--single-file", "Write a .ap.json envelope instead of a package directory")
     .option("-o, --file <path>", "Output path (overrides positional)")
@@ -272,7 +272,7 @@ export function registerMigrateCommands(root: Command): void {
     .option("--resource", "Force single-resource package import")
     .option(
       "--environment",
-      "Removed — environments are machine-local; use --workspace",
+      "Removed: environments are machine-local; use --workspace",
     )
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Import workspace, plugin, or resource from file")

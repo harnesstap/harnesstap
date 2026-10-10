@@ -7,10 +7,10 @@ This page mirrors the grouped CLI surface exposed by `harnesstap --help`. Use it
 Available on `harnesstap` / `ht`:
 
 - `-V, --version` prints the HarnessTap CLI version (`--harnesstap-version` is a hidden alias)
-- `-v, --verbose` — show verbose error output
-- `--no-color` — disable ANSI colors
-- `--no-interactive` — disable interactive prompts
-- `-h, --help` — show help
+- `-v, --verbose`: show verbose error output
+- `--no-color`: disable ANSI colors
+- `--no-interactive`: disable interactive prompts
+- `-h, --help`: show help
 
 ### Noun shorthand aliases
 
@@ -47,13 +47,13 @@ ht init --format json
 
 Key options:
 
-- `--harnesses <slugs>` — comma-separated registered harness slugs
-- `--main <slug>` / `--aliases <slugs>` — deprecated; prepended/appended to the registered set
-- `--no-default-profile` — skip seeding the `global default` profile plugin and `active-profile.json` pointer
-- `--interactive` — prompt for harness selection instead of relying on explicit flags
-- `--format <mode>` — `human` or `json`
+- `--harnesses <slugs>`: comma-separated registered harness slugs
+- `--main <slug>` / `--aliases <slugs>`: deprecated; prepended/appended to the registered set
+- `--no-default-profile`: skip seeding the `global default` profile plugin and `active-profile.json` pointer
+- `--interactive`: prompt for harness selection instead of relying on explicit flags
+- `--format <mode>`: `human` or `json`
 
-`init` seeds a local `global default` profile plugin (tagged `profile`) from library resources imported from home **only when no profile plugins exist yet**. Re-running init or starting Desktop does not recreate `global default` after a rename or when other profiles are present. It writes `active-profile.json` when that profile is created or the pointer is unset (unless `--no-default-profile`), and prints the tracked directory list (home as `~`). Global apply does **not** run automatically — run `ht profile use "global default"` to materialize home harness files.
+`init` seeds a local `global default` profile plugin (tagged `profile`) from library resources imported from home **only when no profile plugins exist yet**. Re-running init or starting Desktop does not recreate `global default` after a rename or when other profiles are present. It writes `active-profile.json` when that profile is created or the pointer is unset (unless `--no-default-profile`), and prints the tracked directory list (home as `~`). Global apply does **not** run automatically: run `ht profile use "global default"` to materialize home harness files.
 
 ### init completion
 
@@ -110,38 +110,38 @@ Git-style commands for working in a project directory. Each defaults to the curr
 
 ### Commands
 
-- `scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
-- `use` — switch to a project-configured profile from `apm.yml` (`ht use --profile <key>`, not a positional profile name)
-- `mirror [path]` — rematerialize other registered harnesses from `--from` (default first registered)
-- `status [path]` — show project status with drift summary
-- `history [path]` — list snapshots for a tracked project
-- `revert [snapshot-id]` — restore files from a previous snapshot
+- `scan [path]`: import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
+- `use`: switch to a project-configured profile from `apm.yml` (`ht use --profile <key>`, not a positional profile name)
+- `mirror [path]`: rematerialize other registered harnesses from `--from` (default first registered)
+- `status [path]`: show project status with drift summary
+- `history [path]`: list snapshots for a tracked project
+- `revert [snapshot-id]`: restore files from a previous snapshot
 
 Apply plugins with top-level `apply` (not under this group). Onboard from repo-root `apm.yml` with top-level `install` (the same loop as `apply` with no plugin selector). Preview resolved apply targets with `targets`; `compile` is the same apply-from-manifest loop under a named entry.
 
 ### Important options
 
-- `scan --harness <slug>` — scan only one harness
-- `scan --dry-run` — preview imports without writing to the DB
-- `scan --overwrite` — replace library rows when scan content differs
-- `scan --skip-existing` — keep existing rows when scan content differs
-- `scan --namespace <name>` — namespace for imported project resources (default: `project`; home scan stays empty / global)
-- `scan --global` — install imported plugin sources into global harness locations
-- `scan --harness <slugs>` — harness targets for `--global` plugin installs
-- `use --profile <key>` — profile key from `apm.yml` (required unless `--list`)
-- `use --list` — list profiles from project config without applying
-- `use --dry-run` — preview global apply without writing
-- `use --force` — apply even when the profile is already active and in sync
-- `use --no-pull` — fail when composition refs are missing locally
+- `scan --harness <slug>`: scan only one harness
+- `scan --dry-run`: preview imports without writing to the DB
+- `scan --overwrite`: replace library rows when scan content differs
+- `scan --skip-existing`: keep existing rows when scan content differs
+- `scan --namespace <name>`: namespace for imported project resources (default: `project`; home scan stays empty / global)
+- `scan --global`: install imported plugin sources into global harness locations
+- `scan --harness <slugs>`: harness targets for `--global` plugin installs
+- `use --profile <key>`: profile key from `apm.yml` (required unless `--list`)
+- `use --list`: list profiles from project config without applying
+- `use --dry-run`: preview global apply without writing
+- `use --force`: apply even when the profile is already active and in sync
+- `use --no-pull`: fail when composition refs are missing locally
 - `use --harness <slugs>` / `--on-conflict <replace|skip|prompt|cancel>` / `--account <name>` / `--base-url <url>` / `--format json`
-- `mirror --dry-run` — preview rematerialize writes
-- `mirror --from <slug>` — on-disk harness to copy from (`--force-shift-reference` is a deprecated alias)
-- `mirror --reference <strategy>` — reference source: disk, plugin, agents, auto (`main` is a deprecated alias of disk)
+- `mirror --dry-run`: preview rematerialize writes
+- `mirror --from <slug>`: on-disk harness to copy from (`--force-shift-reference` is a deprecated alias)
+- `mirror --reference <strategy>`: reference source: disk, plugin, agents, auto (`main` is a deprecated alias of disk)
 - `mirror --format json`
-- `status --check` — exit `1` when drift exists since the last snapshot, or when `apm.lock.yaml` disagrees with the applied manifest (CI)
-- `status --format json` — includes a `drift` object when git-backed
+- `status --check`: exit `1` when drift exists since the last snapshot, or when `apm.lock.yaml` disagrees with the applied manifest (CI)
+- `status --format json`: includes a `drift` object when git-backed
 - `history --format json`
-- `history --show-id` — show full snapshot IDs in human tables
+- `history --show-id`: show full snapshot IDs in human tables
 
 ### Preconditions and side effects
 
@@ -152,7 +152,7 @@ Apply plugins with top-level `apply` (not under this group). Onboard from repo-r
 
 ## install
 
-Project onboarding from repo-root `apm.yml`. Same loop as `apply` with no plugin selector — not a second resolver and not Microsoft's `apm` CLI.
+Project onboarding from repo-root `apm.yml`. Same loop as `apply` with no plugin selector: not a second resolver and not Microsoft's `apm` CLI.
 
 ```bash
 ht install
@@ -186,7 +186,7 @@ ht mcp install io.github.github/github-mcp-server --target cursor
 
 ## lock export
 
-Serialize `apm.lock.yaml` into a CycloneDX 1.5 (default) or SPDX 2.3 SBOM inventory. Reads the lockfile only — no re-resolve, no re-hash, no network. Not a signed attestation and not SLSA. See the [Use ramp: export a lockfile SBOM](use/lock-export.md).
+Serialize `apm.lock.yaml` into a CycloneDX 1.5 (default) or SPDX 2.3 SBOM inventory. Reads the lockfile only: no re-resolve, no re-hash, no network. Not a signed attestation and not SLSA. See the [Use ramp: export a lockfile SBOM](use/lock-export.md).
 
 ```bash
 ht lock export
@@ -197,11 +197,11 @@ ht lock export --project .
 
 Key options:
 
-- `-f, --format <format>` — `cyclonedx` (default) or `spdx`
-- `-o, --output <file>` — write a file instead of stdout
-- `--project <path>` — project directory (default `.`)
-- `-g, --global` — read `~/.harnesstap/apm.lock.yaml` when that file already exists
-- `--timestamp <ts>` — pin timezone-aware ISO 8601 for reproducible output (else `SOURCE_DATE_EPOCH`, then lockfile `generated_at`)
+- `-f, --format <format>`: `cyclonedx` (default) or `spdx`
+- `-o, --output <file>`: write a file instead of stdout
+- `--project <path>`: project directory (default `.`)
+- `-g, --global`: read `~/.harnesstap/apm.lock.yaml` when that file already exists
+- `--timestamp <ts>`: pin timezone-aware ISO 8601 for reproducible output (else `SOURCE_DATE_EPOCH`, then lockfile `generated_at`)
 
 Declared licenses come from lock `declared_license` (the dependency manifest `license:` recorded at apply/install). Undeclared licenses are omitted in CycloneDX and written as `NOASSERTION` in SPDX.
 
@@ -211,7 +211,7 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 
 - Default scope is the **project** (cwd / `--project`).
 - Pass `--global` to materialize into machine home paths (profile plugins also update the active profile pointer when applicable).
-- First human line reports destination (`→ project …` or `→ machine home …`).
+- First human line reports destination (`→ project ...` or `→ machine home ...`).
 - Flags include `--dry-run`, `--explain`, `--update`, `--target`, `--all`, `--harness`, `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`, and `--force` (override critical hidden-Unicode findings).
 - Selectors may be local plugin names, catalog identities, a packed bundle directory, a `.zip` produced by `ht pack`, or a `.ap.json` envelope. Packed bundles with `pack.bundle_files` are rehashed and fail closed on tampering.
 - With no selector, apply is the same loop as `ht install`: it reads `apm.yml`. Git entries in `dependencies.apm` resolve to an exact commit, fetch that SHA, and record `repo_url` / `resolved_commit` (plus `path` when set) in `apm.lock.yaml`. After each fetched git / catalog / path APM package, apply walks that package’s `dependencies.apm` and pins those too. Cycles, missing packages, and hash mismatches fail closed; the root manifest wins on name collisions. A later apply without `--update` replays the lock. See [Apply git dependencies](use/apply-git-deps.md) and the [Use ramp: install a project](use/install.md).
@@ -219,7 +219,7 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 - Before writing, apply scans generated files for hidden Unicode. Critical findings block apply unless `--force` is passed; warnings are printed and apply continues. When `apm.lock.yaml` already has `local_deployed_file_hashes` and `--update` is not set, apply rehashes the generated tree and fails closed on mismatch, extra, or missing files.
 - When `executables:` is opted in (project block or non-empty policy `executables:`), unapproved dependency hooks / bin / self-defined MCP are parked. Apply still succeeds and prints `ht approve <ref>`. The lock records `exec_status`.
 
-`ht layer …` is a hidden deprecated alias for `ht plugin …` for one release; prefer `ht plugin` and top-level `ht apply`.
+`ht layer ...` is a hidden deprecated alias for `ht plugin ...` for one release; prefer `ht plugin` and top-level `ht apply`.
 
 ## compile
 
@@ -258,11 +258,11 @@ ht pack --dry-run --verbose
 
 Key options:
 
-- `-o, --output <dir>` — output directory (default `build`)
-- `--archive` — write a `.zip` instead of a directory
-- `--dry-run` — print the file list without writing
-- `--verbose` — list every packed file and remapping
-- `--project <path>` — project directory (default `.`)
+- `-o, --output <dir>`: output directory (default `build`)
+- `--archive`: write a `.zip` instead of a directory
+- `--dry-run`: print the file list without writing
+- `--verbose`: list every packed file and remapping
+- `--project <path>`: project directory (default `.`)
 - `--format json`
 
 Consumers install the artifact with `ht apply <dir-or-zip>`. Bundles are target-agnostic. There is no `--format apm` flag.
@@ -281,13 +281,13 @@ ht audit --strip --dry-run
 
 Key options:
 
-- `--file <path>` — scan one file
-- `--ci` — fail on critical Unicode, lockfile hash mismatch / extra / missing, blocking policy, or `required-executable-untrusted`
-- `--policy <path>` — policy file (default `apm-policy.yml`)
-- `--require-policy` — with `--ci`, fail if no policy file is present
-- `--strip` — remove critical and warning hidden characters (preserves emoji)
-- `--dry-run` — preview `--strip`
-- `--project <path>` — project directory (default `.`)
+- `--file <path>`: scan one file
+- `--ci`: fail on critical Unicode, lockfile hash mismatch / extra / missing, blocking policy, or `required-executable-untrusted`
+- `--policy <path>`: policy file (default `apm-policy.yml`)
+- `--require-policy`: with `--ci`, fail if no policy file is present
+- `--strip`: remove critical and warning hidden characters (preserves emoji)
+- `--dry-run`: preview `--strip`
+- `--project <path>`: project directory (default `.`)
 - `--format json`
 
 `--ci` cannot be combined with `--strip`, `--file`, or `--dry-run`. `--dry-run` requires `--strip`. `--require-policy` requires `--ci`. Required-but-untrusted executables fail `--ci` with `required-executable-untrusted`.
@@ -334,125 +334,125 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 ### Commands
 
 - `plugin create <name>`
-- `plugin list` — local plugins plus streamed remote catalog plugins (default); use `--local-only` for local plugins only
+- `plugin list`: local plugins plus streamed remote catalog plugins (default); use `--local-only` for local plugins only
 - `plugin show <name>`
-- `plugin editor [name]` — open a plugin definition file in your system editor
-- `plugin search [query]` — search marketplace catalogs for plugins (name, tags, plugin.json, nested skills/commands)
-- `plugin add <ref>` — import a GitHub `plugin.json` package into the library (`https://github.com/owner/repo`, `owner/repo`, or `gh:owner/repo`)
-- `plugin add <ref> --to <plugin>` — add a dependency to a plugin (`ref`: local name, `org/catalog/name`, `name@marketplace`, or git URL)
-- `plugin edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
+- `plugin editor [name]`: open a plugin definition file in your system editor
+- `plugin search [query]`: search marketplace catalogs for plugins (name, tags, plugin.json, nested skills/commands)
+- `plugin add <ref>`: import a GitHub `plugin.json` package into the library (`https://github.com/owner/repo`, `owner/repo`, or `gh:owner/repo`)
+- `plugin add <ref> --to <plugin>`: add a dependency to a plugin (`ref`: local name, `org/catalog/name`, `name@marketplace`, or git URL)
+- `plugin edit [name]`: interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
 - `plugin delete [name]`
 - Prefer top-level `apply [plugin...]` (see above). The old `plugin apply` / `l apply` spelling was removed when apply moved to the root.
-- `plugin cut <plugin> --version <semver>` — cut a new local version from the working head
-- `plugin versions <plugin>` — list local versions (head + frozen)
-- `plugin rollback <plugin> --to <semver>` — copy a frozen version onto the working head
-- `plugin fork <plugin>` — copy an upstream or catalog plugin into an editable authored plugin (default name `<plugin>-fork`; local authored plugins cannot be forked)
-- `plugin pull <selector>` — download a remote plugin bundle and import it
-- `plugin catalog list` — show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
-- `plugin catalog` — interactive publish-binding wizard (plugin picker → catalog checkboxes)
-- `plugin catalog bindings [plugin]` — show effective publish targets (non-TTY) or edit bindings (`--add`, `--remove`, `--clear`; `--add` replaces the full allow list)
-- `plugin catalog register org/catalog` — register a publish destination
-- `plugin catalog unregister org/catalog` — remove a publish destination from the registry
-- `plugin catalog registered` — list registered publish catalogs
-- `plugin catalog connect org <slug>` — opt into another org's public libraries (saves the org even when it currently has no public plugins; warns, exit 0)
+- `plugin cut <plugin> --version <semver>`: cut a new local version from the working head
+- `plugin versions <plugin>`: list local versions (head + frozen)
+- `plugin rollback <plugin> --to <semver>`: copy a frozen version onto the working head
+- `plugin fork <plugin>`: copy an upstream or catalog plugin into an editable authored plugin (default name `<plugin>-fork`; local authored plugins cannot be forked)
+- `plugin pull <selector>`: download a remote plugin bundle and import it
+- `plugin catalog list`: show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
+- `plugin catalog`: interactive publish-binding wizard (plugin picker → catalog checkboxes)
+- `plugin catalog bindings [plugin]`: show effective publish targets (non-TTY) or edit bindings (`--add`, `--remove`, `--clear`; `--add` replaces the full allow list)
+- `plugin catalog register org/catalog`: register a publish destination
+- `plugin catalog unregister org/catalog`: remove a publish destination from the registry
+- `plugin catalog registered`: list registered publish catalogs
+- `plugin catalog connect org <slug>`: opt into another org's public libraries (saves the org even when it currently has no public plugins; warns, exit 0)
 - `plugin catalog disconnect org <slug>`
-- `plugin catalog connect plugin <org>/<slug>` or `<org>/<catalog>/<slug>` — opt into a single public library
+- `plugin catalog connect plugin <org>/<slug>` or `<org>/<catalog>/<slug>`: opt into a single public library
 - `plugin catalog disconnect plugin <org>/<slug>` or `<org>/<catalog>/<slug>`
-- `plugin publish <plugin>` — export bundle and upload to all effective publish targets (registered catalogs, or per-plugin allow list)
-- `plugin publish plan <plugin>` — dry-run: list effective targets and planned versions
+- `plugin publish <plugin>`: export bundle and upload to all effective publish targets (registered catalogs, or per-plugin allow list)
+- `plugin publish plan <plugin>`: dry-run: list effective targets and planned versions
 - `plugin diff <left> <right>`
-- `plugin doctor [name]` — validate a plugin without writing to disk
-- `plugin check [name]` — compare library working heads to marketplace, git, and catalog origins
-- `plugin update [name]` — update a working head from origin (`--all` for every outdated syncable head)
-- `plugin why <target>` — explain why a version was selected or which plugin won a resource (`skill:name`, plugin name)
+- `plugin doctor [name]`: validate a plugin without writing to disk
+- `plugin check [name]`: compare library working heads to marketplace, git, and catalog origins
+- `plugin update [name]`: update a working head from origin (`--all` for every outdated syncable head)
+- `plugin why <target>`: explain why a version was selected or which plugin won a resource (`skill:name`, plugin name)
 - `plugin from-project [name] --project <path>`
 
 ### Important options
 
-- `plugin create -d, --description <text>` — plugin description
-- `plugin create --tags <tags>` — comma-separated tags
-- `plugin create --version <semver>` — plugin version (default `1.0.0`)
-- `plugin create --from <source>` — import a skill package (`owner/repo`, git URL, or local path) and attach selected skills
-- `plugin create --skill <names>` — comma-separated skills to attach when using `--from`
-- `plugin create --all` — attach all discovered skills when using `--from`
-- `plugin create --exclude-category <names>` — exclude skill categories (repeatable or comma-separated)
+- `plugin create -d, --description <text>`: plugin description
+- `plugin create --tags <tags>`: comma-separated tags
+- `plugin create --version <semver>`: plugin version (default `1.0.0`)
+- `plugin create --from <source>`: import a skill package (`owner/repo`, git URL, or local path) and attach selected skills
+- `plugin create --skill <names>`: comma-separated skills to attach when using `--from`
+- `plugin create --all`: attach all discovered skills when using `--from`
+- `plugin create --exclude-category <names>`: exclude skill categories (repeatable or comma-separated)
 - `plugin create --on-conflict <policy>` - when the plugin exists: `replace`, `skip`, `prompt` or `cancel` (default `cancel`). `merge` is plugin import only. Aliases for one release: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
-- `plugin create --install` — opt-in hub install; requires `--global` or `--project`
-- `plugin create --dry-run` — preview configuration without writing
+- `plugin create --install`: opt-in hub install; requires `--global` or `--project`
+- `plugin create --dry-run`: preview configuration without writing
 - `plugin list --format json`
 - `plugin list --show-id`
-- `plugin list -s, --search <query>` — filter local and remote plugins by name, description, or tags
-- `plugin list --local-only` — list only local plugins
-- `plugin list --remote-only` — skip local section; remote-only JSON emits a top-level array
-- `plugin list --tag <tag>` — filter remote catalog plugins by tag
-- `plugin list --account <name>` / `--base-url <url>` — cloud account and base URL for remote listing
-- `plugin list --no-interactive` — disable TTY browse wizard (streaming print-only)
+- `plugin list -s, --search <query>`: filter local and remote plugins by name, description, or tags
+- `plugin list --local-only`: list only local plugins
+- `plugin list --remote-only`: skip local section; remote-only JSON emits a top-level array
+- `plugin list --tag <tag>`: filter remote catalog plugins by tag
+- `plugin list --account <name>` / `--base-url <url>`: cloud account and base URL for remote listing
+- `plugin list --no-interactive`: disable TTY browse wizard (streaming print-only)
 
 See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/search shortcuts.
 
 - `plugin show --format json`
 - `plugin editor --format json`
-- `plugin search --refresh` — refresh marketplace catalogs before searching
-- `plugin search --plugin <name>` — attach the selected plugin pin to this plugin (interactive browse picker on TTY)
+- `plugin search --refresh`: refresh marketplace catalogs before searching
+- `plugin search --plugin <name>`: attach the selected plugin pin to this plugin (interactive browse picker on TTY)
 - `plugin search --format json` / `--no-interactive`
-- `plugin add --to <plugin>` — required when `ref` is not a GitHub plugin source (deprecated `--layer` alias)
+- `plugin add --to <plugin>`: required when `ref` is not a GitHub plugin source (deprecated `--layer` alias)
 - `plugin add --format json`
-- `plugin edit --type <type>` — restrict tables to one attachment type
-- `plugin edit --search <query>` — pre-fill the interactive search filter
+- `plugin edit --type <type>`: restrict tables to one attachment type
+- `plugin edit --search <query>`: pre-fill the interactive search filter
 - `plugin edit --show-id`
-- `plugin edit --all` — show every resource per type (default caps at 10)
-- `plugin edit --dry-run` — preview membership changes without writing
-- `plugin edit --format json --no-interactive` — read-only membership snapshot
-- `plugin edit --add <selector>` — add attachment (repeatable; use `--type` when selector omits prefix). Plugin dependencies use `plugin:ref@source` (marketplace, local path, git URL, or `org/catalog/name`); legacy `plugin_pin:` / `plugin:` still resolve with a notice
-- `plugin edit --remove <selector>` — remove attachment (repeatable)
-- `plugin edit --apply <file.json>` — apply membership from JSON spec
-- `plugin edit --version <constraint>` — plugin dependencies only (scripting adds)
-- `plugin edit --sync` — sync an upstream plugin immediately after add (default: lazy)
-- `plugin edit --embed` — mark plugin dependency as embed-on-export when adding
-- `plugin edit --environment <name>` — bind a default environment to the configured plugin that `apply` resolves
-- `plugin edit --clear-environment` — clear the configured plugin default environment
-- `apply --project <path>` — target project directory (default `.`)
-- `apply --target <slugs>` / `--all` / `--harness <slugs>` — APM target slugs or HarnessTap harness slugs (same resolution slot)
+- `plugin edit --all`: show every resource per type (default caps at 10)
+- `plugin edit --dry-run`: preview membership changes without writing
+- `plugin edit --format json --no-interactive`: read-only membership snapshot
+- `plugin edit --add <selector>`: add attachment (repeatable; use `--type` when selector omits prefix). Plugin dependencies use `plugin:ref@source` (marketplace, local path, git URL, or `org/catalog/name`); legacy `plugin_pin:` / `plugin:` still resolve with a notice
+- `plugin edit --remove <selector>`: remove attachment (repeatable)
+- `plugin edit --apply <file.json>`: apply membership from JSON spec
+- `plugin edit --version <constraint>`: plugin dependencies only (scripting adds)
+- `plugin edit --sync`: sync an upstream plugin immediately after add (default: lazy)
+- `plugin edit --embed`: mark plugin dependency as embed-on-export when adding
+- `plugin edit --environment <name>`: bind a default environment to the configured plugin that `apply` resolves
+- `plugin edit --clear-environment`: clear the configured plugin default environment
+- `apply --project <path>`: target project directory (default `.`)
+- `apply --target <slugs>` / `--all` / `--harness <slugs>`: APM target slugs or HarnessTap harness slugs (same resolution slot)
 - `apply --on-conflict <replace|skip|prompt|cancel>` - what to do when it already exists. Non-interactive apply still falls back to `replace` today; DS-6 default is `cancel` (W2-12). Aliases: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
-- `apply --dry-run` — show planned file writes only
-- `apply --explain` — print the resolution trail (selected versions and every resource decision)
-- `apply --update` — ignore `apm.lock.yaml` and re-resolve the dependency graph (including git `dependencies.apm` refs)
+- `apply --dry-run`: show planned file writes only
+- `apply --explain`: print the resolution trail (selected versions and every resource decision)
+- `apply --update`: ignore `apm.lock.yaml` and re-resolve the dependency graph (including git `dependencies.apm` refs)
 - `apply --strict-plugin-versions` / `--ignore-plugin-versions` / `--sync-plugins`
-- `plugin why --project <path>` — project with the lockfile to inspect (default `.`)
-- `plugin why --root <plugin>` — resolve against this root instead of the lockfile root
+- `plugin why --project <path>`: project with the lockfile to inspect (default `.`)
+- `plugin why --root <plugin>`: resolve against this root instead of the lockfile root
 - `plugin why --format json`
-- `plugin cut --version <semver>` — required new version (must differ from the current head)
+- `plugin cut --version <semver>`: required new version (must differ from the current head)
 - `plugin cut --format json`
 - `plugin versions --format json`
-- `plugin rollback --to <semver>` — frozen version to copy onto the working head
-- `plugin rollback --yes` — skip confirm (required when non-interactive)
-- `plugin fork --as <name>` — name for the authored fork (default `<plugin>-fork`)
+- `plugin rollback --to <semver>`: frozen version to copy onto the working head
+- `plugin rollback --yes`: skip confirm (required when non-interactive)
+- `plugin fork --as <name>`: name for the authored fork (default `<plugin>-fork`)
 - `plugin fork --format json`
 - `plugin diff --format json`
-- `plugin doctor --check <name>` — run one check (repeatable)
-- `plugin doctor --list-checks` — list available checks
-- `plugin doctor --format json` — exits `1` when the plugin is invalid
-- `plugin check --refresh` — force-fetch origins (otherwise check may use the marketplace refresh cache)
-- `plugin check --format json` — same rows as the human table; exits `1` when any row is `error`
-- `plugin update --all` — update every outdated syncable working head
-- `plugin update --force` — reapply even when fingerprints match
-- `plugin update --yes` — skip `--all` confirmation (required off-TTY)
-- `plugin update --format json` — exits `1` when any row is `failed`
+- `plugin doctor --check <name>`: run one check (repeatable)
+- `plugin doctor --list-checks`: list available checks
+- `plugin doctor --format json`: exits `1` when the plugin is invalid
+- `plugin check --refresh`: force-fetch origins (otherwise check may use the marketplace refresh cache)
+- `plugin check --format json`: same rows as the human table; exits `1` when any row is `error`
+- `plugin update --all`: update every outdated syncable working head
+- `plugin update --force`: reapply even when fingerprints match
+- `plugin update --yes`: skip `--all` confirmation (required off-TTY)
+- `plugin update --format json`: exits `1` when any row is `failed`
 - `plugin from-project -d, --description <text>`
 - `plugin from-project --harness <slug>`
 - `plugin pull --as <name>`
 - `plugin pull --org <slug>`
-- `plugin pull --catalog <slug>` — catalog slug when selector omits catalog (default `default`)
+- `plugin pull --catalog <slug>`: catalog slug when selector omits catalog (default `default`)
 - `plugin pull --version <constraint>`
 - `plugin pull --account <name>`
 - `plugin pull --base-url <url>`
-- `plugin publish org/catalog` — one-off publish to a single catalog (does not change bindings)
-- `plugin publish --org <slug> --catalog <slug>` — one-off override (same as positional `org/catalog`)
+- `plugin publish org/catalog`: one-off publish to a single catalog (does not change bindings)
+- `plugin publish --org <slug> --catalog <slug>`: one-off override (same as positional `org/catalog`)
 - `plugin publish --account <name>`
-- `plugin catalog bindings --add org/catalog` — replace per-plugin allow list (repeatable; auto-registers missing catalogs)
-- `plugin catalog bindings --remove org/catalog` — remove one target from the allow list
-- `plugin catalog bindings --clear` — revert plugin to all registered catalogs
-- `plugin catalog register --account <name>` — optional account for a registered catalog
+- `plugin catalog bindings --add org/catalog`: replace per-plugin allow list (repeatable; auto-registers missing catalogs)
+- `plugin catalog bindings --remove org/catalog`: remove one target from the allow list
+- `plugin catalog bindings --clear`: revert plugin to all registered catalogs
+- `plugin catalog register --account <name>`: optional account for a registered catalog
 
 `plugin pull` and `plugin list` remote discovery query catalog scope **plus** registered publish catalogs (`plugin catalog register`). Use `plugin catalog connect` to add other public orgs or libraries explicitly. Register publish destinations with `plugin catalog register` before `plugin publish` when no bindings exist. `plugin pull` fails on local name conflict instead of overwriting. `apply` resolves bare catalog names at apply time; use `plugin pull` to install plugins for offline reuse. Apply resolves nested plugin dependencies as a graph (nearest-to-root resource precedence; equal-depth set-like types use declaration order with a warning).
 
@@ -472,10 +472,10 @@ Manage HarnessTap Cloud authentication and cloud account state.
 - `auth login --base-url <url>`
 - `auth status --account <name> --format json`
 - `auth orgs --switch <slug>`
-- `auth orgs --format json` — when not logged in, prints `[]` on stdout and warns on stderr (human mode warns on stdout)
+- `auth orgs --format json`: when not logged in, prints `[]` on stdout and warns on stderr (human mode warns on stdout)
 - `auth logout --account <name>`
 
-Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands. There is no `--profile` flag on `auth` — use `--account`.
+Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands. There is no `--profile` flag on `auth`: use `--account`.
 
 ## github
 
@@ -503,61 +503,61 @@ Root shorthand: when the first non-option argument is not a known command and ma
 
 ### Commands
 
-- `profile list` / `profile ls` — list local profile plugins, then stream remote catalog plugins with `tag=profile`; marks active profile
-- `profile show <name>` — same detail view as `plugin show`, plus active profile marker
-- `profile status` — active profile and whether global harness files are in sync
-- `profile use <name>` — merge profile stack, apply globally, set active pointer
-- `profile create <name>` — create profile plugin, promote an existing plugin, or import from `--from`
-- `profile delete <name>` — demote a profile plugin and optionally delete the underlying plugin
-- `profile pull <selector>` — install from catalog (`plugin pull` alias; warns if not profile-tagged)
-- `profile publish <name>` — publish with profile validation warnings (`plugin publish` alias)
-- `profile preview [name]` — apply preview (home/project/both) without writing. Inherited host-plugin material already on disk is omitted from stack/file deltas; host-native plugin MCP is treated as present.
-- `profile switch <name>` — switch active profile (restores the previous profile on failure; see `--help` for conflict flags)
-- `profile stash` — stash untracked on-disk resources for the active profile
-- `profile stash list` / `profile stash pop` / `profile stash apply` — list, restore-and-remove, or restore stashed profiles
-- Live files: `profile add-resource`, `add-all-resources`, `commit-resource`, `remove-resource`, `restore-file`, `file-diff` — adopt, snapshot, detach, or diff on-disk resources against the profile library (`--scope home|project`, `--project` when scope is project)
+- `profile list` / `profile ls`: list local profile plugins, then stream remote catalog plugins with `tag=profile`; marks active profile
+- `profile show <name>`: same detail view as `plugin show`, plus active profile marker
+- `profile status`: active profile and whether global harness files are in sync
+- `profile use <name>`: merge profile stack, apply globally, set active pointer
+- `profile create <name>`: create profile plugin, promote an existing plugin, or import from `--from`
+- `profile delete <name>`: demote a profile plugin and optionally delete the underlying plugin
+- `profile pull <selector>`: install from catalog (`plugin pull` alias; warns if not profile-tagged)
+- `profile publish <name>`: publish with profile validation warnings (`plugin publish` alias)
+- `profile preview [name]`: apply preview (home/project/both) without writing. Inherited host-plugin material already on disk is omitted from stack/file deltas; host-native plugin MCP is treated as present.
+- `profile switch <name>`: switch active profile (restores the previous profile on failure; see `--help` for conflict flags)
+- `profile stash`: stash untracked on-disk resources for the active profile
+- `profile stash list` / `profile stash pop` / `profile stash apply`: list, restore-and-remove, or restore stashed profiles
+- Live files: `profile add-resource`, `add-all-resources`, `commit-resource`, `remove-resource`, `restore-file`, `file-diff`: adopt, snapshot, detach, or diff on-disk resources against the profile library (`--scope home|project`, `--project` when scope is project)
 
 ### Important options
 
 - `profile list --format json`
-- `profile list -s, --search <query>` — filter local and remote profile plugins
-- `profile list --local-only` — list only local profile plugins
-- `profile list --remote-only` — skip local section
+- `profile list -s, --search <query>`: filter local and remote profile plugins
+- `profile list --local-only`: list only local profile plugins
+- `profile list --remote-only`: skip local section
 - `profile list --account <name>` / `--base-url <url>` / `--no-interactive`
 - `profile show --format json`
 - `profile show --show-id`
-- `profile status --check` — exit 1 when global state is out of sync
+- `profile status --check`: exit 1 when global state is out of sync
 - `profile status --harness <slugs>` / `--format json`
 - `profile create -d, --description <text>`
-- `profile create --from <source>` — same skill-package options as `plugin create --from`
-- `profile create --use` — apply globally and set active after create/promote
-- `profile create --use --dry-run` — preview global apply
-- `profile create -y, --yes` — skip the interactive enable prompt
-- `profile delete --plugin` — also delete the underlying plugin without prompting
-- `profile delete -y, --yes` — skip the interactive plugin delete prompt
-- `profile use --profile <key>` — profile key from `apm.yml` (delegates to project config when set)
-- `profile use --project <path>` — project directory for `apm.yml` discovery (default `.`)
-- `profile use --force` — apply even when the profile is already active and in sync
-- `profile use --dry-run` — preview global file writes
-- `profile use --harness <slugs>` — comma-separated harness slugs (default: global harness preference)
+- `profile create --from <source>`: same skill-package options as `plugin create --from`
+- `profile create --use`: apply globally and set active after create/promote
+- `profile create --use --dry-run`: preview global apply
+- `profile create -y, --yes`: skip the interactive enable prompt
+- `profile delete --plugin`: also delete the underlying plugin without prompting
+- `profile delete -y, --yes`: skip the interactive plugin delete prompt
+- `profile use --profile <key>`: profile key from `apm.yml` (delegates to project config when set)
+- `profile use --project <path>`: project directory for `apm.yml` discovery (default `.`)
+- `profile use --force`: apply even when the profile is already active and in sync
+- `profile use --dry-run`: preview global file writes
+- `profile use --harness <slugs>`: comma-separated harness slugs (default: global harness preference)
 - `profile use --on-conflict <replace|skip|prompt|cancel>`
-- `profile use --account <name>` — cloud account for auto-pull of missing published dependencies
+- `profile use --account <name>`: cloud account for auto-pull of missing published dependencies
 - `profile use --base-url <url>`
-- `profile use --no-pull` — fail when composition refs are missing locally
+- `profile use --no-pull`: fail when composition refs are missing locally
 - `profile use --format json`
-- `profile pull` — same flags as `plugin pull` (`--as`, `--org`, `--catalog`, `--version`, `--account`, `--base-url`)
+- `profile pull`: same flags as `plugin pull` (`--as`, `--org`, `--catalog`, `--version`, `--account`, `--base-url`)
 - `profile publish --org <slug>` / `--catalog <slug>` / `--account <name>` / `--format json`
-- `profile preview --scope <home|project|both>` — preview scope (default `home`)
+- `profile preview --scope <home|project|both>`: preview scope (default `home`)
 - `profile preview --project <path>` / `--harness <slugs>` / `--format json`
-- `profile switch` — same apply flags as `profile use` (`--dry-run`, `--harness`, `--on-conflict`, `--no-pull`, `--account`, `--base-url`, `--format json`)
-- `profile stash` — `--dry-run`, `--harness`, `--on-conflict`, `--format json`
-- `profile stash pop` / `profile stash apply` — same pull/apply flags as `profile use`
-- `profile add-resource <name> --selector <type:name> --scope <home|project>` — adopt one untracked on-disk resource
-- `profile add-all-resources <name> --scope <home|project>` — adopt every untracked material resource in the scope
-- `profile commit-resource <name> --path <path>` or `--selector <type:name>` — snapshot live disk into the profile library (skills as 1:1 files; MCP, settings, and hooks JSON as all resources in that file)
-- `profile remove-resource <name> --selector <type:name>` — detach a material resource from the profile stack
-- `profile restore-file <name> --path <path>` — overwrite the live managed file with the profile snapshot
-- `profile file-diff <name> --path <path>` — unified diff of live content vs after-apply snapshot
+- `profile switch`: same apply flags as `profile use` (`--dry-run`, `--harness`, `--on-conflict`, `--no-pull`, `--account`, `--base-url`, `--format json`)
+- `profile stash`: `--dry-run`, `--harness`, `--on-conflict`, `--format json`
+- `profile stash pop` / `profile stash apply`: same pull/apply flags as `profile use`
+- `profile add-resource <name> --selector <type:name> --scope <home|project>`: adopt one untracked on-disk resource
+- `profile add-all-resources <name> --scope <home|project>`: adopt every untracked material resource in the scope
+- `profile commit-resource <name> --path <path>` or `--selector <type:name>`: snapshot live disk into the profile library (skills as 1:1 files; MCP, settings, and hooks JSON as all resources in that file)
+- `profile remove-resource <name> --selector <type:name>`: detach a material resource from the profile stack
+- `profile restore-file <name> --path <path>`: overwrite the live managed file with the profile snapshot
+- `profile file-diff <name> --path <path>`: unified diff of live content vs after-apply snapshot
 
 `profile use` auto-pulls missing published `plugin` composition refs by default. If the profile plugin defines `default_environment_id`, the home active environment pointer is updated on switch.
 
@@ -568,10 +568,10 @@ Manage individual imported resources such as instructions, skills, rules, or age
 ### Commands
 
 - `resource list`
-- `resource show <selector>` — `name`, `type:name`, `type:name@namespace`, or ULID
-- `resource sync [selector]` — refresh `marketplace_link` definitions and sync plugin resources from install roots
+- `resource show <selector>`: `name`, `type:name`, `type:name@namespace`, or ULID
+- `resource sync [selector]`: refresh `marketplace_link` definitions and sync plugin resources from install roots
 - `resource delete [resource]`
-- `resource directories list|add|remove|rescan` — manage directories scanned into the resource library
+- `resource directories list|add|remove|rescan`: manage directories scanned into the resource library
 
 ### Important options
 
@@ -587,13 +587,13 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `resource sync --on-conflict <replace|skip|prompt|cancel>` - default `cancel`. Aliases for one release: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
 - `resource sync --force`
 - `resource sync --dry-run`
-- `resource sync --prune` — remove orphaned child resources after sync
+- `resource sync --prune`: remove orphaned child resources after sync
 - `resource directories list --format json`
-- `resource directories add <path>` — track a directory and import resources (skip existing)
-- `resource directories remove <path>` — stop tracking a directory (library resources stay)
-- `resource directories rescan` — re-scan home defaults and every tracked directory
+- `resource directories add <path>`: track a directory and import resources (skip existing)
+- `resource directories remove <path>`: stop tracking a directory (library resources stay)
+- `resource directories rescan`: re-scan home defaults and every tracked directory
 - `resource list` shows material resources plus `plugin` resources; `plugin` composition refs are hidden by default
-- `resource list --all` — show every resource per type (default caps at 10 per type)
+- `resource list --all`: show every resource per type (default caps at 10 per type)
 - `plugin edit` selectors accept `type:name@namespace` for compose-safe resolution
 - Host plugin pins are `plugin` resources; use `resource sync`, `plugin show`, `plugin doctor`, `plugin fork`, and `apply --strict-plugin-versions` for pin workflows
 
@@ -605,42 +605,42 @@ Environment values are the runtime *how* configuration that plugins satisfy thro
 
 ### Commands
 
-- `environment create <name>` — blank (default), from project (`--from-project`), or from configured plugin requirements (`--from-plugin`); interactive wizard on TTY when no mode flags are set
-- `environment edit [name]` — interactively edit values, or use scripting flags for non-interactive updates
+- `environment create <name>`: blank (default), from project (`--from-project`), or from configured plugin requirements (`--from-plugin`); interactive wizard on TTY when no mode flags are set
+- `environment edit [name]`: interactively edit values, or use scripting flags for non-interactive updates
 - `environment list`
-- `environment show <name>` — values, secret refs, reverse references; `--plugin` analyzes requirement gaps for a configured plugin
+- `environment show <name>`: values, secret refs, reverse references; `--plugin` analyzes requirement gaps for a configured plugin
 - `environment delete [name]`
-- `environment use <name>` — set the global active environment; `--local` applies only to this terminal session
-- `environment status` — show active environment and terminal env var drift
+- `environment use <name>`: set the global active environment; `--local` applies only to this terminal session
+- `environment status`: show active environment and terminal env var drift
 
 ### Important options
 
-- `environment create --blank` — create an empty environment (default when no mode flag is set)
-- `environment create --from-project <path>` — import scoped project values required by the plugin stack
-- `environment create --from-plugin <selector>` — seed from configured plugin `needs[]`, MCP env keys, and model metadata (repeatable or comma-separated)
-- `environment create --refresh` — update an existing environment (`--from-project` only)
-- `environment create --bind` — bind the new environment as the configured plugin default (`--from-plugin` only)
-- `environment create --plugins <selectors>` — configured plugin scope for `--from-project` (default: project's last-applied plugins)
-- `environment create --strict` — exit non-zero when required keys are missing
-- `environment create --include-permissions` — include scanned permission resources (`--from-project` only)
+- `environment create --blank`: create an empty environment (default when no mode flag is set)
+- `environment create --from-project <path>`: import scoped project values required by the plugin stack
+- `environment create --from-plugin <selector>`: seed from configured plugin `needs[]`, MCP env keys, and model metadata (repeatable or comma-separated)
+- `environment create --refresh`: update an existing environment (`--from-project` only)
+- `environment create --bind`: bind the new environment as the configured plugin default (`--from-plugin` only)
+- `environment create --plugins <selectors>`: configured plugin scope for `--from-project` (default: project's last-applied plugins)
+- `environment create --strict`: exit non-zero when required keys are missing
+- `environment create --include-permissions`: include scanned permission resources (`--from-project` only)
 - `environment create --description <text>`
-- `environment create --dry-run` — preview without persisting
+- `environment create --dry-run`: preview without persisting
 - `environment create --interactive` / `-y, --yes`
 - `environment create --format json`
-- `environment edit --var KEY=VALUE` / `--unset-var KEY` — scripting mode env var updates
+- `environment edit --var KEY=VALUE` / `--unset-var KEY`: scripting mode env var updates
 - `environment edit --model <name>` / `--model-provider <provider>` / `--unset-model`
 - `environment edit --permission action:pattern` / `--unset-permission <selector>`
 - `environment edit --secret KEY:provider:ref` / `--unset-secret KEY`
-- `environment edit --format json` — read-only edit snapshot (non-TTY)
+- `environment edit --format json`: read-only edit snapshot (non-TTY)
 - `environment edit --interactive` / `-y, --yes`
 - `environment list --format json`
-- `environment show --plugin <selector>` — compare environment values against a configured plugin's requirements
-- `environment show --format json` — includes `requirement_gaps` when `--plugin` is set
-- `environment delete --force` — delete even when referenced
+- `environment show --plugin <selector>`: compare environment values against a configured plugin's requirements
+- `environment show --format json`: includes `requirement_gaps` when `--plugin` is set
+- `environment delete --force`: delete even when referenced
 - `environment delete --interactive` / `-y, --yes`
-- `environment use --local` — session-scoped active environment without changing global pointer
-- `environment status --plugins <selectors>` — include configured plugin default environments in expected values
-- `environment status --check` — exit non-zero when terminal env vars drift from expected values
+- `environment use --local`: session-scoped active environment without changing global pointer
+- `environment status --plugins <selectors>`: include configured plugin default environments in expected values
+- `environment status --check`: exit non-zero when terminal env vars drift from expected values
 - `environment status --format json`
 
 ## harness (`h`)
@@ -658,17 +658,17 @@ Manage global harness preferences and git-backed project overrides.
 
 ### Important options
 
-- `harness list --supported` — only harnesses HarnessTap can serialize natively
+- `harness list --supported`: only harnesses HarnessTap can serialize natively
 - `harness list --format json`
 - `harness set --harnesses <slugs>`
-- `harness sync` — union registered harnesses (home) with last-write conflicts, including Claude/Cursor host plugin trees and `.agents` materialization for OpenCode-like harnesses; `--plugin-resources symlink|copy|clone`; `--project` for a repo; `--dry-run`
+- `harness sync`: union registered harnesses (home) with last-write conflicts, including Claude/Cursor host plugin trees and `.agents` materialization for OpenCode-like harnesses; `--plugin-resources symlink|copy|clone`; `--project` for a repo; `--dry-run`
 - `harness project set --project <path>`
 - `harness project set --materialization-strategy <symlink-preferred|copy>`
 - `harness project status --format json`
 
 ## migrate (`m`)
 
-Offline sharing for workspace archives, individual plugins, or single resources — without publishing to the cloud catalog.
+Offline sharing for workspace archives, individual plugins, or single resources: without publishing to the cloud catalog.
 
 Use `migrate` when:
 
@@ -680,24 +680,24 @@ For multiplayer distribution, use `plugin publish` / `plugin pull` via HarnessTa
 
 ### Commands
 
-- `migrate export [file]` — export workspace, plugin, or resource as an Agent Plugins package (or workspace archive); interactive when `[file]` omitted on a TTY
-- `migrate import [file]` — import a package directory, `.ap.json` envelope, or `.tar.gz` workspace archive (auto-detects scope)
-- `migrate resolve-order` — pin last-applied resource winners as overrides where current resolution would pick a different plugin
+- `migrate export [file]`: export workspace, plugin, or resource as an Agent Plugins package (or workspace archive); interactive when `[file]` omitted on a TTY
+- `migrate import [file]`: import a package directory, `.ap.json` envelope, or `.tar.gz` workspace archive (auto-detects scope)
+- `migrate resolve-order`: pin last-applied resource winners as overrides where current resolution would pick a different plugin
 
 ### Important options
 
-- `migrate export --workspace` — full workspace archive (`.tar.gz`)
-- `migrate export --plugin <name>` — Agent Plugins package directory (comma-separated for multi-plugin); accepts `name` (working head) or `name@version` (frozen snapshot). Refuses dirty working heads — cut first (`plugin cut`)
-- `migrate export --resource <selector>` — single-resource package (wraps the resource in a one-resource plugin)
-- `migrate export --single-file` — write a `.ap.json` envelope instead of a package directory
-- `migrate export -o, --file <path>` — output path (overrides positional)
-- `migrate export --include-plugins` / `--embed-plugins` — embed plugin trees (workspace and plugin scope)
-- `migrate import --workspace` / `--plugin` / `--resource` — force import scope
-- `migrate export --format json` / `migrate import --format json` — machine-readable summary (CLI output format, not transport)
-- `migrate resolve-order --dry-run` — report planned override writes without changing plugins
+- `migrate export --workspace`: full workspace archive (`.tar.gz`)
+- `migrate export --plugin <name>`: Agent Plugins package directory (comma-separated for multi-plugin); accepts `name` (working head) or `name@version` (frozen snapshot). Refuses dirty working heads: cut first (`plugin cut`)
+- `migrate export --resource <selector>`: single-resource package (wraps the resource in a one-resource plugin)
+- `migrate export --single-file`: write a `.ap.json` envelope instead of a package directory
+- `migrate export -o, --file <path>`: output path (overrides positional)
+- `migrate export --include-plugins` / `--embed-plugins`: embed plugin trees (workspace and plugin scope)
+- `migrate import --workspace` / `--plugin` / `--resource`: force import scope
+- `migrate export --format json` / `migrate import --format json`: machine-readable summary (CLI output format, not transport)
+- `migrate resolve-order --dry-run`: report planned override writes without changing plugins
 - `migrate resolve-order --format json`
 
-`--environment` is removed on both export and import — environments are machine-local secret references. Include them in a `--workspace` archive instead.
+`--environment` is removed on both export and import: environments are machine-local secret references. Include them in a `--workspace` archive instead.
 
 Workspace archives include Agent Plugins packages, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
 

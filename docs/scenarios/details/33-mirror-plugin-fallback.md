@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when `mirror` would fail because the project's **main harness**
-has no on-disk resource tree — common in plugin-only repos that ship
+has no on-disk resource tree: common in plugin-only repos that ship
 `.claude-plugin/plugin.json` and repo-root `skills/` but no `.claude/` directory.
 The `--reference` flag chooses which on-disk source drives alias harness output.
 
@@ -49,7 +49,7 @@ or harnesstap harness project set --main codex
 **Auto-merge (non-empty main):** repos like [obra/superpowers](https://github.com/obra/superpowers)
 ship `CLAUDE.md` plus repo-root `skills/` under `.claude-plugin/` with no
 `.claude/skills/` tree. `--reference auto` merges plugin skills into the mirror
-reference so alias harnesses receive the full skill set — not only when the main
+reference so alias harnesses receive the full skill set: not only when the main
 harness tree is completely empty.
 
 Pair with [Scenario 31](./31-dual-mode-plugin-import.md) to import plugin

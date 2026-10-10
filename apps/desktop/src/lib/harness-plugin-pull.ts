@@ -332,8 +332,8 @@ export function harnessPluginPullProgressCopy(
   total: number,
 ): string {
   if (total === 0) {
-    return "Pulling…";
+    return "Pulling...";
   }
   const shown = Math.min(completed + 1, total);
-  return `Pulling ${shown} of ${total}…`;
+  return `Pulling ${shown} of ${total}...`;
 }

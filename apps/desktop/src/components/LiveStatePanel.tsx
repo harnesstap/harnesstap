@@ -1856,7 +1856,7 @@ export function LiveStatePanel({
             {onBootstrap ? (
               <IconActionButton
                 busy={bootstrapBusy}
-                label={bootstrapBusy ? "Bootstrapping…" : "Bootstrap"}
+                label={bootstrapBusy ? "Bootstrapping..." : "Bootstrap"}
                 onClick={onBootstrap}
                 icon={<FolderCog size={ICON_SIZE} strokeWidth={2} aria-hidden />}
               />
@@ -1893,7 +1893,7 @@ export function LiveStatePanel({
               {onBootstrap ? (
                 <IconActionButton
                   busy={bootstrapBusy}
-                  label={bootstrapBusy ? "Bootstrapping…" : "Bootstrap"}
+                  label={bootstrapBusy ? "Bootstrapping..." : "Bootstrap"}
                   onClick={onBootstrap}
                   icon={<FolderCog size={ICON_SIZE} strokeWidth={2} aria-hidden />}
                 />
@@ -1945,7 +1945,7 @@ export function LiveStatePanel({
             <div className="contents-body">
               {applyPreviewLoading && !applyPreview ? (
                 <p className="muted">
-                  Comparing {selectedProfile} to live {formatView(view).toLowerCase()} state…
+                  Comparing {selectedProfile} to live {formatView(view).toLowerCase()} state...
                 </p>
               ) : applyPreview && targetPreviewQuietEmpty ? (
                 <TargetPreviewQuietEmpty />
@@ -2009,7 +2009,7 @@ export function LiveStatePanel({
                       </summary>
                       <p className="muted section-one-liner">{INSTALL_GAPS_SUBTITLE}</p>
                       {!hasFullHarnessSnapshot && !applyPreview.harnesses ? (
-                        <div className="muted">Checking live installs…</div>
+                        <div className="muted">Checking live installs...</div>
                       ) : (
                         installGapGroups.map((group) => (
                           <details

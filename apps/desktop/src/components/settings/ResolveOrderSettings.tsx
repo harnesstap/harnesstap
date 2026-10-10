@@ -171,7 +171,7 @@ export function ResolveOrderSettings({
           aria-busy={previewing}
         >
           {previewing ? <ButtonSpinner size={16} /> : <RefreshCw size={16} aria-hidden />}
-          {previewing ? "Checking…" : "Check again"}
+          {previewing ? "Checking..." : "Check again"}
         </button>
         {previewed && pendingOverrideCount > 0 ? (
           <button
@@ -185,7 +185,7 @@ export function ResolveOrderSettings({
             aria-busy={writing}
           >
             {writing ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
-            {writing ? "Writing…" : "Write overrides"}
+            {writing ? "Writing..." : "Write overrides"}
           </button>
         ) : null}
       </div>

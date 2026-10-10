@@ -216,7 +216,7 @@ export async function syncPluginPinsForApply(
     const metadata = (resource.metadata ?? {}) as PluginPinMetadata;
     const needsSync = options.syncAll || !metadata.resolved_version;
     if (!needsSync) {
-      // Already resolved — still ensure the upstream plugin exists so the
+      // Already resolved: still ensure the upstream plugin exists so the
       // graph can treat the install as an ordinary node without a re-sync.
       if (metadata.resolved_version) {
         const parsed = parseDependencyRef(pin.ref);

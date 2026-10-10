@@ -1,0 +1,5 @@
+kind: Changed
+body: Remove em dashes, en dashes, and Unicode ellipsis from CLI, Desktop, and docs copy, and fail CI when they come back.
+time: 2026-10-10T18:20:00Z
+custom:
+  Issue: ""

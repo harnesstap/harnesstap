@@ -62,7 +62,7 @@ describe("desktop field spelling correction", () => {
     expect(library).toContain("{...noSpellcheckProps}");
     expect(harnesses).toContain('placeholder="Filter resources"');
     expect(harnesses).toContain("{...noSpellcheckProps}");
-    expect(profiles).toContain('placeholder="Filter profiles…"');
+    expect(profiles).toContain('placeholder="Filter profiles..."');
     expect(profiles).toContain("{...noSpellcheckProps}");
   });
 

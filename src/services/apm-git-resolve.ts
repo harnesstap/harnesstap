@@ -156,7 +156,7 @@ export function assertSafeApmVirtualPath(path: string): void {
   }
   if (normalized.startsWith("/") || hasParentTraversalSegment(normalized)) {
     throw new ApmGitResolveError(
-      `Unsafe dependencies.apm path ${path} — apply aborted closed`,
+      `Unsafe dependencies.apm path ${path}: apply aborted closed`,
     );
   }
   assertContainedPath(".", normalized);
@@ -292,7 +292,7 @@ function resolveLiteralRef(run: RunCommand, cloneUrl: string, ref: string): stri
     ?? refs[0]?.sha;
   if (!sha) {
     throw new ApmGitResolveError(
-      `Could not resolve git ref ${ref} for ${cloneUrl} — apply aborted closed`,
+      `Could not resolve git ref ${ref} for ${cloneUrl}: apply aborted closed`,
     );
   }
   return sha;
@@ -308,7 +308,7 @@ function resolveHead(run: RunCommand, cloneUrl: string): string {
   const sha = parseLsRemote(result.stdout)[0]?.sha;
   if (!sha) {
     throw new ApmGitResolveError(
-      `Could not resolve HEAD for ${cloneUrl} — apply aborted closed`,
+      `Could not resolve HEAD for ${cloneUrl}: apply aborted closed`,
     );
   }
   return sha;
@@ -375,7 +375,7 @@ export function resolveApmGitDependency(
     const lockedCommit = locked.resolved_commit;
     if (!lockedCommit || !FULL_SHA.test(lockedCommit)) {
       throw new ApmGitResolveError(
-        `Lock entry for ${dependency.originRef} is missing a resolved commit — apply aborted closed`,
+        `Lock entry for ${dependency.originRef} is missing a resolved commit: apply aborted closed`,
       );
     }
     return {
@@ -400,7 +400,7 @@ export function resolveApmGitDependency(
     const selected = selectSemverTag(constraint, tagNames);
     if (!selected) {
       throw new ApmGitResolveError(
-        `No git tag satisfies ${constraint} for ${cloneUrl} — apply aborted closed`,
+        `No git tag satisfies ${constraint} for ${cloneUrl}: apply aborted closed`,
       );
     }
     const sha =
@@ -504,7 +504,7 @@ export function checkoutApmGitCommit(
   const sha = head.stdout.trim().toLowerCase();
   if (head.exitCode !== 0 || sha !== resolution.commit) {
     throw new ApmGitResolveError(
-      `Checkout HEAD ${sha || "(unknown)"} does not match resolved commit ${resolution.commit} — apply aborted closed`,
+      `Checkout HEAD ${sha || "(unknown)"} does not match resolved commit ${resolution.commit}: apply aborted closed`,
     );
   }
   return targetDir;

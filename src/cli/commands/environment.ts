@@ -525,7 +525,7 @@ function printEnvironmentCreateResult(
       ui.panel({
         title: ["ENVIRONMENT", `${action} ${opts.name}`],
         rows: [
-          ["Project", opts.fromProject ? resolve(opts.fromProject) : "—"],
+          ["Project", opts.fromProject ? resolve(opts.fromProject) : ": "],
           ["Harness", captureResult.harness],
           ["Configured plugins", `${captureResult.configured_plugin_ids.length}`],
           ["Persisted", captureResult.persisted ? "yes" : "no"],

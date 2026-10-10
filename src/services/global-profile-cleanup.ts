@@ -92,7 +92,7 @@ export function collectOrphanSkillFilesOnDisk(
  * Skill-package installs keep a canonical copy under `~/.agents/skills/{name}/`
  * and fan out to harness-specific skill dirs. Profile apply historically tracked
  * only the harness paths, so switching away left the shared hub active for
- * tools that still read it (Cursor, Codex, …). Map removed managed skill files
+ * tools that still read it (Cursor, Codex, ...). Map removed managed skill files
  * onto the hub path when the incoming profile does not keep that skill.
  */
 export function expandStaleSkillHubMirrors(

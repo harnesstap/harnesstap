@@ -1037,7 +1037,7 @@ export function ResourceDetailBody({
   );
 
   const fields: ReactNode = loading ? (
-    <p className="muted">Loading details…</p>
+    <p className="muted">Loading details...</p>
   ) : !detail && error ? (
     <div className="banner error" role="alert">
       <div>{error}</div>

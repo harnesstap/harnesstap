@@ -384,7 +384,7 @@ export function MarketplaceEditPanel({
             aria-busy={busy}
           >
             {busy ? <ButtonSpinner size={16} /> : mode === "add" ? <Plus size={16} aria-hidden /> : <Check size={16} aria-hidden />}
-            {busy ? (mode === "add" ? "Adding…" : "Saving…") : submitLabel}
+            {busy ? (mode === "add" ? "Adding..." : "Saving...") : submitLabel}
           </button>
         </>
       }
@@ -456,7 +456,7 @@ export function MarketplaceEditPanel({
                 data-testid="marketplace-type-status"
                 aria-labelledby="marketplace-type-label"
               >
-                Detecting type…
+                Detecting type...
               </p>
             ) : typeDetection?.status === "error" ? (
               <div

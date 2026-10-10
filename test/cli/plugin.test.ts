@@ -6,6 +6,7 @@ import { runCli } from "../helpers/cli.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { importBuiltinFixtures } from "../helpers/builtin-fixtures.ts";
+import { shortenId } from "../../src/ui/format.ts";
 
 describe("CLI plugin", () => {
   it("creates a plugin with an explicit version via --version", async () => {
@@ -55,7 +56,7 @@ describe("CLI plugin", () => {
       await runCli(["plugin", "create", "team-stack", "--version", "1.0.0"]);
       const plugin = pluginModel.getPlugin("team-stack");
       if (!plugin) throw new Error("Expected plugin to exist");
-      const shortId = `${plugin.id.slice(0, 6)}…${plugin.id.slice(-4)}`;
+      const shortId = shortenId(plugin.id);
 
       const hidden = await runCli(["plugin", "list"]);
       const shown = await runCli(["plugin", "list", "--show-id"]);
@@ -408,7 +409,7 @@ describe("CLI plugin", () => {
 
       await runCli(["plugin", "create", "team"]);
       await runCli(["plugin", "edit", "team", "--add", "shared-skill", "--type", "skill", "--no-interactive"]);
-      const shortId = `${resource.id.slice(0, 6)}…${resource.id.slice(-4)}`;
+      const shortId = shortenId(resource.id);
 
       const hidden = await runCli(["plugin", "show", "team"]);
       const shown = await runCli(["plugin", "show", "team", "--show-id"]);

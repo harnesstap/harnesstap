@@ -210,7 +210,7 @@ export function GithubSignInSection({
         </div>
       )}
       {loading && !status ? (
-        <p className="muted">Loading GitHub account…</p>
+        <p className="muted">Loading GitHub account...</p>
       ) : pending ? (
         <div className="cloud-login-pending">
           <h3>Approve GitHub sign-in in your browser</h3>
@@ -252,7 +252,7 @@ export function GithubSignInSection({
           </div>
           <p className="muted cloud-login-waiting">
             <ButtonSpinner size={16} />
-            Waiting for approval…
+            Waiting for approval...
           </p>
         </div>
       ) : authenticated ? (
@@ -273,7 +273,7 @@ export function GithubSignInSection({
               aria-busy={busy}
             >
               {busy ? <ButtonSpinner size={16} /> : <LogOut size={16} aria-hidden />}
-              {busy ? "Signing out…" : "Sign out"}
+              {busy ? "Signing out..." : "Sign out"}
             </button>
           </div>
         </div>
@@ -295,7 +295,7 @@ export function GithubSignInSection({
               aria-busy={busy}
             >
               {busy ? <ButtonSpinner size={16} /> : <LogIn size={16} aria-hidden />}
-              {busy ? "Starting…" : "Sign in with GitHub"}
+              {busy ? "Starting..." : "Sign in with GitHub"}
             </button>
           </div>
         </div>

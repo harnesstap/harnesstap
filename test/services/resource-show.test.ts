@@ -70,7 +70,7 @@ describe("resource show", () => {
     expect(truncated.split("\n")).toHaveLength(16);
     expect(truncated).toContain("line 15");
     expect(truncated).not.toContain("line 16");
-    expect(truncated).toContain("… (20 lines in content)");
+    expect(truncated).toContain("... (20 lines in content)");
   });
 
   it("keeps short content unchanged", () => {

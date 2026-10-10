@@ -128,7 +128,7 @@ export const GENERATED_SCENARIOS = [
       "library, which plugin pins a plugin carries, and whether installed plugin trees",
       "are still in sync with HarnessTap.",
       "There are two related surfaces:",
-      "**Library plugin resources** — what HarnessTap knows about installed plugins:",
+      "**Library plugin resources**: what HarnessTap knows about installed plugins:",
       "```bash",
       "harnesstap resource list --type plugin_pin_pin",
       "harnesstap resource show formatter@team-marketplace",
@@ -138,7 +138,7 @@ export const GENERATED_SCENARIOS = [
       "`resource sync` refreshes marketplace-linked plugin resources from install",
       "trees under `~/.claude/plugins`, `~/.cursor/plugins`, and similar locations.",
       "Stale rows are reported when the install path cannot be resolved.",
-      "**Plugin pins** — what a plugin expects at apply time:",
+      "**Plugin pins**: what a plugin expects at apply time:",
       "```bash",
       "harnesstap plugin show my-setup",
       "harnesstap plugin doctor my-setup --check plugin-metadata",
@@ -318,7 +318,7 @@ export const GENERATED_SCENARIOS = [
     "filename": "17-migrate-state.md",
     "title": "Migrate HarnessTap state to a new machine",
     "frequency": "Rare",
-    "status": "Shipped (manual workflow — see [Scenario 28](./28-machine-migration.md) for one-command migration)",
+    "status": "Shipped (manual workflow: see [Scenario 28](./28-machine-migration.md) for one-command migration)",
     "summaryLines": [
       "Use this when moving setups across laptops or onto a dev box. For a single",
       "archive that includes harness preferences and config, prefer [Scenario 28](./28-machine-migration.md).",
@@ -600,7 +600,7 @@ export const GENERATED_SCENARIOS = [
     "status": "Shipped",
     "summaryLines": [
       "Use this when `mirror` would fail because the project's **main harness**",
-      "has no on-disk resource tree — common in plugin-only repos that ship",
+      "has no on-disk resource tree: common in plugin-only repos that ship",
       "`.claude-plugin/plugin.json` and repo-root `skills/` but no `.claude/` directory.",
       "The `--reference` flag chooses which on-disk source drives alias harness output."
     ],
@@ -662,7 +662,7 @@ export const GENERATED_SCENARIOS = [
     "status": "Shipped",
     "summaryLines": [
       "Use this when you want to install skills from a GitHub repo or local skill",
-      "package in one step — similar to `skills add`, but with HarnessTap library",
+      "package in one step: similar to `skills add`, but with HarnessTap library",
       "import and optional plugin composition."
     ],
     "commands": [
@@ -683,7 +683,7 @@ export const GENERATED_SCENARIOS = [
     "summaryLines": [
       "Use this when you maintain separate agent setups for work, personal, or",
       "client contexts and want one command to apply the right stack to your",
-      "**machine home** harness files (`~/.claude/`, `~/.codex/`, …)."
+      "**machine home** harness files (`~/.claude/`, `~/.codex/`, ...)."
     ],
     "commands": [
       "harnesstap init",
@@ -703,7 +703,7 @@ export const GENERATED_SCENARIOS = [
     "summaryLines": [
       "Use this when you want teammates to discover and install a switchable global",
       "preset from HarnessTap Cloud. Published profiles are ordinary published",
-      "plugins with the `profile` tag — there is no separate catalog entity."
+      "plugins with the `profile` tag: there is no separate catalog entity."
     ],
     "commands": [
       "harnesstap auth login work",
@@ -746,14 +746,14 @@ export const GENERATED_SCENARIOS = [
     "status": "Documented",
     "summaryLines": [
       "Use this when you need to switch Slack workspaces, API tokens, or deployment",
-      "targets across profiles/plugins — or when OAuth MCP servers do not respond after",
+      "targets across profiles/plugins: or when OAuth MCP servers do not respond after",
       "an environment switch.",
       "## Quick decision",
-      "| You have… | HarnessTap can… |",
+      "| You have... | HarnessTap can... |",
       "| --- | --- |",
       "| Bot token / PAT in MCP `env` or `headers` | Switch via `environment use` + re-apply |",
-      "| OAuth MCP (browser login in Cursor/Claude) | **Not** switch sessions — re-auth in the host app |",
-      "Full reference: **[Environments — MCP authentication limitations](../../cli/concepts/environments.md#mcp-authentication-limitations)**",
+      "| OAuth MCP (browser login in Cursor/Claude) | **Not** switch sessions: re-auth in the host app |",
+      "Full reference: **[Environments: MCP authentication limitations](../../cli/concepts/environments.md#mcp-authentication-limitations)**",
       "## Static token workflow (supported)",
       "```bash",
       "# Seed from plugin MCP env keys",
@@ -778,10 +778,10 @@ export const GENERATED_SCENARIOS = [
       "## OAuth MCP (host-managed)",
       "After apply, open the target harness and complete OAuth there (Cursor MCP panel,",
       "`claude mcp`, Copilot `/mcp auth`, etc.). HarnessTap only writes server URL /",
-      "transport — not OAuth tokens.",
+      "transport: not OAuth tokens.",
       "## Known gaps",
       "- **Shipped:** Cursor MCP scan/emit and HTTP `headers` round-trip (via `mcp-config-bridge`).",
-      "- **OAuth sessions:** Browser OAuth tokens remain host-managed — environment switch does not re-auth for you.",
+      "- **OAuth sessions:** Browser OAuth tokens remain host-managed: environment switch does not re-auth for you.",
       "Remaining limitations: [Known gaps and fix plan](../../cli/concepts/environments.md#known-gaps-and-fix-plan).",
       "Related: [Portability limits](../../portability-limits.md#mcp-authentication-and-environments),"
     ],

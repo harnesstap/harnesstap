@@ -2,7 +2,7 @@ import type { ProfileContentsResource } from "../../lib/types";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
 
 export const ICON_SIZE = 14;
-export const APPLY_PROGRESS_LABEL = "Applying…";
+export const APPLY_PROGRESS_LABEL = "Applying...";
 export const APPLY_MATCH_PROFILE_LABEL = "Applying to match profile";
 
 /** Mirrors `previewProjectApply` when project drift is `na`. */

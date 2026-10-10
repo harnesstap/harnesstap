@@ -280,7 +280,7 @@ export function buildApPackageFiles(
   return buildApPackageFilesInner(pluginId, options, new Set());
 }
 
-/** One-resource throwaway package — manifest name is slugified; version is always 0.0.0. */
+/** One-resource throwaway package: manifest name is slugified; version is always 0.0.0. */
 export function buildApPackageFilesForResource(resourceId: string): ApPackageFiles {
   const resource = getResource(resourceId);
   if (!resource) throw new Error(`Resource not found: ${resourceId}`);

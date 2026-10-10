@@ -1,12 +1,12 @@
 export function truncate(value: string, width: number): string {
   if (value.length <= width) return value;
-  if (width <= 1) return "…";
-  return `${value.slice(0, Math.max(0, width - 1))}…`;
+  if (width <= 3) return ".".repeat(Math.max(1, width));
+  return `${value.slice(0, width - 3)}...`;
 }
 
 export function shortenId(value: string): string {
   if (value.length <= 10) return value;
-  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }
 
 export function formatAbsoluteTime(

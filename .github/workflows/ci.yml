@@ -82,6 +82,9 @@ jobs:
               - 'src/utils/**'
               - 'src/telemetry/**'
               - 'test/telemetry/**'
+              - 'scripts/check-copy.ts'
+              - 'scripts/copy-allowlist.txt'
+              - 'test/scripts/**'
             platforms:
               - 'src/platforms/**'
             plugins:
@@ -396,6 +399,9 @@ jobs:
 
       - name: Run Biome lint
         run: bun run lint
+
+      - name: G3 copy lint
+        run: bun run check:copy
 
       - name: Run type-check
         run: bun run typecheck

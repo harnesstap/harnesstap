@@ -4,7 +4,7 @@ description: Machine-wide plugins applied to home harness paths, not repository 
 
 # Profiles
 
-A **profile** is a plugin tagged `profile` that defines your machine-wide agent harness setup. Profiles apply to **home harness paths** (`~/.claude/`, `~/.codex/`, `~/.cursor/`, …) — not to repository working trees. Use `apply` for project-scoped baselines.
+A **profile** is a plugin tagged `profile` that defines your machine-wide agent harness setup. Profiles apply to **home harness paths** (`~/.claude/`, `~/.codex/`, `~/.cursor/`, ...): not to repository working trees. Use `apply` for project-scoped baselines.
 
 ## Machine-wide home harness state
 
@@ -15,7 +15,7 @@ When you run `ht init`, HarnessTap:
 3. Seeds a `global default` profile plugin (tagged `profile`) from those library resources when no profile plugins exist yet
 4. Writes `~/.harnesstap/active-profile.json` pointing at that plugin when it was just created or the pointer is unset
 
-`init` sets the active profile pointer only — it does **not** run global apply. Materialize home harness files after bootstrap:
+`init` sets the active profile pointer only: it does **not** run global apply. Materialize home harness files after bootstrap:
 
 ```bash
 ht init --harnesses codex,claude-code,cursor
@@ -65,7 +65,7 @@ ht profile create work    # promotes existing plugin when name already exists
 ht profile use work
 ```
 
-Combine multiple context plugins with `plugin edit --add plugin:…` refs. `profile use` expands nested plugin dependencies depth-first.
+Combine multiple context plugins with `plugin edit --add plugin:...` refs. `profile use` expands nested plugin dependencies depth-first.
 
 ## Init defaults
 
@@ -112,9 +112,9 @@ Profiles answer "what runs on this machine by default?" Projects answer "what do
 
 ## Related
 
-- [Plugins](./plugins.md) — composition, plugin pins, catalog baselines
-- [Projects](./projects.md) — repo-scoped apply and mirror
-- [Getting started](../getting-started.md) — init and first apply
-- [Cloud connection](../cloud.md) — authenticate and publish
-- [Command reference](../command-reference.md) — `profile` command group
-- [Scenario 36](../../scenarios/details/36-switch-profile.md) — switch global profile presets
+- [Plugins](./plugins.md): composition, plugin pins, catalog baselines
+- [Projects](./projects.md): repo-scoped apply and mirror
+- [Getting started](../getting-started.md): init and first apply
+- [Cloud connection](../cloud.md): authenticate and publish
+- [Command reference](../command-reference.md): `profile` command group
+- [Scenario 36](../../scenarios/details/36-switch-profile.md): switch global profile presets

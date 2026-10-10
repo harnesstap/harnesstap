@@ -11,7 +11,7 @@ export class PathEscapeError extends Error {
   }
 }
 
-/** True when `rel` is outside the root (`..` or `../…`), not names that merely start with dots. */
+/** True when `rel` is outside the root (`..` or `../...`), not names that merely start with dots. */
 function isOutsideRelative(rel: string): boolean {
   return rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel);
 }

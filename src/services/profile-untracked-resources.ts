@@ -348,7 +348,7 @@ async function notStagedFromProjectScan(
   return sortContentsResources(notStaged);
 }
 
-/** @deprecated Prefer detectNotStagedProfileResources — same behavior. */
+/** @deprecated Prefer detectNotStagedProfileResources: same behavior. */
 export async function detectUntrackedProfileResources(input: {
   profileSelector: string;
   scope: ProfileApplyPreviewScope;

@@ -238,7 +238,7 @@ export function ImportLibraryDrawer({
               aria-busy={busy}
             >
               {busy ? <ButtonSpinner size={16} /> : <FolderDown size={16} aria-hidden />}
-              {busy ? "Importing…" : "Import"}
+              {busy ? "Importing..." : "Import"}
             </button>
           ) : (
             <button
@@ -250,7 +250,7 @@ export function ImportLibraryDrawer({
               aria-busy={busy}
             >
               {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
-              {busy ? "Previewing…" : "Continue"}
+              {busy ? "Previewing..." : "Continue"}
             </button>
           )}
         </>
@@ -310,7 +310,7 @@ export function ImportLibraryDrawer({
                 }}
               />
               <IconActionButton
-                label="Choose folder…"
+                label="Choose folder..."
                 disabled={controlsDisabled}
                 onClick={() => {
                   void openDirectoryDialog({

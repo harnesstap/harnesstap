@@ -69,7 +69,7 @@ function isHostPluginBundledMaterial(
 /**
  * Cursor and Claude Code load marketplace plugins from the host plugin tree.
  * Do not also serialize those bundled skills as standalone `skills/` dirs.
- * Portable harnesses (OpenCode, Codex, …) still receive them as skills.
+ * Portable harnesses (OpenCode, Codex, ...) still receive them as skills.
  */
 export function omitHostPluginBundledSkills(
   resources: readonly Resource[],
@@ -124,7 +124,7 @@ function skillSourceDir(
 
 /**
  * Pull skills and other material out of Claude/Cursor host plugin install trees
- * so harnesses that do not load those trees (OpenCode, Codex, …) can use them.
+ * so harnesses that do not load those trees (OpenCode, Codex, ...) can use them.
  */
 export async function extractHostPluginMaterial(
   pins: readonly ResourceCreateInput[],

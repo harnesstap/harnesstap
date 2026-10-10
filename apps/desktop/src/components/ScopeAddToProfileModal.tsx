@@ -277,7 +277,7 @@ export function ScopeAddToProfileModal({
           ) : null}
           <div ref={listRef} className="scope-add-modal-list">
             {loading ? (
-              <p className="muted">Loading library…</p>
+              <p className="muted">Loading library...</p>
             ) : visible.length === 0 ? (
               <p className="muted">{noResultsTitle(search)}</p>
             ) : (

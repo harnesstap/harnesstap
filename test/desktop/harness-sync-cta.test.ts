@@ -46,11 +46,11 @@ describe("Harnesses sync CTA", () => {
     expect(sidebarSource).toContain('className={["btn", "primary", "rail-apply-action"');
     expect(sidebarSource).toContain("ArrowLeftRight");
     expect(workspaceSource).toContain("Sync harnesses");
-    expect(workspaceSource).toContain("Syncing…");
+    expect(workspaceSource).toContain("Syncing...");
     expect(workspaceSource).toContain("<SyncHarnessesDialog");
     expect(dialogSource).toContain('title="Sync harnesses"');
-    expect(dialogSource).toContain('confirmLabel={syncing ? "Syncing…" : "Sync"}');
-    expect(dialogSource).toContain("Counting resource changes…");
+    expect(dialogSource).toContain('confirmLabel={syncing ? "Syncing..." : "Sync"}');
+    expect(dialogSource).toContain("Counting resource changes...");
     expect(dialogSource).toContain("formatHarnessSyncChangeSummary");
     expect(dialogSource).toContain("file-change-kind-badge");
     expect(dialogSource).toContain('mark: "+"');

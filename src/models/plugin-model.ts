@@ -1021,7 +1021,7 @@ export function listPluginVersions(name: string): string[] {
   return [...semverVersions, ...nonSemver];
 }
 
-// Transitional aliases — Task 4 rewrites call sites; then remove these.
+// Transitional aliases: Task 4 rewrites call sites; then remove these.
 /** @deprecated Use MergedPluginContent */
 export type MergedLayerContent = MergedPluginContent;
 /** @deprecated Use isFrozenPlugin */

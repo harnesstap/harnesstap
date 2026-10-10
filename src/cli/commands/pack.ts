@@ -59,7 +59,7 @@ export function handlePackCommand(opts: PackCommandOpts): void {
     ui.success(`Packed ${result.fileCount} file(s) -> ${dest}`);
     console.log(
       ui.theme.muted(
-        "Plugin bundle ready — contains plugin.json plus plugin-native directories (agents/, skills/, commands/, hooks/) and an embedded apm.lock.yaml for install-time integrity verification.",
+        "Plugin bundle ready: contains plugin.json plus plugin-native directories (agents/, skills/, commands/, hooks/) and an embedded apm.lock.yaml for install-time integrity verification.",
       ),
     );
     ui.info(`Share with: ${formatCommand(`apply ${result.outputPath}`)}`);

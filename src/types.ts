@@ -565,7 +565,7 @@ export interface PlatformPaths {
 
 export type SkillEmission = "native" | "instruction-only";
 
-/** Host-owned paths discovered for inventory only — never applied or persisted. */
+/** Host-owned paths discovered for inventory only: never applied or persisted. */
 export interface HostManagedPaths {
   skills?: string;
 }
@@ -573,7 +573,7 @@ export interface HostManagedPaths {
 /**
  * Extra home paths this harness reads that are not its native `globalPaths`
  * (another harness's tree, or a shared convention such as `~/.agents/`).
- * Inventory-only — never applied, persisted, or used for detection.
+ * Inventory-only: never applied, persisted, or used for detection.
  */
 export interface RelatedPlatformLocation {
   path: string;
@@ -601,7 +601,7 @@ export interface PlatformDefinition {
   skillEmission?: SkillEmission;
   /**
    * App-managed paths (e.g. Cursor `~/.cursor/skills-cursor/`).
-   * Surfaced for discovery/status only — excluded from scan persist, apply,
+   * Surfaced for discovery/status only: excluded from scan persist, apply,
    * discard, and profile remove/unstage live-file deletion.
    */
   hostManagedPaths?: HostManagedPaths;

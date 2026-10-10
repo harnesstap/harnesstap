@@ -67,7 +67,7 @@ export function CheckForUpdatesSettings({
           aria-busy={busy}
         >
           {busy ? <ButtonSpinner size={16} /> : <RefreshCw size={16} aria-hidden />}
-          {busy ? "Checking…" : "Check for updates"}
+          {busy ? "Checking..." : "Check for updates"}
         </button>
       </div>
     </section>

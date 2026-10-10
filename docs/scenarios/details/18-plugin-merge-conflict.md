@@ -21,8 +21,8 @@ harnesstap plugin show my-setup
 Start by re-scanning the project so HarnessTap captures the current committed
 plugin declarations in the library. Then compare:
 
-- **Committed** plugins — what the repo declares in `.claude/settings.json`
-- **Effective behavior** — what Claude loads after scope merge, often explained
+- **Committed** plugins: what the repo declares in `.claude/settings.json`
+- **Effective behavior**: what Claude loads after scope merge, often explained
   by a `~/.claude/settings.json` user-scope entry that overrides the project
 
 `plugin show` reveals which plugin pins a plugin expects at apply time.

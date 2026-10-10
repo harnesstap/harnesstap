@@ -7,7 +7,7 @@ export interface Column {
   width: number;
   /** Floor used when distributing `widthShare` under `maxWidth`. */
   minWidth?: number;
-  /** Fraction of available width when maxWidth is set (0–1). */
+  /** Fraction of available width when maxWidth is set (0-1). */
   widthShare?: number;
   /** When false, hyphenated tokens may break mid-token during word wrap. */
   wrapOnWordBoundary?: boolean;

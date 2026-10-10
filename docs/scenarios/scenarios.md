@@ -23,7 +23,7 @@ See the [VHS demo pack](./vhs/README.md) for rendered walkthroughs of the covere
 ## Usage frequency
 
 Frequency describes how often a **typical active user** reaches for a scenario
-after HarnessTap is set up — not how important it is the first time.
+after HarnessTap is set up: not how important it is the first time.
 
 | Frequency      | Meaning |
 | -------------- | ------- |
@@ -74,9 +74,9 @@ after HarnessTap is set up — not how important it is the first time.
 
 **Status legend**
 
-- **Shipped** — the commands shown in the scenario exist in the current CLI.
-- **Documented** — workflow is documented with known product limits (see the scenario detail page).
-- **Shipped (manual)** — achievable today with current commands but as a
+- **Shipped**: the commands shown in the scenario exist in the current CLI.
+- **Documented**: workflow is documented with known product limits (see the scenario detail page).
+- **Shipped (manual)**: achievable today with current commands but as a
   multi-step workflow (see [Scenario 17](./details/17-migrate-state.md) vs [28](./details/28-machine-migration.md)).
 
 ---
@@ -127,7 +127,7 @@ baselines, or when integrating HarnessTap into tooling.
 | [24](./details/24-apply-from-url.md) | Apply a plugin directly from a URL |
 | [28](./details/28-machine-migration.md) | Share a full workspace offline with migrate export/import |
 | [37](./details/37-publish-profile-plugin.md) | Publish and install profile-tagged catalog plugins |
-| [32](./details/32-instruction-tier-apply.md) | Apply plugins to instruction-tier harnesses (windsurf, cline, copilot, …) |
+| [32](./details/32-instruction-tier-apply.md) | Apply plugins to instruction-tier harnesses (windsurf, cline, copilot, ...) |
 | [33](./details/33-mirror-plugin-fallback.md) | Mirror alias harnesses when main harness tree is empty |
 | [34](./details/34-portability-limits.md) | Review what transfers across harnesses and what does not |
 | [39](./details/39-mcp-auth-and-environments.md) | Switch MCP tokens via environments; OAuth host limits (**Documented**) |

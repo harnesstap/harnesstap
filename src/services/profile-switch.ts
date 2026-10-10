@@ -208,7 +208,7 @@ export async function switchProfile(
     if (cancelledBeforeBaseline) {
       return cancelledBeforeBaseline;
     }
-    // First apply after init has no snapshot yet — proceed and establish one.
+    // First apply after init has no snapshot yet: proceed and establish one.
     // Restore-on-failure only matters when a previous apply baseline exists.
     emitStep(events, resolvedOptions.onStep, {
       step: "validate_baseline",

@@ -1,6 +1,6 @@
 # Scenario 17: Migrate HarnessTap state to a new machine
 
-**Frequency: Rare** · **Status: Shipped (manual workflow — see [Scenario 28](./28-machine-migration.md) for one-command migration)**
+**Frequency: Rare** · **Status: Shipped (manual workflow: see [Scenario 28](./28-machine-migration.md) for one-command migration)**
 
 [← Back to scenarios index](../scenarios.md)
 

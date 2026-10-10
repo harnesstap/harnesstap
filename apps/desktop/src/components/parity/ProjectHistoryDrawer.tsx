@@ -29,7 +29,7 @@ function shortenId(value: string): string {
   if (value.length <= 10) {
     return value;
   }
-  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
 
 function formatRelativeTime(value: string): string {
@@ -206,11 +206,11 @@ export function ProjectHistoryDrawer({
                 <Input
                   value={filter}
                   onChange={(event) => setFilter(event.target.value)}
-                  placeholder="Filter snapshots…"
+                  placeholder="Filter snapshots..."
                   aria-label="Filter snapshots"
                   disabled={loading}
                 />
-                {loading ? <p className="muted">Loading snapshots…</p> : null}
+                {loading ? <p className="muted">Loading snapshots...</p> : null}
                 {!loading && projectLinked && snapshots.length === 0 ? (
                   <p className="muted">No snapshots found.</p>
                 ) : null}

@@ -607,7 +607,7 @@ function nestedResourceKeys(contents: ProfileContents): Set<string> {
 
 /**
  * Top-level composition counts for Target preview: plugin packages, pins,
- * and loose material — not nested plugin contents (those already belong to
+ * and loose material: not nested plugin contents (those already belong to
  * a package row).
  */
 export function compositionTypeCounts(

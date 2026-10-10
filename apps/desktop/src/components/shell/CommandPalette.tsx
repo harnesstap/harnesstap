@@ -376,7 +376,7 @@ function CommandPalette({
             className="command-palette-input"
             type="search"
             value={query}
-            placeholder="Go to or run…"
+            placeholder="Go to or run..."
             aria-label="Filter commands"
             aria-controls={listId}
             aria-activedescendant={

@@ -21,7 +21,7 @@ export const PROFILE_LAYER_TAG = PROFILE_PLUGIN_TAG;
 /** Internal snapshot key for a cleared global apply (not a user-facing profile). */
 export const CLEARED_GLOBAL_PROFILE_NAME = "empty";
 
-/** @deprecated Use CLEARED_GLOBAL_PROFILE_NAME. Reserved legacy name — not a selectable profile. */
+/** @deprecated Use CLEARED_GLOBAL_PROFILE_NAME. Reserved legacy name: not a selectable profile. */
 export const EMPTY_PROFILE_NAME = CLEARED_GLOBAL_PROFILE_NAME;
 
 /** Sentinel id for cleared global apply snapshots (not a DB plugin row). */

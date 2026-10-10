@@ -49,7 +49,7 @@ After a git, path, or catalog APM package is fetched, `ht install` / apply-from-
 
 - **Cycles** (A → B → A), **missing** packages, and **hash mismatch** on lock replay fail closed.
 - **Name collisions:** the root manifest’s package wins; a transitive with the same plugin name is skipped.
-- Nested MCP Registry identities (`io.github…`), `ht mcp`, and `ht install --mcp` are not part of this walk.
+- Nested MCP Registry identities (`io.github...`), `ht mcp`, and `ht install --mcp` are not part of this walk.
 
 A typical APM sample that lists only a wrapper package will still install that wrapper’s `review-and-refactor` (or other) transitive.
 

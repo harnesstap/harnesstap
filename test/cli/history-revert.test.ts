@@ -4,6 +4,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { shortenId } from "../../src/ui/format.ts";
 
 describe("CLI history and revert", () => {
   it("lists snapshots and restores files from a snapshot", async () => {
@@ -108,8 +109,8 @@ describe("CLI history and revert", () => {
 
       expect(snapshot).toBeDefined();
       expect(history.stdout).toMatch(/\|\s+ID\s+\|/);
-      // IDs are shortened in human-mode table output (first 6 chars always visible)
-      expect(history.stdout).toContain((snapshot?.id ?? "").slice(0, 6));
+      // Human-mode IDs use shortenId (first 4 + last 4 with ASCII ellipsis)
+      expect(history.stdout).toContain(shortenId(snapshot?.id ?? ""));
     } finally {
       await context.cleanup();
     }
