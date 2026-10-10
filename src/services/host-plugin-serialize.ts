@@ -192,6 +192,23 @@ function mergeInstalledPluginsContent(
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 
+function enabledPluginsFromRaw(raw: string | undefined): Record<string, boolean> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as { enabledPlugins?: unknown };
+    if (
+      parsed.enabledPlugins &&
+      typeof parsed.enabledPlugins === "object" &&
+      !Array.isArray(parsed.enabledPlugins)
+    ) {
+      return { ...(parsed.enabledPlugins as Record<string, boolean>) };
+    }
+  } catch {
+    return {};
+  }
+  return {};
+}
+
 function mergeEnabledPlugin(
   files: SerializedFile[],
   homeRoot: string,
@@ -201,25 +218,15 @@ function mergeEnabledPlugin(
   const existingOnDisk = existsSync(join(homeRoot, settingsPath))
     ? readFileSync(join(homeRoot, settingsPath), "utf-8")
     : undefined;
-  const generated = files.find((file) => file.path === settingsPath)?.content
-    ?? existingOnDisk
-    ?? "{}";
-  let parsed: Record<string, unknown> = {};
-  try {
-    parsed = JSON.parse(generated) as Record<string, unknown>;
-  } catch {
-    parsed = {};
-  }
-  const enabled =
-    parsed.enabledPlugins &&
-    typeof parsed.enabledPlugins === "object" &&
-    !Array.isArray(parsed.enabledPlugins)
-      ? { ...(parsed.enabledPlugins as Record<string, boolean>) }
-      : {};
-  enabled[ref] = true;
+  const generated = files.find((file) => file.path === settingsPath)?.content;
+  const enabled = {
+    ...enabledPluginsFromRaw(existingOnDisk),
+    ...enabledPluginsFromRaw(generated),
+    [ref]: true,
+  };
   const overlay = JSON.stringify({ enabledPlugins: enabled }, null, 2);
   const merged = mergeClaudeSettingsContent(
-    files.find((file) => file.path === settingsPath)?.content ?? existingOnDisk,
+    generated ?? existingOnDisk,
     overlay,
   );
   upsertSerializedFile(files, settingsPath, merged);

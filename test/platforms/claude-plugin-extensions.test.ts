@@ -98,4 +98,41 @@ describe("applyClaudePluginExtensions", () => {
     expect(settings.permissions.allow).toEqual(["Bash(npm run *)"]);
     expect(settings.enabledPlugins).toBeUndefined();
   });
+
+  it("keeps generated enabledPlugins when installed_plugins.json is in the same emit", () => {
+    const projectDir = createTempDir("claude-plugin-ext-pending-install");
+
+    const files = applyClaudePluginExtensions(
+      [
+        {
+          path: ".claude/settings.json",
+          content: JSON.stringify({
+            enabledPlugins: { "keep@elsewhere": true, "formatter@team-plugins": true },
+          }),
+        },
+        {
+          path: ".claude/plugins/installed_plugins.json",
+          content: JSON.stringify({
+            version: 2,
+            plugins: {
+              "formatter@team-plugins": [
+                { scope: "user", installPath: "cache/team-plugins/formatter/1.0.0", version: "1.0.0" },
+              ],
+            },
+          }),
+        },
+      ],
+      {
+        plugins: [{ id: "formatter@team-plugins", enabled: true }],
+      },
+      projectDir,
+    );
+
+    const settings = JSON.parse(
+      files.find((file) => file.path === ".claude/settings.json")?.content ?? "{}",
+    ) as { enabledPlugins: Record<string, boolean> };
+
+    expect(settings.enabledPlugins["formatter@team-plugins"]).toBe(true);
+    expect(settings.enabledPlugins["keep@elsewhere"]).toBe(true);
+  });
 });

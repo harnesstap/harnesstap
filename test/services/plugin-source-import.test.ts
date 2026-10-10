@@ -425,6 +425,40 @@ developer_instructions = "Design contracts."
     }
   });
 
+  it("prefers .claude-plugin/plugin.json version and description over a stub root plugin.json", async () => {
+    const pluginRoot = createTempDir("plugin-source-overlay-manifest");
+    try {
+      writeTextFile(
+        join(pluginRoot, "plugin.json"),
+        JSON.stringify({ name: "ponytail" }),
+      );
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({
+          name: "ponytail",
+          version: "5.1.0",
+          description: "Session helpers from the Claude overlay",
+        }),
+      );
+      writeTextFile(
+        join(pluginRoot, "skills/ponytail/SKILL.md"),
+        "---\nname: ponytail\n---\n# ponytail\n",
+      );
+
+      const entries = await scanPluginSource(pluginRoot);
+      expect(entries[0]).toMatchObject({
+        plugin_name: "ponytail",
+        plugin_version: "5.1.0",
+        plugin_description: "Session helpers from the Claude overlay",
+        metadata: {
+          manifest_path: expect.stringContaining(".claude-plugin/plugin.json"),
+        },
+      });
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
   it("uses the git SHA cache directory as version when plugin.json has none", async () => {
     const root = createTempDir("sha-plugin-version");
     const pluginRoot = join(root, "4a4211102f36");
