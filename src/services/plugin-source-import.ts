@@ -385,6 +385,29 @@ function findNestedPluginRoot(
   return firstExistingPath(nestedCachePluginRoots(sourcePath, pluginName));
 }
 
+const HOST_OVERLAY_PLUGIN_KINDS = new Set<PluginSourceRootKind>([
+  "claude-plugin",
+  "cursor-plugin",
+  "codex-plugin",
+  "copilot-plugin",
+]);
+
+function manifestHasIdentityFields(manifest: ValidatedPluginManifest): boolean {
+  return Boolean(manifest.version?.trim() || manifest.description?.trim());
+}
+
+function pickPrimaryPluginManifest(
+  allManifests: ListedPluginManifest[],
+): ListedPluginManifest | undefined {
+  const withIdentity = allManifests.filter((entry) =>
+    manifestHasIdentityFields(entry.manifest),
+  );
+  const overlayWithIdentity = withIdentity.filter((entry) =>
+    HOST_OVERLAY_PLUGIN_KINDS.has(entry.sourcePluginKind),
+  );
+  return overlayWithIdentity[0] ?? withIdentity[0] ?? allManifests[0];
+}
+
 function pluginRootFromManifests(
   rootPath: string,
   allManifests: ListedPluginManifest[],
@@ -395,7 +418,7 @@ function pluginRootFromManifests(
   manifest: ValidatedPluginManifest;
   allManifests: ListedPluginManifest[];
 } | null {
-  const primary = allManifests[0];
+  const primary = pickPrimaryPluginManifest(allManifests);
   if (!primary) return null;
   return {
     rootPath,

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Register Claude Code plugins in installed_plugins.json and enabledPlugins (plugin@marketplace), skip bundled standalone skills on Claude, and prefer .claude-plugin/plugin.json version and description when present.
+time: 2026-10-10T20:10:00Z
+custom:
+  Issue: "372"

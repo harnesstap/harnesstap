@@ -38,9 +38,21 @@ export function portableHarnessesForPluginFanout(
 
 const HOST_PLUGIN_BUNDLED_TYPES = new Set(["skill", "command", "agent", "hook"]);
 
+function importedFromPluginName(
+  resource: Pick<Resource, "metadata">,
+): string | undefined {
+  const imported = (resource.metadata as { imported_from?: { plugin_name?: unknown } } | undefined)
+    ?.imported_from;
+  if (typeof imported?.plugin_name === "string" && imported.plugin_name.trim()) {
+    return imported.plugin_name.trim();
+  }
+  return undefined;
+}
+
 function isHostPluginBundledMaterial(
-  resource: Pick<Resource, "type" | "name" | "origin_kind" | "origin_ref">,
+  resource: Pick<Resource, "type" | "name" | "origin_kind" | "origin_ref" | "metadata">,
   pins: ReadonlySet<string>,
+  pinNames: ReadonlySet<string>,
   homeRoot: string,
 ): boolean {
   if (!HOST_PLUGIN_BUNDLED_TYPES.has(resource.type)) {
@@ -48,6 +60,10 @@ function isHostPluginBundledMaterial(
   }
   const originRef = resource.origin_ref?.trim() ?? "";
   if (originRef && pins.has(originRef)) {
+    return true;
+  }
+  const pluginName = importedFromPluginName(resource);
+  if (pluginName && pinNames.has(pluginName)) {
     return true;
   }
   if (pins.has(`${resource.name}@local`) || pins.has(resource.name)) {
@@ -69,24 +85,27 @@ function isHostPluginBundledMaterial(
 /**
  * Cursor and Claude Code load marketplace plugins from the host plugin tree.
  * Do not also serialize those bundled skills as standalone `skills/` dirs.
- * Portable harnesses (OpenCode, Codex, …) still receive them as skills.
+ * Portable harnesses (OpenCode, Codex, ...) still receive them as skills.
  */
 export function omitHostPluginBundledSkills(
   resources: readonly Resource[],
   platformId: string,
   homeRoot: string,
-  target: SerializerTarget = "project",
+  _target: SerializerTarget = "project",
 ): Resource[] {
-  if (target !== "global" || !isHostPluginTreePlatform(platformId)) {
+  if (!isHostPluginTreePlatform(platformId)) {
+    return [...resources];
+  }
+  const pinResources = resources.filter((resource) => isHostPluginPinResource(resource));
+  if (pinResources.length === 0) {
     return [...resources];
   }
   const pins = new Set(
-    resources
-      .filter((resource) => isHostPluginPinResource(resource))
-      .map((resource) => resource.origin_ref || resource.name),
+    pinResources.map((resource) => resource.origin_ref || resource.name),
   );
+  const pinNames = new Set(pinResources.map((resource) => resource.name));
   return resources.filter(
-    (resource) => !isHostPluginBundledMaterial(resource, pins, homeRoot),
+    (resource) => !isHostPluginBundledMaterial(resource, pins, pinNames, homeRoot),
   );
 }
 
