@@ -8,6 +8,7 @@ import {
   getTelemetryConsentStatus,
   isTelemetryEnabled,
   maybeWarnCliTelemetry,
+  loadTelemetryState,
   persistTelemetryPreference,
   setTelemetryNoticePrinterForTests,
   TELEMETRY_CLI_DISABLE_INSTRUCTIONS,
@@ -123,6 +124,22 @@ describe("telemetry consent", () => {
     expect(output).toContain(TELEMETRY_CLI_DISABLE_INSTRUCTIONS);
     expect(formatCliTelemetryUnsettledWarning()).toContain("No resource-related information");
     expect(isTelemetryEnabled(dir)).toBe(false);
+  });
+
+  it("skips json and non-TTY output without marking the notice shown", () => {
+    persistTelemetryPreference(true, dir);
+    const lines: string[] = [];
+    setTelemetryNoticePrinterForTests(undefined);
+    maybeWarnCliTelemetry(dir, {
+      argv: ["ht", "harness", "list", "--format", "json"],
+      stdoutIsTTY: true,
+    });
+    maybeWarnCliTelemetry(dir, {
+      argv: ["ht", "harness", "list"],
+      stdoutIsTTY: false,
+    });
+    expect(lines).toHaveLength(0);
+    expect(loadTelemetryState(dir).cli_notice_shown_at).toBeUndefined();
   });
 
   it("does not warn when telemetry is already disabled", () => {

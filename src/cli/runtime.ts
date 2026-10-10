@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import { initializeSchema } from "../db/schema.js";
-import { getDb } from "../db/connection.js";
+import { getDb, getHarnesstapDir } from "../db/connection.js";
 import {
   GLOBAL_DEFAULT_PROFILE_NAME,
   LEGACY_DEFAULT_PROFILE_NAME,
@@ -204,7 +204,7 @@ export async function runHarnesstapCli(
     return;
   }
   setTelemetryProduct("cli");
-  maybeWarnCliTelemetry();
+  maybeWarnCliTelemetry(getHarnesstapDir(), { argv });
   trackCliStartup();
   if (argv.length <= 2) {
     program.outputHelp();
