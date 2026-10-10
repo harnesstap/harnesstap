@@ -9,7 +9,9 @@ import {
 } from "../../src/services/profile-apply-preview.ts";
 import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
+import { recordResourceMaterialization } from "../../src/models/resource-materialization.ts";
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
+import { hashGeneratedContent } from "../../src/services/materialization-ownership.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { DriftFileChange } from "../../src/services/project-drift.ts";
 
@@ -165,11 +167,90 @@ describe("withManagedRemovals", () => {
         {
           path: ".claude/skills/live/SKILL.md",
           type: "added",
-          removal_group: "owned_unmodified",
+          removal_group: "unmanaged",
         },
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("uses the shared ownership classifier so preview matches the confirm groups", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-preview-classifier-"));
+    try {
+      mkdirSync(join(root, ".claude/skills/user"), { recursive: true });
+      mkdirSync(join(root, ".claude/rules"), { recursive: true });
+      writeFileSync(join(root, ".claude/skills/user/SKILL.md"), "# user\n", "utf-8");
+      writeFileSync(join(root, ".claude/rules/security.md"), "# sec\n", "utf-8");
+
+      const changes = withManagedRemovals(
+        root,
+        [
+          { path: ".claude/skills/user/SKILL.md", type: "added" },
+          { path: ".claude/rules/security.md", type: "added" },
+        ],
+        [
+          ".claude/skills/user/SKILL.md",
+          ".claude/rules/security.md",
+        ],
+      );
+
+      expect(changes.map((change) => change.removal_group)).toEqual([
+        "unmanaged",
+        "unmanaged",
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("lets apply skip reasons win so preview matches the confirm dialog", async () => {
+    const context = await createInitializedTestContext("preview-skip-wins");
+    try {
+      mkdirSync(join(context.homeDir, ".config/opencode/agent"), { recursive: true });
+      const relative = ".config/opencode/agent/planner.md";
+      writeFileSync(join(context.homeDir, relative), "# planner\n", "utf-8");
+      const resource = createResource({
+        type: "skill",
+        name: "planner",
+        description: "",
+        content: "# planner",
+        metadata: {},
+        source: "manual",
+      });
+      recordResourceMaterialization({
+        resource_id: resource.id,
+        scope: "global",
+        root_path: context.homeDir,
+        platform_id: "opencode",
+        path: relative,
+        action: "delete-file",
+        ownership_key: "skill:planner",
+        generated_hash: hashGeneratedContent("# planner\n"),
+      });
+
+      const changes = withManagedRemovals(
+        context.homeDir,
+        [{ path: relative, type: "added" }],
+        [relative],
+        [
+          {
+            path: relative,
+            reason: "preexisting",
+            message: `Skipped removing ${relative}`,
+          },
+        ],
+      );
+
+      expect(changes).toEqual([
+        {
+          path: relative,
+          type: "added",
+          removal_group: "unmanaged",
+        },
+      ]);
+    } finally {
+      await context.cleanup();
     }
   });
 });

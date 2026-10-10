@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { HarnessScopeVisualGallery } from "./components/live/HarnessScopeVisualGallery";
+import { FileChangeGroupsVisualGallery } from "./components/live/FileChangeGroupsVisualGallery";
 import { RiskyRemovalVisualGallery } from "./components/live/RiskyRemovalVisualGallery";
 import "@fontsource/ibm-plex-sans/latin-400.css";
 import "@fontsource/ibm-plex-sans/latin-500.css";
@@ -26,6 +27,9 @@ function Root() {
   }
   if (visual === "risky-removal") {
     return <RiskyRemovalVisualGallery />;
+  }
+  if (visual === "file-change-groups") {
+    return <FileChangeGroupsVisualGallery />;
   }
   return <App />;
 }

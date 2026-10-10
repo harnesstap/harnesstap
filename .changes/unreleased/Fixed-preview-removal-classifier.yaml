@@ -1,0 +1,5 @@
+kind: Fixed
+body: File changes preview and the apply confirm dialog now share the ownership classifier, so unmanaged files are Kept not Will remove. Group labels are visible on the row, kept versus remove rows are distinct, and kept counts no longer double-count or disagree with the dialog.
+time: 2026-10-10T19:20:00Z
+custom:
+  Issue: ""
