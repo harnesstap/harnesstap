@@ -1,26 +1,13 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  applyToGlobal,
-  generateFiles,
-  materializeFiles,
-  removeGlobalMaterializedFiles,
-  type ConflictPolicy,
-  type ConflictResolution,
-  type MaterializationConflict,
-} from "./applier.js";
-import {
-  formatRemovalBackupNotice,
-  type SafeFileRemovalResult,
-  type SafeRemovalSkip,
-} from "./safe-file-removal.js";
-import {
-  getPluginById,
-  getPluginByPublishedIdentity,
-  mergePluginsById,
-  resolvePluginSelector,
-} from "../models/plugin-model.js";
-import type { Plugin } from "../types.js";
+  CLEARED_GLOBAL_PROFILE_NAME,
+  CLEARED_GLOBAL_PROFILE_PLUGIN_ID,
+  isEmptyBuiltinProfile,
+  isProfilePlugin,
+} from "../constants/profile.js";
+import { getHarnesstapDir } from "../db/connection.js";
+import { getEnvironment } from "../models/environment.js";
 import {
   createGlobalApplySnapshot,
   getLatestGlobalApplySnapshotForProfile,
@@ -29,43 +16,58 @@ import {
   recordGlobalApplySnapshotInstall,
 } from "../models/global-apply-snapshot.js";
 import { getHarnessPreference } from "../models/harness.js";
-import { getEnvironment } from "../models/environment.js";
-import { getHarnesstapDir } from "../db/connection.js";
 import {
-  CLEARED_GLOBAL_PROFILE_PLUGIN_ID,
-  CLEARED_GLOBAL_PROFILE_NAME,
-  isEmptyBuiltinProfile,
-  isProfilePlugin,
-} from "../constants/profile.js";
+  getPluginById,
+  getPluginByPublishedIdentity,
+  mergePluginsById,
+  resolvePluginSelector,
+} from "../models/plugin-model.js";
+import type { Plugin } from "../types.js";
+import { ui } from "../ui/index.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
+import { getActiveProfileName } from "./active-profile.js";
+import {
+  applyToGlobal,
+  type ConflictPolicy,
+  type ConflictResolution,
+  generateFiles,
+  type MaterializationConflict,
+  materializeFiles,
+  removeGlobalMaterializedFiles,
+} from "./applier.js";
+import { gateDeployFiles } from "./deploy-gate.js";
 import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
+import { substituteResourcesForApply } from "./environment-var-substitution.js";
 import {
   collectOtherProfilesSnapshotTrackedFiles,
   planStaleGlobalProfileFiles,
   planStaleMergeableHostConfigFiles,
 } from "./global-profile-cleanup.js";
-import { rewriteStaleMergeableHostConfigs } from "./host-config-strip.js";
-import { substituteResourcesForApply } from "./environment-var-substitution.js";
-import { preparePluginPinsForApply, collectPluginPinsForPrepare } from "./plugin-pin-apply.js";
 import {
   assertSupportedHarnessTargets,
   parsePlatformFilter,
   registeredHarnessesOf,
   uniqueHarnessTargets,
 } from "./harness-targets.js";
-import { detectPlatforms } from "./scanner.js";
-import { resolveHomeRoot } from "../utils/home-root.js";
-import { getActiveProfileName } from "./active-profile.js";
+import { rewriteStaleMergeableHostConfigs } from "./host-config-strip.js";
 import { installPluginFromCatalog } from "./plugin-catalog-install.js";
 import {
-  listAttachedPluginRefs,
   listAttachedPluginPins,
+  listAttachedPluginRefs,
 } from "./plugin-composition.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
+import { collectPluginPinsForPrepare, preparePluginPinsForApply } from "./plugin-pin-apply.js";
 import { parsePluginSelector, resolveRemotePluginSelector } from "./plugin-selector.js";
 import { resolveComposition } from "./resolve/index.js";
 import type { ResolutionResult } from "./resolve/types.js";
-import { ui } from "../ui/index.js";
-import { gateDeployFiles } from "./deploy-gate.js";
+import {
+  formatRemovalBackupNotice,
+  groupPlannedRemovals,
+  type PlannedRemovals,
+  type SafeFileRemovalResult,
+  type SafeRemovalSkip,
+} from "./safe-file-removal.js";
+import { detectPlatforms } from "./scanner.js";
 
 /** HT library deps that belong in the profile stack (not host marketplace/git/path pins). */
 function isProfileStackDependency(ref: string): boolean {
@@ -135,6 +137,7 @@ export interface ApplyProfilePluginResult {
   removed_files?: string[];
   skipped_removals?: SafeRemovalSkip[];
   removal_backup?: string;
+  removals?: PlannedRemovals;
 }
 
 function collectProfileSnapshotTrackedFiles(profileName: string): string[] {
@@ -268,12 +271,16 @@ function warnSkippedRemovals(result: SafeFileRemovalResult): void {
 
 function removalFields(result: SafeFileRemovalResult): Pick<
   ApplyProfilePluginResult,
-  "removed_files" | "skipped_removals" | "removal_backup"
+  "removed_files" | "skipped_removals" | "removal_backup" | "removals"
 > {
   return {
     ...(result.removed.length > 0 ? { removed_files: result.removed } : {}),
     ...(result.skipped.length > 0 ? { skipped_removals: result.skipped } : {}),
     ...(result.removed.length > 0 ? { removal_backup: result.backupDir } : {}),
+    removals: groupPlannedRemovals({
+      remove: result.removed,
+      skip: result.skipped,
+    }),
   };
 }
 
@@ -647,7 +654,7 @@ export async function applyProfilePlugin(
   }
 
   const resolvedResources = merged.resources;
-  let applyResources = substituteResourcesForApply(
+  const applyResources = substituteResourcesForApply(
     resolvedResources,
     resolvedEnvironment.vars,
   ).resources;

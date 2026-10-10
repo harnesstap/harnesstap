@@ -263,6 +263,7 @@ function parseSwitchRequest(body: unknown): AgentSwitchRequest | Response {
     typeof body.projectPath === "string" ? body.projectPath : undefined;
   const confirmOwnedOverwrite = body.confirmOwnedOverwrite === true;
   const harness = typeof body.harness === "string" ? body.harness : undefined;
+  const forceRemove = body.forceRemove === true;
 
   return {
     profile: profile.trim(),
@@ -270,6 +271,7 @@ function parseSwitchRequest(body: unknown): AgentSwitchRequest | Response {
     ...(projectPath ? { projectPath } : {}),
     ...(confirmOwnedOverwrite ? { confirmOwnedOverwrite } : {}),
     ...(harness ? { harness } : {}),
+    ...(forceRemove ? { forceRemove } : {}),
   };
 }
 

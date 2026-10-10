@@ -25,6 +25,7 @@ export interface E2EIsolation {
 export interface E2EIsolationPaths {
   project: string;
   marketplaceRepo: string;
+  home: string;
 }
 
 export const E2E_ISOLATION_STATE_PATH = join(tmpdir(), "harnesstap-e2e-isolation.json");
@@ -103,7 +104,7 @@ export function createE2EIsolation(repoRoot: string): E2EIsolation {
     HARNESSTAP_TELEMETRY: "0",
   };
 
-  const paths: E2EIsolationPaths = { project, marketplaceRepo };
+  const paths: E2EIsolationPaths = { project, marketplaceRepo, home };
   writeFileSync(E2E_ISOLATION_STATE_PATH, `${JSON.stringify(paths)}\n`, "utf-8");
 
   return {
@@ -124,13 +125,17 @@ export function createE2EIsolation(repoRoot: string): E2EIsolation {
 export function loadE2EIsolationPaths(): E2EIsolationPaths {
   const project = process.env.HARNESSTAP_E2E_PROJECT_PATH;
   const marketplaceRepo = process.env.HARNESSTAP_E2E_MARKETPLACE_REPO;
-  if (project && marketplaceRepo) {
-    return { project, marketplaceRepo };
+  const home = process.env.HOME;
+  if (project && marketplaceRepo && home) {
+    return { project, marketplaceRepo, home };
   }
   if (existsSync(E2E_ISOLATION_STATE_PATH)) {
     const parsed = JSON.parse(readFileSync(E2E_ISOLATION_STATE_PATH, "utf-8")) as E2EIsolationPaths;
     if (parsed.project && parsed.marketplaceRepo) {
-      return parsed;
+      return {
+        ...parsed,
+        home: parsed.home ?? process.env.HOME ?? "",
+      };
     }
   }
   throw new Error("E2E isolation paths were not published by onPrepare");

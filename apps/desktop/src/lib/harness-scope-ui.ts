@@ -12,6 +12,7 @@ import {
 } from "../../../../src/services/harness-scope.ts";
 import { harnessDisplayName } from "./harness-meta";
 import { formatHarnessList, SCOPE_COPY, subsetScopeLine } from "../../../../src/copy/scope";
+import { HARNESS_MAIN_PILL_TOOLTIP } from "./ui-copy";
 
 export type SerializerTarget = "project" | "global";
 
@@ -32,7 +33,7 @@ export const HARNESS_SCOPE_COPY = {
   selectAll: SCOPE_COPY.selectAll,
   none: SCOPE_COPY.none,
   main: SCOPE_COPY.main,
-  mainTooltip: SCOPE_COPY.mainTooltip,
+  mainTooltip: HARNESS_MAIN_PILL_TOOLTIP,
   filterPlaceholder: "Filter harnesses",
   emptyHint: SCOPE_COPY.emptyHint,
   linkedTooltip: SCOPE_COPY.linkedTooltip,

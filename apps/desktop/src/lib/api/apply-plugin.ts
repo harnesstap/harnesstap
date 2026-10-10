@@ -12,6 +12,7 @@ export interface ApplyPluginRequest {
   dryRun?: boolean;
   confirmOwnedOverwrite?: boolean;
   harness?: string;
+  forceRemove?: boolean;
 }
 
 export interface ApplyPluginPlatformFiles {
@@ -32,6 +33,15 @@ export interface ApplyPluginResult extends ExecutableTrustFields {
   plugins?: string[];
   project_root?: string;
   platforms?: ApplyPluginPlatformFiles[];
+  written_files?: string[];
+  removed_files?: string[];
+  skipped_removals?: Array<{ path: string; reason: string }>;
+  snapshot_id?: string;
+  removals?: {
+    owned_unmodified: string[];
+    owned_modified: string[];
+    unmanaged: string[];
+  };
 }
 
 export { AgentApiError };

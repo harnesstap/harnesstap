@@ -1,4 +1,5 @@
 import { DESKTOP_HARNESS_IDS, harnessDisplayName } from "./harness-meta";
+import { PREVIEW_FILE_COPY, REMOVAL_GROUP_COPY } from "./ui-copy";
 import {
   filterContentsResourcesBySearch,
   isResourceTypeSearchPrefix,
@@ -956,11 +957,16 @@ export function fileChangeAction(change: DriftFileChange): {
 } {
   switch (change.type) {
     case "deleted":
-      return { action: "add", label: "add" };
+      return { action: "add", label: PREVIEW_FILE_COPY.willWrite };
     case "modified":
-      return { action: "update", label: "update" };
+      return { action: "update", label: PREVIEW_FILE_COPY.willWrite };
     case "added":
-      return { action: "remove", label: "remove" };
+      return {
+        action: "remove",
+        label: change.removal_group
+          ? REMOVAL_GROUP_COPY[change.removal_group]
+          : PREVIEW_FILE_COPY.willRemove,
+      };
     default: {
       const neverType: never = change.type;
       return neverType;

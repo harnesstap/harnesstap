@@ -272,6 +272,7 @@ async function executeHomeApply(parsed: ParsedApplyBody): Promise<Response> {
     conflictPolicy: parsed.onConflict,
     ...(parsed.harness ? { harness: parsed.harness } : {}),
     ...(parsed.force ? { forceUnicode: true } : {}),
+    ...(parsed.forceRemove ? { forceRemove: true } : {}),
   };
 
   const payload = isProfilePlugin(plugin)

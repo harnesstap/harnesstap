@@ -11,6 +11,8 @@ export interface DriftFileChange {
   resource?: { type: string; name: string };
   /** Resources whose scoped FileDiff body actually changed. */
   affected_resources?: Array<{ type: string; name: string }>;
+  /** How apply would treat this path when it is a planned removal. */
+  removal_group?: "owned_unmodified" | "owned_modified" | "unmanaged";
 }
 
 export interface ProjectDriftReport {

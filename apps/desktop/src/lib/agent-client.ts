@@ -1358,6 +1358,7 @@ export async function startSwitch(
     scope: SwitchScope;
     projectPath?: string;
     confirmOwnedOverwrite?: boolean;
+    forceRemove?: boolean;
   },
 ): Promise<string> {
   const response = await agentFetch(baseUrl, token, "/v1/switch", {

@@ -26,6 +26,8 @@ import { SettingsDrawer } from "../SettingsDrawer";
 import { StashBrowseDrawer } from "../StashBrowseDrawer";
 import { TelemetryConsentModal } from "../TelemetryConsentModal";
 import { ToastRegion } from "./ToastRegion";
+import { RiskyRemovalDialog } from "../RiskyRemovalDialog";
+import { APPLY_RESULT_COPY, OWNED_REPLACE_COPY } from "../../lib/ui-copy";
 
 export function describeExport(result: MigrateExportResult): string {
   return `Exported to ${compactHomePath(result.output, 80)}`;
@@ -236,14 +238,13 @@ export function AppOverlays({
 
       <ConfirmDialog
         open={ctrl.overwriteDialog}
-        title="Overwrite owned profile paths?"
+        title={OWNED_REPLACE_COPY.title}
         description={
-          <p className="muted">
-            HarnessTap detected hand-edits inside paths owned by the last apply
-            snapshot. Continuing will overwrite those owned keys.
-          </p>
+          <p className="muted">{OWNED_REPLACE_COPY.description}</p>
         }
-        confirmLabel={showReapply ? "Re-apply anyway" : "Apply anyway"}
+        confirmLabel={
+          showReapply ? OWNED_REPLACE_COPY.reapplyAnyway : OWNED_REPLACE_COPY.applyAnyway
+        }
         tone="destructive"
         onConfirm={ctrl.onConfirmOverwrite}
         onCancel={() => ctrl.setOverwriteDialog(false)}
@@ -259,6 +260,29 @@ export function AppOverlays({
           </Label>
         </div>
       </ConfirmDialog>
+
+      <RiskyRemovalDialog
+        open={ctrl.pendingRiskyRemovals !== null}
+        groups={ctrl.pendingRiskyRemovals?.groups ?? null}
+        onKeep={ctrl.onKeepRiskyRemovals}
+        onRemoveToo={ctrl.onRemoveRiskyRemovalsToo}
+        onCancel={() => ctrl.setPendingRiskyRemovals(null)}
+      />
+
+      <ConfirmDialog
+        open={ctrl.applySnapshotId !== null}
+        title={APPLY_RESULT_COPY.viewSnapshot}
+        description={
+          <p className="muted">
+            Snapshot{" "}
+            <span className="mono">{ctrl.applySnapshotId}</span>
+          </p>
+        }
+        confirmLabel="Close"
+        cancelLabel=""
+        onConfirm={() => ctrl.setApplySnapshotId(null)}
+        onCancel={() => ctrl.setApplySnapshotId(null)}
+      />
 
       <CutVersionsModal
         open={ctrl.cutModalOpen}

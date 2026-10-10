@@ -338,6 +338,17 @@ const SCREENS = [
       await page.getByTestId("harness-scope-popover").waitFor({ timeout: 15_000 });
     },
   },
+  {
+    name: "risky-removal-dialog",
+    run: async (page, baseUrl) => {
+      const url = new URL(baseUrl);
+      url.searchParams.set("visual", "risky-removal");
+      await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 15_000 });
+      await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await page.getByRole("dialog").waitFor({ timeout: 15_000 });
+      await page.getByTestId("risky-removal-dialog").waitFor({ state: "attached", timeout: 15_000 });
+    },
+  },
 ];
 
 /**
