@@ -25,6 +25,7 @@ export {
   parseHarnessScope,
   expandLinkedSelection,
   selectionFromGroups,
+  formatHarnessList,
 };
 export type { HarnessScope, LinkedHarnessGroup };
 
