@@ -41,16 +41,18 @@ function isHostPluginBundledMaterial(
   resource: Pick<Resource, "type" | "name" | "origin_kind" | "origin_ref">,
   pins: ReadonlySet<string>,
 ): boolean {
-  if (!HOST_PLUGIN_BUNDLED_TYPES.has(resource.type)) return false;
+  if (!HOST_PLUGIN_BUNDLED_TYPES.has(resource.type) || pins.size === 0) {
+    return false;
+  }
   const originRef = resource.origin_ref?.trim() ?? "";
   if (originRef && pins.has(originRef)) {
     return true;
   }
-  if (resource.origin_kind === "marketplace_link" && originRef.includes("@")) {
-    return true;
-  }
   if (pins.has(`${resource.name}@local`) || pins.has(resource.name)) {
-    return resource.origin_kind === "marketplace_link" || resource.origin_kind === "local_snapshot";
+    return (
+      resource.origin_kind === "marketplace_link"
+      || resource.origin_kind === "local_snapshot"
+    );
   }
   return false;
 }
