@@ -1,0 +1,5 @@
+kind: Fixed
+body: Copy skill companion trees verbatim (original relative paths, bytes, and file mode) on import and apply so references/, assets/, and top-level files are not dropped or renamed to reference/.
+time: 2026-10-10T04:20:00Z
+custom:
+  Issue: ""

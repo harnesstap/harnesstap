@@ -89,7 +89,7 @@ describe("CursorSerializer", () => {
       expect.arrayContaining([
         ".cursor/rules/always.mdc",
         ".cursor/rules/refactor.mdc",
-        ".cursor/rules/research.mdc",
+        ".agents/skills/research/SKILL.md",
       ]),
     );
     expect(files.find((file) => file.path === ".cursor/rules/refactor.mdc")?.content).toContain(
@@ -97,7 +97,7 @@ describe("CursorSerializer", () => {
     );
   });
 
-  it("defaults skill emission to agent-requested rules", async () => {
+  it("defaults skill emission to agents-skills (one surface)", async () => {
     const serializer = new CursorSerializer();
     const files = await serializer.serialize(
       [
@@ -109,6 +109,25 @@ describe("CursorSerializer", () => {
         }),
       ],
       ".",
+    );
+
+    expect(files.map((file) => file.path)).toEqual([".agents/skills/research/SKILL.md"]);
+    expect(files.some((file) => file.path.endsWith(".mdc"))).toBe(false);
+  });
+
+  it("agent-requested mode writes skills as .cursor/rules mdc files", async () => {
+    const serializer = new CursorSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+      ],
+      ".",
+      { skillCursorMode: "agent-requested" },
     );
 
     expect(files).toHaveLength(1);

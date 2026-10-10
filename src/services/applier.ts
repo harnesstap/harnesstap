@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -366,6 +367,23 @@ function serializedFileBytes(file: SerializedFile): Buffer {
   return Buffer.from(file.content, "utf-8");
 }
 
+function applySerializedFileMode(fullPath: string, file: SerializedFile): void {
+  if (typeof file.mode !== "number") {
+    return;
+  }
+  try {
+    chmodSync(fullPath, file.mode & 0o777);
+  } catch {
+    // Some filesystems do not support chmod.
+  }
+}
+
+function writeSerializedFile(fullPath: string, file: SerializedFile): void {
+  mkdirSync(dirname(fullPath), { recursive: true });
+  writeFileSync(fullPath, serializedFileBytes(file));
+  applySerializedFileMode(fullPath, file);
+}
+
 export function writeFiles(
   files: SerializedFile[],
   projectRoot: string,
@@ -373,8 +391,7 @@ export function writeFiles(
   pruneManagedCursorLocalPlugins(projectRoot, files);
   for (const file of files) {
     const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
-    mkdirSync(dirname(fullPath), { recursive: true });
-    writeFileSync(fullPath, serializedFileBytes(file));
+    writeSerializedFile(fullPath, file);
   }
 }
 
@@ -538,8 +555,7 @@ export async function materializeFiles(
       skippedFiles.push(file.path);
       continue;
     }
-    mkdirSync(dirname(fullPath), { recursive: true });
-    writeFileSync(fullPath, serializedFileBytes(file));
+    writeSerializedFile(fullPath, file);
     writtenFiles.push(file.path);
   }
 

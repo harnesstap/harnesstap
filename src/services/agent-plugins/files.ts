@@ -7,11 +7,10 @@ import type {
   EnvVarMetadata,
   McpServerMetadata,
   Resource,
-  SkillMetadata,
 } from "../../types.js";
 import { assertContainedPath, listContainedFiles, PathEscapeError } from "../../utils/path-containment.js";
 import { listDependencies } from "../plugin-dependency.js";
-import { emitSkillAuxiliaryFiles, listSkillAuxiliaryFiles } from "../skill-auxiliary.js";
+import { emitSkillAuxiliaryFiles } from "../skill-auxiliary.js";
 import { formatTransportToml } from "../toml/write.js";
 import {
   COMPONENT_LAYOUT,
@@ -35,7 +34,7 @@ export interface ApPackageFile {
 export type ApPackageFiles = Record<string, ApPackageFile>;
 
 export interface BuildApPackageOptions {
-  /** Root to copy skill `scripts/` and `reference/` files from, when available. */
+  /** Root to copy skill companion trees from, when available. */
   skillSourceRoot?: string;
 }
 
@@ -158,20 +157,15 @@ function emitResourceFiles(
     );
 
     if (options?.skillSourceRoot) {
-      const meta = resource.metadata as SkillMetadata;
-      const scripts = meta.scripts ?? [];
-      const references = meta.references ?? [];
-      if (scripts.length > 0 || references.length > 0) {
-        const sourceSkillDir = join(options.skillSourceRoot, resource.name);
-        const listed = listSkillAuxiliaryFiles(sourceSkillDir);
-        for (const aux of emitSkillAuxiliaryFiles({
-          sourceSkillDir,
-          targetPrefix: `skills/${resource.name}`,
-          scripts: scripts.length > 0 ? scripts : listed.scripts,
-          references: references.length > 0 ? references : listed.references,
-        })) {
-          putUtf8(files, aux.path, aux.content);
-        }
+      const sourceSkillDir = join(options.skillSourceRoot, resource.name);
+      for (const aux of emitSkillAuxiliaryFiles({
+        sourceSkillDir,
+        targetPrefix: `skills/${resource.name}`,
+      })) {
+        put(files, aux.path, {
+          encoding: aux.encoding === "base64" ? "base64" : "utf8",
+          content: aux.content,
+        });
       }
     }
   }

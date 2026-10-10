@@ -49,6 +49,8 @@ export interface RuleMetadata {
 export interface SkillMetadata {
   scripts?: string[];
   references?: string[];
+  /** Relative POSIX paths of every companion file under the skill dir. */
+  companions?: string[];
 }
 
 export interface McpOAuthAuthMetadata {
@@ -629,6 +631,8 @@ export interface SerializedFile {
   content: string;
   /** `base64` when the file is not UTF-8 text. Omitted content is UTF-8. */
   encoding?: "utf8" | "base64";
+  /** POSIX permission bits (e.g. 0o755). Applied on write when set. */
+  mode?: number;
   ownership?: SerializedResourceOwnership[];
 }
 
@@ -652,6 +656,7 @@ export interface SurfaceWarning {
 
 export interface SerializeOptions {
   target?: SerializerTarget;
+  /** Cursor skill surface. Default is `agents-skills` (one SKILL.md tree, not also `.mdc`). */
   skillCursorMode?: CursorSkillMode;
   /** When set, skill auxiliary files are read from this tree (scan origin). */
   skillSourceRoot?: string;

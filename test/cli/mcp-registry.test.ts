@@ -140,6 +140,34 @@ targets: [cursor]
     expect(existsSync(join(ctx.projectDir, ".cursor", "mcp.json"))).toBe(false);
   });
 
+  it("ht mcp install --dry-run lists .cursor/mcp.json and does not write it", async () => {
+    globalThis.fetch = mock(async () => jsonResponse(githubPayload())) as unknown as typeof fetch;
+
+    const original = `name: demo
+version: "1.0.0"
+targets: [cursor]
+`;
+    writeTextFile(join(ctx.projectDir, "apm.yml"), original);
+
+    const result = await runCli([
+      "mcp",
+      "install",
+      GITHUB_ID,
+      "--project",
+      ctx.projectDir,
+      "--target",
+      "cursor",
+      "--dry-run",
+      "--no-interactive",
+    ]);
+    expect(result.exitCode ?? 0, result.stderr || result.stdout).toBe(0);
+    expect(result.stdout).toContain("Dry run. Nothing was changed.");
+    expect(result.stdout).toContain(".cursor/mcp.json");
+    expect(result.stdout).toContain(`Would add "${GITHUB_ID}" to apm.yml dependencies.mcp.`);
+    expect(readFileSync(join(ctx.projectDir, "apm.yml"), "utf8")).toBe(original);
+    expect(existsSync(join(ctx.projectDir, ".cursor", "mcp.json"))).toBe(false);
+  });
+
   it("ht mcp install appends the identity then installs", async () => {
     globalThis.fetch = mock(async () => jsonResponse(githubPayload())) as unknown as typeof fetch;
 

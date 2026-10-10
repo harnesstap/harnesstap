@@ -243,7 +243,7 @@ export class CursorSerializer extends BaseSerializer {
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
     const target = options.target ?? "project";
-    const skillCursorMode = options.skillCursorMode ?? "agent-requested";
+    const skillCursorMode = options.skillCursorMode ?? "agents-skills";
     const targetPaths = this.getTargetPaths(target);
     const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
     const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);

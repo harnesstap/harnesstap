@@ -216,8 +216,11 @@ describe("plugin apply resolution", () => {
     expect(result.exitCode ?? 0).toBe(0);
     expect(getPluginByName("formatter", "1.2.3")).toBeDefined();
     expect(
-      existsSync(join(ctx.projectDir, ".cursor", "rules", "format-code.mdc")),
+      existsSync(join(ctx.projectDir, ".agents", "skills", "format-code", "SKILL.md")),
     ).toBe(true);
+    expect(
+      existsSync(join(ctx.projectDir, ".cursor", "rules", "format-code.mdc")),
+    ).toBe(false);
   });
 
   it("applies from apm.yml when no plugin selector is given", async () => {

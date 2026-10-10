@@ -120,7 +120,7 @@ Most harnesses emit skills to native skill directories. These harnesses declare 
 | **cline** | `.clinerules/{name}.md` (or merged rules file) |
 | **kiro** | `.kiro/steering/{name}.md` |
 
-**Cursor** additionally honors project `cursor_skill_mode` (`agent-requested`, `always-on`, `agents-skills`). Inspect with `ht harness project status --project . --format json`.
+**Cursor** additionally honors project `cursor_skill_mode` (`agents-skills` default, `agent-requested`, `always-on`). Default apply writes skills under `.agents/skills/` only, not also as `.cursor/rules/*.mdc`. Inspect with `ht harness project status --project . --format json`.
 
 ## Agent / subagent bridging
 
