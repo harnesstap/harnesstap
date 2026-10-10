@@ -16,10 +16,11 @@ function formatPluginLabel(plugin: { name: string; version: string }): string {
 }
 
 function formatResourceCountLine(count: number, summary: string): string {
-  if (count === 0) {
-    return "0 resources";
+  const head = format.formatCount(count, "resource");
+  if (count === 0 || summary.length === 0) {
+    return head;
   }
-  return summary.length > 0 ? `${count} resources (${summary})` : `${count} resources`;
+  return `${head} (${summary})`;
 }
 
 function formatScanStatusLabel(status: ProjectScanComparisonStatus, payload: ProjectStatusPayload): string {

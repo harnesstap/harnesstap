@@ -9,6 +9,7 @@ import type { PolicyEvaluation } from "../../services/apm-policy.js";
 import { formatUnicodeFinding } from "../../services/unicode-scan.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
+import { formatCount } from "../formatting.js";
 import {
   fail,
   formatCommand,
@@ -51,7 +52,7 @@ function printPolicy(policy: PolicyEvaluation): void {
     ui.success(`Policy ${label}: ok (${policy.enforcement})`);
     return;
   }
-  const summary = `Policy ${label}: ${policy.violations.length} violation(s) (${policy.enforcement})`;
+  const summary = `Policy ${label}: ${formatCount(policy.violations.length, "violation")} (${policy.enforcement})`;
   if (policy.blocks) {
     fail(summary);
   } else {
@@ -94,7 +95,7 @@ function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
   if (opts.strip) {
     const verb = opts.dryRun ? "Would strip" : "Stripped";
     for (const entry of result.stripped) {
-      ui.info(`${verb} ${entry.removed} character(s) from ${entry.path}`);
+      ui.info(`${verb} ${formatCount(entry.removed, "character")} from ${entry.path}`);
     }
     if (result.stripped.length === 0) {
       ui.info(`${opts.dryRun ? "Would strip" : "Stripped"} nothing`);
@@ -110,7 +111,7 @@ function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
   const integrityNote = opts.ci
     ? result.integrity.ok
       ? "integrity ok"
-      : `${result.integrity.issues.length} integrity issue(s)`
+      : `${formatCount(result.integrity.issues.length, "integrity issue")}`
     : undefined;
   const policyNote = opts.file
     ? undefined
@@ -118,11 +119,12 @@ function printHuman(result: AuditResult, opts: AuditCommandOpts): void {
       ? "policy skipped"
       : result.policy.violations.length === 0
         ? "policy ok"
-        : `${result.policy.violations.length} policy violation(s)`;
+        : `${formatCount(result.policy.violations.length, "policy violation")}`;
   const extras = [integrityNote, policyNote].filter(Boolean);
+  const scanned = formatCount(result.scannedFiles.length, "file");
   const summary = extras.length > 0
-    ? `Scanned ${result.scannedFiles.length} file(s): ${parts.join(", ")}; ${extras.join("; ")}`
-    : `Scanned ${result.scannedFiles.length} file(s): ${parts.join(", ")}`;
+    ? `Scanned ${scanned}: ${parts.join(", ")}; ${extras.join("; ")}`
+    : `Scanned ${scanned}: ${parts.join(", ")}`;
   if (result.exitCode === 0) {
     ui.success(summary);
   } else if (result.exitCode === 2) {

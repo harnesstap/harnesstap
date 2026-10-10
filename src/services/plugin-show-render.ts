@@ -6,6 +6,7 @@ import {
 } from "../models/plugin-model.js";
 import type { Plugin, Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
+import { formatCount } from "../copy/plurals.js";
 import { formatRelativeTimeWithAbsolute, shortenId } from "../ui/format.js";
 import { renderPanel } from "../ui/panel.js";
 import { formatPluginOriginDisplay } from "../ui/plugin-origin-display.js";
@@ -20,10 +21,6 @@ export type PluginShowRenderOptions = {
   profileExtras?: { active: boolean };
   pluginLabel?: string;
 };
-
-function formatCount(count: number, noun: string, plural = `${noun}s`): string {
-  return `${count} ${count === 1 ? noun : plural}`;
-}
 
 function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
   const counts = new Map<ResourceType, number>();

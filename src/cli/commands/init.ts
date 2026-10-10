@@ -51,12 +51,18 @@ function printQuickStartGuide(): void {
   console.log("");
   ui.subheader("NEXT STEPS");
   console.log("");
-  console.log(`  ${formatCommand(`profile use "${GLOBAL_DEFAULT_PROFILE_NAME}"`)}`);
+  console.log(`  ${formatCommand(["profile", "use", GLOBAL_DEFAULT_PROFILE_NAME])}`);
   console.log(
-    `  ${formatCommand(`plugin list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`)}`,
+    `  ${formatCommand([
+      "plugin",
+      "list",
+      "--search",
+      CANONICAL_CATALOG_SEARCH_HINT,
+      "--remote-only",
+    ])}`,
   );
   console.log(
-    `  ${formatCommand(`apply ${CANONICAL_CATALOG_BASELINE}`)}`,
+    `  ${formatCommand(["apply", CANONICAL_CATALOG_BASELINE])}`,
   );
   console.log(`  ${formatCommand("help")}`);
   ui.dim(`Enable tab completion: ${formatCommand("init completion zsh >> ~/.zshrc")}`);

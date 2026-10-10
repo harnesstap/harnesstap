@@ -1,9 +1,10 @@
-import { basename } from "node:path";
 import {
   formatCatalogScopeLabel,
   loadRegisteredCatalogs,
   resolveCatalogScope,
 } from "../config/catalog.js";
+import { formatCommand } from "../cli/shared.js";
+import { formatCount } from "../copy/plurals.js";
 import { listPlugins } from "../models/plugin-model.js";
 import type { Plugin } from "../types.js";
 import { renderCatalogListChunk } from "../ui/catalog-list-render.js";
@@ -105,11 +106,6 @@ export function configurePluginListInteractiveDeps(deps: PluginListInteractiveDe
   interactiveDeps = deps;
 }
 
-function formatCommand(path: string): string {
-  const invocation = basename(process.argv[1] ?? "") === "ht" ? "ht" : "harnesstap";
-  return `${invocation} ${path}`.trim();
-}
-
 function makeIdColumn(showId: boolean, width = 12): Column[] {
   return showId
     ? [{
@@ -173,7 +169,7 @@ export function renderLocalPluginListTable(
       version: formatPluginVersionLabel(plugin.version, plugin.dirty),
       description: plugin.description ?? "",
     })),
-    summary: `${plugins.length} plugins ${ui.icons.bullet} run \`${formatCommand("plugin show <name>")}\` for details`,
+    summary: `${formatCount(plugins.length, "plugin")} ${ui.icons.bullet} run \`${formatCommand("plugin show <name>")}\` for details`,
     empty: "No plugins found.",
   });
 }
@@ -521,7 +517,9 @@ function printListSummaryFooter(
   if (includeLocal) {
     parts.push(`${localCount} local`);
   }
-  parts.push(`${remoteCount} remote plugins across ${sourceCount} sources`);
+  parts.push(
+    `${formatCount(remoteCount, "remote plugin")} across ${formatCount(sourceCount, "source")}`,
+  );
   console.log("");
   ui.dim(parts.join(" · "));
 }

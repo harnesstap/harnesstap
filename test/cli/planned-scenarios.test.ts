@@ -233,7 +233,7 @@ describe("CLI planned scenarios", () => {
         "--check",
       ]);
       driftSpy.mockRestore();
-      expect(driftHuman.stderr + driftHuman.stdout).toContain("Drift detected: 3 change(s)");
+      expect(driftHuman.stderr + driftHuman.stdout).toContain("Drift detected: 3 changes");
       expect(driftHuman.exitCode).toBe(1);
 
       const syncDry = await runCli([

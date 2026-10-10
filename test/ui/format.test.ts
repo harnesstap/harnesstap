@@ -23,6 +23,11 @@ describe("ui format", () => {
     expect(formatCount(0, "plugin")).toBe("0 plugins");
   });
 
+  it("uses singular units for one second", () => {
+    const justNow = new Date(Date.now() - 1000);
+    expect(formatRelativeTimeWithAbsolute(justNow)).toContain("1 second ago");
+  });
+
   it("formats relative time with absolute date and time in parentheses", () => {
     const elevenDaysAgo = new Date(Date.now() - 11 * 24 * 60 * 60 * 1000);
     const absolute = elevenDaysAgo.toISOString().slice(0, 19).replace("T", " ");

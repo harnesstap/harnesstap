@@ -38,6 +38,7 @@ import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
 import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_HELP, quoteName } from "../messages.js";
 import { parseOnConflict, toResourceSyncOnConflict } from "../on-conflict.js";
+import { formatCount } from "../formatting.js";
 import {
   fail,
   formatCommand,
@@ -307,7 +308,7 @@ export function registerResourceCommands(root: Command): void {
       }
 
       ui.success(
-        `Checked ${result.checked} resource(s) ${ui.icons.bullet} ${result.updated.length} updated, ${result.unchanged.length} unchanged, ${result.skipped.length} skipped, ${result.stale.length} stale`,
+        `Checked ${formatCount(result.checked, "resource")} ${ui.icons.bullet} ${result.updated.length} updated, ${result.unchanged.length} unchanged, ${result.skipped.length} skipped, ${result.stale.length} stale`,
       );
       for (const entry of result.stale) {
         ui.warn(`${entry.resource.type}:${entry.resource.name}: ${entry.reason}`);

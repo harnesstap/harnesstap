@@ -12,7 +12,7 @@ import { mcpMetadataFromRegistryServer } from "../../services/mcp-registry-resol
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
 import { configureCommandGroup } from "../help.js";
-import { fail } from "../shared.js";
+import { fail, formatCommand } from "../shared.js";
 import {
   handleInstallCommand,
   type InstallCommandActionOpts,
@@ -46,8 +46,9 @@ export async function handleMcpSearchCommand(
   try {
     const result = await searchMcpRegistryServers(trimmed, {
       limit: opts.limit ? Number(opts.limit) : 20,
+      ...(opts.cursor ? { cursor: opts.cursor } : {}),
     });
-    printServerList(result, opts.format);
+    printServerList(result, opts.format, { command: "search", query: trimmed });
   } catch (error) {
     printRegistryError(error);
   }
@@ -59,7 +60,7 @@ export async function handleMcpListCommand(opts: McpListOpts): Promise<void> {
       limit: opts.limit ? Number(opts.limit) : 20,
       ...(opts.cursor ? { cursor: opts.cursor } : {}),
     });
-    printServerList(result, opts.format);
+    printServerList(result, opts.format, { command: "list" });
   } catch (error) {
     printRegistryError(error);
   }
@@ -120,6 +121,7 @@ export async function handleMcpInstallCommand(
 function printServerList(
   result: Awaited<ReturnType<typeof listMcpRegistryServers>>,
   format: string | undefined,
+  next: { command: "list" | "search"; query?: string },
 ): void {
   const parsed = parseOutputFormat(format);
   if (parsed === "json") {
@@ -142,7 +144,11 @@ function printServerList(
     }),
   );
   if (result.nextCursor) {
-    ui.dim(`Next page: ht mcp list --cursor ${result.nextCursor}`);
+    const args =
+      next.command === "search" && next.query
+        ? ["mcp", "search", next.query, "--cursor", result.nextCursor]
+        : ["mcp", "list", "--cursor", result.nextCursor];
+    ui.dim(`Next page: ${formatCommand(args)}`);
   }
 }
 
@@ -155,6 +161,7 @@ export function registerMcpCommands(root: Command): void {
     .command("search")
     .argument("<query>", "Substring search against official MCP Registry names")
     .option("--limit <n>", "Page size", "20")
+    .option("--cursor <token>", "Registry pagination cursor")
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Search the official MCP Registry")
     .action(async (query: string, opts: McpListOpts) => {

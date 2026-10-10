@@ -336,7 +336,7 @@ export async function fetchMcpRegistryServer(identity: string): Promise<McpRegis
 
 export async function searchMcpRegistryServers(
   query: string,
-  options: { limit?: number } = {},
+  options: { limit?: number; cursor?: string } = {},
 ): Promise<McpRegistryListResult> {
   const limit = options.limit ?? 20;
   const params = new URLSearchParams({
@@ -344,6 +344,9 @@ export async function searchMcpRegistryServers(
     version: "latest",
     limit: String(limit),
   });
+  if (options.cursor) {
+    params.set("cursor", options.cursor);
+  }
   return parseListPayload(await registryGet(`/v0.1/servers?${params.toString()}`));
 }
 
