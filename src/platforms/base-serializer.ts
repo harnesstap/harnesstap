@@ -333,13 +333,14 @@ export abstract class BaseSerializer implements PlatformSerializer {
       ? resource.content
       : this.emitFrontmatter(fm, resource.content);
     const liveRoot = options.projectRoot;
-    const live = liveRoot
+    const mergeLive = options.mergeLiveSkillMarkdown !== false;
+    const live = mergeLive && liveRoot
       ? this.readFile(join(liveRoot, skillMdPath))
       : undefined;
     const files: SerializedFile[] = [
       {
         path: skillMdPath,
-        content: mergeSkillMarkdown(live, generated),
+        content: mergeLive ? mergeSkillMarkdown(live, generated) : generated,
       },
     ];
 

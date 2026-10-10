@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   findResourceByKey,
@@ -37,6 +37,7 @@ import { sourceMatchesManagedPath } from "./mcp-target.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { diskCaptureHarnessScope } from "./harness-scope.js";
 import { normalizeManagedPath } from "./profile-untracked-resources.js";
+import { collectManagedSkillPlacements } from "./shared-emit-paths.js";
 
 function profileHasResource(
   profileSelector: string,
@@ -542,7 +543,25 @@ export async function commitManagedResourceFromLive(input: {
       `Could not commit resource: ${resourceType}:${resourceName}`,
     );
   }
+  if (resource.type === "skill") {
+    mirrorCommittedSkillContent(originRef, resource.name, resource.content);
+  }
   return toContentsResource(resource);
+}
+
+function mirrorCommittedSkillContent(
+  originRef: string,
+  name: string,
+  content: string,
+): void {
+  const dirs = collectManagedSkillPlacements(originRef).get(name) ?? [];
+  for (const dir of dirs) {
+    const fullPath = join(originRef, `${dir}${name}/SKILL.md`);
+    if (!existsSync(fullPath)) {
+      continue;
+    }
+    writeFileSync(fullPath, content, "utf-8");
+  }
 }
 
 /**

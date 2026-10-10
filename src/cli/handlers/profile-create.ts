@@ -473,12 +473,16 @@ export async function handleProfileCreateCommand(
     });
     try {
       if (!opts.dryRun) {
-        await maybeSyncActiveProfileBeforeSwitch({
+        const sync = await maybeSyncActiveProfileBeforeSwitch({
           targetProfileName: name,
           harness: opts.harness,
           yes: opts.yes,
           format,
         });
+        if (sync === "abort") {
+          process.exitCode = 1;
+          return;
+        }
       }
       const applied = await useProfileCommand(name, {
         dryRun: opts.dryRun,

@@ -421,12 +421,15 @@ export async function executeProjectUse(
   }
 
   if (!dryRun) {
-    await maybeSyncActiveProfileBeforeSwitch({
+    const sync = await maybeSyncActiveProfileBeforeSwitch({
       targetProfileName: pluginName,
       harness: options.harness,
       yes: options.yes,
       format: options.format,
     });
+    if (sync === "abort") {
+      throw new Error("Profile switch cancelled.");
+    }
   }
 
   const conflictPolicy = resolveApplyConflictPolicy({

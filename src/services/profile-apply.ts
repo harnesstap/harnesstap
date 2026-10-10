@@ -661,6 +661,7 @@ export async function applyProfilePlugin(
       target: "global",
       claudeConfig: merged.claude,
       resolvedEnvironment,
+      mergeLiveSkillMarkdown: false,
     });
     const files = generated.flatMap((result) => result.files);
     gateDeployFiles(files, { forceUnicode: options.forceUnicode });

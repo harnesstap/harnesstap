@@ -265,7 +265,8 @@ function isGenerateFilesOptions(
         "resolvedEnvironment" in value ||
         "skillCursorMode" in value ||
         "skillSourceRoot" in value ||
-        "previousManagedPlacements" in value),
+        "previousManagedPlacements" in value ||
+        "mergeLiveSkillMarkdown" in value),
   );
 }
 

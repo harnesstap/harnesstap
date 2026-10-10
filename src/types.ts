@@ -663,6 +663,8 @@ export interface SerializeOptions {
   skillSourceRoot?: string;
   /** Apply/preview root; used to merge live host configs and skill files. */
   projectRoot?: string;
+  /** When false, SKILL.md emit uses library content (status/dry-run). Default true. */
+  mergeLiveSkillMarkdown?: boolean;
   surfaceWarnings?: SurfaceWarning[];
 }
 

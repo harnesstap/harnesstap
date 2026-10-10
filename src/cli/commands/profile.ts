@@ -3,6 +3,7 @@ import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
 import { getPlugin, resolvePluginSelector } from "../../models/plugin-model.js";
+import { SWITCH_CHANGES_FLAG_HELP } from "../../copy/cli.js";
 import { listAttachedPluginRefs } from "../../services/plugin-composition.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
 import { handlePluginListCommand } from "../../services/plugin-list.js";
@@ -354,6 +355,10 @@ profileCmd
   .option("--interactive", "Enable interactive prompts")
   .option("-y, --yes", "Install pinned marketplace plugins without a prompt")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option(
+    "--changes <action>",
+    SWITCH_CHANGES_FLAG_HELP,
+  )
   .description("Switch the active profile and apply globally to harness home paths")
   .action(async (name: string | undefined, opts: {
     profile?: string;
@@ -370,6 +375,7 @@ profileCmd
     noInteractive?: boolean;
     yes?: boolean;
     format?: string;
+    changes?: string;
   }) => {
     const db = getDb();
     initializeSchema(db);
@@ -416,11 +422,17 @@ profileCmd
     });
     try {
       if (!opts.dryRun) {
-        await maybeSyncActiveProfileBeforeSwitch({
+        const sync = await maybeSyncActiveProfileBeforeSwitch({
           targetProfileName: name,
           harness: opts.harness,
           format,
+          changes: opts.changes,
+          noInteractive: opts.noInteractive,
         });
+        if (sync === "abort") {
+          process.exitCode = 1;
+          return;
+        }
       }
       const payload = await useProfileCommand(name, {
         dryRun: opts.dryRun,
@@ -702,6 +714,10 @@ profileCmd
   .option("--no-interactive", "Disable interactive prompts")
   .option("--interactive", "Enable interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option(
+    "--changes <action>",
+    SWITCH_CHANGES_FLAG_HELP,
+  )
   .description("Switch the active profile and restore the previous one on failure")
   .action(async (name: string, opts: {
     dryRun?: boolean;
@@ -714,6 +730,7 @@ profileCmd
     interactive?: boolean;
     noInteractive?: boolean;
     format?: string;
+    changes?: string;
   }) => {
     const db = getDb();
     initializeSchema(db);
@@ -724,11 +741,17 @@ profileCmd
     });
     try {
       if (!opts.dryRun) {
-        await maybeSyncActiveProfileBeforeSwitch({
+        const sync = await maybeSyncActiveProfileBeforeSwitch({
           targetProfileName: name,
           harness: opts.harness,
           format,
+          changes: opts.changes,
+          noInteractive: opts.noInteractive,
         });
+        if (sync === "abort") {
+          process.exitCode = 1;
+          return;
+        }
       }
       const result = await switchProfile(name, {
         apply: {
