@@ -317,8 +317,7 @@ export abstract class BaseSerializer implements PlatformSerializer {
         return dir;
       }
     }
-    const fallback = candidates[0];
-    return fallback && existsSync(fallback) ? fallback : undefined;
+    return undefined;
   }
 
   protected emitSkillWithAuxiliary(

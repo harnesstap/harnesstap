@@ -207,12 +207,30 @@ export interface DeployedHashIssue {
   actual?: string;
 }
 
+export interface VerifyDeployedHashesOptions {
+  /** When set, "missing" means the lock path is absent on disk, not absent from the new plan. */
+  rootPath?: string;
+}
+
+function hashFileOnDisk(rootPath: string, relativePath: string): string | undefined {
+  const fullPath = join(rootPath, relativePath);
+  if (!existsSync(fullPath)) {
+    return undefined;
+  }
+  try {
+    return sha256Envelope(canonicalizeText(readFileSync(fullPath, "utf8")));
+  } catch {
+    return undefined;
+  }
+}
+
 export function diffDeployedFileHashes(
   expected: Record<string, string>,
   files: Array<{ path: string; content: string }>,
+  options: VerifyDeployedHashesOptions = {},
 ): DeployedHashIssue[] {
   const issues: DeployedHashIssue[] = [];
-  const actual = deployedFileHashes(files);
+  const planned = deployedFileHashes(files);
 
   for (const relativePath of Object.keys(expected).sort()) {
     if (hasParentTraversalSegment(relativePath) || relativePath.startsWith("/")) {
@@ -222,24 +240,33 @@ export function diffDeployedFileHashes(
 
   for (const relativePath of Object.keys(expected).sort()) {
     const expectedHash = expected[relativePath];
-    const actualHash = actual[relativePath];
-    if (actualHash === undefined) {
-      issues.push({ kind: "missing", path: relativePath, expected: expectedHash });
+    const plannedHash = planned[relativePath];
+    if (plannedHash !== undefined) {
+      if (expectedHash && normalizeDigest(expectedHash) !== normalizeDigest(plannedHash)) {
+        issues.push({
+          kind: "mismatch",
+          path: relativePath,
+          expected: normalizeDigest(expectedHash),
+          actual: normalizeDigest(plannedHash),
+        });
+      }
       continue;
     }
-    if (expectedHash && normalizeDigest(expectedHash) !== normalizeDigest(actualHash)) {
-      issues.push({
-        kind: "mismatch",
-        path: relativePath,
-        expected: normalizeDigest(expectedHash),
-        actual: normalizeDigest(actualHash),
-      });
+    // Path is in the lock but not in the new plan. With rootPath, that is only
+    // a lock failure when the file is also gone from disk (W1-1).
+    if (options.rootPath) {
+      const diskHash = hashFileOnDisk(options.rootPath, relativePath);
+      if (diskHash === undefined) {
+        issues.push({ kind: "missing", path: relativePath, expected: expectedHash });
+      }
+      continue;
     }
+    issues.push({ kind: "missing", path: relativePath, expected: expectedHash });
   }
 
-  for (const relativePath of Object.keys(actual).sort()) {
+  for (const relativePath of Object.keys(planned).sort()) {
     if (expected[relativePath] === undefined) {
-      issues.push({ kind: "extra", path: relativePath, actual: actual[relativePath] });
+      issues.push({ kind: "extra", path: relativePath, actual: planned[relativePath] });
     }
   }
 
@@ -249,15 +276,16 @@ export function diffDeployedFileHashes(
 export function verifyDeployedFileHashes(
   expected: Record<string, string>,
   files: Array<{ path: string; content: string }>,
+  options: VerifyDeployedHashesOptions = {},
 ): void {
-  const issues = diffDeployedFileHashes(expected, files);
+  const issues = diffDeployedFileHashes(expected, files, options);
   const first = issues[0];
   if (!first) return;
 
   switch (first.kind) {
     case "unsafe-path":
       throw new LockIntegrityError(
-        `Unsafe local_deployed_file_hashes path ${first.path} — apply aborted closed`,
+        `Unsafe local_deployed_file_hashes path ${first.path}. Apply aborted closed.`,
       );
     case "missing":
       throw new LockIntegrityError(

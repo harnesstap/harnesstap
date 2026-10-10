@@ -94,6 +94,7 @@ export interface MaterializeFilesOptions {
 export interface GenerateFilesOptions extends SerializeOptions {
   claudeConfig?: ClaudePluginConfig;
   resolvedEnvironment?: EnvironmentFragment;
+  previousManagedPlacements?: ReadonlyMap<string, readonly string[]>;
 }
 
 export interface GlobalApplyOptions extends GenerateFilesOptions, MaterializeFilesOptions {
@@ -263,7 +264,8 @@ function isGenerateFilesOptions(
         "claudeConfig" in value ||
         "resolvedEnvironment" in value ||
         "skillCursorMode" in value ||
-        "skillSourceRoot" in value),
+        "skillSourceRoot" in value ||
+        "previousManagedPlacements" in value),
   );
 }
 
@@ -367,7 +369,27 @@ export async function generateFiles(
     results,
     platforms,
     target,
+    options.previousManagedPlacements !== undefined
+      ? { previousManagedPlacements: options.previousManagedPlacements }
+      : undefined,
   );
+}
+
+function normalizeDeployedPath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+export function removeStaleProjectDeployedFiles(
+  projectRoot: string,
+  previousPaths: readonly string[],
+  desiredPaths: readonly string[],
+  options: SafeFileRemovalOptions = {},
+): SafeFileRemovalResult {
+  const desired = new Set(desiredPaths.map(normalizeDeployedPath));
+  const stale = previousPaths
+    .map(normalizeDeployedPath)
+    .filter((path) => path.length > 0 && !desired.has(path));
+  return removeGlobalMaterializedFiles(projectRoot, stale, options);
 }
 
 /**

@@ -16,8 +16,10 @@ import {
   generateFiles,
   materializeFiles,
   planMaterializationConflicts,
+  removeStaleProjectDeployedFiles,
 } from "../../services/applier.js";
 import { persistWrittenMaterializations } from "../../services/materialization-ownership.js";
+import { skillPlacementsFromPaths } from "../../services/shared-emit-paths.js";
 import { collectPluginPinsForPrepare, preparePluginPinsForApply } from "../../services/plugin-pin-apply.js";
 import { resolveComposition } from "../../services/resolve/index.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
@@ -88,6 +90,7 @@ interface ParsedApplyBody {
   harness?: string;
   force?: boolean;
   update?: boolean;
+  forceRemove?: boolean;
 }
 
 function parseBody(body: unknown): ParsedApplyBody | Response {
@@ -159,6 +162,9 @@ function parseBody(body: unknown): ParsedApplyBody | Response {
   if (body.update !== undefined && typeof body.update !== "boolean") {
     return jsonResponse({ error: "invalid_body", message: "update must be a boolean" }, { status: 400 });
   }
+  if (body.forceRemove !== undefined && typeof body.forceRemove !== "boolean") {
+    return jsonResponse({ error: "invalid_body", message: "forceRemove must be a boolean" }, { status: 400 });
+  }
   if (body.projectPath !== undefined && typeof body.projectPath !== "string") {
     return jsonResponse(
       { error: "invalid_body", message: "projectPath must be a string" },
@@ -185,6 +191,7 @@ function parseBody(body: unknown): ParsedApplyBody | Response {
     ...(body.harness?.trim() ? { harness: body.harness.trim() } : {}),
     ...(body.force === true ? { force: true } : {}),
     ...(body.update === true ? { update: true } : {}),
+    ...(body.forceRemove === true ? { forceRemove: true } : {}),
   };
 }
 
@@ -332,7 +339,9 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     }
   }
 
-  const existingLock = parsed.update ? undefined : readLockfile(projectRoot);
+  const recordedLock = readLockfile(projectRoot);
+  const existingLock = parsed.update ? undefined : recordedLock;
+  const previousDeployedPaths = Object.keys(recordedLock?.deployed_file_hashes ?? {});
   const primaryName = pluginIds[0] ?? "";
   const lockedVersions =
     existingLock && lockIsUsable(existingLock, primaryName)
@@ -420,6 +429,13 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     claudeConfig: mergePluginsById(configuredPluginIds).claude,
     resolvedEnvironment,
     skillSourceRoot: projectRoot,
+    ...(existingLock?.deployed_file_hashes
+      ? {
+          previousManagedPlacements: skillPlacementsFromPaths(
+            Object.keys(existingLock.deployed_file_hashes),
+          ),
+        }
+      : {}),
   });
 
   const generatedFiles = generated.flatMap((result) =>
@@ -437,6 +453,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     gateDeployFiles(generatedFiles, {
       forceUnicode: parsed.force,
       verifyHashes: shouldVerifyHashes,
+      rootPath: projectRoot,
       expectedHashes:
         executableTrust.optedIn && expectedHashes
           ? overlappingDeployedHashes(expectedHashes, generatedFiles)
@@ -452,6 +469,16 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     throw err;
   }
 
+  const desiredPaths = generated.flatMap((result) =>
+    result.files.map((file) => file.path),
+  );
+  const stalePlan = removeStaleProjectDeployedFiles(
+    projectRoot,
+    previousDeployedPaths,
+    desiredPaths,
+    { dryRun: true, forceRemove: parsed.forceRemove },
+  );
+
   if (parsed.dryRun) {
     return jsonResponse({
       scope: "project",
@@ -461,6 +488,11 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
       platforms: generated.map((result) => ({
         platform: result.platformId,
         files: result.files.map((file) => ({ path: file.path })),
+      })),
+      would_remove: stalePlan.removed,
+      would_keep: stalePlan.skipped.map((entry) => ({
+        path: entry.path,
+        reason: entry.reason,
       })),
       ...executableTrustResponseFields(executableTrust),
     });
@@ -543,6 +575,13 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     });
   }
 
+  const staleRemoved = removeStaleProjectDeployedFiles(
+    projectRoot,
+    previousDeployedPaths,
+    desiredPaths,
+    { forceRemove: parsed.forceRemove },
+  );
+
   if (!parsed.dryRun) {
     trackPluginApplied({
       pluginSlug: primaryPlugin.name,
@@ -556,6 +595,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     plugins: parsed.plugins,
     project_root: projectRoot,
     platforms: platformResults,
+    removed_files: staleRemoved.removed,
     cancelled: false,
     ...executableTrustResponseFields(executableTrust),
   });

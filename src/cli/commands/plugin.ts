@@ -52,8 +52,10 @@ import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
 import {
   generateFiles,
   materializeFiles,
+  removeStaleProjectDeployedFiles,
 } from "../../services/applier.js";
 import { persistWrittenMaterializations } from "../../services/materialization-ownership.js";
+import { skillPlacementsFromPaths } from "../../services/shared-emit-paths.js";
 import { exportPluginDefinition } from "../../services/plugin-editor.js";
 import { importFromFile, inspectPluginExportFile } from "../../services/plugin-import.js";
 import { openPathInSystemEditor } from "../../services/open-path.js";
@@ -490,7 +492,9 @@ export async function handleProjectApplyCommand(
   let applyBundle: Awaited<ReturnType<typeof resolveApplyPlugins>>;
   const pluginLabel = resolvedPluginNames.join(" + ");
   const resolveSpin = createProgress(`Resolving ${pluginLabel}…`);
-  const existingLock = opts.update ? undefined : readLockfile(projectRoot);
+  const recordedLock = readLockfile(projectRoot);
+  const existingLock = opts.update ? undefined : recordedLock;
+  const previousDeployedPaths = Object.keys(recordedLock?.deployed_file_hashes ?? {});
   const lockedVersions =
     existingLock && lockIsUsable(existingLock, resolvedPluginNames[0] ?? "")
       ? lockedVersionsFrom(existingLock)
@@ -1013,6 +1017,13 @@ export async function handleProjectApplyCommand(
         ...(projectHarnessConfig?.cursor_skill_mode
           ? { skillCursorMode: projectHarnessConfig.cursor_skill_mode }
           : {}),
+        ...(existingLock?.deployed_file_hashes
+          ? {
+              previousManagedPlacements: skillPlacementsFromPaths(
+                Object.keys(existingLock.deployed_file_hashes),
+              ),
+            }
+          : {}),
       },
     );
   } finally {
@@ -1034,6 +1045,7 @@ export async function handleProjectApplyCommand(
     const gate = gateDeployFiles(generatedFiles, {
       forceUnicode: opts.force,
       verifyHashes: shouldVerifyHashes,
+      rootPath: projectRoot,
       expectedHashes:
         executableTrust.optedIn && expectedHashes
           ? overlappingDeployedHashes(expectedHashes, generatedFiles)
@@ -1136,6 +1148,16 @@ export async function handleProjectApplyCommand(
     ui.hint("Snapshots and drift detection require a git repository with origin configured.");
   }
 
+  const desiredPaths = generated.flatMap((result) =>
+    result.files.map((file) => file.path),
+  );
+  const stalePlan = removeStaleProjectDeployedFiles(
+    projectRoot,
+    previousDeployedPaths,
+    desiredPaths,
+    { dryRun: true, forceRemove: opts.forceRemove },
+  );
+
   if (opts.dryRun) {
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
@@ -1147,6 +1169,11 @@ export async function handleProjectApplyCommand(
         platforms: generated.map((result) => ({
           platform: result.platformId,
           files: result.files.map((file) => ({ path: file.path })),
+        })),
+        would_remove: stalePlan.removed,
+        would_keep: stalePlan.skipped.map((entry) => ({
+          path: entry.path,
+          reason: entry.reason,
         })),
       });
       return;
@@ -1161,6 +1188,16 @@ export async function handleProjectApplyCommand(
       for (const file of result.files) {
         console.log(ui.theme.muted(`  ${ui.icons.bullet} ${file.path}`));
       }
+    }
+    if (stalePlan.removed.length > 0) {
+      console.log(ui.theme.muted(`Would remove (${stalePlan.removed.length})`));
+      for (const path of stalePlan.removed) {
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${path}`));
+      }
+    }
+    for (const skip of stalePlan.skipped) {
+      if (skip.reason === "missing") continue;
+      ui.warn(skip.message);
     }
     return;
   }
@@ -1228,6 +1265,24 @@ export async function handleProjectApplyCommand(
     }
   }
 
+  const staleRemoved = removeStaleProjectDeployedFiles(
+    projectRoot,
+    previousDeployedPaths,
+    desiredPaths,
+    { forceRemove: opts.forceRemove },
+  );
+  for (const warning of staleRemoved.warnings) {
+    ui.warn(warning);
+  }
+  if (outputFormat === "human" && staleRemoved.removed.length > 0) {
+    console.log(
+      ui.theme.muted(`Removed ${formatCount(staleRemoved.removed.length, "file")}`),
+    );
+    for (const path of staleRemoved.removed) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${path}`));
+    }
+  }
+
   if (outputFormat === "json") {
     printJson({
       scope: "project",
@@ -1235,6 +1290,7 @@ export async function handleProjectApplyCommand(
       plugins: resolvedPluginNames,
       project_root: projectRoot,
       platforms: platformResults,
+      removed_files: staleRemoved.removed,
     });
   }
 

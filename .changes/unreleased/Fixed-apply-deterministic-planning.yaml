@@ -1,0 +1,5 @@
+kind: Fixed
+body: Make project apply planning a function of resources, harnesses, and previous lock placements so re-apply is a no-op. Lock "missing" means missing on disk; content mismatch still compares the new plan to the lock. Pinning drops emit dirs the current harness set no longer consumes.
+time: 2026-10-10T04:20:00Z
+custom:
+  Issue: ""

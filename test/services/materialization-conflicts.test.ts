@@ -6,6 +6,14 @@ describe("resolveApplyConflictPolicy", () => {
     expect(resolveApplyConflictPolicy({ onConflict: "skip" })).toBe("skip");
     expect(resolveApplyConflictPolicy({ onConflict: "replace" })).toBe("replace");
     expect(resolveApplyConflictPolicy({ onConflict: "prompt" })).toBe("prompt");
+    expect(resolveApplyConflictPolicy({ onConflict: "overwrite" })).toBe("replace");
+    expect(resolveApplyConflictPolicy({ onConflict: "ignore" })).toBe("skip");
+  });
+
+  it("does not treat abort as an on-conflict alias", () => {
+    expect(() =>
+      resolveApplyConflictPolicy({ onConflict: "abort", noInteractive: true }),
+    ).toThrow("Invalid --on-conflict value: abort.");
   });
 
   it("defaults to replace when non-interactive", () => {
