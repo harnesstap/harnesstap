@@ -4,15 +4,22 @@ import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import type { ImportConflictPolicy } from "../../models/resource.js";
-import { getProject, getProjectByOrigin, upsertProject } from "../../models/project.js";
+import { getProjectByOrigin, upsertProject } from "../../models/project.js";
 import { listImportedSnapshots } from "../../models/imported-snapshot.js";
-import { getSnapshot, listSnapshots } from "../../models/snapshot.js";
+import { listSnapshots } from "../../models/snapshot.js";
+import {
+  executeRevert,
+  resolveRevertPlan,
+} from "../../services/snapshot-revert.js";
+import {
+  CLI_COPY,
+  restoredRemovedLine,
+} from "../../copy/cli.js";
 import type { ImportedSnapshot, Resource } from "../../types.js";
 import {
   applyImportedSnapshotToGlobal,
   generateFiles,
   materializeFiles,
-  writeFiles,
 } from "../../services/applier.js";
 import {
   getGitOrigin,
@@ -443,39 +450,50 @@ function handleHistoryCommand(
   });
 }
 
-function handleRevertCommand(snapshotId?: string): void {
+function handleRevertCommand(
+  snapshotId: string | undefined,
+  opts: { dryRun?: boolean; forceRemove?: boolean; format?: string },
+): void {
   const db = getDb();
   initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
   if (!snapshotId) {
-    process.exitCode = 1;
-    fail(
-      `Please provide a snapshot ID. Use \`${formatCommand("history --show-id")}\` or \`${formatCommand("history --format json")}\` to list them.`,
-    );
+    fail("Pass a snapshot id.", {
+      hint: `Run ${formatCommand("history --show-id")} to see your snapshots.`,
+    });
     return;
   }
-  const snapshot = getSnapshot(snapshotId);
-  if (!snapshot) {
-    process.exitCode = 1;
-    fail(`Snapshot not found: ${snapshotId}`);
+  const plan = resolveRevertPlan(snapshotId);
+  if ("error" in plan) {
+    fail(plan.error, {
+      hint: `Run ${formatCommand("history --show-id")} to see your snapshots.`,
+    });
     return;
   }
-  const project = getProject(snapshot.project_id);
-  if (!project) {
-    process.exitCode = 1;
-    fail("Snapshot project not found.");
+  const result = executeRevert(plan, {
+    dryRun: opts.dryRun,
+    forceRemove: opts.forceRemove,
+  });
+  if (format === "json") {
+    printJson({
+      dry_run: Boolean(opts.dryRun),
+      snapshot_id: plan.id,
+      kind: plan.kind,
+      restored: result.restored,
+      removed: result.removed,
+      skipped: result.skipped,
+    });
     return;
   }
-  const files = Object.entries(snapshot.state.platform_files).flatMap(
-    ([, platformFiles]) =>
-      Object.entries(platformFiles).map(([path, content]) => ({
-        path,
-        content,
-      })),
-  );
-  writeFiles(files, project.local_path);
-  ui.success(
-    `Restored ${formatCount(files.length, "file")} from snapshot ${ui.theme.muted(ui.format.shortenId(snapshot.id))} (${ui.format.formatRelativeTime(snapshot.created_at)})`,
-  );
+  if (opts.dryRun) {
+    console.log(CLI_COPY.dryRunNothingChanged);
+    console.log(restoredRemovedLine(result.restored.length, result.removed.length));
+    return;
+  }
+  for (const warning of result.warnings) {
+    ui.warn(warning);
+  }
+  ui.success(restoredRemovedLine(result.restored.length, result.removed.length));
 }
 
 async function handleProjectStatusCommand(
@@ -718,7 +736,13 @@ export function registerProjectCommandsAfterConfig(root: Command): void {
   root
     .command("revert")
     .argument("[snapshot-id]", "Snapshot ID to revert to")
-    .description("Revert a project to a previous configuration snapshot")
+    .option("--dry-run", "Show what would be restored without writing")
+    .option(
+      "--force-remove",
+      "Remove files even when they were changed or not made by HarnessTap",
+    )
+    .option("--format <mode>", "Output format: human or json", "human")
+    .description("Revert a project or global apply snapshot")
     .action(handleRevertCommand);
 
   root

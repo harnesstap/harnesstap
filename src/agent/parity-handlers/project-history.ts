@@ -3,7 +3,7 @@ import { jsonResponse } from "../http.js";
 import { GIT_ORIGIN_HINTS } from "../../cli/shared.js";
 import { getProject, getProjectByOrigin } from "../../models/project.js";
 import { getSnapshot, listSnapshots } from "../../models/snapshot.js";
-import { writeFiles } from "../../services/applier.js";
+import { executeRevert, resolveRevertPlan } from "../../services/snapshot-revert.js";
 import { getGitOrigin, normalizeGitUrl } from "../../services/git.js";
 import type { Snapshot } from "../../types.js";
 
@@ -155,10 +155,15 @@ async function handleRevertPost(
     );
   }
 
-  const files = flattenPlatformFiles(snapshot.state.platform_files);
-  writeFiles(files, project.local_path);
+  const plan = resolveRevertPlan(snapshot.id);
+  if ("error" in plan) {
+    return jsonResponse({ error: "snapshot_not_found", message: plan.error }, { status: 404 });
+  }
+  const result = executeRevert(plan);
   return jsonResponse({
-    restored_file_count: files.length,
+    restored_file_count: result.restored.length,
+    removed_file_count: result.removed.length,
+    skipped: result.skipped,
     snapshot: {
       id: snapshot.id,
       created_at: snapshot.created_at,

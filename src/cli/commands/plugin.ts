@@ -38,7 +38,11 @@ import {
   failCaught,
   formatCommand,
 } from "../shared.js";
-import { DRY_RUN_NOTHING_CHANGED } from "../../copy/cli.js";
+import {
+  printApplyDryRun,
+  printApplySuccess,
+  removalSkipReason,
+} from "../print-apply-summary.js";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { ui } from "../../ui/index.js";
@@ -77,6 +81,7 @@ import {
   applyConfiguredPluginToProject,
 } from "../../models/project.js";
 import { createSnapshot } from "../../models/snapshot.js";
+import { captureManagedSnapshotState } from "../../services/snapshot-capture.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
 import type {
   ClaudePluginConfig,
@@ -84,7 +89,6 @@ import type {
   Plugin,
   Resource,
   ResourceType,
-  SnapshotState,
 } from "../../types.js";
 import { RESOURCE_TYPES } from "../../types.js";
 import { listAttachedPluginPins } from "../../services/plugin-composition.js";
@@ -1109,44 +1113,13 @@ export async function handleProjectApplyCommand(
     );
   }
 
-  const gitOrigin = getGitOrigin(projectRoot);
-  if (gitOrigin) {
-    const normalized = normalizeGitUrl(gitOrigin);
-    const project = upsertProject({
-      git_origin: normalized,
-      name: projectNameFromUrl(gitOrigin),
-      local_path: projectRoot,
-    });
-
-    const snapshotState: SnapshotState = {
-      plugins: applyBundle.plugins.filter((p): p is NonNullable<typeof p> => p != null),
-      resources: applyResources,
-      platform_files: Object.fromEntries(
-        generated.map((result) => [
-          result.platformId,
-          Object.fromEntries(result.files.map((file) => [file.path, file.content])),
-        ]),
-      ),
-    };
-    createSnapshot({
-      project_id: project.id,
-        label:
-        resolvedPluginNames.length > 1
-          ? `Before applying: ${resolvedPluginNames.join(" + ")}`
-          : `Before applying: ${primaryPlugin.name}`,
-      state: snapshotState,
-    });
-
-    applyConfiguredPluginToProject({
-      project_id: project.id,
-      configured_plugin_id: applyBundle.primaryConfiguredPluginId,
-      platforms,
-    });
-  } else if (outputFormat === "human" && !opts.dryRun) {
-    ui.warn("No git remote origin — configuration snapshot will not be stored.");
-    ui.hint("git remote add origin <url>");
-    ui.hint("Snapshots and drift detection require a git repository with origin configured.");
-  }
+  const capturedState = captureManagedSnapshotState({
+    rootPath: projectRoot,
+    plugins: applyBundle.plugins.filter((p): p is NonNullable<typeof p> => p != null),
+    resources: applyResources,
+    generated,
+    extraPaths: previousDeployedPaths,
+  });
 
   const desiredPaths = generated.flatMap((result) =>
     result.files.map((file) => file.path),
@@ -1159,6 +1132,15 @@ export async function handleProjectApplyCommand(
   );
 
   if (opts.dryRun) {
+    const dryMaterialized = await materializeFiles(
+      generated.flatMap((result) => result.files),
+      projectRoot,
+      { dryRun: true, conflictPolicy: "replace" },
+    );
+    const wouldKeep = stalePlan.skipped.flatMap((entry) => {
+      const reason = removalSkipReason(entry.reason);
+      return reason ? [{ path: entry.path, reason }] : [];
+    });
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
       printJson({
@@ -1170,35 +1152,21 @@ export async function handleProjectApplyCommand(
           platform: result.platformId,
           files: result.files.map((file) => ({ path: file.path })),
         })),
+        would_write: dryMaterialized.writtenFiles,
         would_remove: stalePlan.removed,
-        would_keep: stalePlan.skipped.map((entry) => ({
-          path: entry.path,
-          reason: entry.reason,
-        })),
+        would_keep: wouldKeep,
       });
       return;
     }
-    console.log(DRY_RUN_NOTHING_CHANGED);
-    for (const result of generated) {
-      const dryTag = ui.theme.muted("[dry run] ");
-      const verdict = ui.theme.success(
-        `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${formatCount(result.files.length, "file")}`,
-      );
-      console.log(dryTag + verdict);
-      for (const file of result.files) {
-        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${file.path}`));
-      }
-    }
-    if (stalePlan.removed.length > 0) {
-      console.log(ui.theme.muted(`Would remove (${stalePlan.removed.length})`));
-      for (const path of stalePlan.removed) {
-        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${path}`));
-      }
-    }
-    for (const skip of stalePlan.skipped) {
-      if (skip.reason === "missing") continue;
-      ui.warn(skip.message);
-    }
+    printApplyDryRun({
+      wouldWrite: dryMaterialized.writtenFiles,
+      wouldRemove: stalePlan.removed,
+      wouldKeep,
+      unchanged: Math.max(
+        0,
+        desiredPaths.length - dryMaterialized.writtenFiles.length,
+      ),
+    });
     return;
   }
 
@@ -1216,7 +1184,7 @@ export async function handleProjectApplyCommand(
   }> = [];
 
   for (const result of generated) {
-    const spin = createProgress(`Applying ${result.platformId}…`);
+    const spin = createProgress(`Applying ${result.platformId}`);
     const materialized = await materializeFiles(result.files, projectRoot, {
       conflictPolicy,
       conflictResolver,
@@ -1242,27 +1210,6 @@ export async function handleProjectApplyCommand(
       written_files: materialized.writtenFiles,
       skipped_files: materialized.skippedFiles,
     });
-    if (outputFormat === "human") {
-      const writtenCount = materialized.writtenFiles.length;
-      const skippedCount = materialized.skippedFiles.length;
-      const summary =
-        skippedCount > 0
-          ? `wrote ${formatCount(writtenCount, "file")}, skipped ${formatCount(skippedCount, "file")}`
-          : `wrote ${formatCount(writtenCount, "file")}`;
-      console.log(
-        ui.theme.success(
-          `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${summary}`,
-        ),
-      );
-      for (const filePath of materialized.writtenFiles) {
-        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${filePath}`));
-      }
-      for (const filePath of materialized.skippedFiles) {
-        console.log(
-          ui.theme.muted(`  ${ui.icons.bullet} skipped ${filePath}`),
-        );
-      }
-    }
   }
 
   const staleRemoved = removeStaleProjectDeployedFiles(
@@ -1274,13 +1221,46 @@ export async function handleProjectApplyCommand(
   for (const warning of staleRemoved.warnings) {
     ui.warn(warning);
   }
-  if (outputFormat === "human" && staleRemoved.removed.length > 0) {
-    console.log(
-      ui.theme.muted(`Removed ${formatCount(staleRemoved.removed.length, "file")}`),
-    );
-    for (const path of staleRemoved.removed) {
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${path}`));
+
+  const wroteCount = platformResults.reduce(
+    (n, row) => n + row.written_files.length,
+    0,
+  );
+  const kept = staleRemoved.skipped.flatMap((entry) => {
+    const reason = removalSkipReason(entry.reason);
+    return reason ? [{ path: entry.path, reason }] : [];
+  });
+  const unchanged = Math.max(0, desiredPaths.length - wroteCount);
+  const hasChanges = wroteCount > 0 || staleRemoved.removed.length > 0;
+
+  const gitOrigin = getGitOrigin(projectRoot);
+  let snapshotId: string | undefined;
+  if (gitOrigin) {
+    const project = upsertProject({
+      git_origin: normalizeGitUrl(gitOrigin),
+      name: projectNameFromUrl(gitOrigin),
+      local_path: projectRoot,
+    });
+    applyConfiguredPluginToProject({
+      project_id: project.id,
+      configured_plugin_id: applyBundle.primaryConfiguredPluginId,
+      platforms,
+    });
+    if (hasChanges) {
+      const snapshot = createSnapshot({
+        project_id: project.id,
+        label:
+          resolvedPluginNames.length > 1
+            ? `Before applying: ${resolvedPluginNames.join(" + ")}`
+            : `Before applying: ${primaryPlugin.name}`,
+        state: capturedState,
+      });
+      snapshotId = snapshot.id;
     }
+  } else if (outputFormat === "human") {
+    ui.warn("No git remote origin — configuration snapshot will not be stored.");
+    ui.hint("git remote add origin <url>");
+    ui.hint("Snapshots and drift detection require a git repository with origin configured.");
   }
 
   if (outputFormat === "json") {
@@ -1291,6 +1271,19 @@ export async function handleProjectApplyCommand(
       project_root: projectRoot,
       platforms: platformResults,
       removed_files: staleRemoved.removed,
+      kept_files: kept,
+      unchanged,
+      snapshot_id: snapshotId,
+    });
+  } else {
+    printApplySuccess({
+      name: primaryPlugin.name,
+      harnessCount: platforms.length,
+      wrote: wroteCount,
+      removed: staleRemoved.removed.length,
+      kept,
+      unchanged,
+      snapshotId,
     });
   }
 

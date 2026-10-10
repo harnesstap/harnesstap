@@ -589,7 +589,8 @@ describe("CLI cloud plugin workflows", () => {
 
       expect(result.stdout).toContain("Fetched");
       expect(result.stdout).toContain("from catalog");
-      expect(result.stdout).toContain("claude-code");
+      expect(result.stdout).toContain("Applied");
+      expect(result.stdout).toContain("1 harness");
 
       restoreFetch();
     } finally {

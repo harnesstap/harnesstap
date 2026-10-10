@@ -1,4 +1,9 @@
 import { ui } from "../ui/index.js";
+import {
+  applyHeaderLine,
+  applyWroteLine,
+  snapshotSavedUndoLine,
+} from "../copy/cli.js";
 import { detectGlobalProfileStatus } from "./global-profile-drift.js";
 import { useProfileCommand } from "./profile-commands.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "./profile-switch-prompt.js";
@@ -117,7 +122,16 @@ export async function maybePromptProfileEnable(input: {
     return;
   }
 
-  ui.success(
-    `Applied profile ${ui.theme.accent(applied.profile_name)} to ${applied.harnesses.join(", ") || "(none)"}`,
+  console.log(applyHeaderLine(applied.profile_name, applied.harnesses.length));
+  console.log(
+    applyWroteLine({
+      wrote: applied.written_files.length,
+      removed: applied.removed_files?.length ?? 0,
+      kept: 0,
+      unchanged: Math.max(0, applied.files.length - applied.written_files.length),
+    }),
   );
+  if (applied.snapshot_id) {
+    console.log(snapshotSavedUndoLine(`ht revert ${applied.snapshot_id}`));
+  }
 }

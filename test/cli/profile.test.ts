@@ -73,7 +73,7 @@ describe("CLI profile", () => {
         },
       );
       expect(createResult.stdout).toContain("Tagged plugin");
-      expect(createResult.stdout).toContain("Applied profile");
+      expect(createResult.stdout).toContain('Applied "');
 
       const status = await runCli(["profile", "status"]);
       expect(status.stdout).toContain("dbt-expert");
@@ -208,8 +208,7 @@ describe("CLI profile", () => {
         "--harness",
         "claude-code",
       ]);
-      expect(dryRun.stdout).toContain("Applied profile");
-      expect(dryRun.stdout).toContain("dry run");
+      expect(dryRun.stdout).toContain("Dry run. Nothing was changed.");
 
       const apply = await runCli([
         "profile",
@@ -218,7 +217,7 @@ describe("CLI profile", () => {
         "--harness",
         "claude-code",
       ]);
-      expect(apply.stdout).toContain("Applied profile");
+      expect(apply.stdout).toContain('Applied "');
 
       const status = await runCli(["profile", "status"]);
       expect(status.stdout).toContain("work-plugin");
@@ -451,12 +450,11 @@ describe("CLI profile", () => {
       addResourceToPlugin(plugin.id, resource.id);
 
       const shorthand = await runCli(["work", "--harness", "claude-code", "--dry-run"]);
-      expect(shorthand.stdout).toContain("Applied profile");
-      expect(shorthand.stdout).toContain("work");
+      expect(shorthand.stdout).toContain("Dry run. Nothing was changed.");
 
       const reserved = await runCli(["init", "--format", "json"]);
       expect(reserved.stdout).toContain("{");
-      expect(reserved.stdout).not.toContain("Applied profile");
+      expect(reserved.stdout).not.toContain('Applied "');
     } finally {
       await context.cleanup();
     }
@@ -488,7 +486,7 @@ describe("CLI profile", () => {
       ]);
       expect(shorthand.exitCode ?? 0).toBe(0);
       expect(shorthand.stderr).not.toContain("unknown command");
-      expect(shorthand.stdout).toContain("Applied profile");
+      expect(shorthand.stdout).toContain("Dry run. Nothing was changed.");
     } finally {
       await context.cleanup();
     }
@@ -630,7 +628,7 @@ describe("CLI profile", () => {
         "--on-conflict",
         "replace",
       ]);
-      expect(switched.stdout).toContain("Applied profile");
+      expect(switched.stdout).toContain('Applied "');
       expect(existsSync(dbtOnlyPath)).toBe(false);
 
       const reapplied = await runCli([
@@ -643,7 +641,7 @@ describe("CLI profile", () => {
         isTTY: true,
       });
       expect(reapplied.stdout).not.toContain("File already exists");
-      expect(reapplied.stdout).toContain("Applied profile");
+      expect(reapplied.stdout).toContain('Applied "');
     } finally {
       await context.cleanup();
     }
@@ -701,7 +699,7 @@ describe("CLI profile", () => {
 
       expect(switchResult.stdout).not.toContain("unsaved changes");
       expect(switchResult.stdout).not.toContain("out of sync");
-      expect(switchResult.stdout).toContain("Applied profile");
+      expect(switchResult.stdout).toContain('Applied "');
     } finally {
       await context.cleanup();
     }

@@ -107,8 +107,11 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   revert: {
-    description: "Revert a project to a previous configuration snapshot",
-    examples: ["revert <snapshot-id>"],
+    description: "Revert a project or global apply snapshot",
+    examples: [
+      "revert <snapshot-id>",
+      "revert <snapshot-id> --dry-run",
+    ],
   },
   apply: {
     description:

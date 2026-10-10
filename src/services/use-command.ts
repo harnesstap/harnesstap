@@ -2,6 +2,11 @@ import { resolve } from "node:path";
 import { getDb } from "../db/connection.js";
 import { initializeSchema } from "../db/schema.js";
 import { ui } from "../ui/index.js";
+import {
+  applyHeaderLine,
+  applyWroteLine,
+  snapshotSavedUndoLine,
+} from "../copy/cli.js";
 import { parseOutputFormat, printJson } from "../utils/output-format.js";
 import { MISSING_PROJECT_CONFIG_MESSAGE } from "./project-config-messages.js";
 import {
@@ -114,10 +119,6 @@ export function renderProjectUseHuman(result: ProjectUseResult): void {
     return;
   }
 
-  const dryPrefix = result.dry_run ? `${ui.theme.muted("[dry run] ")}` : "";
-  ui.success(
-    `${dryPrefix}Applied profile ${ui.theme.accent(result.profile_key)} (${result.profile_name}) to ${result.harnesses.join(", ") || "(none)"}`,
-  );
   if (result.environment_name) {
     ui.info(`Environment: ${ui.theme.accent(result.environment_name)}`);
   }
@@ -127,12 +128,22 @@ export function renderProjectUseHuman(result: ProjectUseResult): void {
       console.log(`  - ${pulled.plugin_name} (${pulled.source})`);
     }
   }
-  ui.kvBlock([
-    { key: "Files", value: `${result.files.length}` },
-    { key: "Written", value: `${result.written_files.length}` },
-    { key: "Skipped", value: `${result.skipped_files.length}` },
-    ...(result.snapshot_id ? [{ key: "Snapshot", value: result.snapshot_id }] : []),
-  ]);
+  if (result.dry_run) {
+    console.log("Dry run. Nothing was changed.");
+    return;
+  }
+  console.log(applyHeaderLine(result.profile_name, result.harnesses.length));
+  console.log(
+    applyWroteLine({
+      wrote: result.written_files.length,
+      removed: 0,
+      kept: 0,
+      unchanged: Math.max(0, result.files.length - result.written_files.length),
+    }),
+  );
+  if (result.snapshot_id) {
+    console.log(snapshotSavedUndoLine(`ht revert ${result.snapshot_id}`));
+  }
 }
 
 function toProjectUseOptions(opts: UseCommandOptions): ProjectUseOptions {

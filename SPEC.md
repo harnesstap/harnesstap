@@ -406,7 +406,7 @@ Repositories may declare named profiles, environments, and plugin composition in
 | `status --check` | Compares working tree against the latest apply/sync snapshot. |
 | `mirror` | Rematerializes other registered harness outputs from one on-disk harness (`--from`, default first registered). Not apply. |
 | `history` | Lists stored snapshots (requires git-backed project). |
-| `revert` | Restores files from a snapshot. |
+| `revert` | Restores live-disk bytes from a snapshot and removes apply-added files that were still unmodified. User-edited files stay; `--force-remove` deletes them too. |
 | `status` | Shows harnesses, applied plugins, snapshots, and harness preferences. |
 
 ### `harness` subcommands
@@ -648,10 +648,11 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age,
 - `plugin_resources.harness_scope` — TEXT NOT NULL DEFAULT `all` (schema v33). Missing or `all` means every registered harness.
 - `imported_snapshots`, `imported_snapshot_installs` — plugin/skill-package import install records.
 - `harness_preferences`, `project_harnesses`, `snapshots`, `global_apply_snapshots`, `global_apply_snapshot_installs`, `schema_version`.
+- `global_apply_snapshots.state` — JSON blob of live `disk_files` / `absent_paths` (schema v36). v35 remains `migrateNonSemverPluginVersions`.
 
-**Current schema version:** **23**. Fresh databases bootstrap at v22 DDL then apply v23. Databases older than v22 cannot upgrade in place — export with `ht migrate export`, remove the old DB, then `ht migrate import`.
+**Current schema version:** **36**. Fresh databases bootstrap at v22 DDL then apply later migrations. Databases older than v22 cannot upgrade in place — export with `ht migrate export`, remove the old DB, then `ht migrate import`.
 
-**Global apply snapshots:** each `profile use` / `profile switch` / successful `ht use` records a `global_apply_snapshots` row plus per-harness file maps in `global_apply_snapshot_installs` for conflict tracking and future revert support. Project-bound `snapshots` remain separate.
+**Global apply snapshots:** each `profile use` / `profile switch` / successful `ht use` records a `global_apply_snapshots` row plus per-harness file maps in `global_apply_snapshot_installs`. `state` holds on-disk bytes for undo; generated `platform_files` stay available for drift. Project-bound `snapshots` remain separate.
 
 ### Project tracking
 
@@ -661,7 +662,7 @@ During `scan`, `apply`, and `mirror`, HarnessTap reads `origin`, normalizes it, 
 
 ### Snapshot behavior
 
-Snapshots are created during `apply` and `mirror` when the target has a git origin. A snapshot stores the generated file map for every registered harness materialized in that operation. `revert` restores those files. `status --check` compares the latest snapshot to the working tree.
+Snapshots are created during `apply` and `mirror` when the target has a git origin. A snapshot stores live on-disk bytes and absent managed paths for undo, plus generated platform files for drift. `revert` restores those live bytes and removes unmodified apply-added files. `status --check` compares generated files from the latest snapshot to the working tree.
 
 ## Canonical model
 
