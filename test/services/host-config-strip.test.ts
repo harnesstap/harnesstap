@@ -4,6 +4,7 @@ import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { recordResourceMaterialization } from "../../src/models/resource-materialization.ts";
+import { recordPreexistingPath } from "../../src/models/preexisting-path.ts";
 import { hashGeneratedContent } from "../../src/services/materialization-ownership.ts";
 import type { Resource } from "../../src/types.ts";
 import {
@@ -101,6 +102,49 @@ describe("host config strip", () => {
       const next = readFileSync(full, "utf-8");
       expect(next).toContain("keep");
       expect(next).not.toContain("devel");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not strip keys from a preexisting shared config", async () => {
+    const context = await createInitializedTestContext("host-strip-preexisting");
+    try {
+      const relative = ".cursor/mcp.json";
+      const full = join(context.homeDir, relative);
+      mkdirSync(join(full, ".."), { recursive: true });
+      const body = `${JSON.stringify({
+        mcpServers: { "cursor-mcp": { command: "node" } },
+      }, null, 2)}\n`;
+      writeFileSync(full, body);
+      recordPreexistingPath({
+        root_path: context.homeDir,
+        path: relative,
+        content_hash: hashGeneratedContent(body),
+      });
+      const resource = createResource({
+        type: "mcp_server",
+        name: "cursor-mcp",
+        description: "",
+        content: "",
+        metadata: { command: "node" },
+        source: "manual",
+      });
+      recordResourceMaterialization({
+        resource_id: resource.id,
+        scope: "global",
+        root_path: context.homeDir,
+        platform_id: "cursor",
+        path: relative,
+        action: "edit-file",
+        ownership_key: "mcp_server:cursor-mcp",
+        generated_hash: hashGeneratedContent(body),
+      });
+      const result = rewriteStaleMergeableHostConfigs(context.homeDir, [relative], {
+        applyId: "test-apply",
+      });
+      expect(result.skipped).toContain(relative);
+      expect(readFileSync(full, "utf-8")).toContain("cursor-mcp");
     } finally {
       await context.cleanup();
     }

@@ -201,6 +201,10 @@ export function rewriteStaleMergeableHostConfigs(
       skipped.push(relativePath);
       continue;
     }
+    if (isPreexistingPath(rootPath, relativePath)) {
+      skipped.push(relativePath);
+      continue;
+    }
     let content: string;
     try {
       content = readFileSync(fullPath, "utf-8");
