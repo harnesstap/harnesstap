@@ -496,6 +496,9 @@ export function ScopeWorkspace({
                       })
                   : undefined
               }
+              onAfterRemoves={
+                actionsEnabled ? ctrl.reapplyAfterInventoryRemove : undefined
+              }
               onAddAllResources={
                 actionsEnabled
                   ? (resources) => ctrl.handleAddAllResources(undefined, resources)
