@@ -27,6 +27,7 @@ describe("filterInstructionsForTargetPath", () => {
     instruction("codex", "~/.codex/AGENTS.md"),
     instruction("shared-home", "~/.agents/AGENTS.md"),
     instruction("project-agents", "AGENTS.md"),
+    instruction("project-claude", "CLAUDE.md"),
     instruction("portable", "manual"),
     instruction("empty-source", ""),
   ];
@@ -36,7 +37,7 @@ describe("filterInstructionsForTargetPath", () => {
       filterInstructionsForTargetPath(resources, [".claude/CLAUDE.md", "CLAUDE.md"]).map(
         (entry) => entry.name,
       ),
-    ).toEqual(["claude", "portable", "empty-source"]);
+    ).toEqual(["claude", "project-agents", "project-claude", "portable", "empty-source"]);
   });
 
   it("keeps Codex instructions on AGENTS.md and drops Claude and shared home files", () => {
@@ -44,7 +45,7 @@ describe("filterInstructionsForTargetPath", () => {
       filterInstructionsForTargetPath(resources, [".codex/AGENTS.md", "AGENTS.md"]).map(
         (entry) => entry.name,
       ),
-    ).toEqual(["codex", "project-agents", "portable", "empty-source"]);
+    ).toEqual(["codex", "project-agents", "project-claude", "portable", "empty-source"]);
   });
 
   it("does not emit ~/.agents/AGENTS.md onto Cursor AGENTS.md or .cursorrules", () => {
@@ -52,7 +53,7 @@ describe("filterInstructionsForTargetPath", () => {
       filterInstructionsForTargetPath(resources, ["AGENTS.md", ".cursorrules"]).map(
         (entry) => entry.name,
       ),
-    ).toEqual(["project-agents", "portable", "empty-source"]);
+    ).toEqual(["project-agents", "project-claude", "portable", "empty-source"]);
   });
 
   it("keeps shared home instructions only on that path", () => {

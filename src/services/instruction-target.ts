@@ -38,11 +38,28 @@ function isPortableInstructionSource(source: string | undefined): boolean {
   return !trimmed || trimmed === "manual";
 }
 
+/** Project-root CLAUDE.md and AGENTS.md are the same shared instruction file. */
+function instructionPathAliases(path: string): string[] {
+  const normalized = path.replace(/\\/g, "/");
+  const aliases = [normalized];
+  if (normalized.endsWith("AGENTS.md")) {
+    aliases.push(`${normalized.slice(0, -"AGENTS.md".length)}CLAUDE.md`);
+  } else if (normalized.endsWith("CLAUDE.md")) {
+    aliases.push(`${normalized.slice(0, -"CLAUDE.md".length)}AGENTS.md`);
+  }
+  return aliases;
+}
+
+function expandAllowedInstructionPaths(allowedPaths: string[]): string[] {
+  return [...new Set(allowedPaths.flatMap(instructionPathAliases))];
+}
+
 /** Instructions that belong on this harness instruction path. */
 export function filterInstructionsForTargetPath(
   resources: Resource[],
   allowedPaths: string[],
 ): Resource[] {
+  const allowed = expandAllowedInstructionPaths(allowedPaths);
   return resources.filter((resource) => {
     if (resource.type !== "instruction") {
       return false;
@@ -50,7 +67,7 @@ export function filterInstructionsForTargetPath(
     if (isPortableInstructionSource(resource.source)) {
       return true;
     }
-    if (allowedPaths.some((path) => sourceMatchesManagedPath(resource.source, path))) {
+    if (allowed.some((path) => sourceMatchesManagedPath(resource.source, path))) {
       return true;
     }
     if (sourcePointsAtKnownInstructionPath(resource.source ?? "")) {
