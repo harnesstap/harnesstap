@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getPlatform } from "../platforms/registry.js";
 import type { Resource, ResourceCreateInput, SerializerTarget } from "../types.js";
+import { hostPluginPinIsInstalled } from "./host-native-mcp.js";
 import {
   type HostPluginLayout,
   isHostPluginPinResource,
@@ -40,8 +41,9 @@ const HOST_PLUGIN_BUNDLED_TYPES = new Set(["skill", "command", "agent", "hook"])
 function isHostPluginBundledMaterial(
   resource: Pick<Resource, "type" | "name" | "origin_kind" | "origin_ref">,
   pins: ReadonlySet<string>,
+  homeRoot: string,
 ): boolean {
-  if (!HOST_PLUGIN_BUNDLED_TYPES.has(resource.type) || pins.size === 0) {
+  if (!HOST_PLUGIN_BUNDLED_TYPES.has(resource.type)) {
     return false;
   }
   const originRef = resource.origin_ref?.trim() ?? "";
@@ -53,6 +55,13 @@ function isHostPluginBundledMaterial(
       resource.origin_kind === "marketplace_link"
       || resource.origin_kind === "local_snapshot"
     );
+  }
+  if (
+    resource.origin_kind === "marketplace_link"
+    && originRef.includes("@")
+    && hostPluginPinIsInstalled(homeRoot, originRef)
+  ) {
+    return true;
   }
   return false;
 }
@@ -71,13 +80,14 @@ export function omitHostPluginBundledSkills(
   if (target !== "global" || !isHostPluginTreePlatform(platformId)) {
     return [...resources];
   }
-  void homeRoot;
   const pins = new Set(
     resources
       .filter((resource) => isHostPluginPinResource(resource))
       .map((resource) => resource.origin_ref || resource.name),
   );
-  return resources.filter((resource) => !isHostPluginBundledMaterial(resource, pins));
+  return resources.filter(
+    (resource) => !isHostPluginBundledMaterial(resource, pins, homeRoot),
+  );
 }
 
 export interface ExtractedPluginSkill {
