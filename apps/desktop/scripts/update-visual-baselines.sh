@@ -50,5 +50,6 @@ docker run --rm \
     export SHOTS_TOKEN_PATH=/tmp/htdemo/home/.harnesstap/agent-token
     export SHOTS_PROJECT_PATH=/tmp/htdemo/project
     export SHOTS_PINNED_IMAGE=1
-    bunx --cwd apps/desktop node scripts/ui-shots.mjs --update-baselines
+    cd /work/apps/desktop
+    node scripts/ui-shots.mjs --update-baselines
   '

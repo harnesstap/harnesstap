@@ -78,7 +78,8 @@ runs:
       run: |
         set -euo pipefail
         if [ "${{ inputs.update-baselines }}" = "true" ]; then
-          bunx --cwd apps/desktop node scripts/ui-shots.mjs --update-baselines --axe
+          cd apps/desktop
+          node scripts/ui-shots.mjs --update-baselines --axe
         else
           bun run desktop:check
         fi
