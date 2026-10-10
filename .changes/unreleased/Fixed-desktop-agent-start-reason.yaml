@@ -1,0 +1,5 @@
+kind: Fixed
+body: Show why the desktop agent failed to start (newer data, port in use, unwritable home) instead of a sidecar connection error.
+time: 2026-10-10T18:40:00Z
+custom:
+  Issue: ""

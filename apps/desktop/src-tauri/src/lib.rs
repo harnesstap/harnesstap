@@ -1,11 +1,12 @@
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::process::Command as StdCommand;
-use std::sync::Mutex;
+use std::process::{Command as StdCommand, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
@@ -14,6 +15,7 @@ struct SidecarState {
     process: Mutex<Option<std::process::Child>>,
     port: Mutex<Option<u16>>,
     starting: Mutex<bool>,
+    last_stderr: Arc<Mutex<String>>,
 }
 
 struct AppState {
@@ -229,8 +231,98 @@ fn get_sidecar_port(state: State<'_, AppState>) -> Result<Option<u16>, String> {
     Ok(*state.sidecar.port.lock().map_err(|_| "lock poisoned")?)
 }
 
+fn append_agent_log(sink: &Arc<Mutex<String>>, chunk: &str) {
+    if chunk.is_empty() {
+        return;
+    }
+    if let Ok(mut buf) = sink.lock() {
+        if !buf.is_empty() && !buf.ends_with('\n') {
+            buf.push('\n');
+        }
+        buf.push_str(chunk);
+        const MAX: usize = 8192;
+        if buf.len() > MAX {
+            let extra = buf.len() - MAX;
+            buf.drain(..extra);
+        }
+    }
+}
+
+fn parse_ht_fatal_code(text: &str) -> Option<String> {
+    let mut found = None;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        let payload = if let Some(rest) = trimmed.strip_prefix("HT_FATAL ") {
+            rest
+        } else if let Some(index) = trimmed.find("HT_FATAL ") {
+            &trimmed[index + "HT_FATAL ".len()..]
+        } else {
+            continue;
+        };
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(payload) {
+            if let Some(code) = value.get("code").and_then(|item| item.as_str()) {
+                found = Some(code.to_string());
+            }
+        }
+    }
+    found
+}
+
+fn humanize_agent_failure(stderr: &str) -> String {
+    let code = parse_ht_fatal_code(stderr);
+    match code.as_deref() {
+        Some("newer_schema") => {
+            "This data was saved by a newer HarnessTap. Update the app to open it.".to_string()
+        }
+        Some("port_in_use") => {
+            "Port 7474 is already in use. Close the other HarnessTap process and try again."
+                .to_string()
+        }
+        Some("home_not_writable") => {
+            "HarnessTap can't write to its data folder. Check folder permissions and try again."
+                .to_string()
+        }
+        _ if stderr.to_lowercase().contains("newer than this binary") => {
+            "This data was saved by a newer HarnessTap. Update the app to open it.".to_string()
+        }
+        _ if stderr.contains("EADDRINUSE")
+            || stderr.to_lowercase().contains("address already in use") =>
+        {
+            "Port 7474 is already in use. Close the other HarnessTap process and try again."
+                .to_string()
+        }
+        _ if stderr.contains("EACCES")
+            || stderr.contains("EROFS")
+            || stderr.to_lowercase().contains("permission denied")
+            || stderr.to_lowercase().contains("not writable") =>
+        {
+            "HarnessTap can't write to its data folder. Check folder permissions and try again."
+                .to_string()
+        }
+        _ => "Can't reach the HarnessTap agent".to_string(),
+    }
+}
+
+fn collect_agent_failure(state: &AppState) -> String {
+    thread::sleep(Duration::from_millis(120));
+    if let Ok(mut process_guard) = state.sidecar.process.lock() {
+        if let Some(child) = process_guard.as_mut() {
+            let _ = child.try_wait();
+        }
+    }
+    let stderr = state
+        .sidecar
+        .last_stderr
+        .lock()
+        .ok()
+        .map(|guard| guard.clone())
+        .unwrap_or_default();
+    humanize_agent_failure(&stderr)
+}
+
 fn spawn_sidecar_via_shell(
     app: &AppHandle,
+    sink: Arc<Mutex<String>>,
 ) -> Result<tauri_plugin_shell::process::CommandChild, String> {
     let mut sidecar = app
         .shell()
@@ -244,27 +336,52 @@ fn spawn_sidecar_via_shell(
     let (mut rx, child) = sidecar.spawn().map_err(|error| error.to_string())?;
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
-            if let CommandEvent::Terminated(payload) = event {
-                eprintln!("ht-agent sidecar terminated: {:?}", payload);
-                break;
+            match event {
+                CommandEvent::Stderr(bytes) => {
+                    let chunk = String::from_utf8_lossy(&bytes);
+                    eprint!("{chunk}");
+                    append_agent_log(&sink, &chunk);
+                }
+                CommandEvent::Stdout(bytes) => {
+                    let chunk = String::from_utf8_lossy(&bytes);
+                    eprint!("{chunk}");
+                }
+                CommandEvent::Terminated(payload) => {
+                    eprintln!("ht-agent terminated: {:?}", payload);
+                    break;
+                }
+                _ => {}
             }
         }
     });
     Ok(child)
 }
 
-fn spawn_sidecar_via_process() -> Result<std::process::Child, String> {
+fn spawn_sidecar_via_process(
+    sink: Arc<Mutex<String>>,
+) -> Result<std::process::Child, String> {
     let path = sidecar_binary_path()?;
     let mut command = StdCommand::new(path);
     command.env("HARNESSTAP_AGENT_PORT", "7474");
     command.env("HARNESSTAP_PRODUCT", "desktop");
+    command.stderr(Stdio::piped());
     // Ensure the sidecar uses the same home resolution as the desktop shell.
     if let Ok(home) = std::env::var("HARNESSTAP_HOME") {
         command.env("HARNESSTAP_HOME", home);
     }
-    command
+    let mut child = command
         .spawn()
-        .map_err(|error| format!("failed to spawn sidecar process: {error}"))
+        .map_err(|error| format!("failed to spawn agent process: {error}"))?;
+    if let Some(stderr) = child.stderr.take() {
+        thread::spawn(move || {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines().map_while(Result::ok) {
+                eprintln!("{line}");
+                append_agent_log(&sink, &line);
+            }
+        });
+    }
+    Ok(child)
 }
 
 fn wait_for_port_file(timeout_ms: u64) -> Option<u16> {
@@ -325,9 +442,8 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
             .map_err(|_| "lock poisoned".to_string())?;
         if *starting {
             drop(starting);
-            return wait_for_port_file(5_000).ok_or_else(|| {
-                "ht-agent sidecar is starting but did not report its port".to_string()
-            });
+            return wait_for_port_file(5_000)
+                .ok_or_else(|| collect_agent_failure(&state));
         }
         *starting = true;
     }
@@ -337,9 +453,12 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
     // sidecar writes the token first, then the port, after it binds.
     let _ = fs::remove_file(agent_port_path());
     let _ = fs::remove_file(agent_token_path());
+    if let Ok(mut log) = state.sidecar.last_stderr.lock() {
+        log.clear();
+    }
 
     let spawn_result = (|| {
-        match spawn_sidecar_via_process() {
+        match spawn_sidecar_via_process(state.sidecar.last_stderr.clone()) {
             Ok(child) => {
                 let mut process_guard = state
                     .sidecar
@@ -350,8 +469,8 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
                 Ok(())
             }
             Err(process_error) => {
-                eprintln!("process sidecar spawn failed, trying shell: {process_error}");
-                match spawn_sidecar_via_shell(&app) {
+                eprintln!("process agent spawn failed, trying shell: {process_error}");
+                match spawn_sidecar_via_shell(&app, state.sidecar.last_stderr.clone()) {
                     Ok(child) => {
                         let mut child_guard = state
                             .sidecar
@@ -362,7 +481,7 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
                         Ok(())
                     }
                     Err(shell_error) => Err(format!(
-                        "sidecar spawn failed (process: {process_error}; shell: {shell_error})"
+                        "Can't reach the HarnessTap agent ({process_error}; {shell_error})"
                     )),
                 }
             }
@@ -375,9 +494,7 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
 
     spawn_result?;
 
-    let port = wait_for_port_file(5_000).ok_or_else(|| {
-        "ht-agent sidecar did not report its port; check ~/.harnesstap for a stale agent".to_string()
-    })?;
+    let port = wait_for_port_file(5_000).ok_or_else(|| collect_agent_failure(&state))?;
     *state
         .sidecar
         .port
@@ -429,6 +546,7 @@ pub fn run() {
                 process: Mutex::new(None),
                 port: Mutex::new(Some(7474)),
                 starting: Mutex::new(false),
+                last_stderr: Arc::new(Mutex::new(String::new())),
             },
         })
         .setup(|app| {
@@ -455,4 +573,55 @@ pub fn run() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{humanize_agent_failure, parse_ht_fatal_code};
+
+    #[test]
+    fn parses_ht_fatal_newer_schema() {
+        let text = concat!(
+            "Database schema v33 is newer than this binary (v30).\n",
+            r#"HT_FATAL {"code":"newer_schema","message":"Database schema is newer than this HarnessTap build."}"#,
+            "\n",
+        );
+        assert_eq!(parse_ht_fatal_code(text).as_deref(), Some("newer_schema"));
+        assert_eq!(
+            humanize_agent_failure(text),
+            "This data was saved by a newer HarnessTap. Update the app to open it."
+        );
+    }
+
+    #[test]
+    fn parses_ht_fatal_port_and_home() {
+        assert_eq!(
+            humanize_agent_failure(
+                r#"HT_FATAL {"code":"port_in_use","message":"The HarnessTap agent port is already in use."}"#
+            ),
+            "Port 7474 is already in use. Close the other HarnessTap process and try again."
+        );
+        assert_eq!(
+            humanize_agent_failure(
+                r#"HT_FATAL {"code":"home_not_writable","message":"The HarnessTap data folder is not writable."}"#
+            ),
+            "HarnessTap can't write to its data folder. Check folder permissions and try again."
+        );
+    }
+
+    #[test]
+    fn falls_back_without_ht_fatal() {
+        assert_eq!(
+            humanize_agent_failure("Database schema v33 is newer than this binary (v30)."),
+            "This data was saved by a newer HarnessTap. Update the app to open it."
+        );
+        assert_eq!(
+            humanize_agent_failure("listen EADDRINUSE: address already in use 127.0.0.1:7474"),
+            "Port 7474 is already in use. Close the other HarnessTap process and try again."
+        );
+        assert_eq!(
+            humanize_agent_failure(""),
+            "Can't reach the HarnessTap agent"
+        );
+    }
 }

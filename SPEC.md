@@ -28,7 +28,8 @@ The product currently supports these main workflows:
 - Manage **profiles** (plugins tagged `profile`) for global machine presets; switch with `profile use` / `profile switch`; stash untracked home resources with `profile stash`.
 - Authenticate HarnessTap Cloud with named **accounts** (`cloud-accounts.json`, `--account` on catalog commands).
 - Authenticate GitHub with a GitHub App device-flow session (`github-session.json`) so private marketplace git reads work without `gh`.
-- Optional **desktop** control plane (`apps/desktop`) talks to a local `ht-agent` sidecar (`agent serve` / `ui --serve` for engineering debug).
+- Optional **desktop** control plane (`apps/desktop`) talks to a local `ht-agent` sidecar (`agent serve` / `ui --serve` for engineering debug). If the agent cannot start, the connect splash names the cause (newer data, port in use, or an unwritable data folder) and offers Open logs. Web mode uses `Can't reach the HarnessTap agent` instead of a raw fetch error.
+
 
 ## Core concepts
 

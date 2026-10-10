@@ -94,3 +94,19 @@ export function applyResultToastTitle(input: {
   }
   return APPLY_RESULT_COPY.wroteRemovedKept(input.wrote, input.removed, input.kept);
 }
+
+export const CONNECT_SPLASH_COPY = {
+  starting: "Starting the agent",
+  unreachable: "Can't reach the HarnessTap agent",
+  retry: "Retry",
+  openLogs: "Open logs",
+} as const;
+
+export const AGENT_START_COPY = {
+  newerSchema:
+    "This data was saved by a newer HarnessTap. Update the app to open it.",
+  portInUse:
+    "Port 7474 is already in use. Close the other HarnessTap process and try again.",
+  homeNotWritable:
+    "HarnessTap can't write to its data folder. Check folder permissions and try again.",
+} as const;

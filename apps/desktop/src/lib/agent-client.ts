@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { CONNECT_SPLASH_COPY } from "./ui-copy";
 import {
   AgentApiError,
   agentFetch,
@@ -119,7 +120,7 @@ export async function waitForHealth(
   maxAttempts = 40,
   delayMs = 250,
 ): Promise<AgentHealth> {
-  let lastError = "Sidecar not reachable";
+  let lastError: string = CONNECT_SPLASH_COPY.unreachable;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const portFromNative = await readNativeSidecarPort();

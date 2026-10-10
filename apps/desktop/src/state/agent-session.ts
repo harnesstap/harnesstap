@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { connectAgent, hasTauriRuntime, probeHealth } from "../lib/agent-client";
+import { formatAgentStartError } from "../lib/agent-start-error";
 
 export type AgentPhase = "connecting" | "connected" | "disconnected";
 
@@ -85,11 +86,7 @@ export function useAgentSession(): AgentSession {
         }
       } catch (connectError) {
         if (!cancelled) {
-          setError(
-            connectError instanceof Error
-              ? connectError.message
-              : "Sidecar connection failed",
-          );
+          setError(formatAgentStartError(connectError));
           setPhase("disconnected");
         }
       }
@@ -110,11 +107,7 @@ export function useAgentSession(): AgentSession {
     try {
       applyConnection(await connectAgent({ restart: true }));
     } catch (connectError) {
-      setError(
-        connectError instanceof Error
-          ? connectError.message
-          : "Sidecar connection failed",
-      );
+      setError(formatAgentStartError(connectError));
       setPhase("disconnected");
     } finally {
       retryBusyRef.current = false;
@@ -132,9 +125,7 @@ export function useAgentSession(): AgentSession {
       if (controller.signal.aborted || isAbortError(probeError)) {
         return;
       }
-      setError(
-        probeError instanceof Error ? probeError.message : "Sidecar connection failed",
-      );
+      setError(formatAgentStartError(probeError));
       setPhase("disconnected");
     };
     void probeHealth(connection.client.baseUrl, { signal: controller.signal })
@@ -216,11 +207,7 @@ export function useAgentSession(): AgentSession {
           }
         } catch (connectError) {
           if (!cancelled) {
-            setError(
-              connectError instanceof Error
-                ? connectError.message
-                : "Sidecar reconnect after reload failed",
-            );
+            setError(formatAgentStartError(connectError));
             setPhase("disconnected");
           }
         }
