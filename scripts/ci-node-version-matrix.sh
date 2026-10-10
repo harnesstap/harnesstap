@@ -4,13 +4,15 @@
 #   TARBALL          path to harnesstap-*.tgz (inside the container)
 #   SUPPORTED        true|false
 #   EXPECT_INSTALL   true|false
-#   CHECK_GYP        true|false (fail if npm install log contains "gyp")
+#   CHECK_GYP        true|false (fail if node-gyp actually compiled)
+#   IGNORE_SCRIPTS   true|false (skip native install; used on Node without prebuilds)
 set -euo pipefail
 
 TARBALL="${TARBALL:?TARBALL is required}"
 SUPPORTED="${SUPPORTED:?SUPPORTED is required}"
 EXPECT_INSTALL="${EXPECT_INSTALL:-true}"
 CHECK_GYP="${CHECK_GYP:-false}"
+IGNORE_SCRIPTS="${IGNORE_SCRIPTS:-false}"
 
 if [[ ! -f "$TARBALL" ]]; then
   echo "Tarball not found: $TARBALL" >&2
@@ -25,15 +27,30 @@ TARBALL="$(ls "$work"/harnesstap-*.tgz | head -n 1)"
 echo "Node $(node -p 'process.versions.node') on $(command -v node)"
 echo "npm $(npm -v)"
 
+npm_install_global() {
+  local extra=()
+  if [[ "$IGNORE_SCRIPTS" == "true" ]]; then
+    extra+=(--ignore-scripts)
+  elif npm install --help 2>/dev/null | grep -q -- '--allow-scripts'; then
+    # npm 11+ skips lifecycle scripts unless they are explicitly allowed.
+    extra+=(--allow-scripts --foreground-scripts)
+  else
+    extra+=(--foreground-scripts)
+  fi
+  npm install -g --omit=dev "${extra[@]}" "$TARBALL"
+}
+
 install_log="$(mktemp)"
 set +e
-npm install -g --omit=dev "$TARBALL" >"$install_log" 2>&1
+npm_install_global >"$install_log" 2>&1
 install_code=$?
 set -e
 cat "$install_log"
 
-if [[ "$CHECK_GYP" == "true" ]] && grep -Eiq 'gyp' "$install_log"; then
-  echo "G1 failed: npm install log contains gyp (native compile should not run)" >&2
+# Match a real node-gyp compile, not npm 11's allow-scripts warning that names the
+# "prebuild-install || node-gyp rebuild" command without running it.
+if [[ "$CHECK_GYP" == "true" ]] && grep -Ei 'gyp ERR!|gyp info using node-gyp' "$install_log"; then
+  echo "G1 failed: npm install compiled with node-gyp (prebuild missing)" >&2
   exit 1
 fi
 
