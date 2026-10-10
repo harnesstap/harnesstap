@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 35;
+const SCHEMA_VERSION = 36;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -314,6 +314,7 @@ const MIGRATIONS: Record<number, Migration> = {
       ON apply_removal_backups(snapshot_id);
   `,
   35: migrateNonSemverPluginVersions,
+  36: migrateGlobalApplySnapshotState,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
@@ -475,6 +476,18 @@ function tableExists(db: SqliteDatabase, name: string): boolean {
     )
     .get(name) as { ok: number } | undefined;
   return row !== undefined;
+}
+
+function migrateGlobalApplySnapshotState(db: SqliteDatabase): void {
+  if (!tableExists(db, "global_apply_snapshots")) {
+    return;
+  }
+  if (tableColumns(db, "global_apply_snapshots").includes("state")) {
+    return;
+  }
+  db.exec(
+    `ALTER TABLE global_apply_snapshots ADD COLUMN state TEXT NOT NULL DEFAULT '{}'`,
+  );
 }
 
 /**

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Snapshots capture live disk and absent managed paths so ht revert restores and removes what apply changed. Apply prints Wrote/removed/kept/unchanged and a pasteable ht revert id. Unmodified apply-added files are removed; user-edited files stay with a warning.
+time: 2026-10-10T04:50:00Z
+custom:
+  Issue: ""

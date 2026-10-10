@@ -71,6 +71,18 @@ describe("profile apply resolution", () => {
     createPlugin({ name: "base" });
     const work = createPlugin({ name: "work" });
     setPluginTags(work.id, ["profile"]);
+    addResourceToPlugin(
+      work.id,
+      createResource({
+        type: "instruction",
+        name: "context",
+        description: "",
+        content: "FROM-WORK",
+        metadata: {},
+        source: "test",
+        namespace: "work",
+      }).id,
+    );
     const workPlugin = getPluginByName("work");
     if (!workPlugin) throw new Error("missing work");
     await addPluginAttachment({ plugin: workPlugin, selector: "plugin:base" });

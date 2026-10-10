@@ -290,8 +290,7 @@ describe("CLI profile preview", () => {
         "--harness",
         "claude-code",
       ]);
-      expect(dryRun.stdout).toContain("Applied profile");
-      expect(dryRun.stdout).toContain("dry run");
+      expect(dryRun.stdout).toContain("Dry run. Nothing was changed.");
       expect(dryRun.stdout).not.toContain("Untracked");
       expect(dryRun.stdout).not.toMatch(/^Contents$/m);
     } finally {

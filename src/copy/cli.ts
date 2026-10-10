@@ -172,6 +172,22 @@ export type SwitchChangesValue = (typeof SWITCH_CHANGES_VALUES)[number];
 export const SWITCH_CHANGES_FLAG_HELP =
   "What to do with unsaved changes: save, stash or discard";
 
+export const CLI_COPY = {
+  dryRunNothingChanged: DRY_RUN_NOTHING_CHANGED,
+  everythingUpToDate: "Everything is up to date.",
+  snapshotSavedUndo: "Snapshot saved. Undo with:",
+  forceRemoveHint: "To remove them too, run:",
+  keptYouChanged: "you changed it",
+  keptNotMade: "not made by HarnessTap",
+  viewSnapshot: "View snapshot",
+  keptFilesIntro:
+    "files you changed or that HarnessTap didn't create:",
+} as const;
+
+export function alreadyExistsOnConflictHint(kind: string, name: string): string {
+  return `A ${kind} named "${name}" already exists. Use --on-conflict replace to replace it.`;
+}
+
 export function unsavedChangesLine(profileName: string, count: number): string {
   return CLI_ERRORS.unsavedChanges(profileName, count);
 }
@@ -206,3 +222,91 @@ export const PREVIEW_LABELS = {
   dryRunHeader: DRY_RUN_NOTHING_CHANGED,
   everythingUpToDate: (unchanged: number): string => `Everything is up to date. ${unchanged} unchanged.`,
 } as const;
+
+export function applyWroteLine(input: {
+  wrote: number;
+  removed: number;
+  kept: number;
+  unchanged?: number;
+  omitUnchanged?: boolean;
+}): string {
+  const parts: string[] = [];
+  if (input.wrote > 0) parts.push(`Wrote ${input.wrote}`);
+  if (input.removed > 0) parts.push(`removed ${input.removed}`);
+  if (input.kept > 0) parts.push(`kept ${input.kept}`);
+  if (parts.length === 0) {
+    return input.unchanged !== undefined
+      ? `${CLI_COPY.everythingUpToDate} ${input.unchanged} unchanged.`
+      : CLI_COPY.everythingUpToDate;
+  }
+  if (!input.omitUnchanged && input.unchanged !== undefined && input.unchanged > 0) {
+    parts.push(`unchanged ${input.unchanged}`);
+  }
+  const [first, ...rest] = parts;
+  const head = first ?? "";
+  if (rest.length === 0) {
+    return `${head}.`;
+  }
+  return `${head}, ${rest.join(", ")}.`;
+}
+
+export function applyHeaderLine(profileName: string, harnessCount: number): string {
+  const noun = harnessCount === 1 ? "harness" : "harnesses";
+  return `Applied "${profileName}" to ${harnessCount} ${noun}.`;
+}
+
+export function dryRunWouldLine(input: {
+  write: number;
+  remove: number;
+  keep: number;
+  unchanged: number;
+}): string {
+  return `Would write ${input.write}, remove ${input.remove}, keep ${input.keep}. ${input.unchanged} unchanged.`;
+}
+
+export function dryRunStashLine(count: number, profileName: string): string {
+  return `Dry run. Would stash ${count} changes from "${profileName}".`;
+}
+
+export function snapshotSavedUndoLine(revertCommand: string): string {
+  return `${CLI_COPY.snapshotSavedUndo} ${revertCommand}`;
+}
+
+export function keptFilesHeader(count: number): string {
+  return `Kept ${count} ${CLI_COPY.keptFilesIntro}`;
+}
+
+export function restoredRemovedLine(restored: number, removed: number): string {
+  return `Restored ${restored}, removed ${removed}.`;
+}
+
+export function dryRunSectionHeader(
+  kind: "write" | "remove" | "keep",
+  count: number,
+): string {
+  switch (kind) {
+    case "write":
+      return `Would write (${count})`;
+    case "remove":
+      return `Would remove (${count})`;
+    case "keep":
+      return `Would keep (${count})`;
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
+export function keptReasonLabel(reason: "modified" | "unmanaged"): string {
+  switch (reason) {
+    case "modified":
+      return CLI_COPY.keptYouChanged;
+    case "unmanaged":
+      return CLI_COPY.keptNotMade;
+    default: {
+      const _exhaustive: never = reason;
+      return _exhaustive;
+    }
+  }
+}

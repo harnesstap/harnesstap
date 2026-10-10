@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { parseOnConflict } from "../../src/cli/on-conflict.ts";
-import { CLI_ERRORS, CLI_HINTS, SCOPE_COPY } from "../../src/copy/cli.ts";
+import {
+  CLI_ERRORS,
+  CLI_HINTS,
+  SCOPE_COPY,
+  snapshotSavedUndoLine,
+} from "../../src/copy/cli.ts";
 
 describe("DS-6 CLI copy", () => {
   it("maps hidden on-conflict aliases overwrite, ignore and fail only", () => {
@@ -32,6 +37,12 @@ describe("DS-6 CLI copy", () => {
   it("keeps the Main tooltip string", () => {
     expect(SCOPE_COPY.mainHarnessTooltip).toBe(
       "Your main harness. It wins when harnesses disagree.",
+    );
+  });
+
+  it("prints the snapshot undo line with the revert command", () => {
+    expect(snapshotSavedUndoLine("ht revert 01ARZ3NDEKTSV4RRFFQ69G5FAV")).toBe(
+      "Snapshot saved. Undo with: ht revert 01ARZ3NDEKTSV4RRFFQ69G5FAV",
     );
   });
 });

@@ -437,6 +437,11 @@ export interface SnapshotState {
   plugins: Plugin[];
   resources: Resource[];
   platform_files: Record<string, Record<string, string>>;
+  harness_files?: Record<string, Record<string, string>>;
+  /** Live files that were not assigned to a generated platform bucket. */
+  disk_files?: Record<string, string>;
+  /** Managed paths that were missing on disk when the snapshot was taken. */
+  absent_paths?: string[];
 }
 
 export interface Snapshot {
@@ -485,6 +490,7 @@ export interface GlobalApplySnapshot {
   plugin_ids: string[];
   resolved_set: Array<{ name: string; version: string }>;
   created_at: string;
+  state?: SnapshotState;
 }
 
 export interface GlobalApplySnapshotInstall {

@@ -8,11 +8,11 @@ import {
 } from "../models/harness.js";
 import { upsertProject } from "../models/project.js";
 import { createSnapshot } from "../models/snapshot.js";
+import { captureManagedSnapshotState } from "./snapshot-capture.js";
 import type {
   CursorSkillMode,
   ResourceCreateInput,
   SerializerTarget,
-  SnapshotState,
   SurfaceWarning,
 } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -339,20 +339,14 @@ export async function syncConfiguredHarnesses(
         name: projectNameFromUrl(gitOrigin),
         local_path: rootPath,
       });
-      const snapshotState: SnapshotState = {
-        plugins: [],
-        resources: emitResources,
-        platform_files: Object.fromEntries(
-          preferred.map((result) => [
-            result.platformId,
-            Object.fromEntries(result.files.map((file) => [file.path, file.content])),
-          ]),
-        ),
-      };
       createSnapshot({
         project_id: project.id,
         label: `Before harness sync (${platforms.join(", ")})`,
-        state: snapshotState,
+        state: captureManagedSnapshotState({
+          rootPath,
+          resources: emitResources,
+          generated: preferred,
+        }),
       });
     }
     writeFiles(files, rootPath);

@@ -380,7 +380,7 @@ describe("profile create sources — use, from, empty", () => {
         format: "human",
       });
       expect(stdout).toContain("Created profile");
-      expect(stdout).toContain("Applied profile");
+      expect(stdout).toContain('Applied "');
     } finally {
       await context.cleanup();
     }

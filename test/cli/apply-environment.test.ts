@@ -60,7 +60,8 @@ describe("CLI apply with environment cascade", () => {
         "claude-code",
       ]);
 
-      expect(applyResult.stdout).toContain("claude-code");
+      expect(applyResult.stdout).toContain("Applied");
+      expect(applyResult.stdout).toContain("1 harness");
       expect(existsSync(join(context.projectDir, ".claude/settings.json"))).toBe(true);
 
       const settings = JSON.parse(
@@ -138,7 +139,8 @@ describe("CLI apply with environment cascade", () => {
         "claude-code",
       ]);
 
-      expect(applyResult.stdout).toContain("claude-code");
+      expect(applyResult.stdout).toContain("Applied");
+      expect(applyResult.stdout).toContain("1 harness");
 
       const settings = JSON.parse(
         readFileSync(join(context.projectDir, ".claude/settings.json"), "utf-8"),

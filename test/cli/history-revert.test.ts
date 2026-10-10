@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
@@ -38,8 +38,6 @@ describe("CLI history and revert", () => {
         "claude-code",
       ]);
 
-      writeFileSync(`${context.projectDir}/CLAUDE.md`, "# Modified", "utf-8");
-
       const history = await runCli(["history", context.projectDir,
       ]);
       expect(history.stdout).toContain("Before applying: history-plugin");
@@ -62,15 +60,10 @@ describe("CLI history and revert", () => {
       }
 
       const revertResult = await runCli(["revert", snapshot.id]);
-      expect(revertResult.stdout).toContain("✓ Restored");
-      expect(revertResult.stdout).toContain("from snapshot");
-      // Verify proper pluralization (1 file, not 1 files)
-      expect(revertResult.stdout).toMatch(/\d+ files?/);
-      expect(revertResult.stdout).not.toContain("1 files");
+      expect(revertResult.stdout).toContain("Restored");
+      expect(revertResult.stdout).toContain("removed");
 
-      expect(readFileSync(`${context.projectDir}/CLAUDE.md`, "utf-8")).toBe(
-        "# Original instructions",
-      );
+      expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(false);
     } finally {
       await context.cleanup();
     }
@@ -148,7 +141,7 @@ describe("CLI history and revert", () => {
       const result = await runCli(["revert"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("Please provide a snapshot ID.");
+      expect(result.stderr).toContain("Error: Pass a snapshot id.");
       expect(result.stderr).toContain("history --show-id");
     } finally {
       await context.cleanup();
@@ -164,7 +157,7 @@ describe("CLI history and revert", () => {
       const result = await runCli(["revert", "missing-snapshot"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("Snapshot not found: missing-snapshot");
+      expect(result.stderr).toContain('Error: No snapshot named "missing-snapshot".');
     } finally {
       await context.cleanup();
     }

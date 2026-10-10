@@ -706,36 +706,54 @@ export async function applyProfilePlugin(
     resolvedEnvironment,
     claudeConfig: merged.claude,
     forceUnicode: options.forceUnicode,
+    previousTrackedFiles,
   });
   let snapshotId: string | undefined;
   let removal: SafeFileRemovalResult | undefined;
   if (!applied.cancelled) {
-    const snapshot = createGlobalApplySnapshot({
-      profile_name: profilePlugin.name,
-      plugin_ids: configuredPluginIds,
-      resolved_set: resolvedSet,
-    });
-    snapshotId = snapshot.id;
-    removal = removeStaleGlobalProfileFiles(
+    const desiredFiles = applied.results.flatMap((result) =>
+      result.files.map((file) => file.path),
+    );
+    const plannedRemoval = removeStaleGlobalProfileFiles(
       homeRoot,
-      applied.results.flatMap((result) => result.files.map((file) => file.path)),
+      desiredFiles,
       previousTrackedFiles,
       harnesses,
-      {
-        forceRemove: options.forceRemove,
-        applyId: snapshot.id,
-        snapshotId: snapshot.id,
-      },
+      { dryRun: true, forceRemove: options.forceRemove },
     );
-    warnSkippedRemovals(removal);
-    for (const result of applied.results) {
-      const installFiles = result.files.map((file) => file.path);
-      if (installFiles.length === 0) continue;
-      recordGlobalApplySnapshotInstall({
-        snapshot_id: snapshot.id,
-        platform_id: result.platformId,
-        files: installFiles,
+    const hasChanges =
+      applied.writtenFiles.length > 0 || plannedRemoval.removed.length > 0;
+    if (hasChanges) {
+      const snapshot = createGlobalApplySnapshot({
+        profile_name: profilePlugin.name,
+        plugin_ids: configuredPluginIds,
+        resolved_set: resolvedSet,
+        state: applied.preApplyState,
       });
+      snapshotId = snapshot.id;
+      removal = removeStaleGlobalProfileFiles(
+        homeRoot,
+        desiredFiles,
+        previousTrackedFiles,
+        harnesses,
+        {
+          forceRemove: options.forceRemove,
+          applyId: snapshot.id,
+          snapshotId: snapshot.id,
+        },
+      );
+      warnSkippedRemovals(removal);
+      for (const result of applied.results) {
+        const installFiles = result.files.map((file) => file.path);
+        if (installFiles.length === 0) continue;
+        recordGlobalApplySnapshotInstall({
+          snapshot_id: snapshot.id,
+          platform_id: result.platformId,
+          files: installFiles,
+        });
+      }
+    } else {
+      removal = plannedRemoval;
     }
   }
   if (!applied.cancelled && defaultEnvironmentName) {

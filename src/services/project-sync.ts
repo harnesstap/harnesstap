@@ -7,7 +7,8 @@ import {
 } from "../models/harness.js";
 import { upsertProject } from "../models/project.js";
 import { createSnapshot } from "../models/snapshot.js";
-import type { CursorSkillMode, Resource, ResourceCreateInput, SerializedFile, SnapshotState } from "../types.js";
+import { captureManagedSnapshotState } from "./snapshot-capture.js";
+import type { CursorSkillMode, Resource, ResourceCreateInput, SerializedFile } from "../types.js";
 import { detectPlatforms, hasPluginSourceLayout, scanPlatform } from "./scanner.js";
 import { scanPluginSourceForMerge } from "./plugin-source-import.js";
 import {
@@ -355,22 +356,14 @@ export async function syncProject(
   }
 
   if (gitOrigin && projectId) {
-    const snapshotState: SnapshotState = {
-      plugins: [],
-      resources,
-      platform_files: Object.fromEntries(
-        allGenerated.map((result) => [
-          result.platformId,
-          Object.fromEntries(
-            result.files.map((f) => [f.path, f.content]),
-          ),
-        ]),
-      ),
-    };
     createSnapshot({
       project_id: projectId,
       label: `Before mirror (${harnesses.from_harness})`,
-      state: snapshotState,
+      state: captureManagedSnapshotState({
+        rootPath: projectRoot,
+        resources,
+        generated: allGenerated,
+      }),
     });
   }
 
