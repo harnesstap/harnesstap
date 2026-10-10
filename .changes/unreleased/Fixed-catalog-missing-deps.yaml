@@ -1,0 +1,5 @@
+kind: Fixed
+body: Fetch missing plugin dependencies of catalog packages (including source "local") from the same catalog at the pinned version before apply.
+time: 2026-10-10T03:20:00Z
+custom:
+  Issue: ""

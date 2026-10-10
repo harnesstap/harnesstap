@@ -1,11 +1,16 @@
 import { describe, expect, it } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseApEnvelope } from "../../../src/services/agent-plugins/envelope.ts";
 import { parseApPackageFiles } from "../../../src/services/agent-plugins/import.ts";
 import { AP_PACKAGE_SCHEMA } from "../../../src/services/agent-plugins/files.ts";
 import { validateApManifest } from "../../../src/services/agent-plugins/validate.ts";
 import { validateApPackagePath } from "../../../src/services/agent-plugins/validate-package.ts";
+import { createTestContext } from "../../helpers/db.ts";
+import { runCli } from "../../helpers/cli.ts";
+import { createCatalogFetchMock } from "../../helpers/catalog-fetch.ts";
+import { readApFixture } from "../../helpers/ap-package-fixtures.ts";
+import { initGitRepo } from "../../helpers/git.ts";
 
 const repoRoot = join(import.meta.dirname, "../../..");
 const schemaPath = join(repoRoot, "schemas/ap-package.v1.json");
@@ -77,5 +82,101 @@ describe("G2 catalog package contract", () => {
     const manifest = JSON.parse(files["plugin.json"]?.content ?? "{}") as unknown;
     expect(() => validateApManifest(manifest)).toThrow(/\$schema/);
     expect(() => parseApPackageFiles(files)).not.toThrow();
+  });
+
+  it("applies engineering-foundation from a clean HOME against G2 catalog fixtures", async () => {
+    const context = await createTestContext("g2-apply-engineering-foundation");
+    try {
+      await runCli(["init"]);
+      initGitRepo(context.projectDir, "git@github.com:acme/demo.git");
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://harnesstap.com",
+        plugins: [
+          {
+            orgSlug: "harnesstap-cloud",
+            slug: "engineering-foundation",
+            name: "Engineering foundation",
+            summary: "Shared baseline",
+            latestVersion: "1.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: ["foundation"],
+            visibility: "public",
+          },
+          {
+            orgSlug: "harnesstap-cloud",
+            slug: "superpowers",
+            name: "superpowers",
+            summary: "Skills",
+            latestVersion: "5.1.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+          {
+            orgSlug: "harnesstap-cloud",
+            slug: "context7",
+            name: "context7",
+            summary: "Docs",
+            latestVersion: "1.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+          {
+            orgSlug: "harnesstap-cloud",
+            slug: "confidence",
+            name: "confidence",
+            summary: "Nested",
+            latestVersion: "1.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+        ],
+        packages: {
+          "harnesstap-cloud/default/engineering-foundation@1.0.0":
+            readApFixture("catalog-missing-schema.ap.json"),
+          "harnesstap-cloud/default/superpowers@5.1.0":
+            readApFixture("superpowers.ap.json"),
+          "harnesstap-cloud/default/context7@1.0.0":
+            readApFixture("context7.ap.json"),
+          "harnesstap-cloud/default/confidence@1.0.0":
+            readApFixture("confidence.ap.json"),
+        },
+      });
+
+      const result = await runCli([
+        "apply",
+        "engineering-foundation",
+        "--project",
+        context.projectDir,
+        "--harness",
+        "claude-code",
+      ]);
+
+      expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
+      expect(`${result.stdout}\n${result.stderr}`).not.toContain(
+        "No local version of superpowers",
+      );
+      expect(result.stdout).toContain(
+        "Fetched harnesstap-cloud/engineering-foundation@1.0.0 from catalog",
+      );
+      expect(result.stdout).toContain("Fetched harnesstap-cloud/superpowers@5.1.0 from catalog");
+      expect(result.stdout).toContain("Fetched harnesstap-cloud/context7@1.0.0 from catalog");
+      expect(result.stdout).toContain("Fetched harnesstap-cloud/confidence@1.0.0 from catalog");
+      expect(existsSync(join(context.projectDir, ".claude/skills/baseline/SKILL.md"))).toBe(true);
+      expect(existsSync(join(context.projectDir, ".claude/skills/superpowers/SKILL.md"))).toBe(
+        true,
+      );
+      expect(existsSync(join(context.projectDir, ".claude/skills/context7/SKILL.md"))).toBe(true);
+      expect(existsSync(join(context.projectDir, ".claude/skills/confidence/SKILL.md"))).toBe(
+        true,
+      );
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
   });
 });

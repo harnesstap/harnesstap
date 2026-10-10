@@ -31,27 +31,46 @@ function encodeCursor(offset: number): string {
   return Buffer.from(String(offset), "utf8").toString("base64url");
 }
 
-function packageBodyForUrl(
-  url: string,
-  packages: Record<string, CatalogPackageFixture | string> | undefined,
-  fallbackBundle: string,
-): string {
+function packageKeyFromUrl(url: string): string | undefined {
   const match = url.match(
     /\/(?:api\/(?:public|catalog))\/([^/]+)\/([^/]+)\/([^/]+)\/versions\/([^/]+)\/package(?:\?|$)/,
   );
   if (!match) {
-    return fallbackBundle;
+    return undefined;
   }
   const [, orgSlug, catalogSlug, pluginSlug, version] = match;
-  const key = `${orgSlug}/${catalogSlug}/${pluginSlug}@${decodeURIComponent(version ?? "")}`;
+  return `${orgSlug}/${catalogSlug}/${pluginSlug}@${decodeURIComponent(version ?? "")}`;
+}
+
+function packageBodyForUrl(
+  url: string,
+  packages: Record<string, CatalogPackageFixture | string> | undefined,
+  fallbackBundle: string,
+): string | null {
+  const key = packageKeyFromUrl(url);
+  if (!key) {
+    return fallbackBundle;
+  }
   const entry = packages?.[key];
   if (entry == null) {
-    return fallbackBundle;
+    return packages ? null : fallbackBundle;
   }
   if (typeof entry === "string") {
     return entry;
   }
   return `${JSON.stringify({ schema: entry.schema, files: entry.files }, null, 2)}\n`;
+}
+
+function notFoundPackageResponse() {
+  return {
+    ok: false,
+    status: 404,
+    clone() {
+      return this;
+    },
+    json: async () => ({ error: "not_found" }),
+    text: async () => JSON.stringify({ error: "not_found" }),
+  };
 }
 
 export function createCatalogFetchMock(input?: {
@@ -185,6 +204,9 @@ export function createCatalogFetchMock(input?: {
         };
       }
       const body = packageBodyForUrl(url, input?.packages, bundle);
+      if (body == null) {
+        return notFoundPackageResponse();
+      }
       return { ok: true, status: 200, text: async () => body };
     }
     if (url.endsWith("/api/me/orgs")) {

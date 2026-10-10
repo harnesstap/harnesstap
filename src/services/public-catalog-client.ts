@@ -7,7 +7,10 @@ import {
 import { parseApEnvelope } from "./agent-plugins/envelope.js";
 import type { ApPackageFiles } from "./agent-plugins/files.js";
 import { AP_PACKAGE_MEDIA_TYPE, cloudFetch } from "./cloud-api-version.js";
-import { throwIfCatalogPackageYanked } from "./catalog-package-errors.js";
+import {
+  CatalogPackageNotFoundError,
+  throwIfCatalogPackageYanked,
+} from "./catalog-package-errors.js";
 import { DEFAULT_CATALOG_SLUG } from "./plugin-selector.js";
 
 function buildSearchParams(options: CatalogListOptions): URLSearchParams {
@@ -65,10 +68,11 @@ export function createPublicCatalogClient(baseUrl: string) {
       const response = await cloudFetch(url, {
         headers: { Accept: AP_PACKAGE_MEDIA_TYPE },
       });
-      await throwIfCatalogPackageYanked(
-        response,
-        `${orgSlug}/${catalogSlug}/${pluginSlug}@${version}`,
-      );
+      const selector = `${orgSlug}/${catalogSlug}/${pluginSlug}@${version}`;
+      await throwIfCatalogPackageYanked(response, selector);
+      if (response.status === 404) {
+        throw new CatalogPackageNotFoundError(selector);
+      }
       if (!response.ok) {
         throw new Error(
           `Failed to download ${orgSlug}/${catalogSlug}/${pluginSlug}: ${response.status}`,

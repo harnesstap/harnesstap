@@ -3,7 +3,7 @@
   "files": {
     "plugin.json": {
       "encoding": "utf8",
-      "content": "{\n  \"name\": \"engineering-foundation\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Shared baseline\",\n  \"keywords\": [\"foundation\"],\n  \"extensions\": {\n    \"com.harnesstap\": {\n      \"schema\": \"urn:harnesstap:ap-extension:v1\",\n      \"sourceName\": \"engineering-foundation\"\n    }\n  }\n}\n"
+      "content": "{\n  \"name\": \"engineering-foundation\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Shared baseline\",\n  \"keywords\": [\"foundation\"],\n  \"extensions\": {\n    \"com.harnesstap\": {\n      \"schema\": \"urn:harnesstap:ap-extension:v1\",\n      \"sourceName\": \"engineering-foundation\",\n      \"dependencies\": [\n        { \"name\": \"superpowers\", \"constraint\": \"5.1.0\", \"source\": \"local\" },\n        { \"name\": \"context7\", \"constraint\": \"1.0.0\", \"source\": \"local\" }\n      ]\n    }\n  }\n}\n"
     },
     "skills/baseline/SKILL.md": {
       "encoding": "utf8",

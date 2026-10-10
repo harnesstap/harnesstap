@@ -127,6 +127,8 @@ import {
   SingletonConflictError,
   UnsatisfiableConstraintError,
 } from "../../services/resolve/types.js";
+import { CatalogDependencyVersionError } from "../../services/catalog-package-errors.js";
+import { ensureMissingCatalogDependencies } from "../../services/plugin-catalog-install.js";
 import { offerConstraintRecovery } from "../../services/constraint-recovery.js";
 import { offerConflictScaffold } from "../../services/resolve-conflict-scaffold.js";
 import { explainPayload, renderExplain } from "../../services/resolve/explain.js";
@@ -511,6 +513,27 @@ export async function handleProjectApplyCommand(
       ui.danger(err.message, { hints: err.hints });
       return;
     }
+    if (err instanceof CatalogDependencyVersionError) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
+    ui.danger(err instanceof Error ? err.message : String(err));
+    return;
+  }
+
+  try {
+    await ensureMissingCatalogDependencies(rootPluginIds, {
+      account: opts.account,
+      baseUrl: opts.baseUrl,
+      onFetched: resolveSourceOptions.onFetched,
+    });
+  } catch (err) {
+    resolveSpin.stop();
+    process.exitCode = 1;
+    if (err instanceof CatalogDependencyVersionError) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
@@ -630,6 +653,10 @@ export async function handleProjectApplyCommand(
       return;
     }
     if (err instanceof PluginResolveError || err instanceof PluginAmbiguityError) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
+    if (err instanceof CatalogDependencyVersionError) {
       ui.danger(err.message, { hints: err.hints });
       return;
     }

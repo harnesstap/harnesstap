@@ -82,7 +82,11 @@ function sortCatalogPlugins(
   return sorted;
 }
 
-export { CatalogPluginYankedError } from "./catalog-package-errors.js";
+export {
+  CatalogDependencyVersionError,
+  CatalogPackageNotFoundError,
+  CatalogPluginYankedError,
+} from "./catalog-package-errors.js";
 
 function normalizeListResult(result: CatalogListResult): CatalogListResult {
   return {

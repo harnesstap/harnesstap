@@ -1,3 +1,50 @@
+export class CatalogPackageNotFoundError extends Error {
+  readonly selector: string;
+
+  constructor(selector: string) {
+    super(`Catalog package not found: ${selector}`);
+    this.name = "CatalogPackageNotFoundError";
+    this.selector = selector;
+  }
+}
+
+export class CatalogDependencyVersionError extends Error {
+  readonly pluginName: string;
+  readonly version: string;
+  readonly catalog: string;
+  readonly available: string[];
+  readonly hints: string[];
+
+  constructor(input: {
+    pluginName: string;
+    version: string;
+    catalog: string;
+    available: string[];
+    requirer: string;
+  }) {
+    const available =
+      input.available.length > 0 ? input.available.join(", ") : "(none known)";
+    super(
+      [
+        `Catalog ${input.catalog} has no version ${input.version} of ${input.pluginName}.`,
+        `  requested: ${input.pluginName}@${input.version}`,
+        `  catalog: ${input.catalog}`,
+        `  available: ${available}`,
+        `  required by: ${input.requirer} → ${input.pluginName} ${input.version}`,
+        `  fix: pin an available version, or publish ${input.pluginName}@${input.version} to ${input.catalog}`,
+      ].join("\n"),
+    );
+    this.name = "CatalogDependencyVersionError";
+    this.pluginName = input.pluginName;
+    this.version = input.version;
+    this.catalog = input.catalog;
+    this.available = input.available;
+    this.hints = [
+      `ht plugin pull ${input.catalog}/${input.pluginName}@<available-version>`,
+    ];
+  }
+}
+
 export class CatalogPluginYankedError extends Error {
   readonly reason: string | null;
 
