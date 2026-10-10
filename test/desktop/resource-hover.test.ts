@@ -99,6 +99,23 @@ describe("resource hover model", () => {
     });
   });
 
+  it("uses stored harness_scope for profile hover so it matches the scope chip", () => {
+    const resource: ProfileContentsResource = {
+      type: "mcp_server",
+      name: "filesystem",
+      harness_scope: ["claude-code"],
+    };
+    expect(hoverModelFromProfileResource(resource).harnessIds).toEqual([
+      "claude-code",
+    ]);
+    expect(
+      hoverModelFromProfileResource({
+        type: "mcp_server",
+        name: "filesystem",
+      }).harnessIds,
+    ).toEqual(["claude-code", "cursor"]);
+  });
+
   it("builds a profile resource model from name/type/source", () => {
     const resource: ProfileContentsResource = {
       type: "command",

@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { FileText, Folder, Package, Store } from "lucide-react";
 import { labelForType } from "../../lib/contents-diff";
 import { harnessDisplayName } from "../../lib/harness-meta";
+import { formatHarnessList } from "../../lib/harness-scope-ui";
 import { formatOriginDisplayLabel } from "../../lib/resource-display";
 import { originFilterValue } from "../../lib/resource-filters";
 import {
@@ -266,7 +267,7 @@ export function ResourceHoverCard({
       {firstHarnessId !== undefined ? (
         <HoverCardRow
           icon={<HarnessMark id={firstHarnessId} />}
-          text={model.harnessIds.map(harnessDisplayName).join(", ")}
+          text={formatHarnessList(model.harnessIds.map(harnessDisplayName))}
         />
       ) : null}
       {model.extra.map((extra) => (
