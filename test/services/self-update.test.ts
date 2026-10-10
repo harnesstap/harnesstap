@@ -55,6 +55,8 @@ describe("published version compare", () => {
     expect(isNewerPublishedVersion("1.0.2", "1.0.2")).toBe(false);
     expect(isNewerPublishedVersion("1.0.1", "1.0.2")).toBe(false);
     expect(isNewerPublishedVersion("not-a-version", "1.0.2")).toBe(false);
+    expect(isNewerPublishedVersion("1.2.0", "1.2.0-dev+abc1234")).toBe(false);
+    expect(isNewerPublishedVersion("1.2.1", "1.2.0-dev+abc1234")).toBe(true);
   });
 });
 

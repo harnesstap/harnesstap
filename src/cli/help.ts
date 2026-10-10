@@ -2,6 +2,11 @@ import type { Command } from "commander";
 import { getCommandHelpEntry } from "../services/cli-help-registry.js";
 import { ui } from "../ui/index.js";
 import { PACKAGE_VERSION } from "../version.js";
+import {
+  catalogCommandLabel,
+  type CommandCatalogEntry,
+  visibleCatalogEntries,
+} from "./command-catalog.js";
 import { formatCommand, resolveInvocationName } from "./shared.js";
 
 const PLUGIN_HELP_LOCAL_COMMANDS = new Set([
@@ -61,30 +66,61 @@ function isLeafHelpCommand(command: Command): boolean {
   );
 }
 
-function isCommandGroup(command: Command): boolean {
-  // `init` keeps a default action (`ht init`) while hosting `init completion`.
-  // Keep it under PROJECT rather than COMMAND GROUPS.
-  if (commandKeepsDefaultAction(command)) {
-    return false;
+function renderCatalogSection(title: string, entries: CommandCatalogEntry[]): string {
+  if (entries.length === 0) {
+    return "";
   }
-  return command.commands.some((sub) => !isHiddenHelpCommand(sub));
+  const commandStrs = entries.map((entry) => catalogCommandLabel(entry));
+  const maxNameLength = Math.max(...commandStrs.map((entry) => entry.length));
+  const lines = [ui.theme.heading(title)];
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    const nameStr = commandStrs[i];
+    if (!entry || !nameStr) {
+      continue;
+    }
+    const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
+    lines.push(`  ${ui.theme.command(nameStr)}${padding}${entry.description}`);
+  }
+  return lines.join("\n");
 }
 
-function byCommandName(a: Command, b: Command): number {
-  return a.name().localeCompare(b.name());
-}
-
-function renderTopLevelCommandHelp(cmd: Command): string {
-  const commands = cmd.commands.filter((command) => !isHiddenHelpCommand(command));
-  const groups = commands.filter(isCommandGroup).sort(byCommandName);
-  const direct = commands.filter((command) => !isCommandGroup(command)).sort(byCommandName);
-
+function renderTopLevelCommandHelp(): string {
   const sections = [
-    renderCommandSection("COMMAND GROUPS", groups),
-    renderCommandSection("PROJECT", direct),
+    renderCatalogSection("COMMAND GROUPS", visibleCatalogEntries("group")),
+    renderCatalogSection("PROJECT", visibleCatalogEntries("project")),
   ].filter((section) => section.length > 0);
 
   return sections.join("\n\n");
+}
+
+export function renderRootHelpText(): string {
+  const lines = [
+    "",
+    `${ui.theme.primary(resolveInvocationName())} ${ui.theme.muted(`v${PACKAGE_VERSION}`)}`,
+    "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
+    "",
+    ui.theme.heading("USAGE"),
+    `  ${resolveInvocationName()} [options] [command]`,
+    "",
+    ui.theme.heading("OPTIONS"),
+    `  ${ui.theme.flag("-V, --version")}            output the version number`,
+    `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
+    `  ${ui.theme.flag("--no-color")}               disable color output`,
+    `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,
+    `  ${ui.theme.flag("-h, --help")}               display help for command`,
+    "",
+    renderTopLevelCommandHelp(),
+    "",
+  ];
+  return lines.join("\n");
+}
+
+export function printRootHelp(argv: string[] = process.argv): void {
+  if (argv.includes("--no-color")) {
+    ui.disableColor();
+  }
+  process.stdout.write(renderRootHelpText());
 }
 
 function renderGroupedCommandHelp(cmd: Command): string {
@@ -283,26 +319,7 @@ export function configureProgramHelp(program: Command): void {
           return lines.join("\n");
         }
 
-        const lines = [
-          "",
-          `${ui.theme.primary(resolveInvocationName())} ${ui.theme.muted(`v${PACKAGE_VERSION}`)}`,
-          "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
-          "",
-          ui.theme.heading("USAGE"),
-          `  ${resolveInvocationName()} [options] [command]`,
-          "",
-          ui.theme.heading("OPTIONS"),
-          `  ${ui.theme.flag("-V, --version")}            output the version number`,
-          `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
-          `  ${ui.theme.flag("--no-color")}               disable color output`,
-          `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,
-          `  ${ui.theme.flag("-h, --help")}               display help for command`,
-          "",
-          renderTopLevelCommandHelp(cmd),
-          "",
-        ];
-
-        return lines.join("\n");
+        return renderRootHelpText();
       },
     });
 }

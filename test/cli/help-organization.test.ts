@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import packageJson from "../../package.json";
+import { PACKAGE_VERSION } from "../../src/version.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
 
@@ -108,7 +108,7 @@ describe("CLI help and command organization", () => {
   it("renders top-level help with ht when invoked as ht", async () => {
     const result = await runCli(["--help"], { commandName: "ht" });
     expect(result.stdout).toContain("ht");
-    expect(result.stdout).toContain(`v${packageJson.version}`);
+    expect(result.stdout).toContain(`v${PACKAGE_VERSION}`);
     expect(result.stdout).toContain("ht [options] [command]");
   });
 
@@ -117,7 +117,7 @@ describe("CLI help and command organization", () => {
     const noArgs = await runCli([]);
 
     for (const result of [help, noArgs]) {
-      expect(result.stdout).toContain(`v${packageJson.version}`);
+      expect(result.stdout).toContain(`v${PACKAGE_VERSION}`);
     }
   });
 

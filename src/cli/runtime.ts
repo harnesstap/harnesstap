@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import { initializeSchema } from "../db/schema.js";
-import { getDb, getHarnesstapDir } from "../db/connection.js";
+import { closeDb, getDb, getHarnesstapDir } from "../db/connection.js";
 import {
   GLOBAL_DEFAULT_PROFILE_NAME,
   LEGACY_DEFAULT_PROFILE_NAME,
@@ -18,6 +18,9 @@ import {
 } from "../telemetry/index.js";
 import { ui } from "../ui/index.js";
 import { PACKAGE_VERSION } from "../version.js";
+import { ensureCommandsForArgv } from "./command-loaders.js";
+import { topLevelCommandTokens } from "./command-catalog.js";
+import { isRootHelpRequest, isRootVersionRequest } from "./root-flags.js";
 import { CLI_HINTS } from "./messages.js";
 import { program } from "./program.js";
 import {
@@ -29,35 +32,9 @@ import {
 } from "./shared.js";
 import { isCommanderError } from "./user-errors.js";
 
-const ROOT_VERSION_FLAGS = new Set(["-V", "--version", "--harnesstap-version"]);
-const ROOT_PASSTHROUGH_FLAGS = new Set([
-  "-v",
-  "--verbose",
-  "--no-color",
-  "--no-interactive",
-]);
+export { isRootHelpRequest, isRootVersionRequest } from "./root-flags.js";
 
-export function isRootVersionRequest(argv: string[]): boolean {
-  const args = argv.slice(2);
-  let sawVersion = false;
-  for (const arg of args) {
-    if (arg === "--") {
-      return false;
-    }
-    if (ROOT_VERSION_FLAGS.has(arg)) {
-      sawVersion = true;
-      continue;
-    }
-    if (ROOT_PASSTHROUGH_FLAGS.has(arg)) {
-      continue;
-    }
-    if (arg.startsWith("-")) {
-      continue;
-    }
-    return false;
-  }
-  return sawVersion;
-}
+process.on("exit", () => closeDb());
 
 function findContextCommand(argv: string[]): Command | null {
   const args = argv.slice(2);
@@ -133,14 +110,7 @@ export function renderCliError(error: unknown, argv: string[] = process.argv): v
 }
 
 function knownTopLevelCommandTokens(): Set<string> {
-  const reserved = new Set<string>();
-  for (const command of program.commands) {
-    reserved.add(command.name());
-    for (const alias of command.aliases()) {
-      reserved.add(alias);
-    }
-  }
-  return reserved;
+  return topLevelCommandTokens();
 }
 
 function firstPositionalIndex(argv: string[]): number {
@@ -206,11 +176,12 @@ export async function runHarnesstapCli(
   setTelemetryProduct("cli");
   maybeWarnCliTelemetry(getHarnesstapDir(), { argv });
   trackCliStartup();
-  if (argv.length <= 2) {
+  if (isRootHelpRequest(argv)) {
     program.outputHelp();
     return;
   }
   const effectiveArgv = rewriteProfileShorthandArgv(argv);
+  await ensureCommandsForArgv(program, effectiveArgv);
   try {
     await program.parseAsync(effectiveArgv);
     for (const notice of takeSelectorDeprecations()) {

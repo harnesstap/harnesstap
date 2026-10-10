@@ -1,14 +1,7 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { PACKAGE_VERSION } from "../../src/version.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
-
-const cliVersion = (
-  JSON.parse(readFileSync(join(import.meta.dir, "../../package.json"), "utf8")) as {
-    version: string;
-  }
-).version;
 
 describe("CLI published-version notice", () => {
   const originalFetch = globalThis.fetch;
@@ -60,7 +53,7 @@ describe("CLI published-version notice", () => {
       });
       expect(result.exitCode).toBeUndefined();
       expect(result.stderr).toContain(
-        `A newer HarnessTap CLI is available: ${cliVersion} → 9.9.9`,
+        `A newer HarnessTap CLI is available: ${PACKAGE_VERSION} → 9.9.9`,
       );
     } finally {
       await context.cleanup();

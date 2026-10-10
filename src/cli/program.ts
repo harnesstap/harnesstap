@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import { closeDb } from "../db/connection.js";
 import { configureProgramHelp } from "./help.js";
 
 export const program = new Command();
@@ -10,5 +9,3 @@ program.hook("preAction", () => {
 });
 
 configureProgramHelp(program);
-
-process.on("exit", () => closeDb());
