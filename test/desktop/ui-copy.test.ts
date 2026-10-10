@@ -27,6 +27,8 @@ describe("desktop ui-copy (DS-1 / DS-6)", () => {
       REMOVAL_CONFIRM_COPY.removeThemToo,
       APPLY_RESULT_COPY.wroteRemovedKept(3, 1, 2),
       APPLY_RESULT_COPY.viewSnapshot,
+      APPLY_RESULT_COPY.takenLine("just now"),
+      APPLY_RESULT_COPY.undoWith("abc"),
     ].join("\n");
     expect(blob).not.toMatch(/[\u2013\u2014\u2026]/);
   });
