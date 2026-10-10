@@ -1,0 +1,13 @@
+{
+  "schema": "urn:harnesstap:ap-package:v1",
+  "files": {
+    "plugin.json": {
+      "encoding": "utf8",
+      "content": "{\n  \"$schema\": \"https://agentplugins.org/schema/v1/plugin.schema.json\",\n  \"name\": \"superpowers\",\n  \"version\": \"5.1.0\",\n  \"description\": \"G2 catalog dependency\",\n  \"keywords\": [\"skills\"],\n  \"extensions\": {\n    \"com.harnesstap\": {\n      \"schema\": \"urn:harnesstap:ap-extension:v1\",\n      \"sourceName\": \"superpowers\",\n      \"dependencies\": [\n        { \"name\": \"confidence\", \"constraint\": \"1.0.0\", \"source\": \"local\" }\n      ]\n    }\n  }\n}\n"
+    },
+    "skills/superpowers/SKILL.md": {
+      "encoding": "utf8",
+      "content": "---\nname: superpowers\ndescription: Superpowers baseline\n---\n\n# Superpowers\n"
+    }
+  }
+}

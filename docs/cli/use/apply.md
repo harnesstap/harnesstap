@@ -4,7 +4,7 @@ description: Apply plugins and compile local APM primitives into harness directo
 
 # Apply to a project (Use)
 
-`ht apply` resolves a plugin graph and writes harness files. With no plugin selector, it is the same loop as [`ht install`](./install.md): read `apm.yml`, resolve manifest dependencies, compile local primitives, write `apm.lock.yaml`, and materialize the **resolved** target harness directories — the same writers used for library plugins, not a second output tree.
+`ht apply` resolves a plugin graph and writes harness files. Catalog packages pull missing dependencies (including `source: "local"` edges) from the same catalog at the pinned version before materializing. With no plugin selector, it is the same loop as [`ht install`](./install.md): read `apm.yml`, resolve manifest dependencies, compile local primitives, write `apm.lock.yaml`, and materialize the **resolved** target harness directories — the same writers used for library plugins, not a second output tree.
 
 Default teammate onboarding in a repo that already has `apm.yml` is `ht install`. Commit `apm.lock.yaml` plus the generated harness output (`.claude/`, `.cursor/`, `AGENTS.md`, and so on). Preview targets with `ht targets`. [`ht compile`](./compile.md) is the same apply-from-manifest loop under a named entry.
 

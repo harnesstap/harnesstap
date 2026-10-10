@@ -1,0 +1,13 @@
+{
+  "schema": "urn:harnesstap:ap-package:v1",
+  "files": {
+    "plugin.json": {
+      "encoding": "utf8",
+      "content": "{\n  \"$schema\": \"https://agentplugins.org/schema/v1/plugin.schema.json\",\n  \"name\": \"context7\",\n  \"version\": \"1.0.0\",\n  \"description\": \"G2 catalog dependency\",\n  \"keywords\": [\"docs\"],\n  \"extensions\": {\n    \"com.harnesstap\": {\n      \"schema\": \"urn:harnesstap:ap-extension:v1\",\n      \"sourceName\": \"context7\"\n    }\n  }\n}\n"
+    },
+    "skills/context7/SKILL.md": {
+      "encoding": "utf8",
+      "content": "---\nname: context7\ndescription: Library docs\n---\n\n# Context7\n"
+    }
+  }
+}

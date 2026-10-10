@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
-import { createPlugin, getPluginById } from "../../src/models/plugin-model.ts";
+import { createPlugin, getPluginById, stampPluginOrigin } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addResourceToPlugin } from "../../src/models/plugin-model.ts";
 import { buildApPackageFiles } from "../../src/services/agent-plugins/files.ts";
@@ -76,7 +76,7 @@ describe("installPluginFromCatalog origin locator", () => {
       org_slug: "acme",
       catalog_slug: "default",
     });
-    expect(getPluginById(existing.id)?.origin_locator).toBeUndefined();
+    stampPluginOrigin(existing.id, { locator: "acme/default/foundation" });
 
     const downloadSpy = spyOn(catalogClient, "downloadCatalogPackage").mockResolvedValue({
       version: "1.0.0",

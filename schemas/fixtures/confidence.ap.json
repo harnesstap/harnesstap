@@ -1,0 +1,13 @@
+{
+  "schema": "urn:harnesstap:ap-package:v1",
+  "files": {
+    "plugin.json": {
+      "encoding": "utf8",
+      "content": "{\n  \"$schema\": \"https://agentplugins.org/schema/v1/plugin.schema.json\",\n  \"name\": \"confidence\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Transitive G2 catalog dependency\",\n  \"keywords\": [],\n  \"extensions\": {\n    \"com.harnesstap\": {\n      \"schema\": \"urn:harnesstap:ap-extension:v1\",\n      \"sourceName\": \"confidence\"\n    }\n  }\n}\n"
+    },
+    "skills/confidence/SKILL.md": {
+      "encoding": "utf8",
+      "content": "---\nname: confidence\ndescription: Transitive skill\n---\n\n# Confidence\n"
+    }
+  }
+}

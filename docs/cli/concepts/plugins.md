@@ -199,7 +199,7 @@ ht plugin list --search foundation --remote-only
 ht apply engineering-foundation
 ```
 
-`ht apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected). Use `plugin pull` to cache a bundle locally for offline work.
+`ht apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected). Missing dependencies of a catalog package — including those declared `source: "local"` — are fetched from that same catalog at the pinned version. Use `plugin pull` to cache a bundle locally for offline work.
 
 To opt out of anonymous public catalog lookups:
 

@@ -196,6 +196,7 @@ async function resolveBareApplyPluginSource(
   const installed = await installPluginFromCatalog(remote, {
     account: options.account,
     baseUrl: options.baseUrl,
+    onFetched: options.onFetched,
   });
   options.onFetched?.(installed.sourceLabel);
   return { kind: "local", pluginId: installed.pluginId };
@@ -235,6 +236,7 @@ export async function resolveApplyPluginSource(
   const installed = await installPluginFromCatalog(parsed, {
     account: options.account,
     baseUrl: options.baseUrl,
+    onFetched: options.onFetched,
   });
   options.onFetched?.(installed.sourceLabel);
   return { kind: "local", pluginId: installed.pluginId };

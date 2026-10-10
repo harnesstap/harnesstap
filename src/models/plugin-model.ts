@@ -592,6 +592,27 @@ export function getPluginByCatalogVersion(
   return row ? rowToPlugin(row) : undefined;
 }
 
+/** Match a catalog install by slug name or origin locator, never a sibling plugin that shares org/catalog/version. */
+export function findPluginForCatalogInstall(input: {
+  org: string;
+  catalog: string;
+  pluginSlug: string;
+  version: string;
+}): Plugin | undefined {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM plugins WHERE org_slug = ? AND catalog_slug = ? AND version = ?`,
+    )
+    .all(input.org, input.catalog, input.version) as PluginRow[];
+  const plugins = rows.map(rowToPlugin);
+  const locator = `${input.org}/${input.catalog}/${input.pluginSlug}`;
+  return (
+    plugins.find((plugin) => plugin.name === input.pluginSlug)
+    ?? plugins.find((plugin) => plugin.origin_locator === locator)
+  );
+}
+
 export function listLatestPublishedPluginsBySlug(slug: string): Plugin[] {
   const db = getDb();
   const rows = db
