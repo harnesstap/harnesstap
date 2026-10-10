@@ -27,7 +27,7 @@ describe("ui theme", () => {
       configurable: true,
     });
     const { getTableChars } = await import("../../src/ui/theme.ts");
-    expect(getTableChars().top).toBe("+");
+    expect(getTableChars().top).toBe("-");
   });
 
   it("disables color styles when NO_COLOR is set", async () => {
