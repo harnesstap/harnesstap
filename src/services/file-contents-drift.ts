@@ -3,6 +3,11 @@ import { mcpConfigContentsEquivalent } from "./mcp-config-bridge.js";
 import { isMcpConfigManagedPath } from "./profile-commit-resource.js";
 import { jsonContentsEquivalent } from "../utils/json-equal.js";
 
+function trailingNewlineEquivalent(left: string, right: string): boolean {
+  const normalize = (value: string) => value.replace(/\r\n/g, "\n").replace(/\n+$/u, "");
+  return normalize(left) === normalize(right);
+}
+
 function tomlContentsEquivalent(left: string, right: string): boolean {
   try {
     return jsonContentsEquivalent(
@@ -15,8 +20,9 @@ function tomlContentsEquivalent(left: string, right: string): boolean {
 }
 
 /**
- * Drift and apply-skip equivalence: byte match first, then parsed JSON/TOML,
- * then MCP semantic compare for harness serialization noise (type: stdio, tools).
+ * Drift and apply-skip equivalence: byte match first, then trailing-newline
+ * only, then parsed JSON/TOML, then MCP semantic compare for harness
+ * serialization noise (type: stdio, tools).
  */
 export function fileContentsEquivalentForDrift(
   path: string,
@@ -24,6 +30,9 @@ export function fileContentsEquivalentForDrift(
   expected: string,
 ): boolean {
   if (current === expected) {
+    return true;
+  }
+  if (trailingNewlineEquivalent(current, expected)) {
     return true;
   }
   if (/\.jsonc?$/i.test(path) && jsonContentsEquivalent(current, expected)) {

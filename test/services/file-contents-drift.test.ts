@@ -27,6 +27,23 @@ describe("fileContentsEquivalentForDrift", () => {
     expect(fileContentsEquivalentForDrift("notes.md", "hello", "hello")).toBe(true);
   });
 
+  it("matches markdown that differs only by a trailing newline", () => {
+    expect(
+      fileContentsEquivalentForDrift(
+        ".claude/rules/security.md",
+        "# Security rules\nNever log secrets.\n",
+        "# Security rules\nNever log secrets.",
+      ),
+    ).toBe(true);
+    expect(
+      fileContentsEquivalentForDrift(
+        ".claude/rules/security.md",
+        "# Security rules\nNever log secrets.\n",
+        "# Security rules\nNever log secrets.\nUSER",
+      ),
+    ).toBe(false);
+  });
+
   it("matches JSON files after parse when bytes differ", () => {
     expect(
       fileContentsEquivalentForDrift(
