@@ -85,7 +85,7 @@ export function resolveRegisteredScanTargets(
   const detected = detectHomePlatforms(homeRoot).map((entry) => entry.platformId);
   if (detected.length === 0) {
     throw new Error(
-      "No harnesses configured. Run harnesstap harness set or pass --harness <slugs>.",
+      "No harnesses configured. Run ht harness set or pass --harness <slugs>.",
     );
   }
   return detected;

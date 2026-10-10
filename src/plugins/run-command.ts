@@ -22,6 +22,9 @@ export const defaultRunCommand: RunCommand = (command, args, options) => {
     encoding: "utf-8",
     stdio: ["ignore", "pipe", "pipe"],
     cwd: options?.cwd,
+    env: command === "git"
+      ? { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" }
+      : process.env,
   });
   return {
     stdout: result.stdout?.toString() ?? "",

@@ -253,7 +253,7 @@ Share the full local workspace between machines with `migrate export` / `migrate
 
 ## Invocation and global options
 
-The package publishes two binaries (`harnesstap` and `ht`) pointing at the same entrypoint. Help text, usage lines, and follow-up hints use whichever name launched the process.
+The package publishes two binaries (`harnesstap` and `ht`) pointing at the same entrypoint. Help text and usage lines use whichever name launched the process. Follow-up hints always say `ht`.
 
 Global options:
 
@@ -467,7 +467,7 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 | --- | --- |
 | `--dry-run` | Preview global diff without writing |
 | `--harness <slugs>` | Override harness targets (default: global harness preference) |
-| `--on-conflict <policy>` | `replace` \| `skip` \| `prompt` |
+| `--on-conflict <policy>` | `replace` \| `skip` \| `prompt` \| `cancel` (aliases for one release: `overwrite`→`replace`, `ignore`→`skip`, `fail`→`cancel`) |
 | `--account <name>` | Cloud account for catalog resolution during dependency pull |
 | `--base-url <url>` | Cloud base URL for dependency pull |
 | `--no-pull` | Fail when composition refs are missing locally instead of auto-pull |
@@ -537,11 +537,16 @@ When human output supports follow-up commands, it includes canonical identifiers
 
 ### Error handling
 
+Errors print one `Error:` line on stderr and at most one hint line (`Run ht <cmd> --help to see the options.` or a single working command). They never dump full command help. Every `Error:` line exits non-zero. User-provided names are quoted. Hints always use `ht`. SQLite, raw git, and `ENOENT` text are mapped to user words. `fail()` in `src/cli/shared.ts` is the command-handler helper; `ui.danger` is banned in `src/cli/commands`.
+
 | Situation | Behavior |
 | --- | --- |
-| Not found | Clear message, non-zero exit |
+| Not found | `Error:` line, non-zero exit |
 | Ambiguous selector | Non-zero exit; candidates in human or JSON mode |
-| Invalid option | Explicit validation error, non-zero exit |
+| Invalid option | Explicit validation error, non-zero exit, one `--help` hint |
+| Duplicate create | Named "already exists" message; hint `--on-conflict replace` |
+| Unauthenticated `auth orgs` | Non-zero exit |
+| Stale `resource sync` | Exit 0 with warnings; `--check` exits 1 |
 | Plugin version mismatch on apply (default) | Warning; apply continues |
 | Plugin version mismatch with `--strict-plugin-versions` | Exit `2` |
 | `--strict-plugin-versions` and `--ignore-plugin-versions` together | Error |
@@ -785,7 +790,7 @@ When one supported harness already exists in a project, it is the default regist
 
 Plugin resources with `never_synced` or `stale` status warn by default; pass `--sync-plugins` to refresh before materialize.
 
-When generated files already exist, `apply` uses `--on-conflict replace|skip|prompt` (default: `prompt` on TTY, otherwise `replace`).
+When generated files already exist, `apply` uses `--on-conflict replace|skip|prompt|cancel` (default: `prompt` when interactive). Non-interactive apply still falls back to `replace` today; the DS-6 default is `cancel`. Old values `overwrite`, `ignore`, and `fail` remain aliases for one release.
 
 Compile and apply both run `generateFiles`, which omits a resource from a harness serializer when that resource's `harness_scope` is a subset that does not include the harness.
 
@@ -824,7 +829,7 @@ For `type=plugin_pin` resources (stored as `resources.type=plugin`):
 2. Fetch or re-scan via `plugin-source-import`.
 3. Update plugin metadata (`resolved_version`, `manifests`, `sync_status`). When the install path is a cache version directory (semver or git SHA), `resolved_version` is that directory name even if `plugin.json` disagrees. When `plugin.json` has no version and the directory is not a version id, `resolved_version` is the cache directory git SHA so the install can participate in composition.
 4. Diff and upsert child resources in the plugin namespace.
-5. On conflict, prompt on TTY or honor `--on-conflict overwrite|ignore|fail` (default `fail` when non-interactive).
+5. On conflict, prompt on TTY or honor `--on-conflict replace|skip|prompt|cancel` (default `cancel` when non-interactive). `overwrite`, `ignore`, and `fail` remain aliases for one release.
 
 Library plugin resource detail includes `current_version`, `advertised_version` (the highest source version: catalog `marketplace.json`, checkout `plugin.json` for path sources such as `./`, and git tags **Pull** fetched), `available_versions` (host cache directories plus those source versions), and `pull_unavailable_reason` (null when Pull can run). Desktop **Pull** (`POST /v1/library/resources/:selector/pull`) refreshes the marketplace checkout and lists every semver git tag on the plugin source (and the advertised catalog version). When `pull_unavailable_reason` is set, Desktop disables Pull and tooltips that reason (marketplace not installed, pin has no marketplace, or another existing source-unavailable message). When the catalog `source` is a relative path such as `./` (the plugin *is* the marketplace git repo, as with `superpowers@superpowers-marketplace`), Pull lists tags on the marketplace remote. **cursor-public** is HarnessTap's first-class Cursor public marketplace at `https://github.com/cursor/plugins` (root `.cursor-plugin/marketplace.json`, per-plugin relative `source` paths). Pull clones or fetches that git remote even when Cursor has not installed the marketplace locally, writes the checkout under the Claude host marketplace root, records it in Claude `known_marketplaces.json` so Claude Code can use the same `plugin@cursor-public` refs, and reads Cursor cache dirs (`~/.cursor/plugins/cache/`) as available versions. Other harnesses consume those trees via `ht harness sync`. Selectors may be a resource ULID or the pin `origin_ref` (`name@marketplace`). Desktop shows Version as a filterable combobox; helper **Marketplace lists X** uses that highest source version. Closed field and option labels mark tagged/marketplace semver `(release)` and git commit hashes `(git)` (12-character prefix; full SHA on hover). Versions from a tracked git branch (local path or remote repository) include the branch name (`1.0.0 (release, main)`); matching tags such as `v2.0.0` stay kind-only. Each `available_versions` row may include `git_ref` from the pulled source snapshot. Marketplace URL is a text link. `POST /v1/library/resources/:selector/version` with `{ version }` downloads that version into the host cache when it is missing, retargets the Claude `installed_plugins.json` record for that origin ref, and runs `resource sync` with overwrite. Nested Content files are not required on the detail payload: `include_contained=0` skips the tree walk, and `GET /v1/library/resources/:selector/files` returns `{ files, has_more }` with `limit` / `offset` (Desktop default `limit=20`). Walks skip `.git` and `node_modules` directories. Harnesses inventory **Pull all** (Plugins type heading) runs that pull for every listed plugin pin, then switches each pin to its advertised latest when it differs, and opens a **Plugin updates** report of plugin version lines (`name` `from → to` only; no nested resources), already current, and failed rows. Pulls run with bounded concurrency; one plugin failure does not abort the rest.
 

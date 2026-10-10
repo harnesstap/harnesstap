@@ -21,7 +21,7 @@ describe("CLI error output", () => {
     const result = runCliProcess(["plugin", "validate", "empty-plugin"]);
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("error: unknown command 'plugin validate'");
+    expect(result.stderr).toContain("unknown command 'plugin validate'");
     expect(result.stderr).not.toContain("CommanderError");
     expect(result.stderr).not.toContain("node_modules/commander/lib/command.js");
     expect(result.stderr).not.toContain("at runHarnesstapCli");
@@ -36,19 +36,15 @@ describe("CLI error output", () => {
     expect(result.stderr).toContain("node_modules/commander/lib/command.js");
   });
 
-  it("appends contextual usage and command list after error message", () => {
+  it("prints one hint instead of dumping command help after an error", () => {
     const result = runCliProcess(["plugin", "validate", "empty-plugin"]);
 
     expect(result.status).toBe(1);
-    // Should show error message
-    expect(result.stderr).toContain("error: unknown command 'plugin validate'");
-    // Should append contextual help
-    expect(result.stderr).toContain("USAGE");
-    expect(result.stderr).toContain("LOCAL LIBRARY");
-    // Should show actual plugin commands (without [options] in command name)
-    expect(result.stderr).toContain("show [name]");
-    expect(result.stderr).toContain("doctor");
-    // Should not show stack trace
+    expect(result.stderr).toContain("Error:");
+    expect(result.stderr).toContain("unknown command");
+    expect(result.stderr).toContain("Run ht plugin --help to see the options.");
+    expect(result.stderr).not.toContain("USAGE");
+    expect(result.stderr).not.toContain("LOCAL LIBRARY");
     expect(result.stderr).not.toContain("CommanderError");
     expect(result.stderr).not.toContain("node_modules/commander/lib/command.js");
   });

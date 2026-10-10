@@ -18,12 +18,16 @@ import {
 } from "../telemetry/index.js";
 import { ui } from "../ui/index.js";
 import { PACKAGE_VERSION } from "../version.js";
+import { CLI_HINTS } from "./messages.js";
 import { program } from "./program.js";
 import {
+  fail,
+  failCaught,
   isGroupedCommandFallbackError,
   isVerboseMode,
   resolveInvocationName,
 } from "./shared.js";
+import { isCommanderError } from "./user-errors.js";
 
 const ROOT_VERSION_FLAGS = new Set(["-V", "--version", "--harnesstap-version"]);
 const ROOT_PASSTHROUGH_FLAGS = new Set([
@@ -79,6 +83,16 @@ function findContextCommand(argv: string[]): Command | null {
   return currentCommand !== program ? currentCommand : null;
 }
 
+function commandPath(command: Command): string {
+  const parts: string[] = [];
+  let current: Command | null = command;
+  while (current && current.parent) {
+    parts.unshift(current.name());
+    current = current.parent;
+  }
+  return parts.join(" ");
+}
+
 export function renderCliError(error: unknown, argv: string[] = process.argv): void {
   if (isVerboseMode(argv)) {
     if (error instanceof Error && error.stack) {
@@ -90,22 +104,32 @@ export function renderCliError(error: unknown, argv: string[] = process.argv): v
   }
 
   if (error instanceof PluginProvenanceError) {
-    ui.danger(error.message, { hints: error.hints });
-    process.exitCode = 1;
+    fail(error.message, { hint: error.hints[0] });
     return;
   }
 
   if (error instanceof CliUsageError) {
-    ui.danger(error.message, { hints: error.hints });
-  } else {
-    const message = error instanceof Error ? error.message : String(error);
-    ui.danger(message);
+    fail(error.message, {
+      hint: error.hints[0],
+      exitCode: error.exitCode,
+    });
+    return;
   }
 
   const contextCommand = findContextCommand(argv);
-  if (contextCommand) {
-    console.error(`\n${contextCommand.helpInformation()}`);
+  if (isCommanderError(error)) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail(message, {
+      hint: CLI_HINTS.seeOptions(contextCommand ? commandPath(contextCommand) : ""),
+      exitCode:
+        error && typeof error === "object" && "exitCode" in error
+          ? Number((error as { exitCode?: unknown }).exitCode) || 1
+          : 1,
+    });
+    return;
   }
+
+  failCaught(error);
 }
 
 function knownTopLevelCommandTokens(): Set<string> {

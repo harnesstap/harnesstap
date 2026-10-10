@@ -13,7 +13,10 @@ import {
 import { readLockfile } from "../../services/lockfile.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
-import { formatCommand } from "../shared.js";
+import {
+  fail,
+  formatCommand,
+} from "../shared.js";
 
 export interface ApproveCommandOpts {
   project?: string;
@@ -60,7 +63,7 @@ export function handleApproveCommand(refs: string[], opts: ApproveCommandOpts): 
   const flags = exclusiveFlags(opts);
   if (flags.length > 1) {
     process.exitCode = 1;
-    ui.danger(`Use only one of ${flags.join(", ")}`);
+    fail(`Use only one of ${flags.join(", ")}`);
     return;
   }
 
@@ -111,7 +114,7 @@ export function handleApproveCommand(refs: string[], opts: ApproveCommandOpts): 
 
   if (targets.length === 0) {
     process.exitCode = 1;
-    ui.danger("Provide a package ref, or use --pending, --all, --recommended, or --list", {
+    fail("Provide a package ref, or use --pending, --all, --recommended, or --list", {
       hints: [formatCommand("approve --pending"), formatCommand("approve owner/repo")],
     });
     return;
@@ -158,12 +161,12 @@ export function handleDenyCommand(refs: string[], opts: ApproveCommandOpts): voi
   const projectRoot = resolve(opts.project ?? ".");
   if (opts.pending || opts.all || opts.recommended || opts.list) {
     process.exitCode = 1;
-    ui.danger("ht deny writes a deny grant; use ht approve --pending/--list to inspect");
+    fail("ht deny writes a deny grant; use ht approve --pending/--list to inspect");
     return;
   }
   if (refs.length === 0) {
     process.exitCode = 1;
-    ui.danger("Provide one or more package refs to deny", {
+    fail("Provide one or more package refs to deny", {
       hints: [formatCommand("deny owner/repo"), formatCommand("deny --user owner/repo")],
     });
     return;

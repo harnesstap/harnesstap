@@ -13,6 +13,7 @@ import {
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
+import { fail } from "../shared.js";
 
 function ensureLibraryDb(): void {
   initializeSchema(getDb());
@@ -49,7 +50,7 @@ async function withCommandErrors(run: () => Promise<void>): Promise<void> {
     await run();
   } catch (error) {
     process.exitCode = 1;
-    ui.danger(error instanceof Error ? error.message : String(error));
+    fail(error instanceof Error ? error.message : String(error));
   }
 }
 

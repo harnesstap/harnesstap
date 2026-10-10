@@ -1,0 +1,5 @@
+kind: Fixed
+body: Print one Error line and one hint, exit non-zero for CLI failures, and stop dumping command help after errors.
+time: 2026-10-10T04:20:00Z
+custom:
+  Issue: ""

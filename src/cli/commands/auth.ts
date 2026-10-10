@@ -15,7 +15,6 @@ import {
   requestDeviceCode,
 } from "../../services/cloud-client.js";
 import { ui } from "../../ui/index.js";
-import { renderWarn } from "../../ui/status.js";
 import {
   extractCloudUserId,
   identifyFromCloudWhoami,
@@ -27,6 +26,8 @@ import {
 } from "../../telemetry/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
+import { CLI_ERRORS, CLI_HINTS } from "../messages.js";
+import { fail } from "../shared.js";
 
 async function handleCloudLoginCommand(
   accountName: string | undefined,
@@ -63,7 +64,7 @@ async function handleCloudLoginCommand(
     void persistCloudIdentity(name, baseUrl, token, now);
   } catch (err) {
     trackCloudConnectFailed(shortReason(err), "cloud_login_failed");
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -126,7 +127,7 @@ async function handleCloudWhoamiCommand(
     }
     ui.info(JSON.stringify(info));
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -136,12 +137,10 @@ async function handleCloudOrgsCommand(
   const format = parseOutputFormat(opts.format);
   const created = await createPersistingCloudClient(opts.account);
   if (!created) {
+    fail(CLI_ERRORS.notAuthenticated, { hint: CLI_HINTS.authLogin });
     if (format === "json") {
-      console.error(renderWarn("Not authenticated to cloud."));
       printJson([]);
-      return;
     }
-    ui.warn("Not authenticated to cloud.");
     return;
   }
   try {
@@ -150,7 +149,7 @@ async function handleCloudOrgsCommand(
       const target = (orgs as Record<string, unknown>[]).find((o) => String((o as Record<string, unknown>)["slug"]) === opts.switch || String((o as Record<string, unknown>)["id"]) === opts.switch);
       if (!target) {
         process.exitCode = 1;
-        ui.danger(`Organization not found: ${opts.switch}`);
+        fail(`Organization not found: ${opts.switch}`);
         return;
       }
       await updateCloudAccount(created.accountName, { orgId: String((target as Record<string, unknown>)["id"]), orgSlug: String((target as Record<string, unknown>)["slug"]) });
@@ -168,7 +167,7 @@ async function handleCloudOrgsCommand(
       ui.info(`${String(o["slug"])} ${String(o["name"])}`);
     }
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -199,7 +198,7 @@ async function handleCloudLogoutCommand(opts: { account?: string } = {}): Promis
     await removeCloudAccount(accountName);
     ui.success(`Logged out: ${accountName}`);
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
+    fail(err instanceof Error ? err.message : String(err));
   }
 }
 

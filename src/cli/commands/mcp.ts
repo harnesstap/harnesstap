@@ -12,6 +12,7 @@ import { mcpMetadataFromRegistryServer } from "../../services/mcp-registry-resol
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
 import { configureCommandGroup } from "../help.js";
+import { fail } from "../shared.js";
 import {
   handleInstallCommand,
   type InstallCommandActionOpts,
@@ -29,7 +30,7 @@ interface McpShowOpts {
 
 function printRegistryError(error: unknown): void {
   process.exitCode = 1;
-  ui.danger(error instanceof Error ? error.message : String(error));
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 export async function handleMcpSearchCommand(
@@ -39,7 +40,7 @@ export async function handleMcpSearchCommand(
   const trimmed = query?.trim();
   if (!trimmed) {
     process.exitCode = 1;
-    ui.danger("Provide a search query.");
+    fail("Provide a search query.");
     return;
   }
   try {
@@ -71,7 +72,7 @@ export async function handleMcpShowCommand(
   const trimmed = identity?.trim();
   if (!trimmed) {
     process.exitCode = 1;
-    ui.danger("Provide an MCP Registry identity (for example io.github.github/github-mcp-server).");
+    fail("Provide an MCP Registry identity (for example io.github.github/github-mcp-server).");
     return;
   }
   try {
@@ -106,7 +107,7 @@ export async function handleMcpInstallCommand(
   const trimmed = identity?.trim();
   if (!trimmed) {
     process.exitCode = 1;
-    ui.danger("Provide an MCP Registry identity (for example io.github.github/github-mcp-server).");
+    fail("Provide an MCP Registry identity (for example io.github.github/github-mcp-server).");
     return;
   }
   const installOpts: InstallCommandActionOpts = {

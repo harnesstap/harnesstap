@@ -41,17 +41,13 @@ import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { formatCount } from "../formatting.js";
 import { parseCommaSeparatedList } from "./parse-flags.js";
 import { collectRepeatedOption } from "../shared.js";
+import { parseOnConflict, toPluginImportOnConflict } from "../on-conflict.js";
+import { ON_CONFLICT_HELP, ON_CONFLICT_PLUGIN_IMPORT_HELP } from "../messages.js";
 
 function parsePluginSourceConflictPolicy(
   value: string | undefined,
 ): PluginSourceConflictPolicy | undefined {
-  if (!value) return undefined;
-  if (value === "cancel" || value === "merge" || value === "overwrite") {
-    return value;
-  }
-  throw new Error(
-    `Invalid --on-conflict value: ${value}. Use cancel, merge, or overwrite.`,
-  );
+  return toPluginImportOnConflict(parseOnConflict(value, { allowMerge: true }));
 }
 
 export interface ProfileCreateCommandOpts {
@@ -136,11 +132,7 @@ function assertCreateSourceFlags(opts: ProfileCreateCommandOpts): void {
   }
 
   if ((opts.fromHome || opts.fromProject !== undefined) && opts.onConflict) {
-    if (opts.onConflict !== "skip" && opts.onConflict !== "overwrite") {
-      throw new Error(
-        `Invalid --on-conflict value: ${opts.onConflict}. Use skip or overwrite.`,
-      );
-    }
+    parseHomeProjectConflictPolicy(opts.onConflict);
   }
 }
 
@@ -164,8 +156,10 @@ function parseHomeProjectConflictPolicy(
   value: string | undefined,
 ): ProfileConflictPolicy {
   if (!value) return "skip";
-  if (value === "skip" || value === "overwrite") return value;
-  throw new Error(`Invalid --on-conflict value: ${value}. Use skip or overwrite.`);
+  const parsed = parseOnConflict(value);
+  if (parsed === "skip") return "skip";
+  if (parsed === "replace") return "overwrite";
+  throw new Error(`Invalid --on-conflict value: ${value}. Use skip or replace.`);
 }
 
 async function resolveComposeIds(
@@ -278,7 +272,7 @@ function printHumanPreview(preview: ProfileCreatePreview): void {
     ui.warn(warning);
   }
   ui.hint(
-    "Re-run without --preview to create. Use --on-conflict overwrite to replace library copies.",
+    "Re-run without --preview to create. Use --on-conflict replace to replace library copies.",
   );
 }
 
@@ -583,14 +577,14 @@ export function registerProfileCreateCommand(profileCmd: Command): void {
     )
     .option(
       "--on-conflict <policy>",
-      "When plugin exists during --from: merge, overwrite, or cancel",
+      `${ON_CONFLICT_PLUGIN_IMPORT_HELP} (default: cancel). merge is plugin import only.`,
     )
     .option("--use", "Apply globally and set as the active profile")
     .option("--dry-run", "Preview profile apply when used with --use")
     .option("--harness <slugs>", "Harness targets for --use")
     .option(
       "--on-conflict-use <policy>",
-      "When applying with --use: replace, skip, or prompt",
+      ON_CONFLICT_HELP,
     )
     .option("--account <name>", "Cloud account for dependency pulls during --use")
     .option("--base-url <url>", "Cloud base URL for dependency pulls during --use")

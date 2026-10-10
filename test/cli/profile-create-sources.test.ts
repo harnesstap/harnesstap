@@ -125,7 +125,7 @@ describe("profile create sources — validation", () => {
     try {
       await expect(
         runCreate("work", { fromHome: true, onConflict: "merge" }),
-      ).rejects.toThrow("Invalid --on-conflict value: merge. Use skip or overwrite.");
+      ).rejects.toThrow("Invalid --on-conflict value: merge. Use replace, skip, prompt or cancel.");
     } finally {
       await context.cleanup();
     }

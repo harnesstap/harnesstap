@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   addApplyCommandOptions,
@@ -7,10 +8,14 @@ import {
 import { handleApplyCommand, type ApplyCommandActionOpts } from "./apply.js";
 import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
 import { previewApmTargets, TargetFlagError } from "../../services/apm-targets.js";
-import { CliUsageError } from "../../services/cli-errors.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
-import { formatCommand } from "../shared.js";
+import { CLI_ERRORS } from "../messages.js";
+import {
+  fail,
+  failCaught,
+  formatCommand,
+} from "../shared.js";
 
 export interface TargetsCommandOpts {
   project?: string;
@@ -25,7 +30,7 @@ export async function handleCompileCommand(
 ): Promise<void> {
   if (extraArgs.length > 0) {
     process.exitCode = 1;
-    ui.danger(
+    fail(
       "ht compile does not take a plugin selector. It reads repo-root apm.yml.",
       {
         hints: [formatCommand("compile"), formatCommand("apply <plugin>")],
@@ -39,6 +44,10 @@ export async function handleCompileCommand(
 
 export function handleTargetsCommand(opts: TargetsCommandOpts): void {
   const projectRoot = resolve(opts.project ?? ".");
+  if (!existsSync(projectRoot)) {
+    fail(CLI_ERRORS.directoryNotFound(opts.project ?? "."));
+    return;
+  }
   const format = opts.json ? "json" : parseOutputFormat(opts.format);
 
   try {
@@ -83,12 +92,9 @@ export function handleTargetsCommand(opts: TargetsCommandOpts): void {
       ui.info("No target is active. Declare targets: in apm.yml or add a harness config directory.");
     }
   } catch (error) {
-    process.exitCode = error instanceof TargetFlagError ? 2 : 1;
-    if (error instanceof TargetFlagError || error instanceof CliUsageError) {
-      ui.danger(error.message);
-      return;
-    }
-    ui.danger(error instanceof Error ? error.message : String(error));
+    failCaught(error, {
+      exitCode: error instanceof TargetFlagError ? 2 : 1,
+    });
   }
 }
 

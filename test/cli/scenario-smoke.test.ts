@@ -82,6 +82,9 @@ describe("scenario smoke harness", () => {
         }
 
         await runCli(["init", "--format", "json"]);
+        if (scenario.requiresGitOrigin) {
+          await runCli(["harness", "set", "--main", "claude-code"]);
+        }
         const result = await runCli(argv);
 
         if (scenario.expectFailure) {

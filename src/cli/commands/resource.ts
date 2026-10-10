@@ -35,17 +35,22 @@ import {
 } from "../handlers/resource-list.js";
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
-import { formatCommand } from "../shared.js";
+import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_HELP, quoteName } from "../messages.js";
+import { parseOnConflict, toResourceSyncOnConflict } from "../on-conflict.js";
+import {
+  fail,
+  formatCommand,
+} from "../shared.js";
 import { registerResourceParityCommands } from "./parity-register.js";
 
 async function deleteLibraryResource(selector: string): Promise<void> {
   const result = resolveResource(selector);
   if (result.status === "not_found") {
-    ui.danger(`Resource not found: ${selector}`);
+    fail(CLI_ERRORS.resourceNotFound(selector), { hint: CLI_HINTS.resourceList });
     return;
   }
   if (result.status === "ambiguous") {
-    ui.danger(`Ambiguous resource name: ${selector}`);
+    fail(`Ambiguous resource name: ${quoteName(selector)}.`);
     for (const match of result.matches) {
       ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
     }
@@ -55,7 +60,7 @@ async function deleteLibraryResource(selector: string): Promise<void> {
     ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
     return;
   }
-  ui.danger(`Resource not found: ${selector}`);
+  fail(CLI_ERRORS.resourceNotFound(selector), { hint: CLI_HINTS.resourceList });
 }
 
 async function handleResourceListCommand(
@@ -74,11 +79,11 @@ async function handleResourceListCommand(
   const format = parseOutputFormat(opts.format);
   const resolvedType = resolveResourceListType(positionalType, opts.type);
   if (resolvedType === "conflict") {
-    ui.danger(`Conflicting type filters: ${positionalType} and ${opts.type}`);
+    fail(CLI_ERRORS.conflictingResourceTypes(positionalType ?? "", opts.type ?? ""));
     return;
   }
   if (resolvedType === "invalid") {
-    ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
+    fail(CLI_ERRORS.invalidResourceType(positionalType ?? opts.type ?? "", RESOURCE_TYPES));
     return;
   }
 
@@ -180,7 +185,7 @@ export function registerResourceCommands(root: Command): void {
         await handleResourceListCommand(type, opts);
       } catch (error) {
         process.exitCode = 1;
-        ui.danger(error instanceof Error ? error.message : String(error));
+        fail(error instanceof Error ? error.message : String(error));
       }
     });
 
@@ -217,7 +222,7 @@ export function registerResourceCommands(root: Command): void {
       });
       if (!resolvedResource) {
         process.exitCode = 1;
-        ui.danger(
+        fail(
           listResources().length > 0
             ? "error: missing required argument 'resource'"
             : `No resources found. Scan or import resources first (e.g. \`${formatCommand("init")}\`).`,
@@ -238,11 +243,11 @@ export function registerResourceCommands(root: Command): void {
         return;
       }
       if (result.status === "not_found") {
-        ui.danger(`Resource not found: ${resolvedResource}`);
+        fail(CLI_ERRORS.resourceNotFound(resolvedResource), { hint: CLI_HINTS.resourceList });
         return;
       }
       if (result.status === "ambiguous") {
-        ui.danger(`Ambiguous resource selector: ${resolvedResource}`);
+        fail(`Ambiguous resource selector: ${quoteName(resolvedResource)}.`);
         ui.table.print({
           columns: [
             ...makeIdColumn(Boolean(opts.showId)),
@@ -261,31 +266,37 @@ export function registerResourceCommands(root: Command): void {
     .command("sync")
     .argument("[selector]", "Linked resource selector (optional)")
     .option("--overwrite", "Overwrite cached definitions when install tree differs")
-    .option("--on-conflict <policy>", "Conflict policy: overwrite, ignore, or fail", "fail")
+    .option("--on-conflict <policy>", ON_CONFLICT_HELP, "cancel")
     .option("--force", "Sync pinned resources")
     .option("--dry-run", "Report linked resources without writing changes")
+    .option("--check", "Exit 1 when any linked resource is stale")
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Sync plugin resources and marketplace-linked definitions from install trees")
-    .action(async (selector: string | undefined, opts: { overwrite?: boolean; onConflict?: string; force?: boolean; dryRun?: boolean; format?: string }) => {
+    .action(async (selector: string | undefined, opts: { overwrite?: boolean; onConflict?: string; force?: boolean; dryRun?: boolean; check?: boolean; format?: string }) => {
       const db = getDb();
       initializeSchema(db);
       const format = parseOutputFormat(opts.format);
-      const onConflict = opts.onConflict as "overwrite" | "ignore" | "fail" | undefined;
-      if (onConflict && !["overwrite", "ignore", "fail"].includes(onConflict)) {
-        process.exitCode = 1;
-        ui.danger("Invalid --on-conflict. Use overwrite, ignore, or fail.");
+      let syncConflict: "overwrite" | "ignore" | "fail" = opts.overwrite ? "overwrite" : "fail";
+      try {
+        const parsed = parseOnConflict(opts.onConflict);
+        syncConflict = toResourceSyncOnConflict(parsed) ?? (opts.overwrite ? "overwrite" : "fail");
+      } catch (error) {
+        fail(error instanceof Error ? error.message : String(error));
         return;
       }
       const result = await syncLinkedResources({
         selector,
         policy: opts.overwrite ? "overwrite" : "skip",
-        onConflict: onConflict ?? (opts.overwrite ? "overwrite" : "fail"),
+        onConflict: syncConflict,
         force: opts.force,
         dryRun: opts.dryRun,
       });
 
       if (format === "json") {
         printJson(result);
+        if (opts.check && result.stale.length > 0) {
+          process.exitCode = 1;
+        }
         return;
       }
 
@@ -293,7 +304,10 @@ export function registerResourceCommands(root: Command): void {
         `Checked ${result.checked} resource(s) ${ui.icons.bullet} ${result.updated.length} updated, ${result.unchanged.length} unchanged, ${result.skipped.length} skipped, ${result.stale.length} stale`,
       );
       for (const entry of result.stale) {
-        ui.warn(`${entry.resource.type}:${entry.resource.name} — ${entry.reason}`);
+        ui.warn(`${entry.resource.type}:${entry.resource.name}: ${entry.reason}`);
+      }
+      if (opts.check && result.stale.length > 0) {
+        fail(CLI_ERRORS.resourceSyncStale(result.stale.length));
       }
     });
 
@@ -322,7 +336,7 @@ export function registerResourceCommands(root: Command): void {
       if (selectors.length === 0) {
         process.exitCode = 1;
         if (!resource && useWizard) {
-          ui.danger("No resources selected for deletion");
+          fail("No resources selected for deletion");
         } else {
           renderCliError(missingRequiredArg("resource", "resource delete"));
         }
@@ -332,11 +346,11 @@ export function registerResourceCommands(root: Command): void {
       for (const resolvedResource of selectors) {
         const result = resolveResource(resolvedResource);
         if (result.status === "not_found") {
-          ui.danger(`Resource not found: ${resolvedResource}`);
+          fail(CLI_ERRORS.resourceNotFound(resolvedResource), { hint: CLI_HINTS.resourceList });
           return;
         }
         if (result.status === "ambiguous") {
-          ui.danger(`Ambiguous resource name: ${resolvedResource}`);
+          fail(`Ambiguous resource name: ${quoteName(resolvedResource)}.`);
           for (const match of result.matches) {
             ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
           }
@@ -345,7 +359,7 @@ export function registerResourceCommands(root: Command): void {
         if (deleteResource(result.resource.id)) {
           ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
         } else {
-          ui.danger(`Resource not found: ${resolvedResource}`);
+          fail(CLI_ERRORS.resourceNotFound(resolvedResource), { hint: CLI_HINTS.resourceList });
         }
       }
     });

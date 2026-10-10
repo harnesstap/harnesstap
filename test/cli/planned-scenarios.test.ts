@@ -338,7 +338,7 @@ describe("CLI planned scenarios", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("missing required argument 'resource'");
-      expect(result.stderr).not.toContain("Error:");
+      expect(result.stderr).toContain("Error:");
       expect(result.stderr).not.toContain(" at runHarnesstapCli");
       expect(result.stderr).not.toContain("node_modules/");
     } finally {

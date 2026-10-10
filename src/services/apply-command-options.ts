@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { ON_CONFLICT_HELP } from "../cli/on-conflict.js";
 
 export interface ApplyCommandOpts {
   project: string;
@@ -54,7 +55,7 @@ export function addApplyCommandOptions(command: Command): Command {
     )
     .option(
       "--on-conflict <policy>",
-      "When generated files already exist: replace, skip, or prompt (default: prompt on TTY, else replace)",
+      ON_CONFLICT_HELP,
     )
     .option(
       "--explain",

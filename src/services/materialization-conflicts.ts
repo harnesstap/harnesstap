@@ -10,9 +10,20 @@ export function resolveApplyConflictPolicy(opts: {
   onConflict?: string;
   noInteractive?: boolean;
 }): ConflictPolicy {
-  if (opts.onConflict === "replace") return "replace";
-  if (opts.onConflict === "skip") return "skip";
-  if (opts.onConflict === "prompt") return "prompt";
+  const raw = opts.onConflict;
+  const mapped =
+    raw === "overwrite" || raw === "replace"
+      ? "replace"
+      : raw === "ignore" || raw === "skip"
+        ? "skip"
+        : raw === "prompt"
+          ? "prompt"
+          : raw === "fail" || raw === "cancel"
+            ? "cancel"
+            : undefined;
+  if (mapped === "replace" || mapped === "skip" || mapped === "prompt" || mapped === "cancel") {
+    return mapped;
+  }
   if (
     opts.noInteractive ||
     process.env.CI === "true" ||
@@ -20,6 +31,7 @@ export function resolveApplyConflictPolicy(opts: {
     !process.stdin.isTTY ||
     !process.stdout.isTTY
   ) {
+    // W2-12 will switch this fallback to cancel. Today apply still replaces.
     return "replace";
   }
   return "prompt";
