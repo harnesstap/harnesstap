@@ -141,6 +141,7 @@ describe("CLI marketplace", () => {
       );
       expect(add.exitCode).toBe(1);
       expect(`${add.stdout}\n${add.stderr}`).toContain("Couldn't reach");
+      expect(`${add.stdout}\n${add.stderr}`).toContain("Nothing was saved.");
       const list = await runCli(["marketplace", "list", "--format", "json"], {
         isTTY: false,
       });
@@ -164,6 +165,7 @@ describe("CLI marketplace", () => {
       );
       expect(add.exitCode).toBe(1);
       expect(`${add.stdout}\n${add.stderr}`).toContain("is not a marketplace");
+      expect(`${add.stdout}\n${add.stderr}`).toContain("Nothing was saved.");
       const list = await runCli(["marketplace", "list", "--format", "json"], {
         isTTY: false,
       });

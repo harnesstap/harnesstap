@@ -48,7 +48,7 @@ export async function assertMarketplaceSourceReachable(
   if (!trimmed) {
     throw new MarketplaceSourceError(
       marketplaceUnreachable(source),
-      marketplaceUnreachableHint(),
+      `${marketplaceUnreachableHint()}\n${marketplaceAddFailedNothingSaved()}`,
     );
   }
 
@@ -75,6 +75,6 @@ export async function assertMarketplaceSourceReachable(
   }
   throw new MarketplaceSourceError(
     marketplaceUnreachable(normalizeMarketplaceUrl(trimmed) || trimmed),
-    marketplaceUnreachableHint(),
+    `${marketplaceUnreachableHint()}\n${marketplaceAddFailedNothingSaved()}`,
   );
 }
