@@ -353,6 +353,7 @@ export async function detectGlobalProfileStatus(input: {
       conflictPolicy: "replace",
       pull: false,
       pinSkillEmits: false,
+      mergeLiveSkillMarkdown: false,
     });
   } catch (error) {
     return finalizeGlobalProfileStatus({
@@ -391,6 +392,9 @@ export async function detectGlobalProfileStatus(input: {
     if (owned.length > 0) {
       const diskHash = hashOnDiskFile(join(homeRoot, file.path));
       if (owned.some((row) => row.generated_hash === diskHash)) {
+        continue;
+      }
+      if (fileContentsEquivalentForDrift(file.path, current, file.content)) {
         continue;
       }
       changes.push(
