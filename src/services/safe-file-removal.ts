@@ -251,12 +251,12 @@ export function pruneEmptyAncestors(filePath: string, stopAt: string): void {
   }
 }
 
-function backupAndUnlink(input: {
+function backupOnDiskFile(input: {
   rootPath: string;
   relativePath: string;
   applyId: string;
   snapshotId?: string | null;
-}): void {
+}): Buffer {
   const fullPath = resolve(input.rootPath, input.relativePath);
   const bytes = readFileSync(fullPath);
   let mode = 0;
@@ -273,8 +273,37 @@ function backupAndUnlink(input: {
     mode,
   });
   copyToTrash(input.applyId, input.relativePath, bytes);
+  return bytes;
+}
+
+function backupAndUnlink(input: {
+  rootPath: string;
+  relativePath: string;
+  applyId: string;
+  snapshotId?: string | null;
+}): void {
+  const fullPath = resolve(input.rootPath, input.relativePath);
+  backupOnDiskFile(input);
   rmSync(fullPath, { force: true });
   pruneEmptyAncestors(fullPath, input.rootPath);
+}
+
+export function backupAndRewriteFile(input: {
+  rootPath: string;
+  relativePath: string;
+  nextContent: string | null;
+  applyId: string;
+  snapshotId?: string | null;
+}): void {
+  const fullPath = resolve(input.rootPath, input.relativePath);
+  backupOnDiskFile(input);
+  if (input.nextContent === null) {
+    rmSync(fullPath, { force: true });
+    pruneEmptyAncestors(fullPath, input.rootPath);
+    deleteMaterializationsForRootPaths(input.rootPath, [input.relativePath]);
+    return;
+  }
+  writeFileSync(fullPath, input.nextContent);
 }
 
 export function executeSafeFileRemovals(

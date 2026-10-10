@@ -1,0 +1,5 @@
+kind: Fixed
+body: Keep shared harness config files on profile switch. Remove only HarnessTap-managed keys or MCP servers from config.toml, opencode.json, mcp.json, hooks.json, settings.json, and leave instruction files in place. Sibling MCP files are no longer deleted by inference.
+time: 2026-10-10T01:00:00Z
+custom:
+  Issue: ""

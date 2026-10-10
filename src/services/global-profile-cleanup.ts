@@ -7,6 +7,7 @@ import {
 import { getPlatform } from "../platforms/registry.js";
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
+import { isHarnessTapOwnedPath } from "./safe-file-removal.js";
 
 export function collectOtherProfilesSnapshotTrackedFiles(
   incomingProfileName: string,
@@ -163,10 +164,19 @@ export function collectGlobalDedicatedMcpConfigPaths(
  * and intentionally not cross-written. Switching away still needs to clear other
  * harness MCP configs that may hold the same servers from earlier installs.
  */
+function isOwnedOrUnknown(homeRoot: string, relativePath: string): boolean {
+  try {
+    return isHarnessTapOwnedPath(homeRoot, relativePath);
+  } catch {
+    return false;
+  }
+}
+
 export function expandStaleMcpConfigMirrors(
   staleFiles: readonly string[],
   desiredFiles: ReadonlySet<string>,
   harnesses: readonly string[],
+  homeRoot = "",
 ): string[] {
   const expanded = new Set(staleFiles);
   const staleHasMcp = staleFiles.some((filePath) =>
@@ -177,23 +187,63 @@ export function expandStaleMcpConfigMirrors(
   }
 
   for (const mcpPath of collectGlobalDedicatedMcpConfigPaths(harnesses)) {
-    if (!desiredFiles.has(mcpPath)) {
-      expanded.add(mcpPath);
+    if (desiredFiles.has(mcpPath) || expanded.has(mcpPath)) {
+      continue;
     }
+    if (homeRoot && !isOwnedOrUnknown(homeRoot, mcpPath)) {
+      continue;
+    }
+    if (!homeRoot) {
+      continue;
+    }
+    expanded.add(mcpPath);
   }
   return [...expanded];
 }
 
+export function planStaleMergeableHostConfigFiles(
+  homeRoot: string,
+  desiredFiles: readonly string[],
+  previousTrackedFiles: readonly string[],
+  harnesses: readonly string[] = [],
+): string[] {
+  const desired = new Set(desiredFiles);
+  const mergeFiles = new Set(
+    previousTrackedFiles.filter(
+      (filePath) =>
+        !desired.has(filePath)
+        && isMergeableHostConfigPath(filePath)
+        && !isCursorHostManagedSkillsPath(filePath),
+    ),
+  );
+  const leavingMcp = [...mergeFiles].some((filePath) =>
+    isDedicatedMcpConfigPath(filePath),
+  );
+  if (leavingMcp && homeRoot) {
+    for (const mcpPath of collectGlobalDedicatedMcpConfigPaths(harnesses)) {
+      if (desired.has(mcpPath) || mergeFiles.has(mcpPath)) {
+        continue;
+      }
+      if (!isOwnedOrUnknown(homeRoot, mcpPath)) {
+        continue;
+      }
+      if (isMergeableHostConfigPath(mcpPath)) {
+        mergeFiles.add(mcpPath);
+      }
+    }
+  }
+  return [...mergeFiles];
+}
+
 /**
- * Plan removals for profile switch/re-apply.
- * Only previously profile-managed paths that are not in the incoming desired set
- * are removed — on-disk skills that were never applied by a profile (not staged)
- * are left alone. Managed skill removals also drop the shared `~/.agents/skills`
- * hub mirror for the same skill name. Managed MCP config removals also drop
- * dedicated MCP configs on other apply harnesses that are not desired.
+ * Plan whole-file removals for profile switch/re-apply.
+ * Shared configs and instruction files are excluded (key/block rewrite
+ * happens separately). Skill removals also drop the shared hub mirror.
+ * Dedicated MCP configs on other harnesses are added only when HarnessTap
+ * has an ownership record for that path.
  */
 export function planStaleGlobalProfileFiles(
-  _homeRoot: string,
+  homeRoot: string,
   desiredFiles: readonly string[],
   previousTrackedFiles: readonly string[],
   harnesses: string[],
@@ -209,5 +259,6 @@ export function planStaleGlobalProfileFiles(
     expandStaleSkillHubMirrors(stale, desired),
     desired,
     harnesses,
+    homeRoot,
   );
 }

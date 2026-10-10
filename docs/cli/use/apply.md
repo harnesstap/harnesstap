@@ -53,7 +53,7 @@ Declared `targets:` wins over harness preference and machine-local folder detect
 
 Generated files are scanned for hidden Unicode before write. Critical findings block apply unless `--force` is passed. Deployed paths and SHA-256 digests are recorded in `apm.lock.yaml` (`local_deployed_file_hashes`). A later apply rehashes and fails closed on mismatch, extra, or missing files unless you pass `--update`. Symlinks and `..` path escapes in `.apm/` fail closed.
 
-Home profile apply only removes files HarnessTap wrote (path plus content hash). Unmanaged files, preexisting files, and user-edited managed files are kept and listed. Empty folders may be pruned. Removals are copied into `~/.harnesstap/trash/` before unlink. Pass `--force-remove` to remove modified or unmanaged files that are in the planned set.
+Home profile apply only removes files HarnessTap wrote (path plus content hash). Unmanaged files, preexisting files, and user-edited managed files are kept and listed. Empty folders may be pruned. Shared configs and instruction files are updated in place: only HarnessTap-managed keys are removed. Removals are copied into `~/.harnesstap/trash/` before unlink. Pass `--force-remove` to remove modified or unmanaged files that are in the planned set.
 
 If `apm-policy.yml` is present (or `apm.yml` pins `policy.hash`), apply evaluates it against the install plan before writing harness files. `ht audit --ci` is the CI entry for the same policy plus Unicode/hash checks.
 
