@@ -1,0 +1,5 @@
+kind: Fixed
+body: Print the DS-6 native-module rebuild one-liner when better-sqlite3 fails to load, hiding the raw ERR_DLOPEN text unless HARNESSTAP_DEBUG or --verbose is set.
+time: 2026-10-10T19:00:00Z
+custom:
+  Issue: "357"
