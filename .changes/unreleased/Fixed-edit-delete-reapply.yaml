@@ -1,0 +1,5 @@
+kind: Fixed
+body: Edit-mode Delete selected re-applies through the same removal confirm after membership changes, so unmanaged and modified files cannot be deleted silently.
+time: 2026-10-10T19:50:00Z
+custom:
+  Issue: ""
