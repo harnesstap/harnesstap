@@ -199,7 +199,7 @@ version: "1.0.0"
     expect(result.stdout).toContain("--project");
     expect(result.stdout).toContain("--dry-run");
     expect(result.stdout).toContain("--harness");
-    expect(result.stdout).toContain("--target");
+    expect(result.stdout.split("OPTIONS")[1] ?? "").not.toContain("--target");
     expect(result.stdout).toContain("--all");
     expect(result.stdout).not.toMatch(/^\s+--global\b/m);
   });

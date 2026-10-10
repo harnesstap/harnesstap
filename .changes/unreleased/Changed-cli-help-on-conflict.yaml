@@ -1,0 +1,5 @@
+kind: Changed
+body: Default non-interactive --on-conflict to cancel for apply, profile, and project. Pass --on-conflict replace to keep the old overwrite behavior. Help now shows full ht command paths, aligned options, ht doctor, and -V/--version.
+time: 2026-10-10T19:10:00Z
+custom:
+  Issue: ""

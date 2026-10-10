@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import type { Command } from "commander";
+import { Option, type Command } from "commander";
 import { loadSettings } from "../../config/settings.js";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
@@ -292,8 +292,8 @@ export function registerHarnessCommands(root: Command): void {
   harnessCmd
     .command("set")
     .option("--harnesses <slugs>", "Comma-separated registered harness slugs")
-    .option("--main <slug>", "Deprecated: prepended to the registered set")
-    .option("--aliases <slugs>", "Deprecated: appended to the registered set")
+    .addOption(new Option("--main <slug>", "Deprecated: prepended to the registered set").hideHelp())
+    .addOption(new Option("--aliases <slugs>", "Deprecated: appended to the registered set").hideHelp())
     .option("--interactive", "Prompt instead of relying on explicit flags")
     .description("Set global registered harnesses")
     .action(handleHarnessSetCommand);
@@ -328,8 +328,8 @@ export function registerHarnessCommands(root: Command): void {
     .command("set")
     .option("--project <path>", "Project directory", ".")
     .option("--harnesses <slugs>", "Comma-separated registered harness slugs")
-    .option("--main <slug>", "Deprecated: prepended to the registered set")
-    .option("--aliases <slugs>", "Deprecated: appended to the registered set")
+    .addOption(new Option("--main <slug>", "Deprecated: prepended to the registered set").hideHelp())
+    .addOption(new Option("--aliases <slugs>", "Deprecated: appended to the registered set").hideHelp())
     .option(
       "--materialization-strategy <strategy>",
       "Materialization strategy: symlink-preferred or copy",

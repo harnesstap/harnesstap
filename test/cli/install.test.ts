@@ -123,7 +123,7 @@ Be kind.
     expect(result.stdout).toContain("--update");
     expect(result.stdout).toContain("--force");
     expect(result.stdout).toContain("--harness");
-    expect(result.stdout).toContain("--target");
+    expect(result.stdout.split("OPTIONS")[1] ?? "").not.toContain("--target");
     expect(result.stdout).toContain("--all");
     expect(result.stdout).toContain("--mcp");
     expect(result.stdout).not.toMatch(/^\s+--global\b/m);

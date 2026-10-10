@@ -42,7 +42,7 @@ import { formatCount } from "../formatting.js";
 import { parseCommaSeparatedList } from "./parse-flags.js";
 import { collectRepeatedOption } from "../shared.js";
 import { parseOnConflict, toPluginImportOnConflict } from "../on-conflict.js";
-import { ON_CONFLICT_HELP, ON_CONFLICT_PLUGIN_IMPORT_HELP } from "../messages.js";
+import { ON_CONFLICT_APPLY_HELP, ON_CONFLICT_PLUGIN_IMPORT_HELP } from "../messages.js";
 import { printApplyPayload } from "../print-apply-summary.js";
 
 function parsePluginSourceConflictPolicy(
@@ -556,7 +556,7 @@ export function registerProfileCreateSourceOptions(command: Command): Command {
     .option("--from-home", "Import from global home harness files")
     .option("--from-project <path>", "Import from a project path")
     .option("--preview", "Print create preview without writing")
-    .option("--no-interactive", "Disable interactive compose picking and enable prompts");
+    .option("--no-interactive", "Don't open the compose picker");
 }
 
 export function registerProfileCreateCommand(profileCmd: Command): void {
@@ -586,7 +586,7 @@ export function registerProfileCreateCommand(profileCmd: Command): void {
     .option("--harness <slugs>", "Harness targets for --use")
     .option(
       "--on-conflict-use <policy>",
-      ON_CONFLICT_HELP,
+      ON_CONFLICT_APPLY_HELP,
     )
     .option("--account <name>", "Cloud account for dependency pulls during --use")
     .option("--base-url <url>", "Cloud base URL for dependency pulls during --use")

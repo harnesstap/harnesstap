@@ -1,4 +1,4 @@
-import type { Command } from "commander";
+import { Option, type Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import {
@@ -171,7 +171,7 @@ export function registerResourceCommands(root: Command): void {
     .command("list")
     .alias("ls")
     .argument("[type]", `Filter by resource type (${RESOURCE_TYPES.join(", ")})`)
-    .option("-t, --type <type>", "Filter by resource type")
+    .addOption(new Option("-t, --type <type>", "Filter by resource type").hideHelp())
     .option("-s, --search <query>", "Search by name or description (skips interactive filter)")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--show-id", "Show IDs in human-readable tables")
