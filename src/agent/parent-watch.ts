@@ -28,12 +28,20 @@ export interface AgentParentWatch {
  * `/dev/null`, a TTY, or an already-closed fd is not that pipe: watching it
  * would exit the compiled sidecar as soon as it starts (`stdio: ignore`).
  */
+function readableFd(stdin: NodeJS.ReadableStream): number | undefined {
+  if (!("fd" in stdin)) {
+    return undefined;
+  }
+  const fd = stdin.fd;
+  return typeof fd === "number" ? fd : undefined;
+}
+
 export function stdinIsParentPipe(stdin: NodeJS.ReadableStream | null | undefined): boolean {
   if (!stdin) {
     return false;
   }
-  const fd = (stdin as NodeJS.ReadStream).fd;
-  if (typeof fd !== "number") {
+  const fd = readableFd(stdin);
+  if (fd === undefined) {
     return true;
   }
   try {
