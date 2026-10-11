@@ -2,7 +2,7 @@ import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import packageJson from "../package.json" with { type: "json" };
+import { PACKAGE_VERSION } from "../src/version.ts";
 
 /**
  * Builds the real `bun build --compile` desktop sidecar for this machine and
@@ -14,7 +14,7 @@ import packageJson from "../package.json" with { type: "json" };
 const repoRoot = resolve(import.meta.dir, "..");
 const exeSuffix = process.platform === "win32" ? ".exe" : "";
 const sidecarPath = join(repoRoot, "dist", "sidecar", `ht-agent${exeSuffix}`);
-const expectedVersion = packageJson.version;
+const expectedVersion = PACKAGE_VERSION;
 const READY_TIMEOUT_MS = 30_000;
 
 class CheckFailure extends Error {}

@@ -1,21 +1,15 @@
-import { readFileSync } from "node:fs";
 import { defineConfig } from "tsup";
-
-const packageVersion = (
-  JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf-8")) as {
-    version: string;
-  }
-).version;
+import { resolveBuildVersion } from "./src/version.ts";
 
 const define = {
-  __HT_VERSION__: JSON.stringify(packageVersion),
+  __HT_VERSION__: JSON.stringify(resolveBuildVersion()),
 };
 
 const shared = {
   format: ["esm"] as const,
   outDir: "dist",
   clean: false,
-  splitting: false,
+  splitting: true,
   sourcemap: true,
   define,
 };

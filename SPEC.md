@@ -259,7 +259,7 @@ Global options:
 
 | Flag | Behavior |
 | --- | --- |
-| `-V, --version` | Print CLI version (`--harnesstap-version` remains a hidden alias) |
+| `-V, --version` | Print CLI version (`--harnesstap-version` remains a hidden alias). Non-release builds append `-dev+<gitsha>` via `formatDevBuildVersion`; published releases print the package version. |
 | `-v, --verbose` | Show stack traces on errors |
 | `--no-color` | Disable ANSI colors (also respects `NO_COLOR`) |
 | `--no-interactive` | Disable interactive prompts |
