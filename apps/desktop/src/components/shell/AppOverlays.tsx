@@ -27,7 +27,22 @@ import { StashBrowseDrawer } from "../StashBrowseDrawer";
 import { TelemetryConsentModal } from "../TelemetryConsentModal";
 import { ToastRegion } from "./ToastRegion";
 import { RiskyRemovalDialog } from "../RiskyRemovalDialog";
+import {
+  applySnapshotDialogCopy,
+  type ApplySnapshotView,
+} from "../../lib/apply-result";
 import { APPLY_RESULT_COPY, OWNED_REPLACE_COPY } from "../../lib/ui-copy";
+
+function ApplySnapshotDescription({ snapshot }: { snapshot: ApplySnapshotView }) {
+  const copy = applySnapshotDialogCopy(snapshot);
+  return (
+    <div className="muted">
+      <p>{copy.taken}</p>
+      <p>{copy.changed}</p>
+      <p>{copy.undo}</p>
+    </div>
+  );
+}
 
 export function describeExport(result: MigrateExportResult): string {
   return `Exported to ${compactHomePath(result.output, 80)}`;
@@ -270,18 +285,17 @@ export function AppOverlays({
       />
 
       <ConfirmDialog
-        open={ctrl.applySnapshotId !== null}
+        open={ctrl.applySnapshot !== null}
         title={APPLY_RESULT_COPY.viewSnapshot}
         description={
-          <p className="muted">
-            Snapshot{" "}
-            <span className="mono">{ctrl.applySnapshotId}</span>
-          </p>
+          ctrl.applySnapshot ? (
+            <ApplySnapshotDescription snapshot={ctrl.applySnapshot} />
+          ) : null
         }
-        confirmLabel="Close"
-        cancelLabel=""
-        onConfirm={() => ctrl.setApplySnapshotId(null)}
-        onCancel={() => ctrl.setApplySnapshotId(null)}
+        confirmLabel={APPLY_RESULT_COPY.close}
+        cancelLabel={null}
+        onConfirm={() => ctrl.setApplySnapshot(null)}
+        onCancel={() => ctrl.setApplySnapshot(null)}
       />
 
       <CutVersionsModal

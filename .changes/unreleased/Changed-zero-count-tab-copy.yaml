@@ -1,0 +1,5 @@
+kind: Changed
+body: Zero-count profile and harness type tabs stay visible as 0 Plugins, with muted tooltip copy like No plugins in this profile yet.
+time: 2026-10-10T19:30:00Z
+custom:
+  Issue: ""

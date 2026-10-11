@@ -109,7 +109,7 @@ Examples:
 
 1. Local plugins may be created, composed, exported, and applied with **no** organization or catalog.
 2. `plugin publish` requires an active Cloud account and at least one **registered** publish catalog (`plugin catalog register`). By default it fans out to all registered catalogs; per-plugin allow lists are configured with `plugin catalog` / `plugin catalog bindings`.
-3. `plugin list --search` and `plugin pull` resolve against the CLI [catalog scope](#harnesstap-cloud) (default public org + connected catalogs + authenticated private plugins).
+3. `plugin list --search --remote` and `plugin pull` resolve against the CLI [catalog scope](#harnesstap-cloud) (default public org + connected catalogs + authenticated private plugins).
 
 Published plugins address as `org/catalog/name[@version]` on Cloud `/api/plugins` and the catalog package download routes.
 
@@ -130,7 +130,7 @@ Use this table to disambiguate overlapping words.
 | **`plugin` ref** | Dependency on another HarnessTap plugin (catalog/local) | `plugin edit --add plugin:name@^1.0` · `resources.type=plugin` |
 | **Profile** | Plugin tagged `profile`; global switch preset | `ht profile use <name>` · `plugins.tags` includes `profile` |
 | **Workspace** | Single local SQLite library; offline share via `migrate` | `~/.harnesstap/harnesstap.db` |
-| **Catalog** | Org-scoped published plugin collection (multiplayer) | `plugin list --search`, `plugin pull` · Cloud APIs |
+| **Catalog** | Org-scoped published plugin collection (multiplayer) | `plugin list --search --remote`, `plugin pull` · Cloud APIs |
 | **Account** | Cloud auth identity (tokens, org context) | `auth login`, `--account` · `cloud-accounts.json` |
 | **GitHub session** | GitHub App user-to-server token for private repo reads | `github login` · `github-session.json` |
 | **Project config** | Repo-declared profiles, environments, and plugin graph for `ht use` / `ht install` / `ht apply` | `apm.yml` · `config show|init`, `use`, `install`, `apply` |
@@ -324,7 +324,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | Command | Current behavior |
 | --- | --- |
 | `plugin create` | Creates a local plugin with optional description, tags, and version; or imports a skill package with `--from` (attach selected skills, optional `--install` to hub paths). |
-| `plugin list` | Lists local plugins, then streams remote catalog plugins from catalog scope ∪ registered publish catalogs (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). Dirty heads show a trailing `*` on the version. `--local-only` / `--remote-only`; `--search` filters local and remote. Interactive TTY browse can install a selected remote plugin. |
+| `plugin list` | Lists local plugins by default (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). Dirty heads show a trailing `*` on the version. `--remote` also streams catalog plugins from catalog scope ∪ registered publish catalogs; `--remote-only` skips the local section. `--search` filters the listed sources. Interactive TTY browse can install a selected remote plugin when `--remote` is set. |
 | `plugin show` | Shows plugin metadata, resources, dependencies, composition attachments, dirty/frozen state, and default environment when set. |
 | `plugin edit` | Edit composition attachments and default environment (interactive checkbox UI, or `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment` scripting). Marks the working head **dirty** after a cut. Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `plugin:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `plugin editor` | Opens the plugin definition in `$EDITOR` (or the system editor) for direct editing. |
@@ -447,7 +447,7 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 
 | Command | Current behavior |
 | --- | --- |
-| `profile list` | Lists local profile plugins, then streams remote catalog plugins with `tag=profile` (same discovery model as `plugin list`). Marks the active profile from `active-profile.json`. |
+| `profile list` | Lists local profile plugins by default. `--remote` streams catalog plugins with `tag=profile` (same discovery model as `plugin list --remote`). Marks the active profile from `active-profile.json`. |
 | `profile show <name>` | Same detail view as `plugin show`, plus active profile marker. |
 | `profile status` | Shows the active profile and whether global harness files match it (drift, pending apply, stack changes). `--check` exits `1` when out of sync. Drift for files HarnessTap wrote is the recorded materialization hash vs disk; if that hash is a skipped rewrite, semantic equality against the merged view still counts as in sync. Unowned shared configs (MCP JSON, `config.toml`, and other mergeable host files) use key-level / semantic equality against the merged view, never a regenerated byte dump; an untouched shared config is not drift. Markdown and other text files that differ only by a trailing newline are not drift. Missing files HT never wrote are not drift. Extra live skill body is drift on the path that was edited, not a shared `.agents` pin of a sibling copy. Apply and preview still keep that extra body when the profile snapshot is a subset. |
 | `profile preview <name>` | Dry-run apply delta (contents, files, install gaps) without writing. Inherited host-plugin material already deployed is not listed as stack or file changes. Host-native plugin MCP (Cursor `plugin-<name>-<name>` folders and plugin `mcp.json`) counts as present rather than a missing HarnessTap install. MCP install-gap rows are `missing` when the server is not installed (Desktop **+**) and `mismatch` when a live server exists with a different value (Desktop **!**). Shared Claude `.claude/settings.json` is merged (profile permissions/env/hooks overlay live keys); preview never treats that file as a whole-file delete. Shared Claude `~/.claude.json` is merge-overlaid for user-scope `mcpServers` the same way and is never deleted as a whole file. Skill files keep extra live frontmatter and body when the profile snapshot is a subset of the live SKILL.md. `not_staged` includes on-disk adds and live resources that differ from the selected profile snapshot (`not_staged_kind`: `add` \| `update`). |
@@ -479,8 +479,8 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 
 Remote catalog workflows live on **`plugin`**, not `cloud`:
 
-- `plugin list` — discover local and remote plugins (catalog scope ∪ registered publish catalogs)
-- `plugin list --search` — filter local and remote plugins
+- `plugin list` — discover local plugins
+- `plugin list --remote` / `plugin list --search --remote` — include catalog plugins (catalog scope ∪ registered publish catalogs)
 - `plugin pull` — fetch a published plugin + local import (distinct from `migrate import` on a local file)
 - `plugin publish` — export bundle + upload a versioned plugin to an org catalog
 
@@ -808,7 +808,7 @@ Desktop profile inventory (Active and Inactive rows) can set per-resource harnes
 5. `preparePluginPinsForApply` at global/home scope.
 6. `applyToGlobal` with conflict policy; record `global_apply_snapshots`. Claude `.claude/settings.json` is merged, not replaced: profile-managed `permissions` / `hooks` overlay, `env` keys merge, unrelated top-level settings stay. The file is never removed as a stale whole-file stack item. Skill `SKILL.md` writes merge extra live frontmatter keys and keep the live body when the generated snapshot is a subset of the live file.
 
-Removals never delete user data implicitly. Apply and profile switch remove only files HarnessTap wrote, tracked by path and content hash. Ownership is only a materialization row whose `generated_hash` still matches the file on disk. Skipping a write (including a SKILL.md live merge that leaves user bytes in place) must not rewrite that hash, so a later apply cannot treat the edited file as owned. A file whose current hash does not match what HarnessTap last wrote is never owned again until an apply actually writes it; switch-back reports it as kept or a conflict. A file that existed before HarnessTap wrote it is recorded as preexisting and is never removed or overwritten. User-modified managed files and unmanaged files are skipped with a warning unless `--force-remove` is passed. Directories are removed only when empty after managed files are unlinked. Shared configs (`config.toml`, `opencode.json`, `mcp.json`, `hooks.json`, `settings.json`) and instruction files (`CLAUDE.md`, `AGENTS.md`, and other registry instruction paths) are never deleted as a whole file; profile switch removes only HarnessTap-managed keys or servers and keeps user keys and text. Every removal is copied into `~/.harnesstap/trash/<apply-id>/` and into the apply snapshot so restore can put the bytes back. Dry runs, apply output, and `/v1/profiles/apply-preview` list each planned removal in three groups: owned and unchanged (`Will remove`), owned but user-modified (`Kept. You changed it.`), and unmanaged (`Kept. Not made by HarnessTap.`). File changes preview and the Desktop confirm dialog use that same classifier (no second implementation). Those group labels are visible in the preview, not hover-only. Desktop Apply, switch, Overwrite with current setup, and inventory Remove confirm before deleting the last two groups (default Keep these files; secondary Remove them too, which sends `forceRemove`). The result toast is `Wrote N, removed M, kept K` with View snapshot.
+Removals never delete user data implicitly. Apply and profile switch remove only files HarnessTap wrote, tracked by path and content hash. Ownership is only a materialization row whose `generated_hash` still matches the file on disk. Skipping a write (including a SKILL.md live merge that leaves user bytes in place) must not rewrite that hash, so a later apply cannot treat the edited file as owned. A file whose current hash does not match what HarnessTap last wrote is never owned again until an apply actually writes it; switch-back reports it as kept or a conflict. A file that existed before HarnessTap wrote it is recorded as preexisting and is never removed or overwritten. User-modified managed files and unmanaged files are skipped with a warning unless `--force-remove` is passed. Directories are removed only when empty after managed files are unlinked. Shared configs (`config.toml`, `opencode.json`, `mcp.json`, `hooks.json`, `settings.json`) and instruction files (`CLAUDE.md`, `AGENTS.md`, and other registry instruction paths) are never deleted as a whole file; profile switch removes only HarnessTap-managed keys or servers and keeps user keys and text. Apply overlays owned JSON and TOML keys in place: indentation, key order, JSONC comments, inline TOML tables, and a trailing newline stay when those keys are unchanged, and a semantically unchanged file is not rewritten. Every removal is copied into `~/.harnesstap/trash/<apply-id>/` and into the apply snapshot so restore can put the bytes back. Dry runs, apply output, and `/v1/profiles/apply-preview` list each planned removal in three groups: owned and unchanged (`Will remove`), owned but user-modified (`Kept. You changed it.`), and unmanaged (`Kept. Not made by HarnessTap.`). File changes preview and the Desktop confirm dialog use that same classifier (no second implementation). Those group labels are visible in the preview, not hover-only. Desktop Apply, switch, Overwrite with current setup, and inventory Remove confirm before deleting the last two groups (default Keep these files; secondary Remove them too, which sends `forceRemove`). The result toast is `Wrote N, removed M, kept K` with View snapshot.
 
 `profile switch` wraps the same path and restores the previous active profile if apply fails. `environment use` (optionally `--local` for session scope) remains valid for env-only switches; prefer `profile use` when changing both stack and default environment.
 
@@ -874,7 +874,7 @@ Authentication stores named accounts in `~/.harnesstap/cloud-accounts.json`. The
 
 - `auth login [account]` performs device authentication and saves a named cloud account.
 - `auth status`, `auth orgs`, and `auth logout` manage accounts and active org context.
-- `plugin list --search`, `plugin pull`, and `plugin publish` use the selected cloud account (`--account`).
+- `plugin list --search --remote`, `plugin pull`, and `plugin publish` use the selected cloud account (`--account`).
 - `profile list --search` and `profile pull` filter or validate profile-tagged plugins (`tag=profile`).
 
 Private GitHub marketplaces and git plugin sources use `github login` (or `HARNESSTAP_GITHUB_TOKEN` / `GH_TOKEN` / `GITHUB_TOKEN` / `gh auth token`). That session is not a Cloud account.
@@ -891,7 +891,7 @@ The CLI builds a **catalog scope** from:
 | Authenticated | Private and shared plugins in orgs the user belongs to |
 | Registered publish catalogs | `plugin catalog register org/catalog` — also included in `plugin list` / `profile list` remote discovery (supplemental queries per registered org/catalog) |
 
-`plugin list`, `profile list`, and `plugin list --search` / `profile list --search` query the union of catalog scope and registered catalogs (best-effort per source). Configuration persists under `catalog` in `~/.harnesstap/config.jsonc`.
+`plugin list --remote`, `profile list --remote`, and `plugin list --search --remote` / `profile list --search --remote` query the union of catalog scope and registered catalogs (best-effort per source). Without `--remote`, those list commands read local state only. Configuration persists under `catalog` in `~/.harnesstap/config.jsonc`.
 
 ### Publish registry and bindings
 

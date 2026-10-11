@@ -452,6 +452,30 @@ describe("CLI plugin", () => {
     }
   });
 
+  it("plugin list is local by default and does not request the catalog", async () => {
+    const context = await createTestContext("cli-plugin-list-local-default");
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = (async (...args: Parameters<typeof originalFetch>) => {
+      fetchCalls += 1;
+      return originalFetch(...args);
+    }) as typeof fetch;
+    try {
+      await runCli(["init"]);
+      await runCli(["plugin", "create", "team-stack"]);
+
+      const result = await runCli(["plugin", "list", "--no-interactive"]);
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("team-stack");
+      expect(result.stdout).not.toContain("Remote catalog");
+      expect(fetchCalls).toBe(0);
+    } finally {
+      globalThis.fetch = originalFetch;
+      await context.cleanup();
+    }
+  });
+
   it("plugin list with mock catalog includes Remote catalog section", async () => {
     const context = await createTestContext("cli-plugin-list-remote-section");
     try {
@@ -463,6 +487,7 @@ describe("CLI plugin", () => {
       const result = await runCli([
         "plugin",
         "list",
+        "--remote",
         "--base-url",
         "https://mock",
         "--no-interactive",

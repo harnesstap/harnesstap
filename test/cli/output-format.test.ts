@@ -25,10 +25,8 @@ describe("CLI output format", () => {
       const pluginList = await runCli(["plugin", "list", "--local-only", "--format", "json"]);
       expect(Array.isArray(JSON.parse(pluginList.stdout))).toBe(true);
 
-      const pluginListCombined = await runCli(["plugin", "list", "--format", "json", "--no-interactive"]);
-      const combined = JSON.parse(pluginListCombined.stdout) as { local: unknown[]; remote: unknown[] };
-      expect(Array.isArray(combined.local)).toBe(true);
-      expect(Array.isArray(combined.remote)).toBe(true);
+      const pluginListDefault = await runCli(["plugin", "list", "--format", "json", "--no-interactive"]);
+      expect(Array.isArray(JSON.parse(pluginListDefault.stdout))).toBe(true);
 
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-output.git");
       const pluginModel = await import("../../src/models/plugin-model.ts");

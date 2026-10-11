@@ -31,6 +31,21 @@ describe("scenario guide", () => {
     );
   });
 
+  it("loads scenario 17 with GitHub scenario 28 links and ASCII punctuation", () => {
+    const guide = loadScenarioGuide(17);
+    const joined = [
+      guide.title,
+      guide.status ?? "",
+      ...guide.summaryLines,
+      ...guide.commands,
+    ].join("\n");
+    expect(joined).not.toContain("—");
+    expect(joined).not.toContain("./28-machine-migration.md");
+    expect(joined).toContain(
+      "https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/28-machine-migration.md",
+    );
+  });
+
   it("loads scenario 28 with migrate commands", () => {
     const guide = loadScenarioGuide(28);
     expect(guide.title.toLowerCase()).toContain("migration");

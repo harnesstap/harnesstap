@@ -2,7 +2,10 @@ import { join } from "node:path";
 import { parse } from "smol-toml";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
-import { formatTransportToml } from "../services/toml/write.js";
+import {
+  overlayJsonPreservingFormat,
+  overlayTomlPreservingFormat,
+} from "../services/format-preserving-config.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
@@ -575,10 +578,6 @@ export class CodexSerializer extends BaseSerializer {
       mcps.length + permissions.length + envVars.length + modelConfigs.length;
     if (managedResourceCount > 0 && configPath) {
       const existingContent = this.readFile(join(projectRoot, configPath));
-      const existing = existingContent
-        ? (parseCodexConfig(existingContent) ?? {})
-        : {};
-
       const overlay: CodexConfigDocument = {};
 
       if (mcps.length > 0) {
@@ -608,7 +607,11 @@ export class CodexSerializer extends BaseSerializer {
 
       files.push({
         path: configPath,
-        content: formatTransportToml(mergeConfigDocuments(existing, overlay)),
+        content: overlayTomlPreservingFormat(
+          existingContent,
+          overlay,
+          mergeConfigDocuments,
+        ),
       });
     }
 
@@ -623,17 +626,18 @@ export class CodexSerializer extends BaseSerializer {
 
     const hooks = resources.filter((r) => r.type === "hook");
     if (hooksPath && hooks.length > 0) {
+      const generated = buildHooksJson(
+        hooks.map((r) => ({
+          ...(r.metadata as HookMetadata),
+          name: r.name,
+        })),
+      );
       files.push({
         path: hooksPath,
-        content: JSON.stringify(
-          buildHooksJson(
-            hooks.map((r) => ({
-              ...(r.metadata as HookMetadata),
-              name: r.name,
-            })),
-          ),
-          null,
-          2,
+        content: overlayJsonPreservingFormat(
+          this.readFile(join(projectRoot, hooksPath)),
+          generated as unknown as Record<string, unknown>,
+          { mergeObjectKeys: ["hooks"] },
         ),
       });
     }

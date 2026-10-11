@@ -278,6 +278,30 @@ describe("CLI profile", () => {
     }
   });
 
+  it("profile list is local by default and does not request the catalog", async () => {
+    const context = await createTestContext("cli-profile-list-local-default");
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = (async (...args: Parameters<typeof originalFetch>) => {
+      fetchCalls += 1;
+      return originalFetch(...args);
+    }) as typeof fetch;
+    try {
+      await runCli(["init"]);
+      await runCli(["profile", "create", "work"]);
+
+      const result = await runCli(["profile", "list", "--no-interactive"]);
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("work");
+      expect(result.stdout).not.toContain("Remote catalog");
+      expect(fetchCalls).toBe(0);
+    } finally {
+      globalThis.fetch = originalFetch;
+      await context.cleanup();
+    }
+  });
+
   it("supports profile list --search with profile tag filter", async () => {
     const context = await createTestContext("cli-profile-search");
     try {

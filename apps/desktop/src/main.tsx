@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { ActionToastVisualGallery } from "./components/live/ActionToastVisualGallery";
 import { HarnessScopeVisualGallery } from "./components/live/HarnessScopeVisualGallery";
 import { FileChangeGroupsVisualGallery } from "./components/live/FileChangeGroupsVisualGallery";
 import { RiskyRemovalVisualGallery } from "./components/live/RiskyRemovalVisualGallery";
@@ -30,6 +31,9 @@ function Root() {
   }
   if (visual === "file-change-groups") {
     return <FileChangeGroupsVisualGallery />;
+  }
+  if (visual === "action-toast") {
+    return <ActionToastVisualGallery />;
   }
   return <App />;
 }

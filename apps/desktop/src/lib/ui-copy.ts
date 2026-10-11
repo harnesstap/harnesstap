@@ -48,11 +48,18 @@ export const REMOVAL_CONFIRM_COPY = {
 
 export const APPLY_RESULT_COPY = {
   viewSnapshot: "View snapshot",
+  close: "Close",
   wroteRemovedKept(wrote: number, removed: number, kept: number): string {
     return `Wrote ${wrote}, removed ${removed}, kept ${kept}`;
   },
   everythingUpToDate(unchanged: number): string {
     return `Everything is up to date. ${unchanged} unchanged.`;
+  },
+  takenLine(relative: string): string {
+    return `Taken ${relative}`;
+  },
+  undoWith(snapshotId: string): string {
+    return `Undo with ht revert ${snapshotId}`;
   },
 };
 
