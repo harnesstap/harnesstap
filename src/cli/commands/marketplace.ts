@@ -22,7 +22,10 @@ import {
 } from "../../services/wizards/shared.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
-import { marketplaceUnreachable } from "../../copy/cli.js";
+import {
+  marketplaceAddFailedNothingSaved,
+  marketplaceUnreachable,
+} from "../../copy/cli.js";
 import { configureCommandGroup } from "../help.js";
 import { collectRepeatedOption, fail } from "../shared.js";
 
@@ -115,13 +118,17 @@ async function handleMarketplaceAddCommand(
     if (!refresh.ok && result.status === "added") {
       removeMarketplace(harnesstapDir, result.entry.name);
       fail(marketplaceUnreachable(result.entry.url), {
-        hint: refresh.message,
+        hints: [refresh.message, marketplaceAddFailedNothingSaved()].filter(
+          (line) => line.trim().length > 0,
+        ),
       });
       return;
     }
     if (!refresh.ok) {
       fail(marketplaceUnreachable(result.entry.url), {
-        hint: refresh.message,
+        hints: [refresh.message, marketplaceAddFailedNothingSaved()].filter(
+          (line) => line.trim().length > 0,
+        ),
       });
       return;
     }
@@ -129,7 +136,9 @@ async function handleMarketplaceAddCommand(
     if (result.status === "added") {
       removeMarketplace(harnesstapDir, result.entry.name);
     }
-    fail(error instanceof Error ? error.message : String(error));
+    fail(error instanceof Error ? error.message : String(error), {
+      hint: marketplaceAddFailedNothingSaved(),
+    });
     return;
   }
 

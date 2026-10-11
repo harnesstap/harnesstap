@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { appLogDir } from "@tauri-apps/api/path";
-import { open as openPath } from "@tauri-apps/plugin-shell";
+import { openPath } from "@tauri-apps/plugin-opener";
 import { RefreshCw } from "lucide-react";
+import { CONNECT_SPLASH_COPY } from "../../lib/ui-copy";
 import type { AgentPhase } from "../../state/agent-session";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { Banner } from "./Banner";
@@ -11,6 +12,8 @@ export const RECONNECT_RETRY_MS = 5000;
 export interface ConnectSplashProps {
   phase: AgentPhase;
   error: string | null;
+  /** Sidecar stderr and exit status, shown in an expandable block. */
+  errorDetail?: string | null;
   retryBusy: boolean;
   onRetry: () => void;
 }
@@ -28,10 +31,12 @@ async function resolveLogPath(): Promise<string | null> {
 export function ConnectSplash({
   phase,
   error,
+  errorDetail,
   retryBusy,
   onRetry,
 }: ConnectSplashProps) {
   const [logPath, setLogPath] = useState<string | null>(null);
+  const [openLogsError, setOpenLogsError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,11 +50,18 @@ export function ConnectSplash({
     };
   }, []);
 
-  const onOpenLogs = () => {
+  const onOpenLogs = async () => {
     if (!logPath) {
       return;
     }
-    void openPath(logPath);
+    setOpenLogsError(null);
+    try {
+      await openPath(logPath);
+    } catch (openError) {
+      const reason =
+        openError instanceof Error ? openError.message : String(openError ?? "");
+      setOpenLogsError(CONNECT_SPLASH_COPY.openLogsFailed(reason));
+    }
   };
 
   switch (phase) {
@@ -68,8 +80,14 @@ export function ConnectSplash({
         <div className="connect-splash m-fade-in" data-testid="connect-splash">
           <h1>HarnessTap</h1>
           <p className="connect-splash-error" role="alert">
-            {error ?? "Could not connect to the agent."}
+            {error ?? CONNECT_SPLASH_COPY.couldNotConnect}
           </p>
+          {errorDetail ? (
+            <details className="connect-splash-detail" data-testid="connect-splash-detail">
+              <summary>{CONNECT_SPLASH_COPY.detailsSummary}</summary>
+              <pre>{errorDetail}</pre>
+            </details>
+          ) : null}
           <div className="connect-splash-actions">
             <button
               type="button"
@@ -79,14 +97,24 @@ export function ConnectSplash({
               aria-busy={retryBusy}
             >
               {retryBusy ? <ButtonSpinner size={16} /> : <RefreshCw size={16} aria-hidden />}
-              Retry
+              {CONNECT_SPLASH_COPY.retry}
             </button>
             {logPath ? (
-              <button type="button" className="btn" onClick={onOpenLogs}>
-                Open logs
+              <button
+                type="button"
+                className="btn"
+                data-testid="connect-splash-open-logs"
+                onClick={() => void onOpenLogs()}
+              >
+                {CONNECT_SPLASH_COPY.openLogs}
               </button>
             ) : null}
           </div>
+          {openLogsError ? (
+            <p className="connect-splash-error" role="alert" data-testid="connect-splash-open-logs-error">
+              {openLogsError}
+            </p>
+          ) : null}
         </div>
       );
     case "connected":

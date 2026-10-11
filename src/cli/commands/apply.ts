@@ -6,6 +6,7 @@ import { isProfilePlugin } from "../../constants/profile.js";
 import { resolvePluginSelector } from "../../models/plugin-model.js";
 import {
   addApplyCommandOptions,
+  validateApplyOnConflict,
   type ApplyCommandOpts,
 } from "../../services/apply-command-options.js";
 import {
@@ -67,6 +68,12 @@ async function handleGlobalApplyCommand(
   plugins: string[],
   opts: ApplyCommandActionOpts,
 ): Promise<void> {
+  const conflictError = validateApplyOnConflict(opts.onConflict);
+  if (conflictError) {
+    fail(conflictError);
+    return;
+  }
+
   const db = getDb();
   initializeSchema(db);
 
@@ -173,6 +180,12 @@ export async function handleApplyCommand(
   plugins: string[],
   opts: ApplyCommandActionOpts,
 ): Promise<void> {
+  const conflictError = validateApplyOnConflict(opts.onConflict);
+  if (conflictError) {
+    fail(conflictError);
+    return;
+  }
+
   const outputFormat = parseOutputFormat(opts.format);
   const platforms = resolveDestinationPlatforms(opts.harness);
   let resolved: ReturnType<typeof resolveApplyScope>;

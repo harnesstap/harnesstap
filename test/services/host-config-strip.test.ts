@@ -149,4 +149,28 @@ describe("host config strip", () => {
       await context.cleanup();
     }
   });
+
+  it("removes only the registered plugin@marketplace key from enabledPlugins", () => {
+    const resource: Resource = {
+      ...fakeResource("ponytail", "plugin"),
+      namespace: "local",
+      origin_ref: "ponytail@local",
+    };
+    const live = `${JSON.stringify({
+      enabledPlugins: {
+        ponytail: true,
+        "ponytail@local": true,
+        "keep@elsewhere": true,
+      },
+    }, null, 2)}\n`;
+    const edit = tryEditAggregateContent(live, resource);
+    expect(edit.ok).toBe(true);
+    if (!edit.ok) {
+      return;
+    }
+    const parsed = JSON.parse(edit.content) as { enabledPlugins: Record<string, boolean> };
+    expect(parsed.enabledPlugins["ponytail@local"]).toBeUndefined();
+    expect(parsed.enabledPlugins.ponytail).toBe(true);
+    expect(parsed.enabledPlugins["keep@elsewhere"]).toBe(true);
+  });
 });

@@ -612,6 +612,15 @@ export function useScopeController(input: ScopeControllerInput) {
     [autoReapplyInput, refreshProfiles, refreshStatus, runSwitch, selectedProfile],
   );
 
+  const reapplyAfterInventoryRemove = useCallback(async () => {
+    if (!selectedProfile) {
+      return;
+    }
+    await runSwitch(true, selectedProfile, {
+      progressLabel: "Applying to match profile",
+    });
+  }, [runSwitch, selectedProfile]);
+
   const handleRecoveryAction = useCallback(
     async (action: RecoveryAction) => {
       if (!client || !selectedProfile || recoveryBusy) {
@@ -1626,6 +1635,7 @@ export function useScopeController(input: ScopeControllerInput) {
     onCancelSwitch,
     runSwitch,
     maybeAutoReapplyAfterMutation,
+    reapplyAfterInventoryRemove,
     handleProfileDeleted,
     onProfileCreated,
     // install / approvals

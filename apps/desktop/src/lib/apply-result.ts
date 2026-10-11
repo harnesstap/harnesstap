@@ -53,6 +53,7 @@ export function applyOutcomeFromUnknown(result: unknown): {
   wrote: number;
   removed: number;
   kept: number;
+  unchanged: number;
   snapshotId: string | null;
   removals: PlannedRemovals;
 } {
@@ -61,6 +62,7 @@ export function applyOutcomeFromUnknown(result: unknown): {
       wrote: 0,
       removed: 0,
       kept: 0,
+      unchanged: 0,
       snapshotId: null,
       removals: emptyPlannedRemovals(),
     };
@@ -73,6 +75,12 @@ export function applyOutcomeFromUnknown(result: unknown): {
       : result;
   const wrote = stringArray(apply.written_files).length;
   const removed = stringArray(apply.removed_files).length;
+  const files = stringArray(apply.files);
+  const skipped = stringArray(apply.skipped_files);
+  const unchanged = Math.max(
+    0,
+    files.length > 0 ? files.length - wrote : skipped.length,
+  );
   const removals = parseRemovals(apply.removals);
   const keptPaths = new Set([
     ...removals.owned_modified,
@@ -95,7 +103,7 @@ export function applyOutcomeFromUnknown(result: unknown): {
       : typeof result.snapshot_id === "string"
         ? result.snapshot_id
         : null;
-  return { wrote, removed, kept, snapshotId, removals };
+  return { wrote, removed, kept, unchanged, snapshotId, removals };
 }
 
 export function applySuccessToast(

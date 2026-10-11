@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { initializeSchema } from "../db/schema.js";
 import { getDb, getHarnesstapDir } from "../db/connection.js";
+import { isNativeModuleMismatch, reportNativeModuleMismatch } from "../db/native-module.js";
 import {
   GLOBAL_DEFAULT_PROFILE_NAME,
   LEGACY_DEFAULT_PROFILE_NAME,
@@ -94,6 +95,9 @@ function commandPath(command: Command): string {
 }
 
 export function renderCliError(error: unknown, argv: string[] = process.argv): void {
+  if (isNativeModuleMismatch(error)) {
+    reportNativeModuleMismatch(error);
+  }
   if (isVerboseMode(argv)) {
     if (error instanceof Error && error.stack) {
       console.error(error.stack);

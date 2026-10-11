@@ -4,6 +4,8 @@ import {
   agentFetch,
   throwAgentError,
 } from "./api/http";
+import { CONNECT_SPLASH_COPY } from "./ui-copy";
+import { formatSidecarDetail, type SidecarDiagnostics } from "./sidecar-diagnostics";
 import type {
   AgentHealth,
   AgentSwitchFinalEvent,
@@ -162,6 +164,39 @@ export async function probeHealth(
   return (await response.json()) as AgentHealth;
 }
 
+/** Connect failure carrying whatever the sidecar printed before it died. */
+export class SidecarConnectError extends Error {
+  readonly detail: string | null;
+
+  constructor(message: string, detail: string | null) {
+    super(message);
+    this.name = "SidecarConnectError";
+    this.detail = detail;
+  }
+}
+
+async function readSidecarDetail(): Promise<string | null> {
+  if (!hasTauriRuntime()) {
+    return null;
+  }
+  try {
+    return formatSidecarDetail(await invoke<SidecarDiagnostics>("get_sidecar_diagnostics"));
+  } catch {
+    return null;
+  }
+}
+
+function connectFailureMessage(error: unknown): string {
+  // Tauri rejects invoke() with the Rust error string, not an Error.
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === "string" && error) {
+    return error;
+  }
+  return CONNECT_SPLASH_COPY.sidecarConnectionFailed;
+}
+
 export async function connectAgent(options?: {
   restart?: boolean;
 }): Promise<{
@@ -169,26 +204,30 @@ export async function connectAgent(options?: {
   token: string | null;
   health: AgentHealth;
 }> {
-  let preferredPort: number | undefined;
   try {
-    preferredPort = options?.restart
-      ? await invoke<number>("restart_sidecar")
-      : await invoke<number>("start_sidecar");
-  } catch (error) {
-    // Without a Tauri runtime there is no sidecar to spawn; the agent is
-    // started manually and discovered through VITE_AGENT_URL / port probing.
-    if (hasTauriRuntime() && !import.meta.env.VITE_AGENT_URL) {
-      throw error;
+    let preferredPort: number | undefined;
+    try {
+      preferredPort = options?.restart
+        ? await invoke<number>("restart_sidecar")
+        : await invoke<number>("start_sidecar");
+    } catch (error) {
+      // Without a Tauri runtime there is no sidecar to spawn; the agent is
+      // started manually and discovered through VITE_AGENT_URL / port probing.
+      if (hasTauriRuntime() && !import.meta.env.VITE_AGENT_URL) {
+        throw error;
+      }
     }
-  }
 
-  const health = await waitForHealth(preferredPort);
-  const token = await readToken();
-  return {
-    baseUrl: resolveBaseUrl(health.port),
-    token,
-    health,
-  };
+    const health = await waitForHealth(preferredPort);
+    const token = await readToken();
+    return {
+      baseUrl: resolveBaseUrl(health.port),
+      token,
+      health,
+    };
+  } catch (error) {
+    throw new SidecarConnectError(connectFailureMessage(error), await readSidecarDetail());
+  }
 }
 
 export async function fetchProfiles(
