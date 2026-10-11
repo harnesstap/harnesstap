@@ -496,19 +496,27 @@ async function walkViewport(browser, viewport, config, report) {
 
   const page = await context.newPage();
   page.on("pageerror", (error) => {
+    console.log(`shots: pageerror ${error.message}`);
     report.pageErrors.push(`[${tag}] ${error.message}`);
   });
   page.on("console", (message) => {
     if (message.type() === "error") {
       const url = message.location()?.url;
-      report.consoleErrors.push(
-        `[${tag}] ${message.text()}${url ? ` ${url}` : ""}`,
-      );
+      const text = `${message.text()}${url ? ` ${url}` : ""}`;
+      console.log(`shots: console.error ${text}`);
+      report.consoleErrors.push(`[${tag}] ${text}`);
     }
   });
 
   await page.goto(config.baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
-  await waitForConnected(page);
+  try {
+    await waitForConnected(page);
+  } catch (error) {
+    const body = await page.locator("body").innerText().catch(() => "(no body)");
+    console.log(`shots: connect wait failed: ${error instanceof Error ? error.message : error}`);
+    console.log(`shots: body text:\n${body}`);
+    throw error;
+  }
 
   for (let index = 0; index < SCREENS.length; index++) {
     const screen = SCREENS[index];
