@@ -48,26 +48,9 @@ runs:
         cd apps/desktop
         bunx playwright install --with-deps chromium
 
-    - name: Start demo agent and Vite
-      shell: bash
-      run: |
-        set -euo pipefail
-        HT_DEMO_ROOT=/tmp/htdemo HARNESSTAP_AGENT_PORT=7474 \
-          bash apps/desktop/scripts/demo-home.sh &
-        for i in $(seq 1 40); do
-          curl -sf http://127.0.0.1:7474/v1/health && break
-          sleep 1
-        done
-        curl -sf http://127.0.0.1:7474/v1/health
-        cd apps/desktop && VITE_AGENT_URL=http://127.0.0.1:7474 \
-          bunx vite --host 127.0.0.1 --port 5173 --strictPort &
-        for i in $(seq 1 40); do
-          curl -sf http://127.0.0.1:5173/ >/dev/null && break
-          sleep 1
-        done
-        curl -sf http://127.0.0.1:5173/ >/dev/null
-
-    - name: Shots, compare, axe, reduced motion, trace
+    # Agent and Vite must stay in this step. After #383 the agent exits on
+    # SIGTERM / parent death, so a follow-up shots step would see a dead sidecar.
+    - name: Start demo agent and Vite; run shots
       shell: bash
       env:
         SHOTS_BASE_URL: http://127.0.0.1:5173/
@@ -77,6 +60,20 @@ runs:
         SHOTS_PINNED_IMAGE: "1"
       run: |
         set -euo pipefail
+        HT_DEMO_ROOT=/tmp/htdemo HARNESSTAP_AGENT_PORT=7474 \
+          bash apps/desktop/scripts/demo-home.sh &
+        for i in $(seq 1 40); do
+          curl -sf http://127.0.0.1:7474/v1/health && break
+          sleep 1
+        done
+        curl -sf http://127.0.0.1:7474/v1/health
+        (cd apps/desktop && VITE_AGENT_URL=http://127.0.0.1:7474 \
+          bunx vite --host 127.0.0.1 --port 5173 --strictPort) &
+        for i in $(seq 1 40); do
+          curl -sf http://127.0.0.1:5173/ >/dev/null && break
+          sleep 1
+        done
+        curl -sf http://127.0.0.1:5173/ >/dev/null
         if [ "${{ inputs.update-baselines }}" = "true" ]; then
           cd apps/desktop
           node scripts/ui-shots.mjs --update-baselines --axe
