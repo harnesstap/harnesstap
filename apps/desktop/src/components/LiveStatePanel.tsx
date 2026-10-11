@@ -976,7 +976,7 @@ function fileChangeKindBadge(kind: FileChangeKind): (typeof FILE_CHANGE_KIND_BAD
   }
 }
 
-function FileChangeKindChip({
+export function FileChangeKindChip({
   kind,
   count,
   removalGroup,
@@ -988,22 +988,15 @@ function FileChangeKindChip({
   const meta = fileChangeKindBadge(kind);
   const tooltip = fileChangeKindChipTooltip(kind, removalGroup);
   const Icon = meta.Icon;
-  const chip = (
-    <span
-      className={`file-change-group-count ${fileChangeKindClass(kind)}`}
-      aria-label={tooltip ?? `${meta.label} ${count}`}
-    >
+  const toneClass = removalGroup
+    ? `file-change-group-count ${removalGroup}`
+    : `file-change-group-count ${fileChangeKindClass(kind)}`;
+  return (
+    <span className={toneClass} aria-label={tooltip ?? `${meta.label} ${count}`}>
       <Icon size={ICON_SIZE} strokeWidth={2} aria-hidden />
+      {tooltip ? <span className="file-change-group-count-label">{tooltip}</span> : null}
       <span>{count}</span>
     </span>
-  );
-  if (!tooltip) {
-    return chip;
-  }
-  return (
-    <ChromeTooltip content={tooltip} side="top">
-      {chip}
-    </ChromeTooltip>
   );
 }
 
@@ -1211,7 +1204,9 @@ function FileChangeRows({
                   return (
                     <ResourceRowRoot
                       hover={hoverModelFromFileChangeChild(change)}
-                      className={`diff-row file-change-child ${fileChangeKindClass(kind)}`}
+                      className={`diff-row file-change-child ${fileChangeKindClass(kind)}${
+                        change.removal_group ? ` ${change.removal_group}` : ""
+                      }`}
                       key={`${change.type}-${change.path}-${change.platform ?? "na"}-${index}`}
                     >
                       <ResourceRowLeading>
