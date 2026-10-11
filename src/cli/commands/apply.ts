@@ -14,18 +14,15 @@ import {
   resolveApplyScope,
 } from "../../services/apply-scope.js";
 import {
-  assertSupportedHarnessTargets,
   parsePlatformFilter,
-  registeredHarnessesOf,
+  resolveRegisteredGlobalApplyHarnesses,
   uniqueHarnessTargets,
 } from "../../services/harness-targets.js";
 import { resolveApplyConflictPolicy, promptMaterializationConflict } from "../../services/materialization-conflicts.js";
 import { applyProfilePlugin } from "../../services/profile-apply.js";
 import { withProfileApplyLock } from "../../services/profile-apply-lock.js";
 import { useProfileCommand } from "../../services/profile-commands.js";
-import { getHarnessPreference } from "../../models/harness.js";
-import { detectPlatforms } from "../../services/scanner.js";
-import { resolveHomeRoot } from "../../utils/home-root.js";
+import { CliUsageError } from "../../services/cli-errors.js";
 import { explainPayload, renderExplain } from "../../services/resolve/explain.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
@@ -47,23 +44,14 @@ export type InstallCommandActionOpts = ApplyCommandActionOpts & {
   mcp?: string;
 };
 
-function resolveDestinationPlatforms(harnessOption?: string): string[] {
-  const explicitTargets = uniqueHarnessTargets(
-    parsePlatformFilter(harnessOption) ?? [],
-  );
-  if (explicitTargets.length > 0) {
-    assertSupportedHarnessTargets(explicitTargets);
-    return explicitTargets;
+function resolveDestinationPlatforms(
+  harnessOption: string | undefined,
+  forGlobal: boolean,
+): string[] {
+  if (forGlobal) {
+    return resolveRegisteredGlobalApplyHarnesses(harnessOption);
   }
-
-  const preference = getHarnessPreference();
-  if (preference) {
-    const preferredTargets = registeredHarnessesOf(preference);
-    assertSupportedHarnessTargets(preferredTargets);
-    return preferredTargets;
-  }
-
-  return uniqueHarnessTargets(detectPlatforms(resolveHomeRoot()));
+  return uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
 }
 
 async function handleGlobalApplyCommand(
@@ -195,15 +183,20 @@ export async function handleApplyCommand(
   }
 
   const outputFormat = parseOutputFormat(opts.format);
-  const platforms = resolveDestinationPlatforms(opts.harness);
+  let platforms: string[];
   let resolved: ReturnType<typeof resolveApplyScope>;
   try {
+    platforms = resolveDestinationPlatforms(opts.harness, Boolean(opts.global));
     resolved = resolveApplyScope({
       global: opts.global,
       project: opts.project,
       platforms,
     });
   } catch (error) {
+    if (error instanceof CliUsageError) {
+      fail(error.message, { hints: error.hints });
+      return;
+    }
     fail(error instanceof Error ? error.message : String(error));
     return;
   }

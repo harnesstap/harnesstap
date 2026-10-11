@@ -52,8 +52,8 @@ function configuredProjectPaths(paths: PlatformPaths): string[] {
 
 /**
  * Primary global paths used to decide whether a harness is "shared-path only".
- * Plugin inventory and path alternates are optional evidence: they can detect a
- * harness when present, but they must not block detection of shared MCP/skills.
+ * Plugin inventory is optional evidence: it can detect a harness when present,
+ * but must not block detection of shared MCP/skills.
  */
 function configuredRequiredGlobalPaths(paths: PlatformPaths): string[] {
   const result: string[] = [];
@@ -130,10 +130,29 @@ function buildSharedProjectPathSet(): Set<string> {
   );
 }
 
-/** Check if a platform has harness-specific files in the project. */
+function detectionPathsExist(
+  paths: readonly string[] | undefined,
+  rootPath: string,
+): string[] {
+  if (!paths || paths.length === 0) {
+    return [];
+  }
+  return paths.filter((configuredPath) => {
+    const relative = configuredPath.startsWith("~/")
+      ? configuredPath.slice(2)
+      : configuredPath;
+    return pathCountsForPlatformDetection(rootPath, relative);
+  });
+}
+
+/** Check if a platform has harness-specific files in a project directory. */
 function platformHasFiles(platformId: string, projectRoot: string): boolean {
   const platform = getAllPlatforms().find((p) => p.id === platformId);
   if (!platform) return false;
+
+  if (detectionPathsExist(platform.detectionPaths?.project, projectRoot).length > 0) {
+    return true;
+  }
 
   const sharedProjectPaths = buildSharedProjectPathSet();
   const existingPaths = configuredProjectPaths(platform.projectPaths).filter(
@@ -177,7 +196,8 @@ export function buildSharedGlobalPathSet(): Set<string> {
  *
  * Platforms that share a global path (e.g. codex, warp, and cline all use
  * `~/.agents/skills/`) are only reported when they have platform-specific
- * evidence on disk, unless shared paths are the only paths they configure.
+ * evidence on disk. Warp and Jules require their own markers (`~/.warp`,
+ * `~/.jules` / `~/JULES.md`), not a plain `~/.agents` hub.
  */
 export function detectHomePlatforms(
   homeRoot = resolveHomeRoot(),
@@ -188,7 +208,11 @@ export function detectHomePlatforms(
     .map((platform) => {
       const configured = configuredRequiredGlobalPaths(platform.globalPaths);
       const discoveredPaths = existingPaths(platform.globalPaths, homeRoot);
-      if (discoveredPaths.length === 0) {
+      const detectionHits = detectionPathsExist(
+        platform.detectionPaths?.global,
+        homeRoot,
+      );
+      if (discoveredPaths.length === 0 && detectionHits.length === 0) {
         return { platformId: platform.id, discoveredPaths: [] };
       }
 
@@ -198,14 +222,24 @@ export function detectHomePlatforms(
       const onlySharedPathsConfigured =
         configured.length > 0
         && configured.every((path) => sharedGlobalPaths.has(path));
-
+      // Warp/Jules declare detectionPaths so a shared ~/.agents hub is not enough.
+      const requiresOwnMarkers = Boolean(platform.detectionPaths);
       const isDetected =
         discriminativePaths.length > 0
-        || (onlySharedPathsConfigured && discoveredPaths.length > 0);
+        || detectionHits.length > 0
+        || (!requiresOwnMarkers && onlySharedPathsConfigured && discoveredPaths.length > 0);
+      if (!isDetected) {
+        return { platformId: platform.id, discoveredPaths: [] };
+      }
 
+      const reported = [...new Set([
+        ...discriminativePaths,
+        ...detectionHits,
+        ...(requiresOwnMarkers ? [] : discoveredPaths),
+      ])];
       return {
         platformId: platform.id,
-        discoveredPaths: isDetected ? discoveredPaths : [],
+        discoveredPaths: reported.length > 0 ? reported : discoveredPaths,
       };
     })
     .filter((result) => result.discoveredPaths.length > 0);

@@ -33,7 +33,12 @@ describe("CLI profile drift from a seeded HOME", () => {
     const context = await createTestContext("cli-profile-false-drift-seed");
     try {
       seedHome(context.homeDir);
-      await runCli(["init", "--no-interactive"]);
+      await runCli([
+        "init",
+        "--no-interactive",
+        "--harnesses",
+        "claude-code,cursor,codex",
+      ]);
 
       const pending = await runCli(["profile", "status"]);
       expect(pending.stdout).toContain('ht profile use "global default"');
@@ -77,7 +82,12 @@ describe("CLI profile drift from a seeded HOME", () => {
     const context = await createTestContext("cli-profile-skill-mirror-drift");
     try {
       seedHome(context.homeDir);
-      await runCli(["init", "--no-interactive"]);
+      await runCli([
+        "init",
+        "--no-interactive",
+        "--harnesses",
+        "claude-code,cursor,codex",
+      ]);
       await runCli(["profile", "use", "global default", "--no-interactive"]);
 
       writeFileSync(

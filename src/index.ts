@@ -8,3 +8,10 @@ export {
   readGitSha,
   resolveBuildVersion,
 } from "./version.js";
+export {
+  allHarnessApplySelector,
+  registeredHarnessIds,
+  whereResourceApplies,
+  whereResourceAppliesNow,
+  type ResourceApplySelector,
+} from "./services/resource-apply-selector.js";

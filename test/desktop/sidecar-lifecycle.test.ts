@@ -15,6 +15,10 @@ const sidecarCheckTs = readFileSync(
   join(import.meta.dir, "../../scripts/check-compiled-sidecar.ts"),
   "utf8",
 );
+const demoHomeSh = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/scripts/demo-home.sh"),
+  "utf8",
+);
 
 describe("desktop sidecar lifecycle (DT-10)", () => {
   it("pipes stdin and stops the agent on SIGTERM, SIGINT, Exit, and ExitRequested", () => {
@@ -28,5 +32,6 @@ describe("desktop sidecar lifecycle (DT-10)", () => {
     expect(parentWatchTs).toContain("stdinIsParentPipe");
     expect(parentWatchTs).toContain("isFIFO()");
     expect(sidecarCheckTs).toContain('stdio: ["pipe", "pipe", "pipe"]');
+    expect(demoHomeSh).toContain("exec bun src/agent/entry.ts </dev/null");
   });
 });

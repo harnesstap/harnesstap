@@ -612,6 +612,14 @@ export interface PlatformDefinition {
    * (Claude Code mods: hooks.json + JS/TS). Default off.
    */
   hostPluginRuntimeModules?: boolean;
+  /**
+   * Distinctive paths used only for detection. Shared hubs such as
+   * `~/.agents/` must not count as evidence that this harness is installed.
+   */
+  detectionPaths?: {
+    readonly project?: readonly string[];
+    readonly global?: readonly string[];
+  };
 }
 
 /** @deprecated Use PluginOrigin */

@@ -10,6 +10,7 @@ import {
   matchesListSearchQuery,
   parseListSearchQuery,
 } from "../ui/list-search.js";
+import { whereResourceAppliesNow } from "./resource-apply-selector.js";
 
 export type LibraryInventoryListKind = "resource" | "plugin-package";
 
@@ -34,6 +35,8 @@ export type LibraryInventoryRow = {
     matcher?: string;
     type?: string;
   };
+  apply_harnesses?: string[];
+  apply_not_set_up?: boolean;
 };
 
 const RESOURCE_TYPE_PREFIXES = new Set([
@@ -94,6 +97,7 @@ function namespaceForRow(namespace: string): string | null {
 
 function resourceToInventoryRow(resource: Resource): LibraryInventoryRow {
   const hook = hookInventoryWireFromResource(resource);
+  const apply = whereResourceAppliesNow(resource);
   return {
     listKind: "resource",
     id: resource.id,
@@ -106,6 +110,8 @@ function resourceToInventoryRow(resource: Resource): LibraryInventoryRow {
     origin_kind: resource.origin_kind,
     origin_ref: resource.origin_ref || null,
     ...(hook ? { hook } : {}),
+    apply_harnesses: apply.harnesses,
+    apply_not_set_up: apply.notSetUp,
   };
 }
 

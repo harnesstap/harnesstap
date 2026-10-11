@@ -315,6 +315,9 @@ export interface ProfileContentsResource {
   /** Present on not-staged rows: add is missing from the profile; update differs on disk. */
   not_staged_kind?: "add" | "update";
   harness_scope?: "all" | string[];
+  /** Resource scope intersected with registered harnesses. */
+  apply_harnesses?: string[];
+  apply_not_set_up?: boolean;
 }
 
 export interface ProfileContents {

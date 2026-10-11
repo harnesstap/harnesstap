@@ -345,6 +345,46 @@ describe("scanner services", () => {
     }
   });
 
+  it("detects warp from ~/.warp, not from ~/.agents alone", async () => {
+    const context = await createInitializedTestContext("scanner-home-warp-marker");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.agents/skills/shared/SKILL.md`,
+        "---\nname: shared\ndescription: Shared skill\n---\n# Shared",
+      );
+      writeTextFile(`${context.homeDir}/.warp/user.yaml`, "theme: dark\n");
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const platformIds = scanner.detectHomePlatforms().map((result) => result.platformId);
+
+      expect(platformIds).toContain("warp");
+      expect(platformIds).not.toContain("jules");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("detects jules from ~/.jules, not from ~/.agents alone", async () => {
+    const context = await createInitializedTestContext("scanner-home-jules-marker");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.agents/skills/shared/SKILL.md`,
+        "---\nname: shared\ndescription: Shared skill\n---\n# Shared",
+      );
+      writeTextFile(`${context.homeDir}/.jules/config.json`, "{}\n");
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const platformIds = scanner.detectHomePlatforms().map((result) => result.platformId);
+
+      expect(platformIds).toContain("jules");
+      expect(platformIds).not.toContain("warp");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("does not detect cline from shared ~/.agents/skills/ alone", async () => {
     const context = await createInitializedTestContext("scanner-home-shared-agents");
 
@@ -358,7 +398,8 @@ describe("scanner services", () => {
       const detected = scanner.detectHomePlatforms();
       const platformIds = detected.map((result) => result.platformId);
 
-      expect(platformIds).toContain("warp");
+      expect(platformIds).not.toContain("warp");
+      expect(platformIds).not.toContain("jules");
       expect(platformIds).not.toContain("cline");
     } finally {
       await context.cleanup();
