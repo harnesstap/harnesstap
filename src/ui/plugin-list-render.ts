@@ -18,8 +18,8 @@ import {
   VIEWPORT_CHROME_LINES,
 } from "./list-viewport.js";
 import { formatPluginOriginDisplay } from "./plugin-origin-display.js";
-import { type Column, renderTable } from "./table.js";
-import { icons, terminalColumns, theme } from "./theme.js";
+import { type Column, renderTable, resolveTableMaxWidth } from "./table.js";
+import { icons, theme } from "./theme.js";
 import { formatVersionWithDrift } from "./version-render.js";
 
 export function formatLocalPluginListName(
@@ -289,6 +289,7 @@ function makeLocalColumns(showId: boolean, profileMode: boolean): Column[] {
     key: "description",
     header: "DESCRIPTION",
     width: 44,
+    truncate: true,
     transform: (value) => value || "—",
   });
   return columns;
@@ -318,6 +319,7 @@ function makeRemoteColumns(highlightSelection: boolean): Column[] {
       key: "updatedAt",
       header: "UPDATED",
       width: 16,
+      fitContent: true,
       transform: (value) =>
         value ? format.formatRelativeTime(String(value)) : theme.muted("—"),
     },
@@ -356,7 +358,7 @@ function formatRemoteCatalogVersion(
 
 function tableLayout(maxWidth?: number): { maxWidth: number; wordWrap: true } {
   return {
-    maxWidth: maxWidth ?? terminalColumns(),
+    maxWidth: resolveTableMaxWidth(maxWidth),
     wordWrap: true,
   };
 }
@@ -462,7 +464,7 @@ export function renderGroupedPluginListBrowseViewport(
   }
 
   const profileMode = Boolean(opts.profileMode);
-  const maxWidth = opts.maxWidth ?? terminalColumns();
+  const maxWidth = resolveTableMaxWidth(opts.maxWidth);
   const maxVisibleRows = computeMaxVisibleTableRows(
     opts.terminalRows,
     VIEWPORT_CHROME_LINES.pluginListBrowse,

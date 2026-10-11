@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { Resource } from "../types.js";
 import { formatRelativeTimeWithAbsolute } from "../ui/format.js";
 import { renderPanel } from "../ui/panel.js";
@@ -8,12 +9,17 @@ import {
   resourceHumanName,
 } from "../ui/resource-display.js";
 import { renderSubheader } from "../ui/section.js";
-import { packageResourceShowExtras, pluginResourceShowExtras } from "./plugin-resource-show.js";
+import {
+  type PluginContainedResource,
+  packageResourceShowExtras,
+  pluginResourceShowExtras,
+} from "./plugin-resource-show.js";
 
 const DEFAULT_CONTENT_LINE_LIMIT = 15;
 
 export type ResourceShowOptions = {
   showAllFields?: boolean;
+  full?: boolean;
 };
 
 function resourceShowExtras(
@@ -69,23 +75,73 @@ export function truncateResourceContent(
   const totalLines = lines.length;
   return [
     ...lines.slice(0, maxLines),
-    `… (${totalLines} lines in content)`,
+    `... (${totalLines} lines in content)`,
   ].join("\n");
+}
+
+function readContainedSkillBody(files: PluginContainedResource[]): string | undefined {
+  const skillFile = files.find((file) => {
+    const base = file.relative_path.split("/").at(-1)?.toLowerCase();
+    return base === "skill.md";
+  });
+  if (!skillFile) {
+    return undefined;
+  }
+  try {
+    return readFileSync(skillFile.path, "utf-8");
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveResourceBody(
+  resource: Resource,
+  extras: ReturnType<typeof resourceShowExtras>,
+): string {
+  if (resource.type !== "plugin" && resource.content.trim().length > 0) {
+    return resource.content;
+  }
+  if (resource.type !== "plugin" && extras && "contained_resources" in extras) {
+    const fromDisk = readContainedSkillBody(extras.contained_resources);
+    if (fromDisk !== undefined) {
+      return fromDisk;
+    }
+  }
+  return resource.content;
+}
+
+function renderContainedFileList(files: PluginContainedResource[]): string {
+  if (files.length === 0) {
+    return "Nothing loaded yet.";
+  }
+  return files.map((file) => file.relative_path).join("\n");
 }
 
 function renderResourceContent(
   resource: Resource,
   extras: ReturnType<typeof resourceShowExtras>,
+  opts?: ResourceShowOptions,
 ): string {
-  if (extras) {
-    if (extras.contained_resources.length === 0) {
+  if (resource.type === "plugin") {
+    if (!extras || extras.contained_resources.length === 0) {
       return "Nothing loaded yet.";
     }
-    return extras.contained_resources
-      .map((file) => file.relative_path)
-      .join("\n");
+    return renderContainedFileList(extras.contained_resources);
   }
-  return truncateResourceContent(resource.content);
+
+  const body = resolveResourceBody(resource, extras);
+  const renderedBody = opts?.full ? body : truncateResourceContent(body);
+  if (!extras || extras.contained_resources.length === 0) {
+    return renderedBody;
+  }
+  const companions = extras.contained_resources.filter((file) => {
+    const base = file.relative_path.split("/").at(-1)?.toLowerCase();
+    return base !== "skill.md";
+  });
+  if (companions.length === 0) {
+    return renderedBody;
+  }
+  return [renderedBody, "", renderContainedFileList(extras.contained_resources)].join("\n");
 }
 
 export function renderResourceShow(resource: Resource, opts?: ResourceShowOptions): string {
@@ -96,7 +152,7 @@ export function renderResourceShow(resource: Resource, opts?: ResourceShowOption
       rows: resourceShowPanelRows(resource, extras, opts),
     }),
     renderSubheader("CONTENT"),
-    renderResourceContent(resource, extras),
+    renderResourceContent(resource, extras, opts),
   ].join("\n");
 }
 

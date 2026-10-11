@@ -8,8 +8,8 @@ import {
   type SectionViewport,
 } from "./list-viewport.js";
 import { matchesListSearchQuery, parseListSearchQuery } from "./list-search.js";
-import { renderTable, type Column } from "./table.js";
-import { terminalColumns, theme } from "./theme.js";
+import { renderTable, resolveTableMaxWidth, type Column } from "./table.js";
+import { theme } from "./theme.js";
 
 export type EnvironmentListRow = {
   environment: Environment;
@@ -135,7 +135,7 @@ function toTableRows(
 
 function tableLayout(maxWidth?: number): { maxWidth: number; wordWrap: true } {
   return {
-    maxWidth: maxWidth ?? terminalColumns(),
+    maxWidth: resolveTableMaxWidth(maxWidth),
     wordWrap: true,
   };
 }
@@ -154,7 +154,7 @@ export function renderEnvironmentListViewport(
     return theme.muted("No environments found.");
   }
 
-  const maxWidth = opts.maxWidth ?? terminalColumns();
+  const maxWidth = resolveTableMaxWidth(opts.maxWidth);
   const maxVisibleRows = computeMaxVisibleTableRows(
     opts.terminalRows,
     VIEWPORT_CHROME_LINES.environmentList,

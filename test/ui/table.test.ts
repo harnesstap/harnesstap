@@ -73,6 +73,68 @@ describe("ui table", () => {
     expect(output).not.toContain("…");
   });
 
+  it("caps off-TTY tables, truncates descriptions, and draws +----+ borders", () => {
+    disableColor();
+    const long = "x".repeat(400);
+    const output = renderTable({
+      columns: [
+        { key: "name", header: "NAME", width: 12 },
+        { key: "description", header: "DESCRIPTION", width: 40, truncate: true },
+        { key: "visibility", header: "VIS", width: 8, fitContent: true },
+        {
+          key: "updated",
+          header: "UPDATED",
+          width: 16,
+          fitContent: true,
+        },
+      ],
+      rows: [
+        {
+          name: "official",
+          description: long,
+          visibility: "public",
+          updated: "23 seconds ago",
+        },
+      ],
+    });
+
+    const lines = output.split("\n");
+    expect(lines[0]).toMatch(/^\+-+/);
+    expect(lines[0]).not.toMatch(/^\+{6,}/);
+    expect(output).toContain("public");
+    expect(output).not.toContain("publ ");
+    expect(output).toContain("23 seconds ago");
+    expect(output).toContain("...");
+    expect(output).not.toContain(long);
+    for (const line of lines) {
+      expect(line.length).toBeLessThanOrEqual(120);
+    }
+  });
+
+  it("sizes the UPDATED column to content at 80 and 120 columns", () => {
+    disableColor();
+    for (const width of [80, 120]) {
+      const output = renderTable({
+        maxWidth: width,
+        wordWrap: true,
+        columns: [
+          { key: "name", header: "NAME", width: 28, widthShare: 0.7 },
+          {
+            key: "updated",
+            header: "UPDATED",
+            width: 16,
+            fitContent: true,
+            widthShare: 0.15,
+          },
+        ],
+        rows: [{ name: "demo", updated: "23 seconds ago" }],
+      });
+      expect(output).toContain("23 seconds ago");
+      const updatedLines = output.split("\n").filter((line) => line.includes("23 seconds"));
+      expect(updatedLines.length).toBe(1);
+    }
+  });
+
   it("computeColumnWidths distributes proportionally within maxWidth", async () => {
     const { computeColumnWidths } = await import("../../src/ui/table.ts");
     const widths = computeColumnWidths(
