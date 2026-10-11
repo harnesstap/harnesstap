@@ -5,6 +5,9 @@
 
 export const DRY_RUN_NOTHING_CHANGED = "Dry run. Nothing was changed.";
 
+export const NATIVE_MODULE_MISMATCH_MESSAGE =
+  "HarnessTap was installed under a different Node.js version. Run: npm rebuild -g harnesstap";
+
 /** Quote a user-provided token so a pasted hint parses as one Commander argument. */
 export function quoteCliArg(value: string): string {
   if (value.length === 0) {
