@@ -3,6 +3,7 @@ import { EventEmitter } from "node:events";
 import {
   installAgentParentWatch,
   parentProcessAlive,
+  stdinIsParentPipe,
 } from "../../src/agent/parent-watch.ts";
 
 describe("parentProcessAlive", () => {
@@ -53,6 +54,28 @@ describe("installAgentParentWatch", () => {
     stdin.emit("end");
     stdin.emit("close");
     expect(calls).toBe(1);
+    stop();
+  });
+
+  it("does not treat a non-pipe stdin fd as parent death", () => {
+    let calls = 0;
+    const stdin = Object.assign(new EventEmitter(), {
+      fd: 0xffff,
+      resume() {},
+    });
+    expect(stdinIsParentPipe(stdin as unknown as NodeJS.ReadableStream)).toBe(false);
+    const stop = installAgentParentWatch({
+      parentPid: 99,
+      intervalMs: 60_000,
+      isAlive: () => true,
+      stdin: stdin as unknown as NodeJS.ReadableStream,
+      onOrphan: () => {
+        calls += 1;
+      },
+    });
+    stdin.emit("end");
+    stdin.emit("close");
+    expect(calls).toBe(0);
     stop();
   });
 });

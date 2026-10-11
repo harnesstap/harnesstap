@@ -1,3 +1,5 @@
+import { fstatSync } from "node:fs";
+
 export function parentProcessAlive(
   pid: number,
   killFn: (pid: number, signal: 0) => boolean | void = process.kill,
@@ -21,6 +23,26 @@ export interface AgentParentWatch {
   isAlive?: (pid: number) => boolean;
 }
 
+/**
+ * Desktop holds a stdin pipe and closing it means the parent died.
+ * `/dev/null`, a TTY, or an already-closed fd is not that pipe: watching it
+ * would exit the compiled sidecar as soon as it starts (`stdio: ignore`).
+ */
+export function stdinIsParentPipe(stdin: NodeJS.ReadableStream | null | undefined): boolean {
+  if (!stdin) {
+    return false;
+  }
+  const fd = (stdin as NodeJS.ReadStream).fd;
+  if (typeof fd !== "number") {
+    return true;
+  }
+  try {
+    return fstatSync(fd).isFIFO();
+  } catch {
+    return false;
+  }
+}
+
 /** Exit when the desktop parent dies (stdin closed or parent pid gone). */
 export function installAgentParentWatch(options: AgentParentWatch): () => void {
   let stopped = false;
@@ -39,7 +61,7 @@ export function installAgentParentWatch(options: AgentParentWatch): () => void {
     }
   }, intervalMs);
   timer.unref?.();
-  const stdin = options.stdin;
+  const stdin = stdinIsParentPipe(options.stdin) ? options.stdin : null;
   const onStdinGone = (): void => {
     once();
   };

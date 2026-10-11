@@ -7,6 +7,14 @@ const libRs = readFileSync(
   "utf8",
 );
 const entryTs = readFileSync(join(import.meta.dir, "../../src/agent/entry.ts"), "utf8");
+const parentWatchTs = readFileSync(
+  join(import.meta.dir, "../../src/agent/parent-watch.ts"),
+  "utf8",
+);
+const sidecarCheckTs = readFileSync(
+  join(import.meta.dir, "../../scripts/check-compiled-sidecar.ts"),
+  "utf8",
+);
 
 describe("desktop sidecar lifecycle (DT-10)", () => {
   it("pipes stdin and stops the agent on SIGTERM, SIGINT, Exit, and ExitRequested", () => {
