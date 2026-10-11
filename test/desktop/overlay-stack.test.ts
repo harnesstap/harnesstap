@@ -1,8 +1,15 @@
 import { describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   createOverlayStack,
   nextTabTarget,
 } from "../../apps/desktop/src/state/overlay-stack.ts";
+
+const overlaySource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/state/overlay-stack.ts"),
+  "utf8",
+);
 
 function keyEvent(key = "Escape") {
   const event = {
@@ -107,5 +114,10 @@ describe("overlay stack focus trap order", () => {
 
   it("has nowhere to go with no tabbable controls", () => {
     expect(nextTabTarget([], null, false)).toBeNull();
+  });
+
+  it("prefers a text field over Close for initial focus", () => {
+    expect(overlaySource).toContain("preferredInitialFocus");
+    expect(overlaySource).toContain("preferredInitialFocus(root)?.focus()");
   });
 });

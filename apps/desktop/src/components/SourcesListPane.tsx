@@ -25,6 +25,7 @@ import { resourceRowVirtualStyle } from "../lib/resource-row-virtual";
 import { Cloud, FilterX, Library, LogIn } from "lucide-react";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { EmptyState, type EmptyStateAction } from "./EmptyState";
+import { Banner } from "./shell/Banner";
 import { IconActionButton } from "./IconActionButton";
 import { Skeleton } from "./shell/Skeleton";
 import {
@@ -49,6 +50,7 @@ export interface SourcesListPaneProps {
   onClearSearch?: () => void;
   onClearQuery?: () => void;
   onClearFilters?: () => void;
+  onRetry?: () => void;
   recordActions?: (hit: SourcesHit) => SourcesRecordActionsProps;
 }
 
@@ -126,12 +128,14 @@ function DiscoverListItem({
   disabled,
   onOpenHit,
   onSignIn,
+  onRetry,
   recordActions,
 }: {
   item: DiscoverListVirtualItem;
   disabled: boolean;
   onOpenHit: (hit: SourcesHit) => void;
   onSignIn?: () => void;
+  onRetry?: () => void;
   recordActions?: (hit: SourcesHit) => SourcesRecordActionsProps;
 }) {
   switch (item.kind) {
@@ -146,9 +150,12 @@ function DiscoverListItem({
       return item.error.authRequired ? (
         <SourcesSignInPrompt onSignIn={onSignIn} disabled={disabled} />
       ) : (
-        <div className="banner error" role="alert">
-          {item.error.message}
-        </div>
+        <Banner
+          tone="error"
+          message={item.error.message}
+          onRetry={onRetry}
+          retryBusy={disabled}
+        />
       );
     case "hit": {
       const hit = item.hit;
@@ -205,6 +212,7 @@ export function SourcesListPane({
   onClearSearch,
   onClearQuery,
   onClearFilters,
+  onRetry,
   recordActions,
 }: SourcesListPaneProps) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -294,6 +302,7 @@ export function SourcesListPane({
                 disabled={disabled}
                 onOpenHit={onOpenHit}
                 onSignIn={onSignIn}
+                onRetry={onRetry}
                 recordActions={recordActions}
               />
             </div>

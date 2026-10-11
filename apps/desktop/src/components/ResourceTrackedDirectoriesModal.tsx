@@ -86,14 +86,6 @@ export function ResourceTrackedDirectoriesModal({
     onClose,
   });
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
-  }, [isOpen]);
-
   const handleAddDirectory = async () => {
     if (!baseUrl || disabled || adding) {
       return;

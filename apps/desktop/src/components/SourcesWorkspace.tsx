@@ -1435,6 +1435,7 @@ export function SourcesWorkspace({
             }}
             onClearQuery={() => applyListQueryOrChecks(() => setQuery(""))}
             onClearFilters={() => applyListQueryOrChecks(resetSourcesFilters)}
+            onRetry={refresh}
             recordActions={recordActionsProps}
           />
         );
@@ -1595,7 +1596,12 @@ export function SourcesWorkspace({
           onToggleAll={onToggleAll}
           disabled={controlsDisabled}
           busy={busy}
-          error={error ?? snapshot.error}
+          sourceErrors={Object.fromEntries(
+            Object.entries(groupErrors).map(([id, groupError]) => [
+              id,
+              groupError.message,
+            ]),
+          )}
           originCheckError={originCheckError}
           onRetryOriginCheck={refresh}
           refreshing={sidebarRefreshing}
@@ -1604,6 +1610,11 @@ export function SourcesWorkspace({
           onUnregisterCatalog={(selector) => void onUnregisterCatalog(selector)}
         />
         <div className="resources-panel-body">
+          {error ? (
+            <div className="banner error" role="alert">
+              {error}
+            </div>
+          ) : null}
           <Crossfade activeKey={pane.mode} className="sources-pane-crossfade">
             {renderMainPane()}
           </Crossfade>

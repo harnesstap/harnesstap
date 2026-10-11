@@ -10,6 +10,7 @@ import {
   marketplaceSourceLooksResolvable,
   marketplaceSubmitCloseAction,
 } from "../lib/sources-panels";
+import { MARKETPLACE_URL_INVALID } from "../lib/ui-copy";
 import type {
   MarketplaceTypeDetectResult,
   PluginMarketplaceEntry,
@@ -227,11 +228,16 @@ export function MarketplaceEditPanel({
     baselineTrackedBranches,
   });
   const sourceReady = marketplaceSourceLooksResolvable(url);
+  const urlInvalid = url.trim().length > 0 && !sourceReady;
 
   const onUrlChange = (nextUrl: string) => {
     setUrl(nextUrl);
     if (mode === "add" && !nameTouched) {
-      setName(deriveMarketplaceNameFromUrl(nextUrl));
+      setName(
+        marketplaceSourceLooksResolvable(nextUrl)
+          ? deriveMarketplaceNameFromUrl(nextUrl)
+          : "",
+      );
     }
   };
 
@@ -410,6 +416,8 @@ export function MarketplaceEditPanel({
                 onChange={(event) => onUrlChange(event.target.value)}
                 placeholder="https://github.com/org/marketplace or /path/to/repo"
                 disabled={controlsDisabled}
+                aria-invalid={urlInvalid || undefined}
+                aria-describedby={urlInvalid ? "marketplace-url-error" : undefined}
               />
               <IconActionButton
                 label="Choose folder"
@@ -418,6 +426,11 @@ export function MarketplaceEditPanel({
                 icon={<FolderOpen size={16} aria-hidden />}
               />
             </div>
+            {urlInvalid ? (
+              <p id="marketplace-url-error" className="muted" role="alert">
+                {MARKETPLACE_URL_INVALID}
+              </p>
+            ) : null}
           </div>
           <div className="form-field gap-1.5">
             <Label htmlFor="marketplace-edit-name">Name</Label>

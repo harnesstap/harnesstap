@@ -6,6 +6,17 @@
 export const HARNESS_MAIN_PILL_TOOLTIP =
   "Your main harness. It wins when harnesses disagree.";
 
+export const EMPTY_PROFILE_COPY = {
+  title: "This profile is empty.",
+  body: "Add resources from Library.",
+} as const;
+
+export const MARKETPLACE_URL_INVALID =
+  "Enter a URL like https://github.com/org/repo or a folder path.";
+
+export const DETECT_HARNESSES_COMMAND = "Detect harnesses";
+export const SYNC_HARNESSES_COMMAND = "Sync harnesses";
+
 export const CONFLICT_POLICY_COPY = {
   replace: "Replace the existing one",
   skip: "Keep the existing one and move on",
