@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
   ALL_RESOURCE_TYPE_TAB,
@@ -231,6 +233,30 @@ describe("resourceTypeTabEmptyDisabled", () => {
         resourceTypeTabPillsText(type, counts, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS),
       ).toBe(`0 ${resourceTypeTabUnit(type, 0)}`);
     }
+  });
+
+  it("never packs zero-count tabs into an N more overflow on showing surfaces", () => {
+    const counts = new Map<string, number>();
+    const tabs = visibleResourceTypeTabs(counts, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS);
+    expect(tabs.length).toBeGreaterThan(4);
+    for (const type of tabs) {
+      if (type === ALL_RESOURCE_TYPE_TAB) {
+        continue;
+      }
+      expect(resourceTypeTabEmptyDisabled(type, counts)).toBe(true);
+    }
+    const panel = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/components/ResourcesPanel.tsx"),
+      "utf8",
+    );
+    const header = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/components/live/LiveHeader.tsx"),
+      "utf8",
+    );
+    expect(panel).toContain('overflow="wrap"');
+    expect(panel).not.toContain('overflow="collapse"');
+    expect(header).toContain('overflow="wrap"');
+    expect(header).not.toContain("overflow=\"collapse\"");
   });
 
   it("never empty-disables a type with count > 0", () => {
