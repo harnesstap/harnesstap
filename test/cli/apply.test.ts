@@ -398,6 +398,8 @@ describe("CLI apply", () => {
         context.projectDir,
         "--harness",
         "claude-code",
+        "--on-conflict",
+        "replace",
       ]);
 
       expect(applyResult.stderr).toContain("Plugin pin version mismatch:");
@@ -483,6 +485,8 @@ describe("CLI apply", () => {
         "--harness",
         "claude-code",
         "--ignore-plugin-versions",
+        "--on-conflict",
+        "replace",
       ]);
 
       expect(applyResult.stderr).not.toContain("Plugin pin version mismatch:");
