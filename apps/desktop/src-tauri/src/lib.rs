@@ -1,7 +1,9 @@
+use std::collections::VecDeque;
 use std::fs;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
-use std::process::Command as StdCommand;
-use std::sync::Mutex;
+use std::process::{Command as StdCommand, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -9,11 +11,101 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
+const SIDECAR_LOG_FILE: &str = "ht-agent.log";
+const SIDECAR_TAIL_LINES: usize = 40;
+
+/// Output of the most recent sidecar launch. Lines are kept in memory (for the
+/// connect splash) and appended to `ht-agent.log` in the app log directory (for
+/// "Open logs"), so a sidecar that dies at startup leaves its stderr behind.
+#[derive(Clone, Default)]
+struct SidecarLog {
+    tail: Arc<Mutex<VecDeque<String>>>,
+    file: Arc<Mutex<Option<fs::File>>>,
+    exit: Arc<Mutex<Option<String>>>,
+}
+
+impl SidecarLog {
+    fn begin(&self, path: Option<PathBuf>) {
+        if let Ok(mut tail) = self.tail.lock() {
+            tail.clear();
+        }
+        if let Ok(mut exit) = self.exit.lock() {
+            *exit = None;
+        }
+        let file = path.and_then(|path| {
+            if let Some(dir) = path.parent() {
+                let _ = fs::create_dir_all(dir);
+            }
+            fs::File::create(path).ok()
+        });
+        if let Ok(mut slot) = self.file.lock() {
+            *slot = file;
+        }
+    }
+
+    fn push(&self, line: &str) {
+        let line = line.trim_end_matches(['\r', '\n']);
+        eprintln!("[ht-agent] {line}");
+        if let Ok(mut tail) = self.tail.lock() {
+            if tail.len() >= SIDECAR_TAIL_LINES {
+                tail.pop_front();
+            }
+            tail.push_back(line.to_string());
+        }
+        if let Ok(mut slot) = self.file.lock() {
+            if let Some(file) = slot.as_mut() {
+                let _ = writeln!(file, "{line}");
+            }
+        }
+    }
+
+    fn set_exit(&self, description: String) {
+        self.push(&format!("ht-agent exited: {description}"));
+        if let Ok(mut exit) = self.exit.lock() {
+            *exit = Some(description);
+        }
+    }
+
+    fn exit(&self) -> Option<String> {
+        self.exit.lock().ok().and_then(|exit| exit.clone())
+    }
+
+    fn tail_text(&self) -> String {
+        self.tail
+            .lock()
+            .map(|tail| tail.iter().cloned().collect::<Vec<_>>().join("\n"))
+            .unwrap_or_default()
+    }
+}
+
+fn pump_lines<R: Read + Send + 'static>(reader: R, log: SidecarLog) {
+    thread::spawn(move || {
+        let mut reader = BufReader::new(reader);
+        let mut buffer = Vec::new();
+        loop {
+            buffer.clear();
+            match reader.read_until(b'\n', &mut buffer) {
+                Ok(0) | Err(_) => break,
+                Ok(_) => log.push(&String::from_utf8_lossy(&buffer)),
+            }
+        }
+    });
+}
+
 struct SidecarState {
     child: Mutex<Option<tauri_plugin_shell::process::CommandChild>>,
     process: Mutex<Option<std::process::Child>>,
     port: Mutex<Option<u16>>,
     starting: Mutex<bool>,
+    log: SidecarLog,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SidecarDiagnostics {
+    stderr_tail: String,
+    exit: Option<String>,
+    log_path: Option<String>,
 }
 
 struct AppState {
@@ -231,6 +323,7 @@ fn get_sidecar_port(state: State<'_, AppState>) -> Result<Option<u16>, String> {
 
 fn spawn_sidecar_via_shell(
     app: &AppHandle,
+    log: SidecarLog,
 ) -> Result<tauri_plugin_shell::process::CommandChild, String> {
     let mut sidecar = app
         .shell()
@@ -244,27 +337,82 @@ fn spawn_sidecar_via_shell(
     let (mut rx, child) = sidecar.spawn().map_err(|error| error.to_string())?;
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
-            if let CommandEvent::Terminated(payload) = event {
-                eprintln!("ht-agent sidecar terminated: {:?}", payload);
-                break;
+            match event {
+                CommandEvent::Stdout(bytes) | CommandEvent::Stderr(bytes) => {
+                    log.push(&String::from_utf8_lossy(&bytes));
+                }
+                CommandEvent::Terminated(payload) => {
+                    log.set_exit(format!(
+                        "code {:?}, signal {:?}",
+                        payload.code, payload.signal
+                    ));
+                    break;
+                }
+                _ => {}
             }
         }
     });
     Ok(child)
 }
 
-fn spawn_sidecar_via_process() -> Result<std::process::Child, String> {
+fn spawn_sidecar_via_process(log: &SidecarLog) -> Result<std::process::Child, String> {
     let path = sidecar_binary_path()?;
     let mut command = StdCommand::new(path);
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     command.env("HARNESSTAP_AGENT_PORT", "7474");
     command.env("HARNESSTAP_PRODUCT", "desktop");
     // Ensure the sidecar uses the same home resolution as the desktop shell.
     if let Ok(home) = std::env::var("HARNESSTAP_HOME") {
         command.env("HARNESSTAP_HOME", home);
     }
-    command
+    let mut child = command
         .spawn()
-        .map_err(|error| format!("failed to spawn sidecar process: {error}"))
+        .map_err(|error| format!("failed to spawn sidecar process: {error}"))?;
+    if let Some(stderr) = child.stderr.take() {
+        pump_lines(stderr, log.clone());
+    }
+    if let Some(stdout) = child.stdout.take() {
+        pump_lines(stdout, log.clone());
+    }
+    Ok(child)
+}
+
+fn sidecar_log_path(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_log_dir()
+        .ok()
+        .map(|dir| dir.join(SIDECAR_LOG_FILE))
+}
+
+/// Why the sidecar went away before reporting its port, if it did.
+fn sidecar_early_exit(state: &AppState) -> Option<String> {
+    if let Ok(mut guard) = state.sidecar.process.lock() {
+        if let Some(child) = guard.as_mut() {
+            if let Ok(Some(status)) = child.try_wait() {
+                return Some(status.to_string());
+            }
+        }
+    }
+    state.sidecar.log.exit()
+}
+
+fn wait_for_sidecar_ready(state: &AppState, timeout_ms: u64) -> Result<u16, String> {
+    let attempts = timeout_ms / 50;
+    for _ in 0..attempts {
+        if let Some(port) = read_port_file() {
+            return Ok(port);
+        }
+        if let Some(exit) = sidecar_early_exit(state) {
+            // Give the stderr pump a moment to flush the final lines.
+            thread::sleep(Duration::from_millis(100));
+            return Err(format!("ht-agent exited before it was ready ({exit})"));
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
+    Err("ht-agent sidecar did not report its port; check ~/.harnesstap for a stale agent".to_string())
 }
 
 fn wait_for_port_file(timeout_ms: u64) -> Option<u16> {
@@ -337,9 +485,10 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
     // sidecar writes the token first, then the port, after it binds.
     let _ = fs::remove_file(agent_port_path());
     let _ = fs::remove_file(agent_token_path());
+    state.sidecar.log.begin(sidecar_log_path(&app));
 
     let spawn_result = (|| {
-        match spawn_sidecar_via_process() {
+        match spawn_sidecar_via_process(&state.sidecar.log) {
             Ok(child) => {
                 let mut process_guard = state
                     .sidecar
@@ -351,7 +500,7 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
             }
             Err(process_error) => {
                 eprintln!("process sidecar spawn failed, trying shell: {process_error}");
-                match spawn_sidecar_via_shell(&app) {
+                match spawn_sidecar_via_shell(&app, state.sidecar.log.clone()) {
                     Ok(child) => {
                         let mut child_guard = state
                             .sidecar
@@ -375,9 +524,7 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
 
     spawn_result?;
 
-    let port = wait_for_port_file(5_000).ok_or_else(|| {
-        "ht-agent sidecar did not report its port; check ~/.harnesstap for a stale agent".to_string()
-    })?;
+    let port = wait_for_sidecar_ready(&state, 5_000)?;
     *state
         .sidecar
         .port
@@ -391,6 +538,15 @@ async fn restart_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u
     stop_managed_process(&state);
     thread::sleep(Duration::from_millis(150));
     start_sidecar(app, state).await
+}
+
+#[tauri::command]
+fn get_sidecar_diagnostics(app: AppHandle, state: State<'_, AppState>) -> SidecarDiagnostics {
+    SidecarDiagnostics {
+        stderr_tail: state.sidecar.log.tail_text(),
+        exit: sidecar_early_exit(&state),
+        log_path: sidecar_log_path(&app).map(|path| path.to_string_lossy().into_owned()),
+    }
 }
 
 #[tauri::command]
@@ -410,6 +566,7 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -429,12 +586,18 @@ pub fn run() {
                 process: Mutex::new(None),
                 port: Mutex::new(Some(7474)),
                 starting: Mutex::new(false),
+                log: SidecarLog::default(),
             },
         })
         .setup(|app| {
             // Dev ergonomics: when prepare-sidecar rewrites the binary + stamp,
             // restart the managed agent without relaunching Tauri.
             spawn_sidecar_reload_watcher(app.handle().clone());
+            // "Open logs" targets this directory; make sure it exists even
+            // before the sidecar has written anything.
+            if let Ok(dir) = app.path().app_log_dir() {
+                let _ = fs::create_dir_all(dir);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -442,6 +605,7 @@ pub fn run() {
             restart_sidecar,
             read_agent_token,
             get_sidecar_port,
+            get_sidecar_diagnostics,
             e2e_project_path
         ])
         .build(tauri::generate_context!())

@@ -333,6 +333,7 @@ export function App() {
           <ConnectSplash
             phase={session.phase}
             error={session.error}
+            errorDetail={session.errorDetail}
             retryBusy={session.retryBusy}
             onRetry={() => void session.retry()}
           />

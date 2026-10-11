@@ -63,6 +63,8 @@ import type { ResolutionResult } from "./resolve/types.js";
 import {
   formatRemovalBackupNotice,
   groupPlannedRemovals,
+  mergeSafeRemovalSkips,
+  skippedWriteKeepsForOwnership,
   type PlannedRemovals,
   type SafeFileRemovalResult,
   type SafeRemovalSkip,
@@ -117,6 +119,13 @@ export interface ApplyProfilePluginOptions {
   forceRemove?: boolean;
   yes?: boolean;
   interactive?: boolean;
+  /** When false, status/drift keeps per-harness skill paths. Default true. */
+  pinSkillEmits?: boolean;
+  /**
+   * Dry-run serialize: false compares the library snapshot to live files
+   * (status/drift). Default true keeps extra live skill body for apply/preview.
+   */
+  mergeLiveSkillMarkdown?: boolean;
 }
 
 export interface ApplyProfilePluginResult {
@@ -259,8 +268,17 @@ function removeStaleGlobalProfileFiles(
   };
 }
 
-function warnSkippedRemovals(result: SafeFileRemovalResult): void {
+function warnSkippedRemovals(
+  result: SafeFileRemovalResult,
+  extraSkips: readonly SafeRemovalSkip[] = [],
+): void {
+  const skipMessages = new Set(
+    mergeSafeRemovalSkips(result.skipped, extraSkips).map((skip) => skip.message),
+  );
   for (const warning of result.warnings) {
+    if (skipMessages.has(warning)) {
+      continue;
+    }
     console.warn(ui.theme.warn(warning));
   }
   const notice = formatRemovalBackupNotice(result, resolveHomeRoot());
@@ -269,17 +287,21 @@ function warnSkippedRemovals(result: SafeFileRemovalResult): void {
   }
 }
 
-function removalFields(result: SafeFileRemovalResult): Pick<
+function removalFields(
+  result: SafeFileRemovalResult,
+  extraSkips: readonly SafeRemovalSkip[] = [],
+): Pick<
   ApplyProfilePluginResult,
   "removed_files" | "skipped_removals" | "removal_backup" | "removals"
 > {
+  const skipped = mergeSafeRemovalSkips(result.skipped, extraSkips);
   return {
     ...(result.removed.length > 0 ? { removed_files: result.removed } : {}),
-    ...(result.skipped.length > 0 ? { skipped_removals: result.skipped } : {}),
+    ...(skipped.length > 0 ? { skipped_removals: skipped } : {}),
     ...(result.removed.length > 0 ? { removal_backup: result.backupDir } : {}),
     removals: groupPlannedRemovals({
       remove: result.removed,
-      skip: result.skipped,
+      skip: skipped,
     }),
   };
 }
@@ -668,7 +690,8 @@ export async function applyProfilePlugin(
       target: "global",
       claudeConfig: merged.claude,
       resolvedEnvironment,
-      mergeLiveSkillMarkdown: false,
+      pinSkillEmits: options.pinSkillEmits,
+      mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
     });
     const files = generated.flatMap((result) => result.files);
     gateDeployFiles(files, { forceUnicode: options.forceUnicode });
@@ -685,6 +708,10 @@ export async function applyProfilePlugin(
       harnesses,
       { dryRun: true, forceRemove: options.forceRemove },
     );
+    const writeKeeps = skippedWriteKeepsForOwnership(
+      homeRoot,
+      materialized.skippedFiles,
+    );
     return {
       profile_name: profilePlugin.name,
       profile_plugin_id: profilePlugin.id,
@@ -699,7 +726,7 @@ export async function applyProfilePlugin(
       expected_files: files.map((file) => ({ path: file.path, content: file.content })),
       ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
       ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
-      ...removalFields(plannedRemoval),
+      ...removalFields(plannedRemoval, writeKeeps),
     };
   }
 
@@ -717,6 +744,9 @@ export async function applyProfilePlugin(
   });
   let snapshotId: string | undefined;
   let removal: SafeFileRemovalResult | undefined;
+  const writeKeeps = applied.cancelled
+    ? []
+    : skippedWriteKeepsForOwnership(homeRoot, applied.skippedFiles);
   if (!applied.cancelled) {
     const desiredFiles = applied.results.flatMap((result) =>
       result.files.map((file) => file.path),
@@ -730,14 +760,14 @@ export async function applyProfilePlugin(
     );
     const hasChanges =
       applied.writtenFiles.length > 0 || plannedRemoval.removed.length > 0;
+    const snapshot = createGlobalApplySnapshot({
+      profile_name: profilePlugin.name,
+      plugin_ids: configuredPluginIds,
+      resolved_set: resolvedSet,
+      state: applied.preApplyState,
+    });
+    snapshotId = snapshot.id;
     if (hasChanges) {
-      const snapshot = createGlobalApplySnapshot({
-        profile_name: profilePlugin.name,
-        plugin_ids: configuredPluginIds,
-        resolved_set: resolvedSet,
-        state: applied.preApplyState,
-      });
-      snapshotId = snapshot.id;
       removal = removeStaleGlobalProfileFiles(
         homeRoot,
         desiredFiles,
@@ -749,18 +779,18 @@ export async function applyProfilePlugin(
           snapshotId: snapshot.id,
         },
       );
-      warnSkippedRemovals(removal);
-      for (const result of applied.results) {
-        const installFiles = result.files.map((file) => file.path);
-        if (installFiles.length === 0) continue;
-        recordGlobalApplySnapshotInstall({
-          snapshot_id: snapshot.id,
-          platform_id: result.platformId,
-          files: installFiles,
-        });
-      }
+      warnSkippedRemovals(removal, writeKeeps);
     } else {
       removal = plannedRemoval;
+    }
+    for (const result of applied.results) {
+      const installFiles = result.files.map((file) => file.path);
+      if (installFiles.length === 0) continue;
+      recordGlobalApplySnapshotInstall({
+        snapshot_id: snapshot.id,
+        platform_id: result.platformId,
+        files: installFiles,
+      });
     }
   }
   if (!applied.cancelled && defaultEnvironmentName) {
@@ -781,6 +811,6 @@ export async function applyProfilePlugin(
     conflicts: applied.conflicts.map((conflict) => conflict.path),
     ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
     ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
-    ...(removal ? removalFields(removal) : {}),
+    ...(removal ? removalFields(removal, writeKeeps) : {}),
   };
 }
