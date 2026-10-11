@@ -6,7 +6,7 @@ This page mirrors the grouped CLI surface exposed by `harnesstap --help`. Use it
 
 Available on `harnesstap` / `ht`:
 
-- `-V, --version` prints the HarnessTap CLI version (`--harnesstap-version` is a hidden alias)
+- `-V, --harnesstap-version` — print the HarnessTap CLI version
 - `-v, --verbose` — show verbose error output
 - `--no-color` — disable ANSI colors
 - `--no-interactive` — disable interactive prompts
@@ -41,19 +41,19 @@ Initialize local HarnessTap state.
 
 ```bash
 ht init
-ht init --harnesses claude-code,cursor,codex
+ht init --main claude-code --aliases cursor,codex
 ht init --format json
 ```
 
 Key options:
 
-- `--harnesses <slugs>` — comma-separated registered harness slugs
-- `--main <slug>` / `--aliases <slugs>` — deprecated; prepended/appended to the registered set
+- `--main <slug>` — set the default main harness
+- `--aliases <slugs>` — comma-separated alias harnesses
 - `--no-default-profile` — skip seeding the `global default` profile plugin and `active-profile.json` pointer
 - `--interactive` — prompt for harness selection instead of relying on explicit flags
 - `--format <mode>` — `human` or `json`
 
-`init` seeds a local `global default` profile plugin (tagged `profile`) from library resources imported from home **only when no profile plugins exist yet**. Re-running init or starting Desktop does not recreate `global default` after a rename or when other profiles are present. It writes `active-profile.json` when that profile is created or the pointer is unset (unless `--no-default-profile`), and prints the tracked directory list (home as `~`). Global apply does **not** run automatically — run `ht profile use "global default"` to materialize home harness files.
+`init` seeds a local `global default` profile plugin (tagged `profile`) from library resources imported from home, writes `active-profile.json` unless `--no-default-profile` is passed, and prints the tracked directory list (home as `~`). Global apply does **not** run automatically — run `ht profile use "global default"` to materialize home harness files.
 
 ### init completion
 
@@ -112,7 +112,7 @@ Git-style commands for working in a project directory. Each defaults to the curr
 
 - `scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
 - `use` — switch to a project-configured profile from `apm.yml` (`ht use --profile <key>`, not a positional profile name)
-- `mirror [path]` — rematerialize other registered harnesses from `--from` (default first registered)
+- `mirror [path]` — mirror alias harness outputs from the main harness state
 - `status [path]` — show project status with drift summary
 - `history [path]` — list snapshots for a tracked project
 - `revert [snapshot-id]` — restore files from a previous snapshot
@@ -125,7 +125,7 @@ Apply plugins with top-level `apply` (not under this group). Onboard from repo-r
 - `scan --dry-run` — preview imports without writing to the DB
 - `scan --overwrite` — replace library rows when scan content differs
 - `scan --skip-existing` — keep existing rows when scan content differs
-- `scan --namespace <name>` — namespace for imported project resources (default: `project`; home scan stays empty / global)
+- `scan --namespace <name>` — namespace for imported project resources
 - `scan --global` — install imported plugin sources into global harness locations
 - `scan --harness <slugs>` — harness targets for `--global` plugin installs
 - `use --profile <key>` — profile key from `apm.yml` (required unless `--list`)
@@ -133,10 +133,10 @@ Apply plugins with top-level `apply` (not under this group). Onboard from repo-r
 - `use --dry-run` — preview global apply without writing
 - `use --force` — apply even when the profile is already active and in sync
 - `use --no-pull` — fail when composition refs are missing locally
-- `use --harness <slugs>` / `--on-conflict <replace|skip|prompt|cancel>` / `--account <name>` / `--base-url <url>` / `--format json`
-- `mirror --dry-run` — preview rematerialize writes
-- `mirror --from <slug>` — on-disk harness to copy from (`--force-shift-reference` is a deprecated alias)
-- `mirror --reference <strategy>` — reference source: disk, plugin, agents, auto (`main` is a deprecated alias of disk)
+- `use --harness <slugs>` / `--on-conflict <replace|skip|prompt>` / `--account <name>` / `--base-url <url>` / `--format json`
+- `mirror --dry-run` — preview alias mirror writes
+- `mirror --force-shift-reference <slug>` — set the project main harness before mirroring
+- `mirror --reference <strategy>` — reference source: main, plugin, agents, or auto
 - `mirror --format json`
 - `status --check` — exit `1` when drift exists since the last snapshot, or when `apm.lock.yaml` disagrees with the applied manifest (CI)
 - `status --format json` — includes a `drift` object when git-backed
@@ -337,7 +337,7 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin list` — local plugins plus streamed remote catalog plugins (default); use `--local-only` for local plugins only
 - `plugin show <name>`
 - `plugin editor [name]` — open a plugin definition file in your system editor
-- `plugin search [query]` — search marketplace catalogs for plugins (name, tags, plugin.json, nested skills/commands)
+- `plugin search [query]` — search marketplace catalogs for plugins
 - `plugin add <ref>` — import a GitHub `plugin.json` package into the library (`https://github.com/owner/repo`, `owner/repo`, or `gh:owner/repo`)
 - `plugin add <ref> --to <plugin>` — add a dependency to a plugin (`ref`: local name, `org/catalog/name`, `name@marketplace`, or git URL)
 - `plugin edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
@@ -376,7 +376,7 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin create --skill <names>` — comma-separated skills to attach when using `--from`
 - `plugin create --all` — attach all discovered skills when using `--from`
 - `plugin create --exclude-category <names>` — exclude skill categories (repeatable or comma-separated)
-- `plugin create --on-conflict <policy>` - when the plugin exists: `replace`, `skip`, `prompt` or `cancel` (default `cancel`). `merge` is plugin import only. Aliases for one release: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
+- `plugin create --on-conflict <policy>` — when the plugin exists: `cancel` (default), `merge`, or `overwrite`
 - `plugin create --install` — opt-in hub install; requires `--global` or `--project`
 - `plugin create --dry-run` — preview configuration without writing
 - `plugin list --format json`
@@ -413,7 +413,6 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `plugin edit --clear-environment` — clear the configured plugin default environment
 - `apply --project <path>` — target project directory (default `.`)
 - `apply --target <slugs>` / `--all` / `--harness <slugs>` — APM target slugs or HarnessTap harness slugs (same resolution slot)
-- `apply --on-conflict <replace|skip|prompt|cancel>` - what to do when it already exists. Non-interactive apply still falls back to `replace` today; DS-6 default is `cancel` (W2-12). Aliases: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
 - `apply --dry-run` — show planned file writes only
 - `apply --explain` — print the resolution trail (selected versions and every resource decision)
 - `apply --update` — ignore `apm.lock.yaml` and re-resolve the dependency graph (including git `dependencies.apm` refs)
@@ -477,24 +476,6 @@ Manage HarnessTap Cloud authentication and cloud account state.
 
 Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands. There is no `--profile` flag on `auth` — use `--account`.
 
-## github
-
-Authenticate with GitHub via the HarnessTap GitHub App device flow. Distinct from `auth` (HarnessTap Cloud). Stores a user-to-server token in `~/.harnesstap/github-session.json` (`0600`) and uses it for private GitHub marketplace and git reads (Authorization basic `x-access-token` extraheader, never a token in the clone URL). Private Contents require the App to be installed on the target account or org.
-
-Does not require `gh`. Client id is public (`Iv23liiaeCAUoGKe2uUx`; override `HARNESSTAP_GITHUB_APP_CLIENT_ID`). Never commit a client secret. If token exchange or refresh needs one, set `HARNESSTAP_GITHUB_APP_CLIENT_SECRET`.
-
-Credential precedence: `HARNESSTAP_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKEN` → stored session → `gh auth token` → ambient Git.
-
-### Commands
-
-- `github login`
-- `github status`
-- `github logout`
-
-### Important options
-
-- `github status --format json`
-
 ## profile (`p`)
 
 Manage profile plugins (plugins tagged `profile`) and global profile switching. Profiles apply to **machine home** harness paths; use `apply` for projects.
@@ -540,7 +521,7 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile use --force` — apply even when the profile is already active and in sync
 - `profile use --dry-run` — preview global file writes
 - `profile use --harness <slugs>` — comma-separated harness slugs (default: global harness preference)
-- `profile use --on-conflict <replace|skip|prompt|cancel>`
+- `profile use --on-conflict <replace|skip|prompt>`
 - `profile use --account <name>` — cloud account for auto-pull of missing published dependencies
 - `profile use --base-url <url>`
 - `profile use --no-pull` — fail when composition refs are missing locally
@@ -554,7 +535,7 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile stash pop` / `profile stash apply` — same pull/apply flags as `profile use`
 - `profile add-resource <name> --selector <type:name> --scope <home|project>` — adopt one untracked on-disk resource
 - `profile add-all-resources <name> --scope <home|project>` — adopt every untracked material resource in the scope
-- `profile commit-resource <name> --path <path>` or `--selector <type:name>` — snapshot live disk into the profile library (skills as 1:1 files; MCP, settings, and hooks JSON as all resources in that file)
+- `profile commit-resource <name> --path <path>` or `--selector <type:name>` — snapshot live disk into the profile library
 - `profile remove-resource <name> --selector <type:name>` — detach a material resource from the profile stack
 - `profile restore-file <name> --path <path>` — overwrite the live managed file with the profile snapshot
 - `profile file-diff <name> --path <path>` — unified diff of live content vs after-apply snapshot
@@ -584,10 +565,9 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `resource show --show-id`
 - `resource show --all-fields`
 - `resource sync --overwrite`
-- `resource sync --on-conflict <replace|skip|prompt|cancel>` - default `cancel`. Aliases for one release: `overwrite` -> `replace`, `ignore` -> `skip`, `fail` -> `cancel`.
+- `resource sync --on-conflict <overwrite|ignore|fail>` — default `fail`
 - `resource sync --force`
 - `resource sync --dry-run`
-- `resource sync --prune` — remove orphaned child resources after sync
 - `resource directories list --format json`
 - `resource directories add <path>` — track a directory and import resources (skip existing)
 - `resource directories remove <path>` — stop tracking a directory (library resources stay)
@@ -660,8 +640,8 @@ Manage global harness preferences and git-backed project overrides.
 
 - `harness list --supported` — only harnesses HarnessTap can serialize natively
 - `harness list --format json`
-- `harness set --harnesses <slugs>`
-- `harness sync` — union registered harnesses (home) with last-write conflicts, including Claude/Cursor host plugin trees and `.agents` materialization for OpenCode-like harnesses; `--plugin-resources symlink|copy|clone`; `--project` for a repo; `--dry-run`
+- `harness set --main <slug> --aliases <slugs>`
+- `harness sync` — union configured harnesses (home), including Claude/Cursor host plugin trees and `.agents` materialization for OpenCode-like harnesses; `--plugin-resources symlink|copy|clone`; `--project` for a repo; `--dry-run`
 - `harness project set --project <path>`
 - `harness project set --materialization-strategy <symlink-preferred|copy>`
 - `harness project status --format json`

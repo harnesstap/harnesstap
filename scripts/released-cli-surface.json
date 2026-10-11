@@ -459,6 +459,12 @@
         "args": 0,
         "subcommands": {}
       },
+      "layer": {
+        "aliases": [],
+        "flags": [],
+        "args": 0,
+        "subcommands": {}
+      },
       "lock": {
         "aliases": [],
         "flags": [],

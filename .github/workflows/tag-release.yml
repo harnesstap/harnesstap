@@ -80,7 +80,7 @@ jobs:
           fi
           bash scripts/stamp-release-version.sh "$TAG"
 
-      - name: Fold pending README text and refresh released CLI surface
+      - name: Fold pending README and docs text and refresh released CLI surface
         if: steps.plan.outputs.action == 'prepare'
         run: |
           set -euo pipefail
@@ -95,7 +95,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md .changes package.json \
-            README.md docs/unreleased-readme.md scripts/released-cli-surface.json \
+            README.md docs scripts/released-cli-surface.json \
             apps/desktop/package.json \
             apps/desktop/src-tauri/tauri.conf.json \
             apps/desktop/src-tauri/Cargo.toml \

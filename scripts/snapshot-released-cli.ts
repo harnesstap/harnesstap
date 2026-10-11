@@ -19,13 +19,12 @@ interface CommanderCommand {
   options: CommanderOption[];
   commands: CommanderCommand[];
   registeredArguments?: unknown[];
-  _hidden?: boolean;
 }
 
 function describe(command: CommanderCommand): SurfaceNode {
   const subcommands: Record<string, SurfaceNode> = {};
   for (const child of [...command.commands].sort((a, b) => a.name().localeCompare(b.name()))) {
-    if (!child._hidden) subcommands[child.name()] = describe(child);
+    subcommands[child.name()] = describe(child);
   }
   const flags = command.options.flatMap((option) => [option.long, option.short].filter((flag): flag is string => !!flag));
   return {
@@ -86,8 +85,17 @@ if (fromSource) {
   entry = installPublished(version, mkdtempSync(join(tmpdir(), "ht-surface-pkg-")));
 }
 
+/** Root flags a build handles before commander parses argv, so they are missing from the command tree. */
+function probeRootFlags(entryPath: string): string[] {
+  const script = `const m = await import(${JSON.stringify(pathToFileURL(entryPath).href)}); await m.runHarnesstapCli(["bun", "ht", "--version"]);`;
+  const result = spawnSync(process.execPath, ["-e", script], { encoding: "utf-8", env: process.env });
+  return result.status === 0 && /\d+\.\d+\.\d+/.test(result.stdout) ? ["--version"] : [];
+}
+
 const loaded = (await import(pathToFileURL(entry).href)) as { program: CommanderCommand };
-const surface: CliSurface = { version, root: describe(loaded.program) };
+const root = describe(loaded.program);
+root.flags = [...new Set([...root.flags, ...probeRootFlags(entry)])].sort();
+const surface: CliSurface = { version, root };
 const next = `${JSON.stringify(surface, null, 2)}\n`;
 
 if (check) {

@@ -7,6 +7,8 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import {
   checkCommandSurface,
+  checkPending,
+  checkReferenceSurface,
   findVersionGatedPhrases,
   loadSurface,
   runReleasedGuard,
@@ -90,6 +92,47 @@ describe("G7 README describes only the latest published release", () => {
     expect(messages.some((message) => message.includes("`ht resource scope` is not a subcommand"))).toBe(true);
     expect(messages.some((message) => message.includes("--harnesses is not available on `ht harness set`"))).toBe(true);
     expect(messages.some((message) => message.includes("ht plugin pull"))).toBe(false);
+  });
+
+  it("checks command-reference style spans: prefix-less commands and bare flags under a command heading", () => {
+    const reference = [
+      "# Reference",
+      "",
+      "## Global options",
+      "",
+      "- `-V, --harnesstap-version` prints the version",
+      "- `--version` is not a root flag in the published CLI",
+      "",
+      "## init",
+      "",
+      "```bash",
+      "ht init --harnesses claude-code,cursor,codex",
+      "```",
+      "",
+      "- `--main <slug>` default main harness",
+      "- `--harnesses <slugs>` comma-separated harnesses",
+      "",
+      "## plugin (`l`)",
+      "",
+      "- `plugin list --remote` / `--remote-only`",
+      "- `resource sync --on-conflict <overwrite|ignore|fail>` and `resource directories list|add|rescan`",
+      "- Does not take `--global`.",
+    ].join("\n");
+    const messages = checkReferenceSurface("docs/cli/command-reference.md", reference, surface).map(
+      (finding) => finding.message,
+    );
+    expect(messages.some((message) => message.includes("--harnesses is not available on `ht init`"))).toBe(true);
+    expect(messages.filter((message) => message.includes("--harnesses is not available on `ht init`"))).toHaveLength(2);
+    expect(messages.some((message) => message.includes("--remote is not available on `ht plugin list`"))).toBe(true);
+    expect(messages.some((message) => message.includes("--remote-only"))).toBe(false);
+    expect(messages.some((message) => message.includes("--main"))).toBe(false);
+    expect(messages.some((message) => message.includes("--global"))).toBe(false);
+    expect(messages.some((message) => message.includes("resource sync"))).toBe(false);
+    expect(messages.some((message) => message.includes("directories list"))).toBe(false);
+  });
+
+  it("reports pending-file format errors from the checked-in file", () => {
+    expect(checkPending(root)).toEqual([]);
   });
 
   it("accepts released commands, aliases, global flags, shorthands, and placeholders", () => {
