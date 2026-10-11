@@ -94,3 +94,24 @@ export function applyResultToastTitle(input: {
   }
   return APPLY_RESULT_COPY.wroteRemovedKept(input.wrote, input.removed, input.kept);
 }
+
+/** Connect splash (DT-6). ASCII punctuation only. */
+export const CONNECT_SPLASH_COPY = {
+  couldNotConnect: "Could not connect to the agent.",
+  sidecarConnectionFailed: "Sidecar connection failed",
+  retry: "Retry",
+  openLogs: "Open logs",
+  openLogsFailed(reason: string): string {
+    return reason
+      ? `Could not open the logs folder: ${reason}`
+      : "Could not open the logs folder.";
+  },
+  detailsSummary: "Show details",
+  detailsEmptyOutput: "The agent exited without printing anything.",
+  detailsExit(exit: string): string {
+    return `Agent exit: ${exit}`;
+  },
+  detailsLogFile(path: string): string {
+    return `Log file: ${path}`;
+  },
+} as const;
