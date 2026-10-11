@@ -7,7 +7,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
-import { parse as parseToml } from "smol-toml";
 import { hasParentTraversalSegment } from "../utils/path-containment.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
@@ -61,6 +60,7 @@ import {
   type SafeFileRemovalResult,
 } from "./safe-file-removal.js";
 import { captureManagedSnapshotState } from "./snapshot-capture.js";
+import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -98,6 +98,8 @@ export interface GenerateFilesOptions extends SerializeOptions {
   claudeConfig?: ClaudePluginConfig;
   resolvedEnvironment?: EnvironmentFragment;
   previousManagedPlacements?: ReadonlyMap<string, readonly string[]>;
+  /** When false, keep per-harness skill emits (status/drift). Default true. */
+  pinSkillEmits?: boolean;
 }
 
 export interface GlobalApplyOptions extends GenerateFilesOptions, MaterializeFilesOptions {
@@ -224,20 +226,6 @@ function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boo
   }
 }
 
-function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
-  }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
-    .join(",")}}`;
-}
-
 function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): boolean {
   if (fileContentMatchesExisting(fullPath, file)) {
     return true;
@@ -246,18 +234,14 @@ function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): bo
     return false;
   }
   try {
-    const live = readFileSync(fullPath, "utf-8");
-    const generated = file.content;
-    if (fullPath.endsWith(".json") || fullPath.endsWith(".jsonc")) {
-      return canonicalJson(JSON.parse(live)) === canonicalJson(JSON.parse(generated));
-    }
-    if (fullPath.endsWith(".toml")) {
-      return canonicalJson(parseToml(live)) === canonicalJson(parseToml(generated));
-    }
+    return fileContentsEquivalentForDrift(
+      file.path,
+      readFileSync(fullPath, "utf-8"),
+      file.content,
+    );
   } catch {
     return false;
   }
-  return false;
 }
 
 function isGenerateFilesOptions(
@@ -271,7 +255,8 @@ function isGenerateFilesOptions(
         "skillCursorMode" in value ||
         "skillSourceRoot" in value ||
         "previousManagedPlacements" in value ||
-        "mergeLiveSkillMarkdown" in value),
+        "mergeLiveSkillMarkdown" in value ||
+        "pinSkillEmits" in value),
   );
 }
 
@@ -349,6 +334,7 @@ export async function generateFiles(
       skillCursorMode: options.skillCursorMode,
       skillSourceRoot,
       projectRoot,
+      mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
       surfaceWarnings,
     });
     if (pid === "claude-code" && claudeConfig) {
@@ -361,6 +347,7 @@ export async function generateFiles(
       serializeOptions: {
         skillCursorMode: options.skillCursorMode,
         skillSourceRoot,
+        mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
       },
     });
     results.push({
@@ -370,6 +357,9 @@ export async function generateFiles(
     });
   }
 
+  if (options.pinSkillEmits === false) {
+    return results;
+  }
   return pinSkillEmitsToExistingLivePaths(
     projectRoot,
     results,

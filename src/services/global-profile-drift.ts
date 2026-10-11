@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { listMaterializationsForRootPath } from "../models/resource-materialization.js";
+import { hashOnDiskFile } from "./safe-file-removal.js";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
 import { resolvePluginSelector } from "../models/plugin-model.js";
@@ -350,6 +352,8 @@ export async function detectGlobalProfileStatus(input: {
       harness: input.harness,
       conflictPolicy: "replace",
       pull: false,
+      pinSkillEmits: false,
+      mergeLiveSkillMarkdown: false,
     });
   } catch (error) {
     return finalizeGlobalProfileStatus({
@@ -375,9 +379,30 @@ export async function detectGlobalProfileStatus(input: {
   const changes: DriftFileChange[] = [];
   for (const file of expectedApply.expected_files ?? []) {
     const current = readGlobalFile(homeRoot, file.path);
+    const owned = listMaterializationsForRootPath(homeRoot, file.path);
     if (current === null) {
+      if (owned.length === 0) {
+        continue;
+      }
       changes.push(
         withAffectedResources({ path: file.path, type: "deleted" }, file.content, null),
+      );
+      continue;
+    }
+    if (owned.length > 0) {
+      const diskHash = hashOnDiskFile(join(homeRoot, file.path));
+      if (owned.some((row) => row.generated_hash === diskHash)) {
+        continue;
+      }
+      if (fileContentsEquivalentForDrift(file.path, current, file.content)) {
+        continue;
+      }
+      changes.push(
+        withAffectedResources(
+          { path: file.path, type: "modified" },
+          file.content,
+          current,
+        ),
       );
       continue;
     }
