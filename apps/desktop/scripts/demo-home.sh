@@ -34,4 +34,7 @@ export HOME="$DEMO_HOME"
 export HARNESSTAP_TELEMETRY=0
 # HARNESSTAP_HOME would override HOME/.harnesstap and leak state out of the demo.
 unset HARNESSTAP_HOME
-exec bun src/agent/entry.ts
+# Background CI (`demo-home.sh &`) often leaves stdin as a closed FIFO. The
+# sidecar treats a FIFO stdin as "desktop parent died" and exits; /dev/null is
+# not a pipe, so parent-watch stays on the parent pid only.
+exec bun src/agent/entry.ts </dev/null
