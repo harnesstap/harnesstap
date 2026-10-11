@@ -23,6 +23,7 @@ import {
   visibleResourceTypeTabs,
   type ResourceTypeTabEmptyMode,
   type TypeTabAttention,
+  type TypeTabZeroSurface,
   typeTabAttentionTooltip,
 } from "../lib/resource-type-tabs";
 import { ChromeTooltip } from "./ChromeTooltip";
@@ -39,6 +40,7 @@ export interface ResourceTypeTabsProps {
   /** Profile resources omits All; Library / Not staged / compose keep it. */
   includeAll?: boolean;
   emptyMode?: ResourceTypeTabEmptyMode;
+  emptySurface?: TypeTabZeroSurface;
   /** Inventory wide pills. Prefer `density`. */
   wide?: boolean;
   /** `compact` hides type text on a nowrap chip row. Do not use on Add to profile. */
@@ -116,6 +118,7 @@ export function ResourceTypeTabs({
   disabled = false,
   includeAll = true,
   emptyMode = "hide",
+  emptySurface,
   wide = false,
   density,
   overflow = "wrap",
@@ -126,7 +129,7 @@ export function ResourceTypeTabs({
   const moreMeasureRef = useRef<HTMLSpanElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [hiddenCount, setHiddenCount] = useState(0);
-  const tabOptions = { includeAll, emptyMode };
+  const tabOptions = { includeAll, emptyMode, emptySurface };
   const tabs = visibleResourceTypeTabs(counts, tabOptions);
   const resolved = resolveResourceTypeTab(value, counts, tabOptions);
   const resolvedDensity = resolveTabDensity(density, wide);
