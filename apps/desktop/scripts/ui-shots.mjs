@@ -403,7 +403,10 @@ async function openHarnessScopeGallery(page, baseUrl, state) {
 }
 
 async function waitForConnected(page) {
-  await settle(page);
+  // ConnectSplash has no <main> until the first health check succeeds, and the
+  // first Vite compile of App.tsx can exceed the per-screen settle timeout.
+  await main(page).waitFor({ state: "visible", timeout: 30_000 });
+  await page.waitForTimeout(SETTLE_MS);
   const banner = page.getByText(/waiting for sidecar health check/i);
   await banner.waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {
     console.warn("shots: sidecar banner still visible after 15s; continuing");
