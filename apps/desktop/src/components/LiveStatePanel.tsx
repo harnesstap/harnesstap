@@ -1446,6 +1446,7 @@ export interface LiveStatePanelProps {
   onDiscardAllResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onActivateResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onAfterAdds?: (addedName: string) => Promise<void>;
+  onAfterRemoves?: () => Promise<void>;
   onAttachLibraryItem?: (item: {
     kind: "plugin" | "resource";
     id: string;
@@ -1518,6 +1519,7 @@ export function LiveStatePanel({
   onDiscardAllResources,
   onActivateResources,
   onAfterAdds,
+  onAfterRemoves,
   onAttachLibraryItem,
   addingAllResources = false,
   activatingResources = false,
@@ -2172,7 +2174,7 @@ export function LiveStatePanel({
                     onRemoveResourceFromProfile(item.resource, item.pluginId, options)
                 : undefined
             }
-            onAfterRemoves={onAfterAdds ? () => onAfterAdds("") : undefined}
+            onAfterRemoves={onAfterRemoves}
             onOpenAddModal={() => setAddModalOpen(true)}
             addingAllResources={addingAllResources}
             activatingResources={activatingResources}
