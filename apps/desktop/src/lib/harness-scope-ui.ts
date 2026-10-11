@@ -36,6 +36,7 @@ export {
   selectionFromGroups,
   uniqueSorted,
   unionHarnessScopes,
+  formatHarnessList,
 };
 export type { HarnessScope, LinkedHarnessGroup };
 

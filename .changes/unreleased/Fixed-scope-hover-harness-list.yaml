@@ -1,0 +1,5 @@
+kind: Fixed
+body: Profile resource hover cards list the same harnesses as the scope chip tooltip, from stored harness_scope.
+time: 2026-10-10T19:20:00Z
+custom:
+  Issue: ""
