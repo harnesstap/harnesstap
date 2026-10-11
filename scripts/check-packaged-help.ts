@@ -90,16 +90,19 @@ if (!tarball) {
   process.exit(1);
 }
 
-const extractRoot = mkdtempSync(join(tmpdir(), "ht-g7-"));
+const installRoot = mkdtempSync(join(tmpdir(), "ht-g7-"));
 const home = mkdtempSync(join(tmpdir(), "ht-g7-home-"));
-const extract = spawnSync("tar", ["-xzf", join(repoRoot, tarball), "-C", extractRoot], {
-  encoding: "utf-8",
-});
-if (extract.status !== 0) {
-  console.error(extract.stderr || extract.stdout);
-  process.exit(extract.status ?? 1);
+const tarballPath = join(repoRoot, tarball);
+const install = spawnSync(
+  "npm",
+  ["install", "--omit=dev", "--ignore-scripts", tarballPath],
+  { encoding: "utf-8", cwd: installRoot },
+);
+if (install.status !== 0) {
+  console.error("G7: npm install of packed tarball failed", install.stderr || install.stdout);
+  process.exit(install.status ?? 1);
 }
-const bin = join(extractRoot, "package", "dist", "bin.js");
+const bin = join(installRoot, "node_modules", "harnesstap", "dist", "bin.js");
 const env = {
   ...process.env,
   HOME: home,
