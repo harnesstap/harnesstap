@@ -450,6 +450,65 @@ describe("host plugin serialize", () => {
     }
   });
 
+  it("registers Claude host plugins on project apply and omits sibling bundled skills", async () => {
+    const home = createTempDir("host-plugin-claude-project-");
+    try {
+      const { pin } = writeDemoModPin(home);
+      const hello = makeResource({
+        type: "skill",
+        name: "hello",
+        origin_kind: "marketplace_link",
+        origin_ref: "https://github.com/example/demo.git",
+        content: "# hello\n",
+        metadata: {
+          imported_from: { plugin_name: "demo", relative_path: "skills/hello/SKILL.md" },
+        },
+      });
+      const extra = makeResource({
+        type: "skill",
+        name: "hello-extra",
+        origin_kind: "marketplace_link",
+        origin_ref: "https://github.com/example/demo.git",
+        content: "# extra\n",
+        metadata: {
+          imported_from: { plugin_name: "demo", relative_path: "skills/hello-extra/SKILL.md" },
+        },
+      });
+      const results = await generateFiles(
+        [pin, hello, extra],
+        ["claude-code"],
+        home,
+        { target: "project", projectRoot: home },
+      );
+      const files = results[0]?.files ?? [];
+      expect(files.some((file) => file.path.includes(".claude/skills/hello"))).toBe(false);
+      expect(files.some((file) => file.path.includes(".claude/skills/hello-extra"))).toBe(
+        false,
+      );
+      const installed = files.find(
+        (file) => file.path === ".claude/plugins/installed_plugins.json",
+      );
+      expect(installed).toBeDefined();
+      const parsed = JSON.parse(installed?.content ?? "{}") as {
+        version?: number;
+        plugins: Record<string, Array<{ scope: string; installPath: string; version: string }>>;
+      };
+      expect(parsed.version).toBe(2);
+      expect(parsed.plugins["demo@demo-market"]?.[0]).toMatchObject({
+        scope: "user",
+        installPath: "cache/demo-market/demo/1.0.0",
+        version: "1.0.0",
+      });
+      const settings = JSON.parse(
+        files.find((file) => file.path === ".claude/settings.json")?.content ?? "{}",
+      ) as { enabledPlugins?: Record<string, boolean> };
+      expect(settings.enabledPlugins?.["demo@demo-market"]).toBe(true);
+      expect(settings.enabledPlugins?.demo).toBeUndefined();
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
   it("omits bundled skills and same-name commands on Claude and Cursor", async () => {
     const home = createTempDir("host-plugin-omit-bundled-");
     try {

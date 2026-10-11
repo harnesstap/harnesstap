@@ -679,7 +679,7 @@ describe("applier services", () => {
     }
   });
 
-  it("preserves ownership for skipped files on partial snapshot reapply", async () => {
+  it("does not re-own skipped files on partial snapshot reapply", async () => {
     const context = await createInitializedTestContext("applier-global-ownership");
 
     try {
@@ -733,17 +733,16 @@ describe("applier services", () => {
 
       expect(result.cancelled).toBe(false);
       expect(result.skippedFiles).toContain(".copilot/skills/research/SKILL.md");
+      expect(readFileSync(skillPath, "utf-8")).toBe("keep me");
 
       const installs = snapshots.listImportedSnapshotInstalls(snapshot.id);
       expect(installs).toEqual([
         expect.objectContaining({
           platform_id: "copilot-cli",
-          files: expect.arrayContaining([
-            ".copilot/skills/research/SKILL.md",
-            ".copilot/mcp-config.json",
-          ]),
+          files: [".copilot/mcp-config.json"],
         }),
       ]);
+      expect(installs[0]?.files).not.toContain(".copilot/skills/research/SKILL.md");
     } finally {
       await context.cleanup();
     }

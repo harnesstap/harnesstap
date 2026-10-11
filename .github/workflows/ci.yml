@@ -290,6 +290,27 @@ jobs:
           path: apps/desktop/e2e/artifacts/shots/[0-9]*.png
           if-no-files-found: ignore
 
+  desktop-sidecar:
+    name: desktop-sidecar (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      # Compiles the real ht-agent sidecar with scripts/build-sidecar.sh, then
+      # runs the binary: --version must print the package version and the agent
+      # must answer /v1/health. The source agent cannot catch compile-only bugs.
+      - name: Build and run compiled sidecar
+        shell: bash
+        run: bun run check:compiled-sidecar
+
   validate:
     runs-on: ubuntu-latest
     needs:
@@ -302,6 +323,7 @@ jobs:
       - test-docs
       - desktop-typecheck
       - desktop-visual
+      - desktop-sidecar
     if: always()
     steps:
       - name: Fail if required tests did not succeed
@@ -324,6 +346,7 @@ jobs:
           TEST_DOCS: ${{ needs.test-docs.result }}
           DESKTOP_TYPECHECK: ${{ needs.desktop-typecheck.result }}
           DESKTOP_VISUAL: ${{ needs.desktop-visual.result }}
+          DESKTOP_SIDECAR: ${{ needs.desktop-sidecar.result }}
         run: |
           set -euo pipefail
           failed=0
@@ -368,6 +391,7 @@ jobs:
           check_required test-docs "$TEST_DOCS" "$DETECT_GLOBAL" "$DETECT_DOCS"
           check_required desktop-typecheck "$DESKTOP_TYPECHECK" "$DETECT_DESKTOP"
           check_required desktop-visual "$DESKTOP_VISUAL" "$DETECT_DESKTOP_VISUAL"
+          check_required desktop-sidecar "$DESKTOP_SIDECAR" "true"
           if [ "$failed" -ne 0 ]; then
             exit 1
           fi

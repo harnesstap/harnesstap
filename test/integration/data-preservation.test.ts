@@ -22,7 +22,12 @@ import {
   stashProfileCommand,
 } from "../../src/services/profile-stash.ts";
 import { switchProfile } from "../../src/services/profile-switch.ts";
-import { restoreSafeRemovalBackup } from "../../src/services/safe-file-removal.ts";
+import { removeResourceFromProfile } from "../../src/services/profile-remove-resource.ts";
+import {
+  classifyManagedPathOwnership,
+  restoreSafeRemovalBackup,
+} from "../../src/services/safe-file-removal.ts";
+import { listMaterializationsForRootPath } from "../../src/models/resource-materialization.ts";
 
 const SENTINEL_NAME = "harnesstap-unmanaged-sentinel.txt";
 const SENTINEL_BODY = "HARNESSTAP_UNMANAGED_SENTINEL\n";
@@ -365,6 +370,91 @@ describe("G4 data preservation", () => {
         expect(statSync(record.path).mode).toBe(record.mode);
       }
       assertSentinels(sentinels);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not re-own a hand-edited skill after switch-away, switch-back, then remove", async () => {
+    const context = await createTestContext("g4-switchback-skill-edit");
+    try {
+      seedQaHome(context.homeDir, context.projectDir);
+      const init = await runCli(["init", "--harnesses", "claude-code,cursor,codex,opencode"]);
+      expect(init.exitCode ?? 0).toBe(0);
+      setHarnessPreference({
+        registered_harnesses: ["claude-code", "cursor", "codex", "opencode"],
+      });
+      const applyOpts = { conflictPolicy: "replace" as const, pull: false };
+      await useProfileCommand("global default", applyOpts);
+
+      const scope = await runCli([
+        "resource",
+        "scope",
+        "cursor-only-skill",
+        "--add",
+        "claude-code,codex",
+      ]);
+      expect(scope.exitCode ?? 0).toBe(0);
+      await applyProfilePlugin("global default", applyOpts);
+
+      const relative = ".claude/skills/cursor-only-skill/SKILL.md";
+      const skillPath = join(context.homeDir, relative);
+      expect(existsSync(skillPath)).toBe(true);
+      const beforeEdit = readFileSync(skillPath);
+      const ownedHash = listMaterializationsForRootPath(context.homeDir, relative)[0]
+        ?.generated_hash;
+      expect(ownedHash).toBeDefined();
+      expect(classifyManagedPathOwnership(context.homeDir, relative)).toBe("owned");
+
+      const edited = Buffer.concat([beforeEdit, Buffer.from("\nUSER-SWITCHBACK-EDIT\n")]);
+      writeFileSync(skillPath, edited);
+      expect(classifyManagedPathOwnership(context.homeDir, relative)).toBe("modified");
+
+      createProfileCommand({ name: "work" });
+      const switchAway = await switchProfile("work", { apply: applyOpts });
+      expect(switchAway.ok && !switchAway.cancelled).toBe(true);
+      if (!switchAway.ok || switchAway.cancelled) {
+        throw new Error("expected switch to work to succeed");
+      }
+      expect(readFileSync(skillPath).equals(edited)).toBe(true);
+      const awayKeeps = switchAway.apply.skipped_removals ?? [];
+      expect(
+        awayKeeps.some((entry) => entry.path === relative && entry.reason === "modified"),
+      ).toBe(true);
+
+      const switchBack = await switchProfile("global default", { apply: applyOpts });
+      expect(switchBack.ok && !switchBack.cancelled).toBe(true);
+      if (!switchBack.ok || switchBack.cancelled) {
+        throw new Error("expected switch back to global default to succeed");
+      }
+      expect(readFileSync(skillPath).equals(edited)).toBe(true);
+      expect(listMaterializationsForRootPath(context.homeDir, relative)[0]?.generated_hash)
+        .toBe(ownedHash);
+      expect(classifyManagedPathOwnership(context.homeDir, relative)).toBe("modified");
+      const backKeeps = [
+        ...(switchBack.apply.skipped_removals ?? []),
+        ...(switchBack.apply.removals?.owned_modified ?? []),
+      ];
+      expect(
+        backKeeps.some((entry) =>
+          typeof entry === "string" ? entry === relative : entry.path === relative,
+        ),
+      ).toBe(true);
+
+      removeResourceFromProfile({
+        profileSelector: "global default",
+        resourceType: "skill",
+        resourceName: "cursor-only-skill",
+      });
+      const afterRemove = await applyProfilePlugin("global default", applyOpts);
+      expect(readFileSync(skillPath).equals(edited)).toBe(true);
+      expect(afterRemove.removed_files ?? []).not.toContain(relative);
+      expect(
+        (afterRemove.skipped_removals ?? []).some(
+          (entry) => entry.path === relative && entry.reason === "modified",
+        ),
+      ).toBe(true);
+      expect(afterRemove.removals?.owned_modified).toContain(relative);
     } finally {
       await context.cleanup();
     }

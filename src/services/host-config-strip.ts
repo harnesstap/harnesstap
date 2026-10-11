@@ -17,7 +17,6 @@ function pluginRegistryKeys(resource: Pick<Resource, "name" | "namespace" | "ori
   if (resource.origin_ref) {
     keys.add(resource.origin_ref);
   }
-  keys.add(resource.name);
   if (resource.namespace) {
     keys.add(`${resource.name}@${resource.namespace}`);
   }

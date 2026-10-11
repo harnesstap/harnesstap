@@ -1,10 +1,28 @@
+import { parse as parseToml } from "smol-toml";
 import { mcpConfigContentsEquivalent } from "./mcp-config-bridge.js";
 import { isMcpConfigManagedPath } from "./profile-commit-resource.js";
 import { jsonContentsEquivalent } from "../utils/json-equal.js";
 
+function trailingNewlineEquivalent(left: string, right: string): boolean {
+  const normalize = (value: string) => value.replace(/\r\n/g, "\n").replace(/\n+$/u, "");
+  return normalize(left) === normalize(right);
+}
+
+function tomlContentsEquivalent(left: string, right: string): boolean {
+  try {
+    return jsonContentsEquivalent(
+      JSON.stringify(parseToml(left)),
+      JSON.stringify(parseToml(right)),
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Drift equivalence for managed files: byte match first, then parsed JSON,
- * then MCP semantic compare for harness serialization noise.
+ * Drift and apply-skip equivalence: byte match first, then trailing-newline
+ * only, then parsed JSON/TOML, then MCP semantic compare for harness
+ * serialization noise (type: stdio, tools).
  */
 export function fileContentsEquivalentForDrift(
   path: string,
@@ -14,7 +32,13 @@ export function fileContentsEquivalentForDrift(
   if (current === expected) {
     return true;
   }
-  if (/\.json$/i.test(path) && jsonContentsEquivalent(current, expected)) {
+  if (trailingNewlineEquivalent(current, expected)) {
+    return true;
+  }
+  if (/\.jsonc?$/i.test(path) && jsonContentsEquivalent(current, expected)) {
+    return true;
+  }
+  if (/\.toml$/i.test(path) && tomlContentsEquivalent(current, expected)) {
     return true;
   }
   // Copilot (and similar) emit extra fields (type/tools) that parse as different JSON
