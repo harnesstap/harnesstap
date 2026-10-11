@@ -89,7 +89,7 @@ export function applyResultToastTitle(input: {
   kept: number;
   unchanged?: number;
 }): string {
-  if (input.wrote === 0 && input.removed === 0 && input.kept === 0) {
+  if (input.wrote === 0 && input.removed === 0) {
     return APPLY_RESULT_COPY.everythingUpToDate(input.unchanged ?? 0);
   }
   return APPLY_RESULT_COPY.wroteRemovedKept(input.wrote, input.removed, input.kept);
