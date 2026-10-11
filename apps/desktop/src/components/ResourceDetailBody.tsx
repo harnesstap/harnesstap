@@ -45,6 +45,7 @@ import {
   type ResourceSyncResult,
 } from "../lib/api/resource-mutate";
 import { formatLibraryTimestamp } from "../lib/library-timestamp";
+import { formatCount } from "../lib/plurals";
 import {
   hostPluginVersionHint,
   hostPluginVersionOptions,
@@ -1264,7 +1265,7 @@ export function ResourceDetailBody({
       {preview ? (
         <div className="resource-detail-sync-preview">
           <p className="muted">
-            Checked {preview.checked} resource(s) · {preview.updated.length}{" "}
+            Checked {formatCount(preview.checked, "resource")} · {preview.updated.length}{" "}
             updated, {preview.unchanged.length} unchanged,{" "}
             {preview.skipped.length} skipped, {preview.stale.length} stale
           </p>

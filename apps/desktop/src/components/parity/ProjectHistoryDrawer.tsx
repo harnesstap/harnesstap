@@ -8,6 +8,7 @@ import {
 } from "../../lib/api/project-history";
 import { Undo2 } from "lucide-react";
 import { noResultsTitle } from "../../lib/empty-copy";
+import { formatCount } from "../../lib/plurals";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { IconActionButton } from "../IconActionButton";
 import { FullScreenPanel } from "../FullScreenPanel";
@@ -41,15 +42,11 @@ function formatRelativeTime(value: string): string {
   const minute = 60_000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  if (diffMs < minute) return `${Math.max(1, Math.floor(diffMs / 1000))} seconds ago`;
-  if (diffMs < hour) return `${Math.floor(diffMs / minute)} minutes ago`;
-  if (diffMs < day) return `${Math.floor(diffMs / hour)} hours ago`;
-  if (diffMs <= 30 * day) return `${Math.floor(diffMs / day)} days ago`;
+  if (diffMs < minute) return `${formatCount(Math.max(1, Math.floor(diffMs / 1000)), "second")} ago`;
+  if (diffMs < hour) return `${formatCount(Math.floor(diffMs / minute), "minute")} ago`;
+  if (diffMs < day) return `${formatCount(Math.floor(diffMs / hour), "hour")} ago`;
+  if (diffMs <= 30 * day) return `${formatCount(Math.floor(diffMs / day), "day")} ago`;
   return date.toISOString().slice(0, 10);
-}
-
-function formatCount(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 export function ProjectHistoryDrawer({

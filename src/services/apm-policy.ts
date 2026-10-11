@@ -13,6 +13,7 @@ import type { DependencySourceKind, Resource, ResourceType } from "../types.js";
 import type { ResolutionResult } from "./resolve/types.js";
 import { resolutionKey } from "./resolve/resource-resolution.js";
 import { assertContainedPath } from "../utils/path-containment.js";
+import { formatCount } from "../copy/plurals.js";
 
 const APM_MANIFEST_FILENAME = "apm.yml";
 
@@ -1047,7 +1048,7 @@ export function formatPolicyViolations(violations: PolicyViolation[]): string {
     return violations[0].message;
   }
   return [
-    `${violations.length} policy violation(s)`,
+    `${formatCount(violations.length, "policy violation")}`,
     ...violations.map((violation) => `- ${violation.message}`),
   ].join("\n");
 }

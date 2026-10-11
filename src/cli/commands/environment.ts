@@ -754,7 +754,7 @@ async function handleEnvironmentStatusCommand(opts: {
           empty: "No drift detected.",
         });
         ui.hint(
-          `Export expected values in your shell or run ${formatCommand(`environment use ${status.effective_environment}`)} after updating process env.`,
+          `Export expected values in your shell or run ${formatCommand(["environment", "use", status.effective_environment])} after updating process env.`,
         );
       }
     }

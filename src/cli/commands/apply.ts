@@ -33,6 +33,7 @@ import {
   fail,
   formatCommand,
 } from "../shared.js";
+import { printApplyPayload } from "../print-apply-summary.js";
 import { trackPluginApplied } from "../../telemetry/index.js";
 import { CriticalUnicodeError } from "../../services/unicode-scan.js";
 import { handleProjectApplyCommand } from "./plugin.js";
@@ -170,11 +171,7 @@ async function handleGlobalApplyCommand(
       console.log(renderExplain(payload.resolution));
       console.log("");
     }
-
-    const dryPrefix = payload.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
-    ui.success(
-      `${dryPrefix}Applied ${ui.theme.accent(payload.profile_name)} to ${payload.harnesses.join(", ") || "(none)"}`,
-    );
+    printApplyPayload(payload);
   } catch (err) {
     process.exitCode = 1;
     if (err instanceof CriticalUnicodeError) {

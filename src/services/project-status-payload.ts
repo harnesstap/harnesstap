@@ -16,6 +16,7 @@ import { isProfilePlugin } from "../constants/profile.js";
 import { listSnapshots } from "../models/snapshot.js";
 import type { Plugin, Project, Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
+import { formatCount } from "../copy/plurals.js";
 
 export interface AppliedPluginStatusRow {
   plugin: Plugin;
@@ -72,7 +73,7 @@ export function formatResourceTypeSummary(resources: Pick<Resource, "type">[]): 
     counts.set(resource.type, (counts.get(resource.type) ?? 0) + 1);
   }
   const summary = RESOURCE_TYPES.filter((type) => (counts.get(type) ?? 0) > 0).map(
-    (type) => `${counts.get(type)} ${type}${(counts.get(type) ?? 0) === 1 ? "" : "s"}`,
+    (type) => formatCount(counts.get(type) ?? 0, type),
   );
   return summary.join(", ");
 }
@@ -226,7 +227,7 @@ export function formatDriftStatusLabel(
   if (!driftReport.has_drift) {
     return "none";
   }
-  return `${driftReport.changes.length} change(s) since snapshot ${driftReport.snapshot_id}`;
+  return `${formatCount(driftReport.changes.length, "change")} since snapshot ${driftReport.snapshot_id}`;
 }
 
 export async function buildProjectStatusPayload(projectRoot: string): Promise<ProjectStatusPayload> {

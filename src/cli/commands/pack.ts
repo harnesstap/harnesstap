@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { packProject, PackError } from "../../services/apm-pack.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
+import { formatCount } from "../formatting.js";
 import {
   fail,
   formatCommand,
@@ -56,13 +57,13 @@ export function handlePackCommand(opts: PackCommandOpts): void {
     }
 
     const dest = result.dryRun ? `${result.outputPath} (dry run)` : result.outputPath;
-    ui.success(`Packed ${result.fileCount} file(s) -> ${dest}`);
+    ui.success(`Packed ${formatCount(result.fileCount, "file")} -> ${dest}`);
     console.log(
       ui.theme.muted(
         "Plugin bundle ready: contains plugin.json plus plugin-native directories (agents/, skills/, commands/, hooks/) and an embedded apm.lock.yaml for install-time integrity verification.",
       ),
     );
-    ui.info(`Share with: ${formatCommand(`apply ${result.outputPath}`)}`);
+    ui.info(`Share with: ${formatCommand(["apply", result.outputPath])}`);
   } catch (error) {
     process.exitCode = 1;
     if (error instanceof PackError) {

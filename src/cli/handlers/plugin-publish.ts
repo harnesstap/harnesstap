@@ -22,9 +22,17 @@ import {
 } from "../../services/plugin-versioning.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { formatCommand } from "../shared.js";
 
-function publishVersionRequiredMessage(pluginName: string, reason: string): string {
-  return `${reason} Pass --version <semver> to cut a new plugin version before publishing (e.g. \`plugin publish ${pluginName} --version 1.1.0\`).`;
+export function publishVersionRequiredMessage(
+  pluginName: string,
+  reason: string,
+  kind: "plugin" | "profile",
+): string {
+  if (kind === "profile") {
+    return `${reason} Cut a version first, then publish. For example: ${formatCommand(["plugin", "cut", pluginName, "--version", "1.1.0"])}`;
+  }
+  return `${reason} Pass --version <semver> to cut a new plugin version before publishing (e.g. \`${formatCommand(["plugin", "publish", pluginName, "--version", "1.1.0"])}\`).`;
 }
 
 export async function handlePluginPublishCommand(
@@ -36,6 +44,7 @@ export async function handlePluginPublishCommand(
     account?: string;
     format?: string;
     version?: string;
+    kind?: "plugin" | "profile";
   },
 ) {
   const db = getDb();
@@ -57,6 +66,7 @@ export async function handlePluginPublishCommand(
         publishVersionRequiredMessage(
           plugin.name,
           `Plugin ${plugin.name}@${plugin.version} has unpublished edits.`,
+          opts.kind ?? "plugin",
         ),
         { dirtyPlugins: [{ name: plugin.name, version: plugin.version }] },
       );

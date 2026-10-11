@@ -30,6 +30,7 @@ import { registeredHarnessesOf } from "../../services/harness-targets.js";
 import { shouldUseWizard } from "../../services/wizards/shared.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { formatCount } from "../formatting.js";
 import { parseHarnessList } from "../handlers/parse-flags.js";
 import { configureCommandGroup } from "../help.js";
 import {
@@ -210,11 +211,11 @@ async function handleHarnessSyncCommand(opts: {
     }
     const verb = opts.dryRun ? "Would sync" : "Synced";
     ui.success(
-      `${verb} ${result.platforms_synced.join(", ")} ${ui.icons.hint} ${result.files_written} files`,
+      `${verb} ${result.platforms_synced.join(", ")} ${ui.icons.hint} ${formatCount(result.files_written, "file")}`,
     );
     if (result.conflicts.length > 0) {
       ui.dim(
-        `${result.conflicts.length} conflict${result.conflicts.length === 1 ? "" : "s"} resolved with last-write (newest on-disk copy)`,
+        `${formatCount(result.conflicts.length, "conflict")} resolved with last-write (newest on-disk copy)`,
       );
     }
     for (const warning of result.surface_warnings) {
