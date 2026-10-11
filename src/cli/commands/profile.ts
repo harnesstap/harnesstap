@@ -59,10 +59,12 @@ import { renderCliError } from "../runtime.js";
 import {
   fail,
   formatCommand,
+  formatHintCommand,
 } from "../shared.js";
 import {
   printApplyDryRun,
   printApplySuccess,
+  printKeptFiles,
   removalSkipReason,
 } from "../print-apply-summary.js";
 import { registerProfileCreateCommand } from "../handlers/profile-create.js";
@@ -83,12 +85,11 @@ function printPlannedRemovals(payload: ApplyProfilePluginResult): void {
   for (const path of payload.removed_files ?? []) {
     console.log(`  remove ${path}`);
   }
-  for (const skipped of payload.skipped_removals ?? []) {
-    if (skipped.reason === "missing") {
-      continue;
-    }
-    ui.warn(skipped.message);
-  }
+  const kept = (payload.skipped_removals ?? []).flatMap((entry) => {
+    const reason = removalSkipReason(entry.reason);
+    return reason ? [{ path: entry.path, reason }] : [];
+  });
+  printKeptFiles(kept);
   if (payload.removal_backup && (payload.removed_files?.length ?? 0) > 0) {
     ui.info(`Backup: ${payload.removal_backup}`);
   }
@@ -299,7 +300,9 @@ profileCmd
         ui.warn(
           `Active profile ${ui.theme.accent(status.active_profile)} has not been applied globally yet.`,
         );
-        ui.hint(`Run ${formatCommand(`profile use ${status.active_profile}`)} to materialize home harness files.`);
+        ui.hint(
+          `Run ${formatHintCommand(["profile", "use", status.active_profile])} to materialize home harness files.`,
+        );
       } else if (!status.has_drift) {
         ui.success(`Global harness files are in sync with profile ${ui.theme.accent(status.active_profile)}.`);
       } else {
@@ -312,7 +315,9 @@ profileCmd
         if (status.changes.length > 0) {
           ui.dim(`${status.changes.length} file(s) differ on disk.`);
         }
-        ui.hint(`Run ${formatCommand(`profile use ${status.active_profile}`)} to refresh global harness files.`);
+        ui.hint(
+          `Run ${formatHintCommand(["profile", "use", status.active_profile])} to refresh global harness files.`,
+        );
       }
 
       const collisionCount = status.host_managed?.cursor?.collisions.length ?? 0;

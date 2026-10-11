@@ -591,15 +591,17 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       files.push({ path: `${commandsPath}${r.name}.md`, content: r.content });
     }
 
-    if (target === "global") {
-      return emitHostPluginTrees(byType.get("plugin") ?? [], {
-        layout: "claude-code",
-        homeRoot: projectRoot,
-        files,
-        surfaceWarnings: options?.surfaceWarnings,
-      });
-    }
-
-    return files;
+    // Claude Code loads host plugins from ~/.claude/plugins/installed_plugins.json
+    // plus enabledPlugins keyed plugin@marketplace
+    // (https://code.claude.com/docs/en/plugins/loading). Emit that registry at
+    // both global and project apply. Project apply from HOME is the usual
+    // `ht apply <plugin>` path; Claude does not also load standalone skill
+    // copies of the same plugin.
+    return emitHostPluginTrees(byType.get("plugin") ?? [], {
+      layout: "claude-code",
+      homeRoot: options.projectRoot ?? projectRoot,
+      files,
+      surfaceWarnings: options?.surfaceWarnings,
+    });
   }
 }

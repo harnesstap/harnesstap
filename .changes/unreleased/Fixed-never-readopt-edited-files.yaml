@@ -1,0 +1,5 @@
+kind: Fixed
+body: Stop apply and profile switch from re-owning a file whose hash no longer matches the last HarnessTap write. Skipped writes do not rewrite the materialization hash, so a later removal cannot delete a hand-edited skill after switch-away and switch-back.
+time: 2026-10-10T18:55:00Z
+custom:
+  Issue: ""
