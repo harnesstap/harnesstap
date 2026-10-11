@@ -25,5 +25,8 @@ describe("desktop sidecar lifecycle (DT-10)", () => {
     expect(entryTs).toContain('process.on("SIGINT", shutdown)');
     expect(entryTs).toContain('process.on("SIGTERM", shutdown)');
     expect(entryTs).toContain("installAgentParentWatch");
+    expect(parentWatchTs).toContain("stdinIsParentPipe");
+    expect(parentWatchTs).toContain("isFIFO()");
+    expect(sidecarCheckTs).toContain('stdio: ["pipe", "pipe", "pipe"]');
   });
 });
