@@ -1,0 +1,5 @@
+kind: Docs
+body: Use GitHub URLs for Scenario 28 links in scenario 17, replace the em dash in that status line, and use ASCII ellipsis in Core concepts.
+time: 2026-10-10T19:25:00Z
+custom:
+  Issue: "375"

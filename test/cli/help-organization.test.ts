@@ -300,6 +300,13 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("ENVIRONMENT CASCADE");
     expect(result.stdout).toContain("ht help scenario");
     expect(result.stdout).toMatch(/11\s+Start from a catalog baseline/);
+    expect(result.stdout).not.toContain("…");
+    expect(result.stdout).toContain("claude-code, codex, cursor, ...");
+    expect(result.stdout).not.toContain("./28-machine-migration.md");
+    expect(result.stdout).toContain(
+      "https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/28-machine-migration.md",
+    );
+    expect(result.stdout).not.toContain("—");
   });
 
   it("shows help in top-level help", async () => {
