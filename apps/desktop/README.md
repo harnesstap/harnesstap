@@ -125,6 +125,10 @@ bun run desktop:install
 ## Sidecar embedding
 
 - Root `bun run build:sidecar` compiles `src/agent/entry.ts` → `dist/sidecar/ht-agent`
+- The build passes `--define __HT_VERSION__` so the compiled binary never reads `package.json`; `ht-agent --version` prints the version
+- `bun run check:compiled-sidecar` builds the sidecar for this machine and runs it (`--version` plus `GET /v1/health`); CI runs it on Linux, macOS, and Windows
+- The shell writes sidecar output to `ht-agent.log` in the app log directory (macOS: `~/Library/Logs/dev.harnesstap.desktop/`). The connect splash shows the last stderr lines under "Show details", and "Open logs" opens that folder via the opener plugin (scoped to `$APPLOG`)
+- Set `HARNESSTAP_AGENT_SIMULATE_CRASH=1` before `bun run desktop:dev` to make the sidecar exit 1 at startup and see the error splash
 - `apps/desktop/scripts/prepare-sidecar.sh` copies the binary to `src-tauri/binaries/ht-agent-<target-triple>` (`.exe` suffix on Windows)
 - `tauri.conf.json` lists `externalBin: ["binaries/ht-agent"]` (Release AppImage bundling shelters `ht-agent` from linuxdeploy's `ldd` scan by sidecar name; the sidecar stays next to the desktop executable)
 

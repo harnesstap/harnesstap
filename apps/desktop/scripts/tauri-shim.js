@@ -36,6 +36,8 @@
         return Promise.resolve(randomId());
       case "plugin:event|unlisten":
       case "plugin:shell|open":
+      case "plugin:opener|open_path":
+      case "plugin:opener|reveal_item_in_dir":
         return Promise.resolve(null);
       case "plugin:dialog|open":
         return Promise.resolve(window.__HT_PROJECT_PATH__ ?? null);
