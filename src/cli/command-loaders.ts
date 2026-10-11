@@ -51,6 +51,12 @@ async function importLoader(
         mod.registerConfigCommands(root);
       };
     }
+    case "doctor": {
+      const mod = await import("./commands/doctor.js");
+      return (root) => {
+        mod.registerDoctorCommand(root);
+      };
+    }
     case "environment": {
       const mod = await import("./commands/environment.js");
       return (root) => {
