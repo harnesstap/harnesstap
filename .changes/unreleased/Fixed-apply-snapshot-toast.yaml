@@ -1,0 +1,5 @@
+kind: Fixed
+body: Open the Desktop View snapshot dialog only from the toast action, show taken/changed/undo copy, and keep action toasts wrapping inside 360px.
+time: 2026-10-10T19:00:00Z
+custom:
+  Issue: ""
