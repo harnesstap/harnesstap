@@ -39,7 +39,7 @@ describe("CLI harness", () => {
         "minimax-code",
       ]);
 
-      const pluginList = await runCli(["l", "ls", "--local-only", "--format", "json"], {
+      const pluginList = await runCli(["plugin", "ls", "--local-only", "--format", "json"], {
         commandName: "ht",
       });
       expect(Array.isArray(JSON.parse(pluginList.stdout))).toBe(true);

@@ -69,10 +69,13 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
 const FLAG_PROVIDERS: FlagRegistry = {
   "init:main": [completeHarnessSlugs],
   "init:aliases": [completeHarnessSlugs],
+  "init:harnesses": [completeHarnessSlugs],
   "harness set:main": [completeHarnessSlugs],
   "harness set:aliases": [completeHarnessSlugs],
+  "harness set:harnesses": [completeHarnessSlugs],
   "harness project set:main": [completeHarnessSlugs],
   "harness project set:aliases": [completeHarnessSlugs],
+  "harness project set:harnesses": [completeHarnessSlugs],
   "migrate export:plugin": [completeLocalPlugins],
   "migrate export:resource": [completeLocalResources],
   "plugin edit:type": [staticEnumProvider(PLUGIN_ATTACHMENT_TYPES)],

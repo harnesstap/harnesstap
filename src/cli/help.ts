@@ -56,7 +56,10 @@ export function resolveCommandDescription(command: Command): string {
 
 /** Commands that run a default action while also hosting subcommands. */
 export function commandKeepsDefaultAction(command: Command): boolean {
-  return command.name() === "init";
+  if (command.name() === "init") {
+    return true;
+  }
+  return command.name() === "publish" && command.parent?.name() === "plugin";
 }
 
 function commandUsageLine(cmd: Command): string {
