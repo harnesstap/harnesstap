@@ -33,4 +33,5 @@ Agent harness configuration toolkit. Follow these conventions when working in th
 
 - User-facing docs live in `README.md` and `docs/`. Put the content there; do not link those pages at `SPEC.md` or working notes.
 - `SPEC.md` is the contributor source of truth for product behavior. Keep it in git at the repo root. Update it when CLI behavior or concepts change.
+- `README.md` describes only the latest published release, in the present tense: no version-gated notes and no unreleased features. Put README text for unreleased behaviour in `docs/unreleased-readme.md` (format in its header); the release flow folds it in.
 - Working notes, Superpowers plans, and local task lists belong in `docs/internal/` (gitignored). Do not commit transcripts, `TODOS.md`, or plan files.

@@ -131,10 +131,8 @@ Default onboarding in a repo that already has `apm.yml`. Same loop as `ht apply`
 
 ### Project: scan and apply
 
-Available from 1.3. On 1.2, use `ht harness set`.
-
 ```bash
-ht init --harnesses codex,claude-code,cursor
+ht init --main codex --aliases claude-code,cursor
 ht scan .
 ht resource list
 ht apply engineering-foundation --project .
@@ -145,10 +143,8 @@ ht status .
 
 ### Machine: profile switch
 
-Available from 1.3. On 1.2, use `ht harness set`.
-
 ```bash
-ht init --harnesses claude-code,cursor,codex
+ht init --main claude-code --aliases cursor,codex
 ht profile use "global default"
 # after you compose a `work` profile:
 ht work
@@ -194,10 +190,8 @@ Initialise HarnessTap, scan an existing repository, browse catalog plugins, appl
 
 [Full walkthrough →](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
-Available from 1.3. On 1.2, use `ht harness set`.
-
 ```bash
-ht init --harnesses codex,claude-code,cursor
+ht init --main codex --aliases claude-code,cursor
 ht scan .                    # detect existing resources
 ht resource list             # review discovered resources
 ht plugin list --search foundation --remote-only
@@ -277,7 +271,7 @@ To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: fals
 
 CLI and Desktop can send anonymous product analytics (install, Cloud connect, plugin apply) to the HarnessTap EU PostHog project after you opt in. Desktop asks on first start. CLI prints a one-time warning with `HARNESSTAP_TELEMETRY=0` / `"telemetry": { "enabled": false }` disable instructions (and how to enable). Details: [Telemetry](docs/telemetry.md).
 
-Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md). Private GitHub marketplaces: `ht github login`.
+Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md).
 
 ---
 
@@ -286,7 +280,7 @@ Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md). Private Gi
 ```bash
 ht harness list
 ht harness list --supported    # native serializers only
-ht harness set --harnesses claude-code,cursor,codex
+ht harness set --main claude-code --aliases cursor,codex
 ```
 
 See the full matrix — resource types, skill emission, plugin support, and paths — in **[Supported harnesses](docs/supported-harnesses.md)**.
@@ -295,7 +289,7 @@ See the full matrix — resource types, skill emission, plugin support, and path
 
 ## Where data lives
 
-Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, profiles, tracked projects, snapshots, harness preferences). Optional settings live in `~/.harnesstap/config.jsonc`. Cloud accounts: `~/.harnesstap/cloud-accounts.json`. GitHub session: `~/.harnesstap/github-session.json`.
+Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, profiles, tracked projects, snapshots, harness preferences). Optional settings live in `~/.harnesstap/config.jsonc`. Cloud accounts: `~/.harnesstap/cloud-accounts.json`.
 
 Override the base directory with `HARNESSTAP_HOME`.
 

@@ -221,6 +221,28 @@ jobs:
           body_path: .changes/${{ steps.resolve.outputs.tag }}.md
           generate_release_notes: false
 
+  # The Tag release job refreshed scripts/released-cli-surface.json from source
+  # before publishing. Confirm it matches what npm actually serves, so the G7
+  # README guard keeps comparing against the real released package.
+  verify-cli-surface:
+    name: verify released CLI surface
+    needs: release
+    if: needs.release.result == 'success' && needs.release.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Compare snapshot with the published package
+        run: bun scripts/snapshot-released-cli.ts --version "${{ needs.release.outputs.tag }}" --check
+
   # Native GitHub-hosted runners (no cross-compile). Tauri v2 filters
   # bundle.targets to the host OS, so each job only produces that platform's
   # installers. Builds are unsigned; see apps/desktop/README.md.
