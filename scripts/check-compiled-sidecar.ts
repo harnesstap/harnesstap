@@ -93,7 +93,7 @@ async function waitForPort(portFile: string, child: ChildProcess, stderr: () => 
 }
 
 async function checkHealthHandshake(home: string, env: NodeJS.ProcessEnv): Promise<void> {
-  const child = spawn(sidecarPath, [], { env, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(sidecarPath, [], { env, stdio: ["pipe", "pipe", "pipe"] });
   let captured = "";
   child.stdout?.on("data", (chunk: Buffer) => {
     captured += chunk.toString();
