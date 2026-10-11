@@ -7,11 +7,20 @@ import {
   parseHarnessScope,
   expandLinkedSelection,
   selectionFromGroups,
+  uniqueSorted,
+  unionHarnessScopes,
   type HarnessScope,
   type LinkedHarnessGroup,
 } from "../../../../src/services/harness-scope.ts";
 import { harnessDisplayName } from "./harness-meta";
-import { formatHarnessList, SCOPE_COPY, subsetScopeLine } from "../../../../src/copy/scope";
+import {
+  alsoUseOnLabel,
+  formatHarnessList,
+  nowOnToast,
+  portableMcpTooltip,
+  SCOPE_COPY,
+  subsetScopeLine,
+} from "../../../../src/copy/scope";
 import { HARNESS_MAIN_PILL_TOOLTIP } from "./ui-copy";
 
 export type SerializerTarget = "project" | "global";
@@ -25,6 +34,8 @@ export {
   parseHarnessScope,
   expandLinkedSelection,
   selectionFromGroups,
+  uniqueSorted,
+  unionHarnessScopes,
 };
 export type { HarnessScope, LinkedHarnessGroup };
 
@@ -39,7 +50,27 @@ export const HARNESS_SCOPE_COPY = {
   linkedTooltip: SCOPE_COPY.linkedTooltip,
   allTooltip: SCOPE_COPY.allTooltip,
   orphanedTooltip: SCOPE_COPY.orphanedTooltip,
+  alsoUseOnLabel,
+  notNow: SCOPE_COPY.notNow,
+  portableMcpTooltip,
+  nowOnToast,
 } as const;
+
+/** Registered harnesses a portable MCP is not on yet. Empty when All or non-MCP. */
+export function alsoUseOnTargets(
+  resourceType: string,
+  scope: HarnessScope,
+  registered: readonly string[],
+): string[] {
+  if (resourceType !== "mcp_server") {
+    return [];
+  }
+  if (scope.kind !== "subset") {
+    return [];
+  }
+  const on = new Set(scope.harnesses);
+  return registered.filter((id) => !on.has(id));
+}
 
 export interface HarnessScopeOption {
   id: string;

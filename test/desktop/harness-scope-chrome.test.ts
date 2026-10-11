@@ -61,7 +61,10 @@ describe("harness scope desktop UX", () => {
     expect(srcScope).toContain("These read the same folder, so they share one setting");
     expect(copy).toContain("SCOPE_COPY.allTooltip");
     expect(copy).toContain("SCOPE_COPY.orphanedTooltip");
-    expect(copy).toContain("SCOPE_COPY.mainTooltip");
+    expect(copy).toContain("alsoUseOnLabel");
+    expect(copy).toContain("notNow: SCOPE_COPY.notNow");
+    expect(copy).toContain("portableMcpTooltip");
+    expect(copy).toContain("mainTooltip");
     expect(copy).toContain("Harnesses for ${resourceName}");
     expect(copy).toContain("formatHarnessList");
     expect(copy).toContain("subsetScopeLine");

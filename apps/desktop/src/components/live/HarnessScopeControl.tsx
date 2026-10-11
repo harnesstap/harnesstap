@@ -14,6 +14,7 @@ import { ChromeTooltip } from "../ChromeTooltip";
 import { HarnessMark } from "../HarnessIcons";
 import { useOverlayLayer } from "../../state/overlay-stack";
 import {
+  alsoUseOnTargets,
   displayNameForHarness,
   expandLinkedSelection,
   groupLabel,
@@ -25,10 +26,18 @@ import {
   normalizeScopeToRegistered,
   parseStoredHarnessScope,
   selectionFromGroups,
+  unionHarnessScopes,
   type HarnessScope,
   type LinkedHarnessGroup,
   type SerializerTarget,
 } from "../../lib/harness-scope-ui";
+import { toast } from "../../state/toast-store";
+
+const dismissedAlsoUseOn = new Set<string>();
+
+function alsoUseOnKey(resourceName: string, resourceType: string): string {
+  return `${resourceType}:${resourceName}`;
+}
 
 const ICON_PX = 14;
 const FILTER_THRESHOLD = 8;
@@ -75,6 +84,9 @@ export function HarnessScopeControl({
 }: HarnessScopeControlProps): ReactNode {
   const [open, setOpen] = useState(initialOpen);
   const [filter, setFilter] = useState("");
+  const [alsoUseOnDismissed, setAlsoUseOnDismissed] = useState(() =>
+    dismissedAlsoUseOn.has(alsoUseOnKey(resourceName, resourceType)),
+  );
   const committed = useMemo(() => parseStoredHarnessScope(stored), [stored]);
   const [draftIds, setDraftIds] = useState<string[]>(() =>
     selectedIds(committed, registered),
@@ -134,6 +146,38 @@ export function HarnessScopeControl({
       normalizeScopeToRegistered({ kind: "subset", harnesses: ids }, registered),
     );
   };
+
+  const extraHarnesses = alsoUseOnTargets(resourceType, committed, registered);
+  const showAlsoUseOn = extraHarnesses.length > 0 && !alsoUseOnDismissed && !disabled;
+
+  const acceptAlsoUseOn = () => {
+    const next = unionHarnessScopes(committed, {
+      kind: "subset",
+      harnesses: extraHarnesses,
+    });
+    const ids = next.kind === "all" ? [...registered] : [...next.harnesses];
+    setDraftIds(ids);
+    persist(ids);
+    toast({ tone: "success", title: HARNESS_SCOPE_COPY.nowOnToast(extraHarnesses) });
+  };
+
+  const dismissAlsoUseOn = () => {
+    dismissedAlsoUseOn.add(alsoUseOnKey(resourceName, resourceType));
+    setAlsoUseOnDismissed(true);
+  };
+
+  const alsoUseOnRow = showAlsoUseOn ? (
+    <div className="also-use-on" data-testid="also-use-on">
+      <ChromeTooltip content={HARNESS_SCOPE_COPY.portableMcpTooltip(extraHarnesses)}>
+        <button type="button" className="linkish" onClick={acceptAlsoUseOn}>
+          {HARNESS_SCOPE_COPY.alsoUseOnLabel(extraHarnesses)}
+        </button>
+      </ChromeTooltip>
+      <button type="button" className="linkish" onClick={dismissAlsoUseOn}>
+        {HARNESS_SCOPE_COPY.notNow}
+      </button>
+    </div>
+  ) : null;
 
   const toggleGroup = (group: LinkedHarnessGroup, checked: boolean) => {
     const next = expandLinkedSelection(draftIds, group.harnessIds, checked);
@@ -289,8 +333,10 @@ export function HarnessScopeControl({
           {emptyDraft ? (
             <p className="harness-scope-empty-hint muted">{HARNESS_SCOPE_COPY.emptyHint}</p>
           ) : null}
+          {alsoUseOnRow}
         </PopoverContent>
       </Popover>
+      {!open ? alsoUseOnRow : null}
     </span>
   );
 }
