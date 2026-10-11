@@ -163,6 +163,30 @@
   color: var(--red);
 }
 
+.connect-splash-detail {
+  width: min(36rem, 100%);
+  text-align: left;
+}
+
+.connect-splash-detail summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.connect-splash-detail pre {
+  margin: var(--space-2) 0 0;
+  max-height: 14rem;
+  overflow: auto;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--surface-accent-tint);
+  font-family: var(--mono);
+  font-size: var(--text-meta);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
 .connect-splash-actions {
   display: flex;
   flex-wrap: wrap;

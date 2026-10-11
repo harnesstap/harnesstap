@@ -1,0 +1,5 @@
+kind: Fixed
+body: Write OpenCode agents and commands imported from ~/.config/opencode to .opencode/agent and .opencode/command at project scope instead of leaking the home-relative .config/opencode path into the repo.
+time: 2026-10-10T19:10:00Z
+custom:
+  Issue: "370"

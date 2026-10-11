@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
@@ -76,6 +77,53 @@ describe("global-profile-drift service", () => {
       expect(status.has_drift).toBe(false);
       expect(status.panel.status).toBe("green");
       expect(status.harnesses["claude-code"]?.plugins).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports extra live skill body on the edited harness path", async () => {
+    const context = await createInitializedTestContext("global-profile-drift-skill-edit");
+    try {
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
+      addResourceToPlugin(
+        plugin.id,
+        createResource({
+          type: "skill",
+          name: "tiny-skill",
+          description: "Small skill",
+          content: "Say hello politely.",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      const claudeDir = join(context.homeDir, ".claude/skills/tiny-skill");
+      const agentsDir = join(context.homeDir, ".agents/skills/tiny-skill");
+      mkdirSync(claudeDir, { recursive: true });
+      mkdirSync(agentsDir, { recursive: true });
+      const seed = [
+        "---",
+        "name: tiny-skill",
+        "description: Small skill",
+        "---",
+        "Say hello politely.",
+      ].join("\n");
+      writeFileSync(join(claudeDir, "SKILL.md"), seed);
+      writeFileSync(join(agentsDir, "SKILL.md"), seed);
+
+      await applyProfilePlugin("work", {
+        conflictPolicy: "replace",
+      });
+      setActiveProfileName("work");
+
+      writeFileSync(join(claudeDir, "SKILL.md"), `${seed}\nUSER EDIT\n`);
+
+      const status = await detectGlobalProfileStatus({ depth: "full" });
+      const paths = status.changes.map((change) => change.path);
+      expect(paths).toContain(".claude/skills/tiny-skill/SKILL.md");
+      expect(paths).not.toContain(".agents/skills/tiny-skill/SKILL.md");
     } finally {
       await context.cleanup();
     }

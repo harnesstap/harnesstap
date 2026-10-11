@@ -1,21 +1,14 @@
-import { createRequire } from "node:module";
+import packageJson from "../package.json" with { type: "json" };
 
-declare const __HT_VERSION__: string;
-
-function readPackageJsonVersion(): string {
-  const require = createRequire(import.meta.url);
-  return (require("../package.json") as { version: string }).version;
-}
+declare const __HT_VERSION__: string | undefined;
 
 function resolvePackageVersion(): string {
-  try {
-    if (typeof __HT_VERSION__ === "string" && __HT_VERSION__.length > 0) {
-      return __HT_VERSION__;
-    }
-  } catch {
-    // Running from source: tsup has not injected __HT_VERSION__.
+  // tsup and the sidecar build define __HT_VERSION__; the JSON import is the
+  // source/test fallback and is inlined by every bundler, never read at runtime.
+  if (typeof __HT_VERSION__ === "string" && __HT_VERSION__.length > 0) {
+    return __HT_VERSION__;
   }
-  return readPackageJsonVersion();
+  return packageJson.version;
 }
 
 export const PACKAGE_VERSION: string = resolvePackageVersion();

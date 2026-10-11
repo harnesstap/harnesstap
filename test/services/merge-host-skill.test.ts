@@ -130,6 +130,36 @@ describe("mergeClaudeSettingsContent", () => {
     expect(merged.permissions.ask).toEqual(["Edit(*)"]);
     expect(merged.permissions.defaultMode).toBe("acceptEdits");
   });
+
+  it("merges enabledPlugins key by key without dropping live entries", () => {
+    const live = JSON.stringify(
+      {
+        model: "opus",
+        enabledPlugins: { "keep@market": true, "old@market": false },
+      },
+      null,
+      2,
+    );
+    const generated = JSON.stringify(
+      {
+        enabledPlugins: { "new@market": true, "old@market": true },
+      },
+      null,
+      2,
+    );
+
+    const merged = JSON.parse(mergeClaudeSettingsContent(live, generated)) as {
+      model: string;
+      enabledPlugins: Record<string, boolean>;
+    };
+
+    expect(merged.model).toBe("opus");
+    expect(merged.enabledPlugins).toEqual({
+      "keep@market": true,
+      "old@market": true,
+      "new@market": true,
+    });
+  });
 });
 
 describe("mergeMuseSettingsContent", () => {
