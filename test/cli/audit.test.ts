@@ -77,6 +77,8 @@ describe("ht apply security slice", () => {
         "--harness",
         "codex",
         "--no-interactive",
+        "--on-conflict",
+        "replace",
       ]);
       expect(first.exitCode ?? 0).toBe(0);
 
@@ -90,6 +92,8 @@ describe("ht apply security slice", () => {
         "--harness",
         "codex",
         "--no-interactive",
+        "--on-conflict",
+        "replace",
       ]);
       expect(mismatched.exitCode).toBe(1);
       expect(mismatched.stderr + mismatched.stdout).toMatch(/hash mismatch/i);
@@ -102,6 +106,8 @@ describe("ht apply security slice", () => {
         "--harness",
         "codex",
         "--no-interactive",
+        "--on-conflict",
+        "replace",
         "--update",
       ]);
       expect(updated.exitCode ?? 0).toBe(0);

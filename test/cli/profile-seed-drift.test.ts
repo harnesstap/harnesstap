@@ -43,7 +43,14 @@ describe("CLI profile drift from a seeded HOME", () => {
       const pending = await runCli(["profile", "status"]);
       expect(pending.stdout).toContain('ht profile use "global default"');
 
-      const applied = await runCli(["profile", "use", "global default", "--no-interactive"]);
+      const applied = await runCli([
+        "profile",
+        "use",
+        "global default",
+        "--no-interactive",
+        "--on-conflict",
+        "replace",
+      ]);
       expect(applied.exitCode ?? 0).toBe(0);
       expect(applied.stdout).toContain("Snapshot saved");
       expect(readFileSync(join(context.homeDir, ".cursor/mcp.json"), "utf-8")).toBe(SEED_MCP);
@@ -70,7 +77,14 @@ describe("CLI profile drift from a seeded HOME", () => {
       expect(human.stdout).not.toContain("has not been applied globally");
 
       await runCli(["profile", "create", "work"]);
-      const switched = await runCli(["profile", "use", "work", "--no-interactive"]);
+      const switched = await runCli([
+        "profile",
+        "use",
+        "work",
+        "--no-interactive",
+        "--on-conflict",
+        "replace",
+      ]);
       expect(`${switched.stderr}${switched.stdout}`).not.toContain("unsaved change");
       expect(switched.exitCode ?? 0).toBe(0);
     } finally {
@@ -88,7 +102,14 @@ describe("CLI profile drift from a seeded HOME", () => {
         "--harnesses",
         "claude-code,cursor,codex",
       ]);
-      await runCli(["profile", "use", "global default", "--no-interactive"]);
+      await runCli([
+        "profile",
+        "use",
+        "global default",
+        "--no-interactive",
+        "--on-conflict",
+        "replace",
+      ]);
 
       writeFileSync(
         join(context.homeDir, ".claude/skills/tiny-skill/SKILL.md"),

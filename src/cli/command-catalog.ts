@@ -7,6 +7,7 @@ export type CommandLoaderId =
   | "auth"
   | "compile"
   | "config"
+  | "doctor"
   | "environment"
   | "github"
   | "harness"
@@ -171,6 +172,12 @@ export const COMMAND_CATALOG: CommandCatalogEntry[] = [
     loader: "approve",
   },
   {
+    name: "doctor",
+    description: "Check Node, native modules, paths, and harness detection",
+    kind: "project",
+    loader: "doctor",
+  },
+  {
     name: "history",
     args: "[path]",
     description: "List configuration snapshots for a project",
@@ -268,6 +275,7 @@ export const COMMAND_LOADER_IDS: CommandLoaderId[] = [
   "auth",
   "compile",
   "config",
+  "doctor",
   "environment",
   "github",
   "harness",

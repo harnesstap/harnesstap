@@ -41,6 +41,7 @@ function resolveLockRoot(opts: LockExportOpts): string {
 
 export function handleLockExportCommand(opts: LockExportOpts): void {
   try {
+    const format = parseSbomFormat(opts.format);
     const projectRoot = resolveLockRoot(opts);
     const lock = readLockfile(projectRoot);
     if (!lock) {
@@ -49,7 +50,6 @@ export function handleLockExportCommand(opts: LockExportOpts): void {
       );
     }
 
-    const format = parseSbomFormat(opts.format);
     const timestamp = resolveExportTimestamp(opts.timestamp, lock.resolved_at);
     const document = exportSbom(lock, format, timestamp);
 
@@ -63,9 +63,12 @@ export function handleLockExportCommand(opts: LockExportOpts): void {
     process.stdout.write(document);
   } catch (error) {
     process.exitCode = 1;
+    if (error instanceof LockExportError) {
+      fail(error.message);
+      return;
+    }
     if (
       error instanceof LockExportUsageError
-      || error instanceof LockExportError
       || error instanceof LockExportTimestampError
     ) {
       fail(error.message, {

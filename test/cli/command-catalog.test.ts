@@ -36,6 +36,7 @@ describe("command catalog", () => {
       "audit",
       "compile",
       "deny",
+      "doctor",
       "history",
       "init",
       "install",

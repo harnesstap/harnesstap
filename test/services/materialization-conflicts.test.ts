@@ -8,6 +8,8 @@ describe("resolveApplyConflictPolicy", () => {
     expect(resolveApplyConflictPolicy({ onConflict: "prompt" })).toBe("prompt");
     expect(resolveApplyConflictPolicy({ onConflict: "overwrite" })).toBe("replace");
     expect(resolveApplyConflictPolicy({ onConflict: "ignore" })).toBe("skip");
+    expect(resolveApplyConflictPolicy({ onConflict: "fail" })).toBe("cancel");
+    expect(resolveApplyConflictPolicy({ onConflict: "cancel" })).toBe("cancel");
   });
 
   it("does not treat abort as an on-conflict alias", () => {
@@ -16,7 +18,7 @@ describe("resolveApplyConflictPolicy", () => {
     ).toThrow("Invalid --on-conflict value: abort.");
   });
 
-  it("defaults to replace when non-interactive", () => {
-    expect(resolveApplyConflictPolicy({ noInteractive: true })).toBe("replace");
+  it("defaults to cancel when non-interactive", () => {
+    expect(resolveApplyConflictPolicy({ noInteractive: true })).toBe("cancel");
   });
 });

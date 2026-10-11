@@ -304,6 +304,8 @@ dependencies:
         "--harness",
         "claude-code",
         "--no-interactive",
+        "--on-conflict",
+        "replace",
       ]);
       expect(first.exitCode ?? 0, first.stderr || first.stdout).toBe(0);
       expect(
@@ -328,6 +330,8 @@ dependencies:
         "--harness",
         "claude-code",
         "--no-interactive",
+        "--on-conflict",
+        "replace",
       ]);
       expect(replay.exitCode ?? 0, replay.stderr || replay.stdout).toBe(0);
       expect(
@@ -344,6 +348,8 @@ dependencies:
         "--harness",
         "claude-code",
         "--no-interactive",
+        "--on-conflict",
+        "replace",
         "--update",
       ]);
       expect(updated.exitCode ?? 0, updated.stderr || updated.stdout).toBe(0);

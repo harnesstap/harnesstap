@@ -1,4 +1,4 @@
-import type { Command } from "commander";
+import { Option, type Command } from "commander";
 import {
   addApplyCommandOptions,
   type ApplyCommandOpts,
@@ -114,7 +114,7 @@ export function registerTargetsCommand(root: Command): void {
     .command("targets")
     .description("Show which apply harness targets resolve for this project, and why")
     .option("--project <path>", "Project directory", ".")
-    .option("--json", "Emit machine-readable JSON")
+    .addOption(new Option("--json", "Emit machine-readable JSON").hideHelp())
     .option("--all", "Include the agent-skills meta-target row")
     .option("--format <mode>", "Output format: human or json", "human")
     .action((opts: TargetsCommandOpts) => {

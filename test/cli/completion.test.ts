@@ -29,7 +29,7 @@ describe("CLI __complete", () => {
     }
   });
 
-  it("returns harness slugs for init --main without local database", async () => {
+  it("returns harness slugs for init --harnesses without local database", async () => {
     const context = await createTestContextWithoutHarnesstap();
     try {
       const result = await runCli([
@@ -38,7 +38,7 @@ describe("CLI __complete", () => {
         "--",
         "ht",
         "init",
-        "--main",
+        "--harnesses",
         "cur",
       ]);
 
