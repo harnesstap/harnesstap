@@ -331,6 +331,7 @@ export async function syncConfiguredHarnesses(
     return payload;
   }
 
+  let writtenByApply = new Set<string>();
   if (target === "project") {
     const gitOrigin = getGitOrigin(rootPath);
     if (gitOrigin) {
@@ -351,7 +352,12 @@ export async function syncConfiguredHarnesses(
     }
     writeFiles(files, rootPath);
   } else {
-    await materializeFiles(files, rootPath, { conflictPolicy: "replace" });
+    const materialized = await materializeFiles(files, rootPath, {
+      conflictPolicy: "replace",
+    });
+    writtenByApply = new Set(
+      materialized.writtenFiles.map((path) => path.replace(/\\/g, "/")),
+    );
   }
   applyInstructionLinks(rootPath, paired.links, pluginResourceMode);
   materializeSkillHubPlan(rootPath, skillHubPlans, pluginResourceMode);
@@ -375,7 +381,11 @@ export async function syncConfiguredHarnesses(
       files: result.files,
       writtenPaths: result.files
         .map((file) => file.path.replace(/\\/g, "/"))
-        .filter((path) => filePaths.includes(path)),
+        .filter((path) =>
+          target === "project"
+            ? filePaths.includes(path)
+            : writtenByApply.has(path),
+        ),
     })),
   });
 

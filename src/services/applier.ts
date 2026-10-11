@@ -53,6 +53,7 @@ import {
 } from "./profile-commit-resource.js";
 import {
   executeSafeFileRemovals,
+  hasHarnessTapMaterialization,
   hashOnDiskFile,
   isHarnessTapOwnedPath,
   type SafeFileRemovalOptions,
@@ -575,11 +576,13 @@ export async function materializeFiles(
     }
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
     if (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path)) {
-      recordPreexistingPath({
-        root_path: rootPath,
-        path: file.path,
-        content_hash: hashOnDiskFile(fullPath) ?? "",
-      });
+      if (!hasHarnessTapMaterialization(rootPath, file.path)) {
+        recordPreexistingPath({
+          root_path: rootPath,
+          path: file.path,
+          content_hash: hashOnDiskFile(fullPath) ?? "",
+        });
+      }
       if (!shouldPreserveUnownedFile(file.path)) {
         skippedFiles.push(file.path);
         continue;
@@ -673,7 +676,6 @@ export async function applyToGlobal(
   const ownedSkippedFiles = materialized.skippedFiles.filter((filePath) =>
     isHarnessTapOwnedPath(homeRoot, filePath),
   );
-  const persistedPaths = [...new Set([...materialized.writtenFiles, ...ownedSkippedFiles])];
 
   if (!materialized.cancelled) {
     persistWrittenMaterializations({
@@ -683,7 +685,7 @@ export async function applyToGlobal(
       platformResults: results.map((result) => ({
         platformId: result.platformId,
         files: result.files,
-        writtenPaths: persistedPaths.filter((filePath) =>
+        writtenPaths: materialized.writtenFiles.filter((filePath) =>
           result.files.some((file) => file.path === filePath),
         ),
       })),
@@ -691,12 +693,11 @@ export async function applyToGlobal(
   }
 
   if (!materialized.cancelled && options.snapshotId) {
-    removeImportedSnapshotOwnershipForFiles(persistedPaths, options.snapshotId);
-    const existingInstalls = listImportedSnapshotInstalls(options.snapshotId);
+    const currentlyOwnedPaths = [
+      ...new Set([...materialized.writtenFiles, ...ownedSkippedFiles]),
+    ];
+    removeImportedSnapshotOwnershipForFiles(currentlyOwnedPaths, options.snapshotId);
     for (const result of results) {
-      const previousFiles =
-        existingInstalls.find((install) => install.platform_id === result.platformId)?.files ??
-        [];
       const emittedFiles = result.files.map((file) => file.path);
       const writtenFiles = emittedFiles.filter((filePath) =>
         materialized.writtenFiles.includes(filePath),
@@ -704,10 +705,7 @@ export async function applyToGlobal(
       const preservedSkippedFiles = emittedFiles.filter(
         (filePath) =>
           materialized.skippedFiles.includes(filePath)
-          && (
-            previousFiles.includes(filePath)
-            || ownedSkippedFiles.includes(filePath)
-          ),
+          && ownedSkippedFiles.includes(filePath),
       );
       const installFiles = [...new Set([...writtenFiles, ...preservedSkippedFiles])];
       if (installFiles.length === 0) continue;

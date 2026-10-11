@@ -369,9 +369,12 @@ describe("desktop icon chrome", () => {
       liveStateSource.indexOf("function FileChangeRows"),
     );
     expect(fileChanges).not.toContain("Apply to write");
-    expect(fileChanges).toContain("Will be written when you Apply");
+    expect(designSource).toContain("Will be written when you Apply");
     expect(fileChanges).toContain("function FileChangeKindChip");
-    expect(liveStateSource).toContain("<FileChangeKindChip kind={kind} count={1} />");
+    expect(liveStateSource).toContain("file-change-group-count-label");
+    expect(stylesSource).toContain(".file-change-group-count-label");
+    expect(liveStateSource).toContain("<FileChangeKindChip key={kind} kind={kind} count={count} />");
+    expect(liveStateSource).toContain("removalGroup={change.removal_group}");
     expect(stylesSource).toContain(".resource-row-trailing {");
     expect(stylesSource).toContain(".file-change-group-count {");
     const countChip = stylesSource.slice(
