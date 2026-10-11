@@ -1,4 +1,4 @@
-import { Option, type Command } from "commander";
+import type { Command } from "commander";
 import { getCommandHelpEntry } from "../services/cli-help-registry.js";
 import { ui } from "../ui/index.js";
 import { PACKAGE_VERSION } from "../version.js";
@@ -249,8 +249,8 @@ export function configureProgramHelp(program: Command): void {
     .description(
       "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
     )
-    .version(PACKAGE_VERSION, "-V, --version")
-    .addOption(new Option("--harnesstap-version").hideHelp())
+    // Root -V/--version is handled in runHarnesstapCli (top-level only) so
+    // subcommands can keep their own --version options. Help still lists it.
     .option("-v, --verbose", "Show verbose error output")
     .option("--no-color", "Disable color output")
     .option("--no-interactive", "Disable interactive prompts")
