@@ -428,3 +428,16 @@ Credential precedence: `HARNESSTAP_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKE
 <!-- append -->
 
 `plugin list` and `profile list` interactive browse lists local plugins. `--remote` adds catalog sections.
+
+## Supported harnesses
+
+<!-- append -->
+
+Warp and Jules share the generic `.agents/skills/` / `AGENTS.md` layout with many other harnesses. A plain `~/.agents` directory is not evidence that either is installed.
+
+| Harness | Distinctive markers |
+| ------- | ------------------- |
+| **warp** | `~/.warp` (home), `.warp/` (project) |
+| **jules** | `~/.jules` or `~/JULES.md` (home), `JULES.md` (project) |
+
+Skills and instructions still emit to the shared `.agents` paths when those harnesses are registered. Detection and apply targeting stay separate: global apply uses the registered set, not filesystem guesses.
