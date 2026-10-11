@@ -63,6 +63,7 @@ import {
 import {
   printApplyDryRun,
   printApplySuccess,
+  printKeptFiles,
   removalSkipReason,
 } from "../print-apply-summary.js";
 import { registerProfileCreateCommand } from "../handlers/profile-create.js";
@@ -83,12 +84,11 @@ function printPlannedRemovals(payload: ApplyProfilePluginResult): void {
   for (const path of payload.removed_files ?? []) {
     console.log(`  remove ${path}`);
   }
-  for (const skipped of payload.skipped_removals ?? []) {
-    if (skipped.reason === "missing") {
-      continue;
-    }
-    ui.warn(skipped.message);
-  }
+  const kept = (payload.skipped_removals ?? []).flatMap((entry) => {
+    const reason = removalSkipReason(entry.reason);
+    return reason ? [{ path: entry.path, reason }] : [];
+  });
+  printKeptFiles(kept);
   if (payload.removal_backup && (payload.removed_files?.length ?? 0) > 0) {
     ui.info(`Backup: ${payload.removal_backup}`);
   }
