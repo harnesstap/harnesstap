@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { loadSurface, runReleasedGuard } from "./readme-guard.ts";
 
 const repoRoot = resolve(import.meta.dir, "..");
 const TOP_LEVEL = new Set([
@@ -72,10 +73,6 @@ function helpArgv(line: string): string[] | null {
   if (!TOP_LEVEL.has(path[0] ?? "")) {
     return null;
   }
-  // `ht resource scope <name> --add <harness,...>` (PR-9). Check the subcommand help once it exists.
-  if (path[0] === "resource" && path[1] === "scope") {
-    return ["resource", "scope", "--help"];
-  }
   return [...path, "--help"];
 }
 
@@ -136,17 +133,18 @@ for (const line of extractReadmeHtLines(readme)) {
     failures.push(`${line} -> ht ${argv.join(" ")} (exit ${result.status})\n${result.stderr}`);
   }
 }
-const scopeHelp = run(bin, ["resource", "scope", "--help"], env);
-if (scopeHelp.status !== 0) {
-  const text = `${scopeHelp.stderr ?? ""}\n${scopeHelp.stdout ?? ""}`;
-  const notShippedYet = /unknown command|too many arguments|error: unknown/i.test(text);
-  if (!notShippedYet) {
-    failures.push(`ht resource scope --help (exit ${scopeHelp.status})\n${text}`);
-  }
-}
-
 if (failures.length > 0) {
   console.error("G7: README commands failed --help:\n", failures.join("\n"));
+  process.exit(1);
+}
+
+const surface = loadSurface(join(repoRoot, "scripts", "released-cli-surface.json"));
+const released = runReleasedGuard(repoRoot, surface);
+if (released.length > 0) {
+  console.error(`G7: README and docs must describe only the latest published release (harnesstap@${surface.version}):`);
+  for (const finding of released) {
+    console.error(`  ${finding.file}:${finding.line} ${finding.message}`);
+  }
   process.exit(1);
 }
 

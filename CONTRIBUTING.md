@@ -100,15 +100,24 @@ Commit the generated fragment with your PR.
 
 **Pre-1.0 semver:** While the package is `0.x.y`, breaking changes bump the minor version and compatible changes bump the patch version, per [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for initial development (`0.y.z`).
 
+### README and published docs
+
+`README.md` and `docs/cli/command-reference.md` (copied to the Cloud site by `scripts/sync-cloud-cli-docs.sh`) describe only the latest published release, in the present tense. Do not write version-gated notes ("Available from 1.3", "On 1.2, use ...", "coming in", "since 1.x", "new in"), and do not document a feature before it ships. If a PR changes what those files should say, put the text in `docs/unreleased-readme.md` instead. The format is at the top of that file: one `## <heading>` or `## <path>.md > <heading>` section per target, each starting with an `<!-- append -->`, `<!-- replace -->` or `<!-- insert-after -->` marker. The release flow folds it in.
+
+The G7 guard (`bun run check:packaged-help`, plus the tests in `test/cli/packaged-help.test.ts`) fails on version-gated phrases in the README and `docs/`; on `ht` commands or flags in the README and the command reference that are missing from `scripts/released-cli-surface.json`, the checked-in snapshot of the published CLI; and on a malformed pending file (for example a section without a mode marker). Other `docs/` pages that render only on GitHub are not yet held to the command check.
+
 ### Release (maintainers)
 
 1. Merge pending PRs that include `.changes/unreleased/` fragments.
 2. Cut the release from the Actions tab: **Tag release** → **Run workflow** (branch `main`). Do not open a Release PR.
    - If `.changes/unreleased/` has fragments, Tag release runs `changie batch auto` (or `v0.1.0` for the first cut), `changie merge`, stamps CLI and Desktop together (root `package.json`, `apps/desktop/package.json`, `apps/desktop/src-tauri/tauri.conf.json`, `apps/desktop/src-tauri/Cargo.toml`, and `Cargo.lock` when needed), commits to `main` as github-actions[bot], then pushes `vX.Y.Z` if that tag is missing.
+   - On the same cut, Tag release folds `docs/unreleased-readme.md` into `README.md` and any `docs/` page it targets, such as `docs/cli/command-reference.md` (`scripts/fold-unreleased-readme.ts`, which then empties the pending file) and regenerates `scripts/released-cli-surface.json` from the release commit (`scripts/snapshot-released-cli.ts --from-source`), and commits both with the version stamps. A pending section with no mode marker, or whose target does not match exactly one heading, fails the cut.
    - If the changelog is already batched and those versions already match, it only creates the missing tag.
    - If there is nothing to release, it skips (no empty tag). Dispatch is the explicit cut; merging feature work does not publish.
    - A rare manual `CHANGELOG.md` commit to `main` still runs Tag release and tags if needed.
 3. **Release** (`release.yml`) runs after Tag release succeeds (`workflow_run`, because a `GITHUB_TOKEN` tag push does not trigger `on: push: tags`): lint/typecheck/sharded tests/build (same split as CI), `npm publish` via [trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC, no `NPM_TOKEN`), a GitHub release whose body comes from `.changes/vX.Y.Z.md`, and unsigned Desktop installers attached to that release (macOS DMG, Windows NSIS/MSI, Linux AppImage/deb/rpm built on Ubuntu 22.04, x64 and arm). macOS jobs reseal `HarnessTap.app` with an ad-hoc signature (`apps/desktop/scripts/reseal-macos-app.sh`) and recreate the DMG so Gatekeeper does not treat a quarantined unsigned bundle as damaged. Linux jobs build deb/rpm first, then AppImage (`APPIMAGE_EXTRACT_AND_RUN` / `NO_STRIP`; linuxdeploy is pre-extracted without FUSE and `ht-agent` is kept out of linuxdeploy's ldd scan by sidecar name). The Linux job fails if no `.AppImage` is produced. A human-pushed `v*` tag also triggers Release. Combined `bun run test:run` is not used in Release because TTY wizard mocks leak across the full suite. Re-run **Release** from Actions (`workflow_dispatch`) to attach desktop assets to an existing tag.
+
+After publish, the `verify-cli-surface` job in `release.yml` re-generates the snapshot from the package on npm (`bun scripts/snapshot-released-cli.ts --version vX.Y.Z --check`) and fails if it differs from the checked-in file. If it does, run `bun run snapshot:released-cli` (it reads the latest published version) and open a PR with the result.
 
 npm publish runs only in CI. The npm package's trusted publisher must point at workflow filename `release.yml` in `harnesstap/harnesstap`.
 

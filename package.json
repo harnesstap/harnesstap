@@ -18,6 +18,7 @@
     "build": "bun scripts/generate-scenarios.ts && rm -rf dist && tsup",
     "generate:scenarios": "bun scripts/generate-scenarios.ts",
     "check:packaged-help": "bun scripts/check-packaged-help.ts",
+    "snapshot:released-cli": "bun scripts/snapshot-released-cli.ts",
     "build:sidecar": "bash scripts/build-sidecar.sh",
     "check:compiled-sidecar": "bun scripts/check-compiled-sidecar.ts",
     "desktop:cleanup": "bash apps/desktop/scripts/cleanup-stale-dev.sh",
