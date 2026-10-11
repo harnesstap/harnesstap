@@ -13,8 +13,17 @@ import {
   loadSurface,
   runReleasedGuard,
 } from "../../scripts/readme-guard.ts";
+import { PENDING_FILE, parsePending } from "../../scripts/fold-unreleased-readme.ts";
 
-const readme = readFileSync(resolve(import.meta.dirname, "../../README.md"), "utf-8");
+const repoRoot = resolve(import.meta.dirname, "../..");
+const readme = readFileSync(resolve(repoRoot, "README.md"), "utf-8");
+
+/**
+ * Frozen copy of the harnesstap@1.2.0 surface for the guard's unit cases. The
+ * live scripts/released-cli-surface.json is regenerated on every release cut,
+ * so cases that pin "flag X is missing" must not read it.
+ */
+const fixtureSurface = loadSurface(resolve(import.meta.dirname, "../fixtures/g7/released-cli-surface-1.2.0.json"));
 
 describe("G7 packaged help sources", () => {
   it("loads scenario 1 from generated playbooks", () => {
@@ -41,16 +50,17 @@ describe("G7 packaged help sources", () => {
     }
   });
 
-  it("documents bun x and keeps unreleased harness-flag notes out of README", () => {
-    const unreleased = readFileSync(
-      resolve(import.meta.dirname, "../../docs/unreleased-readme.md"),
-      "utf-8",
-    );
+  it("documents bun x and keeps pending README text out of README until it is folded", () => {
     expect(readme).toContain("bun x harnesstap@latest init");
     expect(readme).not.toContain("bunx harnesstap");
     expect(readme).not.toContain("Available from");
-    expect(readme).not.toContain("ht init --harnesses");
-    expect(unreleased).toContain("ht init --harnesses");
+    // Tag release folds pending sections into their targets and empties the
+    // pending file, so this holds both before and after a release cut.
+    const { sections } = parsePending(readFileSync(resolve(repoRoot, PENDING_FILE), "utf-8"));
+    for (const section of sections) {
+      const target = readFileSync(resolve(repoRoot, section.file), "utf-8");
+      expect(target).not.toContain(section.body.join("\n"));
+    }
   });
 
   it("formats the DS-1 scope tip command as ht", () => {
@@ -64,11 +74,14 @@ describe("G7 packaged help sources", () => {
 });
 
 describe("G7 README describes only the latest published release", () => {
-  const root = resolve(import.meta.dirname, "../..");
-  const surface = loadSurface(resolve(root, "scripts/released-cli-surface.json"));
+  const root = repoRoot;
+  const liveSurface = loadSurface(resolve(root, "scripts/released-cli-surface.json"));
+  const surface = fixtureSurface;
 
-  it("passes for the checked-in README and docs", () => {
-    expect(runReleasedGuard(root, surface)).toEqual([]);
+  it("checks the checked-in README and docs against the checked-in released surface", () => {
+    expect(Object.keys(liveSurface.root.subcommands)).toContain("init");
+    expect(Object.keys(liveSurface.root.subcommands)).toContain("apply");
+    expect(runReleasedGuard(root, liveSurface)).toEqual([]);
   });
 
   it("fails on version-gated phrases", () => {

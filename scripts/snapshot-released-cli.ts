@@ -87,12 +87,31 @@ if (fromSource) {
 
 /** Root flags a build handles before commander parses argv, so they are missing from the command tree. */
 function probeRootFlags(entryPath: string): string[] {
-  const script = `const m = await import(${JSON.stringify(pathToFileURL(entryPath).href)}); await m.runHarnesstapCli(["bun", "ht", "--version"]);`;
-  const result = spawnSync(process.execPath, ["-e", script], { encoding: "utf-8", env: process.env });
-  return result.status === 0 && /\d+\.\d+\.\d+/.test(result.stdout) ? ["--version"] : [];
+  return ["--version", "--harnesstap-version", "-V"].filter((flag) => {
+    const script = `const m = await import(${JSON.stringify(pathToFileURL(entryPath).href)}); await m.runHarnesstapCli(["bun", "ht", ${JSON.stringify(flag)}]);`;
+    const result = spawnSync(process.execPath, ["-e", script], { encoding: "utf-8", env: process.env });
+    return result.status === 0 && /^\d+\.\d+\.\d+\S*\s*$/.test(result.stdout);
+  });
 }
 
-const loaded = (await import(pathToFileURL(entry).href)) as { program: CommanderCommand };
+const loaded = (await import(pathToFileURL(entry).href)) as {
+  program: CommanderCommand;
+  runHarnesstapCli?: (argv: string[]) => Promise<void>;
+};
+// Builds from 1.3.0 register command groups lazily, so the exported program is
+// empty until a run loads them. Shell completion loads every group without
+// executing a command; silence its candidate list.
+if (loaded.program.commands.length === 0 && loaded.runHarnesstapCli) {
+  const write = process.stdout.write.bind(process.stdout);
+  process.stdout.write = (() => true) as typeof process.stdout.write;
+  try {
+    await loaded.runHarnesstapCli(["bun", "ht", "__complete", "0", ""]);
+  } finally {
+    process.stdout.write = write;
+  }
+  process.exitCode = 0;
+}
+if (loaded.program.commands.length === 0) usage(`harnesstap@${version} exposed no commands to snapshot.`);
 const root = describe(loaded.program);
 root.flags = [...new Set([...root.flags, ...probeRootFlags(entry)])].sort();
 const surface: CliSurface = { version, root };
