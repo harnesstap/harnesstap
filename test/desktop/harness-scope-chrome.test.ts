@@ -96,6 +96,7 @@ describe("harness scope desktop UX", () => {
     expect(shots).toContain("harness-scope-orphaned");
     expect(shots).toContain("harness-scope-popover");
     expect(shots).toContain("risky-removal-dialog");
+    expect(shots).toContain("file-change-groups");
     expect(shots).toContain('page.goto("about:blank"');
     expect(shots).toContain("SHOTS_BASE_URL");
     expect(gallery).toContain("<main");

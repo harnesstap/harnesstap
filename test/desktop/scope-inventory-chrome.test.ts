@@ -5,6 +5,14 @@ import { readDesktopShellSource, readLiveInventorySource } from "../helpers/desk
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const liveStateSource = readLiveInventorySource();
+const controllerSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/state/scope-controller.ts"),
+  "utf8",
+);
+const workspaceSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/shell/ScopeWorkspace.tsx"),
+  "utf8",
+);
 const inventoryRowSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/live/InventoryRow.tsx"),
   "utf8",
@@ -255,6 +263,10 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).toContain("libraryBulkDeleteShowAllLabel");
     expect(liveStateSource).toContain("setSelectedIds(new Set())");
     expect(liveStateSource).toContain("skipAutoReapply");
+    expect(liveStateSource).toContain("onAfterRemoves={onAfterRemoves}");
+    expect(controllerSource).toContain("reapplyAfterInventoryRemove");
+    expect(controllerSource).toContain('progressLabel: "Applying to match profile"');
+    expect(workspaceSource).toContain("ctrl.reapplyAfterInventoryRemove");
     expect(liveStateSource).toContain("ScopeAddToProfileModal");
     expect(addModalSource).toContain('label="Create a resource"');
     expect(addModalSource).toContain("Checkbox");

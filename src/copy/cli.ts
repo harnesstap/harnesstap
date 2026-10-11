@@ -5,6 +5,9 @@
 
 export const DRY_RUN_NOTHING_CHANGED = "Dry run. Nothing was changed.";
 
+export const NATIVE_MODULE_MISMATCH_MESSAGE =
+  "HarnessTap was installed under a different Node.js version. Run: npm rebuild -g harnesstap";
+
 /** Quote a user-provided token so a pasted hint parses as one Commander argument. */
 export function quoteCliArg(value: string): string {
   if (value.length === 0) {
@@ -233,6 +236,11 @@ export function applyWroteLine(input: {
   const parts: string[] = [];
   if (input.wrote > 0) parts.push(`Wrote ${input.wrote}`);
   if (input.removed > 0) parts.push(`removed ${input.removed}`);
+  if (input.wrote === 0 && input.removed === 0) {
+    return input.unchanged !== undefined
+      ? `${CLI_COPY.everythingUpToDate} ${input.unchanged} unchanged.`
+      : CLI_COPY.everythingUpToDate;
+  }
   if (input.kept > 0) parts.push(`kept ${input.kept}`);
   if (parts.length === 0) {
     return input.unchanged !== undefined
@@ -276,7 +284,14 @@ export function keptFilesHeader(count: number): string {
   return `Kept ${count} ${CLI_COPY.keptFilesIntro}`;
 }
 
-export function restoredRemovedLine(restored: number, removed: number): string {
+export function restoredRemovedLine(
+  restored: number,
+  removed: number,
+  options: { dryRun?: boolean } = {},
+): string {
+  if (options.dryRun) {
+    return `Would restore ${restored}, would remove ${removed}.`;
+  }
   return `Restored ${restored}, removed ${removed}.`;
 }
 

@@ -11,6 +11,7 @@ import type {
   SerializedFile,
   McpServerMetadata,
   SerializeOptions,
+  SerializerTarget,
 } from "../types.js";
 
 interface OpenCodeMcpConfigEntry {
@@ -75,9 +76,18 @@ export class OpenCodeSerializer extends BaseSerializer {
     return resources;
   }
 
+  /** Home-relative OpenCode paths must not leak into a project tree. */
+  private projectOpenCodePath(path: string, target: SerializerTarget): string {
+    if (target === "project" && path.startsWith(".config/opencode/")) {
+      return `.opencode/${path.slice(".config/opencode/".length)}`;
+    }
+    return path;
+  }
+
   private commandOutputPath(
     resource: Resource,
     defaultCommandsPath: string,
+    target: SerializerTarget,
   ): string {
     if (resource.source.includes(".opencode/command/")) {
       return `.opencode/command/${resource.name}.md`;
@@ -86,7 +96,10 @@ export class OpenCodeSerializer extends BaseSerializer {
       return `.opencode/commands/${resource.name}.md`;
     }
     if (resource.source.includes("/opencode/command/")) {
-      return `.config/opencode/command/${resource.name}.md`;
+      return this.projectOpenCodePath(
+        `.config/opencode/command/${resource.name}.md`,
+        target,
+      );
     }
     return `${defaultCommandsPath}${resource.name}.md`;
   }
@@ -94,6 +107,7 @@ export class OpenCodeSerializer extends BaseSerializer {
   private agentOutputPath(
     resource: Resource,
     defaultAgentsPath: string,
+    target: SerializerTarget,
   ): string {
     if (resource.source.includes(".opencode/agent/")) {
       return `.opencode/agent/${resource.name}.md`;
@@ -102,7 +116,10 @@ export class OpenCodeSerializer extends BaseSerializer {
       return `.opencode/agents/${resource.name}.md`;
     }
     if (resource.source.includes("/opencode/agent/")) {
-      return `.config/opencode/agent/${resource.name}.md`;
+      return this.projectOpenCodePath(
+        `.config/opencode/agent/${resource.name}.md`,
+        target,
+      );
     }
     return `${defaultAgentsPath}${resource.name}.md`;
   }
@@ -375,7 +392,7 @@ export class OpenCodeSerializer extends BaseSerializer {
     if (agentsPath) {
       for (const r of agents) {
         files.push({
-          path: this.agentOutputPath(r, agentsPath),
+          path: this.agentOutputPath(r, agentsPath, target),
           content: serializedAgentDocument(
             {
               name: r.name,
@@ -393,7 +410,7 @@ export class OpenCodeSerializer extends BaseSerializer {
     if (commandsPath) {
       for (const r of commands) {
         files.push({
-          path: this.commandOutputPath(r, commandsPath),
+          path: this.commandOutputPath(r, commandsPath, target),
           content: r.content,
         });
       }
