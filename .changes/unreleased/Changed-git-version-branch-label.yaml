@@ -1,5 +1,0 @@
-kind: Changed
-body: Show the git branch name in the Library version picker for local and remote git sources.
-time: 2026-10-04T04:30:00Z
-custom:
-  Issue: ""

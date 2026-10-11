@@ -1,5 +1,0 @@
-kind: Fixed
-body: Keep a background demo agent alive after its CI setup step exits; only treat a closed desktop stdin pipe as parent death.
-time: 2026-10-11T06:05:00Z
-custom:
-  Issue: ""

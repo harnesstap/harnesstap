@@ -1,5 +1,0 @@
-kind: Fixed
-body: Fix the Desktop app stuck on "Starting the agent" because the compiled sidecar crashed at startup, bake the version into the sidecar at build time, make Open logs work, and show the sidecar's stderr in the connect splash.
-time: 2026-10-11T00:00:00Z
-custom:
-  Issue: ""

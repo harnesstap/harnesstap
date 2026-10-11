@@ -67,7 +67,7 @@ Use the **CLI** (`ht`) or **Desktop**. Both talk to the same local library at `~
 
 ## Install
 
-**Requirements:** Node.js 22.18+ or 24.2+ to run the published CLI.
+**Requirements:** Node.js 22.12+ or 24 to run the published CLI.
 
 ### Recommended: npx (no global install)
 
@@ -132,7 +132,7 @@ Default onboarding in a repo that already has `apm.yml`. Same loop as `ht apply`
 ### Project: scan and apply
 
 ```bash
-ht init --main codex --aliases claude-code,cursor
+ht init --harnesses codex,claude-code,cursor
 ht scan .
 ht resource list
 ht apply engineering-foundation --project .
@@ -144,7 +144,7 @@ ht status .
 ### Machine: profile switch
 
 ```bash
-ht init --main claude-code --aliases cursor,codex
+ht init --harnesses claude-code,cursor,codex
 ht profile use "global default"
 # after you compose a `work` profile:
 ht work
@@ -191,7 +191,7 @@ Initialise HarnessTap, scan an existing repository, browse catalog plugins, appl
 [Full walkthrough →](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 ```bash
-ht init --main codex --aliases claude-code,cursor
+ht init --harnesses codex,claude-code,cursor
 ht scan .                    # detect existing resources
 ht resource list             # review discovered resources
 ht plugin list --search foundation --remote-only
@@ -273,6 +273,8 @@ CLI and Desktop can send anonymous product analytics (install, Cloud connect, pl
 
 Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md).
 
+Private GitHub marketplaces: `ht github login`.
+
 ---
 
 ## Supported harnesses
@@ -280,10 +282,19 @@ Auth, orgs, pull, and publish: [HarnessTap Cloud](docs/cli/cloud.md).
 ```bash
 ht harness list
 ht harness list --supported    # native serializers only
-ht harness set --main claude-code --aliases cursor,codex
+ht harness set --harnesses claude-code,cursor,codex
 ```
 
-See the full matrix: resource types, skill emission, plugin support, and paths: in **[Supported harnesses](docs/supported-harnesses.md)**.
+See the full matrix (resource types, skill emission, plugin support, and paths) in **[Supported harnesses](docs/supported-harnesses.md)**.
+
+Warp and Jules share the generic `.agents/skills/` / `AGENTS.md` layout with many other harnesses. A plain `~/.agents` directory is not evidence that either is installed.
+
+| Harness | Distinctive markers |
+| ------- | ------------------- |
+| **warp** | `~/.warp` (home), `.warp/` (project) |
+| **jules** | `~/.jules` or `~/JULES.md` (home), `JULES.md` (project) |
+
+Skills and instructions still emit to the shared `.agents` paths when those harnesses are registered. Detection and apply targeting stay separate: global apply uses the registered set, not filesystem guesses.
 
 ---
 
@@ -298,6 +309,8 @@ Anonymous telemetry state (distinct id and first-run stamps) lives in `~/.harnes
 `ht init` also checks registered home folders (e.g. `~/.claude/`, `~/.codex/`) and imports supported resources it finds.
 
 Move a library between machines with `ht migrate export` / `import`. Older databases that cannot upgrade in place still open read-only for export: see [machine migration](docs/scenarios/details/28-machine-migration.md).
+
+GitHub session: `~/.harnesstap/github-session.json`.
 
 ---
 
