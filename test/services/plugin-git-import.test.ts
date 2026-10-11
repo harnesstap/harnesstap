@@ -87,6 +87,31 @@ it("imports one git-origin plugin when skills/<name> is not an AP package", asyn
   expect(getPluginByName("ponytail")?.description).toBe("Session helpers from ponytail");
 });
 
+it("uses .claude-plugin/plugin.json version and description when root plugin.json is a stub", async () => {
+  const root = mkdtempSync(join(tmpdir(), "ht-ponytail-overlay-"));
+  mkdirSync(join(root, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(root, "skills", "ponytail"), { recursive: true });
+  writeFileSync(join(root, "plugin.json"), JSON.stringify({ name: "ponytail" }));
+  writeFileSync(
+    join(root, ".claude-plugin", "plugin.json"),
+    JSON.stringify({
+      name: "ponytail",
+      version: "5.1.0",
+      description: "Session helpers from the Claude overlay",
+    }),
+  );
+  writeFileSync(
+    join(root, "skills", "ponytail", "SKILL.md"),
+    "---\nname: ponytail\n---\n# ponytail\n",
+  );
+
+  const imported = await importPluginFromGitHubRef("DietrichGebert/ponytail", {
+    refreshGit: refreshFrom(root),
+  });
+  expect(imported.plugin.version).toBe("5.1.0");
+  expect(imported.plugin.description).toBe("Session helpers from the Claude overlay");
+});
+
 it("fails closed when the clone has no plugin.json", async () => {
   const root = mkdtempSync(join(tmpdir(), "ht-empty-"));
   writeFileSync(join(root, "README.md"), "# no plugin\n");
