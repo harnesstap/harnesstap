@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
+import { setHarnessPreference } from "../../src/models/harness.ts";
 import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { detectGlobalProfileStatus } from "../../src/services/global-profile-drift.ts";
@@ -113,6 +114,7 @@ describe("global-profile-drift service", () => {
       writeFileSync(join(claudeDir, "SKILL.md"), seed);
       writeFileSync(join(agentsDir, "SKILL.md"), seed);
 
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
       await applyProfilePlugin("work", {
         conflictPolicy: "replace",
       });
