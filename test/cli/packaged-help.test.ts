@@ -41,9 +41,16 @@ describe("G7 packaged help sources", () => {
     }
   });
 
-  it("documents bun x", () => {
+  it("documents bun x and keeps unreleased harness-flag notes out of README", () => {
+    const unreleased = readFileSync(
+      resolve(import.meta.dirname, "../../docs/unreleased-readme.md"),
+      "utf-8",
+    );
     expect(readme).toContain("bun x harnesstap@latest init");
     expect(readme).not.toContain("bunx harnesstap");
+    expect(readme).not.toContain("Available from");
+    expect(readme).not.toContain("ht init --harnesses");
+    expect(unreleased).toContain("ht init --harnesses");
   });
 
   it("formats the DS-1 scope tip command as ht", () => {
