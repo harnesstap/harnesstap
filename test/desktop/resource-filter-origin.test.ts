@@ -151,7 +151,8 @@ describe("library origin filter chrome", () => {
     expect(tabsSource.indexOf("resource-type-tab-count")).toBeLessThan(
       tabsSource.lastIndexOf("resource-type-tab-label"),
     );
-    expect(panelSource).toContain("overflow=\"collapse\"");
+    expect(panelSource).toContain("overflow=\"wrap\"");
+    expect(panelSource).not.toContain("overflow=\"collapse\"");
     expect(panelSource).not.toContain("density=");
     expect(compositionSource).toContain("<ResourceTypeTabs");
     expect(compositionSource).not.toContain("density=");
@@ -177,6 +178,9 @@ describe("library origin filter chrome", () => {
     expect(panelSource).toContain("<ResourceTypeTabs");
     expect(panelSource).not.toContain("includeAll={false}");
     expect(panelSource).toContain('emptyMode="show"');
+    expect(panelSource).toContain('emptySurface="library"');
+    expect(panelSource).toContain('overflow="wrap"');
+    expect(panelSource).not.toContain('overflow="collapse"');
     expect(panelSource).toContain("LIBRARY_RESOURCE_TYPE_TAB_OPTIONS");
     expect(panelSource).toContain("preferSnapshotLibraryTypeTabCounts");
     expect(compositionSource).toContain("<ResourceTypeTabs");

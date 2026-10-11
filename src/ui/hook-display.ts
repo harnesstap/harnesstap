@@ -35,9 +35,11 @@ const INTERPRETERS = new Set([
   "bunx",
   "ts-node",
   "tsx",
+  "env",
+  "uvx",
 ]);
 
-const SCRIPT_EXT = /\.(js|mjs|cjs|ts|tsx|sh|bash|zsh|py|rb|pl|ps1|cmd|bat)$/i;
+const LAUNCHER_FOLLOWERS = new Set(["dlx", "exec"]);
 
 export interface HookInventoryWire {
   event: string;
@@ -127,10 +129,6 @@ export function pathBasename(path: string): string {
   return parts[parts.length - 1] ?? trimmed;
 }
 
-function looksLikePath(token: string): boolean {
-  return token.includes("/") || token.includes("\\") || SCRIPT_EXT.test(token);
-}
-
 function tokenizeCommand(command: string): string[] {
   const tokens: string[] = [];
   const pattern = /"([^"]*)"|'([^']*)'|(\S+)/g;
@@ -143,6 +141,15 @@ function tokenizeCommand(command: string): string[] {
   return tokens;
 }
 
+function isFlagToken(token: string): boolean {
+  return token.startsWith("-");
+}
+
+function isLauncherToken(token: string): boolean {
+  const base = pathBasename(token).toLowerCase();
+  return INTERPRETERS.has(base) || LAUNCHER_FOLLOWERS.has(base);
+}
+
 export function hookCommandShortToken(command: string): string {
   const trimmed = command.trim();
   if (!trimmed) {
@@ -152,18 +159,14 @@ export function hookCommandShortToken(command: string): string {
   if (tokens.length === 0) {
     return pathBasename(trimmed);
   }
-  const first = tokens[0] ?? "";
-  const firstBase = pathBasename(first);
-  if (looksLikePath(first)) {
-    return firstBase;
-  }
-  if (INTERPRETERS.has(firstBase.toLowerCase())) {
-    const script = tokens.slice(1).find((token) => looksLikePath(token) && !token.startsWith("-"));
-    if (script) {
-      return pathBasename(script);
+  for (const token of tokens) {
+    if (isFlagToken(token) || isLauncherToken(token)) {
+      continue;
     }
+    return pathBasename(token);
   }
-  return firstBase;
+  const first = tokens[0] ?? "";
+  return pathBasename(first);
 }
 
 function stringField(value: unknown): string {

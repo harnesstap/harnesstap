@@ -78,7 +78,7 @@ describe("resource show", () => {
     expect(truncateResourceContent(content)).toBe(content);
   });
 
-  it("uses Agent instructions (AGENTS.md) as the display title", () => {
+  it("uses AGENTS.md (shared) as the display title", () => {
     const output = renderResourceShow(
       makeResource({
         type: "instruction",
@@ -88,7 +88,7 @@ describe("resource show", () => {
         origin_ref: "/Users/christophe.oudar/dev/opensource/harnesstap",
       }),
     );
-    expect(output).toContain("Agent instructions (AGENTS.md)");
+    expect(output).toContain("AGENTS.md (shared)");
     expect(output).toContain("Local (/Users/christophe.oudar/dev/opensource/harnesstap)");
   });
 

@@ -167,7 +167,7 @@ describe("partitionProfileInventory", () => {
     const counts = countInventoryTypeTabs(all);
     expect(resourceTypeTabItemCount("skill", counts)).toBe(1);
     expect(resourceTypeTabItemCount("plugin", counts)).toBe(1);
-    expect(resourceTypeTabPillsText("skill", counts)).toBe("1 Skills");
+    expect(resourceTypeTabPillsText("skill", counts)).toBe("1 skill");
     expect(parts.notInProfile.map((row) => row.resource.name)).toEqual(["extra"]);
     expect(parts.active.map((row) => row.resource.name)).toEqual(["design-doc"]);
     expect(parts.inactive.map((row) => row.resource.name)).toEqual(["my-notes"]);
@@ -822,7 +822,7 @@ describe("filterProfileInventoryItems", () => {
     const all = [...parts.notInProfile, ...parts.inactive, ...parts.active];
     const unfiltered = countInventoryTypeTabs(all);
     expect(resourceTypeTabItemCount("plugin", unfiltered)).toBe(4);
-    expect(resourceTypeTabPillsText("plugin", unfiltered)).toBe("4 Plugins");
+    expect(resourceTypeTabPillsText("plugin", unfiltered)).toBe("4 plugins");
     expect(resourceTypeTabItemCount("all", unfiltered)).toBe(6);
 
     const searched = filterProfileInventoryItems(all, "Devx", null);
@@ -834,10 +834,10 @@ describe("filterProfileInventoryItems", () => {
     expect(resourceTypeTabItemCount("skill", counts)).toBe(0);
     expect(resourceTypeTabItemCount("command", counts)).toBe(0);
     expect(resourceTypeTabItemCount("all", counts)).toBe(1);
-    expect(resourceTypeTabPillsText("plugin", counts)).toBe("1 Plugins");
+    expect(resourceTypeTabPillsText("plugin", counts)).toBe("1 plugin");
     const disableOpts = { includeAll: true, emptyMode: "disable" as const };
     expect(resourceTypeTabTooltip("skill", counts, disableOpts)).toBe(
-      "No Skills found",
+      "No skills in this profile yet",
     );
     const tabs = visibleResourceTypeTabs(counts, disableOpts);
     expect(tabs).toContain("plugin");

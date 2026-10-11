@@ -68,7 +68,7 @@ describe("filterLibraryResourcesBySearch", () => {
     expect(filterLibraryResourcesBySearch(rows, "  ")).toEqual(rows);
   });
 
-  it("matches Agent instructions display copy in search", () => {
+  it("matches AGENTS.md instruction display copy in search", () => {
     const agents = [
       resource({
         id: "a",
@@ -78,7 +78,7 @@ describe("filterLibraryResourcesBySearch", () => {
       }),
     ];
     expect(
-      filterLibraryResourcesBySearch(agents, "Agent instructions").map((row) => row.id),
+      filterLibraryResourcesBySearch(agents, "AGENTS.md").map((row) => row.id),
     ).toEqual(["a"]);
     expect(
       filterLibraryResourcesBySearch(agents, "agents-instructions").map((row) => row.id),

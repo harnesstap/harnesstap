@@ -144,3 +144,60 @@ export const AGENT_START_COPY = {
   homeNotWritable:
     "HarnessTap can't write to its data folder. Check folder permissions and try again.",
 } as const;
+
+/** Title-case type line on hover cards (DT-15). */
+export function hoverTypeLabel(type: string): string {
+  switch (type) {
+    case "skill":
+      return "Skill";
+    case "agent":
+      return "Subagent";
+    case "command":
+      return "Command";
+    case "hook":
+      return "Hook";
+    case "instruction":
+      return "Instruction";
+    case "mcp_server":
+      return "MCP server";
+    case "plugin":
+    case "plugin_ref":
+    case "plugin_pin":
+      return "Plugin";
+    case "rule":
+      return "Rule";
+    case "permission":
+      return "Permission";
+    case "env_var":
+      return "Env var";
+    case "model_config":
+      return "Model config";
+    default:
+      return type.replaceAll("_", " ");
+  }
+}
+
+export const CREATE_RESOURCE_COPY = {
+  subagentTitle: "Subagent",
+  subagentDescription: "A subagent definition with optional model settings.",
+} as const;
+
+const USER_PATH_MAX = 48;
+
+/** Show `$HOME` as `~`. ASCII `...` when the path is too long (DT-15). */
+export function formatUserPath(
+  path: string,
+  home = typeof process !== "undefined" ? process.env.HOME ?? process.env.USERPROFILE : undefined,
+): string {
+  const normalized = path.replaceAll("\\", "/");
+  const homeNorm = home?.replaceAll("\\", "/");
+  const tilde =
+    homeNorm && (normalized === homeNorm || normalized.startsWith(`${homeNorm}/`))
+      ? `~${normalized.slice(homeNorm.length)}`
+      : normalized;
+  if (tilde.length <= USER_PATH_MAX) {
+    return tilde;
+  }
+  const keep = Math.floor((USER_PATH_MAX - 3) / 2);
+  return `${tilde.slice(0, keep)}...${tilde.slice(-keep)}`;
+}

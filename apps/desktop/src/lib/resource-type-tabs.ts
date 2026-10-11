@@ -124,18 +124,18 @@ export function typeTabCountsFromRecord(
 
 export type ResourceTypeTabEmptyMode = "hide" | "disable" | "show";
 
-export type TypeTabZeroSurface = "profile" | "harness";
+export type TypeTabZeroSurface = "library" | "profile" | "project" | "harness";
 
 export type ResourceTypeTabOptions = {
   /** When false, omit the All tab even if several types are present. Default true. */
   includeAll?: boolean;
   /**
    * hide (default): presence-filter empty types.
-   * disable: keep empty types visible and disabled (`0 Plugins`).
-   * show: keep empty types visible and selectable (`0 Skills`).
+   * disable / show: keep every canonical type visible, including count 0.
+   * Zero pills stay muted and aria-disabled; they are never overflow-collapsed.
    */
   emptyMode?: ResourceTypeTabEmptyMode;
-  /** Muted zero-count tooltip on profile vs harness inventories. */
+  /** Muted zero-count tooltip. Default profile. */
   emptySurface?: TypeTabZeroSurface;
 };
 
@@ -143,6 +143,7 @@ export type ResourceTypeTabOptions = {
 export const LIBRARY_RESOURCE_TYPE_TAB_OPTIONS: ResourceTypeTabOptions = {
   includeAll: true,
   emptyMode: "show",
+  emptySurface: "library",
 };
 
 function includeAllTab(options?: ResourceTypeTabOptions): boolean {
@@ -170,9 +171,9 @@ function showsEmptyCanonicalTabs(mode: ResourceTypeTabEmptyMode): boolean {
 function emptyTabUsesZeroStateCopy(mode: ResourceTypeTabEmptyMode): boolean {
   switch (mode) {
     case "hide":
-    case "show":
       return false;
     case "disable":
+    case "show":
       return true;
     default: {
       const neverMode: never = mode;
@@ -181,7 +182,7 @@ function emptyTabUsesZeroStateCopy(mode: ResourceTypeTabEmptyMode): boolean {
   }
 }
 
-/** `No plugins in this profile yet` / `No plugins on this harness yet`. */
+/** #403 / DT-19 empty-tab tooltips. One function; no duplicate strings in ui-copy. */
 export function typeTabZeroStateCopy(
   type: string,
   surface: TypeTabZeroSurface,
@@ -189,6 +190,8 @@ export function typeTabZeroStateCopy(
   if (type === ALL_RESOURCE_TYPE_TAB) {
     switch (surface) {
       case "profile":
+      case "library":
+      case "project":
         return "No resources yet";
       case "harness":
         return "No resources";
@@ -200,8 +203,12 @@ export function typeTabZeroStateCopy(
   }
   const unit = resourceTypeTabUnit(type, 0);
   switch (surface) {
+    case "library":
+      return `No ${unit} in your library yet`;
     case "profile":
       return `No ${unit} in this profile yet`;
+    case "project":
+      return `No ${unit} in this project yet`;
     case "harness":
       return `No ${unit} on this harness yet`;
     default: {
@@ -276,7 +283,7 @@ export function resolveResourceTypeTab(
     selected !== null &&
     selected !== ALL_RESOURCE_TYPE_TAB &&
     visible.includes(selected)
-    && (emptyMode(options) !== "disable" || selectedHasItems)
+    && (!resourceTypeTabLocksEmpty(emptyMode(options)) || selectedHasItems)
   ) {
     return selected;
   }
@@ -300,15 +307,15 @@ export function resourceTypeTabEmptyDisabled(
   return resourceTypeTabItemCount(type, counts) <= 0;
 }
 
-/** Empty pills are inert only in disable mode (Active inventory). */
+/** Empty pills stay visible but are not a filter target (DT-19 / #354). */
 export function resourceTypeTabLocksEmpty(
   mode: ResourceTypeTabEmptyMode,
 ): boolean {
   switch (mode) {
     case "hide":
-    case "show":
       return false;
     case "disable":
+    case "show":
       return true;
     default: {
       const neverMode: never = mode;
@@ -382,14 +389,17 @@ export function collapsedTypeTabFit({
   return { visibleCount: 0, hiddenCount: count };
 }
 
-/** Visible pill copy: count then type text (`1 Skills`, `2 Plugins`). */
+/** Visible pill copy: count then unit (`0 plugins`, `1 MCP`, `3 MCPs`). */
 export function resourceTypeTabPillsText(
   type: string,
   counts: ReadonlyMap<string, number>,
   _options?: ResourceTypeTabOptions,
 ): string {
   const count = resourceTypeTabItemCount(type, counts);
-  return `${count} ${resourceTypeTabLabel(type)}`;
+  if (type === ALL_RESOURCE_TYPE_TAB) {
+    return `${count} All`;
+  }
+  return `${count} ${resourceTypeTabUnit(type, count)}`;
 }
 
 /** Singular/plural unit for aria-labels (`skill` / `skills`). */
@@ -430,8 +440,8 @@ export function resourceTypeTabUnit(type: string, count: number): string {
 }
 
 /**
- * Accessible name: `12 resources`, `1 skill` / `3 skills`. Falls back to
- * the type label when the count is 0.
+ * Accessible name: `12 resources`, `1 skill` / `3 skills`. Zero-count pills
+ * use the DT-19 empty tooltip; All at 0 stays `All`.
  */
 export function resourceTypeTabTooltip(
   type: string,
@@ -440,13 +450,13 @@ export function resourceTypeTabTooltip(
 ): string {
   const count = resourceTypeTabItemCount(type, counts);
   if (count <= 0) {
-    if (
-      emptyTabUsesZeroStateCopy(emptyMode(options))
-      && type !== ALL_RESOURCE_TYPE_TAB
-    ) {
+    if (type === ALL_RESOURCE_TYPE_TAB) {
+      return resourceTypeTabLabel(type);
+    }
+    if (emptyTabUsesZeroStateCopy(emptyMode(options))) {
       return typeTabZeroStateCopy(type, options?.emptySurface ?? "profile");
     }
-    return resourceTypeTabLabel(type);
+    return `${count} ${resourceTypeTabUnit(type, count)}`;
   }
   return `${count} ${resourceTypeTabUnit(type, count)}`;
 }
