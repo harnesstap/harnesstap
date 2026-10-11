@@ -484,15 +484,11 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         mcpConfig[r.name] = emitClaudeMcpServerEntry(r.metadata as McpServerMetadata);
       }
       const generated = JSON.stringify({ mcpServers: mcpConfig }, null, 2);
-      if (target === "global") {
-        const existing = this.readFile(join(projectRoot, mcpPath));
-        files.push({
-          path: mcpPath,
-          content: mergeClaudeUserJsonContent(existing, generated),
-        });
-      } else {
-        files.push({ path: mcpPath, content: generated });
-      }
+      const existing = this.readFile(join(projectRoot, mcpPath));
+      files.push({
+        path: mcpPath,
+        content: mergeClaudeUserJsonContent(existing, generated),
+      });
     }
 
     // Permissions + env + hooks + model → .claude/settings.json
