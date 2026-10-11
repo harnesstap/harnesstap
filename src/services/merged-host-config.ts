@@ -196,6 +196,10 @@ export function mergeClaudeSettingsContent(
       merged.permissions = mergeEnvRecord(existing.permissions, value);
       continue;
     }
+    if (key === "enabledPlugins") {
+      merged.enabledPlugins = mergeEnvRecord(existing.enabledPlugins, value);
+      continue;
+    }
     merged[key] = value;
   }
   if (merged.hooks && typeof merged.hooks === "object" && !Array.isArray(merged.hooks)) {
