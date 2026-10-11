@@ -146,7 +146,7 @@ function skillSourceDir(
 
 /**
  * Pull skills and other material out of Claude/Cursor host plugin install trees
- * so harnesses that do not load those trees (OpenCode, Codex, …) can use them.
+ * so harnesses that do not load those trees (OpenCode, Codex, ...) can use them.
  */
 export async function extractHostPluginMaterial(
   pins: readonly ResourceCreateInput[],

@@ -423,7 +423,7 @@ Credential precedence: `HARNESSTAP_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKE
 
 `profile list` lists local profile plugins by default. Pass `--remote` to include catalog profiles with tag=profile.
 
-## docs/cli/interactive-ux.md > `install` — plugin / profile list browser
+## docs/cli/interactive-ux.md > `install`: plugin / profile list browser
 
 <!-- append -->
 

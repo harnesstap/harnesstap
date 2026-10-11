@@ -41,7 +41,7 @@ function kindLabel(kind: ResourceTrackedDirectoryEntry["kind"]): string {
 }
 
 function platformsCell(platformIds: string[]): string {
-  return platformIds.length > 0 ? platformIds.join(", ") : "—";
+  return platformIds.length > 0 ? platformIds.join(", ") : ": ";
 }
 
 async function withCommandErrors(run: () => Promise<void>): Promise<void> {
@@ -134,7 +134,7 @@ async function handleRescan(opts: { format?: string }): Promise<void> {
       if (!row.skipped) {
         continue;
       }
-      ui.warn(`${row.path} — ${row.error ?? "skipped"}`);
+      ui.warn(`${row.path}: ${row.error ?? "skipped"}`);
     }
     const dirCount = result.directories.length;
     ui.success(

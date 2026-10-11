@@ -158,8 +158,8 @@ export function ConnectCatalogPanel({
               )}
               {busy
                 ? mode === "register"
-                  ? "Registering…"
-                  : "Connecting…"
+                  ? "Registering..."
+                  : "Connecting..."
                 : mode === "register"
                   ? "Register catalog"
                   : "Connect org"}

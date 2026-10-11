@@ -45,7 +45,7 @@ export function Banner({
           {children}
           {onRetry ? (
             <IconActionButton
-              label={retryBusy ? "Retrying…" : retryLabel}
+              label={retryBusy ? "Retrying..." : retryLabel}
               busy={retryBusy}
               onClick={onRetry}
               icon={<RefreshCw size={16} strokeWidth={2} aria-hidden="true" />}

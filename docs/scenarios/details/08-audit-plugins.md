@@ -10,7 +10,7 @@ are still in sync with HarnessTap.
 
 There are two related surfaces:
 
-**Library plugin resources** — what HarnessTap knows about installed plugins:
+**Library plugin resources**: what HarnessTap knows about installed plugins:
 
 ```bash
 harnesstap resource list --type plugin_pin_pin
@@ -23,7 +23,7 @@ harnesstap resource sync formatter@team-marketplace --overwrite
 trees under `~/.claude/plugins`, `~/.cursor/plugins`, and similar locations.
 Stale rows are reported when the install path cannot be resolved.
 
-**Plugin pins** — what a plugin expects at apply time:
+**Plugin pins**: what a plugin expects at apply time:
 
 ```bash
 harnesstap plugin show my-setup

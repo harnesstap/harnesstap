@@ -40,8 +40,8 @@ function resourceShowPanelRows(
   const panelRows: Array<[string, string]> = [
     ["Type", resource.type],
     ["Name", resourceHumanName(resource)],
-    ["Description", resource.description || "—"],
-    ["Path", path || "—"],
+    ["Description", resource.description || ": "],
+    ["Path", path || ": "],
     ["Origin", formatOriginDisplayLabel(
       resource.origin_kind,
       resource.origin_ref,
@@ -55,7 +55,7 @@ function resourceShowPanelRows(
   if (opts?.showAllFields) {
     panelRows.push(
       ["Source", resource.source],
-      ["Content hash", resource.content_hash || "—"],
+      ["Content hash", resource.content_hash || ": "],
       ["ID", resource.id],
       ["Created", resource.created_at],
       ["Metadata", JSON.stringify(resource.metadata)],

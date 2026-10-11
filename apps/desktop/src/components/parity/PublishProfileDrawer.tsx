@@ -342,7 +342,7 @@ export function PublishProfileDrawer({
                   </div>
                 ) : null}
                 {loading && !plan ? (
-                  <p className="muted">Planning…</p>
+                  <p className="muted">Planning...</p>
                 ) : null}
                 <section aria-label="Publish catalogs">
                   {noCatalogRegistered && !notAuthored && !error ? (
@@ -432,7 +432,7 @@ export function PublishProfileDrawer({
                   aria-busy={busy}
                 >
                   {busy ? <ButtonSpinner size={16} /> : <Upload size={16} aria-hidden />}
-                  {busy ? "Publishing…" : "Publish"}
+                  {busy ? "Publishing..." : "Publish"}
                 </button>
               ) : null}
             </div>

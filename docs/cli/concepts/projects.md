@@ -4,7 +4,7 @@ description: Repositories where HarnessTap scans, applies, mirrors, and tracks h
 
 # Projects
 
-A **project** is a repository (or directory tree) where HarnessTap materializes harness configuration. Project workflows center on scan, apply, mirror, drift detection, and snapshot revert — all scoped to the working tree rather than machine-wide home paths.
+A **project** is a repository (or directory tree) where HarnessTap materializes harness configuration. Project workflows center on scan, apply, mirror, drift detection, and snapshot revert: all scoped to the working tree rather than machine-wide home paths.
 
 ## Repo-scoped apply
 
@@ -56,7 +56,7 @@ When the target repository has a git `origin`, `apply` stores a **snapshot** of 
 
 ## Mirror
 
-`mirror` propagates configuration from the **main** harness to **alias** harnesses in the same repository — useful after manual edits to the primary harness files:
+`mirror` propagates configuration from the **main** harness to **alias** harnesses in the same repository: useful after manual edits to the primary harness files:
 
 ```bash
 ht mirror .
@@ -79,7 +79,7 @@ ht history .
 ht revert <snapshot-id>
 ```
 
-`status --check` compares the current working tree against the latest apply/mirror snapshot. Exit code `1` means actionable drift was found — useful in CI guardrails.
+`status --check` compares the current working tree against the latest apply/mirror snapshot. Exit code `1` means actionable drift was found: useful in CI guardrails.
 
 See [Scenario 21](../../scenarios/details/21-detect-drift.md).
 
@@ -98,9 +98,9 @@ These require a git-backed project and influence which harnesses `apply` and `mi
 
 Typical lifecycle:
 
-1. `ht apply team-baseline --project .` — writes files, stores snapshot (when git `origin` exists)
+1. `ht apply team-baseline --project .`: writes files, stores snapshot (when git `origin` exists)
 2. Developer edits `.cursor/rules/foo.mdc` by hand
-3. `ht status . --check` — reports divergence from snapshot
+3. `ht status . --check`: reports divergence from snapshot
 4. Either re-apply the plugin, mirror from main, or `ht revert <id>` to restore
 
 Preview before writing:
@@ -197,12 +197,12 @@ Project profiles reuse the same plugin sources as machine-wide [Profiles](./prof
 
 ## Related
 
-- [Plugins](./plugins.md) — what you apply
-- [Resources](./resources.md) — what scan imports
-- [Profiles](./profiles.md) — machine-wide apply
-- [Portability limits](../../portability-limits.md) — cross-harness mirror caveats
-- [Apply git dependencies](../use/apply-git-deps.md) — `ht apply` pull of `dependencies.apm` git entries
-- [Command reference](../command-reference.md) — `scan`, `mirror`, `status`, `history`, `revert`, and `apply`
-- [Scenario 7](../../scenarios/details/07-preview-apply-plugin.md) — preview and apply
-- [Scenario 21](../../scenarios/details/21-detect-drift.md) — detect drift
-- [Scenario 27](../../scenarios/details/27-project-sync.md) — mirror
+- [Plugins](./plugins.md): what you apply
+- [Resources](./resources.md): what scan imports
+- [Profiles](./profiles.md): machine-wide apply
+- [Portability limits](../../portability-limits.md): cross-harness mirror caveats
+- [Apply git dependencies](../use/apply-git-deps.md): `ht apply` pull of `dependencies.apm` git entries
+- [Command reference](../command-reference.md): `scan`, `mirror`, `status`, `history`, `revert`, and `apply`
+- [Scenario 7](../../scenarios/details/07-preview-apply-plugin.md): preview and apply
+- [Scenario 21](../../scenarios/details/21-detect-drift.md): detect drift
+- [Scenario 27](../../scenarios/details/27-project-sync.md): mirror

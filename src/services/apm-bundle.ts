@@ -59,7 +59,7 @@ export function verifyPackedBundleBytes(files: Record<string, Buffer>): void {
   for (const relativePath of listedPaths) {
     if (relativePath.split("/").includes("..") || relativePath.startsWith("/")) {
       throw new BundleIntegrityError(
-        `Unsafe pack.bundle_files path ${relativePath} — pack aborted closed`,
+        `Unsafe pack.bundle_files path ${relativePath}: pack aborted closed`,
       );
     }
     const bytes = files[relativePath];
@@ -171,7 +171,7 @@ export function loadVerifiedPackageFiles(filePath: string): ApPackageFiles {
   if (existsSync(resolved) && statSync(resolved).isDirectory()) {
     if (!existsSync(join(resolved, "plugin.json"))) {
       throw new Error(
-        `${resolved} is a directory but has no plugin.json — expected an Agent Plugins package.`,
+        `${resolved} is a directory but has no plugin.json: expected an Agent Plugins package.`,
       );
     }
     const files = filesFromDirectory(resolved);

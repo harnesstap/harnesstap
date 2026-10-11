@@ -29,6 +29,6 @@ export function compactHomePath(
   if (next.length <= maxLength) {
     return next;
   }
-  const keep = Math.max(8, Math.floor((maxLength - 1) / 2));
-  return `${next.slice(0, keep)}…${next.slice(-keep)}`;
+  const keep = Math.max(1, Math.floor((Math.max(3, maxLength) - 3) / 2));
+  return `${next.slice(0, keep)}...${next.slice(-keep)}`;
 }

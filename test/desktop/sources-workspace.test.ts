@@ -336,7 +336,7 @@ describe("sources workspace chrome", () => {
   test("Add marketplace infers type instead of asking for platforms", () => {
     expect(marketplacePanelSource).toContain("fetchMarketplaceTypeDetection");
     expect(marketplacePanelSource).toContain('data-testid="marketplace-type-status"');
-    expect(marketplacePanelSource).toContain("Detecting type…");
+    expect(marketplacePanelSource).toContain("Detecting type...");
     expect(marketplacePanelSource).not.toContain("marketplace-platform-");
     expect(marketplacePanelSource).not.toContain("<legend>Platforms</legend>");
     const designLock = readFileSync(

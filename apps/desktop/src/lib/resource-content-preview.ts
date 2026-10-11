@@ -10,6 +10,6 @@ export function previewResourceContent(
   }
   return [
     ...lines.slice(0, maxLines),
-    `… (${lines.length} lines in content)`,
+    `... (${lines.length} lines in content)`,
   ].join("\n");
 }

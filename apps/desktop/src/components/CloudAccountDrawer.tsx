@@ -85,7 +85,7 @@ function OrganizationsList({
         </label>
       ) : null}
       {orgsLoading && orgs.length === 0 ? (
-        <p className="muted">Loading organizations…</p>
+        <p className="muted">Loading organizations...</p>
       ) : orgs.length === 0 ? (
         <p className="muted">No organizations.</p>
       ) : visible.length === 0 ? (
@@ -111,7 +111,7 @@ function OrganizationsList({
                     aria-busy={rowBusy}
                   >
                     {rowBusy ? <ButtonSpinner size={16} /> : null}
-                    {rowBusy ? "Switching…" : "Switch"}
+                    {rowBusy ? "Switching..." : "Switch"}
                   </button>
                 )}
               </li>
@@ -378,7 +378,7 @@ export function CloudAccountDrawer({
           )}
 
           {loading && !status ? (
-            <p className="muted">Loading account…</p>
+            <p className="muted">Loading account...</p>
           ) : pending ? (
             <div className="cloud-login-pending">
               <h3>Approve sign-in in your browser</h3>
@@ -420,7 +420,7 @@ export function CloudAccountDrawer({
               </div>
               <p className="muted cloud-login-waiting">
                 <ButtonSpinner size={16} />
-                Waiting for approval…
+                Waiting for approval...
               </p>
             </div>
           ) : authenticated ? (
@@ -471,7 +471,7 @@ export function CloudAccountDrawer({
                   aria-busy={busy}
                 >
                   {busy ? <ButtonSpinner size={16} /> : <LogOut size={16} aria-hidden />}
-                  {busy ? "Signing out…" : "Sign out"}
+                  {busy ? "Signing out..." : "Sign out"}
                 </button>
               </div>
             </div>
@@ -497,7 +497,7 @@ export function CloudAccountDrawer({
                   aria-busy={busy}
                 >
                   {busy ? <ButtonSpinner size={16} /> : <LogIn size={16} aria-hidden />}
-                  {busy ? "Starting…" : "Sign in to Cloud"}
+                  {busy ? "Starting..." : "Sign in to Cloud"}
                 </button>
               </div>
             </div>

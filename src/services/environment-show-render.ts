@@ -21,7 +21,7 @@ export function renderEnvironmentShow(
     renderPanel({
       title: ["ENVIRONMENT", payload.environment.name],
       rows: [
-        ["Description", payload.environment.description || "—"],
+        ["Description", payload.environment.description || ": "],
         ["Env vars", `${Object.keys(payload.values.env_vars).length}`],
         ["Model configs", `${payload.values.model_configs.length}`],
         ["Permissions", `${payload.values.permissions.length}`],
@@ -54,7 +54,7 @@ export function renderEnvironmentShow(
         ],
         rows: payload.values.model_configs.map((entry) => ({
           ...entry,
-          provider: entry.provider ?? "—",
+          provider: entry.provider ?? ": ",
         })),
       }),
     );

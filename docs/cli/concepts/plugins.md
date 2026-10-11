@@ -10,9 +10,9 @@ A **plugin** is HarnessTap's versioned context package: the unit you create, dif
 
 | Piece | Role |
 | --- | --- |
-| **Resource** | Smallest unit: skill, rule, MCP server, hook, agent, command, … |
+| **Resource** | Smallest unit: skill, rule, MCP server, hook, agent, command, ... |
 | **Plugin** | Versioned package of resources plus dependencies, with an optional default environment |
-| **Plugin dependency** | Another plugin this one requires — `plugin:ref@source` with a version constraint |
+| **Plugin dependency** | Another plugin this one requires: `plugin:ref@source` with a version constraint |
 
 Create and edit plugins locally:
 
@@ -33,8 +33,8 @@ Every local plugin row has an **origin**. Capabilities vary by origin; `ht plugi
 | Origin | How it gets there | edit / cut / publish / add needs | Origin update |
 | --- | --- | --- | --- |
 | `authored` | `plugin create`, `plugin from-project`, `plugin fork`, conflict scaffolding | Yes | No |
-| `upstream` | Materialized from a marketplace, local path, or git plugin install tree | No — error names `fork` | Yes — `plugin check` / `plugin update` |
-| `catalog` | `plugin pull` from an org catalog | No — error names `fork` | Yes — `plugin check` / `plugin update` |
+| `upstream` | Materialized from a marketplace, local path, or git plugin install tree | No: error names `fork` | Yes: `plugin check` / `plugin update` |
+| `catalog` | `plugin pull` from an org catalog | No: error names `fork` | Yes: `plugin check` / `plugin update` |
 
 `plugin check` and `plugin update` refresh library working heads from those origins using git hashes (or catalog version/digest). `resource sync` is a different path: it still reads harness install trees, not this origin fingerprint.
 
@@ -56,7 +56,7 @@ Plugin pins and nested plugin refs are one type: a **plugin** attachment with pr
 | --- | --- | --- |
 | `local` | `base`, `./relative/path` | A plugin row in the local library |
 | `marketplace` | `web-search@anthropics` | An `upstream` plugin materialized from the install tree |
-| `git` | `https://…`, `git@…` | An `upstream` plugin materialized from the clone |
+| `git` | `https://...`, `git@...` | An `upstream` plugin materialized from the clone |
 | `catalog` | `acme/default/base` | A `catalog` plugin pulled from the cloud |
 
 ```bash
@@ -66,15 +66,15 @@ ht plugin edit my-setup --add plugin:https://github.com/acme/plugin.git --versio
 ht plugin edit my-setup --add plugin:acme/default/base --version "^2.0.0"
 ```
 
-Legacy selectors `plugin_pin:…` and `plugin:…` still resolve and print a notice naming the new `plugin:` spelling.
+Legacy selectors `plugin_pin:...` and `plugin:...` still resolve and print a notice naming the new `plugin:` spelling.
 
 ## Composition and resolution
 
-Plugins depend on other plugins. `ht apply` does not walk an ordered stack — it resolves the whole dependency graph, then materializes one coherent set of resources.
+Plugins depend on other plugins. `ht apply` does not walk an ordered stack: it resolves the whole dependency graph, then materializes one coherent set of resources.
 
-**Pass 1 — one version per plugin name.** Every constraint on a name is collected and intersected. The selected version is the highest available version that satisfies every constraint. A version or override declared by the plugin you applied ends mediation for that name. An empty intersection is a hard error that names both requirers and their dependency paths.
+**Pass 1: one version per plugin name.** Every constraint on a name is collected and intersected. The selected version is the highest available version that satisfies every constraint. A version or override declared by the plugin you applied ends mediation for that name. An empty intersection is a hard error that names both requirers and their dependency paths.
 
-**Pass 2 — one resource per `type:name`.** Resources from the resolved set are flattened with each resource's depth (the root's own resources are depth 0):
+**Pass 2: one resource per `type:name`.** Resources from the resolved set are flattened with each resource's depth (the root's own resources are depth 0):
 
 | Case | Outcome |
 | --- | --- |
@@ -82,7 +82,7 @@ Plugins depend on other plugins. `ht apply` does not walk an ordered stack — i
 | Same `type:name`, different depth | Nearest to root wins (silent; recorded in the explain trail) |
 | Same `type:name`, same depth, identical content | No-op |
 | Same `type:name`, same depth, differing content, set-like types (`skill`, `rule`, `agent`, `command`, `hook`, `mcp_server`) | Last-declared wins with a warning |
-| Same `type:name`, same depth, differing content, singleton types (`instruction`, `model_config`, `permission`, `env_var`) | Error — fix with an override |
+| Same `type:name`, same depth, differing content, singleton types (`instruction`, `model_config`, `permission`, `env_var`) | Error: fix with an override |
 
 Merge semantics are replace-only: the winner replaces the resource whole.
 
@@ -114,7 +114,7 @@ ht plugin why skill:deploy
 
 ## Plugin dependencies and version policy
 
-Marketplace and other upstream dependencies attach like any other composition item. Sync refreshes **upstream** or **catalog** plugins only — authored plugins have nothing to sync from.
+Marketplace and other upstream dependencies attach like any other composition item. Sync refreshes **upstream** or **catalog** plugins only: authored plugins have nothing to sync from.
 
 ```bash
 ht plugin edit my-setup --add plugin:formatter@my-marketplace --version "^2.1.0"
@@ -125,10 +125,10 @@ ht apply my-setup --project . --strict-plugin-versions
 
 On `apply`, HarnessTap compares dependency version constraints to library `resolved_version` values:
 
-- **Default** — warn on mismatch
-- `--strict-plugin-versions` — fail with exit code 2
-- `--ignore-plugin-versions` — skip validation
-- `--sync-plugins` — refresh upstream plugin resources before materialize
+- **Default**: warn on mismatch
+- `--strict-plugin-versions`: fail with exit code 2
+- `--ignore-plugin-versions`: skip validation
+- `--sync-plugins`: refresh upstream plugin resources before materialize
 
 Plugin install and sync providers exist for **Claude Code** and **Cursor**. Plugin-source scan covers `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and `.github/plugin/` layouts.
 
@@ -149,7 +149,7 @@ Refresh policy for marketplace metadata is configured in `~/.harnesstap/config.j
 
 ## Version cuts and dirty heads
 
-Each plugin name has a **working head** — the latest editable version. Edits after a cut (for example `plugin edit --add`) mark the head **dirty** without changing its semver. Dirty heads are shown with a trailing `*` in human output (`plugin list`, `plugin show`) — for example `1.2.0*` — while JSON output keeps the real `version` string and a separate `dirty` flag.
+Each plugin name has a **working head**: the latest editable version. Edits after a cut (for example `plugin edit --add`) mark the head **dirty** without changing its semver. Dirty heads are shown with a trailing `*` in human output (`plugin list`, `plugin show`): for example `1.2.0*`: while JSON output keeps the real `version` string and a separate `dirty` flag.
 
 Cut a new semver to freeze the current composition and advance the head:
 
@@ -174,7 +174,7 @@ HarnessTap keeps at most `pluginVersionHistoryLimit` versions per plugin name (h
 }
 ```
 
-**Sharing rules:** export, `migrate export --plugin`, and `plugin publish` refuse dirty heads so bundles and catalog uploads always reflect a cut version. `edit`, `cut`, `publish`, and adding `needs` also require an **authored** origin — fork upstream or catalog plugins first. Cut first, or pass `--version <semver>` on `plugin publish` to cut and publish in one step:
+**Sharing rules:** export, `migrate export --plugin`, and `plugin publish` refuse dirty heads so bundles and catalog uploads always reflect a cut version. `edit`, `cut`, `publish`, and adding `needs` also require an **authored** origin: fork upstream or catalog plugins first. Cut first, or pass `--version <semver>` on `plugin publish` to cut and publish in one step:
 
 ```bash
 ht plugin publish my-setup --version 1.3.0 --account acme
@@ -182,7 +182,7 @@ ht plugin publish my-setup --version 1.3.0 --account acme
 
 ## Environment cascade
 
-Environments carry *how* values (env vars, model config, permissions, secret refs). During apply, values resolve through a cascade — **last wins**:
+Environments carry *how* values (env vars, model config, permissions, secret refs). During apply, values resolve through a cascade: **last wins**:
 
 ```
 home active environment ◂ plugin default environment
@@ -199,7 +199,7 @@ ht plugin list --search foundation --remote-only
 ht apply engineering-foundation
 ```
 
-`ht apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected). Missing dependencies of a catalog package — including those declared `source: "local"` — are fetched from that same catalog at the pinned version. Use `plugin pull` to cache a bundle locally for offline work.
+`ht apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected). Missing dependencies of a catalog package: including those declared `source: "local"`: are fetched from that same catalog at the pinned version. Use `plugin pull` to cache a bundle locally for offline work.
 
 To opt out of anonymous public catalog lookups:
 
@@ -227,7 +227,7 @@ ht plugin publish my-setup
 
 ## Portable format
 
-Plugins travel as **Agent Plugins 1.0 packages** — the only portable format. There is no second transport.
+Plugins travel as **Agent Plugins 1.0 packages**: the only portable format. There is no second transport.
 
 ```text
 my-plugin/
@@ -251,7 +251,7 @@ my-plugin/
     └── embedded/<name>/      # nested AP package per embed-on-export dependency
 ```
 
-`plugin.json` carries only Agent Plugins core fields at the top level (`$schema`, `name`, `version`, …). Catalog download defaults a missing or empty `$schema`; publish and local authoring still require it. HarnessTap-specific data — dependencies, overrides, profile flag, needs, and pointers into `com.harnesstap/` — lives under `extensions["com.harnesstap"]`. Non-HarnessTap clients load `skills/` and `mcp.json` and ignore the namespace.
+`plugin.json` carries only Agent Plugins core fields at the top level (`$schema`, `name`, `version`, ...). Catalog download defaults a missing or empty `$schema`; publish and local authoring still require it. HarnessTap-specific data: dependencies, overrides, profile flag, needs, and pointers into `com.harnesstap/`: lives under `extensions["com.harnesstap"]`. Non-HarnessTap clients load `skills/` and `mcp.json` and ignore the namespace.
 
 Two shapes, same content:
 
@@ -270,15 +270,15 @@ ht migrate export ./team --plugin my-setup --embed-plugins
 
 Default export is a directory named after the plugin. Pass `--single-file` for a `plugin.ap.json` envelope (`urn:harnesstap:ap-package:v1`) whose `files` map matches the directory. `--embed-plugins` inlines dependency trees under `com.harnesstap/embedded/`.
 
-For a full workspace handoff (plugins, environments, harness preferences, config), use `ht migrate export --workspace` with a `.tar.gz` archive — see [Scenario 28](../../scenarios/details/28-machine-migration.md). Environments are machine-local and are not independently exportable.
+For a full workspace handoff (plugins, environments, harness preferences, config), use `ht migrate export --workspace` with a `.tar.gz` archive: see [Scenario 28](../../scenarios/details/28-machine-migration.md). Environments are machine-local and are not independently exportable.
 
-For multiplayer distribution, `plugin publish` and `plugin pull` move that same Agent Plugins package over HarnessTap Cloud — the bytes on the wire equal what `migrate export --single-file` writes. There is no second cloud transport. Publish targets `/api/plugins`; pull downloads from the catalog `…/versions/:version/package` route. See [Cloud connection](../cloud.md).
+For multiplayer distribution, `plugin publish` and `plugin pull` move that same Agent Plugins package over HarnessTap Cloud: the bytes on the wire equal what `migrate export --single-file` writes. There is no second cloud transport. Publish targets `/api/plugins`; pull downloads from the catalog `.../versions/:version/package` route. See [Cloud connection](../cloud.md).
 
 Requests carry `X-HarnessTap-CLI-Version` and `X-HarnessTap-API-Version`. A CLI below the cloud's minimum floor fails with an upgrade instruction (`426`, naming `npm install -g harnesstap@latest`) rather than a parse error on an unfamiliar payload.
 
 ## Deprecated `ht layer` alias
 
-`ht layer …` remains a hidden alias for `ht plugin …` for one release and prints a rename notice. Prefer `ht plugin` and top-level `ht apply`.
+`ht layer ...` remains a hidden alias for `ht plugin ...` for one release and prints a rename notice. Prefer `ht plugin` and top-level `ht apply`.
 
 ## Plugin workflows at a glance
 
@@ -303,9 +303,9 @@ Requests carry `X-HarnessTap-CLI-Version` and `X-HarnessTap-API-Version`. A CLI 
 
 ## Related
 
-- [Resources](./resources.md) — what plugins are made of
-- [Profiles](./profiles.md) — machine-wide apply
-- [Projects](./projects.md) — repo-scoped apply
-- [Command reference](../command-reference.md) — `plugin` command group
-- [Scenario 7](../../scenarios/details/07-preview-apply-plugin.md) — preview and apply
-- [Scenario 25](../../scenarios/details/25-stack-plugins.md) — stack multiple plugins
+- [Resources](./resources.md): what plugins are made of
+- [Profiles](./profiles.md): machine-wide apply
+- [Projects](./projects.md): repo-scoped apply
+- [Command reference](../command-reference.md): `plugin` command group
+- [Scenario 7](../../scenarios/details/07-preview-apply-plugin.md): preview and apply
+- [Scenario 25](../../scenarios/details/25-stack-plugins.md): stack multiple plugins

@@ -74,7 +74,7 @@ export function ProjectPicker({
 
   const label = projectPath
     ? projectDisplayName(projectPath)
-    : "Select a project…";
+    : "Select a project...";
 
   return (
     <div className="project-picker" ref={rootRef}>
@@ -105,7 +105,7 @@ export function ProjectPicker({
           ref={filterRef}
           className="project-picker-filter"
           type="search"
-          placeholder="Filter recent projects…"
+          placeholder="Filter recent projects..."
           value={filter}
           onChange={(event) => setFilter(event.target.value)}
           aria-label="Filter recent projects"
@@ -146,7 +146,7 @@ export function ProjectPicker({
         </div>
         <div className="project-picker-footer">
           <IconActionButton
-            label="Browse…"
+            label="Browse..."
             onClick={() => {
               setOpen(false);
               onBrowse();

@@ -93,7 +93,7 @@ export function SourcesPreviewPane({
           </div>
         ) : null}
         {loading ? (
-          <p className="muted">Loading preview…</p>
+          <p className="muted">Loading preview...</p>
         ) : (
           <LibraryFieldRow
             icon={<FileCode2 size={16} aria-hidden />}

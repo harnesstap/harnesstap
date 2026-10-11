@@ -278,7 +278,7 @@ export const promptForInteractivePluginListBrowse: (
 
   function renderRemoteShowContent(): string {
     const sections = [
-      remoteShowLoading ? theme.muted("Loading plugin details…") : "",
+      remoteShowLoading ? theme.muted("Loading plugin details...") : "",
       remoteShowError && !remoteShowContent
         ? theme.danger(remoteShowError)
         : "",
@@ -479,7 +479,7 @@ export const promptForInteractivePluginListBrowse: (
   const tableSection = error
     ? theme.danger(error)
     : loading && navigable.length === 0
-      ? theme.muted("Loading plugins…")
+      ? theme.muted("Loading plugins...")
       : renderGroupedPluginListBrowseViewport({
         activeIndex: clampedActive,
         navigable,

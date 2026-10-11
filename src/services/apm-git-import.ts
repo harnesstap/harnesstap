@@ -42,7 +42,7 @@ function importVirtualFile(
   const absolute = assertCheckoutPathSafe(checkoutRoot, relativePath);
   if (!existsSync(absolute) || !lstatSync(absolute).isFile()) {
     throw new ApmGitResolveError(
-      `Virtual package file ${relativePath} is missing — apply aborted closed`,
+      `Virtual package file ${relativePath} is missing: apply aborted closed`,
     );
   }
   const raw = readFileSync(absolute, "utf8");
@@ -184,7 +184,7 @@ async function resourcesFromPackageRoot(
       return { ...peekApmPackageIdentity(packageRoot), resources: [] };
     }
     throw new ApmGitResolveError(
-      `No supported plugin resources found in ${packageRoot} — apply aborted closed`,
+      `No supported plugin resources found in ${packageRoot}: apply aborted closed`,
     );
   }
   return { resources: [...unique.values()] };
@@ -269,12 +269,12 @@ export async function importApmGitCheckout(
 
   if (!existsSync(packageRoot)) {
     throw new ApmGitResolveError(
-      `Virtual package path ${resolution.virtualPath ?? "."} is missing — apply aborted closed`,
+      `Virtual package path ${resolution.virtualPath ?? "."} is missing: apply aborted closed`,
     );
   }
   if (!lstatSync(packageRoot).isDirectory()) {
     throw new ApmGitResolveError(
-      `Virtual package path ${resolution.virtualPath} is not a directory — apply aborted closed`,
+      `Virtual package path ${resolution.virtualPath} is not a directory: apply aborted closed`,
     );
   }
 
@@ -293,7 +293,7 @@ export async function importApmLocalPackage(
 ): Promise<Plugin> {
   if (!existsSync(packageRoot) || !lstatSync(packageRoot).isDirectory()) {
     throw new ApmGitResolveError(
-      `APM package path ${originRef} is missing — apply aborted closed`,
+      `APM package path ${originRef} is missing: apply aborted closed`,
     );
   }
   if (lstatSync(packageRoot).isSymbolicLink()) {

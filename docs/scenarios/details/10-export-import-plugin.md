@@ -18,7 +18,7 @@ harnesstap migrate import ./my-setup
 harnesstap migrate import ./my-setup.ap.json
 ```
 
-Working heads with unpublished edits cannot be shared — `migrate export` and
+Working heads with unpublished edits cannot be shared: `migrate export` and
 `plugin publish` refuse dirty plugins. Cut a frozen version first (`plugin cut
 <name> --version <semver>`), then export. `--plugin` accepts a plugin name
 (resolves the working head) or `name@version` (a frozen snapshot).

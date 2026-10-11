@@ -231,7 +231,7 @@ export class CursorSerializer extends BaseSerializer {
         resources.push(this.makeResource("mcp_server", name, "", displayPath, metadata));
       }
     } catch {
-      // invalid JSON — skip
+      // invalid JSON: skip
     }
 
     return resources;

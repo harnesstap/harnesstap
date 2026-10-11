@@ -439,7 +439,7 @@ export function ScopeWorkspace({
             <ApplyProgressStrip
               scope={view}
               events={ctrl.switchEvents}
-              label={ctrl.switchProgressLabel ?? "Applying…"}
+              label={ctrl.switchProgressLabel ?? "Applying..."}
               success={ctrl.switchSuccessHold && !ctrl.switching}
               onCancel={() => void ctrl.onCancelSwitch()}
             />

@@ -73,7 +73,7 @@ function makeColumns(highlightSelection: boolean): Column[] {
       width: 16,
       fitContent: true,
       transform: (value) =>
-        value ? format.formatRelativeTime(String(value)) : theme.muted("—"),
+        value ? format.formatRelativeTime(String(value)) : theme.muted(": "),
     },
   ];
 }
@@ -125,13 +125,13 @@ export function renderCatalogPluginShow(plugin: CatalogPlugin): string {
   return renderPanel({
     title: ["PLUGIN", formatCatalogPluginShowLabel(plugin)],
     rows: [
-      ["Description", plugin.summary || "—"],
-      ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "—"],
+      ["Description", plugin.summary || ": "],
+      ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : ": "],
       [
         "Updated",
         plugin.updatedAt
           ? format.formatRelativeTimeWithAbsolute(plugin.updatedAt)
-          : "—",
+          : ": ",
       ],
     ],
   });

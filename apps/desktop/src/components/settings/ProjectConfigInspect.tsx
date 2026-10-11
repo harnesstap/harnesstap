@@ -218,7 +218,7 @@ export function ProjectConfigInspect({
       {!projectPath ? (
         <p className="muted">Select a project to inspect its config.</p>
       ) : loading ? (
-        <p className="muted">Loading project config…</p>
+        <p className="muted">Loading project config...</p>
       ) : null}
       {loadError ?? openError ? (
         <div className="banner error" role="alert">
@@ -260,7 +260,7 @@ export function ProjectConfigInspect({
               onClick={() => void handleSave()}
             >
               {saveBusy ? <ButtonSpinner size={16} /> : <Save size={16} aria-hidden />}
-              {saveBusy ? "Saving…" : "Save"}
+              {saveBusy ? "Saving..." : "Save"}
             </button>
           </div>
           {saveErrors.length > 0 ? (

@@ -104,7 +104,7 @@ function hashVersion(entry: LockEntry): string | undefined {
 
 /**
  * Package URL identity from lockfile-recorded fields only.
- * Catalog/marketplace entries use a stable HT generic purl — never a fake OCI id.
+ * Catalog/marketplace entries use a stable HT generic purl: never a fake OCI id.
  */
 export function buildPurl(entry: LockEntry): string {
   const repoUrl = entry.repo_url ? scrubUrl(entry.repo_url) : "";

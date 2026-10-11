@@ -24,7 +24,7 @@ async function handleGithubLoginCommand(): Promise<void> {
   try {
     const device = await requestGithubDeviceCode();
     console.log(`Visit: ${device.verification_uri}`);
-    console.log(`Code:  ${device.user_code}`);
+    console.log(`Code: ${device.user_code}`);
     const pollIntervalSeconds = device.interval ?? 5;
     const maxPolls = Math.ceil((device.expires_in ?? 900) / pollIntervalSeconds);
     const token = await pollGithubDeviceToken(device.device_code, {

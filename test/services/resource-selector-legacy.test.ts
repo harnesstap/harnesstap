@@ -13,7 +13,7 @@ describe("legacy selector spellings", () => {
       namespace: "anthropics",
     });
     expect(takeSelectorDeprecations()).toEqual([
-      "plugin_pin: is now plugin: — use plugin:web-search@anthropics",
+      "plugin_pin: is now plugin:. Use plugin:web-search@anthropics",
     ]);
   });
 

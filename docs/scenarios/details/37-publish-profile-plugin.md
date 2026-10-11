@@ -6,7 +6,7 @@
 
 Use this when you want teammates to discover and install a switchable global
 preset from HarnessTap Cloud. Published profiles are ordinary published
-plugins with the `profile` tag — there is no separate catalog entity.
+plugins with the `profile` tag: there is no separate catalog entity.
 
 Typical commands:
 

@@ -53,10 +53,10 @@ Event names (do not rename without Analytics):
 | `desktop_installed` | First Desktop sidecar start after opt-in | `version`, `os` |
 | `desktop_opened` | Each Desktop sidecar start after opt-in | `version` |
 | `desktop_first_open` | First Desktop sidecar start after opt-in | `version` |
-| `cloud_connect_started` | Device login begins | — |
-| `cloud_connected` | Device login succeeds | — |
+| `cloud_connect_started` | Device login begins |: |
+| `cloud_connected` | Device login succeeds |: |
 | `cloud_connect_failed` | Device login fails | `error_code` and/or short `reason` |
-| `signed_in` | Same success as `cloud_connected` (web spelling) | — |
+| `signed_in` | Same success as `cloud_connected` (web spelling) |: |
 | `plugin_installed` | Local/catalog install (not Cloud `plugin_created`) | `source` (`catalog` \| `local` \| `url`) |
 | `plugin_applied` | Successful non-dry-run apply | `harness` when known |
 | `plugin_used` | CLI `plugin show` or Desktop plugin detail | `harness` when known |

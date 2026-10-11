@@ -70,7 +70,7 @@ function PreviewBody({ preview }: { preview: HarnessSyncPreviewState }): ReactNo
       return (
         <p className="muted harness-sync-preview-status" role="status" aria-live="polite">
           <ButtonSpinner size={16} />
-          Counting resource changes…
+          Counting resource changes...
         </p>
       );
     case "error":
@@ -111,7 +111,7 @@ export function SyncHarnessesDialog({
       open={open}
       title="Sync harnesses"
       description={syncHarnessesConfirmBody()}
-      confirmLabel={syncing ? "Syncing…" : "Sync"}
+      confirmLabel={syncing ? "Syncing..." : "Sync"}
       confirmBusy={syncing}
       confirmDisabled={counting}
       onConfirm={onConfirm}

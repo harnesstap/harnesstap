@@ -113,7 +113,7 @@ export function formatCatalogSelector(plugin: CatalogPlugin, version?: string): 
 function formatCatalogPluginChoiceLabel(plugin: CatalogPlugin): string {
   const selector = formatCatalogSelector(plugin, plugin.latestVersion ?? undefined);
   const summary = plugin.summary?.trim() || plugin.name;
-  return `${selector} — ${summary}`;
+  return `${selector}: ${summary}`;
 }
 
 export async function promptCatalogPluginAmbiguity(

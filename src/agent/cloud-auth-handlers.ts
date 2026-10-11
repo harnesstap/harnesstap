@@ -459,7 +459,7 @@ export function createCloudAuthHandlers(
         try {
           await deps.revokeRefreshToken(account);
         } catch {
-          // ignore revoke errors — still clear local credentials
+          // ignore revoke errors: still clear local credentials
         }
       }
       await deps.removeAccount(accountName);

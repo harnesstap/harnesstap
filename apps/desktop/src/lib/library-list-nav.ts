@@ -87,7 +87,7 @@ function isEditableFocusTarget(active: FocusTargetLike | null): boolean {
 
 /**
  * After Back, restore keyboard focus to the last opened row. Never do that
- * while a filter or other field is being typed — filtered `rows` updates
+ * while a filter or other field is being typed: filtered `rows` updates
  * must not steal the caret.
  */
 export function shouldRestoreLibraryRowFocus(input: {

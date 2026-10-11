@@ -228,7 +228,7 @@ export function UpdateAvailableControl({
                 aria-busy={busy}
               >
                 {busy ? <ButtonSpinner size={16} /> : <ArrowUpCircle size={16} aria-hidden />}
-                {busy ? "Downloading…" : "Update"}
+                {busy ? "Downloading..." : "Update"}
               </button>
             </div>
           </div>

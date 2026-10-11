@@ -11,7 +11,7 @@ export interface ProgressHandle {
 /**
  * Create a per-instance progress handle. When stdout is a TTY, shows a spinner
  * while the operation is running. In non-TTY/test environments the spinner is
- * suppressed entirely — only the resolved verdict line is emitted.
+ * suppressed entirely: only the resolved verdict line is emitted.
  */
 export function createProgress(message: string): ProgressHandle {
   let spinner: Ora | null = null;

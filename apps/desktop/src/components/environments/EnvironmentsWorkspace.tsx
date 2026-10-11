@@ -580,7 +580,7 @@ export function EnvironmentsWorkspace({
               ? "This removes the selected environments and their stored values. This cannot be undone."
               : `This removes ${deleteNames[0]} and its stored values. This cannot be undone.`
         }
-        confirmLabel={deleteBusy ? "Deleting…" : "Delete"}
+        confirmLabel={deleteBusy ? "Deleting..." : "Delete"}
         confirmDisabled={needsForce && !forceChecked}
         confirmBusy={deleteBusy}
         onConfirm={() => void onConfirmDelete()}

@@ -173,7 +173,7 @@ export function registerMcpCommands(root: Command): void {
 
   mcp
     .command("show")
-    .argument("<id>", "MCP Registry identity (io.github…)")
+    .argument("<id>", "MCP Registry identity (io.github...)")
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Show one MCP Registry server and the native config HT would emit")
     .action(async (id: string, opts: McpShowOpts) => {

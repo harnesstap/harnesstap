@@ -8,6 +8,7 @@ import {
   toResourceListRows,
 } from "../../src/ui/resource-list-render.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { shortenId } from "../../src/ui/format.ts";
 
 describe("resource list render", () => {
   it("filters by skill:dbt type prefix", () => {
@@ -100,7 +101,7 @@ describe("resource list render", () => {
     expect(output).toContain("rule-1");
     expect(output).toContain("rule-10");
     expect(output).not.toContain("rule-11");
-    expect(output).toContain("… and 2 more resources (use --all to show all)");
+    expect(output).toContain("... and 2 more resources (use --all to show all)");
   });
 
   it("shows all resources per type when showAll is set", () => {
@@ -119,7 +120,7 @@ describe("resource list render", () => {
     const output = renderGroupedResourceListTables(rows, { showId: false, showAll: true });
     expect(output).toContain("rule-11");
     expect(output).toContain("rule-12");
-    expect(output).not.toContain("… and");
+    expect(output).not.toContain("... and");
   });
 
   it("formatResourceListNamespace enriches marketplace_link origin_ref", () => {
@@ -154,7 +155,7 @@ describe("resource list render", () => {
       updated_at: "2026-01-02T00:00:00.000Z",
     }]);
     const output = renderGroupedResourceListTables(rows, { showId: true, maxWidth: 80 });
-    expect(output).toContain(`${id.slice(0, 6)}…${id.slice(-4)}`);
+    expect(output).toContain(shortenId(id));
     expect(output).toContain("global");
   });
 
