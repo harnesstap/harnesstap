@@ -98,7 +98,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 **Feedback**
 
-- Success and info results are toasts, bottom-right above the FAB (`--z-toast`), at most three visible, success auto-dismisses after 4s. Error toasts stay until closed. No header success flash and no inline "Saved" copy for the same result.
+- Success and info results are toasts, bottom-right above the FAB (`--z-toast`), at most three visible, success auto-dismisses after 4s. Error toasts stay until closed. No header success flash and no inline "Saved" copy for the same result. Action toasts stay inside the 360px stack: the message wraps on word boundaries and the action button sits under the text, not overflowing. Apply and switch do not open View snapshot by themselves; that dialog opens from the toast action and lists when it was taken, what changed, and how to undo (`ht revert`), with Close only.
 - Errors that block a pane (connection, live status, profiles, add resource, switch) are inline `Banner`s with the same **Retry** / **Dismiss** controls everywhere. Held values stay on screen while a refetch runs; nothing flips to empty or Loading after the first load.
 
 **Field identity**
