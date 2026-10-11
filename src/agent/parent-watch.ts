@@ -51,7 +51,12 @@ export function stdinIsParentPipe(stdin: NodeJS.ReadableStream | null | undefine
   }
 }
 
-/** Exit when the desktop parent dies (stdin closed or parent pid gone). */
+/**
+ * Exit when the desktop parent dies. The Tauri host holds a stdin pipe, so
+ * EOF or a dead parent pid both mean quit. A background `demo-home.sh` (CI
+ * visual) has no such pipe: its launching step exits while shots still need
+ * the agent, so do not treat that ppid as an orphan.
+ */
 export function installAgentParentWatch(options: AgentParentWatch): () => void {
   let stopped = false;
   const once = (): void => {
@@ -61,15 +66,19 @@ export function installAgentParentWatch(options: AgentParentWatch): () => void {
     stopped = true;
     options.onOrphan();
   };
-  const isAlive = options.isAlive ?? ((pid: number) => parentProcessAlive(pid));
-  const intervalMs = options.intervalMs ?? 1000;
-  const timer = setInterval(() => {
-    if (!isAlive(options.parentPid)) {
-      once();
-    }
-  }, intervalMs);
-  timer.unref?.();
-  const stdin = stdinIsParentPipe(options.stdin) ? options.stdin : null;
+  const piped = stdinIsParentPipe(options.stdin);
+  const stdin = piped ? options.stdin : null;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  if (piped) {
+    const isAlive = options.isAlive ?? ((pid: number) => parentProcessAlive(pid));
+    const intervalMs = options.intervalMs ?? 1000;
+    timer = setInterval(() => {
+      if (!isAlive(options.parentPid)) {
+        once();
+      }
+    }, intervalMs);
+    timer.unref?.();
+  }
   const onStdinGone = (): void => {
     once();
   };
@@ -82,7 +91,9 @@ export function installAgentParentWatch(options: AgentParentWatch): () => void {
   }
   return () => {
     stopped = true;
-    clearInterval(timer);
+    if (timer) {
+      clearInterval(timer);
+    }
     stdin?.off("end", onStdinGone);
     stdin?.off("close", onStdinGone);
   };

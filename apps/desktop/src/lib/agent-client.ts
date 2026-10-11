@@ -4,8 +4,8 @@ import {
   agentFetch,
   throwAgentError,
 } from "./api/http";
-import { CONNECT_SPLASH_COPY } from "./ui-copy";
 import { formatSidecarDetail, type SidecarDiagnostics } from "./sidecar-diagnostics";
+import { CONNECT_SPLASH_COPY } from "./ui-copy";
 import type {
   AgentHealth,
   AgentSwitchFinalEvent,
@@ -121,7 +121,7 @@ export async function waitForHealth(
   maxAttempts = 40,
   delayMs = 250,
 ): Promise<AgentHealth> {
-  let lastError = "Sidecar not reachable";
+  let lastError: string = CONNECT_SPLASH_COPY.unreachable;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const portFromNative = await readNativeSidecarPort();

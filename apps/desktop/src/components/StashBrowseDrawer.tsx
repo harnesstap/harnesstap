@@ -6,6 +6,7 @@ import {
   fetchStatus,
   popProfileStash,
 } from "../lib/agent-client";
+import { formatAgentStartError } from "../lib/agent-start-error";
 import {
   applyProfileStash,
   stashApplySuccessMessage,
@@ -134,9 +135,7 @@ export function StashBrowseDrawer({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setBannerError(
-            error instanceof Error ? error.message : "Sidecar connection failed",
-          );
+          setBannerError(formatAgentStartError(error));
         }
       });
     return () => {

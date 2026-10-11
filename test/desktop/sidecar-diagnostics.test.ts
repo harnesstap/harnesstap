@@ -28,8 +28,10 @@ describe("formatSidecarDetail", () => {
 describe("connect splash copy", () => {
   it("uses ASCII punctuation only", () => {
     const blob = [
+      CONNECT_SPLASH_COPY.starting,
       CONNECT_SPLASH_COPY.couldNotConnect,
       CONNECT_SPLASH_COPY.sidecarConnectionFailed,
+      CONNECT_SPLASH_COPY.unreachable,
       CONNECT_SPLASH_COPY.retry,
       CONNECT_SPLASH_COPY.openLogs,
       CONNECT_SPLASH_COPY.openLogsFailed("permission denied"),

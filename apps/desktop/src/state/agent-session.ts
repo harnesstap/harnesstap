@@ -6,6 +6,7 @@ import {
   probeHealth,
   SidecarConnectError,
 } from "../lib/agent-client";
+import { formatAgentStartError } from "../lib/agent-start-error";
 import { CONNECT_SPLASH_COPY } from "../lib/ui-copy";
 
 export type AgentPhase = "connecting" | "connected" | "disconnected";
@@ -86,8 +87,10 @@ export function useAgentSession(): AgentSession {
   );
 
   const reportConnectFailure = useCallback((connectError: unknown, fallback: string) => {
-    setError(connectError instanceof Error ? connectError.message : fallback);
-    setErrorDetail(connectError instanceof SidecarConnectError ? connectError.detail : null);
+    const detail =
+      connectError instanceof SidecarConnectError ? connectError.detail : null;
+    setError(formatAgentStartError(connectError, detail ?? fallback));
+    setErrorDetail(detail);
     setPhase("disconnected");
   }, []);
 
@@ -101,7 +104,10 @@ export function useAgentSession(): AgentSession {
         }
       } catch (connectError) {
         if (!cancelled) {
-          reportConnectFailure(connectError, CONNECT_SPLASH_COPY.sidecarConnectionFailed);
+          reportConnectFailure(
+            connectError,
+            CONNECT_SPLASH_COPY.sidecarConnectionFailed,
+          );
         }
       }
     })();
@@ -122,7 +128,10 @@ export function useAgentSession(): AgentSession {
     try {
       applyConnection(await connectAgent({ restart: true }));
     } catch (connectError) {
-      reportConnectFailure(connectError, CONNECT_SPLASH_COPY.sidecarConnectionFailed);
+      reportConnectFailure(
+        connectError,
+        CONNECT_SPLASH_COPY.sidecarConnectionFailed,
+      );
     } finally {
       retryBusyRef.current = false;
       setRetryBusy(false);
@@ -139,9 +148,7 @@ export function useAgentSession(): AgentSession {
       if (controller.signal.aborted || isAbortError(probeError)) {
         return;
       }
-      setError(
-        probeError instanceof Error ? probeError.message : "Sidecar connection failed",
-      );
+      setError(formatAgentStartError(probeError));
       setPhase("disconnected");
     };
     void probeHealth(connection.client.baseUrl, { signal: controller.signal })
@@ -223,7 +230,10 @@ export function useAgentSession(): AgentSession {
           }
         } catch (connectError) {
           if (!cancelled) {
-            reportConnectFailure(connectError, "Sidecar reconnect after reload failed");
+            reportConnectFailure(
+              connectError,
+              CONNECT_SPLASH_COPY.sidecarConnectionFailed,
+            );
           }
         }
       })();
