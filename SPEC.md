@@ -406,7 +406,7 @@ Repositories may declare named profiles, environments, and plugin composition in
 | `status --check` | Compares working tree against the latest apply/sync snapshot. |
 | `mirror` | Rematerializes other registered harness outputs from one on-disk harness (`--from`, default first registered). Not apply. |
 | `history` | Lists stored snapshots (requires git-backed project). |
-| `revert` | Restores live-disk bytes from a snapshot and removes apply-added files that were still unmodified. User-edited files stay; `--force-remove` deletes them too. |
+| `revert` | Restores live-disk bytes from a snapshot and removes apply-added files that were still unmodified. User-edited files stay; `--force-remove` deletes them too. `--dry-run` prints `Would restore N, would remove M`. |
 | `status` | Shows harnesses, applied plugins, snapshots, and harness preferences. |
 
 ### `harness` subcommands
