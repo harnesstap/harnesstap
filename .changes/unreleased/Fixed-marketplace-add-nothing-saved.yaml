@@ -1,0 +1,5 @@
+kind: Fixed
+body: Print Nothing was saved. on every marketplace add failure, including unreachable GitHub URLs, not only local-path errors.
+time: 2026-10-10T19:20:00Z
+custom:
+  Issue: "368"
