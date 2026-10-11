@@ -1,0 +1,5 @@
+kind: Fixed
+body: Make profile use --changes stash handle modified managed files (the same set as --changes save), restore last-apply bytes, and never delete the path.
+time: 2026-10-10T19:40:00Z
+custom:
+  Issue: ""

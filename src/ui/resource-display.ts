@@ -78,6 +78,15 @@ export type ResourceDisplaySource = {
 
 export function resourceHumanName(resource: ResourceDisplaySource): string {
   if (isAgentsMdResource(resource)) {
+    const source = (resource.source ?? "").replaceAll("\\", "/").replace(/\/+$/, "");
+    if (resource.name !== AGENTS_INSTRUCTIONS_RESOURCE_NAME) {
+      return source && source !== "AGENTS.md"
+        ? `Agent instructions (${source})`
+        : `Agent instructions (${resource.name})`;
+    }
+    if (source && source !== "AGENTS.md") {
+      return `Agent instructions (${source})`;
+    }
     return AGENTS_MD_DISPLAY_NAME;
   }
   if (resource.type === "hook") {

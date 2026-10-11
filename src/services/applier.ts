@@ -7,7 +7,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
-import { parse as parseToml } from "smol-toml";
 import { hasParentTraversalSegment } from "../utils/path-containment.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
@@ -54,12 +53,14 @@ import {
 } from "./profile-commit-resource.js";
 import {
   executeSafeFileRemovals,
+  hasHarnessTapMaterialization,
   hashOnDiskFile,
   isHarnessTapOwnedPath,
   type SafeFileRemovalOptions,
   type SafeFileRemovalResult,
 } from "./safe-file-removal.js";
 import { captureManagedSnapshotState } from "./snapshot-capture.js";
+import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -97,6 +98,8 @@ export interface GenerateFilesOptions extends SerializeOptions {
   claudeConfig?: ClaudePluginConfig;
   resolvedEnvironment?: EnvironmentFragment;
   previousManagedPlacements?: ReadonlyMap<string, readonly string[]>;
+  /** When false, keep per-harness skill emits (status/drift). Default true. */
+  pinSkillEmits?: boolean;
 }
 
 export interface GlobalApplyOptions extends GenerateFilesOptions, MaterializeFilesOptions {
@@ -223,20 +226,6 @@ function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boo
   }
 }
 
-function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
-  }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
-    .join(",")}}`;
-}
-
 function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): boolean {
   if (fileContentMatchesExisting(fullPath, file)) {
     return true;
@@ -245,18 +234,14 @@ function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): bo
     return false;
   }
   try {
-    const live = readFileSync(fullPath, "utf-8");
-    const generated = file.content;
-    if (fullPath.endsWith(".json") || fullPath.endsWith(".jsonc")) {
-      return canonicalJson(JSON.parse(live)) === canonicalJson(JSON.parse(generated));
-    }
-    if (fullPath.endsWith(".toml")) {
-      return canonicalJson(parseToml(live)) === canonicalJson(parseToml(generated));
-    }
+    return fileContentsEquivalentForDrift(
+      file.path,
+      readFileSync(fullPath, "utf-8"),
+      file.content,
+    );
   } catch {
     return false;
   }
-  return false;
 }
 
 function isGenerateFilesOptions(
@@ -270,7 +255,8 @@ function isGenerateFilesOptions(
         "skillCursorMode" in value ||
         "skillSourceRoot" in value ||
         "previousManagedPlacements" in value ||
-        "mergeLiveSkillMarkdown" in value),
+        "mergeLiveSkillMarkdown" in value ||
+        "pinSkillEmits" in value),
   );
 }
 
@@ -348,6 +334,7 @@ export async function generateFiles(
       skillCursorMode: options.skillCursorMode,
       skillSourceRoot,
       projectRoot,
+      mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
       surfaceWarnings,
     });
     if (pid === "claude-code" && claudeConfig) {
@@ -360,6 +347,7 @@ export async function generateFiles(
       serializeOptions: {
         skillCursorMode: options.skillCursorMode,
         skillSourceRoot,
+        mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
       },
     });
     results.push({
@@ -369,6 +357,9 @@ export async function generateFiles(
     });
   }
 
+  if (options.pinSkillEmits === false) {
+    return results;
+  }
   return pinSkillEmitsToExistingLivePaths(
     projectRoot,
     results,
@@ -585,11 +576,13 @@ export async function materializeFiles(
     }
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
     if (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path)) {
-      recordPreexistingPath({
-        root_path: rootPath,
-        path: file.path,
-        content_hash: hashOnDiskFile(fullPath) ?? "",
-      });
+      if (!hasHarnessTapMaterialization(rootPath, file.path)) {
+        recordPreexistingPath({
+          root_path: rootPath,
+          path: file.path,
+          content_hash: hashOnDiskFile(fullPath) ?? "",
+        });
+      }
       if (!shouldPreserveUnownedFile(file.path)) {
         skippedFiles.push(file.path);
         continue;
@@ -683,7 +676,6 @@ export async function applyToGlobal(
   const ownedSkippedFiles = materialized.skippedFiles.filter((filePath) =>
     isHarnessTapOwnedPath(homeRoot, filePath),
   );
-  const persistedPaths = [...new Set([...materialized.writtenFiles, ...ownedSkippedFiles])];
 
   if (!materialized.cancelled) {
     persistWrittenMaterializations({
@@ -693,7 +685,7 @@ export async function applyToGlobal(
       platformResults: results.map((result) => ({
         platformId: result.platformId,
         files: result.files,
-        writtenPaths: persistedPaths.filter((filePath) =>
+        writtenPaths: materialized.writtenFiles.filter((filePath) =>
           result.files.some((file) => file.path === filePath),
         ),
       })),
@@ -701,12 +693,11 @@ export async function applyToGlobal(
   }
 
   if (!materialized.cancelled && options.snapshotId) {
-    removeImportedSnapshotOwnershipForFiles(persistedPaths, options.snapshotId);
-    const existingInstalls = listImportedSnapshotInstalls(options.snapshotId);
+    const currentlyOwnedPaths = [
+      ...new Set([...materialized.writtenFiles, ...ownedSkippedFiles]),
+    ];
+    removeImportedSnapshotOwnershipForFiles(currentlyOwnedPaths, options.snapshotId);
     for (const result of results) {
-      const previousFiles =
-        existingInstalls.find((install) => install.platform_id === result.platformId)?.files ??
-        [];
       const emittedFiles = result.files.map((file) => file.path);
       const writtenFiles = emittedFiles.filter((filePath) =>
         materialized.writtenFiles.includes(filePath),
@@ -714,10 +705,7 @@ export async function applyToGlobal(
       const preservedSkippedFiles = emittedFiles.filter(
         (filePath) =>
           materialized.skippedFiles.includes(filePath)
-          && (
-            previousFiles.includes(filePath)
-            || ownedSkippedFiles.includes(filePath)
-          ),
+          && ownedSkippedFiles.includes(filePath),
       );
       const installFiles = [...new Set([...writtenFiles, ...preservedSkippedFiles])];
       if (installFiles.length === 0) continue;

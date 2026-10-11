@@ -19,6 +19,7 @@
     "generate:scenarios": "bun scripts/generate-scenarios.ts",
     "check:packaged-help": "bun scripts/check-packaged-help.ts",
     "build:sidecar": "bash scripts/build-sidecar.sh",
+    "check:compiled-sidecar": "bun scripts/check-compiled-sidecar.ts",
     "desktop:cleanup": "bash apps/desktop/scripts/cleanup-stale-dev.sh",
     "desktop:prepare-sidecar": "bash apps/desktop/scripts/prepare-sidecar.sh",
     "desktop:watch-sidecar": "bun apps/desktop/scripts/watch-sidecar.ts",
