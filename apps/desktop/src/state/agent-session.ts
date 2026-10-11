@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { connectAgent, hasTauriRuntime, probeHealth } from "../lib/agent-client";
+import {
+  connectAgent,
+  hasTauriRuntime,
+  probeHealth,
+  SidecarConnectError,
+} from "../lib/agent-client";
+import { CONNECT_SPLASH_COPY } from "../lib/ui-copy";
 
 export type AgentPhase = "connecting" | "connected" | "disconnected";
 
@@ -21,6 +27,8 @@ export interface AgentSession {
   phase: AgentPhase;
   connected: boolean;
   error: string | null;
+  /** Sidecar stderr and exit status behind `error`, when it failed to start. */
+  errorDetail: string | null;
   retryBusy: boolean;
   retry: () => Promise<void>;
   firstRun: boolean;
@@ -60,6 +68,7 @@ export function useAgentSession(): AgentSession {
   const [connection, setConnection] = useState<ConnectionState | null>(null);
   const [phase, setPhase] = useState<AgentPhase>("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [retryBusy, setRetryBusy] = useState(false);
   const retryBusyRef = useRef(false);
 
@@ -71,9 +80,16 @@ export function useAgentSession(): AgentSession {
       });
       setPhase("connected");
       setError(null);
+      setErrorDetail(null);
     },
     [],
   );
+
+  const reportConnectFailure = useCallback((connectError: unknown, fallback: string) => {
+    setError(connectError instanceof Error ? connectError.message : fallback);
+    setErrorDetail(connectError instanceof SidecarConnectError ? connectError.detail : null);
+    setPhase("disconnected");
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,19 +101,14 @@ export function useAgentSession(): AgentSession {
         }
       } catch (connectError) {
         if (!cancelled) {
-          setError(
-            connectError instanceof Error
-              ? connectError.message
-              : "Sidecar connection failed",
-          );
-          setPhase("disconnected");
+          reportConnectFailure(connectError, CONNECT_SPLASH_COPY.sidecarConnectionFailed);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [applyConnection]);
+  }, [applyConnection, reportConnectFailure]);
 
   const retry = useCallback(async () => {
     if (retryBusyRef.current) {
@@ -106,21 +117,17 @@ export function useAgentSession(): AgentSession {
     retryBusyRef.current = true;
     setRetryBusy(true);
     setError(null);
+    setErrorDetail(null);
     setPhase("connecting");
     try {
       applyConnection(await connectAgent({ restart: true }));
     } catch (connectError) {
-      setError(
-        connectError instanceof Error
-          ? connectError.message
-          : "Sidecar connection failed",
-      );
-      setPhase("disconnected");
+      reportConnectFailure(connectError, CONNECT_SPLASH_COPY.sidecarConnectionFailed);
     } finally {
       retryBusyRef.current = false;
       setRetryBusy(false);
     }
-  }, [applyConnection]);
+  }, [applyConnection, reportConnectFailure]);
 
   // After the first connect, probe health so killing the agent dims the shell.
   useEffect(() => {
@@ -216,12 +223,7 @@ export function useAgentSession(): AgentSession {
           }
         } catch (connectError) {
           if (!cancelled) {
-            setError(
-              connectError instanceof Error
-                ? connectError.message
-                : "Sidecar reconnect after reload failed",
-            );
-            setPhase("disconnected");
+            reportConnectFailure(connectError, "Sidecar reconnect after reload failed");
           }
         }
       })();
@@ -236,7 +238,7 @@ export function useAgentSession(): AgentSession {
       cancelled = true;
       unlisten?.();
     };
-  }, [applyConnection]);
+  }, [applyConnection, reportConnectFailure]);
 
   return {
     baseUrl: connection?.client.baseUrl ?? null,
@@ -245,6 +247,7 @@ export function useAgentSession(): AgentSession {
     phase,
     connected: phase === "connected",
     error,
+    errorDetail,
     retryBusy,
     retry,
     firstRun: connection?.firstRun ?? false,

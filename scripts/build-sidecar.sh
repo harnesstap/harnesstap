@@ -24,5 +24,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# The compiled binary cannot read package.json at runtime (it is not in the
+# bunfs), so bake the version in the same way tsup does for the npm build.
+VERSION="$(cd "$ROOT" && bun --print 'require("./package.json").version')"
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$ ]]; then
+  echo "build-sidecar: unexpected package.json version: '$VERSION'" >&2
+  exit 1
+fi
+
 cd "$WORKDIR"
-bun build --compile "$ENTRY" --outfile "$OUT"
+bun build --compile "$ENTRY" --define "__HT_VERSION__=\"$VERSION\"" --outfile "$OUT"

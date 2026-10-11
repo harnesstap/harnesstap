@@ -1,8 +1,21 @@
 import { setTelemetryProduct, trackDesktopStartup } from "../telemetry/index.js";
-import { isMainModule } from "../utils/is-main-module.js";
+import { PACKAGE_VERSION } from "../version.js";
 import { startAgentServer } from "./serve.js";
 
-if (isMainModule(import.meta.url)) {
+// Bun-only entry. isMainModule() realpaths argv[1], which fails for the compiled
+// sidecar (/$bunfs/root/ht-agent), so it would exit 0 without starting the server.
+if (import.meta.main) {
+  const args = process.argv.slice(2);
+  if (args.includes("--version") || args.includes("-V")) {
+    console.log(PACKAGE_VERSION);
+    process.exit(0);
+  }
+
+  if (process.env.HARNESSTAP_AGENT_SIMULATE_CRASH === "1") {
+    console.error("HarnessTap agent simulated startup crash (HARNESSTAP_AGENT_SIMULATE_CRASH=1)");
+    process.exit(1);
+  }
+
   setTelemetryProduct("desktop");
   trackDesktopStartup();
   const server = await startAgentServer();
