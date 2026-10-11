@@ -24,7 +24,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
-import { baselinePathFor, compareShot } from "./visual-compare.mjs";
+import { baselinePathFor, compareShot, DEFAULT_MAX_RATIO } from "./visual-compare.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SHIM_PATH = path.join(SCRIPT_DIR, "tauri-shim.js");
@@ -613,16 +613,23 @@ async function run() {
   }
 
   if (config.compare) {
+    let worst = { ratio: 0, name: "-" };
     for (const file of report.written) {
       const baseline = baselinePathFor(file, config.baselineDir);
       const diffPath = path.join(config.outDir, `diff-${path.basename(file)}`);
       const result = compareShot(file, baseline, { diffPath });
+      if (result.ratio > worst.ratio) {
+        worst = { ratio: result.ratio, name: path.basename(file) };
+      }
       if (!result.ok) {
         report.compareFailures.push(
           `${path.basename(file)}: ${result.reason ?? "mismatch"}`,
         );
       }
     }
+    console.log(
+      `shots: compared ${report.written.length}, worst mismatch ${(worst.ratio * 100).toFixed(4)}% (${worst.name}), limit ${(DEFAULT_MAX_RATIO * 100).toFixed(1)}%`,
+    );
   }
 
   console.log("");
