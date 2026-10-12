@@ -51,6 +51,7 @@
     "lint:css": "bun scripts/check-css-tokens.ts",
     "check:cli-error-contract": "bun scripts/check-cli-error-contract.ts",
     "check:copy": "bun scripts/check-copy.ts",
+    "check:agent-plugins-spec": "bun test test/services/agent-plugins/spec-schema-guard.test.ts",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist && find . -maxdepth 1 -name '*.bun-build' -delete",
     "preflight": "bun run lint && bun run lint:css && bun run check:cli-error-contract && bun run check:copy && bun run typecheck && bun run test:run && bun run build",
@@ -107,6 +108,7 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.0",
     "@types/semver": "^7.7.1",
+    "ajv": "^8.20.0",
     "tsup": "^8.3.5",
     "typescript": "^5.7.0"
   }

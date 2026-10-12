@@ -91,7 +91,7 @@ describe("parseApPackageFiles", () => {
       "plugin.json": {
         encoding: "utf8",
         content: JSON.stringify({
-          $schema: "https://agentplugins.org/schema/v1/plugin.schema.json",
+          $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
           name: "hello",
           version: "1.0.0",
         }),
@@ -178,7 +178,7 @@ describe("readApPackage", () => {
     writeFileSync(
       join(dir, "plugin.json"),
       JSON.stringify({
-        $schema: "https://agentplugins.org/schema/v1/plugin.schema.json",
+        $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
         name: "leaky",
         version: "1.0.0",
       }),

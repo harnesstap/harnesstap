@@ -19,6 +19,11 @@ export function handlePluginValidatePackageCommand(
     if (result.schemaDefaulted) {
       ui.dim(`plugin.json had no $schema; accepted with default ${result.schema}`);
     }
+    if (result.schemaUpgradedFrom) {
+      ui.dim(
+        `plugin.json uses the legacy $schema ${result.schemaUpgradedFrom}; read as ${result.schema}`,
+      );
+    }
   } catch (error) {
     process.exitCode = 1;
     const message = error instanceof Error ? error.message : String(error);
