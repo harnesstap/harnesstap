@@ -221,7 +221,16 @@ jobs:
             echo "harnesstap@${VERSION} already on npm; skipping publish."
             exit 0
           fi
-          npm publish --access public
+          # "latest" only when this is the highest stable version, so a patch
+          # cut from a release/<major>.<minor>.x branch after a newer minor
+          # shipped does not move "latest" backwards (it gets release-<major>.<minor>).
+          HIGHEST="$( { npm view harnesstap versions --json 2>/dev/null | jq -r 'if type == "array" then .[] else . end' || true; echo "$VERSION"; } | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)"
+          DIST_TAG="latest"
+          if [ "$HIGHEST" != "$VERSION" ]; then
+            DIST_TAG="release-${VERSION%.*}"
+          fi
+          echo "Publishing harnesstap@${VERSION} with dist-tag ${DIST_TAG} (highest stable: ${HIGHEST})."
+          npm publish --access public --tag "$DIST_TAG"
 
       # Immutable releases are on: a published release cannot take new assets.
       # Create a draft here; the desktop matrix uploads installers to it and
