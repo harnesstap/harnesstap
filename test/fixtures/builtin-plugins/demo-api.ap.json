@@ -3,7 +3,7 @@
   "files": {
     "plugin.json": {
       "encoding": "utf8",
-      "content": "{\"$schema\": \"https://agentplugins.org/schemas/v1/plugin.json\", \"name\": \"demo-api\", \"version\": \"1.0.0\", \"description\": \"FastAPI REST API with SQLAlchemy, Pydantic v2, and pytest\", \"keywords\": [\"python\", \"fastapi\", \"sqlalchemy\", \"pydantic\"], \"extensions\": {\"com.harnesstap\": {\"schema\": \"urn:harnesstap:ap-extension:v1\", \"sourceName\": \"demo-api\"}}}"
+      "content": "{\"$schema\": \"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json\", \"name\": \"demo-api\", \"version\": \"1.0.0\", \"description\": \"FastAPI REST API with SQLAlchemy, Pydantic v2, and pytest\", \"keywords\": [\"python\", \"fastapi\", \"sqlalchemy\", \"pydantic\"], \"extensions\": {\"com.harnesstap\": {\"schema\": \"urn:harnesstap:ap-extension:v1\", \"sourceName\": \"demo-api\"}}}"
     },
     "com.harnesstap/instructions/project-context.md": {
       "encoding": "utf8",

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { isAgentPluginsSchemaId } from "../services/agent-plugins/schema-registry.js";
 
 /** Host and Agent Plugins 1.0 manifest locations, preferred native first. */
 export const HOST_PLUGIN_MANIFEST_RELATIVE_PATHS = [
@@ -47,10 +48,7 @@ export function readFirstHostPluginManifest(
 export function isAgentPluginsRootManifest(
   manifest: HostPluginManifest,
 ): boolean {
-  return (
-    typeof manifest.$schema === "string" &&
-    manifest.$schema.includes("agent-plugins")
-  );
+  return isAgentPluginsSchemaId(manifest.$schema);
 }
 
 export function parsePluginRef(ref: string): { name: string; marketplace: string } {

@@ -58,4 +58,34 @@ describe("ht plugin validate-package", () => {
       await context.cleanup();
     }
   });
+
+  it("reads a legacy HarnessTap $schema as the canonical one, even with --strict", async () => {
+    const context = await createTestContext("cli-validate-package-legacy");
+    try {
+      for (const [fixture, legacy] of [
+        ["legacy-schema-v1.ap.json", "https://agentplugins.org/schema/v1/plugin.schema.json"],
+        ["legacy-schemas-v1.ap.json", "https://agentplugins.org/schemas/v1/plugin.json"],
+      ] as const) {
+        const result = await runCli([
+          "plugin",
+          "validate-package",
+          join(fixturesDir, fixture),
+          "--strict",
+          "--format",
+          "json",
+        ]);
+        expect(result.exitCode).toBeUndefined();
+        expect(JSON.parse(result.stdout)).toEqual(
+          expect.objectContaining({
+            ok: true,
+            schemaDefaulted: false,
+            schemaUpgradedFrom: legacy,
+            schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+          }),
+        );
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

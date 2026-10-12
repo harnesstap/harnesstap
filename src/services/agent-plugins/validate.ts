@@ -1,7 +1,8 @@
 import semver from "semver";
 import { isValidApName } from "./name.js";
+import { AP_SCHEMA_URL, lookupApSchema } from "./schema-registry.js";
 
-export const AP_SCHEMA_URL = "https://agentplugins.org/schema/v1/plugin.schema.json";
+export { AP_SCHEMA_URL } from "./schema-registry.js";
 
 /** Agent Plugins 1.0 core fields. The schema is closed: nothing else is legal. */
 const CORE_FIELDS = new Set([
@@ -27,14 +28,24 @@ export class ManifestValidationError extends Error {
   }
 }
 
+function isVerbose(): boolean {
+  return process.argv.includes("-v") || process.argv.includes("--verbose");
+}
+
 /**
- * Catalog packages may omit `$schema`. Default only when the field is missing
- * or an empty string. A present non-string value is left alone so validation
- * can reject it. A present non-empty string is never rewritten.
+ * Read compat for `plugin.json` `$schema`, applied in memory only.
+ *
+ * - Missing or empty (catalog packages may omit it): default to the canonical URL.
+ * - A legacy HarnessTap identifier: upgrade to the canonical URL.
+ * - Anything else is left alone so validation can accept or reject it.
+ *
+ * Nothing is written back to disk. Only a later export emits the new value.
  */
 export function withDefaultedApSchema(manifest: unknown): {
   manifest: unknown;
   defaulted: boolean;
+  /** The legacy identifier that was replaced, when one was. */
+  upgradedFrom?: string;
 } {
   if (typeof manifest !== "object" || manifest === null || Array.isArray(manifest)) {
     return { manifest, defaulted: false };
@@ -42,12 +53,22 @@ export function withDefaultedApSchema(manifest: unknown): {
   const document = manifest as Record<string, unknown>;
   const schema = document.$schema;
   if (typeof schema === "string" && schema.length > 0) {
+    if (lookupApSchema(schema).kind === "legacy") {
+      if (isVerbose()) {
+        console.error(`plugin.json uses legacy $schema ${schema}; reading it as ${AP_SCHEMA_URL}`);
+      }
+      return {
+        manifest: { ...document, $schema: AP_SCHEMA_URL },
+        defaulted: false,
+        upgradedFrom: schema,
+      };
+    }
     return { manifest, defaulted: false };
   }
   if (schema !== undefined && typeof schema !== "string") {
     return { manifest, defaulted: false };
   }
-  if (process.argv.includes("-v") || process.argv.includes("--verbose")) {
+  if (isVerbose()) {
     console.error(`plugin.json is missing $schema; defaulting to ${AP_SCHEMA_URL}`);
   }
   return {
@@ -73,6 +94,11 @@ export function validateApManifest(manifest: unknown): void {
 
   if (typeof document.$schema !== "string" || document.$schema.length === 0) {
     problems.push("$schema is required and must be a string");
+  } else if (lookupApSchema(document.$schema).kind === "unsupported-spec") {
+    problems.push(
+      `unsupported Agent Plugins version: $schema "${document.$schema}" ` +
+        `(this HarnessTap version reads ${AP_SCHEMA_URL})`,
+    );
   }
 
   if (typeof document.name !== "string") {

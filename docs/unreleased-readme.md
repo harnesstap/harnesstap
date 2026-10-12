@@ -19,3 +19,7 @@ New text for the Install section of README.md.
 - `<!-- append -->` adds the body after the target's existing text.
 - `<!-- insert-after -->` adds a whole new section after the target section ends (its subsections included). The body may contain headings, written at `###` or deeper; the fold shifts them so the shallowest becomes the target's own level.
 - Only `insert-after` bodies may contain headings. Do not use level-1 or level-2 headings inside a body.
+
+## docs/cli/concepts/plugins.md > Portable format
+<!-- append -->
+`plugin.json` `$schema` is `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`, the Agent Plugins 1.0.0 identifier. Package export, `ht pack`, and `plugin publish` always write it. Packages that carry the identifier earlier HarnessTap builds wrote (`https://agentplugins.org/schema/v1/plugin.schema.json`) still import: HarnessTap reads them as 1.0.0 and leaves the file as it is. Other `agent-plugins.org` schema versions are rejected as unsupported.
