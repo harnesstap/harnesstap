@@ -18,7 +18,6 @@ import type {
   SkillMetadata,
 } from "../../types.js";
 import { DEPENDENCY_SOURCE_KINDS } from "../../types.js";
-import { parseMcpServersDocument } from "../mcp-config-bridge.js";
 import { addDependency } from "../plugin-dependency.js";
 import {
   setPluginResourceOverride,
@@ -30,6 +29,7 @@ import type { ApPackageFile, ApPackageFiles } from "./files.js";
 import { readApPackageFiles } from "./files.js";
 import type { ApDependency, ApManifest, HarnesstapExtension } from "./manifest.js";
 import { COMPONENT_LAYOUT, HT_EXTENSION_NAMESPACE } from "./manifest.js";
+import { HT_MCP_EXTRAS_PATH, readApMcpServers } from "./spec-mcp.js";
 import { validateApManifest, withDefaultedApSchema } from "./validate.js";
 import { parseHarnessScope } from "../harness-scope.js";
 
@@ -306,7 +306,11 @@ function parseMcpResources(files: ApPackageFiles): ResourceCreateInput[] {
     throw new Error("Invalid mcp.json: expected JSON");
   }
 
-  const servers = parseMcpServersDocument(document);
+  const extrasEntry = files[HT_MCP_EXTRAS_PATH];
+  const extras = extrasEntry
+    ? parseTransportToml(fileText(extrasEntry), "MCP extension")
+    : undefined;
+  const servers = readApMcpServers(document, extras);
   return Object.keys(servers)
     .sort()
     .map((name) => {

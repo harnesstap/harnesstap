@@ -1,4 +1,5 @@
 import type { McpOAuthAuthMetadata, McpServerMetadata } from "../types.js";
+import { AP_MCP_SCHEMA_URL } from "./agent-plugins/schema-registry.js";
 import { substituteEnvironmentVars } from "./environment-var-substitution.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -136,10 +137,17 @@ export function parseMcpServersDocument(document: unknown): Record<string, McpSe
     return {};
   }
 
+  // In an Agent Plugins `mcp.json`, `type` selects the transport (stdio,
+  // streamable-http, sse). It is not a harness connection type, so only `sse`
+  // is kept as one.
+  const isAgentPluginsMcp = document.$schema === AP_MCP_SCHEMA_URL;
   const result: Record<string, McpServerMetadata> = {};
   for (const [name, serverEntry] of Object.entries(serversRaw)) {
     const metadata = parseMcpServerEntry(serverEntry);
     if (metadata) {
+      if (isAgentPluginsMcp && metadata.connection_type !== "sse") {
+        delete metadata.connection_type;
+      }
       result[name] = metadata;
     }
   }
