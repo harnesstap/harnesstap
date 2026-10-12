@@ -21,6 +21,12 @@ import {
   type HarnesstapExtension,
 } from "./manifest.js";
 import { slugifyApName } from "./name.js";
+import {
+  buildSpecMcpJson,
+  formatMcpExtrasToml,
+  formatSpecMcpJson,
+  HT_MCP_EXTRAS_PATH,
+} from "./spec-mcp.js";
 import { AP_SCHEMA_URL, validateApManifest } from "./validate.js";
 
 export const AP_PACKAGE_SCHEMA = "urn:harnesstap:ap-package:v1";
@@ -65,23 +71,18 @@ function putUtf8(files: ApPackageFiles, relativePath: string, content: string): 
   put(files, relativePath, { encoding: "utf8", content });
 }
 
-function mcpEntryFromResource(resource: Resource): Record<string, unknown> {
+/** The MCP fields package export has always carried. */
+function exportedMcpMetadata(resource: Resource): McpServerMetadata {
   const meta = resource.metadata as McpServerMetadata;
-  const entry: Record<string, unknown> = {};
-  if (meta.transport === "http" && meta.url) {
-    entry.type = "http";
-    entry.url = meta.url;
-    if (meta.headers && Object.keys(meta.headers).length > 0) {
-      entry.headers = meta.headers;
-    }
-  } else {
-    if (meta.command) entry.command = meta.command;
-    if (meta.args) entry.args = meta.args;
-  }
-  if (meta.env && Object.keys(meta.env).length > 0) {
-    entry.env = meta.env;
-  }
-  return entry;
+  return {
+    transport: meta.transport,
+    ...(meta.command !== undefined ? { command: meta.command } : {}),
+    ...(meta.url !== undefined ? { url: meta.url } : {}),
+    ...(meta.args !== undefined ? { args: meta.args } : {}),
+    ...(meta.env !== undefined ? { env: meta.env } : {}),
+    ...(meta.headers !== undefined ? { headers: meta.headers } : {}),
+    ...(meta.connection_type !== undefined ? { connection_type: meta.connection_type } : {}),
+  };
 }
 
 function buildTomlComponentDocument(
@@ -172,11 +173,15 @@ function emitResourceFiles(
 
   const mcpServers = byType.get("mcp_server") ?? [];
   if (mcpServers.length > 0) {
-    const mcpConfig: Record<string, Record<string, unknown>> = {};
-    for (const resource of [...mcpServers].sort((a, b) => a.name.localeCompare(b.name))) {
-      mcpConfig[resource.name] = mcpEntryFromResource(resource);
+    const servers: Record<string, McpServerMetadata> = {};
+    for (const resource of mcpServers) {
+      servers[resource.name] = exportedMcpMetadata(resource);
     }
-    putUtf8(files, "mcp.json", JSON.stringify({ mcpServers: mcpConfig }, null, 2));
+    const { document, extras } = buildSpecMcpJson(servers);
+    putUtf8(files, "mcp.json", formatSpecMcpJson(document));
+    if (Object.keys(extras).length > 0) {
+      putUtf8(files, HT_MCP_EXTRAS_PATH, formatMcpExtrasToml(extras));
+    }
   }
 
   for (const type of MARKDOWN_COMPONENT_TYPES) {

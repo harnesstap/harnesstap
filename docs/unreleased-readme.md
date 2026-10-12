@@ -23,3 +23,5 @@ New text for the Install section of README.md.
 ## docs/cli/concepts/plugins.md > Portable format
 <!-- append -->
 `plugin.json` `$schema` is `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`, the Agent Plugins 1.0.0 identifier. Package export, `ht pack`, and `plugin publish` always write it. Packages that carry the identifier earlier HarnessTap builds wrote (`https://agentplugins.org/schema/v1/plugin.schema.json`) still import: HarnessTap reads them as 1.0.0 and leaves the file as it is. Other `agent-plugins.org` schema versions are rejected as unsupported.
+
+`mcp.json` declares `$schema` `https://agent-plugins.org/schemas/1.0.0/mcp.schema.json` and an explicit `type` for each server: `stdio` for command servers, `streamable-http` for HTTP servers (`sse` for SSE servers). Server settings that shape cannot hold, such as env on an HTTP server, go to `com.harnesstap/mcp.toml` so HarnessTap import restores them. `ht pack` converts a project `.mcp.json` into that shape in the packed copy and leaves the project file as it is.

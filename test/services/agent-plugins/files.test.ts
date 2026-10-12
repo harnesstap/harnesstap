@@ -97,11 +97,14 @@ describe("buildApPackageFiles", () => {
     expect(skill).toContain("# Deploy");
   });
 
-  it("writes mcp.json in the standard shape", () => {
-    const mcp = JSON.parse(buildApPackageFiles(seed())["mcp.json"]!.content) as {
-      mcpServers: Record<string, unknown>;
-    };
-    expect(mcp.mcpServers.search).toMatchObject({ command: "npx", args: ["-y", "search"] });
+  it("writes mcp.json in the Agent Plugins 1.0.0 shape", () => {
+    const files = buildApPackageFiles(seed());
+    const mcp = JSON.parse(files["mcp.json"]!.content) as Record<string, unknown>;
+    expect(mcp).toEqual({
+      $schema: "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+      mcpServers: { search: { type: "stdio", command: "npx", args: ["-y", "search"] } },
+    });
+    expect(files["com.harnesstap/mcp.toml"]).toBeUndefined();
   });
 
   it("stores env vars as references, never resolved values", () => {
