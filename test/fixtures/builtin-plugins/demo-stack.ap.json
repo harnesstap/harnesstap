@@ -3,7 +3,7 @@
   "files": {
     "plugin.json": {
       "encoding": "utf8",
-      "content": "{\"$schema\": \"https://agentplugins.org/schemas/v1/plugin.json\", \"name\": \"demo-stack\", \"version\": \"1.0.0\", \"description\": \"Next.js 15 fullstack app with TypeScript, Tailwind, Prisma, and Vitest\", \"keywords\": [\"nextjs\", \"typescript\", \"react\", \"tailwind\", \"prisma\"], \"extensions\": {\"com.harnesstap\": {\"schema\": \"urn:harnesstap:ap-extension:v1\", \"sourceName\": \"demo-stack\"}}}"
+      "content": "{\"$schema\": \"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json\", \"name\": \"demo-stack\", \"version\": \"1.0.0\", \"description\": \"Next.js 15 fullstack app with TypeScript, Tailwind, Prisma, and Vitest\", \"keywords\": [\"nextjs\", \"typescript\", \"react\", \"tailwind\", \"prisma\"], \"extensions\": {\"com.harnesstap\": {\"schema\": \"urn:harnesstap:ap-extension:v1\", \"sourceName\": \"demo-stack\"}}}"
     },
     "com.harnesstap/instructions/project-context.md": {
       "encoding": "utf8",

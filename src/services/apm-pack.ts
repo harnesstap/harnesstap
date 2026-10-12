@@ -12,6 +12,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { ApManifest } from "./agent-plugins/manifest.js";
 import { isValidApName, slugifyApName } from "./agent-plugins/name.js";
+import { lookupApSchema } from "./agent-plugins/schema-registry.js";
 import { AP_SCHEMA_URL, validateApManifest } from "./agent-plugins/validate.js";
 import { APM_LOCKFILE_FILENAME } from "./lockfile.js";
 import { skippedRootSourceWarning } from "./apm-overlay.js";
@@ -338,7 +339,12 @@ function loadAuthoredPluginJson(projectRoot: string): Buffer | undefined {
     if (!isRecord(parsed)) {
       throw new PackError(`${relativePath} must be a JSON object`);
     }
+    // The packed copy carries the canonical `$schema`: a missing one is
+    // defaulted and a legacy HarnessTap one is upgraded. The source file is
+    // never rewritten.
     if (typeof parsed.$schema !== "string" || parsed.$schema.length === 0) {
+      parsed.$schema = AP_SCHEMA_URL;
+    } else if (lookupApSchema(parsed.$schema).kind === "legacy") {
       parsed.$schema = AP_SCHEMA_URL;
     }
     validateApManifest(parsed);

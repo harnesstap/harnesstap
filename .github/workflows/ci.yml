@@ -433,6 +433,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Exports (plugin export, publish, ht pack, fixtures) must validate
+      # against the official Agent Plugins 1.0.0 JSON Schemas. The schemas
+      # are vendored under test/fixtures/agent-plugins-spec; no network.
+      - name: Agent Plugins 1.0.0 schema guard
+        run: bun run check:agent-plugins-spec
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:

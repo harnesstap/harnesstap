@@ -5,6 +5,7 @@ import {
   type CollectCursorEnablementSignals,
   type CursorEnablementSignals,
 } from "./cursor-enablement.js";
+import { isAgentPluginsSchemaId } from "../services/agent-plugins/schema-registry.js";
 import { parsePluginRef } from "./host-plugin-manifest.js";
 import {
   cursorLocalPluginLoadState,
@@ -40,10 +41,7 @@ function isAgentPluginManifest(
   manifest: CursorPluginManifest,
   installPath: string,
 ): boolean {
-  if (
-    typeof manifest.$schema === "string" &&
-    manifest.$schema.includes("agent-plugins")
-  ) {
+  if (isAgentPluginsSchemaId(manifest.$schema)) {
     return true;
   }
   return (

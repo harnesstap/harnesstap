@@ -1,7 +1,7 @@
 import { loadVerifiedPackageFiles } from "../apm-bundle.js";
 import type { ApPackageFile, ApPackageFiles } from "./files.js";
 import { parseApPackageFiles } from "./import.js";
-import { AP_SCHEMA_URL, validateApManifest } from "./validate.js";
+import { validateApManifest, withDefaultedApSchema } from "./validate.js";
 
 export interface ApPackageValidation {
   ok: true;
@@ -9,6 +9,9 @@ export interface ApPackageValidation {
   sourceName: string;
   version: string;
   schemaDefaulted: boolean;
+  /** Legacy HarnessTap `$schema` read as the canonical one, when present. */
+  schemaUpgradedFrom?: string;
+  /** The effective `$schema`, after defaulting or a legacy upgrade. */
   schema: string;
 }
 
@@ -30,14 +33,6 @@ function readPluginJson(files: ApPackageFiles): unknown {
   }
 }
 
-function schemaWasDefaulted(manifest: unknown): boolean {
-  if (typeof manifest !== "object" || manifest === null || Array.isArray(manifest)) {
-    return false;
-  }
-  const schema = (manifest as Record<string, unknown>).$schema;
-  return typeof schema !== "string" || schema.length === 0;
-}
-
 /**
  * Validate a catalog/download package (directory, zip, or `.ap.json`).
  * Missing `plugin.json` `$schema` is accepted unless `strict` is set
@@ -49,24 +44,21 @@ export function validateApPackagePath(
 ): ApPackageValidation {
   const files = loadVerifiedPackageFiles(filePath);
   const rawManifest = readPluginJson(files);
+  const normalized = withDefaultedApSchema(rawManifest);
   if (opts?.strict) {
-    validateApManifest(rawManifest);
+    // Strict still requires an authored `$schema`, but a legacy HarnessTap
+    // identifier is read as the canonical one (read compat).
+    validateApManifest(normalized.defaulted ? rawManifest : normalized.manifest);
   }
   const parsed = parseApPackageFiles(files);
-  const defaulted = schemaWasDefaulted(rawManifest);
+  const effective = normalized.manifest as Record<string, unknown>;
   return {
     ok: true,
     name: parsed.name,
     sourceName: parsed.sourceName,
     version: parsed.version,
-    schemaDefaulted: defaulted,
-    schema: defaulted
-      ? AP_SCHEMA_URL
-      : typeof rawManifest === "object" &&
-          rawManifest !== null &&
-          !Array.isArray(rawManifest) &&
-          typeof (rawManifest as Record<string, unknown>).$schema === "string"
-        ? ((rawManifest as Record<string, unknown>).$schema as string)
-        : AP_SCHEMA_URL,
+    schemaDefaulted: normalized.defaulted,
+    ...(normalized.upgradedFrom ? { schemaUpgradedFrom: normalized.upgradedFrom } : {}),
+    schema: typeof effective.$schema === "string" ? effective.$schema : "",
   };
 }

@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Exported, packed, and published Agent Plugins packages now declare the official `$schema` (`https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`), so other Agent Plugins clients recognize them. Packages with the old HarnessTap identifier still import.'
+time: 2026-10-11T17:40:00-10:00
+custom:
+  Issue: ""
