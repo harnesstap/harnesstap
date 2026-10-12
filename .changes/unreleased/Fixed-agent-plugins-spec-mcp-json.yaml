@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Exported and packed `mcp.json` now follows Agent Plugins 1.0.0: it declares `$schema` and an explicit `type` per server (`stdio`, or `streamable-http` for HTTP servers), so other Agent Plugins clients load the MCP servers. Settings the spec cannot hold are kept in `com.harnesstap/mcp.toml`.'
-time: 2026-10-11T18:20:00-10:00
-custom:
-  Issue: ""
