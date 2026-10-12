@@ -3,7 +3,7 @@
   "files": {
     "plugin.json": {
       "encoding": "utf8",
-      "content": "{\n  \"$schema\": \"https://agentplugins.org/schema/v1/plugin.schema.json\",\n  \"name\": \"hello\",\n  \"version\": \"1.0.0\"\n}\n"
+      "content": "{\n  \"$schema\": \"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json\",\n  \"name\": \"hello\",\n  \"version\": \"1.0.0\"\n}\n"
     },
     "skills/hello/SKILL.md": {
       "encoding": "utf8",

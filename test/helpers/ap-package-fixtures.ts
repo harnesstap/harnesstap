@@ -45,7 +45,7 @@ export function makeApEnvelope(input?: {
     },
   };
   if (!input?.omitSchema) {
-    manifest.$schema = "https://agentplugins.org/schemas/v1/plugin.json";
+    manifest.$schema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json";
   }
   return `${JSON.stringify(
     {

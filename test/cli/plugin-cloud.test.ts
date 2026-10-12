@@ -1746,7 +1746,7 @@ describe("CLI cloud plugin workflows", () => {
       "plugin.json": {
         encoding: "utf8" as const,
         content: JSON.stringify({
-          $schema: "https://agentplugins.org/schema/v1/plugin.schema.json",
+          $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
           name: "planner",
           version: "1.0.0",
           extensions: {
