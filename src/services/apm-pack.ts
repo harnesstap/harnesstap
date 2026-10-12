@@ -13,6 +13,14 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { ApManifest } from "./agent-plugins/manifest.js";
 import { isValidApName, slugifyApName } from "./agent-plugins/name.js";
 import { lookupApSchema } from "./agent-plugins/schema-registry.js";
+import {
+  buildSpecMcpJson,
+  formatMcpExtrasToml,
+  formatSpecMcpJson,
+  HT_MCP_EXTRAS_PATH,
+  isSpecMcpDocument,
+} from "./agent-plugins/spec-mcp.js";
+import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import { AP_SCHEMA_URL, validateApManifest } from "./agent-plugins/validate.js";
 import { APM_LOCKFILE_FILENAME } from "./lockfile.js";
 import { skippedRootSourceWarning } from "./apm-overlay.js";
@@ -363,6 +371,40 @@ function collectMcpJson(projectRoot: string, files: Map<string, PackedFile>): vo
   }
 }
 
+/**
+ * Packed `mcp.json` must be the Agent Plugins 1.0.0 shape. A source file that
+ * already declares the spec `$schema` is packed as is. Any other shape (for
+ * example a Claude-style `.mcp.json`) is converted in the packed copy only;
+ * fields the spec shape cannot carry go to `com.harnesstap/mcp.toml`. The
+ * project file is never rewritten.
+ */
+function normalizePackedMcpJson(files: Map<string, PackedFile>, warnings: string[]): void {
+  const packed = files.get("mcp.json");
+  if (!packed) return;
+  let document: unknown;
+  try {
+    document = JSON.parse(packed.bytes.toString("utf8")) as unknown;
+  } catch {
+    warnings.push(
+      `${packed.remappedFrom ?? "mcp.json"} is not valid JSON; packed as is (not a valid Agent Plugins mcp.json)`,
+    );
+    return;
+  }
+  if (isSpecMcpDocument(document)) return;
+  const { document: spec, extras } = buildSpecMcpJson(parseMcpServersDocument(document), {
+    carry: ["env_file", "auth", "enabled", "mode", "framing"],
+  });
+  putFile(
+    files,
+    "mcp.json",
+    Buffer.from(`${formatSpecMcpJson(spec)}\n`, "utf8"),
+    packed.remappedFrom,
+  );
+  if (Object.keys(extras).length > 0) {
+    putFile(files, HT_MCP_EXTRAS_PATH, Buffer.from(formatMcpExtrasToml(extras), "utf8"));
+  }
+}
+
 function lockDocument(projectRoot: string): Record<string, unknown> | undefined {
   const path = join(projectRoot, APM_LOCKFILE_FILENAME);
   if (!existsSync(path)) return undefined;
@@ -513,6 +555,8 @@ export function packProject(options: PackOptions = {}): PackResult {
 
   const lock = lockDocument(config.rootPath);
   collectAttestedDependencies(config.rootPath, config, lock, files, warnings);
+
+  normalizePackedMcpJson(files, warnings);
 
   const authored = loadAuthoredPluginJson(config.rootPath);
   const manifestBytes = authored
