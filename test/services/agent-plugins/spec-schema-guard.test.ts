@@ -49,8 +49,13 @@ function jsonFile(files: ApPackageFiles, path: string): unknown {
 }
 
 /** Validates every spec document in an exported package (top level only). */
-function expectSpecPackage(files: ApPackageFiles, label: string): void {
+function expectSpecPackage(files: ApPackageFiles, label: string, opts?: { mcp?: boolean }): void {
   expect(specErrors("plugin", jsonFile(files, "plugin.json")), `${label} plugin.json`).toEqual([]);
+  if (files["mcp.json"]) {
+    expect(specErrors("mcp", jsonFile(files, "mcp.json")), `${label} mcp.json`).toEqual([]);
+  } else if (opts?.mcp) {
+    throw new Error(`${label}: expected an mcp.json`);
+  }
 }
 
 function attach(pluginId: string, input: Parameters<typeof createResource>[0]): void {
@@ -120,11 +125,39 @@ describe("Agent Plugins 1.0.0 schema guard", () => {
       expect(specErrors("plugin", { $schema: legacy, name: "x" }).join("\n")).toContain("$schema");
     }
     expect(specErrors("plugin", { name: "x" }).join("\n")).toContain("$schema");
+    // The mcp.json shape HarnessTap wrote before 1.0.0 conformance.
+    const legacyMcp = specErrors("mcp", {
+      mcpServers: {
+        search: { command: "npx", args: ["-y", "search"] },
+        api: { type: "http", url: "https://mcp.example.com/mcp" },
+      },
+    }).join("\n");
+    expect(legacyMcp).toContain("$schema");
+    expect(legacyMcp).toContain("type");
+  });
+
+  it("single-resource export of an MCP server is spec-valid", () => {
+    for (const metadata of [
+      { transport: "stdio", command: "npx", args: ["-y", "one"] },
+      { transport: "http", url: "https://mcp.example.com/mcp", env: { REGION: "eu" } },
+    ] as const) {
+      const resource = createResource({
+        type: "mcp_server",
+        name: `one-${metadata.transport}`,
+        description: "",
+        content: "",
+        metadata: { ...metadata },
+        source: "test",
+      });
+      expectSpecPackage(buildApPackageFilesForResource(resource.id), "mcp resource export", {
+        mcp: true,
+      });
+    }
   });
 
   it("plugin export (migrate export --plugin, plugin publish) is spec-valid", () => {
     const files = buildApPackageFiles(seedPlugin("guard-plugin"));
-    expectSpecPackage(files, "plugin export");
+    expectSpecPackage(files, "plugin export", { mcp: true });
   });
 
   it("an embedded dependency package is spec-valid too", () => {
@@ -132,13 +165,13 @@ describe("Agent Plugins 1.0.0 schema guard", () => {
     seedPlugin("guard-child");
     addDependency(parentId, "guard-child", { embedOnExport: true });
     const files = buildApPackageFiles(parentId);
-    expectSpecPackage(files, "embedding parent");
+    expectSpecPackage(files, "embedding parent", { mcp: true });
     const prefix = "com.harnesstap/embedded/guard-child/";
     const embedded: ApPackageFiles = {};
     for (const [path, entry] of Object.entries(files)) {
       if (path.startsWith(prefix)) embedded[path.slice(prefix.length)] = entry;
     }
-    expectSpecPackage(embedded, "embedded child");
+    expectSpecPackage(embedded, "embedded child", { mcp: true });
   });
 
   it("single-resource export (migrate export --resource) is spec-valid", () => {
@@ -162,8 +195,19 @@ describe("Agent Plugins 1.0.0 schema guard", () => {
       join(ctx.projectDir, ".apm", "skills", "ship", "SKILL.md"),
       "---\nname: ship\ndescription: Ship it\n---\n# Ship\n",
     );
+    writeTextFile(
+      join(ctx.projectDir, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          search: { command: "npx", args: ["-y", "search"] },
+          api: { type: "http", url: "https://mcp.example.com/mcp" },
+        },
+      }),
+    );
     const synthesized = packProject({ projectRoot: ctx.projectDir });
-    expectSpecPackage(readApPackageFiles(synthesized.outputPath), "ht pack (synthesized)");
+    expectSpecPackage(readApPackageFiles(synthesized.outputPath), "ht pack (synthesized)", {
+      mcp: true,
+    });
 
     const authoredPath = join(ctx.projectDir, "plugin.json");
     const authored = `${JSON.stringify(
@@ -173,7 +217,9 @@ describe("Agent Plugins 1.0.0 schema guard", () => {
     )}\n`;
     writeTextFile(authoredPath, authored);
     const packed = packProject({ projectRoot: ctx.projectDir, outputDir: "build-authored" });
-    expectSpecPackage(readApPackageFiles(packed.outputPath), "ht pack (authored legacy)");
+    expectSpecPackage(readApPackageFiles(packed.outputPath), "ht pack (authored legacy)", {
+      mcp: true,
+    });
     // Read compat never rewrites the source file.
     expect(readFileSync(authoredPath, "utf8")).toBe(authored);
   });
