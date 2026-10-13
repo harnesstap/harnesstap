@@ -14,22 +14,22 @@ import {
   omitInheritedPluginFileChanges,
 } from "./apply-preview-inherited.js";
 import {
+  isTransparentCrossHarnessGap,
+  resourceScopesForPlugins,
+} from "./cross-harness-gap.js";
+import {
   buildHostManagedStatus,
   type HostManagedStatus,
   profileSkillNameMap,
 } from "./cursor-host-managed-skills.js";
-import {
-  isTransparentCrossHarnessGap,
-  resourceScopesForPlugins,
-} from "./cross-harness-gap.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
-import type { HarnessScope } from "./harness-scope.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import {
   buildHarnessLiveStatusMap,
   declaredMcpFromExpectedFiles,
   type HarnessLiveStatus,
 } from "./global-profile-status-panel.js";
+import type { HarnessScope } from "./harness-scope.js";
 import {
   isMergeableHostConfigPath,
 } from "./merged-host-config.js";
@@ -396,7 +396,34 @@ export function withManagedRemovals(
   for (const path of groups.unmanaged) {
     pushRemovalChange(classified, seen, rootPath, path, "unmanaged");
   }
-  return classified;
+  return annotateKeptContentDiffs(classified, groups);
+}
+
+/**
+ * A content diff that apply will skip (user-modified or unmanaged) is a keep,
+ * same groups as the confirm dialog. It must not stay labeled as a write.
+ */
+function annotateKeptContentDiffs(
+  changes: DriftFileChange[],
+  groups: PlannedRemovals,
+): DriftFileChange[] {
+  if (groups.owned_modified.length === 0 && groups.unmanaged.length === 0) {
+    return changes;
+  }
+  const modified = new Set(groups.owned_modified);
+  const unmanaged = new Set(groups.unmanaged);
+  return changes.map((change) => {
+    if (change.type !== "modified" || change.removal_group) {
+      return change;
+    }
+    if (modified.has(change.path)) {
+      return { ...change, removal_group: "owned_modified" as const };
+    }
+    if (unmanaged.has(change.path)) {
+      return { ...change, removal_group: "unmanaged" as const };
+    }
+    return change;
+  });
 }
 
 function targetPinRefs(pluginIds?: string[]): Set<string> {

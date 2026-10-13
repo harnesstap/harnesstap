@@ -1001,6 +1001,19 @@ export function fileChangeAction(change: DriftFileChange): {
   action: "add" | "update" | "remove";
   label: string;
 } {
+  switch (change.removal_group) {
+    case "owned_modified":
+      return { action: "remove", label: PREVIEW_FILE_COPY.keptChanged };
+    case "unmanaged":
+      return { action: "remove", label: PREVIEW_FILE_COPY.keptUnmanaged };
+    case "owned_unmodified":
+    case undefined:
+      break;
+    default: {
+      const neverGroup: never = change.removal_group;
+      return neverGroup;
+    }
+  }
   switch (change.type) {
     case "deleted":
       return { action: "add", label: PREVIEW_FILE_COPY.willWrite };
