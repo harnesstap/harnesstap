@@ -9,6 +9,7 @@ import { missingRequiredArg } from "../../services/cli-errors.js";
 import { handlePluginListCommand } from "../../services/plugin-list.js";
 import {
   promptMaterializationConflict,
+  reportApplyCancelled,
   resolveApplyConflictPolicy,
 } from "../../services/materialization-conflicts.js";
 import {
@@ -437,13 +438,15 @@ profileCmd
           ? { conflictResolver: promptMaterializationConflict }
           : {}),
       });
+      if (payload.cancelled) {
+        process.exitCode = 1;
+      }
       if (format === "json") {
         printJson(payload);
         return;
       }
       if (payload.cancelled) {
-        process.exitCode = 1;
-        ui.warn("Profile apply cancelled.");
+        reportApplyCancelled(payload.conflicts, "profile");
         return;
       }
       if (payload.default_environment_name) {

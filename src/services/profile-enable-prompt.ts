@@ -4,7 +4,11 @@ import { detectGlobalProfileStatus } from "./global-profile-drift.js";
 import { useProfileCommand } from "./profile-commands.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "./profile-switch-prompt.js";
 import { promptForConfirmation } from "./wizards/shared.js";
-import { promptMaterializationConflict, resolveApplyConflictPolicy } from "./materialization-conflicts.js";
+import {
+  promptMaterializationConflict,
+  reportApplyCancelled,
+  resolveApplyConflictPolicy,
+} from "./materialization-conflicts.js";
 
 export function shouldPromptProfileEnable(input: {
   yes?: boolean;
@@ -114,7 +118,7 @@ export async function maybePromptProfileEnable(input: {
   });
 
   if (applied.cancelled) {
-    ui.warn("Profile apply cancelled.");
+    reportApplyCancelled(applied.conflicts, "profile");
     return;
   }
 

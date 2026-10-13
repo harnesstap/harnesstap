@@ -82,7 +82,7 @@ export async function applyPluginsGlobally(
     ) => Promise<ConflictResolution> | ConflictResolution;
     onFetched?: (sourceLabel: string) => void;
   },
-): Promise<{ cancelled: boolean }> {
+): Promise<{ cancelled: boolean; conflicts: string[] }> {
   const homeRoot = resolveHomeRoot();
   const sourceOptions: ResolveApplyPluginSourceOptions = {
     account: options.account,
@@ -171,14 +171,17 @@ export async function applyPluginsGlobally(
   });
 
   if (applied.cancelled) {
-    return { cancelled: true };
+    return {
+      cancelled: true,
+      conflicts: applied.conflicts.map((conflict) => conflict.path),
+    };
   }
 
   ui.success(
     `Applied ${selectors.join(" + ")} globally (${format.formatCount(applied.writtenFiles.length, "file")})`,
   );
 
-  return { cancelled: false };
+  return { cancelled: false, conflicts: [] };
 }
 
 export function resolveCatalogSearchProjectRoot(cwd = process.cwd()): string {

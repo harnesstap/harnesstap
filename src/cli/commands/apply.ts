@@ -26,7 +26,7 @@ import { CliUsageError } from "../../services/cli-errors.js";
 import { explainPayload, renderExplain } from "../../services/resolve/explain.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { ui } from "../../ui/index.js";
-import { CLI_HINTS } from "../messages.js";
+import { applyCancelledMessage, CLI_HINTS } from "../messages.js";
 import {
   fail,
   formatCommand,
@@ -140,6 +140,10 @@ async function handleGlobalApplyCommand(
       });
     }
 
+    if (payload.cancelled) {
+      process.exitCode = 1;
+    }
+
     if (outputFormat === "json") {
       const { resolution, ...rest } = payload;
       printJson({
@@ -151,7 +155,7 @@ async function handleGlobalApplyCommand(
     }
 
     if (payload.cancelled) {
-      fail("Apply cancelled due to file conflicts.", {
+      fail(applyCancelledMessage(payload.conflicts, "apply"), {
         hint: CLI_HINTS.onConflictReplace,
       });
       return;

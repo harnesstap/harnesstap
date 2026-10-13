@@ -216,6 +216,30 @@ export function alreadyExistsOnConflictHint(kind: string, name: string): string 
   return `A ${kind} named "${name}" already exists. Use --on-conflict replace to replace it.`;
 }
 
+/**
+ * Human line for a cancelled apply. Names every conflicting path.
+ * Pair with CLI_HINTS.onConflictReplace.
+ */
+export function applyCancelledMessage(
+  conflicts: readonly string[],
+  scope: "profile" | "apply" = "apply",
+): string {
+  const paths = [
+    ...new Set(
+      conflicts.map((path) => path.trim()).filter((path) => path.length > 0),
+    ),
+  ];
+  const lead = scope === "profile" ? "Profile apply cancelled." : "Apply cancelled.";
+  if (paths.length === 0) {
+    return lead;
+  }
+  const listed = paths.map((path) => quoteCliArg(path)).join(", ");
+  if (paths.length === 1) {
+    return `${lead} ${listed} would change.`;
+  }
+  return `${lead} These files would change: ${listed}.`;
+}
+
 export function unsavedChangesLine(profileName: string, count: number): string {
   return CLI_ERRORS.unsavedChanges(profileName, count);
 }
