@@ -5,6 +5,7 @@ import { ui } from "../ui/index.js";
 import { printApplyPayload } from "../cli/print-apply-summary.js";
 import { formatCount } from "../copy/plurals.js";
 import { parseOutputFormat, printJson } from "../utils/output-format.js";
+import { reportApplyCancelled } from "./materialization-conflicts.js";
 import { MISSING_PROJECT_CONFIG_MESSAGE } from "./project-config-messages.js";
 import {
   executeProjectUse,
@@ -112,8 +113,7 @@ export function renderProjectUseHuman(result: ProjectUseResult): void {
   }
 
   if (result.cancelled) {
-    process.exitCode = 1;
-    ui.warn("Profile apply cancelled.");
+    reportApplyCancelled(result.conflicts, "profile");
     return;
   }
 
@@ -167,6 +167,9 @@ export async function handleUseCommand(opts: UseCommandOptions): Promise<void> {
     const result = await executeProjectUse({
       ...toProjectUseOptions({ ...opts, project: projectPath }),
     });
+    if (!result.skipped && result.cancelled) {
+      process.exitCode = 1;
+    }
     if (format === "json") {
       printJson(result);
       return;
@@ -219,6 +222,9 @@ export async function handleProfileUseProjectDelegation(
   const format = parseOutputFormat(opts.format);
   try {
     const result = await executeProjectUse(mapProfileUseDelegationOptions(opts));
+    if (!result.skipped && result.cancelled) {
+      process.exitCode = 1;
+    }
     if (format === "json") {
       printJson(result);
       return true;

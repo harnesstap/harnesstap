@@ -29,7 +29,12 @@ import {
   resolveResourceListType,
 } from "../handlers/resource-list.js";
 import { configureCommandGroup } from "../help.js";
-import { CLI_ERRORS, CLI_HINTS, ON_CONFLICT_PLUGIN_IMPORT_HELP } from "../messages.js";
+import {
+  CLI_ERRORS,
+  CLI_HINTS,
+  ON_CONFLICT_PLUGIN_IMPORT_HELP,
+  applyCancelledMessage,
+} from "../messages.js";
 import { parseOnConflict, toPluginImportOnConflict } from "../on-conflict.js";
 import { renderCliError } from "../runtime.js";
 import {
@@ -1200,7 +1205,7 @@ export async function handleProjectApplyCommand(
     });
     spin.stop();
     if (materialized.cancelled) {
-      fail("Apply cancelled due to file conflicts.", {
+      fail(applyCancelledMessage(materialized.conflicts.map((conflict) => conflict.path), "apply"), {
         hint: CLI_HINTS.onConflictReplace,
       });
       process.exitCode = 1;

@@ -9,6 +9,7 @@ import { createPluginFromSource } from "../../services/plugin-from-source.js";
 import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
 import {
   promptMaterializationConflict,
+  reportApplyCancelled,
   resolveApplyConflictPolicy,
 } from "../../services/materialization-conflicts.js";
 import {
@@ -496,13 +497,15 @@ export async function handleProfileCreateCommand(
           ? { conflictResolver: promptMaterializationConflict }
           : {}),
       });
+      if (applied.cancelled) {
+        process.exitCode = 1;
+      }
       if (format === "json") {
         printJson({ apply: applied });
         return;
       }
       if (applied.cancelled) {
-        process.exitCode = 1;
-        ui.warn("Profile apply cancelled.");
+        reportApplyCancelled(applied.conflicts, "profile");
         return;
       }
       printApplyPayload(applied);

@@ -5,6 +5,7 @@ export {
   CLI_HINTS,
   PREVIEW_LABELS,
   SCOPE_COPY,
+  applyCancelledMessage,
   ensureErrorPrefix,
   ensureWarningPrefix,
   quoteName,

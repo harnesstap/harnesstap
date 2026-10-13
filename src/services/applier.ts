@@ -450,7 +450,9 @@ export async function planMaterializationConflicts(
       }];
     }
     if (!existsSync(fullPath)) return [];
-    if (fileContentMatchesExisting(fullPath, file)) return [];
+    // Byte differences that apply would skip (JSON/TOML/MCP semantic
+    // equality) are not conflicts. A no-op must not cancel the apply.
+    if (semanticallyMatchesExisting(fullPath, file)) return [];
     const owners = findImportedSnapshotOwnersByFile(file.path);
     return [{
       path: file.path,

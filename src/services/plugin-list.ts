@@ -4,6 +4,7 @@ import {
   resolveCatalogScope,
 } from "../config/catalog.js";
 import { formatCommand } from "../cli/shared.js";
+import { applyCancelledMessage, CLI_HINTS } from "../copy/cli.js";
 import { formatCount } from "../copy/plurals.js";
 import { listPlugins } from "../models/plugin-model.js";
 import type { Plugin } from "../types.js";
@@ -332,7 +333,9 @@ async function runInteractivePluginListBrowse(opts: HandlePluginListCommandOpts)
           });
           if (applied.cancelled) {
             process.exitCode = 1;
-            ui.danger("Apply cancelled due to file conflicts");
+            ui.danger(applyCancelledMessage(applied.conflicts, "apply"), {
+              hint: CLI_HINTS.onConflictReplace,
+            });
           }
           return;
         }
@@ -439,7 +442,9 @@ async function runInteractiveRemotePluginSearch(opts: HandlePluginListCommandOpt
   });
   if (applied.cancelled) {
     process.exitCode = 1;
-    ui.danger("Apply cancelled due to file conflicts");
+    ui.danger(applyCancelledMessage(applied.conflicts, "apply"), {
+      hint: CLI_HINTS.onConflictReplace,
+    });
   }
 }
 

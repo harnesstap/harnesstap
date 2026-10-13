@@ -1,0 +1,5 @@
+kind: Fixed
+body: A profile or plugin apply no longer cancels when the only difference is formatting HarnessTap would leave unchanged. A real cancel names the file and hints at --on-conflict.
+time: 2026-10-13T09:48:00.000Z
+custom:
+  Issue: ""
