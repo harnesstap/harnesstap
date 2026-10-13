@@ -142,6 +142,18 @@ function readExisting(applyRoot: string, files: readonly SerializedFile[], path:
   }
 }
 
+function ownedPluginEntries(record: Record<string, unknown>): Record<string, unknown> {
+  const owned: Record<string, unknown> = {};
+  for (const key of Object.keys(record).sort()) {
+    if (key.endsWith("@harnesstap")) owned[key] = record[key];
+  }
+  return owned;
+}
+
+function sameOwnedPlugins(before: Record<string, unknown>, after: Record<string, unknown>): boolean {
+  return JSON.stringify(ownedPluginEntries(before)) === JSON.stringify(ownedPluginEntries(after));
+}
+
 function codexConfig(
   applyRoot: string,
   files: readonly SerializedFile[],
@@ -160,6 +172,7 @@ function codexConfig(
     }
   }
   const plugins = isRecord(existing.plugins) ? { ...existing.plugins } : {};
+  const before = { ...plugins };
   const managed = new Set(groups.map((group) => `${group.pluginName}@harnesstap`));
   for (const key of Object.keys(plugins)) {
     if (key.endsWith("@harnesstap") && !managed.has(key)) {
@@ -176,8 +189,13 @@ function codexConfig(
       source: join(cacheRoot, "cache", "native-agent-plugins", "plugins", safePluginDir(group.pluginName)),
     };
   }
-  if (groups.length === 0 && existingRaw === undefined) return undefined;
-  const next = { ...existing, plugins };
+  if (sameOwnedPlugins(before, plugins)) return undefined;
+  const next = { ...existing };
+  if (Object.keys(plugins).length === 0) {
+    delete next.plugins;
+  } else {
+    next.plugins = plugins;
+  }
   const content = existingRaw
     ? applyTomlObjectUpdatePreservingFormat(existingRaw, next)
     : applyTomlObjectUpdatePreservingFormat("", next);
@@ -194,6 +212,7 @@ function copilotSettings(
   const existing = existingRaw ? parseJsonObject(existingRaw) : {};
   if (existingRaw && !existing) return undefined;
   const enabled = isRecord(existing?.enabledPlugins) ? { ...existing.enabledPlugins } : {};
+  const before = { ...enabled };
   const managed = new Set(groups.map((group) => `${group.pluginName}@harnesstap`));
   for (const key of Object.keys(enabled)) {
     if (key.endsWith("@harnesstap") && !managed.has(key)) {
@@ -203,8 +222,13 @@ function copilotSettings(
   for (const group of groups) {
     enabled[`${group.pluginName}@harnesstap`] = true;
   }
-  if (groups.length === 0 && !existingRaw) return undefined;
-  const next = { ...(existing ?? {}), enabledPlugins: enabled };
+  if (sameOwnedPlugins(before, enabled)) return undefined;
+  const next = { ...(existing ?? {}) };
+  if (Object.keys(enabled).length === 0) {
+    delete next.enabledPlugins;
+  } else {
+    next.enabledPlugins = enabled;
+  }
   const content = existingRaw
     ? applyJsonObjectUpdatePreservingFormat(existingRaw, next)
     : applyJsonObjectUpdatePreservingFormat("", next);
