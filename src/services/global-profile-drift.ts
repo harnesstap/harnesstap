@@ -14,7 +14,13 @@ import {
   type ApplyProfilePluginResult,
 } from "./profile-apply.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import {
+  isTransparentCrossHarnessGap,
+  resourceScopesForPlugins,
+} from "./cross-harness-gap.js";
+import type { HarnessScope } from "./harness-scope.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { resourceKeyFromManagedPath } from "./profile-commit-resource.js";
 import { withAffectedResources } from "./scoped-file-content-delta.js";
 import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
@@ -62,6 +68,28 @@ export interface GlobalProfileStatus {
   not_staged_count?: number;
   /** App-managed inventory (full depth only); never applied or persisted. */
   host_managed?: HostManagedStatus;
+}
+
+function isMissingExpectedFileTransparent(
+  homeRoot: string,
+  path: string,
+  expectedPathsByResource: ReadonlyMap<string, readonly string[]>,
+  scopeByResource: ReadonlyMap<string, HarnessScope>,
+): boolean {
+  const mapped = resourceKeyFromManagedPath(path);
+  if (!mapped) {
+    return true;
+  }
+  const key = `${mapped.type}:${mapped.name}`;
+  const siblings = expectedPathsByResource.get(key) ?? [];
+  const onDiskSiblingPaths = siblings.filter(
+    (sibling) => sibling !== path && readGlobalFile(homeRoot, sibling) !== null,
+  );
+  return isTransparentCrossHarnessGap({
+    path,
+    onDiskSiblingPaths,
+    scope: scopeByResource.get(key),
+  });
 }
 
 function readGlobalFile(homeRoot: string, relativePath: string): string | null {
@@ -377,11 +405,28 @@ export async function detectGlobalProfileStatus(input: {
     : false;
 
   const changes: DriftFileChange[] = [];
+  const scopeByResource = resourceScopesForPlugins(pluginIds);
+  const expectedPathsByResource = new Map<string, string[]>();
+  for (const file of expectedApply.expected_files ?? []) {
+    const mapped = resourceKeyFromManagedPath(file.path);
+    if (!mapped) {
+      continue;
+    }
+    const key = `${mapped.type}:${mapped.name}`;
+    const paths = expectedPathsByResource.get(key) ?? [];
+    paths.push(file.path);
+    expectedPathsByResource.set(key, paths);
+  }
   for (const file of expectedApply.expected_files ?? []) {
     const current = readGlobalFile(homeRoot, file.path);
     const owned = listMaterializationsForRootPath(homeRoot, file.path);
     if (current === null) {
-      if (owned.length === 0) {
+      if (owned.length === 0 && isMissingExpectedFileTransparent(
+        homeRoot,
+        file.path,
+        expectedPathsByResource,
+        scopeByResource,
+      )) {
         continue;
       }
       changes.push(

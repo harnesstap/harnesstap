@@ -18,7 +18,12 @@ import {
   type HostManagedStatus,
   profileSkillNameMap,
 } from "./cursor-host-managed-skills.js";
+import {
+  isTransparentCrossHarnessGap,
+  resourceScopesForPlugins,
+} from "./cross-harness-gap.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import type { HarnessScope } from "./harness-scope.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import {
   buildHarnessLiveStatusMap,
@@ -218,6 +223,7 @@ export function omitTransparentCrossHarnessAdds(
   rootPath: string,
   expectedFiles: Array<{ path: string; content: string }>,
   changes: DriftFileChange[],
+  scopeByResource?: ReadonlyMap<string, HarnessScope>,
 ): DriftFileChange[] {
   const siblingPathsByResource = new Map<string, string[]>();
   for (const file of uniqueExpectedFiles(expectedFiles)) {
@@ -239,11 +245,15 @@ export function omitTransparentCrossHarnessAdds(
     const siblings = siblingPathsByResource.get(`${mapped.type}:${mapped.name}`) ?? [];
     switch (change.type) {
       case "deleted": {
-        const materializedElsewhere = siblings.some(
+        const onDiskSiblingPaths = siblings.filter(
           (path) =>
             path !== change.path && readRootFile(rootPath, path) !== null,
         );
-        return !materializedElsewhere;
+        return !isTransparentCrossHarnessGap({
+          path: change.path,
+          onDiskSiblingPaths,
+          scope: scopeByResource?.get(`${mapped.type}:${mapped.name}`),
+        });
       }
       case "added":
         return siblings.length === 0;
@@ -416,6 +426,7 @@ function buildPreviewFileChanges(
           removedFiles,
           skippedRemovals,
         ),
+        resourceScopesForPlugins(pluginIds),
       ),
     ),
   );
