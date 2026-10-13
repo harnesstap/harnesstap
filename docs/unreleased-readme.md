@@ -32,3 +32,5 @@ New text for the Install section of README.md.
 ## docs/cli/command-reference.md > apply
 <!-- append -->
 MCP servers from an Agent Plugins package keep `cwd` and an HTTP transport of `streamable-http` or `sse`. Apply warns when a harness cannot write `cwd`, and when `sse` is written as that harness's HTTP form. `${PLUGIN_ROOT}` and `${PLUGIN_DATA}` stay as written in the library. The plugin data directory is `~/.harnesstap/plugin-data/<plugin>`. HarnessTap creates it only when it is missing, records that ownership, and leaves an existing unowned directory or file in place.
+
+The Cursor and Claude copies of an Agent Plugins package rewrite those variables in the emitted tree only. Cursor writes `${CURSOR_PLUGIN_ROOT}` and an absolute plugin data path. Claude writes `.claude-plugin/plugin.json`, `.mcp.json` (`streamable-http` and `sse` as `http`, `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}`), and copies `com.harnesstap` commands, agents, and hook JSON into the Claude plugin directories. A file HarnessTap does not own inside a Cursor local plugin is left in place. Owned removals are backed up.

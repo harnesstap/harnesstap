@@ -1,0 +1,3 @@
+kind: Changed
+body: Cursor and Claude copies of an Agent Plugins package rewrite plugin variables in the emitted tree only. Unmanaged files in a Cursor local plugin are kept, and owned removals are backed up.
+time: 2026-10-13T15:00:00Z

@@ -6,7 +6,11 @@ import { CursorSerializer } from "../../src/platforms/cursor.ts";
 import { ClaudeCodeSerializer } from "../../src/platforms/claude-code.ts";
 import { generateFiles, materializeFiles } from "../../src/services/applier.ts";
 import type { Resource, SurfaceWarning } from "../../src/types.ts";
+import { createResource } from "../../src/models/resource.ts";
+import { recordResourceMaterialization } from "../../src/models/resource-materialization.ts";
+import { hashOnDiskFile } from "../../src/services/safe-file-removal.ts";
 import { makeResource } from "../helpers/resources.ts";
+import { createInitializedTestContext } from "../helpers/db.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 function writeDemoModPin(home: string): { pin: Resource; pinRoot: string } {
@@ -345,7 +349,8 @@ describe("host plugin serialize", () => {
   });
 
   it("disambiguates two Cursor pins that share a plugin name", async () => {
-    const home = createTempDir("host-plugin-cursor-folders-");
+    const ctx = await createInitializedTestContext("host-plugin-cursor-folders-");
+    const home = ctx.homeDir;
     try {
       for (const marketplace of ["alpha", "beta"]) {
         writeTextFile(
@@ -386,6 +391,29 @@ describe("host plugin serialize", () => {
       expect(paths.some((path) => path.startsWith(".cursor/plugins/local/demo--alpha/"))).toBe(true);
       expect(paths.some((path) => path.startsWith(".cursor/plugins/local/demo--beta/"))).toBe(true);
       await materializeFiles(files, home, { conflictPolicy: "replace" });
+      const owned = createResource({
+        type: "plugin",
+        name: "demo",
+        description: "",
+        content: "{}",
+        metadata: {},
+        source: "manual",
+      });
+      for (const file of files) {
+        if (!file.path.includes("/demo--alpha/")) continue;
+        const hash = hashOnDiskFile(join(home, file.path));
+        if (!hash) continue;
+        recordResourceMaterialization({
+          resource_id: owned.id,
+          scope: "global",
+          root_path: home,
+          platform_id: "cursor",
+          path: file.path,
+          action: "delete-file",
+          ownership_key: "plugin:demo@alpha",
+          generated_hash: hash,
+        });
+      }
       const alphaOnly = files.filter((file) => file.path.includes("/demo--alpha/"));
       const renamed = alphaOnly.map((file) => ({
         ...file,
@@ -396,11 +424,11 @@ describe("host plugin serialize", () => {
       expect(existsSync(join(home, ".cursor/plugins/local/demo/.harnesstap-plugin.json"))).toBe(true);
       expect(existsSync(join(home, ".cursor/plugins/local/demo--beta/.harnesstap-plugin.json"))).toBe(true);
     } finally {
-      cleanupDir(home);
+      await ctx.cleanup();
     }
   });
 
-  it("replaces a managed local plugin directory and keeps the marketplace identity", async () => {
+  it("keeps an unmanaged file inside a local plugin directory", async () => {
     const home = createTempDir("host-plugin-cursor-replace-");
     try {
       const { pin } = writeDemoModPin(home);
@@ -413,7 +441,9 @@ describe("host plugin serialize", () => {
         projectRoot: home,
       });
       await materializeFiles(files, home, { conflictPolicy: "replace" });
-      expect(existsSync(join(home, ".cursor/plugins/local/demo/skills/stale/SKILL.md"))).toBe(false);
+      expect(readFileSync(join(home, ".cursor/plugins/local/demo/skills/stale/SKILL.md"), "utf8")).toBe(
+        "stale\n",
+      );
       expect(readFileSync(join(home, ".cursor/plugins/local/demo/skills/hello/SKILL.md"), "utf8")).toContain(
         "Hello from Claude",
       );

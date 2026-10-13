@@ -433,11 +433,19 @@ function writeSerializedFile(fullPath: string, file: SerializedFile): void {
   applySerializedFileMode(fullPath, file);
 }
 
+function pruneCursorLocalPlugins(rootPath: string, files: readonly SerializedFile[]): void {
+  const undesired = pruneManagedCursorLocalPlugins(rootPath, files);
+  const result = executeSafeFileRemovals(rootPath, undesired);
+  for (const warning of result.warnings) {
+    console.error(`warning: ${warning}`);
+  }
+}
+
 export function writeFiles(
   files: SerializedFile[],
   projectRoot: string,
 ): void {
-  pruneManagedCursorLocalPlugins(projectRoot, files);
+  pruneCursorLocalPlugins(projectRoot, files);
   for (const file of files) {
     const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
     if (semanticallyMatchesExisting(fullPath, file)) {
@@ -590,7 +598,7 @@ export async function materializeFiles(
     };
   }
 
-  pruneManagedCursorLocalPlugins(rootPath, files);
+  pruneCursorLocalPlugins(rootPath, files);
   for (const file of files) {
     const decision = decisions.get(file.path);
     if (decision === "skip") {

@@ -1,6 +1,6 @@
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, type Dirent } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, type Dirent } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import type { SerializedFile } from "../types.js";
 import { cursorUserDataDir } from "./cursor-enablement.js";
 
@@ -206,14 +206,16 @@ function cursorLocalPluginFolderFromRelative(path: string): string | null {
 }
 
 /**
- * Delete files under a HarnessTap-owned local plugin directory that this
- * apply no longer emits. Folders without the sidecar in the desired set are
- * left alone, including plugins dropped into `plugins/local` by hand.
+ * Paths under a HarnessTap-managed Cursor local plugin that this apply no
+ * longer emits. Folders without the sidecar in the desired set are left
+ * alone. The caller removes returned paths through safe file removal, which
+ * skips unmanaged and modified files and backs up owned removals.
  */
 export function pruneManagedCursorLocalPlugins(
   rootPath: string,
   files: readonly SerializedFile[],
-): void {
+): string[] {
+  const undesired: string[] = [];
   const desiredByFolder = new Map<string, Set<string>>();
   for (const file of files) {
     const folder = cursorLocalPluginFolderFromRelative(file.path);
@@ -232,19 +234,29 @@ export function pruneManagedCursorLocalPlugins(
       const previous = findCursorLocalPluginDirectory(rootPath, originRef);
       const absoluteNext = join(rootPath, CURSOR_LOCAL_PLUGINS_RELATIVE_ROOT, folder);
       if (previous && previous !== absoluteNext) {
-        rmSync(previous, { recursive: true, force: true });
+        const previousRelative = relative(rootPath, previous).split(sep).join("/");
+        if (previousRelative && !previousRelative.startsWith("..")) {
+          collectUndesiredFiles(previous, previousRelative, new Set(), undesired);
+        }
       }
     }
     const absoluteFolder = join(rootPath, CURSOR_LOCAL_PLUGINS_RELATIVE_ROOT, folder);
     if (!existsSync(absoluteFolder)) continue;
-    removeUndesiredFiles(absoluteFolder, `${CURSOR_LOCAL_PLUGINS_RELATIVE_ROOT}/${folder}`, desired);
+    collectUndesiredFiles(
+      absoluteFolder,
+      `${CURSOR_LOCAL_PLUGINS_RELATIVE_ROOT}/${folder}`,
+      desired,
+      undesired,
+    );
   }
+  return undesired;
 }
 
-function removeUndesiredFiles(
+function collectUndesiredFiles(
   absoluteDir: string,
   relativeDir: string,
   desired: ReadonlySet<string>,
+  undesired: string[],
 ): void {
   let entries: Dirent[] = [];
   try {
@@ -254,20 +266,14 @@ function removeUndesiredFiles(
   }
   for (const entry of entries) {
     const absolute = join(absoluteDir, entry.name);
-    const relative = `${relativeDir}/${entry.name}`;
+    const relativePath = `${relativeDir}/${entry.name}`;
     if (entry.isDirectory()) {
-      removeUndesiredFiles(absolute, relative, desired);
-      try {
-        if (readdirSync(absolute).length === 0) {
-          rmSync(absolute, { recursive: true, force: true });
-        }
-      } catch {
-        // leave a directory that is still in use
-      }
+      collectUndesiredFiles(absolute, relativePath, desired, undesired);
       continue;
     }
     if (!entry.isFile()) continue;
-    if (desired.has(relative)) continue;
-    rmSync(absolute, { force: true });
+    if (desired.has(relativePath)) continue;
+    undesired.push(relativePath);
   }
 }
+
