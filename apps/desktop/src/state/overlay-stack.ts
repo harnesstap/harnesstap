@@ -190,13 +190,15 @@ function onWindowKeyDown(event: KeyboardEvent): void {
 
 function retainWindowListener(): () => void {
   if (listenerCount === 0) {
-    window.addEventListener("keydown", onWindowKeyDown);
+    // Capture so a focused control or a bubble-phase shortcut cannot swallow
+    // Escape or Tab before the top layer sees them.
+    window.addEventListener("keydown", onWindowKeyDown, true);
   }
   listenerCount += 1;
   return () => {
     listenerCount -= 1;
     if (listenerCount === 0) {
-      window.removeEventListener("keydown", onWindowKeyDown);
+      window.removeEventListener("keydown", onWindowKeyDown, true);
     }
   };
 }

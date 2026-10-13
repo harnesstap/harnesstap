@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop confirm dialogs take focus, keep Tab inside the dialog, close on Escape, and return focus to the control that opened them.
+time: 2026-10-13T10:05:00.000Z
+custom:
+  Issue: ""

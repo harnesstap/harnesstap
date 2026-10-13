@@ -91,7 +91,7 @@ export function ScopeAddToProfileModal({
   excludeProfileName?: string | null;
 }) {
   const titleId = useId();
-  const closeRef = useDialogDismiss(open, onClose, disabled);
+  const dialogRef = useDialogDismiss(open, onClose, disabled);
   const [search, setSearch] = useState("");
   const [typeTab, setTypeTab] = useState<string | null>(null);
   const [resources, setResources] = useState<LibraryResource[]>([]);
@@ -215,6 +215,7 @@ export function ScopeAddToProfileModal({
     >
       {(state) => (
         <div
+          ref={dialogRef}
           className={motionClass("dialog scope-add-modal", "m-rise", state)}
           role="dialog"
           aria-modal="true"
@@ -240,14 +241,6 @@ export function ScopeAddToProfileModal({
                 icon={<X size={ICON_SIZE} strokeWidth={2} aria-hidden />}
               />
             </div>
-            <button
-              ref={closeRef}
-              type="button"
-              className="sr-only"
-              onClick={onClose}
-            >
-              Close
-            </button>
           </div>
           <label className="list-search">
             <span className="sr-only">Filter library items</span>

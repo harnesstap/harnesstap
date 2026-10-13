@@ -1,4 +1,4 @@
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useId, useRef } from "react";
 import { Check, Trash2, X } from "lucide-react";
 import {
   shouldCloseDialogOnBackdrop,
@@ -61,9 +61,15 @@ export function ConfirmDialog({
   const titleId = useId();
   const descriptionId = useId();
   const anyBusy = confirmBusy || secondaryBusy || tertiaryBusy;
-  const dismissRef = useDialogDismiss(open, onCancel, anyBusy);
-  const controlsDisabled = confirmDisabled || anyBusy;
   const showCancel = Boolean(cancelLabel);
+  const safeActionRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useDialogDismiss(
+    open,
+    onCancel,
+    anyBusy,
+    tone === "destructive" && showCancel ? safeActionRef : undefined,
+  );
+  const controlsDisabled = confirmDisabled || anyBusy;
 
   return (
     <Presence
@@ -80,6 +86,7 @@ export function ConfirmDialog({
     >
       {(state) => (
         <div
+          ref={dialogRef}
           className={motionClass("dialog", "m-rise", state)}
           role="dialog"
           aria-modal="true"
@@ -107,7 +114,7 @@ export function ConfirmDialog({
           <div className="dialog-actions">
             {showCancel ? (
               <button
-                ref={dismissRef}
+                ref={tone === "destructive" ? safeActionRef : undefined}
                 className="btn"
                 type="button"
                 onClick={onCancel}
@@ -142,7 +149,6 @@ export function ConfirmDialog({
               </button>
             ) : null}
             <button
-              ref={showCancel ? undefined : dismissRef}
               className={[
                 "btn",
                 tone === "destructive" ? "destructive" : "primary",

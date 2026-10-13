@@ -82,7 +82,7 @@ export function UpdateAvailableControl({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const closeRef = useDialogDismiss(open, () => setOpen(false), busy);
+  const dialogRef = useDialogDismiss(open, () => setOpen(false), busy);
 
   const refreshStatus = useCallback(async () => {
     if (!baseUrl || !connected) {
@@ -179,6 +179,7 @@ export function UpdateAvailableControl({
       >
         {(state) => (
           <div
+            ref={dialogRef}
             className={motionClass("dialog update-available-dialog", "m-rise", state)}
             role="dialog"
             aria-modal="true"
@@ -201,7 +202,6 @@ export function UpdateAvailableControl({
             ) : null}
             <div className="dialog-actions">
               <button
-                ref={closeRef}
                 className="btn"
                 type="button"
                 onClick={() => setOpen(false)}

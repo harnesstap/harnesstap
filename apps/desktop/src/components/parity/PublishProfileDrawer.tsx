@@ -91,7 +91,7 @@ export function PublishProfileDrawer({
     setOpen(false);
   }, [busy]);
 
-  const closeRef = useDialogDismiss(open, close, busy);
+  const dialogRef = useDialogDismiss(open, close, busy);
 
   const rememberKeys = useCallback(
     (keys: string[]) => {
@@ -290,6 +290,7 @@ export function PublishProfileDrawer({
           }}
         >
           <div
+            ref={dialogRef}
             className="dialog publish-profile-dialog"
             role="dialog"
             aria-modal="true"
@@ -403,7 +404,6 @@ export function PublishProfileDrawer({
             )}
             <div className="dialog-actions">
               <button
-                ref={closeRef}
                 className="btn"
                 type="button"
                 onClick={close}
