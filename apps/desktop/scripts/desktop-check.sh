@@ -5,8 +5,10 @@ set -euo pipefail
 # ht-agent (see apps/desktop/scripts/demo-home.sh). Env: SHOTS_BASE_URL,
 # SHOTS_AGENT_PORT, SHOTS_TOKEN_PATH, SHOTS_PROJECT_PATH.
 #
-# --suite runs the compare and reduced-motion walks at once in one Chromium,
-# then the trace walk after those pages close. Compare walks write
+# --suite shares one Chromium. The 1440x900 compare walk and the
+# reduced-motion walk run at once. The 960x640 compare walk then runs
+# alone (a second page changes that viewport's layout), and the trace
+# walk runs last so its frame times are the app. Compare walks write
 # e2e/artifacts/shots. The other two use their own directories so they
 # cannot overwrite a PNG before it is compared.
 

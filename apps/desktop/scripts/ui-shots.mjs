@@ -157,42 +157,8 @@ function restoreWalkLog() {
   console.warn = baseWarn;
 }
 
-// CSS @font-face rules are not enumerated by document.fonts until something
-// requests them. Settings titles use IBM Plex Sans 500; a fallback face
-// inserts about 19px under the title at 960px and fails the 0.2% compare.
-const FONT_LOADS = [
-  '400 16px "IBM Plex Sans"',
-  '500 22px "IBM Plex Sans"',
-  '600 16px "IBM Plex Sans"',
-  '400 13px "IBM Plex Mono"',
-  '500 13px "IBM Plex Mono"',
-];
-
-async function preloadFonts(page) {
-  await page.evaluate(async (specs) => {
-    if (!document.fonts) return;
-    await Promise.all(specs.map((spec) => document.fonts.load(spec).catch(() => [])));
-    await document.fonts.ready;
-  }, FONT_LOADS);
-}
-
 async function settle(page) {
   await main(page).waitFor({ state: "visible", timeout: T });
-  const waited = await page.evaluate(async (specs) => {
-    if (!document.fonts) return false;
-    const missing = specs.filter((spec) => !document.fonts.check(spec));
-    if (missing.length === 0 && document.fonts.status !== "loading") return false;
-    await Promise.all(missing.map((spec) => document.fonts.load(spec).catch(() => [])));
-    await Promise.race([
-      document.fonts.ready,
-      new Promise((resolve) => setTimeout(resolve, 5000)),
-    ]);
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-    return true;
-  }, FONT_LOADS);
-  if (waited) console.log("shots: waited for fonts");
   await page.waitForTimeout(SETTLE_MS);
 }
 
@@ -470,7 +436,6 @@ async function waitForConnected(page) {
   // ConnectSplash has no <main> until the first health check succeeds, and the
   // first Vite compile of App.tsx can exceed the per-screen settle timeout.
   await main(page).waitFor({ state: "visible", timeout: 30_000 });
-  await preloadFonts(page);
   await page.waitForTimeout(SETTLE_MS);
   const banner = page.getByText(/waiting for sidecar health check/i);
   await banner.waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {
@@ -742,7 +707,6 @@ async function warmBrowser(browser, baseUrl) {
     const page = await context.newPage();
     await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await main(page).waitFor({ state: "visible", timeout: 30_000 });
-    await preloadFonts(page);
   } finally {
     await context.close();
   }
@@ -801,12 +765,21 @@ async function runSuite() {
     const warmStart = Date.now();
     await warmBrowser(browser, baseUrl);
     baseLog(`shots: warm ${((Date.now() - warmStart) / 1000).toFixed(1)}s`);
-    // Trace samples rAF. It runs after the other walks so those pages are
-    // closed and a long frame is the app, not four renderers.
-    const traceWalk = walks.find((walk) => walk.name === "trace");
-    const parallelWalks = walks.filter((walk) => walk.name !== "trace");
+    // 1440 compare stays within 0.2% while another page is open. 960 compare
+    // does not: a second page shifts the settings title by a stable ~19px.
+    // Trace samples rAF and misses the 32ms budget unless it is the only page.
+    const batches = [
+      ["compare-1440x900", "reduced-motion"],
+      ["compare-960x640"],
+      ["trace"],
+    ];
     const results = [];
-    for (const batch of [parallelWalks, [traceWalk]]) {
+    for (const names of batches) {
+      const batch = names.map((name) => {
+        const walk = walks.find((item) => item.name === name);
+        if (!walk) throw new Error(`missing walk ${name}`);
+        return walk;
+      });
       const batchResults = await Promise.all(batch.map((walk) => runLoggedWalk(browser, walk)));
       results.push(...batchResults);
     }
