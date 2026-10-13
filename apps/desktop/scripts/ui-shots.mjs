@@ -18,13 +18,15 @@
 //   --update-baselines
 //   --axe
 //   --trace
+//   --suite              four desktop-check walks in one Chromium
+import { AsyncLocalStorage } from "node:async_hooks";
 import { copyFileSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
-import { baselinePathFor, compareShot } from "./visual-compare.mjs";
+import { baselinePathFor, compareShot, DEFAULT_MAX_RATIO } from "./visual-compare.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SHIM_PATH = path.join(SCRIPT_DIR, "tauri-shim.js");
@@ -126,6 +128,34 @@ function launchOptions() {
 }
 
 const main = (page) => page.locator("main").first();
+
+const walkLogs = new AsyncLocalStorage();
+const baseLog = console.log.bind(console);
+const baseWarn = console.warn.bind(console);
+
+function emit(line) {
+  const buf = walkLogs.getStore();
+  if (buf) buf.push(line);
+  else baseLog(line);
+}
+
+// Installed only for --suite, so concurrent walks keep their own logs.
+function installWalkLog() {
+  console.log = (...args) => {
+    emit(args.map((item) => String(item)).join(" "));
+  };
+  console.warn = (...args) => {
+    const line = args.map((item) => String(item)).join(" ");
+    const buf = walkLogs.getStore();
+    if (buf) buf.push(line);
+    else baseWarn(line);
+  };
+}
+
+function restoreWalkLog() {
+  console.log = baseLog;
+  console.warn = baseWarn;
+}
 
 async function settle(page) {
   await main(page).waitFor({ state: "visible", timeout: T });
@@ -558,14 +588,20 @@ async function walkViewport(browser, viewport, config, report) {
   await context.close();
 }
 
-async function run() {
-  const args = parseArgs(process.argv.slice(2));
+function shotOutDir(embedded) {
+  if (embedded.outDir) return path.resolve(embedded.outDir);
+  if (process.env.SHOTS_OUT) return path.resolve(process.env.SHOTS_OUT);
+  return DEFAULT_OUT;
+}
+
+async function run(argv, embedded = {}) {
+  const args = parseArgs(argv);
   const config = {
     baseUrl: process.env.SHOTS_BASE_URL ?? "http://127.0.0.1:5173/",
     agentPort: Number(process.env.SHOTS_AGENT_PORT ?? 7474),
     tokenPath: process.env.SHOTS_TOKEN_PATH ?? "/tmp/htdemo/home/.harnesstap/agent-token",
     projectPath: process.env.SHOTS_PROJECT_PATH ?? "/tmp/htdemo/project",
-    outDir: process.env.SHOTS_OUT ? path.resolve(process.env.SHOTS_OUT) : DEFAULT_OUT,
+    outDir: shotOutDir(embedded),
     baselineDir: process.env.SHOTS_BASELINES
       ? path.resolve(process.env.SHOTS_BASELINES)
       : DEFAULT_BASELINES,
@@ -591,13 +627,14 @@ async function run() {
     motionFailures: [],
     traceFailures: [],
   };
-  const browser = await chromium.launch(launchOptions());
+  const ownBrowser = !embedded.browser;
+  const browser = embedded.browser ?? (await chromium.launch(launchOptions()));
   try {
     for (const viewport of args.viewports) {
       await walkViewport(browser, viewport, config, report);
     }
   } finally {
-    await browser.close();
+    if (ownBrowser) await browser.close();
   }
 
   if (config.updateBaselines) {
@@ -613,16 +650,23 @@ async function run() {
   }
 
   if (config.compare) {
+    let worst = { ratio: 0, name: "-" };
     for (const file of report.written) {
       const baseline = baselinePathFor(file, config.baselineDir);
       const diffPath = path.join(config.outDir, `diff-${path.basename(file)}`);
       const result = compareShot(file, baseline, { diffPath });
+      if (result.ratio > worst.ratio) {
+        worst = { ratio: result.ratio, name: path.basename(file) };
+      }
       if (!result.ok) {
         report.compareFailures.push(
           `${path.basename(file)}: ${result.reason ?? "mismatch"}`,
         );
       }
     }
+    console.log(
+      `shots: compared ${report.written.length}, worst mismatch ${(worst.ratio * 100).toFixed(4)}% (${worst.name}), limit ${(DEFAULT_MAX_RATIO * 100).toFixed(1)}%`,
+    );
   }
 
   console.log("");
@@ -654,12 +698,126 @@ async function run() {
   if (report.pageErrors.length === 0) {
     console.log("shots: 0 pageerrors");
   }
-  if (failed) {
-    process.exitCode = 1;
+  return failed;
+}
+
+async function warmBrowser(browser, baseUrl) {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await main(page).waitFor({ state: "visible", timeout: 30_000 });
+  } finally {
+    await context.close();
   }
 }
 
-run().catch((error) => {
+async function runLoggedWalk(browser, walk) {
+  const lines = [];
+  const started = Date.now();
+  let walkFailed = false;
+  try {
+    walkFailed = await walkLogs.run(lines, () =>
+      run(walk.argv, { browser, outDir: walk.outDir }),
+    );
+  } catch (error) {
+    walkFailed = true;
+    lines.push(error instanceof Error ? error.stack ?? error.message : String(error));
+  }
+  const seconds = Math.round((Date.now() - started) / 1000);
+  lines.push(`walk ${walk.name}: exit ${walkFailed ? 1 : 0} in ${seconds}s`);
+  return { name: walk.name, lines, walkFailed };
+}
+
+async function runSuite() {
+  const artifacts = path.resolve(SCRIPT_DIR, "..", "e2e", "artifacts");
+  const shots = DEFAULT_OUT;
+  const walks = [
+    {
+      name: "compare-1440x900",
+      argv: ["--compare", "--axe", "--viewports", "1440x900"],
+      outDir: shots,
+    },
+    {
+      name: "compare-960x640",
+      argv: ["--compare", "--axe", "--viewports", "960x640"],
+      outDir: shots,
+    },
+    {
+      name: "reduced-motion",
+      argv: ["--reduced-motion", "--axe", "--viewports", "1440x900"],
+      outDir: path.join(artifacts, "shots-reduced-motion"),
+    },
+    {
+      name: "trace",
+      argv: ["--trace", "--viewports", "1440x900"],
+      outDir: path.join(artifacts, "shots-trace"),
+    },
+  ];
+  const baseUrl = process.env.SHOTS_BASE_URL ?? "http://127.0.0.1:5173/";
+  const logsDir = path.join(artifacts, "logs");
+  await mkdir(logsDir, { recursive: true });
+  installWalkLog();
+  let browser;
+  let failed = false;
+  try {
+    browser = await chromium.launch(launchOptions());
+    const warmStart = Date.now();
+    await warmBrowser(browser, baseUrl);
+    baseLog(`shots: warm ${((Date.now() - warmStart) / 1000).toFixed(1)}s`);
+    // 1440 compare stays within 0.2% while another page is open. 960 compare
+    // does not: a second page shifts the settings title by a stable ~19px.
+    // Trace samples rAF and misses the 32ms budget unless it is the only page.
+    const batches = [
+      ["compare-1440x900", "reduced-motion"],
+      ["compare-960x640"],
+      ["trace"],
+    ];
+    const results = [];
+    for (const names of batches) {
+      const batch = names.map((name) => {
+        const walk = walks.find((item) => item.name === name);
+        if (!walk) throw new Error(`missing walk ${name}`);
+        return walk;
+      });
+      const batchResults = await Promise.all(batch.map((walk) => runLoggedWalk(browser, walk)));
+      results.push(...batchResults);
+    }
+    for (const result of results) {
+      const text = result.lines.join("\n");
+      await writeFile(path.join(logsDir, `${result.name}.log`), `${text}\n`);
+      if (result.walkFailed) {
+        failed = true;
+        baseLog(`::error::walk ${result.name} failed`);
+        baseLog(text);
+      } else {
+        baseLog(`::group::${result.name}`);
+        baseLog(text);
+        baseLog("::endgroup::");
+      }
+    }
+  } finally {
+    restoreWalkLog();
+    if (browser) await browser.close();
+  }
+  return failed;
+}
+
+async function cliMain() {
+  const argv = process.argv.slice(2);
+  if (argv.includes("--suite")) {
+    if (argv.length !== 1) {
+      throw new Error("--suite does not take other flags");
+    }
+    const failed = await runSuite();
+    if (failed) process.exitCode = 1;
+    return;
+  }
+  const failed = await run(argv);
+  if (failed) process.exitCode = 1;
+}
+
+cliMain().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
