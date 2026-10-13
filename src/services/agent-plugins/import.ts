@@ -4,6 +4,7 @@ import {
   addResourceToPlugin,
   createPlugin,
   setPluginResourceHarnessScope,
+  setPluginSpecMetadata,
   setPluginTags,
 } from "../../models/plugin-model.js";
 import { createResource } from "../../models/resource.js";
@@ -28,6 +29,7 @@ import { parseTransportToml } from "../toml/read.js";
 import type { ApPackageFiles } from "./files.js";
 import type { ApDependency, HarnesstapExtension } from "./manifest.js";
 import { COMPONENT_LAYOUT, HT_EXTENSION_NAMESPACE } from "./manifest.js";
+import { collectOpaquePackage, replaceOpaqueFiles } from "./opaque.js";
 import { type ApLoadReport, loadSpecPackage, readContainedPackageFiles } from "./spec-load.js";
 
 const RESOURCE_SOURCE = "ap-package";
@@ -52,6 +54,12 @@ export interface ParsedApPackage {
   claude?: ClaudePluginConfig;
   /** Spec load report from the package that was imported. */
   loadReport?: ApLoadReport;
+  author?: Plugin["author"];
+  homepage?: string;
+  repository?: string;
+  license?: string;
+  opaqueExtensions?: Record<string, unknown>;
+  opaqueFiles?: ApPackageFiles;
 }
 
 export interface ImportApPackageOptions {
@@ -358,6 +366,8 @@ export function parseApPackageFiles(
   ];
 
   const claude = parseClaudeConfig(files);
+  const opaque = collectOpaquePackage(files, manifest.extensions);
+  const author = specAuthor(manifest.author);
 
   return {
     name: manifest.name,
@@ -376,7 +386,22 @@ export function parseApPackageFiles(
     ...(extension.harnessScopes ? { harnessScopes: extension.harnessScopes } : {}),
     ...(claude ? { claude } : {}),
     loadReport: loaded.report,
+    ...(author ? { author } : {}),
+    ...(typeof manifest.homepage === "string" ? { homepage: manifest.homepage } : {}),
+    ...(typeof manifest.repository === "string" ? { repository: manifest.repository } : {}),
+    ...(typeof manifest.license === "string" ? { license: manifest.license } : {}),
+    ...(Object.keys(opaque.extensions).length > 0 ? { opaqueExtensions: opaque.extensions } : {}),
+    ...(Object.keys(opaque.files).length > 0 ? { opaqueFiles: opaque.files } : {}),
   };
+}
+
+function specAuthor(value: unknown): Plugin["author"] | undefined {
+  if (!isRecord(value)) return undefined;
+  const author: NonNullable<Plugin["author"]> = {};
+  if (typeof value.name === "string") author.name = value.name;
+  if (typeof value.email === "string") author.email = value.email;
+  if (typeof value.url === "string") author.url = value.url;
+  return Object.keys(author).length > 0 ? author : undefined;
 }
 
 export function readApPackage(packageDir: string): ParsedApPackage {
@@ -432,6 +457,25 @@ export function importApPackageFiles(
     ...(parsed.claude ? { claude: parsed.claude } : {}),
     ...(defaultEnvironmentId ? { default_environment_id: defaultEnvironmentId } : {}),
   });
+
+  if (
+    parsed.author ||
+    parsed.homepage ||
+    parsed.repository ||
+    parsed.license ||
+    parsed.opaqueExtensions
+  ) {
+    setPluginSpecMetadata(plugin.id, {
+      ...(parsed.author ? { author: parsed.author } : {}),
+      ...(parsed.homepage ? { homepage: parsed.homepage } : {}),
+      ...(parsed.repository ? { repository: parsed.repository } : {}),
+      ...(parsed.license ? { license: parsed.license } : {}),
+      ...(parsed.opaqueExtensions ? { opaqueExtensions: parsed.opaqueExtensions } : {}),
+    });
+  }
+  if (parsed.opaqueFiles) {
+    replaceOpaqueFiles(plugin.id, parsed.opaqueFiles);
+  }
 
   if (parsed.profile && !plugin.tags.includes("profile")) {
     setPluginTags(plugin.id, [...plugin.tags, "profile"]);

@@ -7,6 +7,8 @@ import { collectHookEntries, commandReferencesPluginRoot } from "./hook-serializ
 import { scanSkillCommandMetadataResources } from "./skill-command-metadata.js";
 import { skillMetadataFromDir } from "./skill-auxiliary.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
+import { lookupApSchema } from "./agent-plugins/schema-registry.js";
+import { loadSpecPackage, readContainedPackageFiles } from "./agent-plugins/spec-load.js";
 import type {
   ResourceCreateInput,
   AgentMetadata,
@@ -283,9 +285,17 @@ function listPluginManifests(sourcePath: string): ListedPluginManifest[] {
       readRequiredJson<PluginManifest>(manifestPath, "plugin manifest"),
       manifestPath,
     );
+    let sourcePluginKind = candidate.sourcePluginKind;
+    if (candidate.relativeManifestPath === "plugin.json") {
+      const raw = readJson<{ $schema?: unknown }>(manifestPath);
+      const schema = raw?.$schema;
+      if (typeof schema === "string" && lookupApSchema(schema).kind === "current") {
+        sourcePluginKind = "agent-plugin";
+      }
+    }
     manifests.push({
       manifestPath,
-      sourcePluginKind: candidate.sourcePluginKind,
+      sourcePluginKind,
       manifest,
     });
   }
@@ -1053,15 +1063,61 @@ function scanPluginRootAt(
     metadata["marketplace_manifest_path"] = opts.marketplaceManifestPath;
   }
 
+  const scanManifest =
+    sourcePluginKind === "agent-plugin"
+      ? { ...manifest, commands: undefined, hooks: undefined, skills: undefined }
+      : manifest;
+  let specResources: ResourceInput[] = [];
+  if (sourcePluginKind === "agent-plugin") {
+    const legacy: string[] = [];
+    if (manifest.commands || manifest.hooks || manifest.skills) {
+      legacy.push("plugin.json path overrides are ignored for an Agent Plugins package");
+    }
+    for (const relative of ["agents", "commands", "hooks", "hooks.json"]) {
+      if (existsSync(join(rootPath, relative))) {
+        legacy.push(`legacy root ${relative} is read with a warning`);
+      }
+    }
+    if (legacy.length > 0) metadata.legacy_warnings = legacy;
+    const loaded = loadSpecPackage(readContainedPackageFiles(rootPath), { root: rootPath });
+    metadata.spec_load = {
+      ok: loaded.report.ok,
+      skipped: loaded.report.skipped,
+      reported: loaded.report.reported,
+    };
+    specResources = [...loaded.skills, ...loaded.mcp].map((resource) => ({
+      ...resource,
+      metadata: {
+        ...(resource.metadata !== null &&
+        typeof resource.metadata === "object" &&
+        !Array.isArray(resource.metadata)
+          ? resource.metadata
+          : {}),
+        imported_from: buildProvenance({
+          importedAt,
+          sourceKind,
+          sourceLabel,
+          pluginName,
+          pluginVersion,
+          sourcePluginKind,
+          relativePath: resource.source ?? resource.name,
+        }),
+      },
+    }));
+  }
+
   const resources = [
-    ...scanSkills(rootPath, resolveSkillsDir(rootPath, manifest), {
-      importedAt,
-      sourceKind,
-      sourceLabel,
-      pluginName,
-      pluginVersion,
-      sourcePluginKind,
-    }),
+    ...specResources,
+    ...(sourcePluginKind === "agent-plugin"
+      ? []
+      : scanSkills(rootPath, resolveSkillsDir(rootPath, scanManifest), {
+          importedAt,
+          sourceKind,
+          sourceLabel,
+          pluginName,
+          pluginVersion,
+          sourcePluginKind,
+        })),
     ...scanAgents(rootPath, {
       importedAt,
       sourceKind,
@@ -1078,7 +1134,7 @@ function scanPluginRootAt(
       pluginVersion,
       sourcePluginKind,
     }),
-    ...scanCommands(rootPath, manifest, {
+    ...scanCommands(rootPath, scanManifest, {
       importedAt,
       sourceKind,
       sourceLabel,
@@ -1086,22 +1142,33 @@ function scanPluginRootAt(
       pluginVersion,
       sourcePluginKind,
     }),
-    ...scanAllManifestHooks(rootPath, allManifests, {
-      importedAt,
-      sourceKind,
-      sourceLabel,
-      pluginName,
-      pluginVersion,
-      sourcePluginKind,
-    }),
-    ...scanMcpServers(rootPath, {
-      importedAt,
-      sourceKind,
-      sourceLabel,
-      pluginName,
-      pluginVersion,
-      sourcePluginKind,
-    }),
+    ...(sourcePluginKind === "agent-plugin"
+      ? scanHooks(rootPath, scanManifest, {
+          importedAt,
+          sourceKind,
+          sourceLabel,
+          pluginName,
+          pluginVersion,
+          sourcePluginKind,
+        })
+      : scanAllManifestHooks(rootPath, allManifests, {
+          importedAt,
+          sourceKind,
+          sourceLabel,
+          pluginName,
+          pluginVersion,
+          sourcePluginKind,
+        })),
+    ...(sourcePluginKind === "agent-plugin"
+      ? []
+      : scanMcpServers(rootPath, {
+          importedAt,
+          sourceKind,
+          sourceLabel,
+          pluginName,
+          pluginVersion,
+          sourcePluginKind,
+        })),
   ];
 
   return {

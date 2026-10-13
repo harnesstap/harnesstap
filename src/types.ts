@@ -325,6 +325,11 @@ export interface Plugin {
   default_environment_id?: string;
   /** Stable Agent Plugins package name override; omitted when unset. */
   ap_name?: string;
+  /** Spec author object. Omitted when the package has none. */
+  author?: { name?: string; email?: string; url?: string };
+  homepage?: string;
+  repository?: string;
+  license?: string;
   origin_locator?: string;
   origin_fingerprint?: string;
   origin_fingerprint_kind?: OriginFingerprintKind;
@@ -465,6 +470,7 @@ export const IMPORTED_SOURCE_KINDS = [
   "codex-plugin",
   "copilot-plugin",
   "goose-plugin",
+  "agent-plugin",
   "marketplace",
   "skill-package",
 ] as const;

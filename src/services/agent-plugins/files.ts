@@ -1,7 +1,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import matter from "gray-matter";
-import { getPluginById, getPluginByName, getPluginResources } from "../../models/plugin-model.js";
+import {
+  getPluginById,
+  getPluginByName,
+  getPluginResources,
+  readPluginOpaqueExtensions,
+} from "../../models/plugin-model.js";
 import { getResource } from "../../models/resource.js";
 import type {
   EnvVarMetadata,
@@ -27,6 +32,7 @@ import {
   formatSpecMcpJson,
   HT_MCP_EXTRAS_PATH,
 } from "./spec-mcp.js";
+import { readOpaqueFiles } from "./opaque.js";
 import { AP_SCHEMA_URL, validateApManifest } from "./validate.js";
 
 export const AP_PACKAGE_SCHEMA = "urn:harnesstap:ap-package:v1";
@@ -304,10 +310,21 @@ function buildApPackageFilesInner(
   const skillPlan = planSkillExport(resources);
   const manifest = buildApManifest(pluginId);
   applySkillNames(manifest, skillPlan.skillNames);
+  const foreignExtensions = readPluginOpaqueExtensions(pluginId);
+  if (Object.keys(foreignExtensions).length > 0) {
+    manifest.extensions = {
+      ...(manifest.extensions ?? {}),
+      ...(foreignExtensions as Record<string, Record<string, unknown>>),
+    };
+  }
   validateApManifest(manifest);
   putUtf8(files, "plugin.json", JSON.stringify(manifest, null, 2));
 
   const warnings = emitResourceFiles(files, resources, skillPlan, options);
+  for (const [relativePath, entry] of Object.entries(readOpaqueFiles(pluginId))) {
+    if (files[relativePath]) continue;
+    put(files, relativePath, entry);
+  }
   noteWarnings([...skillPlan.warnings, ...warnings], options);
 
   if (plugin.claude) {

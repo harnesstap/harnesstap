@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 37;
+const SCHEMA_VERSION = 38;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -324,12 +324,40 @@ const MIGRATIONS: Record<number, Migration> = {
       created_at TEXT NOT NULL
     );
   `,
+  38: migratePluginSpecMetadata,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
   return (
     db.prepare(`PRAGMA table_info(${name})`).all() as Array<{ name: string }>
   ).map((column) => column.name);
+}
+
+function migratePluginSpecMetadata(db: SqliteDatabase): void {
+  if (tableExists(db, "plugins")) {
+    const columns = new Set(tableColumns(db, "plugins"));
+    const additions: Array<[string, string]> = [
+      ["author_json", "TEXT NOT NULL DEFAULT ''"],
+      ["homepage", "TEXT NOT NULL DEFAULT ''"],
+      ["repository", "TEXT NOT NULL DEFAULT ''"],
+      ["license", "TEXT NOT NULL DEFAULT ''"],
+      ["opaque_extensions", "TEXT NOT NULL DEFAULT ''"],
+    ];
+    for (const [name, definition] of additions) {
+      if (!columns.has(name)) {
+        db.exec(`ALTER TABLE plugins ADD COLUMN ${name} ${definition}`);
+      }
+    }
+  }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS plugin_opaque_files (
+      plugin_id TEXT NOT NULL,
+      relative_path TEXT NOT NULL,
+      encoding TEXT NOT NULL,
+      content TEXT NOT NULL,
+      PRIMARY KEY (plugin_id, relative_path)
+    );
+  `);
 }
 
 function migrateNonSemverPluginVersions(db: SqliteDatabase): void {
