@@ -226,4 +226,19 @@ describe("cloud client primitives", () => {
     });
     await expect(client.listOrgs()).rejects.toThrow(/too old.*0\.1\.0/s);
   });
+
+  it("omits the HTTP status when a device login is denied", async () => {
+    globalThis.fetch = mock(async () =>
+      jsonResponse(400, {
+        error: { code: "access_denied", message: "QA mock: the request was denied." },
+      }, { ok: false }),
+    ) as unknown as typeof fetch;
+
+    const { pollDeviceTokenOnce } = await import("../../src/services/cloud-client");
+    const result = await pollDeviceTokenOnce("https://cloud.test", "device-code");
+    expect(result).toEqual({
+      status: "error",
+      message: "Failed to poll device token: QA mock: the request was denied.",
+    });
+  });
 });

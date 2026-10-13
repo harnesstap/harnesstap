@@ -55,8 +55,16 @@ export function printApplyPayload(payload: {
       snapshotId: payload.snapshot_id,
     });
   }
+  const listedKept =
+    kept.length > 0
+    && (payload.dry_run
+      || payload.written_files.length > 0
+      || (payload.removed_files?.length ?? 0) > 0);
   for (const skipped of payload.skipped_removals ?? []) {
     if (skipped.reason === "missing") {
+      continue;
+    }
+    if (listedKept && removalSkipReason(skipped.reason)) {
       continue;
     }
     if (skipped.message) {

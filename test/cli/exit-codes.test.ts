@@ -206,7 +206,7 @@ describe("DS-6 central copy", () => {
       'Tip: "filesystem" also works on Cursor and Codex. Run ht resource scope filesystem --add cursor,codex.',
     );
     expect(ON_CONFLICT_HELP).toBe(
-      "What to do when it already exists: replace, skip, prompt or cancel",
+      "What to do when it already exists: replace, skip, prompt or cancel. overwrite, ignore and fail are aliases",
     );
     expect(ON_CONFLICT_VALUE_HELP.replace).toBe("Replace the existing one");
     expect(ON_CONFLICT_VALUE_HELP.skip).toBe("Keep the existing one and move on");

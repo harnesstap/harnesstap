@@ -143,15 +143,22 @@ async function readResponseBody(response: Response): Promise<{ body: unknown; te
   }
 }
 
-function describeApiFailure(response: Response, body: unknown, text: string): string {
+function apiErrorText(body: unknown, text: string): string | undefined {
   const parsed = parseApiError(body);
   if (parsed !== "{}") {
-    return `${response.status} ${parsed}`;
+    return parsed;
   }
   const trimmed = text.trim();
-  if (trimmed) {
-    const preview = trimmed.length > 240 ? `${trimmed.slice(0, 240)}...` : trimmed;
-    return `${response.status} ${preview}`;
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.length > 240 ? `${trimmed.slice(0, 240)}...` : trimmed;
+}
+
+function describeApiFailure(response: Response, body: unknown, text: string): string {
+  const detail = apiErrorText(body, text);
+  if (detail) {
+    return `${response.status} ${detail}`;
   }
   return `${response.status} empty response (try again)`;
 }
@@ -274,7 +281,7 @@ export async function pollDeviceTokenOnce(
 
   return {
     status: "error",
-    message: `Failed to poll device token: ${describeApiFailure(response, body, text)}`,
+    message: `Failed to poll device token: ${apiErrorText(body, text) ?? describeApiFailure(response, body, text)}`,
   };
 }
 

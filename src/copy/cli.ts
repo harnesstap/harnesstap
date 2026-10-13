@@ -3,6 +3,8 @@
  * Command hints always start with `ht`.
  */
 
+import { pluralNoun } from "./plurals.js";
+
 export const DRY_RUN_NOTHING_CHANGED = "Dry run. Nothing was changed.";
 
 export const NATIVE_MODULE_MISMATCH_MESSAGE =
@@ -92,6 +94,24 @@ function hintToken(value: string): string {
     return value;
   }
   return quoteName(value);
+}
+
+/** `ht` plus shell-quoted arguments. Names with spaces stay one token. */
+export function formatHtArgs(args: readonly string[]): string {
+  return ["ht", ...args.map(hintToken)].join(" ");
+}
+
+/** Turn markdown links into terminal text. Relative targets keep the label only. */
+export function plainTerminalText(value: string): string {
+  return value.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    (_match, label: string, target: string) => {
+      if (target.startsWith("http://") || target.startsWith("https://")) {
+        return `${label} (${target})`;
+      }
+      return label;
+    },
+  );
 }
 
 export function ensureErrorPrefix(message: string): string {
@@ -249,19 +269,19 @@ export function unsavedChangesFlagHint(): string {
 }
 
 export function savedChangesLine(profileName: string, count: number): string {
-  return `Saved ${count} changes to ${quoteName(profileName)}.`;
+  return `Saved ${count} ${pluralNoun(count, "change")} to ${quoteName(profileName)}.`;
 }
 
 export function stashedChangesLine(count: number, popCommand: string): string {
-  return `Stashed ${count} changes. Bring them back with: ${popCommand}`;
+  return `Stashed ${count} ${pluralNoun(count, "change")}. Bring them back with: ${popCommand}`;
 }
 
 export function discardedChangesLine(count: number): string {
-  return `Discarded ${count} changes.`;
+  return `Discarded ${count} ${pluralNoun(count, "change")}.`;
 }
 
 export function discardConfirm(count: number): string {
-  return `Discard ${count} changes? A snapshot keeps a copy.`;
+  return `Discard ${count} ${pluralNoun(count, "change")}? A snapshot keeps a copy.`;
 }
 
 export const PREVIEW_LABELS = {

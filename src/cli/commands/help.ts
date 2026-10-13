@@ -7,6 +7,7 @@ import {
 } from "../../services/scenario-guide.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { plainTerminalText } from "../../copy/cli.js";
 import {
   GUIDE_SCENARIOS_URL,
   fail,
@@ -36,13 +37,15 @@ function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: stri
     if (scenario.frequency || scenario.status) {
       console.log("");
       ui.dim(
-        [scenario.frequency, scenario.status].filter(Boolean).join(" · "),
+        [scenario.frequency, scenario.status ? plainTerminalText(scenario.status) : null]
+          .filter(Boolean)
+          .join(" · "),
       );
     }
     if (scenario.summaryLines.length > 0) {
       console.log("");
       for (const line of scenario.summaryLines) {
-        console.log(`  ${line}`);
+        console.log(`  ${plainTerminalText(line)}`);
       }
     }
     if (scenario.commands.length > 0) {

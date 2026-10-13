@@ -4,14 +4,14 @@ export const ON_CONFLICT_VALUES = ["replace", "skip", "prompt", "cancel"] as con
 export type OnConflictValue = (typeof ON_CONFLICT_VALUES)[number];
 
 export const ON_CONFLICT_HELP =
-  "What to do when it already exists: replace, skip, prompt or cancel";
+  "What to do when it already exists: replace, skip, prompt or cancel. overwrite, ignore and fail are aliases";
 
 export const ON_CONFLICT_PLUGIN_IMPORT_HELP =
-  "What to do when it already exists: replace, skip, prompt, cancel or merge";
+  "What to do when it already exists: replace, skip, prompt, cancel or merge. overwrite, ignore and fail are aliases";
 
 /** Apply, profile, and project: non-interactive default is cancel. Pass --on-conflict replace in CI. */
 export const ON_CONFLICT_APPLY_HELP =
-  "What to do when it already exists: replace, skip, prompt or cancel. Non-interactive default: cancel";
+  "What to do when it already exists: replace, skip, prompt or cancel. overwrite, ignore and fail are aliases. Non-interactive default: cancel";
 
 export const ON_CONFLICT_VALUE_HELP = {
   replace: "Replace the existing one",
