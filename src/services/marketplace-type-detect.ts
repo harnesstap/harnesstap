@@ -40,6 +40,7 @@ export const MARKETPLACE_TYPE_CANDIDATES: readonly ManifestCandidate[] = [
   { path: ".claude-plugin/marketplace.json", platform: "claude-code" },
   { path: ".cursor-plugin/marketplace.json", platform: "cursor" },
   { path: ".github/plugin/marketplace.json", platform: "copilot-cli" },
+  { path: ".agents/plugins/marketplace.json", platform: null },
   { path: ".codex-plugin/marketplace.json", platform: null },
   { path: "marketplace.json", platform: null },
 ];

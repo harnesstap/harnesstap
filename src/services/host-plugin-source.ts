@@ -36,6 +36,8 @@ const SNAPSHOT_FILE = "host-plugin-source-versions.json";
 const MARKETPLACE_MANIFEST_RELATIVE_PATHS = [
   ".claude-plugin/marketplace.json",
   ".cursor-plugin/marketplace.json",
+  ".github/plugin/marketplace.json",
+  ".agents/plugins/marketplace.json",
   "marketplace.json",
 ] as const;
 

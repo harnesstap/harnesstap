@@ -17,6 +17,8 @@ export interface CatalogPlugin {
   tags?: string[];
   sourcePath?: string;
   contents?: CatalogPluginContent[];
+  /** Set when the entry root is an Agent Plugins 1.0.0 package. */
+  packageFormat?: "agent-plugin";
 }
 
 export interface ParsedMarketplaceCatalog {
@@ -74,14 +76,27 @@ export function normalizeMarketplaceSourcePath(value: string): string {
   return value.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
 }
 
+function asMarketplaceSourcePath(value: string): string | undefined {
+  const trimmed = value.trim().replaceAll("\\", "/");
+  if (trimmed === "." || trimmed === "./") return ".";
+  const normalized = normalizeMarketplaceSourcePath(trimmed);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 function resolveSourcePath(entry: Record<string, unknown>): string | undefined {
   const source = entry.source;
   if (typeof source === "string" && source.trim().length > 0) {
-    return normalizeMarketplaceSourcePath(source);
+    return asMarketplaceSourcePath(source);
+  }
+  if (isRecord(source)) {
+    const nested = source.path;
+    if (typeof nested === "string" && nested.trim().length > 0) {
+      return asMarketplaceSourcePath(nested);
+    }
   }
   const path = entry.path;
   if (typeof path === "string" && path.trim().length > 0) {
-    return normalizeMarketplaceSourcePath(path);
+    return asMarketplaceSourcePath(path);
   }
   return undefined;
 }
@@ -151,6 +166,28 @@ export function parseClaudeMarketplaceManifest(raw: unknown): ParsedMarketplaceC
   const marketplaceName = readMarketplaceName(raw);
   const plugins = parsePlugins(raw, marketplaceName, resolveClaudePluginName);
   return { marketplaceName, plugins };
+}
+
+function codexLocalSourcePath(sourcePath: string | undefined): string | undefined {
+  if (!sourcePath || sourcePath.split("/").includes("..")) return undefined;
+  return sourcePath;
+}
+
+/** Codex `source.path` is relative to the repository root and cannot leave it. */
+export function parseCodexMarketplaceManifest(raw: unknown): ParsedMarketplaceCatalog {
+  const parsed = parseClaudeMarketplaceManifest(raw);
+  return {
+    ...parsed,
+    plugins: parsed.plugins.map((plugin) => {
+      const sourcePath = codexLocalSourcePath(plugin.sourcePath);
+      if (sourcePath === plugin.sourcePath) return plugin;
+      if (!sourcePath) {
+        const { sourcePath: _ignored, ...rest } = plugin;
+        return rest;
+      }
+      return { ...plugin, sourcePath };
+    }),
+  };
 }
 
 export function parseCursorMarketplaceManifest(raw: unknown): ParsedMarketplaceCatalog {

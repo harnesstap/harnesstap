@@ -32,6 +32,7 @@ import {
   mergeCatalogPluginsByIdentity,
   type ParsedMarketplaceCatalog,
   parseClaudeMarketplaceManifest,
+  parseCodexMarketplaceManifest,
   parseCursorMarketplaceManifest,
 } from "./marketplace-catalog-parse.js";
 import { listMarketplaces } from "./marketplace-registry.js";
@@ -70,11 +71,22 @@ export interface ListCatalogPluginsOptions {
   name: string;
 }
 
-const MANIFEST_PATHS = [
-  { path: ".claude-plugin/marketplace.json", platform: "claude-code" as const },
-  { path: ".cursor-plugin/marketplace.json", platform: "cursor" as const },
-  { path: "marketplace.json", platform: null },
+/** Codex manifests are a catalog flavor. They are not a registry platform. */
+export type MarketplaceCatalogFlavor = PluginMarketplacePlatform | "codex";
+
+const MANIFEST_PATHS: ReadonlyArray<{
+  path: string;
+  flavor: MarketplaceCatalogFlavor | null;
+}> = [
+  { path: ".claude-plugin/marketplace.json", flavor: "claude-code" },
+  { path: ".cursor-plugin/marketplace.json", flavor: "cursor" },
+  { path: ".github/plugin/marketplace.json", flavor: "copilot-cli" },
+  { path: ".agents/plugins/marketplace.json", flavor: "codex" },
+  { path: "marketplace.json", flavor: null },
 ];
+
+const MISSING_MANIFEST_MESSAGE =
+  "No marketplace manifest found (.claude-plugin/marketplace.json, .cursor-plugin/marketplace.json, .github/plugin/marketplace.json, .agents/plugins/marketplace.json, or marketplace.json).";
 
 export function marketplaceCacheDir(harnesstapDir: string, name: string): string {
   return join(harnesstapDir, "cache", "marketplaces", name);
@@ -136,20 +148,20 @@ function writeStoredCatalog(
 function resolveManifest(
   cacheDir: string,
   platforms: PluginMarketplacePlatform[],
-): { manifestPath: string; platform: PluginMarketplacePlatform } | undefined {
+): { manifestPath: string; flavor: MarketplaceCatalogFlavor } | undefined {
   for (const candidate of MANIFEST_PATHS) {
     const manifestPath = join(cacheDir, candidate.path);
     if (!existsSync(manifestPath)) continue;
 
-    if (candidate.platform) {
-      return { manifestPath, platform: candidate.platform };
+    if (candidate.flavor) {
+      return { manifestPath, flavor: candidate.flavor };
     }
 
     if (platforms.includes("claude-code") || platforms.includes("copilot-cli")) {
-      return { manifestPath, platform: "claude-code" };
+      return { manifestPath, flavor: "claude-code" };
     }
     if (platforms.includes("cursor")) {
-      return { manifestPath, platform: "cursor" };
+      return { manifestPath, flavor: "cursor" };
     }
     return undefined;
   }
@@ -157,20 +169,22 @@ function resolveManifest(
 }
 
 function parseManifest(
-  platform: PluginMarketplacePlatform,
+  flavor: MarketplaceCatalogFlavor,
   raw: unknown,
 ): ParsedMarketplaceCatalog {
-  switch (platform) {
+  switch (flavor) {
     case "claude-code":
       return parseClaudeMarketplaceManifest(raw);
     case "copilot-cli":
       return parseClaudeMarketplaceManifest(raw);
+    case "codex":
+      return parseCodexMarketplaceManifest(raw);
     case "cursor":
       return parseCursorMarketplaceManifest(raw);
     case "goose":
       return { marketplaceName: "", plugins: [] };
     default: {
-      const _exhaustive: never = platform;
+      const _exhaustive: never = flavor;
       return _exhaustive;
     }
   }
@@ -228,8 +242,7 @@ function parseCatalogFromDir(
   if (!manifest) {
     return {
       ok: false,
-      message:
-        "No marketplace manifest found (.claude-plugin/marketplace.json, .cursor-plugin/marketplace.json, or marketplace.json).",
+      message: MISSING_MANIFEST_MESSAGE,
     };
   }
 
@@ -242,7 +255,7 @@ function parseCatalogFromDir(
 
   return {
     ok: true,
-    catalog: catalogWithRegistryIdentity(parseManifest(manifest.platform, raw), registryName),
+    catalog: catalogWithRegistryIdentity(parseManifest(manifest.flavor, raw), registryName),
   };
 }
 
@@ -445,7 +458,7 @@ export function listPluginsFromMarketplaceRoot(
   }
 
   const plugins = catalogWithRegistryIdentity(
-    parseManifest(manifest.platform, raw),
+    parseManifest(manifest.flavor, raw),
     registryName,
   ).plugins;
   return enrichCatalogPlugins(root, plugins);
