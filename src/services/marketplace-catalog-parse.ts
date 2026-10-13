@@ -188,6 +188,10 @@ export function sourcePathLeavesMarketplace(sourcePath: string | undefined): boo
   return sourcePath.replaceAll("\\", "/").split("/").includes("..");
 }
 
+export function escapingMarketplaceSourceWarning(pluginName: string): string {
+  return `Skipped ${pluginName}: source path leaves the marketplace repository.`;
+}
+
 /** Drop entries whose source path leaves the marketplace repository. */
 export function partitionEscapingCatalogPlugins(plugins: CatalogPlugin[]): {
   plugins: CatalogPlugin[];
@@ -200,9 +204,7 @@ export function partitionEscapingCatalogPlugins(plugins: CatalogPlugin[]): {
       kept.push(plugin);
       continue;
     }
-    warnings.push(
-      `Skipped ${plugin.name}: source path leaves the marketplace repository.`,
-    );
+    warnings.push(escapingMarketplaceSourceWarning(plugin.name));
   }
   return { plugins: kept, warnings };
 }
