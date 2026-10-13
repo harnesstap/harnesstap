@@ -302,14 +302,21 @@ export function applyWroteLine(input: {
   unchanged?: number;
   omitUnchanged?: boolean;
 }): string {
-  const parts: string[] = [];
-  if (input.wrote > 0) parts.push(`Wrote ${input.wrote}`);
-  if (input.removed > 0) parts.push(`removed ${input.removed}`);
-  if (input.wrote === 0 && input.removed === 0) {
+  if (input.wrote === 0 && input.removed === 0 && input.kept === 0) {
     return input.unchanged !== undefined
       ? `${CLI_COPY.everythingUpToDate} ${input.unchanged} unchanged.`
       : CLI_COPY.everythingUpToDate;
   }
+  if (input.wrote === 0 && input.removed === 0) {
+    const line = `Wrote 0, removed 0, kept ${input.kept}`;
+    if (!input.omitUnchanged && input.unchanged !== undefined && input.unchanged > 0) {
+      return `${line}, unchanged ${input.unchanged}.`;
+    }
+    return `${line}.`;
+  }
+  const parts: string[] = [];
+  if (input.wrote > 0) parts.push(`Wrote ${input.wrote}`);
+  if (input.removed > 0) parts.push(`removed ${input.removed}`);
   if (input.kept > 0) parts.push(`kept ${input.kept}`);
   if (parts.length === 0) {
     return input.unchanged !== undefined

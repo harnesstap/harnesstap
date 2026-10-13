@@ -53,12 +53,15 @@ describe("DS-6 CLI copy", () => {
     );
   });
 
-  it("treats a no-op re-apply as up to date even when files were kept", () => {
+  it("counts kept files when nothing was written or removed", () => {
     expect(
       applyWroteLine({ wrote: 0, removed: 0, kept: 6, unchanged: 16 }),
-    ).toBe("Everything is up to date. 16 unchanged.");
-    expect(applyWroteLine({ wrote: 0, removed: 0, kept: 6 })).toBe(
-      "Everything is up to date.",
+    ).toBe("Wrote 0, removed 0, kept 6, unchanged 16.");
+    expect(applyWroteLine({ wrote: 0, removed: 0, kept: 22 })).toBe(
+      "Wrote 0, removed 0, kept 22.",
+    );
+    expect(applyWroteLine({ wrote: 0, removed: 0, kept: 0, unchanged: 29 })).toBe(
+      "Everything is up to date. 29 unchanged.",
     );
   });
 

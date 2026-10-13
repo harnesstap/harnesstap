@@ -1,0 +1,5 @@
+kind: Fixed
+body: Apply and profile-switch result lines count kept files together with writes and removals, including when nothing was written or removed.
+time: 2026-10-13T12:30:00.000Z
+custom:
+  Issue: ""
