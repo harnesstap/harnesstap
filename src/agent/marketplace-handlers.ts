@@ -8,10 +8,14 @@ import {
   listVisibleMarketplaces,
   toMarketplaceListEntry,
 } from "../services/host-marketplaces.js";
-import { refreshMarketplaceCatalog } from "../services/marketplace-catalog.js";
+import {
+  alignImplicitMarketplacePlatforms,
+  refreshMarketplaceCatalog,
+} from "../services/marketplace-catalog.js";
 import { listMarketplacePlugins } from "../services/marketplace-plugin-tree.js";
 import {
   addMarketplace,
+  listMarketplaces,
   removeMarketplace,
 } from "../services/marketplace-registry.js";
 import { checkMarketplacesReachability } from "../services/marketplace-reachability.js";
@@ -199,7 +203,14 @@ export async function handleMarketplacesAdd(
         { status: 400 },
       );
     }
-    return jsonResponse({ ...result, refresh });
+    if (body.platforms === undefined) {
+      alignImplicitMarketplacePlatforms(harnesstapDir, result.entry.name);
+    }
+    const entry =
+      listMarketplaces(harnesstapDir).find(
+        (marketplace) => marketplace.name === result.entry.name,
+      ) ?? result.entry;
+    return jsonResponse({ ...result, entry, refresh });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return jsonResponse({ error: "marketplace_add_failed", message }, { status: 400 });

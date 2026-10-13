@@ -29,13 +29,15 @@ import {
 } from "./marketplace-catalog-index.js";
 import {
   type CatalogPlugin,
+  type CatalogPluginFlavor,
   mergeCatalogPluginsByIdentity,
+  partitionEscapingCatalogPlugins,
   type ParsedMarketplaceCatalog,
   parseClaudeMarketplaceManifest,
   parseCodexMarketplaceManifest,
   parseCursorMarketplaceManifest,
 } from "./marketplace-catalog-parse.js";
-import { listMarketplaces } from "./marketplace-registry.js";
+import { listMarketplaces, updateMarketplace } from "./marketplace-registry.js";
 
 export type { CatalogPlugin } from "./marketplace-catalog-parse.js";
 
@@ -54,6 +56,7 @@ export interface StoredMarketplaceCatalog extends ParsedMarketplaceCatalog {
   sha?: string;
   pluginVersions?: MarketplacePluginBranchVersion[];
   indexVersion?: number;
+  warnings?: string[];
 }
 
 export interface RefreshMarketplaceCatalogOptions {
@@ -65,6 +68,7 @@ export interface RefreshMarketplaceCatalogResult {
   ok: boolean;
   message: string;
   sha?: string;
+  warnings?: string[];
 }
 
 export interface ListCatalogPluginsOptions {
@@ -72,7 +76,7 @@ export interface ListCatalogPluginsOptions {
 }
 
 /** Codex manifests are a catalog flavor. They are not a registry platform. */
-export type MarketplaceCatalogFlavor = PluginMarketplacePlatform | "codex";
+export type MarketplaceCatalogFlavor = CatalogPluginFlavor;
 
 const MANIFEST_PATHS: ReadonlyArray<{
   path: string;
@@ -145,27 +149,55 @@ function writeStoredCatalog(
   writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`, "utf8");
 }
 
-function resolveManifest(
+function rootMarketplaceFlavor(
+  platforms: PluginMarketplacePlatform[],
+): MarketplaceCatalogFlavor | undefined {
+  if (platforms.includes("claude-code") || platforms.includes("copilot-cli")) {
+    return "claude-code";
+  }
+  if (platforms.includes("cursor")) {
+    return "cursor";
+  }
+  return undefined;
+}
+
+function resolveManifests(
   cacheDir: string,
   platforms: PluginMarketplacePlatform[],
-): { manifestPath: string; flavor: MarketplaceCatalogFlavor } | undefined {
+): Array<{ manifestPath: string; flavor: MarketplaceCatalogFlavor }> {
+  const found: Array<{ manifestPath: string; flavor: MarketplaceCatalogFlavor }> = [];
   for (const candidate of MANIFEST_PATHS) {
     const manifestPath = join(cacheDir, candidate.path);
     if (!existsSync(manifestPath)) continue;
-
     if (candidate.flavor) {
-      return { manifestPath, flavor: candidate.flavor };
+      found.push({ manifestPath, flavor: candidate.flavor });
+      continue;
     }
-
-    if (platforms.includes("claude-code") || platforms.includes("copilot-cli")) {
-      return { manifestPath, flavor: "claude-code" };
+    const flavor = rootMarketplaceFlavor(platforms);
+    if (flavor) {
+      found.push({ manifestPath, flavor });
     }
-    if (platforms.includes("cursor")) {
-      return { manifestPath, flavor: "cursor" };
-    }
-    return undefined;
   }
-  return undefined;
+  return found;
+}
+
+function registryPlatformForFlavor(
+  flavor: CatalogPluginFlavor | undefined,
+): PluginMarketplacePlatform | undefined {
+  switch (flavor) {
+    case "claude-code":
+    case "cursor":
+    case "goose":
+    case "copilot-cli":
+      return flavor;
+    case "codex":
+    case undefined:
+      return undefined;
+    default: {
+      const _exhaustive: never = flavor;
+      return _exhaustive;
+    }
+  }
 }
 
 function parseManifest(
@@ -231,31 +263,60 @@ function catalogRefreshEntry(
   return builtinMarketplaceEntry();
 }
 
-function parseCatalogFromDir(
+interface LoadedMarketplaceCatalog {
+  marketplaceName: string;
+  manifestName?: string;
+  plugins: CatalogPlugin[];
+  warnings: string[];
+}
+
+function loadCatalogFromDir(
   dir: string,
   platforms: PluginMarketplacePlatform[],
   registryName: string,
 ):
-  | { ok: true; catalog: ReturnType<typeof catalogWithRegistryIdentity> }
+  | { ok: true; catalog: LoadedMarketplaceCatalog }
   | { ok: false; message: string } {
-  const manifest = resolveManifest(dir, platforms);
-  if (!manifest) {
+  const manifests = resolveManifests(dir, platforms);
+  if (manifests.length === 0) {
     return {
       ok: false,
       message: MISSING_MANIFEST_MESSAGE,
     };
   }
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
-  } catch {
-    return { ok: false, message: "Failed to parse marketplace manifest JSON" };
+  const plugins: CatalogPlugin[] = [];
+  let marketplaceName = "";
+  let manifestName: string | undefined;
+  for (const manifest of manifests) {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
+    } catch {
+      return { ok: false, message: "Failed to parse marketplace manifest JSON" };
+    }
+    const identified = catalogWithRegistryIdentity(
+      parseManifest(manifest.flavor, raw),
+      registryName,
+    );
+    if (!marketplaceName) {
+      marketplaceName = identified.marketplaceName;
+      manifestName = identified.manifestName;
+    }
+    for (const plugin of identified.plugins) {
+      plugins.push({ ...plugin, flavor: manifest.flavor });
+    }
   }
 
+  const partitioned = partitionEscapingCatalogPlugins(plugins);
   return {
     ok: true,
-    catalog: catalogWithRegistryIdentity(parseManifest(manifest.flavor, raw), registryName),
+    catalog: {
+      marketplaceName,
+      ...(manifestName ? { manifestName } : {}),
+      plugins: partitioned.plugins,
+      warnings: partitioned.warnings,
+    },
   };
 }
 
@@ -326,7 +387,7 @@ export function refreshMarketplaceCatalog(
     return { ok: false, message: refresh.message };
   }
 
-  const defaultCatalog = parseCatalogFromDir(cacheDir, entry.platforms, entry.name);
+  const defaultCatalog = loadCatalogFromDir(cacheDir, entry.platforms, entry.name);
   if (!defaultCatalog.ok) {
     return defaultCatalog;
   }
@@ -337,6 +398,7 @@ export function refreshMarketplaceCatalog(
   );
   const pluginVersions = versionsFromPlugins(defaultCatalog.catalog.plugins, defaultBranch);
   const pluginBatches: CatalogPlugin[][] = [defaultCatalog.catalog.plugins];
+  const warnings = [...defaultCatalog.catalog.warnings];
 
   for (const branch of extraBranches) {
     const branchDir = mkdtempSync(join(tmpdir(), "ht-mkt-branch-"));
@@ -352,7 +414,7 @@ export function refreshMarketplaceCatalog(
           message: `Tracked branch "${branch}": ${branchRefresh.message}`,
         };
       }
-      const branchCatalog = parseCatalogFromDir(branchDir, entry.platforms, entry.name);
+      const branchCatalog = loadCatalogFromDir(branchDir, entry.platforms, entry.name);
       if (!branchCatalog.ok) {
         return {
           ok: false,
@@ -360,18 +422,24 @@ export function refreshMarketplaceCatalog(
         };
       }
       pluginBatches.push(branchCatalog.catalog.plugins);
+      warnings.push(...branchCatalog.catalog.warnings);
       pluginVersions.push(...versionsFromPlugins(branchCatalog.catalog.plugins, branch));
     } finally {
       rmSync(branchDir, { recursive: true, force: true });
     }
   }
 
+  const uniqueWarnings = [...new Set(warnings)];
   const catalog = {
-    ...defaultCatalog.catalog,
+    marketplaceName: defaultCatalog.catalog.marketplaceName,
+    ...(defaultCatalog.catalog.manifestName
+      ? { manifestName: defaultCatalog.catalog.manifestName }
+      : {}),
     plugins: enrichCatalogPlugins(
       cacheDir,
       mergeCatalogPluginsByIdentity(pluginBatches.flat()),
     ),
+    ...(uniqueWarnings.length > 0 ? { warnings: uniqueWarnings } : {}),
   };
   const stored: StoredMarketplaceCatalog = {
     ...catalog,
@@ -387,6 +455,7 @@ export function refreshMarketplaceCatalog(
     ok: true,
     message: refresh.message,
     ...(refresh.sha ? { sha: refresh.sha } : {}),
+    ...(uniqueWarnings.length > 0 ? { warnings: uniqueWarnings } : {}),
   };
 }
 
@@ -447,25 +516,73 @@ export function listPluginsFromMarketplaceRoot(
   registryName: string,
   platforms: PluginMarketplacePlatform[] = ["claude-code"],
 ): CatalogPlugin[] {
-  const manifest = resolveManifest(root, platforms);
-  if (!manifest) return [];
+  const loaded = loadCatalogFromDir(root, platforms, registryName);
+  if (!loaded.ok) return [];
+  return enrichCatalogPlugins(root, loaded.catalog.plugins);
+}
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
-  } catch {
-    return [];
+export function marketplaceRootWarnings(
+  root: string,
+  registryName: string,
+  platforms: PluginMarketplacePlatform[] = ["claude-code"],
+): string[] {
+  const loaded = loadCatalogFromDir(root, platforms, registryName);
+  return loaded.ok ? loaded.catalog.warnings : [];
+}
+
+export function marketplaceCatalogWarnings(
+  harnesstapDir: string,
+  name: string,
+): string[] {
+  return readStoredCatalog(marketplaceCatalogPath(harnesstapDir, name))?.warnings ?? [];
+}
+
+/** Flavors present in the stored catalog, including Codex. */
+export function marketplaceRowFlavors(
+  harnesstapDir: string,
+  entry: { name: string; platforms: PluginMarketplacePlatform[] },
+): string[] {
+  const plugins = listCatalogPlugins(harnesstapDir, { name: entry.name });
+  const flavors: string[] = [];
+  const seen = new Set<string>();
+  for (const plugin of plugins) {
+    if (!plugin.flavor || seen.has(plugin.flavor)) continue;
+    seen.add(plugin.flavor);
+    flavors.push(plugin.flavor);
   }
+  return flavors.length > 0 ? flavors : [...entry.platforms];
+}
 
-  const plugins = catalogWithRegistryIdentity(
-    parseManifest(manifest.flavor, raw),
-    registryName,
-  ).plugins;
-  return enrichCatalogPlugins(root, plugins);
+/**
+ * When the user did not pass `--platform`, store the registry flavors the
+ * manifests actually declared. Codex stays off the registry platform list.
+ */
+export function alignImplicitMarketplacePlatforms(
+  harnesstapDir: string,
+  name: string,
+): PluginMarketplacePlatform[] | undefined {
+  const plugins = listCatalogPlugins(harnesstapDir, { name });
+  const detected: PluginMarketplacePlatform[] = [];
+  const seen = new Set<PluginMarketplacePlatform>();
+  for (const plugin of plugins) {
+    const platform = registryPlatformForFlavor(plugin.flavor);
+    if (!platform || seen.has(platform)) continue;
+    seen.add(platform);
+    detected.push(platform);
+  }
+  if (detected.length === 0) return undefined;
+  const current = listMarketplaces(harnesstapDir).find((entry) => entry.name === name);
+  if (!current) return undefined;
+  const same =
+    current.platforms.length === detected.length
+    && current.platforms.every((platform, index) => platform === detected[index]);
+  if (same) return detected;
+  const updated = updateMarketplace(harnesstapDir, name, { platforms: detected });
+  return updated.status === "updated" ? updated.entry.platforms : undefined;
 }
 
 export function readMarketplaceManifest(root: string): unknown | undefined {
-  const manifest = resolveManifest(root, ["claude-code", "cursor", "copilot-cli"]);
+  const manifest = resolveManifests(root, ["claude-code", "cursor", "copilot-cli"])[0];
   if (!manifest) return undefined;
   try {
     return JSON.parse(readFileSync(manifest.manifestPath, "utf8"));

@@ -53,6 +53,15 @@ export function fail(
   }
 }
 
+function hintsFromError(error: unknown): string[] {
+  if (!error || typeof error !== "object" || !("hints" in error)) return [];
+  const raw = (error as { hints?: unknown }).hints;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (hint): hint is string => typeof hint === "string" && hint.trim().length > 0,
+  );
+}
+
 export function failCaught(error: unknown, opts?: { exitCode?: number }): void {
   if (error instanceof CliUsageError) {
     fail(error.message, {
@@ -65,8 +74,12 @@ export function failCaught(error: unknown, opts?: { exitCode?: number }): void {
   const commanderHint = isCommanderError(error)
     ? undefined
     : mapped.hint;
+  const ownHints = hintsFromError(error);
+  const hints = commanderHint
+    ? [commanderHint, ...ownHints.filter((hint) => hint !== commanderHint)]
+    : ownHints;
   fail(mapped.message, {
-    hint: commanderHint,
+    hints,
     exitCode: opts?.exitCode ?? mapped.exitCode,
   });
 }

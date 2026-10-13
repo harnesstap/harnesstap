@@ -148,7 +148,8 @@ describe("selectVersion", () => {
       pluginName: "design-doc",
       sourceKind: "marketplace",
     });
-    expect(error.hints[0]).toContain("ht profile use");
+    expect(error.hints[0]).toBe("ht resource sync plugin:design-doc");
+    expect(error.message).toContain("ht resource sync plugin:design-doc");
   });
 
   it("classifies empty local inventory as create-plugin, not sync-install", () => {
