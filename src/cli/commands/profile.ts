@@ -294,6 +294,9 @@ profileCmd
           ui.dim(
             `${formatCount(status.changes.length, "file")} ${status.changes.length === 1 ? "differs" : "differ"} on disk.`,
           );
+          for (const change of status.changes) {
+            console.log(`  ${change.path}`);
+          }
         }
         ui.hint(
           `Run ${formatHintCommand(["profile", "use", status.active_profile])} to refresh global harness files.`,

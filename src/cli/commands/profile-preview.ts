@@ -163,10 +163,10 @@ function printHostManagedCollisions(preview: ProfileApplyPreview): void {
 
 function previewChangeLabel(change: DriftFileChange): string {
   switch (change.type) {
-    case "added":
+    case "deleted":
     case "modified":
       return SCOPE_COPY.willWrite;
-    case "deleted":
+    case "added":
       return SCOPE_COPY.willRemove;
     default: {
       const unhandled: never = change.type;
