@@ -39,4 +39,8 @@ MCP servers from an Agent Plugins package keep `cwd` and an HTTP transport of `s
 
 Set `harnessSync.nativeAgentPlugins` to `true` to register Agent Plugins packages for Codex and Copilot instead of extracting their skills and MCP servers. The default is off. Codex entries are `[plugins."<name>@harnesstap"]` in `config.toml`. Copilot entries are `enabledPlugins` keys in `.copilot/settings.json`. Other keys stay. Turning a package off removes only those `@harnesstap` keys and the cache files HarnessTap wrote. A config with no `@harnesstap` keys to add or remove is left as it is, including when the flag is on and the profile does not register a package.
 
+## docs/cli/concepts/plugins.md > Plugin dependencies
+<!-- append -->
+Attaching a marketplace plugin whose source path leaves the repository is rejected. No pin is recorded.
+
 The Cursor and Claude copies of an Agent Plugins package rewrite those variables in the emitted tree only. Cursor writes `${CURSOR_PLUGIN_ROOT}` and an absolute plugin data path. Claude writes `.claude-plugin/plugin.json`, `.mcp.json` (`streamable-http` and `sse` as `http`, `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}`), and copies `com.harnesstap` commands, agents, and hook JSON into the Claude plugin directories. A file HarnessTap does not own inside a Cursor local plugin is left in place. Owned removals are backed up.

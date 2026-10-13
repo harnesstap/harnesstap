@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "bun:test";
 import { getPluginByName } from "../../src/models/plugin-model.ts";
+import { listDependencies } from "../../src/services/plugin-dependency.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
 
@@ -192,6 +193,78 @@ describe("marketplace manifests and local sync", () => {
       );
       expect(applied.stderr).not.toContain("No local version");
       expect(applied.exitCode ?? 0).toBe(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects a skipped marketplace path at attach time and records no pin", async () => {
+    const context = await createTestContext("cli-mkt-escape-attach");
+    try {
+      await runCli(["init"]);
+      const repo = mkdtempSync(join(tmpdir(), "ht-mkt-escape-"));
+      writePlugin(repo, "plugins/kept", "kept");
+      mkdirSync(join(repo, ".agents/plugins"), { recursive: true });
+      writeFileSync(
+        join(repo, ".agents/plugins/marketplace.json"),
+        `${JSON.stringify({
+          name: "mkt",
+          plugins: [
+            { name: "kept", source: { source: "local", path: "./plugins/kept" }, version: "1.2.0" },
+            { name: "outside", source: { source: "local", path: "../outside" } },
+          ],
+        })}\n`,
+      );
+      commitRepo(repo);
+
+      const add = await runCli(["marketplace", "add", repo, "--name", "mkt"], { isTTY: false });
+      expect(add.exitCode ?? 0).toBe(0);
+      expect(`${add.stdout}\n${add.stderr}`).toContain(
+        "Skipped outside: source path leaves the marketplace repository.",
+      );
+
+      const created = await runCli(["plugin", "create", "wrapper"], { isTTY: false });
+      expect(created.exitCode ?? 0).toBe(0);
+
+      const attached = await runCli(
+        [
+          "plugin",
+          "edit",
+          "wrapper",
+          "--add",
+          "plugin:outside@mkt",
+          "--type",
+          "plugin",
+          "--sync",
+        ],
+        { isTTY: false },
+      );
+      const output = `${attached.stdout}\n${attached.stderr}`;
+      expect(attached.exitCode ?? 0).not.toBe(0);
+      expect(output).toContain(
+        "Cannot attach outside@mkt: source path leaves the marketplace repository.",
+      );
+      expect(output).not.toContain("Attached");
+
+      const wrapper = getPluginByName("wrapper");
+      if (!wrapper) throw new Error("wrapper plugin missing");
+      expect(listDependencies(wrapper.id)).toEqual([]);
+
+      const withoutSync = await runCli(
+        [
+          "plugin",
+          "edit",
+          "wrapper",
+          "--add",
+          "plugin:outside@mkt",
+          "--type",
+          "plugin",
+        ],
+        { isTTY: false },
+      );
+      expect(withoutSync.exitCode ?? 0).not.toBe(0);
+      expect(`${withoutSync.stdout}\n${withoutSync.stderr}`).not.toContain("Attached");
+      expect(listDependencies(wrapper.id)).toEqual([]);
     } finally {
       await context.cleanup();
     }

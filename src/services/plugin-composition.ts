@@ -15,7 +15,13 @@ import {
   removeDependency,
 } from "./plugin-dependency.js";
 import { parseResourceSelector } from "./resource-selector.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { escapingMarketplaceSourceWarning } from "./marketplace-catalog-parse.js";
+import {
+  listCatalogPlugins,
+  marketplaceCatalogWarnings,
+} from "./marketplace-catalog.js";
 import { installMarketplacePinIntoCache } from "./marketplace-pin-cache.js";
 import { syncPluginResource } from "./resource-sync.js";
 import type { Plugin, Resource, ResourceType } from "../types.js";
@@ -318,12 +324,33 @@ function normalizeAttachmentSelector(selector: string, explicitType?: string): s
   return selector;
 }
 
+/** A skipped `../` marketplace entry must not become a pin. */
+function assertMarketplaceSourceStaysInRepo(ref: string): void {
+  const parsed = parseDependencyRef(ref);
+  if (parsed.source_kind !== "marketplace") return;
+  const harnesstapDir = getHarnesstapDir();
+  const warning = escapingMarketplaceSourceWarning(parsed.name);
+  if (!marketplaceCatalogWarnings(harnesstapDir, parsed.namespace).includes(warning)) {
+    return;
+  }
+  const listed = listCatalogPlugins(harnesstapDir, { name: parsed.namespace });
+  if (listed.some((plugin) => plugin.name === parsed.name)) return;
+  throw new Error(
+    `Cannot attach ${parsed.origin_ref}: source path leaves the marketplace repository.`,
+  );
+}
+
 export async function addPluginAttachment(input: AddPluginAttachmentInput): Promise<string> {
   const explicitType = input.type;
   const selector = normalizeAttachmentSelector(input.selector, explicitType);
   const attachmentType = resolveAttachmentType(selector, explicitType, {
     pluginName: input.plugin.name,
   });
+
+  if (attachmentType === "plugin") {
+    assertMarketplaceSourceStaysInRepo(stripTypePrefix(selector));
+  }
+
   markPluginDirty(input.plugin.id);
 
   if (attachmentType === "plugin") {
