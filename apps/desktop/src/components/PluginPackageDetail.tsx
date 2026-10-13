@@ -51,6 +51,7 @@ import {
   patchLibraryPlugin,
   patchLibraryPluginAttachments,
   rollbackLibraryPlugin,
+  pluginImportNoteLines,
   type LibraryPluginDetail,
   type LibraryPluginVersionRow,
   type PluginOrigin,
@@ -1340,6 +1341,28 @@ export function PluginPackageDetail({
         <div className="banner">
           {record.plugin.name} is {originArticle(record.plugin.origin)} plugin
           and cannot be edited directly.
+        </div>
+      ) : null}
+      {record.plugin.format_label ? (
+        <LibraryFieldRow
+          icon={<Tag size={16} aria-hidden />}
+          fieldName="Format"
+          readOnly
+          display={record.plugin.format_label}
+          editing={false}
+          onStartEdit={() => undefined}
+          onCommit={() => undefined}
+          onCancel={() => undefined}
+        />
+      ) : null}
+      {pluginImportNoteLines(record.diagnostics).length > 0 ? (
+        <div className="banner" role="status">
+          <p>Loaded with notes.</p>
+          <ul>
+            {pluginImportNoteLines(record.diagnostics).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
       <LibraryFieldRow

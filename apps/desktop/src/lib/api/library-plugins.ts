@@ -13,6 +13,7 @@ export interface LibraryPluginHead {
   dirty: boolean;
   org_slug: string;
   catalog_slug: string;
+  format_label?: string;
 }
 
 export interface LibraryPluginDetailPlugin {
@@ -26,6 +27,30 @@ export interface LibraryPluginDetailPlugin {
   dirty: boolean;
   frozen_at: string | null;
   default_environment_id: string | null;
+  format_label?: string;
+}
+
+export interface PluginImportDiagnostics {
+  ok: boolean;
+  skipped: Array<{ component: string; name: string; reason: string }>;
+  reported: Array<{ field: string; message: string }>;
+  legacy_warnings: string[];
+  mcp_disabled?: string;
+}
+
+export function pluginImportNoteLines(
+  diagnostics: PluginImportDiagnostics | null | undefined,
+): string[] {
+  if (!diagnostics) return [];
+  const lines = [...(diagnostics.legacy_warnings ?? [])];
+  for (const reported of diagnostics.reported ?? []) lines.push(reported.message);
+  for (const skipped of diagnostics.skipped ?? []) {
+    lines.push(`${skipped.component} ${skipped.name}: ${skipped.reason}`);
+  }
+  if (diagnostics.mcp_disabled) {
+    lines.push(`MCP was not loaded: ${diagnostics.mcp_disabled}`);
+  }
+  return lines;
 }
 
 export interface LibraryPluginVersionRow {
@@ -52,6 +77,7 @@ export interface LibraryPluginDetail {
     name: string;
     source: string;
   }>;
+  diagnostics?: PluginImportDiagnostics;
 }
 
 export interface LibraryPluginAttachmentAdd {
@@ -142,6 +168,7 @@ export interface LibraryGitImportResult {
   origin_locator: string;
   origin_fingerprint: string;
   created: boolean;
+  diagnostics?: PluginImportDiagnostics | null;
 }
 
 export async function importLibraryPluginFromGit(
@@ -165,6 +192,7 @@ export interface LibraryMarketplaceImportResult {
   origin_locator: string;
   origin_fingerprint: string;
   created: boolean;
+  diagnostics?: PluginImportDiagnostics | null;
 }
 
 export async function importLibraryPluginFromMarketplace(

@@ -11,6 +11,7 @@ import {
 } from "../lib/agent-client";
 import {
   defaultMigrateExportFilename,
+  type PluginPackageFormat,
   formatResourceSelector,
   migrateExportSteps,
   migrateStepCopy,
@@ -79,6 +80,8 @@ export function MigrateExportDrawer({
   const [selectedPlugin, setSelectedPlugin] = useState<string | null>(null);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
   const [includePlugins, setIncludePlugins] = useState(false);
+  const [packageFormat, setPackageFormat] = useState<PluginPackageFormat>("directory");
+  const [vendorExtensions, setVendorExtensions] = useState(false);
   const [exportPath, setExportPath] = useState<string | null>(null);
   const [targetFilter, setTargetFilter] = useState("");
   const [plugins, setPlugins] = useState<LibraryPlugin[]>([]);
@@ -97,6 +100,8 @@ export function MigrateExportDrawer({
     setSelectedPlugin(null);
     setSelectedResource(null);
     setIncludePlugins(false);
+    setPackageFormat("directory");
+    setVendorExtensions(false);
     setExportPath(null);
     setTargetFilter("");
     setLibraryError(null);
@@ -198,8 +203,9 @@ export function MigrateExportDrawer({
         scope,
         plugin: selectedPlugin ?? undefined,
         resource: selectedResource ?? undefined,
+        packageFormat: scope === "plugin" ? packageFormat : undefined,
       }),
-    [scope, selectedPlugin, selectedResource],
+    [packageFormat, scope, selectedPlugin, selectedResource],
   );
 
   const pickExportPath = async () => {
@@ -209,7 +215,11 @@ export function MigrateExportDrawer({
             { name: "Archive", extensions: ["tar.gz", "gz", "tar"] },
             { name: "JSON", extensions: ["json"] },
           ]
-        : [{ name: "Agent Plugins", extensions: ["ap.json", "json"] }];
+        : packageFormat === "zip"
+          ? [{ name: "Zip", extensions: ["zip"] }]
+          : packageFormat === "directory"
+            ? [{ name: "Agent Plugins directory", extensions: [""] }]
+            : [{ name: "HarnessTap package", extensions: ["ap.json", "json"] }];
     const path = await save({
       defaultPath: defaultFilename,
       filters,
@@ -238,9 +248,12 @@ export function MigrateExportDrawer({
         ...((scope === "workspace" || scope === "plugin") && includePlugins
           ? { include_plugins: true }
           : {}),
-        ...(scope === "plugin" || scope === "resource"
+        ...(scope === "plugin" && packageFormat === "envelope"
           ? { single_file: true }
           : {}),
+        ...(scope === "plugin" && packageFormat === "zip" ? { archive: true } : {}),
+        ...(scope === "plugin" && vendorExtensions ? { vendor_extensions: true } : {}),
+        ...(scope === "resource" ? { single_file: true } : {}),
       });
       onExported?.(result);
       onClose();
@@ -449,6 +462,8 @@ export function MigrateExportDrawer({
                 setScope(nextScope);
                 setSelectedPlugin(null);
                 setSelectedResource(null);
+                setPackageFormat("directory");
+                setVendorExtensions(false);
                 setExportPath(null);
                 setError(null);
               }}
@@ -463,13 +478,13 @@ export function MigrateExportDrawer({
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="plugin" id="migrate-scope-plugin" />
                 <Label htmlFor="migrate-scope-plugin" className="font-normal">
-                  Plugin package (.ap.json)
+                  Plugin package
                 </Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="resource" id="migrate-scope-resource" />
                 <Label htmlFor="migrate-scope-resource" className="font-normal">
-                  Single resource (.ap.json)
+                  HarnessTap package (for HarnessTap and Cloud)
                 </Label>
               </div>
             </RadioGroup>
@@ -478,21 +493,70 @@ export function MigrateExportDrawer({
           {step === "target" ? renderTargetStep() : null}
 
           {step === "options" ? (
-            <div className="flex items-center justify-between gap-3 rounded border border-border px-3 py-2.5">
-              <div className="min-w-0">
-                <Label htmlFor="migrate-export-include-plugins">
-                  Embed plugin trees
-                </Label>
-                <p className="muted m-0 text-[11px]">
-                  Include plugin directory trees in plugin exports.
-                </p>
+            <div className="flex flex-col gap-3">
+              {scope === "plugin" ? (
+                <RadioGroup
+                  value={packageFormat}
+                  onValueChange={(value) => {
+                    setPackageFormat(value as PluginPackageFormat);
+                    setExportPath(null);
+                  }}
+                  disabled={controlsDisabled}
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="directory" id="migrate-format-directory" />
+                    <Label htmlFor="migrate-format-directory" className="font-normal">
+                      Agent Plugins directory
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="zip" id="migrate-format-zip" />
+                    <Label htmlFor="migrate-format-zip" className="font-normal">
+                      Agent Plugins zip
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="envelope" id="migrate-format-envelope" />
+                    <Label htmlFor="migrate-format-envelope" className="font-normal">
+                      HarnessTap package (for HarnessTap and Cloud)
+                    </Label>
+                  </div>
+                </RadioGroup>
+              ) : null}
+              {scope === "plugin" ? (
+                <div className="flex items-center justify-between gap-3 rounded border border-border px-3 py-2.5">
+                  <div className="min-w-0">
+                    <Label htmlFor="migrate-export-vendor-extensions">
+                      Vendor extensions
+                    </Label>
+                    <p className="muted m-0 text-[11px]">
+                      Also write Copilot files and Codex hook settings. Off by default.
+                    </p>
+                  </div>
+                  <Switch
+                    id="migrate-export-vendor-extensions"
+                    checked={vendorExtensions}
+                    onCheckedChange={setVendorExtensions}
+                    disabled={controlsDisabled}
+                  />
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between gap-3 rounded border border-border px-3 py-2.5">
+                <div className="min-w-0">
+                  <Label htmlFor="migrate-export-include-plugins">
+                    Embed plugin trees
+                  </Label>
+                  <p className="muted m-0 text-[11px]">
+                    Include plugin directory trees in plugin exports.
+                  </p>
+                </div>
+                <Switch
+                  id="migrate-export-include-plugins"
+                  checked={includePlugins}
+                  onCheckedChange={setIncludePlugins}
+                  disabled={controlsDisabled}
+                />
               </div>
-              <Switch
-                id="migrate-export-include-plugins"
-                checked={includePlugins}
-                onCheckedChange={setIncludePlugins}
-                disabled={controlsDisabled}
-              />
             </div>
           ) : null}
 

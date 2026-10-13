@@ -140,6 +140,8 @@ export async function handleMigrateExport(
   const resource = typeof body.resource === "string" ? body.resource : undefined;
   const includePlugins = body.include_plugins === true;
   const singleFile = body.single_file === true;
+  const archive = body.archive === true;
+  const vendorExtensions = body.vendor_extensions === true;
 
   switch (scopeRaw) {
     case "plugin":
@@ -179,6 +181,8 @@ export async function handleMigrateExport(
     file: resolve(path.trim()),
     includePlugins,
     singleFile,
+    archive,
+    vendorExtensions,
     workspace: scopeRaw === "workspace" ? true : undefined,
     plugin: scopeRaw === "plugin" ? plugin : undefined,
     resource: scopeRaw === "resource" ? resource : undefined,

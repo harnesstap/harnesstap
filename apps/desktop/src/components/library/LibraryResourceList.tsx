@@ -21,6 +21,7 @@ import {
   LIBRARY_ROW_HEIGHT_WITH_SUBTITLE,
   libraryFilterType,
   libraryRowBadge,
+  libraryRowFormatBadge,
   libraryRowHeight,
   libraryRowSelector,
   libraryRowTreatAsScoped,
@@ -222,6 +223,7 @@ export function LibraryResourceList({
               : label;
           const scopeChip = libraryRowScopeChip(entry);
           const badge = libraryRowBadge(entry);
+          const formatBadge = libraryRowFormatBadge(entry);
           const updateBadge = libraryRowUpdateBadge(entry);
           const filterType = libraryFilterType(entry);
           const inUse = libraryInUseForEntry(entry, inUseIndex);
@@ -304,6 +306,7 @@ export function LibraryResourceList({
                   {updateBadge ? (
                     <span className="pill warn">{updateBadge}</span>
                   ) : null}
+                  {formatBadge ? <span className="pill">{formatBadge}</span> : null}
                   {badge || entry.description ? (
                     <ResourceRowDescription>
                       {badge}

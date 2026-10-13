@@ -14,6 +14,7 @@ import type {
   Resource,
 } from "../../types.js";
 import { assertContainedPath, listContainedFiles, PathEscapeError } from "../../utils/path-containment.js";
+import { writeZipArchive } from "../../utils/zip-archive.js";
 import { listDependencies } from "../plugin-dependency.js";
 import { emitSkillAuxiliaryFiles } from "../skill-auxiliary.js";
 import { formatTransportToml } from "../toml/write.js";
@@ -34,6 +35,7 @@ import {
 } from "./spec-mcp.js";
 import { readOpaqueFiles } from "./opaque.js";
 import { AP_SCHEMA_URL, validateApManifest } from "./validate.js";
+import { planVendorExtensions } from "./vendor-extensions.js";
 
 export const AP_PACKAGE_SCHEMA = "urn:harnesstap:ap-package:v1";
 
@@ -50,6 +52,11 @@ export interface BuildApPackageOptions {
   skillSourceRoot?: string;
   /** Export renames and secret moves are appended here and printed. */
   warnings?: string[];
+  /**
+   * Also write Copilot files and Codex hook settings. Default off.
+   * Existing vendor files are left in place.
+   */
+  vendorExtensions?: boolean;
 }
 
 export interface SkillExportPlan {
@@ -317,6 +324,9 @@ function buildApPackageFilesInner(
       ...(foreignExtensions as Record<string, Record<string, unknown>>),
     };
   }
+  const vendorPlan = options?.vendorExtensions
+    ? planVendorExtensions(plugin, resources, manifest)
+    : undefined;
   validateApManifest(manifest);
   putUtf8(files, "plugin.json", JSON.stringify(manifest, null, 2));
 
@@ -325,7 +335,17 @@ function buildApPackageFilesInner(
     if (files[relativePath]) continue;
     put(files, relativePath, entry);
   }
-  noteWarnings([...skillPlan.warnings, ...warnings], options);
+  const vendorWarnings = [...(vendorPlan?.warnings ?? [])];
+  for (const file of vendorPlan?.files ?? []) {
+    if (files[file.path]) {
+      vendorWarnings.push(
+        `left ${file.path} in place; vendor export does not replace an existing file`,
+      );
+      continue;
+    }
+    putUtf8(files, file.path, file.content);
+  }
+  noteWarnings([...skillPlan.warnings, ...warnings, ...vendorWarnings], options);
 
   if (plugin.claude) {
     putUtf8(
@@ -402,6 +422,19 @@ export function buildApPackageFilesForResource(resourceId: string): ApPackageFil
   const warnings = emitResourceFiles(files, [resource], skillPlan);
   noteWarnings([...skillPlan.warnings, ...warnings], undefined);
   return files;
+}
+
+export function writeApZipArchive(files: ApPackageFiles, outputPath: string): string[] {
+  const entries = Object.entries(files).map(([path, entry]) => ({
+    path,
+    data:
+      entry.encoding === "base64"
+        ? Buffer.from(entry.content, "base64")
+        : Buffer.from(entry.content, "utf8"),
+  }));
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, writeZipArchive(entries));
+  return Object.keys(files).sort();
 }
 
 export function writeApPackageFiles(files: ApPackageFiles, targetDir: string): string[] {

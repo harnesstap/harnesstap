@@ -9,6 +9,7 @@ import { formatPublishedSelector } from "./plugin-selector.js";
 import { ui } from "../ui/index.js";
 import { buildApPackageFiles } from "./agent-plugins/files.js";
 import { envelopeFromFiles } from "./agent-plugins/envelope.js";
+import { assertAgentPluginsPublishable } from "./agent-plugins/publish-gate.js";
 import { assertPluginsCleanForShare } from "./plugin-versioning.js";
 
 export interface PublishTargetResult {
@@ -30,10 +31,25 @@ async function createCloudClientForTarget(
 export async function publishPluginToCatalogs(
   plugin: Plugin,
   targets: RegisteredCatalog[],
-  opts?: { account?: string },
+  opts?: { account?: string; strict?: boolean; vendorExtensions?: boolean },
 ): Promise<PublishTargetResult[]> {
   assertPluginsCleanForShare([plugin]);
-  const apPackage = envelopeFromFiles(buildApPackageFiles(plugin.id));
+  const warnings: string[] = [];
+  const packageFiles = buildApPackageFiles(plugin.id, {
+    warnings,
+    vendorExtensions: opts?.vendorExtensions === true,
+  });
+  const buildWarnings = [...warnings];
+  const reported = assertAgentPluginsPublishable(packageFiles, {
+    strict: opts?.strict === true,
+    warnings,
+  });
+  for (const warning of reported) {
+    if (!buildWarnings.includes(warning)) {
+      console.error(`warning: ${warning}`);
+    }
+  }
+  const apPackage = envelopeFromFiles(packageFiles);
   const results: PublishTargetResult[] = [];
   let firstSuccess: { org_slug: string; catalog_slug: string; version?: string } | undefined;
 

@@ -18,6 +18,20 @@ describe("defaultMigrateExportFilename", () => {
     expect(
       defaultMigrateExportFilename({ scope: "plugin", plugin: "my-setup" }),
     ).toBe("my-setup.ap.json");
+    expect(
+      defaultMigrateExportFilename({
+        scope: "plugin",
+        plugin: "my-setup",
+        packageFormat: "directory",
+      }),
+    ).toBe("my-setup");
+    expect(
+      defaultMigrateExportFilename({
+        scope: "plugin",
+        plugin: "my-setup",
+        packageFormat: "zip",
+      }),
+    ).toBe("my-setup.zip");
   });
 
   it("returns resource package envelope name", () => {

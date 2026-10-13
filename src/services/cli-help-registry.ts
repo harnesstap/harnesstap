@@ -368,6 +368,8 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin publish my-plugin",
       "plugin publish my-plugin acme/default",
       "plugin publish my-plugin --version 1.1.0",
+      "plugin publish my-plugin --strict",
+      "plugin publish my-plugin --vendor-extensions",
     ],
   },
   "plugin.pull": {
@@ -652,6 +654,8 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "migrate export backup.tar.gz --workspace",
       "migrate export --plugin my-plugin -o ./my-plugin",
       "migrate export --plugin my-plugin --single-file -o my-plugin.ap.json",
+      "migrate export --plugin my-plugin --archive -o my-plugin.zip",
+      "migrate export --plugin my-plugin --vendor-extensions -o ./my-plugin",
       "migrate export --resource skill:caveman",
     ],
   },

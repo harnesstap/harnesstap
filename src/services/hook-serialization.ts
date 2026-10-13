@@ -22,6 +22,11 @@ export interface BuildHooksJsonOptions {
   version?: number;
   /** Claude-style events wrap each entry in `{ hooks: [...] }`. Cursor `hooks.json` is flat. */
   shape?: HooksJsonShape;
+  /**
+   * Keep hooks whose commands reference a plugin root. User config drops those.
+   * A plugin package keeps them, because the host expands the root when the plugin loads.
+   */
+  includePluginRoot?: boolean;
 }
 
 export function commandReferencesPluginRoot(command: string | undefined): boolean {
@@ -280,7 +285,9 @@ export function buildHooksJson(
   options: BuildHooksJsonOptions = {},
 ): HooksJsonDocument {
   const shape = options.shape ?? "wrapped";
-  const usable = userHooksForHostConfig(hookResources).hooks;
+  const usable = options.includePluginRoot
+    ? [...hookResources]
+    : userHooksForHostConfig(hookResources).hooks;
   const byEvent = new Map<string, Array<HookMetadata & { name?: string }>>();
 
   for (const hook of usable) {

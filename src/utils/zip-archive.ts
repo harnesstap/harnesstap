@@ -155,18 +155,13 @@ function stripSingleRoot(files: ZipArchiveFile[]): ZipArchiveFile[] {
   const first = files[0]?.path.split("/")[0];
   if (!first) return files;
   const prefix = `${first}/`;
-  if (!files.every((file) => file.path === first || file.path.startsWith(prefix))) {
+  if (!files.every((file) => file.path.startsWith(prefix))) {
     return files;
   }
-  if (!files.some((file) => file.path === `${prefix}plugin.json` || file.path === "plugin.json")) {
+  if (!files.some((file) => file.path === `${prefix}plugin.json`)) {
     return files;
   }
-  const stripped: ZipArchiveFile[] = [];
-  for (const file of files) {
-    if (file.path === first) continue;
-    stripped.push({ path: file.path.slice(prefix.length), data: file.data });
-  }
-  return stripped;
+  return files.map((file) => ({ path: file.path.slice(prefix.length), data: file.data }));
 }
 
 export function readZipArchive(buffer: Buffer): ZipArchiveFile[] {

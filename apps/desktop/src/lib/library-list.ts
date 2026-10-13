@@ -16,6 +16,7 @@ export type LibraryListEntry = LibraryResource & {
   pluginOrigin?: LibraryPluginHead["origin"];
   originOutdated?: boolean;
   tags?: string[];
+  formatLabel?: string;
 };
 
 function isLibraryListEntry(entry: LibraryResource): entry is LibraryListEntry {
@@ -90,6 +91,7 @@ export function mergeLibraryList(
     pluginOrigin: plugin.origin,
     originOutdated: originOutdatedIds?.has(plugin.id) ?? false,
     tags: plugin.tags,
+    ...(plugin.format_label ? { formatLabel: plugin.format_label } : {}),
   }));
   return [...resourceRows, ...packageRows];
 }
@@ -111,6 +113,11 @@ export function libraryRowBadge(entry: LibraryListEntry): string | null {
     return "plugin ref";
   }
   return null;
+}
+
+export function libraryRowFormatBadge(entry: LibraryListEntry): string | null {
+  if (entry.listKind !== "plugin-package") return null;
+  return entry.formatLabel ?? null;
 }
 
 export function libraryRowUpdateBadge(entry: LibraryListEntry): string | null {

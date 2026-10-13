@@ -81,6 +81,8 @@ async function handleMigrateExportCommand(
     includePlugins?: boolean;
     embedPlugins?: boolean;
     singleFile?: boolean;
+    archive?: boolean;
+    vendorExtensions?: boolean;
     format?: string;
     noInteractive?: boolean;
     interactive?: boolean;
@@ -254,6 +256,11 @@ export function registerMigrateCommands(root: Command): void {
       "Removed: environments are machine-local; use --workspace",
     )
     .option("--single-file", "Write a .ap.json envelope instead of a package directory")
+    .option("--archive", "Write a .zip of the Agent Plugins package")
+    .option(
+      "--vendor-extensions",
+      "Also write com.github.copilot files and Codex hook settings",
+    )
     .option("-o, --file <path>", "Output path (overrides positional)")
     .option("--include-plugins", "Embed plugin trees (workspace scope)")
     .option("--embed-plugins", "Alias for --include-plugins")

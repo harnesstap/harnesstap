@@ -1130,6 +1130,7 @@ function scanPluginRootAt(
       ok: loaded.report.ok,
       skipped: loaded.report.skipped,
       reported: loaded.report.reported,
+      ...(loaded.report.mcpDisabled ? { mcpDisabled: loaded.report.mcpDisabled } : {}),
     };
     specResources = [...loaded.skills, ...loaded.mcp].map((resource) => ({
       ...resource,

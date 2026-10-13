@@ -807,6 +807,10 @@ export interface MigrateExportInput {
   include_plugins?: boolean;
   /** Write a single-file `.ap.json` envelope instead of a package directory. */
   single_file?: boolean;
+  /** Write a `.zip` of the Agent Plugins package. */
+  archive?: boolean;
+  /** Also write Copilot files and Codex hook settings. */
+  vendor_extensions?: boolean;
 }
 
 /** Workspace export matches CLI JSON: flattened manifest fields + output + scope. */
