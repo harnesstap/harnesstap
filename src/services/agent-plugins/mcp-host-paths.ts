@@ -1,7 +1,7 @@
 import { isAbsolute, relative, resolve } from "node:path";
 import type { McpServerMetadata, Resource } from "../../types.js";
 import { ensurePluginDataDir } from "../plugin-data-dir.js";
-import { installedPluginForResource } from "./install-root.js";
+import { installedPackageForResource } from "./package-root.js";
 import { translateMcpMetadata } from "./plugin-vars.js";
 
 export interface ResolvedMcpResources {
@@ -48,7 +48,7 @@ export function resolveInstalledMcpResources(resources: readonly Resource[]): Re
   const warnedDataDirs = new Set<string>();
   const resourcesOut = resources.map((resource) => {
     if (resource.type !== "mcp_server") return resource;
-    const installed = installedPluginForResource(resource.id);
+    const installed = installedPackageForResource(resource.id);
     if (!installed) return resource;
     const data = ensurePluginDataDir(installed.name);
     if (data.warning && !warnedDataDirs.has(installed.name)) {

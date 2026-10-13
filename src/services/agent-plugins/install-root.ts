@@ -231,6 +231,17 @@ export function installAgentPluginPackage(
   return { path: root, warnings, backedUp };
 }
 
+/** Owned Agent Plugins cache directory, when this name and version were imported. */
+export function recordedPluginInstallRoot(
+  pluginName: string,
+  version: string,
+): string | undefined {
+  if (listInstallRows(pluginName, version).length === 0) return undefined;
+  const path = pluginInstallRootPath(pluginName, version);
+  if (!existsSync(path)) return undefined;
+  return path;
+}
+
 export function installedPluginForResource(
   resourceId: string,
 ): (PluginInstallIdentity & { path: string }) | undefined {
