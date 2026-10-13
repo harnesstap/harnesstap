@@ -22,6 +22,7 @@ interface CopilotSerializedMcpEntry {
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;
+  cwd?: string;
 }
 
 export class CopilotSerializer extends BaseSerializer {
@@ -254,6 +255,7 @@ export class CopilotSerializer extends BaseSerializer {
             args: meta.args,
             env: meta.env,
             tools: ["*"],
+            ...(meta.cwd ? { cwd: meta.cwd } : {}),
           };
         }
       }

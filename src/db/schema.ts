@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 38;
+const SCHEMA_VERSION = 39;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -325,6 +325,17 @@ const MIGRATIONS: Record<number, Migration> = {
     );
   `,
   38: migratePluginSpecMetadata,
+  // Hash manifest for Agent Plugins package files installed under
+  // ~/.harnesstap/cache/agent-plugins/<name>/<version>/.
+  39: `
+    CREATE TABLE IF NOT EXISTS plugin_install_files (
+      plugin_name TEXT NOT NULL,
+      plugin_version TEXT NOT NULL,
+      relative_path TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      PRIMARY KEY (plugin_name, plugin_version, relative_path)
+    );
+  `,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {

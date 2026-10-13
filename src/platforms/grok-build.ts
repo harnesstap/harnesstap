@@ -113,6 +113,7 @@ function buildMcpServers(
       if (metadata.env && Object.keys(metadata.env).length > 0) {
         entry.env = metadata.env;
       }
+      if (metadata.cwd) entry.cwd = metadata.cwd;
     }
     mcpServers[resource.name] = entry;
   }
@@ -200,6 +201,7 @@ export class GrokBuildSerializer extends BaseSerializer {
           url: entry.url,
           env: entry.env,
           headers: entry.headers,
+          ...(typeof entry.cwd === "string" ? { cwd: entry.cwd } : {}),
         };
         resources.push(
           this.makeResource("mcp_server", name, "", source, metadata),

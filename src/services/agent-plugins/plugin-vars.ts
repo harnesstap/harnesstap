@@ -101,7 +101,14 @@ export function translateMcpMetadata(
   };
 }
 
-const CWD_WRITTEN_FOR = new Set(["claude-code"]);
+/** Harnesses whose MCP config has a working-directory field. */
+const CWD_WRITTEN_FOR = new Set([
+  "claude-code",
+  "codex",
+  "copilot-cli",
+  "github-copilot",
+  "grok-build",
+]);
 
 /** Warnings for spec fields the harness serializer does not write. */
 export function mcpSerializationWarnings(

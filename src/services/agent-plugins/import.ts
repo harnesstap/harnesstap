@@ -27,6 +27,7 @@ import {
 } from "../plugin-overrides.js";
 import { parseTransportToml } from "../toml/read.js";
 import type { ApPackageFiles } from "./files.js";
+import { installAgentPluginPackage } from "./install-root.js";
 import type { ApDependency, HarnesstapExtension } from "./manifest.js";
 import { COMPONENT_LAYOUT, HT_EXTENSION_NAMESPACE } from "./manifest.js";
 import { collectOpaquePackage, replaceOpaqueFiles } from "./opaque.js";
@@ -67,6 +68,11 @@ export interface ImportApPackageOptions {
   as?: string;
   /** Defaults to `authored`; the catalog installer passes `catalog`. */
   origin?: PluginOrigin;
+  /**
+   * Copy the package into the owned install cache. Catalog show previews
+   * pass false so a temporary plugin does not leave files behind.
+   */
+  installPackage?: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -476,6 +482,9 @@ export function importApPackageFiles(
   if (parsed.opaqueFiles) {
     replaceOpaqueFiles(plugin.id, parsed.opaqueFiles);
   }
+  if (options?.installPackage !== false) {
+    installAgentPluginPackage({ name: plugin.name, version: plugin.version }, files);
+  }
 
   if (parsed.profile && !plugin.tags.includes("profile")) {
     setPluginTags(plugin.id, [...plugin.tags, "profile"]);
@@ -494,6 +503,7 @@ export function importApPackageFiles(
   for (const embeddedName of embeddedNames) {
     importApPackageFiles(extractEmbeddedFiles(files, embeddedName), {
       origin: options?.origin ?? "authored",
+      ...(options?.installPackage === false ? { installPackage: false } : {}),
     });
   }
 

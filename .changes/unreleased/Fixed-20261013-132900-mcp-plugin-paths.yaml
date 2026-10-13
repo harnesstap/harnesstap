@@ -1,0 +1,5 @@
+kind: Fixed
+body: Host MCP configs expand PLUGIN_ROOT and PLUGIN_DATA to the installed package path, resolve a relative command as one token, and keep cwd on harnesses that store it.
+time: 2026-10-13T13:29:00Z
+custom:
+  Issue: "429"
