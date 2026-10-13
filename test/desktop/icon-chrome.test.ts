@@ -373,7 +373,7 @@ describe("desktop icon chrome", () => {
     expect(fileChanges).toContain("function FileChangeKindChip");
     expect(liveStateSource).toContain("file-change-group-count-label");
     expect(stylesSource).toContain(".file-change-group-count-label");
-    expect(liveStateSource).toContain("<FileChangeKindChip key={kind} kind={kind} count={count} />");
+    expect(liveStateSource).toContain("removalGroup={entry.removalGroup}");
     expect(liveStateSource).toContain("removalGroup={change.removal_group}");
     expect(stylesSource).toContain(".resource-row-trailing {");
     expect(stylesSource).toContain(".file-change-group-count {");

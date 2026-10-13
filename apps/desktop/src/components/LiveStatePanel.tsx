@@ -26,6 +26,7 @@ import {
   countPendingApplyResourceTypes,
   diffProfileContents,
   fileChangeAction,
+  fileChangeLabelCounts,
   filterFileChangeGroups,
   flattenProfileResourceList,
   groupFileChangesByResource,
@@ -1028,20 +1029,6 @@ function fileChangeKindMark(kind: FileChangeKind): string {
   }
 }
 
-function groupKindCounts(
-  group: FileChangeResourceGroup,
-): Record<FileChangeKind, number> {
-  const counts: Record<FileChangeKind, number> = {
-    add: 0,
-    remove: 0,
-    update: 0,
-  };
-  for (const change of group.changes) {
-    counts[fileChangeAction(change).action] += 1;
-  }
-  return counts;
-}
-
 function fileChangeGroupAriaLabel(
   group: FileChangeResourceGroup,
 ): string | undefined {
@@ -1058,16 +1045,17 @@ function FileChangeGroupCounts({
 }: {
   group: FileChangeResourceGroup;
 }): ReactNode {
-  const counts = groupKindCounts(group);
+  const counts = fileChangeLabelCounts(group.changes);
   return (
     <span className="file-change-group-counts">
-      {FILE_CHANGE_KIND_BADGES.map(({ kind }) => {
-        const count = counts[kind];
-        if (count === 0) {
-          return null;
-        }
-        return <FileChangeKindChip key={kind} kind={kind} count={count} />;
-      })}
+      {counts.map((entry) => (
+        <FileChangeKindChip
+          key={`${entry.action}:${entry.label}`}
+          kind={entry.action}
+          count={entry.count}
+          removalGroup={entry.removalGroup}
+        />
+      ))}
     </span>
   );
 }

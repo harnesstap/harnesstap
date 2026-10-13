@@ -8,6 +8,7 @@ import {
   countPendingApplyResourceTypes,
   diffProfileContents,
   fileChangeAction,
+  fileChangeLabelCounts,
   fileChangeDestinationSummary,
   fileChangeMatchesKindFilter,
   filterFileChangeGroups,
@@ -245,6 +246,27 @@ describe("contents-diff helpers", () => {
       { type: "mcp_server", count: 2, label: "MCPs", tone: "mixed" },
       { type: "instruction", count: 1, label: "instruction", tone: "remove" },
       { type: "command", count: 1, label: "command", tone: "add" },
+    ]);
+  });
+
+  it("counts kept files separately from files that will be removed", () => {
+    expect(fileChangeLabelCounts([
+      { path: ".codex/agents/codex-explorer.toml", type: "added", removal_group: "unmanaged" },
+      { path: ".codex/prompts/explain.md", type: "added", removal_group: "unmanaged" },
+      { path: ".claude/rules/owned.md", type: "added", removal_group: "owned_unmodified" },
+    ])).toEqual([
+      {
+        action: "remove",
+        label: "Kept. Not made by HarnessTap.",
+        count: 2,
+        removalGroup: "unmanaged",
+      },
+      {
+        action: "remove",
+        label: "Will remove",
+        count: 1,
+        removalGroup: "owned_unmodified",
+      },
     ]);
   });
 

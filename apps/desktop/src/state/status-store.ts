@@ -304,8 +304,12 @@ export function createStatusStore(
     }
 
     const inFlight = inFlightPreviews.get(id);
-    if (inFlight) {
+    if (inFlight && mode !== "refresh") {
       return inFlight;
+    }
+    // A refresh after apply must not reuse a fetch that started before the write.
+    if (inFlight) {
+      abortPreviewId(id, false);
     }
     if (mode === "ensure") {
       const existing = state.previews[id];
