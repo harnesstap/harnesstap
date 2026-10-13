@@ -92,6 +92,32 @@ describe("resource show", () => {
     expect(output).toContain("Local (/Users/christophe.oudar/dev/opensource/harnesstap)");
   });
 
+  it("shortens a home path in Origin and Path", () => {
+    const home = "/tmp/ht-show-home";
+    const previous = process.env.HOME;
+    process.env.HOME = home;
+    try {
+      const output = renderResourceShow(
+        makeResource({
+          type: "skill",
+          name: "tiny-skill",
+          source: `${home}/.agents/skills/tiny-skill/SKILL.md`,
+          origin_kind: "local_snapshot",
+          origin_ref: `${home}/.agents/skills/tiny-skill/SKILL.md`,
+        }),
+      );
+      expect(output).toContain("Local (~/.agents/skills/tiny-skill/SKILL.md)");
+      expect(output).toContain("~/.agents/skills/tiny-skill");
+      expect(output).not.toContain(home);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = previous;
+      }
+    }
+  });
+
   it("shows the skill package directory as Path", () => {
     const output = renderResourceShow(
       makeResource({

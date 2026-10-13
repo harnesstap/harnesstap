@@ -237,8 +237,21 @@ export function alreadyExistsOnConflictHint(kind: string, name: string): string 
 }
 
 /**
+ * Hint after a cancelled apply. One file says "it"; two or more say "them".
+ */
+export function onConflictReplaceHint(conflicts: readonly string[]): string {
+  const count = new Set(
+    conflicts.map((path) => path.trim()).filter((path) => path.length > 0),
+  ).size;
+  if (count > 1) {
+    return "Use --on-conflict replace to replace them.";
+  }
+  return CLI_HINTS.onConflictReplace;
+}
+
+/**
  * Human line for a cancelled apply. Names every conflicting path.
- * Pair with CLI_HINTS.onConflictReplace.
+ * Pair with onConflictReplaceHint.
  */
 export function applyCancelledMessage(
   conflicts: readonly string[],

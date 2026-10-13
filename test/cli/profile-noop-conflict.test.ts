@@ -74,6 +74,19 @@ describe("plain profile use on a seeded HOME", () => {
       expect(cancelled.stdout).toContain("Use --on-conflict replace to replace it.");
       expect(readFileSync(join(context.homeDir, ".cursor/mcp.json"), "utf-8")).toBe(edited);
 
+      const dryConflict = await runCli([
+        "profile",
+        "use",
+        "global default",
+        "--no-interactive",
+        "--dry-run",
+      ]);
+      expect(dryConflict.exitCode ?? 0).toBe(0);
+      expect(dryConflict.stdout).toContain("Would write");
+      expect(dryConflict.stdout).toContain(".cursor/mcp.json");
+      expect(`${dryConflict.stdout}${dryConflict.stderr}`).not.toContain("cancelled");
+      expect(readFileSync(join(context.homeDir, ".cursor/mcp.json"), "utf-8")).toBe(edited);
+
       const json = await runCli([
         "profile",
         "use",
@@ -91,6 +104,68 @@ describe("plain profile use on a seeded HOME", () => {
       expect(payload.cancelled).toBe(true);
       expect(payload.conflicts).toContain(".cursor/mcp.json");
       expect(payload.written_files).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("lists both conflicting files on dry-run and says replace them", async () => {
+    const context = await createTestContext("cli-profile-two-file-conflict");
+    try {
+      seedHome(context.homeDir);
+      mkdirSync(join(context.homeDir, ".codex"), { recursive: true });
+      const seededToml =
+        'model = "gpt-5"\n[mcp_servers.codex-mcp]\ncommand = "uvx"\nargs = ["codex-mcp-server"]\n';
+      writeFileSync(join(context.homeDir, ".codex/config.toml"), seededToml);
+      await runCli([
+        "init",
+        "--no-interactive",
+        "--harnesses",
+        "claude-code,cursor,codex",
+      ]);
+      const applied = await runCli([
+        "profile",
+        "use",
+        "global default",
+        "--no-interactive",
+      ]);
+      expect(applied.exitCode ?? 0).toBe(0);
+
+      const mcpPath = join(context.homeDir, ".cursor/mcp.json");
+      const tomlPath = join(context.homeDir, ".codex/config.toml");
+      const editedMcp = '{ "mcpServers": { "other": { "command": "nope" } } }\n';
+      const editedToml = 'model = "user-edit"\n';
+      writeFileSync(mcpPath, editedMcp);
+      writeFileSync(tomlPath, editedToml);
+
+      const dryRun = await runCli([
+        "profile",
+        "use",
+        "global default",
+        "--no-interactive",
+        "--dry-run",
+      ]);
+      expect(dryRun.exitCode ?? 0).toBe(0);
+      expect(dryRun.stdout).toContain("Would write");
+      expect(dryRun.stdout).toContain(".cursor/mcp.json");
+      expect(dryRun.stdout).toContain(".codex/config.toml");
+      expect(`${dryRun.stdout}${dryRun.stderr}`).not.toContain("cancelled");
+      expect(readFileSync(mcpPath, "utf-8")).toBe(editedMcp);
+      expect(readFileSync(tomlPath, "utf-8")).toBe(editedToml);
+
+      const cancelled = await runCli([
+        "profile",
+        "use",
+        "global default",
+        "--no-interactive",
+      ]);
+      expect(cancelled.exitCode).toBe(1);
+      expect(cancelled.stdout).toContain(".cursor/mcp.json");
+      expect(cancelled.stdout).toContain(".codex/config.toml");
+      expect(cancelled.stdout).toContain("Use --on-conflict replace to replace them.");
+      expect(cancelled.stdout).not.toContain("replace it.");
+      expect(readFileSync(mcpPath, "utf-8")).toBe(editedMcp);
+      expect(readFileSync(tomlPath, "utf-8")).toBe(editedToml);
     } finally {
       await context.cleanup();
     }

@@ -116,6 +116,7 @@ export function ProfileDeleteControls({
       </span>
       <ConfirmDialog
         open={confirmOpen}
+        tone="destructive"
         title="Remove this profile?"
         description={`This removes the profile tag from ${profileName}. Harness files already on disk stay until you apply another profile. The plugin stays in the library unless you choose to delete it.`}
         confirmLabel="Remove profile"

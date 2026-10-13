@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Window } from "happy-dom";
 import {
   act,
@@ -241,5 +243,25 @@ describe("ConfirmDialog focus trap", () => {
     await openDialog({ tone: "destructive", withCheckbox: true });
     expect(labelOf(document.activeElement)).toBe("Cancel");
     expect(document.activeElement).not.toBeInstanceOf(HTMLInputElement);
+  });
+
+  it("focuses the checkbox on a default-tone confirm", async () => {
+    await openDialog({ withCheckbox: true });
+    expect(document.activeElement).toBeInstanceOf(HTMLInputElement);
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Also delete");
+  });
+});
+
+describe("Remove profile dialog", () => {
+  it("is a destructive confirm so Cancel is focused ahead of the checkbox", () => {
+    const source = readFileSync(
+      join(
+        import.meta.dir,
+        "../../apps/desktop/src/components/parity/ProfileDeleteControls.tsx",
+      ),
+      "utf8",
+    );
+    expect(source).toContain('tone="destructive"');
+    expect(source).toContain("Also delete the plugin from the library");
   });
 });
