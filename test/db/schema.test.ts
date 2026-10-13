@@ -36,6 +36,7 @@ describe("initializeSchema", () => {
           "apply_removal_backups",
           "package_cache_entries",
           "plugin_pin_materializations",
+          "plugin_data_dirs",
           "resources",
           "plugin_working_snapshots",
           "schema_version",
@@ -48,7 +49,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(36);
+      expect(versionRow.version).toBe(37);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -199,7 +200,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(36);
+      ).toBe(37);
     } finally {
       await context.cleanup();
     }
@@ -258,7 +259,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(36);
+      ).toBe(37);
       expect(
         (db.prepare("SELECT version FROM plugins WHERE id = 'p1'").get() as { version: string })
           .version,
@@ -291,7 +292,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(36);
+      ).toBe(37);
     } finally {
       await context.cleanup();
     }
@@ -309,7 +310,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 36 }]);
+      expect(versionRows).toEqual([{ version: 37 }]);
     } finally {
       await context.cleanup();
     }
@@ -726,7 +727,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(36);
+        expect(version).toBe(37);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -753,7 +754,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(36);
+      expect(version).toBe(37);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -791,7 +792,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(36);
+      expect(version).toBe(37);
 
       const tables = db
         .prepare(
@@ -856,7 +857,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(36);
+      expect(version).toBe(37);
 
       const columns = db
         .prepare("PRAGMA table_info(resource_materializations)")
@@ -952,7 +953,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(36);
+      expect(version).toBe(37);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")

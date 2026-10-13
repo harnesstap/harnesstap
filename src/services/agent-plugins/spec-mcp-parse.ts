@@ -259,10 +259,8 @@ function parseServer(
       command: entry.command,
       ...(args && args.length > 0 ? { args } : {}),
       ...(env && Object.keys(env).length > 0 ? { env } : {}),
+      ...(cwd !== undefined ? { cwd } : {}),
     };
-    if (cwd !== undefined) {
-      (metadata as McpServerMetadata & { cwd?: string }).cwd = cwd;
-    }
     return { metadata };
   }
 
@@ -280,6 +278,7 @@ function parseServer(
   const metadata: McpServerMetadata = {
     transport: "http",
     url: entry.url,
+    http_transport: type === "sse" ? "sse" : "streamable-http",
     ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
     ...(type === "sse" ? { connection_type: "sse" } : {}),
   };

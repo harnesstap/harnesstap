@@ -66,6 +66,13 @@ export interface McpServerMetadata {
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;
+  /**
+   * Spec remote transport. `sse` is not the same as a harness `connection_type`.
+   * Harness serializers that cannot write `sse` keep HTTP and warn.
+   */
+  http_transport?: "streamable-http" | "sse";
+  /** Spec stdio working directory. Kept as written until emission translates it. */
+  cwd?: string;
   connection_type?: string;
   env_file?: string;
   auth?: McpOAuthAuthMetadata;

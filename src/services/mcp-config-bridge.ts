@@ -106,7 +106,11 @@ export function parseMcpServerEntry(entry: unknown): McpServerMetadata | null {
   const env = parseStringRecord(entry.env ?? entry.envs ?? entry.environment);
   const headers = parseStringRecord(entry.headers);
   const auth = parseAuthMetadata(entry.auth);
-  const connection_type = typeof entry.type === "string" ? entry.type : undefined;
+  const rawType = typeof entry.type === "string" ? entry.type : undefined;
+  const http_transport =
+    rawType === "streamable-http" || rawType === "sse" ? rawType : undefined;
+  const connection_type = rawType;
+  const cwd = typeof entry.cwd === "string" ? entry.cwd : undefined;
   const env_file =
     typeof entry.envFile === "string"
       ? entry.envFile
@@ -121,6 +125,8 @@ export function parseMcpServerEntry(entry: unknown): McpServerMetadata | null {
     ...(args !== undefined && args.length > 0 ? { args } : {}),
     ...(env !== undefined ? { env } : {}),
     ...(headers !== undefined ? { headers } : {}),
+    ...(http_transport !== undefined ? { http_transport } : {}),
+    ...(cwd !== undefined ? { cwd } : {}),
     ...(connection_type !== undefined ? { connection_type } : {}),
     ...(env_file !== undefined ? { env_file } : {}),
     ...(auth !== undefined ? { auth } : {}),

@@ -86,6 +86,7 @@ function emitClaudeMcpServerEntry(meta: McpServerMetadata): Record<string, unkno
   } else {
     if (meta.command) entry["command"] = meta.command;
     if (meta.args) entry["args"] = meta.args;
+    if (meta.cwd) entry["cwd"] = meta.cwd;
   }
   if (meta.env && Object.keys(meta.env).length > 0) {
     entry["env"] = meta.env;
