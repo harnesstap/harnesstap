@@ -81,7 +81,7 @@ export function PluginPullReportDialog({
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [report, setReport] = useState<HarnessPluginPullReport | null>(null);
-  const closeRef = useDialogDismiss(open, onClose, busy);
+  const dialogRef = useDialogDismiss(open, onClose, busy);
   const groups = report ? groupHarnessPluginPullReport(report) : null;
   const onBusyChangeRef = useRef(onBusyChange);
   onBusyChangeRef.current = onBusyChange;
@@ -151,6 +151,7 @@ export function PluginPullReportDialog({
     >
       {(state) => (
         <div
+          ref={dialogRef}
           className={motionClass("dialog plugin-pull-report-dialog", "m-rise", state)}
           role="dialog"
           aria-modal="true"
@@ -185,7 +186,6 @@ export function PluginPullReportDialog({
           </div>
           <div className="dialog-actions">
             <button
-              ref={closeRef}
               className="btn"
               type="button"
               onClick={onClose}

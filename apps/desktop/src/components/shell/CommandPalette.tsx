@@ -283,6 +283,11 @@ export function CommandPaletteHost({
       if (top?.isCloseDisabled()) {
         return;
       }
+      // Escape belongs to the open layer. "back" is a no-op that would
+      // preventDefault and leave the dialog up.
+      if (id === "back" && top) {
+        return;
+      }
       if (paletteOpen && id !== "palette") {
         return;
       }

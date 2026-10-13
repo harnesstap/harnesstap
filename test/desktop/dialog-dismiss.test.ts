@@ -37,7 +37,9 @@ describe("shouldCloseDialogOnBackdrop", () => {
 });
 
 describe("dialog initial focus", () => {
-  it("does not force initial focus onto Close", () => {
+  it("attaches the overlay root instead of forcing focus onto Close", () => {
     expect(dismissSource).not.toContain("initialFocusRef: closeRef");
+    expect(dismissSource).toContain("useOverlayLayer<HTMLDivElement>");
+    expect(dismissSource).toContain("initialFocusRef");
   });
 });

@@ -69,7 +69,7 @@ export function FileDiffModal({
   onClose,
 }: FileDiffModalProps) {
   const titleId = useId();
-  const closeRef = useDialogDismiss(open, onClose);
+  const dialogRef = useDialogDismiss(open, onClose);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diff, setDiff] = useState<ProfileFileDiffResult | null>(null);
@@ -153,6 +153,7 @@ export function FileDiffModal({
     >
       {(state) => (
         <div
+          ref={dialogRef}
           className={motionClass("dialog file-diff-dialog", "m-rise", state)}
           role="dialog"
           aria-modal="true"
@@ -177,7 +178,6 @@ export function FileDiffModal({
               ) : null}
             </div>
             <button
-              ref={closeRef}
               className="icon-btn"
               type="button"
               aria-label="Close file diff"

@@ -41,7 +41,7 @@ export function DoctorReportDialog({
   onSuccess,
 }: DoctorReportDialogProps) {
   const titleId = useId();
-  const closeRef = useDialogDismiss(open, onClose);
+  const dialogRef = useDialogDismiss(open, onClose);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<PluginDoctorReport | null>(null);
@@ -108,6 +108,7 @@ export function DoctorReportDialog({
       }}
     >
       <div
+        ref={dialogRef}
         className="dialog doctor-report-dialog"
         role="dialog"
         aria-modal="true"
@@ -150,7 +151,6 @@ export function DoctorReportDialog({
         </div>
         <div className="dialog-actions">
           <button
-            ref={closeRef}
             className="btn"
             type="button"
             onClick={onClose}
