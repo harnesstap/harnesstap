@@ -104,7 +104,7 @@ async function handleAddCommand(
       throw new Error(`Invalid --method value: ${opts.method}. Use symlink or copy.`);
     })();
 
-  const resolvedPackage = resolveSkillPackageCheckout(source, harnesstapDir);
+  const resolvedPackage = await resolveSkillPackageCheckout(source, harnesstapDir);
   const { namespace } = resolvedPackage;
   const discovered = resolvedPackage.discovered;
 

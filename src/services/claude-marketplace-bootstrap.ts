@@ -1,5 +1,5 @@
 import { marketplaceIsConfigured } from "../plugins/claude-plugin-ref.js";
-import { defaultRunCommand } from "../plugins/run-command.js";
+import { defaultRunCommand, resolveCommandResult } from "../plugins/run-command.js";
 import type { ClaudePluginConfig } from "../types.js";
 
 export interface MarketplaceRepoEntry {
@@ -43,22 +43,24 @@ export interface EnsureMarketplacesOptions {
   runClaudePlugin?: (args: string[]) => { exitCode: number };
 }
 
-export function ensureClaudeMarketplacesFromConfig(
+export async function ensureClaudeMarketplacesFromConfig(
   config: ClaudePluginConfig | undefined,
   options: EnsureMarketplacesOptions,
-): string[] {
+): Promise<string[]> {
   const run =
     options.runClaudePlugin ??
-    ((args) => {
-      const result = defaultRunCommand("claude", ["plugin", ...args], {
-        cwd: options.projectRoot,
-      });
+    (async (args: string[]) => {
+      const result = await resolveCommandResult(
+        defaultRunCommand("claude", ["plugin", ...args], {
+          cwd: options.projectRoot,
+        }),
+      );
       return { exitCode: result.exitCode };
     });
   const added: string[] = [];
   for (const { name, repo } of extractMarketplaceRepos(config)) {
     if (marketplaceIsConfigured(options.homeRoot, name)) continue;
-    const result = run(["marketplace", "add", repo]);
+    const result = await run(["marketplace", "add", repo]);
     if (result.exitCode === 0) added.push(name);
   }
   return added;

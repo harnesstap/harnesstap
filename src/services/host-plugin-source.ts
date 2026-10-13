@@ -8,7 +8,7 @@ import {
   readJsonFile,
 } from "../plugins/claude-installed.js";
 import { refreshGitSource } from "../plugins/refresh.js";
-import type { RunCommand } from "../plugins/run-command.js";
+import { resolveCommandResult, type RunCommand } from "../plugins/run-command.js";
 import {
   ensureGithubGitConfigArgs,
   githubHttpsRemoteForAuth,
@@ -117,11 +117,25 @@ function runGit(
   run: RunCommand,
   args: string[],
   cwd?: string,
-): { stdout: string; stderr: string; exitCode: number } {
-  return run("git", ensureGithubGitConfigArgs(args), {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  return resolveCommandResult(run("git", ensureGithubGitConfigArgs(args), {
     timeoutMs: DEFAULT_GIT_CLONE_TIMEOUT_MS,
     ...(cwd ? { cwd } : {}),
-  });
+  }));
+}
+
+export function marketplaceHasCheckoutOrKnownUrl(
+  homeRoot: string,
+  marketplace: string,
+): boolean {
+  const known = readKnownMarketplace(homeRoot, marketplace);
+  if (known?.url) {
+    return true;
+  }
+  const root =
+    resolveMarketplaceRoot(homeRoot, marketplace)
+    ?? defaultMarketplaceRoot(homeRoot, marketplace);
+  return existsSync(root);
 }
 
 export function isRelativePluginSourcePath(path: string | null | undefined): boolean {
@@ -376,11 +390,11 @@ function marketplaceManifestRepositoryUrl(root: string): string | null {
   return null;
 }
 
-export function resolveMarketplaceCloneUrl(
+export async function resolveMarketplaceCloneUrl(
   homeRoot: string,
   marketplace: string,
   runCommand: RunCommand = runCommandWithTimeout,
-): string | null {
+): Promise<string | null> {
   const known = readKnownMarketplace(homeRoot, marketplace);
   if (known?.url) {
     return known.url;
@@ -390,7 +404,7 @@ export function resolveMarketplaceCloneUrl(
     return null;
   }
   if (existsSync(join(root, ".git"))) {
-    const remote = runGit(runCommand, ["remote", "get-url", "origin"], root);
+    const remote = await runGit(runCommand, ["remote", "get-url", "origin"], root);
     const url = remote.stdout.trim();
     if (remote.exitCode === 0 && url) {
       return githubCloneUrl(url);
@@ -399,13 +413,13 @@ export function resolveMarketplaceCloneUrl(
   return marketplaceManifestRepositoryUrl(root);
 }
 
-export function resolveHostPluginCloneUrl(input: {
+export async function resolveHostPluginCloneUrl(input: {
   homeRoot: string;
   marketplace: string;
   live: MarketplacePluginSource | null;
   snapshot?: HostPluginSourceSnapshot | null;
   runCommand?: RunCommand;
-}): string | null {
+}): Promise<string | null> {
   if (input.live?.url) {
     return githubCloneUrl(input.live.url);
   }
@@ -415,7 +429,7 @@ export function resolveHostPluginCloneUrl(input: {
   if (!isRelativePluginSourcePath(input.live?.path)) {
     return null;
   }
-  return resolveMarketplaceCloneUrl(
+  return await resolveMarketplaceCloneUrl(
     input.homeRoot,
     input.marketplace,
     input.runCommand ?? runCommandWithTimeout,
@@ -500,13 +514,13 @@ export function semverFromGitTag(tagName: string): string | null {
   return semver.valid(withoutV) ? withoutV : null;
 }
 
-export function listRemotePluginVersionTags(
+export async function listRemotePluginVersionTags(
   cloneUrl: string,
   runCommand: RunCommand = runCommandWithTimeout,
-): Array<{ version: string; gitRef: string }> {
+): Promise<Array<{ version: string; gitRef: string }>> {
   const token = resolveGithubAccessToken().token;
   const url = githubHttpsRemoteForAuth(githubCloneUrl(cloneUrl), token);
-  const result = runGit(runCommand, ["ls-remote", "--tags", url]);
+  const result = await runGit(runCommand, ["ls-remote", "--tags", url]);
   if (result.exitCode !== 0) {
     throw new Error(
       result.stderr.trim() || `git ls-remote failed for ${url}`,
@@ -529,8 +543,8 @@ export function listRemotePluginVersionTags(
   }));
 }
 
-function originDefaultRef(runCommand: RunCommand, root: string): string | null {
-  const symbolic = runGit(
+async function originDefaultRef(runCommand: RunCommand, root: string): Promise<string | null> {
+  const symbolic = await runGit(
     runCommand,
     ["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
     root,
@@ -538,7 +552,7 @@ function originDefaultRef(runCommand: RunCommand, root: string): string | null {
   if (symbolic.exitCode === 0 && symbolic.stdout.trim()) {
     return symbolic.stdout.trim();
   }
-  const abbrev = runGit(
+  const abbrev = await runGit(
     runCommand,
     ["rev-parse", "--abbrev-ref", "origin/HEAD"],
     root,
@@ -548,20 +562,20 @@ function originDefaultRef(runCommand: RunCommand, root: string): string | null {
     : null;
 }
 
-export function refreshMarketplaceCheckout(
+export async function refreshMarketplaceCheckout(
   homeRoot: string,
   marketplace: string,
   runCommand: RunCommand = runCommandWithTimeout,
-): { ok: boolean; message: string; root: string | null } {
+): Promise<{ ok: boolean; message: string; root: string | null }> {
   const known = readKnownMarketplace(homeRoot, marketplace);
   const root =
     resolveMarketplaceRoot(homeRoot, marketplace) ??
     defaultMarketplaceRoot(homeRoot, marketplace);
   const url = known?.url ? githubCloneUrl(known.url) : null;
   if (existsSync(join(root, ".git"))) {
-    let fetch = runGit(runCommand, ["fetch", "origin", "--tags", "--prune"], root);
+    let fetch = await runGit(runCommand, ["fetch", "origin", "--tags", "--prune"], root);
     if (fetch.exitCode !== 0) {
-      fetch = runGit(runCommand, ["fetch", "origin"], root);
+      fetch = await runGit(runCommand, ["fetch", "origin"], root);
     }
     if (fetch.exitCode !== 0) {
       return {
@@ -571,14 +585,14 @@ export function refreshMarketplaceCheckout(
       };
     }
     const refsToTry = [
-      originDefaultRef(runCommand, root),
+      await originDefaultRef(runCommand, root),
       "origin/main",
       "origin/master",
     ];
     let lastMessage = "git reset failed";
     for (const ref of refsToTry) {
       if (!ref) continue;
-      const reset = runGit(runCommand, ["reset", "--hard", ref], root);
+      const reset = await runGit(runCommand, ["reset", "--hard", ref], root);
       if (reset.exitCode === 0) {
         persistBuiltinClaudeKnownMarketplace(homeRoot, marketplace, root, url);
         return { ok: true, message: "Refreshed marketplace", root };
@@ -609,7 +623,7 @@ export function refreshMarketplaceCheckout(
       root: exists ? root : null,
     };
   }
-  const cloned = refreshGitSource({
+  const cloned = await refreshGitSource({
     url,
     targetDir: root,
     runCommand: (command, args, options) =>
@@ -644,12 +658,12 @@ export function cacheVersionDir(
   );
 }
 
-function clonePluginVersion(input: {
+async function clonePluginVersion(input: {
   url: string;
   gitRef: string;
   targetDir: string;
   runCommand: RunCommand;
-}): { ok: boolean; message: string } {
+}): Promise<{ ok: boolean; message: string }> {
   const run: RunCommand = (command, args, options) =>
     runGit(
       input.runCommand,
@@ -686,13 +700,13 @@ export function gitRefsToTry(input: {
   return refs;
 }
 
-export function downloadHostPluginVersion(input: {
+export async function downloadHostPluginVersion(input: {
   originRef: string;
   version: string;
   homeRoot?: string;
   harnesstapDir?: string;
   runCommand?: RunCommand;
-}): { version: string; install_path: string } {
+}): Promise<{ version: string; install_path: string }> {
   const homeRoot = input.homeRoot ?? resolveHomeRoot();
   const { name, marketplace } = parsePluginRef(input.originRef);
   if (!marketplace) {
@@ -726,7 +740,7 @@ export function downloadHostPluginVersion(input: {
     input.originRef,
     input.harnesstapDir,
   );
-  const sourceUrl = resolveHostPluginCloneUrl({
+  const sourceUrl = await resolveHostPluginCloneUrl({
     homeRoot,
     marketplace,
     live,
@@ -743,7 +757,7 @@ export function downloadHostPluginVersion(input: {
   if (sourceUrl) {
     let lastMessage = "git clone failed";
     for (const gitRef of refs) {
-      const cloned = clonePluginVersion({
+      const cloned = await clonePluginVersion({
         url: sourceUrl,
         gitRef,
         targetDir: target,
@@ -813,12 +827,12 @@ export function downloadHostPluginVersion(input: {
   );
 }
 
-export function pullHostPluginSourceVersions(input: {
+export async function pullHostPluginSourceVersions(input: {
   originRef: string;
   homeRoot?: string;
   harnesstapDir?: string;
   runCommand?: RunCommand;
-}): HostPluginSourceSnapshot {
+}): Promise<HostPluginSourceSnapshot> {
   const homeRoot = input.homeRoot ?? resolveHomeRoot();
   const harnesstapDir = input.harnesstapDir ?? getHarnesstapDir();
   const run = input.runCommand ?? runCommandWithTimeout;
@@ -828,9 +842,9 @@ export function pullHostPluginSourceVersions(input: {
       `Plugin ${input.originRef} has no marketplace, so source versions cannot be pulled`,
     );
   }
-  const refreshed = refreshMarketplaceCheckout(homeRoot, marketplace, run);
+  const refreshed = await refreshMarketplaceCheckout(homeRoot, marketplace, run);
   const live = readMarketplacePluginSource(homeRoot, marketplace, name);
-  const sourceUrl = resolveHostPluginCloneUrl({
+  const sourceUrl = await resolveHostPluginCloneUrl({
     homeRoot,
     marketplace,
     live,
@@ -838,7 +852,7 @@ export function pullHostPluginSourceVersions(input: {
   });
   const gitRefs: Record<string, string> = {};
   if (sourceUrl) {
-    const tags = listRemotePluginVersionTags(sourceUrl, run);
+    const tags = await listRemotePluginVersionTags(sourceUrl, run);
     for (const row of tags) {
       gitRefs[row.version] = row.gitRef;
     }

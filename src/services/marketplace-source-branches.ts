@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import type { RunCommand } from "../plugins/run-command.js";
+import { resolveCommandResult, type RunCommand } from "../plugins/run-command.js";
 import { runCommandWithTimeout } from "../utils/run-command-with-timeout.js";
 import {
   githubGitConfigArgs,
@@ -54,29 +54,30 @@ export function parseGitForEachRefHeads(stdout: string): string[] {
   return branches;
 }
 
-function runGit(
+async function runGit(
   runCommand: RunCommand | undefined,
   args: string[],
-): ReturnType<RunCommand> {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const run =
     runCommand
     ?? ((command, commandArgs, options) =>
       runCommandWithTimeout(command, commandArgs, {
         ...options,
         timeoutMs: GIT_LS_REMOTE_TIMEOUT_MS,
+        unattended: true,
       }));
-  return run("git", args);
+  return resolveCommandResult(run("git", args));
 }
 
 function gitFailed(stderr: string, fallback: string): never {
   throw new Error(stderr.trim() || fallback);
 }
 
-function listLocalBranches(
+async function listLocalBranches(
   dir: string,
   runCommand: RunCommand | undefined,
-): MarketplaceSourceBranches {
-  const listed = runGit(runCommand, [
+): Promise<MarketplaceSourceBranches> {
+  const listed = await runGit(runCommand, [
     ...gitConfigArgs(),
     "-C",
     dir,
@@ -87,7 +88,7 @@ function listLocalBranches(
   if (listed.exitCode !== 0) {
     gitFailed(listed.stderr, "Could not list local git branches");
   }
-  const head = runGit(runCommand, [
+  const head = await runGit(runCommand, [
     ...gitConfigArgs(),
     "-C",
     dir,
@@ -104,11 +105,11 @@ function listLocalBranches(
   };
 }
 
-function listRemoteBranches(
+async function listRemoteBranches(
   url: string,
   runCommand: RunCommand | undefined,
-): MarketplaceSourceBranches {
-  const listed = runGit(runCommand, [
+): Promise<MarketplaceSourceBranches> {
+  const listed = await runGit(runCommand, [
     ...gitConfigArgs(),
     "ls-remote",
     "--heads",
@@ -124,17 +125,17 @@ function listRemoteBranches(
   };
 }
 
-export function listMarketplaceSourceBranches(
+export async function listMarketplaceSourceBranches(
   source: string,
   runCommand?: RunCommand,
-): MarketplaceSourceBranches {
+): Promise<MarketplaceSourceBranches> {
   const url = normalizeMarketplaceUrl(source);
   if (!url) {
     throw new Error("Marketplace URL or path is required");
   }
   if (existsSync(url)) {
-    return listLocalBranches(url, runCommand);
+    return await listLocalBranches(url, runCommand);
   }
   const token = resolveGithubAccessToken().token;
-  return listRemoteBranches(githubHttpsRemoteForAuth(url, token), runCommand);
+  return await listRemoteBranches(githubHttpsRemoteForAuth(url, token), runCommand);
 }

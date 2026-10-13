@@ -2162,7 +2162,7 @@ async function handlePluginCreateCommand(
     assertSupportedHarnessTargets(harnesses);
   }
 
-  const resolvedPackage = resolveSkillPackageCheckout(opts.from, harnesstapDir);
+  const resolvedPackage = await resolveSkillPackageCheckout(opts.from, harnesstapDir);
   const shouldPrompt = shouldUseWizard({
     noInteractive: opts.yes,
     interactive: opts.interactive,
@@ -2436,7 +2436,7 @@ async function handlePluginSearchCommand(
   });
 
   if (useBrowsePicker) {
-    const plugins = searchCatalogPlugins(harnesstapDir, query ?? "", {
+    const plugins = await searchCatalogPlugins(harnesstapDir, query ?? "", {
       refresh: opts.refresh,
     });
     if (plugins.length === 0) {
@@ -2473,7 +2473,7 @@ async function handlePluginSearchCommand(
     return;
   }
 
-  const plugins = searchCatalogPlugins(harnesstapDir, query ?? "", {
+  const plugins = await searchCatalogPlugins(harnesstapDir, query ?? "", {
     refresh: opts.refresh,
   });
   printPluginSearchResults(plugins, format);

@@ -69,7 +69,7 @@ describe("cursor-public builtin marketplace", () => {
     const ctx = await createInitializedTestContext("cursor-public-pull-reason");
     try {
       expect(hostPluginPullUnavailableReason("teaching@cursor-public", ctx.homeDir)).toBeNull();
-      expect(resolveMarketplaceCloneUrl(ctx.homeDir, CURSOR_PUBLIC_MARKETPLACE)).toBe(
+      expect(await resolveMarketplaceCloneUrl(ctx.homeDir, CURSOR_PUBLIC_MARKETPLACE)).toBe(
         CURSOR_PUBLIC_GIT_URL,
       );
       expect(hostPluginPullUnavailableReason("demo@missing-mkt", ctx.homeDir)).toBe(
@@ -162,14 +162,14 @@ describe("cursor-public builtin marketplace", () => {
         }),
       );
 
-      const snapshot = pullHostPluginSourceVersions({
+      const snapshot = await pullHostPluginSourceVersions({
         originRef: "teaching@cursor-public",
         homeRoot: ctx.homeDir,
       });
       expect(snapshot.advertised_version).toBe("1.2.0");
       expect(snapshot.git_refs["1.2.0"]).toBe("v1.2.0");
 
-      const pulled = pullHostPluginVersions({
+      const pulled = await pullHostPluginVersions({
         originRef: "teaching@cursor-public",
         homeRoot: ctx.homeDir,
       });
@@ -227,7 +227,7 @@ describe("cursor-public builtin marketplace", () => {
 
       expect(hostPluginPullUnavailableReason("teaching@cursor-public", ctx.homeDir)).toBeNull();
 
-      const snapshot = pullHostPluginSourceVersions({
+      const snapshot = await pullHostPluginSourceVersions({
         originRef: "teaching@cursor-public",
         homeRoot: ctx.homeDir,
         runCommand,
@@ -261,7 +261,7 @@ describe("cursor-public builtin marketplace", () => {
         "marketplaces/cursor-public",
       );
 
-      const pulled = pullHostPluginVersions({
+      const pulled = await pullHostPluginVersions({
         originRef: "teaching@cursor-public",
         homeRoot: ctx.homeDir,
         runCommand,

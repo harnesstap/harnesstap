@@ -53,12 +53,12 @@ function writeStoredCatalog(
 }
 
 describe("listMarketplacePlugins", () => {
-  it("returns catalog plugins even when plugin directories are missing", () => {
+  it("returns catalog plugins even when plugin directories are missing", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "ghost");
 
-    const plugins = listMarketplacePlugins(home, {
+    const plugins = await listMarketplacePlugins(home, {
       name: "local-market",
       url: "https://example.com/local-market",
       platforms: ["claude-code"],
@@ -70,7 +70,7 @@ describe("listMarketplacePlugins", () => {
 });
 
 describe("previewMarketplacePlugin", () => {
-  it("lists files under plugins/<name> from a refreshed marketplace cache", () => {
+  it("lists files under plugins/<name> from a refreshed marketplace cache", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const repo = initMarketplaceRepoWithPluginFile();
     addMarketplace(home, {
@@ -78,13 +78,13 @@ describe("previewMarketplacePlugin", () => {
       url: repo,
       platforms: ["claude-code"],
     });
-    const refreshed = refreshMarketplaceCatalog(home, {
+    const refreshed = await refreshMarketplaceCatalog(home, {
       name: "tree-market",
       force: true,
     });
     expect(refreshed.ok).toBe(true);
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "tree-market",
       plugin: "demo-plugin",
     });
@@ -94,7 +94,7 @@ describe("previewMarketplacePlugin", () => {
     });
   });
 
-  it("returns utf-8 file content for a relative path", () => {
+  it("returns utf-8 file content for a relative path", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const repo = initMarketplaceRepoWithPluginFile();
     addMarketplace(home, {
@@ -102,9 +102,9 @@ describe("previewMarketplacePlugin", () => {
       url: repo,
       platforms: ["claude-code"],
     });
-    refreshMarketplaceCatalog(home, { name: "tree-market", force: true });
+    await refreshMarketplaceCatalog(home, { name: "tree-market", force: true });
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "tree-market",
       plugin: "demo-plugin",
       path: "skills/hello.md",
@@ -116,14 +116,14 @@ describe("previewMarketplacePlugin", () => {
     });
   });
 
-  it("resolves a plugin directory at the cache root", () => {
+  it("resolves a plugin directory at the cache root", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "rooted-plugin");
     mkdirSync(join(cacheDir, "rooted-plugin"), { recursive: true });
     writeFileSync(join(cacheDir, "rooted-plugin", "README.md"), "rooted\n");
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "local-market",
       plugin: "rooted-plugin",
     });
@@ -133,14 +133,14 @@ describe("previewMarketplacePlugin", () => {
     });
   });
 
-  it("resolves a plugin directory one level below the cache root", () => {
+  it("resolves a plugin directory one level below the cache root", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "nested-plugin");
     mkdirSync(join(cacheDir, "vendor", "nested-plugin"), { recursive: true });
     writeFileSync(join(cacheDir, "vendor", "nested-plugin", "note.txt"), "nested\n");
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "local-market",
       plugin: "nested-plugin",
     });
@@ -150,7 +150,7 @@ describe("previewMarketplacePlugin", () => {
     });
   });
 
-  it("prefers plugins/<name> over a same-named folder at the cache root", () => {
+  it("prefers plugins/<name> over a same-named folder at the cache root", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "demo-plugin");
@@ -159,7 +159,7 @@ describe("previewMarketplacePlugin", () => {
     writeFileSync(join(cacheDir, "plugins", "demo-plugin", "from-plugins.txt"), "win\n");
     writeFileSync(join(cacheDir, "demo-plugin", "from-root.txt"), "lose\n");
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "local-market",
       plugin: "demo-plugin",
     });
@@ -169,7 +169,7 @@ describe("previewMarketplacePlugin", () => {
     });
   });
 
-  it("skips .git directories when listing files", () => {
+  it("skips .git directories when listing files", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "demo-plugin");
@@ -177,7 +177,7 @@ describe("previewMarketplacePlugin", () => {
     writeFileSync(join(cacheDir, "plugins", "demo-plugin", ".git", "HEAD"), "ref\n");
     writeFileSync(join(cacheDir, "plugins", "demo-plugin", "keep.md"), "keep\n");
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "local-market",
       plugin: "demo-plugin",
     });
@@ -187,7 +187,7 @@ describe("previewMarketplacePlugin", () => {
     });
   });
 
-  it("sorts listed paths", () => {
+  it("sorts listed paths", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "demo-plugin");
@@ -196,7 +196,7 @@ describe("previewMarketplacePlugin", () => {
     writeFileSync(join(cacheDir, "plugins", "demo-plugin", "a.txt"), "a\n");
     writeFileSync(join(cacheDir, "plugins", "demo-plugin", "z", "c.txt"), "c\n");
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "local-market",
       plugin: "demo-plugin",
     });
@@ -210,7 +210,7 @@ describe("previewMarketplacePlugin", () => {
     });
   });
 
-  it("rejects path traversal, absolute paths, and NUL", () => {
+  it("rejects path traversal, absolute paths, and NUL", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "demo-plugin");
@@ -219,7 +219,7 @@ describe("previewMarketplacePlugin", () => {
 
     const cases = ["../catalog.json", "/etc/passwd", "skills/\0secret.md"];
     for (const path of cases) {
-      const result = previewMarketplacePlugin(home, {
+      const result = await previewMarketplacePlugin(home, {
         marketplace: "local-market",
         plugin: "demo-plugin",
         path,
@@ -228,7 +228,7 @@ describe("previewMarketplacePlugin", () => {
     }
   });
 
-  it("returns not_found for a missing file", () => {
+  it("returns not_found for a missing file", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "demo-plugin");
@@ -236,7 +236,7 @@ describe("previewMarketplacePlugin", () => {
     writeFileSync(join(cacheDir, "plugins", "demo-plugin", "ok.md"), "ok\n");
 
     expect(
-      previewMarketplacePlugin(home, {
+      await previewMarketplacePlugin(home, {
         marketplace: "local-market",
         plugin: "demo-plugin",
         path: "skills/missing.md",
@@ -244,7 +244,7 @@ describe("previewMarketplacePlugin", () => {
     ).toEqual({ status: "not_found" });
   });
 
-  it("returns not_found when the plugin is not in the stored catalog", () => {
+  it("returns not_found when the plugin is not in the stored catalog", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "demo-plugin");
@@ -252,14 +252,14 @@ describe("previewMarketplacePlugin", () => {
     writeFileSync(join(cacheDir, "plugins", "demo-plugin", "ok.md"), "ok\n");
 
     expect(
-      previewMarketplacePlugin(home, {
+      await previewMarketplacePlugin(home, {
         marketplace: "local-market",
         plugin: "missing-plugin",
       }),
     ).toEqual({ status: "not_found" });
   });
 
-  it("previews a catalog plugin whose marketplace source path differs from its name", () => {
+  it("previews a catalog plugin whose marketplace source path differs from its name", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "claude-plugins");
     mkdirSync(join(cacheDir, ".claude-plugin"), { recursive: true });
@@ -274,7 +274,7 @@ describe("previewMarketplacePlugin", () => {
     writeFileSync(join(cacheDir, "plugins", "devx", "skills", "hello.md"), "hello from devx\n");
     writeStoredCatalog(cacheDir, "devx-team", "claude-plugins");
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "claude-plugins",
       plugin: "devx-team",
     });
@@ -284,7 +284,7 @@ describe("previewMarketplacePlugin", () => {
     });
   });
 
-  it("returns empty files for a listed remote-only marketplace plugin", () => {
+  it("returns empty files for a listed remote-only marketplace plugin", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "claude-plugins");
     mkdirSync(join(cacheDir, ".claude-plugin"), { recursive: true });
@@ -303,14 +303,14 @@ describe("previewMarketplacePlugin", () => {
     writeStoredCatalog(cacheDir, "devx-team", "claude-plugins");
 
     expect(
-      previewMarketplacePlugin(home, {
+      await previewMarketplacePlugin(home, {
         marketplace: "claude-plugins",
         plugin: "devx-team",
       }),
     ).toEqual({ status: "ok", files: [] });
   });
 
-  it("omits catalog plugins that are gone from the marketplace manifest", () => {
+  it("omits catalog plugins that are gone from the marketplace manifest", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "claude-plugins");
     mkdirSync(join(cacheDir, ".claude-plugin"), { recursive: true });
@@ -343,20 +343,20 @@ describe("previewMarketplacePlugin", () => {
     ).toEqual(["devx-team"]);
   });
 
-  it("returns not_found when the plugin directory is missing", () => {
+  it("returns not_found when the plugin directory is missing", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const cacheDir = join(home, "cache", "marketplaces", "local-market");
     writeStoredCatalog(cacheDir, "demo-plugin");
 
     expect(
-      previewMarketplacePlugin(home, {
+      await previewMarketplacePlugin(home, {
         marketplace: "local-market",
         plugin: "demo-plugin",
       }),
     ).toEqual({ status: "not_found" });
   });
 
-  it("refreshes an empty catalog before looking up the plugin", () => {
+  it("refreshes an empty catalog before looking up the plugin", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const repo = initMarketplaceRepoWithPluginFile();
     addMarketplace(home, {
@@ -365,7 +365,7 @@ describe("previewMarketplacePlugin", () => {
       platforms: ["claude-code"],
     });
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "tree-market",
       plugin: "demo-plugin",
     });
@@ -374,7 +374,7 @@ describe("previewMarketplacePlugin", () => {
     expect(result.files).toEqual([{ path: "skills/hello.md", kind: "file" }]);
   });
 
-  it("refreshes a stale populated catalog so missing plugin files appear from git", () => {
+  it("refreshes a stale populated catalog so missing plugin files appear from git", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
     const repo = initMarketplaceRepoWithPluginFile();
     addMarketplace(home, {
@@ -388,7 +388,7 @@ describe("previewMarketplacePlugin", () => {
     const stale = (Date.now() - 25 * 60 * 60 * 1000) / 1000;
     utimesSync(catalogPath, stale, stale);
 
-    const result = previewMarketplacePlugin(home, {
+    const result = await previewMarketplacePlugin(home, {
       marketplace: "tree-market",
       plugin: "demo-plugin",
     });

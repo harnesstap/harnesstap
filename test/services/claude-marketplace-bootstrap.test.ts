@@ -7,7 +7,7 @@ import {
 import type { ClaudePluginConfig } from "../../src/types.ts";
 
 describe("extractMarketplaceRepos", () => {
-  it("returns github repo entries from claude.marketplaces", () => {
+  it("returns github repo entries from claude.marketplaces", async () => {
     const config: ClaudePluginConfig = {
       marketplaces: {
         "teads-plugins": {
@@ -20,7 +20,7 @@ describe("extractMarketplaceRepos", () => {
     ]);
   });
 
-  it("skips entries without github repo", () => {
+  it("skips entries without github repo", async () => {
     const config: ClaudePluginConfig = {
       marketplaces: {
         other: { source: { source: "url", url: "https://example.com" } },
@@ -29,7 +29,7 @@ describe("extractMarketplaceRepos", () => {
     expect(extractMarketplaceRepos(config)).toEqual([]);
   });
 
-  it("dedupes by marketplace name", () => {
+  it("dedupes by marketplace name", async () => {
     const config: ClaudePluginConfig = {
       marketplaces: {
         "teads-plugins": {
@@ -42,7 +42,7 @@ describe("extractMarketplaceRepos", () => {
 });
 
 describe("marketplaceRepoKey", () => {
-  it("normalizes repo slug for comparison", () => {
+  it("normalizes repo slug for comparison", async () => {
     expect(marketplaceRepoKey("outbrain/claude-plugins")).toBe(
       "outbrain/claude-plugins",
     );
@@ -50,7 +50,7 @@ describe("marketplaceRepoKey", () => {
 });
 
 describe("ensureClaudeMarketplacesFromConfig", () => {
-  it("adds unconfigured marketplaces via claude plugin marketplace add", () => {
+  it("adds unconfigured marketplaces via claude plugin marketplace add", async () => {
     const calls: string[][] = [];
     const config: ClaudePluginConfig = {
       marketplaces: {
@@ -59,7 +59,7 @@ describe("ensureClaudeMarketplacesFromConfig", () => {
         },
       },
     };
-    const added = ensureClaudeMarketplacesFromConfig(config, {
+    const added = await ensureClaudeMarketplacesFromConfig(config, {
       homeRoot: "/tmp/empty-home-teads-bootstrap-test",
       projectRoot: "/tmp/project",
       runClaudePlugin: (args) => {

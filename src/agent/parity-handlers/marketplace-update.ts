@@ -189,9 +189,10 @@ export async function tryHandle(
           );
         }
         if (result.urlChanged || result.renamedFrom || result.trackedBranchesChanged) {
-          const refresh = refreshMarketplaceCatalog(harnesstapDir, {
+          const refresh = await refreshMarketplaceCatalog(harnesstapDir, {
             name: result.entry.name,
             force: true,
+            unattended: false,
           });
           return jsonResponse({ ...result, refresh });
         }

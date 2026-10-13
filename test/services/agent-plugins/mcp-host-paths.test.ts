@@ -243,7 +243,7 @@ describe("installed agent plugin MCP paths", () => {
         url: repo,
         platforms: ["claude-code"],
       });
-      const refresh = refreshMarketplaceCatalog(getHarnesstapDir(), { name: "mkt", force: true });
+      const refresh = await refreshMarketplaceCatalog(getHarnesstapDir(), { name: "mkt", force: true });
       expect(refresh.ok).toBe(true);
       const wrapper = createPlugin({ name: "wrapper", version: "1.0.0" });
       await addPluginAttachment({

@@ -284,7 +284,7 @@ async function visitGit(
   identity: string,
   state: Parameters<typeof visitFrame>[1],
 ): Promise<void> {
-  const fetched = resolveAndFetchApmGitDependency(frame.dependency, state.harnesstapDir, {
+  const fetched = await resolveAndFetchApmGitDependency(frame.dependency, state.harnesstapDir, {
     ...(state.update ? { update: true } : {}),
     ...(state.lock ? { lock: state.lock } : {}),
   });

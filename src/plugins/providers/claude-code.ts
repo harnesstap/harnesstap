@@ -15,6 +15,7 @@ import {
 } from "../claude-plugin-ref.js";
 import {
   defaultRunCommand,
+  resolveCommandResult,
   type CommandResult,
   type RunCommand,
 } from "../run-command.js";
@@ -89,24 +90,31 @@ export class ClaudeCodePluginProvider implements PluginProvider {
 
   constructor(private readonly deps: ClaudeCodeProviderDeps = {}) {}
 
-  private runClaude(args: string[], ctx?: PluginContext): CommandResult {
+  private async runClaude(args: string[], ctx?: PluginContext): Promise<CommandResult> {
     const run = this.deps.runCommand ?? defaultRunCommand;
     const binary = this.deps.claudeBinary ?? "claude";
-    return run(binary, ["plugin", ...args], {
+    return resolveCommandResult(run(binary, ["plugin", ...args], {
       cwd: ctx?.projectRoot,
-    });
+    }));
   }
 
-  private ensureMarketplace(ctx: PluginContext, marketplace: string, repo: string): void {
+  private async ensureMarketplace(
+    ctx: PluginContext,
+    marketplace: string,
+    repo: string,
+  ): Promise<void> {
     if (marketplaceIsConfigured(ctx.homeRoot, marketplace)) {
       return;
     }
-    this.runClaude(["marketplace", "add", repo], ctx);
+    await this.runClaude(["marketplace", "add", repo], ctx);
   }
 
-  private bootstrapMarketplacesForRef(ctx: PluginContext, catalogRef: string): void {
+  private async bootstrapMarketplacesForRef(
+    ctx: PluginContext,
+    catalogRef: string,
+  ): Promise<void> {
     for (const marketplace of resolveCatalogPluginMarketplaceBootstrap(catalogRef) ?? []) {
-      this.ensureMarketplace(ctx, marketplace.name, marketplace.repo);
+      await this.ensureMarketplace(ctx, marketplace.name, marketplace.repo);
     }
   }
 
@@ -132,7 +140,7 @@ export class ClaudeCodePluginProvider implements PluginProvider {
 
     for (const key of toRefresh) {
       const marketplace = key.replace("claude:marketplace:", "");
-      const result = this.runClaude(["marketplace", "update", marketplace], ctx);
+      const result = await this.runClaude(["marketplace", "update", marketplace], ctx);
       if (result.exitCode === 0) {
         Object.assign(
           opts.refreshCache,
@@ -196,7 +204,7 @@ export class ClaudeCodePluginProvider implements PluginProvider {
         continue;
       }
       const args = ["update", install.ref, "--scope", install.scope];
-      const result = this.runClaude(args, ctx);
+      const result = await this.runClaude(args, ctx);
       if (result.exitCode === 0) {
         results.push({
           ref: install.ref,
@@ -245,17 +253,17 @@ export class ClaudeCodePluginProvider implements PluginProvider {
       };
     }
 
-    this.bootstrapMarketplacesForRef(ctx, opts.ref);
+    await this.bootstrapMarketplacesForRef(ctx, opts.ref);
 
     let lastMessage = "claude plugin install failed";
     for (const candidate of candidates) {
       const { marketplace } = parsePluginRef(candidate);
       if (marketplace) {
-        this.runClaude(["marketplace", "update", marketplace], ctx);
+        await this.runClaude(["marketplace", "update", marketplace], ctx);
       }
 
       const args = ["install", candidate, "--scope", scope];
-      const result = this.runClaude(args, ctx);
+      const result = await this.runClaude(args, ctx);
       if (result.exitCode !== 0) {
         lastMessage = result.stderr.trim() || result.stdout.trim() || lastMessage;
         continue;

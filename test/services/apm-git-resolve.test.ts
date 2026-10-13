@@ -66,7 +66,7 @@ function createPluginGitRepo(skill = "FROM-GIT"): { dir: string; url: string; sh
 }
 
 describe("apm git resolve", () => {
-  it("classifies refs per OpenAPM kinds", () => {
+  it("classifies refs per OpenAPM kinds", async () => {
     expect(classifyApmGitRef(undefined)).toBe("none");
     expect(classifyApmGitRef("v1.2.3")).toBe("literal");
     expect(classifyApmGitRef("1.2.3")).toBe("literal");
@@ -77,7 +77,7 @@ describe("apm git resolve", () => {
     expect(classifyApmGitRef(">=1.0.0 <2.0.0")).toBe("semver");
   });
 
-  it("canonicalizes repo URLs", () => {
+  it("canonicalizes repo URLs", async () => {
     expect(canonicalApmRepoUrl("https://github.com/acme/widgets.git")).toBe(
       "github.com/acme/widgets",
     );
@@ -89,13 +89,13 @@ describe("apm git resolve", () => {
     );
   });
 
-  it("selects the highest matching semver tag", () => {
+  it("selects the highest matching semver tag", async () => {
     const selected = selectSemverTag("^1.0.0", ["v1.0.0", "v1.1.0", "v2.0.0", "not-a-tag"]);
     expect(selected?.tag).toBe("v1.1.0");
     expect(selectSemverTag("^3.0.0", ["v1.0.0"])).toBeUndefined();
   });
 
-  it("stores new checkouts under cache/packages/git with legacy path fallback", () => {
+  it("stores new checkouts under cache/packages/git with legacy path fallback", async () => {
     const harnesstapDir = join(ctx.homeDir, ".harnesstap");
     const repoUrl = "github.com/acme/widgets";
     const commit = "b".repeat(40);
@@ -113,14 +113,14 @@ describe("apm git resolve", () => {
     expect(apmGitCacheDir(harnesstapDir, repoUrl, commit)).toBe(modern);
   });
 
-  it("resolves a tag to a commit SHA and fetches it", () => {
+  it("resolves a tag to a commit SHA and fetches it", async () => {
     const remote = createPluginGitRepo();
     try {
       const dependency = parseApmDependencyEntry({
         git: remote.url,
         ref: "v1.0.0",
       });
-      const fetched = resolveAndFetchApmGitDependency(dependency, ctx.homeDir);
+      const fetched = await resolveAndFetchApmGitDependency(dependency, ctx.homeDir);
       expect(fetched.commit).toBe(remote.sha);
       expect(fetched.replayed).toBe(false);
       expect(fetched.resolvedRef).toBe("v1.0.0");
@@ -131,20 +131,20 @@ describe("apm git resolve", () => {
     }
   });
 
-  it("fails closed when the ref cannot be resolved", () => {
+  it("fails closed when the ref cannot be resolved", async () => {
     const remote = createPluginGitRepo();
     try {
       const dependency = parseApmDependencyEntry({
         git: remote.url,
         ref: "does-not-exist",
       });
-      expect(() => resolveApmGitDependency(dependency)).toThrow(ApmGitResolveError);
+      await expect(resolveApmGitDependency(dependency)).rejects.toThrow(ApmGitResolveError);
     } finally {
       cleanupDir(remote.dir);
     }
   });
 
-  it("replays a locked commit without ls-remote", () => {
+  it("replays a locked commit without ls-remote", async () => {
     const remote = createPluginGitRepo();
     const calls: string[] = [];
     const runCommand: RunCommand = (command, args) => {
@@ -174,7 +174,7 @@ describe("apm git resolve", () => {
           },
         ],
       };
-      const resolved = resolveApmGitDependency(dependency, { lock, runCommand });
+      const resolved = await resolveApmGitDependency(dependency, { lock, runCommand });
       expect(resolved.commit).toBe(remote.sha);
       expect(resolved.replayed).toBe(true);
       expect(calls).toEqual([]);
@@ -183,7 +183,7 @@ describe("apm git resolve", () => {
     }
   });
 
-  it("replays a locked HEAD pin when the manifest has no ref", () => {
+  it("replays a locked HEAD pin when the manifest has no ref", async () => {
     const remote = createPluginGitRepo();
     const calls: string[] = [];
     const runCommand: RunCommand = (command, args) => {
@@ -210,7 +210,7 @@ describe("apm git resolve", () => {
           },
         ],
       };
-      const resolved = resolveApmGitDependency(dependency, { lock, runCommand });
+      const resolved = await resolveApmGitDependency(dependency, { lock, runCommand });
       expect(resolved.commit).toBe(remote.sha);
       expect(resolved.replayed).toBe(true);
       expect(calls).toEqual([]);
@@ -219,14 +219,14 @@ describe("apm git resolve", () => {
     }
   });
 
-  it("rejects a traversing virtual path", () => {
+  it("rejects a traversing virtual path", async () => {
     const remote = createPluginGitRepo();
     try {
       const dependency = parseApmDependencyEntry({
         git: remote.url,
         path: "skills/../../etc",
       });
-      expect(() => resolveApmGitDependency(dependency)).toThrow(/Unsafe dependencies.apm path/);
+      await expect(resolveApmGitDependency(dependency)).rejects.toThrow(/Unsafe dependencies.apm path/);
     } finally {
       cleanupDir(remote.dir);
     }
@@ -240,7 +240,7 @@ describe("apm git resolve", () => {
       git(remote.dir, "commit -m leak");
       const sha = git(remote.dir, "rev-parse HEAD");
       const dependency = parseApmDependencyEntry({ git: remote.url, ref: sha });
-      const fetched = resolveAndFetchApmGitDependency(dependency, ctx.homeDir);
+      const fetched = await resolveAndFetchApmGitDependency(dependency, ctx.homeDir);
       const { importApmGitCheckout } = await import("../../src/services/apm-git-import.ts");
       await expect(importApmGitCheckout(fetched, fetched.checkoutRoot)).rejects.toThrow(/symlink/i);
     } finally {

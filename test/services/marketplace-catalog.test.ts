@@ -36,7 +36,7 @@ function initLocalMarketplaceRepo(manifestName = "local-market"): string {
 }
 
 describe("marketplace-catalog", () => {
-  it("refreshes from git URL and lists plugins", () => {
+  it("refreshes from git URL and lists plugins", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo();
     addMarketplace(home, {
@@ -44,7 +44,7 @@ describe("marketplace-catalog", () => {
       url: repo,
       platforms: ["claude-code"],
     });
-    const refreshed = refreshMarketplaceCatalog(home, {
+    const refreshed = await refreshMarketplaceCatalog(home, {
       name: "local-market",
       force: true,
     });
@@ -53,7 +53,7 @@ describe("marketplace-catalog", () => {
     expect(plugins.map((p) => p.name).sort()).toEqual(["alpha", "beta"]);
   });
 
-  it("search filters by query substring", () => {
+  it("search filters by query substring", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo();
     addMarketplace(home, {
@@ -61,12 +61,12 @@ describe("marketplace-catalog", () => {
       url: repo,
       platforms: ["claude-code"],
     });
-    refreshMarketplaceCatalog(home, { name: "local-market", force: true });
-    expect(searchCatalogPlugins(home, "alp").map((p) => p.name)).toEqual(["alpha"]);
-    expect(searchCatalogPlugins(home, "slack").map((p) => p.name)).toEqual(["alpha"]);
+    await refreshMarketplaceCatalog(home, { name: "local-market", force: true });
+    expect((await searchCatalogPlugins(home, "alp")).map((p) => p.name)).toEqual(["alpha"]);
+    expect((await searchCatalogPlugins(home, "slack")).map((p) => p.name)).toEqual(["alpha"]);
   });
 
-  it("search matches plugin.json and nested skill/command names and descriptions", () => {
+  it("search matches plugin.json and nested skill/command names and descriptions", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = mkdtempSync(join(tmpdir(), "ht-mkt-nested-"));
     mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
@@ -156,7 +156,7 @@ describe("marketplace-catalog", () => {
       url: repo,
       platforms: ["claude-code"],
     });
-    refreshMarketplaceCatalog(home, { name: "claude-plugins", force: true });
+    await refreshMarketplaceCatalog(home, { name: "claude-plugins", force: true });
 
     const listed = listCatalogPlugins(home, { name: "claude-plugins" });
     const review = listed.find((plugin) => plugin.name === "code-review-workflow");
@@ -174,19 +174,19 @@ describe("marketplace-catalog", () => {
       ]),
     );
 
-    expect(searchCatalogPlugins(home, "slack").map((plugin) => plugin.name).sort()).toEqual([
+    expect((await searchCatalogPlugins(home, "slack")).map((plugin) => plugin.name).sort()).toEqual([
       "code-review-workflow",
       "design-doc",
     ]);
-    expect(searchCatalogPlugins(home, "request-slack-review").map((plugin) => plugin.name)).toEqual([
+    expect((await searchCatalogPlugins(home, "request-slack-review")).map((plugin) => plugin.name)).toEqual([
       "code-review-workflow",
     ]);
-    expect(searchCatalogPlugins(home, "open a draft").map((plugin) => plugin.name)).toEqual([
+    expect((await searchCatalogPlugins(home, "open a draft")).map((plugin) => plugin.name)).toEqual([
       "code-review-workflow",
     ]);
   });
 
-  it("lists from the stored catalog index without walking plugin roots again", () => {
+  it("lists from the stored catalog index without walking plugin roots again", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = mkdtempSync(join(tmpdir(), "ht-mkt-index-"));
     mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
@@ -215,7 +215,7 @@ describe("marketplace-catalog", () => {
       url: repo,
       platforms: ["claude-code"],
     });
-    refreshMarketplaceCatalog(home, { name: "notes-market", force: true });
+    await refreshMarketplaceCatalog(home, { name: "notes-market", force: true });
 
     const first = listCatalogPlugins(home, { name: "notes-market" });
     expect(first[0]?.contents).toEqual([
@@ -254,7 +254,7 @@ describe("marketplace-catalog", () => {
     ]);
   });
 
-  it("uses registry name for plugin refs when manifest name differs", () => {
+  it("uses registry name for plugin refs when manifest name differs", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo("acme-plugins");
     addMarketplace(home, {
@@ -262,7 +262,7 @@ describe("marketplace-catalog", () => {
       url: repo,
       platforms: ["claude-code"],
     });
-    const refreshed = refreshMarketplaceCatalog(home, { name: "team", force: true });
+    const refreshed = await refreshMarketplaceCatalog(home, { name: "team", force: true });
     expect(refreshed.ok).toBe(true);
     const plugins = listCatalogPlugins(home, { name: "team" });
     expect(plugins.map((p) => p.ref).sort()).toEqual(["alpha@team", "beta@team"]);
@@ -272,14 +272,14 @@ describe("marketplace-catalog", () => {
     expect(stored.manifestName).toBe("acme-plugins");
   });
 
-  it("rejects goose-only marketplace refresh", () => {
+  it("rejects goose-only marketplace refresh", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     addMarketplace(home, {
       name: "goose-market",
       url: "/tmp/dummy-goose-marketplace",
       platforms: ["goose"],
     });
-    const refreshed = refreshMarketplaceCatalog(home, {
+    const refreshed = await refreshMarketplaceCatalog(home, {
       name: "goose-market",
       force: true,
     });
@@ -287,7 +287,7 @@ describe("marketplace-catalog", () => {
     expect(refreshed.message.toLowerCase()).toContain("goose");
   });
 
-  it("dedups plugins that appear on extra tracked branches", () => {
+  it("dedups plugins that appear on extra tracked branches", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo();
     writeFileSync(
@@ -315,7 +315,7 @@ describe("marketplace-catalog", () => {
       platforms: ["claude-code"],
       trackedBranches: ["develop"],
     });
-    const refreshed = refreshMarketplaceCatalog(home, {
+    const refreshed = await refreshMarketplaceCatalog(home, {
       name: "local-market",
       force: true,
     });
@@ -326,7 +326,7 @@ describe("marketplace-catalog", () => {
     expect(plugins.filter((p) => p.name === "alpha")).toHaveLength(1);
   });
 
-  it("reuses a fresh on-disk catalog instead of cloning the marketplace again", () => {
+  it("reuses a fresh on-disk catalog instead of cloning the marketplace again", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo();
     addMarketplace(home, {
@@ -335,7 +335,7 @@ describe("marketplace-catalog", () => {
       platforms: ["claude-code"],
     });
     expect(
-      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+      (await ensureMarketplaceCatalog(home, { name: "local-market" })).map((p) => p.name).sort(),
     ).toEqual(["alpha", "beta"]);
 
     writeFileSync(
@@ -353,14 +353,14 @@ describe("marketplace-catalog", () => {
     );
 
     expect(
-      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+      (await ensureMarketplaceCatalog(home, { name: "local-market" })).map((p) => p.name).sort(),
     ).toEqual(["alpha", "beta"]);
     expect(
-      refreshMarketplaceCatalog(home, { name: "local-market", force: false }).message,
+      (await refreshMarketplaceCatalog(home, { name: "local-market", force: false })).message,
     ).toBe("Catalog is up to date");
   });
 
-  it("refreshes the on-disk catalog when it is older than 60 minutes", () => {
+  it("refreshes the on-disk catalog when it is older than 60 minutes", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo();
     addMarketplace(home, {
@@ -369,7 +369,7 @@ describe("marketplace-catalog", () => {
       platforms: ["claude-code"],
     });
     expect(
-      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+      (await ensureMarketplaceCatalog(home, { name: "local-market" })).map((p) => p.name).sort(),
     ).toEqual(["alpha", "beta"]);
 
     writeFileSync(
@@ -391,11 +391,19 @@ describe("marketplace-catalog", () => {
     utimesSync(catalogPath, stale, stale);
 
     expect(
-      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
-    ).toEqual(["gamma"]);
+      (await ensureMarketplaceCatalog(home, { name: "local-market" })).map((p) => p.name).sort(),
+    ).toEqual(["alpha", "beta"]);
+    const refresh = await refreshMarketplaceCatalog(home, {
+      name: "local-market",
+      force: false,
+    });
+    expect(refresh.ok).toBe(true);
+    expect(listCatalogPlugins(home, { name: "local-market" }).map((p) => p.name)).toEqual([
+      "gamma",
+    ]);
   });
 
-  it("uses marketplaceRefreshMaxAgeMinutes from toolkit options", () => {
+  it("uses marketplaceRefreshMaxAgeMinutes from toolkit options", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-home-"));
     const repo = initLocalMarketplaceRepo();
     writeFileSync(
@@ -410,7 +418,7 @@ describe("marketplace-catalog", () => {
       }),
     );
     expect(
-      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
+      (await ensureMarketplaceCatalog(home, { name: "local-market" })).map((p) => p.name).sort(),
     ).toEqual(["alpha", "beta"]);
 
     writeFileSync(
@@ -432,7 +440,15 @@ describe("marketplace-catalog", () => {
     utimesSync(catalogPath, stale, stale);
 
     expect(
-      ensureMarketplaceCatalog(home, { name: "local-market" }).map((p) => p.name).sort(),
-    ).toEqual(["gamma"]);
+      (await ensureMarketplaceCatalog(home, { name: "local-market" })).map((p) => p.name).sort(),
+    ).toEqual(["alpha", "beta"]);
+    const refresh = await refreshMarketplaceCatalog(home, {
+      name: "local-market",
+      force: false,
+    });
+    expect(refresh.ok).toBe(true);
+    expect(listCatalogPlugins(home, { name: "local-market" }).map((p) => p.name)).toEqual([
+      "gamma",
+    ]);
   });
 });

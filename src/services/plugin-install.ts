@@ -30,7 +30,7 @@ export async function installPluginPinAsync(
   const { marketplace } = parsePluginRef(options.ref);
   if (marketplace) {
     try {
-      const cached = installMarketplacePinIntoCache({
+      const cached = await installMarketplacePinIntoCache({
         originRef: options.ref,
         versionConstraint: options.versionConstraint,
         homeRoot: options.homeRoot,

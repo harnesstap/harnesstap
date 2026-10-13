@@ -381,7 +381,7 @@ export async function preparePluginPinsForApply(
   };
 
   if (!options.skipSync && options.claudeConfig) {
-    ensureClaudeMarketplacesFromConfig(options.claudeConfig, {
+    await ensureClaudeMarketplacesFromConfig(options.claudeConfig, {
       homeRoot: options.homeRoot ?? resolveHomeRoot(),
       projectRoot: options.projectRoot,
     });
@@ -392,7 +392,7 @@ export async function preparePluginPinsForApply(
       listMarketplaces(getHarnesstapDir()),
       options.pins.map((pin) => pin.ref),
     );
-    ensureCursorMarketplaces(cursorEntries, {
+    await ensureCursorMarketplaces(cursorEntries, {
       homeRoot: options.homeRoot ?? resolveHomeRoot(),
       projectRoot: options.projectRoot,
     });

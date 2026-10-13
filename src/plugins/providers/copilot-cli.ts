@@ -2,7 +2,12 @@ import { parsePluginRef } from "../claude-installed.js";
 import {
   loadInstalledCopilotPlugins,
 } from "../copilot-installed.js";
-import { defaultRunCommand, type CommandResult, type RunCommand } from "../run-command.js";
+import {
+  defaultRunCommand,
+  resolveCommandResult,
+  type CommandResult,
+  type RunCommand,
+} from "../run-command.js";
 import type {
   PluginCheckOptions,
   PluginCheckResult,
@@ -43,12 +48,12 @@ export class CopilotPluginProvider implements PluginProvider {
 
   constructor(private readonly deps: CopilotProviderDeps = {}) {}
 
-  private runCopilot(args: string[], ctx?: PluginContext): CommandResult {
+  private async runCopilot(args: string[], ctx?: PluginContext): Promise<CommandResult> {
     const run = this.deps.runCommand ?? defaultRunCommand;
     const binary = this.deps.copilotBinary ?? "copilot";
-    return run(binary, ["plugin", ...args], {
+    return resolveCommandResult(run(binary, ["plugin", ...args], {
       cwd: ctx?.projectRoot,
-    });
+    }));
   }
 
   async list(ctx: PluginContext): Promise<PluginInstall[]> {
@@ -84,7 +89,7 @@ export class CopilotPluginProvider implements PluginProvider {
 
     for (const install of targets) {
       if (opts.scopes && !opts.scopes.includes(install.scope)) continue;
-      const result = this.runCopilot(["update", install.ref], ctx);
+      const result = await this.runCopilot(["update", install.ref], ctx);
       if (result.exitCode === 0) {
         const refreshed = findInstall(
           loadInstalledCopilotPlugins(ctx.homeRoot),
@@ -137,10 +142,10 @@ export class CopilotPluginProvider implements PluginProvider {
 
     const { marketplace } = parsePluginRef(opts.ref);
     if (marketplace) {
-      this.runCopilot(["marketplace", "update", marketplace], ctx);
+      await this.runCopilot(["marketplace", "update", marketplace], ctx);
     }
 
-    const result = this.runCopilot(["install", opts.ref], ctx);
+    const result = await this.runCopilot(["install", opts.ref], ctx);
     if (result.exitCode !== 0) {
       return {
         ref: opts.ref,

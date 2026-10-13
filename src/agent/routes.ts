@@ -553,8 +553,10 @@ export function createAgentFetchHandler(
   const handlers = createAgentRouteHandlers(token, port, routeDeps);
 
   return async (request) => {
+    const started = performance.now();
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
+    const response = await (async (): Promise<Response> => {
 
     if (method === "OPTIONS") {
       return withCors(request, new Response(null, { status: 204 }));
@@ -640,7 +642,7 @@ export function createAgentFetchHandler(
     } else if (method === "GET" && url.pathname === "/v1/marketplaces/reachability") {
       response = await handleMarketplacesReachability(request, token);
     } else if (method === "GET" && url.pathname === "/v1/marketplaces/branches") {
-      response = handleMarketplacesBranches(request, token);
+      response = await handleMarketplacesBranches(request, token);
     } else if (method === "GET" && url.pathname === "/v1/marketplaces/detect") {
       response = await handleMarketplacesDetect(request, token);
     } else if (method === "POST" && url.pathname === "/v1/marketplaces") {
@@ -649,7 +651,7 @@ export function createAgentFetchHandler(
       const name = decodeURIComponent(
         url.pathname.slice("/v1/marketplaces/".length).replace(/\/plugins$/, ""),
       );
-      response = handleMarketplacePluginsList(request, token, name);
+      response = await handleMarketplacePluginsList(request, token, name);
     } else if (method === "GET" && url.pathname === "/v1/environments") {
       response = handleEnvironmentsList(request, token);
     } else if (method === "POST" && url.pathname === "/v1/migrate/detect-import-scope") {
@@ -659,7 +661,7 @@ export function createAgentFetchHandler(
     } else if (method === "POST" && url.pathname === "/v1/migrate/import") {
       response = await handleMigrateImport(request, token);
     } else if (method === "GET" && url.pathname === "/v1/discover/search") {
-      response = handleDiscoverSearch(request, token);
+      response = await handleDiscoverSearch(request, token);
     } else if (method === "GET" && url.pathname === "/v1/library/plugins") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryPlugins();
@@ -894,5 +896,11 @@ export function createAgentFetchHandler(
     }
 
     return withCors(request, response);
+    })();
+    const elapsedMs = performance.now() - started;
+    console.log(
+      `[ht-agent] ${method} ${url.pathname} ${response.status} ${elapsedMs.toFixed(1)}ms`,
+    );
+    return response;
   };
 }

@@ -62,6 +62,11 @@ export interface StoredMarketplaceCatalog extends ParsedMarketplaceCatalog {
 export interface RefreshMarketplaceCatalogOptions {
   name: string;
   force?: boolean;
+  /**
+   * Background refresh. Serves callers from the cached catalog.
+   * Uses a short git timeout and does not prompt.
+   */
+  unattended?: boolean;
 }
 
 export interface RefreshMarketplaceCatalogResult {
@@ -320,8 +325,8 @@ function loadCatalogFromDir(
   };
 }
 
-function checkoutBranchName(dir: string): string {
-  const result = runCommandWithTimeout("git", [
+async function checkoutBranchName(dir: string, unattended: boolean): Promise<string> {
+  const result = await runCommandWithTimeout("git", [
     "-c",
     "protocol.file.allow=always",
     "-C",
@@ -329,7 +334,7 @@ function checkoutBranchName(dir: string): string {
     "rev-parse",
     "--abbrev-ref",
     "HEAD",
-  ]);
+  ], { unattended });
   const name = result.stdout.trim();
   return result.exitCode === 0 && name && name !== "HEAD" ? name : "HEAD";
 }
@@ -346,10 +351,20 @@ function versionsFromPlugins(
   return rows;
 }
 
-export function refreshMarketplaceCatalog(
+const catalogRefreshInflight = new Map<string, Promise<RefreshMarketplaceCatalogResult>>();
+
+function catalogRefreshKey(harnesstapDir: string, name: string): string {
+  return `${harnesstapDir}\0${name}`;
+}
+
+function logUnattendedRefreshFailure(name: string, message: string): void {
+  console.error(`[ht-agent] marketplace catalog refresh failed for ${name}: ${message}`);
+}
+
+async function refreshMarketplaceCatalogNow(
   harnesstapDir: string,
   options: RefreshMarketplaceCatalogOptions,
-): RefreshMarketplaceCatalogResult {
+): Promise<RefreshMarketplaceCatalogResult> {
   const entry = catalogRefreshEntry(harnesstapDir, options.name);
   if (!entry) {
     return { ok: false, message: `Marketplace not found: ${options.name}` };
@@ -379,9 +394,11 @@ export function refreshMarketplaceCatalog(
     };
   }
 
-  const refresh = refreshGitSource({
+  const unattended = options.unattended === true;
+  const refresh = await refreshGitSource({
     url: entry.url,
     targetDir: cacheDir,
+    unattended,
   });
   if (!refresh.ok) {
     return { ok: false, message: refresh.message };
@@ -392,7 +409,7 @@ export function refreshMarketplaceCatalog(
     return defaultCatalog;
   }
 
-  const defaultBranch = checkoutBranchName(cacheDir);
+  const defaultBranch = await checkoutBranchName(cacheDir, unattended);
   const extraBranches = parseTrackedBranches(entry.trackedBranches ?? []).filter(
     (branch) => branch !== defaultBranch,
   );
@@ -403,10 +420,11 @@ export function refreshMarketplaceCatalog(
   for (const branch of extraBranches) {
     const branchDir = mkdtempSync(join(tmpdir(), "ht-mkt-branch-"));
     try {
-      const branchRefresh = refreshGitSource({
+      const branchRefresh = await refreshGitSource({
         url: entry.url,
         targetDir: branchDir,
         ref: branch,
+        unattended,
       });
       if (!branchRefresh.ok) {
         return {
@@ -459,6 +477,25 @@ export function refreshMarketplaceCatalog(
   };
 }
 
+/** One refresh per marketplace. Later callers share the in-flight result, including errors. */
+export function refreshMarketplaceCatalog(
+  harnesstapDir: string,
+  options: RefreshMarketplaceCatalogOptions,
+): Promise<RefreshMarketplaceCatalogResult> {
+  const key = catalogRefreshKey(harnesstapDir, options.name);
+  const existing = catalogRefreshInflight.get(key);
+  if (existing) {
+    return existing;
+  }
+  const job = refreshMarketplaceCatalogNow(harnesstapDir, options).finally(() => {
+    if (catalogRefreshInflight.get(key) === job) {
+      catalogRefreshInflight.delete(key);
+    }
+  });
+  catalogRefreshInflight.set(key, job);
+  return job;
+}
+
 function persistIndexedCatalog(
   harnesstapDir: string,
   name: string,
@@ -490,14 +527,41 @@ export function listCatalogPlugins(
   return persistIndexedCatalog(harnesstapDir, options.name, stored).plugins;
 }
 
-/** Refresh from git only when the on-disk catalog is missing or stale, then list. */
-export function ensureMarketplaceCatalog(
+/**
+ * List the cached catalog. A stale cache is returned immediately and refreshed
+ * in the background. A missing catalog waits for one refresh so the first
+ * read can succeed, without blocking other sidecar requests.
+ */
+export async function ensureMarketplaceCatalog(
   harnesstapDir: string,
   options: ListCatalogPluginsOptions & { force?: boolean },
-): CatalogPlugin[] {
-  refreshMarketplaceCatalog(harnesstapDir, {
+): Promise<CatalogPlugin[]> {
+  const catalogPath = marketplaceCatalogPath(harnesstapDir, options.name);
+  const stored = readStoredCatalog(catalogPath);
+  const settings = loadSettings(harnesstapDir);
+  const maxAgeMs = marketplaceRefreshMaxAgeMs(
+    settings.plugins.marketplaceRefreshMaxAgeMinutes,
+  );
+  const fresh = catalogIsFresh(catalogPath, maxAgeMs);
+  if (stored && fresh && !options.force) {
+    return listCatalogPlugins(harnesstapDir, { name: options.name });
+  }
+  if (stored && !options.force) {
+    void refreshMarketplaceCatalog(harnesstapDir, {
+      name: options.name,
+      force: false,
+      unattended: true,
+    }).then((result) => {
+      if (!result.ok) {
+        logUnattendedRefreshFailure(options.name, result.message);
+      }
+    });
+    return listCatalogPlugins(harnesstapDir, { name: options.name });
+  }
+  await refreshMarketplaceCatalog(harnesstapDir, {
     name: options.name,
-    force: options.force ?? false,
+    force: options.force ?? true,
+    unattended: false,
   });
   return listCatalogPlugins(harnesstapDir, { name: options.name });
 }
@@ -609,18 +673,26 @@ export interface SearchCatalogPluginsOptions {
   refresh?: boolean;
 }
 
-export function searchCatalogPlugins(
+export async function searchCatalogPlugins(
   harnesstapDir: string,
   query: string,
   options: SearchCatalogPluginsOptions = {},
-): CatalogPlugin[] {
+): Promise<CatalogPlugin[]> {
   const marketplaces = listCatalogSearchMarketplaces(harnesstapDir);
   if (options.refresh) {
+    const failures: string[] = [];
     for (const marketplace of marketplaces) {
-      refreshMarketplaceCatalog(harnesstapDir, {
+      const refresh = await refreshMarketplaceCatalog(harnesstapDir, {
         name: marketplace.name,
         force: true,
+        unattended: false,
       });
+      if (!refresh.ok) {
+        failures.push(`${marketplace.name}: ${refresh.message}`);
+      }
+    }
+    if (failures.length > 0) {
+      console.error(`[ht-agent] marketplace search refresh failed: ${failures.join("; ")}`);
     }
   }
 

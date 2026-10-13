@@ -116,9 +116,10 @@ async function handleMarketplaceAddCommand(
 
   let refresh: RefreshMarketplaceCatalogResult | undefined;
   try {
-    refresh = refreshMarketplaceCatalog(harnesstapDir, {
+    refresh = await refreshMarketplaceCatalog(harnesstapDir, {
       name: result.entry.name,
       force: true,
+      unattended: false,
     });
     if (!refresh.ok && result.status === "added") {
       removeMarketplace(harnesstapDir, result.entry.name);
@@ -244,7 +245,11 @@ async function handleMarketplaceShowCommand(
 
   let refresh: RefreshMarketplaceCatalogResult | undefined;
   if (opts.refresh) {
-    refresh = refreshMarketplaceCatalog(harnesstapDir, { name, force: true });
+    refresh = await refreshMarketplaceCatalog(harnesstapDir, {
+      name,
+      force: true,
+      unattended: false,
+    });
     if (!refresh.ok) {
       throw new Error(refresh.message);
     }

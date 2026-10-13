@@ -567,7 +567,7 @@ export async function switchHostPluginCacheVersion(input: {
     );
   }
   const originRef = input.resource.origin_ref || formatPluginRef(input.resource);
-  ensureHostPluginVersionInstalled({
+  await ensureHostPluginVersionInstalled({
     originRef,
     version: input.version,
     homeRoot: input.homeRoot,

@@ -32,7 +32,7 @@ function initLocalRepo(): string {
 }
 
 describe("parse git branch listings", () => {
-  it("parses ls-remote heads and the HEAD symref", () => {
+  it("parses ls-remote heads and the HEAD symref", async () => {
     const stdout = [
       "ref: refs/heads/main\tHEAD",
       "abc\trefs/heads/main",
@@ -43,7 +43,7 @@ describe("parse git branch listings", () => {
     expect(parseGitLsRemoteHeads(stdout)).toEqual(["main", "develop"]);
   });
 
-  it("parses local for-each-ref names", () => {
+  it("parses local for-each-ref names", async () => {
     expect(parseGitForEachRefHeads("main\ndevelop\nmain\n")).toEqual([
       "main",
       "develop",
@@ -52,14 +52,14 @@ describe("parse git branch listings", () => {
 });
 
 describe("listMarketplaceSourceBranches", () => {
-  it("lists local heads and the current branch", () => {
+  it("lists local heads and the current branch", async () => {
     const repo = initLocalRepo();
-    const listed = listMarketplaceSourceBranches(repo);
+    const listed = await listMarketplaceSourceBranches(repo);
     expect(listed.defaultBranch).toBe("main");
     expect(listed.branches.sort()).toEqual(["develop", "main"]);
   });
 
-  it("lists remote heads from ls-remote", () => {
+  it("lists remote heads from ls-remote", async () => {
     const run: RunCommand = (_command, args) => {
       if (args.includes("ls-remote")) {
         return {
@@ -70,13 +70,13 @@ describe("listMarketplaceSourceBranches", () => {
       }
       return { stdout: "", stderr: "unexpected", exitCode: 1 };
     };
-    expect(listMarketplaceSourceBranches("https://github.com/org/repo.git", run)).toEqual({
+    expect(await listMarketplaceSourceBranches("https://github.com/org/repo.git", run)).toEqual({
       branches: ["main", "develop"],
       defaultBranch: "main",
     });
   });
 
-  it("passes a GitHub extraheader and keeps the token out of the URL", () => {
+  it("passes a GitHub extraheader and keeps the token out of the URL", async () => {
     const previous = {
       HARNESSTAP_GITHUB_TOKEN: process.env.HARNESSTAP_GITHUB_TOKEN,
       GH_TOKEN: process.env.GH_TOKEN,
@@ -97,7 +97,7 @@ describe("listMarketplaceSourceBranches", () => {
         };
       };
       expect(
-        listMarketplaceSourceBranches("git@github.com:acme/private.git", run),
+        await listMarketplaceSourceBranches("git@github.com:acme/private.git", run),
       ).toEqual({
         branches: ["main"],
         defaultBranch: "main",

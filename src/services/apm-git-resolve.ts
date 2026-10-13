@@ -11,7 +11,7 @@ import {
   DEFAULT_GIT_CLONE_TIMEOUT_MS,
   runCommandWithTimeout,
 } from "../utils/run-command-with-timeout.js";
-import type { RunCommand } from "../plugins/run-command.js";
+import { resolveCommandResult, type RunCommand } from "../plugins/run-command.js";
 import {
   ensureGithubGitConfigArgs,
   githubHttpsRemoteForAuth,
@@ -189,11 +189,11 @@ function runGit(
   run: RunCommand,
   args: string[],
   cwd?: string,
-): { stdout: string; stderr: string; exitCode: number } {
-  return run("git", ensureGithubGitConfigArgs(args), {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  return resolveCommandResult(run("git", ensureGithubGitConfigArgs(args), {
     timeoutMs: DEFAULT_GIT_CLONE_TIMEOUT_MS,
     ...(cwd ? { cwd } : {}),
-  });
+  }));
 }
 
 function parseLsRemote(stdout: string): RemoteRef[] {
@@ -254,9 +254,9 @@ function authorizedGitRemote(url: string): string {
   return githubHttpsRemoteForAuth(url, resolveGithubAccessToken().token);
 }
 
-function listRemoteTags(run: RunCommand, cloneUrl: string): RemoteRef[] {
+async function listRemoteTags(run: RunCommand, cloneUrl: string): Promise<RemoteRef[]> {
   const remote = authorizedGitRemote(cloneUrl);
-  const result = runGit(run, ["ls-remote", "--tags", remote]);
+  const result = await runGit(run, ["ls-remote", "--tags", remote]);
   if (result.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to list tags for ${cloneUrl}: ${result.stderr.trim() || "git ls-remote failed"}`,
@@ -265,9 +265,13 @@ function listRemoteTags(run: RunCommand, cloneUrl: string): RemoteRef[] {
   return parseLsRemote(result.stdout);
 }
 
-function resolveLiteralRef(run: RunCommand, cloneUrl: string, ref: string): string {
+async function resolveLiteralRef(
+  run: RunCommand,
+  cloneUrl: string,
+  ref: string,
+): Promise<string> {
   if (FULL_SHA.test(ref)) {
-    const probe = runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), ref]);
+    const probe = await runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), ref]);
     if (probe.exitCode === 0) {
       const parsed = parseLsRemote(probe.stdout);
       const sha = parsed[0]?.sha ?? ref.toLowerCase();
@@ -278,7 +282,7 @@ function resolveLiteralRef(run: RunCommand, cloneUrl: string, ref: string): stri
     return ref.toLowerCase();
   }
 
-  const listed = runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), ref, `refs/heads/${ref}`, `refs/tags/${ref}`]);
+  const listed = await runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), ref, `refs/heads/${ref}`, `refs/tags/${ref}`]);
   if (listed.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to resolve ${ref} for ${cloneUrl}: ${listed.stderr.trim() || "git ls-remote failed"}`,
@@ -298,8 +302,8 @@ function resolveLiteralRef(run: RunCommand, cloneUrl: string, ref: string): stri
   return sha;
 }
 
-function resolveHead(run: RunCommand, cloneUrl: string): string {
-  const result = runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), "HEAD"]);
+async function resolveHead(run: RunCommand, cloneUrl: string): Promise<string> {
+  const result = await runGit(run, ["ls-remote", authorizedGitRemote(cloneUrl), "HEAD"]);
   if (result.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to resolve HEAD for ${cloneUrl}: ${result.stderr.trim() || "git ls-remote failed"}`,
@@ -355,10 +359,10 @@ function canReplayLock(
   return declared === locked;
 }
 
-export function resolveApmGitDependency(
+export async function resolveApmGitDependency(
   dependency: ParsedApmDependency,
   options: ResolveApmGitOptions = {},
-): ApmGitResolution {
+): Promise<ApmGitResolution> {
   if (dependency.sourceKind !== "git") {
     throw new ApmGitResolveError(`Expected a git dependency, got ${dependency.sourceKind}`);
   }
@@ -395,7 +399,7 @@ export function resolveApmGitDependency(
 
   if (kind === "semver") {
     const constraint = dependency.ref ?? dependency.versionConstraint ?? "";
-    const tags = listRemoteTags(run, cloneUrl);
+    const tags = await listRemoteTags(run, cloneUrl);
     const tagNames = [...new Set(tags.map((entry) => entry.name.replace(/^refs\/tags\//, "")))];
     const selected = selectSemverTag(constraint, tagNames);
     if (!selected) {
@@ -405,7 +409,7 @@ export function resolveApmGitDependency(
     }
     const sha =
       shaForRefName(tags, `refs/tags/${selected.tag}`)
-      ?? resolveLiteralRef(run, cloneUrl, selected.tag);
+      ?? await resolveLiteralRef(run, cloneUrl, selected.tag);
     return {
       name: dependency.name,
       cloneUrl,
@@ -421,7 +425,7 @@ export function resolveApmGitDependency(
   }
 
   if (kind === "none") {
-    const commit = resolveHead(run, cloneUrl);
+    const commit = await resolveHead(run, cloneUrl);
     return {
       name: dependency.name,
       cloneUrl,
@@ -433,7 +437,7 @@ export function resolveApmGitDependency(
   }
 
   const ref = dependency.ref ?? dependency.versionConstraint ?? "";
-  const commit = resolveLiteralRef(run, cloneUrl, ref);
+  const commit = await resolveLiteralRef(run, cloneUrl, ref);
   return {
     name: dependency.name,
     cloneUrl,
@@ -445,13 +449,13 @@ export function resolveApmGitDependency(
   };
 }
 
-export function checkoutApmGitCommit(
+export async function checkoutApmGitCommit(
   resolution: ApmGitResolution,
   targetDir: string,
   runCommand: RunCommand = runCommandWithTimeout,
-): string {
+): Promise<string> {
   if (existsSync(join(targetDir, ".git"))) {
-    const current = runGit(runCommand, ["-C", targetDir, "rev-parse", "HEAD"]);
+    const current = await runGit(runCommand, ["-C", targetDir, "rev-parse", "HEAD"]);
     if (current.exitCode === 0 && current.stdout.trim().toLowerCase() === resolution.commit) {
       return targetDir;
     }
@@ -462,20 +466,20 @@ export function checkoutApmGitCommit(
   }
   mkdirSync(targetDir, { recursive: true });
 
-  const init = runGit(runCommand, ["init", "--quiet", targetDir]);
+  const init = await runGit(runCommand, ["init", "--quiet", targetDir]);
   if (init.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to initialize checkout for ${resolution.cloneUrl}: ${init.stderr.trim()}`,
     );
   }
-  const remote = runGit(runCommand, ["-C", targetDir, "remote", "add", "origin", authorizedGitRemote(resolution.cloneUrl)]);
+  const remote = await runGit(runCommand, ["-C", targetDir, "remote", "add", "origin", authorizedGitRemote(resolution.cloneUrl)]);
   if (remote.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to add origin ${resolution.cloneUrl}: ${remote.stderr.trim()}`,
     );
   }
 
-  let fetch = runGit(runCommand, [
+  let fetch = await runGit(runCommand, [
     "-C",
     targetDir,
     "fetch",
@@ -485,7 +489,7 @@ export function checkoutApmGitCommit(
     resolution.commit,
   ]);
   if (fetch.exitCode !== 0) {
-    fetch = runGit(runCommand, ["-C", targetDir, "fetch", "origin", resolution.commit]);
+    fetch = await runGit(runCommand, ["-C", targetDir, "fetch", "origin", resolution.commit]);
   }
   if (fetch.exitCode !== 0) {
     throw new ApmGitResolveError(
@@ -493,14 +497,14 @@ export function checkoutApmGitCommit(
     );
   }
 
-  const checkout = runGit(runCommand, ["-C", targetDir, "checkout", "--quiet", "FETCH_HEAD"]);
+  const checkout = await runGit(runCommand, ["-C", targetDir, "checkout", "--quiet", "FETCH_HEAD"]);
   if (checkout.exitCode !== 0) {
     throw new ApmGitResolveError(
       `Failed to checkout ${resolution.commit}: ${checkout.stderr.trim() || "git checkout failed"}`,
     );
   }
 
-  const head = runGit(runCommand, ["-C", targetDir, "rev-parse", "HEAD"]);
+  const head = await runGit(runCommand, ["-C", targetDir, "rev-parse", "HEAD"]);
   const sha = head.stdout.trim().toLowerCase();
   if (head.exitCode !== 0 || sha !== resolution.commit) {
     throw new ApmGitResolveError(
@@ -510,13 +514,13 @@ export function checkoutApmGitCommit(
   return targetDir;
 }
 
-export function resolveAndFetchApmGitDependency(
+export async function resolveAndFetchApmGitDependency(
   dependency: ParsedApmDependency,
   harnesstapDir: string,
   options: ResolveApmGitOptions = {},
-): ApmGitResolution & { checkoutRoot: string } {
-  const resolution = resolveApmGitDependency(dependency, options);
-  const checkoutRoot = checkoutApmGitCommit(
+): Promise<ApmGitResolution & { checkoutRoot: string }> {
+  const resolution = await resolveApmGitDependency(dependency, options);
+  const checkoutRoot = await checkoutApmGitCommit(
     resolution,
     apmGitCacheDir(harnesstapDir, resolution.repoUrl, resolution.commit),
     options.runCommand,

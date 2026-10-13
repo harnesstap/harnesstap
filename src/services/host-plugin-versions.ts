@@ -17,13 +17,12 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   downloadHostPluginVersion,
   isRelativePluginSourcePath,
+  marketplaceHasCheckoutOrKnownUrl,
   marketplaceNotInstalledMessage,
   pullHostPluginSourceVersions,
   readHostPluginSourceSnapshot,
   readMarketplacePluginSource,
-  resolveMarketplaceCloneUrl,
   resolveMarketplaceRoot,
-  defaultMarketplaceRoot,
 } from "./host-plugin-source.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 import { cacheVersionDir } from "./host-plugin-source.js";
@@ -122,11 +121,7 @@ export function hostPluginPullUnavailableReason(
   if (!marketplace) {
     return missingMarketplacePullMessage(originRef);
   }
-  const url = resolveMarketplaceCloneUrl(resolvedHome, marketplace);
-  const root =
-    resolveMarketplaceRoot(resolvedHome, marketplace) ??
-    defaultMarketplaceRoot(resolvedHome, marketplace);
-  if (url || existsSync(root)) {
+  if (marketplaceHasCheckoutOrKnownUrl(resolvedHome, marketplace)) {
     return null;
   }
   return marketplaceNotInstalledMessage(marketplace);
@@ -390,12 +385,12 @@ export function listHostPluginVersions(
   return { current_version, advertised_version, available_versions };
 }
 
-export function pullHostPluginVersions(input: {
+export async function pullHostPluginVersions(input: {
   originRef: string;
   homeRoot?: string;
   harnesstapDir?: string;
   runCommand?: RunCommand;
-}): HostPluginVersionInfo {
+}): Promise<HostPluginVersionInfo> {
   const { marketplace } = parsePluginRef(input.originRef);
   if (!marketplace) {
     throw new HostPluginVersionError(
@@ -404,7 +399,7 @@ export function pullHostPluginVersions(input: {
     );
   }
   try {
-    pullHostPluginSourceVersions({
+    await pullHostPluginSourceVersions({
       originRef: input.originRef,
       homeRoot: input.homeRoot,
       harnesstapDir: input.harnesstapDir,
@@ -430,13 +425,13 @@ export function pullHostPluginVersions(input: {
   return info;
 }
 
-export function ensureHostPluginVersionInstalled(input: {
+export async function ensureHostPluginVersionInstalled(input: {
   originRef: string;
   version: string;
   homeRoot?: string;
   harnesstapDir?: string;
   runCommand?: RunCommand;
-}): { version: string; install_path: string } {
+}): Promise<{ version: string; install_path: string }> {
   const homeRoot = input.homeRoot ?? resolveHomeRoot();
   const info = listHostPluginVersions(input.originRef, homeRoot);
   const selected = info.available_versions.find(
@@ -446,7 +441,7 @@ export function ensureHostPluginVersionInstalled(input: {
     return { version: selected.version, install_path: selected.path };
   }
   try {
-    const downloaded = downloadHostPluginVersion({
+    const downloaded = await downloadHostPluginVersion({
       originRef: input.originRef,
       version: input.version,
       homeRoot,

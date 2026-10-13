@@ -50,7 +50,7 @@ export async function tryHandle(
   if (plugin instanceof Response) return plugin;
 
   const path = url.searchParams.get("path")?.trim() || undefined;
-  const result = previewMarketplacePlugin(getHarnesstapDir(), {
+  const result = await previewMarketplacePlugin(getHarnesstapDir(), {
     marketplace,
     plugin,
     ...(path ? { path } : {}),

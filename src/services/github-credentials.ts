@@ -85,6 +85,9 @@ function readGhCliToken(runCommand?: RunCommand): string | null {
           stdio: ["ignore", "pipe", "pipe"],
           timeout: 3000,
         });
+    if (result instanceof Promise) {
+      return null;
+    }
     const exitCode = "exitCode" in result
       ? result.exitCode
       : (result.status ?? 1);

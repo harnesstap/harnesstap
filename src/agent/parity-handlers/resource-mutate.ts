@@ -399,7 +399,7 @@ async function handlePull(
   try {
     const originRef =
       resolved.resource.origin_ref || formatPluginRef(resolved.resource);
-    const info = pullHostPluginVersions({ originRef });
+    const info = await pullHostPluginVersions({ originRef });
     return jsonResponse(info);
   } catch (error) {
     if (error instanceof HostPluginVersionError) {

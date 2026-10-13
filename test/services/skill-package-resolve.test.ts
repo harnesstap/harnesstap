@@ -9,14 +9,14 @@ import {
 const fixture = join(import.meta.dirname, "../fixtures/skill-packages/mattpocock-minimal");
 
 describe("skill-package-resolve", () => {
-  it("defaults interactive selection to all skills except excluded categories", () => {
-    const resolved = resolveSkillPackageCheckout(fixture, "/tmp/harnesstap");
+  it("defaults interactive selection to all skills except excluded categories", async () => {
+    const resolved = await resolveSkillPackageCheckout(fixture, "/tmp/harnesstap");
     const defaults = defaultInteractiveSkillNames(resolved.discovered, ["engineering"]);
     expect(defaults).toEqual(["caveman"]);
   });
 
-  it("applies exclude-category when --all is used", () => {
-    const resolved = resolveSkillPackageCheckout(fixture, "/tmp/harnesstap");
+  it("applies exclude-category when --all is used", async () => {
+    const resolved = await resolveSkillPackageCheckout(fixture, "/tmp/harnesstap");
     const selected = resolveSelectedSkills(resolved.discovered, {
       all: true,
       excludeCategories: ["engineering"],
@@ -24,8 +24,8 @@ describe("skill-package-resolve", () => {
     expect(selected.map((skill) => skill.name)).toEqual(["caveman"]);
   });
 
-  it("resolves explicit skill names", () => {
-    const resolved = resolveSkillPackageCheckout(fixture, "/tmp/harnesstap");
+  it("resolves explicit skill names", async () => {
+    const resolved = await resolveSkillPackageCheckout(fixture, "/tmp/harnesstap");
     const selected = resolveSelectedSkills(resolved.discovered, {
       skillNames: ["caveman", "tdd"],
     });

@@ -35,10 +35,10 @@ export function defaultInteractiveSkillNames(
     .map((skill) => skill.name);
 }
 
-export function resolveSkillPackageCheckout(
+export async function resolveSkillPackageCheckout(
   source: string,
   harnesstapDir: string,
-): ResolvedSkillPackage {
+): Promise<ResolvedSkillPackage> {
   const resolved = resolveRemoteSource(source);
   let checkoutRoot: string;
   let gitUrl: string | undefined;
@@ -50,7 +50,7 @@ export function resolveSkillPackageCheckout(
       resolved.owner,
       resolved.repo,
     );
-    const refresh = refreshGitSource({
+    const refresh = await refreshGitSource({
       url: resolved.url,
       targetDir: cacheDir,
     });

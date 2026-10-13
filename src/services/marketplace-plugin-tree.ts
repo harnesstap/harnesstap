@@ -16,6 +16,7 @@ import {
   listPluginsFromMarketplaceRoot,
   marketplaceCacheDir,
   readMarketplaceManifest,
+  refreshMarketplaceCatalog,
 } from "./marketplace-catalog.js";
 
 export type MarketplaceTreeFile = { path: string; kind: "file" };
@@ -145,7 +146,7 @@ function collectFiles(root: string, dir: string, files: string[]): void {
   }
 }
 
-function ensureCatalogPlugins(harnesstapDir: string, marketplace: string) {
+async function ensureCatalogPlugins(harnesstapDir: string, marketplace: string) {
   return ensureMarketplaceCatalog(harnesstapDir, { name: marketplace });
 }
 
@@ -203,10 +204,10 @@ function catalogHasPlugin(plugins: CatalogPlugin[], pluginName: string): boolean
   return plugins.some((plugin) => plugin.name === pluginName);
 }
 
-function listedMarketplacePlugins(
+async function listedMarketplacePlugins(
   harnesstapDir: string,
   entry: VisibleMarketplaceEntry,
-): CatalogPlugin[] {
+): Promise<CatalogPlugin[]> {
   if (entry.contentRoot && !entry.managed) {
     return listPluginsFromMarketplaceRoot(
       entry.contentRoot,
@@ -229,24 +230,24 @@ export function filterOpenableMarketplacePlugins(
   );
 }
 
-export function listMarketplacePlugins(
+export async function listMarketplacePlugins(
   harnesstapDir: string,
   entry: VisibleMarketplaceEntry,
-): CatalogPlugin[] {
+): Promise<CatalogPlugin[]> {
   return listedMarketplacePlugins(harnesstapDir, entry);
 }
 
-export function previewMarketplacePlugin(
+export async function previewMarketplacePlugin(
   harnesstapDir: string,
   input: { marketplace: string; plugin: string; path?: string },
-): MarketplacePluginTreeResult {
+): Promise<MarketplacePluginTreeResult> {
   const visible = listVisibleMarketplaces(harnesstapDir).find(
     (entry) => entry.name === input.marketplace,
   );
 
   if (visible && !visible.managed) {
     if (visible.contentRoot) {
-      const plugins = listMarketplacePlugins(harnesstapDir, visible);
+      const plugins = await listMarketplacePlugins(harnesstapDir, visible);
       if (!catalogHasPlugin(plugins, input.plugin)) {
         return { status: "not_found" };
       }
@@ -261,7 +262,12 @@ export function previewMarketplacePlugin(
     }
   }
 
-  const plugins = ensureCatalogPlugins(harnesstapDir, input.marketplace);
+  await refreshMarketplaceCatalog(harnesstapDir, {
+    name: input.marketplace,
+    force: false,
+    unattended: false,
+  });
+  const plugins = await ensureCatalogPlugins(harnesstapDir, input.marketplace);
   const cacheDir = marketplaceCacheDir(harnesstapDir, input.marketplace);
   const openable = filterOpenableMarketplacePlugins(cacheDir, plugins);
   if (!catalogHasPlugin(openable, input.plugin)) {
