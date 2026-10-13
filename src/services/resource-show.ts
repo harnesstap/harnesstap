@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Resource } from "../types.js";
+import { shortenHomePath } from "../utils/home-path.js";
 import { formatRelativeTimeWithAbsolute } from "../ui/format.js";
 import { renderPanel } from "../ui/panel.js";
 import {
@@ -33,10 +34,14 @@ function resourceShowPanelRows(
   extras: ReturnType<typeof resourceShowExtras>,
   opts?: ResourceShowOptions,
 ): Array<[string, string]> {
-  const path =
+  const rawPath =
     extras && "install_path" in extras && extras.install_path
       ? extras.install_path
       : packageDirectoryDisplayPath(resource.source);
+  const path = rawPath ? shortenHomePath(rawPath) : rawPath;
+  const originRef = resource.origin_ref
+    ? shortenHomePath(resource.origin_ref)
+    : resource.origin_ref;
   const panelRows: Array<[string, string]> = [
     ["Type", resource.type],
     ["Name", resourceHumanName(resource)],
@@ -44,7 +49,7 @@ function resourceShowPanelRows(
     ["Path", path || ": "],
     ["Origin", formatOriginDisplayLabel(
       resource.origin_kind,
-      resource.origin_ref,
+      originRef,
       { includeRef: resource.type !== "plugin" },
     )],
     ["Updated", formatRelativeTimeWithAbsolute(resource.updated_at)],

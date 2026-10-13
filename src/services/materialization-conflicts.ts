@@ -1,5 +1,5 @@
 import { ON_CONFLICT_VALUE_HELP, parseOnConflict } from "../cli/on-conflict.js";
-import { applyCancelledMessage, CLI_HINTS } from "../copy/cli.js";
+import { applyCancelledMessage, onConflictReplaceHint } from "../copy/cli.js";
 import { ui } from "../ui/index.js";
 import type {
   ConflictPolicy,
@@ -40,7 +40,7 @@ export function reportApplyCancelled(
 ): void {
   process.exitCode = 1;
   ui.warn(applyCancelledMessage(conflicts, scope), {
-    hint: CLI_HINTS.onConflictReplace,
+    hint: onConflictReplaceHint(conflicts),
   });
 }
 

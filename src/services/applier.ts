@@ -555,7 +555,9 @@ export async function materializeFiles(
     }
   }
 
-  if ([...decisions.values()].includes("cancel")) {
+  // A dry run reports the replace plan. Cancelling here would hide the
+  // writes --on-conflict replace would make, and would not change disk.
+  if ([...decisions.values()].includes("cancel") && !options.dryRun) {
     return {
       cancelled: true,
       writtenFiles: [],

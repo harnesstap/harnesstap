@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   applyCancelledMessage,
   applyWroteLine,
+  onConflictReplaceHint,
   CLI_ERRORS,
   CLI_HINTS,
   dryRunWouldLine,
@@ -50,6 +51,12 @@ describe("CLI copy helpers (DS-6)", () => {
     );
     expect(applyCancelledMessage([".cursor/mcp.json", "my file.json"], "apply")).toBe(
       'Apply cancelled. These files would change: .cursor/mcp.json, "my file.json".',
+    );
+    expect(onConflictReplaceHint([".cursor/mcp.json"])).toBe(
+      "Use --on-conflict replace to replace it.",
+    );
+    expect(onConflictReplaceHint([".cursor/mcp.json", ".codex/config.toml"])).toBe(
+      "Use --on-conflict replace to replace them.",
     );
     expect(CLI_HINTS.githubLogin).toBe(marketplaceUnreachableHint());
     expect(CLI_ERRORS.noHarnesses).toBe("Not set up for any harness yet.");
