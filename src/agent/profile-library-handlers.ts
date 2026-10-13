@@ -19,7 +19,7 @@ import {
 import { truncateResourceContent } from "../services/resource-show.js";
 import { isLiveLibraryRef } from "../services/live-library-ref.js";
 import { parseUntrackedResourceSelector } from "../services/untracked-resource.js";
-import { MATERIAL_RESOURCE_TYPES, type MaterialResourceType } from "../types.js";
+import { MATERIAL_RESOURCE_TYPES, type MaterialResourceType, type Resource } from "../types.js";
 import { hookInventoryWireFromResource } from "../ui/hook-display.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
@@ -74,6 +74,26 @@ function parsePageInt(raw: string | null): number | undefined {
     return undefined;
   }
   return value;
+}
+
+/** Live refs keep `content: ""` in the DB; show the on-disk file instead. */
+function liveContentOverlay(
+  resource: Resource,
+  filesystemPath: string | null,
+): { content: string; updatedAt: string } {
+  const fallback = { content: resource.content, updatedAt: resource.updated_at };
+  if (resource.type === "plugin" || !filesystemPath) {
+    return fallback;
+  }
+  if (!isLiveLibraryRef(resource) && resource.content.trim().length > 0) {
+    return fallback;
+  }
+  try {
+    const onDisk = readResourceContentFromPathHint(filesystemPath);
+    return { content: onDisk.content, updatedAt: onDisk.updatedAt };
+  } catch {
+    return fallback;
+  }
 }
 
 export function handleLibraryResourceDetail(
@@ -168,16 +188,19 @@ export function handleLibraryResourceDetail(
       pathHint: options?.pathHint,
     });
   const attachers = resourceAttacherPayload(resource.id);
-  const overlay =
-    resource.type === "mcp_server"
-      ? overlayMcpServerDetail(resource, options?.pathHint)
-      : { content: resource.content, updatedAt: resource.updated_at };
   const filesystemPath =
     extras && "install_path" in extras && extras.install_path
       ? extras.install_path
       : resolveExistingResourceFilesystemPath(resource, options?.pathHint);
   const requiresLiveFile =
     isLiveLibraryRef(resource) || resource.origin_kind === "local_snapshot";
+  const overlay =
+    resource.type === "mcp_server"
+      ? overlayMcpServerDetail(resource, options?.pathHint)
+      : liveContentOverlay(
+          resource,
+          typeof filesystemPath === "string" ? filesystemPath : null,
+        );
   if (requiresLiveFile && !filesystemPath) {
     const liveHint = (options?.pathHint?.trim() || resource.source || "").trim();
     if (liveHint && liveHint !== "manual" && !liveHint.startsWith("composition:")) {
