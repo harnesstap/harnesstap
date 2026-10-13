@@ -45,6 +45,8 @@ export async function handlePluginPublishCommand(
     format?: string;
     version?: string;
     kind?: "plugin" | "profile";
+    strict?: boolean;
+    vendorExtensions?: boolean;
   },
 ) {
   const db = getDb();
@@ -86,6 +88,8 @@ export async function handlePluginPublishCommand(
 
     const results = await publishPluginToCatalogs(plugin, targets, {
       account: opts.account,
+      strict: opts.strict === true,
+      vendorExtensions: opts.vendorExtensions === true,
     });
 
     const format = parseOutputFormat(opts.format);

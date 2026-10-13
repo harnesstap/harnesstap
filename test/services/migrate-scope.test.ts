@@ -27,6 +27,14 @@ describe("migrate-scope", () => {
     const file = resolveExportScope({ plugin: "My Plugin", singleFile: true });
     expect(file.outputPath.endsWith("my-plugin.ap.json")).toBe(true);
     expect(file.singleFile).toBe(true);
+    expect(file.archive).toBe(false);
+
+    const zip = resolveExportScope({ plugin: "My Plugin", file: "./out.zip" });
+    expect(zip.archive).toBe(true);
+    expect(zip.singleFile).toBe(false);
+    expect(() =>
+      resolveExportScope({ plugin: "My Plugin", file: "./out.zip", singleFile: true }),
+    ).toThrow(/directory, a \.zip, or a \.ap\.json/);
   });
 
   it("resolves workspace export scope from archive extension", () => {

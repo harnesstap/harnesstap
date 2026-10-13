@@ -20,10 +20,11 @@ HarnessTap namespace:
 
 | Package content | Survives in other AP clients? | Notes |
 | ---- | ---- | ---- |
-| **Skills** (`skills/.../SKILL.md`) | Yes | Standard AP surface |
-| **MCP servers** (`mcp.json`) | Yes | Standard AP surface |
-| **Rules, hooks, agents, commands, instructions** | No (ignored) | Live under `com.harnesstap/` and `extensions["com.harnesstap"]` |
-| **Dependencies, overrides, profile, needs** | No (ignored) | HarnessTap extension fields only |
+| **Skills** (`skills/<name>/SKILL.md`) | Yes, when the name matches the directory and the Agent Skills rules | Invalid names are renamed on export, with a warning. The original name is kept under `com.harnesstap`. |
+| **MCP servers** (`mcp.json`) | Yes, for `stdio`, `streamable-http`, and `sse` entries the spec accepts | Secret-like env values, reserved `PLUGIN_ROOT` and `PLUGIN_DATA` env names, and other fields the spec cannot carry move to `com.harnesstap/mcp.toml` with a warning. Other clients see the server without those values. |
+| **`${PLUGIN_ROOT}` and `${PLUGIN_DATA}`** | Kept literally in the package | Cursor and Claude rewrite them only in the emitted host copy. The canonical package is not edited. Codex and Copilot load the package natively only when `harnessSync.nativeAgentPlugins` is true. Otherwise they get the portable extract. |
+| **Agents, commands, hooks, rules, instructions** | No | They stay under `com.harnesstap/`. `plugin publish --vendor-extensions` and `migrate export --vendor-extensions` also write Copilot files under `com.github.copilot/` and Codex hook settings under `extensions["com.openai"]`. That flag is off by default. |
+| **Dependencies, overrides, profile, needs** | No | HarnessTap extension fields only |
 | **Environment secret values** | Never packaged | `env.toml` holds keys and `${VAR}` references only |
 
 HarnessTap re-imports the full package (standard files plus the namespace). There
@@ -289,13 +290,17 @@ target serializer. `harnessSync.pluginResources` (`symlink` / `copy` /
 `clone`) controls whether those hub files are links back into the plugin
 tree, independent copies, or copy-on-write clones.
 
-Portable inside a copied tree: skills, `mcp.json`, Agent Plugins root
-`plugin.json`, declarative `hooks.json` entries, and whichever host manifests
-were already present. Not portable: Claude Code **mod** modules (`register.js`
-and loader pointers; see below), Claude `installed_plugins.json` / marketplace
-git metadata, Cursor enablement and `agent plugin marketplace add` auth, hooks
-that assume `${CLAUDE_PLUGIN_ROOT}` or `${CURSOR_PLUGIN_ROOT}`, and host-only
-plugin config (Claude extra known marketplaces, Cursor app MCP folders).
+Portable inside a copied tree: skills, `mcp.json`, and an Agent Plugins root
+`plugin.json` whose `$schema` is `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
+The emitted Cursor copy rewrites `${PLUGIN_ROOT}` to `${CURSOR_PLUGIN_ROOT}` and
+`${PLUGIN_DATA}` to the HarnessTap plugin data directory. The emitted Claude copy
+synthesizes `.claude-plugin/plugin.json`, writes `.mcp.json` (`streamable-http`
+and `sse` as `http`), and copies `com.harnesstap` commands, agents, and hook JSON
+into Claude's directories. Those rewrites are not written back into the canonical
+package. Not portable: Claude Code **mod** modules (`register.js` and loader
+pointers; see below), Claude `installed_plugins.json` / marketplace git metadata,
+Cursor enablement and `agent plugin marketplace add` auth, and host-only plugin
+config (Claude extra known marketplaces, Cursor app MCP folders).
 
 ### Claude Code mods in host plugin pins
 

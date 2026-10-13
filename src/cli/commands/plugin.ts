@@ -3113,12 +3113,19 @@ pluginPublishCmd
   .option("--version <semver>", "Cut the plugin to this semver before publishing")
   .option("--account <name>", "Cloud account to use")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option("--strict", "Block publish when Agent Plugins export warnings are present")
+  .option(
+    "--vendor-extensions",
+    "Also write com.github.copilot files and Codex hook settings",
+  )
   .action((plugin: string, target: string | undefined, opts: {
     org?: string;
     catalog?: string;
     account?: string;
     format?: string;
     version?: string;
+    strict?: boolean;
+    vendorExtensions?: boolean;
   }) => handlePluginPublishCommand(plugin, target, opts));
 
 pluginCmd

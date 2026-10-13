@@ -21,6 +21,15 @@ describe("writeZipArchive / readZipArchive", () => {
     );
   });
 
+  it("keeps a root plugin.json when that is the only member", () => {
+    const archive = writeZipArchive([
+      { path: "plugin.json", data: Buffer.from('{"name":"zip-demo"}', "utf8") },
+    ]);
+    const files = readZipArchive(archive);
+    expect(files.map((file) => file.path)).toEqual(["plugin.json"]);
+    expect(files[0]?.data.toString("utf8")).toContain("zip-demo");
+  });
+
   it("strips a single wrapping root directory when plugin.json is inside it", () => {
     const archive = writeZipArchive([
       { path: "demo/plugin.json", data: Buffer.from("{}", "utf8") },

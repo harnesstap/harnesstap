@@ -19,6 +19,7 @@ type LibraryInventoryWireRow = {
   dirty?: boolean;
   pluginOrigin?: PluginOrigin;
   tags?: string[];
+  format_label?: string;
   hook?: LibraryListEntry["hook"];
 };
 
@@ -31,9 +32,11 @@ export type LibraryInventoryResult = {
 };
 
 function mapInventoryRow(row: LibraryInventoryWireRow): LibraryListEntry {
+  const { format_label: formatLabel, ...rest } = row;
   return {
-    ...row,
+    ...rest,
     originOutdated: false,
+    ...(formatLabel ? { formatLabel } : {}),
   };
 }
 

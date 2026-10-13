@@ -5,6 +5,7 @@ import type { Plugin } from "../types.js";
 import {
   buildApPackageFiles,
   writeApPackageFiles,
+  writeApZipArchive,
 } from "./agent-plugins/files.js";
 import { importApPackageFiles } from "./agent-plugins/import.js";
 import {
@@ -39,6 +40,10 @@ export interface MigrateExportCliOpts {
   includePlugins?: boolean;
   embedPlugins?: boolean;
   singleFile?: boolean;
+  /** Write a .zip of the Agent Plugins package. */
+  archive?: boolean;
+  /** Also write Copilot files and Codex hook settings. Plugin scope only. */
+  vendorExtensions?: boolean;
   onSkip?: (message: string) => void;
 }
 
@@ -151,25 +156,36 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
   pluginSelector?: string;
   resourceSelector?: string;
   singleFile: boolean;
+  archive: boolean;
 } {
   rejectEnvironmentScope(opts);
   assertExclusiveScopeFlags(opts);
   const outputPath = opts.outputFile ?? opts.file;
   const resolvedExplicit =
     outputPath && outputPath.length > 0 ? resolve(outputPath) : undefined;
+  const pathIsZip = resolvedExplicit?.toLowerCase().endsWith(".zip") === true;
+  const archive = opts.archive === true || pathIsZip;
+  if (opts.singleFile === true && archive) {
+    throw new Error("Choose a package directory, a .zip, or a .ap.json envelope.");
+  }
   const singleFile =
-    opts.singleFile === true
-    || (resolvedExplicit != null && isApEnvelopePath(resolvedExplicit));
+    !archive && (
+      opts.singleFile === true
+      || (resolvedExplicit != null && isApEnvelopePath(resolvedExplicit))
+    );
 
   if (opts.plugin) {
     const firstPlugin = opts.plugin.split(",")[0]?.trim() ?? "plugin";
     const apName = slugifyApName(firstPlugin);
-    const path = resolvedExplicit ?? resolve(singleFile ? `${apName}.ap.json` : apName);
+    const path = resolvedExplicit ?? resolve(
+      archive ? `${apName}.zip` : singleFile ? `${apName}.ap.json` : apName,
+    );
     return {
       scope: "plugin",
       outputPath: path,
       pluginSelector: opts.plugin,
       singleFile,
+      archive,
     };
   }
 
@@ -178,11 +194,15 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
     const rest = colon === -1 ? opts.resource : opts.resource.slice(colon + 1);
     const name = slugifyApName(rest.split("@")[0] ?? "export");
     const path = resolvedExplicit ?? resolve(singleFile ? `${name}.ap.json` : name);
+    if (archive) {
+      throw new Error("Resource export writes a directory or a .ap.json envelope.");
+    }
     return {
       scope: "resource",
       outputPath: path,
       resourceSelector: opts.resource,
       singleFile,
+      archive: false,
     };
   }
 
@@ -190,20 +210,20 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
     if (!outputPath || outputPath.length === 0) {
       throw new Error("Output path is required for workspace export.");
     }
-    return { scope: "workspace", outputPath: resolve(outputPath), singleFile: false };
+    return { scope: "workspace", outputPath: resolve(outputPath), singleFile: false, archive: false };
   }
 
   if (outputPath && outputPath.length > 0) {
     const resolvedOutput = resolve(outputPath);
     const lower = resolvedOutput.toLowerCase();
     if (lower.endsWith(".tar.gz")) {
-      return { scope: "workspace", outputPath: resolvedOutput, singleFile: false };
+      return { scope: "workspace", outputPath: resolvedOutput, singleFile: false, archive: false };
     }
     if (
       extname(resolvedOutput).toLowerCase() === ".json"
       && !isApEnvelopePath(resolvedOutput)
     ) {
-      return { scope: "workspace", outputPath: resolvedOutput, singleFile: false };
+      return { scope: "workspace", outputPath: resolvedOutput, singleFile: false, archive: false };
     }
   }
 
@@ -290,9 +310,18 @@ export function exportScopedMigration(
       }
       const plugin = resolvePluginOrThrow(resolved.pluginSelector);
       assertPluginsCleanForShare([plugin]);
-      const files = buildApPackageFiles(plugin.id);
+      const files = buildApPackageFiles(plugin.id, {
+        vendorExtensions: opts.vendorExtensions === true,
+      });
       let written: string[];
-      if (resolved.singleFile) {
+      if (resolved.archive) {
+        if (existsSync(resolved.outputPath) && statSync(resolved.outputPath).isDirectory()) {
+          throw new Error(
+            `Refusing to replace directory ${resolved.outputPath} with a zip archive.`,
+          );
+        }
+        written = writeApZipArchive(files, resolved.outputPath);
+      } else if (resolved.singleFile) {
         writeApEnvelope(files, resolved.outputPath);
         written = Object.keys(files).sort();
       } else {

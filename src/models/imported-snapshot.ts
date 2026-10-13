@@ -104,6 +104,19 @@ export function listImportedSnapshots(): ImportedSnapshot[] {
   return rows.map(rowToImportedSnapshot);
 }
 
+export function getLatestImportedSnapshot(pluginName: string): ImportedSnapshot | undefined {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT * FROM imported_snapshots
+       WHERE plugin_name = ?
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+    )
+    .get(pluginName) as ImportedSnapshotRow | undefined;
+  return row ? rowToImportedSnapshot(row) : undefined;
+}
+
 export function getImportedSnapshot(snapshotId: string): ImportedSnapshot | undefined {
   const db = getDb();
   const row = db

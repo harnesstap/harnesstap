@@ -10,6 +10,7 @@ import {
   matchesListSearchQuery,
   parseListSearchQuery,
 } from "../ui/list-search.js";
+import { pluginFormatLabelForName } from "./plugin-format.js";
 import { whereResourceAppliesNow } from "./resource-apply-selector.js";
 
 export type LibraryInventoryListKind = "resource" | "plugin-package";
@@ -29,6 +30,7 @@ export type LibraryInventoryRow = {
   dirty?: boolean;
   pluginOrigin?: PluginOrigin;
   tags?: string[];
+  format_label?: string;
   hook?: {
     event: string;
     script: string;
@@ -131,6 +133,7 @@ function pluginToInventoryRow(plugin: Plugin): LibraryInventoryRow {
     dirty: plugin.dirty,
     pluginOrigin: plugin.origin,
     tags: plugin.tags,
+    format_label: pluginFormatLabelForName(plugin.name, plugin.origin),
   };
 }
 

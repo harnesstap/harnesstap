@@ -31,6 +31,7 @@ describe("queryLibraryInventory", () => {
       source: "manual",
     });
     const all = queryLibraryInventory({ q: "", type: null });
+    expect(all.rows.find((row) => row.name === "zeta-pack")?.format_label).toBe("HarnessTap");
     expect(all.rows.map((row) => `${row.listKind}:${row.name}`)).toEqual([
       "resource:mid-cmd",
       "plugin-package:zeta-pack",

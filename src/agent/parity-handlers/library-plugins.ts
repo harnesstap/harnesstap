@@ -46,6 +46,11 @@ import {
   PluginVersionError,
   rollbackPluginVersion,
 } from "../../services/plugin-versioning.js";
+import {
+  importNoteLines,
+  pluginFormatLabelForName,
+  readPluginImportDiagnostics,
+} from "../../services/plugin-format.js";
 import { toContentsResource } from "../../services/profile-contents.js";
 import { trackPluginUsed } from "../../telemetry/index.js";
 import type { Plugin, Resource, ResourceType } from "../../types.js";
@@ -159,23 +164,28 @@ export function toPluginHead(plugin: {
   dirty: boolean;
   org_slug: string;
   catalog_slug: string;
+  format_label: string;
 } {
+  const origin = getPluginOrigin(plugin.id);
   return {
     id: plugin.id,
     name: plugin.name,
     version: plugin.version,
     tags: plugin.tags,
     description: plugin.description || null,
-    origin: getPluginOrigin(plugin.id),
+    origin,
     origin_locator: plugin.origin_locator ?? "",
     dirty: plugin.dirty,
     org_slug: plugin.org_slug,
     catalog_slug: plugin.catalog_slug,
+    format_label: pluginFormatLabelForName(plugin.name, origin),
   };
 }
 
 export function buildPluginDetail(plugin: Plugin) {
   const attached = ensureUpstreamPluginResources(plugin);
+  const origin = getPluginOrigin(plugin.id);
+  const diagnostics = readPluginImportDiagnostics(plugin.name);
   return {
     plugin: {
       id: plugin.id,
@@ -183,12 +193,14 @@ export function buildPluginDetail(plugin: Plugin) {
       version: plugin.version,
       description: plugin.description ?? "",
       tags: plugin.tags,
-      origin: getPluginOrigin(plugin.id),
+      origin,
       origin_locator: plugin.origin_locator ?? "",
       dirty: plugin.dirty,
       frozen_at: plugin.frozen_at ?? null,
       default_environment_id: plugin.default_environment_id ?? null,
+      format_label: pluginFormatLabelForName(plugin.name, origin),
     },
+    ...(importNoteLines(diagnostics).length > 0 ? { diagnostics } : {}),
     dependencies: listPluginDependencies(plugin.id).map((dep) => ({
       dependency_name: dep.dependency_name,
       version_constraint: dep.version_constraint,
@@ -498,6 +510,7 @@ export async function tryHandle(
         origin_locator: imported.origin_locator,
         origin_fingerprint: imported.origin_fingerprint,
         created: imported.created,
+        diagnostics: readPluginImportDiagnostics(imported.plugin.name) ?? null,
       });
     } catch (error) {
       if (error instanceof MarketplacePluginImportError) {
@@ -546,6 +559,7 @@ export async function tryHandle(
         origin_locator: imported.origin_locator,
         origin_fingerprint: imported.origin_fingerprint,
         created: imported.created,
+        diagnostics: readPluginImportDiagnostics(imported.plugin.name) ?? null,
       });
     } catch (error) {
       if (error instanceof GitPluginImportError) {

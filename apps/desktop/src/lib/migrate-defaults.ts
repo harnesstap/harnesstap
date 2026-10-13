@@ -2,6 +2,7 @@ import type { MigrateScope } from "./types";
 
 export type MigrateExportStep = "scope" | "target" | "options" | "path" | "confirm";
 export type MigrateImportStep = "path" | "scope" | "confirm";
+export type PluginPackageFormat = "directory" | "zip" | "envelope";
 
 export function migrateExportSteps(scope: MigrateScope): readonly MigrateExportStep[] {
   switch (scope) {
@@ -41,13 +42,26 @@ export function defaultMigrateExportFilename(input: {
   scope: MigrateScope;
   plugin?: string;
   resource?: string;
+  packageFormat?: PluginPackageFormat;
 }): string {
   switch (input.scope) {
     case "workspace":
       return "harnesstap-migrate.tar.gz";
     case "plugin": {
       const first = (input.plugin ?? "plugin").split(",")[0]?.trim() || "plugin";
-      return `${first}.ap.json`;
+      const format = input.packageFormat ?? "envelope";
+      switch (format) {
+        case "directory":
+          return first;
+        case "zip":
+          return `${first}.zip`;
+        case "envelope":
+          return `${first}.ap.json`;
+        default: {
+          const neverFormat: never = format;
+          return neverFormat;
+        }
+      }
     }
     case "resource": {
       const selector = input.resource ?? "resource:export";

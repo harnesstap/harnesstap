@@ -8,6 +8,7 @@ import {
   LIBRARY_ROW_HEIGHT,
   LIBRARY_ROW_HEIGHT_WITH_SUBTITLE,
   libraryRowBadge,
+  libraryRowFormatBadge,
   libraryRowHeight,
   libraryRowSelector,
   libraryRowTreatAsScoped,
@@ -122,6 +123,14 @@ describe("libraryRowBadge", () => {
       "1.0.0",
     );
     expect(libraryRowBadge(entryOfKind(entries, "resource"))).toBe("plugin ref");
+    expect(libraryRowFormatBadge(entryOfKind(entries, "plugin-package"))).toBe(null);
+    const labeled = mergeLibraryList(
+      [],
+      [{ ...pluginHead, format_label: "Agent Plugins 1.0" }],
+    );
+    expect(libraryRowFormatBadge(entryOfKind(labeled, "plugin-package"))).toBe(
+      "Agent Plugins 1.0",
+    );
   });
 });
 

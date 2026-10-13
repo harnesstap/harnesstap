@@ -2,7 +2,11 @@ import { useEffect, useId, useState } from "react";
 import { FolderDown, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { importLibraryPluginFromGit } from "../lib/api/library-plugins";
+import {
+  importLibraryPluginFromGit,
+  pluginImportNoteLines,
+  type PluginImportDiagnostics,
+} from "../lib/api/library-plugins";
 import { AgentApiError } from "../lib/api/http";
 import {
   CREATE_RESOURCE_TYPES,
@@ -50,6 +54,7 @@ export function ResourceTypeModal({
   const [source, setSource] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -59,6 +64,7 @@ export function ResourceTypeModal({
     setSource("");
     setBusy(false);
     setError(null);
+    setNotes(null);
   }, [open]);
 
   const layerRef = useOverlayLayer<HTMLDivElement>({
@@ -111,6 +117,13 @@ export function ResourceTypeModal({
     try {
       const imported = await importLibraryPluginFromGit(baseUrl, token, trimmed);
       onImported?.(imported.plugin.name);
+      const loadedNotes = pluginImportNoteLines(
+        imported.diagnostics as PluginImportDiagnostics | null | undefined,
+      );
+      if (loadedNotes.length > 0) {
+        setNotes(loadedNotes);
+        return;
+      }
       onClose();
     } catch (caught) {
       setError(importErrorMessage(caught));
@@ -202,6 +215,16 @@ export function ResourceTypeModal({
                   {error}
                 </p>
               ) : null}
+              {notes && notes.length > 0 ? (
+                <div className="banner" role="status">
+                  <p>Loaded with notes.</p>
+                  <ul>
+                    {notes.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <div className="dialog-actions">
                 <button
                   className="btn"
@@ -214,16 +237,26 @@ export function ResourceTypeModal({
                 >
                   Back
                 </button>
-                <button
-                  className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-                  type="submit"
-                  data-testid="resource-type-import-submit"
-                  disabled={disabled || busy || !baseUrl}
-                  aria-busy={busy}
-                >
-                  {busy ? <ButtonSpinner size={16} /> : <FolderDown size={16} aria-hidden />}
-                  Import
-                </button>
+                {notes && notes.length > 0 ? (
+                  <button
+                    className="btn primary"
+                    type="button"
+                    onClick={onClose}
+                  >
+                    Done
+                  </button>
+                ) : (
+                  <button
+                    className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+                    type="submit"
+                    data-testid="resource-type-import-submit"
+                    disabled={disabled || busy || !baseUrl}
+                    aria-busy={busy}
+                  >
+                    {busy ? <ButtonSpinner size={16} /> : <FolderDown size={16} aria-hidden />}
+                    Import
+                  </button>
+                )}
               </div>
             </form>
           ) : (
