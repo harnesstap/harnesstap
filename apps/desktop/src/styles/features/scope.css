@@ -372,6 +372,10 @@
   color: var(--red);
 }
 
+.file-change-kind-badge.kept {
+  color: var(--muted);
+}
+
 .file-change-kind-badge.update {
   color: var(--yellow);
 }
@@ -489,6 +493,10 @@
 
 .file-change-group-count.remove {
   color: var(--red);
+}
+
+.file-change-group-count.kept {
+  color: var(--muted);
 }
 
 .file-change-group-count.update {
@@ -1527,6 +1535,10 @@
 
 .diff-row.remove .diff-mark {
   color: var(--red);
+}
+
+.diff-row.kept .diff-mark {
+  color: var(--muted);
 }
 
 .diff-row.update .diff-mark {

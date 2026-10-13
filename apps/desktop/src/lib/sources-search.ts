@@ -593,12 +593,17 @@ export function mergeSourcesHits(input: MergeSourcesHitsInput): SourcesHitGroup[
 
   for (const marketplace of input.marketplaces ?? []) {
     const hits: SourcesHit[] = [];
+    const seenIds = new Set<string>();
     for (const plugin of marketplace.plugins) {
       const hit = marketplacePluginHit(
         marketplace,
         plugin,
         libraryResources,
       );
+      // One row per plugin name. A marketplace can list the same name from
+      // more than one manifest flavor; the second copy would reuse this id.
+      if (seenIds.has(hit.id)) continue;
+      seenIds.add(hit.id);
       if (hitMatchesQuery(hit, query)) hits.push(hit);
     }
     groupsById.set(marketplace.sourceId, {

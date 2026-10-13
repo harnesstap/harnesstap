@@ -232,6 +232,28 @@ describe("presenceForMarketplace", () => {
 });
 
 describe("mergeSourcesHits", () => {
+  test("keeps one row when a marketplace lists the same plugin twice", () => {
+    const groups = mergeSourcesHits({
+      sourceOrder: ["mkt:cursor-public"],
+      marketplaces: [
+        {
+          sourceId: "mkt:cursor-public",
+          sourceLabel: "cursor-public",
+          marketplaceName: "cursor-public",
+          plugins: [
+            { name: "origin-apps", description: "Open apps from other machines." },
+            { name: "origin-apps", description: "Second manifest copy" },
+          ],
+        },
+      ],
+    });
+
+    expect(groups[0]?.hits.map((hit) => hit.id)).toEqual([
+      "mkt:cursor-public:plugin:origin-apps",
+    ]);
+    expect(groups[0]?.hits[0]?.description).toBe("Open apps from other machines.");
+  });
+
   test("omits local library inventory from discover hits", () => {
     const groups = mergeSourcesHits({
       sourceOrder: ["local"],

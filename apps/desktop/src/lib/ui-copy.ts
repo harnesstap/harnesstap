@@ -38,6 +38,7 @@ export const PREVIEW_FILE_COPY = {
   upToDate: "Up to date",
   notInProfile: "Not in profile",
   willRemove: "Will remove",
+  kept: "Kept",
   keptChanged: "Kept. You changed it.",
   keptUnmanaged: "Kept. Not made by HarnessTap.",
 } as const;

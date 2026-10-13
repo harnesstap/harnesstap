@@ -950,7 +950,7 @@ export function summarizeStackChanges(
   return rows;
 }
 
-export type FileChangeKind = "add" | "remove" | "update";
+export type FileChangeKind = "add" | "remove" | "update" | "kept";
 
 export interface FileChangeLabelCount {
   action: FileChangeKind;
@@ -969,7 +969,10 @@ export function fileChangeLabelCounts(
   const buckets = new Map<string, FileChangeLabelCount>();
   for (const change of changes) {
     const mapped = fileChangeAction(change);
-    const removalGroup = mapped.action === "remove" ? change.removal_group : undefined;
+    const removalGroup =
+      mapped.action === "remove" || mapped.action === "kept"
+        ? change.removal_group
+        : undefined;
     const key = `${mapped.action}:${mapped.label}`;
     const existing = buckets.get(key);
     if (existing) {
@@ -986,7 +989,7 @@ export function fileChangeLabelCounts(
       ...(removalGroup ? { removalGroup } : {}),
     });
   }
-  const kindOrder: FileChangeKind[] = ["add", "update", "remove"];
+  const kindOrder: FileChangeKind[] = ["add", "update", "kept", "remove"];
   return [...buckets.values()].sort((left, right) => {
     const kindDelta = kindOrder.indexOf(left.action) - kindOrder.indexOf(right.action);
     if (kindDelta !== 0) {
@@ -998,14 +1001,14 @@ export function fileChangeLabelCounts(
 
 /** Map drift/apply file change types into user-facing apply verbs. */
 export function fileChangeAction(change: DriftFileChange): {
-  action: "add" | "update" | "remove";
+  action: FileChangeKind;
   label: string;
 } {
   switch (change.removal_group) {
     case "owned_modified":
-      return { action: "remove", label: PREVIEW_FILE_COPY.keptChanged };
+      return { action: "kept", label: PREVIEW_FILE_COPY.keptChanged };
     case "unmanaged":
-      return { action: "remove", label: PREVIEW_FILE_COPY.keptUnmanaged };
+      return { action: "kept", label: PREVIEW_FILE_COPY.keptUnmanaged };
     case "owned_unmodified":
     case undefined:
       break;
@@ -1055,7 +1058,7 @@ function fileChangeResourceKey(change: DriftFileChange): string {
   return `path:${change.path}`;
 }
 
-const FILE_CHANGE_KIND_ORDER: FileChangeKind[] = ["add", "remove", "update"];
+const FILE_CHANGE_KIND_ORDER: FileChangeKind[] = ["add", "update", "kept", "remove"];
 
 export interface FileChangeResourceGroup {
   key: string;
@@ -1162,6 +1165,7 @@ export function countFileChangeKindResources(
     add: new Set(),
     remove: new Set(),
     update: new Set(),
+    kept: new Set(),
   };
   for (const change of changes) {
     const kind = fileChangeAction(change).action;
@@ -1171,6 +1175,7 @@ export function countFileChangeKindResources(
     add: keys.add.size,
     remove: keys.remove.size,
     update: keys.update.size,
+    kept: keys.kept.size,
   };
 }
 
