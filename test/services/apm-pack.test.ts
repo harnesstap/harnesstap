@@ -133,7 +133,10 @@ describe("packProject", () => {
 
   it("writes a zip archive", () => {
     writeManifest();
-    writeTextFile(join(ctx.projectDir, "skills", "ship", "SKILL.md"), "# Ship\n");
+    writeTextFile(
+      join(ctx.projectDir, "skills", "ship", "SKILL.md"),
+      "---\nname: ship\ndescription: Ship the project\n---\n\n# Ship\n",
+    );
     const result = packProject({
       projectRoot: ctx.projectDir,
       archive: true,
