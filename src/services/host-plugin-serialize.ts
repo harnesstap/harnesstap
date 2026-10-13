@@ -22,6 +22,7 @@ import type {
 import { parsePluginRef } from "../plugins/host-plugin-manifest.js";
 import { filterHostPluginRuntimeFiles } from "./host-plugin-runtime-modules.js";
 import { resolveInstallRoot } from "./resource-sync.js";
+import { translateEmittedSpecTree } from "./host-plugin-spec-emit.js";
 import { mergeClaudeSettingsContent } from "./merged-host-config.js";
 
 const SKIP_DIR_NAMES = new Set([".git", "node_modules", ".refresh-staging"]);
@@ -294,7 +295,20 @@ export function emitHostPluginTrees(
     const allowRuntimeModules =
       getPlatform(options.layout)?.hostPluginRuntimeModules === true;
     const filtered = filterHostPluginRuntimeFiles(collected, allowRuntimeModules);
-    for (const file of filtered.files) {
+    const translated = translateEmittedSpecTree(filtered.files, {
+      layout: options.layout,
+      pluginName: resource.name,
+    });
+    for (const message of translated.warnings) {
+      options.surfaceWarnings?.push({
+        harness: options.layout,
+        path: relativeRoot,
+        category: "plugin-var",
+        message,
+        alias_harnesses: [],
+      });
+    }
+    for (const file of translated.files) {
       files.push({
         path: `${relativeRoot}/${file.relativePath}`,
         content: file.content,
