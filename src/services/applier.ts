@@ -32,6 +32,7 @@ import type {
 } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { hasParentTraversalSegment } from "../utils/path-containment.js";
+import { resolveInstalledMcpResources } from "./agent-plugins/mcp-host-paths.js";
 import { mcpSerializationWarnings } from "./agent-plugins/plugin-vars.js";
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { gateDeployFiles } from "./deploy-gate.js";
@@ -360,6 +361,17 @@ export async function generateFiles(
           alias_harnesses: [],
         });
       }
+    }
+    const resolvedMcp = resolveInstalledMcpResources(emitResources);
+    emitResources = resolvedMcp.resources;
+    for (const message of resolvedMcp.warnings) {
+      surfaceWarnings.push({
+        harness: pid,
+        path: "",
+        category: "plugin-data-dir",
+        message,
+        alias_harnesses: [],
+      });
     }
     let files = await serializer.serialize(emitResources, projectRoot, {
       target,

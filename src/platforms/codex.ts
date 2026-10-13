@@ -28,6 +28,7 @@ interface CodexMcpServerEntry {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
+  cwd?: string;
 }
 
 interface CodexPermissionProfile {
@@ -199,6 +200,7 @@ function buildMcpServers(
       if (metadata.env && Object.keys(metadata.env).length > 0) {
         entry.env = metadata.env;
       }
+      if (metadata.cwd) entry.cwd = metadata.cwd;
     }
     mcpServers[resource.name] = entry;
   }
@@ -267,6 +269,7 @@ export class CodexSerializer extends BaseSerializer {
           args: entry.args,
           url: entry.url,
           env: entry.env,
+          ...(typeof entry.cwd === "string" ? { cwd: entry.cwd } : {}),
         };
         resources.push(
           this.makeResource("mcp_server", name, "", source, metadata),

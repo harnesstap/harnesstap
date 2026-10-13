@@ -30,6 +30,7 @@ export async function renderCatalogPluginPreviewShow(
   const imported = importApPackageFiles(downloaded.files, {
     as: previewPluginName,
     origin: "catalog",
+    installPackage: false,
   });
 
   try {
