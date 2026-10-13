@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop Discover no longer shows the CLI catalog timeout. A crashed agent splash uses a short headline, and paths shorten with the real home directory.
+time: 2026-10-13T10:45:00.000Z
+custom:
+  Issue: ""

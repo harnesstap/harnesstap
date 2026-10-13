@@ -3,6 +3,8 @@
  * ASCII punctuation only. No em dashes, en dashes, or Unicode ellipsis.
  */
 
+import { getDisplayHome } from "./display-home";
+
 export const HARNESS_MAIN_PILL_TOOLTIP =
   "Your main harness. It wins when harnesses disagree.";
 
@@ -119,6 +121,7 @@ export const CONNECT_SPLASH_COPY = {
   couldNotConnect: "Can't reach the HarnessTap agent",
   sidecarConnectionFailed: "Can't reach the HarnessTap agent",
   unreachable: "Can't reach the HarnessTap agent",
+  unexpectedStop: "The HarnessTap agent stopped unexpectedly.",
   retry: "Retry",
   openLogs: "Open logs",
   openLogsFailed(reason: string): string {
@@ -185,12 +188,13 @@ export const CREATE_RESOURCE_COPY = {
 const USER_PATH_MAX = 48;
 
 /** Show `$HOME` as `~`. ASCII `...` when the path is too long (DT-15). */
-export function formatUserPath(
-  path: string,
-  home = typeof process !== "undefined" ? process.env.HOME ?? process.env.USERPROFILE : undefined,
-): string {
+export function formatUserPath(path: string, home?: string): string {
+  const resolved =
+    home
+    ?? getDisplayHome()
+    ?? (typeof process !== "undefined" ? process.env.HOME ?? process.env.USERPROFILE : undefined);
   const normalized = path.replaceAll("\\", "/");
-  const homeNorm = home?.replaceAll("\\", "/");
+  const homeNorm = resolved?.replaceAll("\\", "/");
   const tilde =
     homeNorm && (normalized === homeNorm || normalized.startsWith(`${homeNorm}/`))
       ? `~${normalized.slice(homeNorm.length)}`

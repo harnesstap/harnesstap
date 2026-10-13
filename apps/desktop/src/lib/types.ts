@@ -603,6 +603,8 @@ export interface AgentHealth {
   version: string;
   port: number;
   first_run?: boolean;
+  /** User home directory, so Desktop can shorten paths that do not live under /home or /Users. */
+  home?: string;
 }
 
 export interface TelemetryConsentCopy {
