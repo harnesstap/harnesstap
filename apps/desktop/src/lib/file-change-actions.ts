@@ -11,7 +11,7 @@ export function fileChangeRowActions(
   change: DriftFileChange,
   opts: { rootPath: string | null; profileHasResource: boolean },
 ): {
-  action: "add" | "update" | "remove";
+  action: "add" | "update" | "remove" | "kept";
   absolutePath: string | null;
   canOpen: boolean;
   canDiff: boolean;
@@ -37,6 +37,7 @@ export function fileChangeRowActions(
       canDiff = true;
       break;
     case "remove":
+    case "kept":
       canAdd = hasResource;
       canDrop = hasResource && opts.profileHasResource;
       break;

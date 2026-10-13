@@ -24,7 +24,8 @@ New text for the Install section of README.md.
 <!-- append -->
 - `plugin validate <file>` - load an Agent Plugins directory, zip, or `.ap.json` and report skills, MCP servers, skipped entries, and ignored manifest fields (`--spec 1.0.0`, `--format json`)
 - `plugin publish --strict` blocks when export warnings are present (a renamed skill, a secret moved out of `mcp.json`, or a skipped MCP server). A wrong `$schema` or an unusable `mcp.json` always blocks publish.
-- `plugin publish --vendor-extensions` and `migrate export --plugin --vendor-extensions` also write Copilot files under `com.github.copilot/` and Codex hook settings under `extensions["com.openai"]`. The flag is off by default. Existing vendor files are left in place.
+- `plugin publish --vendor-extensions` and `migrate export --plugin --vendor-extensions` also write Copilot files under `com.github.copilot/` and Codex hook settings under `extensions["com.openai"]`. The flag is off by default. Existing vendor files are left in place. A hook command that points at a file outside the package is copied next to that hooks file and rewritten to a relative path. A hook whose script cannot be read is left out, with a warning.
+- Human `migrate export` prints a path under your home directory as `~/...`. JSON output keeps the absolute path.
 - `migrate export --plugin --archive` (or a path ending in `.zip`) writes the Agent Plugins package as a zip. It does not replace a directory.
 - A directory whose root `plugin.json` uses the Agent Plugins 1.0.0 `$schema` is an agent plugin. Import keeps `author`, `homepage`, `repository`, and `license`, and keeps vendor namespace objects and their directories (for example `com.openai` and `com.github.copilot`). Path overrides in that manifest are ignored. Root `agents`, `commands`, and `hooks` are still read, with a warning.
 

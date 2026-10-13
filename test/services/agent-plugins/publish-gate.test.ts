@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { addResourceToPlugin, createPlugin } from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
@@ -159,6 +159,60 @@ describe("vendor extensions", () => {
     expect(specErrors("plugin", manifestJson)).toEqual([]);
     expect(warnings.join("\n")).toContain("left com.github.copilot/agents/helper.agent.md");
     expect(warnings.join("\n")).toContain("not copied under com.openai");
+  });
+
+  it("bundles an outside hook script and skips one that cannot be read", () => {
+    const plugin = createPlugin({
+      name: "vendor-hooks",
+      version: "1.0.0",
+      description: "Hooks",
+    });
+    const scriptDir = join(ctx.homeDir, ".claude", "hooks");
+    mkdirSync(scriptDir, { recursive: true });
+    writeFileSync(join(scriptDir, "format.sh"), "#!/bin/sh\necho bundled\n");
+    addResourceToPlugin(
+      plugin.id,
+      createResource({
+        type: "hook",
+        name: "format",
+        description: "",
+        content: "",
+        metadata: {
+          event: "PostToolUse",
+          script: "bash ~/.claude/hooks/format.sh",
+        },
+        source: "test",
+      }).id,
+    );
+    addResourceToPlugin(
+      plugin.id,
+      createResource({
+        type: "hook",
+        name: "missing",
+        description: "",
+        content: "",
+        metadata: {
+          event: "Stop",
+          script: "~/.claude/hooks/missing.sh",
+        },
+        source: "test",
+      }).id,
+    );
+
+    const warnings: string[] = [];
+    const files = buildApPackageFiles(plugin.id, { vendorExtensions: true, warnings });
+    const bundled = files["com.github.copilot/hooks/format.sh"]?.content ?? "";
+    expect(bundled).toContain("echo bundled");
+    expect(files["com.openai/hooks/format.sh"]?.content).toContain("echo bundled");
+    const copilotHooks = files["com.github.copilot/hooks/hooks.json"]?.content ?? "";
+    const openaiHooks = files["com.openai/hooks/hooks.json"]?.content ?? "";
+    expect(copilotHooks).toContain("./com.github.copilot/hooks/format.sh");
+    expect(openaiHooks).toContain("./com.openai/hooks/format.sh");
+    expect(copilotHooks).not.toContain(".claude/hooks");
+    expect(openaiHooks).not.toContain(".claude/hooks");
+    expect(copilotHooks).not.toContain("missing.sh");
+    expect(warnings.join("\n")).toContain("missing.sh");
+    expect(warnings.join("\n")).toContain("was not bundled");
   });
 });
 

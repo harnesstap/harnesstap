@@ -256,7 +256,7 @@ describe("contents-diff helpers", () => {
       { path: ".claude/rules/owned.md", type: "added", removal_group: "owned_unmodified" },
     ])).toEqual([
       {
-        action: "remove",
+        action: "kept",
         label: "Kept. Not made by HarnessTap.",
         count: 2,
         removalGroup: "unmanaged",
@@ -268,6 +268,15 @@ describe("contents-diff helpers", () => {
         removalGroup: "owned_unmodified",
       },
     ]);
+    expect(countFileChangeKindResources([
+      { path: ".codex/agents/codex-explorer.toml", type: "added", removal_group: "unmanaged" },
+      { path: ".claude/rules/owned.md", type: "added", removal_group: "owned_unmodified" },
+    ])).toEqual({
+      add: 0,
+      update: 0,
+      kept: 1,
+      remove: 1,
+    });
   });
 
   it("maps file change types to apply verbs", () => {
@@ -282,7 +291,7 @@ describe("contents-diff helpers", () => {
     expect(
       fileChangeAction({ path: "a", type: "modified", removal_group: "owned_modified" }),
     ).toEqual({
-      action: "remove",
+      action: "kept",
       label: "Kept. You changed it.",
     });
     expect(fileChangeAction({ path: "a", type: "added" })).toEqual({
@@ -292,13 +301,13 @@ describe("contents-diff helpers", () => {
     expect(
       fileChangeAction({ path: "a", type: "added", removal_group: "owned_modified" }),
     ).toEqual({
-      action: "remove",
+      action: "kept",
       label: "Kept. You changed it.",
     });
     expect(
       fileChangeAction({ path: "a", type: "added", removal_group: "unmanaged" }),
     ).toEqual({
-      action: "remove",
+      action: "kept",
       label: "Kept. Not made by HarnessTap.",
     });
   });
@@ -328,6 +337,7 @@ describe("contents-diff helpers", () => {
       add: 1,
       remove: 1,
       update: 1,
+      kept: 0,
     });
   });
 

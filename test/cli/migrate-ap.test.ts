@@ -38,6 +38,15 @@ function seed(): void {
 }
 
 describe("migrate export --plugin", () => {
+  it("prints a home path with a tilde", async () => {
+    seed();
+    const out = join(ctx.homeDir, "pkg");
+    const result = await runCli(["migrate", "export", "--plugin", "my-plugin", "-o", out]);
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(result.stdout).toContain("~/pkg");
+    expect(result.stdout).not.toContain(ctx.homeDir);
+  });
+
   it("writes a package directory by default", async () => {
     seed();
     const out = join(ctx.projectDir, "pkg");

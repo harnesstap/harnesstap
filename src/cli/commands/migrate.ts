@@ -17,26 +17,28 @@ import { runMigrateExportWizard } from "../../services/wizards/migrate-export.js
 import { runMigrateImportWizard } from "../../services/wizards/migrate-import.js";
 import { shouldUseWizard } from "../../services/wizards/shared.js";
 import { ui } from "../../ui/index.js";
+import { shortenHomePath } from "../../utils/home-path.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { formatCount } from "../formatting.js";
 import { configureCommandGroup } from "../help.js";
 import { fail, failCaught } from "../shared.js";
 
 function printMigrateExportHuman(result: ScopedExportResult): void {
+  const output = shortenHomePath(result.output);
   switch (result.scope) {
     case "workspace":
       ui.success(
-        `Exported migration archive ${ui.icons.hint} ${result.output} ${ui.icons.bullet} ${result.manifest.plugin_count} plugins, ${result.manifest.environment_count} environments`,
+        `Exported migration archive ${ui.icons.hint} ${output} ${ui.icons.bullet} ${result.manifest.plugin_count} plugins, ${result.manifest.environment_count} environments`,
       );
       return;
     case "plugin":
       ui.success(
-        `Exported plugin ${ui.theme.accent(result.plugins.join(", "))} ${ui.icons.hint} ${result.output}`,
+        `Exported plugin ${ui.theme.accent(result.plugins.join(", "))} ${ui.icons.hint} ${output}`,
       );
       return;
     case "resource":
       ui.success(
-        `Exported resource ${ui.theme.accent(result.resource)} ${ui.icons.hint} ${result.output}`,
+        `Exported resource ${ui.theme.accent(result.resource)} ${ui.icons.hint} ${output}`,
       );
       return;
     default: {

@@ -288,8 +288,9 @@ const FILE_CHANGE_KIND_BADGES: Array<{
   Icon: typeof Plus;
 }> = [
   { kind: "add", label: PREVIEW_FILE_COPY.willWrite, Icon: Plus },
-  { kind: "remove", label: PREVIEW_FILE_COPY.willRemove, Icon: Minus },
   { kind: "update", label: PREVIEW_FILE_COPY.willWrite, Icon: Pencil },
+  { kind: "kept", label: PREVIEW_FILE_COPY.kept, Icon: Check },
+  { kind: "remove", label: PREVIEW_FILE_COPY.willRemove, Icon: Minus },
 ];
 
 function FileChangeKindBadgeMark({ kind }: { kind: FileChangeKind }): ReactNode {
@@ -304,6 +305,12 @@ function FileChangeKindBadgeMark({ kind }: { kind: FileChangeKind }): ReactNode 
       return (
         <span className="file-change-kind-mark" aria-hidden>
           −
+        </span>
+      );
+    case "kept":
+      return (
+        <span className="file-change-kind-mark" aria-hidden>
+          =
         </span>
       );
     case "update":
@@ -957,6 +964,8 @@ function fileChangeKindChipTooltip(
       return PREVIEW_FILE_COPY.willWrite;
     case "remove":
       return PREVIEW_FILE_COPY.willRemove;
+    case "kept":
+      return PREVIEW_FILE_COPY.kept;
     default: {
       const neverKind: never = kind;
       return neverKind;
@@ -969,6 +978,7 @@ function fileChangeKindBadge(kind: FileChangeKind): (typeof FILE_CHANGE_KIND_BAD
     case "add":
     case "remove":
     case "update":
+    case "kept":
       return FILE_CHANGE_KIND_BADGES.find((badge) => badge.kind === kind)!;
     default: {
       const neverKind: never = kind;
@@ -1006,6 +1016,7 @@ function fileChangeKindClass(kind: FileChangeKind): FileChangeKind {
     case "add":
     case "remove":
     case "update":
+    case "kept":
       return kind;
     default: {
       const neverKind: never = kind;
@@ -1020,6 +1031,8 @@ function fileChangeKindMark(kind: FileChangeKind): string {
       return "+";
     case "remove":
       return "−";
+    case "kept":
+      return "=";
     case "update":
       return "~";
     default: {

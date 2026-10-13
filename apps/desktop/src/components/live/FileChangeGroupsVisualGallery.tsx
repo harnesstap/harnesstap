@@ -13,8 +13,8 @@ export function FileChangeGroupsVisualGallery() {
         <span className="file-change-group-counts">
           <FileChangeKindChip kind="add" count={2} />
           <FileChangeKindChip kind="remove" count={1} removalGroup="owned_unmodified" />
-          <FileChangeKindChip kind="remove" count={3} removalGroup="owned_modified" />
-          <FileChangeKindChip kind="remove" count={4} removalGroup="unmanaged" />
+          <FileChangeKindChip kind="kept" count={3} removalGroup="owned_modified" />
+          <FileChangeKindChip kind="kept" count={4} removalGroup="unmanaged" />
         </span>
       </div>
     </main>
