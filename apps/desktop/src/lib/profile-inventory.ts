@@ -1,4 +1,4 @@
-import { formatResourceDisplayName } from "./resource-display";
+import { duplicatePluginNames, formatResourceDisplayName } from "./resource-display";
 import { filterContentsResourcesBySearch } from "./resource-search";
 import {
   ALL_RESOURCE_TYPE_TAB,
@@ -92,6 +92,50 @@ export function membershipKey(
   return `${resource.type}:${resource.name}`;
 }
 
+function harnessSourceLabel(scope: ProfileContentsResource["harness_scope"]): string {
+  if (!scope || scope === "all" || scope.length === 0) {
+    return "";
+  }
+  return scope.join(",");
+}
+
+function pluginLabelResource(
+  resource: ProfileContentsResource,
+  peers: readonly ProfileContentsResource[],
+): ProfileContentsResource {
+  if (resource.type !== "plugin") {
+    return resource;
+  }
+  const sameName = peers.filter(
+    (row) => row.type === "plugin" && row.name === resource.name,
+  );
+  if (sameName.length < 2) {
+    return resource;
+  }
+  const refs = new Set(sameName.map((row) => row.origin_ref?.trim() ?? ""));
+  const originDistinguishes =
+    refs.size === sameName.length && [...refs].every((ref) => ref.includes("@"));
+  if (originDistinguishes) {
+    return resource;
+  }
+  const scopes = new Set(sameName.map((row) => harnessSourceLabel(row.harness_scope)));
+  const scope = harnessSourceLabel(resource.harness_scope);
+  if (scopes.size === sameName.length && scope) {
+    return { ...resource, origin_ref: undefined, namespace: scope };
+  }
+  return resource;
+}
+
+function inventoryLabel(
+  resource: ProfileContentsResource,
+  peers: readonly ProfileContentsResource[],
+  duplicateNames: ReadonlySet<string>,
+): string {
+  return formatResourceDisplayName(pluginLabelResource(resource, peers), {
+    disambiguatePlugin: resource.type === "plugin" && duplicateNames.has(resource.name),
+  });
+}
+
 function resourceFromRow(row: ProfileResourceListRow): ProfileContentsResource {
   switch (row.kind) {
     case "plugin":
@@ -101,6 +145,8 @@ function resourceFromRow(row: ProfileResourceListRow): ProfileContentsResource {
         id: row.plugin.attachment_id ?? row.plugin.id,
         source: row.plugin.id,
         ...(row.plugin.harness_scope ? { harness_scope: row.plugin.harness_scope } : {}),
+        ...(row.plugin.origin_ref ? { origin_ref: row.plugin.origin_ref } : {}),
+        ...(row.plugin.namespace ? { namespace: row.plugin.namespace } : {}),
       };
     case "pin":
       return {
@@ -189,6 +235,9 @@ export function partitionProfileInventory(
   const liveKeys = collectKeys(input.liveRows);
   const coveredKeys = coveredProfileMembershipKeys(input.profileRows);
   const fileChanges = input.fileChanges ?? [];
+  const profileResources = input.profileRows.map((row) => resourceFromRow(row));
+  const labelPeers = [...profileResources, ...input.notStaged];
+  const duplicateNames = duplicatePluginNames(labelPeers);
   const driftedKeys = new Set<string>();
   const notStagedUpdates = new Map<string, ProfileContentsResource>();
   const notInProfile: ProfileInventoryItem[] = [];
@@ -208,7 +257,7 @@ export function partitionProfileInventory(
       section: "not_in_profile",
       key: `not-in-profile:${key}`,
       type: resource.type,
-      label: formatResourceDisplayName(resource),
+      label: inventoryLabel(resource, labelPeers, duplicateNames),
       resource,
       drifted: false,
       ...(driftChange ? { driftChange } : {}),
@@ -231,7 +280,7 @@ export function partitionProfileInventory(
       section: onHarness ? "active" : "inactive",
       key: row.key,
       type: row.type,
-      label: formatResourceDisplayName(resource),
+      label: inventoryLabel(resource, labelPeers, duplicateNames),
       resource,
       pluginId: row.kind === "resource" ? row.pluginId : undefined,
       pluginName: row.kind === "resource" ? row.pluginName : undefined,

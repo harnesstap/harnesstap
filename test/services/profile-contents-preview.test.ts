@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
+import {
+  addResourceToPlugin,
+  createPlugin,
+  setPluginTags,
+  stampPluginOrigin,
+} from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import { attachPluginPinToPlugin } from "../../src/services/plugin-composition.ts";
@@ -84,6 +89,22 @@ describe("profile contents and apply preview", () => {
         }),
       ]);
       expect(contents?.mcp_servers).toEqual(["docs"]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("copies a plugin marketplace locator onto the profile contents row", async () => {
+    const context = await createInitializedTestContext("profile-contents-origin");
+    try {
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
+      stampPluginOrigin(plugin.id, { locator: "work@acme" });
+
+      const contents = buildProfileContents("work");
+      const workPlugin = contents?.plugins.find((entry) => entry.name === "work");
+      expect(workPlugin?.origin_ref).toBe("work@acme");
+      expect(workPlugin?.namespace).toBe("acme");
     } finally {
       await context.cleanup();
     }

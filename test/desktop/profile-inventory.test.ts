@@ -732,6 +732,96 @@ describe("partitionProfileInventory", () => {
       "SessionStart: ponytail-activate.js",
     ]);
   });
+
+  it("labels active plugin chips from two marketplaces without dropping either", () => {
+    const profile = contents({
+      plugins: [
+        {
+          id: "a",
+          name: "superpowers",
+          version: "1.0.0",
+          resources: [],
+          origin_ref: "superpowers@claude-plugins-official",
+          namespace: "claude-plugins-official",
+        },
+        {
+          id: "b",
+          name: "superpowers",
+          version: "1.0.0",
+          resources: [],
+          origin_ref: "superpowers@cursor-public",
+          namespace: "cursor-public",
+        },
+      ],
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(profile),
+      liveRows: flattenProfileResourceList(profile),
+      notStaged: [],
+    });
+    expect(parts.active.map((row) => row.label).sort()).toEqual([
+      "superpowers@claude-plugins-official",
+      "superpowers@cursor-public",
+    ]);
+    expect(parts.active).toHaveLength(2);
+    for (const row of parts.active) {
+      expect(profileInventoryOpenTarget(row)).toEqual({
+        kind: "plugin-package",
+        name: "superpowers",
+      });
+    }
+  });
+
+  it("labels same-name plugins by harness when marketplace refs do not differ", () => {
+    const profile = contents({
+      plugins: [
+        {
+          id: "a",
+          name: "superpowers",
+          version: "1.0.0",
+          resources: [],
+          harness_scope: ["cursor"],
+        },
+        {
+          id: "b",
+          name: "superpowers",
+          version: "1.0.0",
+          resources: [],
+          harness_scope: ["claude"],
+        },
+      ],
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(profile),
+      liveRows: flattenProfileResourceList(profile),
+      notStaged: [],
+    });
+    expect(parts.active.map((row) => row.label).sort()).toEqual([
+      "superpowers@claude",
+      "superpowers@cursor",
+    ]);
+  });
+
+  it("leaves a unique plugin name unlabeled", () => {
+    const profile = contents({
+      plugins: [
+        {
+          id: "a",
+          name: "superpowers",
+          version: "1.0.0",
+          resources: [],
+          origin_ref: "superpowers@claude-plugins-official",
+          namespace: "claude-plugins-official",
+        },
+      ],
+    });
+    const parts = partitionProfileInventory({
+      profileRows: flattenProfileResourceList(profile),
+      liveRows: flattenProfileResourceList(profile),
+      notStaged: [],
+    });
+    expect(parts.active.map((row) => row.label)).toEqual(["superpowers"]);
+  });
 });
 
 describe("filterProfileInventoryItems", () => {

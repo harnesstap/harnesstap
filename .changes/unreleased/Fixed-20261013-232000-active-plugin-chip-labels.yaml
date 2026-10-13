@@ -1,0 +1,5 @@
+kind: Fixed
+body: Active plugin chips that share a name show the marketplace or harness, and both copies stay in the list.
+time: 2026-10-13T23:20:00.000Z
+custom:
+  Issue: ""
