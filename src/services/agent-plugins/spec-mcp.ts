@@ -82,6 +82,9 @@ function splitPortable(
 }
 
 function specRemoteType(meta: McpServerMetadata): "streamable-http" | "sse" {
+  if (meta.http_transport === "sse" || meta.http_transport === "streamable-http") {
+    return meta.http_transport;
+  }
   return meta.connection_type?.toLowerCase() === "sse" ? "sse" : "streamable-http";
 }
 
@@ -114,6 +117,7 @@ function toSpecEntry(
   } else if (meta.command) {
     entry = { type: "stdio", command: meta.command };
     if (meta.args) entry.args = meta.args;
+    if (meta.cwd) entry.cwd = meta.cwd;
     const env = splitPortable(meta.env, "env");
     if (nonEmpty(env.portable)) entry.env = env.portable;
     if (nonEmpty(env.moved)) {

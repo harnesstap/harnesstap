@@ -22,6 +22,7 @@ import { applyClaudePluginExtensions } from "../platforms/claude-plugin-extensio
 import type {
   ClaudePluginConfig,
   HookMetadata,
+  McpServerMetadata,
   Resource,
   SerializedFile,
   SerializeOptions,
@@ -45,6 +46,7 @@ import {
 import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { resourceAppliesToHarness } from "./harness-scope.js";
 import { hookRequiresPluginRoot } from "./hook-serialization.js";
+import { mcpSerializationWarnings } from "./agent-plugins/plugin-vars.js";
 import { recordPreexistingPath } from "../models/preexisting-path.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import {
@@ -329,6 +331,22 @@ export async function generateFiles(
       });
       return false;
     });
+    for (const resource of emitResources) {
+      if (resource.type !== "mcp_server") continue;
+      for (const message of mcpSerializationWarnings(
+        resource.name,
+        resource.metadata as McpServerMetadata,
+        pid,
+      )) {
+        surfaceWarnings.push({
+          harness: pid,
+          path: "",
+          category: "mcp-spec-field",
+          message,
+          alias_harnesses: [],
+        });
+      }
+    }
     let files = await serializer.serialize(emitResources, projectRoot, {
       target,
       skillCursorMode: options.skillCursorMode,

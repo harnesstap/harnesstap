@@ -1,0 +1,3 @@
+kind: Changed
+body: MCP servers keep spec cwd and an HTTP transport of streamable-http or sse. Apply warns when a harness cannot write those fields. Plugin variable translation and the plugin data directory are available for emission.
+time: 2026-10-13T12:00:00Z

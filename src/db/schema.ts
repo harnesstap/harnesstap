@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 36;
+const SCHEMA_VERSION = 37;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -315,6 +315,15 @@ const MIGRATIONS: Record<number, Migration> = {
   `,
   35: migrateNonSemverPluginVersions,
   36: migrateGlobalApplySnapshotState,
+  // MCP cwd and http_transport live in the resources.metadata JSON blob.
+  // This table records PLUGIN_DATA directories HarnessTap created.
+  37: `
+    CREATE TABLE IF NOT EXISTS plugin_data_dirs (
+      plugin_name TEXT PRIMARY KEY,
+      path TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {

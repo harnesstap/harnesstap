@@ -134,6 +134,8 @@ function exportedMcpMetadata(resource: Resource): McpServerMetadata {
     ...(meta.args !== undefined ? { args: meta.args } : {}),
     ...(meta.env !== undefined ? { env: meta.env } : {}),
     ...(meta.headers !== undefined ? { headers: meta.headers } : {}),
+    ...(meta.http_transport !== undefined ? { http_transport: meta.http_transport } : {}),
+    ...(meta.cwd !== undefined ? { cwd: meta.cwd } : {}),
     ...(meta.connection_type !== undefined ? { connection_type: meta.connection_type } : {}),
   };
 }

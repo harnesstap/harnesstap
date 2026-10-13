@@ -117,7 +117,11 @@ export function isPortableMcpResource(resource: Pick<Resource, "type" | "metadat
   if (meta.transport !== "stdio" && meta.transport !== "http") {
     return false;
   }
-  if (meta.connection_type || meta.framing || meta.claude_mcp_scope === "local") {
+  if (
+    (meta.connection_type && meta.connection_type !== "sse")
+    || meta.framing
+    || meta.claude_mcp_scope === "local"
+  ) {
     return false;
   }
   for (const key of Object.keys(meta.env ?? {})) {

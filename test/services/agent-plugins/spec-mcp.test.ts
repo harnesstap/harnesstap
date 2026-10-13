@@ -120,7 +120,39 @@ describe("buildSpecMcpJson", () => {
   it("reads its own output back to the same metadata", () => {
     const { document, extras } = buildSpecMcpJson(SERVERS);
     const read = readApMcpServers(JSON.parse(JSON.stringify(document)), { servers: extras });
-    expect(read).toEqual(SERVERS);
+    expect(read).toEqual({
+      ...SERVERS,
+      legacy: { ...SERVERS.legacy, http_transport: "sse" },
+      remote: { ...SERVERS.remote, http_transport: "streamable-http" },
+      remoteWithEnv: { ...SERVERS.remoteWithEnv, http_transport: "streamable-http" },
+    });
+  });
+
+  it("emits cwd and prefers http_transport over connection_type", () => {
+    const { document, extras } = buildSpecMcpJson({
+      rooted: {
+        transport: "stdio",
+        command: "node",
+        cwd: "${PLUGIN_ROOT}/probe-workdir",
+      },
+      events: {
+        transport: "http",
+        url: "https://mcp.example.com/sse",
+        http_transport: "sse",
+        connection_type: "http",
+      },
+    });
+    expect(document.mcpServers.rooted).toEqual({
+      type: "stdio",
+      command: "node",
+      cwd: "${PLUGIN_ROOT}/probe-workdir",
+    });
+    expect(document.mcpServers.events).toEqual({
+      type: "sse",
+      url: "https://mcp.example.com/sse",
+    });
+    expect(extras.events).toEqual({ connection_type: "http" });
+    expect(specErrors("mcp", document)).toEqual([]);
   });
 
   it("does not treat a spec `type` as a harness connection type", () => {
@@ -137,8 +169,17 @@ describe("buildSpecMcpJson", () => {
     );
     expect(read).toEqual({
       a: { transport: "stdio", command: "npx" },
-      b: { transport: "http", url: "https://x.example/mcp" },
-      c: { transport: "http", url: "https://x.example/sse", connection_type: "sse" },
+      b: {
+        transport: "http",
+        url: "https://x.example/mcp",
+        http_transport: "streamable-http",
+      },
+      c: {
+        transport: "http",
+        url: "https://x.example/sse",
+        http_transport: "sse",
+        connection_type: "sse",
+      },
     });
   });
 
@@ -169,7 +210,12 @@ describe("plugin export mcp.json", () => {
         .filter((resource) => resource.type === "mcp_server")
         .map((resource) => [resource.name, resource.metadata]),
     );
-    expect(byName).toEqual(SERVERS);
+    expect(byName).toEqual({
+      ...SERVERS,
+      legacy: { ...SERVERS.legacy, http_transport: "sse" },
+      remote: { ...SERVERS.remote, http_transport: "streamable-http" },
+      remoteWithEnv: { ...SERVERS.remoteWithEnv, http_transport: "streamable-http" },
+    });
 
     // Fresh library, then import the exported package and export it again.
     await ctx.cleanup();

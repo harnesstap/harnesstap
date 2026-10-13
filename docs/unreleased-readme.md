@@ -23,3 +23,7 @@ New text for the Install section of README.md.
 ## docs/cli/command-reference.md > plugin (`l`) > Commands
 <!-- append -->
 - `plugin validate <file>` - load an Agent Plugins directory, zip, or `.ap.json` and report skills, MCP servers, skipped entries, and ignored manifest fields (`--spec 1.0.0`, `--format json`)
+
+## docs/cli/command-reference.md > apply
+<!-- append -->
+MCP servers from an Agent Plugins package keep `cwd` and an HTTP transport of `streamable-http` or `sse`. Apply warns when a harness cannot write `cwd`, and when `sse` is written as that harness's HTTP form. `${PLUGIN_ROOT}` and `${PLUGIN_DATA}` stay as written in the library. The plugin data directory is `~/.harnesstap/plugin-data/<plugin>`. HarnessTap creates it only when it is missing, records that ownership, and leaves an existing unowned directory or file in place.
