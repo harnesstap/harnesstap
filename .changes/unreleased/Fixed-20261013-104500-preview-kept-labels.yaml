@@ -1,0 +1,5 @@
+kind: Fixed
+body: Profile preview uses the same kept-or-remove groups as the apply confirm dialog, including the group totals. A preview refresh after apply does not reuse a fetch from before the write.
+time: 2026-10-13T10:45:00.000Z
+custom:
+  Issue: ""

@@ -950,6 +950,52 @@ export function summarizeStackChanges(
   return rows;
 }
 
+export type FileChangeKind = "add" | "remove" | "update";
+
+export interface FileChangeLabelCount {
+  action: FileChangeKind;
+  label: string;
+  count: number;
+  removalGroup?: DriftFileChange["removal_group"];
+}
+
+/**
+ * Count file changes by the same label the confirm dialog uses.
+ * Kept rows stay out of the "Will remove" total.
+ */
+export function fileChangeLabelCounts(
+  changes: readonly DriftFileChange[],
+): FileChangeLabelCount[] {
+  const buckets = new Map<string, FileChangeLabelCount>();
+  for (const change of changes) {
+    const mapped = fileChangeAction(change);
+    const removalGroup = mapped.action === "remove" ? change.removal_group : undefined;
+    const key = `${mapped.action}:${mapped.label}`;
+    const existing = buckets.get(key);
+    if (existing) {
+      existing.count += 1;
+      if (existing.removalGroup !== removalGroup) {
+        delete existing.removalGroup;
+      }
+      continue;
+    }
+    buckets.set(key, {
+      action: mapped.action,
+      label: mapped.label,
+      count: 1,
+      ...(removalGroup ? { removalGroup } : {}),
+    });
+  }
+  const kindOrder: FileChangeKind[] = ["add", "update", "remove"];
+  return [...buckets.values()].sort((left, right) => {
+    const kindDelta = kindOrder.indexOf(left.action) - kindOrder.indexOf(right.action);
+    if (kindDelta !== 0) {
+      return kindDelta;
+    }
+    return left.label.localeCompare(right.label);
+  });
+}
+
 /** Map drift/apply file change types into user-facing apply verbs. */
 export function fileChangeAction(change: DriftFileChange): {
   action: "add" | "update" | "remove";
@@ -973,8 +1019,6 @@ export function fileChangeAction(change: DriftFileChange): {
     }
   }
 }
-
-export type FileChangeKind = "add" | "remove" | "update";
 
 export function uniqueFileChanges(changes: DriftFileChange[]): DriftFileChange[] {
   const seen = new Set<string>();

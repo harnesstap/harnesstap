@@ -292,6 +292,24 @@ describe("status store preview preload", () => {
     expect(calls).toBe(1);
   });
 
+  it("refresh does not reuse a preview fetch that started earlier", async () => {
+    const calls: Deferred<ProfileApplyPreview>[] = [deferred(), deferred()];
+    let index = 0;
+    const store = storeWith({
+      fetchApplyPreview: () => calls[index++]!.promise,
+    });
+    const id = previewKeyId(globalKey);
+
+    const first = store.loadPreview(globalKey);
+    const second = store.loadPreview(globalKey, { mode: "refresh" });
+    calls[0]!.resolve(preview("stale"));
+    calls[1]!.resolve(preview("fresh"));
+
+    expect(await first).toBeNull();
+    expect(await second).toEqual(preview("fresh"));
+    expect(store.getState().previews[id]?.data?.profile).toBe("fresh");
+  });
+
   it("refresh still fetches after a warm ensure", async () => {
     let calls = 0;
     const store = storeWith({

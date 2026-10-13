@@ -167,9 +167,27 @@ function previewChangeLabel(change: DriftFileChange): string {
     case "modified":
       return SCOPE_COPY.willWrite;
     case "added":
-      return SCOPE_COPY.willRemove;
+      return previewRemovalLabel(change.removal_group);
     default: {
       const unhandled: never = change.type;
+      return String(unhandled);
+    }
+  }
+}
+
+function previewRemovalLabel(
+  group: DriftFileChange["removal_group"],
+): string {
+  switch (group) {
+    case "owned_modified":
+      return SCOPE_COPY.keptYouChanged;
+    case "unmanaged":
+      return SCOPE_COPY.keptNotMadeByHarnessTap;
+    case "owned_unmodified":
+    case undefined:
+      return SCOPE_COPY.willRemove;
+    default: {
+      const unhandled: never = group;
       return String(unhandled);
     }
   }
