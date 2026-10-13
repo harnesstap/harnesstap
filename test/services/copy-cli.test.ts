@@ -4,9 +4,14 @@ import {
   applyWroteLine,
   CLI_ERRORS,
   CLI_HINTS,
+  discardedChangesLine,
+  formatHtArgs,
+  plainTerminalText,
   restoredRemovedLine,
+  savedChangesLine,
   SCOPE_COPY,
   snapshotSavedUndoLine,
+  stashedChangesLine,
 } from "../../src/copy/cli.ts";
 
 describe("DS-6 CLI copy", () => {
@@ -54,6 +59,39 @@ describe("DS-6 CLI copy", () => {
     ).toBe("Everything is up to date. 16 unchanged.");
     expect(applyWroteLine({ wrote: 0, removed: 0, kept: 6 })).toBe(
       "Everything is up to date.",
+    );
+  });
+
+  it("pluralizes one stashed, saved, or discarded change", () => {
+    expect(stashedChangesLine(1, "ht profile stash pop")).toBe(
+      "Stashed 1 change. Bring them back with: ht profile stash pop",
+    );
+    expect(stashedChangesLine(2, "ht profile stash pop")).toBe(
+      "Stashed 2 changes. Bring them back with: ht profile stash pop",
+    );
+    expect(savedChangesLine("work", 1)).toBe('Saved 1 change to "work".');
+    expect(discardedChangesLine(1)).toBe("Discarded 1 change.");
+  });
+
+  it("quotes ht hints when a name contains a space", () => {
+    expect(formatHtArgs(["profile", "use", "global default"])).toBe(
+      'ht profile use "global default"',
+    );
+    expect(formatHtArgs(["plugin", "delete", "my team"])).toBe(
+      'ht plugin delete "my team"',
+    );
+  });
+
+  it("renders scenario markdown links as terminal text", () => {
+    expect(
+      plainTerminalText(
+        "see [Scenario 28](https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/28-machine-migration.md)",
+      ),
+    ).toBe(
+      "see Scenario 28 (https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/28-machine-migration.md)",
+    );
+    expect(plainTerminalText("see [Scenario 28](./28-machine-migration.md)")).toBe(
+      "see Scenario 28",
     );
   });
 

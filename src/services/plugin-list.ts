@@ -162,7 +162,6 @@ export function renderLocalPluginListTable(
         header: "DESCRIPTION",
         width: 44,
         truncate: true,
-        transform: (value) => value || ": ",
       },
     ],
     rows: plugins.map((plugin) => ({
@@ -194,7 +193,6 @@ function renderProfileLocalPluginListTable(plugins: Plugin[]): string {
         header: "DESCRIPTION",
         width: 50,
         truncate: true,
-        transform: (value) => value || ": ",
       },
     ],
     rows: plugins.map((plugin) => ({

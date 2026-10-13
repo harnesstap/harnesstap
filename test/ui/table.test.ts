@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "bun:test";
-import { renderTable } from "../../src/ui/table.ts";
+import { renderTable, truncateTableCell } from "../../src/ui/table.ts";
 import { disableColor } from "../../src/ui/theme.ts";
 
 describe("ui table", () => {
@@ -105,6 +105,7 @@ describe("ui table", () => {
     expect(output).not.toContain("publ ");
     expect(output).toContain("23 seconds ago");
     expect(output).toContain("...");
+    expect(output).not.toContain("\u2026");
     expect(output).not.toContain(long);
     for (const line of lines) {
       expect(line.length).toBeLessThanOrEqual(120);
@@ -164,6 +165,27 @@ describe("ui table", () => {
     );
     expect(widths[0]).toBeGreaterThanOrEqual(13);
     expect(widths.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(80);
+  });
+
+  it("does not clip a colored profile name that fits the column", () => {
+    const colored = "\u001b[38;2;59;130;246m\u25ce\u001b[39m global default";
+    const clipped = truncateTableCell(colored, 22);
+    expect(clipped).toContain("global default");
+    expect(clipped).not.toContain("...");
+  });
+
+  it("uses ASCII dots when a wrapped cell must be cut", () => {
+    disableColor();
+    const output = renderTable({
+      maxWidth: 24,
+      wordWrap: true,
+      columns: [
+        { key: "name", header: "NAME", width: 10 },
+      ],
+      rows: [{ name: "supercalifragilisticexpialidocious" }],
+    });
+    expect(output).toContain("...");
+    expect(output).not.toContain("\u2026");
   });
 
   it("applies column styles for resource types", async () => {

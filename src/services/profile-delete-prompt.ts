@@ -1,3 +1,4 @@
+import { formatHtArgs } from "../copy/cli.js";
 import { deletePlugin } from "../models/plugin-model.js";
 import { ui } from "../ui/index.js";
 import { promptForConfirmation } from "./wizards/shared.js";
@@ -24,7 +25,7 @@ export async function maybePromptProfilePluginDelete(input: {
 
   if (!shouldPromptProfileEnable({ yes: input.yes, format })) {
     ui.hint(
-      `Plugin ${ui.theme.accent(input.pluginName)} was kept. Delete with harnesstap plugin delete ${input.pluginName}`,
+      `Plugin ${ui.theme.accent(input.pluginName)} was kept. Delete with ${formatHtArgs(["plugin", "delete", input.pluginName])}`,
     );
     return false;
   }
@@ -36,7 +37,7 @@ export async function maybePromptProfilePluginDelete(input: {
 
   if (!confirmed) {
     ui.hint(
-      `Plugin ${ui.theme.accent(input.pluginName)} was kept. Delete with harnesstap plugin delete ${input.pluginName}`,
+      `Plugin ${ui.theme.accent(input.pluginName)} was kept. Delete with ${formatHtArgs(["plugin", "delete", input.pluginName])}`,
     );
     return false;
   }

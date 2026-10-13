@@ -102,8 +102,8 @@ export function renderPluginShow(
     renderPanel({
       title: ["PLUGIN", pluginLabel],
       rows: [
-        ["Description", plugin.description || ": "],
-        ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : ": "],
+        ["Description", plugin.description || "none"],
+        ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "none"],
         ["Origin", formatOriginLabel(plugin.origin, plugin.origin_locator)],
         ...(opts?.profileExtras
           ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
@@ -118,7 +118,7 @@ export function renderPluginShow(
               "Default environment",
               configuredPluginDefaultEnvironment?.name
                 ?? configuredPlugin.default_environment_id
-                ?? ": ",
+                ?? "none",
             ]] as [string, string][]
           : []),
         ["Updated", formatRelativeTimeWithAbsolute(plugin.updated_at)],
@@ -164,8 +164,8 @@ export function renderPluginListShow(
   return renderPanel({
     title: ["PLUGIN", opts?.pluginLabel ?? formatPluginLabel(plugin)],
     rows: [
-      ["Description", plugin.description || ": "],
-      ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : ": "],
+      ["Description", plugin.description || "none"],
+      ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "none"],
       ["Origin", formatOriginLabel(plugin.origin, plugin.origin_locator)],
       ...(opts?.profileExtras
         ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]

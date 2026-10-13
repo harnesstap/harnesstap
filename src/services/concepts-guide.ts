@@ -7,6 +7,7 @@ import {
   type ScenarioSummary,
 } from "./scenario-guide.js";
 import { formatCommand } from "../cli/shared.js";
+import { plainTerminalText } from "../copy/cli.js";
 import { ui } from "../ui/index.js";
 
 export interface ConceptsGuidePayload {
@@ -112,7 +113,10 @@ function printScenarioIndex(scenarios: ScenarioSummary[]): void {
 
   for (const scenario of scenarios) {
     const idStr = String(scenario.id).padStart(maxIdWidth);
-    const meta = [scenario.frequency, scenario.status].filter(Boolean).join(" · ");
+    const meta = [
+      scenario.frequency,
+      scenario.status ? plainTerminalText(scenario.status) : null,
+    ].filter(Boolean).join(" · ");
     const metaSuffix = meta.length > 0 ? `  ${ui.theme.muted(meta)}` : "";
     console.log(`  ${idStr}  ${scenario.title}${metaSuffix}`);
   }

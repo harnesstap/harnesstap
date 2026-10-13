@@ -1,4 +1,5 @@
 import { printApplyPayload } from "../cli/print-apply-summary.js";
+import { formatHtArgs } from "../copy/cli.js";
 import { ui } from "../ui/index.js";
 import { detectGlobalProfileStatus } from "./global-profile-drift.js";
 import { useProfileCommand } from "./profile-commands.js";
@@ -63,11 +64,11 @@ export async function maybePromptProfileEnable(input: {
 
   if (!shouldPromptProfileEnable({ yes: input.yes, format })) {
     if (status.active_profile === input.profileName) {
-      ui.hint(`Run harnesstap profile use ${input.profileName} to apply globally.`);
+      ui.hint(`Run ${formatHtArgs(["profile", "use", input.profileName])} to apply globally.`);
       return;
     }
     ui.hint(
-      `Switch to it with harnesstap profile use ${input.profileName} or ht ${input.profileName}`,
+      `Switch to it with ${formatHtArgs(["profile", "use", input.profileName])} or ${formatHtArgs([input.profileName])}`,
     );
     return;
   }
@@ -83,7 +84,7 @@ export async function maybePromptProfileEnable(input: {
 
   if (!confirmed) {
     ui.hint(
-      `Switch later with harnesstap profile use ${input.profileName} or ht ${input.profileName}`,
+      `Switch later with ${formatHtArgs(["profile", "use", input.profileName])} or ${formatHtArgs([input.profileName])}`,
     );
     return;
   }

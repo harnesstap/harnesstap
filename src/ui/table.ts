@@ -52,17 +52,51 @@ export function resolveTableMaxWidth(explicit?: number): number {
   return OFF_TTY_TABLE_WIDTH;
 }
 
+const ESC = String.fromCharCode(0x1b);
+const ANSI_SGR = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
+const ANSI_SGR_AT_START = new RegExp(`^${ESC}\\[[0-9;]*m`);
+
+function visibleLength(value: string): number {
+  return value.replace(ANSI_SGR, "").length;
+}
+
+/** Truncate by visible characters so color codes do not eat the column. */
 export function truncateTableCell(value: string, width: number): string {
   if (width <= 0) {
     return "";
   }
-  if (value.length <= width) {
+  if (visibleLength(value) <= width) {
     return value;
   }
   if (width <= 3) {
-    return value.slice(0, width);
+    let visible = 0;
+    let index = 0;
+    while (index < value.length && visible < width) {
+      const match = value.slice(index).match(ANSI_SGR_AT_START);
+      if (match) {
+        index += match[0].length;
+        continue;
+      }
+      visible += 1;
+      index += 1;
+    }
+    return value.slice(0, index);
   }
-  return `${value.slice(0, width - 3)}...`;
+  const budget = width - 3;
+  let visible = 0;
+  let index = 0;
+  while (index < value.length && visible < budget) {
+    const match = value.slice(index).match(ANSI_SGR_AT_START);
+    if (match) {
+      index += match[0].length;
+      continue;
+    }
+    visible += 1;
+    index += 1;
+  }
+  const sliced = value.slice(0, index);
+  const reset = sliced.includes(ESC) ? `${ESC}[0m` : "";
+  return `${sliced}...${reset}`;
 }
 
 function contentWidth(col: Column, rows: Record<string, unknown>[]): number {
@@ -260,6 +294,7 @@ export function renderTable({
     head: columns.map((col) => theme.heading(col.header)),
     colWidths,
     chars: getTableChars(),
+    truncate: "...",
     style: { head: [], border: [] },
     ...(wordWrap !== undefined ? { wordWrap } : {}),
     ...(wrapOnWordBoundary !== undefined ? { wrapOnWordBoundary } : {}),
