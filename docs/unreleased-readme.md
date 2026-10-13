@@ -44,3 +44,8 @@ Set `harnessSync.nativeAgentPlugins` to `true` to register Agent Plugins package
 Attaching a marketplace plugin whose source path leaves the repository is rejected. No pin is recorded.
 
 The Cursor and Claude copies of an Agent Plugins package rewrite those variables in the emitted tree only. Cursor writes `${CURSOR_PLUGIN_ROOT}` and an absolute plugin data path. Claude writes `.claude-plugin/plugin.json`, `.mcp.json` (`streamable-http` and `sse` as `http`, `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}`), and copies `com.harnesstap` commands, agents, and hook JSON into the Claude plugin directories. A file HarnessTap does not own inside a Cursor local plugin is left in place. Owned removals are backed up.
+
+## docs/cli/command-reference.md > apply
+<!-- append -->
+Host MCP configs expand `${PLUGIN_ROOT}`, `${PLUGIN_DATA}`, and `./` commands for an import, a marketplace pin, a git import, and a local install tree. The library copy stays literal.
+

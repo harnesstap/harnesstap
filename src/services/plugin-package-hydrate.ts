@@ -1,13 +1,10 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { getHarnesstapDir } from "../db/connection.js";
 import { getPluginResources } from "../models/plugin-model.js";
 import { MATERIAL_RESOURCE_TYPES, type Plugin, type PluginSourceScanResult, type Resource } from "../types.js";
-import { marketplaceCacheDir } from "./marketplace-catalog.js";
-import { parseDependencyRef } from "./plugin-dependency.js";
+import { resolvePluginPackageRoot } from "./agent-plugins/package-root.js";
 import {
   attachScannedOriginResources,
-  gitOriginCacheDir,
   resolveMarketplacePluginDirectory,
 } from "./plugin-origin-apply.js";
 import {
@@ -17,8 +14,6 @@ import {
 import {
   scanPluginSourceSync,
 } from "./plugin-source-import.js";
-import { resolveInstallRoot } from "./resource-sync.js";
-import { resolveHomeRoot } from "../utils/home-root.js";
 
 const MATERIAL_TYPES = new Set<string>(MATERIAL_RESOURCE_TYPES);
 
@@ -68,45 +63,6 @@ function scanMarketplaceManifests(
   return undefined;
 }
 
-function resolveUpstreamPackageRoot(plugin: Plugin): string | undefined {
-  const locator = recoverOriginLocator(plugin);
-  const harnesstapDir = getHarnesstapDir();
-  const homeRoot = resolveHomeRoot();
-  if (!locator) {
-    return resolveInstallRoot(plugin.name, homeRoot);
-  }
-
-  switch (locator.kind) {
-    case "marketplace": {
-      const parsed = parseDependencyRef(locator.ref);
-      const cacheDir = marketplaceCacheDir(harnesstapDir, parsed.namespace);
-      const fromCache =
-        resolveMarketplacePluginDirectory(cacheDir, parsed.name)
-        ?? resolveMarketplacePluginDirectory(cacheDir, plugin.name);
-      if (fromCache) {
-        return fromCache;
-      }
-      return (
-        resolveInstallRoot(locator.ref, homeRoot)
-        ?? resolveInstallRoot(`${plugin.name}@${parsed.namespace}`, homeRoot)
-      );
-    }
-    case "git": {
-      const cacheDir = gitOriginCacheDir(harnesstapDir, locator.url);
-      return (
-        resolveMarketplacePluginDirectory(cacheDir, plugin.name)
-        ?? (existsSync(cacheDir) ? cacheDir : undefined)
-      );
-    }
-    case "catalog":
-      return undefined;
-    default: {
-      const _exhaustive: never = locator;
-      return _exhaustive;
-    }
-  }
-}
-
 function scanPackageTree(
   plugin: Plugin,
   sourcePath: string,
@@ -139,7 +95,7 @@ export function ensureUpstreamPluginResources(plugin: Plugin): Resource[] {
     return attached;
   }
 
-  const packageRoot = resolveUpstreamPackageRoot(plugin);
+  const packageRoot = resolvePluginPackageRoot(plugin);
   if (!packageRoot) {
     return attached;
   }

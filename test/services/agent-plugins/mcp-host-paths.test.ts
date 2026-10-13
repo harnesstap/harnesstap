@@ -1,8 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { parse } from "smol-toml";
-import { getPluginResources } from "../../../src/models/plugin-model.ts";
+import { getHarnesstapDir } from "../../../src/db/connection.ts";
+import { createPlugin, getPluginByName, getPluginResources } from "../../../src/models/plugin-model.ts";
 import { getResource } from "../../../src/models/resource.ts";
 import { CodexSerializer } from "../../../src/platforms/codex.ts";
 import { importApPackageFiles } from "../../../src/services/agent-plugins/import.ts";
@@ -11,9 +14,17 @@ import {
   pluginInstallRootPath,
 } from "../../../src/services/agent-plugins/install-root.ts";
 import { resolvePluginRelativePath } from "../../../src/services/agent-plugins/mcp-host-paths.ts";
+import { resolvePluginPackageRoot } from "../../../src/services/agent-plugins/package-root.ts";
 import { readContainedPackageFiles } from "../../../src/services/agent-plugins/spec-load.ts";
 import { generateFiles } from "../../../src/services/applier.ts";
-import type { McpServerMetadata } from "../../../src/types.ts";
+import { refreshMarketplaceCatalog } from "../../../src/services/marketplace-catalog.ts";
+import { addMarketplace } from "../../../src/services/marketplace-registry.ts";
+import { addPluginAttachment } from "../../../src/services/plugin-composition.ts";
+import { addDependency } from "../../../src/services/plugin-dependency.ts";
+import { importPluginFromGitHubRef } from "../../../src/services/plugin-git-import.ts";
+import { syncPluginResource } from "../../../src/services/resource-sync.ts";
+import { materializeUpstreamPlugin } from "../../../src/services/upstream-plugin.ts";
+import type { McpServerMetadata, Resource } from "../../../src/types.ts";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 import { makeResource } from "../../helpers/resources.ts";
 
@@ -29,6 +40,58 @@ function server(
   const entry = document.mcpServers[name];
   if (!entry) throw new Error(`missing server ${name}`);
   return entry;
+}
+
+function commitRepo(repo: string): void {
+  const git = (args: string[]) => {
+    const result = spawnSync("git", args, { cwd: repo, stdio: "ignore" });
+    if (result.status !== 0) throw new Error(`git ${args.join(" ")} failed`);
+  };
+  git(["init"]);
+  git(["add", "."]);
+  git(["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "init"]);
+}
+
+async function expectHostExpansion(
+  resources: Resource[],
+  homeDir: string,
+  root: string,
+): Promise<void> {
+  const generated = await generateFiles(
+    resources,
+    ["claude-code", "codex", "copilot-cli"],
+    homeDir,
+    { target: "global" },
+  );
+  const byPlatform = new Map(generated.map((result) => [result.platformId, result.files]));
+  const claude = JSON.parse(
+    byPlatform.get("claude-code")?.find((file) => file.path === ".claude.json")?.content ?? "{}",
+  ) as { mcpServers: Record<string, Record<string, unknown>> };
+  const copilot = JSON.parse(
+    byPlatform.get("copilot-cli")?.find((file) => file.path === ".copilot/mcp-config.json")?.content ??
+      "{}",
+  ) as { mcpServers: Record<string, Record<string, unknown>> };
+  const codex = parse(
+    byPlatform.get("codex")?.find((file) => file.path === ".codex/config.toml")?.content ?? "",
+  ) as { mcp_servers: Record<string, Record<string, unknown>> };
+  const probe = `${root}/dist/probe.mjs`;
+  const token = `${root}/bin/posix/probe token.sh`;
+  const workdir = `${root}/probe-workdir`;
+  for (const document of [claude, copilot]) {
+    expect(server(document, "default").args).toContain(probe);
+    expect(server(document, "default").args).not.toContain("${PLUGIN_ROOT}/dist/probe.mjs");
+    expect(server(document, "relative").cwd).toBe(workdir);
+    expect(server(document, "command-token-posix").command).toBe(token);
+  }
+  expect(codex.mcp_servers.default?.args).toContain(probe);
+  expect(codex.mcp_servers.default?.args).not.toContain("${PLUGIN_ROOT}/dist/probe.mjs");
+  expect(codex.mcp_servers.relative?.cwd).toBe(workdir);
+  expect(codex.mcp_servers["command-token-posix"]?.command).toBe(token);
+  const stored = resources.find((resource) => resource.type === "mcp_server" && resource.name === "default");
+  if (!stored) throw new Error("missing default server");
+  expect((getResource(stored.id)?.metadata as McpServerMetadata).args?.[0]).toBe(
+    "${PLUGIN_ROOT}/dist/probe.mjs",
+  );
 }
 
 describe("installed agent plugin MCP paths", () => {
@@ -147,6 +210,101 @@ describe("installed agent plugin MCP paths", () => {
       const stored = getResource(before.id);
       expect((stored?.metadata as McpServerMetadata).args?.[0]).toBe("${PLUGIN_ROOT}/dist/probe.mjs");
       expect((stored?.metadata as McpServerMetadata).command).toBe("node");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("expands a marketplace install from .agents/plugins/marketplace.json", async () => {
+    const context = await createInitializedTestContext("mcp-mkt-paths");
+    try {
+      const repo = mkdtempSync(join(tmpdir(), "ht-mkt-apcc-"));
+      cpSync(CORE, join(repo, "plugins", "apcc"), { recursive: true });
+      mkdirSync(join(repo, ".agents", "plugins"), { recursive: true });
+      writeFileSync(
+        join(repo, ".agents", "plugins", "marketplace.json"),
+        `${JSON.stringify({
+          name: "mkt",
+          plugins: [
+            {
+              name: "apcc",
+              source: { source: "local", path: "./plugins/apcc" },
+              version: "0.1.0",
+            },
+          ],
+        })}\n`,
+      );
+      commitRepo(repo);
+      addMarketplace(getHarnesstapDir(), {
+        name: "mkt",
+        url: repo,
+        platforms: ["claude-code"],
+      });
+      const refresh = refreshMarketplaceCatalog(getHarnesstapDir(), { name: "mkt", force: true });
+      expect(refresh.ok).toBe(true);
+      const wrapper = createPlugin({ name: "wrapper", version: "1.0.0" });
+      await addPluginAttachment({
+        plugin: wrapper,
+        selector: "plugin:apcc@mkt",
+        type: "plugin",
+        sync: true,
+      });
+      const plugin = getPluginByName("apcc", "0.1.0") ?? getPluginByName("apcc");
+      if (!plugin) throw new Error("missing marketplace plugin apcc");
+      const root = resolvePluginPackageRoot(plugin);
+      if (!root) throw new Error("missing marketplace package root");
+      expect(existsSync(join(root, "bin", "posix", "probe token.sh"))).toBe(true);
+      expect(
+        root.includes(`${join("cache", "packages", "host-plugin")}`)
+          || root.includes(`${join("cache", "marketplaces", "mkt")}`),
+      ).toBe(true);
+      await expectHostExpansion(getPluginResources(plugin.id), context.homeDir, root);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("expands a git install", async () => {
+    const context = await createInitializedTestContext("mcp-git-paths");
+    try {
+      const source = mkdtempSync(join(tmpdir(), "ht-git-apcc-"));
+      cpSync(CORE, source, { recursive: true });
+      const imported = await importPluginFromGitHubRef("acme/apcc", {
+        refreshGit: (opts) => {
+          mkdirSync(opts.targetDir, { recursive: true });
+          cpSync(source, opts.targetDir, { recursive: true });
+          return { ok: true, sha: "abc123def456", message: "ok" };
+        },
+      });
+      const plugin = getPluginByName(imported.plugin.name, imported.plugin.version) ?? imported.plugin;
+      const root = resolvePluginPackageRoot(plugin);
+      if (!root) throw new Error("missing git package root");
+      expect(existsSync(join(root, "bin", "posix", "probe token.sh"))).toBe(true);
+      expect(
+        root.includes(`${join("cache", "packages", "host-plugin")}`)
+          || root.includes(`${join("cache", "git-origins")}`),
+      ).toBe(true);
+      await expectHostExpansion(getPluginResources(plugin.id), context.homeDir, root);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("expands a local install tree", async () => {
+    const context = await createInitializedTestContext("mcp-local-paths");
+    try {
+      const root = join(context.homeDir, ".agents", "plugins", "apcc");
+      cpSync(CORE, root, { recursive: true });
+      const wrapper = createPlugin({ name: "wrapper", version: "1.0.0" });
+      const pin = addDependency(wrapper.id, "apcc");
+      await syncPluginResource(pin, { policy: "overwrite" });
+      const synced = getResource(pin.id);
+      const version = (synced?.metadata as { resolved_version?: string }).resolved_version;
+      if (!version) throw new Error("local pin has no resolved version");
+      const plugin = materializeUpstreamPlugin({ ref: "apcc", name: "apcc", version });
+      const resolved = resolvePluginPackageRoot(plugin);
+      expect(resolved).toBe(root);
+      await expectHostExpansion(getPluginResources(plugin.id), context.homeDir, root);
     } finally {
       await context.cleanup();
     }
