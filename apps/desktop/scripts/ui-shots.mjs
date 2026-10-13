@@ -18,8 +18,10 @@
 //   --update-baselines
 //   --axe
 //   --trace
+//   --suite              four desktop-check walks in one Chromium
+import { AsyncLocalStorage } from "node:async_hooks";
 import { copyFileSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
@@ -127,8 +129,61 @@ function launchOptions() {
 
 const main = (page) => page.locator("main").first();
 
+const walkLogs = new AsyncLocalStorage();
+const baseLog = console.log.bind(console);
+const baseWarn = console.warn.bind(console);
+
+function emit(line) {
+  const buf = walkLogs.getStore();
+  if (buf) buf.push(line);
+  else baseLog(line);
+}
+
+// Installed only for --suite, so concurrent walks keep their own logs.
+function installWalkLog() {
+  console.log = (...args) => {
+    emit(args.map((item) => String(item)).join(" "));
+  };
+  console.warn = (...args) => {
+    const line = args.map((item) => String(item)).join(" ");
+    const buf = walkLogs.getStore();
+    if (buf) buf.push(line);
+    else baseWarn(line);
+  };
+}
+
+function restoreWalkLog() {
+  console.log = baseLog;
+  console.warn = baseWarn;
+}
+
+// @font-face from fontsource is registered after the app CSS evaluates.
+// Load every declared face before the shot. A fallback face changes the
+// settings title line box (about 19px) and fails the 0.2% compare.
+async function preloadFonts(page) {
+  await page.evaluate(async () => {
+    if (!document.fonts) return;
+    const pending = [];
+    document.fonts.forEach((face) => {
+      pending.push(face.load().catch(() => undefined));
+    });
+    await Promise.all(pending);
+    await document.fonts.ready;
+  });
+}
+
 async function settle(page) {
   await main(page).waitFor({ state: "visible", timeout: T });
+  await page.evaluate(async () => {
+    if (!document.fonts || document.fonts.status !== "loading") return;
+    await Promise.race([
+      document.fonts.ready,
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ]);
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+  });
   await page.waitForTimeout(SETTLE_MS);
 }
 
@@ -406,6 +461,7 @@ async function waitForConnected(page) {
   // ConnectSplash has no <main> until the first health check succeeds, and the
   // first Vite compile of App.tsx can exceed the per-screen settle timeout.
   await main(page).waitFor({ state: "visible", timeout: 30_000 });
+  await preloadFonts(page);
   await page.waitForTimeout(SETTLE_MS);
   const banner = page.getByText(/waiting for sidecar health check/i);
   await banner.waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {
@@ -558,14 +614,20 @@ async function walkViewport(browser, viewport, config, report) {
   await context.close();
 }
 
-async function run() {
-  const args = parseArgs(process.argv.slice(2));
+function shotOutDir(embedded) {
+  if (embedded.outDir) return path.resolve(embedded.outDir);
+  if (process.env.SHOTS_OUT) return path.resolve(process.env.SHOTS_OUT);
+  return DEFAULT_OUT;
+}
+
+async function run(argv, embedded = {}) {
+  const args = parseArgs(argv);
   const config = {
     baseUrl: process.env.SHOTS_BASE_URL ?? "http://127.0.0.1:5173/",
     agentPort: Number(process.env.SHOTS_AGENT_PORT ?? 7474),
     tokenPath: process.env.SHOTS_TOKEN_PATH ?? "/tmp/htdemo/home/.harnesstap/agent-token",
     projectPath: process.env.SHOTS_PROJECT_PATH ?? "/tmp/htdemo/project",
-    outDir: process.env.SHOTS_OUT ? path.resolve(process.env.SHOTS_OUT) : DEFAULT_OUT,
+    outDir: shotOutDir(embedded),
     baselineDir: process.env.SHOTS_BASELINES
       ? path.resolve(process.env.SHOTS_BASELINES)
       : DEFAULT_BASELINES,
@@ -591,13 +653,14 @@ async function run() {
     motionFailures: [],
     traceFailures: [],
   };
-  const browser = await chromium.launch(launchOptions());
+  const ownBrowser = !embedded.browser;
+  const browser = embedded.browser ?? (await chromium.launch(launchOptions()));
   try {
     for (const viewport of args.viewports) {
       await walkViewport(browser, viewport, config, report);
     }
   } finally {
-    await browser.close();
+    if (ownBrowser) await browser.close();
   }
 
   if (config.updateBaselines) {
@@ -661,12 +724,110 @@ async function run() {
   if (report.pageErrors.length === 0) {
     console.log("shots: 0 pageerrors");
   }
-  if (failed) {
-    process.exitCode = 1;
+  return failed;
+}
+
+async function warmBrowser(browser, baseUrl) {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await main(page).waitFor({ state: "visible", timeout: 30_000 });
+    await preloadFonts(page);
+  } finally {
+    await context.close();
   }
 }
 
-run().catch((error) => {
+async function runSuite() {
+  const artifacts = path.resolve(SCRIPT_DIR, "..", "e2e", "artifacts");
+  const shots = DEFAULT_OUT;
+  const walks = [
+    {
+      name: "compare-1440x900",
+      argv: ["--compare", "--axe", "--viewports", "1440x900"],
+      outDir: shots,
+    },
+    {
+      name: "compare-960x640",
+      argv: ["--compare", "--axe", "--viewports", "960x640"],
+      outDir: shots,
+    },
+    {
+      name: "reduced-motion",
+      argv: ["--reduced-motion", "--axe", "--viewports", "1440x900"],
+      outDir: path.join(artifacts, "shots-reduced-motion"),
+    },
+    {
+      name: "trace",
+      argv: ["--trace", "--viewports", "1440x900"],
+      outDir: path.join(artifacts, "shots-trace"),
+    },
+  ];
+  const baseUrl = process.env.SHOTS_BASE_URL ?? "http://127.0.0.1:5173/";
+  const logsDir = path.join(artifacts, "logs");
+  await mkdir(logsDir, { recursive: true });
+  installWalkLog();
+  let browser;
+  let failed = false;
+  try {
+    browser = await chromium.launch(launchOptions());
+    const warmStart = Date.now();
+    await warmBrowser(browser, baseUrl);
+    baseLog(`shots: warm ${((Date.now() - warmStart) / 1000).toFixed(1)}s`);
+    const results = await Promise.all(
+      walks.map(async (walk) => {
+        const lines = [];
+        const started = Date.now();
+        let walkFailed = false;
+        try {
+          walkFailed = await walkLogs.run(lines, () =>
+            run(walk.argv, { browser, outDir: walk.outDir }),
+          );
+        } catch (error) {
+          walkFailed = true;
+          lines.push(error instanceof Error ? error.stack ?? error.message : String(error));
+        }
+        const seconds = Math.round((Date.now() - started) / 1000);
+        lines.push(`walk ${walk.name}: exit ${walkFailed ? 1 : 0} in ${seconds}s`);
+        return { name: walk.name, lines, walkFailed };
+      }),
+    );
+    for (const result of results) {
+      const text = result.lines.join("\n");
+      await writeFile(path.join(logsDir, `${result.name}.log`), `${text}\n`);
+      if (result.walkFailed) {
+        failed = true;
+        baseLog(`::error::walk ${result.name} failed`);
+        baseLog(text);
+      } else {
+        baseLog(`::group::${result.name}`);
+        baseLog(text);
+        baseLog("::endgroup::");
+      }
+    }
+  } finally {
+    restoreWalkLog();
+    if (browser) await browser.close();
+  }
+  return failed;
+}
+
+async function cliMain() {
+  const argv = process.argv.slice(2);
+  if (argv.includes("--suite")) {
+    if (argv.length !== 1) {
+      throw new Error("--suite does not take other flags");
+    }
+    const failed = await runSuite();
+    if (failed) process.exitCode = 1;
+    return;
+  }
+  const failed = await run(argv);
+  if (failed) process.exitCode = 1;
+}
+
+cliMain().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
