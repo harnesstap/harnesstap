@@ -29,6 +29,8 @@ export interface HarnesstapSettings {
   pluginVersionHistoryLimit: number;
   harnessSync: {
     pluginResources: PluginResourceMode;
+    /** When true, Codex and Copilot load Agent Plugins packages instead of the portable extract. */
+    nativeAgentPlugins: boolean;
   };
 }
 
@@ -52,7 +54,10 @@ const DEFAULTS: HarnesstapSettings = {
     marketplaces: [],
   },
   pluginVersionHistoryLimit: 10,
-  harnessSync: { pluginResources: DEFAULT_PLUGIN_RESOURCE_MODE },
+  harnessSync: {
+    pluginResources: DEFAULT_PLUGIN_RESOURCE_MODE,
+    nativeAgentPlugins: false,
+  },
 };
 
 function isPluginMarketplacePlatform(
@@ -239,12 +244,13 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
   if (!existsSync(path)) return DEFAULTS;
   try {
     const raw = parseJsonc(readFileSync(path, "utf-8")) as Partial<HarnesstapSettings> & {
-      harnessSync?: { pluginResources?: unknown };
+      harnessSync?: { pluginResources?: unknown; nativeAgentPlugins?: unknown };
     };
     const hours = raw.plugins?.refreshMaxAgeHours;
     const marketplaceMinutes = raw.plugins?.marketplaceRefreshMaxAgeMinutes;
     const limit = raw.pluginVersionHistoryLimit;
     const pluginResources = raw.harnessSync?.pluginResources;
+    const nativeAgentPlugins = raw.harnessSync?.nativeAgentPlugins === true;
     return {
       plugins: {
         refreshMaxAgeHours:
@@ -265,6 +271,7 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
         pluginResources: isPluginResourceMode(pluginResources)
           ? pluginResources
           : DEFAULTS.harnessSync.pluginResources,
+        nativeAgentPlugins,
       },
     };
   } catch {

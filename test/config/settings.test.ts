@@ -11,6 +11,21 @@ describe("loadSettings", () => {
     expect(settings.plugins.refreshMaxAgeHours).toBe(24);
   });
 
+  it("defaults nativeAgentPlugins to false and reads true", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    expect(loadSettings(dir).harnessSync.nativeAgentPlugins).toBe(false);
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({ harnessSync: { nativeAgentPlugins: true } }),
+    );
+    expect(loadSettings(dir).harnessSync.nativeAgentPlugins).toBe(true);
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({ harnessSync: { nativeAgentPlugins: "yes" } }),
+    );
+    expect(loadSettings(dir).harnessSync.nativeAgentPlugins).toBe(false);
+  });
+
   it("defaults harnessSync.pluginResources to symlink", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     expect(loadSettings(dir).harnessSync.pluginResources).toBe("symlink");
@@ -211,7 +226,7 @@ describe("plugins.marketplaces", () => {
         ],
       },
       pluginVersionHistoryLimit: 10,
-      harnessSync: { pluginResources: "symlink" },
+      harnessSync: { pluginResources: "symlink", nativeAgentPlugins: false },
     });
     const raw = JSON.parse(readFileSync(join(dir, "config.json"), "utf-8"));
     expect(raw.plugins.marketplaces).toEqual([
@@ -247,7 +262,7 @@ describe("plugins.marketplaces", () => {
         ],
       },
       pluginVersionHistoryLimit: 10,
-      harnessSync: { pluginResources: "symlink" },
+      harnessSync: { pluginResources: "symlink", nativeAgentPlugins: false },
     });
     const jsonc = JSON.parse(readFileSync(join(dir, "config.jsonc"), "utf-8"));
     expect(jsonc.plugins.marketplaces).toEqual([
@@ -274,7 +289,7 @@ describe("plugins.marketplaces", () => {
         marketplaces: [],
       },
       pluginVersionHistoryLimit: 10,
-      harnessSync: { pluginResources: "symlink" },
+      harnessSync: { pluginResources: "symlink", nativeAgentPlugins: false },
     });
     const jsonc = JSON.parse(readFileSync(join(dir, "config.jsonc"), "utf-8"));
     expect(jsonc.telemetry).toEqual({ enabled: false });

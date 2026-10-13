@@ -47,6 +47,13 @@ import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { resourceAppliesToHarness } from "./harness-scope.js";
 import { hookRequiresPluginRoot } from "./hook-serialization.js";
 import { mcpSerializationWarnings } from "./agent-plugins/plugin-vars.js";
+import {
+  isNativeAgentPluginPlatform,
+  mergeNativeAgentPluginFiles,
+  nativeAgentPluginFiles,
+  nativeAgentPluginsEnabled,
+  splitNativeAgentPluginExtract,
+} from "./native-agent-plugins.js";
 import { recordPreexistingPath } from "../models/preexisting-path.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import {
@@ -305,7 +312,7 @@ export async function generateFiles(
     const skillNames = new Set(
       platformResources.filter((resource) => resource.type === "skill").map((resource) => resource.name),
     );
-    const emitResources = platformResources.filter((resource) => {
+    let emitResources = platformResources.filter((resource) => {
       if (resource.type === "command" && skillNames.has(resource.name)) {
         surfaceWarnings.push({
           harness: pid,
@@ -331,6 +338,12 @@ export async function generateFiles(
       });
       return false;
     });
+    const nativeGroups = nativeAgentPluginsEnabled() && isNativeAgentPluginPlatform(pid)
+      ? splitNativeAgentPluginExtract(emitResources)
+      : undefined;
+    if (nativeGroups) {
+      emitResources = nativeGroups.kept;
+    }
     for (const resource of emitResources) {
       if (resource.type !== "mcp_server") continue;
       for (const message of mcpSerializationWarnings(
@@ -355,6 +368,16 @@ export async function generateFiles(
       mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
       surfaceWarnings,
     });
+    if (nativeGroups) {
+      const native = nativeAgentPluginFiles({
+        platformId: pid,
+        applyRoot: projectRoot,
+        groups: nativeGroups.groups,
+        files,
+      });
+      files = mergeNativeAgentPluginFiles(files, native.files);
+      surfaceWarnings.push(...native.warnings);
+    }
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudePluginExtensions(files, claudeConfig, projectRoot);
     }
