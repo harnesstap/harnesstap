@@ -16,6 +16,17 @@ const NATIVE_PLATFORMS = new Set(["codex", "copilot-cli"]);
 const EXTRACTED_TYPES = new Set(["skill", "command", "agent", "mcp_server", "hook"]);
 const CACHE_RELATIVE = ".harnesstap/cache/native-agent-plugins";
 
+/** Cache files apply writes for Codex and Copilot packages. Not a user-facing change. */
+export function isNativeAgentPluginCachePath(path: string): boolean {
+  const posix = path.replaceAll("\\", "/");
+  return (
+    posix === CACHE_RELATIVE
+    || posix.startsWith(`${CACHE_RELATIVE}/`)
+    || posix.includes(`/${CACHE_RELATIVE}/`)
+    || posix.endsWith(`/${CACHE_RELATIVE}`)
+  );
+}
+
 interface AgentPluginGroup {
   pluginName: string;
   resources: Resource[];

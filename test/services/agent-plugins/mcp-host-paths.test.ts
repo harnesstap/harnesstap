@@ -13,7 +13,10 @@ import {
   installAgentPluginPackage,
   pluginInstallRootPath,
 } from "../../../src/services/agent-plugins/install-root.ts";
-import { resolvePluginRelativePath } from "../../../src/services/agent-plugins/mcp-host-paths.ts";
+import {
+  resolveInstalledMcpResources,
+  resolvePluginRelativePath,
+} from "../../../src/services/agent-plugins/mcp-host-paths.ts";
 import { resolvePluginPackageRoot } from "../../../src/services/agent-plugins/package-root.ts";
 import { readContainedPackageFiles } from "../../../src/services/agent-plugins/spec-load.ts";
 import { generateFiles } from "../../../src/services/applier.ts";
@@ -305,6 +308,51 @@ describe("installed agent plugin MCP paths", () => {
       const resolved = resolvePluginPackageRoot(plugin);
       expect(resolved).toBe(root);
       await expectHostExpansion(getPluginResources(plugin.id), context.homeDir, root);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("writes the POSIX server on linux and the Windows server on win32", async () => {
+    const context = await createInitializedTestContext("mcp-platform-server");
+    try {
+      const resources = [
+        makeResource({
+          type: "mcp_server",
+          name: "command-token-posix",
+          metadata: { transport: "stdio", command: "./bin/posix/probe token.sh" },
+        }),
+        makeResource({
+          type: "mcp_server",
+          name: "command-token-windows",
+          metadata: { transport: "stdio", command: "./bin/windows/probe token.cmd" },
+        }),
+        makeResource({
+          type: "mcp_server",
+          name: "default",
+          metadata: { transport: "stdio", command: "node" },
+        }),
+      ];
+      const linux = resolveInstalledMcpResources(resources, { platform: "linux" });
+      expect(linux.resources.map((resource) => resource.name)).toEqual([
+        "command-token-posix",
+        "default",
+      ]);
+      const darwin = resolveInstalledMcpResources(resources, { platform: "darwin" });
+      expect(darwin.resources.map((resource) => resource.name)).toEqual([
+        "command-token-posix",
+        "default",
+      ]);
+      const win = resolveInstalledMcpResources(resources, { platform: "win32" });
+      expect(win.resources.map((resource) => resource.name)).toEqual([
+        "command-token-windows",
+        "default",
+      ]);
+      expect(resources.map((resource) => resource.name)).toEqual([
+        "command-token-posix",
+        "command-token-windows",
+        "default",
+      ]);
     } finally {
       await context.cleanup();
     }

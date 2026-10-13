@@ -2,7 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { saveSettings } from "../../src/config/settings.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
+import { createResource } from "../../src/models/resource.ts";
 import { generateFiles } from "../../src/services/applier.ts";
+import { previewProfileApply } from "../../src/services/profile-apply-preview.ts";
 import {
   nativeAgentPluginFiles,
   splitNativeAgentPluginExtract,
@@ -106,6 +109,39 @@ describe("native agent plugins", () => {
     expect(next).toContain('model = "gpt-5"');
     expect(next).toContain("other@openai");
     expect(next).not.toContain("demo@harnesstap");
+  });
+
+  it("does not list native agent plugin cache files as profile changes", async () => {
+    saveSettings(ctx.connection.getHarnesstapDir(), {
+      plugins: {
+        refreshMaxAgeHours: 24,
+        marketplaceRefreshMaxAgeMinutes: 60,
+        marketplaces: [],
+      },
+      pluginVersionHistoryLimit: 10,
+      harnessSync: { pluginResources: "symlink", nativeAgentPlugins: true },
+    });
+    const profile = createPlugin({ name: "work" });
+    setPluginTags(profile.id, ["profile"]);
+    const drafted = agentSkill();
+    const skill = createResource({
+      type: drafted.type,
+      name: drafted.name,
+      description: drafted.description,
+      content: drafted.content,
+      metadata: drafted.metadata,
+      source: drafted.source,
+    });
+    addResourceToPlugin(profile.id, skill.id);
+    const preview = await previewProfileApply({
+      profile: "work",
+      scope: "home",
+      harness: "codex",
+    });
+    expect(preview.files.changes.some((change) => change.path.includes("native-agent-plugins"))).toBe(
+      false,
+    );
+    expect(preview.files.expected_count).toBeGreaterThan(0);
   });
 
   it("does not treat an untouched Codex or Copilot config as a change", () => {

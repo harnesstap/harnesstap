@@ -23,6 +23,7 @@ import {
   profileSkillNameMap,
 } from "./cursor-host-managed-skills.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { isNativeAgentPluginCachePath } from "./native-agent-plugins.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import {
   buildHarnessLiveStatusMap,
@@ -189,6 +190,7 @@ function compareExpectedFiles(
   const changes: DriftFileChange[] = [];
   const homeRoot = resolveHomeRoot();
   for (const file of uniqueExpectedFiles(expectedFiles)) {
+    if (isNativeAgentPluginCachePath(file.path)) continue;
     const current = readRootFile(rootPath, file.path);
     if (expectedFileMatchesLiveForPreview(homeRoot, file, current)) {
       continue;

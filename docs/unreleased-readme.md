@@ -39,13 +39,25 @@ MCP servers from an Agent Plugins package keep `cwd` and an HTTP transport of `s
 
 Set `harnessSync.nativeAgentPlugins` to `true` to register Agent Plugins packages for Codex and Copilot instead of extracting their skills and MCP servers. The default is off. Codex entries are `[plugins."<name>@harnesstap"]` in `config.toml`. Copilot entries are `enabledPlugins` keys in `.copilot/settings.json`. Other keys stay. Turning a package off removes only those `@harnesstap` keys and the cache files HarnessTap wrote. A config with no `@harnesstap` keys to add or remove is left as it is, including when the flag is on and the profile does not register a package.
 
+The Cursor and Claude copies of an Agent Plugins package rewrite those variables in the emitted tree only. Cursor writes `${CURSOR_PLUGIN_ROOT}` and an absolute plugin data path. Claude writes `.claude-plugin/plugin.json`, `.mcp.json` (`streamable-http` and `sse` as `http`, `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}`), and copies `com.harnesstap` commands, agents, and hook JSON into the Claude plugin directories. A file HarnessTap does not own inside a Cursor local plugin is left in place. Owned removals are backed up.
+
 ## docs/cli/concepts/plugins.md > Plugin dependencies
 <!-- append -->
 Attaching a marketplace plugin whose source path leaves the repository is rejected. No pin is recorded.
 
-The Cursor and Claude copies of an Agent Plugins package rewrite those variables in the emitted tree only. Cursor writes `${CURSOR_PLUGIN_ROOT}` and an absolute plugin data path. Claude writes `.claude-plugin/plugin.json`, `.mcp.json` (`streamable-http` and `sse` as `http`, `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}`), and copies `com.harnesstap` commands, agents, and hook JSON into the Claude plugin directories. A file HarnessTap does not own inside a Cursor local plugin is left in place. Owned removals are backed up.
-
 ## docs/cli/command-reference.md > apply
 <!-- append -->
 Host MCP configs expand `${PLUGIN_ROOT}`, `${PLUGIN_DATA}`, and `./` commands for an import, a marketplace pin, a git import, and a local install tree. The library copy stays literal.
+
+## docs/cli/command-reference.md > apply
+<!-- append -->
+Host MCP configs write the POSIX command server on Linux and macOS, and the Windows `.cmd` server on Windows. A missing or mismatched plugin pin says `Run: ht resource sync plugin_pin:<ref>`.
+
+## docs/cli/command-reference.md > profile (`p`) > Commands
+<!-- append -->
+A cancelled `profile use` does not list `.harnesstap/cache/native-agent-plugins/` files as changes. Apply still writes that cache.
+
+## Desktop
+<!-- append -->
+The apply footer counts files that will be written or removed. Kept rows are not included.
 

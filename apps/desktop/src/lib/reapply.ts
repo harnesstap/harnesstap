@@ -1,12 +1,15 @@
+import { fileChangeAction } from "./contents-diff";
 import type { ProfileApplyPreview, ViewScope } from "./types";
 
 /** Green hold on the apply strip before it collapses. */
 export const APPLY_SUCCESS_HOLD_MS = 1500;
 
+/** Writes and removals. Kept rows stay in the preview and are not counted. */
 export function applyPreviewChangeCount(
   preview: ProfileApplyPreview | null | undefined,
 ): number {
-  return preview?.files.changes.length ?? 0;
+  const changes = preview?.files.changes ?? [];
+  return changes.filter((change) => fileChangeAction(change).action !== "kept").length;
 }
 
 export type ProfileHeaderStatusKind =

@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createTestContext } from "../helpers/db.ts";
 import { findPluginResourceByPin } from "../../src/services/plugin-composition.ts";
+import { validatePluginPinsAgainstInventory } from "../../src/services/plugin-apply-validation.ts";
 import {
   expandPluginPinMaterialResources,
   preparePluginPinsForApply,
@@ -300,6 +301,21 @@ describe("preparePluginPinsForApply", () => {
       expect(result.applyResources).toEqual([]);
       expect(result.extraMaterialized).toBe(0);
       expect(getPluginByName("formatter", "1.2.3")).toBeDefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("names ht resource sync when a pin has no resolved version", async () => {
+    const context = await createTestContext("plugin-pin-ht-hint");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const issues = validatePluginPinsAgainstInventory([
+        { ref: "missing@mkt", version_constraint: "1.0.0" },
+      ]);
+      expect(issues[0]?.message).toBe(
+        "Plugin pin missing@mkt has no resolved version. Run: ht resource sync plugin_pin:missing@mkt",
+      );
     } finally {
       await context.cleanup();
     }

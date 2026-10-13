@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
   applyCtaHelper,
+  applyPreviewChangeCount,
   PROFILE_HEADER_STATUS_TOOLTIP,
   profileHeaderStatus,
   shouldAutoReapply,
   shouldShowReapply,
 } from "../../apps/desktop/src/lib/reapply.ts";
+import type { DriftFileChange, ProfileApplyPreview } from "../../apps/desktop/src/lib/types.ts";
 
 describe("shouldShowReapply", () => {
   const base = {
@@ -173,6 +175,33 @@ describe("profileHeaderStatus", () => {
       active: true,
       warn: true,
     });
+  });
+});
+
+describe("applyPreviewChangeCount", () => {
+  function preview(changes: DriftFileChange[]): ProfileApplyPreview {
+    return {
+      profile: "work",
+      scope: "home",
+      contents: null,
+      untracked_resources: [],
+      files: { expected_count: changes.length, changes, root_path: "/tmp" },
+      relative_to_active: false,
+    };
+  }
+
+  test("counts writes and removals and skips kept rows", () => {
+    expect(applyPreviewChangeCount(preview([
+      { path: "a.md", type: "deleted" },
+      { path: "b.md", type: "modified" },
+      { path: "c.md", type: "added", removal_group: "owned_unmodified" },
+      { path: "d.md", type: "added", removal_group: "owned_modified" },
+      { path: "e.md", type: "modified", removal_group: "unmanaged" },
+    ]))).toBe(3);
+    expect(applyPreviewChangeCount(preview([
+      { path: "d.md", type: "added", removal_group: "owned_modified" },
+      { path: "e.md", type: "modified", removal_group: "unmanaged" },
+    ]))).toBe(0);
   });
 });
 
