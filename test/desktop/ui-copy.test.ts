@@ -55,7 +55,10 @@ describe("desktop ui-copy (DS-1 / DS-6)", () => {
       "Everything is up to date. 32 unchanged.",
     );
     expect(applyResultToastTitle({ wrote: 0, removed: 0, kept: 6, unchanged: 16 })).toBe(
-      "Everything is up to date. 16 unchanged.",
+      "Wrote 0, removed 0, kept 6",
+    );
+    expect(applyResultToastTitle({ wrote: 0, removed: 1, kept: 23 })).toBe(
+      "Wrote 0, removed 1, kept 23",
     );
   });
 });

@@ -70,4 +70,23 @@ describe("apply dry-run and success copy (W2-2, DS-6)", () => {
     expect(output).toContain("Wrote 3, removed 1, kept 1, unchanged 28.");
     expect(output).toContain("ht revert snap-1");
   });
+
+  it("counts a keep-only apply instead of calling it up to date", () => {
+    capture();
+    printApplySuccess({
+      name: "work",
+      harnessCount: 4,
+      wrote: 0,
+      removed: 0,
+      kept: [
+        { path: ".agents/skills/tiny-skill/SKILL.md", reason: "modified" },
+        { path: ".claude/rules/security.md", reason: "unmanaged" },
+      ],
+      unchanged: 0,
+    });
+    const output = logs.join("\n");
+    expect(output).toContain("Wrote 0, removed 0, kept 2.");
+    expect(output).toContain(".agents/skills/tiny-skill/SKILL.md");
+    expect(output).not.toContain("Everything is up to date");
+  });
 });
