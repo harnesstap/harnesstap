@@ -139,6 +139,8 @@ async function scanOriginTree(
   const manifestCandidates = [
     join(sourcePath, ".claude-plugin", "marketplace.json"),
     join(sourcePath, ".cursor-plugin", "marketplace.json"),
+    join(sourcePath, ".github", "plugin", "marketplace.json"),
+    join(sourcePath, ".agents", "plugins", "marketplace.json"),
     join(sourcePath, "marketplace.json"),
   ];
   for (const manifestPath of manifestCandidates) {

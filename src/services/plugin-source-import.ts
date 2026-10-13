@@ -30,8 +30,8 @@ interface PluginManifest {
 }
 
 interface MarketplacePluginEntry {
-  path?: string;
-  source?: string;
+  path?: unknown;
+  source?: unknown;
 }
 
 interface MarketplaceManifest {
@@ -148,6 +148,42 @@ function normalizeMarketplaceEntryPath(path: string): string {
   return path.trim().replaceAll("\\", "/");
 }
 
+function marketplaceEntryRawPath(entry: MarketplacePluginEntry | undefined): unknown {
+  if (!entry) return undefined;
+  if (typeof entry.path === "string" && entry.path.trim().length > 0) {
+    return entry.path;
+  }
+  const source = entry.source;
+  if (typeof source === "string" && source.trim().length > 0) {
+    return source;
+  }
+  if (typeof source === "object" && source !== null && !Array.isArray(source)) {
+    const nested = (source as { path?: unknown }).path;
+    if (typeof nested === "string" && nested.trim().length > 0) {
+      return nested;
+    }
+  }
+  return entry.path ?? entry.source;
+}
+
+function marketplaceEntryPath(rawPath: string, manifestPath: string): string {
+  const path = normalizeMarketplaceEntryPath(rawPath);
+  if (path.length === 0) {
+    throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
+  }
+  if (!isCodexMarketplaceManifest(manifestPath)) {
+    return path;
+  }
+  const normalized = path.replace(/^\.\//, "").replace(/\/+$/, "");
+  const relative = normalized.length === 0 || normalized === "." ? "." : normalized;
+  if (relative.split("/").includes("..")) {
+    throw new Error(
+      `Marketplace entry path must stay inside the marketplace: ${manifestPath}`,
+    );
+  }
+  return relative;
+}
+
 function validatePluginManifest(
   manifest: PluginManifest,
   manifestPath: string,
@@ -199,14 +235,11 @@ function validateMarketplaceManifest(
   }
 
   const plugins = manifest.plugins.map((entry) => {
-    const rawPath = entry?.path ?? entry?.source;
+    const rawPath = marketplaceEntryRawPath(entry);
     if (typeof rawPath !== "string") {
       throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
     }
-    const path = normalizeMarketplaceEntryPath(rawPath);
-    if (path.length === 0) {
-      throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
-    }
+    const path = marketplaceEntryPath(rawPath, manifestPath);
     return { path };
   });
 
@@ -365,15 +398,27 @@ function marketplaceRepoRoot(manifestPath: string): string {
   if (name === "plugin" && basename(dirname(manifestDir)) === ".github") {
     return dirname(dirname(manifestDir));
   }
+  if (name === "plugins" && basename(dirname(manifestDir)) === ".agents") {
+    return dirname(dirname(manifestDir));
+  }
   return manifestDir;
+}
+
+function isCodexMarketplaceManifest(manifestPath: string): boolean {
+  const manifestDir = dirname(manifestPath);
+  return basename(manifestDir) === "plugins" && basename(dirname(manifestDir)) === ".agents";
 }
 
 function resolveMarketplaceEntryPath(
   manifestPath: string,
   entryPath: string,
 ): string {
+  const repoRoot = marketplaceRepoRoot(manifestPath);
+  if (isCodexMarketplaceManifest(manifestPath)) {
+    return entryPath === "." ? repoRoot : join(repoRoot, entryPath);
+  }
   const fromManifestDir = join(dirname(manifestPath), entryPath);
-  const fromRepoRoot = join(marketplaceRepoRoot(manifestPath), entryPath);
+  const fromRepoRoot = join(repoRoot, entryPath);
   return firstExistingPath([fromManifestDir, fromRepoRoot]) ?? fromManifestDir;
 }
 
@@ -999,6 +1044,7 @@ const REPO_MARKETPLACE_MANIFESTS = [
   ".cursor-plugin/marketplace.json",
   ".codex-plugin/marketplace.json",
   ".github/plugin/marketplace.json",
+  ".agents/plugins/marketplace.json",
 ] as const;
 
 function listMarketplacePluginRoots(repoRoot: string): string[] {

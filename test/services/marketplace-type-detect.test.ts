@@ -66,6 +66,18 @@ describe("detectMarketplaceType local filesystem", () => {
     expect(result.message).toBe("Inferred: Cursor");
   });
 
+  it("names a Codex marketplace file when no registry platform matches", async () => {
+    const root = tempDir("ht-mkt-detect-codex-");
+    writeManifest(root, ".agents/plugins/marketplace.json");
+    const result = await detectMarketplaceType(root);
+    expect(result.status).toBe("ambiguous");
+    expect(result.platforms).toEqual([]);
+    expect(result.manifests).toEqual([".agents/plugins/marketplace.json"]);
+    expect(result.message).toBe(
+      "Could not tell marketplace type. Found .agents/plugins/marketplace.json.",
+    );
+  });
+
   it("infers Copilot CLI from .github/plugin/marketplace.json", async () => {
     const root = tempDir("ht-mkt-detect-copilot-");
     writeManifest(root, ".github/plugin/marketplace.json");

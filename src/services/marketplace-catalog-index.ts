@@ -4,7 +4,9 @@ import matter from "gray-matter";
 import {
   HOST_PLUGIN_MANIFEST_RELATIVE_PATHS,
   readFirstHostPluginManifest,
+  readJsonFile,
 } from "../plugins/host-plugin-manifest.js";
+import { lookupApSchema } from "./agent-plugins/schema-registry.js";
 import type {
   CatalogPlugin,
   CatalogPluginContent,
@@ -32,6 +34,17 @@ function uniqueStrings(values: string[]): string[] {
     next.push(value);
   }
   return next;
+}
+
+function agentPluginPackageFormat(
+  pluginRoot: string,
+): "agent-plugin" | undefined {
+  const manifest = readJsonFile<{ $schema?: unknown }>(join(pluginRoot, "plugin.json"));
+  const schema = manifest?.$schema;
+  if (typeof schema === "string" && lookupApSchema(schema).kind === "current") {
+    return "agent-plugin";
+  }
+  return undefined;
 }
 
 function looksLikePluginRoot(path: string): boolean {
@@ -130,7 +143,10 @@ export function enrichCatalogPlugin(
   plugin: CatalogPlugin,
 ): CatalogPlugin {
   const pluginRoot = resolveMarketplaceCatalogPluginRoot(marketplaceRoot, plugin);
-  if (!pluginRoot) return plugin;
+  if (!pluginRoot) {
+    const { packageFormat: _dropped, ...rest } = plugin;
+    return rest;
+  }
 
   const manifest = readFirstHostPluginManifest(pluginRoot);
   const description = plugin.description ?? manifest?.description;
@@ -155,11 +171,14 @@ export function enrichCatalogPlugin(
     ...commandContents(pluginRoot),
   ];
 
+  const packageFormat = agentPluginPackageFormat(pluginRoot);
+  const { packageFormat: _dropped, ...rest } = plugin;
   return {
-    ...plugin,
+    ...rest,
     ...(description ? { description } : {}),
     ...(tags.length > 0 ? { tags } : {}),
     ...(contents.length > 0 ? { contents } : {}),
+    ...(packageFormat ? { packageFormat } : {}),
   };
 }
 

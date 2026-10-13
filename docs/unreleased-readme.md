@@ -25,6 +25,10 @@ New text for the Install section of README.md.
 - `plugin validate <file>` - load an Agent Plugins directory, zip, or `.ap.json` and report skills, MCP servers, skipped entries, and ignored manifest fields (`--spec 1.0.0`, `--format json`)
 - A directory whose root `plugin.json` uses the Agent Plugins 1.0.0 `$schema` is an agent plugin. Import keeps `author`, `homepage`, `repository`, and `license`, and keeps vendor namespace objects and their directories (for example `com.openai` and `com.github.copilot`). Path overrides in that manifest are ignored. Root `agents`, `commands`, and `hooks` are still read, with a warning.
 
+## docs/cli/concepts/plugins.md > Plugin dependencies
+<!-- append -->
+`marketplace add` reads `.github/plugin/marketplace.json` (Copilot) and `.agents/plugins/marketplace.json` (Codex `source.path`, including `./` for the repository root) in addition to the Claude, Cursor, and root marketplace files. A plugin root whose `plugin.json` uses the Agent Plugins 1.0.0 `$schema` is classified as an agent plugin. Paths that leave the repository are skipped.
+
 ## docs/cli/command-reference.md > apply
 <!-- append -->
 MCP servers from an Agent Plugins package keep `cwd` and an HTTP transport of `streamable-http` or `sse`. Apply warns when a harness cannot write `cwd`, and when `sse` is written as that harness's HTTP form. `${PLUGIN_ROOT}` and `${PLUGIN_DATA}` stay as written in the library. The plugin data directory is `~/.harnesstap/plugin-data/<plugin>`. HarnessTap creates it only when it is missing, records that ownership, and leaves an existing unowned directory or file in place.
