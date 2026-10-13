@@ -157,25 +157,32 @@ function restoreWalkLog() {
   console.warn = baseWarn;
 }
 
-// @font-face from fontsource is registered after the app CSS evaluates.
-// Load every declared face before the shot. A fallback face changes the
-// settings title line box (about 19px) and fails the 0.2% compare.
+// CSS @font-face rules are not enumerated by document.fonts until something
+// requests them. Settings titles use IBM Plex Sans 500; a fallback face
+// inserts about 19px under the title at 960px and fails the 0.2% compare.
+const FONT_LOADS = [
+  '400 16px "IBM Plex Sans"',
+  '500 22px "IBM Plex Sans"',
+  '600 16px "IBM Plex Sans"',
+  '400 13px "IBM Plex Mono"',
+  '500 13px "IBM Plex Mono"',
+];
+
 async function preloadFonts(page) {
-  await page.evaluate(async () => {
+  await page.evaluate(async (specs) => {
     if (!document.fonts) return;
-    const pending = [];
-    document.fonts.forEach((face) => {
-      pending.push(face.load().catch(() => undefined));
-    });
-    await Promise.all(pending);
+    await Promise.all(specs.map((spec) => document.fonts.load(spec).catch(() => [])));
     await document.fonts.ready;
-  });
+  }, FONT_LOADS);
 }
 
 async function settle(page) {
   await main(page).waitFor({ state: "visible", timeout: T });
-  await page.evaluate(async () => {
-    if (!document.fonts || document.fonts.status !== "loading") return;
+  const waited = await page.evaluate(async (specs) => {
+    if (!document.fonts) return false;
+    const missing = specs.filter((spec) => !document.fonts.check(spec));
+    if (missing.length === 0 && document.fonts.status !== "loading") return false;
+    await Promise.all(missing.map((spec) => document.fonts.load(spec).catch(() => [])));
     await Promise.race([
       document.fonts.ready,
       new Promise((resolve) => setTimeout(resolve, 5000)),
@@ -183,7 +190,9 @@ async function settle(page) {
     await new Promise((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(resolve));
     });
-  });
+    return true;
+  }, FONT_LOADS);
+  if (waited) console.log("shots: waited for fonts");
   await page.waitForTimeout(SETTLE_MS);
 }
 
@@ -739,6 +748,23 @@ async function warmBrowser(browser, baseUrl) {
   }
 }
 
+async function runLoggedWalk(browser, walk) {
+  const lines = [];
+  const started = Date.now();
+  let walkFailed = false;
+  try {
+    walkFailed = await walkLogs.run(lines, () =>
+      run(walk.argv, { browser, outDir: walk.outDir }),
+    );
+  } catch (error) {
+    walkFailed = true;
+    lines.push(error instanceof Error ? error.stack ?? error.message : String(error));
+  }
+  const seconds = Math.round((Date.now() - started) / 1000);
+  lines.push(`walk ${walk.name}: exit ${walkFailed ? 1 : 0} in ${seconds}s`);
+  return { name: walk.name, lines, walkFailed };
+}
+
 async function runSuite() {
   const artifacts = path.resolve(SCRIPT_DIR, "..", "e2e", "artifacts");
   const shots = DEFAULT_OUT;
@@ -775,24 +801,15 @@ async function runSuite() {
     const warmStart = Date.now();
     await warmBrowser(browser, baseUrl);
     baseLog(`shots: warm ${((Date.now() - warmStart) / 1000).toFixed(1)}s`);
-    const results = await Promise.all(
-      walks.map(async (walk) => {
-        const lines = [];
-        const started = Date.now();
-        let walkFailed = false;
-        try {
-          walkFailed = await walkLogs.run(lines, () =>
-            run(walk.argv, { browser, outDir: walk.outDir }),
-          );
-        } catch (error) {
-          walkFailed = true;
-          lines.push(error instanceof Error ? error.stack ?? error.message : String(error));
-        }
-        const seconds = Math.round((Date.now() - started) / 1000);
-        lines.push(`walk ${walk.name}: exit ${walkFailed ? 1 : 0} in ${seconds}s`);
-        return { name: walk.name, lines, walkFailed };
-      }),
-    );
+    // Trace samples rAF. It runs after the other walks so those pages are
+    // closed and a long frame is the app, not four renderers.
+    const traceWalk = walks.find((walk) => walk.name === "trace");
+    const parallelWalks = walks.filter((walk) => walk.name !== "trace");
+    const results = [];
+    for (const batch of [parallelWalks, [traceWalk]]) {
+      const batchResults = await Promise.all(batch.map((walk) => runLoggedWalk(browser, walk)));
+      results.push(...batchResults);
+    }
     for (const result of results) {
       const text = result.lines.join("\n");
       await writeFile(path.join(logsDir, `${result.name}.log`), `${text}\n`);
