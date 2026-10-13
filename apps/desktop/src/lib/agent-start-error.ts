@@ -103,5 +103,10 @@ export function formatAgentStartError(
   if (!trimmed) {
     return CONNECT_SPLASH_COPY.unreachable;
   }
-  return trimmed.replaceAll(/sidecar/gi, "agent");
+  const headline = trimmed.replaceAll(/sidecar/gi, "agent");
+  // A crash dump repeats under Show details. The headline stays one short sentence.
+  if (headline.includes("\n") || headline.length > 140) {
+    return CONNECT_SPLASH_COPY.unexpectedStop;
+  }
+  return headline;
 }

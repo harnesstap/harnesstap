@@ -1,4 +1,10 @@
+import { getDisplayHome } from "./display-home";
+
 const DEFAULT_MAX = 42;
+
+function normalized(path: string): string {
+  return path.replaceAll("\\", "/");
+}
 
 function inferredHomePrefix(path: string): string | null {
   const unixHome = path.match(/^\/home\/[^/]+/);
@@ -21,9 +27,15 @@ export function compactHomePath(
   path: string,
   maxLength: number = DEFAULT_MAX,
 ): string {
-  const home = inferredHomePrefix(path);
-  let next = path;
-  if (home && (next === home || next.startsWith(`${home}/`) || next.startsWith(`${home}\\`))) {
+  const configured = getDisplayHome();
+  const configuredNorm = configured ? normalized(configured) : null;
+  const pathNorm = normalized(path);
+  const home = configuredNorm
+    && (pathNorm === configuredNorm || pathNorm.startsWith(`${configuredNorm}/`))
+    ? configuredNorm
+    : inferredHomePrefix(pathNorm);
+  let next = pathNorm;
+  if (home && (next === home || next.startsWith(`${home}/`))) {
     next = `~${next.slice(home.length)}`;
   }
   if (next.length <= maxLength) {

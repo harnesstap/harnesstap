@@ -12,6 +12,7 @@ import {
 import { listProfilePluginsCommand } from "../services/profile-commands.js";
 import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
 import { findProjectConfig } from "../services/project-config.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import { PACKAGE_VERSION } from "../version.js";
 import { getAgentFirstRun } from "./boot-state.js";
 import { requireAgentBearerAuth } from "./auth.js";
@@ -301,6 +302,7 @@ export function createAgentRouteHandlers(
         version: PACKAGE_VERSION,
         port,
         first_run: getAgentFirstRun(),
+        home: resolveHomeRoot(),
       });
     },
 

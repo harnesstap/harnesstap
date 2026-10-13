@@ -7,6 +7,7 @@ import {
   SidecarConnectError,
 } from "../lib/agent-client";
 import { formatAgentStartError } from "../lib/agent-start-error";
+import { setDisplayHome } from "../lib/display-home";
 import { CONNECT_SPLASH_COPY } from "../lib/ui-copy";
 
 export type AgentPhase = "connecting" | "connected" | "disconnected";
@@ -75,6 +76,7 @@ export function useAgentSession(): AgentSession {
 
   const applyConnection = useCallback(
     (next: Awaited<ReturnType<typeof connectAgent>>) => {
+      setDisplayHome(next.health.home);
       setConnection({
         client: { baseUrl: next.baseUrl, token: next.token },
         firstRun: Boolean(next.health.first_run),

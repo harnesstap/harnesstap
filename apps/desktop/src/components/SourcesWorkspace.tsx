@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fetchLibraryResourceDetail } from "../lib/agent-client";
+import { desktopDiscoverError } from "../lib/discover-error";
 import { unregisterCatalog } from "../lib/api/publish";
 import { removeMarketplace } from "../lib/api/marketplace-remove";
 import {
@@ -808,7 +809,7 @@ export function SourcesWorkspace({
   const groupErrors = useMemo(() => {
     const next: Record<string, SourcesGroupError> = {};
     if (localError && checkedRows.some((row) => row.id === "local")) {
-      next.local = { message: localError, authRequired: false };
+      next.local = { message: desktopDiscoverError(localError), authRequired: false };
     }
     for (const row of checkedRows) {
       if (row.kind !== "marketplace") {
@@ -816,7 +817,10 @@ export function SourcesWorkspace({
       }
       const marketplaceError = marketplaceHits[row.id]?.error;
       if (marketplaceError) {
-        next[row.id] = { message: marketplaceError, authRequired: false };
+        next[row.id] = {
+          message: desktopDiscoverError(marketplaceError),
+          authRequired: false,
+        };
       }
     }
     const cloudRows = checkedRows.filter(
@@ -825,13 +829,16 @@ export function SourcesWorkspace({
     if (cloudAuthRequired) {
       for (const row of cloudRows) {
         next[row.id] = {
-          message: cloudRequestError ?? "Cloud sign-in required",
+          message: desktopDiscoverError(cloudRequestError ?? "Cloud sign-in required"),
           authRequired: true,
         };
       }
     } else if (cloudRequestError) {
       for (const row of cloudRows) {
-        next[row.id] = { message: cloudRequestError, authRequired: false };
+        next[row.id] = {
+          message: desktopDiscoverError(cloudRequestError),
+          authRequired: false,
+        };
       }
     } else {
       for (const cloudError of cloudErrors) {
@@ -840,7 +847,7 @@ export function SourcesWorkspace({
           continue;
         }
         next[sourceId] = {
-          message: cloudError.message,
+          message: desktopDiscoverError(cloudError.message),
           authRequired: isCloudAuthMessage(cloudError.message),
         };
       }

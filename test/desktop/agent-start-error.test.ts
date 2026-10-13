@@ -33,6 +33,13 @@ describe("formatAgentStartError", () => {
     expect(CONNECT_SPLASH_COPY.unreachable).toBe("Can't reach the HarnessTap agent");
     expect(CONNECT_SPLASH_COPY.starting).toBe("Starting the agent");
   });
+
+  it("keeps an unclassified crash dump out of the headline", () => {
+    const detail = "Error: boom\nLog file: /tmp/ht-agent.log";
+    expect(formatAgentStartError(detail)).toBe(CONNECT_SPLASH_COPY.unexpectedStop);
+    expect(formatAgentStartError(detail)).not.toContain("ht-agent.log");
+    expect(formatAgentStartError("Database is locked")).toBe("Database is locked");
+  });
 });
 
 describe("ConnectSplash copy", () => {

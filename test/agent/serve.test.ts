@@ -98,6 +98,7 @@ describe("agent serve", () => {
       version: expect.any(String),
       port: server.port,
       first_run: true,
+      home,
     });
 
     const tokenPath = join(home, AGENT_TOKEN_FILENAME);
