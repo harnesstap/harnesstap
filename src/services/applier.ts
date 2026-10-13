@@ -7,18 +7,19 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
-import { hasParentTraversalSegment } from "../utils/path-containment.js";
-import { resolveHomeRoot } from "../utils/home-root.js";
+import { skippedDuplicateCommand, skippedHostPluginHook } from "../copy/cli.js";
 import {
   findImportedSnapshotOwnersByFile,
   getImportedSnapshot,
-  listImportedSnapshots,
   listImportedSnapshotInstalls,
-  removeImportedSnapshotOwnershipForFiles,
+  listImportedSnapshots,
   recordImportedSnapshotInstall,
+  removeImportedSnapshotOwnershipForFiles,
 } from "../models/imported-snapshot.js";
+import { recordPreexistingPath } from "../models/preexisting-path.js";
 import { getResourcesByIds } from "../models/resource.js";
 import { applyClaudePluginExtensions } from "../platforms/claude-plugin-extensions.js";
+import { pruneManagedCursorLocalPlugins } from "../plugins/cursor-local-plugin.js";
 import type {
   ClaudePluginConfig,
   HookMetadata,
@@ -29,24 +30,24 @@ import type {
   SnapshotState,
   SurfaceWarning,
 } from "../types.js";
-import { getPlatformSerializer } from "./platform-serializers.js";
-import {
-  attachResourceOwnership,
-  persistWrittenMaterializations,
-} from "./materialization-ownership.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
+import { hasParentTraversalSegment } from "../utils/path-containment.js";
+import { mcpSerializationWarnings } from "./agent-plugins/plugin-vars.js";
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
-import { omitHostPluginBundledSkills } from "./host-plugin-material.js";
-import { skippedDuplicateCommand, skippedHostPluginHook } from "../copy/cli.js";
 import { gateDeployFiles } from "./deploy-gate.js";
-import { pruneManagedCursorLocalPlugins } from "../plugins/cursor-local-plugin.js";
 import {
   type EnvironmentFragment,
   mergeResolvedEnvironmentIntoResources,
 } from "./environment-cascade.js";
-import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
+import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import { resourceAppliesToHarness } from "./harness-scope.js";
 import { hookRequiresPluginRoot } from "./hook-serialization.js";
-import { mcpSerializationWarnings } from "./agent-plugins/plugin-vars.js";
+import { omitHostPluginBundledSkills } from "./host-plugin-material.js";
+import {
+  attachResourceOwnership,
+  persistWrittenMaterializations,
+} from "./materialization-ownership.js";
+import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import {
   isNativeAgentPluginPlatform,
   mergeNativeAgentPluginFiles,
@@ -54,13 +55,13 @@ import {
   nativeAgentPluginsEnabled,
   splitNativeAgentPluginExtract,
 } from "./native-agent-plugins.js";
-import { recordPreexistingPath } from "../models/preexisting-path.js";
-import { isMergeableHostConfigPath } from "./merged-host-config.js";
+import { getPlatformSerializer } from "./platform-serializers.js";
 import {
   isAggregateConfigManagedPath,
   isPluginRegistryManagedPath,
 } from "./profile-commit-resource.js";
 import {
+  classifyManagedPathOwnership,
   executeSafeFileRemovals,
   hasHarnessTapMaterialization,
   hashOnDiskFile,
@@ -68,8 +69,8 @@ import {
   type SafeFileRemovalOptions,
   type SafeFileRemovalResult,
 } from "./safe-file-removal.js";
+import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { captureManagedSnapshotState } from "./snapshot-capture.js";
-import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -502,6 +503,11 @@ export async function planMaterializationConflicts(
     // Byte differences that apply would skip (JSON/TOML/MCP semantic
     // equality) are not conflicts. A no-op must not cancel the apply.
     if (semanticallyMatchesExisting(fullPath, file)) return [];
+    // A managed file the user edited is kept, not overwritten. It is not a
+    // conflict that should cancel the apply.
+    if (classifyManagedPathOwnership(rootPath, file.path) === "modified") {
+      return [];
+    }
     const owners = findImportedSnapshotOwnersByFile(file.path);
     return [{
       path: file.path,

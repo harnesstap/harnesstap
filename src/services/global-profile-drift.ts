@@ -1,38 +1,21 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { listMaterializationsForRootPath } from "../models/resource-materialization.js";
-import { hashOnDiskFile } from "./safe-file-removal.js";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
 import { resolvePluginSelector } from "../models/plugin-model.js";
+import { listMaterializationsForRootPath } from "../models/resource-materialization.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
-import {
-  applyProfilePlugin,
-  clearGlobalProfileApply,
-  collectProfilePluginIds,
-  type ApplyProfilePluginResult,
-} from "./profile-apply.js";
-import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import {
   isTransparentCrossHarnessGap,
   resourceScopesForPlugins,
 } from "./cross-harness-gap.js";
-import type { HarnessScope } from "./harness-scope.js";
-import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
-import { resourceKeyFromManagedPath } from "./profile-commit-resource.js";
-import { withAffectedResources } from "./scoped-file-content-delta.js";
-import type { DriftFileChange } from "./project-drift.js";
-import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
-import {
-  buildProfileContents,
-  type ProfileContents,
-} from "./profile-contents.js";
 import {
   buildHostManagedStatus,
-  profileSkillNameMap,
   type HostManagedStatus,
+  profileSkillNameMap,
 } from "./cursor-host-managed-skills.js";
+import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import {
   buildHarnessLiveStatusMap,
   classifyGlobalDriftChanges,
@@ -40,12 +23,29 @@ import {
   computeGlobalProfilePanelStatus,
   countMissingHarnessRows,
   declaredMcpFromExpectedFiles,
-  resolveProjectDriftSummary,
   type GlobalProfileDriftSummary,
   type GlobalProfilePanelStatus,
   type GlobalProfileStatusDepth,
   type HarnessLiveStatus,
+  resolveProjectDriftSummary,
 } from "./global-profile-status-panel.js";
+import type { HarnessScope } from "./harness-scope.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import {
+  type ApplyProfilePluginResult,
+  applyProfilePlugin,
+  clearGlobalProfileApply,
+  collectProfilePluginIds,
+} from "./profile-apply.js";
+import { resourceKeyFromManagedPath } from "./profile-commit-resource.js";
+import {
+  buildProfileContents,
+  type ProfileContents,
+} from "./profile-contents.js";
+import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
+import { type DriftFileChange, driftChangeIsKept } from "./project-drift.js";
+import { hashOnDiskFile } from "./safe-file-removal.js";
+import { withAffectedResources } from "./scoped-file-content-delta.js";
 
 export interface GlobalProfileStatus {
   active_profile: string | null;
@@ -68,6 +68,20 @@ export interface GlobalProfileStatus {
   not_staged_count?: number;
   /** App-managed inventory (full depth only); never applied or persisted. */
   host_managed?: HostManagedStatus;
+}
+
+function keptContentDiff(
+  path: string,
+  keptModified: ReadonlySet<string>,
+  keptUnmanaged: ReadonlySet<string>,
+): DriftFileChange {
+  if (keptModified.has(path)) {
+    return { path, type: "modified", removal_group: "owned_modified" };
+  }
+  if (keptUnmanaged.has(path)) {
+    return { path, type: "modified", removal_group: "unmanaged" };
+  }
+  return { path, type: "modified" };
 }
 
 function isMissingExpectedFileTransparent(
@@ -147,7 +161,8 @@ function buildBaseStatusFields(input: {
   const asOf = new Date().toISOString();
   const homeRoot = resolveHomeRoot();
   const ownedFiles = collectOwnedGlobalProfileFiles(input.snapshotId);
-  const { owned, nonOwned } = classifyGlobalDriftChanges(input.changes, ownedFiles);
+  const blockingChanges = input.changes.filter((change) => !driftChangeIsKept(change));
+  const { owned, nonOwned } = classifyGlobalDriftChanges(blockingChanges, ownedFiles);
 
   const declaredPins =
     input.pluginIds && input.pluginIds.length > 0
@@ -405,6 +420,8 @@ export async function detectGlobalProfileStatus(input: {
     : false;
 
   const changes: DriftFileChange[] = [];
+  const keptModified = new Set(expectedApply.removals?.owned_modified ?? []);
+  const keptUnmanaged = new Set(expectedApply.removals?.unmanaged ?? []);
   const scopeByResource = resourceScopesForPlugins(pluginIds);
   const expectedPathsByResource = new Map<string, string[]>();
   for (const file of expectedApply.expected_files ?? []) {
@@ -444,7 +461,7 @@ export async function detectGlobalProfileStatus(input: {
       }
       changes.push(
         withAffectedResources(
-          { path: file.path, type: "modified" },
+          keptContentDiff(file.path, keptModified, keptUnmanaged),
           file.content,
           current,
         ),
@@ -454,7 +471,7 @@ export async function detectGlobalProfileStatus(input: {
     if (!fileContentsEquivalentForDrift(file.path, current, file.content)) {
       changes.push(
         withAffectedResources(
-          { path: file.path, type: "modified" },
+          keptContentDiff(file.path, keptModified, keptUnmanaged),
           file.content,
           current,
         ),
@@ -463,7 +480,8 @@ export async function detectGlobalProfileStatus(input: {
   }
 
   const applied = Boolean(latestSnapshot);
-  const hasDrift = !applied || !stackInSync || changes.length > 0;
+  const blockingChanges = changes.filter((change) => !driftChangeIsKept(change));
+  const hasDrift = !applied || !stackInSync || blockingChanges.length > 0;
 
   return finalizeGlobalProfileStatus(
     {

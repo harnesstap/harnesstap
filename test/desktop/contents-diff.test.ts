@@ -1,34 +1,34 @@
 import { describe, expect, it } from "bun:test";
 import {
   aggregateInstallGaps,
-  installGapRowPresentation,
-  installGapStatusLabel,
-  isTargetPreviewInstallGap,
+  compositionTypeCounts,
   countFileChangeKindResources,
   countPendingApplyResourceTypes,
   diffProfileContents,
   fileChangeAction,
-  fileChangeLabelCounts,
   fileChangeDestinationSummary,
+  fileChangeLabelCounts,
   fileChangeMatchesKindFilter,
-  filterFileChangeGroups,
-  groupFileChangesByResource,
-  liveMcpNamesFromHarnesses,
-  orderedTypeCounts,
-  summarizeStackChanges,
-  uniqueFileChanges,
-  inferFileChangeType,
-  inferFileChangeResource,
   fileChangeMatchesResource,
-  managedPathFromResourceSource,
-  compositionTypeCounts,
+  filterFileChangeGroups,
   filterProfileResourceList,
   flattenProfileResourceList,
+  groupFileChangesByResource,
   groupInstallGaps,
+  inferFileChangeResource,
+  inferFileChangeType,
+  installGapRowPresentation,
+  installGapStatusLabel,
+  isTargetPreviewInstallGap,
+  liveMcpNamesFromHarnesses,
+  managedPathFromResourceSource,
+  orderedTypeCounts,
   profileHasComposition,
   stackChangesQuietLabel,
+  summarizeStackChanges,
   targetPreviewActiveMeta,
   targetPreviewDriftA11y,
+  uniqueFileChanges,
 } from "../../apps/desktop/src/lib/contents-diff.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
 
@@ -278,6 +278,12 @@ describe("contents-diff helpers", () => {
     expect(fileChangeAction({ path: "a", type: "modified" })).toEqual({
       action: "update",
       label: "Will write",
+    });
+    expect(
+      fileChangeAction({ path: "a", type: "modified", removal_group: "owned_modified" }),
+    ).toEqual({
+      action: "remove",
+      label: "Kept. You changed it.",
     });
     expect(fileChangeAction({ path: "a", type: "added" })).toEqual({
       action: "remove",

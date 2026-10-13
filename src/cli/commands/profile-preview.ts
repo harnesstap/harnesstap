@@ -1,30 +1,30 @@
 import type { Command } from "commander";
+import { portableScopeTip, SCOPE_COPY, scopeLine } from "../../copy/scope.js";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
+import { getHarnessPreference } from "../../models/harness.js";
+import { resolvePluginSelector } from "../../models/plugin-model.js";
 import { getActiveProfileName } from "../../services/active-profile.js";
 import { CliUsageError, missingRequiredArg } from "../../services/cli-errors.js";
 import { COMMAND_HELP_REGISTRY } from "../../services/cli-help-registry.js";
+import { resourceHarnessScope } from "../../services/harness-scope.js";
+import { registeredHarnessesOf } from "../../services/harness-targets.js";
+import { isPortableMcpResource } from "../../services/mcp-target.js";
+import { mergePluginsForApply } from "../../services/plugin-apply-merge.js";
+import { collectProfilePluginIds } from "../../services/profile-apply.js";
 import {
   type ProfileApplyPreview,
   type ProfileApplyPreviewScope,
   previewProfileApply,
 } from "../../services/profile-apply-preview.js";
+import { type DriftFileChange, driftChangeIsKept } from "../../services/project-drift.js";
 import { isPromptCancellationError } from "../../services/wizards/shared.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { formatCount } from "../formatting.js";
 import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
 import { renderCliError } from "../runtime.js";
-import { formatCount } from "../formatting.js";
 import { formatCommand } from "../shared.js";
-import { SCOPE_COPY, portableScopeTip, scopeLine } from "../../copy/scope.js";
-import { getHarnessPreference } from "../../models/harness.js";
-import { collectProfilePluginIds } from "../../services/profile-apply.js";
-import { mergePluginsForApply } from "../../services/plugin-apply-merge.js";
-import { resolvePluginSelector } from "../../models/plugin-model.js";
-import { registeredHarnessesOf } from "../../services/harness-targets.js";
-import { resourceHarnessScope } from "../../services/harness-scope.js";
-import { isPortableMcpResource } from "../../services/mcp-target.js";
-import type { DriftFileChange } from "../../services/project-drift.js";
 
 const CLI_PREVIEW_SCOPES = ["home", "project", "both"] as const;
 type CliPreviewScope = (typeof CLI_PREVIEW_SCOPES)[number];
@@ -162,6 +162,9 @@ function printHostManagedCollisions(preview: ProfileApplyPreview): void {
 }
 
 function previewChangeLabel(change: DriftFileChange): string {
+  if (driftChangeIsKept(change)) {
+    return previewRemovalLabel(change.removal_group);
+  }
   switch (change.type) {
     case "deleted":
     case "modified":
@@ -273,9 +276,13 @@ function printHumanPreview(preview: ProfileApplyPreview): void {
   }
 
   ui.subheader("Files");
-  const changeCount = preview.files.changes.length;
-  ui.dim(`${changeCount} would change · ${preview.files.expected_count} managed`);
-  if (changeCount === 0) {
+  const keptCount = preview.files.changes.filter((change) => driftChangeIsKept(change)).length;
+  const wouldChange = preview.files.changes.length - keptCount;
+  const keptSuffix = keptCount > 0 ? ` · ${keptCount} kept` : "";
+  ui.dim(
+    `${wouldChange} would change${keptSuffix} · ${preview.files.expected_count} managed`,
+  );
+  if (preview.files.changes.length === 0) {
     ui.hint("No file changes.");
   } else {
     for (const change of preview.files.changes) {

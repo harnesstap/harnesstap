@@ -11,8 +11,13 @@ export interface DriftFileChange {
   resource?: { type: string; name: string };
   /** Resources whose scoped FileDiff body actually changed. */
   affected_resources?: Array<{ type: string; name: string }>;
-  /** How apply would treat this path when it is a planned removal. */
+  /** How apply would treat this path when it is a planned removal or a skipped write. */
   removal_group?: "owned_unmodified" | "owned_modified" | "unmanaged";
+}
+
+/** User-modified or unmanaged paths apply will keep. They are not pending writes. */
+export function driftChangeIsKept(change: DriftFileChange): boolean {
+  return change.removal_group === "owned_modified" || change.removal_group === "unmanaged";
 }
 
 export interface ProjectDriftReport {
