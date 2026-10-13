@@ -2,10 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
-import { createInitializedTestContext } from "../../helpers/db.ts";
-import type { TestContext } from "../../helpers/db.ts";
-import { writeTextFile } from "../../helpers/fs.ts";
-import { specErrors } from "../../helpers/agent-plugins-spec.ts";
 import { addResourceToPlugin, createPlugin, getPluginResources } from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
 import { buildApPackageFiles, readApPackageFiles } from "../../../src/services/agent-plugins/files.ts";
@@ -17,6 +13,10 @@ import {
 } from "../../../src/services/agent-plugins/spec-mcp.ts";
 import { packProject } from "../../../src/services/apm-pack.ts";
 import type { McpServerMetadata } from "../../../src/types.ts";
+import { specErrors } from "../../helpers/agent-plugins-spec.ts";
+import type { TestContext } from "../../helpers/db.ts";
+import { createInitializedTestContext } from "../../helpers/db.ts";
+import { writeTextFile } from "../../helpers/fs.ts";
 
 const MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json";
 
@@ -85,6 +85,36 @@ describe("buildSpecMcpJson", () => {
       reserved: { env: { PLUGIN_ROOT: "/x" } },
       unlaunchable: { transport: "stdio", args: ["--flag"] },
     });
+  });
+
+  it("moves secret-like env and header values into the extension and warns", () => {
+    const { document, extras, warnings } = buildSpecMcpJson({
+      local: {
+        transport: "stdio",
+        command: "npx",
+        env: { MODE: "fast", API_KEY: "literal", CONFIG: "${PLUGIN_ROOT}/cfg", TOKEN_REF: "${API_TOKEN}" },
+      },
+      remote: {
+        transport: "http",
+        url: "https://mcp.example.com/mcp",
+        headers: { "X-Client": "ht", Authorization: "Bearer x" },
+      },
+    });
+    expect(document.mcpServers.local).toEqual({
+      type: "stdio",
+      command: "npx",
+      env: { MODE: "fast", CONFIG: "${PLUGIN_ROOT}/cfg" },
+    });
+    expect(document.mcpServers.remote).toEqual({
+      type: "streamable-http",
+      url: "https://mcp.example.com/mcp",
+      headers: { "X-Client": "ht" },
+    });
+    expect(extras.local?.env).toEqual({ API_KEY: "literal", TOKEN_REF: "${API_TOKEN}" });
+    expect(extras.remote?.headers).toEqual({ Authorization: "Bearer x" });
+    expect(warnings.join("\n")).toContain("local");
+    expect(warnings.join("\n")).toContain("remote");
+    expect(specErrors("mcp", document)).toEqual([]);
   });
 
   it("reads its own output back to the same metadata", () => {

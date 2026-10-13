@@ -32,6 +32,8 @@ export interface SpecMcpBuild {
   document: SpecMcpDocument;
   /** Per-server fields kept only in `com.harnesstap/mcp.toml`. */
   extras: Record<string, Record<string, unknown>>;
+  /** Secret-like env and header values moved into the extension. */
+  warnings: string[];
 }
 
 export interface SpecMcpOptions {
@@ -43,6 +45,42 @@ function nonEmpty(record: Record<string, string> | undefined): boolean {
   return record !== undefined && Object.keys(record).length > 0;
 }
 
+const SECRET_KEY = /(?:^|_)(?:TOKEN|SECRET|KEY|PASSWORD)$/i;
+const SECRET_HEADER = /^(?:authorization|proxy-authorization|x-api-key|api-key)$/i;
+const PLACEHOLDER = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+
+/** True when a value uses a placeholder other than the two spec plugin variables. */
+export function hasForeignPlaceholder(value: string): boolean {
+  for (const match of value.matchAll(PLACEHOLDER)) {
+    const name = match[1];
+    if (name && name !== "PLUGIN_ROOT" && name !== "PLUGIN_DATA") return true;
+  }
+  return false;
+}
+
+function isSecretLike(key: string, value: string, kind: "env" | "header"): boolean {
+  if (hasForeignPlaceholder(value)) return true;
+  if (kind === "header" && SECRET_HEADER.test(key)) return true;
+  return SECRET_KEY.test(key);
+}
+
+function splitPortable(
+  record: Record<string, string> | undefined,
+  kind: "env" | "header",
+): { portable: Record<string, string>; moved: Record<string, string> } {
+  const portable: Record<string, string> = {};
+  const moved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(record ?? {})) {
+    if (kind === "env" && RESERVED_ENV_NAMES.has(key)) {
+      moved[key] = value;
+      continue;
+    }
+    if (isSecretLike(key, value, kind)) moved[key] = value;
+    else portable[key] = value;
+  }
+  return { portable, moved };
+}
+
 function specRemoteType(meta: McpServerMetadata): "streamable-http" | "sse" {
   return meta.connection_type?.toLowerCase() === "sse" ? "sse" : "streamable-http";
 }
@@ -50,15 +88,25 @@ function specRemoteType(meta: McpServerMetadata): "streamable-http" | "sse" {
 function toSpecEntry(
   meta: McpServerMetadata,
   options: SpecMcpOptions | undefined,
-): { entry?: SpecMcpEntry; extra: Record<string, unknown> } {
+): { entry?: SpecMcpEntry; extra: Record<string, unknown>; movedSecret: boolean } {
   const extra: Record<string, unknown> = {};
   let entry: SpecMcpEntry | undefined;
+  let movedSecret = false;
 
   if (meta.transport === "http" && meta.url) {
     const type = specRemoteType(meta);
     entry = { type, url: meta.url };
-    if (nonEmpty(meta.headers)) entry.headers = meta.headers;
-    if (nonEmpty(meta.env)) extra.env = meta.env;
+    const headers = splitPortable(meta.headers, "header");
+    if (nonEmpty(headers.portable)) entry.headers = headers.portable;
+    if (nonEmpty(headers.moved)) {
+      extra.headers = headers.moved;
+      movedSecret = true;
+    }
+    const env = splitPortable(meta.env, "env");
+    if (nonEmpty(env.portable) || nonEmpty(env.moved)) {
+      extra.env = { ...env.moved, ...env.portable };
+    }
+    if (nonEmpty(env.moved)) movedSecret = true;
     // Import keeps only an exact `sse` from a spec `type`; stash anything else.
     if (meta.connection_type !== undefined && meta.connection_type !== "sse") {
       extra.connection_type = meta.connection_type;
@@ -66,13 +114,14 @@ function toSpecEntry(
   } else if (meta.command) {
     entry = { type: "stdio", command: meta.command };
     if (meta.args) entry.args = meta.args;
-    const env: Record<string, string> = {};
-    const reserved: Record<string, string> = {};
-    for (const [key, value] of Object.entries(meta.env ?? {})) {
-      (RESERVED_ENV_NAMES.has(key) ? reserved : env)[key] = value;
+    const env = splitPortable(meta.env, "env");
+    if (nonEmpty(env.portable)) entry.env = env.portable;
+    if (nonEmpty(env.moved)) {
+      extra.env = env.moved;
+      if (Object.keys(env.moved).some((key) => !RESERVED_ENV_NAMES.has(key))) {
+        movedSecret = true;
+      }
     }
-    if (nonEmpty(env)) entry.env = env;
-    if (nonEmpty(reserved)) extra.env = reserved;
     if (meta.transport !== "stdio") extra.transport = meta.transport;
     if (meta.connection_type !== undefined) extra.connection_type = meta.connection_type;
   } else {
@@ -89,7 +138,7 @@ function toSpecEntry(
     const value = meta[key];
     if (value !== undefined && extra[key] === undefined) extra[key] = value;
   }
-  return { ...(entry ? { entry } : {}), extra };
+  return { ...(entry ? { entry } : {}), extra, movedSecret };
 }
 
 /** Build a spec-valid `mcp.json` plus the HarnessTap-only remainder. */
@@ -99,14 +148,20 @@ export function buildSpecMcpJson(
 ): SpecMcpBuild {
   const mcpServers: Record<string, SpecMcpEntry> = {};
   const extras: Record<string, Record<string, unknown>> = {};
+  const warnings: string[] = [];
   for (const name of Object.keys(servers).sort()) {
     const meta = servers[name];
     if (!meta) continue;
-    const { entry, extra } = toSpecEntry(meta, options);
+    const { entry, extra, movedSecret } = toSpecEntry(meta, options);
     if (entry) mcpServers[name] = entry;
     if (Object.keys(extra).length > 0) extras[name] = extra;
+    if (movedSecret) {
+      warnings.push(
+        `MCP server "${name}": moved secret-like env or header values to com.harnesstap; other Agent Plugins clients need setup outside HarnessTap`,
+      );
+    }
   }
-  return { document: { $schema: AP_MCP_SCHEMA_URL, mcpServers }, extras };
+  return { document: { $schema: AP_MCP_SCHEMA_URL, mcpServers }, extras, warnings };
 }
 
 export function formatSpecMcpJson(document: SpecMcpDocument): string {
@@ -146,8 +201,9 @@ export function readApMcpServers(
     const base = servers[name];
     const merged: Record<string, unknown> = { ...(base ?? {}) };
     for (const [key, value] of Object.entries(rawExtra)) {
-      if (key === "env" && isRecord(value)) {
-        merged.env = { ...(isRecord(merged.env) ? merged.env : {}), ...value };
+      if ((key === "env" || key === "headers") && isRecord(value)) {
+        const prior = merged[key];
+        merged[key] = { ...(isRecord(prior) ? prior : {}), ...value };
       } else {
         merged[key] = value;
       }

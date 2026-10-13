@@ -15,6 +15,29 @@ export function isValidApName(name: string): boolean {
   return !name.includes("--") && !name.includes("..");
 }
 
+/**
+ * Agent Skills name: 1-64 chars, lowercase letters, digits, and single hyphens.
+ * Must not start or end with a hyphen. The directory name must match.
+ */
+const AGENT_SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function isValidAgentSkillName(name: string): boolean {
+  return name.length >= 1 && name.length <= 64 && AGENT_SKILL_NAME.test(name);
+}
+
+export function slugifyAgentSkillName(source: string): string {
+  let slug = source
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "");
+  if (slug.length > 64) {
+    slug = slug.slice(0, 64).replace(/-+$/, "");
+  }
+  return slug.length > 0 ? slug : "skill";
+}
+
 export function slugifyApName(source: string): string {
   let slug = source
     .toLowerCase()

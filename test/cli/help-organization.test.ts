@@ -71,7 +71,7 @@ describe("CLI help and command organization", () => {
 
   it("rejects unknown plugin subcommands", async () => {
     for (const args of [
-      ["plugin", "validate", "empty-plugin"],
+      ["plugin", "nosuch", "empty-plugin"],
       ["plugin", "export", "empty-plugin"],
       ["plugin", "import", "./missing.ap.json"],
     ]) {

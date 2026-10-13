@@ -2,8 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
-import { createInitializedTestContext } from "../../helpers/db.ts";
-import type { TestContext } from "../../helpers/db.ts";
 import { addResourceToPlugin, createPlugin } from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
 import {
@@ -13,6 +11,8 @@ import {
   writeApPackageFiles,
 } from "../../../src/services/agent-plugins/files.ts";
 import { validateApManifest } from "../../../src/services/agent-plugins/validate.ts";
+import type { TestContext } from "../../helpers/db.ts";
+import { createInitializedTestContext } from "../../helpers/db.ts";
 
 let ctx: TestContext;
 
@@ -130,17 +130,25 @@ describe("buildApPackageFiles", () => {
     );
   });
 
-  it("refuses a resource name that would escape the package root", () => {
+  it("renames a skill that is not an Agent Skills name and keeps the original", () => {
     const plugin = createPlugin({ name: "evil" });
     attach(plugin.id, {
       type: "skill",
       name: "../escape",
-      description: "",
+      description: "Leaves the package",
       content: "x",
       metadata: {},
       source: "test",
     });
-    expect(() => buildApPackageFiles(plugin.id)).toThrow(/escapes the package root/);
+    const warnings: string[] = [];
+    const files = buildApPackageFiles(plugin.id, { warnings });
+    expect(files["skills/escape/SKILL.md"]?.content).toContain("name: escape");
+    expect(Object.keys(files).some((path) => path.split("/").includes(".."))).toBe(false);
+    const manifest = JSON.parse(files["plugin.json"]!.content) as {
+      extensions: { "com.harnesstap": { skillNames?: Record<string, string> } };
+    };
+    expect(manifest.extensions["com.harnesstap"].skillNames).toEqual({ escape: "../escape" });
+    expect(warnings.join("\n")).toContain("renamed");
   });
 });
 

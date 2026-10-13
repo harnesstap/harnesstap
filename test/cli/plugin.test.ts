@@ -717,8 +717,8 @@ describe("CLI plugin", () => {
     }
   });
 
-  it("rejects unknown plugin validate subcommand", async () => {
-    await expect(runCli(["plugin", "validate", "empty-plugin"])).rejects.toMatchObject({
+  it("rejects an unknown plugin subcommand", async () => {
+    await expect(runCli(["plugin", "nosuch", "empty-plugin"])).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,
       message: expect.stringMatching(/unknown command/i),

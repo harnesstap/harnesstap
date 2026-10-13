@@ -21,6 +21,7 @@ import {
   handlePluginPublishPlanCommand,
 } from "../handlers/plugin-publish.js";
 import { handlePluginShowCommand } from "../handlers/plugin-show-command.js";
+import { handlePluginValidateCommand } from "../handlers/plugin-validate.js";
 import { handlePluginValidatePackageCommand } from "../handlers/plugin-validate-package.js";
 import { handlePluginWhyCommand } from "../handlers/plugin-why.js";
 import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
@@ -3171,6 +3172,14 @@ pluginCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Run doctor checks against a plugin")
   .action(handlePluginDoctorCommand);
+
+pluginCmd
+  .command("validate")
+  .argument("<file>", "Plugin directory, .zip, or .ap.json envelope")
+  .option("--spec <version>", "Agent Plugins version to load as", "1.0.0")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Load an Agent Plugins package and report skills, MCP servers, and skipped entries")
+  .action(handlePluginValidateCommand);
 
 pluginCmd
   .command("validate-package", { hidden: true })

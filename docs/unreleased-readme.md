@@ -19,3 +19,7 @@ New text for the Install section of README.md.
 - `<!-- append -->` adds the body after the target's existing text.
 - `<!-- insert-after -->` adds a whole new section after the target section ends (its subsections included). The body may contain headings, written at `###` or deeper; the fold shifts them so the shallowest becomes the target's own level.
 - Only `insert-after` bodies may contain headings. Do not use level-1 or level-2 headings inside a body.
+
+## docs/cli/command-reference.md > plugin (`l`) > Commands
+<!-- append -->
+- `plugin validate <file>` - load an Agent Plugins directory, zip, or `.ap.json` and report skills, MCP servers, skipped entries, and ignored manifest fields (`--spec 1.0.0`, `--format json`)

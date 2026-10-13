@@ -24,6 +24,7 @@ const PLUGIN_HELP_LOCAL_COMMANDS = new Set([
   "rollback",
   "diff",
   "doctor",
+  "validate",
   "check",
   "update",
   "why",

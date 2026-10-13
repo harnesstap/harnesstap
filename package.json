@@ -51,7 +51,7 @@
     "lint:css": "bun scripts/check-css-tokens.ts",
     "check:cli-error-contract": "bun scripts/check-cli-error-contract.ts",
     "check:copy": "bun scripts/check-copy.ts",
-    "check:agent-plugins-spec": "bun test test/services/agent-plugins/spec-schema-guard.test.ts test/services/agent-plugins/spec-mcp.test.ts",
+    "check:agent-plugins-spec": "bun test test/services/agent-plugins/spec-schema-guard.test.ts test/services/agent-plugins/spec-mcp.test.ts test/services/agent-plugins/spec-load.test.ts",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist && find . -maxdepth 1 -name '*.bun-build' -delete",
     "preflight": "bun run lint && bun run lint:css && bun run check:cli-error-contract && bun run check:copy && bun run typecheck && bun run test:run && bun run build",
