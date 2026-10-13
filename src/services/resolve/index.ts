@@ -24,8 +24,9 @@ const EPHEMERAL_PREFIX = "__ht_ephemeral_root__";
 
 /**
  * Host plugin pins are composition resources, so material resolution drops them.
- * Claude and Cursor still need the pin in the apply set to register the install
- * and to skip standalone copies of the plugin's own skills.
+ * Claude and Cursor still need the plugin's own pin (ponytail@local) in the
+ * apply set to register the install and to skip standalone copies of that
+ * plugin's skills. Dependency edges named after other plugins are not pins.
  */
 function appendHostPluginPins(
   selected: readonly SelectedPlugin[],
@@ -34,7 +35,10 @@ function appendHostPluginPins(
   const seen = new Set(resources.map((resource) => resource.id));
   const pins: Resource[] = [];
   for (const plugin of selected) {
+    if (plugin.name.startsWith(EPHEMERAL_PREFIX)) continue;
     for (const resource of getPluginResources(plugin.pluginId)) {
+      if (resource.name !== plugin.name) continue;
+      if (!resource.origin_ref?.includes("@")) continue;
       if (!isHostPluginPinResource(resource) || seen.has(resource.id)) {
         continue;
       }
