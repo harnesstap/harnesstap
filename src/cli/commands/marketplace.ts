@@ -2,7 +2,10 @@ import type { Command } from "commander";
 import type { PluginMarketplacePlatform } from "../../config/settings.js";
 import { getHarnesstapDir } from "../../db/connection.js";
 import {
+  alignImplicitMarketplacePlatforms,
   listCatalogPlugins,
+  marketplaceCatalogWarnings,
+  marketplaceRowFlavors,
   refreshMarketplaceCatalog,
   type RefreshMarketplaceCatalogResult,
 } from "../../services/marketplace-catalog.js";
@@ -91,6 +94,7 @@ async function handleMarketplaceAddCommand(
   const format = parseOutputFormat(opts.format);
   const harnesstapDir = getHarnesstapDir();
   const name = opts.name?.trim() || deriveMarketplaceNameFromUrl(url);
+  const platformsExplicit = (opts.platform?.length ?? 0) > 0;
   const platforms = parsePlatforms(opts.platform);
 
   try {
@@ -143,22 +147,34 @@ async function handleMarketplaceAddCommand(
     return;
   }
 
+  if (!platformsExplicit) {
+    alignImplicitMarketplacePlatforms(harnesstapDir, result.entry.name);
+  }
+  const entry =
+    listMarketplaces(harnesstapDir).find(
+      (marketplace) => marketplace.name === result.entry.name,
+    ) ?? result.entry;
+
   if (format === "json") {
     printJson({
       status: result.status,
-      entry: result.entry,
+      entry,
       ...(refresh ? { refresh } : {}),
     });
     return;
   }
 
+  for (const warning of refresh?.warnings ?? []) {
+    ui.warn(warning);
+  }
+
   if (result.status === "already_configured") {
-    ui.info(`Marketplace already configured: ${result.entry.name}`);
+    ui.info(`Marketplace already configured: ${entry.name}`);
     return;
   }
 
-  ui.success(`Added marketplace: ${result.entry.name}`, {
-    hint: result.entry.url,
+  ui.success(`Added marketplace: ${entry.name}`, {
+    hint: entry.url,
   });
 }
 
@@ -167,7 +183,13 @@ function handleMarketplaceListCommand(opts: { format?: string } = {}): void {
   const marketplaces = listMarketplaces(getHarnesstapDir());
 
   if (format === "json") {
-    printJson({ marketplaces });
+    const harnesstapDir = getHarnesstapDir();
+    printJson({
+      marketplaces: marketplaces.map((entry) => ({
+        ...entry,
+        flavors: marketplaceRowFlavors(harnesstapDir, entry),
+      })),
+    });
     return;
   }
 
@@ -176,6 +198,7 @@ function handleMarketplaceListCommand(opts: { format?: string } = {}): void {
     return;
   }
 
+  const harnesstapDir = getHarnesstapDir();
   ui.table.print({
     columns: [
       { key: "name", header: "NAME", width: 24 },
@@ -185,7 +208,7 @@ function handleMarketplaceListCommand(opts: { format?: string } = {}): void {
     rows: marketplaces.map((entry) => ({
       name: entry.name,
       url: entry.url,
-      platforms: entry.platforms.join(", "),
+      platforms: marketplaceRowFlavors(harnesstapDir, entry).join(", "),
     })),
     summary: formatCount(marketplaces.length, "marketplace"),
     empty: "No marketplaces configured.",
@@ -228,6 +251,7 @@ async function handleMarketplaceShowCommand(
   }
 
   const plugins = listCatalogPlugins(harnesstapDir, { name });
+  const warnings = marketplaceCatalogWarnings(harnesstapDir, name);
   const useBrowsePicker = shouldUseBrowsePicker({
     noInteractive: opts.noInteractive,
     format: opts.format,
@@ -268,9 +292,14 @@ async function handleMarketplaceShowCommand(
     printJson({
       name,
       plugins,
+      ...(warnings.length > 0 ? { warnings } : {}),
       ...(refresh ? { refresh } : {}),
     });
     return;
+  }
+
+  for (const warning of warnings) {
+    ui.warn(warning);
   }
 
   if (plugins.length === 0) {
@@ -281,12 +310,14 @@ async function handleMarketplaceShowCommand(
   ui.table.print({
     columns: [
       { key: "name", header: "NAME", width: 24 },
+      { key: "flavor", header: "FLAVOR", width: 16 },
       { key: "ref", header: "REF", width: 32 },
       { key: "version", header: "VERSION", width: 12 },
       { key: "description", header: "DESCRIPTION", width: 40, truncate: true },
     ],
     rows: plugins.map((plugin) => ({
       name: plugin.name,
+      flavor: plugin.flavor ?? "",
       ref: plugin.ref,
       version: plugin.version ?? "",
       description: plugin.description ?? "",

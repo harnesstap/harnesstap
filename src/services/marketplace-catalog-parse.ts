@@ -9,6 +9,14 @@ export interface CatalogPluginContent {
   description?: string;
 }
 
+/** Codex is a catalog flavor. It is not a registry platform. */
+export type CatalogPluginFlavor =
+  | "claude-code"
+  | "cursor"
+  | "goose"
+  | "copilot-cli"
+  | "codex";
+
 export interface CatalogPlugin {
   name: string;
   version?: string;
@@ -17,6 +25,8 @@ export interface CatalogPlugin {
   tags?: string[];
   sourcePath?: string;
   contents?: CatalogPluginContent[];
+  /** Manifest flavor that listed this plugin. */
+  flavor?: CatalogPluginFlavor;
   /** Set when the entry root is an Agent Plugins 1.0.0 package. */
   packageFormat?: "agent-plugin";
 }
@@ -168,26 +178,33 @@ export function parseClaudeMarketplaceManifest(raw: unknown): ParsedMarketplaceC
   return { marketplaceName, plugins };
 }
 
-function codexLocalSourcePath(sourcePath: string | undefined): string | undefined {
-  if (!sourcePath || sourcePath.split("/").includes("..")) return undefined;
-  return sourcePath;
+/** Codex `source.path` is relative to the repository root. Escapes are dropped later. */
+export function parseCodexMarketplaceManifest(raw: unknown): ParsedMarketplaceCatalog {
+  return parseClaudeMarketplaceManifest(raw);
 }
 
-/** Codex `source.path` is relative to the repository root and cannot leave it. */
-export function parseCodexMarketplaceManifest(raw: unknown): ParsedMarketplaceCatalog {
-  const parsed = parseClaudeMarketplaceManifest(raw);
-  return {
-    ...parsed,
-    plugins: parsed.plugins.map((plugin) => {
-      const sourcePath = codexLocalSourcePath(plugin.sourcePath);
-      if (sourcePath === plugin.sourcePath) return plugin;
-      if (!sourcePath) {
-        const { sourcePath: _ignored, ...rest } = plugin;
-        return rest;
-      }
-      return { ...plugin, sourcePath };
-    }),
-  };
+export function sourcePathLeavesMarketplace(sourcePath: string | undefined): boolean {
+  if (!sourcePath) return false;
+  return sourcePath.replaceAll("\\", "/").split("/").includes("..");
+}
+
+/** Drop entries whose source path leaves the marketplace repository. */
+export function partitionEscapingCatalogPlugins(plugins: CatalogPlugin[]): {
+  plugins: CatalogPlugin[];
+  warnings: string[];
+} {
+  const kept: CatalogPlugin[] = [];
+  const warnings: string[] = [];
+  for (const plugin of plugins) {
+    if (!sourcePathLeavesMarketplace(plugin.sourcePath)) {
+      kept.push(plugin);
+      continue;
+    }
+    warnings.push(
+      `Skipped ${plugin.name}: source path leaves the marketplace repository.`,
+    );
+  }
+  return { plugins: kept, warnings };
 }
 
 export function parseCursorMarketplaceManifest(raw: unknown): ParsedMarketplaceCatalog {
@@ -235,16 +252,21 @@ function uniqueStrings(values: string[]): string[] {
   return next;
 }
 
-/** One catalog row per plugin name; later copies (other branches) merge into the first. */
+function catalogPluginIdentity(plugin: CatalogPlugin): string {
+  return `${plugin.name}\0${plugin.flavor ?? ""}`;
+}
+
+/** One catalog row per plugin name and flavor; later copies merge into the first. */
 export function mergeCatalogPluginsByIdentity(plugins: CatalogPlugin[]): CatalogPlugin[] {
   const byName = new Map<string, CatalogPlugin>();
   for (const plugin of plugins) {
-    const existing = byName.get(plugin.name);
+    const identity = catalogPluginIdentity(plugin);
+    const existing = byName.get(identity);
     if (!existing) {
-      byName.set(plugin.name, plugin);
+      byName.set(identity, plugin);
       continue;
     }
-    byName.set(plugin.name, preferCatalogPlugin(existing, plugin));
+    byName.set(identity, preferCatalogPlugin(existing, plugin));
   }
   return [...byName.values()];
 }

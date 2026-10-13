@@ -25,6 +25,7 @@ function unsatisfiableMissing(input: {
   name: string;
   rootName: string;
   sourceKind?: DependencySourceKind;
+  pluginRef?: string;
   requirers: ConstraintRecord[];
   available: string[];
 }): UnsatisfiableConstraintError {
@@ -34,6 +35,7 @@ function unsatisfiableMissing(input: {
     available: input.available,
     rootName: input.rootName,
     ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
+    ...(input.pluginRef ? { pluginRef: input.pluginRef } : {}),
   });
 }
 
@@ -170,6 +172,7 @@ export function walkDependencyGraph(input: {
             rootOverride: overrides.versions[name],
             rootName: root.name,
             sourceKind: dependency.source_kind,
+            pluginRef: dependency.ref,
           }).version;
 
         const resolved = resolveDependencyVersion(name, provisional);
@@ -178,6 +181,7 @@ export function walkDependencyGraph(input: {
             name,
             rootName: root.name,
             sourceKind: dependency.source_kind,
+            pluginRef: dependency.ref,
             requirers: bucket,
             available: listAvailableVersions(name),
           });

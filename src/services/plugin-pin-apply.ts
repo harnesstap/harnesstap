@@ -166,12 +166,25 @@ function stampResolvedVersionFromExactConstraint(
   }
 }
 
+function effectivePinConstraint(constraint: string | undefined): string {
+  const trimmed = constraint?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : "latest";
+}
+
 export async function syncPluginPinsForApply(
   options: SyncPluginPinsForApplyOptions,
 ): Promise<SyncPluginPinsForApplyResult> {
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
   const scope = options.scope ?? "user";
-  const pinsToInstall = options.pins.filter((pin) => pin.version_constraint);
+  const pinsToInstall = options.pins
+    .filter((pin) => {
+      if (pin.version_constraint.trim()) return true;
+      return parseDependencyRef(pin.ref).source_kind === "marketplace";
+    })
+    .map((pin) => ({
+      ...pin,
+      version_constraint: effectivePinConstraint(pin.version_constraint),
+    }));
 
   if (
     pinsToInstall.length > 0
@@ -199,15 +212,17 @@ export async function syncPluginPinsForApply(
   const unresolvedPins: string[] = [];
 
   for (const pin of options.pins) {
-    if (!pin.version_constraint) {
+    const marketplacePin = parseDependencyRef(pin.ref).source_kind === "marketplace";
+    if (!pin.version_constraint.trim() && !marketplacePin) {
       continue;
     }
+    const versionConstraint = effectivePinConstraint(pin.version_constraint);
 
     const selector = pin.ref.includes(":") ? pin.ref : `plugin_pin:${pin.ref}`;
     const constraint =
-      pin.version_constraint === "latest" || pin.version_constraint === "*"
+      versionConstraint === "latest" || versionConstraint === "*"
         ? undefined
-        : pin.version_constraint;
+        : versionConstraint;
 
     let resource =
       findPluginResourceByPin(pin.ref, pin.version_constraint) ??

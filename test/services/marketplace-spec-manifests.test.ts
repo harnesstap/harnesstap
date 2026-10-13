@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { AP_SCHEMA_URL } from "../../src/services/agent-plugins/schema-registry.ts";
-import { listPluginsFromMarketplaceRoot } from "../../src/services/marketplace-catalog.ts";
+import {
+  listPluginsFromMarketplaceRoot,
+  marketplaceRootWarnings,
+} from "../../src/services/marketplace-catalog.ts";
 import { parseCodexMarketplaceManifest } from "../../src/services/marketplace-catalog-parse.ts";
 import { scanPluginSourceSync } from "../../src/services/plugin-source-import.ts";
 
@@ -121,7 +124,7 @@ describe("marketplace manifest flavors", () => {
         },
       ],
     });
-    expect(parsed.plugins[0]?.sourcePath).toBeUndefined();
+    expect(parsed.plugins[0]?.sourcePath).toBe("../outside");
 
     const root = tempDir("ht-mkt-escape-");
     writeJson(join(root, ".agents/plugins/marketplace.json"), {
@@ -133,8 +136,38 @@ describe("marketplace manifest flavors", () => {
         },
       ],
     });
+    expect(listPluginsFromMarketplaceRoot(root, "codex-market")).toEqual([]);
+    expect(marketplaceRootWarnings(root, "codex-market")).toEqual([
+      "Skipped demo: source path leaves the marketplace repository.",
+    ]);
     expect(() =>
       scanPluginSourceSync(join(root, ".agents/plugins/marketplace.json")),
     ).toThrow(/Marketplace entry path must stay inside the marketplace/);
+  });
+
+  it("reads every manifest and labels each plugin with its flavor", () => {
+    const root = tempDir("ht-mkt-dual-");
+    writeSpecPlugin(root, "plugins/copilot-one");
+    writeSpecPlugin(root, "plugins/codex-one");
+    writeJson(join(root, ".github/plugin/marketplace.json"), {
+      name: "dual",
+      plugins: [{ name: "copilot-one", source: "plugins/copilot-one" }],
+    });
+    writeJson(join(root, ".agents/plugins/marketplace.json"), {
+      name: "dual",
+      plugins: [
+        { name: "codex-one", source: { source: "local", path: "./plugins/codex-one" } },
+        { name: "outside", source: { source: "local", path: "../outside" } },
+      ],
+    });
+
+    const plugins = listPluginsFromMarketplaceRoot(root, "dual");
+    expect(plugins.map((plugin) => ({ name: plugin.name, flavor: plugin.flavor }))).toEqual([
+      { name: "copilot-one", flavor: "copilot-cli" },
+      { name: "codex-one", flavor: "codex" },
+    ]);
+    expect(marketplaceRootWarnings(root, "dual")).toEqual([
+      "Skipped outside: source path leaves the marketplace repository.",
+    ]);
   });
 });

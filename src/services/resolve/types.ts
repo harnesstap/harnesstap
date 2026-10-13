@@ -145,12 +145,19 @@ function requirerLines(
   );
 }
 
+function marketplaceSyncCommand(pluginName: string, pluginRef?: string): string {
+  const selector = pluginRef?.trim() ? pluginRef.trim() : pluginName;
+  const typed = selector.startsWith("plugin:") ? selector : `plugin:${selector}`;
+  return `ht resource sync ${typed}`;
+}
+
 function buildUnsatisfiable(input: {
   pluginName: string;
   requirers: ConstraintRecord[];
   available: string[];
   rootName: string;
   sourceKind?: DependencySourceKind;
+  pluginRef?: string;
   rootOverride?: string;
 }): {
   reason: UnsatisfiableReason;
@@ -175,7 +182,7 @@ function buildUnsatisfiable(input: {
         id: "sync-install",
         label:
           sourceKind === "marketplace"
-            ? `Sync marketplace plugins (install ${pluginName})`
+            ? marketplaceSyncCommand(pluginName, input.pluginRef)
             : `Pull ${pluginName} from catalog`,
         pluginName,
         sourceKind,
@@ -210,7 +217,7 @@ function buildUnsatisfiable(input: {
             label:
               sourceKind === "catalog"
                 ? `Pull ${pluginName} from catalog`
-                : `Sync marketplace plugins (install ${pluginName})`,
+                : marketplaceSyncCommand(pluginName, input.pluginRef),
             pluginName,
             sourceKind,
           }
@@ -357,7 +364,9 @@ function hintForAction(action: RecoveryAction): string {
         return `ht plugin pull ${action.pluginName}`;
       }
       if (action.sourceKind === "marketplace") {
-        return `Run ht profile use to install "${action.pluginName}".`;
+        return action.label.startsWith("ht resource sync ")
+          ? action.label
+          : `ht resource sync plugin:${action.pluginName}`;
       }
       return `ht plugin create ${action.pluginName}`;
     case "create-plugin":
@@ -394,6 +403,8 @@ export class UnsatisfiableConstraintError extends Error {
     rootName: string;
     /** When set, empty local inventory can point at source-specific install/sync fixes. */
     sourceKind?: DependencySourceKind;
+    /** Dependency ref such as `name@marketplace`, used in the sync command. */
+    pluginRef?: string;
     rootOverride?: string;
   }) {
     const built = buildUnsatisfiable(input);

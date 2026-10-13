@@ -30,7 +30,7 @@ New text for the Install section of README.md.
 
 ## docs/cli/concepts/plugins.md > Plugin dependencies
 <!-- append -->
-`marketplace add` reads `.github/plugin/marketplace.json` (Copilot) and `.agents/plugins/marketplace.json` (Codex `source.path`, including `./` for the repository root) in addition to the Claude, Cursor, and root marketplace files. A plugin root whose `plugin.json` uses the Agent Plugins 1.0.0 `$schema` is classified as an agent plugin. Paths that leave the repository are skipped.
+`marketplace add` reads every manifest in the repo: `.claude-plugin/marketplace.json`, `.cursor-plugin/marketplace.json`, `.github/plugin/marketplace.json` (Copilot), `.agents/plugins/marketplace.json` (Codex `source.path`, including `./` for the repository root), and a root `marketplace.json`. Each plugin is labeled with that manifest's flavor. When `--platform` is omitted, registry platforms are set from the manifests that were found. Codex stays a catalog flavor and is shown on the plugin row. A plugin root whose `plugin.json` uses the Agent Plugins 1.0.0 `$schema` is classified as an agent plugin. A source path that leaves the repository is omitted, with a warning. `ht resource sync plugin:<name>@<marketplace>` installs that pin. A second sync of the same tree is unchanged. A missing marketplace plugin names that command.
 
 ## docs/cli/command-reference.md > apply
 <!-- append -->

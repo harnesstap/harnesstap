@@ -39,6 +39,7 @@ export function selectVersion(input: {
   rootOverride?: string;
   rootName: string;
   sourceKind?: DependencySourceKind;
+  pluginRef?: string;
 }): { version: string; reason: SelectionReason } {
   const sorted = [...input.available]
     .filter((version) => semver.valid(version) !== null)
@@ -63,6 +64,7 @@ export function selectVersion(input: {
         rootName: input.rootName,
         rootOverride: input.rootOverride,
         ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
+        ...(input.pluginRef ? { pluginRef: input.pluginRef } : {}),
       });
     }
     return { version: input.rootOverride, reason: "root-override" };
@@ -100,6 +102,7 @@ export function selectVersion(input: {
       available: availableForErrors,
       rootName: input.rootName,
       ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
+      ...(input.pluginRef ? { pluginRef: input.pluginRef } : {}),
     });
   }
 

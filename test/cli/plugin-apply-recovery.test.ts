@@ -33,6 +33,6 @@ describe("apply constraint recovery", () => {
 
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain("No local version of");
-    expect(result.stderr).toContain("ht profile use");
+    expect(result.stderr).toContain("ht resource sync plugin:design-doc@anthropics");
   });
 });

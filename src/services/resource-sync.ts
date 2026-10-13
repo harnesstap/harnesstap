@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import { getDb } from "../db/connection.js";
 import {
+  getResource,
   listLinkedResources,
   listResources,
   normalizeResourceInput,
@@ -33,6 +34,7 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./plugin-composition.js";
 import { assertSyncable } from "./plugin-origin.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
+import { materializeUpstreamPlugin } from "./upstream-plugin.js";
 import { hashResourceBody } from "./resource-hash.js";
 import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
@@ -340,6 +342,53 @@ function assertPluginResourceSyncable(pluginResource: Resource): void {
   }
 }
 
+function importedAtOf(metadata: unknown): string | undefined {
+  if (!metadata || typeof metadata !== "object") return undefined;
+  const imported = (metadata as { imported_from?: unknown }).imported_from;
+  if (!imported || typeof imported !== "object") return undefined;
+  const at = (imported as { imported_at?: unknown }).imported_at;
+  return typeof at === "string" && at.length > 0 ? at : undefined;
+}
+
+/** Keep the stored import timestamp so a rescan of the same body is not a conflict. */
+function stabilizeImportedAt<T extends { metadata?: unknown }>(
+  existing: Resource | undefined,
+  incoming: T,
+): T {
+  const at = existing ? importedAtOf(existing.metadata) : undefined;
+  if (!at || !incoming.metadata || typeof incoming.metadata !== "object") {
+    return incoming;
+  }
+  const imported = (incoming.metadata as { imported_from?: unknown }).imported_from;
+  if (!imported || typeof imported !== "object") return incoming;
+  return {
+    ...incoming,
+    metadata: {
+      ...(incoming.metadata as object),
+      imported_from: {
+        ...(imported as object),
+        imported_at: at,
+      },
+    },
+  };
+}
+
+function materializeMarketplaceUpstream(
+  pluginResource: Resource,
+  originRef: string,
+): void {
+  const parsed = parseDependencyRef(originRef);
+  if (parsed.source_kind !== "marketplace") return;
+  const current = getResource(pluginResource.id) ?? pluginResource;
+  const version = (current.metadata as PluginPinMetadata).resolved_version;
+  if (!version) return;
+  materializeUpstreamPlugin({
+    ref: parsed.origin_ref,
+    name: parsed.name,
+    version,
+  });
+}
+
 export async function syncPluginResource(
   pluginResource: Resource,
   options: SyncLinkedResourcesOptions = {},
@@ -413,6 +462,7 @@ export async function syncPluginResource(
         pluginResource.id,
       );
       updated.push({ ...pluginResource, metadata });
+      materializeMarketplaceUpstream(pluginResource, originRef);
     } else {
       updated.push(pluginResource);
     }
@@ -459,12 +509,15 @@ export async function syncPluginResource(
       continue;
     }
 
-    const incoming = normalizeResourceInput({
-      ...candidate,
-      namespace,
-      origin_kind: "marketplace_link",
-      origin_ref: originRef,
-    });
+    const incoming = stabilizeImportedAt(
+      existing,
+      normalizeResourceInput({
+        ...candidate,
+        namespace,
+        origin_kind: "marketplace_link",
+        origin_ref: originRef,
+      }),
+    );
     const upsertPolicy = importPolicyFromConflict(conflictPolicy);
 
     if (options.dryRun) {
@@ -489,6 +542,10 @@ export async function syncPluginResource(
     } else if (result.action === "skipped") {
       skipped.push(result.existing);
     }
+  }
+
+  if (!options.dryRun) {
+    materializeMarketplaceUpstream(pluginResource, originRef);
   }
 
   return { checked, updated, stale, unchanged, skipped };

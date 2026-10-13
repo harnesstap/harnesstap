@@ -1,0 +1,5 @@
+kind: Fixed
+body: Marketplace catalogs read every manifest, label each plugin with its flavor, drop source paths that leave the repo, and sync a local pin without a resource conflict. A missing marketplace plugin names `ht resource sync`.
+time: 2026-10-13T15:15:00.000Z
+custom:
+  Issue: "427"
