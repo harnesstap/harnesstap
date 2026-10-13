@@ -16,6 +16,7 @@ import {
   profileSkillNameMap,
 } from "./cursor-host-managed-skills.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { isNativeAgentPluginCachePath } from "./native-agent-plugins.js";
 import {
   buildHarnessLiveStatusMap,
   classifyGlobalDriftChanges,
@@ -435,6 +436,7 @@ export async function detectGlobalProfileStatus(input: {
     expectedPathsByResource.set(key, paths);
   }
   for (const file of expectedApply.expected_files ?? []) {
+    if (isNativeAgentPluginCachePath(file.path)) continue;
     const current = readGlobalFile(homeRoot, file.path);
     const owned = listMaterializationsForRootPath(homeRoot, file.path);
     if (current === null) {

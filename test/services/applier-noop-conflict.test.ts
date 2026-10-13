@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
   materializeFiles,
@@ -87,6 +87,42 @@ describe("planMaterializationConflicts no-op", () => {
         context.homeDir,
       );
       expect(conflicts.map((conflict) => conflict.path)).toEqual([".cursor/mcp.json"]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not treat native agent plugin cache files as conflicts", async () => {
+    const context = await createInitializedTestContext("noop-conflict-cache");
+    try {
+      const cache = ".harnesstap/cache/native-agent-plugins/plugins/demo/plugin.json";
+      mkdirSync(dirname(join(context.homeDir, cache)), { recursive: true });
+      writeFileSync(join(context.homeDir, cache), "old\n");
+      mkdirSync(join(context.homeDir, ".codex"), { recursive: true });
+      writeFileSync(join(context.homeDir, ".codex/config.toml"), "old\n");
+
+      const conflicts = await planMaterializationConflicts(
+        [
+          { path: cache, content: "new\n" },
+          { path: ".codex/config.toml", content: "new\n" },
+        ],
+        context.homeDir,
+      );
+      expect(conflicts.map((conflict) => conflict.path)).toEqual([".codex/config.toml"]);
+
+      const fresh = ".harnesstap/cache/native-agent-plugins/plugins/demo/skills/demo/SKILL.md";
+      const applied = await materializeFiles(
+        [
+          { path: cache, content: "new\n" },
+          { path: fresh, content: "skill\n" },
+        ],
+        context.homeDir,
+        { conflictPolicy: "cancel" },
+      );
+      expect(applied.cancelled).toBe(false);
+      expect(applied.conflicts.map((conflict) => conflict.path)).toEqual([]);
+      expect(readFileSync(join(context.homeDir, cache), "utf-8")).toBe("old\n");
+      expect(readFileSync(join(context.homeDir, fresh), "utf-8")).toBe("skill\n");
     } finally {
       await context.cleanup();
     }

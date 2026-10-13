@@ -40,25 +40,48 @@ function resolveMetadata(metadata: McpServerMetadata, root: string, dataDir: str
 }
 
 /**
+ * Linux and macOS emit the POSIX server. Windows emits the `.cmd` server.
+ * A command that is neither stays on every platform. The library resource is unchanged.
+ */
+export function mcpServerCommandMatchesPlatform(
+  metadata: McpServerMetadata,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  const command = metadata.command?.replaceAll("\\", "/") ?? "";
+  if (!command) return true;
+  const windows = command.endsWith(".cmd") || command.includes("/bin/windows/");
+  const posix = command.endsWith(".sh") || command.includes("/bin/posix/");
+  if (platform === "win32") return !(posix && !windows);
+  return !(windows && !posix);
+}
+
+/**
  * Copy MCP metadata for host configs. The library resource is not modified.
  * Plugins without an installed package keep their literal placeholders.
  */
-export function resolveInstalledMcpResources(resources: readonly Resource[]): ResolvedMcpResources {
+export function resolveInstalledMcpResources(
+  resources: readonly Resource[],
+  options?: { platform?: NodeJS.Platform },
+): ResolvedMcpResources {
+  const platform = options?.platform ?? process.platform;
   const warnings: string[] = [];
   const warnedDataDirs = new Set<string>();
-  const resourcesOut = resources.map((resource) => {
-    if (resource.type !== "mcp_server") return resource;
+  const resourcesOut = resources.flatMap((resource) => {
+    if (resource.type !== "mcp_server") return [resource];
+    if (!mcpServerCommandMatchesPlatform(resource.metadata as McpServerMetadata, platform)) {
+      return [];
+    }
     const installed = installedPackageForResource(resource.id);
-    if (!installed) return resource;
+    if (!installed) return [resource];
     const data = ensurePluginDataDir(installed.name);
     if (data.warning && !warnedDataDirs.has(installed.name)) {
       warnedDataDirs.add(installed.name);
       warnings.push(data.warning);
     }
-    return {
+    return [{
       ...resource,
       metadata: resolveMetadata(resource.metadata as McpServerMetadata, installed.path, data.path),
-    };
+    }];
   });
   return { resources: resourcesOut, warnings };
 }

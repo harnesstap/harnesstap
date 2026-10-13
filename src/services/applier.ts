@@ -50,6 +50,7 @@ import {
 } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import {
+  isNativeAgentPluginCachePath,
   isNativeAgentPluginPlatform,
   mergeNativeAgentPluginFiles,
   nativeAgentPluginFiles,
@@ -503,6 +504,7 @@ export async function planMaterializationConflicts(
   return files.flatMap((file) => {
     if (seen.has(file.path)) return [];
     seen.add(file.path);
+    if (isNativeAgentPluginCachePath(file.path)) return [];
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
     if ((pathCounts.get(file.path) ?? 0) > 1) {
       return [{
