@@ -107,4 +107,28 @@ describe("native agent plugins", () => {
     expect(next).toContain("other@openai");
     expect(next).not.toContain("demo@harnesstap");
   });
+
+  it("does not treat an untouched Codex or Copilot config as a change", () => {
+    const codex = 'model = "gpt-5"\napproval_policy = "on-request"\n\n[projects."/tmp/example"]\ntrust_level = "trusted"\n';
+    mkdirSync(join(ctx.homeDir, ".codex"), { recursive: true });
+    writeFileSync(join(ctx.homeDir, ".codex/config.toml"), codex);
+    const codexResult = nativeAgentPluginFiles({
+      platformId: "codex",
+      applyRoot: ctx.homeDir,
+      groups: [],
+      files: [],
+    });
+    expect(codexResult.files.find((file) => file.path === ".codex/config.toml")).toBeUndefined();
+
+    const copilot = `${JSON.stringify({ trustedFolders: ["/tmp/example"] }, null, 2)}\n`;
+    mkdirSync(join(ctx.homeDir, ".copilot"), { recursive: true });
+    writeFileSync(join(ctx.homeDir, ".copilot/settings.json"), copilot);
+    const copilotResult = nativeAgentPluginFiles({
+      platformId: "copilot-cli",
+      applyRoot: ctx.homeDir,
+      groups: [],
+      files: [],
+    });
+    expect(copilotResult.files.find((file) => file.path === ".copilot/settings.json")).toBeUndefined();
+  });
 });
