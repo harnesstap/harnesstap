@@ -157,6 +157,30 @@ describe("resource show", () => {
     expect(output).not.toContain("Nothing loaded yet.");
   });
 
+  it("prints on-disk content for a live library ref with empty stored content", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-live-show-"));
+    tempDirs.push(root);
+    const agents = join(root, "AGENTS.md");
+    writeFileSync(agents, "# Shared rules\nUse bun.\n", "utf8");
+
+    const output = renderResourceShow(
+      makeResource({
+        type: "instruction",
+        name: "agents-instructions",
+        description: "",
+        content: "",
+        source: agents,
+        origin_kind: "manual",
+        origin_ref: root,
+        metadata: { content_status: "live" },
+      }),
+    );
+
+    expect(output).toContain("# Shared rules");
+    expect(output).toContain("Use bun.");
+    expect(output).not.toContain("Nothing loaded yet.");
+  });
+
   it("shows the full skill body with full: true", () => {
     const lines = Array.from({ length: 20 }, (_, index) => `line ${index + 1}`);
     const output = renderResourceShow(

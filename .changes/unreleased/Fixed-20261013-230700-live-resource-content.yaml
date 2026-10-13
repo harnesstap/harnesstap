@@ -1,0 +1,5 @@
+kind: Fixed
+body: Resource detail and resource show read the on-disk file for a live library ref such as a shared AGENTS.md, instead of the empty stored content.
+time: 2026-10-13T23:07:00.000Z
+custom:
+  Issue: ""
