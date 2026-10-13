@@ -1,0 +1,72 @@
+name: Agent Plugins upstream
+
+# Non-blocking. Compares vendored pins in test/fixtures/agent-plugins-spec/UPSTREAM.md
+# to upstream tags. A newer tag writes a CI artifact. It does not open an issue.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diff-tags:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Compare upstream tags
+        run: |
+          set -u
+          report="agent-plugins-upstream-report.md"
+          {
+            echo "# Agent Plugins upstream tag check"
+            echo
+            echo "Pins are in test/fixtures/agent-plugins-spec/UPSTREAM.md."
+            echo
+          } > "$report"
+          changed=0
+          spec_pin="v1.0.0"
+          echo "## agent-plugins-spec" >> "$report"
+          spec_tags="$(git ls-remote --tags https://github.com/agentplugins/agent-plugins-spec.git 'v*' || true)"
+          echo '```' >> "$report"
+          echo "$spec_tags" >> "$report"
+          echo '```' >> "$report"
+          if ! printf '%s\n' "$spec_tags" | grep -q "refs/tags/${spec_pin}$"; then
+            echo "Pinned spec tag ${spec_pin} was not listed." >> "$report"
+            changed=1
+          fi
+          newer="$(printf '%s\n' "$spec_tags" | sed -n 's/.*refs\/tags\///p' | grep -v '\^{}$' | sort -V | awk -v pin="$spec_pin" 'BEGIN{found=0} {if($0==pin) found=1; else if(found) print}')"
+          if [ -n "$newer" ]; then
+            echo "Newer spec tags:" >> "$report"
+            echo "$newer" >> "$report"
+            changed=1
+          fi
+          echo >> "$report"
+          echo "## agent-plugins-conformance" >> "$report"
+          conf_tags="$(git ls-remote --tags https://github.com/agentplugins/agent-plugins-conformance.git || true)"
+          echo '```' >> "$report"
+          echo "$conf_tags" >> "$report"
+          echo '```' >> "$report"
+          if [ -n "$conf_tags" ]; then
+            echo "Conformance tags exist. The vendored pin is commit 6bfce5436435ffed10ab0020ee0f331ddeb640d6, not a tag." >> "$report"
+            changed=1
+          else
+            echo "No conformance tags. Nothing to diff." >> "$report"
+          fi
+          echo >> "$report"
+          if [ "$changed" -eq 0 ]; then
+            echo "No new upstream tags." >> "$report"
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT" || true
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-plugins-upstream-report
+          path: agent-plugins-upstream-report.md
+          if-no-files-found: warn

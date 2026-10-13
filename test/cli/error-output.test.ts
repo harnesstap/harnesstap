@@ -1,6 +1,6 @@
+import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { describe, expect, it } from "bun:test";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 
@@ -18,26 +18,26 @@ function runCliProcess(args: string[]) {
 
 describe("CLI error output", () => {
   it("prints a clean error message without a stacktrace by default", () => {
-    const result = runCliProcess(["plugin", "validate", "empty-plugin"]);
+    const result = runCliProcess(["plugin", "nosuch", "empty-plugin"]);
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("unknown command 'plugin validate'");
+    expect(result.stderr).toContain("unknown command 'plugin nosuch'");
     expect(result.stderr).not.toContain("CommanderError");
     expect(result.stderr).not.toContain("node_modules/commander/lib/command.js");
     expect(result.stderr).not.toContain("at runHarnesstapCli");
   });
 
   it("prints the stacktrace when --verbose is enabled", () => {
-    const result = runCliProcess(["--verbose", "plugin", "validate", "empty-plugin"]);
+    const result = runCliProcess(["--verbose", "plugin", "nosuch", "empty-plugin"]);
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("error: unknown command 'plugin validate'");
+    expect(result.stderr).toContain("error: unknown command 'plugin nosuch'");
     expect(result.stderr).toContain("CommanderError");
     expect(result.stderr).toContain("node_modules/commander/lib/command.js");
   });
 
   it("prints one hint instead of dumping command help after an error", () => {
-    const result = runCliProcess(["plugin", "validate", "empty-plugin"]);
+    const result = runCliProcess(["plugin", "nosuch", "empty-plugin"]);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("Error:");
@@ -50,7 +50,7 @@ describe("CLI error output", () => {
   });
 
   it("does not append contextual help when verbose mode is enabled", () => {
-    const result = runCliProcess(["--verbose", "plugin", "validate", "empty-plugin"]);
+    const result = runCliProcess(["--verbose", "plugin", "nosuch", "empty-plugin"]);
 
     expect(result.status).toBe(1);
     // Should show stack trace in verbose mode

@@ -15,23 +15,20 @@ import type {
   PluginOverrides,
   ResourceCreateInput,
   ResourceType,
-  SkillMetadata,
 } from "../../types.js";
 import { DEPENDENCY_SOURCE_KINDS } from "../../types.js";
+import { parseHarnessScope } from "../harness-scope.js";
+import { parseHooksJsonContent } from "../hook-serialization.js";
 import { addDependency } from "../plugin-dependency.js";
 import {
   setPluginResourceOverride,
   setPluginVersionOverride,
 } from "../plugin-overrides.js";
-import { parseHooksJsonContent } from "../hook-serialization.js";
 import { parseTransportToml } from "../toml/read.js";
-import type { ApPackageFile, ApPackageFiles } from "./files.js";
-import { readApPackageFiles } from "./files.js";
-import type { ApDependency, ApManifest, HarnesstapExtension } from "./manifest.js";
+import type { ApPackageFiles } from "./files.js";
+import type { ApDependency, HarnesstapExtension } from "./manifest.js";
 import { COMPONENT_LAYOUT, HT_EXTENSION_NAMESPACE } from "./manifest.js";
-import { HT_MCP_EXTRAS_PATH, readApMcpServers } from "./spec-mcp.js";
-import { validateApManifest, withDefaultedApSchema } from "./validate.js";
-import { parseHarnessScope } from "../harness-scope.js";
+import { type ApLoadReport, loadSpecPackage, readContainedPackageFiles } from "./spec-load.js";
 
 const RESOURCE_SOURCE = "ap-package";
 
@@ -53,6 +50,8 @@ export interface ParsedApPackage {
   harnessScopes?: Record<string, string[]>;
   /** Claude marketplace/plugin config from `com.harnesstap/claude.toml`. */
   claude?: ClaudePluginConfig;
+  /** Spec load report from the package that was imported. */
+  loadReport?: ApLoadReport;
 }
 
 export interface ImportApPackageOptions {
@@ -66,7 +65,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function fileText(entry: ApPackageFile): string {
+function fileText(entry: { encoding: "utf8" | "base64"; content: string }): string {
   return entry.encoding === "base64"
     ? Buffer.from(entry.content, "base64").toString("utf8")
     : entry.content;
@@ -165,22 +164,6 @@ function parseExtension(
   };
 }
 
-function listSkillAuxNames(
-  files: ApPackageFiles,
-  skillName: string,
-  kind: "scripts" | "reference" | "references",
-): string[] {
-  const prefix = `skills/${skillName}/${kind}/`;
-  const names: string[] = [];
-  for (const relativePath of Object.keys(files)) {
-    if (!relativePath.startsWith(prefix)) continue;
-    const rest = relativePath.slice(prefix.length);
-    if (!rest || rest.includes("/")) continue;
-    names.push(rest);
-  }
-  return names.sort();
-}
-
 function nativeBasename(relativePath: string, prefix: string): string {
   const rest = relativePath.slice(prefix.length);
   const base = rest.split("/").pop() ?? rest;
@@ -244,89 +227,6 @@ function parseNativeHookResources(files: ApPackageFiles): ResourceCreateInput[] 
     });
   }
   return resources;
-}
-
-function parseSkillResources(files: ApPackageFiles): ResourceCreateInput[] {
-  const resources: ResourceCreateInput[] = [];
-  const skillPaths = Object.keys(files)
-    .filter((path) => /^skills\/[^/]+\/SKILL\.md$/.test(path))
-    .sort();
-
-  for (const relativePath of skillPaths) {
-    const match = /^skills\/([^/]+)\/SKILL\.md$/.exec(relativePath);
-    if (!match?.[1]) continue;
-    const skillName = match[1];
-    const entry = files[relativePath];
-    if (!entry) continue;
-
-    const parsed = matter(fileText(entry));
-    const data = isRecord(parsed.data) ? parsed.data : {};
-    const name = typeof data.name === "string" && data.name.length > 0 ? data.name : skillName;
-    const description = typeof data.description === "string" ? data.description : "";
-
-    const scripts = listSkillAuxNames(files, skillName, "scripts");
-    const references = [
-      ...listSkillAuxNames(files, skillName, "reference"),
-      ...listSkillAuxNames(files, skillName, "references"),
-    ].filter((value, index, all) => all.indexOf(value) === index)
-      .sort();
-    const companionPrefix = `skills/${skillName}/`;
-    const companions = Object.keys(files)
-      .filter((path) => path.startsWith(companionPrefix) && path !== `${companionPrefix}SKILL.md`)
-      .map((path) => path.slice(companionPrefix.length))
-      .filter((rest) => rest.length > 0 && !rest.split("/").some((segment) => segment.startsWith(".")))
-      .sort();
-
-    const metadata: SkillMetadata = {};
-    if (scripts.length > 0) metadata.scripts = scripts;
-    if (references.length > 0) metadata.references = references;
-    if (companions.length > 0) metadata.companions = companions;
-
-    resources.push({
-      type: "skill",
-      name,
-      description,
-      content: parsed.content,
-      metadata,
-      source: RESOURCE_SOURCE,
-    });
-  }
-
-  return resources;
-}
-
-function parseMcpResources(files: ApPackageFiles): ResourceCreateInput[] {
-  const entry = files["mcp.json"];
-  if (!entry) return [];
-
-  let document: unknown;
-  try {
-    document = JSON.parse(fileText(entry)) as unknown;
-  } catch {
-    throw new Error("Invalid mcp.json: expected JSON");
-  }
-
-  const extrasEntry = files[HT_MCP_EXTRAS_PATH];
-  const extras = extrasEntry
-    ? parseTransportToml(fileText(extrasEntry), "MCP extension")
-    : undefined;
-  const servers = readApMcpServers(document, extras);
-  return Object.keys(servers)
-    .sort()
-    .map((name) => {
-      const metadata = servers[name];
-      if (!metadata) {
-        throw new Error(`Missing MCP server metadata for "${name}"`);
-      }
-      return {
-        type: "mcp_server" as const,
-        name,
-        description: "",
-        content: "",
-        metadata,
-        source: RESOURCE_SOURCE,
-      };
-    });
 }
 
 function parseMarkdownComponent(
@@ -437,31 +337,20 @@ function parseClaudeConfig(files: ApPackageFiles): ClaudePluginConfig | undefine
   return rest as ClaudePluginConfig;
 }
 
-export function parseApPackageFiles(files: ApPackageFiles): ParsedApPackage {
-  const manifestEntry = files["plugin.json"];
-  if (!manifestEntry) {
-    throw new Error("Missing plugin.json: not an Agent Plugins package");
+export function parseApPackageFiles(
+  files: ApPackageFiles,
+  options?: { root?: string },
+): ParsedApPackage {
+  const loaded = loadSpecPackage(files, options?.root ? { root: options.root } : undefined);
+  if (!loaded.report.ok || !loaded.manifest) {
+    throw new Error(loaded.report.rejected ?? "Invalid Agent Plugins package");
   }
-
-  let manifestRaw: unknown;
-  try {
-    manifestRaw = JSON.parse(fileText(manifestEntry)) as unknown;
-  } catch {
-    throw new Error("Invalid plugin.json: expected JSON");
-  }
-
-  const { manifest: manifestWithSchema } = withDefaultedApSchema(manifestRaw);
-  validateApManifest(manifestWithSchema);
-  const manifest = manifestWithSchema as ApManifest;
-
-  const extension = parseExtension(
-    manifest.extensions?.[HT_EXTENSION_NAMESPACE],
-    manifest.name,
-  );
+  const manifest = loaded.manifest;
+  const extension = parseExtension(loaded.extension, manifest.name);
 
   const resources = [
-    ...parseSkillResources(files),
-    ...parseMcpResources(files),
+    ...loaded.skills,
+    ...loaded.mcp,
     ...parseNativeMarkdownResources("agent", "agents", files),
     ...parseNativeMarkdownResources("command", "commands", files),
     ...parseNativeHookResources(files),
@@ -473,7 +362,7 @@ export function parseApPackageFiles(files: ApPackageFiles): ParsedApPackage {
   return {
     name: manifest.name,
     sourceName: extension.sourceName,
-    version: manifest.version,
+    version: loaded.report.version ?? manifest.version,
     description: manifest.description ?? "",
     keywords: manifest.keywords ?? [],
     profile: extension.profile,
@@ -486,11 +375,12 @@ export function parseApPackageFiles(files: ApPackageFiles): ParsedApPackage {
     resources,
     ...(extension.harnessScopes ? { harnessScopes: extension.harnessScopes } : {}),
     ...(claude ? { claude } : {}),
+    loadReport: loaded.report,
   };
 }
 
 export function readApPackage(packageDir: string): ParsedApPackage {
-  return parseApPackageFiles(readApPackageFiles(packageDir));
+  return parseApPackageFiles(readContainedPackageFiles(packageDir), { root: packageDir });
 }
 
 function collectEmbeddedPackageNames(files: ApPackageFiles): string[] {

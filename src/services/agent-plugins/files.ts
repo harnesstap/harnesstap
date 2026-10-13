@@ -13,14 +13,14 @@ import { listDependencies } from "../plugin-dependency.js";
 import { emitSkillAuxiliaryFiles } from "../skill-auxiliary.js";
 import { formatTransportToml } from "../toml/write.js";
 import {
+  type ApManifest,
+  buildApManifest,
   COMPONENT_LAYOUT,
+  type HarnesstapExtension,
   HT_EXTENSION_NAMESPACE,
   HT_EXTENSION_SCHEMA,
-  buildApManifest,
-  type ApManifest,
-  type HarnesstapExtension,
 } from "./manifest.js";
-import { slugifyApName } from "./name.js";
+import { isValidAgentSkillName, slugifyAgentSkillName, slugifyApName } from "./name.js";
 import {
   buildSpecMcpJson,
   formatMcpExtrasToml,
@@ -42,6 +42,59 @@ export type ApPackageFiles = Record<string, ApPackageFile>;
 export interface BuildApPackageOptions {
   /** Root to copy skill companion trees from, when available. */
   skillSourceRoot?: string;
+  /** Export renames and secret moves are appended here and printed. */
+  warnings?: string[];
+}
+
+export interface SkillExportPlan {
+  dirById: Map<string, string>;
+  skillNames: Record<string, string>;
+  warnings: string[];
+}
+
+export function planSkillExport(resources: readonly Resource[]): SkillExportPlan {
+  const dirById = new Map<string, string>();
+  const skillNames: Record<string, string> = {};
+  const warnings: string[] = [];
+  const used = new Set<string>();
+  const skills = resources
+    .filter((resource) => resource.type === "skill")
+    .slice()
+    .sort((left, right) => left.name.localeCompare(right.name));
+  for (const resource of skills) {
+    let dir = isValidAgentSkillName(resource.name)
+      ? resource.name
+      : slugifyAgentSkillName(resource.name);
+    if (used.has(dir)) {
+      let suffix = 2;
+      let candidate = `${dir}-${suffix}`;
+      while (used.has(candidate)) {
+        suffix += 1;
+        candidate = `${dir}-${suffix}`;
+      }
+      dir = candidate.length > 64 ? slugifyAgentSkillName(candidate) : candidate;
+    }
+    used.add(dir);
+    dirById.set(resource.id, dir);
+    if (dir !== resource.name) {
+      skillNames[dir] = resource.name;
+      warnings.push(
+        `skill "${resource.name}" was renamed to "${dir}" for Agent Skills; the original name is kept in com.harnesstap`,
+      );
+    }
+  }
+  return { dirById, skillNames, warnings };
+}
+
+function noteWarnings(warnings: string[], options: BuildApPackageOptions | undefined): void {
+  if (warnings.length === 0) return;
+  if (options) {
+    options.warnings ??= [];
+    options.warnings.push(...warnings);
+  }
+  for (const warning of warnings) {
+    console.error(`warning: ${warning}`);
+  }
 }
 
 const MARKDOWN_COMPONENT_TYPES = ["instruction", "rule", "agent", "command"] as const;
@@ -141,18 +194,21 @@ function componentsForResources(resources: Resource[]): Record<string, string> {
 function emitResourceFiles(
   files: ApPackageFiles,
   resources: Resource[],
+  skillPlan: SkillExportPlan,
   options?: BuildApPackageOptions,
-): void {
+): string[] {
+  const warnings: string[] = [];
   const byType = partitionByType(resources);
 
   const skills = byType.get("skill") ?? [];
   for (const resource of [...skills].sort((a, b) => a.name.localeCompare(b.name))) {
-    const skillMdPath = `skills/${resource.name}/SKILL.md`;
+    const dir = skillPlan.dirById.get(resource.id) ?? resource.name;
+    const skillMdPath = `skills/${dir}/SKILL.md`;
     putUtf8(
       files,
       skillMdPath,
       emitFrontmatter(
-        { name: resource.name, description: resource.description },
+        { name: dir, description: resource.description },
         resource.content,
       ),
     );
@@ -161,7 +217,7 @@ function emitResourceFiles(
       const sourceSkillDir = join(options.skillSourceRoot, resource.name);
       for (const aux of emitSkillAuxiliaryFiles({
         sourceSkillDir,
-        targetPrefix: `skills/${resource.name}`,
+        targetPrefix: `skills/${dir}`,
       })) {
         put(files, aux.path, {
           encoding: aux.encoding === "base64" ? "base64" : "utf8",
@@ -177,11 +233,12 @@ function emitResourceFiles(
     for (const resource of mcpServers) {
       servers[resource.name] = exportedMcpMetadata(resource);
     }
-    const { document, extras } = buildSpecMcpJson(servers);
+    const { document, extras, warnings: mcpWarnings } = buildSpecMcpJson(servers);
     putUtf8(files, "mcp.json", formatSpecMcpJson(document));
     if (Object.keys(extras).length > 0) {
       putUtf8(files, HT_MCP_EXTRAS_PATH, formatMcpExtrasToml(extras));
     }
+    warnings.push(...mcpWarnings);
   }
 
   for (const type of MARKDOWN_COMPONENT_TYPES) {
@@ -215,6 +272,14 @@ function emitResourceFiles(
       formatTransportToml(buildTomlComponentDocument(type, typedResources)),
     );
   }
+  return warnings;
+}
+
+function applySkillNames(manifest: ApManifest, skillNames: Record<string, string>): void {
+  if (Object.keys(skillNames).length === 0) return;
+  const extension = manifest.extensions?.[HT_EXTENSION_NAMESPACE];
+  if (!extension || !("schema" in extension)) return;
+  extension.skillNames = skillNames;
 }
 
 function buildApPackageFilesInner(
@@ -233,12 +298,15 @@ function buildApPackageFilesInner(
   if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
   const files: ApPackageFiles = {};
-
+  const resources = getPluginResources(pluginId);
+  const skillPlan = planSkillExport(resources);
   const manifest = buildApManifest(pluginId);
+  applySkillNames(manifest, skillPlan.skillNames);
   validateApManifest(manifest);
   putUtf8(files, "plugin.json", JSON.stringify(manifest, null, 2));
 
-  emitResourceFiles(files, getPluginResources(pluginId), options);
+  const warnings = emitResourceFiles(files, resources, skillPlan, options);
+  noteWarnings([...skillPlan.warnings, ...warnings], options);
 
   if (plugin.claude) {
     putUtf8(
@@ -292,6 +360,7 @@ export function buildApPackageFilesForResource(resourceId: string): ApPackageFil
 
   const files: ApPackageFiles = {};
   const apName = slugifyApName(resource.name);
+  const skillPlan = planSkillExport([resource]);
   const extension: HarnesstapExtension = {
     schema: HT_EXTENSION_SCHEMA,
     sourceName: resource.name,
@@ -300,6 +369,7 @@ export function buildApPackageFilesForResource(resourceId: string): ApPackageFil
     overrides: { versions: {}, resources: {} },
     needs: [],
     components: componentsForResources([resource]),
+    ...(Object.keys(skillPlan.skillNames).length > 0 ? { skillNames: skillPlan.skillNames } : {}),
   };
   const manifest: ApManifest = {
     $schema: AP_SCHEMA_URL,
@@ -310,7 +380,8 @@ export function buildApPackageFilesForResource(resourceId: string): ApPackageFil
   };
   validateApManifest(manifest);
   putUtf8(files, "plugin.json", JSON.stringify(manifest, null, 2));
-  emitResourceFiles(files, [resource]);
+  const warnings = emitResourceFiles(files, [resource], skillPlan);
+  noteWarnings([...skillPlan.warnings, ...warnings], undefined);
   return files;
 }
 

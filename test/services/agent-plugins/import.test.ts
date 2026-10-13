@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createInitializedTestContext } from "../../helpers/db.ts";
-import type { TestContext } from "../../helpers/db.ts";
 import {
   addResourceToPlugin,
   createPlugin,
@@ -10,10 +8,6 @@ import {
   getPluginResources,
 } from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
-import {
-  addDependency,
-  listDependencies,
-} from "../../../src/services/plugin-dependency.ts";
 import {
   buildApPackageFiles,
   writeApPackageFiles,
@@ -23,6 +17,12 @@ import {
   parseApPackageFiles,
   readApPackage,
 } from "../../../src/services/agent-plugins/import.ts";
+import {
+  addDependency,
+  listDependencies,
+} from "../../../src/services/plugin-dependency.ts";
+import type { TestContext } from "../../helpers/db.ts";
+import { createInitializedTestContext } from "../../helpers/db.ts";
 
 let ctx: TestContext;
 
@@ -141,12 +141,12 @@ describe("parseApPackageFiles", () => {
     ).toThrow(/\$schema/);
   });
 
-  it("rejects a package whose manifest fails validation", () => {
-    expect(() =>
-      parseApPackageFiles({
-        "plugin.json": { encoding: "utf8", content: JSON.stringify({ name: "x" }) },
-      }),
-    ).toThrow(/version/);
+  it("accepts a package whose manifest omits version and stores a synthesized one", () => {
+    const parsed = parseApPackageFiles({
+      "plugin.json": { encoding: "utf8", content: JSON.stringify({ name: "x" }) },
+    });
+    expect(parsed.version).toMatch(/^0\.0\.0\+ap\.[0-9a-f]{12}$/);
+    expect(parsed.loadReport?.ok).toBe(true);
   });
 
   it("rejects a package with no plugin.json", () => {
@@ -184,7 +184,10 @@ describe("readApPackage", () => {
       }),
     );
     symlinkSync(ctx.homeDir, join(dir, "skills", "leak"));
-    expect(() => readApPackage(dir)).toThrow(/escapes the package root/);
+    const parsed = readApPackage(dir);
+    expect(parsed.name).toBe("leaky");
+    expect(parsed.resources).toEqual([]);
+    expect(parsed.loadReport?.ok).toBe(true);
   });
 });
 

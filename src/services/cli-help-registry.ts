@@ -391,6 +391,17 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin diff my-plugin ./export.ap.json",
     ],
   },
+  "plugin.validate": {
+    description: "Load an Agent Plugins 1.0.0 package and report what would load",
+    details:
+      "Reads a plugin directory, zip, or .ap.json envelope. Unknown manifest fields are reported and ignored. "
+      + "Invalid skills and MCP servers are skipped. A bad mcp.json disables MCP and keeps the skills. "
+      + "Exit 1 only when the plugin itself is rejected.",
+    examples: [
+      "plugin validate ./my-plugin --spec 1.0.0",
+      "plugin validate ./my-plugin --format json",
+    ],
+  },
   "plugin.doctor": {
     description: "Run doctor checks against a plugin",
     examples: [

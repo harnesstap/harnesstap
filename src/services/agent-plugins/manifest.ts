@@ -1,10 +1,10 @@
 import { getEnvironment } from "../../models/environment.js";
 import { getPluginById, getPluginResources, resolveApName } from "../../models/plugin-model.js";
+import type { DependencySourceKind, PluginOverrides } from "../../types.js";
+import { resourceHarnessScope } from "../harness-scope.js";
 import { listDependencies } from "../plugin-dependency.js";
 import { getPluginOverrides } from "../plugin-overrides.js";
 import { AP_SCHEMA_URL } from "./validate.js";
-import type { DependencySourceKind, PluginOverrides } from "../../types.js";
-import { resourceHarnessScope } from "../harness-scope.js";
 
 export const HT_EXTENSION_NAMESPACE = "com.harnesstap";
 export const HT_EXTENSION_SCHEMA = "urn:harnesstap:ap-extension:v1";
@@ -29,6 +29,11 @@ export interface HarnesstapExtension {
   components: Record<string, string>;
   /** `type:name` → harness slugs. Omitted keys and missing field mean All. */
   harnessScopes?: Record<string, string[]>;
+  /**
+   * Agent Skills directory name to the original library resource name, when
+   * export had to rename a skill so the directory matches the Agent Skills rules.
+   */
+  skillNames?: Record<string, string>;
 }
 
 export interface ApManifest {
