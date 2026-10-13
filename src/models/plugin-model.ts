@@ -42,6 +42,11 @@ interface PluginRow {
   overrides: string;
   default_environment_id: string | null;
   ap_name: string;
+  author_json?: string;
+  homepage?: string;
+  repository?: string;
+  license?: string;
+  opaque_extensions?: string;
   origin_locator?: string;
   origin_fingerprint?: string;
   origin_fingerprint_kind?: string;
@@ -137,6 +142,10 @@ function rowToPlugin(row: PluginRow): Plugin {
       ? { default_environment_id: row.default_environment_id }
       : {}),
     ...(row.ap_name ? { ap_name: row.ap_name } : {}),
+    ...(row.author_json ? { author: JSON.parse(row.author_json) as Plugin["author"] } : {}),
+    ...(row.homepage ? { homepage: row.homepage } : {}),
+    ...(row.repository ? { repository: row.repository } : {}),
+    ...(row.license ? { license: row.license } : {}),
     ...(row.origin_locator ? { origin_locator: row.origin_locator } : {}),
     ...(row.origin_fingerprint ? { origin_fingerprint: row.origin_fingerprint } : {}),
     ...(row.origin_fingerprint_kind
@@ -897,6 +906,45 @@ export function setPluginApName(pluginId: string, apName: string): boolean {
 }
 
 /** The AP package name: the stored override, or a slug of the local name. */
+export function setPluginSpecMetadata(
+  pluginId: string,
+  input: {
+    author?: Plugin["author"];
+    homepage?: string;
+    repository?: string;
+    license?: string;
+    opaqueExtensions?: Record<string, unknown>;
+  },
+): void {
+  const db = getDb();
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE plugins
+     SET author_json = ?, homepage = ?, repository = ?, license = ?, opaque_extensions = ?, updated_at = ?
+     WHERE id = ?`,
+  ).run(
+    input.author && Object.keys(input.author).length > 0 ? JSON.stringify(input.author) : "",
+    input.homepage ?? "",
+    input.repository ?? "",
+    input.license ?? "",
+    input.opaqueExtensions && Object.keys(input.opaqueExtensions).length > 0
+      ? JSON.stringify(input.opaqueExtensions)
+      : "",
+    now,
+    pluginId,
+  );
+}
+
+export function readPluginOpaqueExtensions(pluginId: string): Record<string, unknown> {
+  const row = getDb()
+    .prepare("SELECT opaque_extensions FROM plugins WHERE id = ?")
+    .get(pluginId) as { opaque_extensions?: string } | undefined;
+  if (!row?.opaque_extensions) return {};
+  const parsed = JSON.parse(row.opaque_extensions) as unknown;
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  return parsed as Record<string, unknown>;
+}
+
 export function resolveApName(plugin: Pick<Plugin, "name" | "ap_name">): string {
   return plugin.ap_name && plugin.ap_name !== ""
     ? plugin.ap_name

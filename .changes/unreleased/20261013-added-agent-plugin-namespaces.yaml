@@ -1,0 +1,3 @@
+kind: Added
+body: A root plugin.json with the Agent Plugins 1.0.0 schema imports as an agent plugin. Author, homepage, repository, license, and vendor namespace trees are kept and written back on export. Manifest path overrides are ignored.
+time: 2026-10-13T13:00:00Z

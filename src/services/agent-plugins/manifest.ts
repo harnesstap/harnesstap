@@ -104,6 +104,10 @@ export function buildApManifest(pluginId: string): ApManifest {
     name: resolveApName(plugin),
     version: plugin.version,
     ...(plugin.description ? { description: plugin.description } : {}),
+    ...(plugin.author ? { author: plugin.author } : {}),
+    ...(plugin.homepage ? { homepage: plugin.homepage } : {}),
+    ...(plugin.repository ? { repository: plugin.repository } : {}),
+    ...(plugin.license ? { license: plugin.license } : {}),
     ...(plugin.tags.length > 0 ? { keywords: plugin.tags } : {}),
     extensions: { [HT_EXTENSION_NAMESPACE]: extension },
   };

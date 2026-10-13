@@ -23,6 +23,7 @@ New text for the Install section of README.md.
 ## docs/cli/command-reference.md > plugin (`l`) > Commands
 <!-- append -->
 - `plugin validate <file>` - load an Agent Plugins directory, zip, or `.ap.json` and report skills, MCP servers, skipped entries, and ignored manifest fields (`--spec 1.0.0`, `--format json`)
+- A directory whose root `plugin.json` uses the Agent Plugins 1.0.0 `$schema` is an agent plugin. Import keeps `author`, `homepage`, `repository`, and `license`, and keeps vendor namespace objects and their directories (for example `com.openai` and `com.github.copilot`). Path overrides in that manifest are ignored. Root `agents`, `commands`, and `hooks` are still read, with a warning.
 
 ## docs/cli/command-reference.md > apply
 <!-- append -->
