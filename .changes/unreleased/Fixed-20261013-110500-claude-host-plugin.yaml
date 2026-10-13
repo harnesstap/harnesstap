@@ -1,0 +1,5 @@
+kind: Fixed
+body: Applying a git-imported Claude plugin registers it in installed_plugins.json and enabledPlugins. Its skills stay inside the host plugin tree instead of being copied out as standalone skills.
+time: 2026-10-13T11:05:00.000Z
+custom:
+  Issue: ""
