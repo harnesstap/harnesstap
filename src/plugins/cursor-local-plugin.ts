@@ -1,6 +1,7 @@
-import { existsSync, readdirSync, readFileSync, statSync, type Dirent } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync, watch, type Dirent, type FSWatcher } from "node:fs";
+import { basename, join, relative, sep } from "node:path";
 import { fileSignature } from "../services/file-signature.js";
+import { computationSlot } from "../services/status-computation.js";
 import type { SerializedFile } from "../types.js";
 import { cursorUserDataDir } from "./cursor-enablement.js";
 
@@ -191,24 +192,139 @@ function newestPluginsLogUnder(
   return best;
 }
 
-export function findNewestCursorPluginsLog(homeRoot: string): CursorPluginsLogFile | null {
+interface RememberedPluginsLog {
+  sessionName: string;
+  logPath: string | null;
+  namesKey: string;
+}
+
+const rememberedLogs = new Map<string, RememberedPluginsLog>();
+const logDirtyHomes = new Set<string>();
+const logWatchers = new Map<string, FSWatcher>();
+let logWalks = 0;
+
+/** How many times the newest session tree was walked. Tests use this. */
+export function readCursorPluginsLogWalkCount(): number {
+  return logWalks;
+}
+
+function listSessionNames(logsDir: string): string[] {
+  let entries: Dirent[] = [];
+  try {
+    entries = readdirSync(logsDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const names: string[] = [];
+  for (const entry of entries) {
+    if (entry.isDirectory()) names.push(entry.name);
+  }
+  names.sort();
+  return names;
+}
+
+function ensureLogsWatcher(homeRoot: string, logsDir: string): void {
+  if (logWatchers.has(homeRoot)) return;
+  try {
+    statSync(logsDir);
+  } catch {
+    return;
+  }
+  try {
+    let ready = false;
+    const watcher = watch(logsDir, { persistent: false }, () => {
+      if (!ready) return;
+      logDirtyHomes.add(homeRoot);
+    });
+    watcher.on("error", () => {
+      logDirtyHomes.add(homeRoot);
+      watcher.close();
+      logWatchers.delete(homeRoot);
+    });
+    setTimeout(() => {
+      ready = true;
+    }, 0);
+    logWatchers.set(homeRoot, watcher);
+  } catch {
+    logDirtyHomes.add(homeRoot);
+  }
+}
+
+function rememberedSignature(remembered: RememberedPluginsLog): string {
+  if (!remembered.logPath) return `${remembered.sessionName}:none`;
+  return `${remembered.sessionName}:${fileSignature(remembered.logPath)}`;
+}
+
+/**
+ * Session name plus the newest Plugins log stat. After the log path is
+ * known, later calls stat that file only, until a new session directory
+ * appears. Other files under logs are ignored.
+ */
+function computeCursorPluginsLogSignature(homeRoot: string): string {
   const logsDir = join(cursorUserDataDir(homeRoot), "logs");
+  ensureLogsWatcher(homeRoot, logsDir);
+  const remembered = rememberedLogs.get(homeRoot);
+  if (remembered && !logDirtyHomes.has(homeRoot)) {
+    return rememberedSignature(remembered);
+  }
+
+  const namesKey = listSessionNames(logsDir).join("\n");
+  logDirtyHomes.delete(homeRoot);
+  if (remembered && remembered.namesKey === namesKey) {
+    rememberedLogs.set(homeRoot, { ...remembered, namesKey });
+    return rememberedSignature(remembered);
+  }
+
   const session = newestSessionDirectory(logsDir);
-  if (!session) return null;
-  return newestPluginsLogUnder(session, 0);
+  if (!session) {
+    const stored = { sessionName: "", logPath: null, namesKey };
+    rememberedLogs.set(homeRoot, stored);
+    return rememberedSignature(stored);
+  }
+  const sessionName = basename(session);
+  if (remembered && remembered.sessionName === sessionName && remembered.logPath) {
+    const kept = { sessionName, logPath: remembered.logPath, namesKey };
+    rememberedLogs.set(homeRoot, kept);
+    return rememberedSignature(kept);
+  }
+
+  logWalks += 1;
+  const found = newestPluginsLogUnder(session, 0);
+  rememberedLogs.set(homeRoot, {
+    sessionName,
+    logPath: found?.path ?? null,
+    namesKey,
+  });
+  const stored = rememberedLogs.get(homeRoot);
+  return stored ? rememberedSignature(stored) : "none";
+}
+
+export function findNewestCursorPluginsLog(homeRoot: string): CursorPluginsLogFile | null {
+  cursorPluginsLogSignature(homeRoot);
+  const remembered = rememberedLogs.get(homeRoot);
+  if (!remembered?.logPath) return null;
+  try {
+    return { path: remembered.logPath, mtimeMs: statSync(remembered.logPath).mtimeMs };
+  } catch {
+    return null;
+  }
 }
 
 /** Signature of the newest Cursor Plugins log, for inventory cache checks. */
 export function cursorPluginsLogSignature(homeRoot: string): string {
-  const found = findNewestCursorPluginsLog(homeRoot);
-  if (!found) return "none";
-  return fileSignature(found.path);
+  return computationSlot(`cursor-plugins-log:${homeRoot}`, () =>
+    computeCursorPluginsLogSignature(homeRoot),
+  );
 }
 
 let pluginsLogCache: { sig: string; log: CursorPluginsLog } | null = null;
 
 export function clearCursorPluginsLogCache(): void {
   pluginsLogCache = null;
+  rememberedLogs.clear();
+  logDirtyHomes.clear();
+  for (const watcher of logWatchers.values()) watcher.close();
+  logWatchers.clear();
 }
 
 /** Latest Cursor plugin loader log under this home's Cursor user data directory. */

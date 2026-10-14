@@ -1,4 +1,5 @@
 import { getDb } from "../db/connection.js";
+import { computationSlot } from "../services/status-computation.js";
 import { ulid } from "ulid";
 import semver from "semver";
 import { mapResourceRow } from "./resource.js";
@@ -765,7 +766,7 @@ export function touchPluginUpdatedAt(pluginId: string): void {
   );
 }
 
-export function getPluginResources(pluginId: string): Resource[] {
+function loadPluginResources(pluginId: string): Resource[] {
   const db = getDb();
   const rows = db
     .prepare(
@@ -777,6 +778,11 @@ export function getPluginResources(pluginId: string): Resource[] {
     .all(pluginId) as ResourceRow[];
 
   return rows.map(mapAttachedResource);
+}
+
+export function getPluginResources(pluginId: string): Resource[] {
+  const resources = computationSlot(`plugin-resources:${pluginId}`, () => loadPluginResources(pluginId));
+  return resources.slice();
 }
 
 export function ensurePluginClaudeMarketplace(

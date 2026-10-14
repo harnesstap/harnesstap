@@ -2,7 +2,11 @@ import { mkdirSync, readdirSync, statSync, utimesSync, writeFileSync, type Diren
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { cursorUserDataDir } from "../../src/plugins/cursor-enablement.ts";
-import { readCursorLocalPluginLoadLog } from "../../src/plugins/cursor-local-plugin.ts";
+import {
+  clearCursorPluginsLogCache,
+  readCursorLocalPluginLoadLog,
+  readCursorPluginsLogWalkCount,
+} from "../../src/plugins/cursor-local-plugin.ts";
 import { cleanupDir, createTempDir } from "../helpers/fs.ts";
 
 function logsDir(home: string): string {
@@ -33,6 +37,7 @@ function fullWalkCount(dir: string, depth: number): number {
 describe("Cursor Plugins log lookup", () => {
   const dirs: string[] = [];
   afterEach(() => {
+    clearCursorPluginsLogCache();
     for (const dir of dirs.splice(0)) cleanupDir(dir);
   });
 
@@ -53,9 +58,13 @@ describe("Cursor Plugins log lookup", () => {
     const newStamp = new Date("2024-01-01T00:00:00.000Z");
     utimesSync(join(root, "20261014T010000"), newStamp, newStamp);
 
+    const walks = readCursorPluginsLogWalkCount();
     const log = readCursorLocalPluginLoadLog(home);
     expect(log?.text).toContain("fresh");
     expect(log?.text).not.toContain("old loaded");
+    expect(readCursorPluginsLogWalkCount() - walks).toBe(1);
+    expect(readCursorLocalPluginLoadLog(home)?.text).toContain("fresh");
+    expect(readCursorPluginsLogWalkCount() - walks).toBe(1);
   });
 
   it("checks only the newest session of a large logs tree", () => {

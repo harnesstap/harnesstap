@@ -1,10 +1,12 @@
 import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from "node:fs";
 import { dirname, join } from "node:path";
 import { getDbPath } from "../db/connection.js";
-import { findNewestCursorPluginsLog } from "../plugins/cursor-local-plugin.js";
+import { cursorPluginsLogSignature } from "../plugins/cursor-local-plugin.js";
 import {
-  cursorStateDbPath,
+  cursorStateKeysDue,
+  cursorStateKeysSignature,
   cursorUserDataDir,
+  readCursorStateKeysGeneration,
 } from "../plugins/cursor-enablement.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -31,11 +33,26 @@ export interface StatusCacheLoadOptions {
 
 interface CacheEntry<T> {
   paths: string[];
-  fingerprint: string;
+  /** Mtime fingerprint of watched files. Empty while watchers are healthy. */
+  pathSig: string;
+  /** Newest session name plus the Plugins log stat. */
+  logSig: string;
+  /** Content hash of the state.vscdb keys status reads. */
+  vscdbSig: string;
+  vscdbCheckedAt: number;
+  /** Generation of that hash. A bump invalidates every cached status. */
+  vscdbGeneration: number;
   /** Epoch observed when this value was stored. A newer epoch is dirty. */
   epoch: number;
   value: T;
 }
+
+const armedPaths = new Set<string>();
+const pendingWatchPaths: string[] = [];
+const pendingWatchSet = new Set<string>();
+let pendingRecursive = new Set<string>();
+let pendingHome = "";
+let watchArmTimer: ReturnType<typeof setTimeout> | null = null;
 
 const MANIFEST_RELATIVE_PATHS = [
   ".claude-plugin/marketplace.json",
@@ -58,6 +75,14 @@ export function clearGlobalProfileStatusCache(): void {
   buckets.clear();
   inflight.clear();
   closeWatchers();
+  armedPaths.clear();
+  pendingWatchPaths.length = 0;
+  pendingWatchSet.clear();
+  pendingRecursive = new Set();
+  if (watchArmTimer) {
+    clearTimeout(watchArmTimer);
+    watchArmTimer = null;
+  }
   watchersHealthy = true;
 }
 
@@ -70,6 +95,7 @@ export function statusCacheWatchersHealthy(): boolean {
 export function markStatusCacheWatchersUnreliable(): void {
   watchersHealthy = false;
   closeWatchers();
+  snapshotPathSignatures();
 }
 
 /** Bumped when a watcher sees a change. Tests use this. */
@@ -194,9 +220,9 @@ function recursiveWatchPaths(home: string): Set<string> {
 }
 
 /**
- * Cheap input fingerprint: mtime and size of the profiles database, harness
- * config, Cursor plugin roots, state.vscdb, marketplace manifests, and the
- * files the last status read compared. No log walk and no database read.
+ * Mtime fingerprint of files whose bytes matter. state.vscdb and the Cursor
+ * logs tree are not included: Cursor rewrites both constantly. Key contents
+ * and the newest Plugins log are checked separately.
  */
 function collectFingerprintPaths(
   projectPath: string | undefined,
@@ -204,11 +230,8 @@ function collectFingerprintPaths(
 ): { paths: string[]; recursive: Set<string> } {
   const home = resolveHomeRoot();
   const plugins = join(home, ".cursor", "plugins");
-  const newestLog = findNewestCursorPluginsLog(home);
   const paths = [
     getDbPath(),
-    cursorStateDbPath(home),
-    join(cursorUserDataDir(home), "logs"),
     plugins,
     join(plugins, "installed.json"),
     join(plugins, "installed_plugins.json"),
@@ -217,7 +240,6 @@ function collectFingerprintPaths(
     join(home, ".claude", "plugins", "known_marketplaces.json"),
     join(home, ".claude", "plugins", "marketplaces"),
     join(cursorUserDataDir(home), "User", "settings.json"),
-    ...(newestLog ? [newestLog.path] : []),
     ...harnessConfigPaths(home),
     ...marketplaceManifestPaths(home),
     ...projectDriftWatchPaths(projectPath),
@@ -263,6 +285,20 @@ function watcherKey(path: string, recursive: boolean): string {
   return `${recursive ? "r" : "n"}\0${path}`;
 }
 
+function snapshotPathSignatures(): void {
+  for (const entry of buckets.values()) {
+    if (entry.pathSig === "") {
+      entry.pathSig = fingerprintPaths(entry.paths);
+    }
+  }
+}
+
+function markWatchersUnhealthy(): void {
+  if (!watchersHealthy) return;
+  watchersHealthy = false;
+  snapshotPathSignatures();
+}
+
 function watchOne(path: string, recursive: boolean): void {
   try {
     if (!statSync(path).isDirectory()) recursive = false;
@@ -281,17 +317,17 @@ function watchOne(path: string, recursive: boolean): void {
     watchers.set(key, startWatcher(path, recursive));
   } catch {
     if (!recursive) {
-      watchersHealthy = false;
+      markWatchersUnhealthy();
       return;
     }
     try {
       watchers.set(watcherKey(path, false), startWatcher(path, false));
     } catch {
-      watchersHealthy = false;
+      markWatchersUnhealthy();
       return;
     }
     // Nested edits under this directory are not signaled. Fall back to mtimes.
-    watchersHealthy = false;
+    markWatchersUnhealthy();
   }
 }
 
@@ -310,10 +346,47 @@ function ensureWatchers(paths: readonly string[], recursive: ReadonlySet<string>
   }
 }
 
+/** Arm each path once per process, off the status await. */
+function scheduleWatchers(paths: readonly string[], recursive: ReadonlySet<string>, home: string): void {
+  let added = false;
+  for (const path of paths) {
+    if (armedPaths.has(path) || pendingWatchSet.has(path)) continue;
+    pendingWatchPaths.push(path);
+    pendingWatchSet.add(path);
+    added = true;
+  }
+  for (const path of recursive) pendingRecursive.add(path);
+  pendingHome = home;
+  if (!added || watchArmTimer) return;
+  watchArmTimer = setTimeout(() => {
+    watchArmTimer = null;
+    const batch = pendingWatchPaths.splice(0, pendingWatchPaths.length);
+    pendingWatchSet.clear();
+    const recursiveNow = pendingRecursive;
+    pendingRecursive = new Set();
+    const homeNow = pendingHome;
+    for (const path of batch) armedPaths.add(path);
+    ensureWatchers(batch, recursiveNow, homeNow);
+  }, 0);
+}
+
 function entryIsCurrent(entry: CacheEntry<unknown>): boolean {
   if (entry.epoch !== epoch) return false;
+  const home = resolveHomeRoot();
+  if (cursorPluginsLogSignature(home) !== entry.logSig) return false;
+  if (readCursorStateKeysGeneration(home) !== entry.vscdbGeneration) return false;
+  if (cursorStateKeysDue(entry.vscdbCheckedAt)) {
+    if (cursorStateKeysSignature(home) !== entry.vscdbSig) return false;
+    entry.vscdbCheckedAt = Date.now();
+    entry.vscdbGeneration = readCursorStateKeysGeneration(home);
+  }
   if (!watchersHealthy) {
-    return fingerprintPaths(entry.paths) === entry.fingerprint;
+    const sig = fingerprintPaths(entry.paths);
+    if (entry.pathSig === "") {
+      entry.pathSig = sig;
+      return false;
+    }
+    return sig === entry.pathSig;
   }
   return true;
 }
@@ -344,10 +417,14 @@ function remember<T>(
 ): void {
   const home = resolveHomeRoot();
   const collected = collectFingerprintPaths(projectPath, loaded.watchedPaths);
-  ensureWatchers(collected.paths, collected.recursive, home);
+  scheduleWatchers(collected.paths, collected.recursive, home);
   const next: CacheEntry<T> = {
     paths: collected.paths,
-    fingerprint: fingerprintPaths(collected.paths),
+    pathSig: watchersHealthy ? "" : fingerprintPaths(collected.paths),
+    logSig: cursorPluginsLogSignature(home),
+    vscdbSig: cursorStateKeysSignature(home),
+    vscdbCheckedAt: Date.now(),
+    vscdbGeneration: readCursorStateKeysGeneration(home),
     epoch: epoch,
     value: loaded.value,
   };
@@ -433,10 +510,11 @@ async function loadNow<T>(
 }
 
 /**
- * Reuse a full status result while its input fingerprint is unchanged.
- * Healthy file watchers make a warm read a map lookup. Where a watcher
- * cannot be installed, the same fingerprint of mtimes and sizes is checked
- * instead. Concurrent callers for one key share one in-flight load.
+ * Reuse a full status result while watched inputs, the newest Plugins log,
+ * and the state.vscdb key hash are unchanged. Healthy file watchers make the
+ * file half a map lookup. Where a watcher could not be installed, mtimes and
+ * sizes of those files are checked instead. state.vscdb file mtime and other
+ * log files are ignored. Concurrent callers for one key share one in-flight load.
  */
 export async function withStatusReadCache<T>(
   input: StatusCacheRequest,

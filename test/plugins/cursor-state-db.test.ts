@@ -7,6 +7,7 @@ import {
   collectCursorEnablementSignals,
   cursorLoadsForeignHarnessTrees,
   cursorStateDbPath,
+  expireCursorStateKeysThrottle,
   readCursorStateDbOpenCount,
 } from "../../src/plugins/cursor-enablement.ts";
 import { cleanupDir, createTempDir } from "../helpers/fs.ts";
@@ -90,7 +91,7 @@ describe("state.vscdb reads", () => {
     expect(existsSync(dbPath)).toBe(false);
   });
 
-  it("reuses parsed rows until mtime changes and does not write the file", () => {
+  it("reuses parsed rows until key contents change and does not write the file", () => {
     const home = createTempDir("ht-vscdb-cache");
     dirs.push(home);
     const dbPath = writeStateDb(home, [
@@ -119,6 +120,23 @@ describe("state.vscdb reads", () => {
     const later = new Date("2030-01-01T00:00:00.000Z");
     utimesSync(dbPath, later, later);
     expect([...collectCursorEnablementSignals(home).pluginNames]).toEqual(["slack"]);
+    expect(readCursorStateDbOpenCount() - opens).toBe(2);
+
+    const db = new Database(dbPath);
+    db.run("INSERT INTO ItemTable (key, value) VALUES (?, ?)", "noise.unrelated", "churn");
+    db.close();
+    expect([...collectCursorEnablementSignals(home).pluginNames]).toEqual(["slack"]);
+    expect(readCursorStateDbOpenCount() - opens).toBe(2);
+
+    expireCursorStateKeysThrottle();
+    const changed = new Database(dbPath);
+    changed.run(
+      "UPDATE ItemTable SET value = ? WHERE key = ?",
+      JSON.stringify(["slack", "docs"]),
+      "cursor.plugins.installedIds.no-team",
+    );
+    changed.close();
+    expect([...collectCursorEnablementSignals(home).pluginNames].sort()).toEqual(["docs", "slack"]);
     expect(readCursorStateDbOpenCount() - opens).toBe(3);
   });
 });

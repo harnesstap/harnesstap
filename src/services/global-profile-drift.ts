@@ -47,6 +47,7 @@ import { detectNotStagedProfileResources } from "./profile-untracked-resources.j
 import { type DriftFileChange, driftChangeIsKept } from "./project-drift.js";
 import { hashOnDiskFile } from "./safe-file-removal.js";
 import { withAffectedResources } from "./scoped-file-content-delta.js";
+import { runInStatusComputation } from "./status-computation.js";
 import { withStatusReadCache } from "./status-read-cache.js";
 
 type StatusFieldInput = Parameters<typeof buildBaseStatusFields>[0];
@@ -316,9 +317,11 @@ async function finalizeGlobalProfileStatus(
  * `has_drift`, `stack_in_sync`, `drift_summary`). The desktop drift pill
  * replaces those from every fast poll, so a cold fast read still runs the
  * dry-run. The full result, including that dry-run and profile contents, is
- * cached. A warm read is a map lookup while file watchers are healthy, and
- * a fingerprint of input mtimes and sizes when a watcher could not be
- * installed. A later read, including fast after full of the same inputs,
+ * cached. A warm read is a map lookup while file watchers are healthy, plus
+ * one stat of the newest Plugins log. state.vscdb counts only when the keys
+ * status reads change, and other log files do not. Where a watcher could not
+ * be installed, mtimes and sizes of the remaining files are checked instead.
+ * A later read, including fast after full of the same inputs,
  * skips the dry-run. When a watched input changes, the previous result is
  * returned with `refreshing` set and the new read runs in the background.
  * Apply, switch, and install clear the cache first, so the next read waits
@@ -335,7 +338,7 @@ export async function detectGlobalProfileStatus(input: {
     harness: input.harness,
     projectPath: input.projectPath,
   };
-  const status = await withStatusReadCache(request, async () => {
+  const status = await withStatusReadCache(request, () => runInStatusComputation(async () => {
     const core = await withStatusReadCache(
       { ...request, includeDepth: false },
       async () => {
@@ -348,7 +351,7 @@ export async function detectGlobalProfileStatus(input: {
       core.harness,
     );
     return { value: projected, watchedPaths: core.watchedPaths };
-  }, { staleWhileRefresh: true });
+  }), { staleWhileRefresh: true });
   return {
     ...status,
     as_of: new Date().toISOString(),

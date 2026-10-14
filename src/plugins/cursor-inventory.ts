@@ -1,10 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative } from "node:path";
 import { fileSignature } from "../services/file-signature.js";
+import { computationSlot } from "../services/status-computation.js";
 import {
   collectCursorEnablementSignals,
-  cursorStateDbPath,
-  cursorUserDataDir,
+  cursorStateKeysSignature,
   type CollectCursorEnablementSignals,
   type CursorEnablementSignals,
 } from "./cursor-enablement.js";
@@ -303,15 +303,16 @@ function cloneInstall(install: PluginInstall): PluginInstall {
 export function cursorInventoryInputSignature(homeRoot: string): string {
   const plugins = join(homeRoot, ".cursor", "plugins");
   return [
-    fileSignature(cursorStateDbPath(homeRoot)),
-    fileSignature(join(cursorUserDataDir(homeRoot), "logs")),
+    // Key contents, not the database file. Cursor rewrites state.vscdb constantly.
+    cursorStateKeysSignature(homeRoot),
+    // Newest session name and Plugins log only. Other log files do not count.
+    cursorPluginsLogSignature(homeRoot),
     fileSignature(plugins),
     // Direct children. A same-millisecond create does not always move the
     // parent directory mtime, and a new local plugin only moves `local/`.
     fileSignature(join(plugins, "installed.json")),
     fileSignature(join(plugins, "installed_plugins.json")),
     fileSignature(join(plugins, "local")),
-    cursorPluginsLogSignature(homeRoot),
   ].join("|");
 }
 
@@ -347,12 +348,13 @@ export function listCursorPluginInstalls(
   if (collectSignals !== collectCursorEnablementSignals) {
     return scanCursorPluginInstalls(homeRoot, collectSignals);
   }
-  const sig = cursorInventoryInputSignature(homeRoot);
-  const cached = cursorInstallsCache.get(homeRoot);
-  if (cached && cached.sig === sig) {
-    return cached.installs.map(cloneInstall);
-  }
-  const installs = scanCursorPluginInstalls(homeRoot, collectSignals);
-  cursorInstallsCache.set(homeRoot, { sig, installs });
+  const installs = computationSlot(`cursor-inventory:${homeRoot}`, () => {
+    const sig = cursorInventoryInputSignature(homeRoot);
+    const cached = cursorInstallsCache.get(homeRoot);
+    if (cached && cached.sig === sig) return cached.installs;
+    const scanned = scanCursorPluginInstalls(homeRoot, collectSignals);
+    cursorInstallsCache.set(homeRoot, { sig, installs: scanned });
+    return scanned;
+  });
   return installs.map(cloneInstall);
 }

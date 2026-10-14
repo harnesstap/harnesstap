@@ -94,6 +94,9 @@ export interface UpsertOptions {
   harnesstapDir?: string;
 }
 
+const OVERFLOW_CACHE_CAP = 256;
+const overflowByHash = new Map<string, string>();
+
 function hydrateOverflowContent(row: ResourceRow): string {
   if (row.content.length > 0) {
     return row.content;
@@ -102,8 +105,16 @@ function hydrateOverflowContent(row: ResourceRow): string {
   if (!contentHash.startsWith("sha256:")) {
     return row.content;
   }
+  const cached = overflowByHash.get(contentHash);
+  if (cached !== undefined) return cached;
   try {
-    return readBlob(getHarnesstapDir(), contentHash);
+    const text = readBlob(getHarnesstapDir(), contentHash);
+    if (overflowByHash.size >= OVERFLOW_CACHE_CAP) {
+      const oldest = overflowByHash.keys().next().value;
+      if (oldest) overflowByHash.delete(oldest);
+    }
+    overflowByHash.set(contentHash, text);
+    return text;
   } catch {
     return row.content;
   }

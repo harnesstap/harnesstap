@@ -1,7 +1,10 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { computationSlot } from "../services/status-computation.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import { parsePluginRef } from "./host-plugin-manifest.js";
 import { cursorProjectsMcpsRoot } from "./refresh.js";
 
@@ -232,11 +235,36 @@ interface CursorDbRows {
   byKey: Map<string, unknown>;
 }
 
-const cursorDbCache = new Map<string, { sig: string; rows: CursorDbRows }>();
+/** Re-read key contents at this interval. File mtime is not a signal. */
+export const CURSOR_STATE_KEYS_REQUERY_MS = 30_000;
+
+interface CursorDbCacheEntry {
+  rows: CursorDbRows;
+  hash: string;
+  queriedAt: number;
+}
+
+const cursorDbCache = new Map<string, CursorDbCacheEntry>();
+const cursorStateKeysGeneration = new Map<string, number>();
 let cursorDbOpens = 0;
+let cursorStateKeysForceCheck = false;
+
+/** Bumps when the keys status reads actually change. */
+export function readCursorStateKeysGeneration(homeRoot: string): number {
+  return cursorStateKeysGeneration.get(cursorStateDbPath(homeRoot)) ?? 0;
+}
 
 export function clearCursorStateDbCache(): void {
   cursorDbCache.clear();
+  cursorStateKeysForceCheck = true;
+}
+
+/** Next key-hash check opens the database even inside the throttle. Tests use this. */
+export function expireCursorStateKeysThrottle(): void {
+  cursorStateKeysForceCheck = true;
+  for (const entry of cursorDbCache.values()) {
+    entry.queriedAt = 0;
+  }
 }
 
 /** How many times state.vscdb was actually opened. Tests use this. */
@@ -244,33 +272,23 @@ export function readCursorStateDbOpenCount(): number {
   return cursorDbOpens;
 }
 
-function cursorDbSignature(dbPath: string): string | null {
-  try {
-    const stat = statSync(dbPath);
-    return `${stat.mtimeMs}:${stat.size}`;
-  } catch {
-    return null;
+function hashCursorDbRows(rows: CursorDbRows): string {
+  const hash = createHash("sha256");
+  const keys = [...rows.byKey.keys()].sort();
+  for (const key of keys) {
+    hash.update(key);
+    hash.update("\0");
+    hash.update(JSON.stringify(rows.byKey.get(key)) ?? "null");
+    hash.update("\n");
   }
+  return hash.digest("hex");
 }
 
-/**
- * Read only the ItemTable keys status needs. The connection is read-only
- * and query_only, and the parsed rows are reused until the file mtime or
- * size changes. Never inserts, updates, or creates the database.
- */
-function loadCursorDbRows(homeRoot: string): CursorDbRows {
+function queryCursorDbRows(dbPath: string): CursorDbRows {
   const empty: CursorDbRows = { byKey: new Map() };
-  const dbPath = cursorStateDbPath(homeRoot);
-  const sig = cursorDbSignature(dbPath);
-  if (!sig) return empty;
-
-  const cached = cursorDbCache.get(dbPath);
-  if (cached && cached.sig === sig) return cached.rows;
-
   const db = openReadonlySqlite(dbPath);
   if (!db) return empty;
   cursorDbOpens += 1;
-
   const byKey = new Map<string, unknown>();
   try {
     db.exec("PRAGMA query_only = ON");
@@ -296,10 +314,74 @@ function loadCursorDbRows(homeRoot: string): CursorDbRows {
       // ignore close errors
     }
   }
+  return { byKey };
+}
 
-  const rows = { byKey };
-  cursorDbCache.set(dbPath, { sig, rows });
+/**
+ * Read only the ItemTable keys status needs. The connection is read-only
+ * and query_only. Parsed rows are reused until the throttle expires and the
+ * key contents change. The database file mtime is ignored. Never inserts,
+ * updates, or creates the database.
+ */
+function loadCursorDbRows(homeRoot: string): CursorDbRows {
+  return computationSlot(`cursor-state-db:${homeRoot}`, () => loadCursorDbRowsUncached(homeRoot));
+}
+
+function loadCursorDbRowsUncached(homeRoot: string): CursorDbRows {
+  const empty: CursorDbRows = { byKey: new Map() };
+  const dbPath = cursorStateDbPath(homeRoot);
+  if (!existsSync(dbPath)) return empty;
+
+  const now = Date.now();
+  const cached = cursorDbCache.get(dbPath);
+  if (
+    cached
+    && !cursorStateKeysForceCheck
+    && now - cached.queriedAt < CURSOR_STATE_KEYS_REQUERY_MS
+  ) {
+    return cached.rows;
+  }
+  cursorStateKeysForceCheck = false;
+
+  const rows = queryCursorDbRows(dbPath);
+  const hash = hashCursorDbRows(rows);
+  if (cached && cached.hash === hash) {
+    cached.queriedAt = now;
+    return cached.rows;
+  }
+  cursorDbCache.set(dbPath, { rows, hash, queriedAt: now });
+  cursorStateKeysGeneration.set(dbPath, (cursorStateKeysGeneration.get(dbPath) ?? 0) + 1);
   return rows;
+}
+
+/** Content hash of the Cursor state keys status reads. Missing database is `missing`. */
+export function cursorStateKeysSignature(homeRoot: string): string {
+  const dbPath = cursorStateDbPath(homeRoot);
+  if (!existsSync(dbPath)) {
+    cursorStateKeysForceCheck = false;
+    return "missing";
+  }
+  loadCursorDbRows(homeRoot);
+  return cursorDbCache.get(dbPath)?.hash ?? "missing";
+}
+
+/** True when the throttled key hash should be read again. */
+export function cursorStateKeysDue(checkedAt: number): boolean {
+  return cursorStateKeysForceCheck || Date.now() - checkedAt >= CURSOR_STATE_KEYS_REQUERY_MS;
+}
+
+/**
+ * True when the stored key hash is still current. Inside the throttle this
+ * does not open the database.
+ */
+export function cursorStateKeysMatch(hash: string, checkedAt: number): boolean {
+  if (
+    !cursorStateKeysForceCheck
+    && Date.now() - checkedAt < CURSOR_STATE_KEYS_REQUERY_MS
+  ) {
+    return true;
+  }
+  return cursorStateKeysSignature(resolveHomeRoot()) === hash;
 }
 
 function readRecentlyUsedSkillPaths(homeRoot: string): string[] {
