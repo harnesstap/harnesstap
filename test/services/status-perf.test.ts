@@ -16,6 +16,9 @@ function noteLogsPath(path: unknown): void {
   }
 }
 
+/** When set, the next few main-thread watches spin so a stalled event loop is obvious. */
+let delayMainThreadWatches = 0;
+
 mock.module("node:fs", () => ({
   ...actualFs,
   readdirSync(path: string, options?: object) {
@@ -33,6 +36,19 @@ mock.module("node:fs", () => ({
   openSync(path: string, flags?: string, mode?: number) {
     noteLogsPath(path);
     return actualFs.openSync(path, flags, mode);
+  },
+  watch(path: string, options?: object, listener?: unknown) {
+    if (delayMainThreadWatches > 0) {
+      delayMainThreadWatches -= 1;
+      const until = performance.now() + 40;
+      while (performance.now() < until) {
+        // Simulate a slow fs.watch of a large Cursor tree on the calling thread.
+      }
+    }
+    if (typeof options === "function") {
+      return actualFs.watch(path, options as never);
+    }
+    return actualFs.watch(path, options as never, listener as never);
   },
 }));
 
@@ -198,8 +214,12 @@ describe("status perf", () => {
       const warmStarted = performance.now();
       const warm = await detectGlobalProfileStatus({ depth: "full" });
       const warmMs = performance.now() - warmStarted;
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      const watchersArmed = readStatusWatcherCreateCount();
+      const armDeadline = Date.now() + 2000;
+      let watchersArmed = readStatusWatcherCreateCount();
+      while (watchersArmed === 0 && Date.now() < armDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 15));
+        watchersArmed = readStatusWatcherCreateCount();
+      }
 
       clearLiveReadCaches();
       const recomputeStarted = performance.now();
@@ -218,6 +238,7 @@ describe("status perf", () => {
       expect(cold.refreshing).toBe(false);
       expect(warm.refreshing).toBe(false);
       expect(recomputed.refreshing).toBe(false);
+      expect(watchersArmed).toBeGreaterThan(0);
       expect(statusCacheWatchersHealthy()).toBe(true);
       expect(stable(warm)).toBe(stable(cold));
       expect(stable(recomputed)).toBe(stable(cold));
@@ -245,6 +266,57 @@ describe("status perf", () => {
       expect(cursorLogsReads).toBe(0);
       expect(readStatusWatcherCreateCount()).toBe(watchersArmed);
     } finally {
+      clearLiveReadCaches();
+      await context.cleanup();
+    }
+  });
+
+  it("keeps each of the ten warm reads after cold start under budget", async () => {
+    const context = await createInitializedTestContext("status-perf-warm-burst");
+    try {
+      clearLiveReadCaches();
+      writeCursorHome(context.homeDir);
+      const plugin = createPlugin({ name: "warm-burst" });
+      setPluginTags(plugin.id, ["profile"]);
+      addResourceToPlugin(
+        plugin.id,
+        createResource({
+          type: "skill",
+          name: "skill-warm",
+          description: "",
+          content: "# warm\n",
+          metadata: {},
+          source: "manual",
+          origin_kind: "marketplace_link",
+          origin_ref: "skill-warm@cursor-public",
+        }).id,
+      );
+      setActiveProfileName("warm-burst");
+      setStatusRefreshDelayMs(0);
+      warmStatusRefreshWorker();
+      delayMainThreadWatches = 8;
+      const cold = await detectGlobalProfileStatus({ depth: "full" });
+      expect(cold.refreshing).toBe(false);
+      const gap = watchEventLoopGap();
+      const samples: number[] = [];
+      for (let index = 0; index < 10; index += 1) {
+        const started = performance.now();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const warm = await detectGlobalProfileStatus({ depth: "full" });
+        const elapsed = performance.now() - started;
+        samples.push(elapsed);
+        expect(warm.refreshing).toBe(false);
+        expect(stable(warm)).toBe(stable(cold));
+      }
+      const stallMs = gap.stop();
+      const slowest = Math.max(...samples);
+      console.log(
+        `status warm burst ${samples.map((ms) => ms.toFixed(1)).join(",")} slowest=${slowest.toFixed(1)}ms stall=${stallMs.toFixed(1)}ms`,
+      );
+      expect(slowest).toBeLessThan(WARM_BUDGET_MS);
+      expect(stallMs).toBeLessThan(STALL_BUDGET_MS);
+    } finally {
+      delayMainThreadWatches = 0;
       clearLiveReadCaches();
       await context.cleanup();
     }
