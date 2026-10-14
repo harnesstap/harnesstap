@@ -670,6 +670,7 @@ function statusWorker(): Worker {
     } catch {
       job.resolve({ ok: false });
     }
+    if (refreshJobs.size === 0) worker.unref();
     releaseIdleWorker(worker);
   });
   worker.on("error", () => {
@@ -690,14 +691,20 @@ function statusWorker(): Worker {
 
 /**
  * Outside the sidecar (the CLI, a script), stop the worker once it has no
- * jobs. Bun keeps a process alive while an unref'd worker has a message
- * listener, so `ht profile status` would print and never exit. The next
- * status read starts a new worker.
+ * jobs. Some Bun versions keep a process alive while an unref'd worker has
+ * a message listener, so `ht profile status` would print and never exit.
+ * The next status read starts a new worker.
  */
 function releaseIdleWorker(worker: Worker): void {
   if (keepStatusWorkerAlive || refreshJobs.size > 0 || refreshWorker !== worker) return;
-  refreshWorker = null;
-  void worker.terminate();
+  // Wait one macrotask so the caller that awaited this job can print first.
+  // Terminating inside the message handler lets some Bun versions exit
+  // before that continuation writes anything.
+  setTimeout(() => {
+    if (keepStatusWorkerAlive || refreshJobs.size > 0 || refreshWorker !== worker) return;
+    refreshWorker = null;
+    void worker.terminate();
+  }, 0);
 }
 
 /**
@@ -779,6 +786,9 @@ function enqueueStatusRefresh<T extends object>(
       home,
       resolve,
     });
+    // Hold the process open while a job is pending. An unref'd worker lets
+    // some Bun versions exit before the result arrives, printing nothing.
+    worker.ref();
     try {
       worker.postMessage({
         id,
@@ -792,6 +802,7 @@ function enqueueStatusRefresh<T extends object>(
       });
     } catch {
       refreshJobs.delete(id);
+      worker.unref();
       workerFailed = true;
       refreshWorker = null;
       runInProcess();
