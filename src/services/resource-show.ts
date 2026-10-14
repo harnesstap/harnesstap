@@ -10,11 +10,16 @@ import {
   resourceHumanName,
 } from "../ui/resource-display.js";
 import { renderSubheader } from "../ui/section.js";
+import { isLiveLibraryRef } from "./live-library-ref.js";
 import {
   type PluginContainedResource,
   packageResourceShowExtras,
   pluginResourceShowExtras,
 } from "./plugin-resource-show.js";
+import {
+  readResourceContentFromPathHint,
+  resolveExistingResourceFilesystemPath,
+} from "./resource-editor-path.js";
 
 const DEFAULT_CONTENT_LINE_LIMIT = 15;
 
@@ -99,14 +104,37 @@ function readContainedSkillBody(files: PluginContainedResource[]): string | unde
   }
 }
 
+function readOnDiskResourceBody(resource: Resource): string | undefined {
+  const filesystemPath = resolveExistingResourceFilesystemPath(resource);
+  if (!filesystemPath) {
+    return undefined;
+  }
+  try {
+    return readResourceContentFromPathHint(filesystemPath).content;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Live refs keep `content: ""` in the library. Show the on-disk file, matching
+ * desktop resource detail.
+ */
 function resolveResourceBody(
   resource: Resource,
   extras: ReturnType<typeof resourceShowExtras>,
 ): string {
-  if (resource.type !== "plugin" && resource.content.trim().length > 0) {
+  if (resource.type === "plugin") {
     return resource.content;
   }
-  if (resource.type !== "plugin" && extras && "contained_resources" in extras) {
+  if (!isLiveLibraryRef(resource) && resource.content.trim().length > 0) {
+    return resource.content;
+  }
+  const onDisk = readOnDiskResourceBody(resource);
+  if (onDisk !== undefined) {
+    return onDisk;
+  }
+  if (extras && "contained_resources" in extras) {
     const fromDisk = readContainedSkillBody(extras.contained_resources);
     if (fromDisk !== undefined) {
       return fromDisk;

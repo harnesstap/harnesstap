@@ -6,6 +6,7 @@ import { startAgentServer } from "../../src/agent/serve.ts";
 import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
+import { ensureLiveLibraryRef } from "../../src/services/live-library-ref.ts";
 
 describe("agent library routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
@@ -312,5 +313,30 @@ describe("agent library routes", () => {
     expect(restBody.files.length).toBeGreaterThan(0);
     expect(restBody.has_more).toBe(false);
     expect(pageBody.files.length + restBody.files.length).toBe(26);
+  });
+  it("returns on-disk content for live library refs (shared AGENTS.md)", async () => {
+    const server = await withServer();
+    const home = process.env.HOME as string;
+    mkdirSync(join(home, ".agents"), { recursive: true });
+    writeFileSync(join(home, ".agents", "AGENTS.md"), "# Shared rules\nUse bun.\n");
+    const live = ensureLiveLibraryRef(
+      {
+        type: "instruction",
+        name: "agents-instructions",
+        description: "",
+        content: "",
+        metadata: {},
+        source: "~/.agents/AGENTS.md",
+      },
+      home,
+    );
+    expect(live.content).toBe("");
+    const response = await fetch(
+      `${server.url}/v1/library/resources/${live.id}?include_contained=false`,
+      { headers: { authorization: `Bearer ${server.token}` } },
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.resource.content).toBe("# Shared rules\nUse bun.\n");
   });
 });
