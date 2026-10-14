@@ -1,16 +1,11 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { readCachedMarketplacePluginNames } from "../services/marketplace-manifest-cache.js";
 import {
   claudePluginsDir,
   loadInstalled,
   parsePluginRef,
-  readJsonFile,
 } from "./claude-installed.js";
-
-interface MarketplaceManifest {
-  name?: string;
-  plugins?: Array<{ name: string }>;
-}
 
 export interface CatalogPluginInstallHint {
   /** Preferred `claude plugin install` refs, highest priority first. */
@@ -69,10 +64,10 @@ export function marketplaceHasPlugin(
   marketplace: string,
   pluginName: string,
 ): boolean {
-  const manifest = readJsonFile<MarketplaceManifest>(
+  const names = readCachedMarketplacePluginNames(
     marketplaceManifestPath(homeRoot, marketplace),
   );
-  return manifest?.plugins?.some((entry) => entry.name === pluginName) ?? false;
+  return names?.has(pluginName) ?? false;
 }
 
 export function listConfiguredMarketplaceNames(homeRoot: string): string[] {

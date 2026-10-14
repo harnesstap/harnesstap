@@ -37,6 +37,7 @@ import {
   parseCodexMarketplaceManifest,
   parseCursorMarketplaceManifest,
 } from "./marketplace-catalog-parse.js";
+import { readCachedMarketplaceJson } from "./marketplace-manifest-cache.js";
 import { listMarketplaces, updateMarketplace } from "./marketplace-registry.js";
 
 export type { CatalogPlugin } from "./marketplace-catalog-parse.js";
@@ -294,10 +295,8 @@ function loadCatalogFromDir(
   let marketplaceName = "";
   let manifestName: string | undefined;
   for (const manifest of manifests) {
-    let raw: unknown;
-    try {
-      raw = JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
-    } catch {
+    const raw = readCachedMarketplaceJson(manifest.manifestPath);
+    if (raw === undefined) {
       return { ok: false, message: "Failed to parse marketplace manifest JSON" };
     }
     const identified = catalogWithRegistryIdentity(
@@ -648,11 +647,7 @@ export function alignImplicitMarketplacePlatforms(
 export function readMarketplaceManifest(root: string): unknown | undefined {
   const manifest = resolveManifests(root, ["claude-code", "cursor", "copilot-cli"])[0];
   if (!manifest) return undefined;
-  try {
-    return JSON.parse(readFileSync(manifest.manifestPath, "utf8"));
-  } catch {
-    return undefined;
-  }
+  return readCachedMarketplaceJson(manifest.manifestPath);
 }
 
 function pluginMatchesQuery(plugin: CatalogPlugin, query: string): boolean {

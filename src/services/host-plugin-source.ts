@@ -20,6 +20,7 @@ import {
   runCommandWithTimeout,
 } from "../utils/run-command-with-timeout.js";
 import { builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
+import { readCachedMarketplaceJson } from "./marketplace-manifest-cache.js";
 import { listMarketplaces } from "./marketplace-registry.js";
 import { listCatalogPluginBranchVersions } from "./marketplace-catalog.js";
 import { resolveMarketplacePluginDirectory } from "./plugin-origin-apply.js";
@@ -359,7 +360,7 @@ function readMarketplaceManifestRecord(
   root: string,
 ): Record<string, unknown> | null {
   for (const relative of MARKETPLACE_MANIFEST_RELATIVE_PATHS) {
-    const file = readJsonFile<Record<string, unknown>>(join(root, relative));
+    const file = readCachedMarketplaceJson(join(root, relative));
     if (file && isRecord(file)) {
       return file;
     }

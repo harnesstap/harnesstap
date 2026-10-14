@@ -736,7 +736,7 @@ export async function applyToGlobal(
     target: "global",
   });
   const allFiles = results.flatMap((result) => result.files);
-  gateDeployFiles(allFiles, { forceUnicode: options.forceUnicode });
+  gateDeployFiles(allFiles, { forceUnicode: options.forceUnicode, rootPath: homeRoot });
   const preApplyState = captureManagedSnapshotState({
     rootPath: homeRoot,
     generated: results,
