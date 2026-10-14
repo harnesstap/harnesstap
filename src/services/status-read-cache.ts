@@ -716,6 +716,9 @@ function statusRefreshWorkerTarget(): string | URL {
     // workers and resolves on Bun 1.3 and 1.4 on POSIX and Windows. An
     // absolute /$bunfs/root/... name breaks on Bun 1.3 (`.ts`) and on
     // Windows, where the virtual root is B:\~BUN\root.
+    if (process.platform === "win32" && main) {
+      return `${dirname(main).replaceAll("\\", "/")}/services/status-refresh-worker.js`;
+    }
     return "./services/status-refresh-worker.ts";
   }
   return new URL("./status-refresh-worker.ts", import.meta.url);
@@ -769,7 +772,10 @@ function abandonUnresponsiveWorker(worker: Worker, waitedMs: number): void {
   releaseRefreshJobs({ message });
   worker.removeAllListeners();
   void worker.terminate().catch(() => undefined);
-  scheduleWorkerRespawn();
+  // A worker that never started will not start on a respawn either; stop
+  // trying so later reads do not each wait out the timeout.
+  if (workerOnline.has(worker)) scheduleWorkerRespawn();
+  else respawnAttempts = Number.POSITIVE_INFINITY;
 }
 
 function statusWorker(): Worker {
