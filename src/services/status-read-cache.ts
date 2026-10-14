@@ -711,11 +711,12 @@ function statusRefreshWorkerTarget(): string | URL {
   const url = decodeURIComponent(import.meta.url);
   const compiled = [main, url].some((value) => value.includes("$bunfs") || value.includes("~BUN"));
   if (compiled) {
-    // `bun build --compile` stores each entry under its transpiled name next
-    // to the binary's virtual root (/$bunfs/root on POSIX, B:\~BUN\root on
-    // Windows). Bun 1.3.x only resolves the `.js` name; 1.4 accepts both.
-    const root = main ? dirname(main) : "/$bunfs/root";
-    return join(root, "services", "status-refresh-worker.js");
+    // `bun build --compile` embeds the worker as a second entry. A path
+    // relative to the binary's entry is what Bun documents for compiled
+    // workers and resolves on Bun 1.3 and 1.4 on POSIX and Windows. An
+    // absolute /$bunfs/root/... name breaks on Bun 1.3 (`.ts`) and on
+    // Windows, where the virtual root is B:\~BUN\root.
+    return "./services/status-refresh-worker.ts";
   }
   return new URL("./status-refresh-worker.ts", import.meta.url);
 }
