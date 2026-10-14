@@ -323,7 +323,8 @@ async function finalizeGlobalProfileStatus(
  * be installed, mtimes and sizes of the remaining files are checked instead.
  * A later read, including fast after full of the same inputs,
  * skips the dry-run. When a watched input changes, the previous result is
- * returned with `refreshing` set and the new read runs in the background.
+ * returned with `refreshing` set and the new read runs on a background
+ * thread. A warm or stale response does not wait for that read.
  * Apply, switch, and install clear the cache first, so the next read waits
  * and is not stale. Overlapping callers share one in-flight computation.
  */
@@ -357,6 +358,26 @@ export async function detectGlobalProfileStatus(input: {
     as_of: new Date().toISOString(),
     refreshing: status.refreshing === true,
   };
+}
+
+/**
+ * Full status computation with no cache. The refresh worker runs this off the
+ * request thread. A warm or stale response must not wait for it.
+ */
+export async function loadGlobalProfileStatusSnapshot(input: {
+  harness?: string;
+  depth?: GlobalProfileStatusDepth;
+  projectPath?: string;
+} = {}): Promise<{ value: GlobalProfileStatus; watchedPaths: string[] }> {
+  const depth = input.depth ?? "full";
+  return runInStatusComputation(async () => {
+    const loaded = await loadDriftCore(input);
+    const projected = await finalizeGlobalProfileStatus(
+      { ...loaded.fields, depth },
+      loaded.harness,
+    );
+    return { value: projected, watchedPaths: loaded.watchedPaths };
+  });
 }
 
 async function loadDriftCore(input: {

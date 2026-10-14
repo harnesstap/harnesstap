@@ -1,5 +1,5 @@
 kind: Fixed
-body: Status reuses a full read until the profiles database, harness config, Cursor plugins, marketplace manifests, the newest Plugins log, or the Cursor state keys that status reads change. Other log files and state.vscdb file writes do not drop the cache. File watchers mark that cache dirty, and a warm read is a lookup. When inputs change, the previous status is served with refreshing set while a new read runs. Apply, switch, and install drop the cache immediately.
+body: Status reuses a full read until the profiles database, harness config, Cursor plugins, marketplace manifests, the newest Plugins log, or the Cursor state keys that status reads change. Other log files and state.vscdb file writes do not drop the cache. File watchers mark that cache dirty once per path, and a warm read is a lookup. When inputs change, the previous status is served with refreshing set while a new read runs on a background thread, so a warm read does not wait on that work. Plugin name lookups prepare their SQL once. Apply, switch, and install drop the cache immediately.
 time: 2026-10-14T02:00:00.000Z
 custom:
   Issue: ""

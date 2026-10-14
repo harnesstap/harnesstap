@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
+import { Worker } from "node:worker_threads";
 import { getDbPath } from "../db/connection.js";
 import { cursorPluginsLogSignature } from "../plugins/cursor-local-plugin.js";
 import {
@@ -74,16 +75,33 @@ export function clearGlobalProfileStatusCache(): void {
   epoch += 1;
   buckets.clear();
   inflight.clear();
-  closeWatchers();
-  armedPaths.clear();
-  pendingWatchPaths.length = 0;
-  pendingWatchSet.clear();
-  pendingRecursive = new Set();
-  if (watchArmTimer) {
-    clearTimeout(watchArmTimer);
-    watchArmTimer = null;
-  }
   watchersHealthy = true;
+}
+
+/** Bump the cache epoch so the next read recomputes. Tests use this. */
+export function markStatusCacheStaleForTests(): void {
+  epoch += 1;
+}
+
+let statusRefreshDelayMs = 0;
+
+/** Hold the refresh worker this long before it computes. Tests use this. */
+export function setStatusRefreshDelayMs(ms: number): void {
+  statusRefreshDelayMs = ms;
+}
+
+let watcherCreates = 0;
+
+/** How many filesystem watchers were constructed. */
+export function readStatusWatcherCreateCount(): number {
+  return watcherCreates;
+}
+
+let refreshCompletions = 0;
+
+/** How many background refreshes stored a new status. */
+export function readStatusRefreshCompletionCount(): number {
+  return refreshCompletions;
 }
 
 /** True when every fingerprint path was watched. Tests and the perf budget use this. */
@@ -103,9 +121,14 @@ export function readStatusCacheEpoch(): number {
   return epoch;
 }
 
+function watcherPath(key: string): string {
+  return key.slice(2);
+}
+
 function closeWatchers(): void {
-  for (const watcher of watchers.values()) {
+  for (const [key, watcher] of watchers) {
     watcher.close();
+    armedPaths.delete(watcherPath(key));
   }
   watchers.clear();
 }
@@ -265,6 +288,7 @@ function fingerprintPaths(paths: readonly string[]): string {
 }
 
 function startWatcher(path: string, recursive: boolean): FSWatcher {
+  watcherCreates += 1;
   let ready = false;
   const watcher = watch(path, { persistent: false, recursive }, () => {
     if (!ready) return;
@@ -274,6 +298,7 @@ function startWatcher(path: string, recursive: boolean): FSWatcher {
     markDirty();
     watcher.close();
     watchers.delete(watcherKey(path, recursive));
+    armedPaths.delete(path);
   });
   setTimeout(() => {
     ready = true;
@@ -331,8 +356,29 @@ function watchOne(path: string, recursive: boolean): void {
   }
 }
 
+function hasWatcher(path: string): boolean {
+  return watchers.has(watcherKey(path, true)) || watchers.has(watcherKey(path, false));
+}
+
+function isUnderHome(path: string, home: string): boolean {
+  const prefix = home.endsWith(sep) ? home : `${home}${sep}`;
+  return path === home || path.startsWith(prefix);
+}
+
+function retainWatchersForHome(home: string): void {
+  const dbPath = getDbPath();
+  for (const [key, watcher] of watchers) {
+    const path = watcherPath(key);
+    if (path === dbPath || isUnderHome(path, home)) continue;
+    watcher.close();
+    watchers.delete(key);
+    armedPaths.delete(path);
+  }
+}
+
 function ensureWatchers(paths: readonly string[], recursive: ReadonlySet<string>, home: string): void {
   for (const path of paths) {
+    if (hasWatcher(path)) continue;
     let isDirectory = false;
     try {
       isDirectory = statSync(path).isDirectory();
@@ -348,6 +394,7 @@ function ensureWatchers(paths: readonly string[], recursive: ReadonlySet<string>
 
 /** Arm each path once per process, off the status await. */
 function scheduleWatchers(paths: readonly string[], recursive: ReadonlySet<string>, home: string): void {
+  retainWatchersForHome(home);
   let added = false;
   for (const path of paths) {
     if (armedPaths.has(path) || pendingWatchSet.has(path)) continue;
@@ -440,9 +487,96 @@ function remember<T>(
   }
 }
 
+interface RefreshJob {
+  key: string;
+  projectPath: string | undefined;
+  generation: number;
+  epochAtStart: number;
+  home: string | undefined;
+  resolve: () => void;
+}
+
+interface RefreshResultMessage {
+  id: number;
+  ok: boolean;
+  value?: unknown;
+  watchedPaths?: string[];
+}
+
+let refreshWorker: Worker | null = null;
+let refreshSeq = 0;
+const refreshJobs = new Map<number, RefreshJob>();
+let workerFailed = false;
+
+function finishRefreshJob(job: RefreshJob): void {
+  job.resolve();
+  const current = inflight.get(job.key);
+  if (current && current.generation === job.generation) inflight.delete(job.key);
+}
+
+function failRefreshWorker(): void {
+  workerFailed = true;
+  refreshWorker = null;
+  for (const job of refreshJobs.values()) finishRefreshJob(job);
+  refreshJobs.clear();
+}
+
+/**
+ * Bun test loads the worker from this module's URL. A compiled sidecar
+ * bundles that file as a second entry, and import.meta.url is the binary, so
+ * the embedded path is the one `bun build --compile` registers.
+ */
+function statusRefreshWorkerTarget(): string | URL {
+  const url = import.meta.url;
+  if (url.includes("/$bunfs/") || url.includes("~BUN")) {
+    return "/$bunfs/root/services/status-refresh-worker.ts";
+  }
+  return new URL("./status-refresh-worker.ts", import.meta.url);
+}
+
+function statusWorker(): Worker {
+  if (refreshWorker) return refreshWorker;
+  const worker = new Worker(statusRefreshWorkerTarget());
+  worker.unref();
+  worker.on("message", (message: RefreshResultMessage) => {
+    const job = refreshJobs.get(message.id);
+    if (!job) return;
+    refreshJobs.delete(message.id);
+    try {
+      if (job.home !== process.env.HOME || job.generation !== generation) return;
+      if (!message.ok || message.value === undefined || !message.watchedPaths) return;
+      remember(job.key, job.projectPath, {
+        value: message.value,
+        watchedPaths: message.watchedPaths,
+      }, job.epochAtStart);
+      refreshCompletions += 1;
+    } catch {
+      // Keep the last result. The next read tries again.
+    } finally {
+      finishRefreshJob(job);
+    }
+  });
+  worker.on("error", () => {
+    failRefreshWorker();
+  });
+  worker.on("exit", (code) => {
+    if (code === 0) return;
+    failRefreshWorker();
+  });
+  refreshWorker = worker;
+  return worker;
+}
+
+function blockRefreshDelay(): void {
+  if (statusRefreshDelayMs <= 0) return;
+  const shared = new SharedArrayBuffer(4);
+  Atomics.wait(new Int32Array(shared), 0, 0, statusRefreshDelayMs);
+}
+
 function scheduleRefresh<T>(
   key: string,
   projectPath: string | undefined,
+  input: StatusCacheRequest,
   load: () => Promise<{ value: T; watchedPaths: readonly string[] }>,
 ): void {
   const gen = generation;
@@ -455,20 +589,58 @@ function scheduleRefresh<T>(
   });
   inflight.set(key, { generation: gen, promise });
   const epochAtStart = epoch;
-  void (async () => {
-    try {
-      const loaded = await load();
-      if (gen !== generation) return;
-      remember(key, projectPath, loaded, epochAtStart);
-    } catch {
-      // Keep the last result. The next read tries again. A clear during
-      // this load bumps generation so a torn-down library is not stored.
-    } finally {
-      resolveDone();
-      const current = inflight.get(key);
-      if (current?.promise === promise) inflight.delete(key);
-    }
-  })();
+  const home = process.env.HOME;
+
+  const runInProcess = () => {
+    void (async () => {
+      try {
+        blockRefreshDelay();
+        const loaded = await load();
+        if (gen === generation && home === process.env.HOME) {
+          remember(key, projectPath, loaded, epochAtStart);
+          refreshCompletions += 1;
+        }
+      } catch {
+        // Keep the last result. The next read tries again. A clear during
+        // this load bumps generation so a torn-down library is not stored.
+      } finally {
+        resolveDone();
+        const current = inflight.get(key);
+        if (current?.promise === promise) inflight.delete(key);
+      }
+    })();
+  };
+
+  if (workerFailed) {
+    setTimeout(runInProcess, 0);
+    return;
+  }
+
+  const id = ++refreshSeq;
+  refreshJobs.set(id, {
+    key,
+    projectPath,
+    generation: gen,
+    epochAtStart,
+    home,
+    resolve: resolveDone,
+  });
+  try {
+    statusWorker().postMessage({
+      id,
+      home,
+      userProfile: process.env.USERPROFILE,
+      harnesstapHome: process.env.HARNESSTAP_HOME,
+      depth: input.depth,
+      harness: input.harness,
+      projectPath: input.projectPath,
+      delayMs: statusRefreshDelayMs,
+    });
+  } catch {
+    refreshJobs.delete(id);
+    workerFailed = true;
+    setTimeout(runInProcess, 0);
+  }
 }
 
 async function loadNow<T>(
@@ -528,7 +700,7 @@ export async function withStatusReadCache<T>(
   }
 
   if (options?.staleWhileRefresh && cached) {
-    scheduleRefresh(key, input.projectPath, load);
+    scheduleRefresh(key, input.projectPath, input, load);
     return present(cached.value, true);
   }
 

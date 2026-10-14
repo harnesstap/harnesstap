@@ -14,6 +14,7 @@ import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import {
   markStatusCacheWatchersUnreliable,
   readStatusCacheEpoch,
+  readStatusRefreshCompletionCount,
 } from "../../src/services/status-read-cache.ts";
 
 function stable(status: Awaited<ReturnType<typeof detectGlobalProfileStatus>>): string {
@@ -146,13 +147,14 @@ describe("global profile status cache", () => {
       expect(first.refreshing).toBe(false);
       markStatusCacheWatchersUnreliable();
       const computed = readDriftCoreComputeCount();
+      const refreshes = readStatusRefreshCompletionCount();
 
       writeFileSync(guide, `${readFileSync(guide, "utf8")}\nedit\n`);
       const during = await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
       expect(during.refreshing).toBe(true);
       expect(during.changes).toEqual(first.changes);
 
-      const deadline = Date.now() + 3000;
+      const deadline = Date.now() + 8000;
       let fresh = during;
       while (Date.now() < deadline) {
         fresh = await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
@@ -163,7 +165,8 @@ describe("global profile status cache", () => {
       }
       expect(fresh.refreshing).toBe(false);
       expect(fresh.changes.some((change) => change.path.endsWith("CLAUDE.md"))).toBe(true);
-      expect(readDriftCoreComputeCount()).toBe(computed + 1);
+      expect(readStatusRefreshCompletionCount()).toBe(refreshes + 1);
+      expect(readDriftCoreComputeCount()).toBe(computed);
     } finally {
       clearLiveReadCaches();
       await context.cleanup();
