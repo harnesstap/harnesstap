@@ -1,3 +1,4 @@
+import { describeStatusRefreshError, type StatusRefreshError } from "./status-refresh-error.js";
 import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from "node:fs";
 import { basename, dirname, join, sep } from "node:path";
 import { Worker, parentPort } from "node:worker_threads";
@@ -624,7 +625,9 @@ interface RefreshOutcome {
   ok: boolean;
   value?: unknown;
   watchedPaths?: string[];
+  error?: StatusRefreshError;
 }
+
 
 interface RefreshJob {
   key: string;
@@ -649,6 +652,7 @@ type RefreshResultMessage =
       value?: unknown;
       watchedPaths?: string[];
       watchPaths?: string[];
+      error?: StatusRefreshError | string;
       trace?: { computeMs: number; jsonMs: number; bytes: number };
     };
 
@@ -666,10 +670,10 @@ export function readStatusRefreshWorkerCreateCount(): number {
   return workerCreates;
 }
 
-function releaseRefreshJobs(): void {
+function releaseRefreshJobs(error: StatusRefreshError): void {
   const jobs = [...refreshJobs.values()];
   refreshJobs.clear();
-  for (const job of jobs) job.resolve({ ok: false });
+  for (const job of jobs) job.resolve({ ok: false, error });
 }
 
 function scheduleWorkerRespawn(): void {
@@ -694,19 +698,102 @@ function scheduleWorkerRespawn(): void {
  * bundles that file as a second entry, and import.meta.url is the binary, so
  * the embedded path is the one `bun build --compile` registers.
  */
-function statusRefreshWorkerTarget(): string | URL {
-  const url = import.meta.url;
-  if (url.includes("/$bunfs/") || url.includes("~BUN")) {
-    return "/$bunfs/root/services/status-refresh-worker.ts";
+let workerTargetOverride: string | URL | undefined;
+
+/** Point new refresh workers at another entry, so tests can simulate a worker that fails to load. */
+export function setStatusRefreshWorkerTargetForTests(target: string | URL | undefined): void {
+  workerTargetOverride = target;
+}
+
+function statusRefreshWorkerTarget(): string | URL | null {
+  if (workerTargetOverride !== undefined) return workerTargetOverride;
+  const main = (globalThis as { Bun?: { main?: string } }).Bun?.main ?? "";
+  const url = decodeURIComponent(import.meta.url);
+  const compiled = [main, url].some((value) => value.includes("$bunfs") || value.includes("~BUN"));
+  if (compiled) {
+    // `bun build --compile` embeds the worker as a second entry. A path
+    // relative to the binary's entry is what Bun documents for compiled
+    // workers and resolves on Bun 1.3 and 1.4 on POSIX and Windows. An
+    // absolute /$bunfs/root/... name breaks on Bun 1.3 (`.ts`) and on
+    // Windows, where the virtual root is B:\~BUN\root.
+    // On Windows a compiled worker never starts with Bun 1.3 (relative
+    // name), and absolute B:\~BUN\root names are not found. Compute there
+    // on the agent's thread instead of waiting out the reply timeout.
+    if (process.platform === "win32") return null;
+    return "./services/status-refresh-worker.ts";
   }
   return new URL("./status-refresh-worker.ts", import.meta.url);
+}
+
+function completeRefreshJob(job: RefreshJob, message: Extract<RefreshResultMessage, { op?: undefined }>): void {
+  if (message.value === undefined || !message.watchedPaths) return;
+  if (message.trace && job.postedAt !== undefined) {
+    const roundTrip = performance.now() - job.postedAt;
+    traceRecord(`phase=worker.round-trip job=${message.id}`, {
+      ms: roundTrip,
+      compute: message.trace.computeMs,
+      json: message.trace.jsonMs,
+      overhead: roundTrip - message.trace.computeMs - message.trace.jsonMs,
+      kb: Math.round(message.trace.bytes / 1024),
+    });
+  }
+  const freezeStarted = statusTraceEnabled ? performance.now() : 0;
+  const frozen = deepFreeze(message.value);
+  if (statusTraceEnabled) traceRecord(`phase=main.freeze job=${message.id}`, { ms: performance.now() - freezeStarted });
+  if (job.home === process.env.HOME && job.generation === generation) {
+    remember(job.key, job.projectPath, {
+      value: frozen,
+      watchedPaths: message.watchedPaths,
+    }, job.epochAtStart, job.writeGenAtStart, message.watchPaths);
+    refreshCompletions += 1;
+    respawnAttempts = 0;
+  }
+  job.resolve({
+    ok: true,
+    value: frozen,
+    watchedPaths: message.watchedPaths,
+  });
+}
+
+/**
+ * A worker that loads but never replies (seen with compiled sidecars on
+ * Windows) would hang every status read until the HTTP server times out.
+ * Past this budget the worker is dropped and the read is computed here.
+ */
+const STATUS_WORKER_REPLY_TIMEOUT_MS = Number(process.env.HT_STATUS_WORKER_TIMEOUT_MS) || 8_000;
+const workerOnline = new WeakSet<Worker>();
+let compiledWorkerSkipLogged = false;
+
+function abandonUnresponsiveWorker(worker: Worker, waitedMs: number): void {
+  if (refreshWorker !== worker) return;
+  refreshWorker = null;
+  workerFailed = true;
+  const state = workerOnline.has(worker) ? "started but did not reply" : "never started";
+  const message = `status refresh worker ${state} within ${waitedMs}ms`;
+  console.error(`[status-cache] refresh worker error: ${message}`);
+  releaseRefreshJobs({ message });
+  worker.removeAllListeners();
+  void worker.terminate().catch(() => undefined);
+  // A worker that never started will not start on a respawn either; stop
+  // trying so later reads do not each wait out the timeout.
+  if (workerOnline.has(worker)) scheduleWorkerRespawn();
+  else respawnAttempts = Number.POSITIVE_INFINITY;
 }
 
 function statusWorker(): Worker {
   if (refreshWorker) return refreshWorker;
   workerCreates += 1;
-  const worker = new Worker(statusRefreshWorkerTarget());
+  const target = statusRefreshWorkerTarget();
+  if (target === null) {
+    if (!compiledWorkerSkipLogged) {
+      compiledWorkerSkipLogged = true;
+      console.error("[status-cache] compiled sidecar on Windows: computing status on the agent thread (no refresh worker)");
+    }
+    throw new Error("status refresh worker is not available in this build");
+  }
+  const worker = new Worker(target);
   worker.unref();
+  worker.once("online", () => workerOnline.add(worker));
   worker.on("message", (message: RefreshResultMessage) => {
     switch (message.op) {
       case "dirty":
@@ -733,51 +820,37 @@ function statusWorker(): Worker {
     refreshJobs.delete(message.id);
     try {
       if (!message.ok || message.value === undefined || !message.watchedPaths) {
-        job.resolve({ ok: false });
-        return;
-      }
-      if (message.trace && job.postedAt !== undefined) {
-        const roundTrip = performance.now() - job.postedAt;
-        traceRecord(`phase=worker.round-trip job=${message.id}`, {
-          ms: roundTrip,
-          compute: message.trace.computeMs,
-          json: message.trace.jsonMs,
-          overhead: roundTrip - message.trace.computeMs - message.trace.jsonMs,
-          kb: Math.round(message.trace.bytes / 1024),
+        const reported = message.error;
+        job.resolve({
+          ok: false,
+          error: typeof reported === "string"
+            ? { message: reported }
+            : reported ?? { message: message.ok ? "status refresh worker returned no value" : "status refresh worker failed without an error" },
         });
+      } else {
+        completeRefreshJob(job, message);
       }
-      const freezeStarted = statusTraceEnabled ? performance.now() : 0;
-      const frozen = deepFreeze(message.value);
-      if (statusTraceEnabled) traceRecord(`phase=main.freeze job=${message.id}`, { ms: performance.now() - freezeStarted });
-      if (job.home === process.env.HOME && job.generation === generation) {
-        remember(job.key, job.projectPath, {
-          value: frozen,
-          watchedPaths: message.watchedPaths,
-        }, job.epochAtStart, job.writeGenAtStart, message.watchPaths);
-        refreshCompletions += 1;
-        respawnAttempts = 0;
-      }
-      job.resolve({
-        ok: true,
-        value: frozen,
-        watchedPaths: message.watchedPaths,
-      });
-    } catch {
-      job.resolve({ ok: false });
+    } catch (error) {
+      job.resolve({ ok: false, error: describeStatusRefreshError(error) });
     }
+    // Release the worker on failures too, or a CLI read that failed would
+    // keep the process alive.
     if (refreshJobs.size === 0) worker.unref();
     releaseIdleWorker(worker);
   });
-  worker.on("error", () => {
+
+  worker.on("error", (error: unknown) => {
     if (refreshWorker === worker) refreshWorker = null;
     workerFailed = true;
-    releaseRefreshJobs();
+    const described = describeStatusRefreshError(error);
+    console.error(`[status-cache] refresh worker error: ${described.stack ?? described.message}`);
+    releaseRefreshJobs({ message: `status refresh worker crashed: ${described.message}`, ...(described.stack ? { stack: described.stack } : {}) });
     scheduleWorkerRespawn();
   });
-  worker.on("exit", () => {
+  worker.on("exit", (code: number) => {
     if (refreshWorker !== worker) return;
     refreshWorker = null;
-    releaseRefreshJobs();
+    releaseRefreshJobs({ message: `status refresh worker exited with code ${code} before replying` });
     scheduleWorkerRespawn();
   });
   refreshWorker = worker;
@@ -850,14 +923,17 @@ function enqueueStatusRefresh<T extends object>(
               value: deepFreeze(loaded.value),
               watchedPaths: [...loaded.watchedPaths],
             });
-          } catch {
-            resolve({ ok: false });
+          } catch (error) {
+            resolve({ ok: false, error: describeStatusRefreshError(error) });
           }
         })();
       }, 0);
     };
 
-    if (workerFailed && !refreshWorker && !keepStatusWorkerAlive) {
+    // A worker that failed to start or crashed is not used until a respawn
+    // succeeds. The sidecar computes on this thread meanwhile, so status
+    // never fails because the worker is unavailable.
+    if (workerFailed && !refreshWorker) {
       runInProcess();
       return;
     }
@@ -880,11 +956,35 @@ function enqueueStatusRefresh<T extends object>(
       writeGenAtStart: readStatusWriteGeneration(),
       home,
       ...(statusTraceEnabled ? { postedAt: performance.now() } : {}),
-      resolve,
+      resolve: (outcome) => {
+        if (outcome.ok) {
+          resolve(outcome);
+          return;
+        }
+        // The worker could not produce a status (it failed to load, crashed,
+        // exited, or its read threw). Compute it here instead. A genuine read
+        // error throws here too and is reported from this thread.
+        const reason = outcome.error?.stack ?? outcome.error?.message ?? "no error was reported";
+        console.error(`[status-cache] refresh worker failed, computing status on this thread: ${reason}`);
+        runInProcess();
+      },
     });
     // Hold the process open while a job is pending. An unref'd worker lets
     // some Bun versions exit before the result arrives, printing nothing.
     worker.ref();
+    const waitMs = STATUS_WORKER_REPLY_TIMEOUT_MS + statusRefreshDelayMs;
+    const replyTimer = setTimeout(() => {
+      if (refreshJobs.has(id)) abandonUnresponsiveWorker(worker, waitMs);
+    }, waitMs);
+    replyTimer.unref?.();
+    const job = refreshJobs.get(id);
+    if (job) {
+      const settle = job.resolve;
+      job.resolve = (outcome) => {
+        clearTimeout(replyTimer);
+        settle(outcome);
+      };
+    }
     try {
       worker.postMessage({
         id,
@@ -962,7 +1062,12 @@ async function loadNow<T extends object>(
   if (outcome.ok && outcome.value !== undefined) {
     return present(outcome.value as T, false);
   }
-  throw new Error("Status read failed");
+  const cause = outcome.error ?? { message: "no error was reported" };
+  const where = projectPath ? ` (projectPath=${projectPath})` : "";
+  console.error(`[status-cache] status read failed${where}: ${cause.stack ?? cause.message}`);
+  const failure = new Error(`Status read failed: ${cause.message}`);
+  if (cause.stack) failure.stack = `Error: Status read failed: ${cause.message}\nCaused by: ${cause.stack}`;
+  throw failure;
 }
 
 /**

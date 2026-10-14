@@ -1,0 +1,3 @@
+kind: Fixed
+body: The desktop sidecar compiled with Bun 1.3 answers status again. Its status refresh worker failed to load, so every status read returned 500. The worker now loads under Bun 1.3 and 1.4, and if it fails to start, crashes, errors or does not reply, the read is computed on the agent thread instead. The Windows sidecar computes status on the agent thread. A failed read reports the underlying error and its stack, and no longer keeps `ht` from exiting. Project drift skips older snapshots that have no platform files.
+time: 2026-10-14T22:10:00Z

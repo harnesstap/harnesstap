@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { PACKAGE_VERSION } from "../src/version.ts";
@@ -92,6 +92,58 @@ async function waitForPort(portFile: string, child: ChildProcess, stderr: () => 
   fail(`ht-agent did not write ${portFile} within ${READY_TIMEOUT_MS}ms. stderr:\n${stderr()}`);
 }
 
+function seedProject(root: string): void {
+  mkdirSync(join(root, ".claude", "skills", "smoke"), { recursive: true });
+  mkdirSync(join(root, ".cursor", "rules"), { recursive: true });
+  writeFileSync(join(root, ".claude", "skills", "smoke", "SKILL.md"), "---\nname: smoke\ndescription: d\n---\nbody\n");
+  writeFileSync(join(root, ".claude", "settings.json"), "{}\n");
+  writeFileSync(join(root, ".cursor", "rules", "smoke.mdc"), "---\ndescription: r\n---\nrule\n");
+  writeFileSync(join(root, "AGENTS.md"), "# agents\n");
+  writeFileSync(join(root, "CLAUDE.md"), "# claude\n");
+}
+
+/**
+ * GET /v1/status for home and for a project at both depths. The status
+ * refresh worker is a second compiled entry; it must load in the binary
+ * (Bun 1.3 and 1.4 name it differently), so a worker failure fails the check
+ * even though the agent would fall back to computing on its own thread.
+ */
+async function checkStatusReads(home: string, port: number, output: () => string): Promise<void> {
+  const token = readFileSync(join(home, ".harnesstap", "agent-token"), "utf8").trim();
+  const project = join(home, "dev", "smoke-project");
+  seedProject(project);
+  for (const projectPath of [undefined, project]) {
+    for (const depth of ["full", "fast"]) {
+      const query = new URLSearchParams({ depth, ...(projectPath ? { projectPath } : {}) });
+      let response: Response;
+      try {
+        response = await fetch(`http://127.0.0.1:${port}/v1/status?${query}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        fail(`GET /v1/status?${query} failed: ${message}\nsidecar output:\n${output()}`);
+      }
+      const body = await response.text();
+      if (response.status !== 200) {
+        fail(`GET /v1/status?${query} returned ${response.status}: ${body.slice(0, 500)}\n${output()}`);
+      }
+      console.log(`ok: GET /v1/status?${query} -> 200`);
+    }
+  }
+  if (/refresh worker (error|failed)/.test(output())) {
+    fail(`status refresh worker failed inside the compiled sidecar:\n${output()}`);
+  }
+  if (process.platform === "win32") {
+    if (!output().includes("computing status on the agent thread")) {
+      fail(`expected the Windows sidecar to compute status on the agent thread:\n${output()}`);
+    }
+    console.log("ok: Windows sidecar computes status on the agent thread");
+    return;
+  }
+  console.log("ok: status refresh worker loaded in the compiled sidecar");
+}
+
 async function checkHealthHandshake(home: string, env: NodeJS.ProcessEnv): Promise<void> {
   const child = spawn(sidecarPath, [], { env, stdio: ["pipe", "pipe", "pipe"] });
   let captured = "";
@@ -101,7 +153,13 @@ async function checkHealthHandshake(home: string, env: NodeJS.ProcessEnv): Promi
   child.stderr?.on("data", (chunk: Buffer) => {
     captured += chunk.toString();
   });
+  child.stdout?.on("data", (chunk: Buffer) => {
+    captured += chunk.toString();
+  });
   const exited = new Promise<number | null>((done) => child.once("exit", (code) => done(code)));
+  child.once("exit", (code, signal) => {
+    captured += `\n[sidecar exited code=${code} signal=${signal}]\n`;
+  });
 
   try {
     const port = await waitForPort(join(home, ".harnesstap", "agent-port"), child, () => captured);
@@ -120,6 +178,7 @@ async function checkHealthHandshake(home: string, env: NodeJS.ProcessEnv): Promi
       fail(`health port is ${health.port}, expected ${port}`);
     }
     console.log(`ok: GET /v1/health -> healthy ${health.version} on ${port}`);
+    await checkStatusReads(home, port, () => captured);
   } finally {
     if (child.exitCode === null) {
       child.kill();

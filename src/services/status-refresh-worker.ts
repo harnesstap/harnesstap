@@ -1,3 +1,4 @@
+import { describeStatusRefreshError } from "./status-refresh-error.js";
 import { join } from "node:path";
 import { parentPort } from "node:worker_threads";
 import { resolveHomeRoot, setHomeRootOverride } from "../utils/home-root.js";
@@ -89,7 +90,7 @@ parentPort?.on("message", (request: RefreshRequest) => {
       parentPort?.postMessage({
         id: requestId,
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: describeStatusRefreshError(error),
       });
     }
   });
