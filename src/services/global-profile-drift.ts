@@ -48,7 +48,8 @@ import { detectNotStagedProfileResources } from "./profile-untracked-resources.j
 import { type DriftFileChange, driftChangeIsKept } from "./project-drift.js";
 import { hashOnDiskFile } from "./safe-file-removal.js";
 import { withAffectedResources } from "./scoped-file-content-delta.js";
-import { runInStatusComputation } from "./status-computation.js";
+import { readDiskTextOnce } from "./status-disk-read.js";
+import { inStatusComputation, runInStatusComputation } from "./status-computation.js";
 import { withStatusReadCache } from "./status-read-cache.js";
 
 type StatusFieldInput = Parameters<typeof buildBaseStatusFields>[0];
@@ -143,6 +144,12 @@ function isMissingExpectedFileTransparent(
 
 function readGlobalFile(homeRoot: string, relativePath: string): string | null {
   const fullPath = join(homeRoot, relativePath);
+  if (!inStatusComputation()) return readGlobalFileUncached(fullPath);
+  if (!existsSync(fullPath)) return null;
+  return readDiskTextOnce(fullPath);
+}
+
+function readGlobalFileUncached(fullPath: string): string | null {
   if (!existsSync(fullPath)) {
     return null;
   }

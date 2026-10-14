@@ -176,6 +176,25 @@ export function resourceKeyFromManagedPath(
   path: string,
   rootPath?: string,
 ): { type: string; name: string } | null {
+  // A pure function of its inputs; status maps every planned path through it.
+  const cacheKey = `${rootPath ?? ""}\0${path}`;
+  if (resourceKeyCache.has(cacheKey)) {
+    const cached = resourceKeyCache.get(cacheKey);
+    return cached ? { ...cached } : null;
+  }
+  const mapped = resourceKeyFromManagedPathUncached(path, rootPath);
+  if (resourceKeyCache.size >= RESOURCE_KEY_CACHE_MAX) resourceKeyCache.clear();
+  resourceKeyCache.set(cacheKey, mapped ? { ...mapped } : null);
+  return mapped;
+}
+
+const RESOURCE_KEY_CACHE_MAX = 16384;
+const resourceKeyCache = new Map<string, { type: string; name: string } | null>();
+
+function resourceKeyFromManagedPathUncached(
+  path: string,
+  rootPath?: string,
+): { type: string; name: string } | null {
   const normalized = normalizeManagedPath(path, rootPath);
   for (const { prefix, kind } of MANAGED_DIR_PREFIXES) {
     const remainder = remainderAfterManagedDir(normalized, prefix);

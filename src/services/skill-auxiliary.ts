@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import type { SerializedFile, SkillMetadata } from "../types.js";
+import { computationSlot } from "./status-computation.js";
 
 const IGNORED_DIR_NAMES = new Set([".git", "node_modules"]);
 const SKILL_ENTRY_FILE = "SKILL.md";
@@ -145,31 +146,115 @@ export function skillMetadataFromDir(skillDir: string): SkillMetadata {
   return metadata;
 }
 
+interface CompanionContent {
+  relativePath: string;
+  mode: number;
+  content: string;
+  encoding?: SerializedFile["encoding"];
+}
+
+interface CachedCompanionFile {
+  mtimeMs: number;
+  ctimeMs: number;
+  size: number;
+  ino: number;
+  content: string;
+  encoding?: SerializedFile["encoding"];
+}
+
+// Companion bytes keyed by source path, reused while the file's stat
+// identity is unchanged. Bounded by total content length.
+const COMPANION_CACHE_MAX_CHARS = 64 * 1024 * 1024;
+const companionFileCache = new Map<string, CachedCompanionFile>();
+let companionCacheChars = 0;
+
+export function clearSkillCompanionCache(): void {
+  companionFileCache.clear();
+  companionCacheChars = 0;
+}
+
+function forgetCompanion(sourcePath: string): void {
+  const previous = companionFileCache.get(sourcePath);
+  if (!previous) return;
+  companionFileCache.delete(sourcePath);
+  companionCacheChars -= previous.content.length;
+}
+
+function readCompanionContent(sourcePath: string): Pick<SerializedFile, "content" | "encoding"> | undefined {
+  let stats: ReturnType<typeof statSync>;
+  try {
+    stats = statSync(sourcePath);
+  } catch {
+    forgetCompanion(sourcePath);
+    return undefined;
+  }
+  const cached = companionFileCache.get(sourcePath);
+  if (
+    cached
+    && cached.mtimeMs === stats.mtimeMs
+    && cached.ctimeMs === stats.ctimeMs
+    && cached.size === stats.size
+    && cached.ino === stats.ino
+  ) {
+    return cached.encoding ? { content: cached.content, encoding: cached.encoding } : { content: cached.content };
+  }
+  let bytes: Buffer;
+  try {
+    bytes = readFileSync(sourcePath);
+  } catch {
+    forgetCompanion(sourcePath);
+    return undefined;
+  }
+  const serialized = serializedContentFromBytes(bytes);
+  forgetCompanion(sourcePath);
+  // Only cache bytes the stat describes; a write between stat and read
+  // would otherwise pin stale content to the new identity.
+  if (bytes.length === stats.size && serialized.content.length <= COMPANION_CACHE_MAX_CHARS / 8) {
+    companionFileCache.set(sourcePath, {
+      mtimeMs: stats.mtimeMs,
+      ctimeMs: stats.ctimeMs,
+      size: stats.size,
+      ino: stats.ino,
+      ...serialized,
+    });
+    companionCacheChars += serialized.content.length;
+    while (companionCacheChars > COMPANION_CACHE_MAX_CHARS) {
+      const oldest = companionFileCache.keys().next().value;
+      if (oldest === undefined) break;
+      forgetCompanion(oldest);
+    }
+  }
+  return serialized;
+}
+
+function loadSkillCompanions(sourceSkillDir: string): CompanionContent[] {
+  const loaded: CompanionContent[] = [];
+  for (const entry of listSkillCompanionTree(sourceSkillDir)) {
+    const sourcePath = join(sourceSkillDir, ...entry.relativePath.split("/"));
+    const serialized = readCompanionContent(sourcePath);
+    if (!serialized) continue;
+    loaded.push({ relativePath: entry.relativePath, mode: entry.mode, ...serialized });
+  }
+  return loaded;
+}
+
 export function emitSkillAuxiliaryFiles(input: {
   sourceSkillDir: string;
   targetPrefix: string;
   scripts?: string[];
   references?: string[];
 }): SerializedFile[] {
-  const files: SerializedFile[] = [];
   const normalizedPrefix = input.targetPrefix.replace(/\/$/, "");
-  const companions = listSkillCompanionTree(input.sourceSkillDir);
-
-  for (const entry of companions) {
-    const sourcePath = join(input.sourceSkillDir, ...entry.relativePath.split("/"));
-    if (!existsSync(sourcePath)) continue;
-    let bytes: Buffer;
-    try {
-      bytes = readFileSync(sourcePath);
-    } catch {
-      continue;
-    }
-    files.push({
-      path: `${normalizedPrefix}/${entry.relativePath}`,
-      ...serializedContentFromBytes(bytes),
-      mode: entry.mode,
-    });
-  }
-
-  return files;
+  // Every harness emits the same source tree. Within one status
+  // computation, walk and read it once.
+  const companions = computationSlot(
+    `skill-companions:${input.sourceSkillDir}`,
+    () => loadSkillCompanions(input.sourceSkillDir),
+  );
+  return companions.map((entry) => ({
+    path: `${normalizedPrefix}/${entry.relativePath}`,
+    content: entry.content,
+    ...(entry.encoding ? { encoding: entry.encoding } : {}),
+    mode: entry.mode,
+  }));
 }

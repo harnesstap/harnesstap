@@ -12,7 +12,7 @@ import {
   createGlobalApplySnapshot,
   getLatestGlobalApplySnapshotForProfile,
   listGlobalApplySnapshotInstalls,
-  listGlobalApplySnapshots,
+  listGlobalApplySnapshotHeads,
   recordGlobalApplySnapshotInstall,
 } from "../models/global-apply-snapshot.js";
 import {
@@ -160,7 +160,7 @@ function collectProfileSnapshotTrackedFiles(profileName: string): string[] {
 }
 
 function collectPreviousGlobalApplyTrackedFiles(): string[] {
-  const [previousSnapshot] = listGlobalApplySnapshots();
+  const [previousSnapshot] = listGlobalApplySnapshotHeads();
   if (!previousSnapshot) {
     return [];
   }

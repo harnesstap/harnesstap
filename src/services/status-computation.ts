@@ -18,6 +18,11 @@ export function setStatusComputationSlotsDisabledForTests(disabled: boolean): vo
   slotsDisabled = disabled;
 }
 
+/** True inside a status computation whose shared reads are enabled. */
+export function inStatusComputation(): boolean {
+  return !slotsDisabled && storage.getStore() !== undefined;
+}
+
 export function computationSlot<T>(key: string, load: () => T): T {
   const store = storage.getStore();
   if (!store || slotsDisabled) return load();

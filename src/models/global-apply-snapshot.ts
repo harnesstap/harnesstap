@@ -1,5 +1,6 @@
 import { ulid } from "ulid";
 import { getDb } from "../db/connection.js";
+import { computationSlot } from "../services/status-computation.js";
 import type {
   GlobalApplySnapshot,
   GlobalApplySnapshotInstall,
@@ -134,9 +135,53 @@ export function listGlobalApplySnapshots(): GlobalApplySnapshot[] {
 export function getLatestGlobalApplySnapshotForProfile(
   profileName: string,
 ): GlobalApplySnapshot | undefined {
-  return listGlobalApplySnapshots().find(
-    (snapshot) => snapshot.profile_name === profileName,
-  );
+  return computationSlot(`latest-global-apply-snapshot:${profileName}`, () => {
+    const head = getDb()
+      .prepare(
+        `SELECT id FROM global_apply_snapshots WHERE profile_name = ?
+         ORDER BY created_at DESC, id DESC LIMIT 1`,
+      )
+      .get(profileName) as { id: string } | undefined;
+    if (!head) return undefined;
+    const parsed = parsedSnapshotById.get(head.id);
+    if (parsed) {
+      parsedSnapshotById.delete(head.id);
+      parsedSnapshotById.set(head.id, parsed);
+      return { ...parsed, profile_name: profileName };
+    }
+    const snapshot = getGlobalApplySnapshot(head.id);
+    if (!snapshot) return undefined;
+    parsedSnapshotById.set(head.id, snapshot);
+    if (parsedSnapshotById.size > PARSED_SNAPSHOT_CACHE_MAX) {
+      const oldest = parsedSnapshotById.keys().next().value;
+      if (oldest !== undefined) parsedSnapshotById.delete(oldest);
+    }
+    return { ...snapshot };
+  });
+}
+
+// Apply snapshots are written once and only renamed later, so a parsed row
+// is reused by id. The profile name comes from the current row.
+const PARSED_SNAPSHOT_CACHE_MAX = 8;
+const parsedSnapshotById = new Map<string, GlobalApplySnapshot>();
+
+export interface GlobalApplySnapshotHead {
+  id: string;
+  profile_name: string;
+}
+
+/**
+ * Snapshot ids and profile names, newest first, without parsing each
+ * snapshot's stored state. Same order as `listGlobalApplySnapshots`.
+ */
+export function listGlobalApplySnapshotHeads(): GlobalApplySnapshotHead[] {
+  return computationSlot("global-apply-snapshot-heads", () =>
+    getDb()
+      .prepare(
+        `SELECT id, profile_name FROM global_apply_snapshots
+         ORDER BY created_at DESC, id DESC`,
+      )
+      .all() as GlobalApplySnapshotHead[]);
 }
 
 export function renameGlobalApplySnapshotsProfile(
