@@ -25,6 +25,7 @@ import type { Plugin } from "../types.js";
 import { ui } from "../ui/index.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
+import { clearLiveReadCaches } from "./live-read-cache.js";
 import {
   applyToGlobal,
   type ConflictPolicy,
@@ -712,6 +713,7 @@ export async function applyProfilePlugin(
     };
   }
 
+  try {
   const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(
     profilePlugin.name,
     options,
@@ -799,4 +801,7 @@ export async function applyProfilePlugin(
     resolution,
     ...(removal ? removalFields(removal, writeKeeps) : {}),
   };
+  } finally {
+    clearLiveReadCaches();
+  }
 }

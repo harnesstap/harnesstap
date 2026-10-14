@@ -403,7 +403,11 @@ describe("CursorSerializer", () => {
     const pins = resources.filter((resource) => resource.type === "plugin");
     expect(pins.map((pin) => pin.origin_ref).sort()).toEqual([
       "active-plugin@cursor-public",
+      "agent-demo@cursor-public",
+      "demo@cursor-public",
+      "dormant@cursor-public",
       "homemade@local",
+      "only-market@example",
     ]);
   });
 

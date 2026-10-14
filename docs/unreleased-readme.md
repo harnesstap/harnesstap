@@ -61,3 +61,19 @@ A cancelled `profile use` does not list `.harnesstap/cache/native-agent-plugins/
 <!-- append -->
 The apply footer counts files that will be written or removed. Kept rows are not included.
 
+## docs/portability-limits.md > Claude Code ↔ Cursor host plugin trees
+<!-- append -->
+A directory under `~/.cursor/plugins/cache/<marketplace>/<plugin>/<version>` counts as installed, using the newest version directory, even when Cursor has that plugin turned off. The same applies to `marketplaces/`, `local/` (including HarnessTap-managed copies), and `plugin-*` MCP folders. Status does not read `state.vscdb` or the Cursor logs folder. Whether Cursor loads `~/.claude/` and `~/.agents/` is read from Cursor `settings.json` only, and defaults to on.
+
+## docs/cli/concepts/resources.md > Plugin resources
+<!-- append -->
+Cursor home scan registers the newest version directory under `~/.cursor/plugins/cache/<marketplace>/<plugin>/<version>`, plus `marketplaces/` and `local/` (including HarnessTap-managed copies). A cached plugin counts as installed even when Cursor has it turned off. Status does not read `state.vscdb` or the Cursor logs folder.
+
+## docs/supported-harnesses.md > Plugin install and sync providers
+<!-- append -->
+Cursor home scan inventories every newest cache version directory under `~/.cursor/plugins/cache/`, plus `marketplaces/` and `local/`, including when Cursor has that plugin turned off. It does not read `state.vscdb`. HarnessTap host-plugin cache and `~/.claude/plugins/cache` are still not Cursor plugins.
+
+## docs/supported-harnesses.md > On-disk paths (selected harnesses)
+<!-- append -->
+Cursor plugin directories under `~/.cursor/plugins/cache`, `marketplaces/`, and `local/` count as installed, including when Cursor has the plugin turned off. `plugin-*` MCP folders count as installed too. Status does not read `state.vscdb` or the Cursor logs folder. Whether Cursor loads other harness trees is read from `settings.json` only, and defaults to on.
+

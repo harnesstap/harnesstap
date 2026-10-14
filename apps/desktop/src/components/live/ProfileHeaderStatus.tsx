@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { ChromeTooltip } from "../ChromeTooltip";
 import type { ProfileHeaderStatusKind } from "../../lib/reapply";
+import { statusRefreshingTooltip } from "../../lib/status-refresh";
 
 function ProfileHeaderStatusGlyph({
   kind,
@@ -29,20 +30,24 @@ function ProfileHeaderStatusGlyph({
 export function ProfileHeaderStatus({
   kind,
   tooltip,
+  refreshing = false,
   as = "button",
   testId = "profile-header-status",
 }: {
   kind: Exclude<ProfileHeaderStatusKind, "none">;
   tooltip: string;
+  refreshing?: boolean;
   as?: "button" | "span";
   testId?: string;
 }) {
+  const label = statusRefreshingTooltip(tooltip, refreshing);
   const glyph = <ProfileHeaderStatusGlyph kind={kind} />;
   const discProps = {
     className: "profile-header-status",
     "data-testid": testId,
     "data-kind": kind,
-    "aria-label": tooltip,
+    "data-refreshing": refreshing ? "true" : undefined,
+    "aria-label": label,
   } as const;
   let trigger: ReactElement;
   switch (as) {
@@ -61,5 +66,5 @@ export function ProfileHeaderStatus({
       trigger = neverAs;
     }
   }
-  return <ChromeTooltip content={tooltip}>{trigger}</ChromeTooltip>;
+  return <ChromeTooltip content={label}>{trigger}</ChromeTooltip>;
 }

@@ -468,6 +468,7 @@ export function ProfilesRail({
                     as="span"
                     kind={activeRailStatus.kind}
                     tooltip={activeRailStatus.tooltip}
+                    refreshing={status?.refreshing === true}
                     testId="profile-rail-status"
                   />
                 ) : null}

@@ -9,6 +9,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENTRY="$ROOT/src/agent/entry.ts"
+# Second entry so a status refresh can run off the request thread inside the
+# compiled binary. The sidecar looks this file up at
+# /$bunfs/root/services/status-refresh-worker.ts.
+WORKER="$ROOT/src/services/status-refresh-worker.ts"
 # bun --compile on Windows writes an .exe; Tauri's sidecar lookup requires it.
 EXE_SUFFIX=""
 case "$(uname -s)" in
@@ -37,4 +41,4 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$ ]]; then
 fi
 
 cd "$WORKDIR"
-bun build --compile "$ENTRY" --define "__HT_VERSION__=\"$VERSION\"" --outfile "$OUT"
+bun build --compile "$ENTRY" "$WORKER" --define "__HT_VERSION__=\"$VERSION\"" --outfile "$OUT"

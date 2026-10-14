@@ -1,20 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parsePluginRef } from "./host-plugin-manifest.js";
 import { cursorProjectsMcpsRoot } from "./refresh.js";
 
-const require = createRequire(import.meta.url);
-
 export interface CursorEnablementSignals {
   /** Plugin names Cursor treats as installed (not marketplace refs). */
   pluginNames: Set<string>;
 }
-
-export type CollectCursorEnablementSignals = (
-  homeRoot: string,
-) => CursorEnablementSignals;
 
 const THIRD_PARTY_SETTING_KEYS = [
   "cursor.thirdPartyExtensibility",
@@ -172,113 +165,8 @@ export function cursorUserDataDir(homeRoot: string): string {
   return join(homedir(), ".config", "Cursor");
 }
 
-function resolveCursorStateDbPath(homeRoot: string): string {
-  return join(cursorUserDataDir(homeRoot), "User", "globalStorage", "state.vscdb");
-}
-
 function resolveCursorUserSettingsPath(homeRoot: string): string {
   return join(cursorUserDataDir(homeRoot), "User", "settings.json");
-}
-
-interface SqliteLike {
-  prepare: (sql: string) => {
-    get: (...params: unknown[]) => { value?: unknown } | undefined;
-    all: (...params: unknown[]) => Array<{ key?: unknown; value?: unknown }>;
-  };
-  close: () => void;
-}
-
-function openReadonlySqlite(dbPath: string): SqliteLike | null {
-  try {
-    if ("Bun" in globalThis) {
-      const { Database } = require("bun:sqlite") as {
-        Database: new (
-          path: string,
-          opts?: { readonly?: boolean },
-        ) => SqliteLike;
-      };
-      return new Database(dbPath, { readonly: true });
-    }
-    const BetterSqlite = require("better-sqlite3") as (
-      path: string,
-      opts?: { readonly?: boolean },
-    ) => SqliteLike;
-    return BetterSqlite(dbPath, { readonly: true });
-  } catch {
-    return null;
-  }
-}
-
-function decodeSqliteValue(value: unknown): unknown {
-  if (value == null) return null;
-  const raw =
-    typeof value === "string"
-      ? value
-      : Buffer.from(value as Uint8Array).toString("utf-8");
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return raw;
-  }
-}
-
-function readCursorItemTableRows(
-  homeRoot: string,
-  keyPrefix: string,
-): Array<{ key: string; value: unknown }> {
-  const dbPath = resolveCursorStateDbPath(homeRoot);
-  if (!existsSync(dbPath)) return [];
-
-  const db = openReadonlySqlite(dbPath);
-  if (!db) return [];
-
-  try {
-    const rows = db
-      .prepare("SELECT key, value FROM ItemTable WHERE key LIKE ?")
-      .all(`${keyPrefix}%`);
-    const parsed: Array<{ key: string; value: unknown }> = [];
-    for (const row of rows) {
-      if (typeof row.key !== "string" || !row.key) continue;
-      parsed.push({ key: row.key, value: decodeSqliteValue(row.value) });
-    }
-    return parsed;
-  } catch {
-    return [];
-  } finally {
-    try {
-      db.close();
-    } catch {
-      // ignore close errors
-    }
-  }
-}
-
-function readRecentlyUsedSkillPaths(homeRoot: string): string[] {
-  const rows = readCursorItemTableRows(homeRoot, "cursor.recentlyUsed.globalOrder");
-  const exact = rows.find((row) => row.key === "cursor.recentlyUsed.globalOrder");
-  if (!Array.isArray(exact?.value)) return [];
-  const paths: string[] = [];
-  for (const entry of exact.value) {
-    if (
-      entry &&
-      typeof entry === "object" &&
-      "identifier" in entry &&
-      typeof (entry as { identifier: unknown }).identifier === "string"
-    ) {
-      paths.push((entry as { identifier: string }).identifier);
-    }
-  }
-  return paths;
-}
-
-function pluginNamesFromVscdb(homeRoot: string): Set<string> {
-  const names = new Set<string>();
-  for (const row of readCursorItemTableRows(homeRoot, "cursor.plugins")) {
-    for (const name of pluginNamesFromStoredValue(row.value)) {
-      names.add(name);
-    }
-  }
-  return names;
 }
 
 function readJsonObject(path: string): Record<string, unknown> | null {
@@ -378,26 +266,22 @@ function readCursorUserSettings(homeRoot: string): Record<string, unknown> | nul
 
 /**
  * Whether Cursor still loads other-harness trees (`.claude`, `.agents` as
- * imported plugins/skills). Default is on; an explicit IDE/settings false
- * means HarnessTap must not attribute those trees to the Cursor harness.
+ * imported plugins/skills). Read from Cursor `settings.json` only. Default
+ * is on. An explicit false means HarnessTap must not attribute those trees
+ * to the Cursor harness.
  */
 export function cursorLoadsForeignHarnessTrees(homeRoot: string): boolean {
   const fromSettings = thirdPartyFlagFromSettings(readCursorUserSettings(homeRoot));
   if (fromSettings !== null) {
     return fromSettings;
   }
-  for (const row of readCursorItemTableRows(homeRoot, "cursor.")) {
-    if (typeof row.value !== "boolean" || !isThirdPartySettingsKey(row.key)) {
-      continue;
-    }
-    if (row.value === false) {
-      return false;
-    }
-  }
   return true;
 }
 
-/** Default enablement collector: MCP folders, install records, recently-used skills. */
+/**
+ * Names from Cursor MCP folders and install JSON. Status does not read
+ * `state.vscdb`. A cache directory counts as installed on its own.
+ */
 export function collectCursorEnablementSignals(
   homeRoot: string,
 ): CursorEnablementSignals {
@@ -408,12 +292,6 @@ export function collectCursorEnablementSignals(
     pluginNames.add(name);
   }
   for (const name of pluginNamesFromInstalledJsonFiles(homeRoot)) {
-    pluginNames.add(name);
-  }
-  for (const name of pluginNamesFromVscdb(homeRoot)) {
-    pluginNames.add(name);
-  }
-  for (const name of pluginNamesFromSkillPaths(readRecentlyUsedSkillPaths(homeRoot))) {
     pluginNames.add(name);
   }
   return { pluginNames };

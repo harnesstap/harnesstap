@@ -1,26 +1,15 @@
-import { existsSync, readdirSync, readFileSync, statSync, type Dirent } from "node:fs";
-import { homedir } from "node:os";
+import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
 import { join, relative, sep } from "node:path";
 import type { SerializedFile } from "../types.js";
-import { cursorUserDataDir } from "./cursor-enablement.js";
 
 export const CURSOR_LOCAL_PLUGIN_SCHEMA = "urn:harnesstap:cursor-local-plugin:v1";
 export const CURSOR_LOCAL_PLUGIN_SIDECAR = ".harnesstap-plugin.json";
 export const CURSOR_LOCAL_PLUGINS_RELATIVE_ROOT = ".cursor/plugins/local";
 
-export type CursorLocalPluginLoadState =
-  | "present"
-  | "pending_reload"
-  | "loaded"
-  | "shadowed"
-  | "rejected";
-
 export interface CursorLocalPluginSidecar {
   schema: typeof CURSOR_LOCAL_PLUGIN_SCHEMA;
   origin_ref: string;
 }
-
-const LOAD_EVENT_RE = /loadUserLocalPlugin (\S+) (loaded|rejected|failed)/g;
 
 export function sanitizeCursorLocalFolderSegment(value: string): string {
   const cleaned = value.trim().replace(/[\\/]/g, "-").replace(/^\.+/, "");
@@ -74,90 +63,6 @@ export function readCursorLocalPluginSidecar(
       schema: CURSOR_LOCAL_PLUGIN_SCHEMA,
       origin_ref: record.origin_ref,
     };
-  } catch {
-    return null;
-  }
-}
-
-export function cursorLocalPluginLoadState(input: {
-  folderName: string;
-  folderMtimeMs: number;
-  shadowed: boolean;
-  logText: string | null;
-  logMtimeMs: number | null;
-}): CursorLocalPluginLoadState {
-  if (input.shadowed) return "shadowed";
-  if (!input.logText) return "present";
-
-  let last: "loaded" | "rejected" | "failed" | null = null;
-  for (const match of input.logText.matchAll(LOAD_EVENT_RE)) {
-    if (match[1] === input.folderName) {
-      const event = match[2];
-      if (event === "loaded" || event === "rejected" || event === "failed") {
-        last = event;
-      }
-    }
-  }
-
-  if (last === "rejected" || last === "failed") return "rejected";
-  if (last === "loaded") {
-    if (
-      input.logMtimeMs != null &&
-      input.folderMtimeMs > input.logMtimeMs
-    ) {
-      return "pending_reload";
-    }
-    return "loaded";
-  }
-  return "present";
-}
-
-interface CursorPluginsLog {
-  text: string;
-  mtimeMs: number;
-}
-
-function newestLogInTree(dir: string, depth: number): { path: string; mtimeMs: number } | null {
-  if (depth > 6 || !existsSync(dir)) return null;
-  let best: { path: string; mtimeMs: number } | null = null;
-  let entries: Dirent[] = [];
-  try {
-    entries = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return null;
-  }
-  for (const entry of entries) {
-    const absolute = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      const nested = newestLogInTree(absolute, depth + 1);
-      if (nested && (!best || nested.mtimeMs > best.mtimeMs)) {
-        best = nested;
-      }
-      continue;
-    }
-    if (!entry.isFile() || !entry.name.startsWith("Cursor Plugins")) continue;
-    try {
-      const mtimeMs = statSync(absolute).mtimeMs;
-      if (!best || mtimeMs > best.mtimeMs) {
-        best = { path: absolute, mtimeMs };
-      }
-    } catch {
-      // skip unreadable log files
-    }
-  }
-  return best;
-}
-
-/** Latest Cursor plugin loader log for the real user home. Fixture homes return null. */
-export function readCursorLocalPluginLoadLog(
-  homeRoot: string,
-): CursorPluginsLog | null {
-  if (homeRoot !== homedir()) return null;
-  const logsDir = join(cursorUserDataDir(homeRoot), "logs");
-  const newest = newestLogInTree(logsDir, 0);
-  if (!newest) return null;
-  try {
-    return { text: readFileSync(newest.path, "utf-8"), mtimeMs: newest.mtimeMs };
   } catch {
     return null;
   }

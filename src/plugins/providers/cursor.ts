@@ -1,8 +1,4 @@
 import { join } from "node:path";
-import {
-  collectCursorEnablementSignals,
-  type CollectCursorEnablementSignals,
-} from "../cursor-enablement.js";
 import { listCursorPluginInstalls } from "../cursor-inventory.js";
 import {
   getSourcesToRefresh,
@@ -17,7 +13,6 @@ import {
   resolveCommandResult,
   type RunCommand,
 } from "../run-command.js";
-import { installCursorLocalPlugin } from "../cursor-local-install.js";
 import type {
   PluginCheckOptions,
   PluginCheckResult,
@@ -37,7 +32,6 @@ export {
 
 export interface CursorProviderDeps {
   runCommand?: RunCommand;
-  collectEnablementSignals?: CollectCursorEnablementSignals;
 }
 
 export class CursorPluginProvider implements PluginProvider {
@@ -53,22 +47,15 @@ export class CursorPluginProvider implements PluginProvider {
 
   constructor(private readonly deps: CursorProviderDeps = {}) {}
 
-  private collectSignals(): CollectCursorEnablementSignals {
-    return this.deps.collectEnablementSignals ?? collectCursorEnablementSignals;
-  }
-
   async list(ctx: PluginContext): Promise<PluginInstall[]> {
-    return listCursorPluginInstalls(ctx.homeRoot, this.collectSignals());
+    return listCursorPluginInstalls(ctx.homeRoot);
   }
 
   async check(
     ctx: PluginContext,
     opts: PluginCheckOptions,
   ): Promise<PluginCheckResult[]> {
-    const installs = listCursorPluginInstalls(
-      ctx.homeRoot,
-      this.collectSignals(),
-    );
+    const installs = listCursorPluginInstalls(ctx.homeRoot);
     const results: PluginCheckResult[] = [];
 
     for (const install of installs) {
@@ -133,10 +120,7 @@ export class CursorPluginProvider implements PluginProvider {
     ctx: PluginContext,
     opts: PluginUpdateOptions,
   ): Promise<PluginUpdateResult[]> {
-    const installs = listCursorPluginInstalls(
-      ctx.homeRoot,
-      this.collectSignals(),
-    );
+    const installs = listCursorPluginInstalls(ctx.homeRoot);
     const targets = opts.ref
       ? installs.filter((i) => i.ref === opts.ref)
       : installs;
@@ -216,6 +200,10 @@ export class CursorPluginProvider implements PluginProvider {
     ctx: PluginContext,
     opts: PluginInstallOptions,
   ): Promise<PluginInstallResult> {
+    // cursor-local-install writes through the applier, and the applier clears
+    // status caches that import this provider. A top-level import cycles
+    // registry initialization in the bundled CLI.
+    const { installCursorLocalPlugin } = await import("../cursor-local-install.js");
     return installCursorLocalPlugin(ctx, opts);
   }
 }

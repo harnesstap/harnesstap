@@ -1,4 +1,6 @@
 import { getDb } from "../db/connection.js";
+import type { SqliteStatement } from "../db/types.js";
+import { computationSlot } from "../services/status-computation.js";
 import { ulid } from "ulid";
 import semver from "semver";
 import { mapResourceRow } from "./resource.js";
@@ -509,32 +511,53 @@ function preferLocalPluginRows(rows: PluginRow[]): PluginRow[] {
   return localRows.length > 0 ? localRows : rows;
 }
 
-function getPluginLatestByName(name: string): Plugin | undefined {
+let pluginByNameDb: ReturnType<typeof getDb> | null = null;
+let pluginByNameStmt: SqliteStatement<PluginRow> | null = null;
+let pluginByNamePrepares = 0;
+let pluginByNameLookups = 0;
+
+/** How many times the plugins-by-name statement was prepared. */
+export function readPluginByNamePrepareCount(): number {
+  return pluginByNamePrepares;
+}
+
+/** How many times plugins were loaded by name. */
+export function readPluginByNameLookupCount(): number {
+  return pluginByNameLookups;
+}
+
+function pluginsNamed(name: string): PluginRow[] {
   const db = getDb();
-  const rows = db
-    .prepare(`SELECT * FROM plugins WHERE name = ?`)
-    .all(name) as PluginRow[];
-  const candidates = preferLocalPluginRows(rows);
-  const sorted = sortPluginsByVersionDesc(candidates);
-  return sorted[0] ? rowToPlugin(sorted[0]) : undefined;
+  if (db !== pluginByNameDb || !pluginByNameStmt) {
+    pluginByNameDb = db;
+    pluginByNameStmt = db.prepare("SELECT * FROM plugins WHERE name = ?");
+    pluginByNamePrepares += 1;
+  }
+  pluginByNameLookups += 1;
+  return pluginByNameStmt.all(name) as PluginRow[];
+}
+
+function getPluginLatestByName(name: string): Plugin | undefined {
+  return computationSlot(`plugin-latest:${name}`, () => {
+    const candidates = preferLocalPluginRows(pluginsNamed(name));
+    const sorted = sortPluginsByVersionDesc(candidates);
+    return sorted[0] ? rowToPlugin(sorted[0]) : undefined;
+  });
 }
 
 function getPluginByNameAndConstraint(
   name: string,
   constraint: string,
 ): Plugin | undefined {
-  parseVersionConstraint(constraint);
-
-  const db = getDb();
-  const rows = db
-    .prepare(`SELECT * FROM plugins WHERE name = ?`)
-    .all(name) as PluginRow[];
-  const matching = preferLocalPluginRows(rows).filter((row) =>
-    satisfiesConstraint(constraint, row.version),
-  );
-  if (matching.length === 0) return undefined;
-  const sorted = sortPluginsByVersionDesc(matching);
-  return sorted[0] ? rowToPlugin(sorted[0]) : undefined;
+  return computationSlot(`plugin-constraint:${name}\0${constraint}`, () => {
+    parseVersionConstraint(constraint);
+    const matching = preferLocalPluginRows(pluginsNamed(name)).filter((row) =>
+      satisfiesConstraint(constraint, row.version),
+    );
+    if (matching.length === 0) return undefined;
+    const sorted = sortPluginsByVersionDesc(matching);
+    return sorted[0] ? rowToPlugin(sorted[0]) : undefined;
+  });
 }
 
 export function getPlugin(selector: string): Plugin | undefined {
@@ -765,7 +788,7 @@ export function touchPluginUpdatedAt(pluginId: string): void {
   );
 }
 
-export function getPluginResources(pluginId: string): Resource[] {
+function loadPluginResources(pluginId: string): Resource[] {
   const db = getDb();
   const rows = db
     .prepare(
@@ -777,6 +800,11 @@ export function getPluginResources(pluginId: string): Resource[] {
     .all(pluginId) as ResourceRow[];
 
   return rows.map(mapAttachedResource);
+}
+
+export function getPluginResources(pluginId: string): Resource[] {
+  const resources = computationSlot(`plugin-resources:${pluginId}`, () => loadPluginResources(pluginId));
+  return resources.slice();
 }
 
 export function ensurePluginClaudeMarketplace(

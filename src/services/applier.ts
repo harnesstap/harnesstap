@@ -672,6 +672,8 @@ export async function materializeFiles(
     writtenFiles.push(file.path);
   }
 
+  await clearLiveReadCachesAfterWrite();
+
   return {
     cancelled: false,
     writtenFiles,
@@ -688,6 +690,16 @@ export async function materializeFiles(
         ),
     ),
   };
+}
+
+/**
+ * Status and Cursor inventory caches import the Cursor provider, and that
+ * provider imports this module to write install files. A static import would
+ * cycle through plugin registry initialization.
+ */
+async function clearLiveReadCachesAfterWrite(): Promise<void> {
+  const { clearLiveReadCaches } = await import("./live-read-cache.js");
+  clearLiveReadCaches();
 }
 
 /**
@@ -722,6 +734,7 @@ export async function applyToProject(
     })),
   });
 
+  await clearLiveReadCachesAfterWrite();
   return results;
 }
 
@@ -808,6 +821,7 @@ export async function applyToGlobal(
     removeImportedSnapshotOwnershipForFiles(staleFiles);
   }
 
+  await clearLiveReadCachesAfterWrite();
   return {
     results,
     ...materialized,
