@@ -1,2 +1,3 @@
 kind: Changed
 body: HARNESSTAP_STATUS_CACHE_DEBUG=1 now prints per phase status timing lines to stderr.
+time: 2026-10-13T20:00:00Z
