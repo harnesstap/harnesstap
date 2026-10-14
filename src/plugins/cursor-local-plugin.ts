@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync, type Dirent } from "node:fs";
-import { homedir } from "node:os";
 import { join, relative, sep } from "node:path";
+import { fileSignature } from "../services/file-signature.js";
 import type { SerializedFile } from "../types.js";
 import { cursorUserDataDir } from "./cursor-enablement.js";
 
@@ -117,25 +117,68 @@ interface CursorPluginsLog {
   mtimeMs: number;
 }
 
-function newestLogInTree(dir: string, depth: number): { path: string; mtimeMs: number } | null {
-  if (depth > 6 || !existsSync(dir)) return null;
-  let best: { path: string; mtimeMs: number } | null = null;
+interface CursorPluginsLogFile {
+  path: string;
+  mtimeMs: number;
+}
+
+const PLUGINS_LOG_PREFIX = "Cursor Plugins";
+const LOG_WALK_DEPTH = 6;
+
+/**
+ * Cursor writes one session directory per launch under `logs/`. The current
+ * Plugins log lives in the newest session, so older sessions are not walked.
+ */
+function newestSessionDirectory(logsDir: string): string | null {
+  let entries: Dirent[] = [];
+  try {
+    entries = readdirSync(logsDir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  let best: { path: string; mtimeMs: number; name: string } | null = null;
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const absolute = join(logsDir, entry.name);
+    let mtimeMs = 0;
+    try {
+      mtimeMs = statSync(absolute).mtimeMs;
+    } catch {
+      continue;
+    }
+    if (
+      !best
+      || mtimeMs > best.mtimeMs
+      || (mtimeMs === best.mtimeMs && entry.name > best.name)
+    ) {
+      best = { path: absolute, mtimeMs, name: entry.name };
+    }
+  }
+  return best?.path ?? null;
+}
+
+function newestPluginsLogUnder(
+  dir: string,
+  depth: number,
+): CursorPluginsLogFile | null {
+  if (depth > LOG_WALK_DEPTH) return null;
   let entries: Dirent[] = [];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {
     return null;
   }
+  let best: CursorPluginsLogFile | null = null;
   for (const entry of entries) {
     const absolute = join(dir, entry.name);
     if (entry.isDirectory()) {
-      const nested = newestLogInTree(absolute, depth + 1);
+      const nested = newestPluginsLogUnder(absolute, depth + 1);
       if (nested && (!best || nested.mtimeMs > best.mtimeMs)) {
         best = nested;
       }
       continue;
     }
-    if (!entry.isFile() || !entry.name.startsWith("Cursor Plugins")) continue;
+    if (!entry.isFile() || !entry.name.startsWith(PLUGINS_LOG_PREFIX)) continue;
     try {
       const mtimeMs = statSync(absolute).mtimeMs;
       if (!best || mtimeMs > best.mtimeMs) {
@@ -148,16 +191,40 @@ function newestLogInTree(dir: string, depth: number): { path: string; mtimeMs: n
   return best;
 }
 
-/** Latest Cursor plugin loader log for the real user home. Fixture homes return null. */
+export function findNewestCursorPluginsLog(homeRoot: string): CursorPluginsLogFile | null {
+  const logsDir = join(cursorUserDataDir(homeRoot), "logs");
+  const session = newestSessionDirectory(logsDir);
+  if (!session) return null;
+  return newestPluginsLogUnder(session, 0);
+}
+
+/** Signature of the newest Cursor Plugins log, for inventory cache checks. */
+export function cursorPluginsLogSignature(homeRoot: string): string {
+  const found = findNewestCursorPluginsLog(homeRoot);
+  if (!found) return "none";
+  return fileSignature(found.path);
+}
+
+let pluginsLogCache: { sig: string; log: CursorPluginsLog } | null = null;
+
+export function clearCursorPluginsLogCache(): void {
+  pluginsLogCache = null;
+}
+
+/** Latest Cursor plugin loader log under this home's Cursor user data directory. */
 export function readCursorLocalPluginLoadLog(
   homeRoot: string,
 ): CursorPluginsLog | null {
-  if (homeRoot !== homedir()) return null;
-  const logsDir = join(cursorUserDataDir(homeRoot), "logs");
-  const newest = newestLogInTree(logsDir, 0);
+  const newest = findNewestCursorPluginsLog(homeRoot);
   if (!newest) return null;
+  const sig = `${newest.path}\0${fileSignature(newest.path)}`;
+  if (pluginsLogCache && pluginsLogCache.sig === sig) {
+    return { text: pluginsLogCache.log.text, mtimeMs: pluginsLogCache.log.mtimeMs };
+  }
   try {
-    return { text: readFileSync(newest.path, "utf-8"), mtimeMs: newest.mtimeMs };
+    const log = { text: readFileSync(newest.path, "utf-8"), mtimeMs: newest.mtimeMs };
+    pluginsLogCache = { sig, log };
+    return { text: log.text, mtimeMs: log.mtimeMs };
   } catch {
     return null;
   }

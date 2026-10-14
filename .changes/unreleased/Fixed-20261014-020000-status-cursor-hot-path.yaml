@@ -1,0 +1,5 @@
+kind: Fixed
+body: Status reuses one Cursor plugin scan until state.vscdb, the logs folder, or the plugins directory changes, and drops that scan after apply, switch, and install. The newest Cursor Plugins log is read from the newest session folder, and state.vscdb is queried by key.
+time: 2026-10-14T02:00:00.000Z
+custom:
+  Issue: ""

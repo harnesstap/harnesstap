@@ -2,6 +2,7 @@ import { ui } from "../ui/index.js";
 import { getActiveProfileName } from "./active-profile.js";
 import type { ApplyProfilePluginOptions, ApplyProfilePluginResult } from "./profile-apply.js";
 import { withProfileApplyLock } from "./profile-apply-lock.js";
+import { clearLiveReadCaches } from "./live-read-cache.js";
 import { useProfileCommandUnlocked } from "./profile-commands.js";
 
 export type ProfileSwitchStep =
@@ -329,5 +330,6 @@ export async function switchProfile(
     });
   } finally {
     sigint?.uninstall();
+    clearLiveReadCaches();
   }
 }

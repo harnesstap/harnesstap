@@ -10,6 +10,7 @@ import type { PluginInstall } from "../plugins/types.js";
 import { getPlatform } from "../platforms/registry.js";
 import { listGlobalApplySnapshotInstalls } from "../models/global-apply-snapshot.js";
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
+import { getLatestSnapshot } from "../models/snapshot.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import { listHostNativeMcpNames } from "./host-native-mcp.js";
 import {
@@ -286,11 +287,7 @@ export function buildHarnessMcpRows(
   return rows;
 }
 
-export function resolveProjectDriftSummary(projectPath?: string): ProjectDriftSummary | undefined {
-  if (!projectPath) {
-    return undefined;
-  }
-
+function projectForDriftPath(projectPath: string): { root: string; id: string } | null {
   const resolvedRoot = resolve(projectPath);
   const gitOriginRaw = getGitOrigin(resolvedRoot);
   const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
@@ -298,13 +295,40 @@ export function resolveProjectDriftSummary(projectPath?: string): ProjectDriftSu
     getProjectByLocalPath(resolvedRoot)
     ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
     ?? null;
+  if (!project) return null;
+  return { root: resolvedRoot, id: project.id };
+}
 
+/** Absolute paths compared by project drift, used to invalidate a cached status. */
+export function projectDriftWatchPaths(projectPath?: string): string[] {
+  if (!projectPath) return [];
+  const project = projectForDriftPath(projectPath);
+  if (!project) return [];
+  const snapshot = getLatestSnapshot(project.id);
+  if (!snapshot) return [];
+  const paths: string[] = [];
+  for (const files of Object.values(snapshot.state.platform_files)) {
+    for (const relativePath of Object.keys(files)) {
+      paths.push(join(project.root, relativePath));
+    }
+  }
+  return paths;
+}
+
+export function resolveProjectDriftSummary(projectPath?: string): ProjectDriftSummary | undefined {
+  if (!projectPath) {
+    return undefined;
+  }
+
+  const project = projectForDriftPath(projectPath);
   if (!project) {
     return {
       status: "na",
       report: null,
     };
   }
+
+  const resolvedRoot = project.root;
 
   const report = detectProjectDriftFromLatest(resolvedRoot, project.id);
   return {

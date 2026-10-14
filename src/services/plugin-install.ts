@@ -4,6 +4,7 @@ import { getPluginProvider } from "../plugins/registry.js";
 import type { PluginScope } from "../plugins/types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import type { PluginConstraintPin } from "./plugin-apply-validation.js";
+import { clearLiveReadCaches } from "./live-read-cache.js";
 import { installMarketplacePinIntoCache } from "./marketplace-pin-cache.js";
 
 export interface InstallPluginPinOptions {
@@ -36,6 +37,7 @@ export async function installPluginPinAsync(
         homeRoot: options.homeRoot,
         harnesstapDir: getHarnesstapDir(),
       });
+      clearLiveReadCaches();
       return {
         ref: options.ref,
         platformId,
@@ -59,25 +61,29 @@ export async function installPluginPinAsync(
     };
   }
 
-  const result = await provider.install(
-    {
-      projectRoot: options.projectRoot,
-      homeRoot: options.homeRoot,
-      harnesstapDir: getHarnesstapDir(),
-    },
-    {
-      ref: options.ref,
-      scope: options.scope,
-    },
-  );
+  try {
+    const result = await provider.install(
+      {
+        projectRoot: options.projectRoot,
+        homeRoot: options.homeRoot,
+        harnesstapDir: getHarnesstapDir(),
+      },
+      {
+        ref: options.ref,
+        scope: options.scope,
+      },
+    );
 
-  return {
-    ref: result.ref,
-    platformId: result.platformId,
-    scope: result.scope,
-    status: result.status,
-    message: result.message,
-  };
+    return {
+      ref: result.ref,
+      platformId: result.platformId,
+      scope: result.scope,
+      status: result.status,
+      message: result.message,
+    };
+  } finally {
+    clearLiveReadCaches();
+  }
 }
 
 export function resolveDefaultPluginInstallScope(projectRoot: string): PluginScope {

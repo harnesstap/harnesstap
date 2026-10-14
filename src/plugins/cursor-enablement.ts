@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -25,6 +25,8 @@ const THIRD_PARTY_SETTING_KEYS = [
   "cursor.enableThirdPartySkills",
   "cursor.general.includeThirdPartyPlugins",
 ] as const;
+
+const RECENTLY_USED_KEY = "cursor.recentlyUsed.globalOrder";
 
 const INSTALLED_PLUGIN_JSON_FILES = [
   join(".cursor", "plugins", "installed.json"),
@@ -172,7 +174,7 @@ export function cursorUserDataDir(homeRoot: string): string {
   return join(homedir(), ".config", "Cursor");
 }
 
-function resolveCursorStateDbPath(homeRoot: string): string {
+export function cursorStateDbPath(homeRoot: string): string {
   return join(cursorUserDataDir(homeRoot), "User", "globalStorage", "state.vscdb");
 }
 
@@ -182,9 +184,10 @@ function resolveCursorUserSettingsPath(homeRoot: string): string {
 
 interface SqliteLike {
   prepare: (sql: string) => {
-    get: (...params: unknown[]) => { value?: unknown } | undefined;
+    get: (...params: unknown[]) => { key?: unknown; value?: unknown } | undefined;
     all: (...params: unknown[]) => Array<{ key?: unknown; value?: unknown }>;
   };
+  exec: (sql: string) => void;
   close: () => void;
 }
 
@@ -222,28 +225,70 @@ function decodeSqliteValue(value: unknown): unknown {
   }
 }
 
-function readCursorItemTableRows(
-  homeRoot: string,
-  keyPrefix: string,
-): Array<{ key: string; value: unknown }> {
-  const dbPath = resolveCursorStateDbPath(homeRoot);
-  if (!existsSync(dbPath)) return [];
+const PLUGIN_KEY_START = "cursor.plugins";
+const PLUGIN_KEY_END = "cursor.plugint";
+
+interface CursorDbRows {
+  byKey: Map<string, unknown>;
+}
+
+const cursorDbCache = new Map<string, { sig: string; rows: CursorDbRows }>();
+let cursorDbOpens = 0;
+
+export function clearCursorStateDbCache(): void {
+  cursorDbCache.clear();
+}
+
+/** How many times state.vscdb was actually opened. Tests use this. */
+export function readCursorStateDbOpenCount(): number {
+  return cursorDbOpens;
+}
+
+function cursorDbSignature(dbPath: string): string | null {
+  try {
+    const stat = statSync(dbPath);
+    return `${stat.mtimeMs}:${stat.size}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read only the ItemTable keys status needs. The connection is read-only
+ * and query_only, and the parsed rows are reused until the file mtime or
+ * size changes. Never inserts, updates, or creates the database.
+ */
+function loadCursorDbRows(homeRoot: string): CursorDbRows {
+  const empty: CursorDbRows = { byKey: new Map() };
+  const dbPath = cursorStateDbPath(homeRoot);
+  const sig = cursorDbSignature(dbPath);
+  if (!sig) return empty;
+
+  const cached = cursorDbCache.get(dbPath);
+  if (cached && cached.sig === sig) return cached.rows;
 
   const db = openReadonlySqlite(dbPath);
-  if (!db) return [];
+  if (!db) return empty;
+  cursorDbOpens += 1;
 
+  const byKey = new Map<string, unknown>();
   try {
-    const rows = db
-      .prepare("SELECT key, value FROM ItemTable WHERE key LIKE ?")
-      .all(`${keyPrefix}%`);
-    const parsed: Array<{ key: string; value: unknown }> = [];
-    for (const row of rows) {
-      if (typeof row.key !== "string" || !row.key) continue;
-      parsed.push({ key: row.key, value: decodeSqliteValue(row.value) });
+    db.exec("PRAGMA query_only = ON");
+    const exact = db.prepare("SELECT key, value FROM ItemTable WHERE key = ?");
+    for (const key of [RECENTLY_USED_KEY, ...THIRD_PARTY_SETTING_KEYS]) {
+      const row = exact.get(key);
+      if (!row) continue;
+      byKey.set(key, decodeSqliteValue(row.value));
     }
-    return parsed;
+    const pluginRows = db
+      .prepare("SELECT key, value FROM ItemTable WHERE key >= ? AND key < ?")
+      .all(PLUGIN_KEY_START, PLUGIN_KEY_END);
+    for (const row of pluginRows) {
+      if (typeof row.key !== "string" || !row.key) continue;
+      byKey.set(row.key, decodeSqliteValue(row.value));
+    }
   } catch {
-    return [];
+    return empty;
   } finally {
     try {
       db.close();
@@ -251,14 +296,17 @@ function readCursorItemTableRows(
       // ignore close errors
     }
   }
+
+  const rows = { byKey };
+  cursorDbCache.set(dbPath, { sig, rows });
+  return rows;
 }
 
 function readRecentlyUsedSkillPaths(homeRoot: string): string[] {
-  const rows = readCursorItemTableRows(homeRoot, "cursor.recentlyUsed.globalOrder");
-  const exact = rows.find((row) => row.key === "cursor.recentlyUsed.globalOrder");
-  if (!Array.isArray(exact?.value)) return [];
+  const value = loadCursorDbRows(homeRoot).byKey.get(RECENTLY_USED_KEY);
+  if (!Array.isArray(value)) return [];
   const paths: string[] = [];
-  for (const entry of exact.value) {
+  for (const entry of value) {
     if (
       entry &&
       typeof entry === "object" &&
@@ -273,8 +321,9 @@ function readRecentlyUsedSkillPaths(homeRoot: string): string[] {
 
 function pluginNamesFromVscdb(homeRoot: string): Set<string> {
   const names = new Set<string>();
-  for (const row of readCursorItemTableRows(homeRoot, "cursor.plugins")) {
-    for (const name of pluginNamesFromStoredValue(row.value)) {
+  for (const [key, value] of loadCursorDbRows(homeRoot).byKey) {
+    if (!key.startsWith(PLUGIN_KEY_START)) continue;
+    for (const name of pluginNamesFromStoredValue(value)) {
       names.add(name);
     }
   }
@@ -386,11 +435,13 @@ export function cursorLoadsForeignHarnessTrees(homeRoot: string): boolean {
   if (fromSettings !== null) {
     return fromSettings;
   }
-  for (const row of readCursorItemTableRows(homeRoot, "cursor.")) {
-    if (typeof row.value !== "boolean" || !isThirdPartySettingsKey(row.key)) {
+  const rows = loadCursorDbRows(homeRoot).byKey;
+  for (const key of THIRD_PARTY_SETTING_KEYS) {
+    const value = rows.get(key);
+    if (typeof value !== "boolean" || !isThirdPartySettingsKey(key)) {
       continue;
     }
-    if (row.value === false) {
+    if (value === false) {
       return false;
     }
   }

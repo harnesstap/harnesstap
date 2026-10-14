@@ -21,6 +21,7 @@ import {
 } from "./plugin-selector.js";
 import { assertInstallPluginNameAvailable } from "./plugin-install-conflicts.js";
 import { trackPluginInstalled } from "../telemetry/index.js";
+import { clearLiveReadCaches } from "./live-read-cache.js";
 import { listDependencies } from "./plugin-dependency.js";
 import {
   parseVersionConstraint,
@@ -300,6 +301,7 @@ export async function installPluginFromCatalog(
 ): Promise<InstallPluginFromCatalogResult> {
   assertInstallPluginNameAvailable(parsed, opts);
 
+  try {
   const downloaded = await downloadCatalogPackage({
     orgSlug: parsed.org_slug,
     catalogSlug: parsed.catalog_slug,
@@ -360,4 +362,7 @@ export async function installPluginFromCatalog(
     version: downloaded.version,
     sourceLabel,
   };
+  } finally {
+    clearLiveReadCaches();
+  }
 }

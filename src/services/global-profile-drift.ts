@@ -47,6 +47,33 @@ import { detectNotStagedProfileResources } from "./profile-untracked-resources.j
 import { type DriftFileChange, driftChangeIsKept } from "./project-drift.js";
 import { hashOnDiskFile } from "./safe-file-removal.js";
 import { withAffectedResources } from "./scoped-file-content-delta.js";
+import { withStatusReadCache } from "./status-read-cache.js";
+
+type StatusFieldInput = Parameters<typeof buildBaseStatusFields>[0];
+
+interface DriftCore {
+  fields: Omit<StatusFieldInput, "depth">;
+  harness?: string;
+  watchedPaths: string[];
+}
+
+let driftCoreComputes = 0;
+
+/** How many times the dry-run core has actually run. Tests use this. */
+export function readDriftCoreComputeCount(): number {
+  return driftCoreComputes;
+}
+
+function driftCore(
+  fields: Omit<StatusFieldInput, "depth">,
+  harness: string | undefined,
+  homeRoot: string,
+): DriftCore {
+  const watchedPaths = (fields.expectedApply?.expected_files ?? []).map((file) =>
+    join(homeRoot, file.path),
+  );
+  return { fields, harness, watchedPaths };
+}
 
 export interface GlobalProfileStatus {
   active_profile: string | null;
@@ -279,17 +306,53 @@ async function finalizeGlobalProfileStatus(
   }
 }
 
+/**
+ * Fast depth keeps the same drift fields as a full read (`changes`,
+ * `has_drift`, `stack_in_sync`, `drift_summary`). The desktop drift pill
+ * replaces those from every fast poll, so a cold fast read still runs the
+ * dry-run. Later reads skip it when the dry-run core's input mtimes match,
+ * including a fast read after a full read of the same inputs. Overlapping
+ * callers share one in-flight computation.
+ */
 export async function detectGlobalProfileStatus(input: {
   harness?: string;
   depth?: GlobalProfileStatusDepth;
   projectPath?: string;
 } = {}): Promise<GlobalProfileStatus> {
   const depth = input.depth ?? "full";
+  const request = {
+    depth,
+    harness: input.harness,
+    projectPath: input.projectPath,
+  };
+  const status = await withStatusReadCache(request, async () => {
+    const core = await withStatusReadCache(
+      { ...request, includeDepth: false },
+      async () => {
+        const loaded = await loadDriftCore(input);
+        return { value: loaded, watchedPaths: loaded.watchedPaths };
+      },
+    );
+    const projected = await finalizeGlobalProfileStatus(
+      { ...core.fields, depth },
+      core.harness,
+    );
+    return { value: projected, watchedPaths: core.watchedPaths };
+  });
+  return { ...status, as_of: new Date().toISOString() };
+}
+
+async function loadDriftCore(input: {
+  harness?: string;
+  depth?: GlobalProfileStatusDepth;
+  projectPath?: string;
+}): Promise<DriftCore> {
+  driftCoreComputes += 1;
+  const homeRoot = resolveHomeRoot();
   const activeProfile = getActiveProfileName() ?? null;
   if (!activeProfile) {
-    return finalizeGlobalProfileStatus(
+    return driftCore(
       {
-        depth,
         activeProfile: null,
         profileExists: false,
         applied: false,
@@ -301,6 +364,7 @@ export async function detectGlobalProfileStatus(input: {
         projectPath: input.projectPath,
       },
       input.harness,
+      homeRoot,
     );
   }
 
@@ -317,8 +381,7 @@ export async function detectGlobalProfileStatus(input: {
           pull: false,
         });
       } catch (error) {
-        return finalizeGlobalProfileStatus({
-          depth,
+        return driftCore({
           activeProfile,
           profileExists: true,
           applied: Boolean(latestSnapshot),
@@ -330,7 +393,7 @@ export async function detectGlobalProfileStatus(input: {
           warning: error instanceof Error ? error.message : String(error),
           projectPath: input.projectPath,
           pluginIds: [],
-        });
+        }, input.harness, homeRoot);
       }
 
       const stackInSync = latestSnapshot
@@ -339,8 +402,7 @@ export async function detectGlobalProfileStatus(input: {
       const applied = Boolean(latestSnapshot);
       const hasDrift = !applied || !stackInSync;
 
-      return finalizeGlobalProfileStatus({
-        depth,
+      return driftCore({
         activeProfile,
         profileExists: true,
         applied,
@@ -352,11 +414,10 @@ export async function detectGlobalProfileStatus(input: {
         projectPath: input.projectPath,
         expectedApply,
         pluginIds: [],
-      });
+      }, input.harness, homeRoot);
     }
 
-    return finalizeGlobalProfileStatus({
-      depth,
+    return driftCore({
       activeProfile,
       profileExists: false,
       applied: false,
@@ -367,12 +428,11 @@ export async function detectGlobalProfileStatus(input: {
       changes: [],
       warning: `missing plugin "${activeProfile}"`,
       projectPath: input.projectPath,
-    });
+    }, input.harness, homeRoot);
   }
 
   if (!isProfilePlugin(plugin)) {
-    return finalizeGlobalProfileStatus({
-      depth,
+    return driftCore({
       activeProfile,
       profileExists: true,
       applied: false,
@@ -383,11 +443,10 @@ export async function detectGlobalProfileStatus(input: {
       changes: [],
       warning: `plugin "${plugin.name}" is not tagged as a profile`,
       projectPath: input.projectPath,
-    });
+    }, input.harness, homeRoot);
   }
 
   const latestSnapshot = getLatestGlobalApplySnapshotForProfile(activeProfile);
-  const homeRoot = resolveHomeRoot();
   const pluginIds = collectProfilePluginIds(plugin);
   let expectedApply: ApplyProfilePluginResult;
   try {
@@ -400,8 +459,7 @@ export async function detectGlobalProfileStatus(input: {
       mergeLiveSkillMarkdown: false,
     });
   } catch (error) {
-    return finalizeGlobalProfileStatus({
-      depth,
+    return driftCore({
       activeProfile,
       profileExists: true,
       applied: Boolean(latestSnapshot),
@@ -413,7 +471,7 @@ export async function detectGlobalProfileStatus(input: {
       warning: error instanceof Error ? error.message : String(error),
       projectPath: input.projectPath,
       pluginIds,
-    });
+    }, input.harness, homeRoot);
   }
 
   const stackInSync = latestSnapshot
@@ -485,9 +543,8 @@ export async function detectGlobalProfileStatus(input: {
   const blockingChanges = changes.filter((change) => !driftChangeIsKept(change));
   const hasDrift = !applied || !stackInSync || blockingChanges.length > 0;
 
-  return finalizeGlobalProfileStatus(
+  return driftCore(
     {
-      depth,
       activeProfile,
       profileExists: true,
       applied,
@@ -501,5 +558,6 @@ export async function detectGlobalProfileStatus(input: {
       pluginIds,
     },
     input.harness,
+    homeRoot,
   );
 }

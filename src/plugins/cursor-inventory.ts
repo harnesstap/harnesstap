@@ -1,14 +1,19 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative } from "node:path";
+import { fileSignature } from "../services/file-signature.js";
 import {
   collectCursorEnablementSignals,
+  cursorStateDbPath,
+  cursorUserDataDir,
   type CollectCursorEnablementSignals,
   type CursorEnablementSignals,
 } from "./cursor-enablement.js";
 import { isAgentPluginsSchemaId } from "../services/agent-plugins/schema-registry.js";
 import { parsePluginRef } from "./host-plugin-manifest.js";
 import {
+  clearCursorPluginsLogCache,
   cursorLocalPluginLoadState,
+  cursorPluginsLogSignature,
   readCursorLocalPluginLoadLog,
   readCursorLocalPluginSidecar,
 } from "./cursor-local-plugin.js";
@@ -283,10 +288,43 @@ export function listCursorPluginFootprintNames(homeRoot: string): Set<string> {
   return names;
 }
 
-/** Synchronous Cursor inventory used by status panels and the provider. */
-export function listCursorPluginInstalls(
+function cloneInstall(install: PluginInstall): PluginInstall {
+  return {
+    ...install,
+    ...(install.metadata ? { metadata: { ...install.metadata } } : {}),
+  };
+}
+
+/**
+ * Inputs that change which Cursor installs are visible. Directory mtimes do
+ * not always move when a nested file is rewritten, so apply, switch, and
+ * install also call `clearCursorPluginInstallsCache`.
+ */
+export function cursorInventoryInputSignature(homeRoot: string): string {
+  const plugins = join(homeRoot, ".cursor", "plugins");
+  return [
+    fileSignature(cursorStateDbPath(homeRoot)),
+    fileSignature(join(cursorUserDataDir(homeRoot), "logs")),
+    fileSignature(plugins),
+    // Direct children. A same-millisecond create does not always move the
+    // parent directory mtime, and a new local plugin only moves `local/`.
+    fileSignature(join(plugins, "installed.json")),
+    fileSignature(join(plugins, "installed_plugins.json")),
+    fileSignature(join(plugins, "local")),
+    cursorPluginsLogSignature(homeRoot),
+  ].join("|");
+}
+
+const cursorInstallsCache = new Map<string, { sig: string; installs: PluginInstall[] }>();
+
+export function clearCursorPluginInstallsCache(): void {
+  cursorInstallsCache.clear();
+  clearCursorPluginsLogCache();
+}
+
+function scanCursorPluginInstalls(
   homeRoot: string,
-  collectSignals: CollectCursorEnablementSignals = collectCursorEnablementSignals,
+  collectSignals: CollectCursorEnablementSignals,
 ): PluginInstall[] {
   const signals = collectSignals(homeRoot);
   const cache = scanCacheInstalls(homeRoot, signals);
@@ -299,4 +337,22 @@ export function listCursorPluginInstalls(
   return [...cache, ...local, ...marketplaces].filter((install) =>
     isInventoriedCursorInstall(install, signals, homeRoot),
   );
+}
+
+/** Synchronous Cursor inventory used by status panels and the provider. */
+export function listCursorPluginInstalls(
+  homeRoot: string,
+  collectSignals: CollectCursorEnablementSignals = collectCursorEnablementSignals,
+): PluginInstall[] {
+  if (collectSignals !== collectCursorEnablementSignals) {
+    return scanCursorPluginInstalls(homeRoot, collectSignals);
+  }
+  const sig = cursorInventoryInputSignature(homeRoot);
+  const cached = cursorInstallsCache.get(homeRoot);
+  if (cached && cached.sig === sig) {
+    return cached.installs.map(cloneInstall);
+  }
+  const installs = scanCursorPluginInstalls(homeRoot, collectSignals);
+  cursorInstallsCache.set(homeRoot, { sig, installs });
+  return installs.map(cloneInstall);
 }
