@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { statSync } from "./status-fs.js";
 
 /** mtime and size token. `missing` when the path cannot be stat'd. */
 export function fileSignature(path: string): string {

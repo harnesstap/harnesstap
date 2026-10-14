@@ -1,3 +1,4 @@
+import { runTracedStatus, traceCount, traceSpan } from "./status-trace.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
@@ -47,7 +48,8 @@ import { detectNotStagedProfileResources } from "./profile-untracked-resources.j
 import { type DriftFileChange, driftChangeIsKept } from "./project-drift.js";
 import { hashOnDiskFile } from "./safe-file-removal.js";
 import { withAffectedResources } from "./scoped-file-content-delta.js";
-import { runInStatusComputation } from "./status-computation.js";
+import { readDiskTextOnce } from "./status-disk-read.js";
+import { inStatusComputation, runInStatusComputation } from "./status-computation.js";
 import { withStatusReadCache } from "./status-read-cache.js";
 
 type StatusFieldInput = Parameters<typeof buildBaseStatusFields>[0];
@@ -142,6 +144,12 @@ function isMissingExpectedFileTransparent(
 
 function readGlobalFile(homeRoot: string, relativePath: string): string | null {
   const fullPath = join(homeRoot, relativePath);
+  if (!inStatusComputation()) return readGlobalFileUncached(fullPath);
+  if (!existsSync(fullPath)) return null;
+  return readDiskTextOnce(fullPath);
+}
+
+function readGlobalFileUncached(fullPath: string): string | null {
   if (!existsSync(fullPath)) {
     return null;
   }
@@ -194,13 +202,13 @@ function buildBaseStatusFields(input: {
 }): GlobalProfileStatus {
   const asOf = new Date().toISOString();
   const homeRoot = resolveHomeRoot();
-  const ownedFiles = collectOwnedGlobalProfileFiles(input.snapshotId);
+  const ownedFiles = traceSpan("db.owned-files", () => collectOwnedGlobalProfileFiles(input.snapshotId));
   const blockingChanges = input.changes.filter((change) => !driftChangeIsKept(change));
   const { owned, nonOwned } = classifyGlobalDriftChanges(blockingChanges, ownedFiles);
 
   const declaredPins =
     input.pluginIds && input.pluginIds.length > 0
-      ? mergePluginsForApply(input.pluginIds).pluginPins
+      ? traceSpan("base.merge-plugins", () => mergePluginsForApply(input.pluginIds ?? []).pluginPins)
       : [];
   const declaredFromExpected = input.expectedApply
     ? declaredMcpFromExpectedApply(input.expectedApply)
@@ -211,7 +219,7 @@ function buildBaseStatusFields(input: {
       ? declaredMcpNamesFromMergedPlugins(input.pluginIds)
       : { "claude-code": [], cursor: [] });
 
-  const harnesses = buildHarnessLiveStatusMap({
+  const harnesses = traceSpan("base.harness-live-status", () => buildHarnessLiveStatusMap({
     depth: input.depth,
     homeRoot,
     declaredPins,
@@ -219,24 +227,26 @@ function buildBaseStatusFields(input: {
     ...(declaredFromExpected
       ? { expectedMcpConfigsByHarness: declaredFromExpected.configsByHarness }
       : {}),
-  });
+  }));
   const { missingPlugins, missingMcp } =
     input.depth === "full"
       ? countMissingHarnessRows(harnesses)
       : { missingPlugins: 0, missingMcp: 0 };
 
   const contents = input.activeProfile
-    ? buildProfileContents(input.activeProfile)
+    ? traceSpan("base.profile-contents", () => buildProfileContents(input.activeProfile ?? ""))
     : null;
   const hostManaged =
     input.depth === "full"
-      ? buildHostManagedStatus({
-          homeRoot,
-          profileSkills: profileSkillNameMap(contents?.resources ?? []),
-        })
+      ? traceSpan("base.host-managed", () =>
+          buildHostManagedStatus({
+            homeRoot,
+            profileSkills: profileSkillNameMap(contents?.resources ?? []),
+          }),
+        )
       : undefined;
 
-  const projectDrift = resolveProjectDriftSummary(input.projectPath);
+  const projectDrift = traceSpan("base.project-drift", () => resolveProjectDriftSummary(input.projectPath));
   const panel = computeGlobalProfilePanelStatus({
     depth: input.depth,
     applied: input.applied,
@@ -288,7 +298,7 @@ async function finalizeGlobalProfileStatus(
   fields: Parameters<typeof buildBaseStatusFields>[0],
   harness?: string,
 ): Promise<GlobalProfileStatus> {
-  const status = buildBaseStatusFields(fields);
+  const status = traceSpan("base", () => buildBaseStatusFields(fields));
   if (
     fields.depth !== "full"
     || !status.active_profile
@@ -297,11 +307,13 @@ async function finalizeGlobalProfileStatus(
     return status;
   }
   try {
-    const notStaged = await detectNotStagedProfileResources({
-      profileSelector: status.active_profile,
-      scope: "home",
-      ...(harness ? { harness } : {}),
-    });
+    const notStaged = await traceSpan("not-staged", () =>
+      detectNotStagedProfileResources({
+        profileSelector: status.active_profile ?? "",
+        scope: "home",
+        ...(harness ? { harness } : {}),
+      }),
+    );
     return {
       ...status,
       untracked_resource_count: notStaged.length,
@@ -374,14 +386,15 @@ export async function loadGlobalProfileStatusSnapshot(input: {
   projectPath?: string;
 } = {}): Promise<{ value: GlobalProfileStatus; watchedPaths: string[] }> {
   const depth = input.depth ?? "full";
-  return runInStatusComputation(async () => {
-    const loaded = await loadDriftCore(input);
-    const projected = await finalizeGlobalProfileStatus(
-      { ...loaded.fields, depth },
-      loaded.harness,
-    );
-    return { value: projected, watchedPaths: loaded.watchedPaths };
-  });
+  return runInStatusComputation(() =>
+    runTracedStatus(`depth=${depth} harness=${input.harness ?? "*"}`, async () => {
+      const loaded = await traceSpan("drift-core", () => loadDriftCore(input));
+      const projected = await traceSpan("finalize", () =>
+        finalizeGlobalProfileStatus({ ...loaded.fields, depth }, loaded.harness),
+      );
+      return { value: projected, watchedPaths: loaded.watchedPaths };
+    }),
+  );
 }
 
 async function loadDriftCore(input: {
@@ -410,7 +423,7 @@ async function loadDriftCore(input: {
     );
   }
 
-  const plugin = resolvePluginSelector(activeProfile);
+  const plugin = traceSpan("db.resolve-profile", () => resolvePluginSelector(activeProfile));
   if (!plugin) {
     if (isEmptyBuiltinProfile(activeProfile)) {
       const latestSnapshot = getLatestGlobalApplySnapshotForProfile(activeProfile);
@@ -492,14 +505,17 @@ async function loadDriftCore(input: {
   const pluginIds = collectProfilePluginIds(plugin);
   let expectedApply: ApplyProfilePluginResult;
   try {
-    expectedApply = await applyProfilePlugin(activeProfile, {
-      dryRun: true,
-      harness: input.harness,
-      conflictPolicy: "replace",
-      pull: false,
-      pinSkillEmits: false,
-      mergeLiveSkillMarkdown: false,
-    });
+    expectedApply = await traceSpan("dry-run", () =>
+      applyProfilePlugin(activeProfile, {
+        dryRun: true,
+        harness: input.harness,
+        conflictPolicy: "replace",
+        pull: false,
+        pinSkillEmits: false,
+        mergeLiveSkillMarkdown: false,
+      }),
+    );
+    traceCount("dry-run", "expected_files", expectedApply.expected_files?.length ?? 0);
   } catch (error) {
     return driftCore({
       activeProfile,
@@ -535,6 +551,7 @@ async function loadDriftCore(input: {
     paths.push(file.path);
     expectedPathsByResource.set(key, paths);
   }
+  traceSpan("drift.compare-files", () => {
   for (const file of expectedApply.expected_files ?? []) {
     if (isNativeAgentPluginCachePath(file.path)) continue;
     const current = readGlobalFile(homeRoot, file.path);
@@ -580,6 +597,7 @@ async function loadDriftCore(input: {
       );
     }
   }
+  });
 
   const applied = Boolean(latestSnapshot);
   const blockingChanges = changes.filter((change) => !driftChangeIsKept(change));

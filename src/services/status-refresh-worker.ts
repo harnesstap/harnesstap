@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { parentPort } from "node:worker_threads";
 import { resolveHomeRoot, setHomeRootOverride } from "../utils/home-root.js";
+import { statusTraceEnabled } from "./status-trace.js";
 import { loadGlobalProfileStatusSnapshot } from "./global-profile-drift.js";
 import {
   armStatusWatches,
@@ -61,16 +62,23 @@ parentPort?.on("message", (request: RefreshRequest) => {
         const shared = new SharedArrayBuffer(4);
         Atomics.wait(new Int32Array(shared), 0, 0, request.delayMs);
       }
+      const computeStarted = statusTraceEnabled ? performance.now() : 0;
       const loaded = await loadGlobalProfileStatusSnapshot({
         depth: depthOf(request.depth),
         harness: request.harness,
         projectPath: request.projectPath,
       });
+      const computeMs = statusTraceEnabled ? performance.now() - computeStarted : 0;
       const collected = collectFingerprintPaths(request.projectPath, loaded.watchedPaths);
+      const jsonStarted = statusTraceEnabled ? performance.now() : 0;
+      const json = JSON.stringify(loaded.value);
+      const value = JSON.parse(json);
+      const jsonMs = statusTraceEnabled ? performance.now() - jsonStarted : 0;
       parentPort?.postMessage({
         id: requestId,
         ok: true,
-        value: JSON.parse(JSON.stringify(loaded.value)),
+        ...(statusTraceEnabled ? { trace: { computeMs, jsonMs, bytes: json.length } } : {}),
+        value,
         watchedPaths: loaded.watchedPaths,
         watchPaths: collected.paths,
       });

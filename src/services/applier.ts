@@ -1,3 +1,6 @@
+import { computationSlot, inStatusComputation } from "./status-computation.js";
+import { readDiskBytesOnce, readDiskTextOnce } from "./status-disk-read.js";
+import { traceSpan } from "./status-trace.js";
 import {
   chmodSync,
   existsSync,
@@ -168,8 +171,23 @@ function resolveMaterializedPath(rootPath: string, relativePath: string): string
 }
 
 function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): string {
+  if (!inStatusComputation()) return assertMaterializedPathIsSafeUncached(rootPath, relativePath);
+  // A status computation checks each planned path several times. Only safe
+  // paths are kept; an unsafe one throws again on every call.
+  const safe = computationSlot("safe-materialized-paths", () => new Map<string, string>());
+  const key = `${rootPath}\0${relativePath}`;
+  const known = safe.get(key);
+  if (known !== undefined) return known;
+  const fullPath = assertMaterializedPathIsSafeUncached(rootPath, relativePath);
+  safe.set(key, fullPath);
+  return fullPath;
+}
+
+function assertMaterializedPathIsSafeUncached(rootPath: string, relativePath: string): string {
   const fullPath = resolveMaterializedPath(rootPath, relativePath);
-  const resolvedRoot = realpathSync(rootPath);
+  const resolvedRoot = inStatusComputation()
+    ? computationSlot(`realpath-root:${rootPath}`, () => realpathSync(rootPath))
+    : realpathSync(rootPath);
 
   if (existsSync(fullPath)) {
     const resolvedTarget = realpathSync(fullPath);
@@ -230,6 +248,10 @@ function removeMaterializedFiles(
 
 function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boolean {
   if (!existsSync(fullPath)) return false;
+  if (inStatusComputation()) {
+    const existing = readDiskBytesOnce(fullPath);
+    return existing !== null && existing.equals(serializedFileBytes(file));
+  }
   try {
     const existing = readFileSync(fullPath);
     return existing.equals(serializedFileBytes(file));
@@ -239,11 +261,31 @@ function fileContentMatchesExisting(fullPath: string, file: SerializedFile): boo
 }
 
 function semanticallyMatchesExisting(fullPath: string, file: SerializedFile): boolean {
+  if (!inStatusComputation()) return semanticallyMatchesExistingUncached(fullPath, file);
+  // The dry-run plan asks this for the same file more than once.
+  const seen = computationSlot(
+    "semantic-matches",
+    () => new Map<string, { content: string; encoding: SerializedFile["encoding"]; matches: boolean }>(),
+  );
+  const previous = seen.get(`${file.path}\0${fullPath}`);
+  if (previous && previous.content === file.content && previous.encoding === file.encoding) {
+    return previous.matches;
+  }
+  const matches = semanticallyMatchesExistingUncached(fullPath, file);
+  seen.set(`${file.path}\0${fullPath}`, { content: file.content, encoding: file.encoding, matches });
+  return matches;
+}
+
+function semanticallyMatchesExistingUncached(fullPath: string, file: SerializedFile): boolean {
   if (fileContentMatchesExisting(fullPath, file)) {
     return true;
   }
   if (!existsSync(fullPath)) {
     return false;
+  }
+  if (inStatusComputation()) {
+    const text = readDiskTextOnce(fullPath);
+    return text !== null && fileContentsEquivalentForDrift(file.path, text, file.content);
   }
   try {
     return fileContentsEquivalentForDrift(
@@ -304,12 +346,14 @@ export async function generateFiles(
 
   const homeRoot = resolveHomeRoot();
   for (const pid of platforms) {
-    const platformResources = omitHostPluginBundledSkills(
-      serializedResources.filter((resource) => resourceAppliesToHarness(resource, pid)),
-      pid,
-      homeRoot,
-      target,
-    );
+    const platformResources = traceSpan("gen.omit-bundled-skills", () =>
+      omitHostPluginBundledSkills(
+        serializedResources.filter((resource) => resourceAppliesToHarness(resource, pid)),
+        pid,
+        homeRoot,
+        target,
+      ),
+    pid);
     const serializer = getPlatformSerializer(pid);
     const surfaceWarnings: SurfaceWarning[] = [];
     const skillNames = new Set(
@@ -363,7 +407,7 @@ export async function generateFiles(
         });
       }
     }
-    const resolvedMcp = resolveInstalledMcpResources(emitResources);
+    const resolvedMcp = traceSpan("gen.resolve-mcp", () => resolveInstalledMcpResources(emitResources), pid);
     emitResources = resolvedMcp.resources;
     for (const message of resolvedMcp.warnings) {
       surfaceWarnings.push({
@@ -374,14 +418,16 @@ export async function generateFiles(
         alias_harnesses: [],
       });
     }
-    let files = await serializer.serialize(emitResources, projectRoot, {
-      target,
-      skillCursorMode: options.skillCursorMode,
-      skillSourceRoot,
-      projectRoot,
-      mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
-      surfaceWarnings,
-    });
+    let files = await traceSpan("gen.serialize", () =>
+      serializer.serialize(emitResources, projectRoot, {
+        target,
+        skillCursorMode: options.skillCursorMode,
+        skillSourceRoot,
+        projectRoot,
+        mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
+        surfaceWarnings,
+      }),
+    pid);
     if (nativeGroups) {
       const native = nativeAgentPluginFiles({
         platformId: pid,
@@ -393,18 +439,23 @@ export async function generateFiles(
       surfaceWarnings.push(...native.warnings);
     }
     if (pid === "claude-code" && claudeConfig) {
-      files = applyClaudePluginExtensions(files, claudeConfig, projectRoot);
+      files = traceSpan("gen.claude-plugin-extensions", () =>
+        applyClaudePluginExtensions(files, claudeConfig, projectRoot),
+      pid);
     }
-    files = await attachResourceOwnership(files, platformResources, {
-      platformId: pid,
-      rootPath: projectRoot,
-      target,
-      serializeOptions: {
-        skillCursorMode: options.skillCursorMode,
-        skillSourceRoot,
-        mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
-      },
-    });
+    const serialized = files;
+    files = await traceSpan("gen.resource-ownership", () =>
+      attachResourceOwnership(serialized, platformResources, {
+        platformId: pid,
+        rootPath: projectRoot,
+        target,
+        serializeOptions: {
+          skillCursorMode: options.skillCursorMode,
+          skillSourceRoot,
+          mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
+        },
+      }),
+    pid);
     results.push({
       platformId: pid,
       files,

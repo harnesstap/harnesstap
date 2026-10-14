@@ -1,3 +1,4 @@
+import { statusTraceEnabled, traceSpan } from "./status-trace.js";
 import { createHash } from "node:crypto";
 import type { ResourceMetadata, ResourceType } from "../types.js";
 
@@ -6,6 +7,15 @@ function normalizeText(content: string): string {
 }
 
 export function hashResourceBody(input: {
+  type: ResourceType;
+  content: string;
+  metadata: ResourceMetadata;
+}): string {
+  if (!statusTraceEnabled) return hashResourceBodyUntraced(input);
+  return traceSpan("hash.resource-body", () => hashResourceBodyUntraced(input), input.type);
+}
+
+function hashResourceBodyUntraced(input: {
   type: ResourceType;
   content: string;
   metadata: ResourceMetadata;

@@ -1,0 +1,3 @@
+kind: Changed
+body: Status recomputes reuse unchanged work. Unicode scan results, skill companion files, drift comparisons and per resource ownership paths are kept between reads in the same process, and the dry run plan reads each file and each materialization root once.
+time: 2026-10-14T09:45:00Z

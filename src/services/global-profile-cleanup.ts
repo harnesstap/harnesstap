@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
+  listGlobalApplySnapshotHeads,
   listGlobalApplySnapshotInstalls,
-  listGlobalApplySnapshots,
 } from "../models/global-apply-snapshot.js";
 import { getPlatform } from "../platforms/registry.js";
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
@@ -15,7 +15,7 @@ export function collectOtherProfilesSnapshotTrackedFiles(
   const tracked = new Set<string>();
   const seenProfiles = new Set<string>();
 
-  for (const snapshot of listGlobalApplySnapshots()) {
+  for (const snapshot of listGlobalApplySnapshotHeads()) {
     if (snapshot.profile_name === incomingProfileName) {
       continue;
     }

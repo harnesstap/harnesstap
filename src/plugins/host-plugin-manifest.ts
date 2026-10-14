@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "../services/status-fs.js";
 import { join } from "node:path";
 import { isAgentPluginsSchemaId } from "../services/agent-plugins/schema-registry.js";
+import { computationSlot } from "../services/status-computation.js";
 
 /** Host and Agent Plugins 1.0 manifest locations, preferred native first. */
 export const HOST_PLUGIN_MANIFEST_RELATIVE_PATHS = [
@@ -32,6 +33,16 @@ export function readJsonFile<T>(path: string): T | null {
 }
 
 export function readFirstHostPluginManifest(
+  installPath: string,
+): HostPluginManifest | null {
+  // One status read asks for the same manifest once per plugin pin. Read it once.
+  const manifest = computationSlot(`host-plugin-manifest:${installPath}`, () =>
+    readFirstHostPluginManifestUncached(installPath),
+  );
+  return manifest ? { ...manifest } : null;
+}
+
+function readFirstHostPluginManifestUncached(
   installPath: string,
 ): HostPluginManifest | null {
   for (const relativePath of HOST_PLUGIN_MANIFEST_RELATIVE_PATHS) {

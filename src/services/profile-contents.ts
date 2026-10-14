@@ -1,3 +1,4 @@
+import { traceSpan } from "./status-trace.js";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import {
   getPluginById,
@@ -171,7 +172,10 @@ function toContentsResources(resources: Resource[]): ProfileContentsResource[] {
     const key = `${resource.type}:${resource.name}`;
     if (!byKey.has(key)) {
       order.push(key);
-      byKey.set(key, toContentsResource(resource, registered));
+      byKey.set(
+        key,
+        traceSpan("base.profile-contents.resource", () => toContentsResource(resource, registered), key),
+      );
     }
   }
   return order

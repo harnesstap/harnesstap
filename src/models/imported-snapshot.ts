@@ -1,5 +1,6 @@
 import { ulid } from "ulid";
 import { getDb } from "../db/connection.js";
+import { computationSlot, inStatusComputation } from "../services/status-computation.js";
 import type {
   ImportedSnapshot,
   ImportedSnapshotInstall,
@@ -216,6 +217,58 @@ export function listImportedSnapshotInstalls(
 }
 
 export function findImportedSnapshotOwnersByFile(
+  filePath: string,
+): ImportedSnapshotFileOwner[] {
+  if (inStatusComputation()) {
+    // A status computation asks this for every conflicting planned file and
+    // never writes snapshots, so read every install's file list once.
+    const installs = computationSlot("imported-snapshot-install-files", () =>
+      loadImportedSnapshotInstallFiles());
+    return installs
+      .filter((install) => install.files.has(filePath))
+      .map((install) => ({ ...install.owner }));
+  }
+  return findImportedSnapshotOwnersByFileUncached(filePath);
+}
+
+function loadImportedSnapshotInstallFiles(): Array<{
+  owner: ImportedSnapshotFileOwner;
+  files: Set<string>;
+}> {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT installs.snapshot_id, installs.platform_id, snapshots.plugin_name, snapshots.plugin_version
+       FROM imported_snapshot_installs installs
+       JOIN imported_snapshots snapshots ON snapshots.id = installs.snapshot_id`,
+    )
+    .all() as Array<{
+    snapshot_id: string;
+    platform_id: string;
+    plugin_name: string;
+    plugin_version: string | null;
+  }>;
+  const filesStmt = db.prepare(
+    `SELECT files
+     FROM imported_snapshot_installs
+     WHERE snapshot_id = ? AND platform_id = ?`,
+  );
+  return rows.flatMap((row) => {
+    const install = filesStmt.get(row.snapshot_id, row.platform_id) as { files: string } | undefined;
+    if (!install) return [];
+    return [{
+      owner: {
+        snapshot_id: row.snapshot_id,
+        platform_id: row.platform_id,
+        plugin_name: row.plugin_name,
+        plugin_version: row.plugin_version ?? undefined,
+      },
+      files: new Set(JSON.parse(install.files) as string[]),
+    }];
+  });
+}
+
+function findImportedSnapshotOwnersByFileUncached(
   filePath: string,
 ): ImportedSnapshotFileOwner[] {
   const db = getDb();

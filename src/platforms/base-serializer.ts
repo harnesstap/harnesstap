@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "../services/status-fs.js";
 import { dirname, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { normalizeAgentInput } from "../services/agent-bridge.js";

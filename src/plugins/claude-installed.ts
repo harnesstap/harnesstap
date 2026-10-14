@@ -1,5 +1,7 @@
+import { traceSpan } from "../services/status-trace.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { computationSlot } from "../services/status-computation.js";
 import type { ResourceCreateInput } from "../types.js";
 import {
   parsePluginRef,
@@ -69,12 +71,18 @@ export function readInstalledPluginsFile(
   return readJsonFile<InstalledPluginsFile>(path);
 }
 
+/** Shared within one status read. Callers must not modify it. */
+function readInstalledPluginsFileShared(homeRoot: string): InstalledPluginsFile | null {
+  return computationSlot(`claude-installed-file:${homeRoot}`, () => readInstalledPluginsFile(homeRoot));
+}
+
 export function getInstalledPluginRecord(
   homeRoot: string,
   ref: string,
 ): InstalledPluginRecord | null {
-  const file = readInstalledPluginsFile(homeRoot);
-  return file?.plugins[ref]?.[0] ?? null;
+  const file = readInstalledPluginsFileShared(homeRoot);
+  const record = file?.plugins[ref]?.[0];
+  return record ? { ...record } : null;
 }
 
 export function getInstalledPluginInstallPath(
@@ -82,7 +90,7 @@ export function getInstalledPluginInstallPath(
   ref: string,
   candidateRefs?: string[],
 ): string | null {
-  const file = readInstalledPluginsFile(homeRoot);
+  const file = readInstalledPluginsFileShared(homeRoot);
   if (!file?.plugins) {
     return null;
   }
@@ -118,7 +126,28 @@ export function writeInstalledPluginRecord(
   writeFileSync(path, `${JSON.stringify(file, null, 2)}\n`);
 }
 
+function loadInstalledShared(homeRoot: string): readonly PluginInstall[] {
+  // Status resolves every pin against this file. Read it once per status read.
+  return computationSlot(`claude-installed:${homeRoot}`, () =>
+    traceSpan("scan.claude.installed-plugins", () => loadInstalledUncached(homeRoot), "~/.claude/plugins/installed_plugins.json"),
+  );
+}
+
+/** Ref and scope of each Claude install, without copying the install rows. */
+export function listInstalledRefScopes(
+  homeRoot: string,
+): ReadonlyArray<{ ref: string; scope: PluginScope }> {
+  return loadInstalledShared(homeRoot);
+}
+
 export function loadInstalled(homeRoot: string): PluginInstall[] {
+  return loadInstalledShared(homeRoot).map((install) => ({
+    ...install,
+    ...(install.metadata ? { metadata: { ...install.metadata } } : {}),
+  }));
+}
+
+function loadInstalledUncached(homeRoot: string): PluginInstall[] {
   const path = join(claudePluginsDir(homeRoot), "installed_plugins.json");
   const file = readJsonFile<InstalledPluginsFile>(path);
   if (!file?.plugins) return [];

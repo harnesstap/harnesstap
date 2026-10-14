@@ -12,11 +12,13 @@ import { formatResourceSelector } from "../models/resource.js";
 import {
   recordResourceMaterialization,
 } from "../models/resource-materialization.js";
+import { normalizeLineEndingsAndTrailingNewlines } from "./file-contents-drift.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
+import { inStatusComputation } from "./status-computation.js";
 
 function normalizeFileContent(content: string): string {
-  return content.replace(/\r\n/g, "\n").replace(/\n+$/, "");
+  return normalizeLineEndingsAndTrailingNewlines(content);
 }
 
 export function hashGeneratedContent(content: string): string {
@@ -40,6 +42,97 @@ function actionForPath(
   return "delete-file";
 }
 
+interface HarnessOwnershipMemo {
+  /** Paths each resource serialized to, keyed by options plus the resource. */
+  pathsByResource: Map<string, readonly string[]>;
+  /** Combined output paths no single resource produced, sorted. */
+  uncovered: string;
+}
+
+const ownershipMemo = new Map<string, HarnessOwnershipMemo>();
+let ownershipMemoHits = 0;
+
+/** Count of resources whose paths came from the memo, for tests. */
+export function readOwnershipMemoHits(): number {
+  return ownershipMemoHits;
+}
+
+export function clearOwnershipMemo(): void {
+  ownershipMemo.clear();
+}
+
+async function contributedPathsByResource(
+  files: SerializedFile[],
+  resources: Resource[],
+  context: { platformId: string; rootPath: string; target: SerializerTarget },
+  serializeOptions: SerializeOptions,
+): Promise<Map<string, Set<string>>> {
+  const serializer = getPlatformSerializer(context.platformId);
+  const serializeOne = async (resource: Resource): Promise<string[]> =>
+    (await serializer.serialize([resource], context.rootPath, serializeOptions)).map((file) => file.path);
+
+  // Only status reads reuse paths. An apply always serializes every resource.
+  const reuse = inStatusComputation();
+  const harnessKey = `${context.platformId}\0${context.rootPath}\0${context.target}`;
+  const previous = reuse ? ownershipMemo.get(harnessKey) : undefined;
+  const { surfaceWarnings: _surfaceWarnings, ...options } = serializeOptions;
+  const optionsKey = reuse ? JSON.stringify(options) : "";
+  const outputPaths = new Set(files.map((file) => file.path));
+
+  const resourceKeys: string[] = [];
+  const pathsPerResource: string[][] = [];
+  const reusedIndexes: number[] = [];
+  for (const resource of resources) {
+    const resourceKey = reuse ? `${optionsKey}\0${JSON.stringify(resource)}` : "";
+    resourceKeys.push(resourceKey);
+    const cached = previous?.pathsByResource.get(resourceKey);
+    // A cached path missing from the combined output means the resource's
+    // inputs on disk changed (a companion file removed): serialize again.
+    if (cached && cached.every((path) => outputPaths.has(path))) {
+      reusedIndexes.push(pathsPerResource.length);
+      pathsPerResource.push([...cached]);
+      continue;
+    }
+    pathsPerResource.push(await serializeOne(resource));
+  }
+
+  const uncoveredOf = (lists: string[][]): string => {
+    const covered = new Set(lists.flat());
+    return JSON.stringify([...outputPaths].filter((path) => !covered.has(path)).sort());
+  };
+  let uncovered = uncoveredOf(pathsPerResource);
+  // A combined output path that no resource claims, and that was not
+  // unclaimed last time, can belong to a reused resource whose inputs grew
+  // (a companion file added). Serialize the reused ones again.
+  if (reusedIndexes.length > 0 && previous && uncovered !== previous.uncovered) {
+    for (const index of reusedIndexes) {
+      const resource = resources[index];
+      if (resource) pathsPerResource[index] = await serializeOne(resource);
+    }
+    uncovered = uncoveredOf(pathsPerResource);
+  } else {
+    ownershipMemoHits += reusedIndexes.length;
+  }
+
+  if (reuse) {
+    const pathsByResource = new Map<string, readonly string[]>();
+    resourceKeys.forEach((key, index) => {
+      pathsByResource.set(key, pathsPerResource[index] ?? []);
+    });
+    ownershipMemo.set(harnessKey, { pathsByResource, uncovered });
+  }
+
+  const pathToResourceIds = new Map<string, Set<string>>();
+  resources.forEach((resource, index) => {
+    for (const path of pathsPerResource[index] ?? []) {
+      const ids = pathToResourceIds.get(path) ?? new Set<string>();
+      ids.add(resource.id);
+      pathToResourceIds.set(path, ids);
+    }
+  });
+  return pathToResourceIds;
+}
+
 export async function attachResourceOwnership(
   files: SerializedFile[],
   resources: Resource[],
@@ -54,25 +147,11 @@ export async function attachResourceOwnership(
     return files;
   }
 
-  const serializer = getPlatformSerializer(context.platformId);
   const serializeOptions: SerializeOptions = {
     target: context.target,
     ...context.serializeOptions,
   };
-  const pathToResourceIds = new Map<string, Set<string>>();
-
-  for (const resource of resources) {
-    const singleFiles = await serializer.serialize(
-      [resource],
-      context.rootPath,
-      serializeOptions,
-    );
-    for (const file of singleFiles) {
-      const ids = pathToResourceIds.get(file.path) ?? new Set<string>();
-      ids.add(resource.id);
-      pathToResourceIds.set(file.path, ids);
-    }
-  }
+  const pathToResourceIds = await contributedPathsByResource(files, resources, context, serializeOptions);
 
   const resourceById = new Map(resources.map((resource) => [resource.id, resource]));
 

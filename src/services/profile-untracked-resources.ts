@@ -1,3 +1,4 @@
+import { traceCount, traceSpan } from "./status-trace.js";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { harnesstapDirForHomeRoot } from "../db/connection.js";
@@ -233,19 +234,16 @@ async function notStagedFromHomeScan(
     return [];
   }
 
-  const committed = trackedResourceMap(profileSelector);
+  const committed = traceSpan("not-staged.tracked-resources", () => trackedResourceMap(profileSelector));
   const homeRoot = resolveHomeRoot();
   // Scan all detected harnesses unless a specific harness filter is requested.
-  const scanned = await scanHomeDefaults(
-    harness ? resolveRegisteredScanTargets(harness)[0] : undefined,
-    homeRoot,
+  const scanned = await traceSpan("scan.home-resources", () =>
+    scanHomeDefaults(harness ? resolveRegisteredScanTargets(harness)[0] : undefined, homeRoot),
   );
+  traceCount("scan.home-resources", "resources", scanned.reduce((sum, row) => sum + row.resources.length, 0));
   const platformIds = scanned.map((result) => result.platformId);
-  const ownedPaths = await profileOwnedPaths(
-    profileSelector,
-    homeRoot,
-    platformIds,
-    "global",
+  const ownedPaths = await traceSpan("not-staged.owned-paths", () =>
+    profileOwnedPaths(profileSelector, homeRoot, platformIds, "global"),
   );
   const notStaged: ProfileContentsResource[] = [];
   const seen = new Set<string>();

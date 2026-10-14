@@ -1,3 +1,4 @@
+import { statusTraceEnabled, traceSpan } from "./status-trace.js";
 import { createHash } from "node:crypto";
 
 /** Hidden-Unicode scanner aligned with OpenAPM ContentScanner (pack-time gate). */
@@ -281,7 +282,10 @@ for (const range of SUSPICIOUS_RANGES) {
   }
 }
 
-const UNICODE_CACHE_MAX = 128;
+// Sized above the file count of a large profile (about 800 planned files
+// across three harnesses) so a status recompute does not evict entries it
+// is about to read. Entries hold findings only, not file content.
+const UNICODE_CACHE_MAX = 8192;
 const unicodeScanCache = new Map<string, UnicodeScanFinding[]>();
 const unicodeIdentityCache = new Map<string, {
   mtimeMs: number;
@@ -365,6 +369,15 @@ export function scanUnicodeText(
   filename = "",
   identity?: UnicodeScanIdentity,
 ): UnicodeScanFinding[] {
+  if (!statusTraceEnabled) return scanUnicodeTextUntraced(content, filename, identity);
+  return traceSpan("unicode-scan", () => scanUnicodeTextUntraced(content, filename, identity), filename || "(inline)");
+}
+
+function scanUnicodeTextUntraced(
+  content: string,
+  filename = "",
+  identity?: UnicodeScanIdentity,
+): UnicodeScanFinding[] {
   if (!content) return [];
   if (filename && identity) {
     const previous = unicodeIdentityCache.get(filename);
@@ -392,6 +405,9 @@ export function scanUnicodeText(
   const key = unicodeCacheKey(content);
   const cached = unicodeScanCache.get(key);
   if (cached) {
+    // Keep recently used entries at the end so eviction drops the oldest use.
+    unicodeScanCache.delete(key);
+    unicodeScanCache.set(key, cached);
     return finish(cached);
   }
   unicodeScanComputes += 1;

@@ -1,4 +1,6 @@
-import { existsSync, readdirSync, readFileSync, statSync, type Dirent } from "node:fs";
+import { traceCount, traceSpan } from "../services/status-trace.js";
+import { type Dirent } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "../services/status-fs.js";
 import { isAbsolute, join, relative } from "node:path";
 import { isAgentPluginsSchemaId } from "../services/agent-plugins/schema-registry.js";
 import { fileSignature } from "../services/file-signature.js";
@@ -327,12 +329,20 @@ export function clearCursorPluginInstallsCache(): void {
 }
 
 function scanCursorPluginInstalls(homeRoot: string): PluginInstall[] {
-  const cache = scanCacheInstalls(homeRoot);
-  const local = scanLocalInstalls(homeRoot);
+  const cache = traceSpan("scan.cursor.cache", () => scanCacheInstalls(homeRoot), "~/.cursor/plugins/cache");
+  const local = traceSpan("scan.cursor.local", () => scanLocalInstalls(homeRoot), "~/.cursor/plugins/local");
   const refs = new Set(cache.map((row) => row.ref));
-  const marketplaces = scanMarketplaceInstalls(homeRoot, refs);
+  const marketplaces = traceSpan(
+    "scan.cursor.marketplaces",
+    () => scanMarketplaceInstalls(homeRoot, refs),
+    "~/.cursor/plugins/marketplaces",
+  );
   const installed = [...cache, ...local, ...marketplaces];
-  const mcp = scanMcpOnlyInstalls(homeRoot, installed);
+  const mcp = traceSpan("scan.cursor.mcp-folders", () => scanMcpOnlyInstalls(homeRoot, installed), "~/.cursor/projects/mcps");
+  traceCount("scan.cursor.cache", "plugins", cache.length);
+  traceCount("scan.cursor.local", "plugins", local.length);
+  traceCount("scan.cursor.marketplaces", "plugins", marketplaces.length);
+  traceCount("scan.cursor.mcp-folders", "plugins", mcp.length);
   return [...cache, ...local, ...marketplaces, ...mcp].filter((install) =>
     isInventoriedCursorInstall(install, homeRoot),
   );
@@ -341,9 +351,12 @@ function scanCursorPluginInstalls(homeRoot: string): PluginInstall[] {
 /** Synchronous Cursor inventory used by status panels and the provider. */
 export function listCursorPluginInstalls(homeRoot: string): PluginInstall[] {
   const installs = computationSlot(`cursor-inventory:${homeRoot}`, () => {
-    const sig = cursorInventoryInputSignature(homeRoot);
+    const sig = traceSpan("scan.cursor.signature", () => cursorInventoryInputSignature(homeRoot));
     const cached = cursorInstallsCache.get(homeRoot);
-    if (cached && cached.sig === sig) return cached.installs;
+    if (cached && cached.sig === sig) {
+      traceCount("scan.cursor.signature", "reused");
+      return cached.installs;
+    }
     const scanned = scanCursorPluginInstalls(homeRoot);
     cursorInstallsCache.set(homeRoot, { sig, installs: scanned });
     return scanned;

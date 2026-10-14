@@ -1,3 +1,5 @@
+import { computationSlot, inStatusComputation } from "./status-computation.js";
+import { readDiskTextOnce } from "./status-disk-read.js";
 import {
   existsSync,
   mkdirSync,
@@ -81,6 +83,19 @@ export function isApplyTrashTarget(target: string): boolean {
 }
 
 export function hashOnDiskFile(fullPath: string): string | undefined {
+  if (!inStatusComputation()) return hashOnDiskFileUncached(fullPath);
+  const hashes = computationSlot("on-disk-hashes", () => new Map<string, string | undefined>());
+  if (hashes.has(fullPath)) return hashes.get(fullPath);
+  const hash = hashOnDiskFileUncached(fullPath);
+  hashes.set(fullPath, hash);
+  return hash;
+}
+
+function hashOnDiskFileUncached(fullPath: string): string | undefined {
+  if (inStatusComputation()) {
+    const text = readDiskTextOnce(fullPath);
+    return text === null ? undefined : hashGeneratedContent(text);
+  }
   try {
     const bytes = readFileSync(fullPath);
     return hashGeneratedContent(bytes.toString("utf-8"));

@@ -1,4 +1,5 @@
 import { getDb } from "../db/connection.js";
+import { computationSlot, inStatusComputation } from "../services/status-computation.js";
 import { ulid } from "ulid";
 import type {
   MaterializationAction,
@@ -156,6 +157,25 @@ export function listMaterializationsForRootPath(
   rootPath: string,
   relativePath: string,
 ): ResourceMaterialization[] {
+  if (inStatusComputation()) {
+    // A status computation never writes these rows, so one query per root
+    // answers every per-path lookup it makes.
+    const byPath = computationSlot(`materializations-by-path:${rootPath}`, () => {
+      const map = new Map<string, ResourceMaterialization[]>();
+      for (const row of queryMaterializations(
+        `SELECT * FROM resource_materializations
+         WHERE root_path = ?
+         ORDER BY rowid ASC`,
+        [rootPath],
+      )) {
+        const rows = map.get(row.path);
+        if (rows) rows.push(rowToMaterialization(row));
+        else map.set(row.path, [rowToMaterialization(row)]);
+      }
+      return map;
+    });
+    return [...(byPath.get(relativePath) ?? [])];
+  }
   return queryMaterializations(
     `SELECT * FROM resource_materializations
      WHERE root_path = ?

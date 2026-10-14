@@ -12,7 +12,7 @@ import {
   createGlobalApplySnapshot,
   getLatestGlobalApplySnapshotForProfile,
   listGlobalApplySnapshotInstalls,
-  listGlobalApplySnapshots,
+  listGlobalApplySnapshotHeads,
   recordGlobalApplySnapshotInstall,
 } from "../models/global-apply-snapshot.js";
 import {
@@ -36,6 +36,7 @@ import {
   removeGlobalMaterializedFiles,
 } from "./applier.js";
 import { gateDeployFiles } from "./deploy-gate.js";
+import { traceCount, traceSpan } from "./status-trace.js";
 import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
 import { substituteResourcesForApply } from "./environment-var-substitution.js";
 import {
@@ -159,7 +160,7 @@ function collectProfileSnapshotTrackedFiles(profileName: string): string[] {
 }
 
 function collectPreviousGlobalApplyTrackedFiles(): string[] {
-  const [previousSnapshot] = listGlobalApplySnapshots();
+  const [previousSnapshot] = listGlobalApplySnapshotHeads();
   if (!previousSnapshot) {
     return [];
   }
@@ -559,9 +560,8 @@ export async function applyProfilePlugin(
     throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
-  const pulledPlugins = await ensureProfileDependenciesAvailable(
-    profilePlugin,
-    options,
+  const pulledPlugins = await traceSpan("dry-run.dependencies", () =>
+    ensureProfileDependenciesAvailable(profilePlugin, options),
   );
   const homeRoot = resolveHomeRoot();
   const rootPluginPins = collectPluginPinsForPrepare([profilePlugin.id]);
@@ -570,7 +570,8 @@ export async function applyProfilePlugin(
   // Marketplace/git pins on the profile root must be materialized before the
   // first composition resolve can walk them as upstream plugins. Dry-run skips
   // host install CLI calls but still syncs from trees that are already installed.
-  await preparePluginPinsForApply({
+  traceCount("dry-run.plugin-pins", "pins", rootPluginPins.length);
+  await traceSpan("dry-run.plugin-pins", () => preparePluginPinsForApply({
     pins: rootPluginPins,
     baseResources: [],
     projectRoot: homeRoot,
@@ -582,9 +583,12 @@ export async function applyProfilePlugin(
     yes: options.yes,
     interactive: options.interactive,
     profileName: profilePlugin.name,
-  });
+  }));
 
-  let resolution = resolveComposition({ rootSelectors: [profilePlugin.name] });
+  let resolution = traceSpan("dry-run.resolve-composition", () =>
+    resolveComposition({ rootSelectors: [profilePlugin.name] }),
+  );
+  traceCount("dry-run.resolve-composition", "resources", resolution.resources.length);
   let merged = {
     plugins: resolution.selected
       .map((plugin) => getPluginById(plugin.pluginId))
@@ -664,39 +668,46 @@ export async function applyProfilePlugin(
   ).resources;
 
   if (options.dryRun) {
-    const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(
-      profilePlugin.name,
-      options,
+    const previousTrackedFiles = await traceSpan("dry-run.previous-tracked", () =>
+      resolvePreviousTrackedFilesForApply(profilePlugin.name, options),
     );
-    const generated = await generateFiles(applyResources, harnesses, homeRoot, {
-      target: "global",
-      claudeConfig: merged.claude,
-      resolvedEnvironment,
-      pinSkillEmits: options.pinSkillEmits,
-      mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
-    });
+    const generated = await traceSpan("dry-run.generate-files", () =>
+      generateFiles(applyResources, harnesses, homeRoot, {
+        target: "global",
+        claudeConfig: merged.claude,
+        resolvedEnvironment,
+        pinSkillEmits: options.pinSkillEmits,
+        mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
+      }),
+    );
     const files = generated.flatMap((result) => result.files);
-    const materialized = await materializeFiles(files, homeRoot, {
-      conflictPolicy: options.conflictPolicy,
-      conflictResolver: options.conflictResolver,
-      dryRun: true,
-    });
+    traceCount("dry-run.generate-files", "files", files.length);
+    const materialized = await traceSpan("dry-run.materialize-plan", () =>
+      materializeFiles(files, homeRoot, {
+        conflictPolicy: options.conflictPolicy,
+        conflictResolver: options.conflictResolver,
+        dryRun: true,
+      }),
+    );
     const writing = new Set(materialized.writtenFiles);
-    gateDeployFiles(
-      files.filter((file) => writing.has(file.path)),
-      { forceUnicode: options.forceUnicode, rootPath: homeRoot },
+    traceSpan("dry-run.unicode-gate", () =>
+      gateDeployFiles(
+        files.filter((file) => writing.has(file.path)),
+        { forceUnicode: options.forceUnicode, rootPath: homeRoot },
+      ),
     );
     const desiredFiles = files.map((file) => file.path);
-    const plannedRemoval = removeStaleGlobalProfileFiles(
-      homeRoot,
-      desiredFiles,
-      previousTrackedFiles,
-      harnesses,
-      { dryRun: true, forceRemove: options.forceRemove },
+    const plannedRemoval = traceSpan("dry-run.stale-removal", () =>
+      removeStaleGlobalProfileFiles(
+        homeRoot,
+        desiredFiles,
+        previousTrackedFiles,
+        harnesses,
+        { dryRun: true, forceRemove: options.forceRemove },
+      ),
     );
-    const writeKeeps = skippedWriteKeepsForOwnership(
-      homeRoot,
-      materialized.skippedFiles,
+    const writeKeeps = traceSpan("dry-run.ownership-keeps", () =>
+      skippedWriteKeepsForOwnership(homeRoot, materialized.skippedFiles),
     );
     return {
       profile_name: profilePlugin.name,
