@@ -48,7 +48,8 @@ export function detectProjectDrift(
   const changes: DriftFileChange[] = [];
   const seen = new Set<string>();
 
-  for (const [platformId, files] of Object.entries(snapshot.state.platform_files)) {
+  // Older snapshots can lack platform_files. Treat them as tracking nothing.
+  for (const [platformId, files] of Object.entries(snapshot.state?.platform_files ?? {})) {
     for (const [relativePath, expectedContent] of Object.entries(files)) {
       seen.add(relativePath);
       const current = readProjectFile(projectRoot, relativePath);

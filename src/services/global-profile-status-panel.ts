@@ -308,7 +308,7 @@ export function projectDriftWatchPaths(projectPath?: string): string[] {
   const snapshot = getLatestSnapshot(project.id);
   if (!snapshot) return [];
   const paths: string[] = [];
-  for (const files of Object.values(snapshot.state.platform_files)) {
+  for (const files of Object.values(snapshot.state?.platform_files ?? {})) {
     for (const relativePath of Object.keys(files)) {
       paths.push(join(project.root, relativePath));
     }

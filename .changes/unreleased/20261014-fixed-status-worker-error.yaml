@@ -1,0 +1,3 @@
+kind: Fixed
+body: A failed status read now reports the underlying error and its stack in the response and the agent log instead of a bare "Status read failed", and a failed read no longer keeps `ht` from exiting. Project drift skips older snapshots that have no platform files instead of failing the status read.
+time: 2026-10-14T22:10:00Z

@@ -1,3 +1,4 @@
+import { describeStatusRefreshError, type StatusRefreshError } from "./status-refresh-error.js";
 import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from "node:fs";
 import { basename, dirname, join, sep } from "node:path";
 import { Worker, parentPort } from "node:worker_threads";
@@ -624,7 +625,9 @@ interface RefreshOutcome {
   ok: boolean;
   value?: unknown;
   watchedPaths?: string[];
+  error?: StatusRefreshError;
 }
+
 
 interface RefreshJob {
   key: string;
@@ -649,6 +652,7 @@ type RefreshResultMessage =
       value?: unknown;
       watchedPaths?: string[];
       watchPaths?: string[];
+      error?: StatusRefreshError | string;
       trace?: { computeMs: number; jsonMs: number; bytes: number };
     };
 
@@ -666,10 +670,10 @@ export function readStatusRefreshWorkerCreateCount(): number {
   return workerCreates;
 }
 
-function releaseRefreshJobs(): void {
+function releaseRefreshJobs(error: StatusRefreshError): void {
   const jobs = [...refreshJobs.values()];
   refreshJobs.clear();
-  for (const job of jobs) job.resolve({ ok: false });
+  for (const job of jobs) job.resolve({ ok: false, error });
 }
 
 function scheduleWorkerRespawn(): void {
@@ -700,6 +704,36 @@ function statusRefreshWorkerTarget(): string | URL {
     return "/$bunfs/root/services/status-refresh-worker.ts";
   }
   return new URL("./status-refresh-worker.ts", import.meta.url);
+}
+
+function completeRefreshJob(job: RefreshJob, message: Extract<RefreshResultMessage, { op?: undefined }>): void {
+  if (message.value === undefined || !message.watchedPaths) return;
+  if (message.trace && job.postedAt !== undefined) {
+    const roundTrip = performance.now() - job.postedAt;
+    traceRecord(`phase=worker.round-trip job=${message.id}`, {
+      ms: roundTrip,
+      compute: message.trace.computeMs,
+      json: message.trace.jsonMs,
+      overhead: roundTrip - message.trace.computeMs - message.trace.jsonMs,
+      kb: Math.round(message.trace.bytes / 1024),
+    });
+  }
+  const freezeStarted = statusTraceEnabled ? performance.now() : 0;
+  const frozen = deepFreeze(message.value);
+  if (statusTraceEnabled) traceRecord(`phase=main.freeze job=${message.id}`, { ms: performance.now() - freezeStarted });
+  if (job.home === process.env.HOME && job.generation === generation) {
+    remember(job.key, job.projectPath, {
+      value: frozen,
+      watchedPaths: message.watchedPaths,
+    }, job.epochAtStart, job.writeGenAtStart, message.watchPaths);
+    refreshCompletions += 1;
+    respawnAttempts = 0;
+  }
+  job.resolve({
+    ok: true,
+    value: frozen,
+    watchedPaths: message.watchedPaths,
+  });
 }
 
 function statusWorker(): Worker {
@@ -733,51 +767,37 @@ function statusWorker(): Worker {
     refreshJobs.delete(message.id);
     try {
       if (!message.ok || message.value === undefined || !message.watchedPaths) {
-        job.resolve({ ok: false });
-        return;
-      }
-      if (message.trace && job.postedAt !== undefined) {
-        const roundTrip = performance.now() - job.postedAt;
-        traceRecord(`phase=worker.round-trip job=${message.id}`, {
-          ms: roundTrip,
-          compute: message.trace.computeMs,
-          json: message.trace.jsonMs,
-          overhead: roundTrip - message.trace.computeMs - message.trace.jsonMs,
-          kb: Math.round(message.trace.bytes / 1024),
+        const reported = message.error;
+        job.resolve({
+          ok: false,
+          error: typeof reported === "string"
+            ? { message: reported }
+            : reported ?? { message: message.ok ? "status refresh worker returned no value" : "status refresh worker failed without an error" },
         });
+      } else {
+        completeRefreshJob(job, message);
       }
-      const freezeStarted = statusTraceEnabled ? performance.now() : 0;
-      const frozen = deepFreeze(message.value);
-      if (statusTraceEnabled) traceRecord(`phase=main.freeze job=${message.id}`, { ms: performance.now() - freezeStarted });
-      if (job.home === process.env.HOME && job.generation === generation) {
-        remember(job.key, job.projectPath, {
-          value: frozen,
-          watchedPaths: message.watchedPaths,
-        }, job.epochAtStart, job.writeGenAtStart, message.watchPaths);
-        refreshCompletions += 1;
-        respawnAttempts = 0;
-      }
-      job.resolve({
-        ok: true,
-        value: frozen,
-        watchedPaths: message.watchedPaths,
-      });
-    } catch {
-      job.resolve({ ok: false });
+    } catch (error) {
+      job.resolve({ ok: false, error: describeStatusRefreshError(error) });
     }
+    // Release the worker on failures too, or a CLI read that failed would
+    // keep the process alive.
     if (refreshJobs.size === 0) worker.unref();
     releaseIdleWorker(worker);
   });
-  worker.on("error", () => {
+
+  worker.on("error", (error: unknown) => {
     if (refreshWorker === worker) refreshWorker = null;
     workerFailed = true;
-    releaseRefreshJobs();
+    const described = describeStatusRefreshError(error);
+    console.error(`[status-cache] refresh worker error: ${described.stack ?? described.message}`);
+    releaseRefreshJobs({ message: `status refresh worker crashed: ${described.message}`, ...(described.stack ? { stack: described.stack } : {}) });
     scheduleWorkerRespawn();
   });
-  worker.on("exit", () => {
+  worker.on("exit", (code: number) => {
     if (refreshWorker !== worker) return;
     refreshWorker = null;
-    releaseRefreshJobs();
+    releaseRefreshJobs({ message: `status refresh worker exited with code ${code} before replying` });
     scheduleWorkerRespawn();
   });
   refreshWorker = worker;
@@ -850,8 +870,8 @@ function enqueueStatusRefresh<T extends object>(
               value: deepFreeze(loaded.value),
               watchedPaths: [...loaded.watchedPaths],
             });
-          } catch {
-            resolve({ ok: false });
+          } catch (error) {
+            resolve({ ok: false, error: describeStatusRefreshError(error) });
           }
         })();
       }, 0);
@@ -962,7 +982,12 @@ async function loadNow<T extends object>(
   if (outcome.ok && outcome.value !== undefined) {
     return present(outcome.value as T, false);
   }
-  throw new Error("Status read failed");
+  const cause = outcome.error ?? { message: "no error was reported" };
+  const where = projectPath ? ` (projectPath=${projectPath})` : "";
+  console.error(`[status-cache] status read failed${where}: ${cause.stack ?? cause.message}`);
+  const failure = new Error(`Status read failed: ${cause.message}`);
+  if (cause.stack) failure.stack = `Error: Status read failed: ${cause.message}\nCaused by: ${cause.stack}`;
+  throw failure;
 }
 
 /**
