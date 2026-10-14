@@ -45,8 +45,10 @@ describe("scanUnicodeText", () => {
     expect(second.some((finding) => finding.description === "mutated")).toBe(false);
     expect(scanUnicodeText("plain ascii", "note.md")).toEqual([]);
     expect(readUnicodeScanComputeCount() - before).toBe(1);
-    scanUnicodeText(text, "other.md");
-    expect(readUnicodeScanComputeCount() - before).toBe(2);
+    const other = scanUnicodeText(text, "other.md");
+    expect(other[0]?.file).toBe("other.md");
+    expect(second[0]?.file).toBe("note.md");
+    expect(readUnicodeScanComputeCount() - before).toBe(1);
   });
 
   it("flags zero-width space as warning", () => {

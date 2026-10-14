@@ -293,8 +293,15 @@ export function clearUnicodeScanCache(): void {
   unicodeScanCache.clear();
 }
 
-function unicodeCacheKey(content: string, filename: string): string {
-  return createHash("sha256").update(filename).update("\0").update(content).digest("hex");
+function unicodeCacheKey(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+function stampFilename(
+  findings: readonly UnicodeScanFinding[],
+  filename: string,
+): UnicodeScanFinding[] {
+  return findings.map((finding) => ({ ...finding, file: filename }));
 }
 
 function isAscii(content: string): boolean {
@@ -328,10 +335,10 @@ export function scanUnicodeText(content: string, filename = ""): UnicodeScanFind
     return [];
   }
 
-  const key = unicodeCacheKey(content, filename);
+  const key = unicodeCacheKey(content);
   const cached = unicodeScanCache.get(key);
   if (cached) {
-    return cached.slice();
+    return stampFilename(cached, filename);
   }
   unicodeScanComputes += 1;
 
@@ -390,7 +397,7 @@ export function scanUnicodeText(content: string, filename = ""): UnicodeScanFind
     const oldest = unicodeScanCache.keys().next().value;
     if (oldest) unicodeScanCache.delete(oldest);
   }
-  return findings.slice();
+  return stampFilename(findings, filename);
 }
 
 export function scanUnicodeBuffer(buffer: Buffer, filename = ""): UnicodeScanFinding[] {
