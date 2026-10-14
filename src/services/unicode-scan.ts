@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 /** Hidden-Unicode scanner aligned with OpenAPM ContentScanner (pack-time gate). */
 
 export type UnicodeScanSeverity = "critical" | "warning" | "info";
@@ -279,6 +281,22 @@ for (const range of SUSPICIOUS_RANGES) {
   }
 }
 
+const UNICODE_CACHE_MAX = 128;
+const unicodeScanCache = new Map<string, UnicodeScanFinding[]>();
+let unicodeScanComputes = 0;
+
+export function readUnicodeScanComputeCount(): number {
+  return unicodeScanComputes;
+}
+
+export function clearUnicodeScanCache(): void {
+  unicodeScanCache.clear();
+}
+
+function unicodeCacheKey(content: string, filename: string): string {
+  return createHash("sha256").update(filename).update("\0").update(content).digest("hex");
+}
+
 function isAscii(content: string): boolean {
   for (let i = 0; i < content.length; i++) {
     if ((content.charCodeAt(i) ?? 0) > 0x7f) return false;
@@ -309,6 +327,13 @@ export function scanUnicodeText(content: string, filename = ""): UnicodeScanFind
   if (!content || isAscii(content)) {
     return [];
   }
+
+  const key = unicodeCacheKey(content, filename);
+  const cached = unicodeScanCache.get(key);
+  if (cached) {
+    return cached.slice();
+  }
+  unicodeScanComputes += 1;
 
   const findings: UnicodeScanFinding[] = [];
   const lines = content.split("\n");
@@ -360,7 +385,12 @@ export function scanUnicodeText(content: string, filename = ""): UnicodeScanFind
     }
   }
 
-  return findings;
+  unicodeScanCache.set(key, findings);
+  if (unicodeScanCache.size > UNICODE_CACHE_MAX) {
+    const oldest = unicodeScanCache.keys().next().value;
+    if (oldest) unicodeScanCache.delete(oldest);
+  }
+  return findings.slice();
 }
 
 export function scanUnicodeBuffer(buffer: Buffer, filename = ""): UnicodeScanFinding[] {

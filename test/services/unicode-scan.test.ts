@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import {
+  clearUnicodeScanCache,
   hasCriticalUnicode,
+  readUnicodeScanComputeCount,
   scanUnicodeText,
   stripHiddenUnicode,
   summarizeUnicodeFindings,
@@ -23,6 +25,28 @@ describe("scanUnicodeText", () => {
     const findings = scanUnicodeText(`x${String.fromCodePoint(0xe0041)}y`);
     expect(findings[0]?.category).toBe("tag-character");
     expect(findings[0]?.severity).toBe("critical");
+  });
+
+  it("reuses a non-ASCII scan for the same content and filename", () => {
+    clearUnicodeScanCache();
+    const text = "a\u200Bb";
+    const before = readUnicodeScanComputeCount();
+    const first = scanUnicodeText(text, "note.md");
+    first.push({
+      file: "note.md",
+      line: 1,
+      column: 1,
+      codepoint: "U+0000",
+      severity: "info",
+      category: "unusual-whitespace",
+      description: "mutated",
+    });
+    const second = scanUnicodeText(text, "note.md");
+    expect(second.some((finding) => finding.description === "mutated")).toBe(false);
+    expect(scanUnicodeText("plain ascii", "note.md")).toEqual([]);
+    expect(readUnicodeScanComputeCount() - before).toBe(1);
+    scanUnicodeText(text, "other.md");
+    expect(readUnicodeScanComputeCount() - before).toBe(2);
   });
 
   it("flags zero-width space as warning", () => {

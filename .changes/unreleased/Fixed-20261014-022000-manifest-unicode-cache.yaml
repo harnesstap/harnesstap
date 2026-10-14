@@ -1,0 +1,5 @@
+kind: Fixed
+body: Marketplace manifest reads and hidden-Unicode scans are reused when the file has not changed.
+time: 2026-10-14T02:20:00.000Z
+custom:
+  Issue: ""
