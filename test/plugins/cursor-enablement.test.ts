@@ -22,7 +22,7 @@ describe("cursor-enablement helpers", () => {
     ]);
     expect([...names].sort()).toEqual([
       "active-plugin",
-      "context7-plugin-context7",
+      "context7",
       "slack",
     ]);
   });

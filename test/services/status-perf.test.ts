@@ -72,9 +72,11 @@ import { clearLiveReadCaches } from "../../src/services/live-read-cache.ts";
 import {
   markStatusCacheStaleForTests,
   readStatusRefreshCompletionCount,
+  readStatusRefreshWorkerCreateCount,
   readStatusWatcherCreateCount,
   setStatusRefreshDelayMs,
   statusCacheWatchersHealthy,
+  warmStatusRefreshWorker,
 } from "../../src/services/status-read-cache.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
@@ -87,6 +89,25 @@ const WARM_BUDGET_MS = 50;
  * the Cursor logs folder.
  */
 const COLD_BUDGET_MS = 500;
+/** A blocked event loop shows up as a timer gap. Cold and refresh must stay under this. */
+const STALL_BUDGET_MS = 50;
+
+function watchEventLoopGap(): { stop: () => number } {
+  let maxGap = 0;
+  let last = performance.now();
+  const timer = setInterval(() => {
+    const now = performance.now();
+    const gap = now - last;
+    if (gap > maxGap) maxGap = gap;
+    last = now;
+  }, 10);
+  return {
+    stop() {
+      clearInterval(timer);
+      return maxGap;
+    },
+  };
+}
 
 function stable(status: Awaited<ReturnType<typeof detectGlobalProfileStatus>>): string {
   const copy = structuredClone(status);
@@ -159,6 +180,8 @@ describe("status perf", () => {
       setActiveProfileName("perf-profile");
 
       setStatusRefreshDelayMs(0);
+      warmStatusRefreshWorker();
+      const workers = readStatusRefreshWorkerCreateCount();
       expect(cursorStateDbOpens).toBeGreaterThan(0);
       expect(cursorLogsReads).toBeGreaterThan(0);
       cursorLogsReads = 0;
@@ -166,6 +189,7 @@ describe("status perf", () => {
       const before = readDriftCoreComputeCount();
       const preparesBefore = readPluginByNamePrepareCount();
       const lookupsBefore = readPluginByNameLookupCount();
+      const gap = watchEventLoopGap();
       const coldStarted = performance.now();
       const cold = await detectGlobalProfileStatus({ depth: "full" });
       const coldMs = performance.now() - coldStarted;
@@ -181,12 +205,13 @@ describe("status perf", () => {
       const recomputeStarted = performance.now();
       const recomputed = await detectGlobalProfileStatus({ depth: "full" });
       const recomputeMs = performance.now() - recomputeStarted;
+      const coldStallMs = gap.stop();
       console.log(
-        `status perf cold=${coldMs.toFixed(1)}ms warm=${warmMs.toFixed(1)}ms recompute=${recomputeMs.toFixed(1)}ms prepares=${prepareDelta} lookups=${lookupDelta} watchers=${watchersArmed} vscdbOpens=${cursorStateDbOpens} logsReads=${cursorLogsReads}`,
+        `status perf cold=${coldMs.toFixed(1)}ms warm=${warmMs.toFixed(1)}ms recompute=${recomputeMs.toFixed(1)}ms prepares=${prepareDelta} lookups=${lookupDelta} watchers=${watchersArmed} vscdbOpens=${cursorStateDbOpens} logsReads=${cursorLogsReads} coldStall=${coldStallMs.toFixed(1)}ms`,
       );
 
-      expect(lookupDelta).toBeGreaterThan(1);
-      expect(prepareDelta).toBeLessThanOrEqual(1);
+      expect(lookupDelta).toBe(0);
+      expect(prepareDelta).toBe(0);
       expect(coldMs).toBeLessThan(COLD_BUDGET_MS);
       expect(recomputeMs).toBeLessThan(COLD_BUDGET_MS);
       expect(warmMs).toBeLessThan(WARM_BUDGET_MS);
@@ -196,7 +221,25 @@ describe("status perf", () => {
       expect(statusCacheWatchersHealthy()).toBe(true);
       expect(stable(warm)).toBe(stable(cold));
       expect(stable(recomputed)).toBe(stable(cold));
-      expect(readDriftCoreComputeCount() - before).toBe(2);
+      expect(readDriftCoreComputeCount() - before).toBe(0);
+      const refreshGap = watchEventLoopGap();
+      markStatusCacheStaleForTests();
+      const during = await detectGlobalProfileStatus({ depth: "full" });
+      expect(during.refreshing).toBe(true);
+      const refreshDeadline = Date.now() + 8000;
+      let settled = during;
+      while (Date.now() < refreshDeadline) {
+        settled = await detectGlobalProfileStatus({ depth: "full" });
+        if (!settled.refreshing) break;
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      }
+      const refreshStallMs = refreshGap.stop();
+      const stallMs = Math.max(coldStallMs, refreshStallMs);
+      console.log(`status stall maxGap=${stallMs.toFixed(1)}ms workers=${readStatusRefreshWorkerCreateCount()}`);
+
+      expect(settled.refreshing).toBe(false);
+      expect(stallMs).toBeLessThan(STALL_BUDGET_MS);
+      expect(readStatusRefreshWorkerCreateCount()).toBe(workers);
       expect(cold.contents?.resources.length).toBe(RESOURCE_COUNT);
       expect(cursorStateDbOpens).toBe(0);
       expect(cursorLogsReads).toBe(0);
@@ -212,6 +255,7 @@ describe("status perf", () => {
     try {
       clearLiveReadCaches();
       setStatusRefreshDelayMs(0);
+      warmStatusRefreshWorker();
       const plugin = createPlugin({ name: "overlap-profile" });
       setPluginTags(plugin.id, ["profile"]);
       addResourceToPlugin(
@@ -247,6 +291,7 @@ describe("status perf", () => {
       setStatusRefreshDelayMs(400);
       markStatusCacheStaleForTests();
       const computed = readDriftCoreComputeCount();
+      const overlapGap = watchEventLoopGap();
       const kickStarted = performance.now();
       const kick = await detectGlobalProfileStatus({ depth: "full" });
       const kickMs = performance.now() - kickStarted;
@@ -266,7 +311,11 @@ describe("status perf", () => {
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
       expect(readDriftCoreComputeCount()).toBe(computed);
-      console.log(`status overlap kick=${kickMs.toFixed(1)}ms slowest=${slowestMs.toFixed(1)}ms`);
+      const overlapStallMs = overlapGap.stop();
+      expect(overlapStallMs).toBeLessThan(STALL_BUDGET_MS);
+      console.log(
+        `status overlap kick=${kickMs.toFixed(1)}ms slowest=${slowestMs.toFixed(1)}ms stall=${overlapStallMs.toFixed(1)}ms`,
+      );
 
       const doneDeadline = Date.now() + 8000;
       let done = kick;

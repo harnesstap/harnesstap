@@ -24,7 +24,7 @@ function stable(status: Awaited<ReturnType<typeof detectGlobalProfileStatus>>): 
 }
 
 describe("global profile status cache", () => {
-  it("skips the dry-run on a second fast read and again after a full read", async () => {
+  it("skips a second read of the same depth", async () => {
     const context = await createInitializedTestContext("status-cache-fast");
     try {
       clearLiveReadCaches();
@@ -48,10 +48,16 @@ describe("global profile status cache", () => {
       setActiveProfileName("work");
 
       const before = readDriftCoreComputeCount();
+      const completions = readStatusRefreshCompletionCount();
       const full = await detectGlobalProfileStatus({ depth: "full", harness: "claude-code" });
       const fast = await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
       const fastAgain = await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
-      expect(readDriftCoreComputeCount() - before).toBe(1);
+      expect(readDriftCoreComputeCount()).toBe(before);
+      expect(readStatusRefreshCompletionCount() - completions).toBe(2);
+      expect(Object.isFrozen(full.changes)).toBe(true);
+      expect(() => {
+        full.changes.push({ path: "x", type: "modified" });
+      }).toThrow();
       expect(stable(fast)).toBe(stable(fastAgain));
       expect(fast.depth).toBe("fast");
       expect(fast.changes).toEqual(full.changes);
@@ -96,6 +102,7 @@ describe("global profile status cache", () => {
       expect(first.has_drift).toBe(false);
       expect(first.changes).toEqual([]);
       const computed = readDriftCoreComputeCount();
+      const completions = readStatusRefreshCompletionCount();
 
       const original = readFileSync(guide, "utf8");
       expect(original.includes("guide")).toBe(true);
@@ -108,10 +115,12 @@ describe("global profile status cache", () => {
       const cached = await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
       expect(cached.changes).toEqual([]);
       expect(readDriftCoreComputeCount()).toBe(computed);
+      expect(readStatusRefreshCompletionCount()).toBe(completions);
 
       clearLiveReadCaches();
       const fresh = await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
-      expect(readDriftCoreComputeCount()).toBe(computed + 1);
+      expect(readDriftCoreComputeCount()).toBe(computed);
+      expect(readStatusRefreshCompletionCount()).toBe(completions + 1);
       expect(fresh.changes.some((change) => change.path.endsWith("CLAUDE.md"))).toBe(true);
       expect(fresh.refreshing).toBe(false);
     } finally {

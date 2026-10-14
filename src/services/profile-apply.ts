@@ -676,12 +676,16 @@ export async function applyProfilePlugin(
       mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
     });
     const files = generated.flatMap((result) => result.files);
-    gateDeployFiles(files, { forceUnicode: options.forceUnicode, rootPath: homeRoot });
     const materialized = await materializeFiles(files, homeRoot, {
       conflictPolicy: options.conflictPolicy,
       conflictResolver: options.conflictResolver,
       dryRun: true,
     });
+    const writing = new Set(materialized.writtenFiles);
+    gateDeployFiles(
+      files.filter((file) => writing.has(file.path)),
+      { forceUnicode: options.forceUnicode, rootPath: homeRoot },
+    );
     const desiredFiles = files.map((file) => file.path);
     const plannedRemoval = removeStaleGlobalProfileFiles(
       homeRoot,
