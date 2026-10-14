@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import {
+  APP_UPDATE_STATUS_CACHE_MS,
   applyDesktopUpdate,
+  clearDesktopUpdateStatusCache,
   detectCliInstallChannel,
   downloadDesktopInstaller,
   formatCliUpdateNotice,
@@ -12,6 +14,7 @@ import {
   loadUpdateCheckCache,
   maybeNotifyCliUpdate,
   normalizeDesktopPlatform,
+  resolveDesktopUpdateStatus,
   resolvePublishedRelease,
   saveUpdateCheckCache,
   selectDesktopReleaseAsset,
@@ -327,6 +330,67 @@ describe("desktop installer apply", () => {
     });
     expect(downloaded.path.endsWith("HarnessTap_1.0.3_x64-setup.exe")).toBe(true);
     expect(launched).toHaveLength(1);
+  });
+});
+
+describe("desktop update status cache", () => {
+  afterEach(() => {
+    clearDesktopUpdateStatusCache();
+  });
+
+  it("reuses one status for an hour", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-app-update-cache-"));
+    const now = new Date("2026-10-14T00:00:00.000Z");
+    let calls = 0;
+    const fetchFn: UpdateFetch = () => {
+      calls += 1;
+      return Promise.resolve(jsonResponse(githubLatestBody()));
+    };
+    const input = {
+      harnesstapDir: dir,
+      currentVersion: "1.0.2",
+      fetchFn,
+      platform: "darwin" as const,
+      arch: "arm64",
+    };
+    const first = await resolveDesktopUpdateStatus({ ...input, now });
+    const second = await resolveDesktopUpdateStatus({ ...input, now });
+    expect(second).toBe(first);
+    expect(calls).toBe(1);
+
+    const later = await resolveDesktopUpdateStatus({
+      ...input,
+      now: new Date(now.getTime() + APP_UPDATE_STATUS_CACHE_MS),
+    });
+    expect(later).not.toBe(first);
+    expect(later.latestVersion).toBe(first.latestVersion);
+  });
+
+  it("drops the cached status after apply", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-app-update-apply-cache-"));
+    mkdirSync(join(dir, "cache", "updates"), { recursive: true });
+    const now = new Date();
+    const fetchFn: UpdateFetch = (input) => {
+      const url = String(input);
+      if (url.endsWith(".dmg")) {
+        return Promise.resolve(new Response("dmg-bytes", { status: 200 }));
+      }
+      return Promise.resolve(jsonResponse(githubLatestBody()));
+    };
+    const input = {
+      harnesstapDir: dir,
+      currentVersion: "1.0.2",
+      fetchFn,
+      platform: "darwin" as const,
+      arch: "arm64",
+    };
+    const cached = await resolveDesktopUpdateStatus({ ...input, now });
+    await applyDesktopUpdate({
+      ...input,
+      launch: () => {},
+    });
+    const after = await resolveDesktopUpdateStatus({ ...input, now });
+    expect(after).not.toBe(cached);
   });
 });
 

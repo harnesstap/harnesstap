@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop update checks are reused for one hour.
+time: 2026-10-14T02:30:00.000Z
+custom:
+  Issue: ""
