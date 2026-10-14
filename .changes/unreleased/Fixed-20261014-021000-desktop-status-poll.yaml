@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop polls live status every 8 seconds, and only while the window is visible and focused. A poll does not start while an earlier one is still running.
+time: 2026-10-14T02:10:00.000Z
+custom:
+  Issue: ""

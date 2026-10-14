@@ -17,9 +17,9 @@ import type {
   ProfileSummary,
 } from "../lib/types";
 import type { AgentClient } from "./agent-session";
+import { LIVE_STATUS_POLL_MS, shouldPollLiveStatus } from "./status-poll";
 
-export const POLL_MS = 2000;
-export const ACTIVITY_TTL_MS = 60_000;
+export const POLL_MS = LIVE_STATUS_POLL_MS;
 
 export interface PreviewKey {
   scope: Scope;
@@ -563,8 +563,10 @@ export function selectPreview(
 }
 
 /**
- * Activity-gated fast status poll. Runs while `enabled`; skips ticks after a
- * minute without user input. Aborts in-flight requests on unmount.
+ * Fast status poll. Runs while `enabled` and the window is visible and
+ * focused. A tick does not start while an earlier poll is still running.
+ * Focusing a visible window polls once, so the user does not wait for the
+ * interval. Aborts in-flight requests on unmount.
  */
 export function useStatusPolling(input: {
   enabled: boolean;
@@ -572,37 +574,46 @@ export function useStatusPolling(input: {
   store?: StatusStore;
 }): void {
   const store = input.store ?? statusStore;
-  const lastActivityRef = useRef(Date.now());
+  const inFlightRef = useRef(false);
   const projectPathRef = useRef(input.projectPath);
   projectPathRef.current = input.projectPath;
-
-  useEffect(() => {
-    const markActivity = () => {
-      lastActivityRef.current = Date.now();
-    };
-    const events = ["pointerdown", "keydown", "scroll", "wheel", "touchstart"] as const;
-    for (const event of events) {
-      document.addEventListener(event, markActivity, { passive: true, capture: true });
-    }
-    window.addEventListener("focus", markActivity);
-    return () => {
-      for (const event of events) {
-        document.removeEventListener(event, markActivity, { capture: true });
-      }
-      window.removeEventListener("focus", markActivity);
-    };
-  }, []);
 
   useEffect(() => {
     if (!input.enabled) {
       return;
     }
-    const timer = window.setInterval(() => {
-      if (Date.now() - lastActivityRef.current < ACTIVITY_TTL_MS) {
-        void store.refreshStatus("fast", projectPathRef.current);
+
+    const poll = () => {
+      const visible = document.visibilityState === "visible";
+      const focused = document.hasFocus();
+      if (!shouldPollLiveStatus({
+        enabled: true,
+        visible,
+        focused,
+        inFlight: inFlightRef.current,
+      })) {
+        return;
       }
-    }, POLL_MS);
-    return () => window.clearInterval(timer);
+      inFlightRef.current = true;
+      void store.refreshStatus("fast", projectPathRef.current).finally(() => {
+        inFlightRef.current = false;
+      });
+    };
+
+    const onVisibleOrFocused = () => {
+      if (document.visibilityState === "visible" && document.hasFocus()) {
+        poll();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibleOrFocused);
+    window.addEventListener("focus", onVisibleOrFocused);
+    const timer = window.setInterval(poll, POLL_MS);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibleOrFocused);
+      window.removeEventListener("focus", onVisibleOrFocused);
+      window.clearInterval(timer);
+    };
   }, [input.enabled, store]);
 
   useEffect(() => () => store.abortInFlight(), [store]);
