@@ -17,7 +17,6 @@ import {
   resolveCommandResult,
   type RunCommand,
 } from "../run-command.js";
-import { installCursorLocalPlugin } from "../cursor-local-install.js";
 import type {
   PluginCheckOptions,
   PluginCheckResult,
@@ -216,6 +215,10 @@ export class CursorPluginProvider implements PluginProvider {
     ctx: PluginContext,
     opts: PluginInstallOptions,
   ): Promise<PluginInstallResult> {
+    // cursor-local-install writes through the applier, and the applier clears
+    // status caches that import this provider. A top-level import cycles
+    // registry initialization in the bundled CLI.
+    const { installCursorLocalPlugin } = await import("../cursor-local-install.js");
     return installCursorLocalPlugin(ctx, opts);
   }
 }
