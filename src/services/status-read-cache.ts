@@ -707,11 +707,15 @@ export function setStatusRefreshWorkerTargetForTests(target: string | URL | unde
 
 function statusRefreshWorkerTarget(): string | URL {
   if (workerTargetOverride !== undefined) return workerTargetOverride;
-  const url = import.meta.url;
-  if (url.includes("/$bunfs/") || url.includes("~BUN")) {
-    // `bun build --compile` stores each entry under its transpiled name.
-    // Bun 1.3.x only resolves the `.js` name; 1.4 accepts both.
-    return "/$bunfs/root/services/status-refresh-worker.js";
+  const main = (globalThis as { Bun?: { main?: string } }).Bun?.main ?? "";
+  const url = decodeURIComponent(import.meta.url);
+  const compiled = [main, url].some((value) => value.includes("$bunfs") || value.includes("~BUN"));
+  if (compiled) {
+    // `bun build --compile` stores each entry under its transpiled name next
+    // to the binary's virtual root (/$bunfs/root on POSIX, B:\~BUN\root on
+    // Windows). Bun 1.3.x only resolves the `.js` name; 1.4 accepts both.
+    const root = main ? dirname(main) : "/$bunfs/root";
+    return join(root, "services", "status-refresh-worker.js");
   }
   return new URL("./status-refresh-worker.ts", import.meta.url);
 }
