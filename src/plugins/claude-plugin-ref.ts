@@ -1,9 +1,10 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { readCachedMarketplacePluginNames } from "../services/marketplace-manifest-cache.js";
+import { computationSlot } from "../services/status-computation.js";
 import {
   claudePluginsDir,
-  loadInstalled,
+  listInstalledRefScopes,
   parsePluginRef,
 } from "./claude-installed.js";
 
@@ -64,13 +65,19 @@ export function marketplaceHasPlugin(
   marketplace: string,
   pluginName: string,
 ): boolean {
-  const names = readCachedMarketplacePluginNames(
-    marketplaceManifestPath(homeRoot, marketplace),
-  );
+  const path = marketplaceManifestPath(homeRoot, marketplace);
+  // Status checks each pin against every marketplace. Stat each manifest once per read.
+  const names = computationSlot(`marketplace-names:${path}`, () => readCachedMarketplacePluginNames(path));
   return names?.has(pluginName) ?? false;
 }
 
 export function listConfiguredMarketplaceNames(homeRoot: string): string[] {
+  return [
+    ...computationSlot(`claude-marketplaces:${homeRoot}`, () => listConfiguredMarketplaceNamesUncached(homeRoot)),
+  ];
+}
+
+function listConfiguredMarketplaceNamesUncached(homeRoot: string): string[] {
   const root = join(claudePluginsDir(homeRoot), "marketplaces");
   if (!existsSync(root)) {
     return [];
@@ -129,7 +136,7 @@ export function resolveCatalogPluginMarketplaceBootstrap(
 /** Pick the enabledPlugins id: prefer an installed candidate, else the first install ref. */
 export function resolveClaudeEnabledPluginRef(ref: string, homeRoot: string): string {
   const candidates = resolveClaudeInstallRefCandidates(ref, homeRoot);
-  const installed = loadInstalled(homeRoot);
+  const installed = listInstalledRefScopes(homeRoot);
   for (const candidate of candidates) {
     if (installed.some((row) => row.ref === candidate)) {
       return candidate;
@@ -144,7 +151,7 @@ export function findInstalledRefForCatalogPin(
   scope?: string,
 ): string | undefined {
   const candidates = resolveClaudeInstallRefCandidates(ref, homeRoot);
-  const installed = loadInstalled(homeRoot);
+  const installed = listInstalledRefScopes(homeRoot);
   for (const candidate of candidates) {
     const match = installed.find(
       (row) =>

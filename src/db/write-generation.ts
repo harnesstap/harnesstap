@@ -39,25 +39,40 @@ export function readStatusWriteGeneration(): number {
 
 /** Wrap a connection so status-relevant writes bump the generation. */
 export function trackStatusWrites(db: SqliteDatabase): SqliteDatabase {
-  return {
-    prepare<Row = unknown>(sql: string): SqliteStatement<Row> {
-      const statement = db.prepare<Row>(sql);
-      if (!statementAffectsStatus(sql)) return statement;
-      return {
-        run: (...params: unknown[]): SqliteRunResult => {
-          const result = statement.run(...params);
-          if (result.changes > 0) statusWriteGeneration += 1;
-          return result;
-        },
+  // Compiling a statement costs more than running most of ours. Reuse them.
+  const statements = new Map<string, SqliteStatement<unknown>>();
+  const prepareTracked = <Row>(sql: string): SqliteStatement<Row> => {
+    const statement = db.prepare<Row>(sql);
+    if (!statementAffectsStatus(sql)) return statement;
+    return {
+      run: (...params: unknown[]): SqliteRunResult => {
+        const result = statement.run(...params);
+        if (result.changes > 0) statusWriteGeneration += 1;
+        return result;
+      },
         get: (...params: unknown[]) => statement.get(...params),
         all: (...params: unknown[]) => statement.all(...params),
       };
+  };
+  return {
+    prepare<Row = unknown>(sql: string): SqliteStatement<Row> {
+      const cached = statements.get(sql);
+      if (cached) return cached as SqliteStatement<Row>;
+      const statement = prepareTracked<Row>(sql);
+      if (statements.size >= 512) statements.clear();
+      statements.set(sql, statement as SqliteStatement<unknown>);
+      return statement;
     },
     exec: (sql: string) => {
+      // A schema change can invalidate compiled statements.
+      if (/\b(CREATE|DROP|ALTER)\b/i.test(sql)) statements.clear();
       db.exec(sql);
       if (scriptAffectsStatus(sql)) statusWriteGeneration += 1;
     },
     transaction: <T extends (...args: never[]) => unknown>(fn: T) => db.transaction(fn),
-    close: () => db.close(),
+    close: () => {
+      statements.clear();
+      db.close();
+    },
   };
 }

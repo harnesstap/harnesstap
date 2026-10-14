@@ -391,6 +391,22 @@ export function stampPluginOrigin(
   },
 ): void {
   const db = getDb();
+  const current = db
+    .prepare<{ origin_locator: string | null; origin_fingerprint: string | null; origin_fingerprint_kind: string | null }>(
+      "SELECT origin_locator, origin_fingerprint, origin_fingerprint_kind FROM plugins WHERE id = ?",
+    )
+    .get(pluginId);
+  if (!current) {
+    throw new Error(`Plugin not found: ${pluginId}`);
+  }
+  if (
+    current.origin_locator === input.locator
+    && (input.fingerprint === undefined || current.origin_fingerprint === input.fingerprint)
+    && (input.fingerprintKind === undefined || current.origin_fingerprint_kind === input.fingerprintKind)
+  ) {
+    // Unchanged. Status stamps every upstream pin on each read; skip the write.
+    return;
+  }
   const result = db
     .prepare(
       `UPDATE plugins
