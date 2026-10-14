@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getDbPath, getHarnesstapDir } from "../db/connection.js";
 import { bootstrapLocalLibrary } from "../services/bootstrap-local-library.js";
+import { warmStatusRefreshWorker } from "../services/status-read-cache.js";
 import { setAgentFirstRun } from "./boot-state.js";
 import { type BunServerHandle, bunServe } from "./bun-runtime.js";
 import { createAgentFetchHandler } from "./routes.js";
@@ -109,6 +110,7 @@ export async function startAgentServer(options: AgentServeOptions = {}): Promise
   const token = generateAgentToken();
 
   await bootAgentDatabase();
+  warmStatusRefreshWorker();
 
   let boundPort = preferredPort;
   const fetch = (request: Request) =>

@@ -321,12 +321,13 @@ async function finalizeGlobalProfileStatus(
  * Status does not read Cursor's state.vscdb or logs folder. Where a watcher
  * could not be installed, mtimes and sizes of the remaining files are
  * checked instead.
- * A later read, including fast after full of the same inputs,
- * skips the dry-run. When a watched input changes, the previous result is
- * returned with `refreshing` set and the new read runs on a background
- * thread. A warm or stale response does not wait for that read.
- * Apply, switch, and install clear the cache first, so the next read waits
- * and is not stale. Overlapping callers share one in-flight computation.
+ * A later read of the same depth skips the dry-run. Cold and refresh both
+ * run on the background worker. The caller waits for a cold read, and the
+ * main thread does not run that dry-run. When a watched input changes, the
+ * previous result is returned with `refreshing` set. A warm or stale
+ * response does not wait for that read. Apply, switch, and install clear
+ * the cache first, so the next read waits and is not stale. Overlapping
+ * callers share one in-flight computation.
  */
 export async function detectGlobalProfileStatus(input: {
   harness?: string;

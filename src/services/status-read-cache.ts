@@ -41,6 +41,8 @@ const pendingWatchSet = new Set<string>();
 let pendingRecursive = new Set<string>();
 let pendingHome = "";
 let watchArmTimer: ReturnType<typeof setTimeout> | null = null;
+/** Home whose out-of-tree watchers were last retained. Unchanged homes keep every watcher. */
+let retainedForHome = "";
 
 const MANIFEST_RELATIVE_PATHS = [
   ".claude-plugin/marketplace.json",
@@ -381,7 +383,10 @@ function ensureWatchers(paths: readonly string[], recursive: ReadonlySet<string>
 
 /** Arm each path once per process, off the status await. */
 function scheduleWatchers(paths: readonly string[], recursive: ReadonlySet<string>, home: string): void {
-  retainWatchersForHome(home);
+  if (home !== retainedForHome) {
+    retainWatchersForHome(home);
+    retainedForHome = home;
+  }
   let added = false;
   for (const path of paths) {
     if (armedPaths.has(path) || pendingWatchSet.has(path)) continue;
@@ -417,10 +422,21 @@ function entryIsCurrent(entry: CacheEntry<unknown>): boolean {
   return true;
 }
 
-function present<T>(value: T, refreshing: boolean): T & { refreshing: boolean } {
-  const copy = structuredClone(value) as T & { refreshing: boolean };
-  copy.refreshing = refreshing;
-  return copy;
+function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== "object") return value;
+  if (Object.isFrozen(value)) return value;
+  for (const nested of Object.values(value as Record<string, unknown>)) {
+    deepFreeze(nested);
+  }
+  return Object.freeze(value);
+}
+
+/**
+ * Shallow copy so `refreshing` can change. Nested fields stay the frozen
+ * snapshot stored at compute time.
+ */
+function present<T extends object>(value: T, refreshing: boolean): T & { refreshing: boolean } {
+  return { ...value, refreshing };
 }
 
 function requestKey(input: StatusCacheRequest): string {
@@ -448,7 +464,7 @@ function remember<T>(
     paths: collected.paths,
     pathSig: watchersHealthy ? "" : fingerprintPaths(collected.paths),
     epoch: epoch,
-    value: loaded.value,
+    value: deepFreeze(loaded.value),
   };
   buckets.set(key, next);
   if (epoch !== epochAtStart) {
@@ -462,13 +478,19 @@ function remember<T>(
   }
 }
 
+interface RefreshOutcome {
+  ok: boolean;
+  value?: unknown;
+  watchedPaths?: string[];
+}
+
 interface RefreshJob {
   key: string;
   projectPath: string | undefined;
   generation: number;
   epochAtStart: number;
   home: string | undefined;
-  resolve: () => void;
+  resolve: (outcome: RefreshOutcome) => void;
 }
 
 interface RefreshResultMessage {
@@ -482,18 +504,37 @@ let refreshWorker: Worker | null = null;
 let refreshSeq = 0;
 const refreshJobs = new Map<number, RefreshJob>();
 let workerFailed = false;
+let keepStatusWorkerAlive = false;
+let workerCreates = 0;
+let respawnAttempts = 0;
+let respawnTimer: ReturnType<typeof setTimeout> | null = null;
 
-function finishRefreshJob(job: RefreshJob): void {
-  job.resolve();
-  const current = inflight.get(job.key);
-  if (current && current.generation === job.generation) inflight.delete(job.key);
+/** How many refresh workers this process has constructed. */
+export function readStatusRefreshWorkerCreateCount(): number {
+  return workerCreates;
 }
 
-function failRefreshWorker(): void {
-  workerFailed = true;
-  refreshWorker = null;
-  for (const job of refreshJobs.values()) finishRefreshJob(job);
+function releaseRefreshJobs(): void {
+  const jobs = [...refreshJobs.values()];
   refreshJobs.clear();
+  for (const job of jobs) job.resolve({ ok: false });
+}
+
+function scheduleWorkerRespawn(): void {
+  if (!keepStatusWorkerAlive || respawnTimer || respawnAttempts >= 3) return;
+  respawnAttempts += 1;
+  const timer = setTimeout(() => {
+    respawnTimer = null;
+    if (refreshWorker || !keepStatusWorkerAlive) return;
+    workerFailed = false;
+    try {
+      statusWorker();
+    } catch {
+      workerFailed = true;
+    }
+  }, 0);
+  respawnTimer = timer;
+  timer.unref();
 }
 
 /**
@@ -511,6 +552,7 @@ function statusRefreshWorkerTarget(): string | URL {
 
 function statusWorker(): Worker {
   if (refreshWorker) return refreshWorker;
+  workerCreates += 1;
   const worker = new Worker(statusRefreshWorkerTarget());
   worker.unref();
   worker.on("message", (message: RefreshResultMessage) => {
@@ -518,28 +560,58 @@ function statusWorker(): Worker {
     if (!job) return;
     refreshJobs.delete(message.id);
     try {
-      if (job.home !== process.env.HOME || job.generation !== generation) return;
-      if (!message.ok || message.value === undefined || !message.watchedPaths) return;
-      remember(job.key, job.projectPath, {
-        value: message.value,
+      if (!message.ok || message.value === undefined || !message.watchedPaths) {
+        job.resolve({ ok: false });
+        return;
+      }
+      const frozen = deepFreeze(message.value);
+      if (job.home === process.env.HOME && job.generation === generation) {
+        remember(job.key, job.projectPath, {
+          value: frozen,
+          watchedPaths: message.watchedPaths,
+        }, job.epochAtStart);
+        refreshCompletions += 1;
+        respawnAttempts = 0;
+      }
+      job.resolve({
+        ok: true,
+        value: frozen,
         watchedPaths: message.watchedPaths,
-      }, job.epochAtStart);
-      refreshCompletions += 1;
+      });
     } catch {
-      // Keep the last result. The next read tries again.
-    } finally {
-      finishRefreshJob(job);
+      job.resolve({ ok: false });
     }
   });
   worker.on("error", () => {
-    failRefreshWorker();
+    if (refreshWorker === worker) refreshWorker = null;
+    workerFailed = true;
+    releaseRefreshJobs();
+    scheduleWorkerRespawn();
   });
-  worker.on("exit", (code) => {
-    if (code === 0) return;
-    failRefreshWorker();
+  worker.on("exit", () => {
+    if (refreshWorker !== worker) return;
+    refreshWorker = null;
+    releaseRefreshJobs();
+    scheduleWorkerRespawn();
   });
   refreshWorker = worker;
   return worker;
+}
+
+/**
+ * Construct the refresh worker during sidecar boot. The first `Worker`
+ * start is synchronous and is the stall on a cold status read. Later reads
+ * reuse this thread. If it exits, it is started again.
+ */
+export function warmStatusRefreshWorker(): void {
+  keepStatusWorkerAlive = true;
+  workerFailed = false;
+  try {
+    statusWorker();
+  } catch {
+    workerFailed = true;
+    scheduleWorkerRespawn();
+  }
 }
 
 function blockRefreshDelay(): void {
@@ -548,7 +620,102 @@ function blockRefreshDelay(): void {
   Atomics.wait(new Int32Array(shared), 0, 0, statusRefreshDelayMs);
 }
 
-function scheduleRefresh<T>(
+function enqueueStatusRefresh<T extends object>(
+  key: string,
+  projectPath: string | undefined,
+  input: StatusCacheRequest,
+  load: () => Promise<{ value: T; watchedPaths: readonly string[] }>,
+  epochAtStart: number,
+  gen: number,
+): Promise<RefreshOutcome> {
+  const home = process.env.HOME;
+  return new Promise((resolve) => {
+    const runInProcess = () => {
+      setTimeout(() => {
+        void (async () => {
+          try {
+            blockRefreshDelay();
+            const loaded = await load();
+            if (gen === generation && home === process.env.HOME) {
+              remember(key, projectPath, loaded, epochAtStart);
+              refreshCompletions += 1;
+            }
+            resolve({
+              ok: true,
+              value: deepFreeze(loaded.value),
+              watchedPaths: [...loaded.watchedPaths],
+            });
+          } catch {
+            resolve({ ok: false });
+          }
+        })();
+      }, 0);
+    };
+
+    if (workerFailed && !refreshWorker && !keepStatusWorkerAlive) {
+      runInProcess();
+      return;
+    }
+
+    let worker: Worker;
+    try {
+      worker = statusWorker();
+    } catch {
+      workerFailed = true;
+      runInProcess();
+      return;
+    }
+
+    const id = ++refreshSeq;
+    refreshJobs.set(id, {
+      key,
+      projectPath,
+      generation: gen,
+      epochAtStart,
+      home,
+      resolve,
+    });
+    try {
+      worker.postMessage({
+        id,
+        home,
+        userProfile: process.env.USERPROFILE,
+        harnesstapHome: process.env.HARNESSTAP_HOME,
+        depth: input.depth,
+        harness: input.harness,
+        projectPath: input.projectPath,
+        delayMs: statusRefreshDelayMs,
+      });
+    } catch {
+      refreshJobs.delete(id);
+      workerFailed = true;
+      refreshWorker = null;
+      runInProcess();
+    }
+  });
+}
+
+function trackRefresh<T extends object>(
+  key: string,
+  projectPath: string | undefined,
+  input: StatusCacheRequest,
+  load: () => Promise<{ value: T; watchedPaths: readonly string[] }>,
+  gen: number,
+): Promise<RefreshOutcome> {
+  let resolveDone: () => void = () => {};
+  const promise = new Promise<void>((resolve) => {
+    resolveDone = resolve;
+  });
+  inflight.set(key, { generation: gen, promise });
+  const epochAtStart = epoch;
+  return enqueueStatusRefresh(key, projectPath, input, load, epochAtStart, gen).finally(() => {
+    resolveDone();
+    const current = inflight.get(key);
+    if (current?.promise === promise) inflight.delete(key);
+  });
+}
+
+function scheduleRefresh<T extends object>(
   key: string,
   projectPath: string | undefined,
   input: StatusCacheRequest,
@@ -557,70 +724,13 @@ function scheduleRefresh<T>(
   const gen = generation;
   const pending = inflight.get(key);
   if (pending && pending.generation === gen) return;
-
-  let resolveDone: () => void = () => {};
-  const promise = new Promise<void>((resolve) => {
-    resolveDone = resolve;
-  });
-  inflight.set(key, { generation: gen, promise });
-  const epochAtStart = epoch;
-  const home = process.env.HOME;
-
-  const runInProcess = () => {
-    void (async () => {
-      try {
-        blockRefreshDelay();
-        const loaded = await load();
-        if (gen === generation && home === process.env.HOME) {
-          remember(key, projectPath, loaded, epochAtStart);
-          refreshCompletions += 1;
-        }
-      } catch {
-        // Keep the last result. The next read tries again. A clear during
-        // this load bumps generation so a torn-down library is not stored.
-      } finally {
-        resolveDone();
-        const current = inflight.get(key);
-        if (current?.promise === promise) inflight.delete(key);
-      }
-    })();
-  };
-
-  if (workerFailed) {
-    setTimeout(runInProcess, 0);
-    return;
-  }
-
-  const id = ++refreshSeq;
-  refreshJobs.set(id, {
-    key,
-    projectPath,
-    generation: gen,
-    epochAtStart,
-    home,
-    resolve: resolveDone,
-  });
-  try {
-    statusWorker().postMessage({
-      id,
-      home,
-      userProfile: process.env.USERPROFILE,
-      harnesstapHome: process.env.HARNESSTAP_HOME,
-      depth: input.depth,
-      harness: input.harness,
-      projectPath: input.projectPath,
-      delayMs: statusRefreshDelayMs,
-    });
-  } catch {
-    refreshJobs.delete(id);
-    workerFailed = true;
-    setTimeout(runInProcess, 0);
-  }
+  void trackRefresh(key, projectPath, input, load, gen);
 }
 
-async function loadNow<T>(
+async function loadNow<T extends object>(
   key: string,
   projectPath: string | undefined,
+  input: StatusCacheRequest,
   load: () => Promise<{ value: T; watchedPaths: readonly string[] }>,
 ): Promise<T & { refreshing: boolean }> {
   const gen = generation;
@@ -633,37 +743,26 @@ async function loadNow<T>(
     }
   }
 
-  let resolveDone: () => void = () => {};
-  const promise = new Promise<void>((resolve) => {
-    resolveDone = resolve;
-  });
-  inflight.set(key, { generation: gen, promise });
-  const epochAtStart = epoch;
-  try {
-    const loaded = await load();
-    if (gen === generation) {
-      remember(key, projectPath, loaded, epochAtStart);
-    }
-    const cached = buckets.get(key) as CacheEntry<T> | undefined;
-    if (cached && cached.value === loaded.value && entryIsCurrent(cached)) {
-      return present(cached.value, false);
-    }
-    return present(loaded.value, false);
-  } finally {
-    resolveDone();
-    const current = inflight.get(key);
-    if (current?.promise === promise) inflight.delete(key);
+  const outcome = await trackRefresh(key, projectPath, input, load, gen);
+  const cached = buckets.get(key) as CacheEntry<T> | undefined;
+  if (cached && gen === generation && entryIsCurrent(cached)) {
+    return present(cached.value, false);
   }
+  if (outcome.ok && outcome.value !== undefined) {
+    return present(outcome.value as T, false);
+  }
+  throw new Error("Status read failed");
 }
 
 /**
  * Reuse a full status result while watched inputs are unchanged. Healthy file
  * watchers make that check a map lookup. Where a watcher could not be
  * installed, mtimes and sizes of those files are checked instead. Status does
- * not read Cursor's state.vscdb or logs folder. Concurrent callers for one
- * key share one in-flight load.
+ * not read Cursor's state.vscdb or logs folder. A cold read waits on the
+ * refresh worker and does not run the dry-run on this thread. Concurrent
+ * callers for one key share one in-flight load.
  */
-export async function withStatusReadCache<T>(
+export async function withStatusReadCache<T extends object>(
   input: StatusCacheRequest,
   load: () => Promise<{ value: T; watchedPaths: readonly string[] }>,
   options?: StatusCacheLoadOptions,
@@ -679,5 +778,5 @@ export async function withStatusReadCache<T>(
     return present(cached.value, true);
   }
 
-  return loadNow(key, input.projectPath, load);
+  return loadNow(key, input.projectPath, input, load);
 }

@@ -24,29 +24,142 @@ const INSTALLED_PLUGIN_JSON_FILES = [
   join(".cursor", "plugins", "installed_plugins.json"),
 ] as const;
 
+/**
+ * Plugin name encoded in a Cursor MCP folder.
+ * `plugin-<name>-<name>` and `plugin-<name>-plugin-<name>` both name `<name>`.
+ */
+export function pluginNameFromMcpFolder(folder: string): string | null {
+  if (!folder.startsWith("plugin-")) return null;
+  const rest = folder.slice("plugin-".length);
+  if (!rest) return null;
+  const infix = "-plugin-";
+  const infixAt = rest.lastIndexOf(infix);
+  if (infixAt > 0) {
+    const left = rest.slice(0, infixAt);
+    const right = rest.slice(infixAt + infix.length);
+    if (left.length > 0 && left === right) return left;
+  }
+  for (let index = 1; index < rest.length - 1; index += 1) {
+    if (rest[index] !== "-") continue;
+    const left = rest.slice(0, index);
+    const right = rest.slice(index + 1);
+    if (left === right) return left;
+  }
+  return rest;
+}
+
 /** Parse `plugin-<name>-...` MCP folder names into plugin names. */
 export function pluginNamesFromMcpFolders(
   folderNames: readonly string[],
 ): Set<string> {
   const names = new Set<string>();
   for (const folder of folderNames) {
-    if (!folder.startsWith("plugin-")) continue;
-    const rest = folder.slice("plugin-".length);
-    if (!rest) continue;
-    // Cursor uses plugin-<name>-<name> for many marketplace MCP plugins.
-    const parts = rest.split("-");
-    if (parts.length >= 2 && parts.length % 2 === 0) {
-      const half = parts.length / 2;
-      const left = parts.slice(0, half).join("-");
-      const right = parts.slice(half).join("-");
-      if (left === right) {
-        names.add(left);
-        continue;
-      }
-    }
-    names.add(rest);
+    const name = pluginNameFromMcpFolder(folder);
+    if (name) names.add(name);
   }
   return names;
+}
+
+const MCP_FOLDER_MANIFESTS = [
+  "SERVER_METADATA.json",
+  ".cursor-plugin/plugin.json",
+  ".claude-plugin/plugin.json",
+  "plugin.json",
+] as const;
+
+export interface CursorMcpFolderPlugin {
+  name: string;
+  ref: string;
+}
+
+function pluginRefFromCacheLayout(
+  rawPath: string,
+): CursorMcpFolderPlugin | null {
+  const normalized = rawPath.replaceAll("\\", "/");
+  const marker = "/.cursor/plugins/cache/";
+  const at = normalized.lastIndexOf(marker);
+  if (at < 0) return null;
+  const parts = normalized.slice(at + marker.length).split("/").filter((part) => part.length > 0);
+  const marketplace = parts[0];
+  const name = parts[1];
+  if (!marketplace || !name) return null;
+  return { name, ref: `${name}@${marketplace}` };
+}
+
+function stringField(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key];
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function manifestPluginRef(folderPath: string): CursorMcpFolderPlugin | null {
+  for (const relativePath of MCP_FOLDER_MANIFESTS) {
+    const parsed = readJsonObject(join(folderPath, relativePath));
+    if (!parsed) continue;
+    for (const key of ["pluginPath", "installPath", "path", "serverPath"]) {
+      const raw = stringField(parsed, key);
+      if (!raw) continue;
+      const fromCache = pluginRefFromCacheLayout(raw);
+      if (fromCache) return fromCache;
+    }
+    for (const key of ["pluginRef", "ref", "pluginId"]) {
+      const raw = stringField(parsed, key);
+      if (!raw || !raw.includes("@")) continue;
+      const parsedRef = parsePluginRef(raw);
+      if (!parsedRef.name) continue;
+      return { name: parsedRef.name, ref: raw };
+    }
+    for (const key of ["pluginName", "plugin", "name"]) {
+      const raw = stringField(parsed, key);
+      if (!raw || raw.startsWith("plugin-")) continue;
+      return { name: raw, ref: `${raw}@cursor` };
+    }
+  }
+  return null;
+}
+
+function cacheMatchScore(
+  folderName: string,
+  pluginName: string,
+  marketplace: string,
+): number {
+  if (!pluginName) return 0;
+  if (folderName === `plugin-${pluginName}-plugin-${pluginName}`) return 4;
+  if (folderName === `plugin-${pluginName}-${pluginName}`) return 3;
+  if (marketplace && folderName === `plugin-${marketplace}-${pluginName}`) return 2;
+  if (folderName === `plugin-${pluginName}`) return 1;
+  return 0;
+}
+
+/**
+ * Real plugin ref for a `plugin-*` MCP folder. The folder manifest wins,
+ * then a cache directory `~/.cursor/plugins/cache/<marketplace>/<plugin>/<sha>`
+ * whose name matches the folder, then the folder name itself.
+ */
+export function resolveCursorMcpFolderPlugin(
+  homeRoot: string,
+  folderName: string,
+  cached: readonly { name: string; ref: string }[],
+): CursorMcpFolderPlugin | null {
+  if (!folderName.startsWith("plugin-")) return null;
+  const fromManifest = manifestPluginRef(
+    join(cursorProjectsMcpsRoot(homeRoot), folderName),
+  );
+  if (fromManifest) return fromManifest;
+  let best: CursorMcpFolderPlugin & { score: number } | null = null;
+  for (const row of cached) {
+    const marketplace = parsePluginRef(row.ref).marketplace;
+    const score = cacheMatchScore(folderName, row.name, marketplace);
+    if (score === 0) continue;
+    if (!best || score > best.score) {
+      best = { name: row.name, ref: row.ref, score };
+    }
+  }
+  if (best) return { name: best.name, ref: best.ref };
+  const name = pluginNameFromMcpFolder(folderName);
+  if (!name) return null;
+  return { name, ref: `${name}@cursor` };
 }
 
 /**

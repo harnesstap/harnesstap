@@ -105,4 +105,60 @@ describe("listCursorPluginInstalls cache", () => {
       enabled: true,
     });
   });
+
+  it("maps a plugin MCP folder to the cache plugin and does not add an extra row", () => {
+    const home = createTempDir("ht-cursor-mcp-cache-ref");
+    dirs.push(home);
+    const version = join(
+      home,
+      ".cursor",
+      "plugins",
+      "cache",
+      "cursor-public",
+      "context7",
+      "abc",
+    );
+    mkdirSync(join(version, ".cursor-plugin"), { recursive: true });
+    writeFileSync(
+      join(version, ".cursor-plugin", "plugin.json"),
+      JSON.stringify({ name: "context7", version: "1.0.0" }),
+    );
+    mkdirSync(join(home, ".cursor", "projects", "mcps", "plugin-context7-plugin-context7"), {
+      recursive: true,
+    });
+
+    const installs = listCursorPluginInstalls(home);
+    expect(installs.map((row) => row.ref)).toEqual(["context7@cursor-public"]);
+    expect(installs.some((row) => row.ref === "context7-plugin-context7@cursor")).toBe(false);
+  });
+
+  it("reads the plugin ref from an MCP folder manifest and dedupes it", () => {
+    const home = createTempDir("ht-cursor-mcp-manifest-ref");
+    dirs.push(home);
+    const version = join(
+      home,
+      ".cursor",
+      "plugins",
+      "cache",
+      "cursor-public",
+      "context7",
+      "abc",
+    );
+    mkdirSync(join(version, ".cursor-plugin"), { recursive: true });
+    writeFileSync(
+      join(version, ".cursor-plugin", "plugin.json"),
+      JSON.stringify({ name: "context7", version: "1.0.0" }),
+    );
+    const folder = join(home, ".cursor", "projects", "mcps", "plugin-not-a-real-name");
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(
+      join(folder, "SERVER_METADATA.json"),
+      JSON.stringify({ pluginPath: version }),
+    );
+
+    const installs = listCursorPluginInstalls(home);
+    expect(installs.filter((row) => row.name === "context7")).toHaveLength(1);
+    expect(installs.map((row) => row.ref)).toEqual(["context7@cursor-public"]);
+    expect(installs.some((row) => row.ref === "not-a-real-name@cursor")).toBe(false);
+  });
 });

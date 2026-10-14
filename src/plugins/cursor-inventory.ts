@@ -3,7 +3,7 @@ import { isAbsolute, join, relative } from "node:path";
 import { isAgentPluginsSchemaId } from "../services/agent-plugins/schema-registry.js";
 import { fileSignature } from "../services/file-signature.js";
 import { computationSlot } from "../services/status-computation.js";
-import { listCursorNativeMcpPluginNames } from "./cursor-enablement.js";
+import { resolveCursorMcpFolderPlugin } from "./cursor-enablement.js";
 import { parsePluginRef } from "./host-plugin-manifest.js";
 import { readCursorLocalPluginSidecar } from "./cursor-local-plugin.js";
 import {
@@ -252,18 +252,33 @@ function scanMarketplaceInstalls(
   return installs;
 }
 
-/** MCP folder identities that have no cache, marketplace, or local tree. */
+/** MCP folders that are not already a cache, marketplace, or local row. */
 function scanMcpOnlyInstalls(
   homeRoot: string,
-  existingNames: ReadonlySet<string>,
+  existing: readonly PluginInstall[],
 ): PluginInstall[] {
+  const root = cursorProjectsMcpsRoot(homeRoot);
+  let folders: string[] = [];
+  try {
+    folders = readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("plugin-"))
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+  const existingNames = new Set(existing.map((row) => row.name));
+  const existingRefs = new Set(existing.map((row) => row.ref));
   const installs: PluginInstall[] = [];
-  for (const name of listCursorNativeMcpPluginNames(homeRoot)) {
-    if (existingNames.has(name)) continue;
+  for (const folder of folders) {
+    const resolved = resolveCursorMcpFolderPlugin(homeRoot, folder, existing);
+    if (!resolved) continue;
+    if (existingNames.has(resolved.name) || existingRefs.has(resolved.ref)) continue;
+    existingNames.add(resolved.name);
+    existingRefs.add(resolved.ref);
     installs.push({
-      ref: `${name}@cursor`,
+      ref: resolved.ref,
       platformId: "cursor",
-      name,
+      name: resolved.name,
       version: "unknown",
       versionSource: "unknown",
       scope: "user",
@@ -316,10 +331,8 @@ function scanCursorPluginInstalls(homeRoot: string): PluginInstall[] {
   const local = scanLocalInstalls(homeRoot);
   const refs = new Set(cache.map((row) => row.ref));
   const marketplaces = scanMarketplaceInstalls(homeRoot, refs);
-  const named = new Set(
-    [...cache, ...local, ...marketplaces].map((install) => install.name),
-  );
-  const mcp = scanMcpOnlyInstalls(homeRoot, named);
+  const installed = [...cache, ...local, ...marketplaces];
+  const mcp = scanMcpOnlyInstalls(homeRoot, installed);
   return [...cache, ...local, ...marketplaces, ...mcp].filter((install) =>
     isInventoriedCursorInstall(install, homeRoot),
   );
