@@ -96,6 +96,11 @@ export interface GlobalProfileStatus {
   not_staged_count?: number;
   /** App-managed inventory (full depth only); never applied or persisted. */
   host_managed?: HostManagedStatus;
+  /**
+   * True when this payload is the previous result and a fresh read is running.
+   * Absent or false after apply, switch, and install, which wait for a new read.
+   */
+  refreshing?: boolean;
 }
 
 function keptContentDiff(
@@ -310,9 +315,14 @@ async function finalizeGlobalProfileStatus(
  * Fast depth keeps the same drift fields as a full read (`changes`,
  * `has_drift`, `stack_in_sync`, `drift_summary`). The desktop drift pill
  * replaces those from every fast poll, so a cold fast read still runs the
- * dry-run. Later reads skip it when the dry-run core's input mtimes match,
- * including a fast read after a full read of the same inputs. Overlapping
- * callers share one in-flight computation.
+ * dry-run. The full result, including that dry-run and profile contents, is
+ * cached. A warm read is a map lookup while file watchers are healthy, and
+ * a fingerprint of input mtimes and sizes when a watcher could not be
+ * installed. A later read, including fast after full of the same inputs,
+ * skips the dry-run. When a watched input changes, the previous result is
+ * returned with `refreshing` set and the new read runs in the background.
+ * Apply, switch, and install clear the cache first, so the next read waits
+ * and is not stale. Overlapping callers share one in-flight computation.
  */
 export async function detectGlobalProfileStatus(input: {
   harness?: string;
@@ -338,8 +348,12 @@ export async function detectGlobalProfileStatus(input: {
       core.harness,
     );
     return { value: projected, watchedPaths: core.watchedPaths };
-  });
-  return { ...status, as_of: new Date().toISOString() };
+  }, { staleWhileRefresh: true });
+  return {
+    ...status,
+    as_of: new Date().toISOString(),
+    refreshing: status.refreshing === true,
+  };
 }
 
 async function loadDriftCore(input: {

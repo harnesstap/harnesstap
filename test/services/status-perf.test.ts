@@ -11,14 +11,17 @@ import {
   readDriftCoreComputeCount,
 } from "../../src/services/global-profile-drift.ts";
 import { clearLiveReadCaches } from "../../src/services/live-read-cache.ts";
+import { statusCacheWatchersHealthy } from "../../src/services/status-read-cache.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
 const SESSION_COUNT = 400;
 const NOISE_ROWS = 400;
 const NOISE_BYTES = 64 * 1024;
 const RESOURCE_COUNT = 70;
-const WARM_BUDGET_MS = 200;
-const COLD_BUDGET_MS = 1500;
+/** Product warm target is at most 50ms. A healthy watcher hit is a map lookup. */
+const WARM_BUDGET_MS = 50;
+/** Product cold target is 200ms on a desktop. CI runners get headroom. */
+const COLD_BUDGET_MS = 800;
 
 function stable(status: Awaited<ReturnType<typeof detectGlobalProfileStatus>>): string {
   const copy = structuredClone(status);
@@ -96,6 +99,9 @@ describe("status perf", () => {
 
       expect(coldMs).toBeLessThan(COLD_BUDGET_MS);
       expect(warmMs).toBeLessThan(WARM_BUDGET_MS);
+      expect(cold.refreshing).toBe(false);
+      expect(warm.refreshing).toBe(false);
+      expect(statusCacheWatchersHealthy()).toBe(true);
       expect(stable(warm)).toBe(stable(cold));
       expect(readDriftCoreComputeCount() - before).toBe(1);
       expect(cold.contents?.resources.length).toBe(RESOURCE_COUNT);

@@ -144,7 +144,8 @@
       color var(--duration-base) var(--ease-in-out),
       background-color var(--duration-base) var(--ease-in-out),
       border-color var(--duration-base) var(--ease-in-out),
-      box-shadow var(--duration-base) var(--ease-in-out);
+      box-shadow var(--duration-base) var(--ease-in-out),
+      opacity var(--duration-base) var(--ease-in-out);
   }
 
   .m-pressable {

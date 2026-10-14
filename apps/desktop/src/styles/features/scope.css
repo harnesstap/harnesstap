@@ -1101,6 +1101,10 @@
   border-color: var(--green);
 }
 
+.profile-header-status[data-refreshing="true"] .profile-header-status-dot {
+  opacity: 0.4;
+}
+
 .profile-header-status-warn {
   position: absolute;
   top: 1px;

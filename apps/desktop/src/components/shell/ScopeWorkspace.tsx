@@ -230,6 +230,7 @@ export function ScopeWorkspace({
                       <ProfileHeaderStatus
                         kind={headerStatus.kind}
                         tooltip={headerStatus.tooltip}
+                        refreshing={status?.refreshing === true}
                       />
                     ) : null}
                     {ctrl.renamingProfile ? (

@@ -378,6 +378,8 @@ export interface GlobalProfileStatus {
   switching?: boolean;
   warning?: string;
   untracked_resource_count?: number;
+  /** Previous status is still shown while a fresh read is running. */
+  refreshing?: boolean;
 }
 
 export interface ProfileApplyPreviewRequest {
