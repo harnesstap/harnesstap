@@ -287,6 +287,8 @@ export interface ProfileContentsPlugin {
   resources: ProfileContentsResource[];
   harness_scope?: "all" | string[];
   attachment_id?: string;
+  origin_ref?: string;
+  namespace?: string;
 }
 
 export interface ProfileContentsPin {
@@ -306,6 +308,8 @@ export interface ProfileContentsResource {
   filesystem_path?: string | null;
   origin_kind?: string;
   origin_ref?: string;
+  /** Marketplace, org/catalog, or harness label when a plugin name is shared. */
+  namespace?: string;
   hook?: {
     event: string;
     script: string;

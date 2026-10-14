@@ -7,6 +7,8 @@ import {
 import { getEnvironmentResources } from "../models/environment.js";
 import type { Resource } from "../types.js";
 import { hookInventoryWireFromResource } from "../ui/hook-display.js";
+import { parseDependencyRef } from "../utils/plugin-dependency-ref.js";
+import { parseOriginLocator } from "../utils/plugin-origin-locator.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { formatResourceTypeSummary } from "./project-status-payload.js";
 import { collectProfilePluginIds } from "./profile-apply.js";
@@ -17,6 +19,34 @@ import {
   type ResourceApplySelector,
   whereResourceAppliesNow,
 } from "./resource-apply-selector.js";
+
+function pluginOriginFields(
+  locator: string | undefined,
+): { origin_ref?: string; namespace?: string } {
+  const parsed = locator?.trim() ? parseOriginLocator(locator) : null;
+  if (!parsed) {
+    return {};
+  }
+  switch (parsed.kind) {
+    case "marketplace": {
+      const ref = parseDependencyRef(parsed.ref);
+      return {
+        origin_ref: parsed.ref,
+        ...(ref.namespace ? { namespace: ref.namespace } : {}),
+      };
+    }
+    case "catalog":
+      return { namespace: `${parsed.org}/${parsed.catalog}` };
+    case "git":
+      return parsed.url.includes("@")
+        ? { origin_ref: parsed.url }
+        : { namespace: parsed.url };
+    default: {
+      const _exhaustive: never = parsed;
+      return _exhaustive;
+    }
+  }
+}
 
 function optionalScopeWire(
   resource: Resource | undefined,
@@ -61,6 +91,10 @@ export interface ProfileContentsPlugin {
   resources: ProfileContentsResource[];
   harness_scope?: "all" | string[];
   attachment_id?: string;
+  /** Marketplace ref (`name@marketplace`), git URL, or other origin locator. */
+  origin_ref?: string;
+  /** Marketplace, org/catalog, or other source label when `origin_ref` has no `@`. */
+  namespace?: string;
 }
 
 export interface ProfileContentsPin {
@@ -199,6 +233,7 @@ export function buildProfileContents(profileName: string): ProfileContents | nul
     const attachment = rootAttached.find(
       (resource) => resource.type === "plugin" && resource.name === entry.name,
     );
+    const stored = getPluginById(entry.id);
     return {
       id: entry.id,
       name: entry.name,
@@ -206,6 +241,7 @@ export function buildProfileContents(profileName: string): ProfileContents | nul
       resources: resourcesForPlugin(entry.id),
       ...(attachment?.id ? { attachment_id: attachment.id } : {}),
       ...optionalScopeWire(attachment),
+      ...pluginOriginFields(stored?.origin_locator),
     };
   });
   const pluginPins = merged.pluginPins.map((pin) => {
