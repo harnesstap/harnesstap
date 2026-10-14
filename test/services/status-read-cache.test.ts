@@ -1,6 +1,7 @@
 import { readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
+import { getDbPath } from "../../src/db/connection.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
@@ -15,6 +16,7 @@ import {
   markStatusCacheWatchersUnreliable,
   readStatusCacheEpoch,
   readStatusRefreshCompletionCount,
+  readStatusWatcherCreateCount,
 } from "../../src/services/status-read-cache.ts";
 
 function stable(status: Awaited<ReturnType<typeof detectGlobalProfileStatus>>): string {
@@ -206,7 +208,11 @@ describe("global profile status cache", () => {
       setActiveProfileName("work");
       const guide = join(context.homeDir, ".claude", "CLAUDE.md");
       await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      const armDeadline = Date.now() + 2000;
+      while (readStatusWatcherCreateCount() === 0 && Date.now() < armDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 150));
       const epoch = readStatusCacheEpoch();
       writeFileSync(guide, `${readFileSync(guide, "utf8")}\nwatched\n`);
       const deadline = Date.now() + 1500;
@@ -217,6 +223,84 @@ describe("global profile status cache", () => {
       const during = await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
       expect(during.refreshing).toBe(true);
       expect(during.changes).toEqual([]);
+    } finally {
+      clearLiveReadCaches();
+      await context.cleanup();
+    }
+  });
+
+  it("includes a database write in the next status", async () => {
+    const context = await createInitializedTestContext("status-cache-db-write");
+    try {
+      clearLiveReadCaches();
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
+      addResourceToPlugin(
+        plugin.id,
+        createResource({
+          type: "instruction",
+          name: "guide",
+          description: "",
+          content: "# guide",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+      setActiveProfileName("work");
+      const first = await detectGlobalProfileStatus({ depth: "full" });
+      expect(first.refreshing).toBe(false);
+      const beforeCount = first.contents?.resources.length ?? 0;
+      const dbPath = getDbPath();
+      const walPath = `${dbPath}-wal`;
+      const dbBefore = statSync(dbPath).mtimeMs;
+      let walBefore = 0;
+      try {
+        walBefore = statSync(walPath).mtimeMs;
+      } catch {
+        walBefore = 0;
+      }
+
+      const touched = new Date(dbBefore + 60_000);
+      utimesSync(dbPath, touched, touched);
+      const touchCompletions = readStatusRefreshCompletionCount();
+      const touchStarted = performance.now();
+      const afterTouch = await detectGlobalProfileStatus({ depth: "full" });
+      const touchMs = performance.now() - touchStarted;
+      expect(afterTouch.refreshing).toBe(false);
+      expect(afterTouch.contents?.resources.length).toBe(beforeCount);
+      expect(readStatusRefreshCompletionCount()).toBe(touchCompletions + 1);
+      console.log(
+        `status db touch recompute=${touchMs.toFixed(1)}ms dbMtime ${dbBefore} -> ${statSync(dbPath).mtimeMs}`,
+      );
+
+      addResourceToPlugin(
+        plugin.id,
+        createResource({
+          type: "skill",
+          name: "from-db",
+          description: "",
+          content: "# from db\n",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+      let walAfter = 0;
+      try {
+        walAfter = statSync(walPath).mtimeMs;
+      } catch {
+        walAfter = 0;
+      }
+      const writeCompletions = readStatusRefreshCompletionCount();
+      const writeStarted = performance.now();
+      const afterWrite = await detectGlobalProfileStatus({ depth: "full" });
+      const writeMs = performance.now() - writeStarted;
+      expect(afterWrite.refreshing).toBe(false);
+      expect(afterWrite.contents?.resources.some((resource) => resource.name === "from-db")).toBe(true);
+      expect(afterWrite.contents?.resources.length).toBe(beforeCount + 1);
+      expect(readStatusRefreshCompletionCount()).toBe(writeCompletions + 1);
+      console.log(
+        `status db write recompute=${writeMs.toFixed(1)}ms wal ${walBefore} -> ${walAfter} dbUnchanged=${statSync(dbPath).mtimeMs === touched.getTime()}`,
+      );
     } finally {
       clearLiveReadCaches();
       await context.cleanup();

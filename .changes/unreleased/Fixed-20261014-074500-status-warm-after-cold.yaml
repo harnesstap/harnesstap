@@ -1,0 +1,5 @@
+kind: Fixed
+body: Status arms file watchers on the refresh worker, so a warm read after a cold start stays on the request thread. A write to the HarnessTap database, including its write-ahead log, is included in the next status.
+time: 2026-10-14T07:45:00.000Z
+custom:
+  Issue: ""

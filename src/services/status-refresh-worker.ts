@@ -1,10 +1,18 @@
 import { join } from "node:path";
 import { parentPort } from "node:worker_threads";
-import { setHomeRootOverride } from "../utils/home-root.js";
+import { resolveHomeRoot, setHomeRootOverride } from "../utils/home-root.js";
 import { loadGlobalProfileStatusSnapshot } from "./global-profile-drift.js";
+import {
+  armStatusWatches,
+  closeStatusWatches,
+  collectFingerprintPaths,
+  statusDatabaseSignature,
+  statusDatabaseSignatureAfterRead,
+} from "./status-read-cache.js";
 
 interface RefreshRequest {
-  id: number;
+  op?: "pause-watches";
+  id?: number;
   home?: string;
   userProfile?: string;
   harnesstapHome?: string;
@@ -38,6 +46,12 @@ function depthOf(depth: string | undefined): "fast" | "full" {
 let chain: Promise<void> = Promise.resolve();
 
 parentPort?.on("message", (request: RefreshRequest) => {
+  if (request.op === "pause-watches") {
+    closeStatusWatches();
+    return;
+  }
+  const requestId = request.id;
+  if (requestId === undefined) return;
   const run = chain.then(async () => {
     try {
       applyEnv(request);
@@ -45,20 +59,28 @@ parentPort?.on("message", (request: RefreshRequest) => {
         const shared = new SharedArrayBuffer(4);
         Atomics.wait(new Int32Array(shared), 0, 0, request.delayMs);
       }
+      const dbSigBefore = statusDatabaseSignature();
       const loaded = await loadGlobalProfileStatusSnapshot({
         depth: depthOf(request.depth),
         harness: request.harness,
         projectPath: request.projectPath,
       });
+      const dbSig = statusDatabaseSignatureAfterRead(dbSigBefore);
+      const collected = collectFingerprintPaths(request.projectPath, loaded.watchedPaths);
       parentPort?.postMessage({
-        id: request.id,
+        id: requestId,
         ok: true,
         value: JSON.parse(JSON.stringify(loaded.value)),
         watchedPaths: loaded.watchedPaths,
+        watchPaths: collected.paths,
+        dbSig,
       });
+      // Watch after the result is queued so this thread's fs.watch cannot sit on the request.
+      const created = armStatusWatches(collected.paths, collected.recursive, resolveHomeRoot());
+      parentPort?.postMessage({ op: "watch-report", created });
     } catch (error) {
       parentPort?.postMessage({
-        id: request.id,
+        id: requestId,
         ok: false,
         error: error instanceof Error ? error.message : String(error),
       });
