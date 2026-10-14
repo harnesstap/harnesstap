@@ -115,9 +115,15 @@ async function checkStatusReads(home: string, port: number, output: () => string
   for (const projectPath of [undefined, project]) {
     for (const depth of ["full", "fast"]) {
       const query = new URLSearchParams({ depth, ...(projectPath ? { projectPath } : {}) });
-      const response = await fetch(`http://127.0.0.1:${port}/v1/status?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      let response: Response;
+      try {
+        response = await fetch(`http://127.0.0.1:${port}/v1/status?${query}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        fail(`GET /v1/status?${query} failed: ${message}\nsidecar output:\n${output()}`);
+      }
       const body = await response.text();
       if (response.status !== 200) {
         fail(`GET /v1/status?${query} returned ${response.status}: ${body.slice(0, 500)}\n${output()}`);
@@ -140,7 +146,13 @@ async function checkHealthHandshake(home: string, env: NodeJS.ProcessEnv): Promi
   child.stderr?.on("data", (chunk: Buffer) => {
     captured += chunk.toString();
   });
+  child.stdout?.on("data", (chunk: Buffer) => {
+    captured += chunk.toString();
+  });
   const exited = new Promise<number | null>((done) => child.once("exit", (code) => done(code)));
+  child.once("exit", (code, signal) => {
+    captured += `\n[sidecar exited code=${code} signal=${signal}]\n`;
+  });
 
   try {
     const port = await waitForPort(join(home, ".harnesstap", "agent-port"), child, () => captured);
