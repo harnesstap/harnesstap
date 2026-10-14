@@ -283,7 +283,18 @@ for (const range of SUSPICIOUS_RANGES) {
 
 const UNICODE_CACHE_MAX = 128;
 const unicodeScanCache = new Map<string, UnicodeScanFinding[]>();
+const unicodeIdentityCache = new Map<string, {
+  mtimeMs: number;
+  size: number;
+  contentLength: number;
+  findings: UnicodeScanFinding[];
+}>();
 let unicodeScanComputes = 0;
+
+export interface UnicodeScanIdentity {
+  mtimeMs: number;
+  size: number;
+}
 
 export function readUnicodeScanComputeCount(): number {
   return unicodeScanComputes;
@@ -291,6 +302,25 @@ export function readUnicodeScanComputeCount(): number {
 
 export function clearUnicodeScanCache(): void {
   unicodeScanCache.clear();
+  unicodeIdentityCache.clear();
+}
+
+function rememberUnicodeIdentity(
+  filename: string,
+  identity: UnicodeScanIdentity,
+  contentLength: number,
+  findings: UnicodeScanFinding[],
+): void {
+  unicodeIdentityCache.set(filename, {
+    mtimeMs: identity.mtimeMs,
+    size: identity.size,
+    contentLength,
+    findings,
+  });
+  if (unicodeIdentityCache.size > UNICODE_CACHE_MAX) {
+    const oldest = unicodeIdentityCache.keys().next().value;
+    if (oldest) unicodeIdentityCache.delete(oldest);
+  }
 }
 
 function unicodeCacheKey(content: string): string {
@@ -330,15 +360,39 @@ function zwjInEmojiContext(chars: string[], index: number): boolean {
   return prevOk && isEmojiChar(next);
 }
 
-export function scanUnicodeText(content: string, filename = ""): UnicodeScanFinding[] {
-  if (!content || isAscii(content)) {
-    return [];
+export function scanUnicodeText(
+  content: string,
+  filename = "",
+  identity?: UnicodeScanIdentity,
+): UnicodeScanFinding[] {
+  if (!content) return [];
+  if (filename && identity) {
+    const previous = unicodeIdentityCache.get(filename);
+    if (
+      previous
+      && previous.mtimeMs === identity.mtimeMs
+      && previous.size === identity.size
+      && previous.contentLength === content.length
+    ) {
+      return stampFilename(previous.findings, filename);
+    }
+  }
+
+  const finish = (findings: UnicodeScanFinding[]): UnicodeScanFinding[] => {
+    if (filename && identity) {
+      rememberUnicodeIdentity(filename, identity, content.length, findings);
+    }
+    return stampFilename(findings, filename);
+  };
+
+  if (isAscii(content)) {
+    return finish([]);
   }
 
   const key = unicodeCacheKey(content);
   const cached = unicodeScanCache.get(key);
   if (cached) {
-    return stampFilename(cached, filename);
+    return finish(cached);
   }
   unicodeScanComputes += 1;
 
@@ -397,7 +451,7 @@ export function scanUnicodeText(content: string, filename = ""): UnicodeScanFind
     const oldest = unicodeScanCache.keys().next().value;
     if (oldest) unicodeScanCache.delete(oldest);
   }
-  return stampFilename(findings, filename);
+  return finish(findings);
 }
 
 export function scanUnicodeBuffer(buffer: Buffer, filename = ""): UnicodeScanFinding[] {

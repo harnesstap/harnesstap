@@ -675,7 +675,7 @@ export async function applyProfilePlugin(
       mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
     });
     const files = generated.flatMap((result) => result.files);
-    gateDeployFiles(files, { forceUnicode: options.forceUnicode });
+    gateDeployFiles(files, { forceUnicode: options.forceUnicode, rootPath: homeRoot });
     const materialized = await materializeFiles(files, homeRoot, {
       conflictPolicy: options.conflictPolicy,
       conflictResolver: options.conflictResolver,

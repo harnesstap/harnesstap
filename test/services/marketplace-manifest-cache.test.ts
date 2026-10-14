@@ -1,9 +1,13 @@
 import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
+import { marketplaceHasPlugin } from "../../src/plugins/claude-plugin-ref.ts";
 import { readMarketplacePluginSource } from "../../src/services/host-plugin-source.ts";
 import { readMarketplaceManifest } from "../../src/services/marketplace-catalog.ts";
-import { clearMarketplaceManifestCache } from "../../src/services/marketplace-manifest-cache.ts";
+import {
+  clearMarketplaceManifestCache,
+  readMarketplaceManifestLoadCount,
+} from "../../src/services/marketplace-manifest-cache.ts";
 import { cleanupDir, createTempDir } from "../helpers/fs.ts";
 
 const alpha = '{"name":"mkt","plugins":[{"name":"demo","source":"plugins/alpha"}]}\n';
@@ -57,5 +61,27 @@ describe("marketplace manifest cache", () => {
     expect(readMarketplacePluginSource(home, "acme", "demo")?.path).toBe("plugins/alpha");
     clearMarketplaceManifestCache();
     expect(readMarketplacePluginSource(home, "acme", "demo")?.path).toBe("plugins/bravo");
+  });
+
+  it("parses a marketplace once while checking the same plugin names", () => {
+    const home = createTempDir("ht-mkt-names");
+    dirs.push(home);
+    const manifest = join(
+      home,
+      ".claude",
+      "plugins",
+      "marketplaces",
+      "acme",
+      ".claude-plugin",
+      "marketplace.json",
+    );
+    mkdirSync(join(manifest, ".."), { recursive: true });
+    writeFileSync(manifest, alpha);
+    const before = readMarketplaceManifestLoadCount();
+    for (let index = 0; index < 40; index += 1) {
+      expect(marketplaceHasPlugin(home, "acme", "demo")).toBe(true);
+    }
+    expect(marketplaceHasPlugin(home, "acme", "missing")).toBe(false);
+    expect(readMarketplaceManifestLoadCount() - before).toBe(1);
   });
 });

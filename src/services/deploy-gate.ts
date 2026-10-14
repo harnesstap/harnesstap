@@ -1,3 +1,5 @@
+import { statSync } from "node:fs";
+import { join } from "node:path";
 import {
   LockIntegrityError,
   verifyDeployedFileHashes,
@@ -9,6 +11,7 @@ import {
   hasCriticalUnicode,
   scanUnicodeText,
   type UnicodeScanFinding,
+  type UnicodeScanIdentity,
 } from "./unicode-scan.js";
 
 export interface DeployFile {
@@ -41,13 +44,30 @@ export function printUnicodeGateWarnings(
   }
 }
 
+function unchangedFileIdentity(
+  file: DeployFile,
+  rootPath: string | undefined,
+): UnicodeScanIdentity | undefined {
+  if (!rootPath || !file.path) return undefined;
+  try {
+    const stat = statSync(join(rootPath, file.path));
+    if (!stat.isFile()) return undefined;
+    if (stat.size !== Buffer.byteLength(file.content)) return undefined;
+    return { mtimeMs: stat.mtimeMs, size: stat.size };
+  } catch {
+    return undefined;
+  }
+}
+
 export function gateDeployFiles(
   files: DeployFile[],
   options: DeployGateOptions = {},
 ): DeployGateResult {
   const findings: UnicodeScanFinding[] = [];
   for (const file of files) {
-    findings.push(...scanUnicodeText(file.content, file.path));
+    findings.push(
+      ...scanUnicodeText(file.content, file.path, unchangedFileIdentity(file, options.rootPath)),
+    );
   }
   assertUnicodeAllowed(findings, options.forceUnicode === true);
   if (
