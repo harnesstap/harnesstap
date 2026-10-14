@@ -670,6 +670,7 @@ function statusWorker(): Worker {
     } catch {
       job.resolve({ ok: false });
     }
+    releaseIdleWorker(worker);
   });
   worker.on("error", () => {
     if (refreshWorker === worker) refreshWorker = null;
@@ -685,6 +686,18 @@ function statusWorker(): Worker {
   });
   refreshWorker = worker;
   return worker;
+}
+
+/**
+ * Outside the sidecar (the CLI, a script), stop the worker once it has no
+ * jobs. Bun keeps a process alive while an unref'd worker has a message
+ * listener, so `ht profile status` would print and never exit. The next
+ * status read starts a new worker.
+ */
+function releaseIdleWorker(worker: Worker): void {
+  if (keepStatusWorkerAlive || refreshJobs.size > 0 || refreshWorker !== worker) return;
+  refreshWorker = null;
+  void worker.terminate();
 }
 
 /**

@@ -1,0 +1,5 @@
+kind: Fixed
+body: "`ht profile status` exits after printing. It no longer waits forever on the background status worker."
+time: 2026-10-14T09:20:00.000Z
+custom:
+  Issue: ""
