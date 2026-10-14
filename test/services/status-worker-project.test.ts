@@ -135,4 +135,32 @@ process.exit(0);`;
       rmSync(home, { recursive: true, force: true });
     }
   }, 90_000);
+
+  it("computes on this thread when the worker never replies", async () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-status-worker-silent-"));
+    try {
+      const env = { ...homeEnv(home), HT_STATUS_WORKER_TIMEOUT_MS: "500" };
+      const init = await run([process.execPath, BIN, "--no-interactive", "init", "--harnesses", "claude-code"], env);
+      expect(init.code).toBe(0);
+      const silentWorker = join(home, "silent-worker.ts");
+      writeFileSync(silentWorker, "setInterval(() => undefined, 1_000);\n");
+      const silent = `const cache = await import(${JSON.stringify(CACHE)});
+const { detectGlobalProfileStatus } = await import(${JSON.stringify(DRIFT)});
+cache.setStatusRefreshWorkerTargetForTests(${JSON.stringify(silentWorker)});
+cache.warmStatusRefreshWorker();
+const started = performance.now();
+const status = await detectGlobalProfileStatus({ depth: "full" });
+console.log(JSON.stringify({ depth: status.depth, ms: Math.round(performance.now() - started) }));
+process.exit(0);`;
+      const result = await run([process.execPath, "-e", silent], env);
+      expect(result.code).toBe(0);
+      const parsed = JSON.parse(result.stdout.trim().split("\n").pop() ?? "{}") as { depth?: string; ms?: number };
+      expect(parsed.depth).toBe("full");
+      expect(parsed.ms ?? Infinity).toBeLessThan(10_000);
+      expect(result.stderr).toContain("did not reply within 500ms");
+      expect(result.stderr).toContain("computing status on this thread");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  }, 60_000);
 });

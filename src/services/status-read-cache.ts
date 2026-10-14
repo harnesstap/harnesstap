@@ -751,11 +751,33 @@ function completeRefreshJob(job: RefreshJob, message: Extract<RefreshResultMessa
   });
 }
 
+/**
+ * A worker that loads but never replies (seen with compiled sidecars on
+ * Windows) would hang every status read until the HTTP server times out.
+ * Past this budget the worker is dropped and the read is computed here.
+ */
+const STATUS_WORKER_REPLY_TIMEOUT_MS = Number(process.env.HT_STATUS_WORKER_TIMEOUT_MS) || 8_000;
+const workerOnline = new WeakSet<Worker>();
+
+function abandonUnresponsiveWorker(worker: Worker, waitedMs: number): void {
+  if (refreshWorker !== worker) return;
+  refreshWorker = null;
+  workerFailed = true;
+  const state = workerOnline.has(worker) ? "started but did not reply" : "never started";
+  const message = `status refresh worker ${state} within ${waitedMs}ms`;
+  console.error(`[status-cache] refresh worker error: ${message}`);
+  releaseRefreshJobs({ message });
+  worker.removeAllListeners();
+  void worker.terminate().catch(() => undefined);
+  scheduleWorkerRespawn();
+}
+
 function statusWorker(): Worker {
   if (refreshWorker) return refreshWorker;
   workerCreates += 1;
   const worker = new Worker(statusRefreshWorkerTarget());
   worker.unref();
+  worker.once("online", () => workerOnline.add(worker));
   worker.on("message", (message: RefreshResultMessage) => {
     switch (message.op) {
       case "dirty":
@@ -934,6 +956,19 @@ function enqueueStatusRefresh<T extends object>(
     // Hold the process open while a job is pending. An unref'd worker lets
     // some Bun versions exit before the result arrives, printing nothing.
     worker.ref();
+    const waitMs = STATUS_WORKER_REPLY_TIMEOUT_MS + statusRefreshDelayMs;
+    const replyTimer = setTimeout(() => {
+      if (refreshJobs.has(id)) abandonUnresponsiveWorker(worker, waitMs);
+    }, waitMs);
+    replyTimer.unref?.();
+    const job = refreshJobs.get(id);
+    if (job) {
+      const settle = job.resolve;
+      job.resolve = (outcome) => {
+        clearTimeout(replyTimer);
+        settle(outcome);
+      };
+    }
     try {
       worker.postMessage({
         id,
