@@ -21,6 +21,7 @@ export const NPM_LATEST_API = "https://registry.npmjs.org/harnesstap/latest";
 export const NPM_PACKAGE_NAME = "harnesstap";
 
 export const UPDATE_CHECK_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+export const APP_UPDATE_STATUS_CACHE_MS = 60 * 60 * 1000;
 export const UPDATE_LOOKUP_TIMEOUT_MS = 2_500;
 export const UPDATE_DOWNLOAD_TIMEOUT_MS = 120_000;
 
@@ -549,6 +550,32 @@ export function desktopUpdateStatus(options: {
   };
 }
 
+interface AppUpdateCacheEntry {
+  at: number;
+  key: string;
+  status: DesktopUpdateStatus;
+}
+
+let appUpdateCache: AppUpdateCacheEntry | null = null;
+
+export function clearDesktopUpdateStatusCache(): void {
+  appUpdateCache = null;
+}
+
+function appUpdateCacheKey(options: {
+  harnesstapDir?: string;
+  currentVersion?: string;
+  platform?: NodeJS.Platform | string;
+  arch?: string;
+}): string {
+  return [
+    options.harnesstapDir ?? "",
+    options.currentVersion ?? "",
+    String(options.platform ?? ""),
+    String(options.arch ?? ""),
+  ].join("\0");
+}
+
 export async function resolveDesktopUpdateStatus(options: {
   harnesstapDir?: string;
   currentVersion?: string;
@@ -557,18 +584,29 @@ export async function resolveDesktopUpdateStatus(options: {
   platform?: NodeJS.Platform | string;
   arch?: string;
 } = {}): Promise<DesktopUpdateStatus> {
+  const now = options.now ?? new Date();
+  const key = appUpdateCacheKey(options);
+  if (
+    appUpdateCache
+    && appUpdateCache.key === key
+    && now.getTime() - appUpdateCache.at < APP_UPDATE_STATUS_CACHE_MS
+  ) {
+    return appUpdateCache.status;
+  }
   const release = await resolvePublishedRelease({
     channel: "github",
     harnesstapDir: options.harnesstapDir,
-    now: options.now,
+    now,
     fetchFn: options.fetchFn,
   });
-  return desktopUpdateStatus({
+  const status = desktopUpdateStatus({
     currentVersion: options.currentVersion,
     release,
     platform: options.platform,
     arch: options.arch,
   });
+  appUpdateCache = { at: now.getTime(), key, status };
+  return status;
 }
 
 export function updatesCacheDir(harnesstapDir: string): string {
@@ -637,20 +675,24 @@ export async function applyDesktopUpdate(options: {
   platform?: NodeJS.Platform | string;
   arch?: string;
 } = {}): Promise<{ version: string; asset: string; path: string }> {
-  const status = await resolveDesktopUpdateStatus(options);
-  if (!status.updateAvailable || !status.asset || !status.latestVersion) {
-    throw new Error("No matching Desktop installer is available for this machine");
+  try {
+    const status = await resolveDesktopUpdateStatus(options);
+    if (!status.updateAvailable || !status.asset || !status.latestVersion) {
+      throw new Error("No matching Desktop installer is available for this machine");
+    }
+    const downloaded = await downloadDesktopInstaller({
+      asset: status.asset,
+      harnesstapDir: options.harnesstapDir,
+      fetchFn: options.fetchFn,
+      launch: options.launch,
+      platform: options.platform,
+    });
+    return {
+      version: status.latestVersion,
+      asset: status.asset.name,
+      path: downloaded.path,
+    };
+  } finally {
+    clearDesktopUpdateStatusCache();
   }
-  const downloaded = await downloadDesktopInstaller({
-    asset: status.asset,
-    harnesstapDir: options.harnesstapDir,
-    fetchFn: options.fetchFn,
-    launch: options.launch,
-    platform: options.platform,
-  });
-  return {
-    version: status.latestVersion,
-    asset: status.asset.name,
-    path: downloaded.path,
-  };
 }
