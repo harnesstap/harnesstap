@@ -100,4 +100,39 @@ describe("status with a project path through the refresh worker", () => {
       rmSync(home, { recursive: true, force: true });
     }
   }, 60_000);
+
+  it("computes on this thread when the sidecar worker fails to load", async () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-status-worker-fallback-"));
+    try {
+      const project = join(home, "dev", "demo");
+      seedProject(project);
+      const env = homeEnv(home);
+      const init = await run([process.execPath, BIN, "--no-interactive", "init", "--harnesses", "claude-code"], env);
+      expect(init.code).toBe(0);
+      const fallback = `const cache = await import(${JSON.stringify(CACHE)});
+const { detectGlobalProfileStatus } = await import(${JSON.stringify(DRIFT)});
+cache.setStatusRefreshWorkerTargetForTests(${JSON.stringify(join(home, "missing-worker.ts"))});
+cache.warmStatusRefreshWorker();
+const results = [];
+for (const projectPath of [undefined, ${JSON.stringify(project)}]) {
+  for (const depth of ["full", "fast"]) {
+    try {
+      const status = await detectGlobalProfileStatus({ depth, projectPath });
+      results.push(status.depth);
+    } catch (error) {
+      results.push("error: " + error.message);
+    }
+  }
+}
+console.log(JSON.stringify(results));
+process.exit(0);`;
+      const result = await run([process.execPath, "-e", fallback], env);
+      expect(result.code).toBe(0);
+      expect(JSON.parse(result.stdout.trim().split("\n").pop() ?? "[]")).toEqual(["full", "fast", "full", "fast"]);
+      expect(result.stderr).toContain("[status-cache] refresh worker error:");
+      expect(result.stderr).toContain("computing status on this thread");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  }, 90_000);
 });

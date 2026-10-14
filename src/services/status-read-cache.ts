@@ -698,10 +698,20 @@ function scheduleWorkerRespawn(): void {
  * bundles that file as a second entry, and import.meta.url is the binary, so
  * the embedded path is the one `bun build --compile` registers.
  */
+let workerTargetOverride: string | URL | undefined;
+
+/** Point new refresh workers at another entry, so tests can simulate a worker that fails to load. */
+export function setStatusRefreshWorkerTargetForTests(target: string | URL | undefined): void {
+  workerTargetOverride = target;
+}
+
 function statusRefreshWorkerTarget(): string | URL {
+  if (workerTargetOverride !== undefined) return workerTargetOverride;
   const url = import.meta.url;
   if (url.includes("/$bunfs/") || url.includes("~BUN")) {
-    return "/$bunfs/root/services/status-refresh-worker.ts";
+    // `bun build --compile` stores each entry under its transpiled name.
+    // Bun 1.3.x only resolves the `.js` name; 1.4 accepts both.
+    return "/$bunfs/root/services/status-refresh-worker.js";
   }
   return new URL("./status-refresh-worker.ts", import.meta.url);
 }
@@ -877,7 +887,10 @@ function enqueueStatusRefresh<T extends object>(
       }, 0);
     };
 
-    if (workerFailed && !refreshWorker && !keepStatusWorkerAlive) {
+    // A worker that failed to start or crashed is not used until a respawn
+    // succeeds. The sidecar computes on this thread meanwhile, so status
+    // never fails because the worker is unavailable.
+    if (workerFailed && !refreshWorker) {
       runInProcess();
       return;
     }
@@ -900,7 +913,18 @@ function enqueueStatusRefresh<T extends object>(
       writeGenAtStart: readStatusWriteGeneration(),
       home,
       ...(statusTraceEnabled ? { postedAt: performance.now() } : {}),
-      resolve,
+      resolve: (outcome) => {
+        if (outcome.ok) {
+          resolve(outcome);
+          return;
+        }
+        // The worker could not produce a status (it failed to load, crashed,
+        // exited, or its read threw). Compute it here instead. A genuine read
+        // error throws here too and is reported from this thread.
+        const reason = outcome.error?.stack ?? outcome.error?.message ?? "no error was reported";
+        console.error(`[status-cache] refresh worker failed, computing status on this thread: ${reason}`);
+        runInProcess();
+      },
     });
     // Hold the process open while a job is pending. An unref'd worker lets
     // some Bun versions exit before the result arrives, printing nothing.
