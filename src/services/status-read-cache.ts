@@ -2,13 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher 
 import { dirname, join, sep } from "node:path";
 import { Worker } from "node:worker_threads";
 import { getDbPath } from "../db/connection.js";
-import { cursorPluginsLogSignature } from "../plugins/cursor-local-plugin.js";
-import {
-  cursorStateKeysDue,
-  cursorStateKeysSignature,
-  cursorUserDataDir,
-  readCursorStateKeysGeneration,
-} from "../plugins/cursor-enablement.js";
+import { cursorUserDataDir } from "../plugins/cursor-enablement.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
@@ -36,13 +30,6 @@ interface CacheEntry<T> {
   paths: string[];
   /** Mtime fingerprint of watched files. Empty while watchers are healthy. */
   pathSig: string;
-  /** Newest session name plus the Plugins log stat. */
-  logSig: string;
-  /** Content hash of the state.vscdb keys status reads. */
-  vscdbSig: string;
-  vscdbCheckedAt: number;
-  /** Generation of that hash. A bump invalidates every cached status. */
-  vscdbGeneration: number;
   /** Epoch observed when this value was stored. A newer epoch is dirty. */
   epoch: number;
   value: T;
@@ -243,9 +230,8 @@ function recursiveWatchPaths(home: string): Set<string> {
 }
 
 /**
- * Mtime fingerprint of files whose bytes matter. state.vscdb and the Cursor
- * logs tree are not included: Cursor rewrites both constantly. Key contents
- * and the newest Plugins log are checked separately.
+ * Mtime fingerprint of files whose bytes matter. Cursor's state.vscdb and
+ * logs folder are not included. Status does not read them.
  */
 function collectFingerprintPaths(
   projectPath: string | undefined,
@@ -263,6 +249,7 @@ function collectFingerprintPaths(
     join(home, ".claude", "plugins", "known_marketplaces.json"),
     join(home, ".claude", "plugins", "marketplaces"),
     join(cursorUserDataDir(home), "User", "settings.json"),
+    join(home, ".cursor", "projects", "mcps"),
     ...harnessConfigPaths(home),
     ...marketplaceManifestPaths(home),
     ...projectDriftWatchPaths(projectPath),
@@ -419,14 +406,6 @@ function scheduleWatchers(paths: readonly string[], recursive: ReadonlySet<strin
 
 function entryIsCurrent(entry: CacheEntry<unknown>): boolean {
   if (entry.epoch !== epoch) return false;
-  const home = resolveHomeRoot();
-  if (cursorPluginsLogSignature(home) !== entry.logSig) return false;
-  if (readCursorStateKeysGeneration(home) !== entry.vscdbGeneration) return false;
-  if (cursorStateKeysDue(entry.vscdbCheckedAt)) {
-    if (cursorStateKeysSignature(home) !== entry.vscdbSig) return false;
-    entry.vscdbCheckedAt = Date.now();
-    entry.vscdbGeneration = readCursorStateKeysGeneration(home);
-  }
   if (!watchersHealthy) {
     const sig = fingerprintPaths(entry.paths);
     if (entry.pathSig === "") {
@@ -468,10 +447,6 @@ function remember<T>(
   const next: CacheEntry<T> = {
     paths: collected.paths,
     pathSig: watchersHealthy ? "" : fingerprintPaths(collected.paths),
-    logSig: cursorPluginsLogSignature(home),
-    vscdbSig: cursorStateKeysSignature(home),
-    vscdbCheckedAt: Date.now(),
-    vscdbGeneration: readCursorStateKeysGeneration(home),
     epoch: epoch,
     value: loaded.value,
   };
@@ -682,11 +657,11 @@ async function loadNow<T>(
 }
 
 /**
- * Reuse a full status result while watched inputs, the newest Plugins log,
- * and the state.vscdb key hash are unchanged. Healthy file watchers make the
- * file half a map lookup. Where a watcher could not be installed, mtimes and
- * sizes of those files are checked instead. state.vscdb file mtime and other
- * log files are ignored. Concurrent callers for one key share one in-flight load.
+ * Reuse a full status result while watched inputs are unchanged. Healthy file
+ * watchers make that check a map lookup. Where a watcher could not be
+ * installed, mtimes and sizes of those files are checked instead. Status does
+ * not read Cursor's state.vscdb or logs folder. Concurrent callers for one
+ * key share one in-flight load.
  */
 export async function withStatusReadCache<T>(
   input: StatusCacheRequest,

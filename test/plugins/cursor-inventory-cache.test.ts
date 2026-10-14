@@ -5,7 +5,6 @@ import {
   clearCursorPluginInstallsCache,
   listCursorPluginInstalls,
 } from "../../src/plugins/cursor-inventory.ts";
-import { cursorStateDbPath, cursorUserDataDir } from "../../src/plugins/cursor-enablement.ts";
 import { createTempDir, cleanupDir } from "../helpers/fs.ts";
 
 function writeLocalPlugin(home: string, name: string): void {
@@ -50,15 +49,10 @@ describe("listCursorPluginInstalls cache", () => {
   it("drops the scan on an explicit clear even when watched mtimes are restored", () => {
     const home = createTempDir("ht-cursor-cache-clear");
     dirs.push(home);
-    mkdirSync(join(cursorUserDataDir(home), "logs"), { recursive: true });
-    mkdirSync(join(cursorStateDbPath(home), ".."), { recursive: true });
-    writeFileSync(cursorStateDbPath(home), "");
     writeLocalPlugin(home, "alpha");
     const watched = [
       join(home, ".cursor", "plugins"),
       join(home, ".cursor", "plugins", "local"),
-      join(cursorUserDataDir(home), "logs"),
-      cursorStateDbPath(home),
     ];
     const frozen = new Date("2020-06-01T00:00:00.000Z");
     for (const path of watched) touch(path, frozen);
@@ -75,16 +69,40 @@ describe("listCursorPluginInstalls cache", () => {
     ]);
   });
 
-  it("bypasses the cache for injected signal collectors", () => {
-    const home = createTempDir("ht-cursor-cache-inject");
+  it("keeps only the newest cache version and counts an MCP-only plugin", () => {
+    const home = createTempDir("ht-cursor-newest-sha");
     dirs.push(home);
-    let calls = 0;
-    const collect = () => {
-      calls += 1;
-      return { pluginNames: new Set<string>() };
-    };
-    listCursorPluginInstalls(home, collect);
-    listCursorPluginInstalls(home, collect);
-    expect(calls).toBe(2);
+    const older = join(home, ".cursor", "plugins", "cache", "cursor-public", "demo", "aaa");
+    const newer = join(home, ".cursor", "plugins", "cache", "cursor-public", "demo", "zzz");
+    mkdirSync(join(older, ".cursor-plugin"), { recursive: true });
+    mkdirSync(join(newer, ".cursor-plugin"), { recursive: true });
+    writeFileSync(
+      join(older, ".cursor-plugin", "plugin.json"),
+      JSON.stringify({ name: "demo", version: "1.0.0" }),
+    );
+    writeFileSync(
+      join(newer, ".cursor-plugin", "plugin.json"),
+      JSON.stringify({ name: "demo", version: "2.0.0" }),
+    );
+    const oldStamp = new Date("2020-01-01T00:00:00.000Z");
+    const newStamp = new Date("2026-01-01T00:00:00.000Z");
+    touch(older, oldStamp);
+    touch(newer, newStamp);
+    mkdirSync(join(home, ".cursor", "projects", "mcps", "plugin-slack-slack"), {
+      recursive: true,
+    });
+
+    const installs = listCursorPluginInstalls(home);
+    const demo = installs.filter((row) => row.name === "demo");
+    expect(demo).toHaveLength(1);
+    expect(demo[0]).toMatchObject({
+      version: "2.0.0",
+      enabled: true,
+      installPath: newer,
+    });
+    expect(installs.find((row) => row.name === "slack")).toMatchObject({
+      ref: "slack@cursor",
+      enabled: true,
+    });
   });
 });

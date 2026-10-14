@@ -216,7 +216,7 @@ function findEnabledCursorInstallForPin(
   return enabled.find((row) => row.name === name);
 }
 
-/** Cursor status rows: only enabled installs count as installed/extra. */
+/** Cursor status rows: on-disk installs count as installed, including cache copies Cursor has turned off. */
 export function buildCursorHarnessPluginRows(
   declaredPins: PluginConstraintPin[],
   homeRoot: string,

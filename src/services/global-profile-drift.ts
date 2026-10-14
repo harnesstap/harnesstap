@@ -317,10 +317,10 @@ async function finalizeGlobalProfileStatus(
  * `has_drift`, `stack_in_sync`, `drift_summary`). The desktop drift pill
  * replaces those from every fast poll, so a cold fast read still runs the
  * dry-run. The full result, including that dry-run and profile contents, is
- * cached. A warm read is a map lookup while file watchers are healthy, plus
- * one stat of the newest Plugins log. state.vscdb counts only when the keys
- * status reads change, and other log files do not. Where a watcher could not
- * be installed, mtimes and sizes of the remaining files are checked instead.
+ * cached. A warm read is a map lookup while file watchers are healthy.
+ * Status does not read Cursor's state.vscdb or logs folder. Where a watcher
+ * could not be installed, mtimes and sizes of the remaining files are
+ * checked instead.
  * A later read, including fast after full of the same inputs,
  * skips the dry-run. When a watched input changes, the previous result is
  * returned with `refreshing` set and the new read runs on a background

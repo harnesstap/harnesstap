@@ -1,23 +1,13 @@
-import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { computationSlot } from "../services/status-computation.js";
-import { resolveHomeRoot } from "../utils/home-root.js";
 import { parsePluginRef } from "./host-plugin-manifest.js";
 import { cursorProjectsMcpsRoot } from "./refresh.js";
-
-const require = createRequire(import.meta.url);
 
 export interface CursorEnablementSignals {
   /** Plugin names Cursor treats as installed (not marketplace refs). */
   pluginNames: Set<string>;
 }
-
-export type CollectCursorEnablementSignals = (
-  homeRoot: string,
-) => CursorEnablementSignals;
 
 const THIRD_PARTY_SETTING_KEYS = [
   "cursor.thirdPartyExtensibility",
@@ -28,8 +18,6 @@ const THIRD_PARTY_SETTING_KEYS = [
   "cursor.enableThirdPartySkills",
   "cursor.general.includeThirdPartyPlugins",
 ] as const;
-
-const RECENTLY_USED_KEY = "cursor.recentlyUsed.globalOrder";
 
 const INSTALLED_PLUGIN_JSON_FILES = [
   join(".cursor", "plugins", "installed.json"),
@@ -177,239 +165,8 @@ export function cursorUserDataDir(homeRoot: string): string {
   return join(homedir(), ".config", "Cursor");
 }
 
-export function cursorStateDbPath(homeRoot: string): string {
-  return join(cursorUserDataDir(homeRoot), "User", "globalStorage", "state.vscdb");
-}
-
 function resolveCursorUserSettingsPath(homeRoot: string): string {
   return join(cursorUserDataDir(homeRoot), "User", "settings.json");
-}
-
-interface SqliteLike {
-  prepare: (sql: string) => {
-    get: (...params: unknown[]) => { key?: unknown; value?: unknown } | undefined;
-    all: (...params: unknown[]) => Array<{ key?: unknown; value?: unknown }>;
-  };
-  exec: (sql: string) => void;
-  close: () => void;
-}
-
-function openReadonlySqlite(dbPath: string): SqliteLike | null {
-  try {
-    if ("Bun" in globalThis) {
-      const { Database } = require("bun:sqlite") as {
-        Database: new (
-          path: string,
-          opts?: { readonly?: boolean },
-        ) => SqliteLike;
-      };
-      return new Database(dbPath, { readonly: true });
-    }
-    const BetterSqlite = require("better-sqlite3") as (
-      path: string,
-      opts?: { readonly?: boolean },
-    ) => SqliteLike;
-    return BetterSqlite(dbPath, { readonly: true });
-  } catch {
-    return null;
-  }
-}
-
-function decodeSqliteValue(value: unknown): unknown {
-  if (value == null) return null;
-  const raw =
-    typeof value === "string"
-      ? value
-      : Buffer.from(value as Uint8Array).toString("utf-8");
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return raw;
-  }
-}
-
-const PLUGIN_KEY_START = "cursor.plugins";
-const PLUGIN_KEY_END = "cursor.plugint";
-
-interface CursorDbRows {
-  byKey: Map<string, unknown>;
-}
-
-/** Re-read key contents at this interval. File mtime is not a signal. */
-export const CURSOR_STATE_KEYS_REQUERY_MS = 30_000;
-
-interface CursorDbCacheEntry {
-  rows: CursorDbRows;
-  hash: string;
-  queriedAt: number;
-}
-
-const cursorDbCache = new Map<string, CursorDbCacheEntry>();
-const cursorStateKeysGeneration = new Map<string, number>();
-let cursorDbOpens = 0;
-let cursorStateKeysForceCheck = false;
-
-/** Bumps when the keys status reads actually change. */
-export function readCursorStateKeysGeneration(homeRoot: string): number {
-  return cursorStateKeysGeneration.get(cursorStateDbPath(homeRoot)) ?? 0;
-}
-
-export function clearCursorStateDbCache(): void {
-  cursorDbCache.clear();
-  cursorStateKeysForceCheck = true;
-}
-
-/** Next key-hash check opens the database even inside the throttle. Tests use this. */
-export function expireCursorStateKeysThrottle(): void {
-  cursorStateKeysForceCheck = true;
-  for (const entry of cursorDbCache.values()) {
-    entry.queriedAt = 0;
-  }
-}
-
-/** How many times state.vscdb was actually opened. Tests use this. */
-export function readCursorStateDbOpenCount(): number {
-  return cursorDbOpens;
-}
-
-function hashCursorDbRows(rows: CursorDbRows): string {
-  const hash = createHash("sha256");
-  const keys = [...rows.byKey.keys()].sort();
-  for (const key of keys) {
-    hash.update(key);
-    hash.update("\0");
-    hash.update(JSON.stringify(rows.byKey.get(key)) ?? "null");
-    hash.update("\n");
-  }
-  return hash.digest("hex");
-}
-
-function queryCursorDbRows(dbPath: string): CursorDbRows {
-  const empty: CursorDbRows = { byKey: new Map() };
-  const db = openReadonlySqlite(dbPath);
-  if (!db) return empty;
-  cursorDbOpens += 1;
-  const byKey = new Map<string, unknown>();
-  try {
-    db.exec("PRAGMA query_only = ON");
-    const exact = db.prepare("SELECT key, value FROM ItemTable WHERE key = ?");
-    for (const key of [RECENTLY_USED_KEY, ...THIRD_PARTY_SETTING_KEYS]) {
-      const row = exact.get(key);
-      if (!row) continue;
-      byKey.set(key, decodeSqliteValue(row.value));
-    }
-    const pluginRows = db
-      .prepare("SELECT key, value FROM ItemTable WHERE key >= ? AND key < ?")
-      .all(PLUGIN_KEY_START, PLUGIN_KEY_END);
-    for (const row of pluginRows) {
-      if (typeof row.key !== "string" || !row.key) continue;
-      byKey.set(row.key, decodeSqliteValue(row.value));
-    }
-  } catch {
-    return empty;
-  } finally {
-    try {
-      db.close();
-    } catch {
-      // ignore close errors
-    }
-  }
-  return { byKey };
-}
-
-/**
- * Read only the ItemTable keys status needs. The connection is read-only
- * and query_only. Parsed rows are reused until the throttle expires and the
- * key contents change. The database file mtime is ignored. Never inserts,
- * updates, or creates the database.
- */
-function loadCursorDbRows(homeRoot: string): CursorDbRows {
-  return computationSlot(`cursor-state-db:${homeRoot}`, () => loadCursorDbRowsUncached(homeRoot));
-}
-
-function loadCursorDbRowsUncached(homeRoot: string): CursorDbRows {
-  const empty: CursorDbRows = { byKey: new Map() };
-  const dbPath = cursorStateDbPath(homeRoot);
-  if (!existsSync(dbPath)) return empty;
-
-  const now = Date.now();
-  const cached = cursorDbCache.get(dbPath);
-  if (
-    cached
-    && !cursorStateKeysForceCheck
-    && now - cached.queriedAt < CURSOR_STATE_KEYS_REQUERY_MS
-  ) {
-    return cached.rows;
-  }
-  cursorStateKeysForceCheck = false;
-
-  const rows = queryCursorDbRows(dbPath);
-  const hash = hashCursorDbRows(rows);
-  if (cached && cached.hash === hash) {
-    cached.queriedAt = now;
-    return cached.rows;
-  }
-  cursorDbCache.set(dbPath, { rows, hash, queriedAt: now });
-  cursorStateKeysGeneration.set(dbPath, (cursorStateKeysGeneration.get(dbPath) ?? 0) + 1);
-  return rows;
-}
-
-/** Content hash of the Cursor state keys status reads. Missing database is `missing`. */
-export function cursorStateKeysSignature(homeRoot: string): string {
-  const dbPath = cursorStateDbPath(homeRoot);
-  if (!existsSync(dbPath)) {
-    cursorStateKeysForceCheck = false;
-    return "missing";
-  }
-  loadCursorDbRows(homeRoot);
-  return cursorDbCache.get(dbPath)?.hash ?? "missing";
-}
-
-/** True when the throttled key hash should be read again. */
-export function cursorStateKeysDue(checkedAt: number): boolean {
-  return cursorStateKeysForceCheck || Date.now() - checkedAt >= CURSOR_STATE_KEYS_REQUERY_MS;
-}
-
-/**
- * True when the stored key hash is still current. Inside the throttle this
- * does not open the database.
- */
-export function cursorStateKeysMatch(hash: string, checkedAt: number): boolean {
-  if (
-    !cursorStateKeysForceCheck
-    && Date.now() - checkedAt < CURSOR_STATE_KEYS_REQUERY_MS
-  ) {
-    return true;
-  }
-  return cursorStateKeysSignature(resolveHomeRoot()) === hash;
-}
-
-function readRecentlyUsedSkillPaths(homeRoot: string): string[] {
-  const value = loadCursorDbRows(homeRoot).byKey.get(RECENTLY_USED_KEY);
-  if (!Array.isArray(value)) return [];
-  const paths: string[] = [];
-  for (const entry of value) {
-    if (
-      entry &&
-      typeof entry === "object" &&
-      "identifier" in entry &&
-      typeof (entry as { identifier: unknown }).identifier === "string"
-    ) {
-      paths.push((entry as { identifier: string }).identifier);
-    }
-  }
-  return paths;
-}
-
-function pluginNamesFromVscdb(homeRoot: string): Set<string> {
-  const names = new Set<string>();
-  for (const [key, value] of loadCursorDbRows(homeRoot).byKey) {
-    if (!key.startsWith(PLUGIN_KEY_START)) continue;
-    for (const name of pluginNamesFromStoredValue(value)) {
-      names.add(name);
-    }
-  }
-  return names;
 }
 
 function readJsonObject(path: string): Record<string, unknown> | null {
@@ -509,28 +266,22 @@ function readCursorUserSettings(homeRoot: string): Record<string, unknown> | nul
 
 /**
  * Whether Cursor still loads other-harness trees (`.claude`, `.agents` as
- * imported plugins/skills). Default is on; an explicit IDE/settings false
- * means HarnessTap must not attribute those trees to the Cursor harness.
+ * imported plugins/skills). Read from Cursor `settings.json` only. Default
+ * is on. An explicit false means HarnessTap must not attribute those trees
+ * to the Cursor harness.
  */
 export function cursorLoadsForeignHarnessTrees(homeRoot: string): boolean {
   const fromSettings = thirdPartyFlagFromSettings(readCursorUserSettings(homeRoot));
   if (fromSettings !== null) {
     return fromSettings;
   }
-  const rows = loadCursorDbRows(homeRoot).byKey;
-  for (const key of THIRD_PARTY_SETTING_KEYS) {
-    const value = rows.get(key);
-    if (typeof value !== "boolean" || !isThirdPartySettingsKey(key)) {
-      continue;
-    }
-    if (value === false) {
-      return false;
-    }
-  }
   return true;
 }
 
-/** Default enablement collector: MCP folders, install records, recently-used skills. */
+/**
+ * Names from Cursor MCP folders and install JSON. Status does not read
+ * `state.vscdb`. A cache directory counts as installed on its own.
+ */
 export function collectCursorEnablementSignals(
   homeRoot: string,
 ): CursorEnablementSignals {
@@ -541,12 +292,6 @@ export function collectCursorEnablementSignals(
     pluginNames.add(name);
   }
   for (const name of pluginNamesFromInstalledJsonFiles(homeRoot)) {
-    pluginNames.add(name);
-  }
-  for (const name of pluginNamesFromVscdb(homeRoot)) {
-    pluginNames.add(name);
-  }
-  for (const name of pluginNamesFromSkillPaths(readRecentlyUsedSkillPaths(homeRoot))) {
     pluginNames.add(name);
   }
   return { pluginNames };

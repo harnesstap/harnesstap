@@ -1,4 +1,55 @@
-import { mkdirSync, readdirSync, utimesSync, writeFileSync, type Dirent } from "node:fs";
+import { createRequire } from "node:module";
+import { sep } from "node:path";
+import { mock } from "bun:test";
+
+const nodeRequire = createRequire(import.meta.url);
+const actualFs = nodeRequire("node:fs") as typeof import("node:fs");
+const actualSqlite = nodeRequire("bun:sqlite") as typeof import("bun:sqlite");
+
+let cursorLogsReads = 0;
+let cursorStateDbOpens = 0;
+
+function noteLogsPath(path: unknown): void {
+  if (typeof path !== "string") return;
+  if (path.endsWith(`${sep}logs`) || path.includes(`${sep}logs${sep}`)) {
+    cursorLogsReads += 1;
+  }
+}
+
+mock.module("node:fs", () => ({
+  ...actualFs,
+  readdirSync(path: string, options?: object) {
+    noteLogsPath(path);
+    return actualFs.readdirSync(path, options as never);
+  },
+  readFileSync(path: string, options?: object) {
+    noteLogsPath(path);
+    return actualFs.readFileSync(path, options as never);
+  },
+  statSync(path: string, options?: object) {
+    noteLogsPath(path);
+    return actualFs.statSync(path, options as never);
+  },
+  openSync(path: string, flags?: string, mode?: number) {
+    noteLogsPath(path);
+    return actualFs.openSync(path, flags, mode);
+  },
+}));
+
+mock.module("bun:sqlite", () => {
+  const Original = actualSqlite.Database;
+  class CountingDatabase extends Original {
+    constructor(filename?: string, options?: { readonly?: boolean }) {
+      if (typeof filename === "string" && filename.endsWith(`${sep}state.vscdb`)) {
+        cursorStateDbOpens += 1;
+      }
+      super(filename, options);
+    }
+  }
+  return { ...actualSqlite, Database: CountingDatabase };
+});
+
+import { mkdirSync, readdirSync, writeFileSync, type Dirent } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -11,8 +62,7 @@ import {
   setPluginTags,
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { cursorStateDbPath, cursorUserDataDir, expireCursorStateKeysThrottle } from "../../src/plugins/cursor-enablement.ts";
-import { readCursorPluginsLogWalkCount } from "../../src/plugins/cursor-local-plugin.ts";
+import { cursorUserDataDir } from "../../src/plugins/cursor-enablement.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import {
   detectGlobalProfileStatus,
@@ -28,18 +78,13 @@ import {
 } from "../../src/services/status-read-cache.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
-const OLD_SESSIONS = 370;
-const NEWEST_SESSION = "20261014T235959";
-const NOISE_FILES = 782;
-const NOISE_ROWS = 400;
-const NOISE_BYTES = 64 * 1024;
 const RESOURCE_COUNT = 70;
 /** Product warm target is at most 50ms. A healthy watcher hit is a map lookup. */
 const WARM_BUDGET_MS = 50;
 /**
- * Product cold target is 200ms on a desktop. CI gets headroom, but a budget
- * this loose would have hidden the 2s Mac cold path. Walk count is the
- * machine-independent guard; this still fails a multi-second recompute.
+ * Product cold target is 200ms on a desktop. CI gets headroom. The
+ * machine-independent guard is that status never opens state.vscdb or reads
+ * the Cursor logs folder.
  */
 const COLD_BUDGET_MS = 500;
 
@@ -65,64 +110,21 @@ function countFiles(dir: string): number {
   return count;
 }
 
-function writeLargeCursorHome(home: string): string {
+function writeCursorHome(home: string): { logs: string; dbPath: string } {
   const logs = join(cursorUserDataDir(home), "logs");
-  const oldStamp = new Date("2020-01-01T00:00:00.000Z");
-  for (let index = 0; index < OLD_SESSIONS; index += 1) {
-    const session = `20260101T${String(index).padStart(6, "0")}`;
-    const dir = join(logs, session, "window1", "exthost", "output");
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, "exthost.log"), "noise\n");
-    utimesSync(join(logs, session), oldStamp, oldStamp);
-  }
-  const output = join(
-    logs,
-    NEWEST_SESSION,
-    "window1",
-    "exthost",
-    "anysphere.cursor-retrieval",
-    "output",
-  );
-  const perBucket = 23;
-  const buckets = NOISE_FILES / perBucket;
-  for (let bucket = 0; bucket < buckets; bucket += 1) {
-    const dir = join(output, `bucket${bucket}`);
-    mkdirSync(dir, { recursive: true });
-    for (let file = 0; file < perBucket; file += 1) {
-      writeFileSync(join(dir, `log${file}.txt`), "noise\n");
-    }
-  }
-  writeFileSync(join(output, "Cursor Plugins.log"), "loadUserLocalPlugin demo loaded\n");
-  const newestStamp = new Date("2026-10-14T23:59:59.000Z");
-  utimesSync(join(logs, NEWEST_SESSION), newestStamp, newestStamp);
-
-  const dbPath = cursorStateDbPath(home);
+  const session = join(logs, "20261014T235959", "window1");
+  mkdirSync(session, { recursive: true });
+  writeFileSync(join(session, "Cursor Plugins.log"), "loadUserLocalPlugin demo loaded\n");
+  const dbPath = join(cursorUserDataDir(home), "User", "globalStorage", "state.vscdb");
   mkdirSync(join(dbPath, ".."), { recursive: true });
   const db = new Database(dbPath);
   db.run("CREATE TABLE ItemTable (key TEXT UNIQUE, value BLOB)");
-  const insert = db.prepare("INSERT INTO ItemTable (key, value) VALUES (?, ?)");
-  const blob = "x".repeat(NOISE_BYTES);
-  const tx = db.transaction(() => {
-    for (let index = 0; index < NOISE_ROWS; index += 1) {
-      insert.run(`noise.${index}`, blob);
-    }
-    insert.run(
-      "cursor.plugins.installedIds.no-team",
-      JSON.stringify(["slack"]),
-    );
-  });
-  tx();
+  db.run(
+    "INSERT INTO ItemTable (key, value) VALUES (?, ?)",
+    ["cursor.plugins.installedIds.no-team", JSON.stringify(["slack"])],
+  );
   db.close();
-  return logs;
-}
-
-function churnUnrelatedCursorWrites(home: string, logs: string): void {
-  const db = new Database(cursorStateDbPath(home));
-  db.run("UPDATE ItemTable SET value = ? WHERE key = ?", `churn-${Date.now()}`, "noise.0");
-  db.close();
-  const oldLog = join(logs, "20260101T000000", "window1", "exthost", "output", "exthost.log");
-  writeFileSync(oldLog, `noise ${Date.now()}\n`);
-  utimesSync(logs, new Date(), new Date());
+  return { logs, dbPath };
 }
 
 describe("status perf", () => {
@@ -130,9 +132,9 @@ describe("status perf", () => {
     const context = await createInitializedTestContext("status-perf");
     try {
       clearLiveReadCaches();
-      const logs = writeLargeCursorHome(context.homeDir);
-      expect(readdirSync(logs).length).toBe(OLD_SESSIONS + 1);
-      expect(countFiles(logs)).toBe(OLD_SESSIONS + NOISE_FILES + 1);
+      const cursorHome = writeCursorHome(context.homeDir);
+      expect(readdirSync(cursorHome.logs).length).toBe(1);
+      expect(countFiles(cursorHome.logs)).toBeGreaterThan(0);
       const plugin = createPlugin({ name: "perf-profile" });
       setPluginTags(plugin.id, ["profile"]);
       for (let index = 0; index < 24; index += 1) {
@@ -157,8 +159,11 @@ describe("status perf", () => {
       setActiveProfileName("perf-profile");
 
       setStatusRefreshDelayMs(0);
+      expect(cursorStateDbOpens).toBeGreaterThan(0);
+      expect(cursorLogsReads).toBeGreaterThan(0);
+      cursorLogsReads = 0;
+      cursorStateDbOpens = 0;
       const before = readDriftCoreComputeCount();
-      const walksBefore = readCursorPluginsLogWalkCount();
       const preparesBefore = readPluginByNamePrepareCount();
       const lookupsBefore = readPluginByNameLookupCount();
       const coldStarted = performance.now();
@@ -171,20 +176,13 @@ describe("status perf", () => {
       const warmMs = performance.now() - warmStarted;
       await new Promise((resolve) => setTimeout(resolve, 50));
       const watchersArmed = readStatusWatcherCreateCount();
-      expect(readCursorPluginsLogWalkCount() - walksBefore).toBe(1);
 
-      churnUnrelatedCursorWrites(context.homeDir, logs);
-      const churnStarted = performance.now();
-      const afterChurn = await detectGlobalProfileStatus({ depth: "full" });
-      const churnMs = performance.now() - churnStarted;
-
-      const walksBeforeRecompute = readCursorPluginsLogWalkCount();
       clearLiveReadCaches();
       const recomputeStarted = performance.now();
       const recomputed = await detectGlobalProfileStatus({ depth: "full" });
       const recomputeMs = performance.now() - recomputeStarted;
       console.log(
-        `status perf cold=${coldMs.toFixed(1)}ms warm=${warmMs.toFixed(1)}ms churn=${churnMs.toFixed(1)}ms recompute=${recomputeMs.toFixed(1)}ms walks=${readCursorPluginsLogWalkCount() - walksBefore} prepares=${prepareDelta} lookups=${lookupDelta} watchers=${watchersArmed}`,
+        `status perf cold=${coldMs.toFixed(1)}ms warm=${warmMs.toFixed(1)}ms recompute=${recomputeMs.toFixed(1)}ms prepares=${prepareDelta} lookups=${lookupDelta} watchers=${watchersArmed} vscdbOpens=${cursorStateDbOpens} logsReads=${cursorLogsReads}`,
       );
 
       expect(lookupDelta).toBeGreaterThan(1);
@@ -192,42 +190,16 @@ describe("status perf", () => {
       expect(coldMs).toBeLessThan(COLD_BUDGET_MS);
       expect(recomputeMs).toBeLessThan(COLD_BUDGET_MS);
       expect(warmMs).toBeLessThan(WARM_BUDGET_MS);
-      expect(churnMs).toBeLessThan(WARM_BUDGET_MS);
       expect(cold.refreshing).toBe(false);
       expect(warm.refreshing).toBe(false);
-      expect(afterChurn.refreshing).toBe(false);
       expect(recomputed.refreshing).toBe(false);
       expect(statusCacheWatchersHealthy()).toBe(true);
       expect(stable(warm)).toBe(stable(cold));
-      expect(stable(afterChurn)).toBe(stable(cold));
       expect(stable(recomputed)).toBe(stable(cold));
       expect(readDriftCoreComputeCount() - before).toBe(2);
-      expect(readCursorPluginsLogWalkCount() - walksBefore).toBeLessThanOrEqual(2);
-      expect(readCursorPluginsLogWalkCount() - walksBeforeRecompute).toBeLessThanOrEqual(1);
       expect(cold.contents?.resources.length).toBe(RESOURCE_COUNT);
-
-      expireCursorStateKeysThrottle();
-      const db = new Database(cursorStateDbPath(context.homeDir));
-      db.run(
-        "UPDATE ItemTable SET value = ? WHERE key = ?",
-        JSON.stringify(["slack", "docs"]),
-        "cursor.plugins.installedIds.no-team",
-      );
-      db.close();
-      const computed = readDriftCoreComputeCount();
-      const refreshes = readStatusRefreshCompletionCount();
-      const during = await detectGlobalProfileStatus({ depth: "full" });
-      expect(during.refreshing).toBe(true);
-      const deadline = Date.now() + 8000;
-      let fresh = during;
-      while (Date.now() < deadline) {
-        fresh = await detectGlobalProfileStatus({ depth: "full" });
-        if (!fresh.refreshing && readStatusRefreshCompletionCount() > refreshes) break;
-        await new Promise((resolve) => setTimeout(resolve, 15));
-      }
-      expect(fresh.refreshing).toBe(false);
-      expect(readStatusRefreshCompletionCount()).toBe(refreshes + 1);
-      expect(readDriftCoreComputeCount()).toBe(computed);
+      expect(cursorStateDbOpens).toBe(0);
+      expect(cursorLogsReads).toBe(0);
       expect(readStatusWatcherCreateCount()).toBe(watchersArmed);
     } finally {
       clearLiveReadCaches();

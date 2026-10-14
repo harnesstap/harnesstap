@@ -11,7 +11,7 @@ const fixtureHome = join(
 );
 
 describe("buildCursorHarnessPluginRows", () => {
-  it("marks enabled pins installed and ignores disabled cache as extras", () => {
+  it("counts cached plugins as installed even when Cursor has them turned off", () => {
     const rows = buildCursorHarnessPluginRows(
       [
         { ref: "active-plugin@cursor-public", version_constraint: "*" },
@@ -20,10 +20,13 @@ describe("buildCursorHarnessPluginRows", () => {
       fixtureHome,
     );
 
-    expect(rows).toEqual([
+    expect([...rows].sort((a, b) => a.id.localeCompare(b.id))).toEqual([
       { id: "active-plugin@cursor-public", state: "installed" },
-      { id: "dormant@cursor-public", state: "missing" },
+      { id: "agent-demo@cursor-public", state: "extra" },
+      { id: "demo@cursor-public", state: "extra" },
+      { id: "dormant@cursor-public", state: "installed" },
       { id: "homemade@local", state: "extra" },
+      { id: "only-market@example", state: "extra" },
     ]);
   });
 
@@ -50,9 +53,13 @@ describe("buildHarnessLiveStatusMap cursor plugins", () => {
       declaredMcpByHarness: { cursor: [], "claude-code": [] },
     });
 
-    expect(map.cursor?.plugins).toEqual([
+    expect([...(map.cursor?.plugins ?? [])].sort((a, b) => a.id.localeCompare(b.id))).toEqual([
       { id: "active-plugin@cursor-public", state: "installed" },
+      { id: "agent-demo@cursor-public", state: "extra" },
+      { id: "demo@cursor-public", state: "extra" },
+      { id: "dormant@cursor-public", state: "extra" },
       { id: "homemade@local", state: "extra" },
+      { id: "only-market@example", state: "extra" },
     ]);
     // Declared pins are shared; Claude still evaluates every pin against its installs.
     expect(map["claude-code"]?.plugins).toEqual([
@@ -65,10 +72,10 @@ describe("buildHarnessLiveStatusMap cursor plugins", () => {
       [{ ref: "demo@demo-market", version_constraint: "*" }],
       fixtureHome,
     );
-    // demo exists in Cursor cache under demo@cursor-public, so name matches.
+    // demo exists in Cursor cache under demo@cursor-public, so the name matches.
     expect(rows.some((row) => row.id === "demo@demo-market")).toBe(true);
     expect(rows.find((row) => row.id === "demo@demo-market")?.state).toBe(
-      "missing",
+      "installed",
     );
 
     const claudeOnly = buildCursorHarnessPluginRows(

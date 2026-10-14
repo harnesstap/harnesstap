@@ -64,7 +64,7 @@ describe("cursor-enablement helpers", () => {
     }
   });
 
-  it("reads installed plugin names from state.vscdb and installed.json", () => {
+  it("reads installed plugin names from installed.json and ignores state.vscdb", () => {
     const home = createTempDir("cursor-installed-records");
     try {
       mkdirSync(join(home, ".cursor", "plugins"), { recursive: true });
@@ -83,14 +83,24 @@ describe("cursor-enablement helpers", () => {
           JSON.stringify(["slack", "github"]),
         ],
       );
+      db.run(
+        "INSERT INTO ItemTable (key, value) VALUES (?, ?)",
+        ["cursor.skills.includeThirdPartyPlugins", JSON.stringify(false)],
+      );
       db.close();
 
       const signals = collectCursorEnablementSignals(home);
-      expect([...signals.pluginNames].sort()).toEqual([
-        "github",
-        "pstack",
-        "slack",
-      ]);
+      expect([...signals.pluginNames]).toEqual(["pstack"]);
+      expect(cursorLoadsForeignHarnessTrees(home)).toBe(true);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
+  it("defaults foreign harness trees on when settings.json is absent", () => {
+    const home = createTempDir("cursor-third-party-default");
+    try {
+      expect(cursorLoadsForeignHarnessTrees(home)).toBe(true);
     } finally {
       cleanupDir(home);
     }

@@ -8,13 +8,8 @@ const fixtureHome = join(
 );
 
 describe("CursorPluginProvider", () => {
-  it("lists cache, local, agent-plugin, and marketplace installs with enablement", async () => {
-    const provider = new CursorPluginProvider({
-      // Fixture homes do not read the real Cursor recently-used store.
-      collectEnablementSignals: () => ({
-        pluginNames: new Set(["active-plugin"]),
-      }),
-    });
+  it("lists cache, local, agent-plugin, and marketplace installs", async () => {
+    const provider = new CursorPluginProvider();
     const installs = await provider.list({
       projectRoot: ".",
       homeRoot: fixtureHome,
@@ -25,46 +20,37 @@ describe("CursorPluginProvider", () => {
 
     expect(Object.keys(byRef).sort()).toEqual([
       "active-plugin@cursor-public",
+      "agent-demo@cursor-public",
+      "demo@cursor-public",
+      "dormant@cursor-public",
       "homemade@local",
+      "only-market@example",
     ]);
     expect(byRef["active-plugin@cursor-public"]).toMatchObject({
       enabled: true,
       scope: "user",
       version: "2.0.0",
     });
+    expect(byRef["dormant@cursor-public"]).toMatchObject({
+      enabled: true,
+      scope: "user",
+      version: "0.1.0",
+    });
     expect(byRef["homemade@local"]).toMatchObject({
       enabled: true,
       scope: "local",
       version: "0.0.1",
     });
-  });
-
-  it("treats recently-used skill paths as enablement signals", async () => {
-    const provider = new CursorPluginProvider({
-      collectEnablementSignals: () => ({
-        pluginNames: new Set(["dormant"]),
-      }),
+    expect(byRef["only-market@example"]).toMatchObject({
+      enabled: true,
+      scope: "user",
+      version: "9.9.9",
     });
-    const installs = await provider.list({
-      projectRoot: ".",
-      homeRoot: fixtureHome,
-      harnesstapDir: "/tmp/ht",
-    });
-    expect(installs.map((row) => row.ref).sort()).toEqual([
-      "dormant@cursor-public",
-      "homemade@local",
-    ]);
-    expect(installs.find((row) => row.ref === "dormant@cursor-public")?.enabled).toBe(
-      true,
-    );
   });
 
   it("skips git refresh when cache is fresh", async () => {
     const provider = new CursorPluginProvider({
       runCommand: () => ({ stdout: "", stderr: "", exitCode: 0 }),
-      collectEnablementSignals: () => ({
-        pluginNames: new Set(["demo"]),
-      }),
     });
     const results = await provider.check(
       {

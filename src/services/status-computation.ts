@@ -3,9 +3,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 const storage = new AsyncLocalStorage<Map<string, unknown>>();
 
 /**
- * Share one Cursor inventory, log probe, and state.vscdb read across every
- * lookup a single status computation makes. Outside a status read, `load`
- * runs every time.
+ * Share one Cursor inventory across every lookup a single status computation
+ * makes. Outside a status read, `load` runs every time.
  */
 export function runInStatusComputation<T>(fn: () => T): T {
   return storage.run(new Map(), fn);

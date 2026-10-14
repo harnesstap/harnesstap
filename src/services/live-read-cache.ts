@@ -1,4 +1,3 @@
-import { clearCursorStateDbCache } from "../plugins/cursor-enablement.js";
 import { clearCursorPluginInstallsCache } from "../plugins/cursor-inventory.js";
 import { clearGlobalProfileStatusCache } from "./status-read-cache.js";
 
@@ -10,5 +9,4 @@ import { clearGlobalProfileStatusCache } from "./status-read-cache.js";
 export function clearLiveReadCaches(): void {
   clearGlobalProfileStatusCache();
   clearCursorPluginInstallsCache();
-  clearCursorStateDbCache();
 }
