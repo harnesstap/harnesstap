@@ -705,7 +705,7 @@ export function setStatusRefreshWorkerTargetForTests(target: string | URL | unde
   workerTargetOverride = target;
 }
 
-function statusRefreshWorkerTarget(): string | URL {
+function statusRefreshWorkerTarget(): string | URL | null {
   if (workerTargetOverride !== undefined) return workerTargetOverride;
   const main = (globalThis as { Bun?: { main?: string } }).Bun?.main ?? "";
   const url = decodeURIComponent(import.meta.url);
@@ -716,9 +716,10 @@ function statusRefreshWorkerTarget(): string | URL {
     // workers and resolves on Bun 1.3 and 1.4 on POSIX and Windows. An
     // absolute /$bunfs/root/... name breaks on Bun 1.3 (`.ts`) and on
     // Windows, where the virtual root is B:\~BUN\root.
-    if (process.platform === "win32" && main) {
-      return `${dirname(main).replaceAll("\\", "/")}/services/status-refresh-worker.js`;
-    }
+    // On Windows a compiled worker never starts with Bun 1.3 (relative
+    // name), and absolute B:\~BUN\root names are not found. Compute there
+    // on the agent's thread instead of waiting out the reply timeout.
+    if (process.platform === "win32") return null;
     return "./services/status-refresh-worker.ts";
   }
   return new URL("./status-refresh-worker.ts", import.meta.url);
@@ -761,6 +762,7 @@ function completeRefreshJob(job: RefreshJob, message: Extract<RefreshResultMessa
  */
 const STATUS_WORKER_REPLY_TIMEOUT_MS = Number(process.env.HT_STATUS_WORKER_TIMEOUT_MS) || 8_000;
 const workerOnline = new WeakSet<Worker>();
+let compiledWorkerSkipLogged = false;
 
 function abandonUnresponsiveWorker(worker: Worker, waitedMs: number): void {
   if (refreshWorker !== worker) return;
@@ -781,7 +783,15 @@ function abandonUnresponsiveWorker(worker: Worker, waitedMs: number): void {
 function statusWorker(): Worker {
   if (refreshWorker) return refreshWorker;
   workerCreates += 1;
-  const worker = new Worker(statusRefreshWorkerTarget());
+  const target = statusRefreshWorkerTarget();
+  if (target === null) {
+    if (!compiledWorkerSkipLogged) {
+      compiledWorkerSkipLogged = true;
+      console.error("[status-cache] compiled sidecar on Windows: computing status on the agent thread (no refresh worker)");
+    }
+    throw new Error("status refresh worker is not available in this build");
+  }
+  const worker = new Worker(target);
   worker.unref();
   worker.once("online", () => workerOnline.add(worker));
   worker.on("message", (message: RefreshResultMessage) => {

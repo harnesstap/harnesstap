@@ -134,6 +134,13 @@ async function checkStatusReads(home: string, port: number, output: () => string
   if (/refresh worker (error|failed)/.test(output())) {
     fail(`status refresh worker failed inside the compiled sidecar:\n${output()}`);
   }
+  if (process.platform === "win32") {
+    if (!output().includes("computing status on the agent thread")) {
+      fail(`expected the Windows sidecar to compute status on the agent thread:\n${output()}`);
+    }
+    console.log("ok: Windows sidecar computes status on the agent thread");
+    return;
+  }
   console.log("ok: status refresh worker loaded in the compiled sidecar");
 }
 
