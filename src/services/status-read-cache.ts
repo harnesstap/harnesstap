@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync, watch, type FSWatcher } from "node:fs";
-import { dirname, join, sep } from "node:path";
+import { basename, dirname, join, sep } from "node:path";
 import { Worker, parentPort } from "node:worker_threads";
-import { getDbPath } from "../db/connection.js";
+import { getHarnesstapDir, readDbDataVersion } from "../db/connection.js";
+import { readStatusWriteGeneration } from "../db/write-generation.js";
 import { cursorUserDataDir } from "../plugins/cursor-enablement.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -32,8 +33,10 @@ interface CacheEntry<T> {
   pathSig: string;
   /** Epoch observed when this value was stored. A newer epoch is dirty. */
   epoch: number;
-  /** `harnesstap.db` plus its WAL and shm files at compute time. */
-  dbSig: string;
+  /** Status-relevant writes on this thread's connection when the read started. */
+  writeGen: number;
+  /** `PRAGMA data_version` after the read. Moves on another process's commit. */
+  dataVersion: number;
   value: T;
 }
 
@@ -54,9 +57,17 @@ const MANIFEST_RELATIVE_PATHS = [
   "marketplace.json",
 ];
 
+const debugCache = process.env.HARNESSTAP_STATUS_CACHE_DEBUG === "1";
+
 const buckets = new Map<string, CacheEntry<unknown>>();
 const inflight = new Map<string, { generation: number; promise: Promise<void> }>();
 const watchers = new Map<string, FSWatcher>();
+/**
+ * Directories watched only because a child file is missing. Only events for
+ * those child names count, so unrelated siblings (for example Cursor's
+ * `globalStorage` next to a missing `settings.json`) do not dirty status.
+ */
+const parentOnlyWatches = new Map<string, Set<string>>();
 let generation = 0;
 let epoch = 0;
 let watchersHealthy = true;
@@ -127,6 +138,7 @@ function closeWatchers(): void {
     armedPaths.delete(watcherPath(key));
   }
   watchers.clear();
+  parentOnlyWatches.clear();
 }
 
 function markDirty(): void {
@@ -238,24 +250,16 @@ function recursiveWatchPaths(home: string): Set<string> {
   return paths;
 }
 
-/** `harnesstap.db` plus the WAL and shm files SQLite updates on a write. */
-export function statusDatabasePaths(): string[] {
-  const dbPath = getDbPath();
-  return [dbPath, `${dbPath}-wal`, `${dbPath}-shm`];
-}
-
-/** mtime and size of the database files. Same-connection `data_version` does not move. */
-export function statusDatabaseSignature(): string {
-  return statusDatabasePaths().map((path) => fileSignature(path)).join("|");
-}
-
 /**
- * Signature for a snapshot just read. When the files move during that read,
- * keep the earlier signature so the next status waits for a new snapshot.
+ * True for files under `~/.harnesstap`. The sidecar writes there itself
+ * (the database and its `-wal` and `-shm` files, the token, the port, the
+ * active profile). Watching them makes the sidecar's own reads and writes
+ * look like edits. Database changes are tracked by write generation and
+ * `data_version`, and the active profile is part of the cache key.
  */
-export function statusDatabaseSignatureAfterRead(before: string): string {
-  const after = statusDatabaseSignature();
-  return before === after ? after : before;
+function isSidecarOwnedPath(path: string): boolean {
+  const dir = getHarnesstapDir();
+  return path === dir || path.startsWith(dir.endsWith(sep) ? dir : `${dir}${sep}`);
 }
 
 /**
@@ -269,7 +273,6 @@ export function collectFingerprintPaths(
   const home = resolveHomeRoot();
   const plugins = join(home, ".cursor", "plugins");
   const paths = [
-    ...statusDatabasePaths(),
     plugins,
     join(plugins, "installed.json"),
     join(plugins, "installed_plugins.json"),
@@ -291,7 +294,7 @@ function uniquePaths(paths: readonly string[]): string[] {
   const seen = new Set<string>();
   const unique: string[] = [];
   for (const path of paths) {
-    if (!path || seen.has(path)) continue;
+    if (!path || seen.has(path) || isSidecarOwnedPath(path)) continue;
     seen.add(path);
     unique.push(path);
   }
@@ -303,9 +306,14 @@ function fingerprintPaths(paths: readonly string[]): string {
   return paths.map((path) => `${path}=${fileSignature(path)}`).join("\n");
 }
 
-function notifyWatchDirty(): void {
+function notifyWatchDirty(path?: string, file?: string | null): void {
+  if (path !== undefined && typeof file === "string") {
+    const wanted = parentOnlyWatches.get(path);
+    if (wanted && !wanted.has(basename(file))) return;
+  }
+  if (debugCache) console.error(`[status-cache] watch dirty ${path ?? ""} ${file ?? ""}`);
   if (parentPort) {
-    parentPort.postMessage({ op: "dirty" });
+    parentPort.postMessage({ op: "dirty", home: resolveHomeRoot() });
     return;
   }
   markDirty();
@@ -321,15 +329,16 @@ function startWatcher(path: string, recursive: boolean): FSWatcher {
   // fs.watch often emits once while the watch is installed. Ignore that burst
   // so arming does not look like an edit and force a refresh.
   const ignoreUntil = performance.now() + 100;
-  const watcher = watch(path, { persistent: false, recursive }, () => {
+  const watcher = watch(path, { persistent: false, recursive }, (_event, file) => {
     if (performance.now() < ignoreUntil) return;
-    notifyWatchDirty();
+    notifyWatchDirty(path, typeof file === "string" ? file : null);
   });
   watcher.on("error", () => {
     notifyWatchDirty();
     watcher.close();
     watchers.delete(watcherKey(path, recursive));
     armedPaths.delete(path);
+    parentOnlyWatches.delete(path);
   });
   return watcher;
 }
@@ -394,25 +403,37 @@ function isUnderHome(path: string, home: string): boolean {
 }
 
 function retainWatchersForHome(home: string): void {
-  const keep = new Set(statusDatabasePaths());
   for (const [key, watcher] of watchers) {
     const path = watcherPath(key);
-    if (keep.has(path) || isUnderHome(path, home)) continue;
+    if (isUnderHome(path, home)) continue;
     watcher.close();
     watchers.delete(key);
     armedPaths.delete(path);
+    parentOnlyWatches.delete(path);
   }
 }
 
 function ensureWatchers(paths: readonly string[], recursive: ReadonlySet<string>, home: string): void {
   for (const path of paths) {
-    if (hasWatcher(path)) continue;
+    if (isSidecarOwnedPath(path)) continue;
+    if (hasWatcher(path)) {
+      // Requested directly now, so every event under it counts.
+      parentOnlyWatches.delete(path);
+      continue;
+    }
     let isDirectory = false;
     try {
       isDirectory = statSync(path).isDirectory();
     } catch {
       const parent = dirname(path);
       if (parent === path || parent === home || parent === dirname(home)) continue;
+      if (isSidecarOwnedPath(parent)) continue;
+      const directlyWatched = hasWatcher(parent) && !parentOnlyWatches.has(parent);
+      if (!directlyWatched && !paths.includes(parent)) {
+        const wanted = parentOnlyWatches.get(parent) ?? new Set<string>();
+        wanted.add(basename(path));
+        parentOnlyWatches.set(parent, wanted);
+      }
       watchOne(parent, false);
       continue;
     }
@@ -433,6 +454,13 @@ export function armStatusWatches(
   }
   ensureWatchers(paths, recursive, home);
   return watcherCreates - before;
+}
+
+/** Close watches outside `home` on this thread. The worker calls this when HOME changes. */
+export function releaseStatusWatchesForOtherHomes(home: string): void {
+  if (home === retainedForHome) return;
+  retainWatchersForHome(home);
+  retainedForHome = home;
 }
 
 /** Drop watches on this thread. The worker uses this when tests force the mtime fallback. */
@@ -466,6 +494,52 @@ function scheduleWatchers(paths: readonly string[], recursive: ReadonlySet<strin
     for (const path of batch) armedPaths.add(path);
     ensureWatchers(batch, recursiveNow, homeNow);
   }, 0);
+}
+
+let cacheHits = 0;
+let cacheMisses = 0;
+let lastMissReason = "";
+
+/** Warm reads served from the cache without a recompute. Tests use this. */
+export function readStatusCacheHitCount(): number {
+  return cacheHits;
+}
+
+/** Reads that waited for or scheduled a recompute. Tests use this. */
+export function readStatusCacheMissCount(): number {
+  return cacheMisses;
+}
+
+/** Why the last read missed: cold, epoch, write, data_version, or fingerprint. */
+export function readStatusCacheLastMissReason(): string {
+  return lastMissReason;
+}
+
+function noteMiss(reason: string): void {
+  cacheMisses += 1;
+  lastMissReason = reason;
+  if (debugCache) console.error(`[status-cache] miss reason=${reason}`);
+}
+
+function noteHit(startedAt: number): void {
+  cacheHits += 1;
+  if (debugCache) {
+    console.error(`[status-cache] hit ${(performance.now() - startedAt).toFixed(2)}ms`);
+  }
+}
+
+/** Status-relevant database state. Main-thread writes plus other connections' commits. */
+function databaseStateMatches(entry: CacheEntry<unknown>): string | null {
+  if (entry.writeGen !== readStatusWriteGeneration()) return "write";
+  if (entry.dataVersion !== readDbDataVersion()) return "data_version";
+  return null;
+}
+
+function staleReason(entry: CacheEntry<unknown>): string | null {
+  const dbReason = databaseStateMatches(entry);
+  if (dbReason) return dbReason;
+  if (entry.epoch !== epoch) return "epoch";
+  return entryIsCurrent(entry) ? null : "fingerprint";
 }
 
 function entryIsCurrent(entry: CacheEntry<unknown>): boolean {
@@ -515,8 +589,8 @@ function remember<T>(
   projectPath: string | undefined,
   loaded: { value: T; watchedPaths: readonly string[] },
   epochAtStart: number,
+  writeGen: number,
   watchPaths?: readonly string[],
-  dbSig?: string,
 ): void {
   const home = resolveHomeRoot();
   const collected = watchPaths
@@ -528,7 +602,9 @@ function remember<T>(
     paths: collected.paths,
     pathSig: watchersHealthy ? "" : fingerprintPaths(collected.paths),
     epoch: epoch,
-    dbSig: dbSig ?? statusDatabaseSignature(),
+    writeGen,
+    // Read after the snapshot so the worker's own commits are not a change.
+    dataVersion: readDbDataVersion(),
     value: deepFreeze(loaded.value),
   };
   buckets.set(key, next);
@@ -554,12 +630,13 @@ interface RefreshJob {
   projectPath: string | undefined;
   generation: number;
   epochAtStart: number;
+  writeGenAtStart: number;
   home: string | undefined;
   resolve: (outcome: RefreshOutcome) => void;
 }
 
 type RefreshResultMessage =
-  | { op: "dirty" }
+  | { op: "dirty"; home?: string }
   | { op: "unhealthy" }
   | { op: "watch-report"; created: number }
   | {
@@ -569,7 +646,6 @@ type RefreshResultMessage =
       value?: unknown;
       watchedPaths?: string[];
       watchPaths?: string[];
-      dbSig?: string;
     };
 
 let refreshWorker: Worker | null = null;
@@ -630,6 +706,9 @@ function statusWorker(): Worker {
   worker.on("message", (message: RefreshResultMessage) => {
     switch (message.op) {
       case "dirty":
+        // A watch left over from a previous home (tests switch HOME) is not
+        // an edit to this home's inputs.
+        if (message.home && message.home !== resolveHomeRoot()) return;
         if (!ignoreWatchDirt) markDirty();
         return;
       case "unhealthy":
@@ -658,7 +737,7 @@ function statusWorker(): Worker {
         remember(job.key, job.projectPath, {
           value: frozen,
           watchedPaths: message.watchedPaths,
-        }, job.epochAtStart, message.watchPaths, message.dbSig);
+        }, job.epochAtStart, job.writeGenAtStart, message.watchPaths);
         refreshCompletions += 1;
         respawnAttempts = 0;
       }
@@ -724,11 +803,10 @@ function enqueueStatusRefresh<T extends object>(
         void (async () => {
           try {
             blockRefreshDelay();
-            const dbSigBefore = statusDatabaseSignature();
             const loaded = await load();
-            const dbSig = statusDatabaseSignatureAfterRead(dbSigBefore);
             if (gen === generation && home === process.env.HOME) {
-              remember(key, projectPath, loaded, epochAtStart, undefined, dbSig);
+              // This read ran on this thread. Its own writes are not a change.
+              remember(key, projectPath, loaded, epochAtStart, readStatusWriteGeneration());
               refreshCompletions += 1;
             }
             resolve({
@@ -763,6 +841,7 @@ function enqueueStatusRefresh<T extends object>(
       projectPath,
       generation: gen,
       epochAtStart,
+      writeGenAtStart: readStatusWriteGeneration(),
       home,
       resolve,
     });
@@ -818,10 +897,6 @@ function scheduleRefresh<T extends object>(
   void trackRefresh(key, projectPath, input, load, gen);
 }
 
-function databaseSnapshotMatches(entry: CacheEntry<unknown> | undefined): boolean {
-  return entry !== undefined && entry.dbSig === statusDatabaseSignature();
-}
-
 async function loadNow<T extends object>(
   key: string,
   projectPath: string | undefined,
@@ -833,24 +908,14 @@ async function loadNow<T extends object>(
   if (pending && pending.generation === gen) {
     await pending.promise;
     const cached = buckets.get(key) as CacheEntry<T> | undefined;
-    if (cached && databaseSnapshotMatches(cached) && entryIsCurrent(cached)) {
+    if (cached && staleReason(cached) === null) {
       return present(cached.value, false);
     }
   }
 
-  let outcome = await trackRefresh(key, projectPath, input, load, gen);
-  let cached = buckets.get(key) as CacheEntry<T> | undefined;
-  if (cached && gen === generation && !databaseSnapshotMatches(cached)) {
-    // The database moved while this snapshot was read. Read once more.
-    outcome = await trackRefresh(key, projectPath, input, load, generation);
-    cached = buckets.get(key) as CacheEntry<T> | undefined;
-  }
-  if (
-    cached
-    && gen === generation
-    && databaseSnapshotMatches(cached)
-    && entryIsCurrent(cached)
-  ) {
+  const outcome = await trackRefresh(key, projectPath, input, load, gen);
+  const cached = buckets.get(key) as CacheEntry<T> | undefined;
+  if (cached && gen === generation && entryIsCurrent(cached)) {
     return present(cached.value, false);
   }
   if (outcome.ok && outcome.value !== undefined) {
@@ -872,17 +937,22 @@ export async function withStatusReadCache<T extends object>(
   load: () => Promise<{ value: T; watchedPaths: readonly string[] }>,
   options?: StatusCacheLoadOptions,
 ): Promise<T & { refreshing: boolean }> {
+  const startedAt = performance.now();
   const key = requestKey(input);
-  let cached = buckets.get(key) as CacheEntry<T> | undefined;
-  if (cached && cached.dbSig !== statusDatabaseSignature()) {
-    // The database changed. Drop in-flight snapshots of the previous files
-    // and wait for a new read instead of serving the cached one.
+  const cached = buckets.get(key) as CacheEntry<T> | undefined;
+  const reason = cached ? staleReason(cached) : "cold";
+  if (cached && reason === null) {
+    noteHit(startedAt);
+    return present(cached.value, false);
+  }
+  noteMiss(reason ?? "cold");
+
+  if (reason === "write" || reason === "data_version") {
+    // A status-relevant database write. Wait for a read that includes it
+    // instead of serving the previous snapshot.
     generation += 1;
     buckets.clear();
-    cached = undefined;
-  }
-  if (cached && entryIsCurrent(cached)) {
-    return present(cached.value, false);
+    return loadNow(key, input.projectPath, input, load);
   }
 
   if (options?.staleWhileRefresh && cached) {

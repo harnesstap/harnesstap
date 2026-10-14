@@ -5,9 +5,8 @@ import { loadGlobalProfileStatusSnapshot } from "./global-profile-drift.js";
 import {
   armStatusWatches,
   closeStatusWatches,
+  releaseStatusWatchesForOtherHomes,
   collectFingerprintPaths,
-  statusDatabaseSignature,
-  statusDatabaseSignatureAfterRead,
 } from "./status-read-cache.js";
 
 interface RefreshRequest {
@@ -55,17 +54,18 @@ parentPort?.on("message", (request: RefreshRequest) => {
   const run = chain.then(async () => {
     try {
       applyEnv(request);
+      // Stop watching a previous home before this read, so its teardown
+      // is not reported as an edit.
+      releaseStatusWatchesForOtherHomes(resolveHomeRoot());
       if (request.delayMs && request.delayMs > 0) {
         const shared = new SharedArrayBuffer(4);
         Atomics.wait(new Int32Array(shared), 0, 0, request.delayMs);
       }
-      const dbSigBefore = statusDatabaseSignature();
       const loaded = await loadGlobalProfileStatusSnapshot({
         depth: depthOf(request.depth),
         harness: request.harness,
         projectPath: request.projectPath,
       });
-      const dbSig = statusDatabaseSignatureAfterRead(dbSigBefore);
       const collected = collectFingerprintPaths(request.projectPath, loaded.watchedPaths);
       parentPort?.postMessage({
         id: requestId,
@@ -73,7 +73,6 @@ parentPort?.on("message", (request: RefreshRequest) => {
         value: JSON.parse(JSON.stringify(loaded.value)),
         watchedPaths: loaded.watchedPaths,
         watchPaths: collected.paths,
-        dbSig,
       });
       // Watch after the result is queued so this thread's fs.watch cannot sit on the request.
       const created = armStatusWatches(collected.paths, collected.recursive, resolveHomeRoot());
