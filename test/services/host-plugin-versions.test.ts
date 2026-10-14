@@ -532,7 +532,7 @@ describe("host plugin source pull and download", () => {
         "5.1.0",
       ]);
 
-      const pulled = pullHostPluginVersions({
+      const pulled = await pullHostPluginVersions({
         originRef: "superpowers@superpowers-marketplace",
         homeRoot: ctx.homeDir,
       });
@@ -638,7 +638,7 @@ describe("host plugin source pull and download", () => {
         "5.1.0",
       ]);
 
-      const pulled = pullHostPluginVersions({
+      const pulled = await pullHostPluginVersions({
         originRef: "superpowers@superpowers-marketplace",
         homeRoot: ctx.homeDir,
       });
@@ -734,7 +734,7 @@ describe("host plugin source pull and download", () => {
           .advertised_version,
       ).toBe("6.3.0");
 
-      const pulled = pullHostPluginVersions({
+      const pulled = await pullHostPluginVersions({
         originRef: "superpowers@superpowers-marketplace",
         homeRoot: ctx.homeDir,
       });

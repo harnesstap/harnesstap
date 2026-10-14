@@ -27,20 +27,24 @@ export function resolveCatalogPluginVersion(
   return "0.0.0";
 }
 
-export function installMarketplacePinIntoCache(input: {
+export async function installMarketplacePinIntoCache(input: {
   originRef: string;
   versionConstraint?: string;
   homeRoot?: string;
   harnesstapDir?: string;
-}): { version: string; install_path: string } {
+}): Promise<{ version: string; install_path: string }> {
   const { name, marketplace } = parsePluginRef(input.originRef);
   if (!marketplace) {
     throw new Error(`Plugin ${input.originRef} is not a marketplace pin`);
   }
   const homeRoot = input.homeRoot ?? resolveHomeRoot();
   const harnesstapDir = input.harnesstapDir ?? getHarnesstapDir();
-  refreshMarketplaceCatalog(harnesstapDir, { name: marketplace, force: false });
-  const catalog = ensureMarketplaceCatalog(harnesstapDir, { name: marketplace });
+  await refreshMarketplaceCatalog(harnesstapDir, {
+    name: marketplace,
+    force: false,
+    unattended: false,
+  });
+  const catalog = await ensureMarketplaceCatalog(harnesstapDir, { name: marketplace });
   const entry = catalog.find((plugin) => plugin.name === name);
   const version = resolveCatalogPluginVersion(entry?.version, input.versionConstraint);
   const checkout = marketplaceCacheDir(harnesstapDir, marketplace);
@@ -57,7 +61,7 @@ export function installMarketplacePinIntoCache(input: {
     });
     return { version, install_path: cached };
   }
-  const downloaded = downloadHostPluginVersion({
+  const downloaded = await downloadHostPluginVersion({
     originRef: input.originRef,
     version,
     homeRoot,

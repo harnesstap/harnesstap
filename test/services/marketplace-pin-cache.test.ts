@@ -51,13 +51,13 @@ describe("installMarketplacePinIntoCache", () => {
         url: repo,
         platforms: ["claude-code"],
       });
-      const refresh = refreshMarketplaceCatalog(harnesstapDir, {
+      const refresh = await refreshMarketplaceCatalog(harnesstapDir, {
         name: "local-market",
         force: true,
       });
       expect(refresh.ok).toBe(true);
 
-      const result = installMarketplacePinIntoCache({
+      const result = await installMarketplacePinIntoCache({
         originRef: "alpha@local-market",
         versionConstraint: "latest",
         homeRoot: context.homeDir,

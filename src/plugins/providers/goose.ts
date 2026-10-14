@@ -1,6 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { defaultRunCommand, type CommandResult, type RunCommand } from "../run-command.js";
+import {
+  defaultRunCommand,
+  resolveCommandResult,
+  type CommandResult,
+  type RunCommand,
+} from "../run-command.js";
 import type {
   PluginCheckOptions,
   PluginCheckResult,
@@ -103,10 +108,10 @@ export class GoosePluginProvider implements PluginProvider {
 
   constructor(private readonly deps: GooseProviderDeps = {}) {}
 
-  private runGoose(args: string[], ctx?: PluginContext): CommandResult {
+  private async runGoose(args: string[], ctx?: PluginContext): Promise<CommandResult> {
     const run = this.deps.runCommand ?? defaultRunCommand;
     const binary = this.deps.gooseBinary ?? "goose";
-    return run(binary, args, { cwd: ctx?.projectRoot });
+    return resolveCommandResult(run(binary, args, { cwd: ctx?.projectRoot }));
   }
 
   async list(ctx: PluginContext): Promise<PluginInstall[]> {
@@ -139,7 +144,7 @@ export class GoosePluginProvider implements PluginProvider {
     const results: PluginUpdateResult[] = [];
 
     for (const install of targets) {
-      const result = this.runGoose(["plugin", "update", install.name], ctx);
+      const result = await this.runGoose(["plugin", "update", install.name], ctx);
       if (result.exitCode === 0) {
         const refreshed = scanGoosePlugins(ctx.homeRoot).find(
           (row) => row.name === install.name,
@@ -187,7 +192,7 @@ export class GoosePluginProvider implements PluginProvider {
       };
     }
 
-    const result = this.runGoose(["plugin", "install", opts.ref], ctx);
+    const result = await this.runGoose(["plugin", "install", opts.ref], ctx);
     if (result.exitCode !== 0) {
       return {
         ref: opts.ref,

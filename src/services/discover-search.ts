@@ -78,29 +78,29 @@ function parseDiscoverSourceId(sourceId: string): ParsedDiscoverSourceId {
   return { kind: "unknown", sourceId };
 }
 
-function marketplacePluginsForEntry(
+async function marketplacePluginsForEntry(
   harnesstapDir: string,
   entry: VisibleMarketplaceEntry,
-): CatalogPlugin[] {
+): Promise<CatalogPlugin[]> {
   if (!entry.managed && entry.contentRoot) {
     return listMarketplacePlugins(harnesstapDir, entry);
   }
   return listCatalogPlugins(harnesstapDir, { name: entry.name });
 }
 
-function marketplaceGroup(
+async function marketplaceGroup(
   q: string,
   sourceId: string,
   name: string,
   harnesstapDir: string,
-): DiscoverSearchGroup | undefined {
+): Promise<DiscoverSearchGroup | undefined> {
   const entry = listVisibleMarketplaces(harnesstapDir).find(
     (marketplace) => marketplace.name === name,
   );
   if (!entry) {
     return undefined;
   }
-  const plugins = marketplacePluginsForEntry(harnesstapDir, entry).filter((plugin) =>
+  const plugins = (await marketplacePluginsForEntry(harnesstapDir, entry)).filter((plugin) =>
     catalogPluginMatchesQuery(plugin, q),
   );
   return {
@@ -117,10 +117,10 @@ function marketplaceGroup(
   };
 }
 
-export function searchDiscover(input: {
+export async function searchDiscover(input: {
   q: string;
   sourceIds: string[];
-}): DiscoverSearchResult {
+}): Promise<DiscoverSearchResult> {
   if (input.sourceIds.length === 0) {
     return { groups: [] };
   }
@@ -132,7 +132,7 @@ export function searchDiscover(input: {
     const parsed = parseDiscoverSourceId(sourceId);
     switch (parsed.kind) {
       case "marketplace": {
-        const group = marketplaceGroup(
+        const group = await marketplaceGroup(
           input.q,
           parsed.sourceId,
           parsed.name,

@@ -1,7 +1,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { resolveDshHome } from "../../platforms/deepseek-harness-home.js";
-import { defaultRunCommand, type CommandResult, type RunCommand } from "../run-command.js";
+import {
+  defaultRunCommand,
+  resolveCommandResult,
+  type CommandResult,
+  type RunCommand,
+} from "../run-command.js";
 import type {
   PluginCheckOptions,
   PluginCheckResult,
@@ -134,9 +139,9 @@ export class DeepSeekHarnessPluginProvider implements PluginProvider {
 
   constructor(private readonly deps: DeepSeekHarnessProviderDeps = {}) {}
 
-  private run(args: string[], ctx?: PluginContext): CommandResult {
+  private async run(args: string[], ctx?: PluginContext): Promise<CommandResult> {
     const run = this.deps.runCommand ?? defaultRunCommand;
-    return run("dsh", args, { cwd: ctx?.projectRoot });
+    return resolveCommandResult(run("dsh", args, { cwd: ctx?.projectRoot }));
   }
 
   async list(ctx: PluginContext): Promise<PluginInstall[]> {
@@ -181,7 +186,7 @@ export class DeepSeekHarnessPluginProvider implements PluginProvider {
     opts: PluginInstallOptions,
   ): Promise<PluginInstallResult> {
     const scope: PluginScope = opts.scope ?? "user";
-    const result = this.run(
+    const result = await this.run(
       ["plugin", "--profile", "web", "add", opts.ref],
       ctx,
     );

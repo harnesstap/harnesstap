@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
   githubGitConfigArgs,
@@ -9,49 +9,81 @@ import {
   DEFAULT_GIT_CLONE_TIMEOUT_MS,
   runCommandWithTimeout,
 } from "../utils/run-command-with-timeout.js";
+import { UNATTENDED_GIT_TIMEOUT_MS } from "../utils/spawn-command.js";
 import { mapGitStderr } from "../utils/git-errors.js";
-import type { RunCommand } from "./run-command.js";
+import { resolveCommandResult, type RunCommand } from "./run-command.js";
 
 export interface GitRefreshOptions {
   url: string;
   ref?: string;
   targetDir: string;
   runCommand?: RunCommand;
+  /** Background catalog refresh. Shorter timeout, no prompt, SSH connect limit. */
+  unattended?: boolean;
 }
 
-export function refreshGitSource(opts: GitRefreshOptions): {
+export async function refreshGitSource(opts: GitRefreshOptions): Promise<{
   ok: boolean;
   sha?: string;
   message: string;
-} {
+}> {
   const run = opts.runCommand ?? runCommandWithTimeout;
-
-  if (existsSync(opts.targetDir)) {
-    rmSync(opts.targetDir, { recursive: true, force: true });
+  const unattended = opts.unattended === true;
+  const timeoutMs = unattended ? UNATTENDED_GIT_TIMEOUT_MS : DEFAULT_GIT_CLONE_TIMEOUT_MS;
+  const staging = `${opts.targetDir}.incoming`;
+  if (existsSync(staging)) {
+    rmSync(staging, { recursive: true, force: true });
   }
-  mkdirSync(opts.targetDir, { recursive: true });
+  mkdirSync(staging, { recursive: true });
 
   const token = resolveGithubAccessToken().token;
   const url = githubHttpsRemoteForAuth(opts.url, token);
   const cloneArgs = [...githubGitConfigArgs(token), "clone", "--depth", "1"];
   if (opts.ref) cloneArgs.push("--branch", opts.ref);
-  cloneArgs.push(url, opts.targetDir);
+  cloneArgs.push(url, staging);
 
-  const clone = run("git", cloneArgs, { timeoutMs: DEFAULT_GIT_CLONE_TIMEOUT_MS });
+  const clone = await resolveCommandResult(
+    run("git", cloneArgs, { timeoutMs, unattended }),
+  );
   if (clone.exitCode !== 0) {
+    rmSync(staging, { recursive: true, force: true });
     return {
       ok: false,
       message: mapGitStderr(clone.stderr.trim() || "git clone failed", opts.url),
     };
   }
 
-  const rev = run("git", [
+  const rev = await resolveCommandResult(run("git", [
     ...githubGitConfigArgs(token),
     "-C",
-    opts.targetDir,
+    staging,
     "rev-parse",
     "HEAD",
-  ]);
+  ], { timeoutMs, unattended }));
+  if (rev.exitCode !== 0) {
+    rmSync(staging, { recursive: true, force: true });
+    return {
+      ok: false,
+      message: mapGitStderr(rev.stderr.trim() || "git rev-parse failed", opts.url),
+    };
+  }
+
+  const backup = `${opts.targetDir}.previous`;
+  if (existsSync(backup)) {
+    rmSync(backup, { recursive: true, force: true });
+  }
+  if (existsSync(opts.targetDir)) {
+    renameSync(opts.targetDir, backup);
+  }
+  renameSync(staging, opts.targetDir);
+  const previousCatalog = join(backup, "catalog.json");
+  const nextCatalog = join(opts.targetDir, "catalog.json");
+  if (existsSync(previousCatalog) && !existsSync(nextCatalog)) {
+    copyFileSync(previousCatalog, nextCatalog);
+  }
+  if (existsSync(backup)) {
+    rmSync(backup, { recursive: true, force: true });
+  }
   return {
     ok: true,
     sha: rev.stdout.trim(),

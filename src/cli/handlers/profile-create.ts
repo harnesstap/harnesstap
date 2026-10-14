@@ -374,7 +374,7 @@ export async function handleProfileCreateCommand(
       assertSupportedHarnessTargets(harnesses);
     }
 
-    const resolvedPackage = resolveSkillPackageCheckout(opts.from, harnesstapDir);
+    const resolvedPackage = await resolveSkillPackageCheckout(opts.from, harnesstapDir);
     const shouldPrompt = shouldUseWizard({
       noInteractive: opts.yes,
       interactive: opts.interactive,

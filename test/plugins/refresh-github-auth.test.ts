@@ -31,7 +31,7 @@ describe("refreshGitSource GitHub auth", () => {
     resetGithubTokenLookups();
   });
 
-  it("clones with extraheader and without embedding the token in the URL", () => {
+  it("clones with extraheader and without embedding the token in the URL", async () => {
     const seen: string[][] = [];
     const run: RunCommand = (_command, args) => {
       seen.push(args);
@@ -43,7 +43,7 @@ describe("refreshGitSource GitHub auth", () => {
       }
       return { stdout: "", stderr: "unexpected", exitCode: 1 };
     };
-    const result = refreshGitSource({
+    const result = await refreshGitSource({
       url: "https://github.com/acme/private.git",
       targetDir: mkdtempSync(join(tmpdir(), "ht-refresh-auth-")),
       runCommand: run,

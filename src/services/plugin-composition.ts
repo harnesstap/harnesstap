@@ -369,7 +369,7 @@ export async function addPluginAttachment(input: AddPluginAttachmentInput): Prom
     if (input.sync) {
       if (parseDependencyRef(displayRef).source_kind === "marketplace") {
         try {
-          installMarketplacePinIntoCache({
+          await installMarketplacePinIntoCache({
             originRef: displayRef,
             versionConstraint: input.version ?? "latest",
             homeRoot: resolveHomeRoot(),

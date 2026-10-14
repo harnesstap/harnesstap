@@ -48,7 +48,7 @@ describe("handleDiscoverSearch", () => {
 
   it("returns 401 without bearer", async () => {
     await withHome("discover-search-401");
-    const response = handleDiscoverSearch(searchRequest("", { headers: {} }), TOKEN);
+    const response = await handleDiscoverSearch(searchRequest("", { headers: {} }), TOKEN);
     expect(response.status).toBe(401);
   });
 
@@ -82,7 +82,7 @@ describe("handleDiscoverSearch", () => {
       }, null, 2)}\n`,
     );
 
-    const response = handleDiscoverSearch(
+    const response = await handleDiscoverSearch(
       searchRequest("q=deploy&sources=local,mkt:acme"),
       TOKEN,
     );
@@ -95,7 +95,7 @@ describe("handleDiscoverSearch", () => {
 
   it("returns empty groups when sources are empty", async () => {
     await withHome("discover-search-empty-sources");
-    const response = handleDiscoverSearch(searchRequest("q=deploy&sources="), TOKEN);
+    const response = await handleDiscoverSearch(searchRequest("q=deploy&sources="), TOKEN);
     expect(response.status).toBe(200);
     const body = (await response.json()) as { groups: unknown[] };
     expect(body.groups).toEqual([]);

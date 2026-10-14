@@ -60,7 +60,7 @@ describe("searchDiscover", () => {
       },
     );
 
-    const result = searchDiscover({
+    const result = await searchDiscover({
       q: "deploy",
       sourceIds: ["local", "mkt:acme"],
     });
@@ -96,13 +96,13 @@ describe("searchDiscover", () => {
       { name: "deploy-pack", ref: "deploy-pack@acme", description: "deploy helpers" },
     ]);
 
-    const localOnly = searchDiscover({
+    const localOnly = await searchDiscover({
       q: "deploy",
       sourceIds: ["local", "org:acme", "cat:public", "mystery", "mkt:missing"],
     });
     expect(localOnly.groups.map((group) => group.sourceId)).toEqual([]);
 
-    const marketplaceOnly = searchDiscover({
+    const marketplaceOnly = await searchDiscover({
       q: "deploy",
       sourceIds: ["mkt:acme"],
     });
@@ -111,6 +111,6 @@ describe("searchDiscover", () => {
 
   it("returns no groups when sources are empty", async () => {
     ctx = await createInitializedTestContext("discover-search-empty");
-    expect(searchDiscover({ q: "deploy", sourceIds: [] })).toEqual({ groups: [] });
+    expect(await searchDiscover({ q: "deploy", sourceIds: [] })).toEqual({ groups: [] });
   });
 });

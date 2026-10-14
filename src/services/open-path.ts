@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
@@ -6,14 +6,17 @@ import { listProjects } from "../models/project.js";
 import { listResourceTrackedDirectories } from "./resource-tracked-directories.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 
+/** Start a file-manager opener and return. Do not wait for Finder, Explorer, or xdg-open. */
 function runOpener(command: string, args: string[], filePath: string): void {
-  const result = spawnSync(command, args, { stdio: "ignore" });
-  if (result.error) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error(`Failed to open ${filePath}`);
-  }
+  const child = spawn(command, args, {
+    stdio: "ignore",
+    detached: true,
+    windowsHide: true,
+  });
+  child.on("error", (error) => {
+    console.error(`[ht-agent] failed to open ${filePath}: ${error.message}`);
+  });
+  child.unref();
 }
 
 export function openPathInSystemEditor(filePath: string): void {

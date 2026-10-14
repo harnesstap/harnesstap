@@ -71,7 +71,7 @@ function updateSnapshotInstalledSkillNames(
 export async function addSkillPackage(
   options: AddSkillPackageOptions,
 ): Promise<AddSkillPackageResult> {
-  const resolved = resolveSkillPackageCheckout(
+  const resolved = await resolveSkillPackageCheckout(
     options.source,
     options.harnesstapDir,
   );

@@ -142,12 +142,12 @@ export async function addPluginFromMarketplace(
       homeRoot: input.homeRoot,
       projectRoot: input.projectRoot,
     };
-    ensureMarketplaces(refreshed.claude, ensureOptions);
+    await ensureMarketplaces(refreshed.claude, ensureOptions);
 
     if (marketplace.platforms.includes("cursor")) {
       const ensureCursor =
         input.ensureCursorMarketplaces ?? defaultEnsureCursorMarketplaces;
-      ensureCursor(
+      await ensureCursor(
         [{ name: marketplace.name, url: marketplace.url }],
         {
           homeRoot: input.homeRoot,

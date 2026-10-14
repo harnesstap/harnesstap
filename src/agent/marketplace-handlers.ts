@@ -186,9 +186,10 @@ export async function handleMarketplacesAdd(
       platforms,
       ...(trackedBranches !== undefined ? { trackedBranches } : {}),
     });
-    const refresh = refreshMarketplaceCatalog(harnesstapDir, {
+    const refresh = await refreshMarketplaceCatalog(harnesstapDir, {
       name: result.entry.name,
       force: true,
+      unattended: false,
     });
     if (!refresh.ok && result.status === "added") {
       removeMarketplace(harnesstapDir, result.entry.name);
@@ -217,10 +218,10 @@ export async function handleMarketplacesAdd(
   }
 }
 
-export function handleMarketplacesBranches(
+export async function handleMarketplacesBranches(
   request: Request,
   token: string,
-): Response {
+): Promise<Response> {
   const authError = requireAgentBearerAuth(request, token);
   if (authError) return authError;
 
@@ -233,7 +234,7 @@ export function handleMarketplacesBranches(
   }
 
   try {
-    return jsonResponse(listMarketplaceSourceBranches(source));
+    return jsonResponse(await listMarketplaceSourceBranches(source));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return jsonResponse(
@@ -261,11 +262,11 @@ export async function handleMarketplacesDetect(
   return jsonResponse(await detectMarketplaceType(source));
 }
 
-export function handleMarketplacePluginsList(
+export async function handleMarketplacePluginsList(
   request: Request,
   token: string,
   name: string,
-): Response {
+): Promise<Response> {
   const authError = requireAgentBearerAuth(request, token);
   if (authError) return authError;
 
@@ -280,6 +281,6 @@ export function handleMarketplacePluginsList(
     );
   }
 
-  const plugins = listMarketplacePlugins(harnesstapDir, entry);
+  const plugins = await listMarketplacePlugins(harnesstapDir, entry);
   return jsonResponse({ marketplace: entry.name, plugins });
 }

@@ -1,6 +1,10 @@
 import type { PluginMarketplaceEntry } from "../config/settings.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
-import { defaultRunCommand, type CommandResult } from "../plugins/run-command.js";
+import {
+  defaultRunCommand,
+  resolveCommandResult,
+  type CommandResult,
+} from "../plugins/run-command.js";
 import {
   CURSOR_PUBLIC_MARKETPLACE,
   isCursorPublicMarketplace,
@@ -21,7 +25,7 @@ export interface CursorHostMarketplace {
 export interface EnsureCursorMarketplacesOptions {
   projectRoot: string;
   homeRoot?: string;
-  runAgentPlugin?: (args: string[]) => CommandResult;
+  runAgentPlugin?: (args: string[]) => CommandResult | Promise<CommandResult>;
   agentBinary?: string;
 }
 
@@ -106,7 +110,7 @@ function parseCursorMarketplaceList(
 
 function resolveAgentRunner(
   options: EnsureCursorMarketplacesOptions,
-): (args: string[]) => CommandResult {
+): (args: string[]) => CommandResult | Promise<CommandResult> {
   if (options.runAgentPlugin) {
     return options.runAgentPlugin;
   }
@@ -117,10 +121,10 @@ function resolveAgentRunner(
     });
 }
 
-export function ensureCursorMarketplaces(
+export async function ensureCursorMarketplaces(
   entries: readonly CursorMarketplaceToEnsure[],
   options: EnsureCursorMarketplacesOptions,
-): EnsureCursorMarketplacesResult {
+): Promise<EnsureCursorMarketplacesResult> {
   const candidates = entries.filter(
     (entry) => !isCursorBuiltinMarketplace(entry.name),
   );
@@ -133,7 +137,7 @@ export function ensureCursorMarketplaces(
   }
 
   const run = resolveAgentRunner(options);
-  const list = run(["marketplace", "list", "--format", "json"]);
+  const list = await resolveCommandResult(run(["marketplace", "list", "--format", "json"]));
   const listed = list.exitCode === 0 ? parseCursorMarketplaceList(list.stdout) : null;
   if (!listed) {
     return {
@@ -152,7 +156,7 @@ export function ensureCursorMarketplaces(
       skipped.push(entry.name);
       continue;
     }
-    const add = run(["marketplace", "add", entry.url]);
+    const add = await resolveCommandResult(run(["marketplace", "add", entry.url]));
     if (add.exitCode === 0) {
       added.push(entry.name);
       listed.push({ name: entry.name, gitUrl: entry.url });

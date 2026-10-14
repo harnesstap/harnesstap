@@ -14,7 +14,7 @@ function listedJson(entries: Array<{ name: string; gitUrl?: string }>): string {
 }
 
 describe("cursorMarketplaceGitUrlKey", () => {
-  it("normalizes git suffix, trailing slash, and github ssh urls", () => {
+  it("normalizes git suffix, trailing slash, and github ssh urls", async () => {
     expect(cursorMarketplaceGitUrlKey("https://github.com/acme/plugins.git")).toBe(
       "https://github.com/acme/plugins",
     );
@@ -28,7 +28,7 @@ describe("cursorMarketplaceGitUrlKey", () => {
 });
 
 describe("cursorMarketplaceIsRegistered", () => {
-  it("matches by marketplace name", () => {
+  it("matches by marketplace name", async () => {
     expect(
       cursorMarketplaceIsRegistered(
         [{ name: "karpathy-skills", gitUrl: "https://github.com/forrestchang/andrej-karpathy-skills" }],
@@ -37,7 +37,7 @@ describe("cursorMarketplaceIsRegistered", () => {
     ).toBe(true);
   });
 
-  it("matches by normalized git URL when names differ", () => {
+  it("matches by normalized git URL when names differ", async () => {
     expect(
       cursorMarketplaceIsRegistered(
         [{ name: "skills", gitUrl: "https://github.com/acme/plugins.git" }],
@@ -46,7 +46,7 @@ describe("cursorMarketplaceIsRegistered", () => {
     ).toBe(true);
   });
 
-  it("does not match empty git URLs by URL", () => {
+  it("does not match empty git URLs by URL", async () => {
     expect(
       cursorMarketplaceIsRegistered(
         [{ name: "cursor-public", gitUrl: "" }],
@@ -57,7 +57,7 @@ describe("cursorMarketplaceIsRegistered", () => {
 });
 
 describe("isCursorBuiltinMarketplace", () => {
-  it("treats cursor-public as built-in", () => {
+  it("treats cursor-public as built-in", async () => {
     expect(isCursorBuiltinMarketplace("cursor-public")).toBe(true);
     expect(isCursorBuiltinMarketplace("karpathy-skills")).toBe(false);
   });
@@ -82,7 +82,7 @@ describe("selectCursorMarketplacesToEnsure", () => {
     },
   ];
 
-  it("keeps cursor-platform marketplaces referenced by pin refs", () => {
+  it("keeps cursor-platform marketplaces referenced by pin refs", async () => {
     expect(
       selectCursorMarketplacesToEnsure(registry, [
         "andrej-karpathy-skills@karpathy-skills",
@@ -97,9 +97,9 @@ describe("selectCursorMarketplacesToEnsure", () => {
 });
 
 describe("ensureCursorMarketplaces", () => {
-  it("adds unlisted marketplaces via agent plugin marketplace add", () => {
+  it("adds unlisted marketplaces via agent plugin marketplace add", async () => {
     const calls: string[][] = [];
-    const result = ensureCursorMarketplaces(
+    const result = await ensureCursorMarketplaces(
       [{ name: "karpathy-skills", url: "https://github.com/forrestchang/andrej-karpathy-skills" }],
       {
         projectRoot: "/tmp/project",
@@ -128,9 +128,9 @@ describe("ensureCursorMarketplaces", () => {
     ]);
   });
 
-  it("skips marketplaces already listed by name or URL", () => {
+  it("skips marketplaces already listed by name or URL", async () => {
     const calls: string[][] = [];
-    const result = ensureCursorMarketplaces(
+    const result = await ensureCursorMarketplaces(
       [
         { name: "karpathy-skills", url: "https://github.com/forrestchang/andrej-karpathy-skills" },
         { name: "teads-plugins", url: "https://github.com/outbrain/claude-plugins" },
@@ -162,9 +162,9 @@ describe("ensureCursorMarketplaces", () => {
     expect(calls).toEqual([["marketplace", "list", "--format", "json"]]);
   });
 
-  it("never adds the built-in cursor-public marketplace", () => {
+  it("never adds the built-in cursor-public marketplace", async () => {
     const calls: string[][] = [];
-    const result = ensureCursorMarketplaces(
+    const result = await ensureCursorMarketplaces(
       [{ name: "cursor-public", url: "https://cursor.com/marketplace" }],
       {
         projectRoot: "/tmp/project",
@@ -184,9 +184,9 @@ describe("ensureCursorMarketplaces", () => {
     expect(calls).toEqual([]);
   });
 
-  it("does not invoke agent when there is nothing to ensure", () => {
+  it("does not invoke agent when there is nothing to ensure", async () => {
     const calls: string[][] = [];
-    const result = ensureCursorMarketplaces([], {
+    const result = await ensureCursorMarketplaces([], {
       projectRoot: "/tmp/project",
       runAgentPlugin: (args): CommandResult => {
         calls.push(args);
@@ -197,9 +197,9 @@ describe("ensureCursorMarketplaces", () => {
     expect(calls).toEqual([]);
   });
 
-  it("skips adds when marketplace list fails", () => {
+  it("skips adds when marketplace list fails", async () => {
     const calls: string[][] = [];
-    const result = ensureCursorMarketplaces(
+    const result = await ensureCursorMarketplaces(
       [{ name: "karpathy-skills", url: "https://github.com/forrestchang/andrej-karpathy-skills" }],
       {
         projectRoot: "/tmp/project",
@@ -220,8 +220,8 @@ describe("ensureCursorMarketplaces", () => {
     expect(calls).toEqual([["marketplace", "list", "--format", "json"]]);
   });
 
-  it("skips adds when marketplace list is not JSON", () => {
-    const result = ensureCursorMarketplaces(
+  it("skips adds when marketplace list is not JSON", async () => {
+    const result = await ensureCursorMarketplaces(
       [{ name: "karpathy-skills", url: "https://github.com/forrestchang/andrej-karpathy-skills" }],
       {
         projectRoot: "/tmp/project",

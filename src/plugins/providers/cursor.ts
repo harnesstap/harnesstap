@@ -12,7 +12,11 @@ import {
   cursorRepoSourceKey,
   refreshGitSource,
 } from "../refresh.js";
-import { defaultRunCommand, type RunCommand } from "../run-command.js";
+import {
+  defaultRunCommand,
+  resolveCommandResult,
+  type RunCommand,
+} from "../run-command.js";
 import { installCursorLocalPlugin } from "../cursor-local-install.js";
 import type {
   PluginCheckOptions,
@@ -91,7 +95,7 @@ export class CursorPluginProvider implements PluginProvider {
       let latestVersion: string | undefined;
       if (shouldRefresh) {
         const tmpParent = join(ctx.harnesstapDir, "tmp-refresh");
-        const refresh = refreshGitSource({
+        const refresh = await refreshGitSource({
           url: repo,
           targetDir: join(tmpParent, install.name),
           runCommand: this.deps.runCommand,
@@ -162,7 +166,7 @@ export class CursorPluginProvider implements PluginProvider {
       }
 
       const parent = join(install.installPath, "..");
-      const refresh = refreshGitSource({
+      const refresh = await refreshGitSource({
         url: repo,
         targetDir: join(parent, ".refresh-staging"),
         runCommand: this.deps.runCommand,
@@ -181,10 +185,9 @@ export class CursorPluginProvider implements PluginProvider {
 
       const newDir = join(parent, refresh.sha.slice(0, 12));
       const staging = join(parent, ".refresh-staging");
-      const move = (this.deps.runCommand ?? defaultRunCommand)("mv", [
-        staging,
-        newDir,
-      ]);
+      const move = await resolveCommandResult(
+        (this.deps.runCommand ?? defaultRunCommand)("mv", [staging, newDir]),
+      );
       if (move.exitCode !== 0) {
         results.push({
           ref: install.ref,

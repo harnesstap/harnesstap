@@ -373,7 +373,7 @@ async function previewScan(projectPath: string): Promise<unknown> {
 }
 
 async function previewAdd(source: string): Promise<unknown> {
-  const resolved = resolveSkillPackageCheckout(source, getHarnesstapDir());
+  const resolved = await resolveSkillPackageCheckout(source, getHarnesstapDir());
   const items: ImportPreviewItem[] = resolved.discovered.map((skill) => ({
     type: "skill",
     name: skill.name,
@@ -542,7 +542,7 @@ async function commitAdd(source: string): Promise<{
   namespace: string;
   snapshotId: string;
 }> {
-  const resolved = resolveSkillPackageCheckout(source, getHarnesstapDir());
+  const resolved = await resolveSkillPackageCheckout(source, getHarnesstapDir());
   const imported = await importSkillPackage({
     rootPath: resolved.checkoutRoot,
     sourceLabel: resolved.namespace,

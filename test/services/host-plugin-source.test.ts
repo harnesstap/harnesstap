@@ -22,7 +22,7 @@ function writeKnownMarketplaces(
 }
 
 describe("githubCloneUrl", () => {
-  it("keeps owner/repo shorthand and https urls cloneable", () => {
+  it("keeps owner/repo shorthand and https urls cloneable", async () => {
     expect(githubCloneUrl("outbrain/claude-plugins")).toBe(
       "https://github.com/outbrain/claude-plugins.git",
     );
@@ -39,7 +39,7 @@ describe("githubCloneUrl", () => {
     );
   });
 
-  it("unwraps SCP remotes and org-id users instead of prefixing https://github.com/", () => {
+  it("unwraps SCP remotes and org-id users instead of prefixing https://github.com/", async () => {
     expect(githubCloneUrl("git@github.com:outbrain/claude-plugins.git")).toBe(
       "https://github.com/outbrain/claude-plugins.git",
     );
@@ -64,7 +64,7 @@ describe("githubCloneUrl", () => {
 });
 
 describe("parseMarketplacePluginSource git urls", () => {
-  it("normalizes github and url sources that use SCP remotes", () => {
+  it("normalizes github and url sources that use SCP remotes", async () => {
     expect(
       parseMarketplacePluginSource({
         name: "argus",
@@ -105,7 +105,7 @@ describe("parseMarketplacePluginSource git urls", () => {
 });
 
 describe("resolveMarketplaceCloneUrl", () => {
-  it("reads known_marketplaces SCP urls without mixing them into github.com paths", () => {
+  it("reads known_marketplaces SCP urls without mixing them into github.com paths", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-clone-url-"));
     writeKnownMarketplaces(home, {
       "teads-plugins": {
@@ -116,12 +116,12 @@ describe("resolveMarketplaceCloneUrl", () => {
         installLocation: join(home, "missing-checkout"),
       },
     });
-    expect(resolveMarketplaceCloneUrl(home, "teads-plugins")).toBe(
+    expect(await resolveMarketplaceCloneUrl(home, "teads-plugins")).toBe(
       "https://github.com/outbrain/claude-plugins.git",
     );
   });
 
-  it("unwraps already-mangled https://github.com/<scp> known marketplace urls", () => {
+  it("unwraps already-mangled https://github.com/<scp> known marketplace urls", async () => {
     const home = mkdtempSync(join(tmpdir(), "ht-mkt-clone-mangled-"));
     writeKnownMarketplaces(home, {
       "teads-plugins": {
@@ -131,7 +131,7 @@ describe("resolveMarketplaceCloneUrl", () => {
         },
       },
     });
-    expect(resolveMarketplaceCloneUrl(home, "teads-plugins")).toBe(
+    expect(await resolveMarketplaceCloneUrl(home, "teads-plugins")).toBe(
       "https://github.com/outbrain/claude-plugins.git",
     );
   });

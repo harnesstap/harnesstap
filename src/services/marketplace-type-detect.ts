@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { PluginMarketplacePlatform } from "../config/settings.js";
-import type { RunCommand } from "../plugins/run-command.js";
+import { resolveCommandResult, type RunCommand } from "../plugins/run-command.js";
 import { runCommandWithTimeout } from "../utils/run-command-with-timeout.js";
 import { normalizeMarketplaceUrl } from "./marketplace-registry.js";
 
@@ -185,15 +185,17 @@ function detectFromFilesystem(root: string): MarketplaceTypeDetectResult {
   return resultFromManifests(manifests);
 }
 
-function runGh(
+async function runGh(
   runCommand: RunCommand,
   args: string[],
-): ReturnType<RunCommand> {
-  return runCommand("gh", args, { timeoutMs: GH_DETECT_TIMEOUT_MS });
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  return resolveCommandResult(
+    runCommand("gh", args, { timeoutMs: GH_DETECT_TIMEOUT_MS, unattended: true }),
+  );
 }
 
-function ghAvailable(runCommand: RunCommand): boolean {
-  return runGh(runCommand, ["--version"]).exitCode === 0;
+async function ghAvailable(runCommand: RunCommand): Promise<boolean> {
+  return (await runGh(runCommand, ["--version"])).exitCode === 0;
 }
 
 type RemoteProbe = "present" | "absent" | "auth" | "failed";
@@ -215,21 +217,21 @@ function classifyGithubFailure(stderr: string, stdout: string, status?: number):
   return "failed";
 }
 
-function probeGhPath(
+async function probeGhPath(
   runCommand: RunCommand,
   owner: string,
   repo: string,
   path: string,
-): RemoteProbe {
-  const result = runGh(runCommand, ["api", `repos/${owner}/${repo}/contents/${path}`]);
+): Promise<RemoteProbe> {
+  const result = await runGh(runCommand, ["api", `repos/${owner}/${repo}/contents/${path}`]);
   if (result.exitCode === 0) {
     return "present";
   }
   return classifyGithubFailure(result.stderr, result.stdout);
 }
 
-function ghRepoReadable(runCommand: RunCommand, owner: string, repo: string): boolean {
-  return runGh(runCommand, ["api", `repos/${owner}/${repo}`]).exitCode === 0;
+async function ghRepoReadable(runCommand: RunCommand, owner: string, repo: string): Promise<boolean> {
+  return (await runGh(runCommand, ["api", `repos/${owner}/${repo}`])).exitCode === 0;
 }
 
 async function defaultFetchGithub(
@@ -298,13 +300,13 @@ async function detectFromGithub(
         timeoutMs: GH_DETECT_TIMEOUT_MS,
       }));
   const fetchGithub = options.fetchGithub ?? defaultFetchGithub;
-  const hasGh = ghAvailable(runCommand);
+  const hasGh = await ghAvailable(runCommand);
 
   if (hasGh) {
     const manifests: string[] = [];
     const probes: RemoteProbe[] = [];
     for (const candidate of MARKETPLACE_TYPE_CANDIDATES) {
-      const probe = probeGhPath(runCommand, owner, repo, candidate.path);
+      const probe = await probeGhPath(runCommand, owner, repo, candidate.path);
       probes.push(probe);
       if (probe === "present") {
         manifests.push(candidate.path);
@@ -313,7 +315,7 @@ async function detectFromGithub(
     if (manifests.length > 0) {
       return resultFromManifests(manifests);
     }
-    if (ghRepoReadable(runCommand, owner, repo)) {
+    if (await ghRepoReadable(runCommand, owner, repo)) {
       return resultFromManifests([]);
     }
     const publicManifests = await probePublicPaths(fetchGithub, owner, repo);

@@ -170,7 +170,7 @@ export async function createPluginFromSource(
   const onConflict = options.onConflict ?? "cancel";
   const method = options.method ?? "symlink";
 
-  const resolved = resolveSkillPackageCheckout(
+  const resolved = await resolveSkillPackageCheckout(
     options.source,
     options.harnesstapDir,
   );

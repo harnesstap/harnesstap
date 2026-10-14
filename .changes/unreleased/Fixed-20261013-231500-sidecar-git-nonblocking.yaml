@@ -1,0 +1,5 @@
+kind: Fixed
+body: Resource detail stays responsive while a marketplace git refresh is in progress. A stale catalog is served immediately and refreshed in the background. Reveal returns without waiting for the file manager.
+time: 2026-10-13T23:15:00.000Z
+custom:
+  Issue: ""
