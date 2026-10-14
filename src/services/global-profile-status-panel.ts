@@ -1,3 +1,4 @@
+import { traceSpan } from "./status-trace.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { findInstalledRefForCatalogPin } from "../plugins/claude-plugin-ref.js";
@@ -429,21 +430,26 @@ export function buildHarnessLiveStatusMap(input: {
     }
 
     const declaredMcp = input.declaredMcpByHarness[harnessId] ?? [];
-    const liveServers = readGlobalMcpServers(input.homeRoot, harnessId);
+    const liveServers = traceSpan("base.harness-live-status.mcp", () => readGlobalMcpServers(input.homeRoot, harnessId), harnessId);
     const liveMcp = new Set([
       ...Object.keys(liveServers),
-      ...listHostNativeMcpNames(input.homeRoot, harnessId),
+      ...traceSpan("base.harness-live-status.native-mcp", () => listHostNativeMcpNames(input.homeRoot, harnessId), harnessId),
     ]);
     const expectedServers = input.expectedMcpConfigsByHarness?.[harnessId];
     let plugins: HarnessPluginStatusRow[] = [];
     switch (harnessId) {
       case "claude-code":
-        plugins = buildHarnessPluginRows(input.declaredPins, input.homeRoot);
+        plugins = traceSpan(
+          "base.harness-live-status.plugins",
+          () => buildHarnessPluginRows(input.declaredPins, input.homeRoot),
+          harnessId,
+        );
         break;
       case "cursor":
-        plugins = buildCursorHarnessPluginRows(
-          input.declaredPins,
-          input.homeRoot,
+        plugins = traceSpan(
+          "base.harness-live-status.plugins",
+          () => buildCursorHarnessPluginRows(input.declaredPins, input.homeRoot),
+          harnessId,
         );
         break;
       default: {

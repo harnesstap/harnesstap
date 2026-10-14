@@ -3,6 +3,7 @@ import { basename, dirname, join, sep } from "node:path";
 import { Worker, parentPort } from "node:worker_threads";
 import { getHarnesstapDir, readDbDataVersion } from "../db/connection.js";
 import { readStatusWriteGeneration } from "../db/write-generation.js";
+import { statusTraceEnabled, traceRecord } from "./status-trace.js";
 import { cursorUserDataDir } from "../plugins/cursor-enablement.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -632,6 +633,8 @@ interface RefreshJob {
   epochAtStart: number;
   writeGenAtStart: number;
   home: string | undefined;
+  /** Debug trace only: when the request was posted. */
+  postedAt?: number;
   resolve: (outcome: RefreshOutcome) => void;
 }
 
@@ -646,6 +649,7 @@ type RefreshResultMessage =
       value?: unknown;
       watchedPaths?: string[];
       watchPaths?: string[];
+      trace?: { computeMs: number; jsonMs: number; bytes: number };
     };
 
 let refreshWorker: Worker | null = null;
@@ -732,7 +736,19 @@ function statusWorker(): Worker {
         job.resolve({ ok: false });
         return;
       }
+      if (message.trace && job.postedAt !== undefined) {
+        const roundTrip = performance.now() - job.postedAt;
+        traceRecord(`phase=worker.round-trip job=${message.id}`, {
+          ms: roundTrip,
+          compute: message.trace.computeMs,
+          json: message.trace.jsonMs,
+          overhead: roundTrip - message.trace.computeMs - message.trace.jsonMs,
+          kb: Math.round(message.trace.bytes / 1024),
+        });
+      }
+      const freezeStarted = statusTraceEnabled ? performance.now() : 0;
       const frozen = deepFreeze(message.value);
+      if (statusTraceEnabled) traceRecord(`phase=main.freeze job=${message.id}`, { ms: performance.now() - freezeStarted });
       if (job.home === process.env.HOME && job.generation === generation) {
         remember(job.key, job.projectPath, {
           value: frozen,
@@ -843,6 +859,7 @@ function enqueueStatusRefresh<T extends object>(
       epochAtStart,
       writeGenAtStart: readStatusWriteGeneration(),
       home,
+      ...(statusTraceEnabled ? { postedAt: performance.now() } : {}),
       resolve,
     });
     try {

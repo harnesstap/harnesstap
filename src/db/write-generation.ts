@@ -1,3 +1,4 @@
+import { statusTraceEnabled, traceDb } from "../services/status-trace.js";
 import type { SqliteDatabase, SqliteRunResult, SqliteStatement } from "./types.js";
 
 /**
@@ -42,7 +43,7 @@ export function trackStatusWrites(db: SqliteDatabase): SqliteDatabase {
   // Compiling a statement costs more than running most of ours. Reuse them.
   const statements = new Map<string, SqliteStatement<unknown>>();
   const prepareTracked = <Row>(sql: string): SqliteStatement<Row> => {
-    const statement = db.prepare<Row>(sql);
+    const statement = statusTraceEnabled ? timedStatement(sql, db.prepare<Row>(sql)) : db.prepare<Row>(sql);
     if (!statementAffectsStatus(sql)) return statement;
     return {
       run: (...params: unknown[]): SqliteRunResult => {
@@ -74,5 +75,22 @@ export function trackStatusWrites(db: SqliteDatabase): SqliteDatabase {
       statements.clear();
       db.close();
     },
+  };
+}
+
+/** Debug only: time each query for the status trace. */
+function timedStatement<Row>(sql: string, statement: SqliteStatement<Row>): SqliteStatement<Row> {
+  const timed = <R>(fn: () => R): R => {
+    const started = performance.now();
+    try {
+      return fn();
+    } finally {
+      traceDb(sql, performance.now() - started);
+    }
+  };
+  return {
+    run: (...params: unknown[]) => timed(() => statement.run(...params)),
+    get: (...params: unknown[]) => timed(() => statement.get(...params)),
+    all: (...params: unknown[]) => timed(() => statement.all(...params)),
   };
 }

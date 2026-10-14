@@ -1,4 +1,5 @@
-import { existsSync, readdirSync } from "node:fs";
+import { traceSpan } from "../services/status-trace.js";
+import { existsSync, readdirSync } from "../services/status-fs.js";
 import { join } from "node:path";
 import { readCachedMarketplacePluginNames } from "../services/marketplace-manifest-cache.js";
 import { computationSlot } from "../services/status-computation.js";
@@ -67,7 +68,9 @@ export function marketplaceHasPlugin(
 ): boolean {
   const path = marketplaceManifestPath(homeRoot, marketplace);
   // Status checks each pin against every marketplace. Stat each manifest once per read.
-  const names = computationSlot(`marketplace-names:${path}`, () => readCachedMarketplacePluginNames(path));
+  const names = computationSlot(`marketplace-names:${path}`, () =>
+    traceSpan("scan.claude.marketplace-manifests", () => readCachedMarketplacePluginNames(path), marketplace),
+  );
   return names?.has(pluginName) ?? false;
 }
 

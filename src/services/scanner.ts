@@ -1,4 +1,6 @@
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { traceSpan } from "./status-trace.js";
+import { lstatSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "./status-fs.js";
 import { basename, dirname, join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
@@ -505,9 +507,11 @@ export async function scanHomeDefaults(
   for (const result of platforms) {
     const serializer = getPlatformSerializer(result.platformId);
     try {
-      const resources = serializer.scanGlobal
-        ? await serializer.scanGlobal(homeRoot)
-        : await serializer.scan(homeRoot);
+      const resources = await traceSpan(
+        "scan.home-resources.harness",
+        () => (serializer.scanGlobal ? serializer.scanGlobal(homeRoot) : serializer.scan(homeRoot)),
+        result.platformId,
+      );
       results.push({
         platformId: result.platformId,
         discoveredPaths: result.discoveredPaths,

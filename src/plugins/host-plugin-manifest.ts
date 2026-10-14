@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "../services/status-fs.js";
 import { join } from "node:path";
 import { isAgentPluginsSchemaId } from "../services/agent-plugins/schema-registry.js";
 import { computationSlot } from "../services/status-computation.js";

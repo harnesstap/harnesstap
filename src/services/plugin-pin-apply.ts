@@ -1,3 +1,4 @@
+import { traceSpan } from "./status-trace.js";
 import { getDb, getHarnesstapDir } from "../db/connection.js";
 import {
   ensurePluginResource,
@@ -224,9 +225,13 @@ export async function syncPluginPinsForApply(
         ? undefined
         : versionConstraint;
 
-    let resource =
-      findPluginResourceByPin(pin.ref, pin.version_constraint) ??
-      ensurePluginResource(selector, { versionConstraint: constraint });
+    let resource = traceSpan(
+      "dry-run.plugin-pins.lookup",
+      () =>
+        findPluginResourceByPin(pin.ref, pin.version_constraint) ??
+        ensurePluginResource(selector, { versionConstraint: constraint }),
+      pin.ref,
+    );
 
     const metadata = (resource.metadata ?? {}) as PluginPinMetadata;
     const needsSync = options.syncAll || !metadata.resolved_version;
@@ -235,11 +240,12 @@ export async function syncPluginPinsForApply(
       // graph can treat the install as an ordinary node without a re-sync.
       if (metadata.resolved_version) {
         const parsed = parseDependencyRef(pin.ref);
-        materializeUpstreamPlugin({
-          ref: pin.ref,
-          name: parsed.name,
-          version: metadata.resolved_version,
-        });
+        const version = metadata.resolved_version;
+        traceSpan(
+          "dry-run.plugin-pins.upstream",
+          () => materializeUpstreamPlugin({ ref: pin.ref, name: parsed.name, version }),
+          pin.ref,
+        );
       }
       continue;
     }
@@ -266,11 +272,12 @@ export async function syncPluginPinsForApply(
     }
 
     options.progress?.onSyncStart?.(pin.ref);
-    const syncResult = await syncPluginResource(resource, {
-      policy: "overwrite",
-      onConflict: "overwrite",
-      homeRoot,
-    });
+    const syncTarget = resource;
+    const syncResult = await traceSpan(
+      "dry-run.plugin-pins.sync",
+      () => syncPluginResource(syncTarget, { policy: "overwrite", onConflict: "overwrite", homeRoot }),
+      pin.ref,
+    );
     syncedResourceCount += syncResult.updated.length;
     options.progress?.onSyncComplete?.(pin.ref);
 

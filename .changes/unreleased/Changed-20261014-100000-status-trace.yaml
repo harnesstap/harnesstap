@@ -1,0 +1,2 @@
+kind: Changed
+body: HARNESSTAP_STATUS_CACHE_DEBUG=1 now prints per phase status timing lines to stderr.

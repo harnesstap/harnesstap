@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, statSync } from "./status-fs.js";
 
 const MAX_ENTRIES = 200;
 

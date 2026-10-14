@@ -1,3 +1,4 @@
+import { statusTraceEnabled, traceSpan } from "./status-trace.js";
 import { createHash } from "node:crypto";
 
 /** Hidden-Unicode scanner aligned with OpenAPM ContentScanner (pack-time gate). */
@@ -361,6 +362,15 @@ function zwjInEmojiContext(chars: string[], index: number): boolean {
 }
 
 export function scanUnicodeText(
+  content: string,
+  filename = "",
+  identity?: UnicodeScanIdentity,
+): UnicodeScanFinding[] {
+  if (!statusTraceEnabled) return scanUnicodeTextUntraced(content, filename, identity);
+  return traceSpan("unicode-scan", () => scanUnicodeTextUntraced(content, filename, identity), filename || "(inline)");
+}
+
+function scanUnicodeTextUntraced(
   content: string,
   filename = "",
   identity?: UnicodeScanIdentity,

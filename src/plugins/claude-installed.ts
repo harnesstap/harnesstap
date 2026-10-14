@@ -1,3 +1,4 @@
+import { traceSpan } from "../services/status-trace.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { computationSlot } from "../services/status-computation.js";
@@ -127,7 +128,9 @@ export function writeInstalledPluginRecord(
 
 function loadInstalledShared(homeRoot: string): readonly PluginInstall[] {
   // Status resolves every pin against this file. Read it once per status read.
-  return computationSlot(`claude-installed:${homeRoot}`, () => loadInstalledUncached(homeRoot));
+  return computationSlot(`claude-installed:${homeRoot}`, () =>
+    traceSpan("scan.claude.installed-plugins", () => loadInstalledUncached(homeRoot), "~/.claude/plugins/installed_plugins.json"),
+  );
 }
 
 /** Ref and scope of each Claude install, without copying the install rows. */

@@ -1,3 +1,4 @@
+import { traceSpan } from "./status-trace.js";
 import {
   chmodSync,
   existsSync,
@@ -304,12 +305,14 @@ export async function generateFiles(
 
   const homeRoot = resolveHomeRoot();
   for (const pid of platforms) {
-    const platformResources = omitHostPluginBundledSkills(
-      serializedResources.filter((resource) => resourceAppliesToHarness(resource, pid)),
-      pid,
-      homeRoot,
-      target,
-    );
+    const platformResources = traceSpan("gen.omit-bundled-skills", () =>
+      omitHostPluginBundledSkills(
+        serializedResources.filter((resource) => resourceAppliesToHarness(resource, pid)),
+        pid,
+        homeRoot,
+        target,
+      ),
+    pid);
     const serializer = getPlatformSerializer(pid);
     const surfaceWarnings: SurfaceWarning[] = [];
     const skillNames = new Set(
@@ -363,7 +366,7 @@ export async function generateFiles(
         });
       }
     }
-    const resolvedMcp = resolveInstalledMcpResources(emitResources);
+    const resolvedMcp = traceSpan("gen.resolve-mcp", () => resolveInstalledMcpResources(emitResources), pid);
     emitResources = resolvedMcp.resources;
     for (const message of resolvedMcp.warnings) {
       surfaceWarnings.push({
@@ -374,14 +377,16 @@ export async function generateFiles(
         alias_harnesses: [],
       });
     }
-    let files = await serializer.serialize(emitResources, projectRoot, {
-      target,
-      skillCursorMode: options.skillCursorMode,
-      skillSourceRoot,
-      projectRoot,
-      mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
-      surfaceWarnings,
-    });
+    let files = await traceSpan("gen.serialize", () =>
+      serializer.serialize(emitResources, projectRoot, {
+        target,
+        skillCursorMode: options.skillCursorMode,
+        skillSourceRoot,
+        projectRoot,
+        mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
+        surfaceWarnings,
+      }),
+    pid);
     if (nativeGroups) {
       const native = nativeAgentPluginFiles({
         platformId: pid,
@@ -393,18 +398,23 @@ export async function generateFiles(
       surfaceWarnings.push(...native.warnings);
     }
     if (pid === "claude-code" && claudeConfig) {
-      files = applyClaudePluginExtensions(files, claudeConfig, projectRoot);
+      files = traceSpan("gen.claude-plugin-extensions", () =>
+        applyClaudePluginExtensions(files, claudeConfig, projectRoot),
+      pid);
     }
-    files = await attachResourceOwnership(files, platformResources, {
-      platformId: pid,
-      rootPath: projectRoot,
-      target,
-      serializeOptions: {
-        skillCursorMode: options.skillCursorMode,
-        skillSourceRoot,
-        mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
-      },
-    });
+    const serialized = files;
+    files = await traceSpan("gen.resource-ownership", () =>
+      attachResourceOwnership(serialized, platformResources, {
+        platformId: pid,
+        rootPath: projectRoot,
+        target,
+        serializeOptions: {
+          skillCursorMode: options.skillCursorMode,
+          skillSourceRoot,
+          mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
+        },
+      }),
+    pid);
     results.push({
       platformId: pid,
       files,
