@@ -1,0 +1,63 @@
+import type { SqliteDatabase, SqliteRunResult, SqliteStatement } from "./types.js";
+
+/**
+ * Counts committed statements on this thread's connection that can change
+ * status output. The status cache compares it instead of the mtime or size
+ * of `harnesstap.db`, its `-wal`, or its `-shm` file, which SQLite moves on
+ * plain reads and checkpoints.
+ */
+let statusWriteGeneration = 0;
+
+const WRITE_STATEMENT = /^\s*(?:WITH\b[\s\S]*?\b)?(INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER)\b/i;
+
+/**
+ * A new library resource is not referenced by any profile, environment, or
+ * project until a link row is inserted, and that insert counts. Status does
+ * not list unlinked library resources, so a plain insert into `resources`
+ * does not count. `INSERT OR REPLACE` can rewrite a linked row, so it counts.
+ */
+const STATUS_IRRELEVANT_WRITE = /^\s*INSERT\s+INTO\s+resources\b/i;
+
+export function statementAffectsStatus(sql: string): boolean {
+  if (!WRITE_STATEMENT.test(sql)) return false;
+  return !STATUS_IRRELEVANT_WRITE.test(sql);
+}
+
+function scriptAffectsStatus(sql: string): boolean {
+  return sql
+    .split(";")
+    .some((part) => part.trim().length > 0 && !/^\s*PRAGMA\b/i.test(part) && statementAffectsStatus(part));
+}
+
+export function bumpStatusWriteGeneration(): void {
+  statusWriteGeneration += 1;
+}
+
+export function readStatusWriteGeneration(): number {
+  return statusWriteGeneration;
+}
+
+/** Wrap a connection so status-relevant writes bump the generation. */
+export function trackStatusWrites(db: SqliteDatabase): SqliteDatabase {
+  return {
+    prepare<Row = unknown>(sql: string): SqliteStatement<Row> {
+      const statement = db.prepare<Row>(sql);
+      if (!statementAffectsStatus(sql)) return statement;
+      return {
+        run: (...params: unknown[]): SqliteRunResult => {
+          const result = statement.run(...params);
+          if (result.changes > 0) statusWriteGeneration += 1;
+          return result;
+        },
+        get: (...params: unknown[]) => statement.get(...params),
+        all: (...params: unknown[]) => statement.all(...params),
+      };
+    },
+    exec: (sql: string) => {
+      db.exec(sql);
+      if (scriptAffectsStatus(sql)) statusWriteGeneration += 1;
+    },
+    transaction: <T extends (...args: never[]) => unknown>(fn: T) => db.transaction(fn),
+    close: () => db.close(),
+  };
+}

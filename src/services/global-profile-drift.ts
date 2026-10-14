@@ -325,9 +325,10 @@ async function finalizeGlobalProfileStatus(
  * run on the background worker. The caller waits for a cold read, and the
  * main thread does not run that dry-run. When a watched input changes, the
  * previous result is returned with `refreshing` set. A warm or stale
- * response does not wait for that read. A change to `harnesstap.db`, its
- * `-wal` file, or its `-shm` file drops the snapshot, so the next read waits
- * and includes that write. Apply, switch, and install clear the cache first,
+ * response does not wait for that read. A status-relevant database write on
+ * this process, or a commit from another process (`data_version`), drops the
+ * snapshot, so the next read waits and includes that write. Apply, switch,
+ * and install clear the cache first,
  * so the next read waits and is not stale. Overlapping callers share one
  * in-flight computation.
  */

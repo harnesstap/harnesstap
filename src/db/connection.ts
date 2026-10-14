@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { withNativeModuleGuard } from "./native-module.js";
 import type { SqliteDatabase, SqliteDatabaseConstructor } from "./types.js";
+import { trackStatusWrites } from "./write-generation.js";
 
 const require = createRequire(import.meta.url);
 
@@ -125,7 +126,7 @@ export function getDb(): SqliteDatabase {
       ? new Database(dbPath, { readonly: true })
       : new Database(dbPath),
   );
-  instance = usesBunSqlite() ? wrapDatabase(rawDb) : rawDb;
+  instance = trackStatusWrites(usesBunSqlite() ? wrapDatabase(rawDb) : rawDb);
   instancePath = dbPath;
   if (!completionMode) {
     instance.exec("PRAGMA journal_mode = WAL");
@@ -134,6 +135,20 @@ export function getDb(): SqliteDatabase {
   instance.exec("PRAGMA foreign_keys = ON");
 
   return instance;
+}
+
+/**
+ * SQLite `data_version` on this connection. It moves when another
+ * connection commits (the CLI, or the status worker), not on this
+ * connection's own writes.
+ */
+export function readDbDataVersion(): number {
+  try {
+    const row = getDb().prepare<{ data_version: number }>("PRAGMA data_version").get();
+    return row?.data_version ?? 0;
+  } catch {
+    return -1;
+  }
 }
 
 export function closeDb(): void {
