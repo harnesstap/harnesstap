@@ -283,10 +283,44 @@ export function listCursorPluginFootprintNames(homeRoot: string): Set<string> {
   return names;
 }
 
+/**
+ * The real-home inventory walks Cursor's log tree and queries state.vscdb
+ * (multi-GB on long-lived installs). Status resolves it once per resource,
+ * so memoize the default-signal scan briefly; one request reuses one scan.
+ */
+export const CURSOR_INSTALLS_CACHE_TTL_MS = 1_000;
+let cursorInstallsCache:
+  | { homeRoot: string; at: number; installs: PluginInstall[] }
+  | null = null;
+
+export function clearCursorPluginInstallsCache(): void {
+  cursorInstallsCache = null;
+}
+
 /** Synchronous Cursor inventory used by status panels and the provider. */
 export function listCursorPluginInstalls(
   homeRoot: string,
   collectSignals: CollectCursorEnablementSignals = collectCursorEnablementSignals,
+): PluginInstall[] {
+  if (collectSignals !== collectCursorEnablementSignals) {
+    return scanCursorPluginInstalls(homeRoot, collectSignals);
+  }
+  const now = Date.now();
+  if (
+    cursorInstallsCache
+    && cursorInstallsCache.homeRoot === homeRoot
+    && now - cursorInstallsCache.at < CURSOR_INSTALLS_CACHE_TTL_MS
+  ) {
+    return cursorInstallsCache.installs.map((install) => ({ ...install }));
+  }
+  const installs = scanCursorPluginInstalls(homeRoot, collectSignals);
+  cursorInstallsCache = { homeRoot, at: now, installs };
+  return installs.map((install) => ({ ...install }));
+}
+
+function scanCursorPluginInstalls(
+  homeRoot: string,
+  collectSignals: CollectCursorEnablementSignals,
 ): PluginInstall[] {
   const signals = collectSignals(homeRoot);
   const cache = scanCacheInstalls(homeRoot, signals);
