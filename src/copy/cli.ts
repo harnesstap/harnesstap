@@ -189,7 +189,6 @@ export const CLI_ERRORS = {
 export const SCOPE_COPY = {
   allHarnesses: "Applies to all your harnesses",
   notSetUp: "Not set up for any harness yet",
-  mainHarnessTooltip: "Your main harness. It wins when harnesses disagree.",
 } as const;
 
 export const SWITCH_CHANGES_VALUES = ["save", "stash", "discard"] as const;

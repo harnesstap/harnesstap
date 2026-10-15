@@ -112,7 +112,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Library re-click applies default filters and returns to the list via the same path as a sidebar filter change (`applyFilterChange`).
 - Discover re-click clears the search query, restores **Not in my library** to its default (on), checks all sources, and returns to the list. Add/edit panels stay if open. Sidebar **Clear filters** uses the same filter defaults (empty search, **Not in my library** on, every source checkbox checked). The last **Not in my library** choice persists across sessions.
 - Environments re-click clears the name filter and deselects. Create/edit full-screen panel stays if open.
-- Harnesses re-click selects the main harness, clears the resource filter, origin/marketplace facets, and type tab, closes resource detail, exits edit mode, and closes any Add / Detect / Remove dialog.
+- Harnesses re-click selects the default harness (the first registered one), clears the resource filter, origin/marketplace facets, and type tab, closes resource detail, exits edit mode, and closes any Add / Detect / Remove dialog.
 - Global and Project re-click clear the profile rail search and close edit-profile; the selected profile stays. Project re-click does not reopen the directory picker.
 
 **Keyboard**

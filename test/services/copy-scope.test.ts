@@ -15,10 +15,9 @@ describe("DS-1 scope copy", () => {
     );
   });
 
-  it("uses the origin-safe Main tooltip", () => {
-    expect(SCOPE_COPY.mainTooltip).toBe(
-      "Your main harness. It wins when harnesses disagree.",
-    );
+  it("has no Main badge copy", () => {
+    expect("main" in SCOPE_COPY).toBe(false);
+    expect("mainTooltip" in SCOPE_COPY).toBe(false);
   });
 
   it("caps subset lines at three names then n more", () => {

@@ -212,9 +212,7 @@ describe("DS-6 central copy", () => {
     expect(ON_CONFLICT_VALUE_HELP.skip).toBe("Keep the existing one and move on");
     expect(ON_CONFLICT_VALUE_HELP.prompt).toBe("Ask each time");
     expect(ON_CONFLICT_VALUE_HELP.cancel).toBe("Stop without changing anything");
-    expect(SCOPE_COPY.mainHarnessTooltip).toBe(
-      "Your main harness. It wins when harnesses disagree.",
-    );
+    expect("mainHarnessTooltip" in SCOPE_COPY).toBe(false);
   });
 });
 

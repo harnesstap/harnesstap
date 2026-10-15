@@ -3,7 +3,6 @@ import {
   APPLY_RESULT_COPY,
   DETECT_HARNESSES_COMMAND,
   EMPTY_PROFILE_COPY,
-  HARNESS_MAIN_PILL_TOOLTIP,
   MARKETPLACE_URL_INVALID,
   PREVIEW_FILE_COPY,
   REMOVAL_CONFIRM_COPY,
@@ -12,16 +11,8 @@ import {
 } from "../../apps/desktop/src/lib/ui-copy.ts";
 
 describe("desktop ui-copy (DS-1 / DS-6)", () => {
-  it("uses the designer Main pill tooltip", () => {
-    expect(HARNESS_MAIN_PILL_TOOLTIP).toBe(
-      "Your main harness. It wins when harnesses disagree.",
-    );
-    expect(HARNESS_MAIN_PILL_TOOLTIP).not.toContain("New resources start here");
-  });
-
   it("uses ASCII punctuation only", () => {
     const blob = [
-      HARNESS_MAIN_PILL_TOOLTIP,
       EMPTY_PROFILE_COPY.title,
       EMPTY_PROFILE_COPY.body,
       MARKETPLACE_URL_INVALID,

@@ -942,11 +942,6 @@
   font-size: var(--text-body);
 }
 
-.harness-scope-main {
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
 .harness-scope-empty-hint {
   margin: var(--space-2) 0 0;
   font-size: var(--text-meta);
