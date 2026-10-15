@@ -20,15 +20,17 @@ export const GENERATED_SCENARIOS = [
   {
     "id": 2,
     "filename": "02-default-harness-aliases.md",
-    "title": "Choose a default main harness and alias harnesses",
+    "title": "Choose your registered harnesses",
     "frequency": null,
     "status": null,
     "summaryLines": [
-      "Use this when you want one harness to be your canonical setup and a few",
-      "others to be kept aligned with it."
+      "Use this when you want to pick which harnesses HarnessTap writes to. All",
+      "registered harnesses are equal: apply, status and drift cover the whole set.",
+      "The first registered harness is only a default, used as the `mirror` source",
+      "and for single-harness scans when you do not name one."
     ],
     "commands": [
-      "harnesstap harness set --main claude-code --aliases cursor,codex",
+      "harnesstap harness set --harnesses claude-code,cursor,codex",
       "harnesstap harness status"
     ]
   },
@@ -599,10 +601,10 @@ export const GENERATED_SCENARIOS = [
     "frequency": "Occasional",
     "status": "Shipped",
     "summaryLines": [
-      "Use this when `mirror` would fail because the project's **main harness**",
+      "Use this when `mirror` would fail because the project's **first registered harness**",
       "has no on-disk resource tree: common in plugin-only repos that ship",
       "`.claude-plugin/plugin.json` and repo-root `skills/` but no `.claude/` directory.",
-      "The `--reference` flag chooses which on-disk source drives alias harness output."
+      "The `--reference` flag chooses which on-disk source drives the other harnesses."
     ],
     "commands": [
       "harnesstap mirror . --dry-run",
@@ -610,7 +612,7 @@ export const GENERATED_SCENARIOS = [
       "harnesstap mirror . --reference auto",
       "harnesstap mirror . --reference plugin --dry-run",
       "harnesstap mirror . --reference agents --dry-run",
-      "harnesstap mirror . --force-shift-reference codex --reference auto"
+      "harnesstap mirror . --from codex --reference auto"
     ]
   },
   {

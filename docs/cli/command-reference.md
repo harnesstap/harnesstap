@@ -91,7 +91,7 @@ ht add ./local/skills-repo --project .
 | ---- | ------- |
 | `--skill <names>` | Install subset (comma-separated) |
 | `--all` | Install all discovered skills |
-| `--harness <slugs>` | Target harnesses (default: main + alias harnesses from preferences) |
+| `--harness <slugs>` | Target harnesses (default: all registered harnesses) |
 | `--global` | Install to user home paths |
 | `--project [path]` | Install to project directory (default `.` when flag present without value) |
 | `--method symlink\|copy` | Installation method (default `symlink`) |

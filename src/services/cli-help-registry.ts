@@ -58,7 +58,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   mirror: {
     description:
-      "Mirror alias harness outputs from the main harness on-disk configuration",
+      "Mirror the other harness outputs from the first registered harness on-disk configuration",
     examples: [
       "mirror",
       "mirror . --dry-run",
