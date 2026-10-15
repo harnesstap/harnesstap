@@ -415,6 +415,22 @@ const SCREENS = [
       await page.getByTestId("toast").waitFor({ timeout: 15_000 });
     },
   },
+  {
+    // Global scope rows carry no in-use mark; each row and its divider must
+    // still span the full list width.
+    name: "library-global-plugin-refs",
+    run: async (page, baseUrl) => {
+      await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 15_000 });
+      await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await waitForConnected(page);
+      await clickHeader(page, /global scope/i);
+      await openLibrary(page);
+      await waitForResourceRows(page);
+      await main(page).locator(".resource-type-tab").filter({ hasText: /plugin refs?$/ }).first().click({ timeout: T });
+      await waitForResourceRows(page);
+      await page.mouse.move(0, 0);
+    },
+  },
 ];
 
 /**

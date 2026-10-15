@@ -755,7 +755,8 @@
   min-width: 0;
 }
 
-.library-row-shell .resource-row {
+.library-row-shell .resource-row,
+.library-row-shell > .resource-hover-card-host {
   flex: 1;
   min-width: 0;
 }
