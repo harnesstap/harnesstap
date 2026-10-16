@@ -23,6 +23,7 @@ import {
   listMaterializationsForRootPath,
 } from "../models/resource-materialization.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
+import { isMergeableHostConfigPath } from "./merged-host-config.js";
 
 const APPLY_TRASH_KEEP = 10;
 const CONTAINER_DIR_NAMES = new Set([
@@ -143,6 +144,11 @@ export function isHarnessTapOwnedPath(rootPath: string, relativePath: string): b
   return classifyManagedPathOwnership(rootPath, relativePath) === "owned";
 }
 
+/** JSON and TOML host configs that apply merges by key. Instruction markdown is written whole. */
+export function isSharedMergedConfigPath(path: string): boolean {
+  return isMergeableHostConfigPath(path) && !/\.(md|mdc)$/i.test(path);
+}
+
 export function skippedWriteKeepsForOwnership(
   rootPath: string,
   skippedFiles: readonly string[],
@@ -155,6 +161,12 @@ export function skippedWriteKeepsForOwnership(
       continue;
     }
     seen.add(relativePath);
+    // Shared host configs (.claude.json, settings.json) are merged key by key
+    // and never removed. Other keys change all the time (the harness itself
+    // writes them), so a whole-file hash mismatch is not a user edit to keep.
+    if (isSharedMergedConfigPath(relativePath)) {
+      continue;
+    }
     if (classifyManagedPathOwnership(rootPath, relativePath) !== "modified") {
       continue;
     }
