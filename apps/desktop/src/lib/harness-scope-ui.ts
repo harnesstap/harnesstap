@@ -21,7 +21,6 @@ import {
   SCOPE_COPY,
   subsetScopeLine,
 } from "../../../../src/copy/scope";
-import { HARNESS_MAIN_PILL_TOOLTIP } from "./ui-copy";
 
 export type SerializerTarget = "project" | "global";
 
@@ -44,8 +43,6 @@ export const HARNESS_SCOPE_COPY = {
   useOn: SCOPE_COPY.useOn,
   selectAll: SCOPE_COPY.selectAll,
   none: SCOPE_COPY.none,
-  main: SCOPE_COPY.main,
-  mainTooltip: HARNESS_MAIN_PILL_TOOLTIP,
   filterPlaceholder: "Filter harnesses",
   emptyHint: SCOPE_COPY.emptyHint,
   linkedTooltip: SCOPE_COPY.linkedTooltip,
@@ -107,15 +104,9 @@ export function harnessScopeTooltip(
   return subsetScopeTooltip(scope.harnesses, names);
 }
 
-export function sortHarnessOptions(
-  options: readonly HarnessScopeOption[],
-  mainId: string | undefined,
-): HarnessScopeOption[] {
-  const rest = options
-    .filter((option) => option.id !== mainId)
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const main = mainId ? options.find((option) => option.id === mainId) : undefined;
-  return main ? [main, ...rest] : rest;
+/** Use-on rows, A to Z by name. */
+export function sortHarnessOptions<T extends { name: string }>(options: readonly T[]): T[] {
+  return [...options].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function groupLabel(ids: readonly string[], names: (id: string) => string): string {

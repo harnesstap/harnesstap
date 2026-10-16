@@ -26,6 +26,7 @@ import {
   normalizeScopeToRegistered,
   parseStoredHarnessScope,
   selectionFromGroups,
+  sortHarnessOptions,
   unionHarnessScopes,
   type HarnessScope,
   type LinkedHarnessGroup,
@@ -98,23 +99,21 @@ export function HarnessScopeControl({
     trapFocus: false,
   });
   const nameOf = namesFor(catalogNames);
-  const mainId = registered[0];
   const groups = useMemo(
     () => linkedHarnessGroups(registered, resourceType, target),
     [registered, resourceType, target],
   );
-  const orderedGroups = useMemo(() => {
-    const options = groups.map((group) => ({
-      id: group.key,
-      name: groupLabel(group.harnessIds, nameOf),
-      group,
-    }));
-    const mainGroup = options.find((option) => option.group.harnessIds.includes(mainId ?? ""));
-    const rest = options
-      .filter((option) => option !== mainGroup)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    return mainGroup ? [mainGroup, ...rest] : rest;
-  }, [groups, mainId, nameOf]);
+  const orderedGroups = useMemo(
+    () =>
+      sortHarnessOptions(
+        groups.map((group) => ({
+          id: group.key,
+          name: groupLabel(group.harnessIds, nameOf),
+          group,
+        })),
+      ),
+    [groups, nameOf],
+  );
   const filteredGroups = useMemo(() => {
     const query = filter.trim().toLowerCase();
     if (!query) return orderedGroups;
@@ -293,7 +292,6 @@ export function HarnessScopeControl({
           <div className="harness-scope-list" role="group" aria-label={HARNESS_SCOPE_COPY.useOn}>
             {filteredGroups.map((option) => {
               const checked = selectionFromGroups(draftSet, option.group);
-              const isMain = Boolean(mainId && option.group.harnessIds.includes(mainId));
               const label = option.name;
               const row = (
                 <label
@@ -314,11 +312,6 @@ export function HarnessScopeControl({
                     ))}
                   </span>
                   <span className="harness-scope-row-name">{label}</span>
-                  {isMain && option.group.harnessIds.length === 1 ? (
-                    <ChromeTooltip content={HARNESS_SCOPE_COPY.mainTooltip}>
-                      <span className="badge pill harness-scope-main">{HARNESS_SCOPE_COPY.main}</span>
-                    </ChromeTooltip>
-                  ) : null}
                 </label>
               );
               return option.group.linked ? (

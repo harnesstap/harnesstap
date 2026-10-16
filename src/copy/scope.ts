@@ -15,8 +15,6 @@ export const SCOPE_COPY = {
   linkedTooltip: "These read the same folder, so they share one setting",
   allTooltip: "On all harnesses. Pick which ones",
   orphanedTooltip: "Its harnesses are gone. Pick new ones",
-  main: "Main",
-  mainTooltip: "Your main harness. It wins when harnesses disagree.",
   alsoUseOnPrefix: "Also use on",
   notNow: "Not now",
   willWrite: "Will write",

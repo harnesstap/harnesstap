@@ -5,9 +5,6 @@
 
 import { getDisplayHome } from "./display-home";
 
-export const HARNESS_MAIN_PILL_TOOLTIP =
-  "Your main harness. It wins when harnesses disagree.";
-
 export const EMPTY_PROFILE_COPY = {
   title: "This profile is empty.",
   body: "Add resources from Library.",

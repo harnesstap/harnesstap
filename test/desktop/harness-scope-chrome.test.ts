@@ -53,9 +53,6 @@ describe("harness scope desktop UX", () => {
     expect(copy).toContain("SCOPE_COPY.useOn");
     expect(copy).toContain("SCOPE_COPY.selectAll");
     expect(copy).toContain("SCOPE_COPY.none");
-    expect(copy).toContain("SCOPE_COPY.main");
-    expect(copy).toContain("HARNESS_MAIN_PILL_TOOLTIP");
-    expect(copy).toContain("mainTooltip");
     expect(copy).toContain('filterPlaceholder: "Filter harnesses"');
     expect(copy).toContain("SCOPE_COPY.emptyHint");
     expect(srcScope).toContain("These read the same folder, so they share one setting");
@@ -64,20 +61,21 @@ describe("harness scope desktop UX", () => {
     expect(copy).toContain("alsoUseOnLabel");
     expect(copy).toContain("notNow: SCOPE_COPY.notNow");
     expect(copy).toContain("portableMcpTooltip");
-    expect(copy).toContain("mainTooltip");
     expect(copy).toContain("Harnesses for ${resourceName}");
     expect(copy).toContain("formatHarnessList");
     expect(copy).toContain("subsetScopeLine");
-    expect(control).toContain("HARNESS_SCOPE_COPY.mainTooltip");
     expect(copy).not.toContain("—");
     expect(control).not.toContain("—");
   });
 
-  it("sorts Main first then A to Z and treats missing as All", () => {
+  it("sorts Use-on rows A to Z with no Main badge and treats missing as All", () => {
     expect(copy).toContain("parseStoredHarnessScope");
-    expect(copy).toContain("option.id !== mainId");
     expect(copy).toContain("a.name.localeCompare(b.name)");
-    expect(control).toContain("HARNESS_SCOPE_COPY.main");
+    expect(control).toContain("sortHarnessOptions(");
+    expect(control).not.toContain("mainId");
+    expect(control).not.toContain("harness-scope-main");
+    expect(copy).not.toContain("mainTooltip");
+    expect(css).not.toContain(".harness-scope-main");
   });
 
   it("filters when more than 8 harnesses and restores empty close", () => {

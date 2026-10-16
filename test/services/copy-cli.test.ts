@@ -41,10 +41,8 @@ describe("DS-6 CLI copy", () => {
     );
   });
 
-  it("keeps the Main tooltip string", () => {
-    expect(SCOPE_COPY.mainHarnessTooltip).toBe(
-      "Your main harness. It wins when harnesses disagree.",
-    );
+  it("has no Main harness tooltip", () => {
+    expect("mainHarnessTooltip" in SCOPE_COPY).toBe(false);
   });
 
   it("prints the snapshot undo line with the revert command", () => {
