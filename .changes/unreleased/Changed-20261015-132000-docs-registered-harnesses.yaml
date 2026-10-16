@@ -1,0 +1,5 @@
+kind: Changed
+body: Docs and `ht help` describe harnesses as one registered set. The first registered harness is the default for `mirror` and single-harness scans; there is no separate main harness. Scenario 2 now uses `ht harness set --harnesses`. The hidden `--main` and `--aliases` flags, `--reference main`, and `main_harness` in requests and archives are still accepted.
+time: 2026-10-15T23:20:00.000Z
+custom:
+  Issue: ""

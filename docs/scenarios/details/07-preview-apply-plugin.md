@@ -25,6 +25,6 @@ harnesstap apply my-setup --ignore-plugin-versions   # skip validation
 `apply` is the canonical write path for one or more plugins. Stack multiple plugins in one command (see [Scenario 25](./25-stack-plugins.md)).
 
 Important distinction: applying a plugin writes a known baseline onto disk. If
-you later want to sync alias harness outputs from the current on-disk main
+you later want to sync the other harness outputs from the current on-disk first registered
 harness without re-specifying the plugin, use
 [`harnesstap mirror`](./27-project-sync.md) instead.

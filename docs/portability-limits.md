@@ -149,8 +149,8 @@ Copilot's runtime may require specific naming conventions or a
 ## Harness-specific surfaces and mirror warnings
 
 HarnessTap scans as much as possible from every supported layout. When a
-surface is native to one harness and cannot be transposed to the main harness
-or alias harnesses during `mirror`, HarnessTap emits a warning per
+surface is native to one harness and cannot be transposed to the other
+registered harnesses during `mirror`, HarnessTap emits a warning per
 surface (human output and `surface_warnings` in JSON).
 
 Examples of surfaces that stay on their native harness:
@@ -158,7 +158,7 @@ Examples of surfaces that stay on their native harness:
 | Surface | Native harness | Mirror behavior |
 | ------- | -------------- | --------------- |
 | **Claude Code mods** (`hooks.json` + JS/TS module) | Claude Code | Pin dual-write keeps portable files on other hosts; modules and dangling loader pointers are omitted (registry `hostPluginRuntimeModules`). |
-| **OpenCode server plugins** (`.js`, `.mjs`) | OpenCode | Registered in `opencode.json`; not copied to alias harnesses. |
+| **OpenCode server plugins** (`.js`, `.mjs`) | OpenCode | Registered in `opencode.json`; not copied to other harnesses. |
 | **Pi extensions** (`pi-extension/`) | Pi | Installed via Pi CLI; not emitted to other harnesses. |
 | **Gemini extension manifest** (`gemini-extension.json`) | Gemini CLI / Antigravity | Extension metadata applies to Gemini-family hosts only. |
 | **Statusline hooks** | Claude Code (and similar) | Terminal chrome integrations; not part of the shared resource model. |
@@ -171,7 +171,7 @@ Warnings look like:
 opencode surface .opencode/plugins/foo.js is not mirrored to codex, cursor: OpenCode server plugins must stay registered in opencode.json on OpenCode.
 ```
 
-Review mirror output with `--dry-run` before writing alias harness files.
+Review mirror output with `--dry-run` before writing harness files.
 
 **Auto reference merge:** with `--reference auto`, HarnessTap merges repo-root
 plugin `skills/` into the main-harness scan when the main tree has instructions
@@ -345,16 +345,16 @@ harnesstap scan . --dry-run
 harnesstap plugin from-project my-plugin --project .
 ```
 
-### Mirror fallback for empty main harness
+### Mirror fallback for an empty first registered harness
 
-When the main harness has no on-disk tree (plugin-only layout):
+When the first registered harness has no on-disk tree (plugin-only layout):
 
 ```bash
 harnesstap mirror . --reference auto --dry-run
 harnesstap mirror . --reference plugin
 ```
 
-`--reference auto` tries the main harness first, then plugin source, then
+`--reference auto` tries the first registered harness first, then plugin source, then
 shared `AGENTS.md` instruction resources.
 
 ### Cursor plugin marketplaces
@@ -370,7 +370,7 @@ copilot plugin install <source>
 harnesstap resource sync --overwrite
 ```
 
-Then re-run `apply` or `mirror` if alias harnesses need refreshed
+Then re-run `apply` or `mirror` if other harnesses need refreshed
 copies.
 
 ## Related scenarios

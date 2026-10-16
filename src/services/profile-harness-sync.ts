@@ -1,34 +1,28 @@
-import {
-  addResourceToPlugin,
-  getPluginResources,
-  removeResourceFromPlugin,
-  resolvePluginSelector,
-  touchPluginUpdatedAt,
-} from "../models/plugin-model.js";
-import { getHarnessPreference } from "../models/harness.js";
 import { isProfilePlugin } from "../constants/profile.js";
+import { getHarnessPreference } from "../models/harness.js";
+import {
+  resolvePluginSelector,
+} from "../models/plugin-model.js";
 import {
   MATERIAL_RESOURCE_TYPES,
   type MaterialResourceType,
   type Resource,
   type ResourceCreateInput,
 } from "../types.js";
-import { mergePluginsForApply } from "./plugin-apply-merge.js";
-import { collectProfilePluginIds } from "./profile-apply.js";
-import {
-  detectHomePlatforms,
-  persistScanResults,
-  scanHomeDefaults,
-} from "./scanner.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
+import { getActiveProfileName } from "./active-profile.js";
 import {
   assertSupportedHarnessTargets,
   parsePlatformFilter,
   registeredHarnessesOf,
   uniqueHarnessTargets,
 } from "./harness-targets.js";
-import { resolveHomeRoot } from "../utils/home-root.js";
-import { diskCaptureHarnessScope } from "./harness-scope.js";
-import { getActiveProfileName } from "./active-profile.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import { collectProfilePluginIds } from "./profile-apply.js";
+import {
+  detectHomePlatforms,
+  scanHomeDefaults,
+} from "./scanner.js";
 
 export interface ProfileHarnessSyncChange {
   resource_type: string;
@@ -42,14 +36,6 @@ export interface ProfileHarnessSyncStatus {
   in_sync: boolean;
   changes: ProfileHarnessSyncChange[];
   warning?: string;
-}
-
-export interface UpdateProfileFromHarnessResult {
-  profile_name: string;
-  registered_harnesses: string[];
-  attached_resources: number;
-  removed_resources: number;
-  updated_resources: number;
 }
 
 const MATERIAL_RESOURCE_TYPE_SET = new Set<string>(MATERIAL_RESOURCE_TYPES);
@@ -89,18 +75,6 @@ export function resolveRegisteredScanTargets(
     );
   }
   return detected;
-}
-
-/** First registered or explicit target. Prefer `resolveRegisteredScanTargets`. */
-export function resolveMainHarnessTarget(
-  harnessOption?: string,
-  homeRoot = resolveHomeRoot(),
-): string {
-  const [first] = resolveRegisteredScanTargets(harnessOption, homeRoot);
-  if (!first) {
-    throw new Error("No harness targets provided.");
-  }
-  return first;
 }
 
 function compareMaterialResources(
@@ -196,64 +170,6 @@ export async function detectProfileHarnessSyncStatus(input: {
     registered_harnesses: targets,
     in_sync: changes.length === 0,
     changes,
-  };
-}
-
-export async function updateProfileFromMainHarness(input: {
-  profileSelector: string;
-  harness?: string;
-}): Promise<UpdateProfileFromHarnessResult> {
-  const profilePlugin = resolvePluginSelector(input.profileSelector);
-  if (!profilePlugin) {
-    throw new Error(`Profile not found: ${input.profileSelector}`);
-  }
-  if (!isProfilePlugin(profilePlugin)) {
-    throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
-  }
-
-  const { targets, scanned } = await scanRegisteredHome(input.harness);
-  const beforeSync = getPluginResources(profilePlugin.id).filter(isMaterialResource);
-  const harnessResources = scanned.flatMap((result) => result.resources);
-  const pendingChanges = compareMaterialResources(beforeSync, harnessResources);
-  const homeRoot = resolveHomeRoot();
-  const persisted = persistScanResults(scanned, {
-    conflictPolicy: "overwrite",
-    originRef: homeRoot,
-  });
-  const scannedResources = persisted.resolved.filter(isMaterialResource);
-  const scannedKeys = new Set(scannedResources.map((resource) => profileResourceKey(resource)));
-
-  let removedResources = 0;
-  for (const resource of beforeSync) {
-    if (!scannedKeys.has(profileResourceKey(resource))) {
-      removeResourceFromPlugin(profilePlugin.id, resource.id);
-      removedResources += 1;
-    }
-  }
-
-  let attachedResources = 0;
-  for (const resource of scannedResources) {
-    const existingAttachment = beforeSync.some(
-      (attached) => attached.id === resource.id,
-    );
-    addResourceToPlugin(
-      profilePlugin.id,
-      resource.id,
-      diskCaptureHarnessScope(resource),
-    );
-    if (!existingAttachment) {
-      attachedResources += 1;
-    }
-  }
-
-  touchPluginUpdatedAt(profilePlugin.id);
-
-  return {
-    profile_name: profilePlugin.name,
-    registered_harnesses: targets,
-    attached_resources: attachedResources,
-    removed_resources: removedResources,
-    updated_resources: pendingChanges.filter((change) => change.change === "modified").length,
   };
 }
 

@@ -47,7 +47,7 @@ after HarnessTap is set up: not how important it is the first time.
 | [36](./details/36-switch-profile.md) | Switch global profile presets                    | Common     | Shipped |
 | [40](./details/40-use-project-profile.md) | Switch repo profiles from `apm.yml` | Common | Shipped |
 | [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessTap on a machine                  | Occasional | Shipped |
-| [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
+| [2](./details/02-default-harness-aliases.md)  | Choose your registered harnesses                    | Occasional | Shipped |
 | [5](./details/05-build-plugin-from-resources.md)  | Build a reusable plugin from imported resources     | Occasional | Shipped |
 | [8](./details/08-audit-plugins.md)  | Audit plugin resources and plugin pins               | Occasional | Shipped |
 | [10](./details/10-export-import-plugin.md) | Export or import a plugin bundle                    | Occasional | Shipped |
@@ -112,7 +112,7 @@ baselines, or when integrating HarnessTap into tooling.
 | Scenario | Summary |
 | -------- | ------- |
 | [1](./details/01-bootstrap-machine.md) | Bootstrap HarnessTap on a machine and discover existing defaults |
-| [2](./details/02-default-harness-aliases.md) | Choose a default main harness and alias harnesses |
+| [2](./details/02-default-harness-aliases.md) | Choose your registered harnesses |
 | [5](./details/05-build-plugin-from-resources.md) | Build a reusable plugin from imported resources |
 | [8](./details/08-audit-plugins.md) | Audit plugin resources and plugin pins |
 | [10](./details/10-export-import-plugin.md) | Export or import a plugin as a portable bundle |
@@ -128,7 +128,7 @@ baselines, or when integrating HarnessTap into tooling.
 | [28](./details/28-machine-migration.md) | Share a full workspace offline with migrate export/import |
 | [37](./details/37-publish-profile-plugin.md) | Publish and install profile-tagged catalog plugins |
 | [32](./details/32-instruction-tier-apply.md) | Apply plugins to instruction-tier harnesses (windsurf, cline, copilot, ...) |
-| [33](./details/33-mirror-plugin-fallback.md) | Mirror alias harnesses when main harness tree is empty |
+| [33](./details/33-mirror-plugin-fallback.md) | Mirror when the first registered harness tree is empty |
 | [34](./details/34-portability-limits.md) | Review what transfers across harnesses and what does not |
 | [39](./details/39-mcp-auth-and-environments.md) | Switch MCP tokens via environments; OAuth host limits (**Documented**) |
 

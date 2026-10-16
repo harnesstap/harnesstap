@@ -33,8 +33,8 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
       { term: "harness", definition: "Target CLI (claude-code, codex, cursor, ...)" },
     ],
     harness_roles: [
-      { term: "main harness", definition: "Canonical reference for imports and apply" },
-      { term: "alias harness", definition: "Mirrors main harness output (symlink or copy)" },
+      { term: "registered", definition: "Harnesses HarnessTap writes to (harness set --harnesses)" },
+      { term: "default", definition: "First registered harness: mirror source and scans when none is named" },
     ],
     commands: [
       {
@@ -51,7 +51,7 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
       },
       {
         command: "mirror .",
-        purpose: "Sync alias harnesses from on-disk main",
+        purpose: "Sync registered harnesses from the first registered one on disk",
       },
       {
         command: `plugin list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`,

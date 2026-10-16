@@ -105,7 +105,7 @@ ht profile publish work --org acme --catalog default
 | --- | --- |
 | Separate work / personal / client setups on one machine | Profiles (`profile use`, `ht <name>`) |
 | Repo-specific team baseline | `apply --project .` |
-| Sync alias harness files from on-disk main without re-applying a plugin | `mirror` |
+| Sync harness files from the on-disk first registered harness without re-applying a plugin | `mirror` |
 | Detect manual edits after apply | `status --check` |
 
 Profiles answer "what runs on this machine by default?" Projects answer "what does this repository get?"

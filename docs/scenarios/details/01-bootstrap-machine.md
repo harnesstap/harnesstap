@@ -35,4 +35,4 @@ Catalog baselines are not seeded at init. Apply them to projects with
 first with `plugin pull`.
 
 If you skip harness selection during init or want to change it later, use
-[Scenario 2](./02-default-harness-aliases.md) to update the default main harness and alias set.
+[Scenario 2](./02-default-harness-aliases.md) to update your registered harnesses.
