@@ -1,0 +1,5 @@
+kind: Fixed
+body: Adding a plugin to a profile from Discover no longer asks "Some files will not be removed" about shared configs such as `.claude.json`, `.claude/settings.json` or `.cursor/mcp.json`. Those files are merged key by key, so edits the harness or you made to other keys since the last apply are not kept files. Your keys are still preserved, and user-modified files that apply writes whole are still kept and reported.
+time: 2026-10-16T05:15:00.000Z
+custom:
+  Issue: ""
