@@ -68,6 +68,10 @@ ht plugin edit my-setup --add plugin:acme/default/base --version "^2.0.0"
 
 Legacy selectors `plugin_pin:...` and `plugin:...` still resolve and print a notice naming the new `plugin:` spelling.
 
+`marketplace add` reads every manifest in the repo: `.claude-plugin/marketplace.json`, `.cursor-plugin/marketplace.json`, `.github/plugin/marketplace.json` (Copilot), `.agents/plugins/marketplace.json` (Codex `source.path`, including `./` for the repository root), and a root `marketplace.json`. Each plugin is labeled with that manifest's flavor. When `--platform` is omitted, registry platforms are set from the manifests that were found. Codex stays a catalog flavor and is shown on the plugin row. A plugin root whose `plugin.json` uses the Agent Plugins 1.0.0 `$schema` is classified as an agent plugin. A source path that leaves the repository is omitted, with a warning. `ht resource sync plugin:<name>@<marketplace>` installs that pin. A second sync of the same tree is unchanged. A missing marketplace plugin names that command.
+
+Attaching a marketplace plugin whose source path leaves the repository is rejected. No pin is recorded.
+
 ## Composition and resolution
 
 Plugins depend on other plugins. `ht apply` does not walk an ordered stack: it resolves the whole dependency graph, then materializes one coherent set of resources.

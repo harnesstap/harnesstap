@@ -1,5 +1,0 @@
-kind: Fixed
-body: Status computes a cold read on the background worker started with the desktop sidecar, keeps that worker and its file watchers alive, and returns a frozen snapshot. Hidden-Unicode checks skip files that will not be written and skip unchanged files by mtime and size. A Cursor plugin-* MCP folder uses the plugin ref from its manifest or cache directory, and is not listed twice when that plugin is already cached.
-time: 2026-10-14T06:15:00.000Z
-custom:
-  Issue: ""

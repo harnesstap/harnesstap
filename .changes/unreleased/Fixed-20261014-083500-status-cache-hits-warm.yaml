@@ -1,5 +1,0 @@
-kind: Fixed
-body: Warm status reads are served from the cache again. Status no longer compares file stats of the HarnessTap database and its write-ahead log, which change on plain reads. A write that changes a profile, from the app or the CLI, is included in the next status. Adding a library resource that no profile uses does not refresh status.
-time: 2026-10-14T08:35:00.000Z
-custom:
-  Issue: ""

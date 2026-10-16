@@ -1,3 +1,0 @@
-kind: Added
-body: Marketplace catalogs also read Copilot `.github/plugin/marketplace.json` and Codex `.agents/plugins/marketplace.json`. A listed root with the Agent Plugins 1.0.0 schema is classified as an agent plugin.
-time: 2026-10-13T14:00:00Z

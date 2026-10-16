@@ -1,5 +1,5 @@
 {
-  "version": "1.3.2",
+  "version": "1.4.0",
   "root": {
     "aliases": [],
     "flags": [
@@ -657,6 +657,7 @@
           "export": {
             "aliases": [],
             "flags": [
+              "--archive",
               "--embed-plugins",
               "--environment",
               "--file",
@@ -665,6 +666,7 @@
               "--plugin",
               "--resource",
               "--single-file",
+              "--vendor-extensions",
               "--workspace",
               "-o"
             ],
@@ -972,6 +974,8 @@
               "--catalog",
               "--format",
               "--org",
+              "--strict",
+              "--vendor-extensions",
               "--version"
             ],
             "args": 2,
@@ -1041,6 +1045,15 @@
               "--format",
               "--yes",
               "-y"
+            ],
+            "args": 1,
+            "subcommands": {}
+          },
+          "validate": {
+            "aliases": [],
+            "flags": [
+              "--format",
+              "--spec"
             ],
             "args": 1,
             "subcommands": {}

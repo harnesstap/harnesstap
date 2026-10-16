@@ -1,5 +1,0 @@
-kind: Fixed
-body: Host MCP configs follow the current platform, cancelled profile switches omit the native agent plugin cache, the Desktop apply footer ignores kept rows, and pin hints use `ht`.
-time: 2026-10-13T17:30:00.000Z
-custom:
-  Issue: ""

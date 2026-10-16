@@ -109,6 +109,8 @@ Claude Code **home scan** (`init`, profile from home, `scan` of global defaults)
 
 Claude Code, Goose, and Copilot CLI have native plugin install/sync providers. Cursor inventories `~/.cursor/plugins/`. **cursor-public** is a native git marketplace (`https://github.com/cursor/plugins`); other Cursor marketplaces still use `agent plugin marketplace add`. HarnessTap installs a Cursor plugin by copying it into `~/.cursor/plugins/local/`; Reload Window loads it. Marketplace install in Customize or `/plugin` still takes precedence for the same plugin name. `ht harness sync` copies Claude and Cursor install trees onto each other (native roots; not a shared plugin directory) and also writes plugin skills/agents/commands into `.agents` (and equivalent folders) so OpenCode and similar harnesses can use them. Other harnesses may import plugin manifest metadata without full install-tree fidelity: see [Portability limits](../../portability-limits.md).
 
+Cursor home scan registers the newest version directory under `~/.cursor/plugins/cache/<marketplace>/<plugin>/<version>`, plus `marketplaces/` and `local/` (including HarnessTap-managed copies). A cached plugin counts as installed even when Cursor has it turned off. Status does not read `state.vscdb` or the Cursor logs folder. A HarnessTap database write that changes a profile is included in the next status. Adding a library resource that no profile uses does not refresh status.
+
 ## Portability notes
 
 Most static, file-based resources round-trip faithfully across harnesses. Some surfaces are runtime-only or host-specific (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission). HarnessTap imports metadata where possible but does not claim full fidelity for every case.

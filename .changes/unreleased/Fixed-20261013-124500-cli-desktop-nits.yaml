@@ -1,5 +1,0 @@
-kind: Fixed
-body: Remove profile focuses Cancel. resource show shortens home paths with ~. profile use --dry-run lists planned writes instead of cancelling on conflict. The replace hint says "them" when more than one file would change.
-time: 2026-10-13T12:45:00.000Z
-custom:
-  Issue: ""

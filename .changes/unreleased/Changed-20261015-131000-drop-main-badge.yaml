@@ -1,5 +1,0 @@
-kind: Changed
-body: Desktop no longer shows a Main badge in the Use on picker, and the harnesses there are listed A to Z. Every registered harness is treated the same, so the badge and its tooltip were misleading.
-time: 2026-10-15T23:10:00.000Z
-custom:
-  Issue: ""

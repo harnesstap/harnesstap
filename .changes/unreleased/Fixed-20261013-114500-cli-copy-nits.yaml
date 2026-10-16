@@ -1,5 +1,0 @@
-kind: Fixed
-body: CLI hints use ht and quote names that contain spaces. One change is singular. Empty plugin descriptions and tags no longer render as a bare colon. Tables clip with ASCII dots and keep colored profile names. A denied device login omits the HTTP status. A no-op profile re-apply does not save another snapshot. Kept files are not also warned as skipped removals. Scenario playbooks print links as text.
-time: 2026-10-13T11:45:00.000Z
-custom:
-  Issue: ""

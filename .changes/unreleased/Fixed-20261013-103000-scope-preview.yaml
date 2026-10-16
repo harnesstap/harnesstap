@@ -1,5 +1,0 @@
-kind: Fixed
-body: Profile preview and status include a harness file that a scope change would write, including when another harness already has a copy it cannot read.
-time: 2026-10-13T10:30:00.000Z
-custom:
-  Issue: ""

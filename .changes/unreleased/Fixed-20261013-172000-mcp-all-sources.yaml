@@ -1,5 +1,0 @@
-kind: Fixed
-body: Host MCP configs expand plugin paths for marketplace, git, and local installs, using the same resolution as an imported package.
-time: 2026-10-13T17:20:00.000Z
-custom:
-  Issue: "438"

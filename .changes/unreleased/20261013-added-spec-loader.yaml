@@ -1,3 +1,0 @@
-kind: Added
-body: ht plugin validate loads an Agent Plugins 1.0.0 package and reports skills, MCP servers, skipped entries, and ignored manifest fields. Import follows those rules. A bad mcp.json disables MCP and keeps the skills. Invalid skill names are renamed on export, and secret-like MCP env or header values move to com.harnesstap.
-time: 2026-10-13T10:00:00Z

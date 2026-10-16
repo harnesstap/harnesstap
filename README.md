@@ -180,6 +180,8 @@ bun run desktop:install  # build + install HarnessTap.app into /Applications
 
 Details, sidecar notes, and e2e: [apps/desktop/README.md](apps/desktop/README.md).
 
+The apply footer counts files that will be written or removed. Kept rows are not included.
+
 ---
 
 ## Demo

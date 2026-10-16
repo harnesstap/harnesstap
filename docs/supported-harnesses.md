@@ -94,6 +94,8 @@ Other harnesses still benefit from plugin-source **scan** and **resource sync** 
 
 Claude **plugin pins** and marketplace metadata (`plugin show` → `claude` block) apply only when materializing to **claude-code**.
 
+Cursor home scan inventories every newest cache version directory under `~/.cursor/plugins/cache/`, plus `marketplaces/` and `local/`, including when Cursor has that plugin turned off. It does not read `state.vscdb`. HarnessTap host-plugin cache and `~/.claude/plugins/cache` are still not Cursor plugins.
+
 ## Serializers
 
 | Tier | Harnesses | Notes |
@@ -221,6 +223,8 @@ Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains 
 Copilot CLI home state lives under `~/.copilot/`. Detection uses `~/.copilot/settings.json` and `~/.copilot/installed-plugins/` in addition to `~/.copilot/skills/` and `~/.copilot/mcp-config.json`. Installed plugins are imported as pins from `~/.copilot/installed-plugins/<marketplace>/<plugin>/`.
 
 Generic harnesses in the skills-only tier use harness-specific skill roots such as `.kilocode/skills/`, `.crush/skills/`, or `.factory/skills/` with `AGENTS.md` instructions: see the registry for the full list.
+
+Cursor plugin directories under `~/.cursor/plugins/cache`, `marketplaces/`, and `local/` count as installed, including when Cursor has the plugin turned off. `plugin-*` MCP folders count as installed too. A folder is matched to the plugin named in its manifest or under `~/.cursor/plugins/cache/<marketplace>/<plugin>/<version>`, and that plugin is not listed a second time. Status does not read `state.vscdb` or the Cursor logs folder. A HarnessTap database write that changes a profile is included in the next status. Adding a library resource that no profile uses does not refresh status. Whether Cursor loads other harness trees is read from `settings.json` only, and defaults to on.
 
 ### Goose context engineering
 

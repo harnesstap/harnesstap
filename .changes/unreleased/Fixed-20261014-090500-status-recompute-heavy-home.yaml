@@ -1,5 +1,0 @@
-kind: Fixed
-body: Status computes faster on a home with many installed plugins. One status read reads Claude installed_plugins.json, each plugin manifest, and each marketplace manifest once instead of once per plugin, and no longer rewrites every upstream plugin row.
-time: 2026-10-14T09:05:00.000Z
-custom:
-  Issue: ""

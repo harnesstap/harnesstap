@@ -1,5 +1,0 @@
-kind: Fixed
-body: With native Agent Plugins on, an untouched Codex or Copilot config is not reported as a change when no @harnesstap keys need to be added or removed.
-time: 2026-10-13T14:05:00Z
-custom:
-  Issue: "430"

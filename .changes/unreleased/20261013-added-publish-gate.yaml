@@ -1,3 +1,0 @@
-kind: Added
-body: plugin publish checks the Agent Plugins package before upload. A wrong manifest schema or an unusable mcp.json always blocks. Other export warnings block only with --strict. --vendor-extensions writes Copilot files and Codex hook settings, and migrate export can write a zip.
-time: 2026-10-13T18:30:00Z

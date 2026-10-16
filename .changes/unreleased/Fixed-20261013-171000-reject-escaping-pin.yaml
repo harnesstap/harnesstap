@@ -1,5 +1,0 @@
-kind: Fixed
-body: Attaching a marketplace plugin whose source path leaves the repository is rejected, and no pin is recorded.
-time: 2026-10-13T17:10:00.000Z
-custom:
-  Issue: "440"

@@ -302,6 +302,8 @@ pointers; see below), Claude `installed_plugins.json` / marketplace git metadata
 Cursor enablement and `agent plugin marketplace add` auth, and host-only plugin
 config (Claude extra known marketplaces, Cursor app MCP folders).
 
+A directory under `~/.cursor/plugins/cache/<marketplace>/<plugin>/<version>` counts as installed, using the newest version directory, even when Cursor has that plugin turned off. The same applies to `marketplaces/`, `local/` (including HarnessTap-managed copies), and `plugin-*` MCP folders. A `plugin-*` MCP folder uses the plugin ref from that folder's manifest or from the cache directory, and it is not listed again when that plugin is already cached. Status does not read `state.vscdb` or the Cursor logs folder. A HarnessTap database write that changes a profile is included in the next status. Adding a library resource that no profile uses does not refresh status. Whether Cursor loads `~/.claude/` and `~/.agents/` is read from Cursor `settings.json` only, and defaults to on.
+
 ### Claude Code mods in host plugin pins
 
 A [Claude Code mod](https://code.claude.com/docs/en/plugins/mods/overview) is

@@ -221,6 +221,16 @@ Top-level apply resolves a plugin (and its dependency graph) and materializes it
 
 `ht layer ...` is a hidden deprecated alias for `ht plugin ...` for one release; prefer `ht plugin` and top-level `ht apply`.
 
+MCP servers from an Agent Plugins package keep `cwd` and an HTTP transport of `streamable-http` or `sse`. Apply warns when a harness cannot write `cwd`, and when `sse` is written as that harness's HTTP form. `${PLUGIN_ROOT}` and `${PLUGIN_DATA}` stay as written in the library. Import copies the package to `~/.harnesstap/cache/agent-plugins/<plugin>/<version>/` and records a hash for each file it writes. Host MCP configs expand those variables to that directory and to `~/.harnesstap/plugin-data/<plugin>`. A command that starts with `./` is resolved against the package directory and stays one token when the path contains spaces. `cwd` is written for Claude Code, Codex, Copilot, and Grok. Cursor has no `cwd` field, so the command path is absolute and apply warns that the working directory is not written. The plugin data directory is created only when it is missing. HarnessTap records that ownership and leaves an existing unowned directory or file in place. An existing unowned file in the package directory is left in place. Owned files that are replaced or removed are backed up.
+
+Set `harnessSync.nativeAgentPlugins` to `true` to register Agent Plugins packages for Codex and Copilot instead of extracting their skills and MCP servers. The default is off. Codex entries are `[plugins."<name>@harnesstap"]` in `config.toml`. Copilot entries are `enabledPlugins` keys in `.copilot/settings.json`. Other keys stay. Turning a package off removes only those `@harnesstap` keys and the cache files HarnessTap wrote. A config with no `@harnesstap` keys to add or remove is left as it is, including when the flag is on and the profile does not register a package.
+
+The Cursor and Claude copies of an Agent Plugins package rewrite those variables in the emitted tree only. Cursor writes `${CURSOR_PLUGIN_ROOT}` and an absolute plugin data path. Claude writes `.claude-plugin/plugin.json`, `.mcp.json` (`streamable-http` and `sse` as `http`, `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PLUGIN_DATA}`), and copies `com.harnesstap` commands, agents, and hook JSON into the Claude plugin directories. A file HarnessTap does not own inside a Cursor local plugin is left in place. Owned removals are backed up.
+
+Host MCP configs expand `${PLUGIN_ROOT}`, `${PLUGIN_DATA}`, and `./` commands for an import, a marketplace pin, a git import, and a local install tree. The library copy stays literal.
+
+Host MCP configs write the POSIX command server on Linux and macOS, and the Windows `.cmd` server on Windows. A missing or mismatched plugin pin says `Run: ht resource sync plugin_pin:<ref>`.
+
 ## compile
 
 Named entry over apply-from-manifest: compile local `.apm/` primitives into the resolved target harness directories. Same writers and `local_deployed_file_hashes` as `ht install` / `ht apply`. See the [Use ramp: compile for declared targets](use/compile.md).
@@ -366,6 +376,13 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin update [name]` - update a working head from origin (`--all` for every outdated syncable head)
 - `plugin why <target>` - explain why a version was selected or which plugin won a resource (`skill:name`, plugin name)
 - `plugin from-project [name] --project <path>`
+
+- `plugin validate <file>` - load an Agent Plugins directory, zip, or `.ap.json` and report skills, MCP servers, skipped entries, and ignored manifest fields (`--spec 1.0.0`, `--format json`)
+- `plugin publish --strict` blocks when export warnings are present (a renamed skill, a secret moved out of `mcp.json`, or a skipped MCP server). A wrong `$schema` or an unusable `mcp.json` always blocks publish.
+- `plugin publish --vendor-extensions` and `migrate export --plugin --vendor-extensions` also write Copilot files under `com.github.copilot/` and Codex hook settings under `extensions["com.openai"]`. The flag is off by default. Existing vendor files are left in place. A hook command that points at a file outside the package is copied next to that hooks file and rewritten to a relative path. A hook whose script cannot be read is left out, with a warning.
+- Human `migrate export` prints a path under your home directory as `~/...`. JSON output keeps the absolute path.
+- `migrate export --plugin --archive` (or a path ending in `.zip`) writes the Agent Plugins package as a zip. It does not replace a directory.
+- A directory whose root `plugin.json` uses the Agent Plugins 1.0.0 `$schema` is an agent plugin. Import keeps `author`, `homepage`, `repository`, and `license`, and keeps vendor namespace objects and their directories (for example `com.openai` and `com.github.copilot`). Path overrides in that manifest are ignored. Root `agents`, `commands`, and `hooks` are still read, with a warning.
 
 ### Important options
 
@@ -516,6 +533,8 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile stash`: stash untracked on-disk resources for the active profile
 - `profile stash list` / `profile stash pop` / `profile stash apply`: list, restore-and-remove, or restore stashed profiles
 - Live files: `profile add-resource`, `add-all-resources`, `commit-resource`, `remove-resource`, `restore-file`, `file-diff`: adopt, snapshot, detach, or diff on-disk resources against the profile library (`--scope home|project`, `--project` when scope is project)
+
+A cancelled `profile use` does not list `.harnesstap/cache/native-agent-plugins/` files as changes. Apply still writes that cache.
 
 ### Important options
 

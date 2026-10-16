@@ -1,5 +1,0 @@
-kind: Fixed
-body: A hand-edited managed file is labeled kept on switch-back preview, is not cancelled as a write, and does not leave the active profile out of sync.
-time: 2026-10-13T12:15:00.000Z
-custom:
-  Issue: ""

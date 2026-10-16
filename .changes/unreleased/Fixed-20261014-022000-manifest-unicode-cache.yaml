@@ -1,5 +1,0 @@
-kind: Fixed
-body: Marketplace manifest reads are reused when the file has not changed, including plugin-name checks. Hidden-Unicode scans are reused for the same content, and a scan is skipped when the file mtime and size are unchanged.
-time: 2026-10-14T02:20:00.000Z
-custom:
-  Issue: ""
