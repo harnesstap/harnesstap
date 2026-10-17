@@ -145,9 +145,9 @@ function candidateRows(upstream: PluginUpstream, linkedId: string | undefined): 
         .prepare(
           `SELECT id, name, version, frozen_at FROM plugins
            WHERE org_slug = ? AND catalog_slug = ?
-             AND (ap_name = ? OR name = ? OR origin_locator LIKE ?)`,
+             AND (ap_name = ? OR name = ? OR origin_locator = ? OR origin_locator LIKE ?)`,
         )
-        .all(org, catalog, slug, slug, `${base}@%`) as CandidateRow[]),
+        .all(org, catalog, slug, slug, base, `${base}@%`) as CandidateRow[]),
     );
   } else {
     rows.push(

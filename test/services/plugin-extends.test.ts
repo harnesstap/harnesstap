@@ -141,6 +141,21 @@ describe("extends composition", () => {
     expect(resolveUpstreamParent(child)?.version).toBe("1.2.0");
   });
 
+  it("finds a pulled parent stored under its display name by its catalog locator", () => {
+    const pulled = createPlugin({
+      name: "Backend engineer",
+      version: "1.0.0",
+      org_slug: "acme",
+      catalog_slug: "default",
+      origin: "catalog",
+    });
+    getDb()
+      .prepare("UPDATE plugins SET origin_locator = 'acme/default/backend-engineer' WHERE id = ?")
+      .run(pulled.id);
+    const child = extendsChild();
+    expect(resolveUpstreamParent(child)?.id).toBe(pulled.id);
+  });
+
   it("refuses to resolve when the parent is not installed and names the pull command", () => {
     extendsChild();
     try {
