@@ -161,10 +161,10 @@ describe("producers", () => {
       "acme/default/backend published 2.0.0",
       true,
     ]);
-    expect(row?.body).toContain("never installed automatically");
+    expect(row?.body).toBe("Major update, needs your OK. You have 1.0.0.");
   });
 
-  it("tells a kept-in-sync child when its local parent moves to a new version", async () => {
+  it("tells a synced child when its local parent moves to a new version", async () => {
     const parent = createPlugin({ name: "backend", version: "1.0.0", tags: ["profile"] });
     const plugin = createPlugin({ name: "backend-qa", tags: ["profile"] });
     setPluginUpstream(plugin.id, { kind: "extends", ref: "backend@^1.0.0", version_at_link: "1.0.0" });
@@ -175,7 +175,7 @@ describe("producers", () => {
     await runUpstreamCheck({ fetchLatest: catalog({}) });
     await runUpstreamCheck({ fetchLatest: catalog({}) });
     expect(listNotifications().map((n) => [n.kind, n.plugin_name, n.title, n.body])).toEqual([
-      ["parent_published", "backend-qa", "backend published 1.1.0", "backend-qa is kept in sync, so it now uses 1.1.0 (was 1.0.0)."],
+      ["parent_published", "backend-qa", "backend-qa now uses 1.1.0", "Synced from backend (was 1.0.0)."],
     ]);
   });
 

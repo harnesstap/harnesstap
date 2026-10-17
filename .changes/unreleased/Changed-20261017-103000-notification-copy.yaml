@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Notifications use shorter words. A synced profile reads "backend-qa now uses 1.1.0" with "Synced from backend (was 1.0.0).", an automatic install reads "acme-lint updated to 1.2.0" with "Installed automatically. 1.0.0 kept so you can roll back.", and a major reads "Major update, needs your OK."'
+time: 2026-10-17T20:30:00.000Z
+custom:
+  Issue: ""
