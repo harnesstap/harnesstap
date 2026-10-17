@@ -1,0 +1,409 @@
+import semver from "semver";
+import { resolveCatalogScope } from "../config/catalog.js";
+import { getDb } from "../db/connection.js";
+import { listPlugins } from "../models/plugin-model.js";
+import type { Plugin } from "../types.js";
+import { formatCatalogRequestError } from "../utils/fetch-with-timeout.js";
+import { fetchCatalogPlugin } from "./catalog-client.js";
+import { ensureCloudAccountAccess } from "./cloud-account-auth.js";
+import { cloudFetch } from "./cloud-api-version.js";
+import { resolveUpstreamParent } from "./plugin-extends.js";
+import { isCatalogUpstreamRef, upstreamRange, upstreamRefBase } from "./plugin-upstream.js";
+
+export type UpstreamCheckStatus = "current" | "update" | "major" | "unreachable" | "unpublished";
+
+export interface UpstreamCheckRow {
+  plugin_name: string;
+  /** `org/catalog/slug@^1.0.0`, or `name@^1.0.0` for a local parent. */
+  ref: string;
+  local_version: string;
+  latest_in_range: string;
+  latest_major: string;
+  status: UpstreamCheckStatus;
+  checked_at: string;
+  /** "Not now" remembers the version it dismissed. */
+  dismissed_version: string;
+  message: string;
+}
+
+/** What to check for one plugin: where it comes from and what it has. */
+export interface UpstreamTarget {
+  plugin_name: string;
+  ref: string;
+  local_version: string;
+  /** `extends` and `fork` links, or `catalog` for a pulled package. */
+  kind: "extends" | "fork" | "catalog";
+}
+
+/** What Cloud (or the fallback) knows about one catalog ref. */
+export type UpstreamLatest =
+  | { ok: true; latest_in_range: string; latest_major: string }
+  | { ok: false; status: "unreachable" | "unpublished"; message: string };
+
+export interface UpstreamQuery {
+  /** `org/catalog/slug`. */
+  base: string;
+  version: string;
+  range: string;
+}
+
+export type FetchUpstreamLatest = (
+  items: UpstreamQuery[],
+  opts: { signal?: AbortSignal },
+) => Promise<Map<string, UpstreamLatest>>;
+
+/** Batch size of the Cloud updates-since contract. */
+export const UPDATES_SINCE_BATCH = 500;
+
+function catalogBaseOf(plugin: Plugin): string | undefined {
+  const locator = plugin.origin_locator ?? "";
+  const base = upstreamRefBase(locator);
+  return base.split("/").length === 3 ? base : undefined;
+}
+
+/**
+ * Every working head with an upstream link or a catalog origin. A pulled
+ * package installed at several versions is checked once, from its newest one.
+ */
+export function listUpstreamTargets(): UpstreamTarget[] {
+  const byKey = new Map<string, UpstreamTarget>();
+  const put = (target: UpstreamTarget) => {
+    const key = `${target.plugin_name}\0${target.kind === "catalog" ? upstreamRefBase(target.ref) : target.ref}`;
+    const existing = byKey.get(key);
+    if (
+      !existing
+      || (semver.valid(target.local_version)
+        && semver.valid(existing.local_version)
+        && semver.gt(target.local_version, existing.local_version))
+    ) {
+      byKey.set(key, target);
+    }
+  };
+  for (const plugin of listPlugins()) {
+    if (plugin.frozen_at) continue;
+    if (plugin.upstream) {
+      const parent = plugin.upstream.kind === "extends" ? resolveUpstreamParent(plugin) : undefined;
+      put({
+        plugin_name: plugin.name,
+        ref: plugin.upstream.ref,
+        local_version: parent?.version ?? plugin.upstream.version_at_link,
+        kind: plugin.upstream.kind,
+      });
+      continue;
+    }
+    if (plugin.origin === "catalog") {
+      const base = catalogBaseOf(plugin);
+      if (!base || !semver.valid(plugin.version)) continue;
+      put({
+        plugin_name: plugin.name,
+        ref: `${base}@${upstreamRange(plugin.version)}`,
+        local_version: plugin.version,
+        kind: "catalog",
+      });
+    }
+  }
+  return [...byKey.values()].sort(
+    (a, b) => a.plugin_name.localeCompare(b.plugin_name) || a.ref.localeCompare(b.ref),
+  );
+}
+
+function rangeOf(ref: string): string {
+  const at = ref.lastIndexOf("@");
+  const range = at > 0 ? ref.slice(at + 1) : "*";
+  return semver.validRange(range) ? range : "*";
+}
+
+/** Newest in range and newest above the range from a plain version list. */
+export function pickLatest(
+  versions: readonly string[],
+  range: string,
+): { latest_in_range: string; latest_major: string } {
+  const valid = versions.filter((version) => semver.valid(version));
+  const inRange = semver.maxSatisfying(valid, range) ?? "";
+  const floor = semver.minVersion(range)?.version;
+  const above = valid.filter(
+    (version) => !semver.satisfies(version, range) && (!floor || semver.gt(version, floor)),
+  );
+  const major = above.length > 0 ? (semver.rsort([...above])[0] ?? "") : "";
+  return { latest_in_range: inRange, latest_major: major };
+}
+
+export function classifyUpstream(
+  localVersion: string,
+  latest: UpstreamLatest,
+): Pick<UpstreamCheckRow, "status" | "latest_in_range" | "latest_major" | "message"> {
+  if (!latest.ok) {
+    return { status: latest.status, latest_in_range: "", latest_major: "", message: latest.message };
+  }
+  const { latest_in_range, latest_major } = latest;
+  const newer = (candidate: string) =>
+    Boolean(candidate)
+    && (!semver.valid(localVersion) || (semver.valid(candidate) !== null && semver.gt(candidate, localVersion)));
+  if (newer(latest_in_range)) return { status: "update", latest_in_range, latest_major, message: "" };
+  if (newer(latest_major)) return { status: "major", latest_in_range, latest_major, message: "" };
+  return { status: "current", latest_in_range, latest_major, message: "" };
+}
+
+/** A local parent: its versions are the plugin rows that carry its name. */
+function localLatest(ref: string): UpstreamLatest {
+  const name = upstreamRefBase(ref);
+  const versions = listPlugins()
+    .filter((plugin) => plugin.name === name)
+    .map((plugin) => plugin.version);
+  if (versions.length === 0) {
+    return { ok: false, status: "unpublished", message: `${name} is not in the Library.` };
+  }
+  return { ok: true, ...pickLatest(versions, rangeOf(ref)) };
+}
+
+const UPDATES_SINCE_MISSING = new Set([404, 405, 501]);
+
+/**
+ * Cloud's batched `POST /api/catalog/updates-since` (Cloud SE owns it). Until
+ * it is deployed, a 404, 405 or 501 falls back to one catalog lookup per ref,
+ * which only knows each plugin's latest version.
+ */
+export const defaultFetchUpstreamLatest: FetchUpstreamLatest = async (items, opts) => {
+  const out = new Map<string, UpstreamLatest>();
+  if (items.length === 0) return out;
+  const root = resolveCatalogScope().cloudBaseUrl.replace(/\/+$/, "");
+  let token: string | undefined;
+  try {
+    token = (await ensureCloudAccountAccess())?.accessToken;
+  } catch {
+    token = undefined;
+  }
+  for (let start = 0; start < items.length; start += UPDATES_SINCE_BATCH) {
+    const batch = items.slice(start, start + UPDATES_SINCE_BATCH);
+    let response: Response;
+    try {
+      response = await cloudFetch(`${root}/api/catalog/updates-since`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          items: batch.map((item) => ({ ref: item.base, version: item.version, range: item.range })),
+        }),
+        ...(opts.signal ? { signal: opts.signal } : {}),
+      });
+    } catch (error) {
+      for (const item of batch) {
+        out.set(item.base, { ok: false, status: "unreachable", message: formatCatalogRequestError(error) });
+      }
+      continue;
+    }
+    if (UPDATES_SINCE_MISSING.has(response.status)) {
+      for (const item of batch) out.set(item.base, await latestFromCatalogList(item));
+      continue;
+    }
+    if (!response.ok) {
+      for (const item of batch) {
+        out.set(item.base, { ok: false, status: "unreachable", message: `Cloud answered ${response.status}` });
+      }
+      continue;
+    }
+    const body = (await response.json().catch(() => ({}))) as {
+      items?: Array<{ ref?: string; latest?: string; latest_in_range?: string; latest_major?: string }>;
+    };
+    const byRef = new Map((body.items ?? []).map((row) => [row.ref ?? "", row]));
+    for (const item of batch) {
+      const row = byRef.get(item.base);
+      out.set(
+        item.base,
+        row
+          ? { ok: true, latest_in_range: row.latest_in_range ?? "", latest_major: row.latest_major ?? "" }
+          : { ok: false, status: "unpublished", message: `${item.base} is not published.` },
+      );
+    }
+  }
+  return out;
+};
+
+/** Swappable for tests; production uses Cloud. */
+export const upstreamCheckDeps: { fetchLatest: FetchUpstreamLatest } = {
+  fetchLatest: defaultFetchUpstreamLatest,
+};
+
+async function latestFromCatalogList(item: UpstreamQuery): Promise<UpstreamLatest> {
+  const [org = "", catalog = "", slug = ""] = item.base.split("/");
+  try {
+    const plugin = await fetchCatalogPlugin({ orgSlug: org, catalogSlug: catalog, slug });
+    if (!plugin.latestVersion) {
+      return { ok: false, status: "unpublished", message: `${item.base} has no published version.` };
+    }
+    return { ok: true, ...pickLatest([plugin.latestVersion], item.range) };
+  } catch (error) {
+    const message = formatCatalogRequestError(error);
+    return /not found/i.test(message)
+      ? { ok: false, status: "unpublished", message: `${item.base} is not published.` }
+      : { ok: false, status: "unreachable", message };
+  }
+}
+
+export interface UpstreamCheckReport {
+  checked_at: string;
+  rows: UpstreamCheckRow[];
+}
+
+/**
+ * Ask for newer versions of every upstream and write the results in one
+ * transaction. "Not now" choices survive. Rows for links that no longer
+ * exist are dropped only on a full run; they are a cache, not user data.
+ */
+export async function runUpstreamCheck(opts?: {
+  signal?: AbortSignal;
+  name?: string;
+  fetchLatest?: FetchUpstreamLatest;
+  now?: () => Date;
+}): Promise<UpstreamCheckReport> {
+  const all = listUpstreamTargets();
+  const targets = opts?.name ? all.filter((target) => target.plugin_name === opts.name) : all;
+  const catalogQueries = new Map<string, UpstreamQuery>();
+  for (const target of targets) {
+    if (!isCatalogUpstreamRef(target.ref)) continue;
+    const base = upstreamRefBase(target.ref);
+    catalogQueries.set(base, { base, version: target.local_version, range: rangeOf(target.ref) });
+  }
+  const fetchLatest = opts?.fetchLatest ?? upstreamCheckDeps.fetchLatest;
+  const latestByBase = await fetchLatest([...catalogQueries.values()], { signal: opts?.signal });
+  const checkedAt = (opts?.now?.() ?? new Date()).toISOString();
+
+  const computed = targets.map((target) => {
+    const base = upstreamRefBase(target.ref);
+    const latest = isCatalogUpstreamRef(target.ref)
+      ? (latestByBase.get(base) ?? { ok: false as const, status: "unreachable" as const, message: "No answer for this ref." })
+      : localLatest(target.ref);
+    const known = isCatalogUpstreamRef(target.ref) && latest.ok
+      ? { ok: true as const, ...narrowToRange(latest, rangeOf(target.ref)) }
+      : latest;
+    return {
+      plugin_name: target.plugin_name,
+      ref: target.ref,
+      local_version: target.local_version,
+      checked_at: checkedAt,
+      ...classifyUpstream(target.local_version, known),
+    };
+  });
+
+  const db = getDb();
+  const upsert = db.prepare(
+    `INSERT INTO upstream_checks
+       (plugin_name, ref, local_version, latest_in_range, latest_major, status, checked_at, message)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(plugin_name, ref) DO UPDATE SET
+       local_version = excluded.local_version,
+       latest_in_range = excluded.latest_in_range,
+       latest_major = excluded.latest_major,
+       status = excluded.status,
+       checked_at = excluded.checked_at,
+       message = excluded.message`,
+  );
+  db.transaction(() => {
+    for (const row of computed) {
+      upsert.run(
+        row.plugin_name,
+        row.ref,
+        row.local_version,
+        row.latest_in_range,
+        row.latest_major,
+        row.status,
+        row.checked_at,
+        row.message,
+      );
+    }
+    if (!opts?.name) {
+      const keep = new Set(computed.map((row) => `${row.plugin_name}\0${row.ref}`));
+      const stale = (
+        db.prepare("SELECT plugin_name, ref FROM upstream_checks").all() as Array<{ plugin_name: string; ref: string }>
+      ).filter((row) => !keep.has(`${row.plugin_name}\0${row.ref}`));
+      const drop = db.prepare("DELETE FROM upstream_checks WHERE plugin_name = ? AND ref = ?");
+      for (const row of stale) drop.run(row.plugin_name, row.ref);
+    }
+  })();
+
+  const rows = readUpstreamChecks().filter(
+    (row) => !opts?.name || row.plugin_name === opts.name,
+  );
+  return { checked_at: checkedAt, rows };
+}
+
+/** Cloud answers per base; a child's own range can be narrower than another child's. */
+function narrowToRange(
+  latest: { latest_in_range: string; latest_major: string },
+  range: string,
+): { latest_in_range: string; latest_major: string } {
+  return pickLatest([latest.latest_in_range, latest.latest_major].filter(Boolean), range);
+}
+
+/** The table as is. No network. */
+export function readUpstreamChecks(): UpstreamCheckRow[] {
+  return getDb()
+    .prepare("SELECT * FROM upstream_checks ORDER BY plugin_name, ref")
+    .all() as UpstreamCheckRow[];
+}
+
+/** An update the user has not set aside with "Not now" at that version. */
+export function isPendingUpdate(row: Pick<UpstreamCheckRow, "status" | "latest_in_range" | "latest_major" | "dismissed_version">): boolean {
+  if (row.status === "update") return row.dismissed_version !== row.latest_in_range;
+  if (row.status === "major") return row.dismissed_version !== row.latest_major;
+  return false;
+}
+
+export interface UpstreamCheckSummary {
+  count: number;
+  major_count: number;
+  items: Array<Pick<UpstreamCheckRow, "plugin_name" | "ref" | "local_version" | "latest_in_range" | "latest_major" | "status">>;
+}
+
+/**
+ * Counts for status and the banner, from the status index only. Dismissed
+ * versions are left out; a newer version shows up again.
+ */
+export function readUpstreamCheckSummary(limit = 5): UpstreamCheckSummary {
+  const rows = getDb()
+    .prepare(
+      `SELECT plugin_name, ref, local_version, latest_in_range, latest_major, status, dismissed_version
+       FROM upstream_checks WHERE status IN ('update', 'major') ORDER BY plugin_name, ref`,
+    )
+    .all() as UpstreamCheckRow[];
+  const pending = rows.filter(isPendingUpdate);
+  const updates = pending.filter((row) => row.status === "update");
+  const majors = pending.filter((row) => row.status === "major");
+  return {
+    count: updates.length,
+    major_count: majors.length,
+    items: [...updates, ...majors].slice(0, limit).map(
+      ({ plugin_name, ref, local_version, latest_in_range, latest_major, status }) => ({
+        plugin_name,
+        ref,
+        local_version,
+        latest_in_range,
+        latest_major,
+        status,
+      }),
+    ),
+  };
+}
+
+/**
+ * "Not now": hide this plugin's pending update at `version` (default: the
+ * version on offer). A newer version shows up again.
+ */
+export function dismissUpstreamUpdate(pluginName: string, version?: string): UpstreamCheckRow[] {
+  const db = getDb();
+  const rows = (
+    db.prepare("SELECT * FROM upstream_checks WHERE plugin_name = ?").all(pluginName) as UpstreamCheckRow[]
+  ).filter((row) => row.status === "update" || row.status === "major");
+  if (rows.length === 0) {
+    throw new Error(`No pending update for ${pluginName}.`);
+  }
+  const set = db.prepare("UPDATE upstream_checks SET dismissed_version = ? WHERE plugin_name = ? AND ref = ?");
+  db.transaction(() => {
+    for (const row of rows) {
+      set.run(version ?? (row.status === "update" ? row.latest_in_range : row.latest_major), pluginName, row.ref);
+    }
+  })();
+  return db.prepare("SELECT * FROM upstream_checks WHERE plugin_name = ?").all(pluginName) as UpstreamCheckRow[];
+}
