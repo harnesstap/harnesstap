@@ -11,6 +11,7 @@ import {
   renderPublishResults,
 } from "../../services/plugin-publish.js";
 import { formatPublishedSelector } from "../../services/plugin-selector.js";
+import { assertParentPublished, UpstreamUnpublishedError } from "../../services/plugin-extends.js";
 import {
   assertAuthored,
   PluginProvenanceError,
@@ -60,6 +61,8 @@ export async function handlePluginPublishCommand(
 
   try {
     assertAuthored(plugin.id, "publish");
+    // Before any cut: a refused publish must not leave a new version behind.
+    assertParentPublished(plugin);
     if (opts.version) {
       plugin = cutPluginVersion({ pluginId: plugin.id, newVersion: opts.version });
     } else if (plugin.dirty) {
@@ -122,7 +125,27 @@ export async function handlePluginPublishCommand(
       ui.danger(err.message);
       return;
     }
+    if (err instanceof UpstreamUnpublishedError) {
+      ui.danger(err.message, { hints: [formatCommand(["profile", "detach", err.pluginName])] });
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+function publishBlockers(plugin: NonNullable<ReturnType<typeof getPlugin>>): Array<{
+  code: "upstream_unpublished";
+  ref: string;
+  message: string;
+}> {
+  try {
+    assertParentPublished(plugin);
+    return [];
+  } catch (error) {
+    if (error instanceof UpstreamUnpublishedError) {
+      return [{ code: error.code, ref: error.ref, message: error.message }];
+    }
+    throw error;
   }
 }
 
@@ -143,10 +166,14 @@ export async function handlePluginPublishPlanCommand(
     assertAuthored(plugin.id, "publish");
     const targets = resolvePublishTargetsForPlugin(plugin.id);
     const plans = await planPluginPublish(plugin, targets, { account: opts.account });
+    const blockers = publishBlockers(plugin);
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
-      printJson({ plugin: plugin.name, plans });
+      printJson({ plugin: plugin.name, plans, ...(blockers.length > 0 ? { blockers } : {}) });
       return;
+    }
+    for (const blocker of blockers) {
+      ui.danger(blocker.message, { hints: [formatCommand(["profile", "detach", plugin.name])] });
     }
 
     for (const plan of plans) {

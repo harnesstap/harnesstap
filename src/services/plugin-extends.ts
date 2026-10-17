@@ -343,3 +343,37 @@ export function assertNoExtendsCycle(plugin: Plugin, upstream: PluginUpstream, u
     current = resolveUpstreamParent(current);
   }
 }
+
+export class UpstreamUnpublishedError extends Error {
+  readonly code = "upstream_unpublished";
+  readonly ref: string;
+  readonly pluginName: string;
+
+  constructor(pluginName: string, ref: string) {
+    super(
+      `${pluginName} keeps in sync with ${ref}, which is not published. ` +
+        "Publish the parent first, or detach this profile to publish it as a separate copy.",
+    );
+    this.name = "UpstreamUnpublishedError";
+    this.ref = ref;
+    this.pluginName = pluginName;
+  }
+}
+
+/**
+ * Publishing a keep-in-sync child needs a published parent: the package can
+ * only point at a catalog ref. Checked locally before any network call; Cloud
+ * answers 400 `upstream_unpublished` for the same case.
+ */
+export function assertParentPublished(plugin: Plugin): void {
+  if (plugin.upstream?.kind !== "extends") return;
+  if (!portableUpstream(plugin)) {
+    throw new UpstreamUnpublishedError(plugin.name, plugin.upstream.ref);
+  }
+}
+
+/** Maps a Cloud `upstream_unpublished` response onto the local message. */
+export function upstreamUnpublishedFromCloud(plugin: Plugin, message: string): UpstreamUnpublishedError | undefined {
+  if (!message.includes("upstream_unpublished")) return undefined;
+  return new UpstreamUnpublishedError(plugin.name, plugin.upstream?.ref ?? "its parent");
+}

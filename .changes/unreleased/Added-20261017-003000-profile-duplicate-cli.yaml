@@ -1,0 +1,5 @@
+kind: Added
+body: '`ht profile duplicate <source> [name]` duplicates a profile. The default keeps the copy in sync with the source: it starts empty and shows the source''s items live. `--copy` makes a separate copy (a fork). `ht plugin edit <name> --hide skill:review` hides an inherited item on a kept-in-sync profile and `--unhide` shows it again; `ht plugin show` lists the hidden items and how many items come from the parent. `ht profile detach <name>` turns a kept-in-sync profile into a separate copy in the Library: its current items become its own, the link still shows "Forked from", and nothing is applied or deleted. Publishing a kept-in-sync profile whose parent is not published is refused before any version is cut or any network call, with `ht profile detach` as the way out; Cloud''s `upstream_unpublished` answer shows the same message. `ht plugin publish` plan JSON and the Desktop publish plan list it under `blockers`, and publishing returns 409.'
+time: 2026-10-17T10:30:00.000Z
+custom:
+  Issue: ""

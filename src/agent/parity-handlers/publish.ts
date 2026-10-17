@@ -1,3 +1,4 @@
+import { assertParentPublished, UpstreamUnpublishedError } from "../../services/plugin-extends.js";
 import { getPluginByName, getPluginResources, resolvePluginSelector } from "../../models/plugin-model.js";
 import {
   loadRegisteredCatalogs,
@@ -295,6 +296,21 @@ function requireTargets(
   return targets;
 }
 
+/** A keep-in-sync child cannot publish before its parent. */
+function upstreamBlocker(
+  plugin: Plugin,
+): { code: "upstream_unpublished"; ref: string; message: string } | undefined {
+  try {
+    assertParentPublished(plugin);
+    return undefined;
+  } catch (error) {
+    if (error instanceof UpstreamUnpublishedError) {
+      return { code: error.code, ref: error.ref, message: error.message };
+    }
+    throw error;
+  }
+}
+
 async function handlePlan(
   name: string,
   service: PublishHandlerDeps,
@@ -308,11 +324,13 @@ async function handlePlan(
     return targets;
   }
   const plans = await service.planPluginPublish(loaded.plugin, targets);
+  const unpublishedParent = upstreamBlocker(loaded.plugin);
   return jsonResponse({
     profile: loaded.plugin.name,
     dirty: loaded.plugin.dirty,
     authored: true,
     warnings: profilePublishWarnings(loaded.plugin, service),
+    ...(unpublishedParent ? { blockers: [unpublishedParent] } : {}),
     plans: plans.map((row) => ({
       target: {
         org: row.target.org,
@@ -341,6 +359,13 @@ async function handlePublish(
     ]);
   }
   service.assertPluginsCleanForShare([loaded.plugin]);
+  const unpublishedParent = upstreamBlocker(loaded.plugin);
+  if (unpublishedParent) {
+    return jsonResponse(
+      { error: unpublishedParent.code, message: unpublishedParent.message, ref: unpublishedParent.ref },
+      { status: 409 },
+    );
+  }
   const targets = requireTargets(loaded.plugin.id, service);
   if (targets instanceof Response) {
     return targets;
