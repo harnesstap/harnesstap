@@ -9,6 +9,7 @@ import { createResource } from "../../src/models/resource.ts";
 import {
   addResourceToPlugin,
   createPlugin,
+  getPlugin,
   setPluginTags,
 } from "../../src/models/plugin-model.ts";
 import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
@@ -403,7 +404,7 @@ describe("CLI profile", () => {
     }
   });
 
-  it("warns on profile publish validations and still publishes", async () => {
+  it("blocks profile publish on unpublished local dependencies and still warns on empty profiles", async () => {
     const context = await createTestContext("cli-profile-publish");
     try {
       await runCli(["init"]);
@@ -438,8 +439,26 @@ describe("CLI profile", () => {
         "test",
       ]);
       const publishOutput = `${result.stdout}\n${result.stderr}`;
-      expect(publishOutput).toContain("unpublished local plugins");
-      expect(publishOutput).toContain("Published dep-profile to acme/dep-profile");
+      expect(result.exitCode).toBe(1);
+      expect(publishOutput).toContain(
+        "Cannot publish dep-profile: it depends on local plugins that are not in a catalog: local-dep",
+      );
+      expect(publishOutput).toContain("ht plugin edit dep-profile --remove plugin:local-dep");
+      expect(publishOutput).not.toContain("Published dep-profile");
+
+      // --version must not cut a version when the publish is blocked.
+      const versionBefore = getPlugin("dep-profile")?.version;
+      const withVersion = await runCli([
+        "plugin",
+        "publish",
+        "dep-profile",
+        "--version",
+        "2.0.0",
+        "--account",
+        "test",
+      ]);
+      expect(withVersion.exitCode).toBe(1);
+      expect(getPlugin("dep-profile")?.version).toBe(versionBefore);
 
       const emptyResult = await runCli([
         "profile",
