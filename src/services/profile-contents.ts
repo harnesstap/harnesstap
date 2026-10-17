@@ -2,7 +2,6 @@ import { traceSpan } from "./status-trace.js";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import {
   getPluginById,
-  getPluginResources,
   resolvePluginSelector,
 } from "../models/plugin-model.js";
 import { getEnvironmentResources } from "../models/environment.js";
@@ -11,6 +10,7 @@ import { hookInventoryWireFromResource } from "../ui/hook-display.js";
 import { parseDependencyRef } from "../utils/plugin-dependency-ref.js";
 import { parseOriginLocator } from "../utils/plugin-origin-locator.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import { getComposedPluginResources } from "./plugin-extends.js";
 import { formatResourceTypeSummary } from "./project-status-payload.js";
 import { collectProfilePluginIds } from "./profile-apply.js";
 import { resolveExistingResourceFilesystemPath } from "./resource-editor-path.js";
@@ -185,7 +185,7 @@ function toContentsResources(resources: Resource[]): ProfileContentsResource[] {
 
 function resourcesForPlugin(pluginId: string): ProfileContentsResource[] {
   const plugin = getPluginById(pluginId);
-  const attached = getPluginResources(pluginId);
+  const attached = getComposedPluginResources(pluginId);
   const fromEnv = plugin?.default_environment_id
     ? getEnvironmentResources(plugin.default_environment_id)
     : [];
@@ -232,7 +232,7 @@ export function buildProfileContents(profileName: string): ProfileContents | nul
   const merged = mergePluginsForApply(pluginIds);
   const resources = materialResources(merged.resources);
   const summary = formatResourceTypeSummary(resources);
-  const rootAttached = getPluginResources(plugin.id);
+  const rootAttached = getComposedPluginResources(plugin.id);
   const plugins = merged.plugins.map((entry) => {
     const attachment = rootAttached.find(
       (resource) => resource.type === "plugin" && resource.name === entry.name,

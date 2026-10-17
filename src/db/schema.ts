@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 40;
+const SCHEMA_VERSION = 41;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -339,12 +339,29 @@ const MIGRATIONS: Record<number, Migration> = {
   // Upstream link (fork now, extends later), stored in the package format's
   // shape, plus the local upstream row id when known.
   40: migratePluginForkSource,
+  // Items an extends child hides from its parent, as the package's exclude
+  // strings (`skill:review`, `plugin:feature-dev`).
+  41: migratePluginExcludes,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
   return (
     db.prepare(`PRAGMA table_info(${name})`).all() as Array<{ name: string }>
   ).map((column) => column.name);
+}
+
+function migratePluginExcludes(db: SqliteDatabase): void {
+  if (!tableExists(db, "plugins")) {
+    return;
+  }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS plugin_excludes (
+      plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+      entry TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (plugin_id, entry)
+    );
+  `);
 }
 
 function migratePluginForkSource(db: SqliteDatabase): void {

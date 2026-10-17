@@ -76,6 +76,16 @@ interface PluginWorkingSnapshotPayload {
   default_environment_id: string | null;
   source_version: string;
   resolved_set: Array<{ name: string; version: string }>;
+  /** Hidden parent items at snapshot time. Missing in older snapshots. */
+  excludes?: string[];
+}
+
+function readExcludeEntries(pluginId: string): string[] {
+  return (
+    getDb()
+      .prepare("SELECT entry FROM plugin_excludes WHERE plugin_id = ? ORDER BY entry")
+      .all(pluginId) as Array<{ entry: string }>
+  ).map((row) => row.entry);
 }
 
 function parseClaudeConfig(raw: string | undefined): ClaudePluginConfig | undefined {
@@ -165,6 +175,7 @@ function captureWorkingSnapshot(pluginId: string): void {
     default_environment_id: row.default_environment_id,
     source_version: row.version,
     resolved_set: resolvedSet,
+    excludes: readExcludeEntries(pluginId),
   };
   const now = new Date().toISOString();
 
@@ -445,6 +456,12 @@ export function cutPluginVersion(input: {
     );
 
     copySnapshotAttachments(frozenId, payload.resource_ids, payload.harness_scopes);
+    const insertExclude = db.prepare(
+      "INSERT OR IGNORE INTO plugin_excludes (plugin_id, entry, created_at) VALUES (?, ?, ?)",
+    );
+    for (const entry of payload.excludes ?? readExcludeEntries(headRow.id)) {
+      insertExclude.run(frozenId, entry, now);
+    }
     db.prepare("DELETE FROM plugin_working_snapshots WHERE plugin_id = ?").run(
       headRow.id,
     );

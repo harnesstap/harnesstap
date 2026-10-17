@@ -1,4 +1,5 @@
-import { getPluginResources, getPlugin, resolvePluginSelector } from "../models/plugin-model.js";
+import { getPlugin, resolvePluginSelector } from "../models/plugin-model.js";
+import { getComposedPluginResources } from "./plugin-extends.js";
 import {
   getEnvironmentResources,
   getEnvironmentSecretRefs,
@@ -65,7 +66,7 @@ export function collectRequirementsFromPlugins(
       rememberKey(need, "plugin_needs");
     }
 
-    for (const resource of getPluginResources(pluginId)) {
+    for (const resource of getComposedPluginResources(pluginId)) {
       if (resource.type === "mcp_server") {
         const metadata = resource.metadata as McpServerMetadata;
         for (const key of Object.keys(metadata.env ?? {})) {
