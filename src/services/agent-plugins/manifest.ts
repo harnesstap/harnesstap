@@ -1,4 +1,4 @@
-import { exportableUpstream } from "../plugin-upstream.js";
+import { listPluginExcludes, portableUpstream } from "../plugin-extends.js";
 import { getEnvironment } from "../../models/environment.js";
 import { getPluginById, getPluginResources, resolveApName } from "../../models/plugin-model.js";
 import type { DependencySourceKind, PluginOverrides, PluginUpstream } from "../../types.js";
@@ -41,6 +41,11 @@ export interface HarnesstapExtension {
    * Only written for a catalog ref.
    */
   upstream?: PluginUpstream;
+  /**
+   * Parent items an extends child hides: `<type>:<name>` or `plugin:<name>`.
+   * Root manifest only, and only with `upstream.kind = "extends"`.
+   */
+  exclude?: string[];
 }
 
 export interface ApManifest {
@@ -68,7 +73,7 @@ export const COMPONENT_LAYOUT: Record<string, { path: string; key: string }> = {
   model_config: { path: `${HT_EXTENSION_NAMESPACE}/model.toml`, key: "modelConfig" },
 };
 
-export function buildApManifest(pluginId: string): ApManifest {
+export function buildApManifest(pluginId: string, options?: { nested?: boolean }): ApManifest {
   const plugin = getPluginById(pluginId);
   if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
@@ -90,7 +95,9 @@ export function buildApManifest(pluginId: string): ApManifest {
     ? getEnvironment(plugin.default_environment_id)?.name
     : undefined;
 
-  const exportedUpstream = exportableUpstream(plugin.upstream);
+  const exportedUpstream = portableUpstream(plugin);
+  const exclude =
+    exportedUpstream?.kind === "extends" && !options?.nested ? listPluginExcludes(pluginId) : [];
   const extension: HarnesstapExtension = {
     schema: HT_EXTENSION_SCHEMA,
     sourceName: plugin.name,
@@ -106,6 +113,7 @@ export function buildApManifest(pluginId: string): ApManifest {
     components,
     ...(Object.keys(harnessScopes).length > 0 ? { harnessScopes } : {}),
     ...(exportedUpstream ? { upstream: exportedUpstream } : {}),
+    ...(exclude.length > 0 ? { exclude } : {}),
   };
 
   return {

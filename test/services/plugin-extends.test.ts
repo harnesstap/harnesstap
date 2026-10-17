@@ -178,7 +178,7 @@ describe("extends composition", () => {
 
     expect(() =>
       assertNoExtendsCycle(getPluginById(a.id)!, { kind: "extends", ref: "a@^1.0.0", version_at_link: "1.0.0" }),
-    ).toThrow("is a cycle");
+    ).toThrow("a cannot extend itself (a@^1.0.0).");
     expect(() =>
       assertNoExtendsCycle(getPluginById(a.id)!, { kind: "extends", ref: "b@^1.0.0", version_at_link: "1.0.0" }),
     ).toThrow("a > b > a is a cycle");

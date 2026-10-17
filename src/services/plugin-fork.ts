@@ -33,20 +33,26 @@ export class PluginForkError extends Error {
  * published package; any other source gets its local name, kept only here.
  */
 export function forkUpstream(source: Plugin): PluginUpstream {
-  if (source.org_slug && source.catalog_slug) {
-    // A pull records the catalog selector in origin_locator. Prefer it: older
-    // pulls named the local plugin after its display name, not its slug.
-    const prefix = `${source.org_slug}/${source.catalog_slug}/`;
-    const base = source.origin_locator?.startsWith(prefix)
-      ? source.origin_locator
-      : formatCanonicalPublishedSelector({
-          org: source.org_slug,
-          catalog: source.catalog_slug,
-          name: resolveApName(source),
-        });
-    return buildUpstream("fork", base, source.version);
+  return buildUpstream("fork", catalogUpstreamBase(source) ?? source.name, source.version);
+}
+
+/** `org/catalog/slug` for a plugin that lives in a catalog, else undefined. */
+export function catalogUpstreamBase(source: Plugin): string | undefined {
+  if (!source.org_slug || !source.catalog_slug) {
+    return undefined;
   }
-  return buildUpstream("fork", source.name, source.version);
+  // A pull records the catalog selector in origin_locator. Prefer it: older
+  // pulls named the local plugin after its display name, not its slug.
+  const prefix = `${source.org_slug}/${source.catalog_slug}/`;
+  if (source.origin_locator?.startsWith(prefix)) {
+    const at = source.origin_locator.indexOf("@", prefix.length);
+    return at > 0 ? source.origin_locator.slice(0, at) : source.origin_locator;
+  }
+  return formatCanonicalPublishedSelector({
+    org: source.org_slug,
+    catalog: source.catalog_slug,
+    name: resolveApName(source),
+  });
 }
 
 export interface ForkResult {
