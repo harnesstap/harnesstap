@@ -178,3 +178,15 @@ describe("profile edit autosave", () => {
     expect(designSource).toContain("edit-profile Composition lists that profile’s members");
   });
 });
+
+describe("Edit pane Composition box", () => {
+  test("sizes to its rows with no fixed or minimum height leaving a gap", () => {
+    const css = readFileSync(join(root, "styles/features/create.css"), "utf8");
+    const start = css.indexOf(".edit-profile-pane .compose-library-unified .selection-list-rows {");
+    expect(start).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf("}", start));
+    expect(rule).toContain("height: auto;");
+    expect(rule).toContain("min-height: 0;");
+    expect(rule).toContain("max-height: min(50vh, 420px);");
+  });
+});

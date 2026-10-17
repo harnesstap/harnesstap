@@ -424,12 +424,12 @@
   max-height: min(50vh, 420px);
 }
 
-/* Edit pane: the list grows with its rows (at least about three), so a short
-   profile does not push Default environment below the fold. The add button
-   floats at the pane's corner instead of sitting inside the list. */
+/* Edit pane: the list is as tall as its rows, with no empty band under the
+   last one, and scrolls past min(50vh, 420px). The add button floats at the
+   pane's corner instead of sitting inside the list. */
 .edit-profile-pane .compose-library-unified .selection-list-rows {
   height: auto;
-  min-height: 7.5rem;
+  min-height: 0;
   max-height: min(50vh, 420px);
 }
 
