@@ -475,7 +475,7 @@ function notifyUpstreamUpdates(
   for (const row of rows) {
     const key = `${row.plugin_name}\0${row.ref}`;
     const before = previous.get(key);
-    // A kept-in-sync child follows its parent on its own: tell the user it moved.
+    // A synced child follows its parent on its own: tell the user it moved.
     if (
       kinds.get(key) === "extends"
       && before
@@ -486,8 +486,8 @@ function notifyUpstreamUpdates(
       notifySafely({
         kind: "parent_published",
         plugin_name: row.plugin_name,
-        title: `${upstreamRefBase(row.ref)} published ${row.local_version}`,
-        body: `${row.plugin_name} is kept in sync, so it now uses ${row.local_version} (was ${before}).`,
+        title: `${row.plugin_name} now uses ${row.local_version}`,
+        body: `Synced from ${upstreamRefBase(row.ref)} (was ${before}).`,
         payload: { version: row.local_version, ref: row.ref, from: before, major: false },
       });
     }
@@ -503,7 +503,7 @@ function notifyUpstreamUpdates(
         ? `${source} published ${version}`
         : `${row.plugin_name} ${version} is available`,
       body: major
-        ? `New major version. You have ${row.local_version}; it is never installed automatically.`
+        ? `Major update, needs your OK. You have ${row.local_version}.`
         : `You have ${row.local_version}.`,
       payload: { version, ref: row.ref, from: row.local_version, major },
     });

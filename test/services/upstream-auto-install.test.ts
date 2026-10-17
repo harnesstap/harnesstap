@@ -125,6 +125,7 @@ describe("runAutoInstall", () => {
     expect(listNotifications().map((n) => [n.kind, n.plugin_name, n.title, n.payload.version])).toEqual([
       ["auto_installed", "lint", "lint updated to 1.2.0", "1.2.0"],
     ]);
+    expect(listNotifications()[0]?.body).toBe("Installed automatically. 1.0.0 kept so you can roll back.");
   });
 
   it("never installs a major, even when it is the only newer version", async () => {

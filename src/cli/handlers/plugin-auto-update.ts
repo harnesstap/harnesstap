@@ -96,12 +96,12 @@ export async function maybePromptKeepUpToDate(
   if (current.prompted) return null;
   try {
     const mode = await deps.choose<UpdateMode>({
-      message: "Keep these up to date?",
+      message: "Keep plugins up to date?",
       default: current.mode,
       choices: [
         { name: "Notify only (default)", value: "notify" },
-        { name: "Install automatically (minor and patch in range, never a major)", value: "install" },
-        { name: "Off", value: "off" },
+        { name: "Install automatically (minor and patch updates install on their own, majors always ask)", value: "install" },
+        { name: "Off (never check; synced profiles still follow their parent)", value: "off" },
       ],
     });
     let frequency: UpdateFrequency = current.frequency;

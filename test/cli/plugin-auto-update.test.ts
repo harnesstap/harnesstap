@@ -71,7 +71,7 @@ describe("the one-time prompt after update --all", () => {
     const choose = chooser(["install", "weekly"]);
     const saved = await maybePromptKeepUpToDate({ interactive: true, choose, harnesstapDir: dir() });
     expect(saved).toEqual({ mode: "install", frequency: "weekly", prompted: true });
-    expect(choose.asked).toEqual(["Keep these up to date?", "How often should HarnessTap check?"]);
+    expect(choose.asked).toEqual(["Keep plugins up to date?", "How often should HarnessTap check?"]);
     const again = chooser(["off"]);
     expect(await maybePromptKeepUpToDate({ interactive: true, choose: again, harnesstapDir: dir() })).toBeNull();
     expect(again.asked).toEqual([]);
@@ -80,7 +80,7 @@ describe("the one-time prompt after update --all", () => {
   it("skips the frequency for Off", async () => {
     const off = chooser(["off"]);
     expect(await maybePromptKeepUpToDate({ interactive: true, choose: off, harnesstapDir: dir() })).toMatchObject({ mode: "off", prompted: true });
-    expect(off.asked).toEqual(["Keep these up to date?"]);
+    expect(off.asked).toEqual(["Keep plugins up to date?"]);
   });
 
   it("keeps the defaults when the prompt is cancelled", async () => {

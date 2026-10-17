@@ -21,7 +21,7 @@ export interface UpdatePreferenceFieldsProps {
   onFrequencyChange: (frequency: UpdateFrequency) => void;
 }
 
-/** Mode and frequency, shared by Settings and the dialog after Update all. */
+/** Mode and frequency, shared by Settings and the one-time prompt after an update. */
 export function UpdatePreferenceFields({
   idPrefix,
   legend,
@@ -46,13 +46,13 @@ export function UpdatePreferenceFields({
         }))}
       />
       <div className="flex items-center gap-2">
-        <Label htmlFor={frequencyId}>Check</Label>
+        <Label htmlFor={frequencyId}>Check for updates</Label>
         <Select
           value={frequency}
           disabled={disabled || mode === "off"}
           onValueChange={(next) => onFrequencyChange(next as UpdateFrequency)}
         >
-          <SelectTrigger id={frequencyId} data-testid={frequencyId} aria-label="Check frequency" style={{ width: "auto" }}>
+          <SelectTrigger id={frequencyId} data-testid={frequencyId} style={{ width: "auto" }}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

@@ -304,8 +304,8 @@ export async function runAutoInstall(opts?: { deps?: Partial<AutoInstallDeps> })
       plugin_name: result.plugin_name,
       title: `${result.plugin_name} updated to ${result.to}`,
       body: result.message
-        ? `Installed automatically from ${result.from}; ${result.message}.`
-        : `Installed automatically from ${result.from}. ${result.from} is kept as a frozen version.`,
+        ? `Installed automatically. ${result.from} kept so you can roll back. ${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}.`
+        : `Installed automatically. ${result.from} kept so you can roll back.`,
       payload: { version: result.to, from: result.from, applied: result.applied ?? false },
     });
   }
