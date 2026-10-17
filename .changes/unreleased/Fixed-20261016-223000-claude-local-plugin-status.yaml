@@ -1,0 +1,5 @@
+kind: Fixed
+body: A Claude plugin added from git or a local folder (for example `ht plugin add DietrichGebert/ponytail`) is reported as installed after apply. Status and the Desktop "Install gaps" list called it "not installed" and listed `ponytail@local` as extra, because HarnessTap registers these plugins as `<name>@local` while the profile pins `<name>`.
+time: 2026-10-17T08:30:00.000Z
+custom:
+  Issue: ""
