@@ -1,4 +1,4 @@
-import { getPluginByName, getPluginResources, resolvePluginSelector } from "../../models/plugin-model.js";
+import { getPluginByName, getPluginResources } from "../../models/plugin-model.js";
 import {
   loadRegisteredCatalogs,
   parsePublishCatalogSelector,
@@ -17,6 +17,11 @@ import {
   planPluginPublish,
   publishPluginToCatalogs,
 } from "../../services/plugin-publish.js";
+import {
+  listUnpublishedDependencies,
+  unpublishedDependenciesMessage,
+  UnpublishedDependenciesError,
+} from "../../services/plugin-publish-dependencies.js";
 import {
   buildPluginCatalogBindingsView,
   clearPluginPublishTargets,
@@ -41,7 +46,8 @@ export interface PublishHandlerDeps {
     version_constraint?: string;
   }>;
   getPluginResources(pluginId: string): Array<{ type: string }>;
-  resolvePluginSelector(selector: string): Plugin | undefined;
+  /** Local dependencies that point at plugins which are not in any catalog. */
+  listUnpublishedDependencies(pluginId: string): string[];
   loadRegisteredCatalogs(): RegisteredCatalog[];
   resolvePublishTargets(pluginId: string): RegisteredCatalog[];
   planPluginPublish: typeof planPluginPublish;
@@ -66,7 +72,7 @@ export function createDefaultPublishHandlerDeps(): PublishHandlerDeps {
     assertAuthored: (pluginId) => assertAuthored(pluginId, "publish"),
     listAttachedPluginRefs,
     getPluginResources,
-    resolvePluginSelector,
+    listUnpublishedDependencies,
     loadRegisteredCatalogs,
     resolvePublishTargets,
     planPluginPublish,
@@ -106,6 +112,31 @@ async function readOptionalJson(
   }
 }
 
+interface PublishBlocker {
+  code: "unpublished_dependencies";
+  message: string;
+  dependencies: string[];
+}
+
+function profilePublishBlockers(
+  plugin: Plugin,
+  d: PublishHandlerDeps,
+): PublishBlocker[] {
+  const unpublished = d.listUnpublishedDependencies(plugin.id);
+  if (unpublished.length === 0) {
+    return [];
+  }
+  return [
+    {
+      code: "unpublished_dependencies",
+      message: unpublishedDependenciesMessage(plugin.name, unpublished, {
+        cliHint: false,
+      }),
+      dependencies: unpublished,
+    },
+  ];
+}
+
 function profilePublishWarnings(
   plugin: Plugin,
   d: PublishHandlerDeps,
@@ -119,22 +150,6 @@ function profilePublishWarnings(
     warnings.push({
       code: "empty_profile",
       message: `Profile ${plugin.name} has no plugin references and no material resources.`,
-    });
-  }
-  const unpublished: string[] = [];
-  for (const ref of refs) {
-    const selector = ref.version_constraint
-      ? `${ref.dependency_name}@${ref.version_constraint}`
-      : ref.dependency_name;
-    const local = d.resolvePluginSelector(selector);
-    if (local && (!local.org_slug || !local.catalog_slug)) {
-      unpublished.push(ref.dependency_name);
-    }
-  }
-  if (unpublished.length > 0) {
-    warnings.push({
-      code: "unpublished_local_refs",
-      message: `Profile ${plugin.name} references unpublished local plugins: ${unpublished.join(", ")}`,
     });
   }
   return warnings;
@@ -157,11 +172,29 @@ function mapCaught(error: unknown): Response {
       { status: 400 },
     );
   }
+  if (error instanceof UnpublishedDependenciesError) {
+    return unpublishedDependenciesResponse(
+      unpublishedDependenciesMessage(error.pluginName, error.dependencies, {
+        cliHint: false,
+      }),
+      error.dependencies,
+    );
+  }
   if (error instanceof PluginVersionError && error.code === "dirty_plugins") {
     return dirtyPluginsConflictResponse(error.dirtyPlugins ?? []);
   }
   const message = error instanceof Error ? error.message : String(error);
   return jsonResponse({ error: "internal_error", message }, { status: 500 });
+}
+
+function unpublishedDependenciesResponse(
+  message: string,
+  dependencies: string[],
+): Response {
+  return jsonResponse(
+    { error: "unpublished_dependencies", message, dependencies },
+    { status: 409 },
+  );
 }
 
 function catalogAccount(catalog: RegisteredCatalog): string {
@@ -313,6 +346,7 @@ async function handlePlan(
     dirty: loaded.plugin.dirty,
     authored: true,
     warnings: profilePublishWarnings(loaded.plugin, service),
+    blockers: profilePublishBlockers(loaded.plugin, service),
     plans: plans.map((row) => ({
       target: {
         org: row.target.org,
@@ -341,6 +375,10 @@ async function handlePublish(
     ]);
   }
   service.assertPluginsCleanForShare([loaded.plugin]);
+  const [blocker] = profilePublishBlockers(loaded.plugin, service);
+  if (blocker) {
+    return unpublishedDependenciesResponse(blocker.message, blocker.dependencies);
+  }
   const targets = requireTargets(loaded.plugin.id, service);
   if (targets instanceof Response) {
     return targets;

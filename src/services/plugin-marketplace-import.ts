@@ -12,7 +12,7 @@ import {
   type RefreshMarketplaceCatalogResult,
   refreshMarketplaceCatalog,
 } from "./marketplace-catalog.js";
-import { listMarketplaces } from "./marketplace-registry.js";
+import { findKnownMarketplace } from "./marketplace-registry.js";
 import { getPluginOrigin, setPluginOrigin } from "./plugin-origin.js";
 import {
   applyCheckedPluginOrigin,
@@ -79,10 +79,7 @@ export async function importPluginFromMarketplace(
   }
 
   const harnesstapDir = getHarnesstapDir();
-  const registered = listMarketplaces(harnesstapDir).find(
-    (entry) => entry.name === marketplace,
-  );
-  if (!registered) {
+  if (!findKnownMarketplace(harnesstapDir, marketplace)) {
     throw new MarketplacePluginImportError(
       "marketplace_not_found",
       `Marketplace not found: ${marketplace}`,

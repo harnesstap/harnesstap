@@ -158,3 +158,21 @@ export function compositionResourceSelector(resource: LibraryResource): string {
     ? `${resource.name}@${resource.namespace}`
     : resource.name;
 }
+
+/**
+ * The profile dependency a composition row stands for, if any. A dependency
+ * shows either as its Library plugin head or, when that plugin is not in the
+ * Library, as its own dependency row. Unticking either must detach the
+ * dependency by name, never attach it again.
+ */
+export function profileDependencyForMember(
+  memberId: string,
+  dependencies: ReadonlyArray<{ dependency_name: string; resource_id: string | null }>,
+  plugins: ReadonlyArray<Pick<CompositionPlugin, "id" | "name">>,
+): string | null {
+  const pluginName = plugins.find((plugin) => plugin.id === memberId)?.name;
+  const match = dependencies.find(
+    (dep) => dep.resource_id === memberId || (pluginName !== undefined && dep.dependency_name === pluginName),
+  );
+  return match?.dependency_name ?? null;
+}

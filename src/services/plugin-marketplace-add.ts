@@ -11,7 +11,7 @@ import {
   listAttachedPluginPins,
   parsePluginRef,
 } from "./plugin-composition.js";
-import { listMarketplaces } from "./marketplace-registry.js";
+import { findKnownMarketplace } from "./marketplace-registry.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {
   ensureClaudeMarketplacesFromConfig,
@@ -92,9 +92,7 @@ export async function addPluginFromMarketplace(
   const parsed = requireMarketplaceRef(input.ref);
   const marketplaceName = parsed.namespace;
 
-  const marketplace = listMarketplaces(input.harnesstapDir).find(
-    (entry) => entry.name === marketplaceName,
-  );
+  const marketplace = findKnownMarketplace(input.harnesstapDir, marketplaceName);
   if (!marketplace) {
     throw new Error(`Marketplace not found in registry: ${marketplaceName}`);
   }
