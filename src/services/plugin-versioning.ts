@@ -8,6 +8,7 @@ import {
   getPluginResources,
   resolvePluginSelector,
 } from "../models/plugin-model.js";
+import { upstreamFromRow } from "./plugin-upstream.js";
 import type { ClaudePluginConfig, Plugin } from "../types.js";
 import { assertAuthored } from "./plugin-origin.js";
 import { resolveComposition } from "./resolve/index.js";
@@ -56,6 +57,10 @@ interface PluginRow {
   default_environment_id: string | null;
   dirty: number;
   frozen_at: string | null;
+  upstream_kind?: string;
+  upstream_ref?: string;
+  upstream_version_at_link?: string;
+  upstream_plugin_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -110,6 +115,7 @@ function rowToPlugin(row: PluginRow): Plugin {
     ...(row.default_environment_id
       ? { default_environment_id: row.default_environment_id }
       : {}),
+    ...upstreamFromRow(row),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -410,8 +416,9 @@ export function cutPluginVersion(input: {
       `INSERT INTO plugins (
         id, name, version, org_slug, catalog_slug, description, tags,
         claude_config, needs_config, default_environment_id, dirty, frozen_at,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        created_at, updated_at, upstream_kind, upstream_ref,
+        upstream_version_at_link, upstream_plugin_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       frozenId,
       headRow.name,
@@ -427,6 +434,10 @@ export function cutPluginVersion(input: {
       now,
       now,
       now,
+      headRow.upstream_kind ?? "",
+      headRow.upstream_ref ?? "",
+      headRow.upstream_version_at_link ?? "",
+      headRow.upstream_plugin_id ?? "",
     );
 
     db.prepare("UPDATE plugins SET overrides = ? WHERE id = ?").run(

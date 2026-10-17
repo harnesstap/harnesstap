@@ -51,6 +51,7 @@ import {
   patchLibraryPlugin,
   patchLibraryPluginAttachments,
   rollbackLibraryPlugin,
+  formatLibraryUpstream,
   pluginImportNoteLines,
   type LibraryPluginDetail,
   type LibraryPluginVersionRow,
@@ -1391,6 +1392,16 @@ export function PluginPackageDetail({
         editing={false}
         onStartEdit={() => undefined}
       />
+      {record.plugin.upstream ? (
+        <LibraryFieldRow
+          icon={<GitFork size={16} aria-hidden />}
+          fieldName={record.plugin.upstream.kind === "extends" ? "Extends" : "Forked from"}
+          readOnly
+          display={formatLibraryUpstream(record.plugin.upstream)}
+          editing={false}
+          onStartEdit={() => undefined}
+        />
+      ) : null}
       <LibraryFieldRow
         icon={<Tag size={16} aria-hidden />}
         fieldName="Tags"

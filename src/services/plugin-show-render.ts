@@ -4,6 +4,7 @@ import {
   getPluginResources,
   resolvePluginSelector,
 } from "../models/plugin-model.js";
+import { formatUpstreamLabel } from "./plugin-upstream.js";
 import type { Plugin, Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 import { formatCount } from "../copy/plurals.js";
@@ -105,6 +106,7 @@ export function renderPluginShow(
         ["Description", plugin.description || "none"],
         ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "none"],
         ["Origin", formatOriginLabel(plugin.origin, plugin.origin_locator)],
+        ...upstreamShowRows(plugin),
         ...(opts?.profileExtras
           ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
           : []),
@@ -167,6 +169,7 @@ export function renderPluginListShow(
       ["Description", plugin.description || "none"],
       ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "none"],
       ["Origin", formatOriginLabel(plugin.origin, plugin.origin_locator)],
+      ...upstreamShowRows(plugin),
       ...(opts?.profileExtras
         ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
         : []),
@@ -180,4 +183,12 @@ export function renderPluginShowForPlugin(
   opts?: PluginShowRenderOptions,
 ): string {
   return renderPluginShow(plugin, `${plugin.name}@${plugin.version}`, opts);
+}
+
+function upstreamShowRows(plugin: Plugin): [string, string][] {
+  if (!plugin.upstream) {
+    return [];
+  }
+  const label = plugin.upstream.kind === "extends" ? "Extends" : "Forked from";
+  return [[label, formatUpstreamLabel(plugin.upstream)]];
 }

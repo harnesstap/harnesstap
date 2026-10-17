@@ -1,3 +1,4 @@
+import { forkPlugin } from "../../services/plugin-fork.js";
 import { getDb } from "../../db/connection.js";
 import {
   addResourceToPlugin,
@@ -53,7 +54,7 @@ import {
 } from "../../services/plugin-format.js";
 import { toContentsResource } from "../../services/profile-contents.js";
 import { trackPluginUsed } from "../../telemetry/index.js";
-import type { Plugin, Resource, ResourceType } from "../../types.js";
+import type { Plugin, PluginUpstream, Resource, ResourceType } from "../../types.js";
 import { requireAgentBearerAuth } from "../auth.js";
 import { jsonResponse } from "../http.js";
 import { pluginVersionErrorResponse } from "../profile-cut-handlers.js";
@@ -195,6 +196,7 @@ export function buildPluginDetail(plugin: Plugin) {
       tags: plugin.tags,
       origin,
       origin_locator: plugin.origin_locator ?? "",
+      upstream: plugin.upstream ?? null,
       dirty: plugin.dirty,
       frozen_at: plugin.frozen_at ?? null,
       default_environment_id: plugin.default_environment_id ?? null,
@@ -309,10 +311,6 @@ function parseAttachmentList(
   });
 }
 
-function codedError(message: string, code: string): Error & { code: string } {
-  return Object.assign(new Error(message), { code });
-}
-
 export function forkLibraryPlugin(
   selector: string,
   asName?: string,
@@ -321,38 +319,15 @@ export function forkLibraryPlugin(
   version: string;
   origin: "authored";
   forked_from: string;
+  upstream: PluginUpstream;
 } {
-  const source = resolvePluginSelector(selector);
-  if (!source) {
-    throw codedError(`Plugin not found: ${selector}`, "not_found");
-  }
-  if (getPluginOrigin(source.id) === "authored") {
-    throw codedError(
-      `${source.name} is already authored; there is nothing to fork.`,
-      "already_authored",
-    );
-  }
-  const name = asName?.trim() || `${source.name}-fork`;
-  if (getPluginByName(name)) {
-    throw codedError(`Plugin ${name} already exists.`, "plugin_exists");
-  }
-  const fork = createPlugin({
-    name,
-    version: source.version,
-    description: source.description || `Fork of ${source.name}@${source.version}`,
-    tags: source.tags,
-    ...(source.claude ? { claude: source.claude } : {}),
-    ...(source.needs ? { needs: source.needs } : {}),
-    origin: "authored",
-  });
-  for (const resource of getPluginResources(source.id)) {
-    addResourceToPlugin(fork.id, resource.id);
-  }
+  const { plugin, forked_from, upstream } = forkPlugin(selector, asName);
   return {
-    name: fork.name,
-    version: fork.version,
+    name: plugin.name,
+    version: plugin.version,
     origin: "authored",
-    forked_from: `${source.name}@${source.version}`,
+    forked_from,
+    upstream,
   };
 }
 

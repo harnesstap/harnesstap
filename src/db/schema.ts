@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 39;
+const SCHEMA_VERSION = 40;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -336,12 +336,33 @@ const MIGRATIONS: Record<number, Migration> = {
       PRIMARY KEY (plugin_name, plugin_version, relative_path)
     );
   `,
+  // Upstream link (fork now, extends later), stored in the package format's
+  // shape, plus the local upstream row id when known.
+  40: migratePluginForkSource,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
   return (
     db.prepare(`PRAGMA table_info(${name})`).all() as Array<{ name: string }>
   ).map((column) => column.name);
+}
+
+function migratePluginForkSource(db: SqliteDatabase): void {
+  if (!tableExists(db, "plugins")) {
+    return;
+  }
+  const columns = new Set(tableColumns(db, "plugins"));
+  const additions: Array<[string, string]> = [
+    ["upstream_kind", "TEXT NOT NULL DEFAULT '' CHECK(upstream_kind IN ('', 'extends', 'fork'))"],
+    ["upstream_ref", "TEXT NOT NULL DEFAULT ''"],
+    ["upstream_version_at_link", "TEXT NOT NULL DEFAULT ''"],
+    ["upstream_plugin_id", "TEXT NOT NULL DEFAULT ''"],
+  ];
+  for (const [name, definition] of additions) {
+    if (!columns.has(name)) {
+      db.exec(`ALTER TABLE plugins ADD COLUMN ${name} ${definition}`);
+    }
+  }
 }
 
 function migratePluginSpecMetadata(db: SqliteDatabase): void {

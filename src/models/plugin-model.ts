@@ -1,4 +1,5 @@
 import { getDb } from "../db/connection.js";
+import { upstreamFromRow } from "../services/plugin-upstream.js";
 import type { SqliteStatement } from "../db/types.js";
 import { computationSlot } from "../services/status-computation.js";
 import { ulid } from "ulid";
@@ -52,6 +53,10 @@ interface PluginRow {
   origin_locator?: string;
   origin_fingerprint?: string;
   origin_fingerprint_kind?: string;
+  upstream_kind?: string;
+  upstream_ref?: string;
+  upstream_version_at_link?: string;
+  upstream_plugin_id?: string;
   dirty?: number;
   frozen_at: string | null;
   created_at: string;
@@ -153,6 +158,7 @@ function rowToPlugin(row: PluginRow): Plugin {
     ...(row.origin_fingerprint_kind
       ? { origin_fingerprint_kind: row.origin_fingerprint_kind as OriginFingerprintKind }
       : {}),
+    ...upstreamFromRow(row),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

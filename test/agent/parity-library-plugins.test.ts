@@ -536,12 +536,14 @@ describe("POST /v1/library/plugins/:selector/fork", () => {
       version: string;
       origin: string;
       forked_from: string;
+      upstream: unknown;
     };
     expect(body).toEqual({
       name: "web-search-fork",
       version: "2.0.0",
       origin: "authored",
       forked_from: "web-search@2.0.0",
+      upstream: { kind: "fork", ref: "web-search@^2.0.0", version_at_link: "2.0.0" },
     });
     const fork = getPluginByName("web-search-fork");
     expect(fork?.origin).toBe("authored");
@@ -553,6 +555,17 @@ describe("POST /v1/library/plugins/:selector/fork", () => {
       true,
     );
     expect(getPluginByName("web-search")).toBeDefined();
+    expect(fork.upstream?.ref).toBe("web-search@^2.0.0");
+    expect(fork.upstream_plugin_id).toBe(source.id);
+
+    const detail = await handle("GET", "/v1/library/plugins/web-search-fork");
+    expect(detail.status).toBe(200);
+    const detailBody = (await detail.json()) as { plugin: { upstream: unknown } };
+    expect(detailBody.plugin.upstream).toEqual({
+      kind: "fork",
+      ref: "web-search@^2.0.0",
+      version_at_link: "2.0.0",
+    });
   });
 
   it("returns 400 already_authored", async () => {

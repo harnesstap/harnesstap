@@ -1,6 +1,7 @@
+import { exportableUpstream } from "../plugin-upstream.js";
 import { getEnvironment } from "../../models/environment.js";
 import { getPluginById, getPluginResources, resolveApName } from "../../models/plugin-model.js";
-import type { DependencySourceKind, PluginOverrides } from "../../types.js";
+import type { DependencySourceKind, PluginOverrides, PluginUpstream } from "../../types.js";
 import { resourceHarnessScope } from "../harness-scope.js";
 import { listDependencies } from "../plugin-dependency.js";
 import { getPluginOverrides } from "../plugin-overrides.js";
@@ -34,6 +35,12 @@ export interface HarnesstapExtension {
    * export had to rename a skill so the directory matches the Agent Skills rules.
    */
   skillNames?: Record<string, string>;
+  /**
+   * Upstream link, snake_case as agreed with HarnessTap Cloud:
+   * `{ kind: "extends" | "fork", ref: "org/catalog/slug@range", version_at_link }`.
+   * Only written for a catalog ref.
+   */
+  upstream?: PluginUpstream;
 }
 
 export interface ApManifest {
@@ -83,6 +90,7 @@ export function buildApManifest(pluginId: string): ApManifest {
     ? getEnvironment(plugin.default_environment_id)?.name
     : undefined;
 
+  const exportedUpstream = exportableUpstream(plugin.upstream);
   const extension: HarnesstapExtension = {
     schema: HT_EXTENSION_SCHEMA,
     sourceName: plugin.name,
@@ -97,6 +105,7 @@ export function buildApManifest(pluginId: string): ApManifest {
     ...(defaultEnvironment ? { defaultEnvironment } : {}),
     components,
     ...(Object.keys(harnessScopes).length > 0 ? { harnessScopes } : {}),
+    ...(exportedUpstream ? { upstream: exportedUpstream } : {}),
   };
 
   return {

@@ -11,6 +11,7 @@ import {
 import { createResource } from "../../src/models/resource.ts";
 import { addDependency, listDependencies } from "../../src/services/plugin-dependency.ts";
 import { getPluginOrigin, setPluginOrigin } from "../../src/services/plugin-origin.ts";
+import { cutPluginVersion, markPluginDirty } from "../../src/services/plugin-versioning.ts";
 
 let ctx: TestContext;
 
@@ -41,7 +42,62 @@ function seedUpstream(): void {
   addDependency(plugin.id, "base");
 }
 
+const UPSTREAM = {
+  kind: "fork",
+  ref: "harnesstap-cloud/default/backend-engineer@^1.0.0",
+  version_at_link: "1.0.0",
+};
+
 describe("plugin fork", () => {
+  it("records the source of a catalog fork and keeps it across a cut", async () => {
+    // Pulls before the slug fix named the local copy after the display name.
+    const source = createPlugin({
+      name: "Backend engineer",
+      version: "1.0.0",
+      tags: ["profile"],
+      org_slug: "harnesstap-cloud",
+      catalog_slug: "default",
+      origin: "catalog",
+    });
+    const result = await runCli([
+      "plugin",
+      "fork",
+      "Backend engineer",
+      "--as",
+      "backend-qa",
+      "--format",
+      "json",
+    ]);
+    expect(result.exitCode ?? 0).toBe(0);
+    const payload = JSON.parse(result.stdout);
+    expect(payload.forked_from).toBe("harnesstap-cloud/default/backend-engineer@1.0.0");
+    // Same shape as extensions["com.harnesstap"].upstream in a package.
+    expect(payload.upstream).toEqual(UPSTREAM);
+
+    const fork = getPluginByName("backend-qa");
+    expect(fork?.upstream).toEqual(UPSTREAM);
+    expect(fork?.upstream_plugin_id).toBe(source.id);
+    expect(fork?.tags).toEqual(["profile"]);
+
+    const show = await runCli(["plugin", "show", "backend-qa"]);
+    expect(show.stdout).toMatch(/Forked from\s+harnesstap-cloud\/default\/backend-engineer@1\.0\.0/);
+
+    markPluginDirty(fork!.id);
+    const cut = cutPluginVersion({ pluginId: fork!.id, newVersion: "1.1.0" });
+    expect(cut.upstream).toEqual(UPSTREAM);
+    expect(getPluginByName("backend-qa", "1.0.0")?.upstream).toEqual(UPSTREAM);
+  });
+
+  it("records name@version for an upstream fork", async () => {
+    seedUpstream();
+    await runCli(["plugin", "fork", "web-search"]);
+    expect(getPluginByName("web-search-fork")?.upstream).toEqual({
+      kind: "fork",
+      ref: "web-search@^1.2.0",
+      version_at_link: "1.2.0",
+    });
+  });
+
   it("creates an authored copy with the same resources and dependencies", async () => {
     seedUpstream();
     const result = await runCli(["plugin", "fork", "web-search"]);

@@ -51,7 +51,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(39);
+      expect(versionRow.version).toBe(40);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -202,7 +202,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(39);
+      ).toBe(40);
     } finally {
       await context.cleanup();
     }
@@ -261,7 +261,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(39);
+      ).toBe(40);
       expect(
         (db.prepare("SELECT version FROM plugins WHERE id = 'p1'").get() as { version: string })
           .version,
@@ -294,7 +294,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(39);
+      ).toBe(40);
     } finally {
       await context.cleanup();
     }
@@ -312,7 +312,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 39 }]);
+      expect(versionRows).toEqual([{ version: 40 }]);
     } finally {
       await context.cleanup();
     }
@@ -729,7 +729,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(39);
+        expect(version).toBe(40);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -756,7 +756,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(39);
+      expect(version).toBe(40);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -794,7 +794,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(39);
+      expect(version).toBe(40);
 
       const tables = db
         .prepare(
@@ -859,7 +859,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(39);
+      expect(version).toBe(40);
 
       const columns = db
         .prepare("PRAGMA table_info(resource_materializations)")
@@ -955,7 +955,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(39);
+      expect(version).toBe(40);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")

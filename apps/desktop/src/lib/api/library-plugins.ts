@@ -16,6 +16,21 @@ export interface LibraryPluginHead {
   format_label?: string;
 }
 
+export interface LibraryPluginUpstream {
+  kind: "extends" | "fork";
+  /** `org/catalog/slug@range`, or `name@range` for a local source. */
+  ref: string;
+  version_at_link: string;
+}
+
+/** `org/catalog/slug@1.0.0`, or the raw ref when no version was recorded. */
+export function formatLibraryUpstream(upstream: LibraryPluginUpstream): string {
+  if (!upstream.version_at_link) return upstream.ref;
+  const at = upstream.ref.lastIndexOf("@");
+  const base = at > 0 ? upstream.ref.slice(0, at) : upstream.ref;
+  return `${base}@${upstream.version_at_link}`;
+}
+
 export interface LibraryPluginDetailPlugin {
   id: string;
   name: string;
@@ -24,6 +39,8 @@ export interface LibraryPluginDetailPlugin {
   tags: string[];
   origin: PluginOrigin;
   origin_locator?: string;
+  /** Upstream link in the package format's shape. Absent on older sidecars. */
+  upstream?: LibraryPluginUpstream | null;
   dirty: boolean;
   frozen_at: string | null;
   default_environment_id: string | null;
@@ -113,6 +130,7 @@ export interface PluginForkResult {
   version: string;
   origin: "authored";
   forked_from: string;
+  upstream?: LibraryPluginUpstream;
 }
 
 function pluginPath(selector: string, suffix = ""): string {

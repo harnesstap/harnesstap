@@ -1,3 +1,4 @@
+import { parseUpstream, setPluginUpstream } from "../plugin-upstream.js";
 import matter from "gray-matter";
 import { getEnvironmentByName } from "../../models/environment.js";
 import {
@@ -14,6 +15,7 @@ import type {
   Plugin,
   PluginOrigin,
   PluginOverrides,
+  PluginUpstream,
   ResourceCreateInput,
   ResourceType,
 } from "../../types.js";
@@ -51,6 +53,8 @@ export interface ParsedApPackage {
   resources: ResourceCreateInput[];
   /** `type:name` → harness slugs. Missing means All. */
   harnessScopes?: Record<string, string[]>;
+  /** `extensions["com.harnesstap"].upstream`, when complete and valid. */
+  upstream?: PluginUpstream;
   /** Claude marketplace/plugin config from `com.harnesstap/claude.toml`. */
   claude?: ClaudePluginConfig;
   /** Spec load report from the package that was imported. */
@@ -149,6 +153,7 @@ function parseExtension(
   | "needs"
   | "defaultEnvironment"
   | "harnessScopes"
+  | "upstream"
 > {
   if (!isRecord(raw)) {
     return {
@@ -161,6 +166,7 @@ function parseExtension(
   }
 
   const harnessScopes = parseHarnessScopes(raw.harnessScopes);
+  const upstream = parseUpstream(raw.upstream);
   return {
     sourceName: typeof raw.sourceName === "string" && raw.sourceName.length > 0
       ? raw.sourceName
@@ -175,6 +181,7 @@ function parseExtension(
       ? { defaultEnvironment: raw.defaultEnvironment }
       : {}),
     ...(Object.keys(harnessScopes).length > 0 ? { harnessScopes } : {}),
+    ...(upstream ? { upstream } : {}),
   };
 }
 
@@ -390,6 +397,7 @@ export function parseApPackageFiles(
       : {}),
     resources,
     ...(extension.harnessScopes ? { harnessScopes: extension.harnessScopes } : {}),
+    ...(extension.upstream ? { upstream: extension.upstream } : {}),
     ...(claude ? { claude } : {}),
     loadReport: loaded.report,
     ...(author ? { author } : {}),
@@ -481,6 +489,9 @@ export function importApPackageFiles(
   }
   if (parsed.opaqueFiles) {
     replaceOpaqueFiles(plugin.id, parsed.opaqueFiles);
+  }
+  if (parsed.upstream) {
+    setPluginUpstream(plugin.id, parsed.upstream);
   }
   if (options?.installPackage !== false) {
     installAgentPluginPackage({ name: plugin.name, version: plugin.version }, files);
