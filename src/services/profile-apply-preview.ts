@@ -22,7 +22,7 @@ import {
   type HostManagedStatus,
   profileSkillNameMap,
 } from "./cursor-host-managed-skills.js";
-import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { binaryExpectedFileMatchesDisk, fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import { isNativeAgentPluginCachePath } from "./native-agent-plugins.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import {
@@ -168,11 +168,11 @@ function declaredMcpFromExpectedApply(expectedApply: ApplyProfilePluginResult): 
   );
 }
 
-function uniqueExpectedFiles(
-  expectedFiles: Array<{ path: string; content: string }>,
-): Array<{ path: string; content: string }> {
+function uniqueExpectedFiles<T extends { path: string; content: string }>(
+  expectedFiles: T[],
+): T[] {
   const seen = new Set<string>();
-  const unique: Array<{ path: string; content: string }> = [];
+  const unique: T[] = [];
   for (const file of expectedFiles) {
     if (seen.has(file.path)) {
       continue;
@@ -185,12 +185,13 @@ function uniqueExpectedFiles(
 
 function compareExpectedFiles(
   rootPath: string,
-  expectedFiles: Array<{ path: string; content: string }>,
+  expectedFiles: Array<{ path: string; content: string; encoding?: "utf8" | "base64" }>,
 ): DriftFileChange[] {
   const changes: DriftFileChange[] = [];
   const homeRoot = resolveHomeRoot();
   for (const file of uniqueExpectedFiles(expectedFiles)) {
     if (isNativeAgentPluginCachePath(file.path)) continue;
+    if (binaryExpectedFileMatchesDisk(join(rootPath, file.path), file)) continue;
     const current = readRootFile(rootPath, file.path);
     if (expectedFileMatchesLiveForPreview(homeRoot, file, current)) {
       continue;

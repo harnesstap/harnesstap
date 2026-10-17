@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht profile status`, `ht profile preview` and the Desktop preview no longer list the images of a Claude host plugin (for example the 45 PNG and JPG files of ponytail) as "out of sync" or "Will write" right after an apply. Binary files are compared byte for byte with what apply would write, so status and preview agree with apply.'
+time: 2026-10-17T09:00:00.000Z
+custom:
+  Issue: ""

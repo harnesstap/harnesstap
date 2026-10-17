@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { parse as parseToml } from "smol-toml";
 import { mcpConfigContentsEquivalent } from "./mcp-config-bridge.js";
 import { isMcpConfigManagedPath } from "./profile-commit-resource.js";
@@ -83,4 +84,21 @@ function fileContentsEquivalentUncached(
     return true;
   }
   return false;
+}
+
+/**
+ * Binary plan entries (images, fonts in plugin trees) carry base64 content.
+ * Compare their bytes with the file on disk; a UTF-8 read of a binary file
+ * never equals the base64 text. Returns undefined for text entries.
+ */
+export function binaryExpectedFileMatchesDisk(
+  fullPath: string,
+  file: { content: string; encoding?: "utf8" | "base64" },
+): boolean | undefined {
+  if (file.encoding !== "base64") return undefined;
+  try {
+    return readFileSync(fullPath).equals(Buffer.from(file.content, "base64"));
+  } catch {
+    return false;
+  }
 }
