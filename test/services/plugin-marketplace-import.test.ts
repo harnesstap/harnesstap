@@ -80,6 +80,35 @@ describe("importPluginFromMarketplace", () => {
     );
   });
 
+  it("imports from the built-in cursor-public marketplace without registering it", async () => {
+    writeMarketplacePlugin("cursor-public", "continual-learning", "1.0.0");
+    const refreshed: string[] = [];
+
+    const imported = await importPluginFromMarketplace({
+      marketplace: "cursor-public",
+      plugin: "continual-learning",
+      refreshMarketplace: async (_dir, options) => {
+        refreshed.push(options.name);
+        return { ok: true, sha: "cafe1234", message: "ok" };
+      },
+    });
+
+    expect(refreshed).toEqual(["cursor-public"]);
+    expect(imported.created).toBe(true);
+    expect(imported.origin_locator).toBe("continual-learning@cursor-public");
+    expect(getPluginOrigin(imported.plugin.id)).toBe("upstream");
+  });
+
+  it("still rejects an unknown marketplace", async () => {
+    await expect(
+      importPluginFromMarketplace({
+        marketplace: "nope",
+        plugin: "alpha",
+        refreshMarketplace: async () => ({ ok: true, sha: "x", message: "ok" }),
+      }),
+    ).rejects.toMatchObject({ code: "marketplace_not_found" });
+  });
+
   it("reuses an existing upstream plugin from the same marketplace", async () => {
     registerMarketplace("claude-plugins");
     writeMarketplacePlugin("claude-plugins", "alpha", "1.0.0");
