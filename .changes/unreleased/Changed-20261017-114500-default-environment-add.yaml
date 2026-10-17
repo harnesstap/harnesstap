@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Desktop Edit profile: the Default environment field shows only an "Add default environment" button until a default is set. Add picks the first environment and shows the dropdown, which no longer offers "None". An x with the tooltip "Remove default environment" clears it back to the Add button. Both states keep the same height, and the choice autosaves like the rest of the pane; harness files change only on Apply.'
+time: 2026-10-17T21:45:00.000Z
+custom:
+  Issue: ""

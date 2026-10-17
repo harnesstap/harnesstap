@@ -126,23 +126,19 @@ describe("profile edit publish chrome", () => {
 });
 
 describe("profile edit default environment chrome", () => {
-  test("places Clear as an icon to the left of the dropdown", () => {
-    const row = sliceBetween(
-      envFieldSource,
-      'className="flex items-center gap-2"',
-      "</Select>",
-    );
-    const clearIdx = row.indexOf("default-environment-clear");
+  test("places Remove as an icon to the right of the dropdown, only once a default is set", () => {
+    const row = sliceBetween(envFieldSource, 'className="default-env-row"', "</>");
     const selectIdx = row.indexOf("<Select");
-    expect(clearIdx).toBeGreaterThan(-1);
-    expect(selectIdx).toBeGreaterThan(clearIdx);
-    expect(envFieldSource).toContain('aria-label="Clear"');
+    const clearIdx = row.indexOf("default-environment-clear");
+    expect(selectIdx).toBeGreaterThan(-1);
+    expect(clearIdx).toBeGreaterThan(selectIdx);
+    expect(envFieldSource).not.toContain('aria-label="Clear"');
     expect(envFieldSource).not.toContain("text-btn");
   });
 
-  test("includes None and Create a new environment in the dropdown", () => {
-    expect(envFieldSource).toContain("DEFAULT_ENV_NONE");
-    expect(envFieldSource).toContain("Create a new environment");
+  test("offers Create a new environment in the dropdown, never None", () => {
+    expect(envFieldSource).not.toContain("DEFAULT_ENV_NONE");
+    expect(envFieldSource).toContain("DEFAULT_ENV_COPY.create");
     expect(envFieldSource).toContain("DEFAULT_ENV_CREATE");
     expect(envFieldSource).toContain("<Plus");
     expect(envFieldSource).toContain("onCreateEnvironment");
