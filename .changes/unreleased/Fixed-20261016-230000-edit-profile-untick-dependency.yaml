@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Unticking a dependency in Desktop Edit profile removes it. Before, when the dependency plugin was not in the Library (for example a pulled catalog profile), unticking added a second `feature-dev *` entry. Undo in the toast now restores the dependency with its original constraint, and the sidecar never attaches a second copy of a dependency.'
+time: 2026-10-17T09:00:00.000Z
+custom:
+  Issue: ""

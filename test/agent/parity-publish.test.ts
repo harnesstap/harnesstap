@@ -32,7 +32,7 @@ function deps(overrides: Partial<PublishHandlerDeps> = {}): PublishHandlerDeps {
     assertAuthored: () => undefined,
     listAttachedPluginRefs: () => [],
     getPluginResources: () => [],
-    resolvePluginSelector: () => undefined,
+    listUnpublishedDependencies: () => [],
     loadRegisteredCatalogs: () => [
       { org: "acme", catalog: "internal", account: "default" },
     ],
@@ -109,6 +109,7 @@ describe("parity publish tryHandle", () => {
             "Profile focus has no plugin references and no material resources.",
         },
       ],
+      blockers: [],
       plans: [
         {
           target: { org: "acme", catalog: "internal", account: "default" },
@@ -188,16 +189,13 @@ describe("parity publish tryHandle", () => {
     expect(body.error).toBe("not_found");
   });
 
-  it("warns about unpublished local plugin refs", async () => {
+  it("plans unpublished local dependencies as a blocker, not a warning", async () => {
     const handle = createPublishTryHandle(
       deps({
         listAttachedPluginRefs: () => [
           { dependency_name: "local-helper", version_constraint: "1.0.0" },
         ],
-        resolvePluginSelector: (selector) =>
-          selector.startsWith("local-helper")
-            ? plugin({ name: "local-helper", org_slug: "", catalog_slug: "" })
-            : undefined,
+        listUnpublishedDependencies: () => ["local-helper"],
       }),
     );
     const response = await handle(
@@ -208,14 +206,40 @@ describe("parity publish tryHandle", () => {
     expect(response?.status).toBe(200);
     const body = (await response!.json()) as {
       warnings: Array<{ code: string; message: string }>;
+      blockers: Array<{ code: string; message: string; dependencies: string[] }>;
     };
-    expect(body.warnings).toEqual([
+    expect(body.warnings).toEqual([]);
+    expect(body.blockers).toEqual([
       {
-        code: "unpublished_local_refs",
+        code: "unpublished_dependencies",
         message:
-          "Profile focus references unpublished local plugins: local-helper",
+          "Cannot publish focus: it depends on local plugins that are not in a catalog: local-helper. Publish them first, or remove them from focus.",
+        dependencies: ["local-helper"],
       },
     ]);
+  });
+
+  it("publish returns 409 unpublished_dependencies without publishing", async () => {
+    const publishPluginToCatalogs = mock(async () => []);
+    const handle = createPublishTryHandle(
+      deps({
+        listUnpublishedDependencies: () => ["local-helper"],
+        publishPluginToCatalogs,
+      }),
+    );
+    const response = await handle(
+      request("/v1/profiles/focus/publish", { method: "POST", body: "{}" }),
+      TOKEN,
+      { isAgentSwitchInProgress: () => false },
+    );
+    expect(response?.status).toBe(409);
+    const body = (await response!.json()) as {
+      error: string;
+      dependencies: string[];
+    };
+    expect(body.error).toBe("unpublished_dependencies");
+    expect(body.dependencies).toEqual(["local-helper"]);
+    expect(publishPluginToCatalogs).not.toHaveBeenCalled();
   });
 
   it("returns no_effective_catalogs when registered catalogs do not apply", async () => {

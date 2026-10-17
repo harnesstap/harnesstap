@@ -211,7 +211,8 @@ export function sourcesHitActions(
       showAddToLibrary: !inLibrary,
       showPinToPlugin: true,
       showOpenInLibrary: inLibrary,
-      openInLibrarySelector: added ?? hit.identity.marketplace.plugin,
+      // A remote-only hit has no Library row yet; Add to profile imports it first.
+      openInLibrarySelector: inLibrary ? (added ?? hit.identity.marketplace.plugin) : null,
     });
   }
 
