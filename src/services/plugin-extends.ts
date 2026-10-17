@@ -57,14 +57,29 @@ export function parseExcludeEntry(entry: string): { type: string; name: string }
       `Invalid hidden item "${entry}". Use <type>:<name>, where type is one of ${RESOURCE_TYPES.join(", ")}.`,
     );
   }
+  if (/[*?[\]]/.test(name)) {
+    throw new ExtendsError(
+      "invalid_exclude",
+      `Invalid hidden item "${entry}". Name one item exactly; patterns such as * are not supported.`,
+    );
+  }
   return { type, name };
 }
+
+/** Cloud accepts at most this many exclude entries per package (harnesstap-cloud#143). */
+export const MAX_EXCLUDE_ENTRIES = 200;
 
 export function normalizeExcludeEntries(entries: readonly string[]): string[] {
   const seen = new Set<string>();
   for (const entry of entries) {
     const { type, name } = parseExcludeEntry(entry);
     seen.add(`${type}:${name}`);
+  }
+  if (seen.size > MAX_EXCLUDE_ENTRIES) {
+    throw new ExtendsError(
+      "invalid_exclude",
+      `A profile can hide at most ${MAX_EXCLUDE_ENTRIES} items; this one would hide ${seen.size}.`,
+    );
   }
   return [...seen].sort();
 }
