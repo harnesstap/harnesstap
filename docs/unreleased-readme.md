@@ -47,3 +47,13 @@ The Desktop sidecar checks upstreams when a check is due under `frequency`, coun
 ## docs/cli/command-reference.md > plugin (`l`) > Important options
 <!-- append -->
 - `ht plugin auto-update` prints how plugin updates are checked; `--mode off|notify|install` and `--frequency hourly|daily|weekly` change it (stored under `updates` in `~/.harnesstap/config.jsonc`). Install mode installs minor and patch versions inside the range for pulled catalog plugins, never a major. After the first successful `ht plugin update --all` in an interactive terminal, HarnessTap asks once "Keep these up to date?" with the same choices; non-interactive runs never ask.
+
+## docs/cli/command-reference.md > plugin (`l`)
+<!-- insert-after -->
+### notifications
+
+Local notifications about plugin updates. HarnessTap writes one when a check finds a new version, when a kept-in-sync parent publishes, when install mode updates a plugin, and when update checks keep failing. The same version is never notified twice.
+
+- `ht notifications` lists unread notifications; `--all` includes read ones, `--format json` returns `{items, unread_count}`.
+- `ht notifications read <id>` marks one as read; `ht notifications read --all` marks every one.
+- `ht notifications prune --older-than 90d` deletes read notifications older than the age (`h`, `d` or `w`). It asks first in a terminal and needs `--yes` otherwise. Unread notifications are never pruned, and nothing is deleted without this command.

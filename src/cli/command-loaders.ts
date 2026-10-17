@@ -111,6 +111,12 @@ async function importLoader(
         mod.registerMigrateCommands(root);
       };
     }
+    case "notifications": {
+      const mod = await import("./commands/notifications.js");
+      return (root) => {
+        mod.registerNotificationsCommands(root);
+      };
+    }
     case "open": {
       const mod = await import("./commands/open.js");
       return (root) => {
