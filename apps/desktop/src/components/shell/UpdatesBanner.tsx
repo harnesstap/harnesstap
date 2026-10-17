@@ -36,7 +36,7 @@ async function waitForCheck(baseUrl: string, token: string | null): Promise<void
 
 /** Update text for the toast after the banner's Update. */
 export function updateResultMessage(report: PluginOriginUpdateReport): string {
-  const { updated, skipped, failed } = report.summary;
+  const { updated, failed } = report.summary;
   if (failed > 0) return `${failed} could not update. ${updated} updated.`;
   if (updated === 0) return "Already up to date at the source.";
   return updated === 1 ? "1 plugin updated." : `${updated} plugins updated.`;
