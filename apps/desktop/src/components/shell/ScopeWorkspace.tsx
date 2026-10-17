@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileDiff, HardDriveDownload, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
@@ -26,6 +26,9 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
 import { Banner } from "./Banner";
 import { ProfilesRail } from "./ProfilesRail";
+import { UpdatesBanner } from "./UpdatesBanner";
+import { useUpstreamUpdates } from "../../state/use-upstream-updates";
+import { profilesWithUpdates } from "../../lib/updates-banner";
 
 const HEADER_ICON_SIZE = 18;
 
@@ -84,6 +87,17 @@ export function ScopeWorkspace({
   const baseUrl = client?.baseUrl ?? null;
   const status = useStatusStore((state) => state.status);
   const statusError = useStatusStore((state) => state.statusError);
+  const upstreamUpdates = useUpstreamUpdates(baseUrl, token);
+  const statusUpdatesKey = `${status?.updates?.count ?? 0}:${status?.updates?.major_count ?? 0}`;
+  const refreshUpstreamUpdates = upstreamUpdates.refresh;
+  useEffect(() => {
+    // A finished background check changes the counts in the status payload.
+    void refreshUpstreamUpdates();
+  }, [statusUpdatesKey, refreshUpstreamUpdates]);
+  const updateProfiles = useMemo(
+    () => profilesWithUpdates(upstreamUpdates.list?.rows ?? []),
+    [upstreamUpdates.list],
+  );
   const scopeCanGoBack = Boolean(editingProfile) || hasHistory;
   const actionsEnabled = connected && Boolean(token) && !switching;
   const selectedProfileMetaTags =
@@ -151,6 +165,7 @@ export function ScopeWorkspace({
     <>
       <ProfilesRail
         ctrl={ctrl}
+        updateProfiles={updateProfiles}
         canGoBack={scopeCanGoBack}
         onBack={() => {
           if (editingProfile) {
@@ -198,6 +213,22 @@ export function ScopeWorkspace({
         >
           {bootstrapError ? (
             <Banner tone="error" message={bootstrapError} onDismiss={onDismissBootstrapError} />
+          ) : null}
+
+          {scope === "global" ? (
+            <UpdatesBanner
+              baseUrl={baseUrl}
+              token={token}
+              list={upstreamUpdates.list}
+              disabled={!actionsEnabled}
+              onChanged={async (next) => {
+                if (next) {
+                  upstreamUpdates.setList(next);
+                } else {
+                  await upstreamUpdates.refresh();
+                }
+              }}
+            />
           ) : null}
 
           {shouldShowPendingApprovalsStrip(ctrl.pendingTrust) ? (

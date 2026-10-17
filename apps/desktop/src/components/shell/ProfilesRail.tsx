@@ -40,6 +40,8 @@ export interface ProfilesRailProps {
   onOpenCreateProfile: (source?: ProfileCreateSource, switchAfterCreate?: boolean) => void;
   onOpenStashBrowse: () => void;
   onRequestSignIn: () => void;
+  /** Profiles that are, or use, a plugin with an upstream update. */
+  updateProfiles?: ReadonlySet<string>;
 }
 
 export function ProfilesRail({
@@ -49,6 +51,7 @@ export function ProfilesRail({
   onOpenCreateProfile,
   onOpenStashBrowse,
   onRequestSignIn,
+  updateProfiles,
 }: ProfilesRailProps) {
   const {
     client,
@@ -473,6 +476,15 @@ export function ProfilesRail({
                   />
                 ) : null}
                 {profile.name}
+                {updateProfiles?.has(profile.name) ? (
+                  <span
+                    className="profile-update-dot"
+                    data-testid={`profile-update-dot-${profile.name}`}
+                    role="img"
+                    aria-label="Update available"
+                    title="Update available"
+                  />
+                ) : null}
               </button>
               <IconActionButton
                 className="profile-item-action profile-item-edit"

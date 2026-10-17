@@ -377,6 +377,8 @@ export interface GlobalProfileStatus {
   };
   switching?: boolean;
   warning?: string;
+  /** Pending upstream updates from the last stored check. Absent on older sidecars. */
+  updates?: { count: number; major_count: number };
   untracked_resource_count?: number;
   /** Previous status is still shown while a fresh read is running. */
   refreshing?: boolean;

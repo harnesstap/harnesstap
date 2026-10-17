@@ -2203,3 +2203,15 @@
   position: relative;
   width: 100%;
 }
+
+/* Upstream update available: a small accent dot after the profile name. */
+.profile-update-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: 0.4rem;
+  border-radius: 999px;
+  background: var(--accent);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
