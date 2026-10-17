@@ -169,6 +169,7 @@ describe("runUpstreamCheck", () => {
 
 describe("defaultFetchUpstreamLatest", () => {
   const query = [{ base: "acme/default/backend", version: "1.0.0", range: "^1.0.0" }];
+  const KEY = "acme/default/backend@^1.0.0";
 
   it("uses the batched updates-since contract when Cloud has it", async () => {
     const calls: string[] = [];
@@ -180,7 +181,7 @@ describe("defaultFetchUpstreamLatest", () => {
     }) as typeof fetch);
     try {
       const out = await defaultFetchUpstreamLatest(query, {});
-      expect(out.get("acme/default/backend")).toEqual({ ok: true, latest_in_range: "1.4.0", latest_major: "2.0.0" });
+      expect(out.get(KEY)).toEqual({ ok: true, latest_in_range: "1.4.0", latest_major: "2.0.0" });
       expect(calls).toHaveLength(1);
       expect(calls[0]).toContain("POST ");
       expect(calls[0]).toContain("/api/catalog/updates-since");
@@ -202,8 +203,95 @@ describe("defaultFetchUpstreamLatest", () => {
     }) as typeof fetch);
     try {
       const out = await defaultFetchUpstreamLatest(query, {});
-      expect(out.get("acme/default/backend")).toEqual({ ok: true, latest_in_range: "1.3.0", latest_major: "" });
+      expect(out.get(KEY)).toEqual({ ok: true, latest_in_range: "1.3.0", latest_major: "" });
       expect(calls.some((url) => url.includes("/api/public/plugins"))).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("sends selectors with constraints in chunks of 100 and reads latest_in_range under a newer major", async () => {
+    const bodies: Array<{ selectors: Array<{ ref: string; version: string; constraint: string }> }> = [];
+    const spy = spyOn(globalThis, "fetch").mockImplementation((async (_input: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as (typeof bodies)[number];
+      bodies.push(body);
+      return Response.json({
+        items: body.selectors.map((selector) => ({
+          ref: selector.ref,
+          version: selector.version,
+          constraint: selector.constraint,
+          latest: "2.0.0",
+          latest_in_range: selector.constraint === "~1.0.0" ? "1.0.3" : "1.4.0",
+          latest_major: "2.0.0",
+        })),
+      });
+    }) as typeof fetch);
+    try {
+      const many = Array.from({ length: 205 }, (_, index) => ({ base: `acme/default/p${index}`, version: "1.0.0", range: "^1.0.0" }));
+      many.push({ base: "acme/default/p0", version: "1.0.0", range: "~1.0.0" });
+      const out = await defaultFetchUpstreamLatest(many, {});
+      expect(bodies.map((body) => body.selectors.length)).toEqual([100, 100, 6]);
+      expect(bodies[0]?.selectors[0]).toEqual({ ref: "acme/default/p0", version: "1.0.0", constraint: "^1.0.0" });
+      expect(out.get("acme/default/p0@^1.0.0")).toEqual({ ok: true, latest_in_range: "1.4.0", latest_major: "2.0.0" });
+      expect(out.get("acme/default/p0@~1.0.0")).toEqual({ ok: true, latest_in_range: "1.0.3", latest_major: "2.0.0" });
+      expect(out.get("acme/default/p204@^1.0.0")).toMatchObject({ ok: true, latest_in_range: "1.4.0" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("sends the stored ETag and reuses the cached answer on 304", async () => {
+    const seen: Array<string | null> = [];
+    const spy = spyOn(globalThis, "fetch").mockImplementation((async (_input: string | URL | Request, init?: RequestInit) => {
+      const etag = new Headers(init?.headers).get("if-none-match");
+      seen.push(etag);
+      if (etag === "W/\"v1\"") return new Response(null, { status: 304 });
+      return Response.json(
+        { items: [{ ref: "acme/default/backend", constraint: "^1.0.0", latest_in_range: "1.4.0", latest_major: "" }] },
+        { headers: { etag: "W/\"v1\"" } },
+      );
+    }) as typeof fetch);
+    try {
+      const first = await defaultFetchUpstreamLatest(query, {});
+      const second = await defaultFetchUpstreamLatest(query, {});
+      expect(seen).toEqual([null, "W/\"v1\""]);
+      expect(second.get(KEY)).toEqual(first.get(KEY));
+      expect(second.get(KEY)).toEqual({ ok: true, latest_in_range: "1.4.0", latest_major: "" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("does not offer a yanked newest-in-range version and treats a missing item as unpublished", async () => {
+    const spy = spyOn(globalThis, "fetch").mockImplementation((async () =>
+      Response.json({
+        items: [{ ref: "acme/default/backend", constraint: "^1.0.0", latest_in_range: "1.4.0", latest_in_range_yanked: true, latest_major: "2.0.0" }],
+      })) as typeof fetch);
+    try {
+      const out = await defaultFetchUpstreamLatest(
+        [...query, { base: "acme/default/hidden", version: "1.0.0", range: "^1.0.0" }],
+        {},
+      );
+      expect(out.get(KEY)).toEqual({ ok: true, latest_in_range: "", latest_major: "2.0.0" });
+      expect(out.get("acme/default/hidden@^1.0.0")).toMatchObject({ ok: false, status: "unpublished" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("names the Cloud error and request id when the batch is refused", async () => {
+    const spy = spyOn(globalThis, "fetch").mockImplementation((async () =>
+      Response.json(
+        { error: { code: "invalid_input", message: "at most 100 selectors", requestId: "req_9" } },
+        { status: 400 },
+      )) as typeof fetch);
+    try {
+      const out = await defaultFetchUpstreamLatest(query, {});
+      expect(out.get(KEY)).toEqual({
+        ok: false,
+        status: "unreachable",
+        message: "Cloud answered 400 at most 100 selectors (request req_9)",
+      });
     } finally {
       spy.mockRestore();
     }
@@ -215,7 +303,7 @@ describe("defaultFetchUpstreamLatest", () => {
     }) as typeof fetch);
     try {
       const out = await defaultFetchUpstreamLatest(query, {});
-      expect(out.get("acme/default/backend")).toMatchObject({ ok: false, status: "unreachable" });
+      expect(out.get(KEY)).toMatchObject({ ok: false, status: "unreachable" });
     } finally {
       spy.mockRestore();
     }
