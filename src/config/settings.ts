@@ -25,7 +25,7 @@ export type UpdateFrequency = "hourly" | "daily" | "weekly";
 
 /** Upstream update checks (B3). Auto-install stays off unless the user picks it. */
 export interface UpdateSettings {
-  /** off: no background checks. notify: check and show updates. install: also install in-range minor and patch versions. */
+  /** off: no remote checks (synced profiles still follow their parent). notify: check and show updates. install: also install in-range minor and patch versions. */
   mode: UpdateMode;
   /** How often the Desktop sidecar checks upstreams. */
   frequency: UpdateFrequency;
