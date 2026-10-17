@@ -8,6 +8,7 @@ import {
   type PluginMarketplaceEntry,
   type PluginMarketplacePlatform,
 } from "../config/settings.js";
+import { builtinMarketplaceEntry, builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
 
 function stripGitSuffix(value: string): string {
   return value.replace(/\.git$/i, "");
@@ -71,6 +72,19 @@ export type AddMarketplaceResult =
 
 export function listMarketplaces(harnesstapDir: string): PluginMarketplaceEntry[] {
   return loadSettings(harnesstapDir).plugins.marketplaces;
+}
+
+/**
+ * A registered marketplace, or the built-in cursor-public one that Discover
+ * always lists even when it is not in config.jsonc.
+ */
+export function findKnownMarketplace(
+  harnesstapDir: string,
+  name: string,
+): PluginMarketplaceEntry | undefined {
+  const registered = listMarketplaces(harnesstapDir).find((entry) => entry.name === name);
+  if (registered) return registered;
+  return builtinMarketplaceGitUrl(name) ? builtinMarketplaceEntry() : undefined;
 }
 
 export function addMarketplace(

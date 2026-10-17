@@ -22,8 +22,11 @@ harnesstap profile use work
 
 What this gives you:
 
-- `profile publish` runs the same pipeline as `plugin publish` with extra
-  validation warnings (empty stack, unpublished local composition refs)
+- `profile publish` runs the same pipeline as `plugin publish` and warns on an
+  empty stack
+- publish refuses a plugin or profile that depends on a local plugin which is
+  not in a catalog: publish that plugin first, or remove it with
+  `harnesstap plugin edit work --remove plugin:<name>`
 - Cloud browse can filter published plugins with `tag=profile` (Profiles tab
   in HarnessTap Cloud)
 - `profile pull` installs the bundle locally and warns when the result is
