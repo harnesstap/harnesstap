@@ -1,4 +1,4 @@
-import { assertParentPublished, upstreamUnpublishedFromCloud } from "./plugin-extends.js";
+import { assertParentPublished, cloudPublishErrorMessage } from "./plugin-extends.js";
 import { getCloudAccount } from "../config/cloud-accounts.js";
 import type { RegisteredCatalog } from "../config/catalog.js";
 import { formatPublishCatalogSelector } from "../config/catalog.js";
@@ -87,7 +87,7 @@ export async function publishPluginToCatalogs(
       }
     } catch (error) {
       const raw = error instanceof Error ? error.message : String(error);
-      const message = upstreamUnpublishedFromCloud(plugin, raw)?.message ?? raw;
+      const message = cloudPublishErrorMessage(plugin, error) ?? raw;
       results.push({ target, ok: false, error: message });
     }
   }

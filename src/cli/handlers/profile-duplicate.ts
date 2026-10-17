@@ -2,7 +2,8 @@ import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { getPlugin } from "../../models/plugin-model.js";
-import { detachPlugin, duplicatePlugin, type DuplicateMode } from "../../services/plugin-duplicate.js";
+import { type DuplicateMode, type DuplicateResult, detachPlugin, duplicatePlugin } from "../../services/plugin-duplicate.js";
+import { duplicateInCloud } from "../../services/plugin-duplicate-cloud.js";
 import { ExtendsError, listPluginExcludes, setPluginExcludes } from "../../services/plugin-extends.js";
 import { PluginForkError } from "../../services/plugin-fork.js";
 import { PluginVersionError } from "../../services/plugin-versioning.js";
@@ -27,27 +28,8 @@ function reportError(error: unknown, hints: string[] = []): void {
   ui.danger(error instanceof Error ? error.message : String(error));
 }
 
-export function handleProfileDuplicateCommand(
-  source: string,
-  name: string | undefined,
-  opts: { copy?: boolean; inherit?: boolean; format?: string } = {},
-): void {
-  initializeSchema(getDb());
-  const format = parseOutputFormat(opts.format);
-  if (opts.copy && opts.inherit) {
-    process.exitCode = 1;
-    ui.danger("Choose one of --inherit (keep in sync) or --copy (separate copy).");
-    return;
-  }
-  const mode: DuplicateMode = opts.copy ? "copy" : "inherit";
-  let result: ReturnType<typeof duplicatePlugin>;
-  try {
-    result = duplicatePlugin(source, { ...(name ? { name } : {}), mode });
-  } catch (error) {
-    reportError(error);
-    return;
-  }
-  const { plugin, upstream, linked_to } = result;
+function renderLocalDuplicate(result: DuplicateResult, format: string): void {
+  const { plugin, upstream, linked_to, mode } = result;
   if (format === "json") {
     printJson({ name: plugin.name, version: plugin.version, mode, linked_to, upstream });
     return;
@@ -59,6 +41,63 @@ export function handleProfileDuplicateCommand(
   }
   ui.success(`Created ${ui.theme.accent(plugin.name)}, a separate copy of ${linked_to}`);
   ui.hint(formatCommand(["plugin", "edit", plugin.name]));
+}
+
+export async function handleProfileDuplicateCommand(
+  source: string,
+  name: string | undefined,
+  opts: { copy?: boolean; inherit?: boolean; format?: string; to?: string; account?: string } = {},
+): Promise<void> {
+  initializeSchema(getDb());
+  const format = parseOutputFormat(opts.format);
+  if (opts.copy && opts.inherit) {
+    process.exitCode = 1;
+    ui.danger("Choose one of --inherit (keep in sync) or --copy (separate copy).");
+    return;
+  }
+  const mode: DuplicateMode = opts.copy ? "copy" : "inherit";
+  if (opts.to) {
+    try {
+      const outcome = await duplicateInCloud(source, {
+        ...(name ? { name } : {}),
+        mode,
+        to: opts.to,
+        ...(opts.account ? { account: opts.account } : {}),
+      });
+      if (outcome.kind === "local") {
+        if (format !== "json") ui.info("Cloud cannot duplicate profiles yet, so the copy was made in your Library.");
+        renderLocalDuplicate(outcome.result, format);
+        if (format !== "json") {
+          ui.hint(`Publish it: ${formatCommand(["plugin", "publish", outcome.result.plugin.name])} --org <org> --catalog <catalog>`);
+        }
+        return;
+      }
+      const { response } = outcome;
+      const upstream = response.publishedVersion?.upstream;
+      if (format === "json") {
+        printJson({ selector: response.selector, version: response.version, mode: response.mode, upstream: upstream ?? null, cloud: true });
+        return;
+      }
+      const link = upstream?.ref ?? source;
+      ui.success(
+        response.mode === "copy"
+          ? `Published ${ui.theme.accent(response.selector)} ${response.version}, a separate copy of ${link}`
+          : `Published ${ui.theme.accent(response.selector)} ${response.version}, kept in sync with ${link}`,
+      );
+      ui.hint(`Get it locally: ${formatCommand(["profile", "pull", response.selector])}`);
+    } catch (error) {
+      reportError(error);
+    }
+    return;
+  }
+  let result: DuplicateResult;
+  try {
+    result = duplicatePlugin(source, { ...(name ? { name } : {}), mode });
+  } catch (error) {
+    reportError(error);
+    return;
+  }
+  renderLocalDuplicate(result, format);
 }
 
 export function handleProfileDetachCommand(name: string, opts: { format?: string } = {}): void {
@@ -127,11 +166,19 @@ export function registerProfileDuplicateCommands(profileCmd: Command): void {
     .argument("[name]", "Name for the new profile (default: <source>-copy)")
     .option("--inherit", "Keep in sync: show the parent's items live and store only your changes (default)")
     .option("--copy", "Separate copy: copy the items now; later parent changes do not apply")
+    .option("--to <org/catalog>", "Duplicate in Cloud and publish to this catalog (source must be in a catalog)")
+    .option("--account <name>", "Cloud account to use with --to")
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Duplicate a profile, kept in sync with it or as a separate copy")
-    .action((source: string, name: string | undefined, opts: { inherit?: boolean; copy?: boolean; format?: string }) => {
-      handleProfileDuplicateCommand(source, name, opts);
-    });
+    .action(
+      async (
+        source: string,
+        name: string | undefined,
+        opts: { inherit?: boolean; copy?: boolean; format?: string; to?: string; account?: string },
+      ) => {
+        await handleProfileDuplicateCommand(source, name, opts);
+      },
+    );
 
   profileCmd
     .command("detach")

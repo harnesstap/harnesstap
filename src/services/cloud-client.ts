@@ -1,5 +1,6 @@
-import { cloudFetch } from "./cloud-api-version.js";
 import type { ApEnvelope } from "./agent-plugins/envelope.js";
+import { CloudApiError, parseCloudErrorBody } from "./cloud-api-error.js";
+import { cloudFetch } from "./cloud-api-version.js";
 
 export interface DeviceCodeResponse {
   device_code: string;
@@ -310,7 +311,30 @@ export async function pollDeviceToken(
   throw new Error("Timed out polling device token");
 }
 
+/** `POST /api/catalogs/{org}/{catalog}/plugins/{slug}/duplicate` (harnesstap-cloud#143). */
+export interface CloudDuplicateRequest {
+  source: { org: string; catalog: string; slug: string };
+  mode: "extends" | "copy";
+  name: string;
+  targetOrg: string;
+  targetCatalog: string;
+}
+
+export interface CloudDuplicateResponse {
+  selector: string;
+  version: string;
+  mode: "extends" | "copy";
+  plugin?: { slug?: string; catalogSlug?: string; visibility?: string };
+  publishedVersion?: {
+    version?: string;
+    upstream?: { kind?: string; ref?: string; version_at_link?: string };
+    exclude?: string[];
+  };
+}
+
 export interface CloudClient {
+  /** Resolves `null` when this Cloud has no duplicate endpoint (bare 404). */
+  duplicateCatalogPlugin(input: CloudDuplicateRequest): Promise<CloudDuplicateResponse | null>;
   whoami(): Promise<Record<string, unknown>>;
   listOrgs(): Promise<Record<string, unknown>[]>;
   planPluginPublishVersion(metadata: Record<string, unknown>): Promise<{ nextVersion: string }>;
@@ -386,7 +410,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(`create plugin failed: ${response.status} ${parseApiError(body)}`);
+      throw new CloudApiError("create plugin failed", response.status, body);
     }
     return (body as { plugin: PublishedPluginRecord }).plugin;
   }
@@ -411,12 +435,35 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(`publish failed: ${response.status} ${parseApiError(body)}`);
+      throw new CloudApiError("publish failed", response.status, body);
     }
     return body as { version: { version: string } };
   }
 
   return {
+    async duplicateCatalogPlugin(input: CloudDuplicateRequest) {
+      const { org, catalog, slug } = input.source;
+      const path = `/catalogs/${encodeURIComponent(org)}/${encodeURIComponent(catalog)}/plugins/${encodeURIComponent(slug)}/duplicate`;
+      const response = await authFetch(apiUrl(state.baseUrl, path), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mode: input.mode,
+          name: input.name,
+          targetOrg: input.targetOrg,
+          targetCatalog: input.targetCatalog,
+        }),
+      });
+      const { body } = await readResponseBody(response);
+      if (response.ok) return body as CloudDuplicateResponse;
+      // An older Cloud answers a bare 404; a known source that is missing or
+      // hidden comes back with an error code.
+      if ((response.status === 404 || response.status === 405 || response.status === 501) && !parseCloudErrorBody(body).code) {
+        return null;
+      }
+      throw new CloudApiError("duplicate failed", response.status, body);
+    },
+
     async whoami() {
       const response = await authFetch(apiUrl(state.baseUrl, "/me"));
       if (!response.ok) throw new Error(`whoami failed: ${response.status}`);
