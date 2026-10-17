@@ -192,6 +192,10 @@ describe("extends composition", () => {
     catalogParent();
     const child = extendsChild();
     expect(() => setPluginExcludes(child.id, ["widget:x"])).toThrow('Invalid hidden item "widget:x"');
+    expect(() => setPluginExcludes(child.id, ["skill:*"])).toThrow("patterns such as * are not supported");
+    const many = Array.from({ length: 201 }, (_, i) => `skill:s${i}`);
+    expect(() => setPluginExcludes(child.id, many)).toThrow("at most 200 items");
+    expect(setPluginExcludes(child.id, many.slice(0, 200))).toHaveLength(200);
     expect(setPluginExcludes(child.id, ["plugin:web-search", "skill:review", "skill:review"])).toEqual([
       "plugin:web-search",
       "skill:review",

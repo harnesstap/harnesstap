@@ -1,6 +1,8 @@
 import semver from "semver";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { resolveCatalogScope } from "../config/catalog.js";
-import { getDb } from "../db/connection.js";
+import { getDb, getHarnesstapDir } from "../db/connection.js";
 import { listPlugins } from "../models/plugin-model.js";
 import type { Plugin } from "../types.js";
 import { formatCatalogRequestError } from "../utils/fetch-with-timeout.js";
@@ -42,13 +44,14 @@ export interface UpstreamQuery {
   range: string;
 }
 
+/** Answers keyed by `upstreamQueryKey` (ref and constraint); a key of just the ref is also read. */
 export type FetchUpstreamLatest = (
   items: UpstreamQuery[],
   opts: { signal?: AbortSignal },
 ) => Promise<Map<string, UpstreamLatest>>;
 
 /** Batch size of the Cloud updates-since contract. */
-export const UPDATES_SINCE_BATCH = 500;
+export const UPDATES_SINCE_BATCH = 100;
 
 function catalogBaseOf(plugin: Plugin): string | undefined {
   const locator = plugin.origin_locator ?? "";
@@ -153,10 +156,70 @@ function localLatest(ref: string): UpstreamLatest {
 
 const UPDATES_SINCE_MISSING = new Set([404, 405, 501]);
 
+/** Map key for one query: Cloud answers per ref and constraint. */
+export function upstreamQueryKey(item: Pick<UpstreamQuery, "base" | "range">): string {
+  return `${item.base}@${item.range}`;
+}
+
+/** One `updates-since` answer row (harnesstap-cloud#143). */
+interface UpdatesSinceItem {
+  ref?: string;
+  version?: string;
+  constraint?: string;
+  latest?: string;
+  yanked?: boolean;
+  latest_in_range?: string;
+  latest_in_range_yanked?: boolean;
+  latest_major?: string;
+}
+
+interface UpdatesSinceCache {
+  [bodyKey: string]: { etag: string; items: UpdatesSinceItem[] };
+}
+
+const UPDATES_SINCE_CACHE_FILE = "updates-since.json";
+const UPDATES_SINCE_CACHE_KEEP = 20;
+
+function updatesSinceCachePath(): string {
+  return join(getHarnesstapDir(), "cache", UPDATES_SINCE_CACHE_FILE);
+}
+
+function readUpdatesSinceCache(): UpdatesSinceCache {
+  try {
+    const parsed = JSON.parse(readFileSync(updatesSinceCachePath(), "utf8")) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as UpdatesSinceCache) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A cache, not user data: rewritten whole, trimmed to the newest entries. */
+function writeUpdatesSinceCache(cache: UpdatesSinceCache): void {
+  try {
+    const keys = Object.keys(cache);
+    const trimmed: UpdatesSinceCache = {};
+    for (const key of keys.slice(-UPDATES_SINCE_CACHE_KEEP)) trimmed[key] = cache[key]!;
+    mkdirSync(dirname(updatesSinceCachePath()), { recursive: true });
+    writeFileSync(updatesSinceCachePath(), JSON.stringify(trimmed));
+  } catch {
+    // A failed cache write only costs a full answer next time.
+  }
+}
+
+/** What Cloud's row means for one query. A yanked newest-in-range is not offered. */
+export function latestFromUpdatesSince(item: UpstreamQuery, row: UpdatesSinceItem | undefined): UpstreamLatest {
+  if (!row) return { ok: false, status: "unpublished", message: `${item.base} is not published.` };
+  const inRange = row.latest_in_range_yanked ? "" : (row.latest_in_range ?? "");
+  return { ok: true, latest_in_range: inRange, latest_major: row.latest_major ?? "" };
+}
+
 /**
- * Cloud's batched `POST /api/catalog/updates-since` (Cloud SE owns it). Until
- * it is deployed, a 404, 405 or 501 falls back to one catalog lookup per ref,
- * which only knows each plugin's latest version.
+ * Cloud's batched `POST /api/catalog/updates-since` (harnesstap-cloud#143):
+ * `{selectors: [{ref, version, constraint}]}`, at most 100 per call, with
+ * ETag and `If-None-Match` so an unchanged answer is a 304. Each item carries
+ * `latest_in_range` and `latest_major`, so an update inside the range is seen
+ * even when a newer major exists. A 404, 405 or 501 (older Cloud) falls back
+ * to one catalog lookup per ref, which only knows each plugin's latest version.
  */
 export const defaultFetchUpstreamLatest: FetchUpstreamLatest = async (items, opts) => {
   const out = new Map<string, UpstreamLatest>();
@@ -168,8 +231,15 @@ export const defaultFetchUpstreamLatest: FetchUpstreamLatest = async (items, opt
   } catch {
     token = undefined;
   }
+  const cache = readUpdatesSinceCache();
+  let cacheChanged = false;
   for (let start = 0; start < items.length; start += UPDATES_SINCE_BATCH) {
     const batch = items.slice(start, start + UPDATES_SINCE_BATCH);
+    const body = JSON.stringify({
+      selectors: batch.map((item) => ({ ref: item.base, version: item.version, constraint: item.range })),
+    });
+    const cacheKey = `${root}\n${token ? "auth" : "public"}\n${body}`;
+    const cached = cache[cacheKey];
     let response: Response;
     try {
       response = await cloudFetch(`${root}/api/catalog/updates-since`, {
@@ -177,44 +247,62 @@ export const defaultFetchUpstreamLatest: FetchUpstreamLatest = async (items, opt
         headers: {
           "content-type": "application/json",
           ...(token ? { authorization: `Bearer ${token}` } : {}),
+          ...(cached?.etag ? { "if-none-match": cached.etag } : {}),
         },
-        body: JSON.stringify({
-          items: batch.map((item) => ({ ref: item.base, version: item.version, range: item.range })),
-        }),
+        body,
         ...(opts.signal ? { signal: opts.signal } : {}),
       });
     } catch (error) {
       for (const item of batch) {
-        out.set(item.base, { ok: false, status: "unreachable", message: formatCatalogRequestError(error) });
+        out.set(upstreamQueryKey(item), { ok: false, status: "unreachable", message: formatCatalogRequestError(error) });
       }
       continue;
     }
     if (UPDATES_SINCE_MISSING.has(response.status)) {
-      for (const item of batch) out.set(item.base, await latestFromCatalogList(item));
+      for (const item of batch) out.set(upstreamQueryKey(item), await latestFromCatalogList(item));
       continue;
     }
-    if (!response.ok) {
+    let rows: UpdatesSinceItem[];
+    if (response.status === 304 && cached) {
+      rows = cached.items;
+    } else if (response.ok) {
+      const parsed = (await response.json().catch(() => ({}))) as { items?: UpdatesSinceItem[] };
+      rows = Array.isArray(parsed.items) ? parsed.items : [];
+      const etag = response.headers.get("etag");
+      if (etag) {
+        delete cache[cacheKey];
+        cache[cacheKey] = { etag, items: rows };
+        cacheChanged = true;
+      }
+    } else {
+      const detail = await describeCloudError(response);
       for (const item of batch) {
-        out.set(item.base, { ok: false, status: "unreachable", message: `Cloud answered ${response.status}` });
+        out.set(upstreamQueryKey(item), { ok: false, status: "unreachable", message: detail });
       }
       continue;
     }
-    const body = (await response.json().catch(() => ({}))) as {
-      items?: Array<{ ref?: string; latest?: string; latest_in_range?: string; latest_major?: string }>;
-    };
-    const byRef = new Map((body.items ?? []).map((row) => [row.ref ?? "", row]));
     for (const item of batch) {
-      const row = byRef.get(item.base);
-      out.set(
-        item.base,
-        row
-          ? { ok: true, latest_in_range: row.latest_in_range ?? "", latest_major: row.latest_major ?? "" }
-          : { ok: false, status: "unpublished", message: `${item.base} is not published.` },
-      );
+      const row =
+        rows.find((candidate) => candidate.ref === item.base && candidate.constraint === item.range)
+        ?? rows.find((candidate) => candidate.ref === item.base && candidate.constraint === undefined);
+      out.set(upstreamQueryKey(item), latestFromUpdatesSince(item, row));
     }
   }
+  if (cacheChanged) writeUpdatesSinceCache(cache);
   return out;
 };
+
+async function describeCloudError(response: Response): Promise<string> {
+  const body = (await response.json().catch(() => undefined)) as
+    | { error?: { code?: string; message?: string; requestId?: string } | string; message?: string; requestId?: string }
+    | undefined;
+  const error = typeof body?.error === "object" ? body.error : undefined;
+  const message = error?.message ?? body?.message ?? (typeof body?.error === "string" ? body.error : "");
+  const requestId = error?.requestId ?? body?.requestId;
+  return [`Cloud answered ${response.status}`, message, requestId ? `(request ${requestId})` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
 
 /** Swappable for tests; production uses Cloud. */
 export const upstreamCheckDeps: { fetchLatest: FetchUpstreamLatest } = {
@@ -259,7 +347,8 @@ export async function runUpstreamCheck(opts?: {
   for (const target of targets) {
     if (!isCatalogUpstreamRef(target.ref)) continue;
     const base = upstreamRefBase(target.ref);
-    catalogQueries.set(base, { base, version: target.local_version, range: rangeOf(target.ref) });
+    const query = { base, version: target.local_version, range: rangeOf(target.ref) };
+    catalogQueries.set(upstreamQueryKey(query), query);
   }
   const fetchLatest = opts?.fetchLatest ?? upstreamCheckDeps.fetchLatest;
   const latestByBase = await fetchLatest([...catalogQueries.values()], { signal: opts?.signal });
@@ -268,7 +357,7 @@ export async function runUpstreamCheck(opts?: {
   const computed = targets.map((target) => {
     const base = upstreamRefBase(target.ref);
     const latest = isCatalogUpstreamRef(target.ref)
-      ? (latestByBase.get(base) ?? { ok: false as const, status: "unreachable" as const, message: "No answer for this ref." })
+      ? (latestByBase.get(upstreamQueryKey({ base, range: rangeOf(target.ref) })) ?? latestByBase.get(base) ?? { ok: false as const, status: "unreachable" as const, message: "No answer for this ref." })
       : localLatest(target.ref);
     const known = isCatalogUpstreamRef(target.ref) && latest.ok
       ? { ok: true as const, ...narrowToRange(latest, rangeOf(target.ref)) }
