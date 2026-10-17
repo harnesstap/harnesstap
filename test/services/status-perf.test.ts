@@ -97,6 +97,7 @@ import {
 import { getDb } from "../../src/db/connection.ts";
 import { readStatusWriteGeneration, statementAffectsStatus } from "../../src/db/write-generation.ts";
 import { readUpstreamCheckSummary } from "../../src/services/upstream-check-read.ts";
+import { addNotification, markAllNotificationsRead, unreadNotificationCount } from "../../src/services/notifications.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
 const RESOURCE_COUNT = 70;
@@ -478,6 +479,52 @@ describe("status perf", () => {
       expect(statementAffectsStatus("INSERT INTO upstream_checks (plugin_name) VALUES ('x')")).toBe(false);
       expect(statementAffectsStatus("DELETE FROM upstream_checks WHERE plugin_name = 'x'")).toBe(false);
       expect(statementAffectsStatus("UPDATE plugins SET name = 'x'")).toBe(true);
+    } finally {
+      clearLiveReadCaches();
+      await context.cleanup();
+    }
+  }, 20_000);
+
+  it("keeps the warm budget with 2000 notifications and shows unread_count without a recompute", async () => {
+    const context = await createInitializedTestContext("status-perf-notifications");
+    try {
+      clearLiveReadCaches();
+      writeCursorHome(context.homeDir);
+      const plugin = createPlugin({ name: "bell-profile" });
+      setPluginTags(plugin.id, ["profile"]);
+      setActiveProfileName("bell-profile");
+      for (let index = 0; index < 2000; index += 1) {
+        addNotification({
+          kind: "update_available",
+          plugin_name: `plugin-${index}`,
+          title: `plugin-${index} 1.1.0 is available`,
+          payload: { version: "1.1.0" },
+        });
+      }
+      getDb().prepare("UPDATE notifications SET read_at = created_at WHERE rowid % 2 = 0").run();
+
+      setStatusRefreshDelayMs(0);
+      warmStatusRefreshWorker();
+      const countStarted = performance.now();
+      expect(unreadNotificationCount()).toBe(1000);
+      const countMs = performance.now() - countStarted;
+
+      const cold = await detectGlobalProfileStatus({ depth: "full" });
+      expect(cold.unread_count).toBe(1000);
+      const generation = readStatusWriteGeneration();
+      markAllNotificationsRead();
+      expect(readStatusWriteGeneration()).toBe(generation);
+      const warmStarted = performance.now();
+      const warm = await detectGlobalProfileStatus({ depth: "full" });
+      const warmMs = performance.now() - warmStarted;
+      expect(warm.refreshing).toBe(false);
+      expect(warm.unread_count).toBe(0);
+      console.log(`status perf notifications count=${countMs.toFixed(2)}ms warm=${warmMs.toFixed(1)}ms`);
+      expect(countMs).toBeLessThan(5);
+      expect(warmMs).toBeLessThan(WARM_BUDGET_MS);
+      expect(statementAffectsStatus("INSERT OR IGNORE INTO notifications (id) VALUES ('x')")).toBe(false);
+      expect(statementAffectsStatus("UPDATE notifications SET read_at = 'now'")).toBe(false);
+      expect(statementAffectsStatus("DELETE FROM notifications WHERE id = 'x'")).toBe(false);
     } finally {
       clearLiveReadCaches();
       await context.cleanup();

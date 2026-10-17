@@ -24,6 +24,7 @@ import {
   useDesktopUpdateStatus,
 } from "../UpdateAvailableControl";
 import { HeaderMoreMenu } from "./HeaderMoreMenu";
+import { NotificationsBell } from "./NotificationsBell";
 import markUrl from "../../../app-icon.svg";
 
 const HEADER_ICON_SIZE = 18;
@@ -249,6 +250,7 @@ export function AppHeader({
         className="header-status"
         data-testid={connected ? "agent-connected" : undefined}
       >
+        <NotificationsBell baseUrl={connected ? baseUrl : null} token={token} disabled={switching} />
         <IconActionButton
           data-testid="open-settings"
           onClick={onOpenSettings}
