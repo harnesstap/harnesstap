@@ -2,7 +2,7 @@ import { Option, type Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
-import { getPlugin, resolvePluginSelector } from "../../models/plugin-model.js";
+import { getPlugin } from "../../models/plugin-model.js";
 import { dryRunStashLine, SWITCH_CHANGES_FLAG_HELP } from "../../copy/cli.js";
 import { listAttachedPluginRefs } from "../../services/plugin-composition.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
@@ -83,7 +83,7 @@ async function handleProfilePullCommand(
     format?: string;
   },
 ): Promise<void> {
-  const installed = await handlePluginInstallCommand(selector, opts);
+  const installed = await handlePluginInstallCommand(selector, { ...opts, profile: true });
   if (!installed || process.exitCode) {
     return;
   }
@@ -106,27 +106,8 @@ function warnProfilePublishValidation(plugin: Plugin): void {
       `Profile ${ui.theme.accent(plugin.name)} has no plugin references and no material resources.`,
     );
   }
-
-  const unresolvedLocalRefs: string[] = [];
-  for (const ref of refs) {
-    const local = resolvePluginSelector(
-      ref.version_constraint
-        ? `${ref.dependency_name}@${ref.version_constraint}`
-        : ref.dependency_name,
-    );
-    if (!local) {
-      continue;
-    }
-    if (!local.org_slug || !local.catalog_slug) {
-      unresolvedLocalRefs.push(ref.dependency_name);
-    }
-  }
-
-  if (unresolvedLocalRefs.length > 0) {
-    ui.warn(
-      `Profile ${ui.theme.accent(plugin.name)} references unpublished local plugins: ${unresolvedLocalRefs.join(", ")}`,
-    );
-  }
+  // Local dependencies that are not in a catalog block the publish itself
+  // (assertDependenciesPublished), so they are not repeated as a warning.
 }
 
 async function handleProfilePublishCommand(

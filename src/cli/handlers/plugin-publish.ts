@@ -13,6 +13,11 @@ import {
 import { formatPublishedSelector } from "../../services/plugin-selector.js";
 import { assertParentPublished, UpstreamUnpublishedError } from "../../services/plugin-extends.js";
 import {
+  assertDependenciesPublished,
+  listUnpublishedDependencies,
+  unpublishedDependenciesMessage,
+} from "../../services/plugin-publish-dependencies.js";
+import {
   assertAuthored,
   PluginProvenanceError,
 } from "../../services/plugin-origin.js";
@@ -61,8 +66,9 @@ export async function handlePluginPublishCommand(
 
   try {
     assertAuthored(plugin.id, "publish");
-    // Before any cut: a refused publish must not leave a new version behind.
+    // Check before cutting so a blocked publish leaves no new version behind.
     assertParentPublished(plugin);
+    assertDependenciesPublished(plugin);
     if (opts.version) {
       plugin = cutPluginVersion({ pluginId: plugin.id, newVersion: opts.version });
     } else if (plugin.dirty) {
@@ -167,13 +173,32 @@ export async function handlePluginPublishPlanCommand(
     const targets = resolvePublishTargetsForPlugin(plugin.id);
     const plans = await planPluginPublish(plugin, targets, { account: opts.account });
     const blockers = publishBlockers(plugin);
+    const unpublished = listUnpublishedDependencies(plugin.id);
+    const blocker = unpublished.length > 0
+      ? unpublishedDependenciesMessage(plugin.name, unpublished)
+      : undefined;
+    if (blocker) {
+      process.exitCode = 1;
+    }
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
-      printJson({ plugin: plugin.name, plans, ...(blockers.length > 0 ? { blockers } : {}) });
+      const all = [
+        ...blockers,
+        ...(blocker ? [{ code: "unpublished_dependencies", message: blocker, dependencies: unpublished }] : []),
+      ];
+      printJson({
+        plugin: plugin.name,
+        ...(all.length > 0 ? { blockers: all } : {}),
+        plans,
+      });
       return;
     }
     for (const blocker of blockers) {
       ui.danger(blocker.message, { hints: [formatCommand(["profile", "detach", plugin.name])] });
+    }
+
+    if (blocker) {
+      ui.danger(blocker);
     }
 
     for (const plan of plans) {

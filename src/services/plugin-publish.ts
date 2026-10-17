@@ -12,6 +12,7 @@ import { buildApPackageFiles } from "./agent-plugins/files.js";
 import { envelopeFromFiles } from "./agent-plugins/envelope.js";
 import { assertAgentPluginsPublishable } from "./agent-plugins/publish-gate.js";
 import { assertPluginsCleanForShare } from "./plugin-versioning.js";
+import { assertDependenciesPublished } from "./plugin-publish-dependencies.js";
 
 export interface PublishTargetResult {
   target: RegisteredCatalog;
@@ -36,6 +37,7 @@ export async function publishPluginToCatalogs(
 ): Promise<PublishTargetResult[]> {
   assertPluginsCleanForShare([plugin]);
   assertParentPublished(plugin);
+  assertDependenciesPublished(plugin);
   const warnings: string[] = [];
   const packageFiles = buildApPackageFiles(plugin.id, {
     warnings,
