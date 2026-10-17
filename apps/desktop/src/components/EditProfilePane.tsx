@@ -27,7 +27,20 @@ import type {
   LibraryResource,
   ProfileDetail,
 } from "../lib/types";
+import {
+  detachLibraryPlugin,
+  inheritedItemKey,
+  setLibraryPluginExcludes,
+  type InheritedItem,
+} from "../lib/api/library-plugins";
+import {
+  DETACH_CONFIRM_COPY,
+  detachSuccessMessage,
+  inheritedItemLabel,
+  toggleExcludeEntry,
+} from "../lib/duplicate-profile";
 import { ChromeTooltip } from "./ChromeTooltip";
+import { InheritedItemsSection } from "./InheritedItemsSection";
 import { IconActionButton } from "./IconActionButton";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
@@ -104,6 +117,7 @@ export function EditProfilePane({
   } | null>(null);
   const [clock, setClock] = useState(() => new Date());
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [detachOpen, setDetachOpen] = useState(false);
 
   const applyDetail = (next: ProfileDetail) => {
     setDetail(next);
@@ -450,6 +464,49 @@ export function EditProfilePane({
     });
   };
 
+  const toggleInherited = (item: InheritedItem) => {
+    if (!baseUrl || !detail) {
+      return;
+    }
+    const key = inheritedItemKey(item);
+    const wasHidden = (detail.excludes ?? []).includes(key);
+    const label = inheritedItemLabel(item);
+    void runMutation(
+      async () => {
+        const current = (await fetchProfileDetail(baseUrl, token, profileName)).excludes ?? [];
+        await setLibraryPluginExcludes(baseUrl, token, profileName, toggleExcludeEntry(current, key));
+        return fetchProfileDetail(baseUrl, token, profileName);
+      },
+      { affectsApply: true },
+    ).then((ok) => {
+      if (!ok) {
+        return;
+      }
+      toast({
+        tone: "success",
+        title: wasHidden ? `Showing ${label} again` : `Hid ${label}`,
+        action: {
+          label: "Undo",
+          onClick: () => toggleInherited({ ...item, hidden: !wasHidden }),
+        },
+      });
+    });
+  };
+
+  const confirmDetach = () => {
+    if (!baseUrl) {
+      return;
+    }
+    void runMutation(
+      async () => {
+        const result = await detachLibraryPlugin(baseUrl, token, profileName);
+        onSuccess?.(detachSuccessMessage(profileName, result));
+        return fetchProfileDetail(baseUrl, token, profileName);
+      },
+      { affectsApply: true },
+    ).then(() => setDetachOpen(false));
+  };
+
   const controlsDisabled = disabled || busy || loading;
 
   return (
@@ -578,6 +635,16 @@ export function EditProfilePane({
               </ChromeTooltip>
             }
           />
+          {detail.upstream?.kind === "extends" ? (
+            <InheritedItemsSection
+              upstream={detail.upstream}
+              items={detail.inherited ?? []}
+              parentMissing={detail.parent_missing}
+              disabled={controlsDisabled}
+              onToggle={toggleInherited}
+              onDetach={() => setDetachOpen(true)}
+            />
+          ) : null}
           <EditProfileParitySlots
             profileName={profileName}
             baseUrl={baseUrl}
@@ -647,6 +714,19 @@ export function EditProfilePane({
         excludeProfileName={profileName}
         onClose={() => setAddModalOpen(false)}
         onAdd={addLibraryItems}
+      />
+      <ConfirmDialog
+        open={detachOpen}
+        title={DETACH_CONFIRM_COPY.title}
+        description={DETACH_CONFIRM_COPY.description}
+        confirmLabel={DETACH_CONFIRM_COPY.confirmLabel}
+        confirmBusy={busy}
+        onConfirm={confirmDetach}
+        onCancel={() => {
+          if (!busy) {
+            setDetachOpen(false);
+          }
+        }}
       />
       <ConfirmDialog
         open={discardOpen}

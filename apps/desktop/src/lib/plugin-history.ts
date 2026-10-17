@@ -4,7 +4,7 @@ export type PluginPackageAction =
   | "update"
   | "history"
   | "cut"
-  | "fork"
+  | "duplicate"
   | "doctor"
   | "delete"
   | "restore";
@@ -79,9 +79,9 @@ export function pluginPackageActions(input: {
     return ["restore"];
   }
   if (input.origin === "authored") {
-    return ["apply", "history", "cut", "doctor", "delete"];
+    return ["apply", "history", "cut", "duplicate", "doctor", "delete"];
   }
-  return ["apply", "update", "fork", "doctor", "delete"];
+  return ["apply", "update", "duplicate", "doctor", "delete"];
 }
 
 export function formatPluginRollbackConfirmMessage(input: {

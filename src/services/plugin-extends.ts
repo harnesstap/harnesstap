@@ -239,6 +239,39 @@ function composeItems(pluginId: string, chain: string[]): ComposedItem[] {
   return [...inherited, ...own.map((resource) => ({ resource, source: "own" as const }))];
 }
 
+export interface InheritedItem {
+  id: string;
+  type: string;
+  name: string;
+  source: "parent";
+  /** True when the child hides it; it does not apply. */
+  hidden: boolean;
+}
+
+/**
+ * The parent's items as the child sees them, hidden ones included and
+ * flagged, so an editor can offer to show them again. Items the child also
+ * has itself are left out: the child's own copy wins.
+ */
+export function listInheritedItems(pluginId: string): InheritedItem[] {
+  const plugin = getPluginById(pluginId);
+  if (!plugin?.upstream || plugin.upstream.kind !== "extends") return [];
+  const parent = resolveUpstreamParent(plugin);
+  if (!parent) throw parentMissingError(plugin);
+  const hidden = new Set(listPluginExcludes(plugin.id));
+  const ownKeys = new Set(getPluginResources(plugin.id).map(excludeKeyOf));
+  return composeItems(parent.id, [plugin.name, parent.name])
+    .map((item) => item.resource)
+    .filter((resource) => !isOwnHostPin(parent, resource) && !ownKeys.has(excludeKeyOf(resource)))
+    .map((resource) => ({
+      id: resource.id,
+      type: resource.type,
+      name: resource.name,
+      source: "parent" as const,
+      hidden: hidden.has(excludeKeyOf(resource)),
+    }));
+}
+
 /** Own and inherited items, each tagged with where it comes from. */
 export function listComposedItems(pluginId: string): ComposedItem[] {
   const plugin = getPluginById(pluginId);

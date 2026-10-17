@@ -215,8 +215,10 @@ export function PublishProfileDrawer({
   );
   const noCatalogRegistered = !loading && registered.length === 0;
   const hasCheckedCatalog = checkedKeys.length > 0;
+  const blockers = plan?.blockers ?? [];
   const publishEnabled =
     !authRequired
+    && blockers.length === 0
     && !dirty
     && !notAuthored
     && !noCatalogRegistered
@@ -323,10 +325,15 @@ export function PublishProfileDrawer({
                       {notAuthored}
                     </div>
                     <p className="muted">
-                      Fork a catalog or upstream profile before publishing.
+                      Duplicate a catalog or upstream profile before publishing.
                     </p>
                   </>
                 ) : null}
+                {blockers.map((blocker) => (
+                  <div className="banner error" role="alert" key={blocker.code}>
+                    {blocker.message}
+                  </div>
+                ))}
                 {plan?.warnings.map((warning) => (
                   <div className="banner" role="status" key={warning.code}>
                     {warning.message}

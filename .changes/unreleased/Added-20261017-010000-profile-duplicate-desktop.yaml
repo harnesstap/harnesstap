@@ -1,0 +1,5 @@
+kind: Added
+body: 'Desktop: one **Duplicate** button replaces Fork on every Library plugin, authored ones included. The dialog asks for a name and offers **Keep in sync** (the default; parent updates show up here) or **Separate copy**. In Edit profile, a kept-in-sync profile lists its parent''s items with a "from parent" chip: untick hides one, tick shows it again, and both can be undone from the toast. **Detach from parent** copies the parent''s items into the profile and stops parent updates; nothing is deleted. The publish drawer shows why a kept-in-sync profile cannot publish while its parent is unpublished and keeps Publish off. The agent adds `POST /v1/library/plugins/:selector/duplicate` (`{name, mode: "inherit" | "copy"}`), `POST .../detach` and `PUT .../excludes` (`{entries}`); `/fork` still works. Profile and plugin detail now return `upstream`, `excludes` and the `inherited` items, each tagged `source: "parent"` with a `hidden` flag.'
+time: 2026-10-17T11:00:00.000Z
+custom:
+  Issue: ""

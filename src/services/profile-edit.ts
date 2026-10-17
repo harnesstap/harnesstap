@@ -15,7 +15,8 @@ import {
   updatePluginDescription,
 } from "../models/plugin-model.js";
 import { getResource } from "../models/resource.js";
-import type { Plugin, Resource } from "../types.js";
+import type { Plugin, PluginUpstream, Resource } from "../types.js";
+import { listInheritedItems, listPluginExcludes, type InheritedItem } from "./plugin-extends.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {
   addPluginAttachment,
@@ -60,6 +61,11 @@ export interface ProfileDetail {
   active: boolean;
   dependencies: ProfileDetailDependency[];
   resources: ProfileDetailResource[];
+  upstream?: PluginUpstream | null;
+  excludes?: string[];
+  inherited?: InheritedItem[];
+  /** Set when a kept-in-sync profile's parent is not installed. */
+  parent_missing?: string;
 }
 
 function resolveProfilePlugin(selector: string): Plugin {
@@ -128,7 +134,31 @@ export function getProfileDetail(selector: string): ProfileDetail {
     active: activeProfile === profile.name,
     dependencies,
     resources,
+    ...extendsDetail(profile),
   };
+}
+
+/** Upstream link, hidden list and inherited items for a kept-in-sync profile. */
+export function extendsDetail(plugin: Plugin, opts?: { withUpstream?: boolean }): {
+  upstream?: PluginUpstream | null;
+  excludes?: string[];
+  inherited?: InheritedItem[];
+  parent_missing?: string;
+} {
+  if (!plugin.upstream) return {};
+  const link = opts?.withUpstream === false ? {} : { upstream: plugin.upstream };
+  if (plugin.upstream.kind !== "extends") return link;
+  const excludes = listPluginExcludes(plugin.id);
+  try {
+    return { ...link, excludes, inherited: listInheritedItems(plugin.id) };
+  } catch (error) {
+    return {
+      ...link,
+      excludes,
+      inherited: [],
+      parent_missing: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 export function updateProfileMetadata(

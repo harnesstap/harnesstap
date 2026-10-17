@@ -25,6 +25,14 @@ export interface ProfilePublishPlan {
   authored: boolean;
   warnings: PublishPlanWarning[];
   plans: PublishPlanRow[];
+  /** Reasons publish cannot run at all, such as an unpublished parent. */
+  blockers?: PublishPlanBlocker[];
+}
+
+export interface PublishPlanBlocker {
+  code: string;
+  message: string;
+  ref?: string;
 }
 
 export interface ProfilePublishResultRow {

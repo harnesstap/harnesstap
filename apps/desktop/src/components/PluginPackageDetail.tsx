@@ -11,6 +11,7 @@ import {
 import {
   ArchiveRestore,
   CloudDownload,
+  Copy,
   GitFork,
   History,
   MapPin,
@@ -47,7 +48,8 @@ import {
   deleteLibraryPlugin,
   fetchLibraryPluginDetail,
   fetchLibraryPluginVersions,
-  forkLibraryPlugin,
+  duplicateLibraryPlugin,
+  type DuplicateMode,
   patchLibraryPlugin,
   patchLibraryPluginAttachments,
   rollbackLibraryPlugin,
@@ -74,6 +76,8 @@ import type {
 } from "../lib/types";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { DuplicateDialog } from "./DuplicateDialog";
+import { duplicateSuccessMessage } from "../lib/duplicate-profile";
 import { DoctorReportDialog } from "./DoctorReportDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
@@ -124,7 +128,7 @@ const APPLY_TOOLTIP = "Apply plugin graph";
 const UPDATE_TOOLTIP = "Update from origin";
 const DELETE_TOOLTIP = "Remove from library";
 const CUT_TOOLTIP = "Tag a new version";
-const FORK_TOOLTIP = "Fork to edit locally";
+const DUPLICATE_TOOLTIP = "Duplicate";
 const DOCTOR_TOOLTIP = "Run Doctor";
 const HISTORY_TOOLTIP = "Browse versions";
 const FROZEN_BANNER =
@@ -230,8 +234,7 @@ export function PluginPackageDetail({
   const [cutOpen, setCutOpen] = useState(false);
   const [cutVersion, setCutVersion] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [forkOpen, setForkOpen] = useState(false);
-  const [forkName, setForkName] = useState("");
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [rollbackBusy, setRollbackBusy] = useState(false);
@@ -263,7 +266,7 @@ export function PluginPackageDetail({
     applyOpen ||
     cutOpen ||
     deleteOpen ||
-    forkOpen ||
+    duplicateOpen ||
     restoreOpen ||
     doctorOpen;
   const anyBusy = busy || doctorBusy || confirmBusy || applyBusy || rollbackBusy || updateBusy;
@@ -297,7 +300,7 @@ export function PluginPackageDetail({
       applyOpen ||
         cutOpen ||
         deleteOpen ||
-        forkOpen ||
+        duplicateOpen ||
         restoreOpen ||
         doctorOpen,
     );
@@ -305,7 +308,7 @@ export function PluginPackageDetail({
     applyOpen,
     cutOpen,
     deleteOpen,
-    forkOpen,
+    duplicateOpen,
     restoreOpen,
     doctorOpen,
     onConfirmOpenChange,
@@ -930,26 +933,23 @@ export function PluginPackageDetail({
     }
   };
 
-  const confirmFork = async () => {
+  const confirmDuplicate = async (input: { name: string; mode: DuplicateMode }) => {
     if (!baseUrl || !detail) {
       return;
     }
     setConfirmBusy(true);
     try {
-      const asName = forkName.trim() || `${detail.plugin.name}-fork`;
-      const result = await forkLibraryPlugin(
-        baseUrl,
-        token,
-        detail.plugin.name,
-        asName,
-      );
-      onSuccess(`Forked ${detail.plugin.name} into ${result.name}`);
-      setForkOpen(false);
+      const result = await duplicateLibraryPlugin(baseUrl, token, detail.plugin.name, input);
+      onSuccess(duplicateSuccessMessage(detail.plugin.name, result));
+      setDuplicateOpen(false);
       onLibraryChanged?.();
+      if (detail.plugin.tags.includes("profile")) {
+        onProfilesChanged();
+      }
       await onNameCommit(result.name);
     } catch (error: unknown) {
-      setDetailError(errorMessage(error, "Could not fork plugin"));
-      setForkOpen(false);
+      setDetailError(errorMessage(error, "Could not duplicate"));
+      setDuplicateOpen(false);
     } finally {
       setConfirmBusy(false);
     }
@@ -1185,18 +1185,15 @@ export function PluginPackageDetail({
             icon={<Tag size={16} aria-hidden />}
           />
         );
-      case "fork":
+      case "duplicate":
         return (
           <IconActionButton
-            key="fork"
+            key="duplicate"
             disabled={clusterLocked}
-            title={FORK_TOOLTIP}
-            label="Fork"
-            onClick={() => {
-              setForkName(`${detail.plugin.name}-fork`);
-              setForkOpen(true);
-            }}
-            icon={<GitFork size={16} aria-hidden />}
+            title={DUPLICATE_TOOLTIP}
+            label="Duplicate"
+            onClick={() => setDuplicateOpen(true)}
+            icon={<Copy size={16} aria-hidden />}
           />
         );
       case "doctor":
@@ -1395,7 +1392,7 @@ export function PluginPackageDetail({
       {record.plugin.upstream ? (
         <LibraryFieldRow
           icon={<GitFork size={16} aria-hidden />}
-          fieldName={record.plugin.upstream.kind === "extends" ? "Extends" : "Forked from"}
+          fieldName={record.plugin.upstream.kind === "extends" ? "Extends" : "Copied from"}
           readOnly
           display={formatLibraryUpstream(record.plugin.upstream)}
           editing={false}
@@ -1651,31 +1648,15 @@ export function PluginPackageDetail({
         }}
       />
 
-      <ConfirmDialog
-        open={forkOpen}
-        title="Fork plugin"
-        description="Creates an authored copy you can edit. Library resources are shared, not duplicated."
-        confirmLabel="Fork plugin"
-        confirmBusy={confirmBusy}
-        onConfirm={() => {
-          void confirmFork();
+      <DuplicateDialog
+        open={duplicateOpen}
+        sourceName={detail?.plugin.name ?? ""}
+        busy={confirmBusy}
+        onConfirm={(input) => {
+          void confirmDuplicate(input);
         }}
-        onCancel={() => {
-          if (!confirmBusy) {
-            setForkOpen(false);
-          }
-        }}
-      >
-        <div className="form-field">
-          <Label htmlFor="plugin-fork-name">Name</Label>
-          <Input
-            id="plugin-fork-name"
-            value={forkName}
-            onChange={(event) => setForkName(event.target.value)}
-            disabled={confirmBusy}
-          />
-        </div>
-      </ConfirmDialog>
+        onCancel={() => setDuplicateOpen(false)}
+      />
 
       <ConfirmDialog
         open={restoreOpen}
