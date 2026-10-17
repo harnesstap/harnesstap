@@ -126,23 +126,19 @@ describe("profile edit publish chrome", () => {
 });
 
 describe("profile edit default environment chrome", () => {
-  test("places Clear as an icon to the left of the dropdown", () => {
-    const row = sliceBetween(
-      envFieldSource,
-      'className="flex items-center gap-2"',
-      "</Select>",
-    );
-    const clearIdx = row.indexOf("default-environment-clear");
+  test("places Remove as an icon to the right of the dropdown, only once a default is set", () => {
+    const row = sliceBetween(envFieldSource, 'className="default-env-row"', "</>");
     const selectIdx = row.indexOf("<Select");
-    expect(clearIdx).toBeGreaterThan(-1);
-    expect(selectIdx).toBeGreaterThan(clearIdx);
-    expect(envFieldSource).toContain('aria-label="Clear"');
+    const clearIdx = row.indexOf("default-environment-clear");
+    expect(selectIdx).toBeGreaterThan(-1);
+    expect(clearIdx).toBeGreaterThan(selectIdx);
+    expect(envFieldSource).not.toContain('aria-label="Clear"');
     expect(envFieldSource).not.toContain("text-btn");
   });
 
-  test("includes None and Create a new environment in the dropdown", () => {
-    expect(envFieldSource).toContain("DEFAULT_ENV_NONE");
-    expect(envFieldSource).toContain("Create a new environment");
+  test("offers Create a new environment in the dropdown, never None", () => {
+    expect(envFieldSource).not.toContain("DEFAULT_ENV_NONE");
+    expect(envFieldSource).toContain("DEFAULT_ENV_COPY.create");
     expect(envFieldSource).toContain("DEFAULT_ENV_CREATE");
     expect(envFieldSource).toContain("<Plus");
     expect(envFieldSource).toContain("onCreateEnvironment");
@@ -159,15 +155,18 @@ describe("profile edit default environment chrome", () => {
   });
 });
 
-describe("profile edit save and discard", () => {
-  test("tracks dirty name fields with explicit Save and Discard", () => {
-    expect(editSource).toContain("edit-profile-footer");
-    expect(editSource).toContain("Discard");
-    expect(editSource).toContain("Save");
+describe("profile edit autosave", () => {
+  test("saves as you go; no Save or Discard, sidebar Apply is the only commit", () => {
+    expect(editSource).not.toContain("edit-profile-footer");
+    expect(editSource).not.toContain("Discard edits?");
+    expect(editSource).not.toContain("discardMetadata");
+    expect(editSource).toContain("queueMeta");
+    expect(editSource).toContain("saveMetaNow");
+    expect(editSource).toContain("onBlur={commitName}");
     expect(editSource).toContain("requestClose");
-    expect(editSource).toContain("Discard edits?");
-    expect(editSource).toContain('tone="destructive"');
     expect(editSource).toContain("Undo");
+    // Autosave writes the Library only; it never asks to apply.
+    expect(editSource).toContain("affectsApply: false");
   });
 
   test("drops marketplace pin dropdowns in favor of the composition FAB", () => {
@@ -177,5 +176,17 @@ describe("profile edit save and discard", () => {
     );
     expect(editSource).toContain('data-testid="edit-profile-composition-fab"');
     expect(designSource).toContain("edit-profile Composition lists that profile’s members");
+  });
+});
+
+describe("Edit pane Composition box", () => {
+  test("sizes to its rows with no fixed or minimum height leaving a gap", () => {
+    const css = readFileSync(join(root, "styles/features/create.css"), "utf8");
+    const start = css.indexOf(".edit-profile-pane .compose-library-unified .selection-list-rows {");
+    expect(start).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf("}", start));
+    expect(rule).toContain("height: auto;");
+    expect(rule).toContain("min-height: 0;");
+    expect(rule).toContain("max-height: min(50vh, 420px);");
   });
 });

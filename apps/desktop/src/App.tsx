@@ -142,6 +142,23 @@ export function App() {
     [goToLibrary],
   );
 
+  const openProfilePage = useCallback(
+    (name: string) => {
+      ctrl.closeEditProfile();
+      ctrl.selectProfile(name);
+      nav.go("scope");
+    },
+    [ctrl.closeEditProfile, ctrl.selectProfile, nav.go],
+  );
+
+  const openProfileEditor = useCallback(
+    (name: string) => {
+      nav.go("scope");
+      ctrl.openEditProfile(name);
+    },
+    [ctrl.openEditProfile, nav.go],
+  );
+
   const openInLibrary = useCallback(
     (selector: string) => {
       if (selector.includes(":")) {
@@ -336,6 +353,8 @@ export function App() {
             onImported={onImported}
             onSuccess={onSuccessToast}
             onApplyResult={ctrl.setPendingTrustFromResult}
+            onOpenProfile={openProfilePage}
+            onEditProfile={openProfileEditor}
           />
         );
       default: {

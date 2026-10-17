@@ -15,6 +15,8 @@ export interface LibraryDetailChromeProps {
   /** Workspace hosts pass false so the shell Back is the only one. Default true. */
   showBack?: boolean;
   actions?: ReactNode;
+  /** Chips under the title, e.g. the type ("profile") and sync state. */
+  subtitle?: ReactNode;
   children?: ReactNode;
 }
 
@@ -29,6 +31,7 @@ export function LibraryDetailChrome({
   backLabel = "Back to library list",
   showBack = true,
   actions,
+  subtitle,
   children,
 }: LibraryDetailChromeProps) {
   return (
@@ -58,6 +61,7 @@ export function LibraryDetailChrome({
           <div className="library-detail-actions">{actions}</div>
         ) : null}
       </div>
+      {subtitle ? <div className="library-detail-subtitle">{subtitle}</div> : null}
       {children}
     </div>
   );

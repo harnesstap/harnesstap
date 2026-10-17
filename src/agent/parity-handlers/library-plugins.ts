@@ -1,4 +1,7 @@
 import { forkPlugin } from "../../services/plugin-fork.js";
+import { detachPlugin, duplicatePlugin, undoDetachPlugin, type DuplicateMode } from "../../services/plugin-duplicate.js";
+import { setPluginExcludes } from "../../services/plugin-extends.js";
+import { extendsDetail } from "../../services/profile-edit.js";
 import { getDb } from "../../db/connection.js";
 import {
   addResourceToPlugin,
@@ -202,6 +205,7 @@ export function buildPluginDetail(plugin: Plugin) {
       default_environment_id: plugin.default_environment_id ?? null,
       format_label: pluginFormatLabelForName(plugin.name, origin),
     },
+    ...extendsDetail(plugin, { withUpstream: false }),
     ...(importNoteLines(diagnostics).length > 0 ? { diagnostics } : {}),
     dependencies: listPluginDependencies(plugin.id).map((dep) => ({
       dependency_name: dep.dependency_name,
@@ -331,6 +335,20 @@ export function forkLibraryPlugin(
   };
 }
 
+export function duplicateLibraryPlugin(
+  selector: string,
+  input: { name?: string; mode?: DuplicateMode },
+): {
+  name: string;
+  version: string;
+  mode: DuplicateMode;
+  linked_to: string;
+  upstream: PluginUpstream;
+} {
+  const { plugin, mode, linked_to, upstream } = duplicatePlugin(selector, input);
+  return { name: plugin.name, version: plugin.version, mode, linked_to, upstream };
+}
+
 function forkErrorResponse(error: unknown): Response {
   const code =
     error instanceof Error && "code" in error && typeof error.code === "string"
@@ -345,6 +363,12 @@ function forkErrorResponse(error: unknown): Response {
   }
   if (code === "plugin_exists") {
     return jsonResponse({ error: "plugin_exists", message }, { status: 409 });
+  }
+  if (code === "undo_expired") {
+    return jsonResponse({ error: code, message }, { status: 409 });
+  }
+  if (code === "parent_missing" || code === "cycle" || code === "invalid_exclude" || code === "not_extends") {
+    return jsonResponse({ error: code, message }, { status: code === "parent_missing" ? 409 : 400 });
   }
   return jsonResponse({ error: "invalid_body", message }, { status: 400 });
 }
@@ -863,6 +887,106 @@ export async function tryHandle(
     }
     try {
       return jsonResponse(forkLibraryPlugin(matched.selector, asName));
+    } catch (error) {
+      return forkErrorResponse(error);
+    }
+  }
+
+  if (method === "POST" && matched.rest === "/duplicate") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readOptionalJson(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    const body = parsed.value ?? {};
+    if (
+      !isRecord(body)
+      || (body.name !== undefined && typeof body.name !== "string")
+      || (body.mode !== undefined && body.mode !== "inherit" && body.mode !== "copy")
+    ) {
+      return jsonResponse({ error: "invalid_body" }, { status: 400 });
+    }
+    try {
+      return jsonResponse(
+        duplicateLibraryPlugin(matched.selector, {
+          ...(typeof body.name === "string" ? { name: body.name } : {}),
+          ...(body.mode ? { mode: body.mode as DuplicateMode } : {}),
+        }),
+      );
+    } catch (error) {
+      return forkErrorResponse(error);
+    }
+  }
+
+  if (method === "POST" && matched.rest === "/detach") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    try {
+      const { plugin, materialized, hidden, undo_token } = detachPlugin(matched.selector);
+      return jsonResponse({
+        name: plugin.name,
+        upstream: plugin.upstream ?? null,
+        materialized,
+        hidden_cleared: hidden,
+        undo_token,
+      });
+    } catch (error) {
+      return forkErrorResponse(error);
+    }
+  }
+
+  if (method === "POST" && matched.rest === "/detach/undo") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readOptionalJson(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    const body = (parsed.value ?? {}) as { undo_token?: unknown };
+    if (typeof body.undo_token !== "string" || !body.undo_token) {
+      return jsonResponse(
+        { error: "invalid_body", message: "undo_token is required" },
+        { status: 400 },
+      );
+    }
+    try {
+      const plugin = undoDetachPlugin(matched.selector, body.undo_token);
+      return jsonResponse({ name: plugin.name, upstream: plugin.upstream ?? null });
+    } catch (error) {
+      return forkErrorResponse(error);
+    }
+  }
+
+  if (method === "PUT" && matched.rest === "/excludes") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readOptionalJson(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    const body = parsed.value;
+    if (
+      !isRecord(body)
+      || !Array.isArray(body.entries)
+      || !body.entries.every((entry) => typeof entry === "string")
+    ) {
+      return jsonResponse({ error: "invalid_body" }, { status: 400 });
+    }
+    const plugin = resolvePluginSelector(matched.selector);
+    if (!plugin) {
+      return jsonResponse({ error: "not_found", message: `Plugin not found: ${matched.selector}` }, { status: 404 });
+    }
+    try {
+      return jsonResponse({ excludes: setPluginExcludes(plugin.id, body.entries as string[]) });
     } catch (error) {
       return forkErrorResponse(error);
     }

@@ -58,13 +58,13 @@ describe("plugin history navigation", () => {
   test("frozen pane actions are Restore only; head authored includes History", () => {
     expect(
       pluginPackageActions({ origin: "authored", mode: "head", frozen: false }),
-    ).toEqual(["apply", "history", "cut", "doctor", "delete"]);
+    ).toEqual(["apply", "history", "cut", "duplicate", "doctor", "delete"]);
     expect(
       pluginPackageActions({ origin: "catalog", mode: "head", frozen: false }),
-    ).toEqual(["apply", "update", "fork", "doctor", "delete"]);
+    ).toEqual(["apply", "update", "duplicate", "doctor", "delete"]);
     expect(
       pluginPackageActions({ origin: "upstream", mode: "head", frozen: false }),
-    ).toEqual(["apply", "update", "fork", "doctor", "delete"]);
+    ).toEqual(["apply", "update", "duplicate", "doctor", "delete"]);
     expect(
       pluginPackageActions({ origin: "authored", mode: "head", frozen: false }),
     ).not.toContain("update");

@@ -167,10 +167,10 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("Ghost **Add all**");
   });
 
-  it("places Project Install and History on the live-toolbar before Overwrite", () => {
+  it("places Refresh, Project Install and History on the live-toolbar before the profile actions", () => {
     const toolbar = appSource.slice(
       appSource.indexOf('className="live-toolbar-actions"'),
-      appSource.indexOf("live-toolbar-remove"),
+      appSource.indexOf("<ProfileHeaderActions"),
     );
     expect(toolbar).toContain('testId="live-status-refresh"');
     expect(toolbar).toContain('data-testid="project-install"');
@@ -181,11 +181,9 @@ describe("Global/Project scope inventory chrome", () => {
     const refreshIdx = toolbar.indexOf('testId="live-status-refresh"');
     const installIdx = toolbar.indexOf('data-testid="project-install"');
     const historyIdx = toolbar.indexOf("ProjectHistoryControl");
-    const overwriteIdx = toolbar.indexOf('title="Overwrite with current setup"');
     expect(refreshIdx).toBeGreaterThan(-1);
     expect(installIdx).toBeGreaterThan(refreshIdx);
     expect(historyIdx).toBeGreaterThan(installIdx);
-    expect(overwriteIdx).toBeGreaterThan(historyIdx);
     expect(designSource).toContain("Install project config");
     expect(designSource).toContain("live-state toolbar");
   });
@@ -196,18 +194,19 @@ describe("Global/Project scope inventory chrome", () => {
     expect(appSource).toContain("live-toolbar-actions");
     expect(appSource).toContain("onToggleEditMode");
     expect(appSource).toContain('"btn", "primary"');
-    expect(appSource).toContain('label="Overwrite"');
-    expect(appSource).toContain('title="Overwrite with current setup"');
+    // Edit, Duplicate, Tags, History as icons; Overwrite moved to the overflow.
+    expect(appSource).toContain('label: "Overwrite with current setup"');
     expect(appSource).toContain("HardDriveUpload");
-    expect(appSource).toContain("busy={ctrl.overwritingWithSetup}");
+    expect(appSource).toContain("ctrl.overwritingWithSetup");
     expect(appSource).toContain("Overwrite with current setup?");
-    const overwriteIdx = appSource.indexOf('title="Overwrite with current setup"');
-    const headerEditIdx = appSource.indexOf(
-      "ctrl.openEditProfile(selectedProfile)",
-      overwriteIdx,
-    );
-    expect(overwriteIdx).toBeGreaterThan(-1);
-    expect(headerEditIdx).toBeGreaterThan(overwriteIdx);
+    const editIdx = appSource.indexOf("ctrl.openEditProfile(profileName)");
+    const duplicateIdx = appSource.indexOf('data-testid="profile-duplicate"', editIdx);
+    const historyIdx = appSource.indexOf('data-testid="profile-history"', duplicateIdx);
+    const overflowIdx = appSource.indexOf('testId="profile-overflow"', historyIdx);
+    expect(editIdx).toBeGreaterThan(-1);
+    expect(duplicateIdx).toBeGreaterThan(editIdx);
+    expect(historyIdx).toBeGreaterThan(duplicateIdx);
+    expect(overflowIdx).toBeGreaterThan(historyIdx);
     expect(appSource).not.toContain("Active · ${n} file");
     expect(appSource).not.toContain("status-view-changes");
     expect(liveStateSource).toContain("editMode");

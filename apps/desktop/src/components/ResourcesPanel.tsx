@@ -156,6 +156,10 @@ export interface ResourcesPanelProps {
   onWorkspaceBack?: () => void;
   autoOpenTrackedDirectories?: boolean;
   disconnected?: boolean;
+  /** Opens a profile's page (Profiles workspace). */
+  onOpenProfile?: (name: string) => void;
+  /** Opens a profile's edit pane. */
+  onEditProfile?: (name: string) => void;
 }
 
 export function ResourcesPanel({
@@ -181,6 +185,8 @@ export function ResourcesPanel({
   onWorkspaceBack,
   autoOpenTrackedDirectories = false,
   disconnected = false,
+  onOpenProfile,
+  onEditProfile,
 }: ResourcesPanelProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [dismissedStoreError, setDismissedStoreError] = useState<string | null>(
@@ -953,6 +959,8 @@ export function ResourcesPanel({
             onBusyChange={handleDetailBusy}
             onSuccess={(message) => onSuccess?.(message)}
             onApplyResult={onApplyResult}
+            onOpenProfile={onOpenProfile}
+            onEditProfile={onEditProfile}
             onProfilesChanged={() => onProfilesChanged?.()}
             onDeleted={() => {
               reloadLibrary();
