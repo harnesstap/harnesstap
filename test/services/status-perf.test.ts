@@ -411,6 +411,8 @@ describe("status perf", () => {
     }
   });
 
+  // The budgets are the timed reads inside; the setup (200 inserts, a fresh
+  // home, the refresh worker) gets a CI-sized test timeout.
   it("keeps the cold and warm budgets with 200 upstream check rows, read without a recompute", async () => {
     const context = await createInitializedTestContext("status-perf-updates");
     try {
@@ -480,5 +482,5 @@ describe("status perf", () => {
       clearLiveReadCaches();
       await context.cleanup();
     }
-  });
+  }, 20_000);
 });
