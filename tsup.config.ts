@@ -23,7 +23,12 @@ export default defineConfig([
   },
   {
     ...shared,
-    entry: { bin: "src/bin.ts" },
+    // The status refresh worker is loaded by file URL next to the bundle, so
+    // it needs its own entry in dist/.
+    entry: {
+      bin: "src/bin.ts",
+      "status-refresh-worker": "src/services/status-refresh-worker.ts",
+    },
     target: "es2020",
     dts: false,
     banner: {

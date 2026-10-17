@@ -21,6 +21,7 @@ import {
   readStatusCacheLastMissReason,
   readStatusCacheMissCount,
   readStatusWatcherCreateCount,
+  statusRefreshWorkerUrl,
 } from "../../src/services/status-read-cache.ts";
 
 function stable(status: Awaited<ReturnType<typeof detectGlobalProfileStatus>>): string {
@@ -362,5 +363,17 @@ describe("global profile status cache", () => {
       clearLiveReadCaches();
       await context.cleanup();
     }
+  });
+});
+
+describe("statusRefreshWorkerUrl", () => {
+  it("loads the .ts worker from source", () => {
+    expect(statusRefreshWorkerUrl("file:///repo/src/services/status-read-cache.ts").href)
+      .toBe("file:///repo/src/services/status-refresh-worker.ts");
+  });
+
+  it("loads the bundled .js worker from the npm dist folder", () => {
+    expect(statusRefreshWorkerUrl("file:///usr/lib/node_modules/harnesstap/dist/chunk-ABC123.js").href)
+      .toBe("file:///usr/lib/node_modules/harnesstap/dist/status-refresh-worker.js");
   });
 });
