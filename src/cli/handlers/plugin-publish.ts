@@ -11,6 +11,7 @@ import {
   renderPublishResults,
 } from "../../services/plugin-publish.js";
 import { formatPublishedSelector } from "../../services/plugin-selector.js";
+import { assertParentPublished, UpstreamUnpublishedError } from "../../services/plugin-extends.js";
 import {
   assertDependenciesPublished,
   listUnpublishedDependencies,
@@ -66,6 +67,7 @@ export async function handlePluginPublishCommand(
   try {
     assertAuthored(plugin.id, "publish");
     // Check before cutting so a blocked publish leaves no new version behind.
+    assertParentPublished(plugin);
     assertDependenciesPublished(plugin);
     if (opts.version) {
       plugin = cutPluginVersion({ pluginId: plugin.id, newVersion: opts.version });
@@ -129,7 +131,27 @@ export async function handlePluginPublishCommand(
       ui.danger(err.message);
       return;
     }
+    if (err instanceof UpstreamUnpublishedError) {
+      ui.danger(err.message, { hints: [formatCommand(["profile", "detach", err.pluginName])] });
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+function publishBlockers(plugin: NonNullable<ReturnType<typeof getPlugin>>): Array<{
+  code: "upstream_unpublished";
+  ref: string;
+  message: string;
+}> {
+  try {
+    assertParentPublished(plugin);
+    return [];
+  } catch (error) {
+    if (error instanceof UpstreamUnpublishedError) {
+      return [{ code: error.code, ref: error.ref, message: error.message }];
+    }
+    throw error;
   }
 }
 
@@ -150,6 +172,7 @@ export async function handlePluginPublishPlanCommand(
     assertAuthored(plugin.id, "publish");
     const targets = resolvePublishTargetsForPlugin(plugin.id);
     const plans = await planPluginPublish(plugin, targets, { account: opts.account });
+    const blockers = publishBlockers(plugin);
     const unpublished = listUnpublishedDependencies(plugin.id);
     const blocker = unpublished.length > 0
       ? unpublishedDependenciesMessage(plugin.name, unpublished)
@@ -159,14 +182,19 @@ export async function handlePluginPublishPlanCommand(
     }
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
+      const all = [
+        ...blockers,
+        ...(blocker ? [{ code: "unpublished_dependencies", message: blocker, dependencies: unpublished }] : []),
+      ];
       printJson({
         plugin: plugin.name,
-        ...(blocker
-          ? { blockers: [{ code: "unpublished_dependencies", message: blocker, dependencies: unpublished }] }
-          : {}),
+        ...(all.length > 0 ? { blockers: all } : {}),
         plans,
       });
       return;
+    }
+    for (const blocker of blockers) {
+      ui.danger(blocker.message, { hints: [formatCommand(["profile", "detach", plugin.name])] });
     }
 
     if (blocker) {

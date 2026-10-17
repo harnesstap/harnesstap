@@ -1,3 +1,4 @@
+import { assertParentPublished, cloudPublishErrorMessage } from "./plugin-extends.js";
 import { getCloudAccount } from "../config/cloud-accounts.js";
 import type { RegisteredCatalog } from "../config/catalog.js";
 import { formatPublishCatalogSelector } from "../config/catalog.js";
@@ -35,6 +36,7 @@ export async function publishPluginToCatalogs(
   opts?: { account?: string; strict?: boolean; vendorExtensions?: boolean },
 ): Promise<PublishTargetResult[]> {
   assertPluginsCleanForShare([plugin]);
+  assertParentPublished(plugin);
   assertDependenciesPublished(plugin);
   const warnings: string[] = [];
   const packageFiles = buildApPackageFiles(plugin.id, {
@@ -86,7 +88,8 @@ export async function publishPluginToCatalogs(
         };
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const raw = error instanceof Error ? error.message : String(error);
+      const message = cloudPublishErrorMessage(plugin, error) ?? raw;
       results.push({ target, ok: false, error: message });
     }
   }
