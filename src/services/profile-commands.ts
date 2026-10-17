@@ -31,6 +31,25 @@ export interface CreateProfileResult {
   promoted: boolean;
 }
 
+/**
+ * `profile create NAME --version V` when NAME already exists at another
+ * version. Versions are the history of one plugin, so a second plugin with
+ * the same name is never what the user wants.
+ */
+export class ProfileCreateVersionConflictError extends Error {
+  readonly pluginName: string;
+  readonly existingVersion: string;
+
+  constructor(name: string, existingVersion: string, requestedVersion: string) {
+    super(
+      `Plugin ${name} already exists at version ${existingVersion}; it cannot also be created at ${requestedVersion}.`,
+    );
+    this.name = "ProfileCreateVersionConflictError";
+    this.pluginName = name;
+    this.existingVersion = existingVersion;
+  }
+}
+
 export class ProfileRenameError extends Error {
   readonly code: "invalid_name" | "not_found" | "plugin_exists" | "not_a_profile" | "reserved_name";
 
@@ -138,7 +157,17 @@ export function createProfileCommand(input: {
 }): CreateProfileResult {
   assertNotReservedProfileName(input.name);
   const version = input.version ?? "1.0.0";
-  const existing = getPluginByName(input.name, version);
+  // Look the name up across versions: a plugin at 1.1.0 (or a pulled one at a
+  // non-default version) is still the plugin the user named.
+  const existing = input.version
+    ? getPluginByName(input.name, input.version)
+    : getPluginByName(input.name);
+  if (!existing && input.version) {
+    const other = getPluginByName(input.name);
+    if (other) {
+      throw new ProfileCreateVersionConflictError(input.name, other.version, input.version);
+    }
+  }
   if (existing) {
     if (isProfilePlugin(existing)) {
       return {
