@@ -1,3 +1,4 @@
+import { formatCount } from "../copy/plurals.js";
 import type { CatalogPlugin } from "../services/catalog-types.js";
 import { formatPublishedSelector } from "../services/plugin-selector.js";
 import * as format from "./format.js";
@@ -240,7 +241,7 @@ export function renderCatalogListViewport(
     renderTable({
       columns: makeColumns(true),
       rows: visibleRows,
-      summary: `${rows.length} plugins`,
+      summary: formatCount(rows.length, "plugin"),
       ...catalogTableLayout(opts.maxWidth),
     }),
     hints,
@@ -279,7 +280,7 @@ export function renderCatalogSearchViewport(
     renderTable({
       columns: makeColumns(true),
       rows: visibleRows,
-      summary: `${checkedCount} selected • ${baseRows.length} plugins`,
+      summary: `${checkedCount} selected • ${formatCount(baseRows.length, "plugin")}`,
       ...catalogTableLayout(opts.maxWidth),
     }),
     hints,
@@ -306,7 +307,7 @@ export function renderCatalogListTable(
   return renderTable({
     columns: makeColumns(Boolean(opts.selectedSelector)),
     rows,
-    summary: `${rows.length} plugins`,
+    summary: formatCount(rows.length, "plugin"),
     ...catalogTableLayout(),
   });
 }
@@ -325,7 +326,7 @@ export function renderCatalogSearchTable(
   return renderTable({
     columns: makeColumns(true),
     rows,
-    summary: `${checkedCount} selected • ${rows.length} plugins`,
+    summary: `${checkedCount} selected • ${formatCount(rows.length, "plugin")}`,
     ...catalogTableLayout(),
   });
 }

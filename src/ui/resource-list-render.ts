@@ -1,3 +1,4 @@
+import { formatCount } from "../copy/plurals.js";
 import type { Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 import * as format from "./format.js";
@@ -247,7 +248,7 @@ export function renderGroupedPluginEditViewport(
     }),
     renderViewportOverflowHints(ctx, viewport, maxWidth),
     "",
-    theme.info(`${checkedCount} selected • ${rows.length} resources`),
+    theme.info(`${checkedCount} selected • ${formatCount(rows.length, "resource")}`),
   ]
     .filter((line) => line.length > 0)
     .join("\n");
@@ -288,7 +289,7 @@ export function renderFlatPluginEditViewport(
     renderTable({
       columns: makeResourceListColumns(opts.showId, false, hasNamespace, true),
       rows: decorateRowsForCheckboxes(visibleRows, { ...opts, activeRowId }),
-      summary: `${checkedCount} selected ${theme.muted(`(${opts.navigable.length} resources)`)}`,
+      summary: `${checkedCount} selected ${theme.muted(`(${formatCount(opts.navigable.length, "resource")})`)}`,
       ...resourceListTableLayout(opts),
     }),
     ...hints,
@@ -326,7 +327,7 @@ export function renderFlatResourceListViewport(
     renderTable({
       columns,
       rows: decorateRowsForSelection(visibleRows, selectedId),
-      summary: `${resources.length} resources`,
+      summary: formatCount(resources.length, "resource"),
       ...resourceListTableLayout(opts),
     }),
     ...hints,
@@ -620,7 +621,7 @@ export function renderGroupedPluginEditTables(
 
   const checkedCount = rows.filter((row) => row.checked).length;
   lines.push("");
-  lines.push(theme.info(`${checkedCount} selected • ${rows.length} resources`));
+  lines.push(theme.info(`${checkedCount} selected • ${formatCount(rows.length, "resource")}`));
   return lines.join("\n");
 }
 
@@ -645,7 +646,7 @@ export function renderFlatPluginEditTable(
     renderTable({
       columns: makeResourceListColumns(opts.showId, false, hasNamespace, true),
       rows: decorateRowsForCheckboxes(visible, opts),
-      summary: `${checkedCount} selected ${theme.muted(`(${sortedRows.length} resources)`)}`,
+      summary: `${checkedCount} selected ${theme.muted(`(${formatCount(sortedRows.length, "resource")})`)}`,
       ...resourceListTableLayout(opts),
     }),
   ];
@@ -721,7 +722,7 @@ export function renderGroupedResourceListTables(
   }
 
   lines.push("");
-  lines.push(theme.info(`${resources.length} resources`));
+  lines.push(theme.info(formatCount(resources.length, "resource")));
   return lines.join("\n");
 }
 
@@ -746,7 +747,7 @@ export function renderFlatResourceListTable(
     renderTable({
       columns: makeResourceListColumns(opts.showId, false, hasNamespace, highlightSelection),
       rows: decorateRowsForSelection(visible, opts.selectedResourceId),
-      summary: `${sortedRows.length} resources`,
+      summary: formatCount(sortedRows.length, "resource"),
       ...resourceListTableLayout(opts),
     }),
   ];

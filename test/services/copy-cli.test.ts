@@ -5,7 +5,10 @@ import {
   CLI_ERRORS,
   CLI_HINTS,
   discardedChangesLine,
+  dryRunStashLine,
+  forceRemoveHintLine,
   formatHtArgs,
+  keptFilesHeader,
   plainTerminalText,
   restoredRemovedLine,
   savedChangesLine,
@@ -65,7 +68,7 @@ describe("DS-6 CLI copy", () => {
 
   it("pluralizes one stashed, saved, or discarded change", () => {
     expect(stashedChangesLine(1, "ht profile stash pop")).toBe(
-      "Stashed 1 change. Bring them back with: ht profile stash pop",
+      "Stashed 1 change. Bring it back with: ht profile stash pop",
     );
     expect(stashedChangesLine(2, "ht profile stash pop")).toBe(
       "Stashed 2 changes. Bring them back with: ht profile stash pop",
@@ -101,5 +104,14 @@ describe("DS-6 CLI copy", () => {
       "Would restore 16, would remove 5.",
     );
     expect(restoredRemovedLine(16, 5)).toBe("Restored 16, removed 5.");
+  });
+
+  it("pluralizes kept files, the force-remove hint, and dry-run stash", () => {
+    expect(keptFilesHeader(1)).toBe("Kept 1 file you changed or that HarnessTap didn't create:");
+    expect(keptFilesHeader(2)).toBe("Kept 2 files you changed or that HarnessTap didn't create:");
+    expect(forceRemoveHintLine(1)).toBe("To remove it too, run:");
+    expect(forceRemoveHintLine(3)).toBe("To remove them too, run:");
+    expect(dryRunStashLine(1, "work")).toBe('Dry run. Would stash 1 change from "work".');
+    expect(dryRunStashLine(2, "work")).toBe('Dry run. Would stash 2 changes from "work".');
   });
 });

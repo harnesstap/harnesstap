@@ -470,7 +470,7 @@ function handleHistoryCommand(
       { key: "label", header: "LABEL", width: showId ? 36 : 50 },
     ],
     rows,
-    summary: `${rows.length} snapshots`,
+    summary: formatCount(rows.length, "snapshot"),
   });
 }
 

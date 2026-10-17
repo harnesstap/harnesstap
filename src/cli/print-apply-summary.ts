@@ -4,6 +4,7 @@ import {
   CLI_COPY,
   dryRunSectionHeader,
   dryRunWouldLine,
+  forceRemoveHintLine,
   keptFilesHeader,
   keptReasonLabel,
   snapshotSavedUndoLine,
@@ -120,7 +121,7 @@ export function printKeptFiles(kept: readonly ApplyKeptFile[]): void {
   for (const entry of kept) {
     console.log(`  ${entry.path}   ${keptReasonLabel(entry.reason)}`);
   }
-  console.log(`${CLI_COPY.forceRemoveHint} ht apply --force-remove`);
+  console.log(`${forceRemoveHintLine(kept.length)} ht apply --force-remove`);
 }
 
 export function printApplySuccess(input: {

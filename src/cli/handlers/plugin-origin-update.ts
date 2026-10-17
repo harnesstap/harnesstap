@@ -110,7 +110,7 @@ export async function handlePluginUpdateCommand(
       const count = listOriginUpdateCandidates().length;
       try {
         const confirmed = await promptForConfirmation({
-          message: `Update ${count} plugins from origin?`,
+          message: `Update ${formatCount(count, "plugin")} from origin?`,
           default: false,
         });
         if (!confirmed) {

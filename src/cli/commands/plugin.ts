@@ -1788,7 +1788,7 @@ function handlePluginDiffCommand(
     console.log(ui.renderChangeList(changeEntries));
     console.log("");
     console.log(
-      `${report.changes.length} changes ${ui.icons.bullet} ${added} added ${ui.icons.bullet} ${removed} removed ${ui.icons.bullet} ${modified} modified`,
+      `${formatCount(report.changes.length, "change")} ${ui.icons.bullet} ${added} added ${ui.icons.bullet} ${removed} removed ${ui.icons.bullet} ${modified} modified`,
     );
   } catch (err) {
     process.exitCode = 1;

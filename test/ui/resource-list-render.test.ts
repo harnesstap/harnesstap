@@ -222,4 +222,18 @@ describe("resource viewport footer hints", () => {
     const footerLines = output.split("\n").filter((line) => line.includes("next type"));
     expect(footerLines.length).toBe(1);
   });
+
+  it("uses the singular for one resource in the summary", () => {
+    const rows = toResourceListRows([
+      {
+        ...makeResourceInput({ type: "skill", name: "alpha" }),
+        id: "skill-1",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+    const output = renderGroupedResourceListTables(rows, { showId: false });
+    expect(output).toContain("1 resource");
+    expect(output).not.toContain("1 resources");
+  });
 });
