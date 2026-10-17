@@ -16,7 +16,7 @@ import {
   type HostManagedStatus,
   profileSkillNameMap,
 } from "./cursor-host-managed-skills.js";
-import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
+import { binaryExpectedFileMatchesDisk, fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import { isNativeAgentPluginCachePath } from "./native-agent-plugins.js";
 import {
   buildHarnessLiveStatusMap,
@@ -554,6 +554,7 @@ async function loadDriftCore(input: {
   traceSpan("drift.compare-files", () => {
   for (const file of expectedApply.expected_files ?? []) {
     if (isNativeAgentPluginCachePath(file.path)) continue;
+    if (binaryExpectedFileMatchesDisk(join(homeRoot, file.path), file)) continue;
     const current = readGlobalFile(homeRoot, file.path);
     const owned = listMaterializationsForRootPath(homeRoot, file.path);
     if (current === null) {

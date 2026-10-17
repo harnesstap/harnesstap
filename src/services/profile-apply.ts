@@ -137,7 +137,7 @@ export interface ApplyProfilePluginResult {
   conflicts: string[];
   default_environment_name?: string;
   pulled_plugins?: Array<{ plugin_name: string; source: string }>;
-  expected_files?: Array<{ path: string; content: string }>;
+  expected_files?: Array<{ path: string; content: string; encoding?: "utf8" | "base64" }>;
   removed_files?: string[];
   skipped_removals?: SafeRemovalSkip[];
   removal_backup?: string;
@@ -720,7 +720,11 @@ export async function applyProfilePlugin(
       written_files: materialized.writtenFiles,
       skipped_files: materialized.skippedFiles,
       conflicts: materialized.conflicts.map((conflict) => conflict.path),
-      expected_files: files.map((file) => ({ path: file.path, content: file.content })),
+      expected_files: files.map((file) => ({
+        path: file.path,
+        content: file.content,
+        ...(file.encoding === "base64" ? { encoding: "base64" as const } : {}),
+      })),
       ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
       ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
       resolution,
