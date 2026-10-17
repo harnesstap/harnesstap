@@ -13,9 +13,11 @@ export interface PublishPlanWarning {
 
 /** A problem that stops the publish until the user fixes it. */
 export interface PublishPlanBlocker {
-  code: "unpublished_dependencies" | string;
+  code: "unpublished_dependencies" | "upstream_unpublished" | string;
   message: string;
   dependencies?: string[];
+  /** The parent ref, on `upstream_unpublished`. */
+  ref?: string;
 }
 
 export interface PublishPlanRow {
@@ -34,14 +36,6 @@ export interface ProfilePublishPlan {
   /** Absent on older sidecars. */
   blockers?: PublishPlanBlocker[];
   plans: PublishPlanRow[];
-  /** Reasons publish cannot run at all, such as an unpublished parent. */
-  blockers?: PublishPlanBlocker[];
-}
-
-export interface PublishPlanBlocker {
-  code: string;
-  message: string;
-  ref?: string;
 }
 
 export interface ProfilePublishResultRow {
