@@ -368,7 +368,7 @@ describe("CLI profile", () => {
     }
   });
 
-  it("warns when profile pull installs a non-profile plugin", async () => {
+  it("tags a pulled catalog plugin as a profile under its slug", async () => {
     const context = await createTestContext("cli-profile-pull");
     try {
       await runCli(["init"]);
@@ -395,8 +395,10 @@ describe("CLI profile", () => {
         "https://mock",
       ]);
       const pullOutput = `${pull.stdout}\n${pull.stderr}`;
-      expect(pullOutput).toContain("Installed plugin remote-team");
-      expect(pullOutput).toContain("is not tagged as a profile");
+      expect(pullOutput).toContain("Installed plugin team");
+      expect(pullOutput).not.toContain("is not tagged as a profile");
+      const list = await runCli(["profile", "list"]);
+      expect(list.stdout).toContain("team");
       restoreFetch();
     } finally {
       await context.cleanup();
