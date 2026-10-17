@@ -30,8 +30,8 @@ describe("duplicate dialog", () => {
     expect(duplicateDialogTitle(false)).toBe("Duplicate plugin");
     const copy = duplicateModeCopy("backend");
     expect(copy.inherit).toEqual({
-      label: "Keep in sync",
-      hint: "Gets backend's updates. Hide anything you don't need.",
+      label: "Include as a resource of a new profile",
+      hint: "The new profile contains backend and gets its updates. Hide anything you don't need.",
     });
     expect(copy.copy).toEqual({
       label: "Separate copy",

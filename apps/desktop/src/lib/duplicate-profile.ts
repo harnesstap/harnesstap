@@ -4,8 +4,8 @@ import type { DuplicateMode } from "./api/library-plugins";
 export function duplicateModeCopy(parent: string): Record<DuplicateMode, { label: string; hint: string }> {
   return {
     inherit: {
-      label: "Keep in sync",
-      hint: `Gets ${parent}'s updates. Hide anything you don't need.`,
+      label: "Include as a resource of a new profile",
+      hint: `The new profile contains ${parent} and gets its updates. Hide anything you don't need.`,
     },
     copy: {
       label: "Separate copy",

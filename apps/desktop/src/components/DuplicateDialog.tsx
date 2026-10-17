@@ -18,7 +18,7 @@ export interface DuplicateDialogProps {
   onCancel: () => void;
 }
 
-/** One Duplicate flow: keep in sync with the source (default) or a separate copy. */
+/** One Duplicate flow: include the source as a resource of a new profile (default) or a separate copy. */
 export function DuplicateDialog({
   open,
   sourceName,

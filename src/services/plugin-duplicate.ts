@@ -36,7 +36,7 @@ export interface DuplicateResult {
 /**
  * Duplicate a plugin or profile.
  *
- * - `inherit` (Keep in sync) creates an empty child with an extends link; it
+ * - `inherit` (Include as a resource of a new profile) creates an empty child with an extends link; it
  *   shows the parent's items live and stores only its own changes.
  * - `copy` (Separate copy) is a fork: the items are attached to the new
  *   plugin and the link only records where it came from.

@@ -52,7 +52,7 @@ export async function handleProfileDuplicateCommand(
   const format = parseOutputFormat(opts.format);
   if (opts.copy && opts.inherit) {
     process.exitCode = 1;
-    ui.danger("Choose one of --inherit (keep in sync) or --copy (separate copy).");
+    ui.danger("Choose one of --inherit (include as a resource of a new profile) or --copy (separate copy).");
     return;
   }
   const mode: DuplicateMode = opts.copy ? "copy" : "inherit";
@@ -165,7 +165,7 @@ export function registerProfileDuplicateCommands(profileCmd: Command): void {
     .command("duplicate")
     .argument("<source>", "Profile or plugin to duplicate")
     .argument("[name]", "Name for the new profile (default: <source>-copy)")
-    .option("--inherit", "Keep in sync: show the parent's items live and store only your changes (default)")
+    .option("--inherit", "Include as a resource of a new profile: it contains the parent and gets its updates; only your changes are stored (default)")
     .option("--copy", "Separate copy: copy the items now; later parent changes do not apply")
     .option("--to <org/catalog>", "Duplicate in Cloud and publish to this catalog (source must be in a catalog)")
     .option("--account <name>", "Cloud account to use with --to")
