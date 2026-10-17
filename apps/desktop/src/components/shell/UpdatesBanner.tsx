@@ -43,10 +43,12 @@ async function waitForCheck(baseUrl: string, token: string | null): Promise<void
 
 /** Update text for the toast after the banner's Update. */
 export function updateResultMessage(report: PluginOriginUpdateReport): string {
-  const { updated, failed } = report.summary;
-  if (failed > 0) return `${failed} could not update. ${updated} updated.`;
-  if (updated === 0) return "Already up to date at the source.";
-  return updated === 1 ? "1 plugin updated." : `${updated} plugins updated.`;
+  const { updated, skipped, failed } = report.summary;
+  const done = updated === 1 ? "1 plugin updated." : `${updated} plugins updated.`;
+  if (failed > 0) return `${failed} could not update. ${done}`;
+  if (updated > 0) return skipped > 0 ? `${done} ${skipped} skipped.` : done;
+  const reason = report.results.find((row) => row.status === "skipped" && row.message)?.message;
+  return reason ? `Not updated: ${reason}.` : "Nothing to update.";
 }
 
 /** Neutral banner on the affected profile's own page: Update, or x to dismiss. */
@@ -109,8 +111,17 @@ export function UpdatesBanner({
           failed: reports.reduce((sum, entry) => sum + entry.summary.failed, 0),
         },
       };
-      if (report.summary.failed === 0) {
-        setHandled((prev) => new Set([...prev, ...model.dismiss.map((entry) => handledKey({ plugin_name: entry.plugin, latest_in_range: entry.version }))]));
+      // Clear the banner for what actually updated; a skipped update stays on offer.
+      const updatedNames = new Set(report.results.filter((row) => row.status === "updated").map((row) => row.name));
+      const done = model.dismiss.filter((entry) => updatedNames.has(entry.plugin));
+      if (done.length > 0) {
+        setHandled(
+          (prev) =>
+            new Set([
+              ...prev,
+              ...done.map((entry) => handledKey({ plugin_name: entry.plugin, latest_in_range: entry.version })),
+            ]),
+        );
       }
       onLibraryChanged?.();
       await waitForCheck(baseUrl, token);

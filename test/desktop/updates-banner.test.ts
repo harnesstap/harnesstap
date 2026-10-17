@@ -90,6 +90,12 @@ describe("updates banner", () => {
     expect(rail).toContain('content="Update available"');
   });
 
+  it("says what the banner's Update did, and only clears what updated", () => {
+    const banner = src("components/shell/UpdatesBanner.tsx");
+    expect(banner).toContain('row.status === "updated"');
+    expect(banner).toContain("Not updated: ${reason}.");
+  });
+
   it("keeps the visual baselines off the network", () => {
     const demo = readFileSync(join(import.meta.dir, "../../apps/desktop/scripts/demo-home.sh"), "utf8");
     expect(demo).toContain("HARNESSTAP_UPDATE_CHECK=off");
