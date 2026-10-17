@@ -208,6 +208,18 @@ async function openSettingsTab(page, label) {
   await page.getByRole("button", { name: label, exact: true }).first().click({ timeout: T });
 }
 
+/** Clicking a tab can scroll the drawer a few pixels depending on timing; pin it to the top. */
+async function resetSettingsScroll(page) {
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    const drawer = document.querySelector("[data-testid='settings-drawer']");
+    if (!drawer) return;
+    for (const node of [drawer, ...drawer.querySelectorAll("*")]) {
+      if (node.scrollTop) node.scrollTop = 0;
+    }
+  });
+}
+
 async function openSettings(page) {
   if (!(await page.getByRole("tablist", { name: /settings/i }).isVisible().catch(() => false))) {
     await clickHeader(page, /^settings$/i);
@@ -318,6 +330,7 @@ const SCREENS = [
     run: async (page) => {
       await openSettings(page);
       await openSettingsTab(page, "Project");
+      await resetSettingsScroll(page);
     },
   },
   {
@@ -325,6 +338,7 @@ const SCREENS = [
     run: async (page) => {
       await openSettings(page);
       await openSettingsTab(page, "Advanced");
+      await resetSettingsScroll(page);
     },
     after: pressEscape,
   },
