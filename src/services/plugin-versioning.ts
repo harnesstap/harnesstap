@@ -326,6 +326,11 @@ export function listPluginVersionHistory(name: string): PluginVersionHistoryEntr
   });
 }
 
+/** A plugin fresh from a catalog package matches its published version: not edited. */
+export function markPluginClean(pluginId: string): void {
+  getDb().prepare("UPDATE plugins SET dirty = 0 WHERE id = ?").run(pluginId);
+}
+
 export function markPluginDirty(pluginId: string): void {
   const row = getPluginRowById(pluginId);
   if (!row) {
