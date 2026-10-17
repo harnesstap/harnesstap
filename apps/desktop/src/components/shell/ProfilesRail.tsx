@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type DragEvent } from "react";
 import {
   Archive,
+  ArrowUp,
   ArchiveRestore,
   Check,
   FilterX,
@@ -25,6 +26,7 @@ import { ButtonSpinner } from "../ButtonSpinner";
 import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
 import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
+import { ChromeTooltip } from "../ChromeTooltip";
 import { PublishProfileDrawer } from "../parity/PublishProfileDrawer";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import { toast } from "../../state/toast-store";
@@ -475,15 +477,22 @@ export function ProfilesRail({
                     testId="profile-rail-status"
                   />
                 ) : null}
-                {profile.name}
-                {updateProfiles?.has(profile.name) ? (
-                  <span
-                    className="profile-update-dot"
-                    data-testid={`profile-update-dot-${profile.name}`}
-                    role="img"
-                    aria-label="Update available"
-                    title="Update available"
-                  />
+                <span className="profile-item-name">{profile.name}</span>
+                {updateProfiles ? (
+                  <span className="profile-update-slot">
+                    {updateProfiles.has(profile.name) ? (
+                      <ChromeTooltip content="Update available">
+                        <span
+                          className="profile-update-badge"
+                          data-testid={`profile-update-badge-${profile.name}`}
+                          role="img"
+                          aria-label="Update available"
+                        >
+                          <ArrowUp size={11} strokeWidth={2.5} aria-hidden />
+                        </span>
+                      </ChromeTooltip>
+                    ) : null}
+                  </span>
                 ) : null}
               </button>
               <IconActionButton

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CloudDownload } from "lucide-react";
-import { postPluginOriginUpdate } from "../../lib/api/plugin-origin-update";
+import { CloudDownload, Info } from "lucide-react";
+import { postPluginOriginUpdate, type PluginOriginUpdateReport } from "../../lib/api/plugin-origin-update";
 import {
   dismissUpdate,
   fetchUpdateCheckJob,
@@ -13,7 +13,7 @@ import {
   type UpdateSettings,
 } from "../../lib/api/settings-updates";
 import { shouldOfferKeepUpToDate, updateSettingsSummary } from "../../lib/update-settings-copy";
-import { updatesBanner } from "../../lib/updates-banner";
+import { handledKey, profileUpdatesBanner } from "../../lib/updates-banner";
 import { toast } from "../../state/toast-store";
 import { Banner } from "./Banner";
 import { KeepUpToDateDialog } from "./KeepUpToDateDialog";
@@ -22,9 +22,13 @@ export interface UpdatesBannerProps {
   baseUrl: string | null;
   token: string | null;
   list: UpdateList | null;
+  /** The profile whose page this is; the banner only covers updates it uses. */
+  profileName: string | null;
   disabled?: boolean;
   onChanged: (next?: UpdateList) => void | Promise<void>;
   onLibraryChanged?: () => void;
+  /** After an update ran; B3b hooks the one-time prompt here. */
+  onUpdated?: (report: PluginOriginUpdateReport) => void;
 }
 
 async function waitForCheck(baseUrl: string, token: string | null): Promise<void> {
@@ -37,13 +41,33 @@ async function waitForCheck(baseUrl: string, token: string | null): Promise<void
   }
 }
 
-/** One banner at the top of the Global view: Update all, or Not now. */
-export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLibraryChanged }: UpdatesBannerProps) {
+/** Update text for the toast after the banner's Update. */
+export function updateResultMessage(report: PluginOriginUpdateReport): string {
+  const { updated, failed } = report.summary;
+  if (failed > 0) return `${failed} could not update. ${updated} updated.`;
+  if (updated === 0) return "Already up to date at the source.";
+  return updated === 1 ? "1 plugin updated." : `${updated} plugins updated.`;
+}
+
+/** Neutral banner on the affected profile's own page: Update, or x to dismiss. */
+export function UpdatesBanner({
+  baseUrl,
+  token,
+  list,
+  profileName,
+  disabled,
+  onChanged,
+  onLibraryChanged,
+  onUpdated,
+}: UpdatesBannerProps) {
   const [busy, setBusy] = useState<"update" | "dismiss" | null>(null);
+  // Versions this session already acted on, so the banner clears at once.
+  const [handled, setHandled] = useState<ReadonlySet<string>>(() => new Set());
   const [offer, setOffer] = useState<UpdateSettings | null>(null);
   const [saving, setSaving] = useState(false);
-  const model = list ? updatesBanner(list.rows) : null;
+  const model = list ? profileUpdatesBanner(list.rows, profileName, handled) : null;
 
+  // Either button marks the prompt as answered, so it never shows again.
   const answerOffer = async (patch: Partial<UpdateSettings>, announce: boolean) => {
     if (!baseUrl) return;
     setSaving(true);
@@ -58,6 +82,7 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
     }
   };
 
+  // Rendered even after the banner clears, so the prompt survives the update.
   const dialog = (
     <KeepUpToDateDialog
       open={offer !== null}
@@ -69,17 +94,29 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
   );
   if (!model || !baseUrl) return dialog;
 
-  const updateAll = async () => {
+  const update = async () => {
     setBusy("update");
     try {
-      const report = await postPluginOriginUpdate(baseUrl, token, { all: true });
+      const reports: PluginOriginUpdateReport[] = [];
+      for (const name of model.plugins) {
+        reports.push(await postPluginOriginUpdate(baseUrl, token, { name }));
+      }
+      const report: PluginOriginUpdateReport = {
+        results: reports.flatMap((entry) => entry.results),
+        summary: {
+          updated: reports.reduce((sum, entry) => sum + entry.summary.updated, 0),
+          skipped: reports.reduce((sum, entry) => sum + entry.summary.skipped, 0),
+          failed: reports.reduce((sum, entry) => sum + entry.summary.failed, 0),
+        },
+      };
+      if (report.summary.failed === 0) {
+        setHandled((prev) => new Set([...prev, ...model.dismiss.map((entry) => handledKey({ plugin_name: entry.plugin, latest_in_range: entry.version }))]));
+      }
       onLibraryChanged?.();
       await waitForCheck(baseUrl, token);
       await onChanged();
-      toast({
-        tone: report.summary.failed > 0 ? "error" : "success",
-        title: `Updated ${report.summary.updated}, skipped ${report.summary.skipped}, failed ${report.summary.failed}`,
-      });
+      toast({ tone: report.summary.failed > 0 ? "error" : "success", title: updateResultMessage(report) });
+      onUpdated?.(report);
       const settings = await fetchUpdateSettings(baseUrl, token).catch(() => null);
       if (shouldOfferKeepUpToDate(settings, report)) setOffer(settings);
     } catch (error) {
@@ -89,7 +126,7 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
     }
   };
 
-  const notNow = async () => {
+  const dismiss = async () => {
     setBusy("dismiss");
     try {
       let next: UpdateList | undefined;
@@ -98,7 +135,7 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
       }
       await onChanged(next);
     } catch (error) {
-      toast({ tone: "error", title: error instanceof Error ? error.message : "Could not set aside" });
+      toast({ tone: "error", title: error instanceof Error ? error.message : "Could not dismiss" });
     } finally {
       setBusy(null);
     }
@@ -107,28 +144,28 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
   return (
     <>
       {dialog}
-      <Banner tone="info" role="status" testId="updates-banner" message={model.message}>
-        {model.canUpdateAll ? (
-          <button
-            type="button"
-            className="btn primary"
-            style={{ width: "auto" }}
-            disabled={disabled || busy !== null}
-            onClick={() => void updateAll()}
-          >
-            <CloudDownload size={16} aria-hidden />
-            {busy === "update" ? "Updating" : "Update all"}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="btn"
-          style={{ width: "auto" }}
-          disabled={disabled || busy !== null}
-          onClick={() => void notNow()}
-        >
-          Not now
-        </button>
+      <Banner
+      tone="neutral"
+      role="status"
+      testId="updates-banner"
+      message={
+        <span className="banner-message-with-icon">
+          <Info size={16} strokeWidth={2} aria-hidden />
+          {model.message}
+        </span>
+      }
+      onDismiss={busy === null && !disabled ? () => void dismiss() : undefined}
+    >
+      <button
+        type="button"
+        className="btn primary"
+        style={{ width: "auto" }}
+        disabled={disabled || busy !== null}
+        onClick={() => void update()}
+      >
+        <CloudDownload size={16} aria-hidden />
+        {busy === "update" ? "Updating" : "Update"}
+      </button>
       </Banner>
     </>
   );

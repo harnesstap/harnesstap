@@ -12,11 +12,15 @@ import {
 const src = (path: string) => readFileSync(join(import.meta.dir, "../../apps/desktop/src", path), "utf8");
 
 describe("plugin update settings copy", () => {
-  it("offers Off, Notify only and Install automatically, and says a major is never installed", () => {
+  it("offers Off, Notify only and Install automatically in plain words", () => {
     expect(UPDATE_MODE_OPTIONS.map((option) => option.title)).toEqual(["Off", "Notify only", "Install automatically"]);
-    expect(UPDATE_MODE_OPTIONS.find((option) => option.value === "install")?.description).toContain("Never a major");
+    expect(UPDATE_MODE_OPTIONS.map((option) => option.description)).toEqual([
+      "Never check. Synced profiles still follow their parent.",
+      "Tell me. I'll install.",
+      "Minor and patch updates install on their own. Majors always ask.",
+    ]);
     expect(UPDATE_FREQUENCY_OPTIONS.map((option) => option.value)).toEqual(["hourly", "daily", "weekly"]);
-    expect(KEEP_UP_TO_DATE_TITLE).toBe("Keep these up to date?");
+    expect(KEEP_UP_TO_DATE_TITLE).toBe("Keep plugins up to date?");
   });
 
   it("summarizes a save", () => {
@@ -26,15 +30,23 @@ describe("plugin update settings copy", () => {
     );
   });
 
-  it("offers the dialog once, only after an Update all with no failure", () => {
-    const ok = { summary: { failed: 0 } };
+  it("offers the prompt once, only after an update that installed something with no failure", () => {
+    const ok = { summary: { updated: 1, failed: 0 } };
     expect(shouldOfferKeepUpToDate({ prompted: false }, ok)).toBe(true);
     expect(shouldOfferKeepUpToDate({ prompted: true }, ok)).toBe(false);
-    expect(shouldOfferKeepUpToDate({ prompted: false }, { summary: { failed: 1 } })).toBe(false);
+    expect(shouldOfferKeepUpToDate({ prompted: false }, { summary: { updated: 1, failed: 1 } })).toBe(false);
+    expect(shouldOfferKeepUpToDate({ prompted: false }, { summary: { updated: 0, failed: 0 } })).toBe(false);
     expect(shouldOfferKeepUpToDate(null, ok)).toBe(false);
   });
 
-  it("is wired into Settings > Advanced and after Update all, with Save and Not now", () => {
+  it("labels the frequency and disables it when Off, with the short Settings description", () => {
+    const fields = src("components/settings/UpdatePreferenceFields.tsx");
+    expect(fields).toContain("Check for updates</Label>");
+    expect(fields).toContain('disabled={disabled || mode === "off"}');
+    expect(src("components/settings/PluginUpdateSettings.tsx")).toContain("For pulled plugins and synced profiles.");
+  });
+
+  it("is wired into Settings > Advanced and after an update, with Save and Not now", () => {
     const sections = src("components/settings/SettingsParitySections.tsx");
     const advanced = sections.slice(sections.indexOf('props.tab !== "advanced"'));
     expect(advanced).toContain("<PluginUpdateSettings");

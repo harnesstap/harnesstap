@@ -215,11 +215,13 @@ export function ScopeWorkspace({
             <Banner tone="error" message={bootstrapError} onDismiss={onDismissBootstrapError} />
           ) : null}
 
-          {scope === "global" ? (
+          {selectedProfile && !editingProfile ? (
             <UpdatesBanner
+              key={selectedProfile}
               baseUrl={baseUrl}
               token={token}
               list={upstreamUpdates.list}
+              profileName={selectedProfile}
               disabled={!actionsEnabled}
               onChanged={async (next) => {
                 if (next) {

@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Plugin update settings use plainer words. The one-time prompt is now "Keep plugins up to date?" and appears only after an update that installed something. Off reads "Never check. Synced profiles still follow their parent.", Notify only reads "Tell me. I''ll install.", and Install automatically reads "Minor and patch updates install on their own. Majors always ask." The frequency field is labelled "Check for updates" and is disabled when Off. The defaults stay Notify only, checked daily, in both the prompt and Settings.'
+time: 2026-10-17T20:15:00.000Z
+custom:
+  Issue: ""
