@@ -1,3 +1,4 @@
+import { cloudErrorDetail, parseCloudErrorText, requestIdSuffix } from "./cloud-api-error.js";
 import semver from "semver";
 import { getDb } from "../db/connection.js";
 import { getPluginById, getPluginResources } from "../models/plugin-model.js";
@@ -387,8 +388,35 @@ export function assertParentPublished(plugin: Plugin): void {
   }
 }
 
-/** Maps a Cloud `upstream_unpublished` response onto the local message. */
+/**
+ * Maps a Cloud 400 on publish onto a message naming what to fix:
+ * `upstream_unpublished` names Cloud's ref, `invalid_exclude` the entry.
+ */
+export function cloudPublishErrorMessage(plugin: Plugin, error: unknown): string | undefined {
+  const raw = error instanceof Error ? error.message : String(error);
+  const detail = cloudErrorDetail(error);
+  const code = detail.code ?? (raw.includes("upstream_unpublished") ? "upstream_unpublished" : undefined);
+  if (code === "upstream_unpublished") {
+    const ref = detail.ref ?? plugin.upstream?.ref ?? "its parent";
+    return new UpstreamUnpublishedError(plugin.name, ref).message + requestIdSuffix(detail);
+  }
+  if (code === "invalid_exclude") {
+    const entry = detail.entry ?? "an entry";
+    const why = detail.message ? ` (${detail.message.replace(/\.$/, "")})` : "";
+    const fix = detail.entry ? ` Run \`ht plugin edit ${plugin.name} --unhide ${detail.entry}\` and publish again.` : "";
+    return (
+      `Cloud rejected the hidden item "${entry}" of ${plugin.name}${why}. ` +
+      `Each hidden item is <type>:<name>, where type is one of ${RESOURCE_TYPES.join(", ")}.${fix}` +
+      requestIdSuffix(detail)
+    );
+  }
+  return undefined;
+}
+
+/** Kept for callers holding only the error text. */
 export function upstreamUnpublishedFromCloud(plugin: Plugin, message: string): UpstreamUnpublishedError | undefined {
-  if (!message.includes("upstream_unpublished")) return undefined;
-  return new UpstreamUnpublishedError(plugin.name, plugin.upstream?.ref ?? "its parent");
+  const detail = parseCloudErrorText(message);
+  const code = detail.code ?? (message.includes("upstream_unpublished") ? "upstream_unpublished" : undefined);
+  if (code !== "upstream_unpublished") return undefined;
+  return new UpstreamUnpublishedError(plugin.name, detail.ref ?? plugin.upstream?.ref ?? "its parent");
 }

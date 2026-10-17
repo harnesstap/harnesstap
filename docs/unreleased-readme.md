@@ -22,7 +22,7 @@ New text for the Install section of README.md.
 
 ## docs/cli/command-reference.md > profile (`p`) > Commands
 <!-- append -->
-- `profile duplicate <source> [name]`: duplicate a profile. By default the copy keeps in sync: it shows the parent's items live, at the newest installed parent version in the same major, and stores only its own additions and hidden items. `--copy` makes a separate copy instead (the items are copied now; later parent changes do not apply).
+- `profile duplicate <source> [name]`: duplicate a profile. By default the copy keeps in sync: it shows the parent's items live, at the newest installed parent version in the same major, and stores only its own additions and hidden items. `--copy` makes a separate copy instead (the items are copied now; later parent changes do not apply). `--to <org>/<catalog>` asks Cloud to make and publish the duplicate of a catalog profile instead (`--account` picks the Cloud account); when Cloud cannot duplicate yet, the copy is made in your Library.
 - `profile detach <name>`: stop keeping a profile in sync. Its current items (the parent's, minus hidden ones, plus its own) become its own in the Library. Nothing is applied or deleted; the profile still shows where it came from.
 
 ## docs/cli/command-reference.md > plugin (`l`) > Important options
