@@ -9,6 +9,7 @@ import {
   detachSuccessMessage,
   duplicateSuccessMessage,
   inheritedItemLabel,
+  inheritedSummary,
   toggleExcludeEntry,
 } from "../../apps/desktop/src/lib/duplicate-profile.ts";
 
@@ -46,6 +47,12 @@ describe("duplicate and keep in sync", () => {
     expect(inheritedItemKey({ type: "plugin", name: "web" })).toBe("plugin:web");
     expect(inheritedItemLabel({ type: "skill", name: "review" })).toBe("review (skill)");
     expect(inheritedItemLabel({ type: "plugin", name: "web" })).toBe("web");
+  });
+
+  test("library detail summarises inherited items", () => {
+    expect(inheritedSummary([{ hidden: false }, { hidden: true }])).toBe("1 item, 1 hidden");
+    expect(inheritedSummary([{ hidden: false }, { hidden: false }])).toBe("2 items");
+    expect(inheritedSummary([], "Parent x is not installed.")).toBe("Parent not installed");
   });
 
   test("one Duplicate button replaces Fork in the plugin detail", () => {

@@ -14,6 +14,7 @@ import {
   Copy,
   GitFork,
   History,
+  Layers,
   MapPin,
   Pencil,
   Play,
@@ -77,7 +78,7 @@ import type {
 import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DuplicateDialog } from "./DuplicateDialog";
-import { duplicateSuccessMessage } from "../lib/duplicate-profile";
+import { duplicateSuccessMessage, inheritedSummary } from "../lib/duplicate-profile";
 import { DoctorReportDialog } from "./DoctorReportDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
@@ -1395,6 +1396,16 @@ export function PluginPackageDetail({
           fieldName={record.plugin.upstream.kind === "extends" ? "Extends" : "Copied from"}
           readOnly
           display={formatLibraryUpstream(record.plugin.upstream)}
+          editing={false}
+          onStartEdit={() => undefined}
+        />
+      ) : null}
+      {record.plugin.upstream?.kind === "extends" && record.inherited ? (
+        <LibraryFieldRow
+          icon={<Layers size={16} aria-hidden />}
+          fieldName="From parent"
+          readOnly
+          display={inheritedSummary(record.inherited, record.parent_missing)}
           editing={false}
           onStartEdit={() => undefined}
         />

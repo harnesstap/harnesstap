@@ -51,3 +51,15 @@ export function toggleExcludeEntry(excludes: readonly string[], key: string): st
 export function inheritedItemLabel(item: { type: string; name: string }): string {
   return item.type === "plugin" ? item.name : `${item.name} (${item.type})`;
 }
+
+/** One line for the Library detail: `2 items, 1 hidden`. */
+export function inheritedSummary(
+  items: ReadonlyArray<{ hidden: boolean }>,
+  parentMissing?: string,
+): string {
+  if (parentMissing) return "Parent not installed";
+  const hidden = items.filter((item) => item.hidden).length;
+  const shown = items.length - hidden;
+  const base = `${shown} item${shown === 1 ? "" : "s"}`;
+  return hidden > 0 ? `${base}, ${hidden} hidden` : base;
+}

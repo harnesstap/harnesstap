@@ -41,6 +41,7 @@ export function DuplicateDialog({ open, sourceName, busy, onConfirm, onCancel }:
         }
       }}
     >
+      <div className="flex flex-col gap-3">
       <div className="form-field">
         <Label htmlFor="plugin-duplicate-name">Name</Label>
         <Input
@@ -67,6 +68,7 @@ export function DuplicateDialog({ open, sourceName, busy, onConfirm, onCancel }:
           </div>
         ))}
       </RadioGroup>
+      </div>
     </ConfirmDialog>
   );
 }

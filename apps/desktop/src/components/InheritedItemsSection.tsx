@@ -28,9 +28,11 @@ export function InheritedItemsSection({
 }: InheritedItemsSectionProps) {
   return (
     <section className="edit-profile-section" aria-label="From parent" data-testid="edit-profile-inherited">
-      <div className="flex items-center justify-between gap-2">
-        <p className="muted">Kept in sync with {formatLibraryUpstream(upstream)}</p>
-        <button type="button" className="btn" disabled={disabled} onClick={onDetach}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="muted m-0 min-w-0 flex-1">
+          Kept in sync with {formatLibraryUpstream(upstream)}. Untick an item to hide it here.
+        </p>
+        <button type="button" className="btn" style={{ width: "auto", flexShrink: 0 }} disabled={disabled} onClick={onDetach}>
           <Unlink size={16} aria-hidden />
           Detach from parent
         </button>
@@ -52,7 +54,7 @@ export function InheritedItemsSection({
               <label htmlFor={id} className={item.hidden ? "muted line-through" : undefined}>
                 {inheritedItemLabel(item)}
               </label>
-              <span className="badge badge-meta">from parent</span>
+              <span className="chip">from parent</span>
             </li>
           );
         })}
