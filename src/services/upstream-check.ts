@@ -1,6 +1,6 @@
-import semver from "semver";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import semver from "semver";
 import { resolveCatalogScope } from "../config/catalog.js";
 import { getDb, getHarnesstapDir } from "../db/connection.js";
 import { listPlugins } from "../models/plugin-model.js";
@@ -207,7 +207,10 @@ function writeUpdatesSinceCache(cache: UpdatesSinceCache): void {
   }
 }
 
-/** What Cloud's row means for one query. A yanked newest-in-range is not offered. */
+/**
+ * What Cloud's row means for one query. Cloud already skips yanked versions in
+ * latest_in_range; the yanked flag is still honored as a safety net.
+ */
 export function latestFromUpdatesSince(item: UpstreamQuery, row: UpdatesSinceItem | undefined): UpstreamLatest {
   if (!row) return { ok: false, status: "unpublished", message: `${item.base} is not published.` };
   const inRange = row.latest_in_range_yanked ? "" : (row.latest_in_range ?? "");
@@ -219,8 +222,10 @@ export function latestFromUpdatesSince(item: UpstreamQuery, row: UpdatesSinceIte
  * `{selectors: [{ref, version, constraint}]}`, at most 100 per call, with
  * ETag and `If-None-Match` so an unchanged answer is a 304. Each item carries
  * `latest_in_range` and `latest_major`, so an update inside the range is seen
- * even when a newer major exists. A 404, 405 or 501 (older Cloud) falls back
- * to one catalog lookup per ref, which only knows each plugin's latest version.
+ * even when a newer major exists; "" means no update. An uncoded 404, 405 or
+ * 501 (older Cloud, body not JSON or without an error code) falls back to one
+ * catalog lookup per ref, which only knows each plugin's latest version. A
+ * coded 404 (not_found, catalog_not_found) is a real error.
  */
 export const defaultFetchUpstreamLatest: FetchUpstreamLatest = async (items, opts) => {
   const out = new Map<string, UpstreamLatest>();
@@ -259,7 +264,9 @@ export const defaultFetchUpstreamLatest: FetchUpstreamLatest = async (items, opt
       }
       continue;
     }
-    if (UPDATES_SINCE_MISSING.has(response.status)) {
+    // Only an uncoded 404/405/501 means this Cloud has no updates-since yet.
+    const failure = response.ok || response.status === 304 ? undefined : await readCloudError(response);
+    if (failure && UPDATES_SINCE_MISSING.has(response.status) && !failure.code) {
       for (const item of batch) out.set(upstreamQueryKey(item), await latestFromCatalogList(item));
       continue;
     }
@@ -276,7 +283,7 @@ export const defaultFetchUpstreamLatest: FetchUpstreamLatest = async (items, opt
         cacheChanged = true;
       }
     } else {
-      const detail = await describeCloudError(response);
+      const detail = describeCloudError(response.status, failure ?? {});
       for (const item of batch) {
         out.set(upstreamQueryKey(item), { ok: false, status: "unreachable", message: detail });
       }
@@ -293,16 +300,53 @@ export const defaultFetchUpstreamLatest: FetchUpstreamLatest = async (items, opt
   return out;
 };
 
-async function describeCloudError(response: Response): Promise<string> {
-  const body = (await response.json().catch(() => undefined)) as
-    | { error?: { code?: string; message?: string; requestId?: string } | string; message?: string; requestId?: string }
-    | undefined;
-  const error = typeof body?.error === "object" ? body.error : undefined;
-  const message = error?.message ?? body?.message ?? (typeof body?.error === "string" ? body.error : "");
-  const requestId = error?.requestId ?? body?.requestId;
-  return [`Cloud answered ${response.status}`, message, requestId ? `(request ${requestId})` : ""]
-    .filter(Boolean)
-    .join(" ");
+/**
+ * Cloud error body (harnesstap-cloud#143): primary shape
+ * `{"error":{code, entry?, ref?, message, requestId, fields?, details?}}`;
+ * older variants (message/requestId beside `error`, `error` as a bare code)
+ * are still read. `x-request-id` fills in a missing request id.
+ */
+export interface CloudErrorInfo {
+  code?: string;
+  message?: string;
+  requestId?: string;
+}
+
+function nonEmpty(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+export function parseCloudError(body: unknown, headers?: Headers): CloudErrorInfo {
+  const top = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const nested = top.error && typeof top.error === "object" ? (top.error as Record<string, unknown>) : {};
+  return {
+    code: nonEmpty(nested.code) ?? nonEmpty(top.error) ?? nonEmpty(top.code),
+    message: nonEmpty(nested.message) ?? nonEmpty(top.message),
+    requestId:
+      nonEmpty(nested.requestId) ?? nonEmpty(top.requestId) ?? nonEmpty(headers?.get("x-request-id") ?? undefined),
+  };
+}
+
+async function readCloudError(response: Response): Promise<CloudErrorInfo> {
+  const text = await response.text().catch(() => "");
+  let body: unknown;
+  try {
+    body = text.trim() ? JSON.parse(text) : undefined;
+  } catch {
+    body = undefined;
+  }
+  return parseCloudError(body, response.headers);
+}
+
+function describeCloudError(status: number, info: CloudErrorInfo): string {
+  const request = info.requestId ? ` (request ${info.requestId})` : "";
+  if (info.code === "catalog_not_found") {
+    return `Cloud could not find the catalog for this check${info.message ? `: ${info.message}` : "."}${request}`;
+  }
+  if (info.code === "not_found") {
+    return `Cloud could not find what this check asked for${info.message ? `: ${info.message}` : "."}${request}`;
+  }
+  return [`Cloud answered ${status}`, info.message ?? info.code ?? ""].filter(Boolean).join(" ") + request;
 }
 
 /** Swappable for tests; production uses Cloud. */
