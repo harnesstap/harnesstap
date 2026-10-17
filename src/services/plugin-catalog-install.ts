@@ -9,6 +9,7 @@ import {
   getPluginById,
   getPluginByName,
   listPluginVersions,
+  setPluginTags,
   stampPluginOrigin,
   updatePluginPublishedIdentity,
 } from "../models/plugin-model.js";
@@ -28,9 +29,20 @@ import {
   satisfiesConstraint,
 } from "./plugin-constraints.js";
 import type { Plugin } from "../types.js";
+import { PROFILE_PLUGIN_TAG } from "../constants/profile.js";
+import { markPluginClean } from "./plugin-versioning.js";
+
+function ensureProfileTag(pluginId: string): void {
+  const plugin = getPluginById(pluginId);
+  if (plugin && !plugin.tags.includes(PROFILE_PLUGIN_TAG)) {
+    setPluginTags(plugin.id, [...plugin.tags, PROFILE_PLUGIN_TAG]);
+  }
+}
 
 export interface InstallPluginFromCatalogOptions {
   as?: string;
+  /** Tag the installed plugin as a profile (`ht profile pull`). */
+  profile?: boolean;
   account?: string;
   baseUrl?: string;
   onFetched?: (sourceLabel: string) => void;
@@ -330,6 +342,7 @@ export async function installPluginFromCatalog(
   });
   if (existing && !opts.as) {
     stampPluginOrigin(existing.id, { locator });
+    if (opts.profile) ensureProfileTag(existing.id);
     await ensureMissingCatalogDependencies([existing.id], opts, seen);
     return {
       pluginId: existing.id,
@@ -339,8 +352,10 @@ export async function installPluginFromCatalog(
     };
   }
 
+  // The catalog slug is the local name (what `ht plugin show <slug>` and the
+  // install conflict check expect), not the package's display name.
   const imported = importApPackageFiles(downloaded.files, {
-    as: opts.as,
+    as: opts.as ?? parsed.plugin_slug,
     origin: "catalog",
   });
   updatePluginPublishedIdentity(imported.id, {
@@ -349,6 +364,8 @@ export async function installPluginFromCatalog(
     version: downloaded.version,
   });
   stampPluginOrigin(imported.id, { locator });
+  if (opts.profile) ensureProfileTag(imported.id);
+  markPluginClean(imported.id);
   trackPluginInstalled({
     pluginSlug: parsed.plugin_slug,
     source: "catalog",

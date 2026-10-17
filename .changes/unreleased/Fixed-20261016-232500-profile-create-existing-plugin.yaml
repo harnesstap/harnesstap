@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht profile create <name>` on a plugin that already exists at a version other than 1.0.0 now tags that plugin as a profile, as it already did at 1.0.0. Before, it created a second, empty plugin with the same name that `ht profile list` and Desktop did not show. `--version` on an existing plugin at another version is refused, and nothing is created.'
+time: 2026-10-17T09:25:00.000Z
+custom:
+  Issue: ""

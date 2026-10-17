@@ -12,6 +12,11 @@ import {
 } from "../../services/plugin-publish.js";
 import { formatPublishedSelector } from "../../services/plugin-selector.js";
 import {
+  assertDependenciesPublished,
+  listUnpublishedDependencies,
+  unpublishedDependenciesMessage,
+} from "../../services/plugin-publish-dependencies.js";
+import {
   assertAuthored,
   PluginProvenanceError,
 } from "../../services/plugin-origin.js";
@@ -60,6 +65,8 @@ export async function handlePluginPublishCommand(
 
   try {
     assertAuthored(plugin.id, "publish");
+    // Check before cutting so a blocked publish leaves no new version behind.
+    assertDependenciesPublished(plugin);
     if (opts.version) {
       plugin = cutPluginVersion({ pluginId: plugin.id, newVersion: opts.version });
     } else if (plugin.dirty) {
@@ -143,10 +150,27 @@ export async function handlePluginPublishPlanCommand(
     assertAuthored(plugin.id, "publish");
     const targets = resolvePublishTargetsForPlugin(plugin.id);
     const plans = await planPluginPublish(plugin, targets, { account: opts.account });
+    const unpublished = listUnpublishedDependencies(plugin.id);
+    const blocker = unpublished.length > 0
+      ? unpublishedDependenciesMessage(plugin.name, unpublished)
+      : undefined;
+    if (blocker) {
+      process.exitCode = 1;
+    }
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
-      printJson({ plugin: plugin.name, plans });
+      printJson({
+        plugin: plugin.name,
+        ...(blocker
+          ? { blockers: [{ code: "unpublished_dependencies", message: blocker, dependencies: unpublished }] }
+          : {}),
+        plans,
+      });
       return;
+    }
+
+    if (blocker) {
+      ui.danger(blocker);
     }
 
     for (const plan of plans) {
