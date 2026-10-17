@@ -12,12 +12,16 @@ let statusWriteGeneration = 0;
 const WRITE_STATEMENT = /^\s*(?:WITH\b[\s\S]*?\b)?(INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER)\b/i;
 
 /**
+ * `upstream_checks` is read fresh on every status call, outside the cache, so
+ * a background update check never forces a status recompute.
+ *
  * A new library resource is not referenced by any profile, environment, or
  * project until a link row is inserted, and that insert counts. Status does
  * not list unlinked library resources, so a plain insert into `resources`
  * does not count. `INSERT OR REPLACE` can rewrite a linked row, so it counts.
  */
-const STATUS_IRRELEVANT_WRITE = /^\s*INSERT\s+INTO\s+resources\b/i;
+const STATUS_IRRELEVANT_WRITE =
+  /^\s*(?:INSERT\s+INTO\s+resources\b|(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+upstream_checks\b)/i;
 
 export function statementAffectsStatus(sql: string): boolean {
   if (!WRITE_STATEMENT.test(sql)) return false;

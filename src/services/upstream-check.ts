@@ -11,22 +11,17 @@ import { ensureCloudAccountAccess } from "./cloud-account-auth.js";
 import { cloudFetch } from "./cloud-api-version.js";
 import { resolveUpstreamParent } from "./plugin-extends.js";
 import { isCatalogUpstreamRef, upstreamRange, upstreamRefBase } from "./plugin-upstream.js";
+import { readUpstreamChecks, type UpstreamCheckRow } from "./upstream-check-read.js";
 
-export type UpstreamCheckStatus = "current" | "update" | "major" | "unreachable" | "unpublished";
-
-export interface UpstreamCheckRow {
-  plugin_name: string;
-  /** `org/catalog/slug@^1.0.0`, or `name@^1.0.0` for a local parent. */
-  ref: string;
-  local_version: string;
-  latest_in_range: string;
-  latest_major: string;
-  status: UpstreamCheckStatus;
-  checked_at: string;
-  /** "Not now" remembers the version it dismissed. */
-  dismissed_version: string;
-  message: string;
-}
+export {
+  formatUpdatesLine,
+  isPendingUpdate,
+  readUpstreamCheckSummary,
+  readUpstreamChecks,
+  type UpstreamCheckRow,
+  type UpstreamCheckStatus,
+  type UpstreamCheckSummary,
+} from "./upstream-check-read.js";
 
 /** What to check for one plugin: where it comes from and what it has. */
 export interface UpstreamTarget {
@@ -468,56 +463,6 @@ function narrowToRange(
   range: string,
 ): { latest_in_range: string; latest_major: string } {
   return pickLatest([latest.latest_in_range, latest.latest_major].filter(Boolean), range);
-}
-
-/** The table as is. No network. */
-export function readUpstreamChecks(): UpstreamCheckRow[] {
-  return getDb()
-    .prepare("SELECT * FROM upstream_checks ORDER BY plugin_name, ref")
-    .all() as UpstreamCheckRow[];
-}
-
-/** An update the user has not set aside with "Not now" at that version. */
-export function isPendingUpdate(row: Pick<UpstreamCheckRow, "status" | "latest_in_range" | "latest_major" | "dismissed_version">): boolean {
-  if (row.status === "update") return row.dismissed_version !== row.latest_in_range;
-  if (row.status === "major") return row.dismissed_version !== row.latest_major;
-  return false;
-}
-
-export interface UpstreamCheckSummary {
-  count: number;
-  major_count: number;
-  items: Array<Pick<UpstreamCheckRow, "plugin_name" | "ref" | "local_version" | "latest_in_range" | "latest_major" | "status">>;
-}
-
-/**
- * Counts for status and the banner, from the status index only. Dismissed
- * versions are left out; a newer version shows up again.
- */
-export function readUpstreamCheckSummary(limit = 5): UpstreamCheckSummary {
-  const rows = getDb()
-    .prepare(
-      `SELECT plugin_name, ref, local_version, latest_in_range, latest_major, status, dismissed_version
-       FROM upstream_checks WHERE status IN ('update', 'major') ORDER BY plugin_name, ref`,
-    )
-    .all() as UpstreamCheckRow[];
-  const pending = rows.filter(isPendingUpdate);
-  const updates = pending.filter((row) => row.status === "update");
-  const majors = pending.filter((row) => row.status === "major");
-  return {
-    count: updates.length,
-    major_count: majors.length,
-    items: [...updates, ...majors].slice(0, limit).map(
-      ({ plugin_name, ref, local_version, latest_in_range, latest_major, status }) => ({
-        plugin_name,
-        ref,
-        local_version,
-        latest_in_range,
-        latest_major,
-        status,
-      }),
-    ),
-  };
 }
 
 /**

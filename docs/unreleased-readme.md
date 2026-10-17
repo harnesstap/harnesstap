@@ -23,3 +23,7 @@ New text for the Install section of README.md.
 ## docs/cli/command-reference.md > plugin (`l`) > Important options
 <!-- append -->
 - `plugin check` also checks every upstream link (kept-in-sync and separate-copy profiles, and pulled catalog packages) for newer versions and stores the result, so `ht status` and Desktop read the same answer without a network call. `--format json` adds an `upstream` array with `status` of `current`, `update`, `major`, `unreachable` or `unpublished`. A newer major version shows as `major` and is never installed automatically.
+
+## docs/cli/command-reference.md > Project-local verbs > Important options
+<!-- append -->
+- `status` shows an Updates row when the last upstream check (`plugin check`, or the Desktop sidecar) found newer versions; `status --format json` adds `updates: {count, major_count, items}`. Status reads the stored result and never calls the network.
