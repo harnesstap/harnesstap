@@ -804,8 +804,9 @@
   background: var(--accent);
 }
 
+/* Ring the badge while its name has focus; a focused action draws its own ring. */
 .inventory-chip:focus-visible,
-.inventory-chip:focus-within {
+.inventory-chip:has(> .inventory-chip-name:focus-visible) {
   outline: none;
   box-shadow: var(--focus-ring);
 }
