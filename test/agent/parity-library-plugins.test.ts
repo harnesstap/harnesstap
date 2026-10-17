@@ -553,6 +553,13 @@ describe("POST /v1/library/plugins/:selector/fork", () => {
       true,
     );
     expect(getPluginByName("web-search")).toBeDefined();
+    expect(fork.forked_from).toBe("web-search@2.0.0");
+    expect(fork.forked_from_id).toBe(source.id);
+
+    const detail = await handle("GET", "/v1/library/plugins/web-search-fork");
+    expect(detail.status).toBe(200);
+    const detailBody = (await detail.json()) as { plugin: { forked_from: string | null } };
+    expect(detailBody.plugin.forked_from).toBe("web-search@2.0.0");
   });
 
   it("returns 400 already_authored", async () => {

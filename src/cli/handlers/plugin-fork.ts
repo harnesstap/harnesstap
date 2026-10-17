@@ -1,15 +1,9 @@
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
-import {
-  addResourceToPlugin,
-  createPlugin,
-  getPluginByName,
-  getPluginResources,
-  resolvePluginSelector,
-} from "../../models/plugin-model.js";
-import { getPluginOrigin } from "../../services/plugin-origin.js";
+import { forkPlugin, PluginForkError } from "../../services/plugin-fork.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+import { formatCommand } from "../shared.js";
 
 export interface PluginForkOptions {
   as?: string;
@@ -24,58 +18,41 @@ export function handlePluginForkCommand(
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
 
-  const source = resolvePluginSelector(selector);
-  if (!source) {
+  let result: ReturnType<typeof forkPlugin>;
+  try {
+    result = forkPlugin(selector, opts.as);
+  } catch (error) {
     process.exitCode = 1;
-    ui.danger(`Plugin not found: ${selector}`);
+    if (error instanceof PluginForkError) {
+      const sourceName = error.sourceName ?? selector;
+      if (error.code === "already_authored") {
+        ui.danger(error.message, { hints: [formatCommand(["plugin", "edit", sourceName])] });
+        return;
+      }
+      if (error.code === "plugin_exists") {
+        ui.danger(error.message, {
+          hints: [`${formatCommand(["plugin", "fork", sourceName])} --as <name>`],
+        });
+        return;
+      }
+    }
+    ui.danger(error instanceof Error ? error.message : String(error));
     return;
   }
 
-  if (getPluginOrigin(source.id) === "authored") {
-    process.exitCode = 1;
-    ui.danger(`${source.name} is already authored; there is nothing to fork.`, {
-      hints: [`ht plugin edit ${source.name}`],
-    });
-    return;
-  }
-
-  const name = opts.as ?? `${source.name}-fork`;
-  if (getPluginByName(name)) {
-    process.exitCode = 1;
-    ui.danger(`Plugin ${name} already exists.`, {
-      hints: [`ht plugin fork ${source.name} --as <name>`],
-    });
-    return;
-  }
-
-  const fork = createPlugin({
-    name,
-    version: source.version,
-    description: source.description || `Fork of ${source.name}@${source.version}`,
-    tags: source.tags,
-    ...(source.claude ? { claude: source.claude } : {}),
-    ...(source.needs ? { needs: source.needs } : {}),
-    origin: "authored",
-  });
-
-  // Resource rows are shared, not copied: a fork diverges by attaching and
-  // detaching, and editing a resource is a separate, explicit operation.
-  for (const resource of getPluginResources(source.id)) {
-    addResourceToPlugin(fork.id, resource.id);
-  }
-
+  const { plugin, source, forked_from } = result;
   if (format === "json") {
     printJson({
-      name: fork.name,
-      version: fork.version,
+      name: plugin.name,
+      version: plugin.version,
       origin: "authored",
-      forked_from: `${source.name}@${source.version}`,
+      forked_from,
     });
     return;
   }
 
   ui.success(
-    `Forked ${source.name}@${source.version} into ${ui.theme.accent(fork.name)}`,
+    `Forked ${source.name}@${source.version} into ${ui.theme.accent(plugin.name)}`,
   );
-  ui.hint(`ht plugin edit ${fork.name}`);
+  ui.hint(formatCommand(["plugin", "edit", plugin.name]));
 }

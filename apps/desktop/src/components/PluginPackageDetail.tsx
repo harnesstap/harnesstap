@@ -1391,6 +1391,16 @@ export function PluginPackageDetail({
         editing={false}
         onStartEdit={() => undefined}
       />
+      {record.plugin.forked_from ? (
+        <LibraryFieldRow
+          icon={<GitFork size={16} aria-hidden />}
+          fieldName="Forked from"
+          readOnly
+          display={record.plugin.forked_from}
+          editing={false}
+          onStartEdit={() => undefined}
+        />
+      ) : null}
       <LibraryFieldRow
         icon={<Tag size={16} aria-hidden />}
         fieldName="Tags"

@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 39;
+const SCHEMA_VERSION = 40;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -336,12 +336,27 @@ const MIGRATIONS: Record<number, Migration> = {
       PRIMARY KEY (plugin_name, plugin_version, relative_path)
     );
   `,
+  // A fork remembers what it was copied from: the source selector, which stays
+  // meaningful on another machine, and the local source row id when known.
+  40: migratePluginForkSource,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
   return (
     db.prepare(`PRAGMA table_info(${name})`).all() as Array<{ name: string }>
   ).map((column) => column.name);
+}
+
+function migratePluginForkSource(db: SqliteDatabase): void {
+  if (!tableExists(db, "plugins")) {
+    return;
+  }
+  const columns = new Set(tableColumns(db, "plugins"));
+  for (const name of ["forked_from", "forked_from_id"]) {
+    if (!columns.has(name)) {
+      db.exec(`ALTER TABLE plugins ADD COLUMN ${name} TEXT NOT NULL DEFAULT ''`);
+    }
+  }
 }
 
 function migratePluginSpecMetadata(db: SqliteDatabase): void {

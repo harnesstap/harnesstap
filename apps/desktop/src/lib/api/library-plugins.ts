@@ -24,6 +24,8 @@ export interface LibraryPluginDetailPlugin {
   tags: string[];
   origin: PluginOrigin;
   origin_locator?: string;
+  /** Source of a fork, `org/catalog/name@version` or `name@version`. */
+  forked_from?: string | null;
   dirty: boolean;
   frozen_at: string | null;
   default_environment_id: string | null;

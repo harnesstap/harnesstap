@@ -56,6 +56,8 @@ interface PluginRow {
   default_environment_id: string | null;
   dirty: number;
   frozen_at: string | null;
+  forked_from?: string;
+  forked_from_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -110,6 +112,8 @@ function rowToPlugin(row: PluginRow): Plugin {
     ...(row.default_environment_id
       ? { default_environment_id: row.default_environment_id }
       : {}),
+    ...(row.forked_from ? { forked_from: row.forked_from } : {}),
+    ...(row.forked_from_id ? { forked_from_id: row.forked_from_id } : {}),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -405,8 +409,8 @@ export function cutPluginVersion(input: {
       `INSERT INTO plugins (
         id, name, version, org_slug, catalog_slug, description, tags,
         claude_config, needs_config, default_environment_id, dirty, frozen_at,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        created_at, updated_at, forked_from, forked_from_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       frozenId,
       headRow.name,
@@ -422,6 +426,8 @@ export function cutPluginVersion(input: {
       now,
       now,
       now,
+      headRow.forked_from ?? "",
+      headRow.forked_from_id ?? "",
     );
 
     db.prepare("UPDATE plugins SET overrides = ? WHERE id = ?").run(

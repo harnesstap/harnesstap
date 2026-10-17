@@ -333,6 +333,10 @@ export interface Plugin {
   origin_locator?: string;
   origin_fingerprint?: string;
   origin_fingerprint_kind?: OriginFingerprintKind;
+  /** Source of a fork: `org/catalog/name@version` or `name@version`. */
+  forked_from?: string;
+  /** Local row id of the fork source at fork time; may no longer exist. */
+  forked_from_id?: string;
   created_at: string;
   updated_at: string;
 }

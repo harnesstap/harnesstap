@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'A fork now remembers what it was copied from. `ht plugin fork` and Desktop Fork store the source, so `ht plugin show`, `--format json` and the Library detail show "Forked from". A catalog source is shown as `org/catalog/slug@version`, and any other source as `name@version`. The source row is linked too. The link survives `ht plugin cut`. This adds two columns to the local database (schema v40), so older builds cannot open it.'
+time: 2026-10-17T09:55:00.000Z
+custom:
+  Issue: ""

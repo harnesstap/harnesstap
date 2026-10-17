@@ -105,6 +105,9 @@ export function renderPluginShow(
         ["Description", plugin.description || "none"],
         ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "none"],
         ["Origin", formatOriginLabel(plugin.origin, plugin.origin_locator)],
+        ...(plugin.forked_from
+          ? [["Forked from", plugin.forked_from]] as [string, string][]
+          : []),
         ...(opts?.profileExtras
           ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
           : []),
@@ -167,6 +170,9 @@ export function renderPluginListShow(
       ["Description", plugin.description || "none"],
       ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "none"],
       ["Origin", formatOriginLabel(plugin.origin, plugin.origin_locator)],
+      ...(plugin.forked_from
+        ? [["Forked from", plugin.forked_from]] as [string, string][]
+        : []),
       ...(opts?.profileExtras
         ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
         : []),
