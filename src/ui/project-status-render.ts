@@ -1,4 +1,5 @@
 import { kvBlock, panel } from "./panel.js";
+import { formatUpdatesLine } from "../services/upstream-check-read.js";
 import { subheader } from "./section.js";
 import { table } from "./table.js";
 import { theme } from "./theme.js";
@@ -85,6 +86,10 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
         payload.profile.stack_summary,
       ),
     ]);
+  }
+  const updatesLine = formatUpdatesLine(payload.updates);
+  if (updatesLine) {
+    profileRows.push(["Updates", updatesLine]);
   }
   panel({ title: ["PROFILE"], rows: profileRows });
 
@@ -212,6 +217,7 @@ export function projectStatusPayloadToJson(payload: ProjectStatusPayload): Recor
     },
     project_resources: payload.project_resources,
     ...(payload.lock ? { lock: payload.lock } : {}),
+    updates: payload.updates,
     ...(payload.project
       ? {
           applied_plugins_count: payload.applied_plugins.length,
