@@ -336,8 +336,8 @@ const MIGRATIONS: Record<number, Migration> = {
       PRIMARY KEY (plugin_name, plugin_version, relative_path)
     );
   `,
-  // A fork remembers what it was copied from: the source selector, which stays
-  // meaningful on another machine, and the local source row id when known.
+  // Upstream link (fork now, extends later), stored in the package format's
+  // shape, plus the local upstream row id when known.
   40: migratePluginForkSource,
 };
 
@@ -352,9 +352,15 @@ function migratePluginForkSource(db: SqliteDatabase): void {
     return;
   }
   const columns = new Set(tableColumns(db, "plugins"));
-  for (const name of ["forked_from", "forked_from_id"]) {
+  const additions: Array<[string, string]> = [
+    ["upstream_kind", "TEXT NOT NULL DEFAULT '' CHECK(upstream_kind IN ('', 'extends', 'fork'))"],
+    ["upstream_ref", "TEXT NOT NULL DEFAULT ''"],
+    ["upstream_version_at_link", "TEXT NOT NULL DEFAULT ''"],
+    ["upstream_plugin_id", "TEXT NOT NULL DEFAULT ''"],
+  ];
+  for (const [name, definition] of additions) {
     if (!columns.has(name)) {
-      db.exec(`ALTER TABLE plugins ADD COLUMN ${name} TEXT NOT NULL DEFAULT ''`);
+      db.exec(`ALTER TABLE plugins ADD COLUMN ${name} ${definition}`);
     }
   }
 }

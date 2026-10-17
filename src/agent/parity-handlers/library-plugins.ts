@@ -54,7 +54,7 @@ import {
 } from "../../services/plugin-format.js";
 import { toContentsResource } from "../../services/profile-contents.js";
 import { trackPluginUsed } from "../../telemetry/index.js";
-import type { Plugin, Resource, ResourceType } from "../../types.js";
+import type { Plugin, PluginUpstream, Resource, ResourceType } from "../../types.js";
 import { requireAgentBearerAuth } from "../auth.js";
 import { jsonResponse } from "../http.js";
 import { pluginVersionErrorResponse } from "../profile-cut-handlers.js";
@@ -196,7 +196,7 @@ export function buildPluginDetail(plugin: Plugin) {
       tags: plugin.tags,
       origin,
       origin_locator: plugin.origin_locator ?? "",
-      forked_from: plugin.forked_from ?? null,
+      upstream: plugin.upstream ?? null,
       dirty: plugin.dirty,
       frozen_at: plugin.frozen_at ?? null,
       default_environment_id: plugin.default_environment_id ?? null,
@@ -319,13 +319,15 @@ export function forkLibraryPlugin(
   version: string;
   origin: "authored";
   forked_from: string;
+  upstream: PluginUpstream;
 } {
-  const { plugin, forked_from } = forkPlugin(selector, asName);
+  const { plugin, forked_from, upstream } = forkPlugin(selector, asName);
   return {
     name: plugin.name,
     version: plugin.version,
     origin: "authored",
     forked_from,
+    upstream,
   };
 }
 

@@ -8,9 +8,10 @@ import {
   resolveApName,
   resolvePluginSelector,
 } from "../models/plugin-model.js";
-import type { Plugin } from "../types.js";
+import type { Plugin, PluginUpstream } from "../types.js";
 import { getPluginOrigin } from "./plugin-origin.js";
 import { formatCanonicalPublishedSelector } from "./plugin-selector.js";
+import { buildUpstream, formatUpstreamLabel, setPluginUpstream } from "./plugin-upstream.js";
 
 export type PluginForkErrorCode = "not_found" | "already_authored" | "plugin_exists";
 
@@ -27,30 +28,32 @@ export class PluginForkError extends Error {
 }
 
 /**
- * The reference a fork keeps to the plugin it was copied from. A catalog
- * source is recorded by its catalog selector so the link still means
- * something on another machine; anything else by local name and version.
+ * The upstream link a fork records. A catalog source gets its catalog
+ * selector, so the link means the same thing on another machine and in a
+ * published package; any other source gets its local name, kept only here.
  */
-export function forkSourceRef(source: Plugin): string {
+export function forkUpstream(source: Plugin): PluginUpstream {
   if (source.org_slug && source.catalog_slug) {
     // A pull records the catalog selector in origin_locator. Prefer it: older
     // pulls named the local plugin after its display name, not its slug.
     const prefix = `${source.org_slug}/${source.catalog_slug}/`;
-    const selector = source.origin_locator?.startsWith(prefix)
+    const base = source.origin_locator?.startsWith(prefix)
       ? source.origin_locator
       : formatCanonicalPublishedSelector({
           org: source.org_slug,
           catalog: source.catalog_slug,
           name: resolveApName(source),
         });
-    return `${selector}@${source.version}`;
+    return buildUpstream("fork", base, source.version);
   }
-  return `${source.name}@${source.version}`;
+  return buildUpstream("fork", source.name, source.version);
 }
 
 export interface ForkResult {
   plugin: Plugin;
   source: Plugin;
+  upstream: PluginUpstream;
+  /** Human label of the source, e.g. `org/catalog/slug@1.0.0`. */
   forked_from: string;
 }
 
@@ -71,7 +74,7 @@ export function forkPlugin(selector: string, asName?: string): ForkResult {
     throw new PluginForkError("plugin_exists", `Plugin ${name} already exists.`, source.name);
   }
 
-  const forkedFrom = forkSourceRef(source);
+  const upstream = forkUpstream(source);
   const db = getDb();
   const fork = db.transaction(() => {
     const created = createPlugin({
@@ -83,7 +86,7 @@ export function forkPlugin(selector: string, asName?: string): ForkResult {
       ...(source.needs ? { needs: source.needs } : {}),
       origin: "authored",
     });
-    setPluginForkSource(created.id, { forked_from: forkedFrom, forked_from_id: source.id });
+    setPluginUpstream(created.id, upstream, source.id);
     // Resource rows are shared, not copied: a fork diverges by attaching and
     // detaching, and editing a resource is a separate, explicit operation.
     for (const resource of getPluginResources(source.id)) {
@@ -96,14 +99,5 @@ export function forkPlugin(selector: string, asName?: string): ForkResult {
   if (!plugin) {
     throw new PluginForkError("not_found", `Plugin not found after fork: ${name}`);
   }
-  return { plugin, source, forked_from: forkedFrom };
-}
-
-export function setPluginForkSource(
-  pluginId: string,
-  link: { forked_from: string; forked_from_id: string },
-): void {
-  getDb()
-    .prepare("UPDATE plugins SET forked_from = ?, forked_from_id = ? WHERE id = ?")
-    .run(link.forked_from, link.forked_from_id, pluginId);
+  return { plugin, source, upstream, forked_from: formatUpstreamLabel(upstream) };
 }

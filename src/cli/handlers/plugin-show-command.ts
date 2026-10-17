@@ -67,7 +67,7 @@ export function handlePluginShowCommand(
       description: plugin.description,
       tags: plugin.tags,
       ...(plugin.claude ? { claude: plugin.claude } : {}),
-      ...(plugin.forked_from ? { forked_from: plugin.forked_from } : {}),
+      ...(plugin.upstream ? { upstream: plugin.upstream } : {}),
       created_at: plugin.created_at,
       updated_at: plugin.updated_at,
       resources,

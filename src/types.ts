@@ -333,12 +333,25 @@ export interface Plugin {
   origin_locator?: string;
   origin_fingerprint?: string;
   origin_fingerprint_kind?: OriginFingerprintKind;
-  /** Source of a fork: `org/catalog/name@version` or `name@version`. */
-  forked_from?: string;
-  /** Local row id of the fork source at fork time; may no longer exist. */
-  forked_from_id?: string;
+  /**
+   * Upstream link, the same shape as `extensions["com.harnesstap"].upstream`
+   * in a package. Only a catalog ref (`org/catalog/slug@range`) is exported.
+   */
+  upstream?: PluginUpstream;
+  /** Local row id of the upstream at link time; never exported, may be gone. */
+  upstream_plugin_id?: string;
   created_at: string;
   updated_at: string;
+}
+
+export type PluginUpstreamKind = "extends" | "fork";
+
+export interface PluginUpstream {
+  kind: PluginUpstreamKind;
+  /** `org/catalog/slug@range` for a catalog source, else `name@range` (local only). */
+  ref: string;
+  /** Exact upstream version the link was made at; empty when it was not semver. */
+  version_at_link: string;
 }
 
 export type EnvironmentSecretProvider = "keychain" | "env" | "file";

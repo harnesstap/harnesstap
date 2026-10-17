@@ -40,13 +40,14 @@ export function handlePluginForkCommand(
     return;
   }
 
-  const { plugin, source, forked_from } = result;
+  const { plugin, source, forked_from, upstream } = result;
   if (format === "json") {
     printJson({
       name: plugin.name,
       version: plugin.version,
       origin: "authored",
       forked_from,
+      upstream,
     });
     return;
   }
