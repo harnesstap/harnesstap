@@ -18,7 +18,7 @@ export function bellLabel(count: number | undefined): string {
 }
 
 export function emptyNotificationsText(filter: NotificationFilter): string {
-  return filter === "unread" ? "No unread notifications." : "No notifications yet.";
+  return filter === "unread" ? "All caught up." : "No notifications yet.";
 }
 
 export function notificationTime(iso: string, now: Date = new Date()): string {
@@ -36,4 +36,14 @@ export function withRead(
   const hit = (item: NotificationItem) => ids === "all" || ids.has(item.id);
   if (filter === "unread") return items.filter((item) => !hit(item));
   return items.map((item) => (hit(item) && !item.read_at ? { ...item, read_at: at } : item));
+}
+
+/** Update notifications carry the version; reading one clears the rail badge for it. */
+export function seenKeysFor(items: readonly NotificationItem[]): string[] {
+  return items.flatMap((item) => {
+    const version = item.payload?.version;
+    if (typeof version !== "string" || !version) return [];
+    if (item.kind !== "update_available" && item.kind !== "parent_published") return [];
+    return [`${item.plugin_name}@${version}`];
+  });
 }

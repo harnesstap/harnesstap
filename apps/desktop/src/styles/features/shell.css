@@ -363,8 +363,8 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--red);
-  color: var(--bg);
+  background: var(--accent);
+  color: var(--accent-foreground);
   font-size: var(--text-scope-plus);
   font-weight: 600;
   line-height: 16px;
@@ -386,28 +386,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-.notifications-link {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--text-meta);
-  padding: var(--space-1);
-  border-radius: 2px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.notifications-link:hover:not(:disabled) {
-  background: var(--surface-hover);
-}
-
-.notifications-link:disabled {
-  color: var(--muted);
-  cursor: not-allowed;
-}
-
 .notifications-list {
   margin: 0;
   padding: 0;
@@ -419,9 +397,42 @@
 .notifications-item {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
   border-bottom: 1px solid var(--border);
+}
+
+.notifications-item:hover,
+.notifications-item:focus-within {
+  background: var(--surface-hover);
+}
+
+.notifications-icon-btn {
+  flex-shrink: 0;
+}
+
+/* The per-row check appears on row hover or keyboard focus. */
+.notifications-item-read {
+  opacity: 0;
+  margin-top: var(--space-1);
+}
+
+.notifications-item:hover .notifications-item-read,
+.notifications-item:focus-within .notifications-item-read {
+  opacity: 1;
+}
+
+.notifications-dot {
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin: 0.45rem var(--space-1) 0;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.notifications-item.is-unread .notifications-dot {
+  background: var(--accent);
 }
 
 .notifications-item:last-child {
@@ -429,10 +440,24 @@
 }
 
 .notifications-item-main {
+  appearance: none;
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: var(--space-1) 0;
+  cursor: pointer;
+}
+
+.notifications-item-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1;
   min-width: 0;
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Check, CheckCheck } from "lucide-react";
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -12,10 +12,12 @@ import {
   emptyNotificationsText,
   NOTIFICATION_TABS,
   notificationTime,
+  seenKeysFor,
   unreadBadgeText,
   withRead,
 } from "../../lib/notifications-view";
 import { useOverlayLayer } from "../../state/overlay-stack";
+import { markUpdatesSeen } from "../../state/update-seen-store";
 import { useStatusStore } from "../../state/status-store";
 import { toast } from "../../state/toast-store";
 import { ChromeTooltip } from "../ChromeTooltip";
@@ -27,10 +29,12 @@ export interface NotificationsBellProps {
   baseUrl: string | null;
   token: string | null;
   disabled?: boolean;
+  /** Clicking a row opens the profile (or plugin) it is about. */
+  onOpen?: (pluginName: string) => void;
 }
 
 /** Header bell. The count comes from the status payload; the list loads on open. */
-export function NotificationsBell({ baseUrl, token, disabled = false }: NotificationsBellProps) {
+export function NotificationsBell({ baseUrl, token, disabled = false, onOpen }: NotificationsBellProps) {
   const statusCount = useStatusStore((state) => state.status?.unread_count);
   // After a mark-read the count is known before the next status poll.
   const [override, setOverride] = useState<number | null>(null);
@@ -67,6 +71,7 @@ export function NotificationsBell({ baseUrl, token, disabled = false }: Notifica
     setBusy(true);
     try {
       const result = await markNotificationRead(baseUrl, token, id);
+      markUpdatesSeen(seenKeysFor((items ?? []).filter((item) => item.id === id)));
       setItems((current) => withRead(current ?? [], filter, new Set([id]), result.item.read_at ?? new Date().toISOString()));
       setOverride(result.unread_count);
     } catch (error) {
@@ -81,6 +86,7 @@ export function NotificationsBell({ baseUrl, token, disabled = false }: Notifica
     setBusy(true);
     try {
       const result = await markAllNotificationsRead(baseUrl, token);
+      markUpdatesSeen(seenKeysFor(items ?? []));
       setItems((current) => withRead(current ?? [], filter, "all", new Date().toISOString()));
       setOverride(result.unread_count);
     } catch (error) {
@@ -88,6 +94,12 @@ export function NotificationsBell({ baseUrl, token, disabled = false }: Notifica
     } finally {
       setBusy(false);
     }
+  };
+
+  const openItem = (item: NotificationItem) => {
+    if (!item.read_at) void markOne(item.id);
+    setOpen(false);
+    onOpen?.(item.plugin_name);
   };
 
   const badge = unreadBadgeText(count);
@@ -139,15 +151,18 @@ export function NotificationsBell({ baseUrl, token, disabled = false }: Notifica
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className="notifications-link"
-            data-testid="notifications-mark-all"
-            disabled={busy || count === 0}
-            onClick={() => void markAll()}
-          >
-            Mark all as read
-          </button>
+          <ChromeTooltip content="Mark all as read">
+            <button
+              type="button"
+              className="icon-action notifications-icon-btn"
+              data-testid="notifications-mark-all"
+              aria-label="Mark all as read"
+              disabled={busy || count === 0}
+              onClick={() => void markAll()}
+            >
+              <CheckCheck size={16} strokeWidth={2} aria-hidden="true" />
+            </button>
+          </ChromeTooltip>
         </div>
         <ul className="notifications-list" role="list">
           {items === null ? (
@@ -163,21 +178,35 @@ export function NotificationsBell({ baseUrl, token, disabled = false }: Notifica
                 className={`notifications-item${item.read_at ? "" : " is-unread"}`}
                 data-testid={`notification-${item.id}`}
               >
-                <div className="notifications-item-main">
-                  <span className="notifications-item-title">{item.title}</span>
-                  {item.body ? <span className="notifications-item-body">{item.body}</span> : null}
-                  <span className="notifications-item-time">{notificationTime(item.created_at)}</span>
-                </div>
+                <button
+                  type="button"
+                  className="notifications-item-main"
+                  data-testid={`notification-open-${item.id}`}
+                  onClick={() => openItem(item)}
+                >
+                  <span className="notifications-dot" aria-hidden="true" />
+                  <span className="notifications-item-text">
+                    <span className="notifications-item-title">
+                      {item.read_at ? null : <span className="sr-only">Unread: </span>}
+                      {item.title}
+                    </span>
+                    {item.body ? <span className="notifications-item-body">{item.body}</span> : null}
+                    <span className="notifications-item-time">{notificationTime(item.created_at)}</span>
+                  </span>
+                </button>
                 {item.read_at ? null : (
-                  <button
-                    type="button"
-                    className="notifications-link"
-                    data-testid={`notification-read-${item.id}`}
-                    disabled={busy}
-                    onClick={() => void markOne(item.id)}
-                  >
-                    Mark as read
-                  </button>
+                  <ChromeTooltip content="Mark as read">
+                    <button
+                      type="button"
+                      className="icon-action notifications-icon-btn notifications-item-read"
+                      data-testid={`notification-read-${item.id}`}
+                      aria-label="Mark as read"
+                      disabled={busy}
+                      onClick={() => void markOne(item.id)}
+                    >
+                      <Check size={16} strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  </ChromeTooltip>
                 )}
               </li>
             ))

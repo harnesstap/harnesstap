@@ -2,11 +2,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import type { NotificationItem } from "../../apps/desktop/src/lib/api/notifications.ts";
+import type { UpdateRow } from "../../apps/desktop/src/lib/api/updates.ts";
+import { profilesWithUpdates } from "../../apps/desktop/src/lib/updates-banner.ts";
 import {
   bellLabel,
   emptyNotificationsText,
   NOTIFICATION_TABS,
   notificationTime,
+  seenKeysFor,
   unreadBadgeText,
   withRead,
 } from "../../apps/desktop/src/lib/notifications-view.ts";
@@ -45,7 +48,7 @@ describe("notifications bell", () => {
 
   it("has Unread and All tabs with their own empty text", () => {
     expect(NOTIFICATION_TABS.map((tab) => tab.label)).toEqual(["Unread", "All"]);
-    expect(emptyNotificationsText("unread")).toBe("No unread notifications.");
+    expect(emptyNotificationsText("unread")).toBe("All caught up.");
     expect(emptyNotificationsText("all")).toBe("No notifications yet.");
   });
 
@@ -68,5 +71,39 @@ describe("notifications bell", () => {
     expect(bellSource).toContain("Mark as read");
     expect(bellSource).not.toMatch(/method:\s*"DELETE"/);
     expect(headerSource.indexOf("<NotificationsBell")).toBeLessThan(headerSource.indexOf('data-testid="open-settings"'));
+  });
+
+  it("uses icon buttons with plain tooltips, an unread dot, and opens the row's profile", () => {
+    expect(bellSource).toContain('<ChromeTooltip content="Mark as read">');
+    expect(bellSource).toContain('<ChromeTooltip content="Mark all as read">');
+    expect(bellSource).toContain("<CheckCheck");
+    expect(bellSource).toContain("notifications-dot");
+    expect(bellSource).toContain("onOpen?.(item.plugin_name)");
+    expect(headerSource).toContain("onOpen={onOpenNotification}");
+    const css = readFileSync(join(import.meta.dir, "../../apps/desktop/src/styles/features/shell.css"), "utf8");
+    const badge = css.slice(css.indexOf(".notifications-badge {"), css.indexOf("}", css.indexOf(".notifications-badge {")));
+    expect(badge).toContain("var(--accent)");
+    expect(badge).not.toContain("var(--red)");
+  });
+
+  it("clears the rail badge for an update once its notification is read", () => {
+    const row: UpdateRow = {
+      ref: "acme/default/acme-lint@^1.0.0",
+      plugin_name: "acme-lint",
+      local_version: "1.0.0",
+      latest_in_range: "1.1.0",
+      latest_major: "",
+      status: "update",
+      checked_at: "now",
+      dismissed_version: "",
+      message: "",
+      kind: "catalog",
+      pending: true,
+      profiles: ["team"],
+    };
+    expect([...profilesWithUpdates([row])]).toEqual(["team"]);
+    const seen = new Set(seenKeysFor([item("acme-lint")]));
+    expect([...profilesWithUpdates([row], seen)]).toEqual([]);
+    expect(seenKeysFor([{ ...item("x"), kind: "update_check_failed" }])).toEqual([]);
   });
 });
