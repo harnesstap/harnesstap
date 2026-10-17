@@ -1,0 +1,5 @@
+kind: Fixed
+body: The npm CLI no longer prints two `[status-cache] refresh worker error` stack traces on `ht profile use` and `ht profile status`. The status refresh worker now ships in the package as `dist/status-refresh-worker.js`, so status reads run on it instead of failing to load it and falling back.
+time: 2026-10-17T07:30:00.000Z
+custom:
+  Issue: ""

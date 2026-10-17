@@ -722,7 +722,16 @@ function statusRefreshWorkerTarget(): string | URL | null {
     if (process.platform === "win32") return null;
     return "./services/status-refresh-worker.ts";
   }
-  return new URL("./status-refresh-worker.ts", import.meta.url);
+  return statusRefreshWorkerUrl(import.meta.url);
+}
+
+/**
+ * Source runs (bun, tests) load the .ts worker. The npm bundle ships it as
+ * dist/status-refresh-worker.js, next to the chunk that imports this module.
+ */
+export function statusRefreshWorkerUrl(moduleUrl: string): URL {
+  const extension = new URL(moduleUrl).pathname.endsWith(".ts") ? "ts" : "js";
+  return new URL(`./status-refresh-worker.${extension}`, moduleUrl);
 }
 
 function completeRefreshJob(job: RefreshJob, message: Extract<RefreshResultMessage, { op?: undefined }>): void {

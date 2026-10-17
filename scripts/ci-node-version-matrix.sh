@@ -86,6 +86,10 @@ run_cli() {
   cat "$out"
   echo "stderr:"
   cat "$err"
+  if grep -q "\[status-cache\]" "$err"; then
+    echo "G1 failed: status worker error in $label output" >&2
+    exit 1
+  fi
   if grep -q "ExperimentalWarning" "$err" || grep -q "ExperimentalWarning" "$out"; then
     echo "G1 failed: ExperimentalWarning in $label output" >&2
     exit 1
@@ -114,6 +118,18 @@ run_cli() {
 run_cli "ht --help" ht --help
 run_cli "ht -V" ht -V
 run_cli "ht init --no-interactive" ht init --no-interactive
+
+# The status refresh worker must ship in the tarball. When it is missing,
+# every status read logs "[status-cache] refresh worker error" with a stack.
+if [[ "$SUPPORTED" == "true" ]]; then
+  run_cli "ht harness set" ht harness set --harnesses claude-code
+  run_cli "ht profile use" ht profile use "global default" --no-interactive
+  run_cli "ht profile status" ht profile status
+  if [[ ! -f "$(npm root -g)/harnesstap/dist/status-refresh-worker.js" ]]; then
+    echo "G1 failed: dist/status-refresh-worker.js is missing from the package" >&2
+    exit 1
+  fi
+fi
 
 npx_home="$(mktemp -d)"
 npx_env=(env HOME="$npx_home")
