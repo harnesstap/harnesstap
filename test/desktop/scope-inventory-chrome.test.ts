@@ -231,7 +231,8 @@ describe("Global/Project scope inventory chrome", () => {
     expect(chipBlock).toContain("display: inline-flex;");
     expect(chipBlock).toContain("align-items: center;");
     expect(chipBlock).toContain("height: 26px;");
-    expect(chipBlock).toContain("border-radius: var(--radius);");
+    expect(chipBlock).toContain("border-radius: var(--chip-radius);");
+    expect(chipBlock).toContain("--chip-radius: calc(var(--radius) + 2px);");
     expect(stylesSource).toContain(".inventory-chip-cluster");
     expect(stylesSource).toContain("flex-wrap: wrap");
     expect(stylesSource).not.toContain(".resource-row.inventory-row");

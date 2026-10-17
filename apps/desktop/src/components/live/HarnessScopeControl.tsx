@@ -53,6 +53,8 @@ export interface HarnessScopeControlProps {
   disabled?: boolean;
   onChange: (scope: HarnessScope) => void;
   initialOpen?: boolean;
+  /** False when the badge shows the Also use on suggestion itself (InventoryRow). */
+  inlineSuggestion?: boolean;
 }
 
 function stop(event: MouseEvent) {
@@ -82,6 +84,7 @@ export function HarnessScopeControl({
   disabled = false,
   onChange,
   initialOpen = false,
+  inlineSuggestion = true,
 }: HarnessScopeControlProps): ReactNode {
   const [open, setOpen] = useState(initialOpen);
   const [filter, setFilter] = useState("");
@@ -147,7 +150,11 @@ export function HarnessScopeControl({
   };
 
   const extraHarnesses = alsoUseOnTargets(resourceType, committed, registered);
-  const showAlsoUseOn = extraHarnesses.length > 0 && !alsoUseOnDismissed && !disabled;
+  const showAlsoUseOn =
+    extraHarnesses.length > 0
+    && !alsoUseOnDismissed
+    && !dismissedAlsoUseOn.has(alsoUseOnKey(resourceName, resourceType))
+    && !disabled;
 
   const acceptAlsoUseOn = () => {
     const next = unionHarnessScopes(committed, {
@@ -329,7 +336,57 @@ export function HarnessScopeControl({
           {alsoUseOnRow}
         </PopoverContent>
       </Popover>
-      {!open ? alsoUseOnRow : null}
+      {!open && inlineSuggestion ? alsoUseOnRow : null}
     </span>
   );
+}
+
+export interface AlsoUseOnSuggestion {
+  targets: string[];
+  label: string;
+  tooltip: string;
+  accept: () => void;
+  dismiss: () => void;
+}
+
+/**
+ * The Also use on suggestion for a badge, or null. Same persist path and
+ * dismissal as the control's own row, so either place can answer it.
+ */
+export function useAlsoUseOn({
+  resourceName,
+  resourceType,
+  stored,
+  registered,
+  disabled = false,
+  onChange,
+}: {
+  resourceName: string;
+  resourceType: string;
+  stored: "all" | string[] | undefined;
+  registered: readonly string[];
+  disabled?: boolean;
+  onChange?: (scope: HarnessScope) => void;
+}): AlsoUseOnSuggestion | null {
+  const key = alsoUseOnKey(resourceName, resourceType);
+  const [dismissed, setDismissed] = useState(() => dismissedAlsoUseOn.has(key));
+  const committed = useMemo(() => parseStoredHarnessScope(stored), [stored]);
+  if (!onChange || registered.length < 2 || disabled || dismissed || dismissedAlsoUseOn.has(key)) {
+    return null;
+  }
+  const targets = alsoUseOnTargets(resourceType, committed, registered);
+  if (targets.length === 0) return null;
+  return {
+    targets,
+    label: HARNESS_SCOPE_COPY.alsoUseOnLabel(targets),
+    tooltip: HARNESS_SCOPE_COPY.portableMcpTooltip(targets),
+    accept: () => {
+      onChange(normalizeScopeToRegistered(unionHarnessScopes(committed, { kind: "subset", harnesses: targets }), registered));
+      toast({ tone: "success", title: HARNESS_SCOPE_COPY.nowOnToast(targets) });
+    },
+    dismiss: () => {
+      dismissedAlsoUseOn.add(key);
+      setDismissed(true);
+    },
+  };
 }

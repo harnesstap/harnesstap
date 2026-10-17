@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
-import { CircleAlert, FileDiff, Plus, Power, X } from "lucide-react";
+import { CircleAlert, CirclePlus, EyeOff, FileDiff, Plus, Power, X } from "lucide-react";
 import {
   inventoryMembershipCaption,
   profileInventoryOpenTarget,
@@ -15,7 +15,7 @@ import { Checkbox } from "../ui/checkbox";
 import { ResourceHoverCard } from "../ui/resource-hover-card";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { resourceDetailTarget } from "./shared";
-import { HarnessScopeControl } from "./HarnessScopeControl";
+import { HarnessScopeControl, useAlsoUseOn } from "./HarnessScopeControl";
 import { parseStoredHarnessScope, type HarnessScope, type SerializerTarget } from "../../lib/harness-scope-ui";
 
 const CHIP_STATUS_GLYPH_PX = 12;
@@ -96,8 +96,17 @@ export function InventoryRow({
       disabled={pending}
       onChange={onHarnessScopeChange}
       initialOpen={scopePopoverOpen}
+      inlineSuggestion={false}
     />
   ) : null;
+  const suggestion = useAlsoUseOn({
+    resourceName: item.label,
+    resourceType: item.type,
+    stored: item.resource.harness_scope,
+    registered: registeredHarnesses,
+    disabled: pending || !showScope,
+    onChange: onHarnessScopeChange,
+  });
   const drifted = item.section === "active" && item.drifted;
   const showActivate =
     !editMode && item.section === "inactive" && selectedIsActive && Boolean(onActivate);
@@ -114,8 +123,10 @@ export function InventoryRow({
   };
 
   let action: ReactNode = null;
+  // A running action stays visible; every other control waits for hover or focus.
+  const spinner = pending ? <ButtonSpinner size={CHIP_ACTION_ICON_PX} /> : null;
   if (pending) {
-    action = <ButtonSpinner size={CHIP_ACTION_ICON_PX} />;
+    action = null;
   } else if (drifted && onDiff && item.driftChange) {
     action = (
       <IconActionButton
@@ -219,9 +230,35 @@ export function InventoryRow({
           {item.label}
         </button>
         {subsetScope ? scopeControl : null}
-        {action || (!subsetScope && scopeControl) ? (
-          <span className="inventory-chip-actions" onClick={stopChipActivate}>
+        {suggestion ? <span className="inventory-chip-suggest-dot" aria-hidden="true" /> : null}
+        {spinner}
+        {action || suggestion || (!subsetScope && scopeControl) ? (
+          // Absolutely positioned to the right of the badge: it overlays, so
+          // the row never reflows. The cluster reserves room for it at row end.
+          <span
+            className="inventory-chip-actions inventory-chip-extension"
+            data-testid={`resource-row-actions-${item.resource.name}`}
+            onClick={stopChipActivate}
+          >
             {!subsetScope ? scopeControl : null}
+            {suggestion ? (
+              <>
+                <IconActionButton
+                  data-testid="also-use-on-accept"
+                  label={suggestion.label}
+                  title={suggestion.label}
+                  onClick={suggestion.accept}
+                  icon={<CirclePlus size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
+                />
+                <IconActionButton
+                  data-testid="also-use-on-dismiss"
+                  label={`Not now: ${suggestion.label.charAt(0).toLowerCase()}${suggestion.label.slice(1)}`}
+                  title="Not now"
+                  onClick={suggestion.dismiss}
+                  icon={<EyeOff size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
+                />
+              </>
+            ) : null}
             {action}
           </span>
         ) : null}
