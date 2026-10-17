@@ -223,12 +223,10 @@ export const CLI_COPY = {
   dryRunNothingChanged: DRY_RUN_NOTHING_CHANGED,
   everythingUpToDate: "Everything is up to date.",
   snapshotSavedUndo: "Snapshot saved. Undo with:",
-  forceRemoveHint: "To remove them too, run:",
   keptYouChanged: "you changed it",
   keptNotMade: "not made by HarnessTap",
   viewSnapshot: "View snapshot",
-  keptFilesIntro:
-    "files you changed or that HarnessTap didn't create:",
+  keptFilesIntro: "you changed or that HarnessTap didn't create:",
 } as const;
 
 export function alreadyExistsOnConflictHint(kind: string, name: string): string {
@@ -285,7 +283,7 @@ export function savedChangesLine(profileName: string, count: number): string {
 }
 
 export function stashedChangesLine(count: number, popCommand: string): string {
-  return `Stashed ${count} ${pluralNoun(count, "change")}. Bring them back with: ${popCommand}`;
+  return `Stashed ${count} ${pluralNoun(count, "change")}. Bring ${count === 1 ? "it" : "them"} back with: ${popCommand}`;
 }
 
 export function discardedChangesLine(count: number): string {
@@ -361,7 +359,7 @@ export function dryRunWouldLine(input: {
 }
 
 export function dryRunStashLine(count: number, profileName: string): string {
-  return `Dry run. Would stash ${count} changes from "${profileName}".`;
+  return `Dry run. Would stash ${count} ${pluralNoun(count, "change")} from "${profileName}".`;
 }
 
 export function snapshotSavedUndoLine(revertCommand: string): string {
@@ -369,7 +367,11 @@ export function snapshotSavedUndoLine(revertCommand: string): string {
 }
 
 export function keptFilesHeader(count: number): string {
-  return `Kept ${count} ${CLI_COPY.keptFilesIntro}`;
+  return `Kept ${count} ${pluralNoun(count, "file")} ${CLI_COPY.keptFilesIntro}`;
+}
+
+export function forceRemoveHintLine(count: number): string {
+  return `To remove ${count === 1 ? "it" : "them"} too, run:`;
 }
 
 export function restoredRemovedLine(

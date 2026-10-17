@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'CLI counts use the singular for one item: "Kept 1 file", "To remove it too", "Stashed 1 change. Bring it back", "Would stash 1 change", and list summaries such as "1 resource", "1 plugin", "1 snapshot", "Update 1 plugin from origin?" and "1 change" in plugin diffs.'
+time: 2026-10-17T09:30:00.000Z
+custom:
+  Issue: ""

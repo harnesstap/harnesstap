@@ -28,7 +28,7 @@ function printMigrateExportHuman(result: ScopedExportResult): void {
   switch (result.scope) {
     case "workspace":
       ui.success(
-        `Exported migration archive ${ui.icons.hint} ${output} ${ui.icons.bullet} ${result.manifest.plugin_count} plugins, ${result.manifest.environment_count} environments`,
+        `Exported migration archive ${ui.icons.hint} ${output} ${ui.icons.bullet} ${formatCount(result.manifest.plugin_count, "plugin")}, ${formatCount(result.manifest.environment_count, "environment")}`,
       );
       return;
     case "plugin":
