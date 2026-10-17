@@ -47,4 +47,13 @@ describe("Cloud error shapes (harnesstap-cloud#143)", () => {
     expect(cloudPublishErrorMessage(child, new CloudApiError("publish failed", 403, { error: { code: "forbidden" } }))).toBeUndefined();
     expect(cloudPublishErrorMessage(child, new Error("network down"))).toBeUndefined();
   });
+
+  it("reads fields and details of the primary shape and falls back to x-request-id", () => {
+    const headers = new Headers({ "x-request-id": "req_h" });
+    expect(
+      parseCloudErrorBody({ error: { code: "invalid_input", message: "Bad.", fields: { name: "slug" }, details: { max: 64 } } }, headers),
+    ).toMatchObject({ code: "invalid_input", requestId: "req_h", fields: { name: "slug" }, details: { max: 64 } });
+    expect(parseCloudErrorBody({ error: { code: "x", requestId: "req_body" } }, headers).requestId).toBe("req_body");
+    expect(parseCloudErrorBody(undefined, headers)).toEqual({ requestId: "req_h" });
+  });
 });

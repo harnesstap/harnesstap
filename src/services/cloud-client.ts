@@ -410,7 +410,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new CloudApiError("create plugin failed", response.status, body);
+      throw new CloudApiError("create plugin failed", response.status, body, response.headers);
     }
     return (body as { plugin: PublishedPluginRecord }).plugin;
   }
@@ -435,7 +435,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new CloudApiError("publish failed", response.status, body);
+      throw new CloudApiError("publish failed", response.status, body, response.headers);
     }
     return body as { version: { version: string } };
   }
@@ -461,7 +461,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       if ((response.status === 404 || response.status === 405 || response.status === 501) && !parseCloudErrorBody(body).code) {
         return null;
       }
-      throw new CloudApiError("duplicate failed", response.status, body);
+      throw new CloudApiError("duplicate failed", response.status, body, response.headers);
     },
 
     async whoami() {
