@@ -369,6 +369,22 @@
   white-space: pre-wrap;
 }
 
+.banner.neutral {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.banner-message-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.banner-message-with-icon > svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
 .banner.error {
   border-color: color-mix(in srgb, var(--red) 45%, var(--border));
   background: color-mix(in srgb, var(--red) 10%, var(--bg));

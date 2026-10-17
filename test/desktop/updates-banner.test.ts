@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import type { UpdateRow } from "../../apps/desktop/src/lib/api/updates.ts";
-import { profilesWithUpdates, updatesBanner } from "../../apps/desktop/src/lib/updates-banner.ts";
+import { handledKey, profileUpdatesBanner, profilesWithUpdates } from "../../apps/desktop/src/lib/updates-banner.ts";
 
 function row(partial: Partial<UpdateRow> & Pick<UpdateRow, "plugin_name">): UpdateRow {
   return {
@@ -24,50 +24,70 @@ function row(partial: Partial<UpdateRow> & Pick<UpdateRow, "plugin_name">): Upda
 const src = (path: string) => readFileSync(join(import.meta.dir, "../../apps/desktop/src", path), "utf8");
 
 describe("updates banner", () => {
-  it("is absent when nothing is pending", () => {
-    expect(updatesBanner([])).toBeNull();
-    expect(updatesBanner([row({ plugin_name: "a", pending: false })])).toBeNull();
+  it("is absent when nothing is pending or no profile is open", () => {
+    expect(profileUpdatesBanner([], "team")).toBeNull();
+    expect(profileUpdatesBanner([row({ plugin_name: "a", pending: false, profiles: ["team"] })], "team")).toBeNull();
+    expect(profileUpdatesBanner([row({ plugin_name: "a", profiles: ["team"] })], null)).toBeNull();
   });
 
-  it("counts updates and offers Update all, with Not now at the offered versions", () => {
-    const model = updatesBanner([
-      row({ plugin_name: "a" }),
-      row({ plugin_name: "b", kind: "extends", latest_in_range: "1.3.0" }),
-      row({ plugin_name: "c", status: "major", latest_in_range: "1.0.0", latest_major: "2.0.0" }),
-    ]);
-    expect(model).toEqual({
-      message: "2 updates available. 1 major version available, never installed automatically.",
-      canUpdateAll: true,
-      dismiss: [
-        { plugin: "a", version: "1.2.0" },
-        { plugin: "b", version: "1.3.0" },
-        { plugin: "c", version: "2.0.0" },
-      ],
+  it("only shows on the affected profile's page", () => {
+    const rows = [row({ plugin_name: "acme-lint", profiles: ["team"] })];
+    expect(profileUpdatesBanner(rows, "solo")).toBeNull();
+    expect(profileUpdatesBanner(rows, "team")).toEqual({
+      message: "acme-lint: 1.2.0 is available (you have 1.0.0).",
+      plugins: ["acme-lint"],
+      dismiss: [{ plugin: "acme-lint", version: "1.2.0" }],
     });
   });
 
-  it("names a separate copy and does not offer Update all for it", () => {
-    const model = updatesBanner([row({ plugin_name: "backend-copy", kind: "fork", latest_in_range: "1.1.0" })]);
-    expect(model?.message).toBe("backend-copy: upstream has 1.1.0 (you copied 1.0.0).");
-    expect(model?.canUpdateAll).toBe(false);
+  it("covers the profile itself when it is the parent with an update", () => {
+    const rows = [row({ plugin_name: "backend", kind: "extends", latest_in_range: "1.1.0" })];
+    expect(profileUpdatesBanner(rows, "backend")?.message).toBe("backend: 1.1.0 is available (you have 1.0.0).");
   });
 
-  it("puts the rail dot on profiles that use a plugin with an update, not on majors", () => {
+  it("lists several updates in one sentence", () => {
+    const rows = [
+      row({ plugin_name: "a", profiles: ["team"] }),
+      row({ plugin_name: "b", profiles: ["team"], latest_in_range: "1.3.0" }),
+    ];
+    expect(profileUpdatesBanner(rows, "team")?.message).toBe("2 updates are available: a, b.");
+  });
+
+  it("leaves majors and separate copies to the bell", () => {
+    const rows = [
+      row({ plugin_name: "c", status: "major", latest_in_range: "1.0.0", latest_major: "2.0.0", profiles: ["team"] }),
+      row({ plugin_name: "backend-copy", kind: "fork", latest_in_range: "1.1.0" }),
+    ];
+    expect(profileUpdatesBanner(rows, "team")).toBeNull();
+    expect(profileUpdatesBanner(rows, "backend-copy")).toBeNull();
+  });
+
+  it("clears once the offered version was updated", () => {
+    const rows = [row({ plugin_name: "a", profiles: ["team"] })];
+    expect(profileUpdatesBanner(rows, "team", new Set([handledKey(rows[0]!)]))).toBeNull();
+  });
+
+  it("puts the rail badge on profiles that use a plugin with an update, not on majors or copies", () => {
     const dots = profilesWithUpdates([
       row({ plugin_name: "a", profiles: ["team", "solo"] }),
       row({ plugin_name: "c", status: "major", profiles: ["ops"] }),
       row({ plugin_name: "d", pending: false, profiles: ["old"] }),
+      row({ plugin_name: "backend-copy", kind: "fork", profiles: ["backend-copy"] }),
     ]);
     expect([...dots].sort()).toEqual(["solo", "team"]);
   });
 
-  it("is wired once in the Global view with Update all and Not now, and the rail renders the dot", () => {
+  it("is wired on the selected profile's page with Update and Dismiss, and the rail renders the badge", () => {
     const workspace = src("components/shell/ScopeWorkspace.tsx");
-    expect(workspace).toContain('scope === "global" ? (\n            <UpdatesBanner');
+    expect(workspace).toContain("profileName={selectedProfile}");
+    expect(workspace).not.toContain('scope === "global" ? (\n            <UpdatesBanner');
     const banner = src("components/shell/UpdatesBanner.tsx");
-    expect(banner).toContain("Update all");
-    expect(banner).toContain("Not now");
-    expect(src("components/shell/ProfilesRail.tsx")).toContain("profile-update-dot");
+    expect(banner).toContain('tone="neutral"');
+    expect(banner).toContain("onDismiss=");
+    expect(banner).not.toContain("Update all");
+    const rail = src("components/shell/ProfilesRail.tsx");
+    expect(rail).toContain("profile-update-slot");
+    expect(rail).toContain('content="Update available"');
   });
 
   it("keeps the visual baselines off the network", () => {
