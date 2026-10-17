@@ -10,6 +10,7 @@ import { getActiveProfileName } from "./active-profile.js";
 import {
   isTransparentCrossHarnessGap,
   resourceScopesForPlugins,
+  liveSkillCopiesForMissingPath,
 } from "./cross-harness-gap.js";
 import {
   buildHostManagedStatus,
@@ -125,6 +126,7 @@ function isMissingExpectedFileTransparent(
   path: string,
   expectedPathsByResource: ReadonlyMap<string, readonly string[]>,
   scopeByResource: ReadonlyMap<string, HarnessScope>,
+  harnesses: readonly string[],
 ): boolean {
   const mapped = resourceKeyFromManagedPath(path);
   if (!mapped) {
@@ -135,6 +137,9 @@ function isMissingExpectedFileTransparent(
   const onDiskSiblingPaths = siblings.filter(
     (sibling) => sibling !== path && readGlobalFile(homeRoot, sibling) !== null,
   );
+  for (const live of liveSkillCopiesForMissingPath(path, harnesses, (candidate) => readGlobalFile(homeRoot, candidate) !== null)) {
+    if (!onDiskSiblingPaths.includes(live)) onDiskSiblingPaths.push(live);
+  }
   return isTransparentCrossHarnessGap({
     path,
     onDiskSiblingPaths,
@@ -562,6 +567,7 @@ async function loadDriftCore(input: {
         file.path,
         expectedPathsByResource,
         scopeByResource,
+        expectedApply.harnesses,
       )) {
         continue;
       }
