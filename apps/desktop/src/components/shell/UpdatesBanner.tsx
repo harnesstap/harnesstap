@@ -7,9 +7,16 @@ import {
   startUpdateCheck,
   type UpdateList,
 } from "../../lib/api/updates";
+import {
+  fetchUpdateSettings,
+  saveUpdateSettings,
+  type UpdateSettings,
+} from "../../lib/api/settings-updates";
+import { shouldOfferKeepUpToDate, updateSettingsSummary } from "../../lib/update-settings-copy";
 import { updatesBanner } from "../../lib/updates-banner";
 import { toast } from "../../state/toast-store";
 import { Banner } from "./Banner";
+import { KeepUpToDateDialog } from "./KeepUpToDateDialog";
 
 export interface UpdatesBannerProps {
   baseUrl: string | null;
@@ -33,8 +40,34 @@ async function waitForCheck(baseUrl: string, token: string | null): Promise<void
 /** One banner at the top of the Global view: Update all, or Not now. */
 export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLibraryChanged }: UpdatesBannerProps) {
   const [busy, setBusy] = useState<"update" | "dismiss" | null>(null);
+  const [offer, setOffer] = useState<UpdateSettings | null>(null);
+  const [saving, setSaving] = useState(false);
   const model = list ? updatesBanner(list.rows) : null;
-  if (!model || !baseUrl) return null;
+
+  const answerOffer = async (patch: Partial<UpdateSettings>, announce: boolean) => {
+    if (!baseUrl) return;
+    setSaving(true);
+    try {
+      const saved = await saveUpdateSettings(baseUrl, token, { ...patch, prompted: true });
+      if (announce) toast({ tone: "success", title: updateSettingsSummary(saved) });
+    } catch (error) {
+      toast({ tone: "error", title: error instanceof Error ? error.message : "Could not save" });
+    } finally {
+      setSaving(false);
+      setOffer(null);
+    }
+  };
+
+  const dialog = (
+    <KeepUpToDateDialog
+      open={offer !== null}
+      initial={offer}
+      busy={saving}
+      onSave={(choice) => void answerOffer(choice, true)}
+      onDismiss={() => void answerOffer({}, false)}
+    />
+  );
+  if (!model || !baseUrl) return dialog;
 
   const updateAll = async () => {
     setBusy("update");
@@ -47,6 +80,8 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
         tone: report.summary.failed > 0 ? "error" : "success",
         title: `Updated ${report.summary.updated}, skipped ${report.summary.skipped}, failed ${report.summary.failed}`,
       });
+      const settings = await fetchUpdateSettings(baseUrl, token).catch(() => null);
+      if (shouldOfferKeepUpToDate(settings, report)) setOffer(settings);
     } catch (error) {
       toast({ tone: "error", title: error instanceof Error ? error.message : "Could not update" });
     } finally {
@@ -70,28 +105,31 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
   };
 
   return (
-    <Banner tone="info" role="status" testId="updates-banner" message={model.message}>
-      {model.canUpdateAll ? (
+    <>
+      {dialog}
+      <Banner tone="info" role="status" testId="updates-banner" message={model.message}>
+        {model.canUpdateAll ? (
+          <button
+            type="button"
+            className="btn primary"
+            style={{ width: "auto" }}
+            disabled={disabled || busy !== null}
+            onClick={() => void updateAll()}
+          >
+            <CloudDownload size={16} aria-hidden />
+            {busy === "update" ? "Updating" : "Update all"}
+          </button>
+        ) : null}
         <button
           type="button"
-          className="btn primary"
+          className="btn"
           style={{ width: "auto" }}
           disabled={disabled || busy !== null}
-          onClick={() => void updateAll()}
+          onClick={() => void notNow()}
         >
-          <CloudDownload size={16} aria-hidden />
-          {busy === "update" ? "Updating" : "Update all"}
+          Not now
         </button>
-      ) : null}
-      <button
-        type="button"
-        className="btn"
-        style={{ width: "auto" }}
-        disabled={disabled || busy !== null}
-        onClick={() => void notNow()}
-      >
-        Not now
-      </button>
-    </Banner>
+      </Banner>
+    </>
   );
 }

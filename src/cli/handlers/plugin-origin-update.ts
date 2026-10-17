@@ -11,6 +11,7 @@ import {
   isPromptCancellationError,
   promptForConfirmation,
 } from "../../services/wizards/shared.js";
+import { maybePromptKeepUpToDate } from "./plugin-auto-update.js";
 import { withUpstreamUpdateLock } from "../../services/upstream-update-lock.js";
 import { runUpstreamCheck, type UpstreamCheckRow } from "../../services/upstream-check.js";
 import { formatCount } from "../formatting.js";
@@ -178,6 +179,8 @@ export async function handlePluginUpdateCommand(
     }
     if (report.results.some((row) => row.status === "failed")) {
       process.exitCode = 1;
+    } else if (opts.all && format !== "json") {
+      await maybePromptKeepUpToDate();
     }
   } catch (error) {
     process.exitCode = 1;

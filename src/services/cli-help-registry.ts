@@ -430,11 +430,27 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "Update library working heads from marketplace, git, and catalog origins",
     details:
       "Pass a plugin name or --all. --all confirms on TTY unless --yes; non-interactive "
-      + "--all requires --yes. --force reapplies when fingerprints already match.",
+      + "--all requires --yes. --force reapplies when fingerprints already match. "
+      + "Waits while the Desktop sidecar runs a scheduled check or install. After the first "
+      + "successful --all in a terminal, asks once whether to keep plugins up to date.",
     examples: [
       "plugin update my-plugin",
       "plugin update --all --yes",
       "plugin update --all --yes --format json",
+    ],
+  },
+  "plugin.auto-update": {
+    description: "Show or change how plugin updates are checked and installed",
+    details:
+      "With no options, prints the current setting. --mode off stops background checks; notify "
+      + "(the default) shows updates in ht status and Desktop; install also installs minor and "
+      + "patch versions inside the range for pulled catalog plugins, never a major. --frequency "
+      + "is hourly, daily (the default) or weekly. Stored under updates in ~/.harnesstap/config.jsonc.",
+    examples: [
+      "plugin auto-update",
+      "plugin auto-update --mode install --frequency weekly",
+      "plugin auto-update --mode off",
+      "plugin auto-update --format json",
     ],
   },
   "plugin.cut": {
