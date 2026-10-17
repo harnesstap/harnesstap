@@ -205,6 +205,7 @@ describe("status perf", () => {
       const before = readDriftCoreComputeCount();
       const preparesBefore = readPluginByNamePrepareCount();
       const lookupsBefore = readPluginByNameLookupCount();
+      const watchersBefore = readStatusWatcherCreateCount();
       const gap = watchEventLoopGap();
       const coldStarted = performance.now();
       const cold = await detectGlobalProfileStatus({ depth: "full" });
@@ -216,7 +217,8 @@ describe("status perf", () => {
       const warmMs = performance.now() - warmStarted;
       const armDeadline = Date.now() + 2000;
       let watchersArmed = readStatusWatcherCreateCount();
-      while (watchersArmed === 0 && Date.now() < armDeadline) {
+      // Earlier tests in the same process may have armed watchers already.
+      while (watchersArmed === watchersBefore && Date.now() < armDeadline) {
         await new Promise((resolve) => setTimeout(resolve, 15));
         watchersArmed = readStatusWatcherCreateCount();
       }
@@ -238,7 +240,7 @@ describe("status perf", () => {
       expect(cold.refreshing).toBe(false);
       expect(warm.refreshing).toBe(false);
       expect(recomputed.refreshing).toBe(false);
-      expect(watchersArmed).toBeGreaterThan(0);
+      expect(watchersArmed).toBeGreaterThan(watchersBefore);
       expect(statusCacheWatchersHealthy()).toBe(true);
       expect(stable(warm)).toBe(stable(cold));
       expect(stable(recomputed)).toBe(stable(cold));

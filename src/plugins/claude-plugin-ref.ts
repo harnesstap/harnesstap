@@ -148,12 +148,26 @@ export function resolveClaudeEnabledPluginRef(ref: string, homeRoot: string): st
   return candidates[0] ?? ref;
 }
 
+/**
+ * HarnessTap registers git and local plugins under the `local` marketplace
+ * (`<name>@local`, cache/local/<name>/<version>), so a bare pin also matches
+ * that install. `claude plugin install` never gets this ref.
+ */
+function installedRefCandidates(ref: string, homeRoot: string): string[] {
+  const candidates = resolveClaudeInstallRefCandidates(ref, homeRoot);
+  const { name, marketplace } = parsePluginRef(ref);
+  if (!marketplace && name && !candidates.includes(`${name}@local`)) {
+    candidates.push(`${name}@local`);
+  }
+  return candidates;
+}
+
 export function findInstalledRefForCatalogPin(
   ref: string,
   homeRoot: string,
   scope?: string,
 ): string | undefined {
-  const candidates = resolveClaudeInstallRefCandidates(ref, homeRoot);
+  const candidates = installedRefCandidates(ref, homeRoot);
   const installed = listInstalledRefScopes(homeRoot);
   for (const candidate of candidates) {
     const match = installed.find(
