@@ -6,12 +6,12 @@ import {
   classifyUpstream,
   defaultFetchUpstreamLatest,
   dismissUpstreamUpdate,
+  type FetchUpstreamLatest,
   listUpstreamTargets,
   pickLatest,
   readUpstreamCheckSummary,
   readUpstreamChecks,
   runUpstreamCheck,
-  type FetchUpstreamLatest,
   type UpstreamLatest,
 } from "../../src/services/upstream-check.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
@@ -292,6 +292,89 @@ describe("defaultFetchUpstreamLatest", () => {
         status: "unreachable",
         message: "Cloud answered 400 at most 100 selectors (request req_9)",
       });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("falls back only on an uncoded 404, 405 or 501", async () => {
+    const uncoded: Array<() => Response> = [
+      () => new Response("<html>not found</html>", { status: 404 }),
+      () => Response.json({}, { status: 405 }),
+      () => Response.json({ message: "not implemented" }, { status: 501 }),
+    ];
+    for (const answer of uncoded) {
+      const calls: string[] = [];
+      const spy = spyOn(globalThis, "fetch").mockImplementation((async (input: string | URL | Request) => {
+        const url = String(input);
+        calls.push(url);
+        if (url.includes("/updates-since")) return answer();
+        return Response.json({
+          plugins: [{ orgSlug: "acme", catalogSlug: "default", slug: "backend", name: "Backend", latestVersion: "1.3.0" }],
+          nextCursor: null,
+        });
+      }) as typeof fetch);
+      try {
+        const out = await defaultFetchUpstreamLatest(query, {});
+        expect(out.get(KEY)).toEqual({ ok: true, latest_in_range: "1.3.0", latest_major: "" });
+        expect(calls.some((url) => url.includes("/api/public/plugins"))).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+    }
+  });
+
+  it("treats a coded 404 as a real error with a friendly message, not a fallback", async () => {
+    const cases = [
+      {
+        body: { error: { code: "catalog_not_found", message: "No catalog acme/default.", requestId: "req_c1" } },
+        message: "Cloud could not find the catalog for this check: No catalog acme/default. (request req_c1)",
+      },
+      {
+        body: { error: { code: "not_found", message: "Unknown route." } },
+        message: "Cloud could not find what this check asked for: Unknown route. (request req_hdr)",
+      },
+    ];
+    for (const { body, message } of cases) {
+      const calls: string[] = [];
+      const spy = spyOn(globalThis, "fetch").mockImplementation((async (input: string | URL | Request) => {
+        calls.push(String(input));
+        return Response.json(body, { status: 404, headers: { "x-request-id": "req_hdr" } });
+      }) as typeof fetch);
+      try {
+        const out = await defaultFetchUpstreamLatest(query, {});
+        expect(out.get(KEY)).toEqual({ ok: false, status: "unreachable", message });
+        expect(calls.some((url) => url.includes("/api/public/plugins"))).toBe(false);
+      } finally {
+        spy.mockRestore();
+      }
+    }
+  });
+
+  it("reads the primary error shape and takes the request id from x-request-id when the body has none", async () => {
+    const spy = spyOn(globalThis, "fetch").mockImplementation((async () =>
+      Response.json(
+        { error: { code: "invalid_input", message: "selectors[3].ref is invalid", fields: { "selectors[3].ref": "invalid" }, details: {} } },
+        { status: 400, headers: { "x-request-id": "req_x7" } },
+      )) as typeof fetch);
+    try {
+      const out = await defaultFetchUpstreamLatest(query, {});
+      expect(out.get(KEY)).toMatchObject({ message: "Cloud answered 400 selectors[3].ref is invalid (request req_x7)" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("reads an empty latest_in_range as no update", async () => {
+    const spy = spyOn(globalThis, "fetch").mockImplementation((async () =>
+      Response.json({
+        items: [{ ref: "acme/default/backend", constraint: "^1.0.0", latest: "2.0.0", latest_in_range: "", latest_major: "" }],
+      })) as typeof fetch);
+    try {
+      const out = await defaultFetchUpstreamLatest(query, {});
+      const latest = out.get(KEY)!;
+      expect(latest).toEqual({ ok: true, latest_in_range: "", latest_major: "" });
+      expect(classifyUpstream("1.0.0", latest).status).toBe("current");
     } finally {
       spy.mockRestore();
     }
