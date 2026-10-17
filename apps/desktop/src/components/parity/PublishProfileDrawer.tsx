@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { LogIn, Tag, Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,11 @@ export interface PublishProfileDrawerProps {
   onSuccess?: (message: string) => void;
   onRequestSignIn?: () => void;
   onRequestCut?: (name: string, version: string) => void;
+  /** Controlled open, for opening from an overflow menu item. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** No button of its own; something else opens it via `open`. */
+  hideTrigger?: boolean;
 }
 
 function publishToast(profileName: string, results: Array<{ org: string; catalog: string }>): string {
@@ -71,10 +76,20 @@ export function PublishProfileDrawer({
   onSuccess,
   onRequestSignIn,
   onRequestCut,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
 }: PublishProfileDrawerProps) {
   const titleId = useId();
   const allId = useId();
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = openProp ?? ownOpen;
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  const setOpen = useCallback((next: boolean) => {
+    setOwnOpen(next);
+    onOpenChangeRef.current?.(next);
+  }, []);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
@@ -89,7 +104,7 @@ export function PublishProfileDrawer({
       return;
     }
     setOpen(false);
-  }, [busy]);
+  }, [busy, setOpen]);
 
   const dialogRef = useDialogDismiss(open, close, busy);
 
@@ -197,6 +212,9 @@ export function PublishProfileDrawer({
   }, [authRequired, loadPlan, open, plan?.dirty]);
 
   if (!profileName) {
+    if (hideTrigger) {
+      return null;
+    }
     return (
       <IconActionButton
         className={triggerClassName}
@@ -272,14 +290,16 @@ export function PublishProfileDrawer({
 
   return (
     <>
-      <IconActionButton
-        className={triggerClassName}
-        data-testid="publish-profile-trigger"
-        onClick={() => setOpen(true)}
-        disabled={triggerDisabled}
-        label="Publish"
-        icon={<Upload size={iconSize} strokeWidth={2} aria-hidden />}
-      />
+      {hideTrigger ? null : (
+        <IconActionButton
+          className={triggerClassName}
+          data-testid="publish-profile-trigger"
+          onClick={() => setOpen(true)}
+          disabled={triggerDisabled}
+          label="Publish"
+          icon={<Upload size={iconSize} strokeWidth={2} aria-hidden />}
+        />
+      )}
       {open ? (
         <div
           className="dialog-backdrop"

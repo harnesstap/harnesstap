@@ -1,5 +1,5 @@
 import { forkPlugin } from "../../services/plugin-fork.js";
-import { detachPlugin, duplicatePlugin, type DuplicateMode } from "../../services/plugin-duplicate.js";
+import { detachPlugin, duplicatePlugin, undoDetachPlugin, type DuplicateMode } from "../../services/plugin-duplicate.js";
 import { setPluginExcludes } from "../../services/plugin-extends.js";
 import { extendsDetail } from "../../services/profile-edit.js";
 import { getDb } from "../../db/connection.js";
@@ -363,6 +363,9 @@ function forkErrorResponse(error: unknown): Response {
   }
   if (code === "plugin_exists") {
     return jsonResponse({ error: "plugin_exists", message }, { status: 409 });
+  }
+  if (code === "undo_expired") {
+    return jsonResponse({ error: code, message }, { status: 409 });
   }
   if (code === "parent_missing" || code === "cycle" || code === "invalid_exclude" || code === "not_extends") {
     return jsonResponse({ error: code, message }, { status: code === "parent_missing" ? 409 : 400 });
@@ -924,13 +927,38 @@ export async function tryHandle(
       return authError;
     }
     try {
-      const { plugin, materialized, hidden } = detachPlugin(matched.selector);
+      const { plugin, materialized, hidden, undo_token } = detachPlugin(matched.selector);
       return jsonResponse({
         name: plugin.name,
         upstream: plugin.upstream ?? null,
         materialized,
         hidden_cleared: hidden,
+        undo_token,
       });
+    } catch (error) {
+      return forkErrorResponse(error);
+    }
+  }
+
+  if (method === "POST" && matched.rest === "/detach/undo") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readOptionalJson(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    const body = (parsed.value ?? {}) as { undo_token?: unknown };
+    if (typeof body.undo_token !== "string" || !body.undo_token) {
+      return jsonResponse(
+        { error: "invalid_body", message: "undo_token is required" },
+        { status: 400 },
+      );
+    }
+    try {
+      const plugin = undoDetachPlugin(matched.selector, body.undo_token);
+      return jsonResponse({ name: plugin.name, upstream: plugin.upstream ?? null });
     } catch (error) {
       return forkErrorResponse(error);
     }

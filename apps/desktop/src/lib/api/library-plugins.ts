@@ -143,6 +143,8 @@ export interface PluginDetachResult {
   upstream: LibraryPluginUpstream | null;
   materialized: number;
   hidden_cleared: string[];
+  /** Send back with `undoDetachLibraryPlugin` to put the link back. */
+  undo_token?: string;
 }
 
 /** A parent item as a kept-in-sync child sees it. */
@@ -454,6 +456,24 @@ export async function detachLibraryPlugin(
     return throwAgentError(response, "Could not detach");
   }
   return (await response.json()) as PluginDetachResult;
+}
+
+/** Undo a detach: the link, the hidden list and the items go back. */
+export async function undoDetachLibraryPlugin(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  undoToken: string,
+): Promise<{ name: string; upstream: LibraryPluginUpstream | null }> {
+  const response = await agentFetch(baseUrl, token, pluginPath(selector, "/detach/undo"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ undo_token: undoToken }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not undo");
+  }
+  return (await response.json()) as { name: string; upstream: LibraryPluginUpstream | null };
 }
 
 export async function setLibraryPluginExcludes(

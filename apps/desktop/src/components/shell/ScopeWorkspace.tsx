@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { FileDiff, HardDriveDownload, HardDriveUpload, Pencil, Plus, Tag, TextQuote } from "lucide-react";
+import { HardDriveDownload, Plus, TextQuote } from "lucide-react";
 import { formatView } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
@@ -12,6 +12,7 @@ import type { ScopeController } from "../../state/scope-controller";
 import { useRegisterCommands } from "../../state/command-registry";
 import { useStatusStore } from "../../state/status-store";
 import { toast } from "../../state/toast-store";
+import { EditedChip } from "../EditedChip";
 import { EditProfilePane } from "../EditProfilePane";
 import { FieldIdentityIcon } from "../FieldIdentityIcon";
 import { IconActionButton } from "../IconActionButton";
@@ -20,7 +21,7 @@ import { ApplyProgressStrip, isApplyStepActive, stepState, switchStepClassName }
 import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
 import { Collapse } from "../motion/Collapse";
 import { PendingApprovalsStrip } from "../PendingApprovalsStrip";
-import { ProfileDeleteControls } from "../parity/ProfileDeleteControls";
+import { ProfileHeaderActions } from "./ProfileHeaderActions";
 import { ProjectHistoryControl } from "../parity/ProjectHistoryControl";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
@@ -271,8 +272,10 @@ export function ScopeWorkspace({
                     {selectedProfileSummary?.version ? (
                       <span className="badge badge-meta">
                         v{selectedProfileSummary.version}
-                        {selectedProfileSummary.dirty ? "*" : ""}
                       </span>
+                    ) : null}
+                    {selectedProfileSummary?.version && selectedProfileSummary.dirty ? (
+                      <EditedChip version={selectedProfileSummary.version} />
                     ) : null}
                     {selectedProfileMetaTags.map((tag) => (
                       <span key={tag} className="badge badge-meta">
@@ -344,66 +347,18 @@ export function ScopeWorkspace({
                   </>
                 ) : null}
                 {selectedProfile ? (
-                  <>
-                    <IconActionButton
-                      primary
-                      busy={ctrl.overwritingWithSetup}
-                      spinnerSize={16}
-                      onClick={() => setSetupOverwriteOpen(true)}
-                      disabled={!connected || switching || ctrl.overwritingWithSetup}
-                      label="Overwrite"
-                      title="Overwrite with current setup"
-                      icon={<HardDriveUpload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                    />
-                    <IconActionButton
-                      className="status-edit-action"
-                      onClick={() => {
-                        ctrl.setInventoryEditMode(false);
-                        ctrl.setPreviewChanges(false);
-                        ctrl.openEditProfile(selectedProfile);
-                      }}
-                      disabled={!connected || switching}
-                      label={`Edit ${selectedProfile}`}
-                      title={`Edit ${selectedProfile}`}
-                      icon={<Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                    />
-                    <IconActionButton
-                      className="status-edit-action"
-                      onClick={() => {
-                        ctrl.setPreviewChanges((value) => !value);
-                        ctrl.setInventoryEditMode(false);
-                      }}
-                      disabled={!connected || switching}
-                      label="Preview changes"
-                      title="Preview changes"
-                      aria-pressed={ctrl.previewChanges}
-                      icon={<FileDiff size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                    />
-                    <IconActionButton
-                      className="status-edit-action"
-                      onClick={() =>
-                        ctrl.openCutForProfile(selectedProfile, selectedProfileSummary?.version ?? "")
-                      }
-                      disabled={!connected || !token || switching || !selectedProfileSummary?.version}
-                      label={`Tag version for ${selectedProfile}`}
-                      title={
-                        selectedProfileSummary?.dirty
-                          ? "Tag unpublished edits to a new version"
-                          : "Tag a new version (fork current state)"
-                      }
-                      icon={<Tag size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                    />
-                    <div className="live-toolbar-remove">
-                      <ProfileDeleteControls
-                        profileName={selectedProfile}
-                        baseUrl={baseUrl}
-                        token={token}
-                        disabled={!connected || switching}
-                        variant="icon"
-                        onDeleted={ctrl.handleProfileDeleted}
-                      />
-                    </div>
-                  </>
+                  <ProfileHeaderActions
+                    ctrl={ctrl}
+                    profileName={selectedProfile}
+                    baseUrl={baseUrl}
+                    token={token}
+                    connected={connected}
+                    switching={switching}
+                    reloadKey={libraryReloadKey}
+                    onOverwrite={() => setSetupOverwriteOpen(true)}
+                    onOpenPlugin={onOpenPlugin}
+                    onRequestSignIn={onRequestSignIn}
+                  />
                 ) : null}
               </div>
           </div>

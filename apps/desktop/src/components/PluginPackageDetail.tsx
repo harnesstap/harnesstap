@@ -14,7 +14,6 @@ import {
   Copy,
   GitFork,
   History,
-  Layers,
   MapPin,
   Pencil,
   Play,
@@ -23,6 +22,8 @@ import {
   Tag,
   TextQuote,
   Trash2,
+  Unlink,
+  Upload,
   Variable,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,11 @@ import {
   fetchLibraryPluginDetail,
   fetchLibraryPluginVersions,
   duplicateLibraryPlugin,
+  detachLibraryPlugin,
+  setLibraryPluginExcludes,
+  undoDetachLibraryPlugin,
+  inheritedItemKey,
+  type InheritedItem,
   type DuplicateMode,
   patchLibraryPlugin,
   patchLibraryPluginAttachments,
@@ -77,8 +83,20 @@ import type {
 } from "../lib/types";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EditedChip } from "./EditedChip";
 import { DuplicateDialog } from "./DuplicateDialog";
-import { duplicateSuccessMessage, inheritedSummary } from "../lib/duplicate-profile";
+import {
+  DETACH_UNDO_MS,
+  detachedMessage,
+  duplicateSuccessMessage,
+  inheritedToggleMessage,
+  parentNameFromRef,
+  syncedChip,
+  toggleExcludeEntry,
+} from "../lib/duplicate-profile";
+import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
+import { SyncedChip } from "./SyncedChip";
+import { PublishProfileDrawer } from "./parity/PublishProfileDrawer";
 import { DoctorReportDialog } from "./DoctorReportDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
@@ -117,6 +135,10 @@ export interface PluginPackageDetailProps {
     mode: PluginDetailMode,
     frozenVersion?: string | null,
   ) => void;
+  /** Opens a profile's page; the duplicate toast uses it. */
+  onOpenProfile?: (name: string) => void;
+  /** Opens a profile's edit pane (header Edit). */
+  onEditProfile?: (name: string) => void;
 }
 
 type PluginEditingField =
@@ -209,6 +231,8 @@ export function PluginPackageDetail({
   frozenVersion = null,
   showBack = true,
   onHistoryModeChange,
+  onOpenProfile,
+  onEditProfile,
 }: PluginPackageDetailProps) {
   const titleId = useId();
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -236,6 +260,7 @@ export function PluginPackageDetail({
   const [cutVersion, setCutVersion] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [rollbackBusy, setRollbackBusy] = useState(false);
@@ -941,7 +966,12 @@ export function PluginPackageDetail({
     setConfirmBusy(true);
     try {
       const result = await duplicateLibraryPlugin(baseUrl, token, detail.plugin.name, input);
-      onSuccess(duplicateSuccessMessage(detail.plugin.name, result));
+      const createdProfile = detail.plugin.tags.includes("profile");
+      toast({
+        tone: "success",
+        title: duplicateSuccessMessage(detail.plugin.name, result),
+        ...(createdProfile && onOpenProfile ? { onOpen: () => onOpenProfile(result.name) } : {}),
+      });
       setDuplicateOpen(false);
       onLibraryChanged?.();
       if (detail.plugin.tags.includes("profile")) {
@@ -992,7 +1022,7 @@ export function PluginPackageDetail({
       case "history":
       case "head":
         return detail
-          ? `@${detail.plugin.version}${detail.plugin.dirty ? "*" : ""}`
+          ? `@${detail.plugin.version}`
           : "";
       default: {
         const _exhaustive: never = historyMode;
@@ -1000,6 +1030,11 @@ export function PluginPackageDetail({
       }
     }
   })();
+
+  const showEditedChip =
+    (historyMode === "head" || historyMode === "history") && Boolean(detail?.plugin.dirty);
+  const editedChip =
+    showEditedChip && detail ? <EditedChip version={detail.plugin.version} /> : null;
 
   const nameEditor =
     editingField === "name" ? (
@@ -1017,6 +1052,7 @@ export function PluginPackageDetail({
           {...noSpellcheckProps}
         />
         <span className="mono library-detail-version">{versionSuffix}</span>
+        {editedChip}
       </>
     ) : (
       <>
@@ -1046,7 +1082,7 @@ export function PluginPackageDetail({
           {fieldsReadOnly ? null : (
             <IconActionButton
               className="library-field-edit-trigger"
-              label="Edit"
+              label="Rename"
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -1059,6 +1095,7 @@ export function PluginPackageDetail({
         {versionSuffix ? (
           <span className="mono library-detail-version">{versionSuffix}</span>
         ) : null}
+        {editedChip}
       </>
     );
 
@@ -1126,6 +1163,91 @@ export function PluginPackageDetail({
     }
   }
 
+  const isProfile = detail?.plugin.tags.includes("profile") ?? false;
+  const parentName = detail?.plugin.upstream ? parentNameFromRef(detail.plugin.upstream.ref) : "";
+
+  const runLinkChange = async (action: () => Promise<void>, fallback: string): Promise<boolean> => {
+    if (!baseUrl || !detail) {
+      return false;
+    }
+    setBusy(true);
+    setActionError(null);
+    try {
+      await action();
+      setDetailEpoch((value) => value + 1);
+      onLibraryChanged?.();
+      if (isProfile) {
+        onProfilesChanged();
+      }
+      return true;
+    } catch (error: unknown) {
+      setActionError(errorMessage(error, fallback));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Detach right away; Undo on the toast puts the link and the hidden list back.
+  const detachNow = () => {
+    if (!baseUrl || !detail) {
+      return;
+    }
+    const name = detail.plugin.name;
+    const parent = parentName;
+    let undoToken: string | undefined;
+    void runLinkChange(async () => {
+      undoToken = (await detachLibraryPlugin(baseUrl, token, name)).undo_token;
+    }, "Could not detach").then((ok) => {
+      if (!ok) {
+        return;
+      }
+      toast({
+        tone: "success",
+        title: detachedMessage(name, parent),
+        durationMs: DETACH_UNDO_MS,
+        ...(undoToken
+          ? {
+              action: {
+                label: "Undo",
+                onClick: () => {
+                  const tokenToUse = undoToken ?? "";
+                  void runLinkChange(
+                    () => undoDetachLibraryPlugin(baseUrl, token, name, tokenToUse).then(() => undefined),
+                    "Could not undo",
+                  );
+                },
+              },
+            }
+          : {}),
+      });
+    });
+  };
+
+  const toggleInherited = (item: InheritedItem) => {
+    if (!baseUrl || !detail) {
+      return;
+    }
+    const name = detail.plugin.name;
+    const key = inheritedItemKey(item);
+    void runLinkChange(async () => {
+      const current = (await fetchLibraryPluginDetail(baseUrl, token, name)).excludes ?? [];
+      await setLibraryPluginExcludes(baseUrl, token, name, toggleExcludeEntry(current, key));
+    }, "Could not change the profile").then((ok) => {
+      if (!ok) {
+        return;
+      }
+      toast({
+        tone: "success",
+        title: inheritedToggleMessage(item.name, !item.hidden),
+        action: {
+          label: "Undo",
+          onClick: () => toggleInherited({ ...item, hidden: !item.hidden }),
+        },
+      });
+    });
+  };
+
   function renderPackageAction(action: PluginPackageAction): ReactNode {
     if (!detail) {
       return null;
@@ -1133,6 +1255,10 @@ export function PluginPackageDetail({
     const clusterLocked = chromeLocked || confirmOpen;
     switch (action) {
       case "apply":
+        // Profiles apply from the sidebar only.
+        if (isProfile) {
+          return null;
+        }
         return (
           <IconActionButton
             key="apply"
@@ -1178,7 +1304,7 @@ export function PluginPackageDetail({
             key="cut"
             disabled={clusterLocked}
             title={CUT_TOOLTIP}
-            label="Tag version"
+            label="Tags"
             onClick={() => {
               setCutVersion("");
               setCutOpen(true);
@@ -1248,10 +1374,95 @@ export function PluginPackageDetail({
         frozen: historyMode === "frozen",
       })
     : [];
+  const clusterLockedForMenu = chromeLocked || confirmOpen;
+  const overflowItems: OverflowMenuItem[] = !detail || historyMode !== "head"
+    ? []
+    : [
+        ...(packageActions.includes("update")
+          ? [{
+              id: "refresh",
+              label: "Refresh from origin",
+              icon: <CloudDownload size={16} aria-hidden />,
+              disabled: clusterLockedForMenu || updateBusy,
+              onSelect: () => void runOriginUpdate(),
+            }]
+          : []),
+        ...(packageActions.includes("doctor")
+          ? [{
+              id: "doctor",
+              label: "Run Doctor",
+              icon: <Stethoscope size={16} aria-hidden />,
+              disabled: clusterLockedForMenu || doctorBusy,
+              onSelect: () => setDoctorOpen(true),
+            }]
+          : []),
+        ...(isProfile && authored
+          ? [{
+              id: "publish",
+              label: "Publish",
+              icon: <Upload size={16} aria-hidden />,
+              disabled: clusterLockedForMenu,
+              onSelect: () => setPublishOpen(true),
+            }]
+          : []),
+        ...(detail.plugin.upstream?.kind === "extends"
+          ? [{
+              id: "detach",
+              label: "Detach",
+              icon: <Unlink size={16} aria-hidden />,
+              disabled: clusterLockedForMenu || anyBusy,
+              onSelect: detachNow,
+            }]
+          : []),
+        ...(packageActions.includes("delete")
+          ? [{
+              id: "delete",
+              label: "Delete",
+              icon: <Trash2 size={16} aria-hidden />,
+              danger: true,
+              separatorBefore: true,
+              disabled: clusterLockedForMenu || anyBusy,
+              onSelect: () => setDeleteOpen(true),
+            }]
+          : []),
+      ];
+  const iconActionOrder: PluginPackageAction[] = ["restore", "apply", "duplicate", "cut", "history"];
   const actionButtons =
-    !detail || packageActions.length === 0
+    !detail || (packageActions.length === 0 && overflowItems.length === 0)
       ? undefined
-      : <>{packageActions.map((action) => renderPackageAction(action))}</>;
+      : (
+        <>
+          {iconActionOrder
+            .filter((action) => action !== "duplicate" && action !== "cut" && action !== "history")
+            .filter((action) => packageActions.includes(action))
+            .map((action) => renderPackageAction(action))}
+          {isProfile && onEditProfile && historyMode === "head" ? (
+            <IconActionButton
+              key="edit"
+              data-testid="edit-profile-from-library"
+              disabled={clusterLockedForMenu}
+              title="Edit profile"
+              label="Edit"
+              onClick={() => onEditProfile(detail.plugin.name)}
+              icon={<Pencil size={16} aria-hidden />}
+            />
+          ) : null}
+          {(["duplicate", "cut", "history"] as PluginPackageAction[])
+            .filter((action) => packageActions.includes(action))
+            .map((action) => renderPackageAction(action))}
+          <OverflowMenu items={overflowItems} iconSize={16} disabled={chromeLocked} />
+        </>
+      );
+  const headerSubtitle = detail ? (
+    <>
+      <span className="meta-chip type-chip" data-testid="library-detail-type">
+        {isProfile ? "profile" : "plugin"}
+      </span>
+      {detail.plugin.upstream?.kind === "extends" ? (
+        <SyncedChip {...syncedChip(detail.plugin.upstream, parentName)} />
+      ) : null}
+    </>
+  ) : null;
 
   const record = viewDetail;
 
@@ -1390,22 +1601,12 @@ export function PluginPackageDetail({
         editing={false}
         onStartEdit={() => undefined}
       />
-      {record.plugin.upstream ? (
+      {record.plugin.upstream && record.plugin.upstream.kind !== "extends" ? (
         <LibraryFieldRow
           icon={<GitFork size={16} aria-hidden />}
-          fieldName={record.plugin.upstream.kind === "extends" ? "Extends" : "Copied from"}
+          fieldName="Copied from"
           readOnly
           display={formatLibraryUpstream(record.plugin.upstream)}
-          editing={false}
-          onStartEdit={() => undefined}
-        />
-      ) : null}
-      {record.plugin.upstream?.kind === "extends" && record.inherited ? (
-        <LibraryFieldRow
-          icon={<Layers size={16} aria-hidden />}
-          fieldName="From parent"
-          readOnly
-          display={inheritedSummary(record.inherited, record.parent_missing)}
           editing={false}
           onStartEdit={() => undefined}
         />
@@ -1506,14 +1707,28 @@ export function PluginPackageDetail({
         selectedIds={selectedMembershipIds}
         onToggleResource={toggleMembership}
         disabled={pickersDisabled}
-        emptyUnfilteredLabel="Nothing in this plugin yet."
+        emptyUnfilteredLabel={isProfile ? "Nothing in this profile yet." : "Nothing in this plugin yet."}
+        inherited={
+          record.plugin.upstream?.kind === "extends"
+            ? {
+                items: record.inherited ?? [],
+                parentName,
+                onToggle: pickersDisabled ? undefined : toggleInherited,
+              }
+            : undefined
+        }
+        notice={
+          record.plugin.upstream?.kind === "extends" && record.parent_missing ? (
+            <div className="banner">{record.parent_missing}</div>
+          ) : null
+        }
         footer={
-          <ChromeTooltip content="Add to plugin">
+          <ChromeTooltip content={isProfile ? "Add to profile" : "Add to plugin"}>
             <button
               type="button"
               className="scope-inventory-fab icon-action primary"
               data-testid="plugin-composition-fab"
-              aria-label="Add to plugin"
+              aria-label={isProfile ? "Add to profile" : "Add to plugin"}
               disabled={pickersDisabled}
               onClick={() => setAddModalOpen(true)}
             >
@@ -1550,7 +1765,7 @@ export function PluginPackageDetail({
       <LibraryDetailChrome
         titleId={titleId}
         title={nameEditor}
-        typeLabel="plugin"
+        subtitle={headerSubtitle}
         onBack={handleChromeBack}
         showBack={showBack}
         backDisabled={confirmOpen}
@@ -1659,9 +1874,29 @@ export function PluginPackageDetail({
         }}
       />
 
+      {isProfile && authored && detail ? (
+        <PublishProfileDrawer
+          hideTrigger
+          open={publishOpen}
+          onOpenChange={setPublishOpen}
+          profileName={detail.plugin.name}
+          profileVersion={detail.plugin.version}
+          baseUrl={baseUrl}
+          token={token}
+          disabled={chromeLocked}
+          onSuccess={onSuccess}
+          onRequestCut={() => {
+            setCutVersion("");
+            setCutOpen(true);
+          }}
+        />
+      ) : null}
+
       <DuplicateDialog
         open={duplicateOpen}
         sourceName={detail?.plugin.name ?? ""}
+        isProfile={isProfile}
+        existingNames={new Set(libraryPlugins.map((plugin) => plugin.name))}
         busy={confirmBusy}
         onConfirm={(input) => {
           void confirmDuplicate(input);

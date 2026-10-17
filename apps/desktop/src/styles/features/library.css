@@ -1315,3 +1315,66 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Parent items inline in Composition: link icon, or dimmed and struck when hidden. */
+.resource-row-inherited .inherited-row-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted-foreground, inherit);
+  opacity: 0.8;
+}
+
+.resource-row-inherited.is-hidden .resource-row-identity {
+  opacity: 0.55;
+}
+
+.resource-row-inherited.is-hidden .resource-row-name {
+  text-decoration: line-through;
+}
+
+/* Small chips beside or under a title: Edited, type, Synced with. */
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: var(--text-meta);
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: default;
+  align-self: center;
+}
+
+/* Edited chip replaces the old "*" after a version. */
+.edited-chip {
+  margin-left: 0.25rem;
+}
+
+/* "Synced with backend 1.0.0" under a kept-in-sync profile's title. */
+.synced-chip {
+  width: fit-content;
+  margin-top: var(--space-1);
+}
+
+/* Type chip and sync chip under a detail title. */
+.library-detail-subtitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: -0.4rem 0 0.75rem;
+}
+
+.library-detail-subtitle .synced-chip {
+  margin-top: 0;
+}
+
+.type-chip {
+  text-transform: lowercase;
+}

@@ -186,3 +186,63 @@ describe("POST /v1/library/plugins/:selector/detach", () => {
     ]);
   });
 });
+
+describe("POST /v1/library/plugins/:selector/detach/undo", () => {
+  it("puts the link, the hidden list, the items and the edited state back", async () => {
+    seedParent();
+    await handle("POST", "/v1/library/plugins/backend/duplicate", { name: "mine" });
+    const mine = getPluginByName("mine");
+    skill(mine?.id ?? "", "own");
+    await handle("PUT", "/v1/library/plugins/mine/excludes", { entries: ["skill:deploy"] });
+    getDb().prepare("UPDATE plugins SET dirty = 0 WHERE id = ?").run(mine?.id ?? "");
+    const before = getPluginByName("mine");
+
+    const detached = (await (await handle("POST", "/v1/library/plugins/mine/detach")).json()) as {
+      undo_token: string;
+    };
+    expect(detached.undo_token).toBeTruthy();
+    expect(getPluginByName("mine")?.dirty).toBe(true);
+
+    const response = await handle("POST", "/v1/library/plugins/mine/detach/undo", {
+      undo_token: detached.undo_token,
+    });
+    expect(response.status).toBe(200);
+    const after = getPluginByName("mine");
+    expect(after?.upstream).toEqual(before?.upstream);
+    expect(after?.upstream_plugin_id).toBe(before?.upstream_plugin_id);
+    expect(after?.dirty).toBe(false);
+    expect(listPluginExcludes(after?.id ?? "")).toEqual(["skill:deploy"]);
+    expect(getPluginResources(after?.id ?? "").map((row) => row.name)).toEqual(["own"]);
+    // The parent keeps everything.
+    expect(getPluginResources(getPluginByName("backend")?.id ?? "").map((row) => row.name).sort()).toEqual([
+      "deploy",
+      "review",
+    ]);
+  });
+
+  it("works once, and only with the token from the detach", async () => {
+    seedParent();
+    await handle("POST", "/v1/library/plugins/backend/duplicate", { name: "mine" });
+    const detached = (await (await handle("POST", "/v1/library/plugins/mine/detach")).json()) as {
+      undo_token: string;
+    };
+    const wrong = await handle("POST", "/v1/library/plugins/mine/detach/undo", { undo_token: "nope" });
+    expect(wrong.status).toBe(409);
+    expect(((await wrong.json()) as { error: string }).error).toBe("undo_expired");
+    const missing = await handle("POST", "/v1/library/plugins/mine/detach/undo", {});
+    expect(missing.status).toBe(400);
+    const ok = await handle("POST", "/v1/library/plugins/mine/detach/undo", {
+      undo_token: detached.undo_token,
+    });
+    expect(ok.status).toBe(200);
+    const again = await handle("POST", "/v1/library/plugins/mine/detach/undo", {
+      undo_token: detached.undo_token,
+    });
+    expect(again.status).toBe(409);
+  });
+
+  it("needs the agent token", async () => {
+    const response = await handle("POST", "/v1/library/plugins/mine/detach/undo", { undo_token: "x" }, null);
+    expect(response.status).toBe(401);
+  });
+});

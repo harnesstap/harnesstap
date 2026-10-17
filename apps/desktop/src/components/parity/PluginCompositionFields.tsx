@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { LibraryResource } from "../../lib/types";
-import { ResourceSelectionList } from "../CompositionPickers";
+import { ResourceSelectionList, type InheritedRowsInput } from "../CompositionPickers";
 
 export interface PluginCompositionFieldsProps {
   libraryLoading: boolean;
@@ -14,6 +14,10 @@ export interface PluginCompositionFieldsProps {
   disabled: boolean;
   emptyUnfilteredLabel?: string;
   footer?: ReactNode;
+  /** Parent items of a kept-in-sync profile, listed inline first. */
+  inherited?: InheritedRowsInput;
+  /** Shown under the Composition heading, e.g. a missing parent. */
+  notice?: ReactNode;
 }
 
 export function PluginCompositionFields({
@@ -28,10 +32,13 @@ export function PluginCompositionFields({
   disabled,
   emptyUnfilteredLabel = "No library items available.",
   footer,
+  inherited,
+  notice,
 }: PluginCompositionFieldsProps) {
   return (
     <section className="edit-profile-section" aria-label="Composition">
       <h3>Composition</h3>
+      {notice}
       <div className="plugin-composition-pane">
         <div className="compose-library compose-library-unified">
           {libraryLoading ? (
@@ -48,6 +55,7 @@ export function PluginCompositionFields({
               onToggle={onToggleResource}
               onInspect={onInspectResource}
               emptyUnfilteredLabel={emptyUnfilteredLabel}
+              inherited={inherited}
             />
           )}
         </div>

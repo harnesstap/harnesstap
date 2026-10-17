@@ -34,7 +34,7 @@ export function PluginVersionHistoryList({
         {versions.map((row) => {
           const isHead = row.is_head;
           const dirty = isHead ? headDirty : row.dirty;
-          const versionLabel = `${row.version}${dirty ? "*" : ""}`;
+          const versionLabel = row.version;
           const meta = isHead
             ? "Working head"
             : row.frozen_at
@@ -57,7 +57,9 @@ export function PluginVersionHistoryList({
                 <span className="mono plugin-version-history-version">
                   {versionLabel}
                 </span>
-                <span className="plugin-version-history-meta">{meta}</span>
+                <span className="plugin-version-history-meta">
+                  {dirty ? `${meta}, edited` : meta}
+                </span>
               </button>
             </li>
           );

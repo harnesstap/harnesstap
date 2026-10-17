@@ -49,7 +49,7 @@ describe("desktop icon chrome", () => {
     expect(appSource).not.toContain("rail-clear-button");
     expect(appSource).toContain('data-testid="project-install"');
     expect(appSource).toContain("HardDriveDownload");
-    expect(appSource).toContain('variant="icon"');
+    expect(appSource).toContain('variant="menu"');
   });
 
   test("keeps Profiles rail Apply as a full-width labeled accent button with icon on the right", () => {
@@ -153,7 +153,7 @@ describe("desktop icon chrome", () => {
     expect(appSource).toContain('label="Settings"');
     expect(appSource).toContain("<Settings size={HEADER_ICON_SIZE}");
     expect(appSource).toContain("profile-create-action");
-    expect(appSource).toContain("live-toolbar-remove");
+    expect(appSource).toContain("ProfileHeaderActions");
     expect(appSource).not.toMatch(/profiles-rail-toolbar[\s\S]*?Trash2/);
   });
 

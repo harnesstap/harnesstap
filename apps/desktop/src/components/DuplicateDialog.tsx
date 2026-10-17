@@ -3,21 +3,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { DuplicateMode } from "../lib/api/library-plugins";
-import { DUPLICATE_MODE_COPY, defaultDuplicateName } from "../lib/duplicate-profile";
+import { defaultDuplicateName, duplicateDialogTitle, duplicateModeCopy, duplicateNameError } from "../lib/duplicate-profile";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 export interface DuplicateDialogProps {
   open: boolean;
   sourceName: string;
+  /** Names already in the Library; the dialog checks the new name inline. */
+  existingNames?: ReadonlySet<string>;
+  /** Profiles say "profile"; other plugins say "plugin". */
+  isProfile?: boolean;
   busy: boolean;
   onConfirm: (input: { name: string; mode: DuplicateMode }) => void;
   onCancel: () => void;
 }
 
 /** One Duplicate flow: keep in sync with the source (default) or a separate copy. */
-export function DuplicateDialog({ open, sourceName, busy, onConfirm, onCancel }: DuplicateDialogProps) {
+export function DuplicateDialog({
+  open,
+  sourceName,
+  existingNames,
+  isProfile = true,
+  busy,
+  onConfirm,
+  onCancel,
+}: DuplicateDialogProps) {
   const [name, setName] = useState(defaultDuplicateName(sourceName));
   const [mode, setMode] = useState<DuplicateMode>("inherit");
+  const copy = duplicateModeCopy(sourceName);
+  const nameError = duplicateNameError(name, existingNames ?? new Set());
 
   useEffect(() => {
     if (open) {
@@ -29,11 +43,10 @@ export function DuplicateDialog({ open, sourceName, busy, onConfirm, onCancel }:
   return (
     <ConfirmDialog
       open={open}
-      title={`Duplicate ${sourceName}`}
-      description="Library resources are shared, not copied."
+      title={duplicateDialogTitle(isProfile)}
       confirmLabel="Duplicate"
       confirmBusy={busy}
-      confirmDisabled={!name.trim()}
+      confirmDisabled={nameError !== null}
       onConfirm={() => onConfirm({ name: name.trim(), mode })}
       onCancel={() => {
         if (!busy) {
@@ -49,7 +62,14 @@ export function DuplicateDialog({ open, sourceName, busy, onConfirm, onCancel }:
           value={name}
           onChange={(event) => setName(event.target.value)}
           disabled={busy}
+          aria-invalid={nameError ? true : undefined}
+          aria-describedby={nameError ? "plugin-duplicate-name-error" : undefined}
         />
+        {nameError && name.trim() ? (
+          <p id="plugin-duplicate-name-error" className="cut-versions-field-error" role="alert">
+            {nameError}
+          </p>
+        ) : null}
       </div>
       <RadioGroup
         value={mode}
@@ -58,12 +78,12 @@ export function DuplicateDialog({ open, sourceName, busy, onConfirm, onCancel }:
         aria-label="Duplicate mode"
         disabled={busy}
       >
-        {(Object.keys(DUPLICATE_MODE_COPY) as DuplicateMode[]).map((key) => (
+        {(Object.keys(copy) as DuplicateMode[]).map((key) => (
           <div key={key} className="flex items-start gap-2">
             <RadioGroupItem id={`plugin-duplicate-${key}`} value={key} className="mt-0.5" />
             <Label htmlFor={`plugin-duplicate-${key}`} className="flex flex-col items-start gap-0.5 font-normal">
-              <span>{DUPLICATE_MODE_COPY[key].label}</span>
-              <span className="text-xs text-muted-foreground">{DUPLICATE_MODE_COPY[key].hint}</span>
+              <span>{copy[key].label}</span>
+              <span className="text-xs text-muted-foreground">{copy[key].hint}</span>
             </Label>
           </div>
         ))}

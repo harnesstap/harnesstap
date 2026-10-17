@@ -18,7 +18,12 @@ import { computationSlot } from "./status-computation.js";
  * `<type>:<name>` for a resource, `plugin:<name>` for a dependency.
  */
 
-export type ExtendsErrorCode = "parent_missing" | "cycle" | "invalid_exclude" | "not_extends";
+export type ExtendsErrorCode =
+  | "parent_missing"
+  | "cycle"
+  | "invalid_exclude"
+  | "not_extends"
+  | "undo_expired";
 
 export class ExtendsError extends Error {
   readonly code: ExtendsErrorCode;

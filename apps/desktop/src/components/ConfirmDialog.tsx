@@ -11,7 +11,8 @@ import { motionClass } from "./motion/motion-utils";
 export interface ConfirmDialogProps {
   open: boolean;
   title: string;
-  description: ReactNode;
+  /** Omit when the dialog needs no subtitle. */
+  description?: ReactNode;
   confirmLabel?: string;
   /** Empty or omitted still defaults to Cancel. Pass null to hide the cancel button. */
   cancelLabel?: string | null;
@@ -91,16 +92,18 @@ export function ConfirmDialog({
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
-          aria-describedby={descriptionId}
+          aria-describedby={description ? descriptionId : undefined}
         >
           <h2 id={titleId}>{title}</h2>
-          <div id={descriptionId} className="confirm-dialog-body">
-            {typeof description === "string" ? (
-              <p className="muted">{description}</p>
-            ) : (
-              description
-            )}
-          </div>
+          {description ? (
+            <div id={descriptionId} className="confirm-dialog-body">
+              {typeof description === "string" ? (
+                <p className="muted">{description}</p>
+              ) : (
+                description
+              )}
+            </div>
+          ) : null}
           {children ? (
             <div className="confirm-dialog-extra">
               {children}

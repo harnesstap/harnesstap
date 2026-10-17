@@ -159,15 +159,18 @@ describe("profile edit default environment chrome", () => {
   });
 });
 
-describe("profile edit save and discard", () => {
-  test("tracks dirty name fields with explicit Save and Discard", () => {
-    expect(editSource).toContain("edit-profile-footer");
-    expect(editSource).toContain("Discard");
-    expect(editSource).toContain("Save");
+describe("profile edit autosave", () => {
+  test("saves as you go; no Save or Discard, sidebar Apply is the only commit", () => {
+    expect(editSource).not.toContain("edit-profile-footer");
+    expect(editSource).not.toContain("Discard edits?");
+    expect(editSource).not.toContain("discardMetadata");
+    expect(editSource).toContain("queueMeta");
+    expect(editSource).toContain("saveMetaNow");
+    expect(editSource).toContain("onBlur={commitName}");
     expect(editSource).toContain("requestClose");
-    expect(editSource).toContain("Discard edits?");
-    expect(editSource).toContain('tone="destructive"');
     expect(editSource).toContain("Undo");
+    // Autosave writes the Library only; it never asks to apply.
+    expect(editSource).toContain("affectsApply: false");
   });
 
   test("drops marketplace pin dropdowns in favor of the composition FAB", () => {
