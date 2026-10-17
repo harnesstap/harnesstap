@@ -77,3 +77,31 @@ export function isTransparentCrossHarnessGap(input: {
     });
   });
 }
+
+/**
+ * On-disk copies of a missing skill file in another folder that a harness
+ * reading the missing folder also reads. Apply places the skill on such a
+ * live copy (for example ~/.agents/skills, which Cursor reads) instead of
+ * writing the harness default, so status must not call the default missing.
+ */
+export function liveSkillCopiesForMissingPath(
+  path: string,
+  harnesses: readonly string[],
+  exists: (relativePath: string) => boolean,
+): string[] {
+  const parsed = parseSkillEmitPath(path);
+  if (!parsed) {
+    return [];
+  }
+  const active = new Set(harnesses);
+  const dirs = new Set<string>();
+  for (const id of platformsConsumingSkillDir(parsed.skillsDir)) {
+    if (!active.has(id)) continue;
+    for (const dir of consumeDirsForPlatform(id)) {
+      if (dir !== parsed.skillsDir) dirs.add(dir);
+    }
+  }
+  return [...dirs]
+    .map((dir) => `${dir}${parsed.name}/${parsed.rest}`)
+    .filter((candidate) => exists(candidate));
+}
