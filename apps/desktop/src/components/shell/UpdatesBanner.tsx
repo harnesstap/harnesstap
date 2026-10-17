@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { CloudDownload } from "lucide-react";
-import { postPluginOriginUpdate } from "../../lib/api/plugin-origin-update";
+import { CloudDownload, Info } from "lucide-react";
+import { postPluginOriginUpdate, type PluginOriginUpdateReport } from "../../lib/api/plugin-origin-update";
 import {
   dismissUpdate,
   fetchUpdateCheckJob,
   startUpdateCheck,
   type UpdateList,
 } from "../../lib/api/updates";
-import { updatesBanner } from "../../lib/updates-banner";
+import { handledKey, profileUpdatesBanner } from "../../lib/updates-banner";
 import { toast } from "../../state/toast-store";
 import { Banner } from "./Banner";
 
@@ -15,9 +15,13 @@ export interface UpdatesBannerProps {
   baseUrl: string | null;
   token: string | null;
   list: UpdateList | null;
+  /** The profile whose page this is; the banner only covers updates it uses. */
+  profileName: string | null;
   disabled?: boolean;
   onChanged: (next?: UpdateList) => void | Promise<void>;
   onLibraryChanged?: () => void;
+  /** After an update ran; B3b hooks the one-time prompt here. */
+  onUpdated?: (report: PluginOriginUpdateReport) => void;
 }
 
 async function waitForCheck(baseUrl: string, token: string | null): Promise<void> {
@@ -30,23 +34,54 @@ async function waitForCheck(baseUrl: string, token: string | null): Promise<void
   }
 }
 
-/** One banner at the top of the Global view: Update all, or Not now. */
-export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLibraryChanged }: UpdatesBannerProps) {
+/** Update text for the toast after the banner's Update. */
+export function updateResultMessage(report: PluginOriginUpdateReport): string {
+  const { updated, skipped, failed } = report.summary;
+  if (failed > 0) return `${failed} could not update. ${updated} updated.`;
+  if (updated === 0) return "Already up to date at the source.";
+  return updated === 1 ? "1 plugin updated." : `${updated} plugins updated.`;
+}
+
+/** Neutral banner on the affected profile's own page: Update, or x to dismiss. */
+export function UpdatesBanner({
+  baseUrl,
+  token,
+  list,
+  profileName,
+  disabled,
+  onChanged,
+  onLibraryChanged,
+  onUpdated,
+}: UpdatesBannerProps) {
   const [busy, setBusy] = useState<"update" | "dismiss" | null>(null);
-  const model = list ? updatesBanner(list.rows) : null;
+  // Versions this session already acted on, so the banner clears at once.
+  const [handled, setHandled] = useState<ReadonlySet<string>>(() => new Set());
+  const model = list ? profileUpdatesBanner(list.rows, profileName, handled) : null;
   if (!model || !baseUrl) return null;
 
-  const updateAll = async () => {
+  const update = async () => {
     setBusy("update");
     try {
-      const report = await postPluginOriginUpdate(baseUrl, token, { all: true });
+      const reports: PluginOriginUpdateReport[] = [];
+      for (const name of model.plugins) {
+        reports.push(await postPluginOriginUpdate(baseUrl, token, { name }));
+      }
+      const report: PluginOriginUpdateReport = {
+        results: reports.flatMap((entry) => entry.results),
+        summary: {
+          updated: reports.reduce((sum, entry) => sum + entry.summary.updated, 0),
+          skipped: reports.reduce((sum, entry) => sum + entry.summary.skipped, 0),
+          failed: reports.reduce((sum, entry) => sum + entry.summary.failed, 0),
+        },
+      };
+      if (report.summary.failed === 0) {
+        setHandled((prev) => new Set([...prev, ...model.dismiss.map((entry) => handledKey({ plugin_name: entry.plugin, latest_in_range: entry.version }))]));
+      }
       onLibraryChanged?.();
       await waitForCheck(baseUrl, token);
       await onChanged();
-      toast({
-        tone: report.summary.failed > 0 ? "error" : "success",
-        title: `Updated ${report.summary.updated}, skipped ${report.summary.skipped}, failed ${report.summary.failed}`,
-      });
+      toast({ tone: report.summary.failed > 0 ? "error" : "success", title: updateResultMessage(report) });
+      onUpdated?.(report);
     } catch (error) {
       toast({ tone: "error", title: error instanceof Error ? error.message : "Could not update" });
     } finally {
@@ -54,7 +89,7 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
     }
   };
 
-  const notNow = async () => {
+  const dismiss = async () => {
     setBusy("dismiss");
     try {
       let next: UpdateList | undefined;
@@ -63,34 +98,34 @@ export function UpdatesBanner({ baseUrl, token, list, disabled, onChanged, onLib
       }
       await onChanged(next);
     } catch (error) {
-      toast({ tone: "error", title: error instanceof Error ? error.message : "Could not set aside" });
+      toast({ tone: "error", title: error instanceof Error ? error.message : "Could not dismiss" });
     } finally {
       setBusy(null);
     }
   };
 
   return (
-    <Banner tone="info" role="status" testId="updates-banner" message={model.message}>
-      {model.canUpdateAll ? (
-        <button
-          type="button"
-          className="btn primary"
-          style={{ width: "auto" }}
-          disabled={disabled || busy !== null}
-          onClick={() => void updateAll()}
-        >
-          <CloudDownload size={16} aria-hidden />
-          {busy === "update" ? "Updating" : "Update all"}
-        </button>
-      ) : null}
+    <Banner
+      tone="neutral"
+      role="status"
+      testId="updates-banner"
+      message={
+        <span className="banner-message-with-icon">
+          <Info size={16} strokeWidth={2} aria-hidden />
+          {model.message}
+        </span>
+      }
+      onDismiss={busy === null && !disabled ? () => void dismiss() : undefined}
+    >
       <button
         type="button"
-        className="btn"
+        className="btn primary"
         style={{ width: "auto" }}
         disabled={disabled || busy !== null}
-        onClick={() => void notNow()}
+        onClick={() => void update()}
       >
-        Not now
+        <CloudDownload size={16} aria-hidden />
+        {busy === "update" ? "Updating" : "Update"}
       </button>
     </Banner>
   );

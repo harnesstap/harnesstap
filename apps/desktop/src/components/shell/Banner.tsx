@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { IconActionButton } from "../IconActionButton";
 
-export type BannerTone = "error" | "warning" | "info";
+export type BannerTone = "error" | "warning" | "info" | "neutral";
 
 export interface BannerProps {
   tone: BannerTone;
