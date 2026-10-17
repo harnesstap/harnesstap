@@ -82,7 +82,7 @@ async function handleProfilePullCommand(
     format?: string;
   },
 ): Promise<void> {
-  const installed = await handlePluginInstallCommand(selector, opts);
+  const installed = await handlePluginInstallCommand(selector, { ...opts, profile: true });
   if (!installed || process.exitCode) {
     return;
   }
