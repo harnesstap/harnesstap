@@ -10,7 +10,7 @@ const block = (selector: string) => {
 };
 
 describe("resource badge actions", () => {
-  it("are a rounded-rectangle badge with actions in an absolutely positioned extension", () => {
+  it("are a pill badge with actions in an absolutely positioned extension", () => {
     expect(block(".inventory-chip")).toContain("position: relative;");
     expect(block(".inventory-chip")).toContain("border-radius: var(--chip-radius);");
     const ext = block(".inventory-chip-extension");
@@ -22,13 +22,33 @@ describe("resource badge actions", () => {
     expect(ext).not.toMatch(/\bwidth:/);
   });
 
+  it("share the fully rounded pill token with the resource type tabs", () => {
+    const tokens = desktop("src/styles/tokens.css");
+    expect(tokens).toContain("--radius-pill: 9999px;");
+    expect(block(".inventory-chip")).toContain("--chip-radius: var(--radius-pill);");
+    const library = desktop("src/styles/features/library.css");
+    const tabStart = library.indexOf(".resource-type-tab {");
+    expect(library.slice(tabStart, library.indexOf("}", tabStart))).toContain("border-radius: var(--radius-pill);");
+  });
+
+  it("read as one continuous pill while the extension shows", () => {
+    // Badge: right end squared and its right border hidden, so no seam.
+    expect(css).toMatch(/\.inventory-chip:has\(\.inventory-chip-extension\):hover,[^{]*\{\s*border-top-right-radius: 0;\s*border-bottom-right-radius: 0;\s*border-right-color: transparent;/);
+    // Extension: starts flush at the badge edge, no left border, rounded right end.
+    const ext = block(".inventory-chip-extension");
+    expect(ext).toContain("left: 100%;");
+    expect(ext).toContain("border-left: 0;");
+    expect(ext).toContain("border-radius: 0 var(--chip-radius) var(--chip-radius) 0;");
+    expect(ext).toContain("background: var(--chip-hover-bg);");
+  });
+
   it("reveal on hover and on keyboard focus inside the badge", () => {
     expect(css).toContain(".inventory-chip:hover > .inventory-chip-extension,\n.inventory-chip:focus-within > .inventory-chip-extension");
   });
 
   it("reserve room at the end of every row for the widest extension", () => {
     const cluster = block(".inventory-chip-cluster");
-    expect(cluster).toContain("--chip-extension-reserve: 7rem;");
+    expect(cluster).toContain("--chip-extension-reserve: 7.5rem;");
     expect(cluster).toContain("padding-right: var(--chip-extension-reserve);");
   });
 

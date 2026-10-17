@@ -735,13 +735,15 @@
   max-width: 100%;
 }
 
-/* Resource badge: a rounded rectangle. Its actions sit in an extension that
-   grows out to the right on hover or keyboard focus. The extension is
+/* Resource badge: a pill with the same radius token as the resource type
+   tabs. Its actions sit in an extension that grows out to the right on hover
+   or keyboard focus. While it shows, the badge's right end squares off and the
+   extension carries the rounded end, so the two read as one pill. The extension is
    absolutely positioned, so it overlays its neighbours instead of pushing
    them, and each row reserves --chip-extension-reserve at its end so the
    last badge's extension never overflows the row. */
 .inventory-chip {
-  --chip-radius: calc(var(--radius) + 2px);
+  --chip-radius: var(--radius-pill);
   --chip-hover-bg: linear-gradient(var(--surface-hover), var(--surface-hover)), var(--bg);
   position: relative;
   display: inline-flex;
@@ -749,7 +751,7 @@
   gap: 0.25rem;
   max-width: 100%;
   height: 26px;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: var(--chip-radius);
   background: transparent;
@@ -779,7 +781,7 @@
   bottom: -1px;
   left: 100%;
   z-index: 3; /* token-lint: allow */
-  padding: 0 0.25rem 0 0.1rem;
+  padding: 0 0.5rem 0 0.1rem;
   border: 1px solid var(--border);
   border-left: 0;
   border-radius: 0 var(--chip-radius) var(--chip-radius) 0;
@@ -2226,8 +2228,9 @@
 }
 
 .inventory-chip-cluster {
-  /* Widest extension: four 24px actions, their gaps and padding. */
-  --chip-extension-reserve: 7rem;
+  /* Widest extension: four 24px actions, their gaps, padding and the
+     rounded pill end. */
+  --chip-extension-reserve: 7.5rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
