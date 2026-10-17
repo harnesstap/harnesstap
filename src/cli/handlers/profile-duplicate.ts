@@ -68,7 +68,8 @@ export async function handleProfileDuplicateCommand(
         if (format !== "json") ui.info("Cloud cannot duplicate profiles yet, so the copy was made in your Library.");
         renderLocalDuplicate(outcome.result, format);
         if (format !== "json") {
-          ui.hint(`Publish it: ${formatCommand(["plugin", "publish", outcome.result.plugin.name])} --org <org> --catalog <catalog>`);
+          const [org, catalog] = opts.to.split("/");
+          ui.hint(`Publish it: ${formatCommand(["plugin", "publish", outcome.result.plugin.name, "--org", org ?? "", "--catalog", catalog || "default"])}`);
         }
         return;
       }
