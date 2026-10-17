@@ -18,6 +18,7 @@ import {
   isCompositionPluginPackage,
   mergeCompositionMembership,
   pluginDetailCompositionEntries,
+  profileDependencyForMember,
 } from "../lib/composition-membership";
 import { formatLastEditLine } from "../lib/library-timestamp";
 import { duplicatePluginNames } from "../lib/resource-display";
@@ -359,28 +360,6 @@ export function EditProfilePane({
     setDiscardOpen(false);
   };
 
-  const togglePlugin = (pluginId: string) => {
-    if (!baseUrl || !detail) {
-      return;
-    }
-    const selected = selectedPluginIds.includes(pluginId);
-    const plugin = plugins.find((entry) => entry.id === pluginId);
-    if (!plugin) {
-      return;
-    }
-    return runMutation(
-      () =>
-        selected
-          ? detachProfileComposition(baseUrl, token, profileName, {
-              dependencyName: plugin.name,
-            })
-          : attachProfileComposition(baseUrl, token, profileName, {
-              pluginId,
-            }),
-      { affectsApply: true },
-    );
-  };
-
   const addLibraryItems = async (items: ScopeLibraryPick[]) => {
     if (!baseUrl || !detail || disabled || busy) {
       return;
@@ -418,38 +397,41 @@ export function EditProfilePane({
     }
   };
 
-  const toggleResource = (resourceId: string) => {
+  const toggleMembership = (id: string) => {
     if (!baseUrl || !detail) {
       return;
     }
-    const selected = selectedResourceIds.includes(resourceId);
-    return runMutation(
-      () =>
-        selected
-          ? detachProfileComposition(baseUrl, token, profileName, {
-              resourceId,
-            })
-          : attachProfileComposition(baseUrl, token, profileName, {
-              resourceId,
-            }),
-      { affectsApply: true },
-    );
-  };
-
-  const toggleMembership = (id: string) => {
     const entry = membership.find((row) => row.id === id);
     if (!entry) {
       return;
     }
     const wasSelected = selectedMembershipIds.includes(id);
     const label = resourceDisplayName(entry, collidingPluginNames);
-    const result = isCompositionPluginPackage(entry)
-      ? togglePlugin(id)
-      : toggleResource(id);
-    if (!result) {
-      return;
-    }
-    void result.then((ok) => {
+    const isPluginHead = isCompositionPluginPackage(entry);
+    // A dependency can show as its Library plugin head or, when that plugin is
+    // missing from the Library, as its own dependency row. Either way unticking
+    // detaches it by name; it must never attach a second copy.
+    const dependencyName =
+      profileDependencyForMember(id, detail.dependencies, plugins)
+      ?? (isPluginHead ? entry.name : null);
+    const attach = () =>
+      attachProfileComposition(
+        baseUrl,
+        token,
+        profileName,
+        isPluginHead ? { pluginId: id } : { resourceId: id },
+      );
+    const detach = () =>
+      detachProfileComposition(
+        baseUrl,
+        token,
+        profileName,
+        dependencyName ? { dependencyName } : { resourceId: id },
+      );
+    // Undo runs the explicit inverse, not a toggle on state from this render.
+    const run = (remove: boolean) =>
+      runMutation(remove ? detach : attach, { affectsApply: true });
+    void run(wasSelected).then((ok) => {
       if (!ok) {
         return;
       }
@@ -458,7 +440,7 @@ export function EditProfilePane({
         title: wasSelected ? `Removed ${label}` : `Added ${label}`,
         action: {
           label: "Undo",
-          onClick: () => toggleMembership(id),
+          onClick: () => void run(!wasSelected),
         },
       });
     });

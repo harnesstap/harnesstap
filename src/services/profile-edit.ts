@@ -23,6 +23,7 @@ import {
   formatPluginRef,
   removePluginAttachment,
 } from "./plugin-composition.js";
+import { parseVersionConstraint } from "./plugin-constraints.js";
 import { markPluginDirty } from "./plugin-versioning.js";
 import { ProfileRenameError, ProfileReservedNameError } from "./profile-commands.js";
 import { toContentsResource } from "./profile-contents.js";
@@ -203,6 +204,16 @@ export async function attachProfilePlugin(
   return getProfileDetail(profile.name);
 }
 
+function validConstraint(raw: string | undefined): string | undefined {
+  if (!raw || raw === "*") return undefined;
+  try {
+    parseVersionConstraint(raw);
+    return raw;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function attachProfileResource(
   selector: string,
   resourceId: string,
@@ -213,10 +224,25 @@ export async function attachProfileResource(
     throw new Error(`Resource not found: ${resourceId}`);
   }
   if (resource.type === "plugin") {
+    const ref = formatPluginRef(resource);
+    const alreadyAttached =
+      getPluginResources(profile.id).some((entry) => entry.id === resource.id)
+      || listPluginDependencies(profile.id).some(
+        (dep) => dep.dependency_name === resource.name || dep.dependency_name === ref,
+      );
+    if (alreadyAttached) {
+      // Same dependency under another constraint row: keep one, never add a second.
+      return getProfileDetail(profile.name);
+    }
+    // Re-attaching a dependency row (Undo in Edit profile) keeps its constraint.
+    const constraint = validConstraint(
+      (resource.metadata as { version_constraint?: string }).version_constraint,
+    );
     await addPluginAttachment({
       plugin: profile,
-      selector: formatPluginRef(resource),
+      selector: ref,
       type: "plugin",
+      ...(constraint ? { version: constraint } : {}),
     });
     return getProfileDetail(profile.name);
   }

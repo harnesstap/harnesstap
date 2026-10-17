@@ -7,8 +7,15 @@ export interface PublishCatalogRef {
 }
 
 export interface PublishPlanWarning {
-  code: "empty_profile" | "unpublished_local_refs" | string;
+  code: "empty_profile" | string;
   message: string;
+}
+
+/** A problem that stops the publish until the user fixes it. */
+export interface PublishPlanBlocker {
+  code: "unpublished_dependencies" | string;
+  message: string;
+  dependencies?: string[];
 }
 
 export interface PublishPlanRow {
@@ -24,6 +31,8 @@ export interface ProfilePublishPlan {
   dirty: boolean;
   authored: boolean;
   warnings: PublishPlanWarning[];
+  /** Absent on older sidecars. */
+  blockers?: PublishPlanBlocker[];
   plans: PublishPlanRow[];
   /** Reasons publish cannot run at all, such as an unpublished parent. */
   blockers?: PublishPlanBlocker[];

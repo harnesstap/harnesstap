@@ -210,6 +210,7 @@ export function PublishProfileDrawer({
 
   const triggerDisabled = disabled || !baseUrl;
   const dirty = plan?.dirty === true;
+  const blockers = plan?.blockers ?? [];
   const registeredKeys = registered.map((entry) =>
     catalogKey(entry.org, entry.catalog),
   );
@@ -220,6 +221,7 @@ export function PublishProfileDrawer({
     !authRequired
     && blockers.length === 0
     && !dirty
+    && blockers.length === 0
     && !notAuthored
     && !noCatalogRegistered
     && hasCheckedCatalog
@@ -337,6 +339,16 @@ export function PublishProfileDrawer({
                 {plan?.warnings.map((warning) => (
                   <div className="banner" role="status" key={warning.code}>
                     {warning.message}
+                  </div>
+                ))}
+                {blockers.map((blocker) => (
+                  <div
+                    className="banner error"
+                    role="alert"
+                    key={blocker.code}
+                    data-testid={`publish-blocker-${blocker.code}`}
+                  >
+                    {blocker.message}
                   </div>
                 ))}
                 {dirty ? (

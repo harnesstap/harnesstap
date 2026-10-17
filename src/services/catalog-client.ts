@@ -27,6 +27,7 @@ import { AP_PACKAGE_MEDIA_TYPE, cloudFetch } from "./cloud-api-version.js";
 import { createPublicCatalogClient } from "./public-catalog-client.js";
 import { rankCatalogSearchResults } from "./catalog-search-rank.js";
 import { fetchWithTimeout, formatCatalogRequestError } from "../utils/fetch-with-timeout.js";
+import semver from "semver";
 
 function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): CatalogListOptions {
   return {
@@ -273,6 +274,26 @@ export interface DownloadedPackage {
   files: ApPackageFiles;
 }
 
+/**
+ * A `latest` download names no version. Use the package's own plugin.json
+ * version so the local plugin is stored as 1.0.0, not as the word "latest".
+ */
+export function resolveDownloadedVersion(requested: string, files: ApPackageFiles): string {
+  if (requested !== "latest") {
+    return requested;
+  }
+  const manifest = files["plugin.json"];
+  if (!manifest || manifest.encoding === "base64") {
+    return requested;
+  }
+  try {
+    const version = (JSON.parse(manifest.content) as { version?: unknown }).version;
+    return typeof version === "string" && semver.valid(version) ? version : requested;
+  } catch {
+    return requested;
+  }
+}
+
 export async function downloadCatalogPackage(input: {
   orgSlug: string;
   catalogSlug?: string;
@@ -329,10 +350,8 @@ export async function downloadCatalogPackage(input: {
     }
     await throwIfCatalogPackageYanked(response, `${input.orgSlug}/${catalogSlug}/${input.pluginSlug}@${version}`);
     if (response.ok) {
-      return {
-        version,
-        files: parseApEnvelope(await response.text(), url),
-      };
+      const files = parseApEnvelope(await response.text(), url);
+      return { version: resolveDownloadedVersion(version, files), files };
     }
     if (response.status !== 404) {
       throw new Error(
@@ -345,12 +364,16 @@ export async function downloadCatalogPackage(input: {
     throw new Error(formatOutOfScopeMessage(selector));
   }
 
-  return access.publicClient.downloadPackage(
+  const downloaded = await access.publicClient.downloadPackage(
     input.orgSlug,
     input.pluginSlug,
     version,
     catalogSlug,
   );
+  return {
+    version: resolveDownloadedVersion(version, downloaded.files),
+    files: downloaded.files,
+  };
 }
 
 export async function validatePublicOrgHasPlugins(orgSlug: string, baseUrl?: string): Promise<boolean> {
