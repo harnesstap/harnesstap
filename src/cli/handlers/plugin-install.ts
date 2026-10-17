@@ -22,6 +22,8 @@ export async function handlePluginInstallCommand(
     format?: string;
     interactive?: boolean;
     noInteractive?: boolean;
+    /** `ht profile pull`: tag the installed plugin as a profile. */
+    profile?: boolean;
   },
 ): Promise<{ pluginName: string; pluginId: string } | undefined> {
   const db = getDb();
@@ -52,6 +54,7 @@ export async function handlePluginInstallCommand(
   try {
     const installed = await installPluginFromCatalog(parsed, {
       as: opts.as,
+      ...(opts.profile ? { profile: true } : {}),
       account: opts.account,
       baseUrl: opts.baseUrl,
     });

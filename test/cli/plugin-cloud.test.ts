@@ -338,7 +338,7 @@ describe("CLI cloud plugin workflows", () => {
       const dryRunPayload = JSON.parse(dryRun.stdout);
       expect(dryRunPayload).toEqual(
         expect.objectContaining({
-          plugin: "remote-team",
+          plugin: "team",
           plugins: ["harnesstap-cloud/default/team@1.0"],
         }),
       );
@@ -387,7 +387,8 @@ describe("CLI cloud plugin workflows", () => {
         expect.objectContaining({
           org_slug: "harnesstap-cloud",
           plugin_slug: "my-library",
-          version: "latest",
+          // A `latest` pull stores the package's real version, not the word "latest".
+          version: "1.0.0",
         }),
       );
 
