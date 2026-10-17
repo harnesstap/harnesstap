@@ -452,7 +452,7 @@ export async function handleProfileCreateCommand(
     const result = createProfileCommand({
       name,
       description: opts.description,
-      version,
+      ...(opts.version ? { version: opts.version } : {}),
     });
 
     if (format === "json" && !opts.use) {
@@ -567,7 +567,7 @@ export function registerProfileCreateCommand(profileCmd: Command): void {
     .command("create")
     .argument("<name>", "Profile plugin name")
     .option("-d, --description <text>", "Profile description")
-    .option("--version <semver>", "Plugin version when creating from a source", "1.0.0")
+    .option("--version <semver>", "Plugin version for a new profile (default 1.0.0)")
     .option(
       "--from <source>",
       "Skill package source (owner/repo, git URL, or local path)",

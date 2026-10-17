@@ -60,6 +60,35 @@ describe("claudeSourceFromMarketplaceUrl", () => {
 });
 
 describe("addPluginFromMarketplace", () => {
+  it("attaches a pin from the built-in cursor-public marketplace without registering it", async () => {
+    const context = await createTestContext("plugin-marketplace-add-builtin");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      clearActiveProfileName();
+      const harnesstapDir = harnesstapDirFromContext(context);
+      const plugin = createPlugin({ name: "builtin-pin-profile", tags: ["profile"] });
+
+      const result = await addPluginFromMarketplace({
+        harnesstapDir,
+        homeRoot: context.homeDir,
+        projectRoot: context.projectDir,
+        ref: "continual-learning@cursor-public",
+        pluginName: plugin.name,
+        install: async () => {
+          throw new Error("inactive profile must not install");
+        },
+        ensureMarketplaces: () => [],
+      });
+
+      expect(result.status).toBe("attached");
+      expect(getPluginById(plugin.id)?.claude?.plugins).toEqual([
+        { id: "continual-learning@cursor-public", version: "latest", enabled: true },
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("attaches pin and copies marketplace when profile is inactive without installing", async () => {
     const context = await createTestContext("plugin-marketplace-add-inactive");
     try {
