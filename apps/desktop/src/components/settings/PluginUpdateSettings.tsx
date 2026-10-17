@@ -54,7 +54,7 @@ export function PluginUpdateSettings({ open, baseUrl, token, disabled = false }:
     <section className="settings-section" data-testid="plugin-update-settings">
       <h3>Plugin updates</h3>
       <p className="field-note muted">
-        How HarnessTap checks pulled plugins and kept-in-sync profiles for newer versions.
+        For pulled plugins and synced profiles.
       </p>
       {error ? (
         <div className="banner error" role="alert">

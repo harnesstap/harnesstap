@@ -13,7 +13,7 @@ export interface KeepUpToDateDialogProps {
   onDismiss: () => void;
 }
 
-/** Shown once, after the first successful Update all. */
+/** Shown once, after the first successful update. */
 export function KeepUpToDateDialog({ open, initial, busy = false, onSave, onDismiss }: KeepUpToDateDialogProps) {
   const [mode, setMode] = useState<UpdateMode>(initial?.mode ?? "notify");
   const [frequency, setFrequency] = useState<UpdateFrequency>(initial?.frequency ?? "daily");
