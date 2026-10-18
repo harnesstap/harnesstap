@@ -1,0 +1,5 @@
+kind: Added
+body: 'New `updates` settings in `config.jsonc`: `mode` (`off`, `notify` (the default) or `install`), `frequency` (`hourly`, `daily` (the default) or `weekly`) and `prompted`. The Desktop sidecar checks when a check is due under `frequency`, counted from the newest stored check. In `install` mode it also installs, for pulled catalog plugins, the newest minor or patch inside the caret range. It never installs a major version, skips plugins whose content no longer matches the published version (local edits) and separate copies, keeps the previous version as a frozen cut, and re-applies the active profile only when its harness files are clean. One plugin update runs at a time; `ht plugin update` waits for a scheduled run, and Desktop Update all returns 409 `update_in_progress` after waiting 60 seconds.'
+time: 2026-10-17T12:00:00.000Z
+custom:
+  Issue: ""

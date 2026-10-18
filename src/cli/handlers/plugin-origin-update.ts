@@ -11,6 +11,7 @@ import {
   isPromptCancellationError,
   promptForConfirmation,
 } from "../../services/wizards/shared.js";
+import { withUpstreamUpdateLock } from "../../services/upstream-update-lock.js";
 import { runUpstreamCheck, type UpstreamCheckRow } from "../../services/upstream-check.js";
 import { formatCount } from "../formatting.js";
 import { ui } from "../../ui/index.js";
@@ -159,11 +160,14 @@ export async function handlePluginUpdateCommand(
   }
 
   try {
-    const report = await updatePluginOrigins({
-      name,
-      all: opts.all,
-      force: opts.force,
-    });
+    // The Desktop sidecar may be checking or installing; wait for it.
+    const report = await withUpstreamUpdateLock(
+      () => updatePluginOrigins({ name, all: opts.all, force: opts.force }),
+      {
+        waitMs: UPDATE_LOCK_WAIT_MS,
+        onWait: () => ui.info("Waiting for another plugin update to finish."),
+      },
+    );
     if (format === "json") {
       printJson(report);
     } else {
@@ -181,6 +185,8 @@ export async function handlePluginUpdateCommand(
     ui.danger(message);
   }
 }
+
+const UPDATE_LOCK_WAIT_MS = 5 * 60 * 1000;
 
 function printUpdateHuman(rows: PluginOriginUpdateRow[]): void {
   ui.table.print({
