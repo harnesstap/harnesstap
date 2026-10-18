@@ -19,6 +19,9 @@ export function ChromeTooltip({
   const [open, setOpen] = useState(false);
   const hoverTimer = useRef<number | null>(null);
   const pointerInside = useRef(false);
+  // A click opens a dialog or menu; focus coming back to the trigger when it
+  // closes must not bring the tooltip back.
+  const suppressFocusOpen = useRef(false);
 
   const clearHoverTimer = () => {
     if (hoverTimer.current !== null) {
@@ -29,6 +32,7 @@ export function ChromeTooltip({
 
   const openFromHover = () => {
     pointerInside.current = true;
+    suppressFocusOpen.current = false;
     clearHoverTimer();
     hoverTimer.current = window.setTimeout(() => {
       setOpen(true);
@@ -47,8 +51,19 @@ export function ChromeTooltip({
         asChild
         onPointerEnter={openFromHover}
         onPointerLeave={closeFromPointer}
+        onPointerDown={() => {
+          suppressFocusOpen.current = true;
+          clearHoverTimer();
+          setOpen(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            suppressFocusOpen.current = true;
+            setOpen(false);
+          }
+        }}
         onFocus={(event) => {
-          if (event.currentTarget.matches(":focus-visible")) {
+          if (!suppressFocusOpen.current && event.currentTarget.matches(":focus-visible")) {
             setOpen(true);
           }
         }}

@@ -82,3 +82,19 @@ export function formatLastEditLine(
   const now = options?.now ?? new Date();
   return `Last edit ${formatLastEditRelative(date, now)} (${formatLocalWallClock(date)})`;
 }
+
+/** Edit pane subtitle: "Edited 5 minutes ago", with the exact time for a tooltip. */
+export function formatEditedLine(
+  iso: string,
+  options?: { now?: Date },
+): { text: string; exact: string } | null {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const now = options?.now ?? new Date();
+  return {
+    text: `Edited ${formatLastEditRelative(date, now)}`,
+    exact: formatLocalWallClock(date),
+  };
+}
