@@ -17,6 +17,7 @@ export type CommandLoaderId =
   | "marketplace"
   | "mcp"
   | "migrate"
+  | "notifications"
   | "open"
   | "pack"
   | "plugin"
@@ -101,6 +102,12 @@ export const COMMAND_CATALOG: CommandCatalogEntry[] = [
     description: "Export or import workspace, plugins, or resources for offline sharing",
     kind: "group",
     loader: "migrate",
+  },
+  {
+    name: "notifications",
+    description: "List and mark plugin update notifications",
+    kind: "group",
+    loader: "notifications",
   },
   {
     name: "plugin",
@@ -285,6 +292,7 @@ export const COMMAND_LOADER_IDS: CommandLoaderId[] = [
   "marketplace",
   "mcp",
   "migrate",
+  "notifications",
   "open",
   "pack",
   "plugin",

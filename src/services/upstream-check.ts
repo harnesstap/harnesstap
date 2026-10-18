@@ -11,7 +11,8 @@ import { ensureCloudAccountAccess } from "./cloud-account-auth.js";
 import { cloudFetch } from "./cloud-api-version.js";
 import { resolveUpstreamParent } from "./plugin-extends.js";
 import { isCatalogUpstreamRef, upstreamRange, upstreamRefBase } from "./plugin-upstream.js";
-import { readUpstreamChecks, type UpstreamCheckRow } from "./upstream-check-read.js";
+import { isPendingUpdate, readUpstreamChecks, type UpstreamCheckRow } from "./upstream-check-read.js";
+import { notifySafely } from "./notifications.js";
 
 export {
   formatUpdatesLine,
@@ -416,6 +417,9 @@ export async function runUpstreamCheck(opts?: {
   });
 
   const db = getDb();
+  const previous = new Map(
+    readUpstreamChecks().map((row) => [`${row.plugin_name}\0${row.ref}`, row.local_version]),
+  );
   const upsert = db.prepare(
     `INSERT INTO upstream_checks
        (plugin_name, ref, local_version, latest_in_range, latest_major, status, checked_at, message)
@@ -454,7 +458,56 @@ export async function runUpstreamCheck(opts?: {
   const rows = readUpstreamChecks().filter(
     (row) => !opts?.name || row.plugin_name === opts.name,
   );
+  notifyUpstreamUpdates(rows, new Map(targets.map((target) => [`${target.plugin_name}\0${target.ref}`, target.kind])), previous);
   return { checked_at: checkedAt, rows };
+}
+
+/**
+ * One notification per new version. An `extends` child hears that its parent
+ * published; everything else hears that an update is available. A version
+ * set aside with "Not now" is not notified.
+ */
+function notifyUpstreamUpdates(
+  rows: UpstreamCheckRow[],
+  kinds: Map<string, UpstreamTarget["kind"]>,
+  previous: Map<string, string>,
+): void {
+  for (const row of rows) {
+    const key = `${row.plugin_name}\0${row.ref}`;
+    const before = previous.get(key);
+    // A synced child follows its parent on its own: tell the user it moved.
+    if (
+      kinds.get(key) === "extends"
+      && before
+      && semver.valid(before)
+      && semver.valid(row.local_version)
+      && semver.gt(row.local_version, before)
+    ) {
+      notifySafely({
+        kind: "parent_published",
+        plugin_name: row.plugin_name,
+        title: `${row.plugin_name} now uses ${row.local_version}`,
+        body: `Synced from ${upstreamRefBase(row.ref)} (was ${before}).`,
+        payload: { version: row.local_version, ref: row.ref, from: before, major: false },
+      });
+    }
+    if (!isPendingUpdate(row)) continue;
+    const major = row.status === "major";
+    const version = major ? row.latest_major : row.latest_in_range;
+    const parent = kinds.get(`${row.plugin_name}\0${row.ref}`) === "extends";
+    const source = upstreamRefBase(row.ref);
+    notifySafely({
+      kind: parent ? "parent_published" : "update_available",
+      plugin_name: row.plugin_name,
+      title: parent
+        ? `${source} published ${version}`
+        : `${row.plugin_name} ${version} is available`,
+      body: major
+        ? `Major update, needs your OK. You have ${row.local_version}.`
+        : `You have ${row.local_version}.`,
+      payload: { version, ref: row.ref, from: row.local_version, major },
+    });
+  }
 }
 
 /** Cloud answers per base; a child's own range can be narrower than another child's. */

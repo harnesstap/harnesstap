@@ -440,6 +440,28 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin update --all --yes --format json",
     ],
   },
+  "notifications.list": {
+    description: "List plugin update notifications (unread by default); same as ht notifications",
+    details:
+      "Notifications are written when a check finds a new version, when a parent plugin publishes, "
+      + "when install mode updates a plugin, and when checks keep failing. The same version is never "
+      + "notified twice. --all includes read ones. Nothing is deleted unless you run prune.",
+    examples: [
+      "notifications",
+      "notifications list --all --format json",
+    ],
+  },
+  "notifications.read": {
+    description: "Mark a notification, or all of them, as read",
+    examples: ["notifications read 01J9Z8K3M2", "notifications read --all"],
+  },
+  "notifications.prune": {
+    description: "Delete read notifications older than an age, after confirmation",
+    details:
+      "Only read notifications are deleted; unread ones are kept. Asks before deleting in a terminal; "
+      + "pass --yes otherwise.",
+    examples: ["notifications prune --older-than 90d", "notifications prune --older-than 2w --yes"],
+  },
   "plugin.auto-update": {
     description: "Show or change how plugin updates are checked and installed",
     details:
