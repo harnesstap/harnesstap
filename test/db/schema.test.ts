@@ -51,7 +51,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(41);
+      expect(versionRow.version).toBe(42);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -202,7 +202,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(41);
+      ).toBe(42);
     } finally {
       await context.cleanup();
     }
@@ -261,7 +261,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(41);
+      ).toBe(42);
       expect(
         (db.prepare("SELECT version FROM plugins WHERE id = 'p1'").get() as { version: string })
           .version,
@@ -294,7 +294,7 @@ describe("initializeSchema", () => {
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number })
           .version,
-      ).toBe(41);
+      ).toBe(42);
     } finally {
       await context.cleanup();
     }
@@ -325,7 +325,40 @@ describe("initializeSchema", () => {
       });
       expect(
         (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number }).version,
-      ).toBe(41);
+      ).toBe(42);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("upgrades schema v41 to v42 with the upstream_checks table", async () => {
+    const context = await createTestContext("schema-upgrade-v41-to-v42");
+    try {
+      const db = context.connection.getDb();
+      context.schema.initializeSchema(db);
+      db.exec("DROP TABLE upstream_checks; UPDATE schema_version SET version = 41;");
+
+      context.schema.initializeSchema(db);
+
+      db.prepare(
+        `INSERT INTO upstream_checks (plugin_name, ref, local_version, status, checked_at)
+         VALUES ('backend-qa', 'a/b/backend@^1.0.0', '1.0.0', 'update', ?)`,
+      ).run(new Date().toISOString());
+      expect(
+        db.prepare("SELECT status, dismissed_version, latest_major FROM upstream_checks").all(),
+      ).toEqual([{ status: "update", dismissed_version: "", latest_major: "" }]);
+      expect(() =>
+        db.prepare(
+          `INSERT INTO upstream_checks (plugin_name, ref, local_version, status, checked_at)
+           VALUES ('x', 'y', '1.0.0', 'outdated', 'now')`,
+        ).run(),
+      ).toThrow();
+      expect(
+        db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_upstream_checks_status'").get(),
+      ).toEqual({ name: "idx_upstream_checks_status" });
+      expect(
+        (db.prepare("SELECT version FROM schema_version LIMIT 1").get() as { version: number }).version,
+      ).toBe(42);
     } finally {
       await context.cleanup();
     }
@@ -343,7 +376,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 41 }]);
+      expect(versionRows).toEqual([{ version: 42 }]);
     } finally {
       await context.cleanup();
     }
@@ -760,7 +793,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(41);
+        expect(version).toBe(42);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -787,7 +820,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(41);
+      expect(version).toBe(42);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -825,7 +858,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(41);
+      expect(version).toBe(42);
 
       const tables = db
         .prepare(
@@ -890,7 +923,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(41);
+      expect(version).toBe(42);
 
       const columns = db
         .prepare("PRAGMA table_info(resource_materializations)")
@@ -986,7 +1019,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(41);
+      expect(version).toBe(42);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")
