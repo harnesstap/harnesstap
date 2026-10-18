@@ -4,6 +4,7 @@ import { getDb } from "../../src/db/connection.ts";
 import { addDependencyToPlugin, createPlugin } from "../../src/models/plugin-model.ts";
 import { setPluginUpstream } from "../../src/services/plugin-upstream.ts";
 import {
+  resetUpstreamScheduleForTests,
   setUpstreamCheckRunnerForTests,
   startUpstreamCheckSchedule,
   upstreamCheckScheduleEnabled,
@@ -20,6 +21,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   setUpstreamCheckRunnerForTests(null);
+  resetUpstreamScheduleForTests();
   await ctx.cleanup();
 });
 
@@ -112,19 +114,18 @@ describe("updates API", () => {
 });
 
 describe("update check schedule", () => {
-  it("runs after the initial delay and then on the interval, and stops", async () => {
+  it("checks on the first tick, ticks again without re-checking before it is due, and stops", async () => {
     let runs = 0;
     setUpstreamCheckRunnerForTests(async () => {
       runs += 1;
       return { checked_at: "now", rows: [] };
     });
-    const stop = startUpstreamCheckSchedule({ initialDelayMs: 5, intervalMs: 20 });
+    const stop = startUpstreamCheckSchedule({ initialDelayMs: 5, intervalMs: 10 });
     await new Promise((resolve) => setTimeout(resolve, 60));
     stop();
-    const seen = runs;
-    expect(seen).toBeGreaterThanOrEqual(2);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(runs).toBe(seen);
+    expect(runs).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(runs).toBe(1);
   });
 
   it("is off with HARNESSTAP_UPDATE_CHECK=off", () => {

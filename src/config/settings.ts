@@ -20,6 +20,53 @@ export interface PluginMarketplaceEntry {
   trackedBranches?: string[];
 }
 
+export type UpdateMode = "off" | "notify" | "install";
+export type UpdateFrequency = "hourly" | "daily" | "weekly";
+
+/** Upstream update checks (B3). Auto-install stays off unless the user picks it. */
+export interface UpdateSettings {
+  /** off: no remote checks (synced profiles still follow their parent). notify: check and show updates. install: also install in-range minor and patch versions. */
+  mode: UpdateMode;
+  /** How often the Desktop sidecar checks upstreams. */
+  frequency: UpdateFrequency;
+  /** True once the one-time "Keep these up to date?" prompt was answered. */
+  prompted: boolean;
+}
+
+export const UPDATE_MODES: readonly UpdateMode[] = ["off", "notify", "install"];
+export const UPDATE_FREQUENCIES: readonly UpdateFrequency[] = ["hourly", "daily", "weekly"];
+
+export const UPDATE_FREQUENCY_MS: Record<UpdateFrequency, number> = {
+  hourly: 60 * 60 * 1000,
+  daily: 24 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000,
+};
+
+export const DEFAULT_UPDATE_SETTINGS: UpdateSettings = {
+  mode: "notify",
+  frequency: "daily",
+  prompted: false,
+};
+
+export function isUpdateMode(value: unknown): value is UpdateMode {
+  return typeof value === "string" && (UPDATE_MODES as readonly string[]).includes(value);
+}
+
+export function isUpdateFrequency(value: unknown): value is UpdateFrequency {
+  return typeof value === "string" && (UPDATE_FREQUENCIES as readonly string[]).includes(value);
+}
+
+export function parseUpdateSettings(value: unknown): UpdateSettings {
+  const raw = value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+  return {
+    mode: isUpdateMode(raw.mode) ? raw.mode : DEFAULT_UPDATE_SETTINGS.mode,
+    frequency: isUpdateFrequency(raw.frequency) ? raw.frequency : DEFAULT_UPDATE_SETTINGS.frequency,
+    prompted: raw.prompted === true,
+  };
+}
+
 export interface HarnesstapSettings {
   plugins: {
     refreshMaxAgeHours: number;
@@ -32,6 +79,7 @@ export interface HarnesstapSettings {
     /** When true, Codex and Copilot load Agent Plugins packages instead of the portable extract. */
     nativeAgentPlugins: boolean;
   };
+  updates: UpdateSettings;
 }
 
 const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
@@ -58,6 +106,7 @@ const DEFAULTS: HarnesstapSettings = {
     pluginResources: DEFAULT_PLUGIN_RESOURCE_MODE,
     nativeAgentPlugins: false,
   },
+  updates: DEFAULT_UPDATE_SETTINGS,
 };
 
 function isPluginMarketplacePlatform(
@@ -273,6 +322,7 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
           : DEFAULTS.harnessSync.pluginResources,
         nativeAgentPlugins,
       },
+      updates: parseUpdateSettings((raw as { updates?: unknown }).updates),
     };
   } catch {
     return DEFAULTS;
@@ -319,7 +369,27 @@ export function saveSettings(
       plugins: settings.plugins,
       pluginVersionHistoryLimit: settings.pluginVersionHistoryLimit,
       harnessSync: settings.harnessSync,
+      updates: settings.updates,
     },
     path,
   );
+}
+
+export function loadUpdateSettings(harnesstapDir: string): UpdateSettings {
+  return loadSettings(harnesstapDir).updates;
+}
+
+/**
+ * Change only the `updates` keys. Every other key in config.jsonc is kept as
+ * it is (the file is rewritten as JSON, like every other settings write).
+ */
+export function saveUpdateSettings(
+  harnesstapDir: string,
+  patch: Partial<UpdateSettings>,
+): UpdateSettings {
+  const path = settingsPath(harnesstapDir);
+  const existing = readToolkitConfigRecord(harnesstapDir, path);
+  const next = parseUpdateSettings({ ...parseUpdateSettings(existing.updates), ...patch });
+  writeToolkitConfigRecord(harnesstapDir, { ...existing, updates: next }, path);
+  return next;
 }
