@@ -9,6 +9,7 @@ import {
 import { formatCount, formatPluginLabel } from "../formatting.js";
 import { parseCommaSeparatedList } from "../handlers/parse-flags.js";
 import { handlePluginForkCommand } from "../handlers/plugin-fork.js";
+import { handlePluginAutoUpdateCommand } from "../handlers/plugin-auto-update.js";
 import { handlePluginHideOptions } from "../handlers/profile-duplicate.js";
 import {
   handlePluginCheckCommand,
@@ -3240,6 +3241,21 @@ pluginCmd
         ui.info("Operation cancelled.");
         return;
       }
+      process.exitCode = 1;
+      renderCliError(error);
+    }
+  });
+
+pluginCmd
+  .command("auto-update")
+  .option("--mode <mode>", "off, notify (default) or install (minor and patch in range, never a major)")
+  .option("--frequency <frequency>", "hourly, daily (default) or weekly")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show or change how plugin updates are checked and installed")
+  .action(async (opts: { mode?: string; frequency?: string; format?: string }) => {
+    try {
+      await handlePluginAutoUpdateCommand(opts);
+    } catch (error) {
       process.exitCode = 1;
       renderCliError(error);
     }

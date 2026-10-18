@@ -29,7 +29,7 @@ export interface UpdateSettings {
   mode: UpdateMode;
   /** How often the Desktop sidecar checks upstreams. */
   frequency: UpdateFrequency;
-  /** True once the one-time "Keep these up to date?" prompt was answered. */
+  /** True once the one-time "Keep plugins up to date?" prompt was answered. */
   prompted: boolean;
 }
 

@@ -7,9 +7,16 @@ import {
   startUpdateCheck,
   type UpdateList,
 } from "../../lib/api/updates";
+import {
+  fetchUpdateSettings,
+  saveUpdateSettings,
+  type UpdateSettings,
+} from "../../lib/api/settings-updates";
+import { shouldOfferKeepUpToDate, updateSettingsSummary } from "../../lib/update-settings-copy";
 import { handledKey, profileUpdatesBanner } from "../../lib/updates-banner";
 import { toast } from "../../state/toast-store";
 import { Banner } from "./Banner";
+import { KeepUpToDateDialog } from "./KeepUpToDateDialog";
 
 export interface UpdatesBannerProps {
   baseUrl: string | null;
@@ -58,8 +65,36 @@ export function UpdatesBanner({
   const [busy, setBusy] = useState<"update" | "dismiss" | null>(null);
   // Versions this session already acted on, so the banner clears at once.
   const [handled, setHandled] = useState<ReadonlySet<string>>(() => new Set());
+  const [offer, setOffer] = useState<UpdateSettings | null>(null);
+  const [saving, setSaving] = useState(false);
   const model = list ? profileUpdatesBanner(list.rows, profileName, handled) : null;
-  if (!model || !baseUrl) return null;
+
+  // Either button marks the prompt as answered, so it never shows again.
+  const answerOffer = async (patch: Partial<UpdateSettings>, announce: boolean) => {
+    if (!baseUrl) return;
+    setSaving(true);
+    try {
+      const saved = await saveUpdateSettings(baseUrl, token, { ...patch, prompted: true });
+      if (announce) toast({ tone: "success", title: updateSettingsSummary(saved) });
+    } catch (error) {
+      toast({ tone: "error", title: error instanceof Error ? error.message : "Could not save" });
+    } finally {
+      setSaving(false);
+      setOffer(null);
+    }
+  };
+
+  // Rendered even after the banner clears, so the prompt survives the update.
+  const dialog = (
+    <KeepUpToDateDialog
+      open={offer !== null}
+      initial={offer}
+      busy={saving}
+      onSave={(choice) => void answerOffer(choice, true)}
+      onDismiss={() => void answerOffer({}, false)}
+    />
+  );
+  if (!model || !baseUrl) return dialog;
 
   const update = async () => {
     setBusy("update");
@@ -93,6 +128,8 @@ export function UpdatesBanner({
       await onChanged();
       toast({ tone: report.summary.failed > 0 ? "error" : "success", title: updateResultMessage(report) });
       onUpdated?.(report);
+      const settings = await fetchUpdateSettings(baseUrl, token).catch(() => null);
+      if (shouldOfferKeepUpToDate(settings, report)) setOffer(settings);
     } catch (error) {
       toast({ tone: "error", title: error instanceof Error ? error.message : "Could not update" });
     } finally {
@@ -116,7 +153,9 @@ export function UpdatesBanner({
   };
 
   return (
-    <Banner
+    <>
+      {dialog}
+      <Banner
       tone="neutral"
       role="status"
       testId="updates-banner"
@@ -138,6 +177,7 @@ export function UpdatesBanner({
         <CloudDownload size={16} aria-hidden />
         {busy === "update" ? "Updating" : "Update"}
       </button>
-    </Banner>
+      </Banner>
+    </>
   );
 }
