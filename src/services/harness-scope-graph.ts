@@ -1,4 +1,5 @@
-import { getPluginResources, resolvePluginSelector } from "../models/plugin-model.js";
+import { resolvePluginSelector } from "../models/plugin-model.js";
+import { getComposedPluginResources } from "./plugin-extends.js";
 import type { Resource } from "../types.js";
 import {
   HARNESS_SCOPE_ALL,
@@ -36,7 +37,7 @@ export function incomingScopeByPluginId(pluginIds: readonly string[]): Map<strin
   }
   for (const pluginId of pluginIds) {
     const parentIncoming = incoming.get(pluginId) ?? HARNESS_SCOPE_ALL;
-    for (const resource of getPluginResources(pluginId)) {
+    for (const resource of getComposedPluginResources(pluginId)) {
       if (resource.type !== "plugin") continue;
       const child = resolvePluginSelector(resource.name);
       if (!child || !pluginIds.includes(child.id)) continue;

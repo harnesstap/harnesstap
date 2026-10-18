@@ -47,14 +47,12 @@ import {
 import { resolveRegisteredGlobalApplyHarnesses } from "./harness-targets.js";
 import { rewriteStaleMergeableHostConfigs } from "./host-config-strip.js";
 import { installPluginFromCatalog } from "./plugin-catalog-install.js";
-import {
-  listAttachedPluginPins,
-  listAttachedPluginRefs,
-} from "./plugin-composition.js";
+import type { PluginPinView, PluginRefView } from "./plugin-composition.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import { collectPluginPinsForPrepare, preparePluginPinsForApply } from "./plugin-pin-apply.js";
 import { parsePluginSelector, resolveRemotePluginSelector } from "./plugin-selector.js";
 import { resolveComposition } from "./resolve/index.js";
+import { listComposedDependencies } from "./plugin-extends.js";
 import type { ResolutionResult } from "./resolve/types.js";
 import {
   formatRemovalBackupNotice,
@@ -81,14 +79,26 @@ function isProfileStackDependency(ref: string): boolean {
   );
 }
 
-function listProfileStackRefs(pluginId: string): ReturnType<typeof listAttachedPluginRefs> {
-  return listAttachedPluginRefs(pluginId).filter((ref) =>
-    isProfileStackDependency(ref.dependency_name)
-  );
+// Both read the composed set, so an extends child stacks its parent's items.
+function listProfileStackRefs(pluginId: string): PluginRefView[] {
+  return listComposedDependencies(pluginId)
+    .map((dependency) => ({
+      dependency_name: dependency.ref,
+      version_constraint: dependency.version_constraint,
+      resource: dependency.resource,
+    }))
+    .filter((ref) => isProfileStackDependency(ref.dependency_name));
 }
 
-function listHostPluginPins(pluginId: string): ReturnType<typeof listAttachedPluginPins> {
-  return listAttachedPluginPins(pluginId).filter((pin) => {
+function listHostPluginPins(pluginId: string): PluginPinView[] {
+  return listComposedDependencies(pluginId)
+    .map((dependency) => ({
+      ref: dependency.ref,
+      version_constraint: dependency.version_constraint,
+      embed_on_export: dependency.embed_on_export,
+      resource: dependency.resource,
+    }))
+    .filter((pin) => {
     const kind = parseDependencyRef(pin.ref).source_kind;
     return kind === "marketplace" || kind === "git";
   });

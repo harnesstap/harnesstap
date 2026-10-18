@@ -7,7 +7,7 @@ import {
   listPluginVersions,
 } from "../../models/plugin-model.js";
 import type { DependencySourceKind, Plugin } from "../../types.js";
-import { listDependencies } from "../plugin-dependency.js";
+import { listComposedDependencies } from "../plugin-extends.js";
 import { getPluginOverrides } from "../plugin-overrides.js";
 import { parsePluginSelector } from "../plugin-selector.js";
 import { selectVersion } from "./version-mediation.js";
@@ -134,7 +134,7 @@ export function walkDependencyGraph(input: {
       const frame = queue.shift();
       if (!frame) break;
 
-      for (const dependency of listDependencies(frame.pluginId)) {
+      for (const dependency of listComposedDependencies(frame.pluginId)) {
         // Marketplace refs like `web-search@anthropics` store name `web-search`,
         // matching the upstream plugin created by materializeUpstreamPlugin.
         const name = dependency.name;

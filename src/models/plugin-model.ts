@@ -9,7 +9,10 @@ import {
   ensurePluginResource,
   listAttachedPluginRefs,
 } from "../services/plugin-composition.js";
-import { listDependencies } from "../services/plugin-dependency.js";
+import {
+  getComposedPluginResources,
+  listComposedDependencies,
+} from "../services/plugin-extends.js";
 import { claudeConfigFromPluginPins } from "../services/claude-plugin-pins.js";
 import { slugifyApName } from "../services/agent-plugins/name.js";
 import type {
@@ -207,7 +210,7 @@ function listPluginPins(pluginId: string): Array<{
   ref: string;
   version_constraint: string;
 }> {
-  return listDependencies(pluginId).map((dependency) => ({
+  return listComposedDependencies(pluginId).map((dependency) => ({
     ref: dependency.ref,
     version_constraint: dependency.version_constraint,
   }));
@@ -231,7 +234,7 @@ export function mergePluginsById(pluginIds: string[]): MergedPluginContent {
     }
     plugins.push(plugin);
 
-    for (const resource of getPluginResources(plugin.id)) {
+    for (const resource of getComposedPluginResources(plugin.id)) {
       if (resource.type === "plugin") {
         continue;
       }

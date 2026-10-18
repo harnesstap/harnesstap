@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getPluginResources } from "../../models/plugin-model.js";
+import { getComposedPluginResources } from "../plugin-extends.js";
 import { resourceClass } from "../../platforms/registry.js";
 import { MATERIAL_RESOURCE_TYPES } from "../../types.js";
 import type {
@@ -104,7 +104,7 @@ export function resolveResources(input: {
 
   for (const plugin of ordered) {
     const attached = applyIncomingHarnessScope(
-      getPluginResources(plugin.pluginId),
+      getComposedPluginResources(plugin.pluginId),
       incoming.get(plugin.pluginId) ?? HARNESS_SCOPE_ALL,
     );
     for (let index = 0; index < attached.length; index += 1) {
