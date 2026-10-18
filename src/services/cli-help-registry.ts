@@ -298,6 +298,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     examples: [
       "plugin edit my-plugin",
       "plugin edit my-plugin --add skill:caveman",
+      "plugin edit backend-qa --hide skill:review",
       "plugin edit my-plugin --environment dev",
     ],
   },
@@ -577,6 +578,17 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "profile delete work",
       "profile delete work --plugin -y",
     ],
+  },
+  "profile.duplicate": {
+    description: "Duplicate a profile, kept in sync with it or as a separate copy",
+    examples: [
+      "profile duplicate backend backend-qa",
+      "profile duplicate backend backend-copy --copy",
+    ],
+  },
+  "profile.detach": {
+    description: "Stop keeping a profile in sync: its current items become its own (Library only)",
+    examples: ["profile detach backend-qa"],
   },
   "profile.pull": {
     description: "Pull a profile plugin from catalog",

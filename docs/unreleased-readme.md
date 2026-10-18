@@ -20,8 +20,14 @@ New text for the Install section of README.md.
 - `<!-- insert-after -->` adds a whole new section after the target section ends (its subsections included). The body may contain headings, written at `###` or deeper; the fold shifts them so the shallowest becomes the target's own level.
 - Only `insert-after` bodies may contain headings. Do not use level-1 or level-2 headings inside a body.
 
+## docs/cli/command-reference.md > profile (`p`) > Commands
+<!-- append -->
+- `profile duplicate <source> [name]`: duplicate a profile. By default the copy keeps in sync: it shows the parent's items live, at the newest installed parent version in the same major, and stores only its own additions and hidden items. `--copy` makes a separate copy instead (the items are copied now; later parent changes do not apply). `--to <org>/<catalog>` asks Cloud to make and publish the duplicate of a catalog profile instead (`--account` picks the Cloud account); when Cloud cannot duplicate yet, the copy is made in your Library.
+- `profile detach <name>`: stop keeping a profile in sync. Its current items (the parent's, minus hidden ones, plus its own) become its own in the Library. Nothing is applied or deleted; the profile still shows where it came from.
+
 ## docs/cli/command-reference.md > plugin (`l`) > Important options
 <!-- append -->
+- `plugin edit <name> --hide <type>:<name>` / `--unhide <type>:<name>` - hide or show an inherited item on a profile that keeps in sync, for example `skill:review` or `plugin:web-search` (repeatable)
 - `plugin check` also checks every upstream link (kept-in-sync and separate-copy profiles, and pulled catalog packages) for newer versions and stores the result, so `ht status` and Desktop read the same answer without a network call. `--format json` adds an `upstream` array with `status` of `current`, `update`, `major`, `unreachable` or `unpublished`. A newer major version shows as `major` and is never installed automatically.
 
 ## docs/cli/command-reference.md > Project-local verbs > Important options

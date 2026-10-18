@@ -1,3 +1,4 @@
+import { listPluginExcludes } from "../../services/plugin-extends.js";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { getEnvironment } from "../../models/environment.js";
@@ -68,6 +69,7 @@ export function handlePluginShowCommand(
       tags: plugin.tags,
       ...(plugin.claude ? { claude: plugin.claude } : {}),
       ...(plugin.upstream ? { upstream: plugin.upstream } : {}),
+      ...(plugin.upstream?.kind === "extends" ? { excludes: listPluginExcludes(plugin.id) } : {}),
       created_at: plugin.created_at,
       updated_at: plugin.updated_at,
       resources,

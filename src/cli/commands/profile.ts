@@ -68,6 +68,7 @@ import {
   printApplyPayload,
 } from "../print-apply-summary.js";
 import { registerProfileCreateCommand } from "../handlers/profile-create.js";
+import { registerProfileDuplicateCommands } from "../handlers/profile-duplicate.js";
 import { registerProfileParityCommands } from "./parity-register.js";
 
 async function handleProfilePullCommand(
@@ -789,6 +790,7 @@ profileCmd
   });
 
   registerProfileCreateCommand(profileCmd);
+  registerProfileDuplicateCommands(profileCmd);
 
 profileCmd
   .command("delete")
