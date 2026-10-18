@@ -32,6 +32,8 @@ echo "demo-home: token=$DEMO_HOME/.harnesstap/agent-token"
 cd "$REPO_ROOT"
 export HOME="$DEMO_HOME"
 export HARNESSTAP_TELEMETRY=0
+# No background update check: baselines must not depend on the network.
+export HARNESSTAP_UPDATE_CHECK=off
 # HARNESSTAP_HOME would override HOME/.harnesstap and leak state out of the demo.
 unset HARNESSTAP_HOME
 # Background CI (`demo-home.sh &`) often leaves stdin as a closed FIFO. The

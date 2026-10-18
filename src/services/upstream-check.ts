@@ -105,7 +105,7 @@ export function listUpstreamTargets(): UpstreamTarget[] {
   );
 }
 
-function rangeOf(ref: string): string {
+export function upstreamRefRange(ref: string): string {
   const at = ref.lastIndexOf("@");
   const range = at > 0 ? ref.slice(at + 1) : "*";
   return semver.validRange(range) ? range : "*";
@@ -151,7 +151,7 @@ function localLatest(ref: string): UpstreamLatest {
   if (versions.length === 0) {
     return { ok: false, status: "unpublished", message: `${name} is not in the Library.` };
   }
-  return { ok: true, ...pickLatest(versions, rangeOf(ref)) };
+  return { ok: true, ...pickLatest(versions, upstreamRefRange(ref)) };
 }
 
 const UPDATES_SINCE_MISSING = new Set([404, 405, 501]);
@@ -391,7 +391,7 @@ export async function runUpstreamCheck(opts?: {
   for (const target of targets) {
     if (!isCatalogUpstreamRef(target.ref)) continue;
     const base = upstreamRefBase(target.ref);
-    const query = { base, version: target.local_version, range: rangeOf(target.ref) };
+    const query = { base, version: target.local_version, range: upstreamRefRange(target.ref) };
     catalogQueries.set(upstreamQueryKey(query), query);
   }
   const fetchLatest = opts?.fetchLatest ?? upstreamCheckDeps.fetchLatest;
@@ -401,10 +401,10 @@ export async function runUpstreamCheck(opts?: {
   const computed = targets.map((target) => {
     const base = upstreamRefBase(target.ref);
     const latest = isCatalogUpstreamRef(target.ref)
-      ? (latestByBase.get(upstreamQueryKey({ base, range: rangeOf(target.ref) })) ?? latestByBase.get(base) ?? { ok: false as const, status: "unreachable" as const, message: "No answer for this ref." })
+      ? (latestByBase.get(upstreamQueryKey({ base, range: upstreamRefRange(target.ref) })) ?? latestByBase.get(base) ?? { ok: false as const, status: "unreachable" as const, message: "No answer for this ref." })
       : localLatest(target.ref);
     const known = isCatalogUpstreamRef(target.ref) && latest.ok
-      ? { ok: true as const, ...narrowToRange(latest, rangeOf(target.ref)) }
+      ? { ok: true as const, ...narrowToRange(latest, upstreamRefRange(target.ref)) }
       : latest;
     return {
       plugin_name: target.plugin_name,
