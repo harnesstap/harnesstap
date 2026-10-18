@@ -2233,3 +2233,32 @@
   position: relative;
   width: 100%;
 }
+
+/* Upstream update available: an up-arrow badge after the name, only on rows
+   that have one, so other names keep their full width. On hover or focus it
+   slides left, clear of the Edit overlay, instead of being covered. */
+.profile-update-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.profile-item:hover .profile-update-badge,
+.profile-item:focus-within .profile-update-badge {
+  transform: translateX(calc(-0.75rem - var(--icon-action-size)));
+  box-shadow:
+    0 0 0 0.25rem var(--profile-row-bg),
+    -0.5rem 0 0.5rem 0.25rem var(--profile-row-bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .profile-update-badge {
+    transition: transform var(--duration-instant) var(--ease-out);
+  }
+}

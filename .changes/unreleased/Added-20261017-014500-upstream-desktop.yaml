@@ -1,0 +1,5 @@
+kind: Added
+body: 'The Desktop sidecar checks upstreams for newer versions shortly after it starts and then every 6 hours, one check at a time; `HARNESSTAP_UPDATE_CHECK=off` turns the schedule off. A banner at the top of the Global view says how many updates are available, with **Update all** and **Not now**; Not now sets aside the versions on offer, and a newer version shows the banner again. A separate copy is named with the upstream version and gets no Update all, and a newer major is counted but never installed automatically. Profiles that are, or use, a plugin with an update get a small dot in the rail. The agent adds `GET /v1/updates`, `POST /v1/updates/check` (202 with a job id), `GET /v1/updates/check/:job_id` and `POST /v1/updates/:plugin/dismiss`.'
+time: 2026-10-17T11:45:00.000Z
+custom:
+  Issue: ""
