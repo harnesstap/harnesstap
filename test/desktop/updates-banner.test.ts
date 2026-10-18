@@ -86,7 +86,8 @@ describe("updates banner", () => {
     expect(banner).toContain("onDismiss=");
     expect(banner).not.toContain("Update all");
     const rail = src("components/shell/ProfilesRail.tsx");
-    expect(rail).toContain("profile-update-slot");
+    expect(rail).not.toContain("profile-update-slot");
+    expect(rail).toContain("updateProfiles?.has(profile.name) ? (");
     expect(rail).toContain('content="Update available"');
   });
 
