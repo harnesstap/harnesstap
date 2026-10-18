@@ -1,4 +1,10 @@
 import { ulid } from "ulid";
+import {
+  loadUpdateSettings,
+  UPDATE_FREQUENCY_MS,
+  type UpdateSettings,
+} from "../config/settings.js";
+import { getDb, getHarnesstapDir } from "../db/connection.js";
 import { isProfilePlugin } from "../constants/profile.js";
 import { listPlugins } from "../models/plugin-model.js";
 import { listComposedDependencies } from "./plugin-extends.js";
@@ -11,9 +17,15 @@ import {
   type UpstreamCheckSummary,
 } from "./upstream-check-read.js";
 import { runUpstreamCheck, type UpstreamCheckReport } from "./upstream-check.js";
+import { runAutoInstall, type AutoInstallRow } from "./upstream-auto-install.js";
+import { UpstreamUpdateLockBusyError, withUpstreamUpdateLock } from "./upstream-update-lock.js";
 
-/** Default sidecar cadence: at start (after a short delay) and then every 6 hours. */
-export const UPSTREAM_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+/**
+ * The sidecar looks 30 s after start and then every 10 minutes whether a
+ * check is due under `updates.frequency` (hourly, daily or weekly), measured
+ * from the newest stored check, so restarting the app does not re-check.
+ */
+export const UPSTREAM_CHECK_TICK_MS = 10 * 60 * 1000;
 export const UPSTREAM_CHECK_INITIAL_DELAY_MS = 30 * 1000;
 
 export type UpstreamCheckJobState = "running" | "done" | "failed";
@@ -24,6 +36,10 @@ export interface UpstreamCheckJob {
   started_at: string;
   finished_at?: string;
   checked?: number;
+  /** Scheduled run in install mode: what was installed or skipped. */
+  installed?: AutoInstallRow[];
+  /** Scheduled run skipped because another plugin update held the lock. */
+  skipped?: string;
   error?: string;
 }
 
@@ -33,17 +49,24 @@ let inflight: { job: UpstreamCheckJob; promise: Promise<UpstreamCheckReport> } |
 
 type Runner = () => Promise<UpstreamCheckReport>;
 let runner: Runner = () => runUpstreamCheck();
+type Installer = () => Promise<AutoInstallRow[]>;
+let installer: Installer = () => runAutoInstall();
 
-/** Tests swap the check itself. */
-export function setUpstreamCheckRunnerForTests(next: Runner | null): void {
+/** Tests swap the check and the installer. */
+export function setUpstreamCheckRunnerForTests(next: Runner | null, nextInstaller?: Installer | null): void {
   runner = next ?? (() => runUpstreamCheck());
+  installer = nextInstaller ?? (() => runAutoInstall());
 }
 
 /**
  * One check at a time. A second request while one runs joins it and gets
  * the same job.
  */
-export function startUpstreamCheckJob(): { job: UpstreamCheckJob; promise: Promise<UpstreamCheckReport> } {
+export function startUpstreamCheckJob(opts?: {
+  /** Scheduled run: hold the update lock (skip when busy) and install when asked. */
+  scheduled?: boolean;
+  install?: boolean;
+}): { job: UpstreamCheckJob; promise: Promise<UpstreamCheckReport> } {
   if (inflight) return inflight;
   const job: UpstreamCheckJob = { job_id: ulid(), state: "running", started_at: new Date().toISOString() };
   jobs.set(job.job_id, job);
@@ -52,10 +75,22 @@ export function startUpstreamCheckJob(): { job: UpstreamCheckJob; promise: Promi
     if (oldest === undefined) break;
     jobs.delete(oldest);
   }
-  const promise = runner()
+  const work = async (): Promise<UpstreamCheckReport> => {
+    const report = await runner();
+    job.checked = report.rows.length;
+    if (opts?.install) job.installed = await installer();
+    return report;
+  };
+  const run = opts?.scheduled
+    ? withUpstreamUpdateLock(work).catch((error: unknown) => {
+        if (!(error instanceof UpstreamUpdateLockBusyError)) throw error;
+        job.skipped = "another plugin update is running";
+        return { checked_at: job.started_at, rows: [] } satisfies UpstreamCheckReport;
+      })
+    : work();
+  const promise = run
     .then((report) => {
       job.state = "done";
-      job.checked = report.rows.length;
       return report;
     })
     .catch((error: unknown) => {
@@ -82,16 +117,63 @@ export function upstreamCheckScheduleEnabled(env: NodeJS.ProcessEnv = process.en
   return (env.HARNESSTAP_UPDATE_CHECK ?? "").toLowerCase() !== "off";
 }
 
+/** Newest stored check time, or null when nothing was checked yet. */
+export function lastUpstreamCheckAt(): Date | null {
+  try {
+    const row = getDb().prepare("SELECT MAX(checked_at) AS at FROM upstream_checks").get() as
+      | { at: string | null }
+      | undefined;
+    if (!row?.at) return null;
+    const at = new Date(row.at);
+    return Number.isNaN(at.getTime()) ? null : at;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether a scheduled check should run now. `off` never checks in the background. */
+export function upstreamCheckDue(settings: UpdateSettings, last: Date | null, now: Date): boolean {
+  if (settings.mode === "off") return false;
+  if (!last) return true;
+  return now.getTime() - last.getTime() >= UPDATE_FREQUENCY_MS[settings.frequency];
+}
+
+// With no upstream links the table stays empty; this keeps the cadence anyway.
+let lastScheduledAt: Date | null = null;
+
+export function resetUpstreamScheduleForTests(): void {
+  lastScheduledAt = null;
+}
+
+/** One schedule tick: reads the settings each time, so a change applies without a restart. */
+export function runScheduledUpstreamCheck(now: Date = new Date()): UpstreamCheckJob | null {
+  let settings: UpdateSettings;
+  try {
+    settings = loadUpdateSettings(getHarnesstapDir());
+  } catch {
+    return null;
+  }
+  const stored = lastUpstreamCheckAt();
+  const last = stored && lastScheduledAt ? (stored > lastScheduledAt ? stored : lastScheduledAt) : (stored ?? lastScheduledAt);
+  if (!upstreamCheckDue(settings, last, now)) return null;
+  lastScheduledAt = now;
+  return startUpstreamCheckJob({ scheduled: true, install: settings.mode === "install" }).job;
+}
+
 /** Starts the sidecar schedule. Returns a stop function. Timers never keep the process alive. */
 export function startUpstreamCheckSchedule(opts?: {
   intervalMs?: number;
   initialDelayMs?: number;
 }): () => void {
-  const intervalMs = opts?.intervalMs ?? UPSTREAM_CHECK_INTERVAL_MS;
+  const intervalMs = opts?.intervalMs ?? UPSTREAM_CHECK_TICK_MS;
   const initialDelayMs = opts?.initialDelayMs ?? UPSTREAM_CHECK_INITIAL_DELAY_MS;
   let interval: ReturnType<typeof setInterval> | undefined;
   const tick = () => {
-    startUpstreamCheckJob();
+    try {
+      runScheduledUpstreamCheck();
+    } catch {
+      // A failed tick never stops the agent; the next tick tries again.
+    }
   };
   const first = setTimeout(() => {
     tick();
