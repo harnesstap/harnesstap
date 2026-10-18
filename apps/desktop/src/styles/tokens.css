@@ -33,6 +33,8 @@
   --input: var(--border);
   --ring: var(--accent);
   --radius: 0.25rem;
+  /* Fully rounded pill: resource type tabs and resource badges share it. */
+  --radius-pill: 9999px;
   --icon-action-size: 32px;
   --icon-action-size-lg: 40px;
 
