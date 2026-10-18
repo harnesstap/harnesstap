@@ -1,5 +1,0 @@
-kind: Changed
-body: 'Desktop: resource pills on the profile page show the name only. A small circle after the name marks a resource that is not on every tool: the tool''s logo when it is in one, or how many when it is in several. The tooltip says where it is ("Only in Cursor and Codex"), and screen readers get the same text. Each type section shows one suggestion line instead of a prompt on every pill, for example "3 MCPs could also run on Cursor and Codex", with Add all and Dismiss. In edit mode, the Tools button on a pill opens one checkbox per tool and saves into the draft as you go; the last tool cannot be unchecked. OpenCode resources show the OpenCode logo instead of a yellow question mark.'
-time: 2026-10-18T00:30:00.000Z
-custom:
-  Issue: ""

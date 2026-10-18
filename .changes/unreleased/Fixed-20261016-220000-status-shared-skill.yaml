@@ -1,5 +1,0 @@
-kind: Fixed
-body: '`ht profile status` and the Desktop footer no longer say "out of sync" or "Not fully applied" right after an apply when Cursor reads a skill from `~/.agents/skills`. Status expected a copy in `~/.cursor/skills` that apply never writes, because Cursor already reads the shared folder. Status, preview and apply now agree. A harness added with `ht resource scope` is still reported until apply writes its copy.'
-time: 2026-10-17T08:00:00.000Z
-custom:
-  Issue: ""

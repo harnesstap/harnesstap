@@ -1,5 +1,0 @@
-kind: Added
-body: 'Exported and published packages now carry a keep-in-sync link. A profile that extends a parent writes `extensions["com.harnesstap"].upstream` with `kind: "extends"`, plus `exclude`, the list of parent items it hides (`<type>:<name>` or `plugin:<name>`). `exclude` is written on the root manifest only, never in embedded packages. A child of a local parent gets its parent''s catalog ref once that parent lives in a catalog. Installing such a package keeps the link and the hidden list; `exclude` is ignored on a fork or in an embedded package, entries with an unknown type are dropped, and a package that would extend itself is refused before anything is written.'
-time: 2026-10-17T10:15:00.000Z
-custom:
-  Issue: ""

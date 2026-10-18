@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Desktop: profile names in the Profiles sidebar use the full row width. The drag grip and the Edit button used to keep about 90px of each row empty even when hidden, so names wrapped early. They now appear over the row on hover or focus, so nothing moves. A name too long for the row ends with an ellipsis and shows in full in a tooltip. The in-use mark takes a smaller slot before the name.'
-time: 2026-10-18T00:15:00.000Z
-custom:
-  Issue: ""

@@ -1,5 +1,0 @@
-kind: Changed
-body: '`ht profile pull` and catalog installs keep the catalog identity. The local plugin is named after the catalog slug (`backend-engineer`, not `Backend engineer`) and stores the real package version instead of the word `latest`. It is no longer marked as edited, and `ht profile pull` tags it as a profile. `ht plugin check` and Library no longer report an update right after a pull, and pulling `@1.0.0` after a plain pull reuses the same plugin. Plugins pulled before this change keep their names.'
-time: 2026-10-17T09:15:00.000Z
-custom:
-  Issue: ""

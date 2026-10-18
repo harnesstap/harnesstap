@@ -1,5 +1,0 @@
-kind: Changed
-body: 'Desktop: the updates banner now shows only on the page of the profile it affects, as a neutral notice ("acme-lint: 1.2.0 is available (you have 1.0.0).") with Update and a Dismiss button, and it clears after the update. Majors and separate copies no longer appear in the banner; they go to the bell. The profile rail marks profiles with an update with an up-arrow badge (tooltip "Update available") in a fixed slot, and long names truncate instead of wrapping.'
-time: 2026-10-17T20:00:00.000Z
-custom:
-  Issue: ""

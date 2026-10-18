@@ -143,6 +143,8 @@ Apply plugins with top-level `apply` (not under this group). Onboard from repo-r
 - `history --format json`
 - `history --show-id` - show full snapshot IDs in human tables
 
+- `status` shows an Updates row when the last upstream check (`plugin check`, or the Desktop sidecar) found newer versions; `status --format json` adds `updates: {count, major_count, items}`. Status reads the stored result and never calls the network.
+
 ### Preconditions and side effects
 
 - `history`, `status --check`, `harness project set`, and `harness project status` require a git repository with a configured `origin` remote.
@@ -473,6 +475,19 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 
 `plugin pull` and `plugin list` remote discovery query catalog scope **plus** registered publish catalogs (`plugin catalog register`). Use `plugin catalog connect` to add other public orgs or libraries explicitly. Register publish destinations with `plugin catalog register` before `plugin publish` when no bindings exist. `plugin pull` fails on local name conflict instead of overwriting. `apply` resolves bare catalog names at apply time; use `plugin pull` to install plugins for offline reuse. Apply resolves nested plugin dependencies as a graph (nearest-to-root resource precedence; equal-depth set-like types use declaration order with a warning).
 
+- `plugin edit <name> --hide <type>:<name>` / `--unhide <type>:<name>` - hide or show an inherited item on a profile that keeps in sync, for example `skill:review` or `plugin:web-search` (repeatable)
+- `plugin check` also checks every upstream link (kept-in-sync and separate-copy profiles, and pulled catalog packages) for newer versions and stores the result, so `ht status` and Desktop read the same answer without a network call. `--format json` adds an `upstream` array with `status` of `current`, `update`, `major`, `unreachable` or `unpublished`. A newer major version shows as `major` and is never installed automatically.
+
+- `ht plugin auto-update` prints how plugin updates are checked; `--mode off|notify|install` and `--frequency hourly|daily|weekly` change it (stored under `updates` in `~/.harnesstap/config.jsonc`). Install mode installs minor and patch versions inside the range for pulled catalog plugins, never a major. After the first successful `ht plugin update --all` that installs something in an interactive terminal, HarnessTap asks once "Keep plugins up to date?" with the same choices; non-interactive runs never ask.
+
+## notifications
+
+Local notifications about plugin updates. HarnessTap writes one when a check finds a new version, when a synced profile's parent publishes, when install mode updates a plugin, and when update checks keep failing. The same version is never notified twice.
+
+- `ht notifications` lists unread notifications; `--all` includes read ones, `--format json` returns `{items, unread_count}`.
+- `ht notifications read <id>` marks one as read; `ht notifications read --all` marks every one.
+- `ht notifications prune --older-than 90d` deletes read notifications older than the age (`h`, `d` or `w`). It asks first in a terminal and needs `--yes` otherwise. Unread notifications are never pruned, and nothing is deleted without this command.
+
 ## auth (`a`)
 
 Manage HarnessTap Cloud authentication and cloud account state.
@@ -535,6 +550,9 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - Live files: `profile add-resource`, `add-all-resources`, `commit-resource`, `remove-resource`, `restore-file`, `file-diff`: adopt, snapshot, detach, or diff on-disk resources against the profile library (`--scope home|project`, `--project` when scope is project)
 
 A cancelled `profile use` does not list `.harnesstap/cache/native-agent-plugins/` files as changes. Apply still writes that cache.
+
+- `profile duplicate <source> [name]`: duplicate a profile. By default the copy keeps in sync: it shows the parent's items live, at the newest installed parent version in the same major, and stores only its own additions and hidden items. `--copy` makes a separate copy instead (the items are copied now; later parent changes do not apply). `--to <org>/<catalog>` asks Cloud to make and publish the duplicate of a catalog profile instead (`--account` picks the Cloud account); when Cloud cannot duplicate yet, the copy is made in your Library.
+- `profile detach <name>`: stop keeping a profile in sync. Its current items (the parent's, minus hidden ones, plus its own) become its own in the Library. Nothing is applied or deleted; the profile still shows where it came from.
 
 ### Important options
 

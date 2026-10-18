@@ -1,5 +1,0 @@
-kind: Added
-body: 'Local notifications: a new `notifications` table (schema v43) records when a check finds a new plugin version, when a kept-in-sync parent publishes, when install mode updates a plugin, and when update checks keep failing. The same version is never notified twice. `ht notifications` lists unread ones (`--all`, `--format json`), `ht notifications read <id>` or `read --all` marks them read, and `ht notifications prune --older-than 90d` deletes old read ones only after confirmation (or `--yes`). Nothing is deleted otherwise.'
-time: 2026-10-17T21:30:00.000Z
-custom:
-  Issue: ""

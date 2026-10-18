@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Discover can add plugins from the built-in cursor-public marketplace to the Library or a profile without running `ht marketplace add` first. Before, Add to Library failed with "Marketplace not found: cursor-public".'
-time: 2026-10-17T08:45:00.000Z
-custom:
-  Issue: ""

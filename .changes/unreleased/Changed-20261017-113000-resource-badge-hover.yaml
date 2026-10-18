@@ -1,5 +1,0 @@
-kind: Changed
-body: 'Desktop: resource badges on the profile page are pills, shaped like the resource type tabs, with their actions hidden until you hover or focus them. The pill then grows to the right to show them (+, x, Use on, and the Also use on suggestion as icon buttons with tooltips) without moving any other badge: the actions overlay their neighbours, and every row keeps room at its end so the last badge never overflows. A small dot marks a badge with an Also use on suggestion.'
-time: 2026-10-17T21:30:00.000Z
-custom:
-  Issue: ""

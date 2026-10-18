@@ -1,5 +1,0 @@
-kind: Added
-body: '`ht plugin auto-update` shows or changes how plugin updates are checked (`--mode off|notify|install`, `--frequency hourly|daily|weekly`). After the first successful `ht plugin update --all` in an interactive terminal, HarnessTap asks once "Keep these up to date?"; non-interactive runs never ask. Desktop asks the same once after the first Update all with no failure (Save or Not now), and Settings > Advanced gains a Plugin updates section that saves inline. The agent adds `GET` and `PUT /v1/settings/updates`.'
-time: 2026-10-17T12:15:00.000Z
-custom:
-  Issue: ""

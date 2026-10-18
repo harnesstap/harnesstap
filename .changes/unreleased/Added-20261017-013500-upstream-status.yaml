@@ -1,5 +1,0 @@
-kind: Added
-body: '`ht status` shows one Updates row when the last upstream check found something, for example `2 updates available (ht plugin update --all)`, and says separately how many major versions are available and not installed automatically. The status payload (`ht status --format json`, `ht profile status --format json` and the agent status route) adds `updates: {count, major_count, items}`. It reads the stored check result only, never the network; versions set aside with "Not now" are left out. Writing check results does not force a status recompute, and the status time budgets hold with 200 stored results.'
-time: 2026-10-17T11:35:00.000Z
-custom:
-  Issue: ""

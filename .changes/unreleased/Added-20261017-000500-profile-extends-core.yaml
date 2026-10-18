@@ -1,5 +1,0 @@
-kind: Added
-body: 'A profile can now keep in sync with a parent profile. A profile whose upstream link has `kind: "extends"` shows the parent''s items live, at the newest installed parent version inside its range (never a new major), minus the items it hides, plus its own; its own item wins on a name clash. Apply, preview, `ht profile show` and the dependency resolver all use this composed set, so a parent edit reaches every child with no copy step. A missing parent stops apply with the `ht profile pull` command to run, and a profile cannot extend itself directly or through its parents. Hidden items are stored per profile and frozen with each `ht plugin cut`; each names one item exactly (no patterns), up to 200 per profile, matching what Cloud accepts. This adds a table to the local database (schema v41), so older builds cannot open it. The commands to duplicate, hide and detach come in follow-up changes.'
-time: 2026-10-17T10:05:00.000Z
-custom:
-  Issue: ""

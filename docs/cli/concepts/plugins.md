@@ -151,6 +151,20 @@ Refresh policy for marketplace metadata is configured in `~/.harnesstap/config.j
 
 `resource sync` uses cached metadata unless it is stale; pass `--force` to refresh regardless.
 
+Upstream updates are configured under `updates` in `~/.harnesstap/config.jsonc`:
+
+```jsonc
+{
+  "updates": {
+    "mode": "notify",      // off, notify (default) or install
+    "frequency": "daily",  // hourly, daily (default) or weekly
+    "prompted": false      // true once the Keep plugins up to date? prompt was answered
+  }
+}
+```
+
+The Desktop sidecar checks upstreams when a check is due under `frequency`, counted from the newest stored check, so restarting the app does not check again. `off` stops remote checks only: synced profiles still follow their parent, and `ht plugin check` still works. `install` also installs, for pulled catalog plugins only, the newest minor or patch inside the caret range. It never installs a major version, a prerelease, or a version outside the range. It skips a plugin whose content no longer matches its published version (local edits), a separate copy, and an update that would rewrite a resource another plugin also uses. The installed version stays as a frozen cut next to the new one. When the active profile uses the plugin, it is re-applied through the normal apply path only if its harness files are clean, and the apply stops on any conflict. One plugin update runs at a time: a scheduled run is skipped while `ht plugin update` or a Desktop Update is running, and `ht plugin update` waits for a scheduled run to finish. `HARNESSTAP_UPDATE_CHECK=off` turns the background schedule off.
+
 ## Version cuts and dirty heads
 
 Each plugin name has a **working head**: the latest editable version. Edits after a cut (for example `plugin edit --add`) mark the head **dirty** without changing its semver. Dirty heads are shown with a trailing `*` in human output (`plugin list`, `plugin show`): for example `1.2.0*`: while JSON output keeps the real `version` string and a separate `dirty` flag.

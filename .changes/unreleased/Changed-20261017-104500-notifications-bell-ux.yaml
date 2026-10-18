@@ -1,5 +1,0 @@
-kind: Changed
-body: 'Desktop notifications: unread rows have a leading dot, and clicking a row marks it read and opens the profile it is about (a plain plugin opens in the Library). Mark as read is a check icon on row hover or focus, Mark all as read is a double check in the header, and the empty Unread list says "All caught up." The unread badge uses the accent color instead of red. Reading an update notification also clears the rail badge for that version; a newer version shows it again.'
-time: 2026-10-17T20:45:00.000Z
-custom:
-  Issue: ""

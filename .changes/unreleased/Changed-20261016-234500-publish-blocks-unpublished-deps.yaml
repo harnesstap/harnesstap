@@ -1,5 +1,0 @@
-kind: Changed
-body: '`ht plugin publish`, `ht profile publish` and Desktop Publish now refuse a plugin that depends on a local plugin that is not in a catalog, because nobody who installs it could fetch that dependency. Before, they only printed a warning. The error names the dependencies and the `ht plugin edit --remove` command that removes them. `--version` no longer cuts a version when the publish is blocked. Marketplace, git, catalog and embedded dependencies are not affected.'
-time: 2026-10-17T09:45:00.000Z
-custom:
-  Issue: ""

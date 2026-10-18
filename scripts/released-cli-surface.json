@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "root": {
     "aliases": [],
     "flags": [
@@ -708,6 +708,50 @@
         "args": 1,
         "subcommands": {}
       },
+      "notifications": {
+        "aliases": [],
+        "flags": [
+          "--all",
+          "--format",
+          "--limit",
+          "-a"
+        ],
+        "args": 0,
+        "subcommands": {
+          "list": {
+            "aliases": [],
+            "flags": [
+              "--all",
+              "--format",
+              "--limit",
+              "-a"
+            ],
+            "args": 0,
+            "subcommands": {}
+          },
+          "prune": {
+            "aliases": [],
+            "flags": [
+              "--format",
+              "--older-than",
+              "--yes",
+              "-y"
+            ],
+            "args": 0,
+            "subcommands": {}
+          },
+          "read": {
+            "aliases": [],
+            "flags": [
+              "--all",
+              "--format",
+              "-a"
+            ],
+            "args": 1,
+            "subcommands": {}
+          }
+        }
+      },
       "open": {
         "aliases": [],
         "flags": [
@@ -743,6 +787,16 @@
               "--to"
             ],
             "args": 1,
+            "subcommands": {}
+          },
+          "auto-update": {
+            "aliases": [],
+            "flags": [
+              "--format",
+              "--frequency",
+              "--mode"
+            ],
+            "args": 0,
             "subcommands": {}
           },
           "catalog": {
@@ -900,6 +954,7 @@
               "--embed",
               "--environment",
               "--format",
+              "--hide",
               "--interactive",
               "--no-profile",
               "--profile",
@@ -908,6 +963,7 @@
               "--show-id",
               "--sync",
               "--type",
+              "--unhide",
               "--version",
               "-s",
               "-t"
@@ -1194,6 +1250,26 @@
               "-y"
             ],
             "args": 1,
+            "subcommands": {}
+          },
+          "detach": {
+            "aliases": [],
+            "flags": [
+              "--format"
+            ],
+            "args": 1,
+            "subcommands": {}
+          },
+          "duplicate": {
+            "aliases": [],
+            "flags": [
+              "--account",
+              "--copy",
+              "--format",
+              "--inherit",
+              "--to"
+            ],
+            "args": 2,
             "subcommands": {}
           },
           "file-diff": {
