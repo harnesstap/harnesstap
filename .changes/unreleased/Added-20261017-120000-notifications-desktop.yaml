@@ -1,0 +1,5 @@
+kind: Added
+body: 'Desktop shows a notifications bell next to Settings with the unread count. Its popover has Unread and All tabs, Mark as read on each unread notification, and Mark all as read. The agent adds `GET /v1/notifications?filter=unread|all&limit=`, `POST /v1/notifications/:id/read` and `POST /v1/notifications/read-all`, and the status payloads include `unread_count` so the bell needs no extra call.'
+time: 2026-10-17T22:00:00.000Z
+custom:
+  Issue: ""

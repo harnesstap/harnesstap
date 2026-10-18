@@ -16,7 +16,7 @@ export function formatLibraryTimestamp(
   return `${absolute} (${relative})`;
 }
 
-function formatRelativeTime(date: Date, now: Date, locale?: string): string {
+export function formatRelativeTime(date: Date, now: Date, locale?: string): string {
   const deltaSeconds = Math.round((date.getTime() - now.getTime()) / 1000);
   const abs = Math.abs(deltaSeconds);
   const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "always" });

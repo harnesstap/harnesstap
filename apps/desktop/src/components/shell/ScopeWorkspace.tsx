@@ -30,6 +30,7 @@ import { ProfilesRail } from "./ProfilesRail";
 import { UpdatesBanner } from "./UpdatesBanner";
 import { useUpstreamUpdates } from "../../state/use-upstream-updates";
 import { profilesWithUpdates } from "../../lib/updates-banner";
+import { useSeenUpdates } from "../../state/update-seen-store";
 
 const HEADER_ICON_SIZE = 18;
 
@@ -95,9 +96,10 @@ export function ScopeWorkspace({
     // A finished background check changes the counts in the status payload.
     void refreshUpstreamUpdates();
   }, [statusUpdatesKey, refreshUpstreamUpdates]);
+  const seenUpdates = useSeenUpdates();
   const updateProfiles = useMemo(
-    () => profilesWithUpdates(upstreamUpdates.list?.rows ?? []),
-    [upstreamUpdates.list],
+    () => profilesWithUpdates(upstreamUpdates.list?.rows ?? [], seenUpdates),
+    [upstreamUpdates.list, seenUpdates],
   );
   const scopeCanGoBack = Boolean(editingProfile) || hasHistory;
   const actionsEnabled = connected && Boolean(token) && !switching;

@@ -171,6 +171,20 @@ export function App() {
     [goToLibrary],
   );
 
+  // A bell row opens the profile it is about; a plain plugin opens in the Library.
+  const openNotificationTarget = useCallback(
+    (name: string) => {
+      if (ctrl.profiles.some((profile) => profile.name === name)) {
+        ctrl.closeEditProfile();
+        nav.go("scope");
+        ctrl.selectProfile(name);
+        return;
+      }
+      openPluginInLibrary(name);
+    },
+    [ctrl.closeEditProfile, ctrl.profiles, ctrl.selectProfile, nav, openPluginInLibrary],
+  );
+
   const onSelectScope = useCallback(
     (next: Scope) => {
       ctrl.closeEditProfile();
@@ -400,6 +414,7 @@ export function App() {
           onBrowseProject={() => void browseProject()}
           onOpenMigrateExport={() => overlays.openOverlay("migrateExport")}
           onOpenMigrateImport={() => overlays.openOverlay("migrateImport")}
+          onOpenNotification={openNotificationTarget}
           onOpenSettings={() => overlays.openOverlay("settings")}
           onOpenAccount={openCloudAccount}
         />

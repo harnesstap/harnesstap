@@ -50,10 +50,15 @@ export function handledKey(row: Pick<UpdateRow, "plugin_name" | "latest_in_range
   return `${row.plugin_name}@${row.latest_in_range}`;
 }
 
-/** Profiles that get the rail badge: they are, or use, a plugin with an update. */
-export function profilesWithUpdates(rows: readonly UpdateRow[]): Set<string> {
+/**
+ * Profiles that get the rail badge: they are, or use, a plugin with an update.
+ * An update already read in the bell (`seen`, keyed like handledKey) no longer
+ * badges the rail.
+ */
+export function profilesWithUpdates(rows: readonly UpdateRow[], seen: ReadonlySet<string> = new Set()): Set<string> {
   const names = new Set<string>();
   for (const row of actionableUpdates(rows)) {
+    if (seen.has(handledKey(row))) continue;
     for (const profile of row.profiles) names.add(profile);
   }
   return names;

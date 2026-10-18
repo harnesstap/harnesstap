@@ -351,6 +351,136 @@
   min-height: 24px;
 }
 
+.notifications-trigger {
+  position: relative;
+}
+
+.notifications-badge {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: var(--text-scope-plus);
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.notifications-popover {
+  width: 22rem;
+  max-width: calc(100vw - 2 * var(--space-4));
+}
+
+.notifications-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.notifications-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.notifications-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.notifications-item:hover,
+.notifications-item:focus-within {
+  background: var(--surface-hover);
+}
+
+.notifications-icon-btn {
+  flex-shrink: 0;
+}
+
+/* The per-row check appears on row hover or keyboard focus. */
+.notifications-item-read {
+  opacity: 0;
+  margin-top: var(--space-1);
+}
+
+.notifications-item:hover .notifications-item-read,
+.notifications-item:focus-within .notifications-item-read {
+  opacity: 1;
+}
+
+.notifications-dot {
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin: 0.45rem var(--space-1) 0 var(--space-2);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.notifications-item.is-unread .notifications-dot {
+  background: var(--accent);
+}
+
+.notifications-item:last-child {
+  border-bottom: 0;
+}
+
+.notifications-item-main {
+  appearance: none;
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: var(--space-1) 0;
+  cursor: pointer;
+}
+
+.notifications-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notifications-item-title {
+  color: var(--muted);
+}
+
+.notifications-item.is-unread .notifications-item-title {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.notifications-item-body,
+.notifications-item-time {
+  color: var(--muted);
+  font-size: var(--text-meta);
+}
+
+.notifications-empty {
+  padding: var(--space-4) var(--space-3);
+  color: var(--muted);
+}
+
 /* Detail header overflow: a separator above Delete, which reads red. */
 .overflow-menu-separator {
   height: 1px;
