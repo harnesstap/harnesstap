@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { readUpstreamCheckSummary, type UpstreamCheckSummary } from "./upstream-check-read.js";
 import { getActiveProfilePayload } from "./profile-commands.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { environmentCascadePayload } from "./environment-commands.js";
@@ -59,6 +60,8 @@ export interface ProjectStatusPayload {
   };
   project_resources: ProjectScanStatus;
   lock?: LockDrift;
+  /** From the last upstream check; no network call. */
+  updates: UpstreamCheckSummary;
 }
 
 function materialResources(resources: Resource[]): Resource[] {
@@ -287,5 +290,6 @@ export async function buildProjectStatusPayload(projectRoot: string): Promise<Pr
     resolved,
     project_resources: projectResources,
     ...(lockSection ? { lock: lockSection } : {}),
+    updates: readUpstreamCheckSummary(),
   };
 }

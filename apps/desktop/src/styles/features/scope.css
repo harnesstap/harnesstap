@@ -62,10 +62,14 @@
   overscroll-behavior: none;
 }
 
+/* Profile row: the name gets the whole width between the paddings. The drag
+   grip and the Edit action are overlays that show on hover or focus, so at
+   rest they reserve nothing and on hover nothing reflows. */
 .profile-item {
+  --profile-row-bg: var(--surface);
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
   width: 100%;
   border-bottom: 1px solid var(--border);
   background: transparent;
@@ -76,7 +80,7 @@
 .profile-item-main {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0.375rem;
   flex: 1 1 auto;
   min-width: 0;
   text-align: left;
@@ -86,9 +90,22 @@
   padding: 0.65rem 0.75rem;
 }
 
+.profile-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .profile-item-action {
-  flex-shrink: 0;
-  margin-right: 0.45rem;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0.35rem;
+  margin: auto 0;
+  background: var(--profile-row-bg);
+  box-shadow: -0.5rem 0 0.5rem var(--profile-row-bg);
 }
 
 .profile-item-edit {
@@ -96,14 +113,19 @@
   pointer-events: none;
 }
 
+/* Sits in the row's left padding, clear of the in-use mark and the name. */
 .profile-item-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--icon-action-size);
+  width: 0.75rem;
   color: var(--muted);
   opacity: 0;
-  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .profile-item:hover .profile-item-edit,
@@ -111,10 +133,15 @@
 .profile-item:hover .profile-item-handle,
 .profile-item:focus-within .profile-item-handle {
   opacity: 1;
+}
+
+.profile-item:hover .profile-item-edit,
+.profile-item:focus-within .profile-item-edit {
   pointer-events: auto;
 }
 
 .profile-item.selected {
+  --profile-row-bg: var(--surface-2);
   background: var(--surface-2);
   border-left: 2px solid var(--accent);
 }
@@ -144,7 +171,10 @@
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
+/* Compact leading slot for the in-use mark. */
 .profile-item-main .profile-header-status {
+  width: 16px;
+  height: 16px;
   cursor: inherit;
 }
 
@@ -2308,4 +2338,33 @@
 .scope-add-modal-virtual {
   position: relative;
   width: 100%;
+}
+
+/* Upstream update available: an up-arrow badge after the name, only on rows
+   that have one, so other names keep their full width. On hover or focus it
+   slides left, clear of the Edit overlay, instead of being covered. */
+.profile-update-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.profile-item:hover .profile-update-badge,
+.profile-item:focus-within .profile-update-badge {
+  transform: translateX(calc(-0.75rem - var(--icon-action-size)));
+  box-shadow:
+    0 0 0 0.25rem var(--profile-row-bg),
+    -0.5rem 0 0.5rem 0.25rem var(--profile-row-bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .profile-update-badge {
+    transition: transform var(--duration-instant) var(--ease-out);
+  }
 }

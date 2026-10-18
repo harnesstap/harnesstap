@@ -1,4 +1,5 @@
 import { runTracedStatus, traceCount, traceSpan } from "./status-trace.js";
+import { readUpstreamCheckSummary, type UpstreamCheckSummary } from "./upstream-check-read.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
@@ -105,6 +106,8 @@ export interface GlobalProfileStatus {
    * Absent or false after apply, switch, and install, which wait for a new read.
    */
   refreshing?: boolean;
+  /** Pending upstream updates from the last check. Read from the table only, never the network. */
+  updates?: UpstreamCheckSummary;
 }
 
 function keptContentDiff(
@@ -378,6 +381,8 @@ export async function detectGlobalProfileStatus(input: {
     ...status,
     as_of: new Date().toISOString(),
     refreshing: status.refreshing === true,
+    // Outside the cache: one indexed read, so a finished check shows at once.
+    updates: readUpstreamCheckSummary(),
   };
 }
 

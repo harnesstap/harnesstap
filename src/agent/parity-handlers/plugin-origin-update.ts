@@ -3,6 +3,7 @@ import {
   updatePluginOrigins,
 } from "../../services/plugin-origin-update.js";
 import { requireAgentBearerAuth } from "../auth.js";
+import { UpstreamUpdateLockBusyError, withUpstreamUpdateLock } from "../../services/upstream-update-lock.js";
 import { jsonResponse } from "../http.js";
 
 const CHECK_PATH = "/v1/plugins/check";
@@ -65,8 +66,15 @@ export async function tryHandle(
     }
 
     try {
-      return jsonResponse(await updatePluginOrigins({ name, all, force }));
+      return jsonResponse(
+        await withUpstreamUpdateLock(() => updatePluginOrigins({ name, all, force }), {
+          waitMs: 60_000,
+        }),
+      );
     } catch (error) {
+      if (error instanceof UpstreamUpdateLockBusyError) {
+        return jsonResponse({ error: "update_in_progress", message: error.message }, { status: 409 });
+      }
       const message = error instanceof Error ? error.message : String(error);
       if (/pass a name or --all/.test(message)) {
         return jsonResponse({ error: "invalid_body", message }, { status: 400 });

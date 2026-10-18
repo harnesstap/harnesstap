@@ -11,6 +11,8 @@ import {
   isPromptCancellationError,
   promptForConfirmation,
 } from "../../services/wizards/shared.js";
+import { withUpstreamUpdateLock } from "../../services/upstream-update-lock.js";
+import { runUpstreamCheck, type UpstreamCheckRow } from "../../services/upstream-check.js";
 import { formatCount } from "../formatting.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
@@ -35,6 +37,13 @@ function originRef(row: PluginOriginCheckRow): string {
   return row.origin_version ?? row.origin_fingerprint ?? "";
 }
 
+function upstreamAvailable(row: UpstreamCheckRow): string {
+  if (row.status === "update") return row.latest_in_range;
+  if (row.status === "major") return `${row.latest_major} (major)`;
+  if (row.status === "unreachable" || row.status === "unpublished") return row.message;
+  return "";
+}
+
 export async function handlePluginCheckCommand(
   name: string | undefined,
   opts: { refresh?: boolean; format?: string },
@@ -46,9 +55,11 @@ export async function handlePluginCheckCommand(
     name,
     refresh: opts.refresh,
   });
+  // Same table the sidecar and Desktop read, so every surface agrees.
+  const upstream = (await runUpstreamCheck(name ? { name } : undefined)).rows;
 
   if (format === "json") {
-    printJson(report);
+    printJson({ ...report, upstream });
   } else {
     ui.table.print({
       columns: [
@@ -68,6 +79,27 @@ export async function handlePluginCheckCommand(
       summary: formatCount(report.results.length, "plugin"),
       empty: "No syncable working heads.",
     });
+    if (upstream.length > 0) {
+      ui.table.print({
+        columns: [
+          { key: "name", header: "NAME", width: 18 },
+          { key: "upstream", header: "UPSTREAM", width: 30 },
+          { key: "status", header: "STATUS", width: 11 },
+          { key: "local", header: "LOCAL", width: 8 },
+          { key: "available", header: "AVAILABLE", width: 16 },
+        ],
+        rows: upstream.map((row) => ({
+          name: row.plugin_name,
+          upstream: row.ref,
+          status: row.status,
+          local: row.local_version,
+          available: upstreamAvailable(row),
+        })),
+        summary: upstream.some((row) => row.status === "major")
+          ? `${formatCount(upstream.length, "upstream link")}. A major version is never installed automatically.`
+          : formatCount(upstream.length, "upstream link"),
+      });
+    }
   }
 
   if (report.results.some((row) => row.status === "error")) {
@@ -128,11 +160,14 @@ export async function handlePluginUpdateCommand(
   }
 
   try {
-    const report = await updatePluginOrigins({
-      name,
-      all: opts.all,
-      force: opts.force,
-    });
+    // The Desktop sidecar may be checking or installing; wait for it.
+    const report = await withUpstreamUpdateLock(
+      () => updatePluginOrigins({ name, all: opts.all, force: opts.force }),
+      {
+        waitMs: UPDATE_LOCK_WAIT_MS,
+        onWait: () => ui.info("Waiting for another plugin update to finish."),
+      },
+    );
     if (format === "json") {
       printJson(report);
     } else {
@@ -150,6 +185,8 @@ export async function handlePluginUpdateCommand(
     ui.danger(message);
   }
 }
+
+const UPDATE_LOCK_WAIT_MS = 5 * 60 * 1000;
 
 function printUpdateHuman(rows: PluginOriginUpdateRow[]): void {
   ui.table.print({

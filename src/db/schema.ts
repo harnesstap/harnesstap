@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 41;
+const SCHEMA_VERSION = 42;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -342,12 +342,32 @@ const MIGRATIONS: Record<number, Migration> = {
   // Items an extends child hides from its parent, as the package's exclude
   // strings (`skill:review`, `plugin:feature-dev`).
   41: migratePluginExcludes,
+  42: migrateUpstreamChecks,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
   return (
     db.prepare(`PRAGMA table_info(${name})`).all() as Array<{ name: string }>
   ).map((column) => column.name);
+}
+
+/** Cache of the last upstream update check. Readers never hit the network. */
+function migrateUpstreamChecks(db: SqliteDatabase): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS upstream_checks (
+      plugin_name TEXT NOT NULL,
+      ref TEXT NOT NULL,
+      local_version TEXT NOT NULL,
+      latest_in_range TEXT NOT NULL DEFAULT '',
+      latest_major TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL CHECK(status IN ('current', 'update', 'major', 'unreachable', 'unpublished')),
+      checked_at TEXT NOT NULL,
+      dismissed_version TEXT NOT NULL DEFAULT '',
+      message TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY (plugin_name, ref)
+    );
+    CREATE INDEX IF NOT EXISTS idx_upstream_checks_status ON upstream_checks(status);
+  `);
 }
 
 function migratePluginExcludes(db: SqliteDatabase): void {

@@ -248,11 +248,61 @@ async function waitForResourceRows(page) {
     .waitFor({ state: "visible", timeout: 15_000 });
 }
 
+/**
+ * Regression guard for the Profiles rail: at rest, a profile name gets the
+ * row's whole width between the paddings, less only marks that are actually
+ * shown. An empty reserved slot (badge, hover action) fails the walk.
+ */
+async function assertRailNamesUseFullWidth(page) {
+  await page.mouse.move(0, 0);
+  await page.locator(".profile-item-name").first().waitFor({ state: "visible", timeout: 15_000 });
+  const problems = await page.evaluate(() => {
+    const out = [];
+    for (const row of document.querySelectorAll(".profile-item")) {
+      const main = row.querySelector(".profile-item-main");
+      const name = row.querySelector(".profile-item-name");
+      if (!main || !name) {
+        out.push("row without a name");
+        continue;
+      }
+      const label = name.textContent ?? "";
+      const rowRect = row.getBoundingClientRect();
+      const mainRect = main.getBoundingClientRect();
+      const rowStyle = getComputedStyle(row);
+      const borders = parseFloat(rowStyle.borderLeftWidth) + parseFloat(rowStyle.borderRightWidth);
+      if (mainRect.width < rowRect.width - borders - 1) {
+        out.push(`${label}: ${Math.round(rowRect.width - borders - mainRect.width)}px reserved beside the row button`);
+      }
+      const style = getComputedStyle(main);
+      const gap = parseFloat(style.columnGap) || 0;
+      let free = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      for (const child of main.children) {
+        if (child === name) continue;
+        const width = child.getBoundingClientRect().width;
+        if (width === 0) continue;
+        if (child.children.length === 0 && !(child.textContent ?? "").trim()) {
+          out.push(`${label}: empty ${child.className || child.tagName} reserves ${Math.round(width)}px`);
+        }
+        free -= width + gap;
+      }
+      const nameWidth = name.getBoundingClientRect().width;
+      if (nameWidth < free - 1) {
+        out.push(`${label}: name gets ${Math.round(nameWidth)}px of ${Math.round(free)}px`);
+      }
+    }
+    return out;
+  });
+  if (problems.length > 0) {
+    throw new Error(`Profiles rail names lose width: ${problems.join("; ")}`);
+  }
+}
+
 const SCREENS = [
   {
     name: "scope-global",
     run: async (page) => {
       await clickHeader(page, /global scope/i);
+      await assertRailNamesUseFullWidth(page);
     },
   },
   {
