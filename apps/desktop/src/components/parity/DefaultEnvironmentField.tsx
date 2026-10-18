@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { IconActionButton } from "../IconActionButton";
 import {
   Select,
   SelectContent,
@@ -14,9 +15,10 @@ import {
   patchProfileDefaultEnvironment,
 } from "../../lib/api/profile-default-env";
 import {
+  DEFAULT_ENV_COPY,
   DEFAULT_ENV_CREATE,
-  DEFAULT_ENV_NONE,
-  defaultEnvironmentSelectValue,
+  defaultEnvironmentFieldState,
+  firstEnvironmentName,
   interpretDefaultEnvironmentChoice,
 } from "../../lib/default-environment-picker";
 import type { LibraryEnvironment } from "../../lib/types";
@@ -62,65 +64,93 @@ export function DefaultEnvironmentPicker({
   onCreateEnvironment,
 }: DefaultEnvironmentPickerProps) {
   const empty = !listLoading && environments.length === 0;
-  const selectDisabled = disabled || listLoading || Boolean(listError);
-  const clearDisabled = disabled || value === null || listLoading;
+  const state = defaultEnvironmentFieldState(value);
+  const first = firstEnvironmentName(environments);
+  const addDisabled = disabled || listLoading || Boolean(listError) || (!first && !onCreateEnvironment);
+  // Keep keyboard focus on the field when Add or the x swaps the control.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const moveFocus = useRef(false);
+  useEffect(() => {
+    if (!moveFocus.current) return;
+    moveFocus.current = false;
+    rowRef.current?.querySelector<HTMLElement>(state === "set" ? "#profile-default-environment" : "[data-testid=default-environment-add]")?.focus();
+  }, [state]);
 
   return (
     <div className="form-field gap-1.5">
-      <Label htmlFor="profile-default-environment">Default environment</Label>
+      <Label htmlFor={state === "set" ? "profile-default-environment" : undefined}>
+        {DEFAULT_ENV_COPY.label}
+      </Label>
       {listError ? (
         <div className="banner error" role="alert">
           {listError}
         </div>
       ) : null}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="icon-action"
-          data-testid="default-environment-clear"
-          disabled={clearDisabled}
-          onClick={onClear}
-          aria-label="Clear"
-          title="Clear"
-        >
-          <X size={16} strokeWidth={2} aria-hidden />
-        </button>
-        <Select
-          value={defaultEnvironmentSelectValue(value)}
-          onValueChange={(next) => {
-            const choice = interpretDefaultEnvironmentChoice(next);
-            if (choice === "create") {
-              onCreateEnvironment?.();
-              return;
-            }
-            if (choice === "none") {
-              onClear();
-              return;
-            }
-            onChange(choice.name);
-          }}
-          disabled={selectDisabled}
-        >
-          <SelectTrigger id="profile-default-environment" className="w-full">
-            <SelectValue placeholder="None" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={DEFAULT_ENV_NONE}>None</SelectItem>
-            {environments.map((environment) => (
-              <SelectItem key={environment.id} value={environment.name}>
-                {environment.name}
-              </SelectItem>
-            ))}
-            {onCreateEnvironment ? (
-              <SelectItem value={DEFAULT_ENV_CREATE}>
-                <Plus size={14} strokeWidth={2} aria-hidden />
-                Create a new environment
-              </SelectItem>
-            ) : null}
-          </SelectContent>
-        </Select>
+      {/* One fixed-height row for both states, so switching never shifts the pane. */}
+      <div className="default-env-row" data-state={state} ref={rowRef}>
+        {state === "empty" ? (
+          <IconActionButton
+            className="default-env-add"
+            data-testid="default-environment-add"
+            showLabel
+            label={DEFAULT_ENV_COPY.add}
+            title={DEFAULT_ENV_COPY.addTooltip}
+            disabled={addDisabled}
+            onClick={() => {
+              if (first) {
+                moveFocus.current = true;
+                onChange(first);
+              } else {
+                onCreateEnvironment?.();
+              }
+            }}
+            icon={<Plus size={16} strokeWidth={2} aria-hidden />}
+          />
+        ) : (
+          <>
+            <Select
+              value={value ?? undefined}
+              onValueChange={(next) => {
+                const choice = interpretDefaultEnvironmentChoice(next);
+                if (choice === "create") {
+                  onCreateEnvironment?.();
+                  return;
+                }
+                onChange(choice.name);
+              }}
+              disabled={disabled || listLoading || Boolean(listError)}
+            >
+              <SelectTrigger id="profile-default-environment" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {environments.map((environment) => (
+                  <SelectItem key={environment.id} value={environment.name}>
+                    {environment.name}
+                  </SelectItem>
+                ))}
+                {onCreateEnvironment ? (
+                  <SelectItem value={DEFAULT_ENV_CREATE}>
+                    <Plus size={14} strokeWidth={2} aria-hidden />
+                    {DEFAULT_ENV_COPY.create}
+                  </SelectItem>
+                ) : null}
+              </SelectContent>
+            </Select>
+            <IconActionButton
+              data-testid="default-environment-clear"
+              label={DEFAULT_ENV_COPY.remove}
+              disabled={disabled || listLoading}
+              onClick={() => {
+                moveFocus.current = true;
+                onClear();
+              }}
+              icon={<X size={16} strokeWidth={2} aria-hidden />}
+            />
+          </>
+        )}
       </div>
-      {empty ? <p className="muted">No environments yet.</p> : null}
+      {empty && state === "empty" ? <p className="muted">{DEFAULT_ENV_COPY.none}</p> : null}
     </div>
   );
 }
@@ -212,7 +242,7 @@ export function DefaultEnvironmentField({
   const controlsDisabled = disabled || busy || !baseUrl;
 
   return (
-    <section className="edit-profile-section" aria-label="Default environment">
+    <section className="edit-profile-section" aria-label={DEFAULT_ENV_COPY.label}>
       {mutateError ? (
         <div className="banner error" role="alert">
           {mutateError}

@@ -284,6 +284,26 @@
   gap: 0.75rem;
 }
 
+/* Default environment: the Add button and the dropdown + remove x share one
+   row of the dropdown's height, so switching states never moves the pane. */
+.default-env-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 2rem;
+}
+
+.default-env-row .default-env-add {
+  height: 2rem;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+}
+
+.default-env-row .default-env-add:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--border-strong);
+}
+
 .edit-profile-section h3 {
   margin: 0 0 0.65rem;
   font-size: var(--text-value);
