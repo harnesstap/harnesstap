@@ -82,6 +82,9 @@ export interface LibraryPluginVersionRow {
 
 export interface LibraryPluginDetail {
   plugin: LibraryPluginDetailPlugin;
+  excludes?: string[];
+  inherited?: InheritedItem[];
+  parent_missing?: string;
   dependencies: Array<{
     dependency_name: string;
     version_constraint: string;
@@ -125,12 +128,37 @@ export interface PluginDoctorReport {
   results: PluginDoctorResultRow[];
 }
 
-export interface PluginForkResult {
+export type DuplicateMode = "inherit" | "copy";
+
+export interface PluginDuplicateResult {
   name: string;
   version: string;
-  origin: "authored";
-  forked_from: string;
-  upstream?: LibraryPluginUpstream;
+  mode: DuplicateMode;
+  linked_to: string;
+  upstream: LibraryPluginUpstream;
+}
+
+export interface PluginDetachResult {
+  name: string;
+  upstream: LibraryPluginUpstream | null;
+  materialized: number;
+  hidden_cleared: string[];
+  /** Send back with `undoDetachLibraryPlugin` to put the link back. */
+  undo_token?: string;
+}
+
+/** A parent item as a kept-in-sync child sees it. */
+export interface InheritedItem {
+  id: string;
+  type: string;
+  name: string;
+  source: "parent";
+  hidden: boolean;
+}
+
+/** The exclude string an item answers to: `skill:review`, `plugin:web-search`. */
+export function inheritedItemKey(item: Pick<InheritedItem, "type" | "name">): string {
+  return `${item.type}:${item.name}`;
 }
 
 function pluginPath(selector: string, suffix = ""): string {
@@ -399,24 +427,68 @@ export async function runLibraryPluginDoctor(
   return (await response.json()) as PluginDoctorReport;
 }
 
-export async function forkLibraryPlugin(
+export async function duplicateLibraryPlugin(
   baseUrl: string,
   token: string | null,
   selector: string,
-  asName?: string,
-): Promise<PluginForkResult> {
-  const response = await agentFetch(
-    baseUrl,
-    token,
-    pluginPath(selector, "/fork"),
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(asName ? { as: asName } : {}),
-    },
-  );
+  input: { name?: string; mode: DuplicateMode },
+): Promise<PluginDuplicateResult> {
+  const response = await agentFetch(baseUrl, token, pluginPath(selector, "/duplicate"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
   if (!response.ok) {
-    return throwAgentError(response, "Could not fork plugin");
+    return throwAgentError(response, "Could not duplicate");
   }
-  return (await response.json()) as PluginForkResult;
+  return (await response.json()) as PluginDuplicateResult;
+}
+
+export async function detachLibraryPlugin(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+): Promise<PluginDetachResult> {
+  const response = await agentFetch(baseUrl, token, pluginPath(selector, "/detach"), {
+    method: "POST",
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not detach");
+  }
+  return (await response.json()) as PluginDetachResult;
+}
+
+/** Undo a detach: the link, the hidden list and the items go back. */
+export async function undoDetachLibraryPlugin(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  undoToken: string,
+): Promise<{ name: string; upstream: LibraryPluginUpstream | null }> {
+  const response = await agentFetch(baseUrl, token, pluginPath(selector, "/detach/undo"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ undo_token: undoToken }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not undo");
+  }
+  return (await response.json()) as { name: string; upstream: LibraryPluginUpstream | null };
+}
+
+export async function setLibraryPluginExcludes(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  entries: string[],
+): Promise<{ excludes: string[] }> {
+  const response = await agentFetch(baseUrl, token, pluginPath(selector, "/excludes"), {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ entries }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not update hidden items");
+  }
+  return (await response.json()) as { excludes: string[] };
 }

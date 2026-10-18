@@ -1,3 +1,4 @@
+import type { InheritedItem, LibraryPluginUpstream } from "./api/library-plugins";
 export type PanelTrafficStatus = "green" | "yellow" | "red";
 export type ViewScope = "home" | "project";
 /** Agent switch still accepts "both"; the UI only offers Home|Project views. */
@@ -700,6 +701,12 @@ export interface ProfileDetail {
   active: boolean;
   dependencies: ProfileDetailDependency[];
   resources: ProfileDetailResource[];
+  /** Upstream link; absent on older sidecars and plain profiles. */
+  upstream?: LibraryPluginUpstream | null;
+  /** Hidden parent items, as `type:name`. Kept-in-sync profiles only. */
+  excludes?: string[];
+  inherited?: InheritedItem[];
+  parent_missing?: string;
 }
 
 export type PluginMarketplacePlatform =

@@ -67,12 +67,16 @@ const liveStatusLine = sliceBetween(
 );
 
 describe("profile delete chrome", () => {
-  test("places Remove profile in the edit-pane header next to Done", () => {
+  test("puts Delete last in the edit-pane overflow, before Done; no visible trash", () => {
+    const overflowIdx = editHeader.indexOf("<OverflowMenu");
     const deleteIdx = editHeader.indexOf("ProfileDeleteControls");
     const doneIdx = editHeader.indexOf('label="Done editing"');
-    expect(deleteIdx).toBeGreaterThan(-1);
+    expect(overflowIdx).toBeGreaterThan(-1);
+    expect(deleteIdx).toBeGreaterThan(overflowIdx);
     expect(doneIdx).toBeGreaterThan(deleteIdx);
-    expect(editHeader).toContain('variant="icon"');
+    expect(editHeader).toContain('variant="menu"');
+    expect(editHeader).not.toContain('variant="icon"');
+    expect(editSource).toContain("danger: true");
     expect(editHeader).not.toContain("profile-delete-footer");
   });
 
@@ -81,7 +85,7 @@ describe("profile delete chrome", () => {
   });
 
   test("keeps a confirm dialog and delete-plugin checkbox, with an icon variant", () => {
-    expect(deleteSource).toContain('variant?: "labeled" | "icon"');
+    expect(deleteSource).toContain('variant?: "labeled" | "icon" | "menu"');
     expect(deleteSource).toContain("IconActionButton");
     expect(deleteSource).toContain("Trash2");
     expect(deleteSource).toContain('label="Remove profile"');
@@ -100,15 +104,12 @@ describe("profile delete chrome", () => {
     )).toContain("confirm-dialog-extra");
   });
 
-  test("places the icon control on the trailing live-toolbar, not beside rail create", () => {
+  test("puts Delete in the profile page overflow, not beside rail create", () => {
     expect(liveStatusLine).not.toContain("ProfileDeleteControls");
-    expect(liveToolbar).toContain("live-toolbar-remove");
-    expect(liveToolbar).toContain("ProfileDeleteControls");
-    expect(liveToolbar).toContain('variant="icon"');
-    expect(stylesSource).toContain(".profile-remove-action");
-    expect(stylesSource).toContain("var(--red)");
-    expect(designSource).toContain("trailing live-toolbar control");
-    expect(designSource).toContain("destructive-tinted");
+    expect(liveToolbar).toContain("<ProfileHeaderActions");
+    expect(appSource).toContain('testId="profile-overflow"');
+    expect(appSource).toContain('variant="menu"');
+    expect(stylesSource).toContain(".header-more-item.is-danger");
   });
 
   test("sizes the labeled header button as a compact cluster control", () => {
@@ -125,6 +126,5 @@ describe("profile delete chrome", () => {
     expect(designSource).toContain("delete-plugin checkbox");
     expect(designSource).toContain("distinct option row below the description");
     expect(designSource).toContain("icon-only trash control");
-    expect(designSource).toContain("trailing live-toolbar control");
   });
 });

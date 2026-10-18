@@ -50,10 +50,10 @@ describe("edit profile metadata chrome", () => {
     expect(designSource).toContain("Name and description are the first fields");
   });
 
-  test("replaces autosave copy with a last-edit subtitle", () => {
-    expect(editSource).toContain("formatLastEditLine");
+  test("shows Edited <when> with the exact time in a tooltip", () => {
+    expect(editSource).toContain("formatEditedLine");
     expect(editSource).toContain("edit-profile-last-edit");
+    expect(editSource).toContain("<ChromeTooltip content={editedLine.exact}>");
     expect(editSource).not.toContain("Changes save automatically.");
-    expect(designSource).toContain("Last edit 1 day ago");
   });
 });

@@ -7,6 +7,10 @@ export interface ToastInput {
   title: string;
   detail?: string;
   action?: { label: string; onClick: () => void };
+  /** Overrides the auto-dismiss time, e.g. a longer Undo window. */
+  durationMs?: number;
+  /** Clicking the message opens what it is about. */
+  onOpen?: () => void;
 }
 
 export interface Toast extends ToastInput {
@@ -59,7 +63,7 @@ export function createToastStore(
 
   const show = (toast: Toast) => {
     visible = [...visible, toast];
-    const ms = toastAutoDismissMs(toast.tone);
+    const ms = toast.durationMs ?? toastAutoDismissMs(toast.tone);
     if (ms !== null) {
       timers.set(toast.id, schedule(() => dismiss(toast.id), ms));
     }
