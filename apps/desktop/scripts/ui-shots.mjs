@@ -431,7 +431,90 @@ const SCREENS = [
       await page.mouse.move(0, 0);
     },
   },
+  {
+    // Regression: hovering or focusing a resource badge reveals its actions in
+    // an overlay. No other badge may move, and the last badge of a row must not
+    // overflow the row. Fails the walk if either happens.
+    name: "inventory-chip-hover",
+    run: async (page, baseUrl) => {
+      // The demo home has no badges with actions, so use the badge gallery row.
+      await openHarnessScopeGallery(page, baseUrl, "chip-row");
+      await page.getByTestId("chip-row-gallery").waitFor({ timeout: 15_000 });
+      await page.mouse.move(0, 0);
+      await settle(page);
+      const target = await markLastChipOfRow(page);
+      if (!target) throw new Error("no resource badge with actions to hover");
+      const before = await chipRects(page);
+      const last = page.locator("[data-qa-chip-target]");
+      await last.locator(".inventory-chip-name").hover({ timeout: T });
+      await page.waitForTimeout(300);
+      await assertNoReflow(page, before, "hover");
+      await page.mouse.move(0, 0);
+      await last.locator(".inventory-chip-name").focus();
+      await page.keyboard.press("Tab");
+      await page.waitForTimeout(300);
+      await assertNoReflow(page, before, "keyboard focus");
+      await last.locator(".inventory-chip-name").hover({ timeout: T });
+      await page.waitForTimeout(300);
+    },
+    after: async (page) => {
+      await page.mouse.move(0, 0);
+      await page.keyboard.press("Escape");
+    },
+  },
 ];
+
+/** Marks the last badge (with actions) of the first full row, else of the biggest row. */
+async function markLastChipOfRow(page) {
+  return page.evaluate(() => {
+    const clusters = [...document.querySelectorAll("main .inventory-chip-cluster")];
+    clusters.sort((a, b) => b.querySelectorAll(".inventory-chip").length - a.querySelectorAll(".inventory-chip").length);
+    const pick = (cluster, chip) => {
+      cluster.setAttribute("data-qa-chip-cluster", "");
+      chip.setAttribute("data-qa-chip-target", "");
+      return chip.getAttribute("data-testid");
+    };
+    for (const cluster of clusters) {
+      const chips = [...cluster.querySelectorAll(".inventory-chip")];
+      for (let i = 0; i < chips.length - 1; i++) {
+        const wraps = chips[i + 1].getBoundingClientRect().top > chips[i].getBoundingClientRect().top + 4;
+        if (wraps && chips[i].querySelector(".inventory-chip-extension")) return pick(cluster, chips[i]);
+      }
+    }
+    for (const cluster of clusters) {
+      const chips = [...cluster.querySelectorAll(".inventory-chip")].filter((chip) => chip.querySelector(".inventory-chip-extension"));
+      if (chips.length) return pick(cluster, chips[chips.length - 1]);
+    }
+    return null;
+  });
+}
+
+async function chipRects(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll("main .inventory-chip")].map((chip) => {
+      const r = chip.getBoundingClientRect();
+      return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)].join(",");
+    }),
+  );
+}
+
+async function assertNoReflow(page, before, how) {
+  const after = await chipRects(page);
+  const moved = after.filter((rect, index) => rect !== before[index]).length;
+  if (after.length !== before.length || moved > 0) {
+    throw new Error(`badge row reflowed on ${how}: ${moved} badge(s) moved`);
+  }
+  const overflow = await page.evaluate(() => {
+    const cluster = document.querySelector("[data-qa-chip-cluster]");
+    const ext = document.querySelector("[data-qa-chip-target] .inventory-chip-extension");
+    if (!cluster || !ext) return "missing";
+    if (getComputedStyle(ext).opacity === "0") return "extension hidden";
+    const rowRight = cluster.getBoundingClientRect().right;
+    const extRight = ext.getBoundingClientRect().right;
+    return extRight > rowRight + 0.5 ? `extension ends at ${Math.round(extRight)}, row at ${Math.round(rowRight)}` : "";
+  });
+  if (overflow) throw new Error(`badge extension on ${how}: ${overflow}`);
+}
 
 /**
  * Nightly visual starts at SHOTS_BASE_URL with no query. Gallery states are a

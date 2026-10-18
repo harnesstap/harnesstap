@@ -735,15 +735,25 @@
   max-width: 100%;
 }
 
+/* Resource badge: a pill with the same radius token as the resource type
+   tabs. Its actions sit in an extension that grows out to the right on hover
+   or keyboard focus. While it shows, the badge's right end squares off and the
+   extension carries the rounded end, so the two read as one pill. The extension is
+   absolutely positioned, so it overlays its neighbours instead of pushing
+   them, and each row reserves --chip-extension-reserve at its end so the
+   last badge's extension never overflows the row. */
 .inventory-chip {
+  --chip-radius: var(--radius-pill);
+  --chip-hover-bg: linear-gradient(var(--surface-hover), var(--surface-hover)), var(--bg);
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   max-width: 100%;
   height: 26px;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.6rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--chip-radius);
   background: transparent;
   color: var(--fg);
   font-size: var(--text-meta);
@@ -751,12 +761,74 @@
   cursor: pointer;
 }
 
-.inventory-chip:hover {
-  background: var(--surface-hover);
+.inventory-chip:hover,
+.inventory-chip:focus-within,
+.harness-scope-gallery.is-scope-hover .inventory-chip:has(.inventory-chip-extension) {
+  background: var(--chip-hover-bg);
 }
 
+.inventory-chip:has(.inventory-chip-extension):hover,
+.inventory-chip:has(.inventory-chip-extension):focus-within,
+.harness-scope-gallery.is-scope-hover .inventory-chip:has(.inventory-chip-extension) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-color: transparent;
+}
+
+.inventory-chip-extension {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: 100%;
+  z-index: 3; /* token-lint: allow */
+  padding: 0 0.5rem 0 0.1rem;
+  border: 1px solid var(--border);
+  border-left: 0;
+  border-radius: 0 var(--chip-radius) var(--chip-radius) 0;
+  background: var(--chip-hover-bg);
+  opacity: 0;
+  pointer-events: none;
+  clip-path: inset(0 100% 0 0);
+  transition:
+    clip-path 120ms ease-out,
+    opacity 120ms ease-out;
+}
+
+.inventory-chip:hover > .inventory-chip-extension,
+.inventory-chip:focus-within > .inventory-chip-extension,
+.harness-scope-gallery.is-scope-hover .inventory-chip-extension,
+.inventory-chip-extension:has([aria-expanded="true"]) {
+  opacity: 1;
+  pointer-events: auto;
+  clip-path: inset(-4px -4px -4px 0);
+}
+
+.inventory-chip-drifted > .inventory-chip-extension {
+  border-color: var(--yellow);
+}
+
+.inventory-chip.is-selected > .inventory-chip-extension {
+  background: linear-gradient(var(--surface-selected), var(--surface-selected)), var(--bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inventory-chip-extension {
+    transition: none;
+  }
+}
+
+/* Small hint that a badge has a suggestion waiting behind hover. */
+.inventory-chip-suggest-dot {
+  flex-shrink: 0;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* Ring the badge while its name has focus; a focused action draws its own ring. */
 .inventory-chip:focus-visible,
-.inventory-chip:focus-within {
+.inventory-chip:has(> .inventory-chip-name:focus-visible) {
   outline: none;
   box-shadow: var(--focus-ring);
 }
@@ -2156,10 +2228,14 @@
 }
 
 .inventory-chip-cluster {
+  /* Widest extension: four 24px actions, their gaps, padding and the
+     rounded pill end. */
+  --chip-extension-reserve: 7.5rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   min-width: 0;
+  padding-right: var(--chip-extension-reserve);
 }
 
 .inventory-section-hint {
