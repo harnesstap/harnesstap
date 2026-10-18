@@ -526,6 +526,15 @@ const SCREENS = [
       await page.keyboard.press("Escape");
     },
   },
+  {
+    // One Also use on line per type section, with Add all and Dismiss.
+    name: "harness-scope-suggestion",
+    run: async (page, baseUrl) => {
+      await openHarnessScopeGallery(page, baseUrl, "suggestion");
+      await page.getByTestId("section-suggestion").waitFor({ timeout: 15_000 });
+      await page.mouse.move(0, 0);
+    },
+  },
 ];
 
 /** Marks the last badge (with actions) of the first full row, else of the biggest row. */
