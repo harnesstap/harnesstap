@@ -8,7 +8,8 @@ import { getDb, getHarnesstapDir } from "../db/connection.js";
 import { isProfilePlugin } from "../constants/profile.js";
 import { listPlugins } from "../models/plugin-model.js";
 import { listComposedDependencies } from "./plugin-extends.js";
-import { upstreamRefBase } from "./plugin-upstream.js";
+import { notifySafely } from "./notifications.js";
+import { isCatalogUpstreamRef, upstreamRefBase } from "./plugin-upstream.js";
 import {
   isPendingUpdate,
   readUpstreamCheckSummary,
@@ -91,11 +92,13 @@ export function startUpstreamCheckJob(opts?: {
   const promise = run
     .then((report) => {
       job.state = "done";
+      if (!job.skipped) recordCheckOutcome(checkReachedCloud(report) ? null : unreachableMessage(report));
       return report;
     })
     .catch((error: unknown) => {
       job.state = "failed";
       job.error = error instanceof Error ? error.message : String(error);
+      recordCheckOutcome(job.error);
       throw error;
     })
     .finally(() => {
@@ -106,6 +109,41 @@ export function startUpstreamCheckJob(opts?: {
   promise.catch(() => {});
   inflight = { job, promise };
   return inflight;
+}
+
+/** Failed checks in a row before the user hears about it. */
+export const CHECK_FAILURE_NOTIFY_AFTER = 3;
+let failureStreak = 0;
+
+export function resetCheckFailureStreakForTests(): void {
+  failureStreak = 0;
+}
+
+/** False when catalog refs were asked about and none of them answered. */
+function checkReachedCloud(report: UpstreamCheckReport): boolean {
+  const catalog = report.rows.filter((row) => isCatalogUpstreamRef(row.ref));
+  return catalog.length === 0 || catalog.some((row) => row.status !== "unreachable");
+}
+
+function unreachableMessage(report: UpstreamCheckReport): string {
+  return report.rows.find((row) => row.status === "unreachable")?.message || "The catalog did not answer.";
+}
+
+/** At most one failure notification per day (UTC), and only after a streak. */
+function recordCheckOutcome(error: string | null, now: Date = new Date()): void {
+  if (error === null) {
+    failureStreak = 0;
+    return;
+  }
+  failureStreak += 1;
+  if (failureStreak < CHECK_FAILURE_NOTIFY_AFTER) return;
+  notifySafely({
+    kind: "check_failed",
+    title: "Checking for plugin updates keeps failing",
+    body: `${failureStreak} checks in a row failed. Last error: ${error}`,
+    payload: { version: now.toISOString().slice(0, 10), failures: failureStreak },
+    now,
+  });
 }
 
 export function getUpstreamCheckJob(jobId: string): UpstreamCheckJob | undefined {

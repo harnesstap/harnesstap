@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 42;
+const SCHEMA_VERSION = 43;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -343,6 +343,7 @@ const MIGRATIONS: Record<number, Migration> = {
   // strings (`skill:review`, `plugin:feature-dev`).
   41: migratePluginExcludes,
   42: migrateUpstreamChecks,
+  43: migrateNotifications,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
@@ -367,6 +368,28 @@ function migrateUpstreamChecks(db: SqliteDatabase): void {
       PRIMARY KEY (plugin_name, ref)
     );
     CREATE INDEX IF NOT EXISTS idx_upstream_checks_status ON upstream_checks(status);
+  `);
+}
+
+/**
+ * Local notifications (B4). The same update is never notified twice: the
+ * unique index covers (kind, plugin_name, payload.version).
+ */
+function migrateNotifications(db: SqliteDatabase): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      plugin_name TEXT NOT NULL DEFAULT '',
+      payload TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      read_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_notifications_read_created ON notifications(read_at, created_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_dedup
+      ON notifications(kind, plugin_name, json_extract(payload, '$.version'));
   `);
 }
 

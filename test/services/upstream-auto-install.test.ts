@@ -21,6 +21,7 @@ import {
   type AutoInstallDeps,
 } from "../../src/services/upstream-auto-install.ts";
 import { getComposedPluginResources } from "../../src/services/plugin-extends.ts";
+import { listNotifications } from "../../src/services/notifications.ts";
 import { readUpstreamChecks } from "../../src/services/upstream-check-read.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 
@@ -121,6 +122,10 @@ describe("runAutoInstall", () => {
     expect(getPluginResources(frozen!.id).map((r) => r.name)).toContain("lint-old");
     const row = readUpstreamChecks().find((r) => r.plugin_name === "lint");
     expect([row?.local_version, row?.status]).toEqual(["1.2.0", "current"]);
+    expect(listNotifications().map((n) => [n.kind, n.plugin_name, n.title, n.payload.version])).toEqual([
+      ["auto_installed", "lint", "lint updated to 1.2.0", "1.2.0"],
+    ]);
+    expect(listNotifications()[0]?.body).toBe("Installed automatically. 1.0.0 kept so you can roll back.");
   });
 
   it("never installs a major, even when it is the only newer version", async () => {
@@ -131,6 +136,7 @@ describe("runAutoInstall", () => {
     expect(d.asked).toEqual([]);
     expect(rows).toEqual([{ plugin_name: "fmt", from: "1.0.0", to: "2.0.0", status: "skipped", message: SKIP_MAJOR }]);
     expect(versionsOf("fmt")).toEqual(["1.0.0"]);
+    expect(listNotifications()).toEqual([]);
   });
 
   it("refuses a catalog that sends a different version than asked, and changes nothing", async () => {

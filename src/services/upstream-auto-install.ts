@@ -12,6 +12,7 @@ import { formatOriginLocator, recoverOriginLocator } from "./plugin-origin-locat
 import { cutPluginVersion } from "./plugin-versioning.js";
 import { upstreamRefBase } from "./plugin-upstream.js";
 import { readUpstreamChecks, type UpstreamCheckRow } from "./upstream-check-read.js";
+import { notifySafely } from "./notifications.js";
 import { upstreamRefRange } from "./upstream-check.js";
 
 export type AutoInstallStatus = "installed" | "skipped" | "failed";
@@ -295,6 +296,18 @@ export async function runAutoInstall(opts?: { deps?: Partial<AutoInstallDeps> })
           : "installed; re-applying the active profile stopped on a conflict, nothing was overwritten";
       }
     }
+  }
+  for (const result of results) {
+    if (result.status !== "installed") continue;
+    notifySafely({
+      kind: "auto_installed",
+      plugin_name: result.plugin_name,
+      title: `${result.plugin_name} updated to ${result.to}`,
+      body: result.message
+        ? `Installed automatically. ${result.from} kept so you can roll back. ${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}.`
+        : `Installed automatically. ${result.from} kept so you can roll back.`,
+      payload: { version: result.to, from: result.from, applied: result.applied ?? false },
+    });
   }
   return results;
 }

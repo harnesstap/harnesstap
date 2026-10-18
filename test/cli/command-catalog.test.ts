@@ -24,6 +24,7 @@ describe("command catalog", () => {
       "marketplace",
       "mcp",
       "migrate",
+      "notifications",
       "plugin",
       "policy",
       "profile",
