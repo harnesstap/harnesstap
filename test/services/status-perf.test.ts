@@ -94,6 +94,9 @@ import {
   statusCacheWatchersHealthy,
   warmStatusRefreshWorker,
 } from "../../src/services/status-read-cache.ts";
+import { getDb } from "../../src/db/connection.ts";
+import { readStatusWriteGeneration, statementAffectsStatus } from "../../src/db/write-generation.ts";
+import { readUpstreamCheckSummary } from "../../src/services/upstream-check-read.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
 const RESOURCE_COUNT = 70;
@@ -407,4 +410,77 @@ describe("status perf", () => {
       await context.cleanup();
     }
   });
+
+  // The budgets are the timed reads inside; the setup (200 inserts, a fresh
+  // home, the refresh worker) gets a CI-sized test timeout.
+  it("keeps the cold and warm budgets with 200 upstream check rows, read without a recompute", async () => {
+    const context = await createInitializedTestContext("status-perf-updates");
+    try {
+      clearLiveReadCaches();
+      writeCursorHome(context.homeDir);
+      const plugin = createPlugin({ name: "updates-profile" });
+      setPluginTags(plugin.id, ["profile"]);
+      setActiveProfileName("updates-profile");
+      const insert = getDb().prepare(
+        `INSERT INTO upstream_checks
+           (plugin_name, ref, local_version, latest_in_range, latest_major, status, checked_at, dismissed_version)
+         VALUES (?, ?, '1.0.0', ?, ?, ?, ?, ?)`,
+      );
+      const now = new Date().toISOString();
+      for (let index = 0; index < 200; index += 1) {
+        // 120 updates (20 of them dismissed at that version), 40 majors, 40 current.
+        const status = index < 120 ? "update" : index < 160 ? "major" : "current";
+        insert.run(
+          `plugin-${String(index).padStart(3, "0")}`,
+          `acme/default/plugin-${index}@^1.0.0`,
+          status === "current" ? "1.0.0" : "1.1.0",
+          status === "major" ? "2.0.0" : "",
+          status,
+          now,
+          index < 20 ? "1.1.0" : "",
+        );
+      }
+
+      setStatusRefreshDelayMs(0);
+      warmStatusRefreshWorker();
+      const summaryStarted = performance.now();
+      const summary = readUpstreamCheckSummary();
+      const summaryMs = performance.now() - summaryStarted;
+      expect(summary).toMatchObject({ count: 100, major_count: 40 });
+      expect(summary.items).toHaveLength(5);
+
+      const coldStarted = performance.now();
+      const cold = await detectGlobalProfileStatus({ depth: "full" });
+      const coldMs = performance.now() - coldStarted;
+      const warmStarted = performance.now();
+      const warm = await detectGlobalProfileStatus({ depth: "full" });
+      const warmMs = performance.now() - warmStarted;
+      expect(cold.updates).toMatchObject({ count: 100, major_count: 40 });
+      expect(warm.updates).toEqual(cold.updates);
+
+      // A finished background check is a table write. It must not mark the
+      // status cache stale, and the next warm read shows the new counts.
+      const generation = readStatusWriteGeneration();
+      getDb().prepare("UPDATE upstream_checks SET dismissed_version = latest_in_range WHERE status = 'update'").run();
+      expect(readStatusWriteGeneration()).toBe(generation);
+      const afterStarted = performance.now();
+      const after = await detectGlobalProfileStatus({ depth: "full" });
+      const afterMs = performance.now() - afterStarted;
+      expect(after.refreshing).toBe(false);
+      expect(after.updates).toMatchObject({ count: 0, major_count: 40 });
+      console.log(
+        `status perf updates summary=${summaryMs.toFixed(2)}ms cold=${coldMs.toFixed(1)}ms warm=${warmMs.toFixed(1)}ms afterWrite=${afterMs.toFixed(1)}ms`,
+      );
+      expect(summaryMs).toBeLessThan(5);
+      expect(coldMs).toBeLessThan(COLD_BUDGET_MS);
+      expect(warmMs).toBeLessThan(WARM_BUDGET_MS);
+      expect(afterMs).toBeLessThan(WARM_BUDGET_MS);
+      expect(statementAffectsStatus("INSERT INTO upstream_checks (plugin_name) VALUES ('x')")).toBe(false);
+      expect(statementAffectsStatus("DELETE FROM upstream_checks WHERE plugin_name = 'x'")).toBe(false);
+      expect(statementAffectsStatus("UPDATE plugins SET name = 'x'")).toBe(true);
+    } finally {
+      clearLiveReadCaches();
+      await context.cleanup();
+    }
+  }, 20_000);
 });
