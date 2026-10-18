@@ -417,7 +417,9 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "Compare library working heads to marketplace, git, and catalog origins",
     details:
       "Omit a name to check every syncable working head. --refresh force-fetches origins. "
-      + "Outdated is not a failure; exit 1 only when a check row is error.",
+      + "Also checks upstream links and pulled catalog packages for newer versions and stores "
+      + "the answer for ht status and Desktop; a newer major shows as major and is never installed "
+      + "automatically. Outdated is not a failure; exit 1 only when a check row is error.",
     examples: [
       "plugin check",
       "plugin check my-plugin --refresh",
