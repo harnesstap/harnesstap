@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TelemetryConsentStatus } from "../../lib/types";
 import { CheckForUpdatesSettings } from "./CheckForUpdatesSettings";
+import { PluginUpdateSettings } from "./PluginUpdateSettings";
 import { ProjectConfigInspect } from "./ProjectConfigInspect";
 import { ProjectHarnessOverrideSection } from "./ProjectHarnessOverrideSection";
 import { ResolveOrderSettings } from "./ResolveOrderSettings";
@@ -59,6 +60,12 @@ export function SettingsParitySections(props: {
       </div>
       <div hidden={props.tab !== "advanced"}>
         <CheckForUpdatesSettings
+          baseUrl={props.baseUrl}
+          token={props.token}
+          disabled={props.disabled}
+        />
+        <PluginUpdateSettings
+          open={props.open}
           baseUrl={props.baseUrl}
           token={props.token}
           disabled={props.disabled}

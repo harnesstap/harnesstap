@@ -19,6 +19,7 @@ import { tryHandle as tryResolveOrder } from "./parity-handlers/resolve-order.js
 import { tryHandle as tryProfileDefaultEnv } from "./parity-handlers/profile-default-env.js";
 import { tryHandle as trySelfUpdate } from "./parity-handlers/self-update.js";
 import { tryHandle as tryUpdates } from "./parity-handlers/updates.js";
+import { tryHandle as trySettingsUpdates } from "./parity-handlers/settings-updates.js";
 
 export interface ParityRouteDeps {
   isAgentSwitchInProgress: () => boolean;
@@ -46,6 +47,7 @@ const HANDLERS = [
   tryProfileDefaultEnv,
   trySelfUpdate,
   tryUpdates,
+  trySettingsUpdates,
 ] as const;
 
 export async function tryParityRoutes(
