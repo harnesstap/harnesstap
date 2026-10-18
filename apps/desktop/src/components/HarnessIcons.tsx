@@ -9,8 +9,22 @@ type HarnessMarkProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
 
+/**
+ * Harness ids reach the UI from settings, scopes and detected configs, not
+ * always in catalog form ("OpenCode", "open_code"). Fold them to the catalog
+ * id so every surface finds the real logo instead of a placeholder.
+ */
+export function harnessMarkId(id: string): string {
+  const folded = id.trim().toLowerCase().replace(/[\s_]+/g, "-");
+  if (HARNESS_MARKS[folded]) {
+    return folded;
+  }
+  const squashed = folded.replace(/-/g, "");
+  return Object.keys(HARNESS_MARKS).find((key) => key.replace(/-/g, "") === squashed) ?? folded;
+}
+
 export function HarnessMark({ id, size = ICON_SIZE, ...props }: HarnessMarkProps): ReactNode {
-  const mark = HARNESS_MARKS[id];
+  const mark = HARNESS_MARKS[harnessMarkId(id)];
   if (!mark) {
     const letter = (id[0] ?? "?").toUpperCase();
     return (

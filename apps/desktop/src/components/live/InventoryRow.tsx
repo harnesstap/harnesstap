@@ -1,5 +1,5 @@
-import type { MouseEvent, ReactNode } from "react";
-import { CircleAlert, CirclePlus, EyeOff, FileDiff, Plus, Power, X } from "lucide-react";
+import { useEffect, useId, useState, type MouseEvent, type ReactNode } from "react";
+import { CircleAlert, FileDiff, Plus, Power, X } from "lucide-react";
 import {
   inventoryMembershipCaption,
   profileInventoryOpenTarget,
@@ -15,11 +15,14 @@ import { Checkbox } from "../ui/checkbox";
 import { ResourceHoverCard } from "../ui/resource-hover-card";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { resourceDetailTarget } from "./shared";
-import { HarnessScopeControl, useAlsoUseOn } from "./HarnessScopeControl";
-import { parseStoredHarnessScope, type HarnessScope, type SerializerTarget } from "../../lib/harness-scope-ui";
+import { HarnessScopeControl } from "./HarnessScopeControl";
+import { displayNameForHarness, type HarnessScope, type SerializerTarget } from "../../lib/harness-scope-ui";
+import { chipHarnessHint, chipHarnessLabel } from "../../lib/chip-harness";
+import { HarnessMark } from "../HarnessIcons";
 
 const CHIP_STATUS_GLYPH_PX = 12;
 const CHIP_ACTION_ICON_PX = 14;
+const CHIP_HINT_ICON_PX = 10;
 
 function stopChipActivate(event: MouseEvent) {
   event.stopPropagation();
@@ -28,9 +31,16 @@ function stopChipActivate(event: MouseEvent) {
 function chipHover(
   item: ProfileInventoryItem,
   profileName: string | null,
+  harnessText: string | null,
 ): ResourceHoverModel {
   const model = hoverModelFromProfileResource(item.resource);
   model.showName = true;
+  // Which tools it is in: "Only in ..." for a subset, nothing when it is on
+  // every tool. Replaces the generic harness row so the card says it once.
+  model.harnessIds = [];
+  if (harnessText) {
+    model.extra = [{ kind: "note", text: harnessText }, ...model.extra];
+  }
   const caption = inventoryMembershipCaption(item.pluginName, profileName);
   if (caption) {
     model.extra = [...model.extra, { kind: "note", text: caption }];
@@ -55,7 +65,7 @@ export interface InventoryRowProps {
   registeredHarnesses?: readonly string[];
   harnessNames?: Readonly<Record<string, string>>;
   scopeTarget?: SerializerTarget;
-  onHarnessScopeChange?: (scope: HarnessScope) => void;
+  onHarnessScopeChange?: (scope: HarnessScope) => void | Promise<unknown>;
   scopePopoverOpen?: boolean;
   disableHover?: boolean;
 }
@@ -84,29 +94,33 @@ export function InventoryRow({
   const inProfile = item.section === "active" || item.section === "inactive";
   const showScope =
     inProfile && Boolean(onHarnessScopeChange) && Boolean(item.resource.id);
-  const subsetScope = parseStoredHarnessScope(item.resource.harness_scope).kind === "subset";
-  const scopeControl = showScope && onHarnessScopeChange && item.resource.id ? (
+  // The label follows the Tools popover at once; the saved value catches up.
+  const [draftScope, setDraftScope] = useState<"all" | string[] | undefined>(undefined);
+  useEffect(() => {
+    setDraftScope(undefined);
+  }, [item.resource.harness_scope]);
+  const storedScope = draftScope ?? item.resource.harness_scope;
+  const harnessLabel = inProfile
+    ? chipHarnessLabel(storedScope, registeredHarnesses, (id) =>
+        displayNameForHarness(id, harnessNames?.[id]),
+      )
+    : null;
+  const harnessHint = inProfile ? chipHarnessHint(storedScope, registeredHarnesses) : null;
+  const harnessTextId = useId();
+  const toolsControl = editMode && showScope && onHarnessScopeChange && item.resource.id ? (
     <HarnessScopeControl
       resourceName={item.label}
       resourceType={item.type}
-      stored={item.resource.harness_scope}
+      stored={storedScope}
       registered={registeredHarnesses}
       catalogNames={harnessNames}
       target={scopeTarget}
       disabled={pending}
       onChange={onHarnessScopeChange}
+      onDraftChange={setDraftScope}
       initialOpen={scopePopoverOpen}
-      inlineSuggestion={false}
     />
   ) : null;
-  const suggestion = useAlsoUseOn({
-    resourceName: item.label,
-    resourceType: item.type,
-    stored: item.resource.harness_scope,
-    registered: registeredHarnesses,
-    disabled: pending || !showScope,
-    onChange: onHarnessScopeChange,
-  });
   const drifted = item.section === "active" && item.drifted;
   const showActivate =
     !editMode && item.section === "inactive" && selectedIsActive && Boolean(onActivate);
@@ -222,6 +236,7 @@ export function InventoryRow({
         <button
           type="button"
           className="inventory-chip-name"
+          aria-describedby={harnessLabel ? harnessTextId : undefined}
           onClick={(event) => {
             event.stopPropagation();
             activateChip();
@@ -229,10 +244,27 @@ export function InventoryRow({
         >
           {item.label}
         </button>
-        {subsetScope ? scopeControl : null}
-        {suggestion ? <span className="inventory-chip-suggest-dot" aria-hidden="true" /> : null}
+        {harnessHint ? (
+          <span
+            className="inventory-chip-hint"
+            data-testid="inventory-chip-hint"
+            data-kind={harnessHint.kind}
+            aria-hidden="true"
+          >
+            {harnessHint.kind === "icon" ? (
+              <HarnessMark id={harnessHint.harnessId} size={CHIP_HINT_ICON_PX} />
+            ) : (
+              harnessHint.count
+            )}
+          </span>
+        ) : null}
+        {harnessLabel ? (
+          <span id={harnessTextId} className="sr-only">
+            {harnessLabel.full}
+          </span>
+        ) : null}
         {spinner}
-        {action || suggestion || (!subsetScope && scopeControl) ? (
+        {action || toolsControl ? (
           // Absolutely positioned to the right of the badge: it overlays, so
           // the row never reflows. The cluster reserves room for it at row end.
           <span
@@ -240,25 +272,7 @@ export function InventoryRow({
             data-testid={`resource-row-actions-${item.resource.name}`}
             onClick={stopChipActivate}
           >
-            {!subsetScope ? scopeControl : null}
-            {suggestion ? (
-              <>
-                <IconActionButton
-                  data-testid="also-use-on-accept"
-                  label={suggestion.label}
-                  title={suggestion.label}
-                  onClick={suggestion.accept}
-                  icon={<CirclePlus size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
-                />
-                <IconActionButton
-                  data-testid="also-use-on-dismiss"
-                  label={`Not now: ${suggestion.label.charAt(0).toLowerCase()}${suggestion.label.slice(1)}`}
-                  title="Not now"
-                  onClick={suggestion.dismiss}
-                  icon={<EyeOff size={CHIP_ACTION_ICON_PX} strokeWidth={2} aria-hidden />}
-                />
-              </>
-            ) : null}
+            {toolsControl}
             {action}
           </span>
         ) : null}
@@ -269,7 +283,7 @@ export function InventoryRow({
     return chip;
   }
   return (
-    <ResourceHoverCard model={chipHover(item, profileName)}>
+    <ResourceHoverCard model={chipHover(item, profileName, harnessLabel?.full ?? null)}>
       {chip}
     </ResourceHoverCard>
   );

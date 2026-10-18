@@ -52,12 +52,13 @@ describe("resource badge actions", () => {
     expect(cluster).toContain("padding-right: var(--chip-extension-reserve);");
   });
 
-  it("puts Also use on and Not now in the extension as icon buttons with tooltips", () => {
+  it("puts the edit-mode Tools button in the extension, not on the pill", () => {
     const row = desktop("src/components/live/InventoryRow.tsx");
     expect(row).toContain("inventory-chip-extension");
-    expect(row).toContain('data-testid="also-use-on-accept"');
-    expect(row).toContain('title="Not now"');
-    expect(row).toContain("inlineSuggestion={false}");
+    expect(row).toContain("const toolsControl = editMode && showScope");
+    expect(row).toContain("{toolsControl}");
+    expect(row).not.toContain("also-use-on");
+    expect(row).not.toContain("inventory-chip-suggest-dot");
   });
 
   it("is guarded by a no-reflow walk step in the visual check", () => {
