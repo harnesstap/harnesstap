@@ -33,19 +33,18 @@ const srcScope = readFileSync(
 const css = readDesktopCss();
 
 describe("harness scope desktop UX", () => {
-  it("keeps All chrome in trailing actions and subset cluster after the name", () => {
-    expect(inventoryRow).toContain("{subsetScope ? scopeControl : null}");
-    expect(inventoryRow).toContain("{!subsetScope ? scopeControl : null}");
+  it("shows the name and a quiet hint circle; tools change only through Tools", () => {
+    expect(inventoryRow).toContain("inventory-chip-hint");
+    expect(inventoryRow).toContain("aria-describedby={harnessLabel ? harnessTextId : undefined}");
     expect(inventoryRow).toContain("inventory-chip-actions");
-    expect(control).toContain("harness-scope-all-action");
-    expect(control).toContain("harness-scope-cluster");
-    expect(control).toContain("Cable");
-    expect(css).toContain(".harness-scope-all-action");
-    expect(css).toContain("opacity: 0");
-    expect(css).toContain(".inventory-chip:hover .harness-scope-all-action");
-    expect(css).toContain("gap: 2px");
-    expect(css).toContain("border-radius: 4px");
-    expect(css).toContain(".harness-scope-cluster.is-orphaned");
+    expect(control).toContain("harness-tools-action");
+    expect(control).toContain('tooltip: "Choose tools"');
+    expect(control).toContain("Wrench");
+    expect(control).not.toContain("harness-scope-cluster");
+    expect(control).not.toContain('id="?"');
+    expect(css).toContain(".inventory-chip-hint");
+    expect(css).not.toContain(".harness-scope-cluster");
+    expect(css).not.toContain(".harness-scope-all-action");
     expect(css).not.toContain("bulk-scope");
   });
 
@@ -78,11 +77,11 @@ describe("harness scope desktop UX", () => {
     expect(css).not.toContain(".harness-scope-main");
   });
 
-  it("filters when more than 8 harnesses and restores empty close", () => {
+  it("filters when more than 8 harnesses and refuses to uncheck the last one", () => {
     expect(control).toContain("FILTER_THRESHOLD = 8");
-    expect(control).toContain("HARNESS_SCOPE_COPY.emptyHint");
-    expect(control).toContain("restoreRef");
-    expect(control).toContain("draftIds.length === 0");
+    expect(control).toContain("uncheckHarnessGroup(draftIds, group.harnessIds)");
+    expect(control).toContain("LAST_TOOL_HINT");
+    expect(control).not.toContain("HARNESS_SCOPE_COPY.none");
   });
 
   it("covers gallery row states in ui-shots", () => {
@@ -103,11 +102,13 @@ describe("harness scope desktop UX", () => {
     expect(gallery).toContain("<main");
     expect(gallery).toContain("harness-scope-gallery");
     expect(gallery).toContain('item("notes"');
+    expect(gallery).toContain('"tooltip"');
+    expect(gallery).toContain('"suggestion"');
     expect(gallery).not.toContain("everywhere");
     expect(gallery).not.toContain("All at rest");
     expect(gallery).toContain("At rest");
     expect(control).toContain('role="group"');
-    expect(control).toContain("HARNESS_SCOPE_COPY.useOn");
+    expect(control).toContain("TOOLS_COPY.title");
     expect(control).not.toContain('role="listbox"');
   });
 });

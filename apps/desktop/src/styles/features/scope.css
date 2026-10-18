@@ -847,13 +847,76 @@
   }
 }
 
-/* Small hint that a badge has a suggestion waiting behind hover. */
-.inventory-chip-suggest-dot {
+/* Quiet hint after the name: the one harness's mark, or how many harnesses
+   when it is in some but not all. The tooltip says which. */
+.inventory-chip-hint {
+  display: inline-flex;
   flex-shrink: 0;
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 999px;
-  background: var(--accent);
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--muted);
+  font-size: 0.625rem; /* token-lint: allow */
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.inventory-chip-hint svg {
+  display: block;
+}
+
+/* One Also use on line per type section. */
+.section-suggestion {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-meta);
+}
+
+.section-suggestion-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.section-suggestion-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.section-suggestion-toggle:hover {
+  color: var(--fg);
+}
+
+.section-suggestion-toggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-suggestion-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.section-suggestion-list {
+  margin: var(--space-1) 0 0;
+  padding-left: 1.5rem;
+  color: var(--muted);
 }
 
 /* Ring the badge while its name has focus; a focused action draws its own ring. */
@@ -928,22 +991,6 @@
   flex-shrink: 0;
 }
 
-.harness-scope-all-action {
-  opacity: 0;
-}
-
-.inventory-chip:hover .harness-scope-all-action,
-.inventory-chip:focus-within .harness-scope-all-action,
-.harness-scope-all-action[data-state="open"],
-.harness-scope-all-action[aria-expanded="true"] {
-  opacity: 1;
-}
-
-.inventory-chip.is-scope-hover .harness-scope-all-action,
-.harness-scope-gallery.is-scope-hover .harness-scope-all-action {
-  opacity: 1;
-}
-
 .harness-scope-gallery {
   min-height: 100vh;
   padding: 2rem;
@@ -956,38 +1003,6 @@
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
-}
-
-.harness-scope-cluster {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  height: 24px;
-  max-height: 28px;
-  padding: 0 0.35rem;
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--fg) 7%, var(--bg));
-  color: var(--fg);
-  cursor: pointer;
-}
-
-.harness-scope-cluster:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.harness-scope-cluster.is-orphaned {
-  border-color: var(--yellow);
-  background: var(--tint-yellow);
-}
-
-.harness-scope-plus {
-  font-family: var(--mono);
-  font-size: var(--text-scope-plus);
-  color: var(--muted);
-  margin-left: 2px;
 }
 
 .harness-scope-popover {
@@ -1064,17 +1079,12 @@
   font-size: var(--text-body);
 }
 
-.harness-scope-empty-hint {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-meta);
+.harness-scope-row.is-off .harness-scope-row-name {
+  color: var(--muted);
 }
 
-.also-use-on {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+.harness-scope-empty-hint {
+  margin: var(--space-2) 0 0;
   font-size: var(--text-meta);
 }
 
