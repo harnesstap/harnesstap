@@ -24,6 +24,7 @@ import {
   useDesktopUpdateStatus,
 } from "../UpdateAvailableControl";
 import { HeaderMoreMenu } from "./HeaderMoreMenu";
+import { NotificationsBell } from "./NotificationsBell";
 import markUrl from "../../../app-icon.svg";
 
 const HEADER_ICON_SIZE = 18;
@@ -77,6 +78,8 @@ export interface AppHeaderProps {
   onBrowseProject: () => void;
   onOpenMigrateExport: () => void;
   onOpenMigrateImport: () => void;
+  /** Bell row click: open the profile, or the plugin in the Library. */
+  onOpenNotification?: (pluginName: string) => void;
   onOpenSettings: () => void;
   onOpenAccount: () => void;
 }
@@ -98,6 +101,7 @@ export function AppHeader({
   onBrowseProject,
   onOpenMigrateExport,
   onOpenMigrateImport,
+  onOpenNotification,
   onOpenSettings,
   onOpenAccount,
 }: AppHeaderProps) {
@@ -249,6 +253,12 @@ export function AppHeader({
         className="header-status"
         data-testid={connected ? "agent-connected" : undefined}
       >
+        <NotificationsBell
+          baseUrl={connected ? baseUrl : null}
+          token={token}
+          disabled={switching}
+          onOpen={onOpenNotification}
+        />
         <IconActionButton
           data-testid="open-settings"
           onClick={onOpenSettings}

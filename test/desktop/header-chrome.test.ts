@@ -222,13 +222,14 @@ describe("desktop header chrome", () => {
     expect(destBlock).not.toContain("min-width: 0");
   });
 
-  test("header utilities are Settings and More; Export, Import, and Account live in More", () => {
+  test("header utilities are the bell, Settings and More; Export, Import, and Account live in More", () => {
     const utilities = sliceBetween(
       appSource,
       'className="header-status"',
       "</header>",
     );
     expect(utilities).toContain('data-testid="open-settings"');
+    expect(utilities.indexOf("<NotificationsBell")).toBeLessThan(utilities.indexOf('data-testid="open-settings"'));
     expect(utilities).toContain("<HeaderMoreMenu");
     expect(utilities).toContain('label: "Export setup"');
     expect(utilities).toContain('label: "Import setup"');
@@ -245,7 +246,7 @@ describe("desktop header chrome", () => {
     expect(cssSource).not.toContain("@container app-header (max-width: 1100px)");
     expect(cssSource).toContain("@container app-header (max-width: 960px)");
     expect(appSource).toContain("attention={updateAvailable}");
-    expect(designSource).toContain("Header utilities are Settings and More (Ellipsis) at every width");
+    expect(designSource).toContain("Header utilities are the Notifications bell, Settings and More (Ellipsis) at every width");
   });
 
   test("scopes refresh to each workspace navbar", () => {

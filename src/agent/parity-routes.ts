@@ -20,6 +20,7 @@ import { tryHandle as tryProfileDefaultEnv } from "./parity-handlers/profile-def
 import { tryHandle as trySelfUpdate } from "./parity-handlers/self-update.js";
 import { tryHandle as tryUpdates } from "./parity-handlers/updates.js";
 import { tryHandle as trySettingsUpdates } from "./parity-handlers/settings-updates.js";
+import { tryHandle as tryNotifications } from "./parity-handlers/notifications.js";
 
 export interface ParityRouteDeps {
   isAgentSwitchInProgress: () => boolean;
@@ -48,6 +49,7 @@ const HANDLERS = [
   trySelfUpdate,
   tryUpdates,
   trySettingsUpdates,
+  tryNotifications,
 ] as const;
 
 export async function tryParityRoutes(

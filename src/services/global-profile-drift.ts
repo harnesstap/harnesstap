@@ -1,4 +1,5 @@
 import { runTracedStatus, traceCount, traceSpan } from "./status-trace.js";
+import { unreadNotificationCount } from "./notifications.js";
 import { readUpstreamCheckSummary, type UpstreamCheckSummary } from "./upstream-check-read.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -108,6 +109,8 @@ export interface GlobalProfileStatus {
   refreshing?: boolean;
   /** Pending upstream updates from the last check. Read from the table only, never the network. */
   updates?: UpstreamCheckSummary;
+  /** Unread notifications, for the Desktop bell. One indexed count, outside the cache. */
+  unread_count?: number;
 }
 
 function keptContentDiff(
@@ -383,6 +386,7 @@ export async function detectGlobalProfileStatus(input: {
     refreshing: status.refreshing === true,
     // Outside the cache: one indexed read, so a finished check shows at once.
     updates: readUpstreamCheckSummary(),
+    unread_count: unreadNotificationCount(),
   };
 }
 

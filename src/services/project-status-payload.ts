@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { unreadNotificationCount } from "./notifications.js";
 import { readUpstreamCheckSummary, type UpstreamCheckSummary } from "./upstream-check-read.js";
 import { getActiveProfilePayload } from "./profile-commands.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
@@ -62,6 +63,7 @@ export interface ProjectStatusPayload {
   lock?: LockDrift;
   /** From the last upstream check; no network call. */
   updates: UpstreamCheckSummary;
+  unread_count: number;
 }
 
 function materialResources(resources: Resource[]): Resource[] {
@@ -291,5 +293,6 @@ export async function buildProjectStatusPayload(projectRoot: string): Promise<Pr
     project_resources: projectResources,
     ...(lockSection ? { lock: lockSection } : {}),
     updates: readUpstreamCheckSummary(),
+    unread_count: unreadNotificationCount(),
   };
 }
