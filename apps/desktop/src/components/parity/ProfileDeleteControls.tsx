@@ -18,7 +18,10 @@ export interface ProfileDeleteControlsProps {
   baseUrl: string | null;
   token: string | null;
   disabled?: boolean;
-  variant?: "labeled" | "icon";
+  /** "menu": no trigger of its own; an overflow menu item opens it via `open`. */
+  variant?: "labeled" | "icon" | "menu";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onDeleted: (result: ProfileDeleteResult, message: string) => void;
 }
 
@@ -35,10 +38,17 @@ export function ProfileDeleteControls({
   token,
   disabled = false,
   variant = "labeled",
+  open,
+  onOpenChange,
   onDeleted,
 }: ProfileDeleteControlsProps) {
   const checkboxId = useId();
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const confirmOpen = open ?? ownOpen;
+  const setConfirmOpen = (next: boolean) => {
+    setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const [deletePlugin, setDeletePlugin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +88,7 @@ export function ProfileDeleteControls({
 
   return (
     <>
+      {variant === "menu" ? null : (
       <span className="profile-delete-control">
         {variant === "icon" ? (
           <IconActionButton
@@ -114,6 +125,7 @@ export function ProfileDeleteControls({
           />
         )}
       </span>
+      )}
       <ConfirmDialog
         open={confirmOpen}
         tone="destructive"

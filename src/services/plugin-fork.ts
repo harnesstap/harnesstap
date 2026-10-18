@@ -33,20 +33,26 @@ export class PluginForkError extends Error {
  * published package; any other source gets its local name, kept only here.
  */
 export function forkUpstream(source: Plugin): PluginUpstream {
-  if (source.org_slug && source.catalog_slug) {
-    // A pull records the catalog selector in origin_locator. Prefer it: older
-    // pulls named the local plugin after its display name, not its slug.
-    const prefix = `${source.org_slug}/${source.catalog_slug}/`;
-    const base = source.origin_locator?.startsWith(prefix)
-      ? source.origin_locator
-      : formatCanonicalPublishedSelector({
-          org: source.org_slug,
-          catalog: source.catalog_slug,
-          name: resolveApName(source),
-        });
-    return buildUpstream("fork", base, source.version);
+  return buildUpstream("fork", catalogUpstreamBase(source) ?? source.name, source.version);
+}
+
+/** `org/catalog/slug` for a plugin that lives in a catalog, else undefined. */
+export function catalogUpstreamBase(source: Plugin): string | undefined {
+  if (!source.org_slug || !source.catalog_slug) {
+    return undefined;
   }
-  return buildUpstream("fork", source.name, source.version);
+  // A pull records the catalog selector in origin_locator. Prefer it: older
+  // pulls named the local plugin after its display name, not its slug.
+  const prefix = `${source.org_slug}/${source.catalog_slug}/`;
+  if (source.origin_locator?.startsWith(prefix)) {
+    const at = source.origin_locator.indexOf("@", prefix.length);
+    return at > 0 ? source.origin_locator.slice(0, at) : source.origin_locator;
+  }
+  return formatCanonicalPublishedSelector({
+    org: source.org_slug,
+    catalog: source.catalog_slug,
+    name: resolveApName(source),
+  });
 }
 
 export interface ForkResult {
@@ -57,19 +63,23 @@ export interface ForkResult {
   forked_from: string;
 }
 
-export function forkPlugin(selector: string, asName?: string): ForkResult {
+export function forkPlugin(
+  selector: string,
+  asName?: string,
+  opts?: { allowAuthored?: boolean; defaultSuffix?: string },
+): ForkResult {
   const source = resolvePluginSelector(selector);
   if (!source) {
     throw new PluginForkError("not_found", `Plugin not found: ${selector}`);
   }
-  if (getPluginOrigin(source.id) === "authored") {
+  if (!opts?.allowAuthored && getPluginOrigin(source.id) === "authored") {
     throw new PluginForkError(
       "already_authored",
       `${source.name} is already authored; there is nothing to fork.`,
       source.name,
     );
   }
-  const name = asName?.trim() || `${source.name}-fork`;
+  const name = asName?.trim() || `${source.name}${opts?.defaultSuffix ?? "-fork"}`;
   if (getPluginByName(name)) {
     throw new PluginForkError("plugin_exists", `Plugin ${name} already exists.`, source.name);
   }

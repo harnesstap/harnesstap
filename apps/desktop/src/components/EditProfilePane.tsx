@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Check, Plus, Tag, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Tag, Trash2, Unlink, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +20,7 @@ import {
   pluginDetailCompositionEntries,
   profileDependencyForMember,
 } from "../lib/composition-membership";
-import { formatLastEditLine } from "../lib/library-timestamp";
+import { formatEditedLine } from "../lib/library-timestamp";
 import { duplicatePluginNames } from "../lib/resource-display";
 import { resourceDisplayName } from "../lib/resource-search";
 import type {
@@ -28,9 +28,26 @@ import type {
   LibraryResource,
   ProfileDetail,
 } from "../lib/types";
+import {
+  detachLibraryPlugin,
+  inheritedItemKey,
+  setLibraryPluginExcludes,
+  undoDetachLibraryPlugin,
+  type InheritedItem,
+} from "../lib/api/library-plugins";
+import {
+  DETACH_UNDO_MS,
+  detachedMessage,
+  inheritedToggleMessage,
+  parentNameFromRef,
+  syncedChip,
+  toggleExcludeEntry,
+} from "../lib/duplicate-profile";
+import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
+import { SyncedChip } from "./SyncedChip";
 import { ChromeTooltip } from "./ChromeTooltip";
+import { EditedChip } from "./EditedChip";
 import { IconActionButton } from "./IconActionButton";
-import { ConfirmDialog } from "./ConfirmDialog";
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 import { ProfileDeleteControls } from "./parity/ProfileDeleteControls";
@@ -104,15 +121,20 @@ export function EditProfilePane({
     pathHint?: string | null;
   } | null>(null);
   const [clock, setClock] = useState(() => new Date());
-  const [discardOpen, setDiscardOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const pendingMeta = useRef<{ description?: string; tags?: string[] }>({});
+  const metaTimer = useRef<number | null>(null);
 
   const applyDetail = (next: ProfileDetail) => {
     setDetail(next);
     setNameDraft(next.profile.name);
-    setDescriptionDraft(next.profile.description);
-    setTagsDraft(
-      next.profile.tags.filter((tag) => tag !== "profile").join(", "),
-    );
+    // A draft still waiting to autosave wins over what the server sent back.
+    if (pendingMeta.current.description === undefined) {
+      setDescriptionDraft(next.profile.description);
+    }
+    if (pendingMeta.current.tags === undefined) {
+      setTagsDraft(next.profile.tags.filter((tag) => tag !== "profile").join(", "));
+    }
   };
 
   useEffect(() => {
@@ -186,12 +208,12 @@ export function EditProfilePane({
     };
   }, [baseUrl, libraryReloadKey, token]);
 
-  const lastEditLine = useMemo(() => {
+  const editedLine = useMemo(() => {
     const updatedAt = detail?.profile.updated_at;
     if (!updatedAt) {
       return null;
     }
-    return formatLastEditLine(updatedAt, { now: clock });
+    return formatEditedLine(updatedAt, { now: clock });
   }, [clock, detail?.profile.updated_at]);
 
   const membership = useMemo(
@@ -276,26 +298,99 @@ export function EditProfilePane({
     return true;
   };
 
-  const parsedTags = tagsDraft
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+  const parseTags = (value: string) =>
+    value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
   const savedTags = detail?.profile.tags.filter((tag) => tag !== "profile") ?? [];
-  const dirty = Boolean(detail)
-    && (
-      nameDraft.trim() !== profileName
-      || descriptionDraft !== (detail?.profile.description ?? "")
-      || parsedTags.join("\0") !== savedTags.join("\0")
-    );
+
+  // Autosave: description and tags save a moment after typing stops, the name
+  // on blur or Enter. Saving writes the Library only; harness files change on
+  // Apply. Inputs stay enabled while a save runs so typing is never cut off.
+
+  const saveMetaNow = async () => {
+    if (metaTimer.current !== null) {
+      window.clearTimeout(metaTimer.current);
+      metaTimer.current = null;
+    }
+    const pending = pendingMeta.current;
+    pendingMeta.current = {};
+    if (!baseUrl || !detail || (pending.description === undefined && pending.tags === undefined)) {
+      return;
+    }
+    try {
+      const next = await patchProfileMetadata(baseUrl, token, profileName, pending);
+      setDetail(next);
+      await onMutated({ profileName, affectsApply: false });
+    } catch (saveError) {
+      setError(errorMessage(saveError, "Could not save profile change"));
+    }
+  };
+
+  const queueMeta = (patch: { description?: string; tags?: string[] }) => {
+    pendingMeta.current = { ...pendingMeta.current, ...patch };
+    if (metaTimer.current !== null) {
+      window.clearTimeout(metaTimer.current);
+    }
+    metaTimer.current = window.setTimeout(() => {
+      void saveMetaNow();
+    }, 600);
+  };
+
+  const onDescriptionChange = (value: string) => {
+    setDescriptionDraft(value);
+    queueMeta({ description: value });
+  };
+
+  const onTagsChange = (value: string) => {
+    setTagsDraft(value);
+    const nextTags = parseTags(value);
+    if (nextTags.join("\0") !== savedTags.join("\0") || pendingMeta.current.tags) {
+      queueMeta({ tags: nextTags });
+    }
+  };
+
+  const commitName = () => {
+    const nextName = nameDraft.trim();
+    if (!detail || !baseUrl || nextName === profileName) {
+      setNameDraft(profileName);
+      return;
+    }
+    if (!nextName) {
+      setNameDraft(profileName);
+      return;
+    }
+    void runMutation(
+      async () => {
+        await saveMetaNow();
+        const result = await renameProfile(baseUrl, token, profileName, nextName);
+        onProfileRenamed(result.name);
+        return fetchProfileDetail(baseUrl, token, result.name);
+      },
+      { affectsApply: true, nextName },
+    ).then((ok) => {
+      if (!ok) {
+        setNameDraft(profileName);
+      }
+    });
+  };
 
   const requestClose = () => {
-    if (dirty) {
-      setDiscardOpen(true);
-      return false;
-    }
+    void saveMetaNow();
     onClose();
     return true;
   };
+
+  // Leaving the pane any other way still saves what was typed.
+  const saveOnLeave = useRef(saveMetaNow);
+  saveOnLeave.current = saveMetaNow;
+  useEffect(
+    () => () => {
+      void saveOnLeave.current();
+    },
+    [],
+  );
 
   useEffect(() => {
     onRegisterCloseGuard?.(() => requestClose());
@@ -306,45 +401,6 @@ export function EditProfilePane({
     event.preventDefault();
     requestClose();
   });
-
-  const saveMetadata = () => {
-    if (!detail || !baseUrl || !dirty) {
-      return;
-    }
-    const nextName = nameDraft.trim();
-    if (!nextName) {
-      setError("Name is required");
-      return;
-    }
-    void runMutation(
-      async () => {
-        let currentName = profileName;
-        if (nextName !== profileName) {
-          const result = await renameProfile(baseUrl, token, profileName, nextName);
-          onProfileRenamed(result.name);
-          currentName = result.name;
-        }
-        const tagsChanged = parsedTags.join("\0") !== savedTags.join("\0");
-        const descriptionChanged = descriptionDraft !== detail.profile.description;
-        if (descriptionChanged || tagsChanged) {
-          return patchProfileMetadata(baseUrl, token, currentName, {
-            ...(descriptionChanged ? { description: descriptionDraft } : {}),
-            ...(tagsChanged ? { tags: parsedTags } : {}),
-          });
-        }
-        return fetchProfileDetail(baseUrl, token, currentName);
-      },
-      { affectsApply: nextName !== profileName, nextName: nextName !== profileName ? nextName : undefined },
-    );
-  };
-
-  const discardMetadata = () => {
-    if (!detail) {
-      return;
-    }
-    applyDetail(detail);
-    setDiscardOpen(false);
-  };
 
   const addLibraryItems = async (items: ScopeLibraryPick[]) => {
     if (!baseUrl || !detail || disabled || busy) {
@@ -432,7 +488,104 @@ export function EditProfilePane({
     });
   };
 
+  const toggleInherited = (item: InheritedItem) => {
+    if (!baseUrl || !detail) {
+      return;
+    }
+    const key = inheritedItemKey(item);
+    const wasHidden = (detail.excludes ?? []).includes(key);
+    const label = item.name;
+    void runMutation(
+      async () => {
+        const current = (await fetchProfileDetail(baseUrl, token, profileName)).excludes ?? [];
+        await setLibraryPluginExcludes(baseUrl, token, profileName, toggleExcludeEntry(current, key));
+        return fetchProfileDetail(baseUrl, token, profileName);
+      },
+      { affectsApply: true },
+    ).then((ok) => {
+      if (!ok) {
+        return;
+      }
+      toast({
+        tone: "success",
+        title: inheritedToggleMessage(label, !wasHidden),
+        action: {
+          label: "Undo",
+          onClick: () => toggleInherited({ ...item, hidden: !wasHidden }),
+        },
+      });
+    });
+  };
+
+  const parentName = detail?.upstream ? parentNameFromRef(detail.upstream.ref) : "";
+
+  // Detach right away; the toast's Undo puts the link and the hidden list back.
+  const detachNow = () => {
+    if (!baseUrl || !detail) {
+      return;
+    }
+    const parent = parentName;
+    let undoToken: string | undefined;
+    void runMutation(
+      async () => {
+        const result = await detachLibraryPlugin(baseUrl, token, profileName);
+        undoToken = result.undo_token;
+        return fetchProfileDetail(baseUrl, token, profileName);
+      },
+      { affectsApply: true },
+    ).then((ok) => {
+      if (!ok) {
+        return;
+      }
+      toast({
+        tone: "success",
+        title: detachedMessage(profileName, parent),
+        durationMs: DETACH_UNDO_MS,
+        ...(undoToken
+          ? {
+              action: {
+                label: "Undo",
+                onClick: () => {
+                  const tokenToUse = undoToken ?? "";
+                  void runMutation(
+                    async () => {
+                      await undoDetachLibraryPlugin(baseUrl, token, profileName, tokenToUse);
+                      return fetchProfileDetail(baseUrl, token, profileName);
+                    },
+                    { affectsApply: true },
+                  );
+                },
+              },
+            }
+          : {}),
+      });
+    });
+  };
+
   const controlsDisabled = disabled || busy || loading;
+
+  const editOverflowItems: OverflowMenuItem[] = [
+    ...(detail?.upstream?.kind === "extends"
+      ? [
+          {
+            id: "detach",
+            label: "Detach",
+            icon: <Unlink size={16} aria-hidden />,
+            disabled: controlsDisabled,
+            onSelect: detachNow,
+          },
+        ]
+      : []),
+    {
+      id: "delete",
+      label: "Delete",
+      icon: <Trash2 size={16} aria-hidden />,
+      danger: true,
+      separatorBefore: detail?.upstream?.kind === "extends",
+      disabled: disabled || busy,
+      onSelect: () => setDeleteOpen(true),
+    },
+  ];
 
   return (
     <main className="edit-profile-pane" aria-label={`Edit ${profileName}`}>
@@ -444,14 +597,23 @@ export function EditProfilePane({
               <span className="badge edit-active-badge">active</span>
             ) : null}
             {detail?.profile.version ? (
-              <span className="badge badge-meta">
-                v{detail.profile.version}
-                {detail.profile.dirty ? "*" : ""}
-              </span>
+              <span className="badge badge-meta">v{detail.profile.version}</span>
+            ) : null}
+            {detail?.profile.version && detail.profile.dirty ? (
+              <EditedChip version={detail.profile.version} />
             ) : null}
           </h2>
-          {lastEditLine ? (
-            <p className="muted edit-profile-last-edit">{lastEditLine}</p>
+          {detail?.upstream?.kind === "extends" ? (
+            <SyncedChip
+              {...syncedChip(detail.upstream, parentName)}
+            />
+          ) : null}
+          {editedLine ? (
+            <ChromeTooltip content={editedLine.exact}>
+              <p className="muted edit-profile-last-edit" tabIndex={0}>
+                {editedLine.text}
+              </p>
+            </ChromeTooltip>
           ) : null}
         </div>
         <div className="edit-profile-header-actions">
@@ -470,12 +632,19 @@ export function EditProfilePane({
               icon={<Tag size={18} strokeWidth={2} aria-hidden />}
             />
           ) : null}
+          <OverflowMenu
+            testId="edit-profile-overflow"
+            disabled={busy}
+            items={editOverflowItems}
+          />
           <ProfileDeleteControls
             profileName={profileName}
             baseUrl={baseUrl}
             token={token}
             disabled={disabled || busy}
-            variant="icon"
+            variant="menu"
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
             onDeleted={(result, message) => onDeleted?.(result, message)}
           />
           <IconActionButton
@@ -502,6 +671,18 @@ export function EditProfilePane({
                 id="edit-profile-name"
                 value={nameDraft}
                 onChange={(event) => setNameDraft(event.target.value)}
+                onBlur={commitName}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    commitName();
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setNameDraft(profileName);
+                  }
+                }}
                 disabled={controlsDisabled}
               />
             </div>
@@ -510,8 +691,9 @@ export function EditProfilePane({
               <Textarea
                 id="edit-profile-description"
                 value={descriptionDraft}
-                onChange={(event) => setDescriptionDraft(event.target.value)}
-                disabled={controlsDisabled}
+                onChange={(event) => onDescriptionChange(event.target.value)}
+                onBlur={() => void saveMetaNow()}
+                disabled={disabled || loading}
                 rows={3}
               />
             </div>
@@ -520,9 +702,10 @@ export function EditProfilePane({
               <Input
                 id="edit-profile-tags"
                 value={tagsDraft}
-                onChange={(event) => setTagsDraft(event.target.value)}
-                disabled={controlsDisabled}
-                placeholder="comma-separated (profile tag kept automatically)"
+                onChange={(event) => onTagsChange(event.target.value)}
+                onBlur={() => void saveMetaNow()}
+                disabled={disabled || loading}
+                placeholder="Add tags"
               />
             </div>
           </section>
@@ -544,6 +727,16 @@ export function EditProfilePane({
             }}
             disabled={controlsDisabled}
             emptyUnfilteredLabel="Nothing in this profile yet."
+            inherited={
+              detail.upstream?.kind === "extends"
+                ? { items: detail.inherited ?? [], parentName, onToggle: toggleInherited }
+                : undefined
+            }
+            notice={
+              detail.upstream?.kind === "extends" && detail.parent_missing ? (
+                <div className="banner">{detail.parent_missing}</div>
+              ) : null
+            }
             footer={
               <ChromeTooltip content="Add to profile">
                 <button
@@ -570,26 +763,6 @@ export function EditProfilePane({
             }}
             onCreateEnvironment={onCreateEnvironment}
           />
-          <div className="edit-profile-footer">
-            <button
-              type="button"
-              className="btn"
-              disabled={controlsDisabled || !dirty}
-              onClick={discardMetadata}
-            >
-              <X size={16} aria-hidden />
-              Discard
-            </button>
-            <button
-              type="button"
-              className="btn primary"
-              disabled={controlsDisabled || !dirty}
-              onClick={saveMetadata}
-            >
-              <Check size={16} aria-hidden />
-              Save
-            </button>
-          </div>
         </div>
       ) : null}
       <ResourceDetailPane
@@ -629,19 +802,6 @@ export function EditProfilePane({
         excludeProfileName={profileName}
         onClose={() => setAddModalOpen(false)}
         onAdd={addLibraryItems}
-      />
-      <ConfirmDialog
-        open={discardOpen}
-        title="Discard edits?"
-        description="Name, description, and tags have unsaved changes."
-        confirmLabel="Discard"
-        tone="destructive"
-        onConfirm={() => {
-          discardMetadata();
-          setDiscardOpen(false);
-          onClose();
-        }}
-        onCancel={() => setDiscardOpen(false)}
       />
     </main>
   );

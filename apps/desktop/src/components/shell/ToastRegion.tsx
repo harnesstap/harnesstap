@@ -21,7 +21,7 @@ export function ToastCard({
   onAction,
   onDismiss,
 }: {
-  item: Pick<Toast, "tone" | "title" | "detail" | "action">;
+  item: Pick<Toast, "tone" | "title" | "detail" | "action" | "onOpen">;
   onAction?: () => void;
   onDismiss?: () => void;
 }) {
@@ -33,17 +33,32 @@ export function ToastCard({
     >
       <span className="toast-icon">{toneIcon(item.tone)}</span>
       <div className="toast-body">
-        <div className="toast-title">{item.title}</div>
+        <div className="toast-line">
+          {item.onOpen ? (
+            <button
+              type="button"
+              className="toast-title toast-title-open"
+              onClick={() => {
+                item.onOpen?.();
+                onDismiss?.();
+              }}
+            >
+              {item.title}
+            </button>
+          ) : (
+            <div className="toast-title">{item.title}</div>
+          )}
+          {item.action ? (
+            <button
+              type="button"
+              className="btn toast-action"
+              onClick={onAction}
+            >
+              {item.action.label}
+            </button>
+          ) : null}
+        </div>
         {item.detail ? <div className="toast-detail muted">{item.detail}</div> : null}
-        {item.action ? (
-          <button
-            type="button"
-            className="btn toast-action"
-            onClick={onAction}
-          >
-            {item.action.label}
-          </button>
-        ) : null}
       </div>
       <button
         type="button"

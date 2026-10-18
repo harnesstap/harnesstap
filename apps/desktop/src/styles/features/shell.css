@@ -480,3 +480,47 @@
   padding: var(--space-4) var(--space-3);
   color: var(--muted);
 }
+
+/* Detail header overflow: a separator above Delete, which reads red. */
+.overflow-menu-separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}
+
+.header-more-item.is-danger {
+  color: var(--destructive);
+}
+
+/* Toast message and its action (Undo) share one line. */
+.toast-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.toast-line .toast-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toast-line .toast-action {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.toast-title-open {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toast-title-open:hover,
+.toast-title-open:focus-visible {
+  text-decoration: underline;
+}

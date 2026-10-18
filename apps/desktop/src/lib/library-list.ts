@@ -107,7 +107,7 @@ export function libraryRowTreatAsScoped(entry: LibraryListEntry): boolean {
 
 export function libraryRowBadge(entry: LibraryListEntry): string | null {
   if (entry.listKind === "plugin-package") {
-    return `${entry.version ?? ""}${entry.dirty ? "*" : ""}`;
+    return `${entry.version ?? ""}${entry.dirty ? " edited" : ""}`;
   }
   if (isPluginRefRow(entry)) {
     return "plugin ref";

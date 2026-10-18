@@ -1,10 +1,12 @@
+import { cloudErrorDetail, parseCloudErrorText, requestIdSuffix } from "./cloud-api-error.js";
 import semver from "semver";
 import { getDb } from "../db/connection.js";
 import { getPluginById, getPluginResources } from "../models/plugin-model.js";
 import { RESOURCE_TYPES, type Plugin, type PluginUpstream, type Resource } from "../types.js";
 import { isHostPluginPinResource } from "./host-plugin-serialize.js";
 import { dependenciesFromResources, type DependencyView } from "./plugin-dependency.js";
-import { isCatalogUpstreamRef, upstreamRefBase } from "./plugin-upstream.js";
+import { catalogUpstreamBase } from "./plugin-fork.js";
+import { exportableUpstream, isCatalogUpstreamRef, upstreamRefBase } from "./plugin-upstream.js";
 import { markPluginDirty } from "./plugin-versioning.js";
 import { computationSlot } from "./status-computation.js";
 
@@ -16,7 +18,12 @@ import { computationSlot } from "./status-computation.js";
  * `<type>:<name>` for a resource, `plugin:<name>` for a dependency.
  */
 
-export type ExtendsErrorCode = "parent_missing" | "cycle" | "invalid_exclude" | "not_extends";
+export type ExtendsErrorCode =
+  | "parent_missing"
+  | "cycle"
+  | "invalid_exclude"
+  | "not_extends"
+  | "undo_expired";
 
 export class ExtendsError extends Error {
   readonly code: ExtendsErrorCode;
@@ -253,6 +260,39 @@ function composeItems(pluginId: string, chain: string[]): ComposedItem[] {
   return [...inherited, ...own.map((resource) => ({ resource, source: "own" as const }))];
 }
 
+export interface InheritedItem {
+  id: string;
+  type: string;
+  name: string;
+  source: "parent";
+  /** True when the child hides it; it does not apply. */
+  hidden: boolean;
+}
+
+/**
+ * The parent's items as the child sees them, hidden ones included and
+ * flagged, so an editor can offer to show them again. Items the child also
+ * has itself are left out: the child's own copy wins.
+ */
+export function listInheritedItems(pluginId: string): InheritedItem[] {
+  const plugin = getPluginById(pluginId);
+  if (!plugin?.upstream || plugin.upstream.kind !== "extends") return [];
+  const parent = resolveUpstreamParent(plugin);
+  if (!parent) throw parentMissingError(plugin);
+  const hidden = new Set(listPluginExcludes(plugin.id));
+  const ownKeys = new Set(getPluginResources(plugin.id).map(excludeKeyOf));
+  return composeItems(parent.id, [plugin.name, parent.name])
+    .map((item) => item.resource)
+    .filter((resource) => !isOwnHostPin(parent, resource) && !ownKeys.has(excludeKeyOf(resource)))
+    .map((resource) => ({
+      id: resource.id,
+      type: resource.type,
+      name: resource.name,
+      source: "parent" as const,
+      hidden: hidden.has(excludeKeyOf(resource)),
+    }));
+}
+
 /** Own and inherited items, each tagged with where it comes from. */
 export function listComposedItems(pluginId: string): ComposedItem[] {
   const plugin = getPluginById(pluginId);
@@ -281,6 +321,42 @@ export function listComposedDependencies(pluginId: string): DependencyView[] {
 }
 
 /**
+ * The upstream link a package may carry. A catalog ref goes out as is. A
+ * local extends link goes out with its parent's catalog ref once the parent
+ * lives in a catalog (it was pulled or published), keeping the child's range.
+ */
+export function portableUpstream(plugin: Plugin): PluginUpstream | undefined {
+  const upstream = plugin.upstream;
+  if (!upstream) return undefined;
+  const direct = exportableUpstream(upstream);
+  if (direct || upstream.kind !== "extends") return direct;
+  const parent = resolveUpstreamParent(plugin);
+  const base = parent ? catalogUpstreamBase(parent) : undefined;
+  if (!parent || !base) return undefined;
+  return exportableUpstream({
+    kind: "extends",
+    ref: `${base}@${upstreamRange(upstream.ref)}`,
+    version_at_link: semver.valid(upstream.version_at_link) ? upstream.version_at_link : parent.version,
+  });
+}
+
+/** Valid exclude strings from a package; anything else is dropped. */
+export function parseExcludeList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const valid: string[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "string") continue;
+    try {
+      const { type, name } = parseExcludeEntry(entry);
+      valid.push(`${type}:${name}`);
+    } catch {
+      // Unknown type or malformed entry: Cloud rejects it on publish too.
+    }
+  }
+  return [...new Set(valid)].sort();
+}
+
+/**
  * Refuses a link that would make a plugin extend itself, directly or through
  * its parents. Checked when a link is created and when a package is imported.
  */
@@ -295,7 +371,21 @@ export function assertNoExtendsCycle(plugin: Plugin, upstream: PluginUpstream, u
     },
     { includeSelf: true },
   );
+  const pointsAtPlugin = (ref: string): boolean => {
+    const base = upstreamRefBase(ref);
+    const slug = base.split("/").pop();
+    return base === plugin.name || slug === plugin.name || (!!plugin.ap_name && slug === plugin.ap_name);
+  };
+  if (pointsAtPlugin(upstream.ref)) {
+    throw new ExtendsError("cycle", `${plugin.name} cannot extend itself (${upstream.ref}).`);
+  }
   while (current) {
+    if (current.upstream?.kind === "extends" && pointsAtPlugin(current.upstream.ref)) {
+      throw new ExtendsError(
+        "cycle",
+        `${plugin.name} cannot extend ${upstream.ref}: ${[...seen, current.name, plugin.name].join(" > ")} is a cycle.`,
+      );
+    }
     if (seen.includes(current.name)) {
       throw new ExtendsError(
         "cycle",
@@ -306,4 +396,65 @@ export function assertNoExtendsCycle(plugin: Plugin, upstream: PluginUpstream, u
     if (current.upstream?.kind !== "extends") return;
     current = resolveUpstreamParent(current);
   }
+}
+
+export class UpstreamUnpublishedError extends Error {
+  readonly code = "upstream_unpublished";
+  readonly ref: string;
+  readonly pluginName: string;
+
+  constructor(pluginName: string, ref: string) {
+    super(
+      `${pluginName} keeps in sync with ${ref}, which is not published. ` +
+        "Publish the parent first, or detach this profile to publish it as a separate copy.",
+    );
+    this.name = "UpstreamUnpublishedError";
+    this.ref = ref;
+    this.pluginName = pluginName;
+  }
+}
+
+/**
+ * Publishing a keep-in-sync child needs a published parent: the package can
+ * only point at a catalog ref. Checked locally before any network call; Cloud
+ * answers 400 `upstream_unpublished` for the same case.
+ */
+export function assertParentPublished(plugin: Plugin): void {
+  if (plugin.upstream?.kind !== "extends") return;
+  if (!portableUpstream(plugin)) {
+    throw new UpstreamUnpublishedError(plugin.name, plugin.upstream.ref);
+  }
+}
+
+/**
+ * Maps a Cloud 400 on publish onto a message naming what to fix:
+ * `upstream_unpublished` names Cloud's ref, `invalid_exclude` the entry.
+ */
+export function cloudPublishErrorMessage(plugin: Plugin, error: unknown): string | undefined {
+  const raw = error instanceof Error ? error.message : String(error);
+  const detail = cloudErrorDetail(error);
+  const code = detail.code ?? (raw.includes("upstream_unpublished") ? "upstream_unpublished" : undefined);
+  if (code === "upstream_unpublished") {
+    const ref = detail.ref ?? plugin.upstream?.ref ?? "its parent";
+    return new UpstreamUnpublishedError(plugin.name, ref).message + requestIdSuffix(detail);
+  }
+  if (code === "invalid_exclude") {
+    const entry = detail.entry ?? "an entry";
+    const why = detail.message ? ` (${detail.message.replace(/\.$/, "")})` : "";
+    const fix = detail.entry ? ` Run \`ht plugin edit ${plugin.name} --unhide ${detail.entry}\` and publish again.` : "";
+    return (
+      `Cloud rejected the hidden item "${entry}" of ${plugin.name}${why}. ` +
+      `Each hidden item is <type>:<name>, where type is one of ${RESOURCE_TYPES.join(", ")}.${fix}` +
+      requestIdSuffix(detail)
+    );
+  }
+  return undefined;
+}
+
+/** Kept for callers holding only the error text. */
+export function upstreamUnpublishedFromCloud(plugin: Plugin, message: string): UpstreamUnpublishedError | undefined {
+  const detail = parseCloudErrorText(message);
+  const code = detail.code ?? (message.includes("upstream_unpublished") ? "upstream_unpublished" : undefined);
+  if (code !== "upstream_unpublished") return undefined;
+  return new UpstreamUnpublishedError(plugin.name, detail.ref ?? plugin.upstream?.ref ?? "its parent");
 }

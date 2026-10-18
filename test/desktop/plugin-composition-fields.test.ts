@@ -93,7 +93,7 @@ describe("plugin composition fields", () => {
     expect(packagesSource).toContain("resources={compositionMembers}");
     expect(packagesSource).not.toContain("resources={membership}");
     expect(packagesSource).toContain('data-testid="plugin-composition-fab"');
-    expect(packagesSource).toContain('aria-label="Add to plugin"');
+    expect(packagesSource).toContain('aria-label={isProfile ? "Add to profile" : "Add to plugin"}');
     expect(packagesSource).toContain('title="Add to plugin"');
     expect(packagesSource).toContain("ScopeAddToProfileModal");
     expect(packagesSource).not.toContain("pinMarketplacePlugin");
