@@ -315,7 +315,8 @@ function buildApPackageFilesInner(
   const files: ApPackageFiles = {};
   const resources = getPluginResources(pluginId);
   const skillPlan = planSkillExport(resources);
-  const manifest = buildApManifest(pluginId);
+  // The root is the first plugin visited; embedded packages are nested.
+  const manifest = buildApManifest(pluginId, { nested: visited.size > 1 });
   applySkillNames(manifest, skillPlan.skillNames);
   const foreignExtensions = readPluginOpaqueExtensions(pluginId);
   if (Object.keys(foreignExtensions).length > 0) {

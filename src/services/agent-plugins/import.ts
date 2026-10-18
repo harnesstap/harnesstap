@@ -1,4 +1,5 @@
 import { parseUpstream, setPluginUpstream } from "../plugin-upstream.js";
+import { assertNoExtendsCycle, parseExcludeList, writePluginExcludes } from "../plugin-extends.js";
 import matter from "gray-matter";
 import { getEnvironmentByName } from "../../models/environment.js";
 import {
@@ -55,6 +56,8 @@ export interface ParsedApPackage {
   harnessScopes?: Record<string, string[]>;
   /** `extensions["com.harnesstap"].upstream`, when complete and valid. */
   upstream?: PluginUpstream;
+  /** Valid `exclude` entries; only set with an extends upstream. */
+  exclude?: string[];
   /** Claude marketplace/plugin config from `com.harnesstap/claude.toml`. */
   claude?: ClaudePluginConfig;
   /** Spec load report from the package that was imported. */
@@ -77,6 +80,8 @@ export interface ImportApPackageOptions {
    * pass false so a temporary plugin does not leave files behind.
    */
   installPackage?: boolean;
+  /** Set for an embedded package: `exclude` is root only, so it is ignored. */
+  nested?: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -154,6 +159,7 @@ function parseExtension(
   | "defaultEnvironment"
   | "harnessScopes"
   | "upstream"
+  | "exclude"
 > {
   if (!isRecord(raw)) {
     return {
@@ -167,6 +173,8 @@ function parseExtension(
 
   const harnessScopes = parseHarnessScopes(raw.harnessScopes);
   const upstream = parseUpstream(raw.upstream);
+  // exclude only means something on an extends link.
+  const exclude = upstream?.kind === "extends" ? parseExcludeList(raw.exclude) : [];
   return {
     sourceName: typeof raw.sourceName === "string" && raw.sourceName.length > 0
       ? raw.sourceName
@@ -182,6 +190,7 @@ function parseExtension(
       : {}),
     ...(Object.keys(harnessScopes).length > 0 ? { harnessScopes } : {}),
     ...(upstream ? { upstream } : {}),
+    ...(exclude.length > 0 ? { exclude } : {}),
   };
 }
 
@@ -398,6 +407,7 @@ export function parseApPackageFiles(
     resources,
     ...(extension.harnessScopes ? { harnessScopes: extension.harnessScopes } : {}),
     ...(extension.upstream ? { upstream: extension.upstream } : {}),
+    ...(extension.exclude ? { exclude: extension.exclude } : {}),
     ...(claude ? { claude } : {}),
     loadReport: loaded.report,
     ...(author ? { author } : {}),
@@ -461,8 +471,14 @@ export function importApPackageFiles(
     ? getEnvironmentByName(parsed.defaultEnvironment)?.id
     : undefined;
 
+  const targetName = options?.as ?? parsed.sourceName;
+  if (parsed.upstream) {
+    // Refuse before anything is written, so a bad package leaves no rows.
+    assertNoExtendsCycle({ id: "", name: targetName } as Plugin, parsed.upstream);
+  }
+
   const plugin = createPlugin({
-    name: options?.as ?? parsed.sourceName,
+    name: targetName,
     version: parsed.version,
     description: parsed.description,
     tags,
@@ -492,6 +508,9 @@ export function importApPackageFiles(
   }
   if (parsed.upstream) {
     setPluginUpstream(plugin.id, parsed.upstream);
+    if (parsed.exclude && !options?.nested) {
+      writePluginExcludes(plugin.id, parsed.exclude);
+    }
   }
   if (options?.installPackage !== false) {
     installAgentPluginPackage({ name: plugin.name, version: plugin.version }, files);
@@ -514,6 +533,7 @@ export function importApPackageFiles(
   for (const embeddedName of embeddedNames) {
     importApPackageFiles(extractEmbeddedFiles(files, embeddedName), {
       origin: options?.origin ?? "authored",
+      nested: true,
       ...(options?.installPackage === false ? { installPackage: false } : {}),
     });
   }

@@ -4,7 +4,8 @@ import { getPluginById, getPluginResources } from "../models/plugin-model.js";
 import { RESOURCE_TYPES, type Plugin, type PluginUpstream, type Resource } from "../types.js";
 import { isHostPluginPinResource } from "./host-plugin-serialize.js";
 import { dependenciesFromResources, type DependencyView } from "./plugin-dependency.js";
-import { isCatalogUpstreamRef, upstreamRefBase } from "./plugin-upstream.js";
+import { catalogUpstreamBase } from "./plugin-fork.js";
+import { exportableUpstream, isCatalogUpstreamRef, upstreamRefBase } from "./plugin-upstream.js";
 import { markPluginDirty } from "./plugin-versioning.js";
 import { computationSlot } from "./status-computation.js";
 
@@ -281,6 +282,42 @@ export function listComposedDependencies(pluginId: string): DependencyView[] {
 }
 
 /**
+ * The upstream link a package may carry. A catalog ref goes out as is. A
+ * local extends link goes out with its parent's catalog ref once the parent
+ * lives in a catalog (it was pulled or published), keeping the child's range.
+ */
+export function portableUpstream(plugin: Plugin): PluginUpstream | undefined {
+  const upstream = plugin.upstream;
+  if (!upstream) return undefined;
+  const direct = exportableUpstream(upstream);
+  if (direct || upstream.kind !== "extends") return direct;
+  const parent = resolveUpstreamParent(plugin);
+  const base = parent ? catalogUpstreamBase(parent) : undefined;
+  if (!parent || !base) return undefined;
+  return exportableUpstream({
+    kind: "extends",
+    ref: `${base}@${upstreamRange(upstream.ref)}`,
+    version_at_link: semver.valid(upstream.version_at_link) ? upstream.version_at_link : parent.version,
+  });
+}
+
+/** Valid exclude strings from a package; anything else is dropped. */
+export function parseExcludeList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const valid: string[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "string") continue;
+    try {
+      const { type, name } = parseExcludeEntry(entry);
+      valid.push(`${type}:${name}`);
+    } catch {
+      // Unknown type or malformed entry: Cloud rejects it on publish too.
+    }
+  }
+  return [...new Set(valid)].sort();
+}
+
+/**
  * Refuses a link that would make a plugin extend itself, directly or through
  * its parents. Checked when a link is created and when a package is imported.
  */
@@ -295,7 +332,21 @@ export function assertNoExtendsCycle(plugin: Plugin, upstream: PluginUpstream, u
     },
     { includeSelf: true },
   );
+  const pointsAtPlugin = (ref: string): boolean => {
+    const base = upstreamRefBase(ref);
+    const slug = base.split("/").pop();
+    return base === plugin.name || slug === plugin.name || (!!plugin.ap_name && slug === plugin.ap_name);
+  };
+  if (pointsAtPlugin(upstream.ref)) {
+    throw new ExtendsError("cycle", `${plugin.name} cannot extend itself (${upstream.ref}).`);
+  }
   while (current) {
+    if (current.upstream?.kind === "extends" && pointsAtPlugin(current.upstream.ref)) {
+      throw new ExtendsError(
+        "cycle",
+        `${plugin.name} cannot extend ${upstream.ref}: ${[...seen, current.name, plugin.name].join(" > ")} is a cycle.`,
+      );
+    }
     if (seen.includes(current.name)) {
       throw new ExtendsError(
         "cycle",
