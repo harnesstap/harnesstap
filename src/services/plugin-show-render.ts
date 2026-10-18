@@ -5,6 +5,7 @@ import {
   resolvePluginSelector,
 } from "../models/plugin-model.js";
 import { formatUpstreamLabel } from "./plugin-upstream.js";
+import { listComposedItems, listPluginExcludes } from "./plugin-extends.js";
 import type { Plugin, Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 import { formatCount } from "../copy/plurals.js";
@@ -189,6 +190,20 @@ function upstreamShowRows(plugin: Plugin): [string, string][] {
   if (!plugin.upstream) {
     return [];
   }
-  const label = plugin.upstream.kind === "extends" ? "Extends" : "Forked from";
-  return [[label, formatUpstreamLabel(plugin.upstream)]];
+  if (plugin.upstream.kind === "fork") {
+    return [["Forked from", formatUpstreamLabel(plugin.upstream)]];
+  }
+  const hidden = listPluginExcludes(plugin.id);
+  let inherited: string;
+  try {
+    const count = listComposedItems(plugin.id).filter((item) => item.source === "parent").length;
+    inherited = `${count} ${count === 1 ? "item" : "items"} from the parent`;
+  } catch {
+    inherited = "parent not installed";
+  }
+  return [
+    ["Extends", formatUpstreamLabel(plugin.upstream)],
+    ["Inherited", inherited],
+    ...(hidden.length > 0 ? ([["Hidden", hidden.join(", ")]] as [string, string][]) : []),
+  ];
 }

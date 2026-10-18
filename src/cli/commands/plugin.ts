@@ -10,6 +10,7 @@ import { formatCount, formatPluginLabel } from "../formatting.js";
 import { parseCommaSeparatedList } from "../handlers/parse-flags.js";
 import { handlePluginForkCommand } from "../handlers/plugin-fork.js";
 import { handlePluginAutoUpdateCommand } from "../handlers/plugin-auto-update.js";
+import { handlePluginHideOptions } from "../handlers/profile-duplicate.js";
 import {
   handlePluginCheckCommand,
   handlePluginUpdateCommand,
@@ -2741,6 +2742,8 @@ pluginCmd
   .option("--clear-environment", "Clear default environment from plugin")
   .option("--profile", "Tag the plugin as a switchable profile")
   .option("--no-profile", "Remove the profile tag from the plugin")
+  .option("--hide <entry>", "Hide an inherited item, e.g. skill:review or plugin:web-search (repeatable; keep-in-sync profiles)", collectRepeatedOption, [])
+  .option("--unhide <entry>", "Show a hidden inherited item again (repeatable)", collectRepeatedOption, [])
   .option("--dry-run", "Preview changes without writing")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
@@ -2759,11 +2762,16 @@ pluginCmd
     environment?: string;
     clearEnvironment?: boolean;
     profile?: boolean;
+    hide?: string[];
+    unhide?: string[];
     dryRun?: boolean;
     format?: string;
     interactive?: boolean;
     noInteractive?: boolean;
   }) => {
+    if (handlePluginHideOptions(name, opts)) {
+      return;
+    }
     try {
       await handlePluginEditCommand(name, opts);
     } catch (error) {
