@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type DragEvent } from "react";
 import {
   Archive,
+  ArrowUp,
   ArchiveRestore,
   Check,
   FilterX,
@@ -25,13 +26,17 @@ import { ButtonSpinner } from "../ButtonSpinner";
 import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
 import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
+import { ChromeTooltip } from "../ChromeTooltip";
 import { PublishProfileDrawer } from "../parity/PublishProfileDrawer";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import { toast } from "../../state/toast-store";
 import { useStatusStore } from "../../state/status-store";
 import { SkeletonRow } from "./Skeleton";
+import { RailProfileName } from "./RailProfileName";
 
 const RAIL_ICON_SIZE = 15;
+/** The grip overlays the row's left padding, so it stays narrower than it. */
+const RAIL_GRIP_SIZE = 12;
 
 export interface ProfilesRailProps {
   ctrl: ScopeController;
@@ -40,6 +45,8 @@ export interface ProfilesRailProps {
   onOpenCreateProfile: (source?: ProfileCreateSource, switchAfterCreate?: boolean) => void;
   onOpenStashBrowse: () => void;
   onRequestSignIn: () => void;
+  /** Profiles that are, or use, a plugin with an upstream update. */
+  updateProfiles?: ReadonlySet<string>;
 }
 
 export function ProfilesRail({
@@ -49,6 +56,7 @@ export function ProfilesRail({
   onOpenCreateProfile,
   onOpenStashBrowse,
   onRequestSignIn,
+  updateProfiles,
 }: ProfilesRailProps) {
   const {
     client,
@@ -441,7 +449,7 @@ export function ProfilesRail({
               }}
             >
               <span className="profile-item-handle" aria-hidden>
-                <GripVertical size={RAIL_ICON_SIZE} strokeWidth={2} />
+                <GripVertical size={RAIL_GRIP_SIZE} strokeWidth={2} />
               </span>
               <button
                 type="button"
@@ -472,7 +480,19 @@ export function ProfilesRail({
                     testId="profile-rail-status"
                   />
                 ) : null}
-                {profile.name}
+                <RailProfileName name={profile.name} />
+                {updateProfiles?.has(profile.name) ? (
+                  <ChromeTooltip content="Update available">
+                    <span
+                      className="profile-update-badge"
+                      data-testid={`profile-update-badge-${profile.name}`}
+                      role="img"
+                      aria-label="Update available"
+                    >
+                      <ArrowUp size={11} strokeWidth={2.5} aria-hidden />
+                    </span>
+                  </ChromeTooltip>
+                ) : null}
               </button>
               <IconActionButton
                 className="profile-item-action profile-item-edit"

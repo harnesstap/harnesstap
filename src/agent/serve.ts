@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { getDbPath, getHarnesstapDir } from "../db/connection.js";
 import { bootstrapLocalLibrary } from "../services/bootstrap-local-library.js";
 import { warmStatusRefreshWorker } from "../services/status-read-cache.js";
+import {
+  startUpstreamCheckSchedule,
+  upstreamCheckScheduleEnabled,
+} from "../services/upstream-check-runner.js";
 import { setAgentFirstRun } from "./boot-state.js";
 import { type BunServerHandle, bunServe } from "./bun-runtime.js";
 import { createAgentFetchHandler } from "./routes.js";
@@ -117,6 +121,9 @@ export async function startAgentServer(options: AgentServeOptions = {}): Promise
     createAgentFetchHandler(token, boundPort)(request);
   const { server, port } = listenForAgent(host, preferredPort, fetch);
   boundPort = port;
+  // Background update check: shortly after start, then every 6 hours. Readers
+  // (status, the rail dot, the banner) only read the stored result.
+  const stopUpdateChecks = upstreamCheckScheduleEnabled() ? startUpstreamCheckSchedule() : () => {};
   const tokenPath = writeAgentTokenFile(token);
   writeAgentPortFile(port);
   const url = `http://${host}:${port}`;
@@ -127,7 +134,10 @@ export async function startAgentServer(options: AgentServeOptions = {}): Promise
     token,
     tokenPath,
     url,
-    stop: (closeActiveConnections) => server.stop(closeActiveConnections),
+    stop: (closeActiveConnections) => {
+      stopUpdateChecks();
+      return server.stop(closeActiveConnections);
+    },
   };
 }
 
