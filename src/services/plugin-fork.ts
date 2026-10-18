@@ -63,19 +63,23 @@ export interface ForkResult {
   forked_from: string;
 }
 
-export function forkPlugin(selector: string, asName?: string): ForkResult {
+export function forkPlugin(
+  selector: string,
+  asName?: string,
+  opts?: { allowAuthored?: boolean; defaultSuffix?: string },
+): ForkResult {
   const source = resolvePluginSelector(selector);
   if (!source) {
     throw new PluginForkError("not_found", `Plugin not found: ${selector}`);
   }
-  if (getPluginOrigin(source.id) === "authored") {
+  if (!opts?.allowAuthored && getPluginOrigin(source.id) === "authored") {
     throw new PluginForkError(
       "already_authored",
       `${source.name} is already authored; there is nothing to fork.`,
       source.name,
     );
   }
-  const name = asName?.trim() || `${source.name}-fork`;
+  const name = asName?.trim() || `${source.name}${opts?.defaultSuffix ?? "-fork"}`;
   if (getPluginByName(name)) {
     throw new PluginForkError("plugin_exists", `Plugin ${name} already exists.`, source.name);
   }
