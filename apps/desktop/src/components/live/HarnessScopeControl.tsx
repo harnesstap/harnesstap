@@ -1,12 +1,5 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
-import { Cable } from "lucide-react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { Wrench } from "lucide-react";
 import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
@@ -14,34 +7,30 @@ import { ChromeTooltip } from "../ChromeTooltip";
 import { HarnessMark } from "../HarnessIcons";
 import { useOverlayLayer } from "../../state/overlay-stack";
 import {
-  alsoUseOnTargets,
   displayNameForHarness,
   expandLinkedSelection,
   groupLabel,
   HARNESS_SCOPE_COPY,
-  harnessScopeAriaLabel,
-  harnessScopeTooltip,
-  isOrphanedHarnessScope,
   linkedHarnessGroups,
   normalizeScopeToRegistered,
   parseStoredHarnessScope,
   selectionFromGroups,
   sortHarnessOptions,
-  unionHarnessScopes,
   type HarnessScope,
   type LinkedHarnessGroup,
   type SerializerTarget,
 } from "../../lib/harness-scope-ui";
-import { toast } from "../../state/toast-store";
-
-const dismissedAlsoUseOn = new Set<string>();
-
-function alsoUseOnKey(resourceName: string, resourceType: string): string {
-  return `${resourceType}:${resourceName}`;
-}
+import { LAST_TOOL_HINT, uncheckHarnessGroup } from "../../lib/chip-harness";
 
 const ICON_PX = 14;
 const FILTER_THRESHOLD = 8;
+
+export const TOOLS_COPY = {
+  tooltip: "Choose tools",
+  title: "Use in",
+  aria: (resourceName: string) => `Choose tools for ${resourceName}`,
+  off: (name: string) => `${name} (not turned on)`,
+} as const;
 
 export interface HarnessScopeControlProps {
   resourceName: string;
@@ -51,29 +40,32 @@ export interface HarnessScopeControlProps {
   catalogNames?: Readonly<Record<string, string>>;
   target: SerializerTarget;
   disabled?: boolean;
-  onChange: (scope: HarnessScope) => void;
+  onChange: (scope: HarnessScope) => void | Promise<unknown>;
   initialOpen?: boolean;
-  /** False when the badge shows the Also use on suggestion itself (InventoryRow). */
-  inlineSuggestion?: boolean;
+  /**
+   * Called on every change so the pill label can update before the save
+   * returns, and with undefined if the save fails.
+   */
+  onDraftChange?: (stored: "all" | string[] | undefined) => void;
 }
 
 function stop(event: MouseEvent) {
   event.stopPropagation();
 }
 
-function namesFor(
-  catalogNames: Readonly<Record<string, string>> | undefined,
-): (id: string) => string {
-  return (id) => displayNameForHarness(id, catalogNames?.[id]);
-}
-
 function selectedIds(scope: HarnessScope, registered: readonly string[]): string[] {
-  if (scope.kind === "all") {
-    return [...registered];
-  }
-  return [...scope.harnesses];
+  return scope.kind === "all" ? [...registered] : [...scope.harnesses];
 }
 
+function storedFrom(scope: HarnessScope): "all" | string[] {
+  return scope.kind === "all" ? "all" : [...scope.harnesses];
+}
+
+/**
+ * The one per-resource way to change which tools a resource is in: a Tools
+ * button in the pill's edit actions that opens one checkbox per harness.
+ * Every change saves into the profile draft, like the rest of edit.
+ */
 export function HarnessScopeControl({
   resourceName,
   resourceType,
@@ -84,35 +76,45 @@ export function HarnessScopeControl({
   disabled = false,
   onChange,
   initialOpen = false,
-  inlineSuggestion = true,
+  onDraftChange,
 }: HarnessScopeControlProps): ReactNode {
   const [open, setOpen] = useState(initialOpen);
   const [filter, setFilter] = useState("");
-  const [alsoUseOnDismissed, setAlsoUseOnDismissed] = useState(() =>
-    dismissedAlsoUseOn.has(alsoUseOnKey(resourceName, resourceType)),
-  );
+  const [lastToolHint, setLastToolHint] = useState(false);
   const committed = useMemo(() => parseStoredHarnessScope(stored), [stored]);
-  const [draftIds, setDraftIds] = useState<string[]>(() =>
-    selectedIds(committed, registered),
-  );
-  const restoreRef = useRef<string[]>(selectedIds(committed, registered));
+  const [draftIds, setDraftIds] = useState<string[]>(() => selectedIds(committed, registered));
   const contentRef = useOverlayLayer<HTMLDivElement>({
     open,
     onClose: () => setOpen(false),
     trapFocus: false,
   });
-  const nameOf = namesFor(catalogNames);
-  const groups = useMemo(
-    () => linkedHarnessGroups(registered, resourceType, target),
-    [registered, resourceType, target],
+  const nameOf = useMemo(
+    () => (id: string) => displayNameForHarness(id, catalogNames?.[id]),
+    [catalogNames],
   );
+  const groups = useMemo(() => {
+    const live = linkedHarnessGroups(registered, resourceType, target);
+    // A harness the resource is in but that is not turned on still gets a
+    // row with its own logo, so it can be seen and unchecked.
+    const off = committed.kind === "subset"
+      ? committed.harnesses.filter((id) => !registered.includes(id))
+      : [];
+    return [
+      ...live.map((group) => ({ group, off: false })),
+      ...off.map((id) => ({
+        group: { key: `off:${id}`, harnessIds: [id], linked: false } as LinkedHarnessGroup,
+        off: true,
+      })),
+    ];
+  }, [committed, registered, resourceType, target]);
   const orderedGroups = useMemo(
     () =>
       sortHarnessOptions(
-        groups.map((group) => ({
+        groups.map(({ group, off }) => ({
           id: group.key,
-          name: groupLabel(group.harnessIds, nameOf),
+          name: off ? TOOLS_COPY.off(nameOf(group.harnessIds[0] ?? "")) : groupLabel(group.harnessIds, nameOf),
           group,
+          off,
         })),
       ),
     [groups, nameOf],
@@ -122,136 +124,62 @@ export function HarnessScopeControl({
     if (!query) return orderedGroups;
     return orderedGroups.filter((option) => option.name.toLowerCase().includes(query));
   }, [filter, orderedGroups]);
-  const orphaned = isOrphanedHarnessScope(committed, registered);
-  const subset = committed.kind === "subset" || orphaned;
-  const showControl = registered.length >= 2;
   const draftSet = useMemo(() => new Set(draftIds), [draftIds]);
-  const emptyDraft = open && draftIds.length === 0;
 
   useEffect(() => {
     if (!open) {
       setDraftIds(selectedIds(committed, registered));
-      restoreRef.current = selectedIds(committed, registered);
       setFilter("");
+      setLastToolHint(false);
     }
   }, [committed, open, registered]);
 
-  if (!showControl) {
+  if (registered.length < 2 && committed.kind === "all") {
     return null;
   }
 
   const persist = (ids: string[]) => {
-    if (ids.length === 0) {
-      return;
-    }
-    onChange(
-      normalizeScopeToRegistered({ kind: "subset", harnesses: ids }, registered),
-    );
+    const scope = normalizeScopeToRegistered({ kind: "subset", harnesses: ids }, registered);
+    onDraftChange?.(storedFrom(scope));
+    void Promise.resolve(onChange(scope)).catch(() => onDraftChange?.(undefined));
   };
-
-  const extraHarnesses = alsoUseOnTargets(resourceType, committed, registered);
-  const showAlsoUseOn =
-    extraHarnesses.length > 0
-    && !alsoUseOnDismissed
-    && !dismissedAlsoUseOn.has(alsoUseOnKey(resourceName, resourceType))
-    && !disabled;
-
-  const acceptAlsoUseOn = () => {
-    const next = unionHarnessScopes(committed, {
-      kind: "subset",
-      harnesses: extraHarnesses,
-    });
-    const ids = next.kind === "all" ? [...registered] : [...next.harnesses];
-    setDraftIds(ids);
-    persist(ids);
-    toast({ tone: "success", title: HARNESS_SCOPE_COPY.nowOnToast(extraHarnesses) });
-  };
-
-  const dismissAlsoUseOn = () => {
-    dismissedAlsoUseOn.add(alsoUseOnKey(resourceName, resourceType));
-    setAlsoUseOnDismissed(true);
-  };
-
-  const alsoUseOnRow = showAlsoUseOn ? (
-    <div className="also-use-on" data-testid="also-use-on">
-      <ChromeTooltip content={HARNESS_SCOPE_COPY.portableMcpTooltip(extraHarnesses)}>
-        <button type="button" className="linkish" onClick={acceptAlsoUseOn}>
-          {HARNESS_SCOPE_COPY.alsoUseOnLabel(extraHarnesses)}
-        </button>
-      </ChromeTooltip>
-      <button type="button" className="linkish" onClick={dismissAlsoUseOn}>
-        {HARNESS_SCOPE_COPY.notNow}
-      </button>
-    </div>
-  ) : null;
 
   const toggleGroup = (group: LinkedHarnessGroup, checked: boolean) => {
-    const next = expandLinkedSelection(draftIds, group.harnessIds, checked);
+    if (checked) {
+      const next = expandLinkedSelection(draftIds, group.harnessIds, true);
+      setLastToolHint(false);
+      setDraftIds(next);
+      persist(next);
+      return;
+    }
+    const next = uncheckHarnessGroup(draftIds, group.harnessIds);
+    if (!next) {
+      setLastToolHint(true);
+      return;
+    }
+    setLastToolHint(false);
     setDraftIds(next);
     persist(next);
   };
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && draftIds.length === 0) {
-      const restored = restoreRef.current;
-      setDraftIds(restored);
-      persist(restored);
-    }
-    setOpen(nextOpen);
-  };
-
-  const tooltip = harnessScopeTooltip(committed, registered, nameOf);
-  const aria = harnessScopeAriaLabel(resourceName);
-  const visibleIcons = committed.kind === "subset"
-    ? committed.harnesses.filter((id) => registered.includes(id)).slice(0, 3)
-    : [];
-  const extra = committed.kind === "subset"
-    ? Math.max(0, committed.harnesses.filter((id) => registered.includes(id)).length - 3)
-    : 0;
-
-  const trigger = subset ? (
-    <button
-      type="button"
-      className={[
-        "harness-scope-cluster",
-        orphaned ? "is-orphaned" : "",
-      ].filter(Boolean).join(" ")}
-      aria-label={aria}
-      aria-haspopup="dialog"
-      aria-expanded={open}
-      disabled={disabled}
-      data-testid="harness-scope-cluster"
-      onClick={stop}
-    >
-      {orphaned || visibleIcons.length === 0 ? (
-        <HarnessMark id="?" size={ICON_PX} />
-      ) : (
-        visibleIcons.map((id) => <HarnessMark key={id} id={id} size={ICON_PX} />)
-      )}
-      {extra > 0 ? (
-        <span className="harness-scope-plus">+{extra}</span>
-      ) : null}
-    </button>
-  ) : (
-    <button
-      type="button"
-      className="icon-action harness-scope-all-action"
-      aria-label={aria}
-      aria-haspopup="dialog"
-      aria-expanded={open}
-      disabled={disabled}
-      data-testid="harness-scope-all-action"
-      onClick={stop}
-    >
-      <Cable size={ICON_PX} strokeWidth={2} aria-hidden />
-    </button>
-  );
-
   return (
     <span className="harness-scope-control" onClick={stop}>
-      <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
-        <ChromeTooltip content={tooltip}>
-          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <Popover open={open} onOpenChange={setOpen} modal={false}>
+        <ChromeTooltip content={TOOLS_COPY.tooltip}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="icon-action harness-tools-action"
+              aria-label={TOOLS_COPY.aria(resourceName)}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              disabled={disabled}
+              data-testid="harness-tools-action"
+              onClick={stop}
+            >
+              <Wrench size={ICON_PX} strokeWidth={2} aria-hidden />
+            </button>
+          </PopoverTrigger>
         </ChromeTooltip>
         <PopoverContent
           ref={contentRef}
@@ -259,35 +187,27 @@ export function HarnessScopeControl({
           side="bottom"
           className="harness-scope-popover"
           data-testid="harness-scope-popover"
-          aria-label={HARNESS_SCOPE_COPY.useOn}
+          aria-label={TOOLS_COPY.aria(resourceName)}
           onClick={stop}
         >
           <header className="harness-scope-popover-header">
-            <h3>{HARNESS_SCOPE_COPY.useOn}</h3>
+            <h3>{TOOLS_COPY.title}</h3>
             <span className="harness-scope-popover-actions">
               <button
                 type="button"
                 className="linkish"
                 onClick={() => {
-                  const ids = [...registered];
+                  const ids = [...new Set([...draftIds, ...registered])];
+                  setLastToolHint(false);
                   setDraftIds(ids);
                   persist(ids);
                 }}
               >
                 {HARNESS_SCOPE_COPY.selectAll}
               </button>
-              <button
-                type="button"
-                className="linkish"
-                onClick={() => {
-                  setDraftIds([]);
-                }}
-              >
-                {HARNESS_SCOPE_COPY.none}
-              </button>
             </span>
           </header>
-          {registered.length > FILTER_THRESHOLD ? (
+          {orderedGroups.length > FILTER_THRESHOLD ? (
             <Input
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
@@ -296,29 +216,29 @@ export function HarnessScopeControl({
               data-testid="harness-scope-filter"
             />
           ) : null}
-          <div className="harness-scope-list" role="group" aria-label={HARNESS_SCOPE_COPY.useOn}>
+          <div className="harness-scope-list" role="group" aria-label={TOOLS_COPY.title}>
             {filteredGroups.map((option) => {
               const checked = selectionFromGroups(draftSet, option.group);
-              const label = option.name;
               const row = (
                 <label
                   key={option.id}
-                  className="harness-scope-row"
-                  title={option.group.linked ? HARNESS_SCOPE_COPY.linkedTooltip : undefined}
+                  className={["harness-scope-row", option.off ? "is-off" : ""].filter(Boolean).join(" ")}
+                  data-testid={`harness-tools-row-${option.group.harnessIds.join("-")}`}
                 >
                   <Checkbox
                     checked={checked}
+                    disabled={option.off && !checked}
                     onCheckedChange={(value) => {
                       toggleGroup(option.group, value === true);
                     }}
-                    aria-label={label}
+                    aria-label={option.name}
                   />
                   <span className="harness-scope-row-icons" aria-hidden>
                     {option.group.harnessIds.slice(0, 2).map((id) => (
                       <HarnessMark key={id} id={id} size={ICON_PX} />
                     ))}
                   </span>
-                  <span className="harness-scope-row-name">{label}</span>
+                  <span className="harness-scope-row-name">{option.name}</span>
                 </label>
               );
               return option.group.linked ? (
@@ -330,63 +250,13 @@ export function HarnessScopeControl({
               );
             })}
           </div>
-          {emptyDraft ? (
-            <p className="harness-scope-empty-hint muted">{HARNESS_SCOPE_COPY.emptyHint}</p>
+          {lastToolHint ? (
+            <p className="harness-scope-empty-hint muted" role="status" data-testid="harness-tools-last-hint">
+              {LAST_TOOL_HINT}
+            </p>
           ) : null}
-          {alsoUseOnRow}
         </PopoverContent>
       </Popover>
-      {!open && inlineSuggestion ? alsoUseOnRow : null}
     </span>
   );
-}
-
-export interface AlsoUseOnSuggestion {
-  targets: string[];
-  label: string;
-  tooltip: string;
-  accept: () => void;
-  dismiss: () => void;
-}
-
-/**
- * The Also use on suggestion for a badge, or null. Same persist path and
- * dismissal as the control's own row, so either place can answer it.
- */
-export function useAlsoUseOn({
-  resourceName,
-  resourceType,
-  stored,
-  registered,
-  disabled = false,
-  onChange,
-}: {
-  resourceName: string;
-  resourceType: string;
-  stored: "all" | string[] | undefined;
-  registered: readonly string[];
-  disabled?: boolean;
-  onChange?: (scope: HarnessScope) => void;
-}): AlsoUseOnSuggestion | null {
-  const key = alsoUseOnKey(resourceName, resourceType);
-  const [dismissed, setDismissed] = useState(() => dismissedAlsoUseOn.has(key));
-  const committed = useMemo(() => parseStoredHarnessScope(stored), [stored]);
-  if (!onChange || registered.length < 2 || disabled || dismissed || dismissedAlsoUseOn.has(key)) {
-    return null;
-  }
-  const targets = alsoUseOnTargets(resourceType, committed, registered);
-  if (targets.length === 0) return null;
-  return {
-    targets,
-    label: HARNESS_SCOPE_COPY.alsoUseOnLabel(targets),
-    tooltip: HARNESS_SCOPE_COPY.portableMcpTooltip(targets),
-    accept: () => {
-      onChange(normalizeScopeToRegistered(unionHarnessScopes(committed, { kind: "subset", harnesses: targets }), registered));
-      toast({ tone: "success", title: HARNESS_SCOPE_COPY.nowOnToast(targets) });
-    },
-    dismiss: () => {
-      dismissedAlsoUseOn.add(key);
-      setDismissed(true);
-    },
-  };
 }

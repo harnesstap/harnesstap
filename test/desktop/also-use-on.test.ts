@@ -5,12 +5,10 @@ import {
   alsoUseOnTargets,
   parseStoredHarnessScope,
 } from "../../apps/desktop/src/lib/harness-scope-ui.ts";
-import { alsoUseOnLabel, SCOPE_COPY } from "../../src/copy/scope.ts";
+import { SCOPE_COPY } from "../../src/copy/scope.ts";
 
-const control = readFileSync(
-  join(import.meta.dir, "../../apps/desktop/src/components/live/HarnessScopeControl.tsx"),
-  "utf8",
-);
+const desktop = (path: string) =>
+  readFileSync(join(import.meta.dir, "../../apps/desktop/src", path), "utf8");
 
 describe("also use on suggestion", () => {
   it("lists registered harnesses a subset MCP is missing", () => {
@@ -27,15 +25,25 @@ describe("also use on suggestion", () => {
     ).toEqual([]);
   });
 
-  it("uses DS-1 copy and the same persist path as Use on", () => {
-    expect(alsoUseOnLabel(["cursor", "codex"])).toBe("Also use on Cursor and Codex");
+  it("is one line per type section with Add all and Dismiss, not per pill", () => {
+    const section = desktop("components/live/InventorySection.tsx");
+    expect(section).toContain("<TypeGroupSuggestion");
+    expect(section).toContain("sectionAlsoUseOn(");
+    expect(section).toContain("dismissAlsoUseOn(suggestion.items)");
+    const line = desktop("components/live/SectionSuggestionLine.tsx");
+    expect(line).toContain('addAll: "Add all"');
+    expect(line).toContain("showLabel");
+    expect(line).toContain('data-testid="section-suggestion-dismiss"');
+    expect(line).toContain("aria-expanded={expanded}");
+    expect(line).not.toMatch(/[\u2013\u2014\u2026]/);
+    expect(desktop("components/live/InventoryRow.tsx")).not.toContain("useAlsoUseOn");
+    expect(desktop("components/live/HarnessScopeControl.tsx")).not.toContain("alsoUseOn");
+  });
+
+  it("keeps Not now in one session store shared by every dismiss", () => {
+    const store = desktop("lib/also-use-on-dismissals.ts");
+    expect(store).toContain("const dismissed = new Set<string>()");
+    expect(store).toContain("`${resourceType}:${resourceName}`");
     expect(SCOPE_COPY.notNow).toBe("Not now");
-    expect(control).toContain("alsoUseOnTargets");
-    expect(control).toContain("data-testid=\"also-use-on\"");
-    expect(control).toContain("HARNESS_SCOPE_COPY.notNow");
-    expect(control).toContain("acceptAlsoUseOn");
-    expect(control).toContain("persist(ids)");
-    expect(control).toContain("toast(");
-    expect(control).not.toContain("runSwitch");
   });
 });

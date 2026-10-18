@@ -28,7 +28,23 @@ import { Collapse } from "../motion/Collapse";
 import type { ResourceDetailTarget } from "../ResourceDetailPane";
 import { InventoryRow } from "./InventoryRow";
 import { ICON_SIZE } from "./shared";
-import type { HarnessScope, SerializerTarget } from "../../lib/harness-scope-ui";
+import {
+  displayNameForHarness,
+  formatHarnessList,
+  normalizeScopeToRegistered,
+  parseStoredHarnessScope,
+  unionHarnessScopes,
+  type HarnessScope,
+  type SerializerTarget,
+} from "../../lib/harness-scope-ui";
+import { sectionAlsoUseOn } from "../../lib/chip-harness";
+import {
+  dismissAlsoUseOn,
+  isAlsoUseOnDismissed,
+  useAlsoUseOnDismissals,
+} from "../../lib/also-use-on-dismissals";
+import { toast } from "../../state/toast-store";
+import { SectionSuggestionLine } from "./SectionSuggestionLine";
 
 export function inventorySectionTitle(section: ProfileInventorySectionId): string {
   switch (section) {
@@ -69,6 +85,69 @@ function estimateTypeGroupSize(
   return header + 6 + rows * INVENTORY_CHIP_HEIGHT_PX;
 }
 
+/** The type section's single Also use on line, with its bulk Add all. */
+export function TypeGroupSuggestion({
+  items,
+  registered,
+  harnessNames,
+  onHarnessScopeChange,
+}: {
+  items: ProfileInventoryItem[];
+  registered: readonly string[];
+  harnessNames?: Readonly<Record<string, string>>;
+  onHarnessScopeChange: (item: ProfileInventoryItem, scope: HarnessScope) => void | Promise<unknown>;
+}): ReactNode {
+  useAlsoUseOnDismissals();
+  const [busy, setBusy] = useState(false);
+  const names = (id: string) => displayNameForHarness(id, harnessNames?.[id]);
+  const suggestion = sectionAlsoUseOn(
+    items
+      .filter((item) => item.resource.id)
+      .map((item) => ({
+        key: item.key,
+        name: item.label,
+        type: item.type,
+        stored: item.resource.harness_scope,
+      })),
+    registered,
+    names,
+    isAlsoUseOnDismissed,
+  );
+  if (!suggestion) {
+    return null;
+  }
+  const addAll = async () => {
+    setBusy(true);
+    try {
+      for (const entry of suggestion.items) {
+        const item = items.find((candidate) => candidate.key === entry.key);
+        if (!item) continue;
+        const next = unionHarnessScopes(parseStoredHarnessScope(item.resource.harness_scope), {
+          kind: "subset",
+          harnesses: entry.targets,
+        });
+        await onHarnessScopeChange(item, normalizeScopeToRegistered(next, registered));
+      }
+      toast({
+        tone: "success",
+        title: `${suggestion.list} now also ${suggestion.items.length === 1 ? "runs" : "run"} on ${formatHarnessList(suggestion.targets.map(names))}`,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <SectionSuggestionLine
+      suggestion={suggestion}
+      busy={busy}
+      onAddAll={() => {
+        void addAll();
+      }}
+      onDismiss={() => dismissAlsoUseOn(suggestion.items)}
+    />
+  );
+}
+
 export interface InventorySectionProps {
   section: ProfileInventorySectionId;
   rows: ProfileInventoryItem[];
@@ -103,7 +182,7 @@ export interface InventorySectionProps {
   registeredHarnesses?: readonly string[];
   harnessNames?: Readonly<Record<string, string>>;
   scopeTarget?: SerializerTarget;
-  onHarnessScopeChange?: (item: ProfileInventoryItem, scope: HarnessScope) => void;
+  onHarnessScopeChange?: (item: ProfileInventoryItem, scope: HarnessScope) => void | Promise<unknown>;
 }
 
 export function InventorySection({
@@ -252,6 +331,14 @@ export function InventorySection({
           <TypeIcon type={group.type} />
           <span>{resourceTypeTabLabel(group.type)}</span>
         </h3>
+      ) : null}
+      {section !== "not_in_profile" && onHarnessScopeChange && registeredHarnesses ? (
+        <TypeGroupSuggestion
+          items={group.items}
+          registered={registeredHarnesses}
+          harnessNames={harnessNames}
+          onHarnessScopeChange={onHarnessScopeChange}
+        />
       ) : null}
       <div className="inventory-chip-cluster">{group.items.map(renderChip)}</div>
     </div>

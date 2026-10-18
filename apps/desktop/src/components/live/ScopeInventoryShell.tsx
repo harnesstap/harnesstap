@@ -81,7 +81,7 @@ export interface ScopeInventoryShellProps {
   registeredHarnesses?: readonly string[];
   harnessNames?: Readonly<Record<string, string>>;
   scopeTarget?: SerializerTarget;
-  onHarnessScopeChange?: (item: ProfileInventoryItem, scope: HarnessScope) => void;
+  onHarnessScopeChange?: (item: ProfileInventoryItem, scope: HarnessScope) => void | Promise<unknown>;
 }
 
 function batchLabel(
