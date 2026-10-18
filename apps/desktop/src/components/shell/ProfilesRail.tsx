@@ -30,8 +30,11 @@ import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import { toast } from "../../state/toast-store";
 import { useStatusStore } from "../../state/status-store";
 import { SkeletonRow } from "./Skeleton";
+import { RailProfileName } from "./RailProfileName";
 
 const RAIL_ICON_SIZE = 15;
+/** The grip overlays the row's left padding, so it stays narrower than it. */
+const RAIL_GRIP_SIZE = 12;
 
 export interface ProfilesRailProps {
   ctrl: ScopeController;
@@ -441,7 +444,7 @@ export function ProfilesRail({
               }}
             >
               <span className="profile-item-handle" aria-hidden>
-                <GripVertical size={RAIL_ICON_SIZE} strokeWidth={2} />
+                <GripVertical size={RAIL_GRIP_SIZE} strokeWidth={2} />
               </span>
               <button
                 type="button"
@@ -472,7 +475,7 @@ export function ProfilesRail({
                     testId="profile-rail-status"
                   />
                 ) : null}
-                {profile.name}
+                <RailProfileName name={profile.name} />
               </button>
               <IconActionButton
                 className="profile-item-action profile-item-edit"
