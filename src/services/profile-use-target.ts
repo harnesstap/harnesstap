@@ -17,14 +17,22 @@ import {
   type ResolvedRemotePluginSelector,
 } from "./plugin-selector.js";
 
-/** A profile `ht profile use` cannot find locally and did not pull. */
-export class ProfileUseTargetError extends Error {
+/** A selector that matches more than one local plugin, or none it can use. */
+export class LocalPluginSelectorError extends Error {
   readonly hints: string[];
 
   constructor(message: string, hints: string[] = []) {
     super(message);
-    this.name = "ProfileUseTargetError";
+    this.name = "LocalPluginSelectorError";
     this.hints = hints;
+  }
+}
+
+/** A profile `ht profile use` cannot find locally and did not pull. */
+export class ProfileUseTargetError extends LocalPluginSelectorError {
+  constructor(message: string, hints: string[] = []) {
+    super(message, hints);
+    this.name = "ProfileUseTargetError";
   }
 }
 
@@ -110,12 +118,22 @@ function describeLocal(plugin: Plugin): string {
     : `${plugin.name}@${plugin.version}`;
 }
 
+export interface FindLocalPluginOptions {
+  /** Prefer profile plugins when a name matches both kinds. */
+  preferProfiles?: boolean;
+  /** Command shown in the ambiguity hint, e.g. `ht plugin show`. */
+  command?: string;
+}
+
 /**
- * A local plugin `ht profile use` should apply for this selector: an exact
- * name or id, a catalog ref (`org/catalog/slug[@version]`), a catalog slug,
- * or the package display name. Profiles win over plain plugins.
+ * The local plugin a selector names: an exact name or id, a catalog ref
+ * (`org/catalog/slug[@version]`), a catalog slug, or the package display
+ * name. Shared by `profile use`, `plugin show`, and `plugin doctor`.
  */
-export function findLocalProfileForUse(selector: string): Plugin | undefined {
+export function findLocalPluginBySelector(
+  selector: string,
+  options: FindLocalPluginOptions = {},
+): Plugin | undefined {
   const exact = resolvePluginSelector(selector);
   if (exact) return exact;
 
@@ -131,16 +149,26 @@ export function findLocalProfileForUse(selector: string): Plugin | undefined {
     : candidates;
   if (versioned.length === 0) return undefined;
 
-  const profiles = versioned.filter((plugin) => isProfilePlugin(plugin));
+  const profiles = options.preferProfiles
+    ? versioned.filter((plugin) => isProfilePlugin(plugin))
+    : [];
   const pool = (profiles.length > 0 ? profiles : versioned).sort(compareNewestFirst);
   const names = new Set(pool.map((plugin) => plugin.name));
   if (names.size > 1) {
-    throw new ProfileUseTargetError(
-      `Ambiguous profile name: ${selector}\n${pool.map((plugin) => `  ${describeLocal(plugin)}`).join("\n")}`,
-      ["Use the full catalog ref: ht profile use org/catalog/slug@version"],
+    const kind = options.preferProfiles ? "profile" : "plugin";
+    const command = options.command ?? "ht profile use";
+    const ErrorClass = options.preferProfiles ? ProfileUseTargetError : LocalPluginSelectorError;
+    throw new ErrorClass(
+      `Ambiguous ${kind} name: ${selector}\n${pool.map((plugin) => `  ${describeLocal(plugin)}`).join("\n")}`,
+      [`Use the full catalog ref: ${command} org/catalog/slug@version`],
     );
   }
   return pool[0];
+}
+
+/** The local profile `ht profile use` should apply for this selector. Profiles win over plain plugins. */
+export function findLocalProfileForUse(selector: string): Plugin | undefined {
+  return findLocalPluginBySelector(selector, { preferProfiles: true, command: "ht profile use" });
 }
 
 function pullCommand(selector: string): string {

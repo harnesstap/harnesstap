@@ -4,8 +4,11 @@ import * as catalogClient from "../../src/services/catalog-client.ts";
 import { resolveDownloadedVersion } from "../../src/services/catalog-client.ts";
 import type { CatalogPlugin } from "../../src/services/catalog-types.ts";
 import { installPluginFromCatalog } from "../../src/services/plugin-catalog-install.ts";
+import { handlePluginShowCommand } from "../../src/cli/handlers/plugin-show-command.ts";
 import {
+  findLocalPluginBySelector,
   findLocalProfileForUse,
+  LocalPluginSelectorError,
   ProfileUseTargetError,
   resolveProfileUseTarget,
 } from "../../src/services/profile-use-target.ts";
@@ -112,6 +115,51 @@ describe("findLocalProfileForUse", () => {
     const id = await pullFoundation("Engineering foundation");
     expect(findLocalProfileForUse("engineering-foundation")?.id).toBe(id);
     expect(findLocalProfileForUse(REF)?.id).toBe(id);
+  });
+});
+
+describe("findLocalPluginBySelector", () => {
+  it("resolves plugin show and doctor selectors like profile use", async () => {
+    const id = await pullFoundation("Engineering foundation");
+    for (const selector of ["engineering-foundation", REF, `${REF}@1.0.1`, "Engineering foundation"]) {
+      expect(findLocalPluginBySelector(selector, { command: "ht plugin show" })?.id).toBe(id);
+    }
+    expect(findLocalPluginBySelector("unknown-plugin")).toBeUndefined();
+  });
+
+  it("names the full ref when a bare name matches two local plugins", async () => {
+    await pullFoundation();
+    await pullFoundation("Engineering foundation");
+    const error = (() => {
+      try {
+        return findLocalPluginBySelector(REF, { command: "ht plugin doctor" });
+      } catch (err) {
+        return err;
+      }
+    })();
+    expect(error).toBeInstanceOf(LocalPluginSelectorError);
+    expect(error).not.toBeInstanceOf(ProfileUseTargetError);
+    expect((error as LocalPluginSelectorError).hints).toEqual([
+      "Use the full catalog ref: ht plugin doctor org/catalog/slug@version",
+    ]);
+  });
+
+  it("lets plugin show open a profile by slug and catalog ref", async () => {
+    const id = await pullFoundation("Engineering foundation");
+    const log = spyOn(console, "log").mockImplementation(() => {});
+    try {
+      for (const selector of ["engineering-foundation", `${REF}@1.0.1`]) {
+        log.mockClear();
+        process.exitCode = 0;
+        handlePluginShowCommand(selector, { format: "json" });
+        expect(process.exitCode).toBe(0);
+        const shown = JSON.parse(String(log.mock.calls.at(-1)?.[0])) as { id?: string; plugin?: { id?: string } };
+        expect(shown.plugin?.id ?? shown.id).toBe(id);
+      }
+    } finally {
+      log.mockRestore();
+      process.exitCode = 0;
+    }
   });
 });
 

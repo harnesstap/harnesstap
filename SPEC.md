@@ -326,7 +326,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | --- | --- |
 | `plugin create` | Creates a local plugin with optional description, tags, and version; or imports a skill package with `--from` (attach selected skills, optional `--install` to hub paths). |
 | `plugin list` | Lists local plugins by default (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). Dirty heads show a trailing `*` on the version. `--remote` also streams catalog plugins from catalog scope ∪ registered publish catalogs; `--remote-only` skips the local section. `--search` filters the listed sources. Interactive TTY browse can install a selected remote plugin when `--remote` is set. |
-| `plugin show` | Shows plugin metadata, resources, dependencies, composition attachments, dirty/frozen state, and default environment when set. |
+| `plugin show` | Shows plugin metadata, resources, dependencies, composition attachments, dirty/frozen state, and default environment when set. Accepts the name or ID, catalog slug, catalog ref `org/catalog/slug[@version]`, or package display name. |
 | `plugin edit` | Edit composition attachments and default environment (interactive checkbox UI, or `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment` scripting). Marks the working head **dirty** after a cut. Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `plugin:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `plugin editor` | Opens the plugin definition in `$EDITOR` (or the system editor) for direct editing. |
 | `plugin cut` | Freezes the current working head and advances to a new semver (`--version`). Previous version becomes immutable. |
@@ -348,7 +348,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `plugin catalog connect plugin <org>/<name>` | Opt in to one published plugin without subscribing to the whole org. |
 | `plugin catalog disconnect plugin <org>/<name>` | Remove a connected plugin from scope. |
 | `plugin diff` | Compares two plugins, or a plugin and a bundle file. |
-| `plugin doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). |
+| `plugin doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). Resolves its argument like `plugin show`. |
 | `plugin check` | Compare syncable working heads (`upstream` / `catalog`) to origin fingerprints. Optional `[name]`; omit to check every eligible head. `--refresh` force-fetches. Table: Name, Origin, Status, Local, Origin ref. JSON is the same rows. Exit `1` only when a row is `error`; `outdated` is not a failure. |
 | `plugin update` | Reapply origin content onto the working head. Requires `[name]` or `--all`. `--force` reapplies when fingerprints match. `--all` confirms on TTY unless `--yes`; off-TTY `--all` requires `--yes` (exit `1`, no writes). Exit `1` when any row is `failed`. |
 | `plugin from-project` | Scans a project and creates a plugin from imported resources. |

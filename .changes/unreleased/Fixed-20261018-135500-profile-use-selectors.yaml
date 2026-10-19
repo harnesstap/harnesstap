@@ -1,5 +1,5 @@
 kind: Fixed
-body: '`ht profile use` accepts a catalog profile''s slug, its full ref `org/catalog/slug` (optionally `@version`), or its display name, and pulls the profile from the catalog when it is not installed locally. It used to fail with "Plugin not found" until you ran `ht profile pull`, and then accepted only the name the pull stored. With `--no-pull` or `--dry-run`, or when the catalog lookup or download fails, the error names the exact `ht profile pull` command.'
+body: '`ht profile use` accepts a catalog profile''s slug, its full ref `org/catalog/slug` (optionally `@version`), or its display name, and pulls the profile from the catalog when it is not installed locally. It used to fail with "Plugin not found" until you ran `ht profile pull`, and then accepted only the name the pull stored. With `--no-pull` or `--dry-run`, or when the catalog lookup or download fails, the error names the exact `ht profile pull` command. `ht plugin show`, `ht profile show`, and `ht plugin doctor` resolve a local plugin by the same slug, ref, or display name.'
 time: 2026-10-18T23:55:00.000Z
 custom:
   Issue: ""
