@@ -19,3 +19,11 @@ New text for the Install section of README.md.
 - `<!-- append -->` adds the body after the target's existing text.
 - `<!-- insert-after -->` adds a whole new section after the target section ends (its subsections included). The body may contain headings, written at `###` or deeper; the fold shifts them so the shallowest becomes the target's own level.
 - Only `insert-after` bodies may contain headings. Do not use level-1 or level-2 headings inside a body.
+
+## docs/cli/command-reference.md > migrate (`m`) > Important options
+<!-- append -->
+- `migrate import --strict` / `--no-strict`: a plugin package with files that would not be imported (a `SKILL.md` without frontmatter or with invalid YAML, an invalid `mcp.json` server, root `rules/`, `instructions/` or `mcp-servers/` directories) is refused with every file, its path and the reason, and exit `1`. `--strict` is the default when the terminal is not interactive, with `--format json`, and in CI. On an interactive terminal the import warns and goes ahead; `--no-strict` does the same anywhere. Each plugin import prints imported of discovered resources per type.
+
+## docs/cli/command-reference.md > plugin (`l`) > Important options
+<!-- append -->
+- `plugin doctor` re-reads the package a plugin was imported from: the `skipped-files` check fails for each file the import skipped, with its path and reason, and the output lists imported of discovered resources per type (`resource_counts` in JSON)

@@ -407,6 +407,9 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "plugin.doctor": {
     description: "Run doctor checks against a plugin",
+    details:
+      "For an imported plugin, skipped-files re-reads the installed package and fails for each file the import "
+      + "skipped. The output lists imported of discovered resources per type. Exit 1 when the plugin is invalid.",
     examples: [
       "plugin doctor my-plugin",
       "plugin doctor my-plugin --format json",
@@ -714,10 +717,16 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   "migrate.import": {
     description:
       "Import a package directory, .ap.json envelope, or .tar.gz workspace archive",
+    details:
+      "A plugin import lists every file it skips (missing or invalid SKILL.md frontmatter, an invalid mcp.json server, "
+      + "root rules/, instructions/ or mcp-servers/ directories) with its path and reason, and prints imported of "
+      + "discovered resources per type. --strict refuses such a package and exits 1; it is the default when the "
+      + "terminal is not interactive. --no-strict imports the rest anyway.",
     examples: [
       "migrate import backup.tar.gz",
       "migrate import ./my-plugin",
       "migrate import my-plugin.ap.json",
+      "migrate import ./my-plugin --no-strict",
     ],
   },
   "migrate.resolve-order": {

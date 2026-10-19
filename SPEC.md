@@ -348,7 +348,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `plugin catalog connect plugin <org>/<name>` | Opt in to one published plugin without subscribing to the whole org. |
 | `plugin catalog disconnect plugin <org>/<name>` | Remove a connected plugin from scope. |
 | `plugin diff` | Compares two plugins, or a plugin and a bundle file. |
-| `plugin doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). |
+| `plugin doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). For an imported plugin, `skipped-files` re-reads the installed package and errors on each file the import skipped (path and reason); output and JSON `resource_counts` give imported of discovered resources per type. |
 | `plugin check` | Compare syncable working heads (`upstream` / `catalog`) to origin fingerprints. Optional `[name]`; omit to check every eligible head. `--refresh` force-fetches. Table: Name, Origin, Status, Local, Origin ref. JSON is the same rows. Exit `1` only when a row is `error`; `outdated` is not a failure. |
 | `plugin update` | Reapply origin content onto the working head. Requires `[name]` or `--all`. `--force` reapplies when fingerprints match. `--all` confirms on TTY unless `--yes`; off-TTY `--all` requires `--yes` (exit `1`, no writes). Exit `1` when any row is `failed`. |
 | `plugin from-project` | Scans a project and creates a plugin from imported resources. |
@@ -492,7 +492,7 @@ Remote catalog workflows live on **`plugin`**, not `cloud`:
 | Command | Current behavior |
 | --- | --- |
 | `migrate export [file]` | Exports workspace archive, plugin TOML, resource TOML, or environment TOML (`--workspace`, `--plugin`, `--resource`, `--environment`). Interactive when `[file]` omitted on a TTY. Optional `--include-plugins` / `--embed-plugins`. |
-| `migrate import [file]` | Imports a machine-transfer archive or TOML into the local workspace (auto-detects scope; force with `--workspace` / `--plugin` / `--resource` / `--environment`). |
+| `migrate import [file]` | Imports a machine-transfer archive or TOML into the local workspace (auto-detects scope; force with `--workspace` / `--plugin` / `--resource` / `--environment`). A plugin import warns for each skipped file (missing or invalid `SKILL.md` frontmatter with the YAML line, invalid `mcp.json` servers, root `rules/` / `instructions/` / `mcp-servers/` with the supported location) and prints imported of discovered counts per type. `--strict` (default when not interactive) refuses the package and exits `1`; `--no-strict` imports the rest. |
 
 ### `add`, `help`, `completion`
 

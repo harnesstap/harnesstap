@@ -21,9 +21,12 @@ import {
 } from "./validate.js";
 
 export interface ApLoadSkipped {
-  component: "skill" | "mcp";
+  /** `rule` and `instruction` only come from an unsupported root directory. */
+  component: "skill" | "mcp" | "rule" | "instruction";
   name: string;
   reason: string;
+  /** Package-relative file the entry came from, when there is one. */
+  path?: string;
 }
 
 export interface ApLoadReported {
@@ -63,6 +66,24 @@ export interface LoadSpecOptions {
 }
 
 const SKILL_PATH = /^skills\/([^/]+)\/SKILL\.md$/;
+
+/**
+ * Root directories authors reach for that are not in the Agent Plugins
+ * layout. Their files are not imported, so the load names each one and
+ * points at the location HarnessTap does read.
+ */
+const UNSUPPORTED_ROOT_DIRS: Record<
+  string,
+  { component: ApLoadSkipped["component"]; alternative: string }
+> = {
+  rules: { component: "rule", alternative: `move rules to ${HT_EXTENSION_NAMESPACE}/rules/` },
+  instructions: {
+    component: "instruction",
+    alternative: `move instructions to ${HT_EXTENSION_NAMESPACE}/instructions/`,
+  },
+  "mcp-servers": { component: "mcp", alternative: "declare MCP servers in a root mcp.json" },
+  mcp_servers: { component: "mcp", alternative: "declare MCP servers in a root mcp.json" },
+};
 const DESCRIPTION_MAX = 1024;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -178,18 +199,29 @@ function loadSkills(
       skipped.push({
         component: "skill",
         name: dirName,
+        path: relativePath,
         reason: "SKILL.md is not UTF-8 text",
+      });
+      continue;
+    }
+    if (!hasFrontmatter(entry.content)) {
+      skipped.push({
+        component: "skill",
+        name: dirName,
+        path: relativePath,
+        reason: "SKILL.md has no YAML frontmatter (expected name and description between --- lines)",
       });
       continue;
     }
     let parsed: matter.GrayMatterFile<string>;
     try {
       parsed = matter(entry.content);
-    } catch {
+    } catch (error) {
       skipped.push({
         component: "skill",
         name: dirName,
-        reason: "SKILL.md frontmatter is not valid YAML",
+        path: relativePath,
+        reason: yamlErrorReason(error),
       });
       continue;
     }
@@ -199,7 +231,10 @@ function loadSkills(
       skipped.push({
         component: "skill",
         name: dirName,
-        reason: "skill name must match the directory and Agent Skills name rules",
+        path: relativePath,
+        reason: frontName
+          ? `skill name "${frontName}" must match the directory and Agent Skills name rules`
+          : "SKILL.md frontmatter has no name; it must match the directory",
       });
       continue;
     }
@@ -208,6 +243,7 @@ function loadSkills(
       skipped.push({
         component: "skill",
         name: dirName,
+        path: relativePath,
         reason: "skill description must be 1 to 1024 characters",
       });
       continue;
@@ -242,6 +278,44 @@ function loadSkills(
   }
 
   return { resources, skipped };
+}
+
+function hasFrontmatter(content: string): boolean {
+  return /^\uFEFF?---[ \t]*\r?\n/.test(content);
+}
+
+/** js-yaml marks are 0-based within the frontmatter, which starts on line 1 (`---`). */
+function yamlErrorReason(error: unknown): string {
+  const base = "SKILL.md frontmatter is not valid YAML";
+  if (!isRecord(error)) return base;
+  const mark = isRecord(error.mark) ? error.mark : undefined;
+  const reason = typeof error.reason === "string" ? error.reason : undefined;
+  const line = typeof mark?.line === "number" ? mark.line + 1 : undefined;
+  const column = typeof mark?.column === "number" ? mark.column + 1 : undefined;
+  const where = line ? ` at line ${line}${column ? `, column ${column}` : ""}` : "";
+  const hint = reason?.startsWith("incomplete explicit mapping pair")
+    ? "; quote values that contain \": \""
+    : "";
+  return `${base}${where}${reason ? `: ${reason}` : ""}${hint}`;
+}
+
+function unsupportedRootFiles(files: ApPackageFiles): ApLoadSkipped[] {
+  const skipped: ApLoadSkipped[] = [];
+  for (const path of Object.keys(files).sort()) {
+    const [head, ...rest] = path.split("/");
+    if (!head || rest.length === 0) continue;
+    const layout = Object.hasOwn(UNSUPPORTED_ROOT_DIRS, head) ? UNSUPPORTED_ROOT_DIRS[head] : undefined;
+    if (!layout) continue;
+    const base = rest[rest.length - 1] ?? path;
+    if (base.startsWith(".")) continue;
+    skipped.push({
+      component: layout.component,
+      name: base.replace(/\.(md|mdc|json)$/i, ""),
+      path,
+      reason: `root ${head}/ is not part of the Agent Plugins layout and is not imported; ${layout.alternative}`,
+    });
+  }
+  return skipped;
 }
 
 function locationNotes(root: string | undefined): ApLoadReported[] {
@@ -342,6 +416,7 @@ function loadMcp(
     skipped: parsed.skipped.map((item) => ({
       component: "mcp" as const,
       name: item.name,
+      path: "mcp.json",
       reason: item.reason,
     })),
   };
@@ -433,7 +508,7 @@ export function loadSpecPackage(files: ApPackageFiles, options?: LoadSpecOptions
       version,
       ...(declaredVersion && declaredVersion !== version ? { declaredVersion } : {}),
       loaded: { skills: loadedSkills, mcpServers: loadedMcp },
-      skipped: [...skills.skipped, ...mcp.skipped],
+      skipped: [...skills.skipped, ...mcp.skipped, ...unsupportedRootFiles(files)],
       reported,
       ...(mcp.disabled ? { mcpDisabled: mcp.disabled } : {}),
     },

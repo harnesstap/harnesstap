@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht migrate import` no longer drops plugin files silently. It names each skipped file with its path and reason: a `SKILL.md` without frontmatter, frontmatter that is not valid YAML (with line and column, for example an unquoted description containing a colon), or files under root `rules/`, `instructions/` or `mcp-servers/`, which are not part of the Agent Plugins layout (use `com.harnesstap/rules/`, `com.harnesstap/instructions/` or `mcp.json`). Imports print imported of discovered resources per type, and refuse such a package with exit 1 under `--strict`, the default when not interactive (`--no-strict` imports the rest). `ht plugin doctor` gains a `skipped-files` check that re-reads the installed package, so it no longer reports a plugin with dropped files as valid, and it prints the same per-type counts.'
+time: 2026-10-19T00:30:00.000Z
+custom:
+  Issue: ""

@@ -9,6 +9,13 @@ import {
 } from "./agent-plugins/files.js";
 import { importApPackageFiles } from "./agent-plugins/import.js";
 import {
+  diagnosePackageFiles,
+  formatSkippedEntry,
+  type PackageImportDiagnostics,
+  type PackageResourceCount,
+} from "./agent-plugins/import-diagnostics.js";
+import type { ApLoadSkipped } from "./agent-plugins/spec-load.js";
+import {
   isApEnvelopePath,
   writeApEnvelope,
 } from "./agent-plugins/envelope.js";
@@ -93,7 +100,34 @@ export type PluginImportResult = {
   plugin: string;
   plugins: string[];
   resources_imported: number;
+  /** Package files that were not imported, with the reason for each. */
+  skipped: ApLoadSkipped[];
+  /** Discovered versus imported resources per type. */
+  resource_counts: PackageResourceCount[];
 };
+
+export interface ScopedImportOptions {
+  /** Refuse a plugin package that would leave files behind; nothing is written. */
+  strict?: boolean;
+}
+
+/** Strict plugin import found files it would not import. */
+export class ImportSkippedFilesError extends Error {
+  readonly diagnostics: PackageImportDiagnostics;
+
+  constructor(diagnostics: PackageImportDiagnostics) {
+    const count = diagnostics.skipped.length;
+    super(
+      [
+        `Not imported: ${count} ${count === 1 ? "file was" : "files were"} skipped.`,
+        ...diagnostics.skipped.map((item) => `  ${formatSkippedEntry(item)}`),
+        "Fix the files, or pass --no-strict to import the rest anyway.",
+      ].join("\n"),
+    );
+    this.name = "ImportSkippedFilesError";
+    this.diagnostics = diagnostics;
+  }
+}
 
 export type ResourceImportResult = {
   scope: "resource";
@@ -360,6 +394,7 @@ export function exportScopedMigration(
 export function importScopedMigration(
   scope: MigrateScope,
   filePath: string,
+  options: ScopedImportOptions = {},
 ): ScopedImportResult {
   const resolved = resolve(filePath);
 
@@ -375,12 +410,18 @@ export function importScopedMigration(
     }
     case "plugin": {
       const files = loadVerifiedPackageFiles(resolved);
+      const diagnostics = diagnosePackageFiles(files);
+      if (options.strict && diagnostics.skipped.length > 0) {
+        throw new ImportSkippedFilesError(diagnostics);
+      }
       const plugin = importApPackageFiles(files);
       return {
         scope: "plugin",
         plugin: plugin.name,
         plugins: [plugin.name],
         resources_imported: getPluginResources(plugin.id).length,
+        skipped: diagnostics.skipped,
+        resource_counts: diagnostics.counts,
       };
     }
     case "resource": {
