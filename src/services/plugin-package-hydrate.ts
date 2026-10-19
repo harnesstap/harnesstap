@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { getPluginResources } from "../models/plugin-model.js";
 import { MATERIAL_RESOURCE_TYPES, type Plugin, type PluginSourceScanResult, type Resource } from "../types.js";
+import { recordedPluginInstallRoot } from "./agent-plugins/install-root.js";
 import { resolvePluginPackageRoot } from "./agent-plugins/package-root.js";
 import {
   attachScannedOriginResources,
@@ -92,6 +93,15 @@ export function ensureUpstreamPluginResources(plugin: Plugin): Resource[] {
     return attached;
   }
   if (plugin.origin === "authored") {
+    return attached;
+  }
+  // An imported Agent Plugins package (a catalog pull, an .ap.json import)
+  // already got exactly the resources its manifest declares. Its package
+  // tree can hold other files the manifest does not list (a catalog persona
+  // ships rules/ with `components: {}`); attaching those from a read path
+  // such as plugin detail or doctor changes the profile stack without an
+  // apply, so status then reports the never-written files as drift.
+  if (recordedPluginInstallRoot(plugin.name, plugin.version)) {
     return attached;
   }
 
