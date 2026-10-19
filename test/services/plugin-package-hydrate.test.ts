@@ -8,6 +8,7 @@ import {
   getPluginResources,
   stampPluginOrigin,
 } from "../../src/models/plugin-model.ts";
+import { importApPackageFiles } from "../../src/services/agent-plugins/import.ts";
 import { marketplaceCacheDir } from "../../src/services/marketplace-catalog.ts";
 import { ensureUpstreamPluginResources } from "../../src/services/plugin-package-hydrate.ts";
 import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
@@ -98,4 +99,47 @@ it("hydrates plugin detail membership from the nested install tree", () => {
   );
   expect(hydrated.some((row) => row.type === "skill")).toBe(true);
   expect(hydrated.some((row) => row.type === "mcp_server")).toBe(true);
+});
+
+it("keeps an imported catalog profile to the resources its manifest declares", () => {
+  // Same shape as the Cloud engineering-foundation persona: rule files in
+  // the package tree, `components: {}` in the manifest, one marketplace dep.
+  const manifest = {
+    $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+    name: "engineering-foundation",
+    version: "1.0.1",
+    extensions: {
+      "com.harnesstap": {
+        schema: "urn:harnesstap:ap-extension:v1",
+        sourceName: "Engineering foundation",
+        profile: true,
+        dependencies: [
+          { name: "context7@claude-plugins-official", constraint: "1.0.0", source: "marketplace" },
+        ],
+        overrides: { versions: {}, resources: {} },
+        needs: [],
+        components: {},
+      },
+    },
+  };
+  const plugin = importApPackageFiles(
+    {
+      "plugin.json": { encoding: "utf8", content: JSON.stringify(manifest) },
+      "rules/minimal-scope.md": { encoding: "utf8", content: "# minimal-scope\n" },
+      "rules/match-project-conventions.md": {
+        encoding: "utf8",
+        content: "# match-project-conventions\n",
+      },
+    },
+    { as: "engineering-foundation", origin: "catalog" },
+  );
+  const before = getPluginResources(plugin.id).map((row) => `${row.type}:${row.name}`).sort();
+
+  runPluginDoctor({ nameOrId: "engineering-foundation" });
+  const hydrated = ensureUpstreamPluginResources(plugin);
+
+  expect(hydrated.some((row) => row.type === "rule")).toBe(false);
+  expect(getPluginResources(plugin.id).map((row) => `${row.type}:${row.name}`).sort()).toEqual(
+    before,
+  );
 });
