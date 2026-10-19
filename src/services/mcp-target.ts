@@ -90,6 +90,19 @@ function isPortableMcpSource(source: string | undefined): boolean {
   );
 }
 
+/**
+ * An MCP server imported from a plugin package keeps the package-relative
+ * path of its manifest (`.mcp.json` for a Claude plugin) as its source. That
+ * path names a file inside the package, not the harness config of the same
+ * name, so the server is portable like one declared in `mcp.json`.
+ */
+function isPluginPackageMcp(resource: Pick<Resource, "metadata">): boolean {
+  const imported = (resource.metadata as { imported_from?: unknown } | undefined)?.imported_from;
+  if (!imported || typeof imported !== "object") return false;
+  const { plugin_name, relative_path } = imported as { plugin_name?: unknown; relative_path?: unknown };
+  return typeof plugin_name === "string" && plugin_name !== "" && typeof relative_path === "string";
+}
+
 export function harnessIdsForMcpPath(
   targetMcpPath: string,
   rootPath = "",
@@ -166,7 +179,7 @@ export function filterMcpServersForTargetPath(
       }
       return targetHarnesses.some((id) => resourceAppliesToHarness(resource, id));
     }
-    if (isPortableMcpSource(resource.source)) {
+    if (isPortableMcpSource(resource.source) || isPluginPackageMcp(resource)) {
       return true;
     }
     if (sourceMatchesManagedPath(resource.source, targetMcpPath, rootPath)) {
