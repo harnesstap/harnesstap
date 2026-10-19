@@ -17,6 +17,9 @@ export function parseVersionConstraint(raw: string): VersionConstraint {
 
 export function satisfiesConstraint(constraint: string, installed: string): boolean {
   if (installed === "unknown") return false;
+  // Host installs can record a git sha as the version (Claude Code does for
+  // marketplace plugins that declare none). It satisfies no semver constraint.
+  if (!semver.valid(installed)) return false;
   const parsed = parseVersionConstraint(constraint);
   if (parsed.kind === "exact") {
     return semver.eq(installed, parsed.version);

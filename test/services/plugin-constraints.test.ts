@@ -21,4 +21,11 @@ describe("plugin-constraints", () => {
   it("returns false for unknown installed version", () => {
     expect(satisfiesConstraint("2.0.0", "unknown")).toBe(false);
   });
+
+  it("treats a git sha install version as unsatisfied instead of throwing", () => {
+    // Claude Code records `version: "ea10b213686c"` for marketplace plugins
+    // without a version, e.g. context7@claude-plugins-official.
+    expect(satisfiesConstraint("1.0.0", "ea10b213686c")).toBe(false);
+    expect(satisfiesConstraint("^1.0.0", "ea10b213686c")).toBe(false);
+  });
 });
