@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht profile use` no longer stops with "Invalid Version: ea10b213686c" when Claude Code already installed one of the profile''s marketplace plugins and recorded a git sha as its version (for example `context7@claude-plugins-official`). The pin check treats such a version as not matching the pin and the apply goes on.'
+time: 2026-10-19T00:10:00.000Z
+custom:
+  Issue: ""
