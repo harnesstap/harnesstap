@@ -19,3 +19,11 @@ New text for the Install section of README.md.
 - `<!-- append -->` adds the body after the target's existing text.
 - `<!-- insert-after -->` adds a whole new section after the target section ends (its subsections included). The body may contain headings, written at `###` or deeper; the fold shifts them so the shallowest becomes the target's own level.
 - Only `insert-after` bodies may contain headings. Do not use level-1 or level-2 headings inside a body.
+
+## docs/cli/command-reference.md > profile (`p`) > Important options
+<!-- append -->
+- `profile use <name>` takes the local profile name, the catalog slug, the full catalog ref `org/catalog/slug` (optionally `@version`), or the package display name. When no local profile matches, it pulls the profile from the catalog first. With `--no-pull` or `--dry-run`, or when the catalog lookup or download fails, it stops and prints the exact `ht profile pull` command to run.
+
+## docs/cli/command-reference.md > plugin (`l`) > Important options
+<!-- append -->
+- `plugin show <name>`, `profile show <name>`, and `plugin doctor <name>` resolve a local plugin the same way as `profile use`: by name or ID, catalog slug, full catalog ref `org/catalog/slug` (optionally `@version`), or package display name. They never pull from the catalog.
