@@ -5,6 +5,7 @@ import { resolveDownloadedVersion } from "../../src/services/catalog-client.ts";
 import type { CatalogPlugin } from "../../src/services/catalog-types.ts";
 import { installPluginFromCatalog } from "../../src/services/plugin-catalog-install.ts";
 import { handlePluginShowCommand } from "../../src/cli/handlers/plugin-show-command.ts";
+import { showProfileCommand } from "../../src/services/profile-commands.ts";
 import {
   findLocalPluginBySelector,
   findLocalProfileForUse,
@@ -142,6 +143,13 @@ describe("findLocalPluginBySelector", () => {
     expect((error as LocalPluginSelectorError).hints).toEqual([
       "Use the full catalog ref: ht plugin doctor org/catalog/slug@version",
     ]);
+  });
+
+  it("lets profile show open a profile by slug, catalog ref, and display name", async () => {
+    const id = await pullFoundation();
+    for (const selector of ["engineering-foundation", `${REF}@1.0.1`, "Engineering foundation"]) {
+      expect(showProfileCommand(selector).profile.id).toBe(id);
+    }
   });
 
   it("lets plugin show open a profile by slug and catalog ref", async () => {

@@ -26,4 +26,4 @@ New text for the Install section of README.md.
 
 ## docs/cli/command-reference.md > plugin (`l`) > Important options
 <!-- append -->
-- `plugin show <name>` and `plugin doctor <name>` resolve a local plugin the same way as `profile use`: by name or ID, catalog slug, full catalog ref `org/catalog/slug` (optionally `@version`), or package display name. They never pull from the catalog.
+- `plugin show <name>`, `profile show <name>`, and `plugin doctor <name>` resolve a local plugin the same way as `profile use`: by name or ID, catalog slug, full catalog ref `org/catalog/slug` (optionally `@version`), or package display name. They never pull from the catalog.

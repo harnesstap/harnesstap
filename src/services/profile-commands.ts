@@ -24,6 +24,7 @@ import {
 } from "./active-profile.js";
 import { applyProfilePlugin, type ApplyProfilePluginOptions } from "./profile-apply.js";
 import { withProfileApplyLock } from "./profile-apply-lock.js";
+import { findLocalPluginBySelector } from "./profile-use-target.js";
 
 export interface CreateProfileResult {
   plugin: Plugin;
@@ -97,7 +98,8 @@ export function showProfileCommand(selector: string): {
     throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
 
-  const profile = resolvePluginSelector(selector);
+  const profile = resolvePluginSelector(selector)
+    ?? findLocalPluginBySelector(selector, { preferProfiles: true, command: "ht profile show" });
   if (!profile) {
     throw new Error(`Profile not found: ${selector}`);
   }
