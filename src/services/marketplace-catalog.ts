@@ -22,6 +22,7 @@ import { runCommandWithTimeout } from "../utils/run-command-with-timeout.js";
 import {
   builtinMarketplaceEntry,
   builtinMarketplaceGitUrl,
+  wellKnownMarketplaceEntry,
 } from "./builtin-marketplaces.js";
 import {
   catalogPluginMatchesQuery,
@@ -264,7 +265,7 @@ function catalogRefreshEntry(
   }
   const url = builtinMarketplaceGitUrl(name);
   if (!url) {
-    return undefined;
+    return wellKnownMarketplaceEntry(name);
   }
   return builtinMarketplaceEntry();
 }

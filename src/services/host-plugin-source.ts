@@ -22,7 +22,10 @@ import {
 import { builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
 import { readCachedMarketplaceJson } from "./marketplace-manifest-cache.js";
 import { listMarketplaces } from "./marketplace-registry.js";
-import { listCatalogPluginBranchVersions } from "./marketplace-catalog.js";
+import {
+  listCatalogPluginBranchVersions,
+  marketplaceCacheDir,
+} from "./marketplace-catalog.js";
 import { resolveMarketplacePluginDirectory } from "./plugin-origin-apply.js";
 import { upsertPackageCacheEntry } from "../models/package-cache-entry.js";
 import {
@@ -446,6 +449,13 @@ export function readMarketplacePluginSource(
   if (!root) {
     return null;
   }
+  return readMarketplacePluginSourceAt(root, pluginName);
+}
+
+function readMarketplacePluginSourceAt(
+  root: string,
+  pluginName: string,
+): MarketplacePluginSource | null {
   const file = readMarketplaceFile(root);
   const entry = file?.plugins?.find((plugin) => {
     if (!isRecord(plugin)) {
@@ -736,7 +746,16 @@ export async function downloadHostPluginVersion(input: {
       install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
     };
   }
-  const live = readMarketplacePluginSource(homeRoot, marketplace, name);
+  // A marketplace HarnessTap cloned itself (`ht marketplace add`, or a
+  // dependency install in a home the host never set up) lives in the
+  // HarnessTap cache, not under the host's plugins directory. Its entry still
+  // names the plugin's own source (for example a `url` or `github` repo).
+  const live =
+    readMarketplacePluginSource(homeRoot, marketplace, name)
+    ?? readMarketplacePluginSourceAt(
+      marketplaceCacheDir(harnesstapDir, marketplace),
+      name,
+    );
   const snapshot = readHostPluginSourceSnapshot(
     input.originRef,
     input.harnesstapDir,
