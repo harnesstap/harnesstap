@@ -33,6 +33,7 @@ import {
   stashProfileCommand,
 } from "../../services/profile-stash.js";
 import { resolveProfileUseSelection } from "../../services/profile-use-resolve.js";
+import { resolveProfileUseTarget } from "../../services/profile-use-target.js";
 import {
   executeProjectUse,
 } from "../../services/project-config-use.js";
@@ -324,7 +325,7 @@ profileCmd
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
-  .option("--no-pull", "Do not auto-pull missing published plugin dependencies")
+  .option("--no-pull", "Do not pull the profile or its missing published plugin dependencies from the catalog")
   .option("--force", "Apply even when the profile is already active and in sync")
   .option("--no-interactive", "Disable interactive prompts")
   .option("--interactive", "Enable interactive prompts")
@@ -396,9 +397,21 @@ profileCmd
       noInteractive: opts.noInteractive ?? format === "json",
     });
     try {
+      const target = await resolveProfileUseTarget(name, {
+        pull: opts.pull,
+        dryRun: opts.dryRun,
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format,
+      });
+      if (target.pulled && format !== "json") {
+        ui.info(`Pulled profile ${ui.theme.accent(target.pulled.plugin_name)} from ${target.pulled.source}`);
+      }
       if (!opts.dryRun) {
         const sync = await maybeSyncActiveProfileBeforeSwitch({
-          targetProfileName: name,
+          targetProfileName: target.name,
           harness: opts.harness,
           format,
           changes: opts.changes,
@@ -409,7 +422,7 @@ profileCmd
           return;
         }
       }
-      const payload = await useProfileCommand(name, {
+      const payload = await useProfileCommand(target.selector, {
         dryRun: opts.dryRun,
         harness: opts.harness,
         pull: opts.pull,
@@ -427,7 +440,7 @@ profileCmd
         process.exitCode = 1;
       }
       if (format === "json") {
-        printJson(payload);
+        printJson(target.pulled ? { ...payload, pulled_profile: target.pulled } : payload);
         return;
       }
       if (payload.cancelled) {
@@ -731,9 +744,21 @@ profileCmd
       noInteractive: opts.noInteractive ?? format === "json",
     });
     try {
+      const target = await resolveProfileUseTarget(name, {
+        pull: opts.pull,
+        dryRun: opts.dryRun,
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format,
+      });
+      if (target.pulled && format !== "json") {
+        ui.info(`Pulled profile ${ui.theme.accent(target.pulled.plugin_name)} from ${target.pulled.source}`);
+      }
       if (!opts.dryRun) {
         const sync = await maybeSyncActiveProfileBeforeSwitch({
-          targetProfileName: name,
+          targetProfileName: target.name,
           harness: opts.harness,
           format,
           changes: opts.changes,
