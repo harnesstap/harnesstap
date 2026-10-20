@@ -2,7 +2,12 @@ import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import {
+  formatResourceCounts,
+  formatSkippedEntry,
+} from "../../services/agent-plugins/import-diagnostics.js";
+import {
   exportScopedMigration,
+  ImportSkippedFilesError,
   importScopedMigration,
   resolveExportScope,
   resolveImportScope,
@@ -56,9 +61,18 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
       );
       return;
     case "plugin":
+      for (const item of result.skipped) {
+        ui.warn(`skipped ${formatSkippedEntry(item)}`);
+      }
       ui.success(
         `Imported plugin ${ui.theme.accent(result.plugin)} ${ui.icons.bullet} ${formatCount(result.resources_imported, "resource")}`,
       );
+      ui.info(`Resources, imported of discovered: ${formatResourceCounts(result.resource_counts)}`);
+      if (result.skipped.length > 0) {
+        ui.warn(
+          `${formatCount(result.skipped.length, "file")} not imported. Fix them and import again; --strict refuses the import instead.`,
+        );
+      }
       return;
     case "resource":
       ui.success(
@@ -152,6 +166,7 @@ async function handleMigrateImportCommand(
     plugin?: boolean;
     resource?: boolean;
     environment?: boolean;
+    strict?: boolean;
     format?: string;
     noInteractive?: boolean;
     interactive?: boolean;
@@ -185,13 +200,42 @@ async function handleMigrateImportCommand(
 
   try {
     const scope = scopeOverride ?? resolveImportScope({ ...opts, file: importFile });
-    const result = importScopedMigration(scope, importFile);
+    // Scripts and CI fail on skipped files unless they opt out with --no-strict.
+    const strict = opts.strict ?? !shouldUseWizard({
+      interactive: true,
+      noInteractive: opts.noInteractive,
+      format: opts.format,
+      missingRequiredArgs: false,
+    });
+    const result = importScopedMigration(scope, importFile, { strict });
     if (format === "json") {
       printJson(result);
       return;
     }
     printMigrateImportHuman(result);
   } catch (err) {
+    if (err instanceof ImportSkippedFilesError) {
+      if (format === "json") {
+        printJson({
+          scope: "plugin",
+          imported: false,
+          error: "skipped_files",
+          skipped: err.diagnostics.skipped,
+          resource_counts: err.diagnostics.counts,
+        });
+        process.exitCode = 1;
+        return;
+      }
+      for (const item of err.diagnostics.skipped) {
+        ui.warn(`skipped ${formatSkippedEntry(item)}`);
+      }
+      ui.info(`Would import, of discovered: ${formatResourceCounts(err.diagnostics.counts)}`);
+      fail(
+        `Not imported: ${formatCount(err.diagnostics.skipped.length, "file")} would be skipped.`,
+        { hint: "Fix the files, or pass --no-strict to import the rest anyway." },
+      );
+      return;
+    }
     failCaught(err);
   }
 }
@@ -279,6 +323,11 @@ export function registerMigrateCommands(root: Command): void {
     .option("--workspace", "Force workspace archive import")
     .option("--plugin", "Force Agent Plugins package import")
     .option("--resource", "Force single-resource package import")
+    .option(
+      "--strict",
+      "Refuse a plugin package with skipped files (default when not interactive)",
+    )
+    .option("--no-strict", "Import a plugin package even when some files are skipped")
     .option(
       "--environment",
       "Removed: environments are machine-local; use --workspace",

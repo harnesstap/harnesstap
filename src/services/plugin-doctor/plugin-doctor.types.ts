@@ -1,4 +1,5 @@
 import type { Plugin, Resource } from "../../types.js";
+import type { PackageImportDiagnostics } from "../agent-plugins/import-diagnostics.js";
 import type { DependencyView } from "../plugin-dependency.js";
 
 export interface PluginDoctorCheckResult {
@@ -12,6 +13,8 @@ export interface PluginDoctorContext {
   plugin: Plugin;
   resources: Resource[];
   plugins: DependencyView[];
+  /** Load of the installed package this plugin was imported from, when there is one. */
+  packageDiagnostics?: PackageImportDiagnostics;
 }
 
 export interface PluginDoctorCheck {

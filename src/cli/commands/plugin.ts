@@ -70,6 +70,7 @@ import { persistWrittenMaterializations } from "../../services/materialization-o
 import { skillPlacementsFromPaths } from "../../services/shared-emit-paths.js";
 import { exportPluginDefinition } from "../../services/plugin-editor.js";
 import { importFromFile, inspectPluginExportFile } from "../../services/plugin-import.js";
+import { formatResourceCounts } from "../../services/agent-plugins/import-diagnostics.js";
 import { openPathInSystemEditor } from "../../services/open-path.js";
 import {
   createPlugin,
@@ -1915,8 +1916,10 @@ async function handlePluginDoctorCommand(
         { key: "message", header: "MESSAGE", width: 44 },
       ],
       rows,
+      wordWrap: true,
       summary: report.valid ? `${report.plugin}: valid` : `${report.plugin}: invalid`,
     });
+    ui.info(`Resources, imported of discovered: ${formatResourceCounts(report.resource_counts)}`);
     if (!report.valid) {
       process.exitCode = 1;
     }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
@@ -136,6 +136,47 @@ describe("migrate export --environment", () => {
     ]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("--workspace");
+  });
+});
+
+function writeSkippingPackage(root: string): string {
+  mkdirSync(join(root, "skills", "no-frontmatter"), { recursive: true });
+  mkdirSync(join(root, "rules"), { recursive: true });
+  writeFileSync(
+    join(root, "plugin.json"),
+    JSON.stringify({ name: "skippy", version: "1.0.0", description: "Skips files" }),
+  );
+  writeFileSync(join(root, "skills", "no-frontmatter", "SKILL.md"), "# no frontmatter\n");
+  writeFileSync(join(root, "rules", "style.md"), "# style\n");
+  return root;
+}
+
+describe("migrate import skipped files", () => {
+  it("refuses a package with skipped files when not interactive", async () => {
+    const pkg = writeSkippingPackage(join(ctx.projectDir, "skippy"));
+    const result = await runCli(["migrate", "import", pkg, "--plugin"]);
+    expect(result.exitCode).toBe(1);
+    const output = `${result.stdout}\n${result.stderr}`;
+    expect(output).toContain("skills/no-frontmatter/SKILL.md: SKILL.md has no YAML frontmatter");
+    expect(output).toContain("rules/style.md: root rules/");
+    expect(output).toContain("Not imported: 2 files would be skipped.");
+    expect(getPluginByName("skippy")).toBeUndefined();
+  });
+
+  it("imports the rest with --no-strict and prints per-type counts", async () => {
+    const pkg = writeSkippingPackage(join(ctx.projectDir, "skippy"));
+    const result = await runCli(["migrate", "import", pkg, "--plugin", "--no-strict"]);
+    expect(result.exitCode ?? 0).toBe(0);
+    const output = `${result.stdout}\n${result.stderr}`;
+    expect(output).toContain("skipped skills/no-frontmatter/SKILL.md");
+    expect(output).toContain("imported of discovered: skill 0 of 1, rule 0 of 1");
+    expect(getPluginByName("skippy")).toBeDefined();
+
+    const doctor = await runCli(["plugin", "doctor", "skippy", "--format", "json"]);
+    expect(doctor.exitCode).toBe(1);
+    const report = JSON.parse(doctor.stdout) as { valid: boolean; results: Array<{ check: string }> };
+    expect(report.valid).toBe(false);
+    expect(report.results.filter((row) => row.check === "skipped-files")).toHaveLength(2);
   });
 });
 
