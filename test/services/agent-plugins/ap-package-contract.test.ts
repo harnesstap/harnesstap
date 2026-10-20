@@ -155,8 +155,9 @@ describe("G2 catalog package contract", () => {
         "claude-code",
       ]);
 
-      expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
-      expect(`${result.stdout}\n${result.stderr}`).not.toContain(
+      const output = `${result.stdout}\n${result.stderr}`;
+      expect(result.exitCode ?? 0, output).toBe(0);
+      expect(output).not.toContain(
         "No local version of superpowers",
       );
       expect(result.stdout).toContain(
