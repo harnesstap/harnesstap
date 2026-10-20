@@ -86,11 +86,12 @@ describe("G2 catalog package contract", () => {
 
   it("applies engineering-foundation from a clean HOME against G2 catalog fixtures", async () => {
     const context = await createTestContext("g2-apply-engineering-foundation");
+    let restoreFetch: (() => void) | undefined;
     try {
       await runCli(["init"]);
       initGitRepo(context.projectDir, "git@github.com:acme/demo.git");
 
-      const restoreFetch = createCatalogFetchMock({
+      restoreFetch = createCatalogFetchMock({
         baseUrl: "https://harnesstap.com",
         plugins: [
           {
@@ -155,8 +156,9 @@ describe("G2 catalog package contract", () => {
         "claude-code",
       ]);
 
-      expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
-      expect(`${result.stdout}\n${result.stderr}`).not.toContain(
+      const output = `${result.stdout}\n${result.stderr}`;
+      expect(result.exitCode ?? 0, output).toBe(0);
+      expect(output).not.toContain(
         "No local version of superpowers",
       );
       expect(result.stdout).toContain(
@@ -173,9 +175,8 @@ describe("G2 catalog package contract", () => {
       expect(existsSync(join(context.projectDir, ".claude/skills/confidence/SKILL.md"))).toBe(
         true,
       );
-
-      restoreFetch();
     } finally {
+      restoreFetch?.();
       await context.cleanup();
     }
   });
