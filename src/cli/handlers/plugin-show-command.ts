@@ -11,6 +11,10 @@ import {
 } from "../../models/plugin-model.js";
 import { listAttachedPluginPins } from "../../services/plugin-composition.js";
 import { renderPluginShow } from "../../services/plugin-show-render.js";
+import {
+  findLocalPluginBySelector,
+  LocalPluginSelectorError,
+} from "../../services/profile-use-target.js";
 import { trackPluginUsed } from "../../telemetry/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { CLI_ERRORS, CLI_HINTS } from "../messages.js";
@@ -24,11 +28,21 @@ export function handlePluginShowCommand(
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const plugin = getPlugin(name);
+  let plugin: ReturnType<typeof getPlugin>;
+  try {
+    plugin = getPlugin(name) ?? findLocalPluginBySelector(name, { command: "ht plugin show" });
+  } catch (error) {
+    if (error instanceof LocalPluginSelectorError) {
+      fail(error.message, { hints: error.hints });
+      return;
+    }
+    throw error;
+  }
   if (!plugin) {
     fail(CLI_ERRORS.pluginNotFound(name), { hint: CLI_HINTS.pluginList });
     return;
   }
+  const exactMatch = plugin.name === name || plugin.id === name || name.startsWith(`${plugin.name}@`);
   trackPluginUsed({
     pluginSlug: plugin.name,
   });
@@ -46,6 +60,8 @@ export function handlePluginShowCommand(
   }));
   const dependencies = listPluginDependencies(plugin.id);
   const configuredPlugin = (() => {
+    // A slug, catalog ref, or display name already resolved to one version.
+    if (!exactMatch) return plugin;
     if (/^[0-9A-Z]{26}$/.test(name)) {
       return getPluginById(name);
     }
@@ -92,7 +108,7 @@ export function handlePluginShowCommand(
     return;
   }
 
-  console.log(renderPluginShow(plugin, name, {
+  console.log(renderPluginShow(plugin, exactMatch ? name : plugin.id, {
     showId: opts.showId,
     profileExtras,
   }));

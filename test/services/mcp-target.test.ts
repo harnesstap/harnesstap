@@ -106,4 +106,32 @@ describe("filterMcpServersForTargetPath", () => {
       ),
     ).toEqual([]);
   });
+
+  it("emits an MCP server from a Claude plugin package to the user config", () => {
+    const fromPackage: Resource = {
+      ...mcp("context7", ".mcp.json"),
+      metadata: {
+        transport: "http",
+        url: "https://mcp.context7.com/mcp",
+        imported_from: {
+          source_kind: "claude-plugin",
+          source_label: "context7",
+          plugin_name: "context7",
+          source_plugin_kind: "claude-plugin",
+          relative_path: ".mcp.json",
+          imported_at: "2026-10-18T00:00:00.000Z",
+        },
+      },
+    };
+    expect(
+      filterMcpServersForTargetPath([...resources, fromPackage], "~/.claude.json").map(
+        (entry) => entry.name,
+      ),
+    ).toEqual(["claude-user", "portable", "from-manifest", "context7"]);
+    expect(
+      filterMcpServersForTargetPath([fromPackage], ".cursor/mcp.json", "", "cursor").map(
+        (entry) => entry.name,
+      ),
+    ).toEqual(["context7"]);
+  });
 });

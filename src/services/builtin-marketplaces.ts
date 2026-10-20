@@ -29,3 +29,22 @@ export function builtinMarketplaceEntry(): {
     platforms: [...CURSOR_PUBLIC_PLATFORMS],
   };
 }
+
+/**
+ * Public Claude Code marketplaces that catalog profiles name in their
+ * marketplace dependencies (`<plugin>@<marketplace>`). A fresh home has none
+ * of them registered, so dependency installs resolve these names to their
+ * public git source instead of failing with "Marketplace not found". A
+ * marketplace registered with `ht marketplace add` always wins.
+ */
+const WELL_KNOWN_CLAUDE_MARKETPLACES: Readonly<Record<string, string>> = {
+  "claude-plugins-official": "https://github.com/anthropics/claude-plugins-official.git",
+  "karpathy-skills": "https://github.com/forrestchang/andrej-karpathy-skills.git",
+};
+
+export function wellKnownMarketplaceEntry(name: string):
+  | { name: string; url: string; platforms: PluginMarketplacePlatform[] }
+  | undefined {
+  const url = WELL_KNOWN_CLAUDE_MARKETPLACES[name];
+  return url ? { name, url, platforms: ["claude-code"] } : undefined;
+}

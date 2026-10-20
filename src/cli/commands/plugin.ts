@@ -146,6 +146,10 @@ import {
   PluginVersionError,
 } from "../../services/plugin-versioning.js";
 import { listPluginDoctorChecks, runPluginDoctor } from "../../services/plugin-doctor.js";
+import {
+  findLocalPluginBySelector,
+  LocalPluginSelectorError,
+} from "../../services/profile-use-target.js";
 import { resolveComposition } from "../../services/resolve/index.js";
 import type { ResolutionResult } from "../../services/resolve/types.js";
 import {
@@ -1852,8 +1856,11 @@ async function handlePluginDoctorCommand(
       return;
     }
 
+    // Same name resolution as `profile use`: slug, catalog ref, or display name.
+    const target = getPlugin(resolvedName)
+      ?? findLocalPluginBySelector(resolvedName, { command: "ht plugin doctor" });
     const report = runPluginDoctor({
-      nameOrId: resolvedName,
+      nameOrId: target?.id ?? resolvedName,
       checkIds: opts.check,
     });
 
@@ -1917,7 +1924,10 @@ async function handlePluginDoctorCommand(
       process.exitCode = 1;
     }
   } catch (err) {
-    fail(err instanceof Error ? err.message : String(err));
+    fail(
+      err instanceof Error ? err.message : String(err),
+      err instanceof LocalPluginSelectorError ? { hints: err.hints } : undefined,
+    );
     process.exitCode = 1;
   }
 }
