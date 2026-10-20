@@ -1,18 +1,21 @@
-import { afterEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, afterEach, describe, expect, it, spyOn } from "bun:test";
+import * as catalogClient from "../../../src/services/catalog-client.ts";
+import * as cloudAccounts from "../../../src/config/cloud-accounts.ts";
 import { completeCatalogPlugins } from "../../../src/services/completion/providers/catalog-plugin.ts";
 
-const listPluginsInScopeMock = mock(() => Promise.resolve([]));
-const getCloudAccountMock = mock(() =>
+// spyOn, not mock.module: a module mock stays in place for every later test
+// file in the same bun process, so it would leak into unrelated suites.
+const listPluginsInScopeMock = spyOn(catalogClient, "listPluginsInScope").mockImplementation(
+  () => Promise.resolve([]),
+);
+const getCloudAccountMock = spyOn(cloudAccounts, "getCloudAccount").mockImplementation(() =>
   Promise.resolve({ accountName: undefined, account: undefined }),
 );
 
-mock.module("../../../src/services/catalog-client.ts", () => ({
-  listPluginsInScope: listPluginsInScopeMock,
-}));
-
-mock.module("../../../src/config/cloud-accounts.ts", () => ({
-  getCloudAccount: getCloudAccountMock,
-}));
+afterAll(() => {
+  listPluginsInScopeMock.mockRestore();
+  getCloudAccountMock.mockRestore();
+});
 
 afterEach(() => {
   listPluginsInScopeMock.mockClear();
