@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht notifications` and the Desktop notification list keep newest first when two notifications are written in the same millisecond. They used to come back in a random order.'
+time: 2026-10-21T19:30:00.000Z
+custom:
+  Issue: ""
