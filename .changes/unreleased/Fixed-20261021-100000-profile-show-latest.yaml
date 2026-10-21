@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht profile show <slug>` works again for a profile that harnesstap 1.4.0 pulled without `--version`. That release recorded the version as `latest`, and every `name@latest` lookup failed with "Invalid version constraint: latest". A stored `latest` constraint now reads as any version everywhere, and a `name@version` lookup matches a stored version as written (`latest`, or `1.0` from `--version 1.0`) before reading it as a semver range. New pulls already record the package version.'
+time: 2026-10-21T20:00:00.000Z
+custom:
+  Issue: ""

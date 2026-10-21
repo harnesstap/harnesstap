@@ -575,8 +575,14 @@ function getPluginByNameAndConstraint(
   constraint: string,
 ): Plugin | undefined {
   return computationSlot(`plugin-constraint:${name}\0${constraint}`, () => {
+    const rows = preferLocalPluginRows(pluginsNamed(name));
+    // A stored version that is not semver (`latest` from harnesstap 1.4.0,
+    // `1.0` from `--version 1.0`) is still what `name@version` labels print,
+    // so match it as written before reading it as a constraint.
+    const written = rows.find((row) => row.version === constraint.trim());
+    if (written) return rowToPlugin(written);
     parseVersionConstraint(constraint);
-    const matching = preferLocalPluginRows(pluginsNamed(name)).filter((row) =>
+    const matching = rows.filter((row) =>
       satisfiesConstraint(constraint, row.version),
     );
     if (matching.length === 0) return undefined;
