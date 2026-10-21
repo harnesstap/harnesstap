@@ -84,3 +84,7 @@ scripts/install.sh
 # Desktop E2E artifacts (screenshots, logs)
 apps/desktop/e2e/artifacts/*
 !apps/desktop/e2e/artifacts/.gitkeep
+
+# scripts/check-release-version.sh scratch
+.release-version-check.*/
+

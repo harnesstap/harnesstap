@@ -485,6 +485,12 @@ jobs:
           name: harnesstap-npm-tarball
           path: harnesstap-*.tgz
           if-no-files-found: error
+      # npm publish rebuilds dist/ through prepublishOnly. Run that same
+      # rebuild and pack: the packed `ht --version` must print the plain
+      # package.json version, not `-dev+<sha>` (#501). Runs after the upload
+      # so the dev tarball above is unchanged.
+      - name: Release build reports the package version
+        run: bun run check:release-version
 
   node-version-matrix:
     name: G1 Node ${{ matrix.image }}
