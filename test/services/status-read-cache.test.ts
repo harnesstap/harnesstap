@@ -22,6 +22,8 @@ import {
   readStatusCacheMissCount,
   readStatusWatcherCreateCount,
   statusRefreshWorkerUrl,
+  stopStatusRefreshWorkerForTests,
+  warmStatusRefreshWorker,
 } from "../../src/services/status-read-cache.ts";
 
 function stable(status: Awaited<ReturnType<typeof detectGlobalProfileStatus>>): string {
@@ -191,6 +193,11 @@ describe("global profile status cache", () => {
 
   it("marks the cache dirty when a watched file changes", async () => {
     const context = await createInitializedTestContext("status-cache-watch");
+    // Watches live on the refresh worker. A CLI read stops that worker once it
+    // is idle, which closes them; only a long-lived process (the sidecar) keeps
+    // it. Warm it here instead of relying on an earlier test file to have done
+    // so in this bun process.
+    warmStatusRefreshWorker();
     try {
       clearLiveReadCaches();
       const plugin = createPlugin({ name: "work" });
@@ -212,9 +219,11 @@ describe("global profile status cache", () => {
       });
       setActiveProfileName("work");
       const guide = join(context.homeDir, ".claude", "CLAUDE.md");
+      const watchersBefore = readStatusWatcherCreateCount();
       await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
+      // The count is per process; wait for this read's own watches.
       const armDeadline = Date.now() + 2000;
-      while (readStatusWatcherCreateCount() === 0 && Date.now() < armDeadline) {
+      while (readStatusWatcherCreateCount() === watchersBefore && Date.now() < armDeadline) {
         await new Promise((resolve) => setTimeout(resolve, 15));
       }
       await new Promise((resolve) => setTimeout(resolve, 150));
@@ -229,6 +238,7 @@ describe("global profile status cache", () => {
       expect(during.refreshing).toBe(true);
       expect(during.changes).toEqual([]);
     } finally {
+      stopStatusRefreshWorkerForTests();
       clearLiveReadCaches();
       await context.cleanup();
     }
