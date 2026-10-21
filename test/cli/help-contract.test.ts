@@ -1,5 +1,6 @@
-import { describe, expect, it } from "bun:test";
+import { beforeAll, describe, expect, it } from "bun:test";
 import type { Command } from "commander";
+import { loadAllCommandModules } from "../../src/cli/command-loaders.ts";
 import { commandKeepsDefaultAction, isHiddenHelpCommand } from "../../src/cli/help.ts";
 import {
   COMMAND_HELP_REGISTRY,
@@ -53,6 +54,14 @@ function usesDisallowedHShorthand(flags: string): boolean {
 }
 
 describe("CLI help contract", () => {
+  // Command groups register lazily. Load every group here: the shared
+  // `program` otherwise holds only what earlier test files in this bun
+  // process happened to load, which depends on file order.
+  beforeAll(async () => {
+    const { program } = await import("../../src/index.ts");
+    await loadAllCommandModules(program);
+  });
+
   it("registry keys match every leaf command path", async () => {
     const { program } = await import("../../src/index.ts");
     const leafPaths = walkLeafCommands(program)
@@ -60,6 +69,7 @@ describe("CLI help contract", () => {
       .sort();
     const registryPaths = Object.keys(COMMAND_HELP_REGISTRY).sort();
 
+    expect(leafPaths.length).toBeGreaterThan(0);
     expect(registryPaths).toEqual(leafPaths);
   });
 

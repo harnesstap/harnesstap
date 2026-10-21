@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import {
   clearCursorPluginInstallsCache,
+  cursorInventoryInputSignature,
   listCursorPluginInstalls,
 } from "../../src/plugins/cursor-inventory.ts";
 import { createTempDir, cleanupDir } from "../helpers/fs.ts";
@@ -54,12 +55,21 @@ describe("listCursorPluginInstalls cache", () => {
       join(home, ".cursor", "plugins"),
       join(home, ".cursor", "plugins", "local"),
     ];
+    // Create beta's folder before the first scan, without a manifest. On
+    // tmpfs (ubuntu-26.04 mounts /tmp that way) a directory's size grows with
+    // each entry, and size is part of the signature, so adding the folder
+    // later would be a real signature change. Writing the manifest only
+    // touches folders below the watched ones.
+    const betaManifestDir = join(home, ".cursor", "plugins", "local", "beta", ".cursor-plugin");
+    mkdirSync(betaManifestDir, { recursive: true });
     const frozen = new Date("2020-06-01T00:00:00.000Z");
     for (const path of watched) touch(path, frozen);
+    const signature = cursorInventoryInputSignature(home);
     expect(listCursorPluginInstalls(home).map((row) => row.name)).toEqual(["alpha"]);
 
     writeLocalPlugin(home, "beta");
     for (const path of watched) touch(path, frozen);
+    expect(cursorInventoryInputSignature(home)).toBe(signature);
     expect(listCursorPluginInstalls(home).map((row) => row.name)).toEqual(["alpha"]);
 
     clearCursorPluginInstallsCache();
