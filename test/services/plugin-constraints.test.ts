@@ -28,4 +28,13 @@ describe("plugin-constraints", () => {
     expect(satisfiesConstraint("1.0.0", "ea10b213686c")).toBe(false);
     expect(satisfiesConstraint("^1.0.0", "ea10b213686c")).toBe(false);
   });
+
+  it("reads latest as any version, like *", () => {
+    expect(parseVersionConstraint("latest")).toEqual({ kind: "range", range: "*" });
+    expect(parseVersionConstraint(" latest ")).toEqual({ kind: "range", range: "*" });
+    expect(satisfiesConstraint("latest", "1.0.2")).toBe(true);
+    expect(satisfiesConstraint("latest", "2.0.0-beta.1")).toBe(true);
+    expect(satisfiesConstraint("latest", "unknown")).toBe(false);
+    expect(() => parseVersionConstraint("newest")).toThrow(/Invalid version constraint: newest/);
+  });
 });
