@@ -112,6 +112,7 @@ jobs:
               - 'src/platforms/**'
             plugins:
               - 'src/plugins/**'
+              - 'test/plugins/**'
             services:
               - 'src/services/**'
               - 'src/agent/**'
