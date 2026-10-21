@@ -57,6 +57,24 @@ function old(id: string, days: number): void {
 }
 
 describe("notifications service", () => {
+  it("lists notifications written in the same millisecond newest first", () => {
+    const at = "2026-10-21T00:00:00.000Z";
+    const insert = getDb().prepare(
+      "INSERT INTO notifications (id, kind, title, body, plugin_name, payload, created_at) VALUES (?, 'update_available', ?, '', 'p', ?, ?)",
+    );
+    // The later write gets the smaller id, as a ULID can inside one millisecond.
+    insert.run("01ZZZZZZZZZZZZZZZZZZZZZZZZ", "first", JSON.stringify({ version: "1.0.0" }), at);
+    insert.run("01AAAAAAAAAAAAAAAAAAAAAAAA", "second", JSON.stringify({ version: "1.1.0" }), at);
+    expect(listNotifications().map((n) => n.title)).toEqual(["second", "first"]);
+
+    const now = new Date("2026-10-22T00:00:00.000Z");
+    const versions = Array.from({ length: 20 }, (_, i) => `2.${i}.0`);
+    for (const version of versions) {
+      addNotification({ kind: "update_available", title: version, plugin_name: "q", payload: { version }, now });
+    }
+    expect(listNotifications({ limit: 20 }).map((n) => n.title)).toEqual([...versions].reverse());
+  });
+
   it("writes the same kind, plugin and version once", () => {
     const first = addNotification({ kind: "update_available", plugin_name: "lint", title: "lint 1.2.0", payload: { version: "1.2.0" } });
     const again = addNotification({ kind: "update_available", plugin_name: "lint", title: "lint 1.2.0 again", payload: { version: "1.2.0" } });

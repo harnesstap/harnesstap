@@ -73,13 +73,18 @@ export function notifySafely(input: Parameters<typeof addNotification>[0]): Noti
   }
 }
 
+/**
+ * Newest first. Rows written in the same millisecond share `created_at`, and
+ * a ULID's random part does not follow write order inside one millisecond,
+ * so ties fall back to `rowid`, which grows with each insert.
+ */
 export function listNotifications(opts?: { filter?: "unread" | "all"; limit?: number }): NotificationRow[] {
   const filter = opts?.filter ?? "unread";
   const limit = Math.max(1, Math.min(opts?.limit ?? 50, 500));
   const where = filter === "unread" ? "WHERE read_at IS NULL" : "";
   return (
     getDb()
-      .prepare(`SELECT * FROM notifications ${where} ORDER BY created_at DESC, id DESC LIMIT ?`)
+      .prepare(`SELECT * FROM notifications ${where} ORDER BY created_at DESC, rowid DESC LIMIT ?`)
       .all(limit) as StoredRow[]
   ).map(decode);
 }
@@ -118,7 +123,7 @@ export function listPrunableNotifications(olderThanMs: number, now: Date = new D
   const cutoff = new Date(now.getTime() - olderThanMs).toISOString();
   return (
     getDb()
-      .prepare("SELECT * FROM notifications WHERE read_at IS NOT NULL AND created_at < ? ORDER BY created_at")
+      .prepare("SELECT * FROM notifications WHERE read_at IS NOT NULL AND created_at < ? ORDER BY created_at, rowid")
       .all(cutoff) as StoredRow[]
   ).map(decode);
 }
