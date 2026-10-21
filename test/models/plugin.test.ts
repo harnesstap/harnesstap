@@ -3,6 +3,28 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("plugin model", () => {
+  it("resolves name@version for a stored version that is not semver", async () => {
+    const context = await createInitializedTestContext("plugin-non-semver-version");
+    try {
+      const { createPlugin, getPlugin } = await import("../../src/models/plugin-model.ts");
+      // harnesstap 1.4.0 stored `latest` for a pull without --version.
+      const pulled = createPlugin({ name: "cloud", version: "latest" });
+      const partial = createPlugin({ name: "team", version: "1.0" });
+      const releases = [
+        createPlugin({ name: "lib", version: "1.0.0" }),
+        createPlugin({ name: "lib", version: "1.2.0" }),
+      ];
+      expect(getPlugin("cloud@latest")?.id).toBe(pulled.id);
+      expect(getPlugin("team@1.0")?.id).toBe(partial.id);
+      expect(getPlugin("lib@latest")?.id).toBe(releases[1]?.id);
+      expect(getPlugin("lib@1.0.0")?.id).toBe(releases[0]?.id);
+      expect(getPlugin("lib@^1.1.0")?.id).toBe(releases[1]?.id);
+      expect(() => getPlugin("lib@newest")).toThrow(/Invalid version constraint/);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("creates plugins clean and unfrozen by default", async () => {
     const context = await createInitializedTestContext("plugin-dirty-defaults");
     try {
