@@ -900,6 +900,25 @@ export function warmStatusRefreshWorker(): void {
   }
 }
 
+/**
+ * Undo `warmStatusRefreshWorker`: stop the worker and go back to the CLI
+ * lifecycle, where the worker exits once idle. Module state outlives a test
+ * file in one bun process, so a test that warms the worker calls this when
+ * it is done. Tests use this.
+ */
+export function stopStatusRefreshWorkerForTests(): void {
+  keepStatusWorkerAlive = false;
+  respawnAttempts = 0;
+  if (respawnTimer) {
+    clearTimeout(respawnTimer);
+    respawnTimer = null;
+  }
+  const worker = refreshWorker;
+  refreshWorker = null;
+  releaseRefreshJobs({ message: "status refresh worker stopped" });
+  if (worker) void worker.terminate();
+}
+
 function blockRefreshDelay(): void {
   if (statusRefreshDelayMs <= 0) return;
   const shared = new SharedArrayBuffer(4);
