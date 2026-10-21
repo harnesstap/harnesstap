@@ -67,7 +67,7 @@ mock.module("bun:sqlite", () => {
 
 import { mkdirSync, readdirSync, writeFileSync, type Dirent } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 import { Database } from "bun:sqlite";
 import {
   addDependencyToPlugin,
@@ -92,6 +92,7 @@ import {
   readStatusWatcherCreateCount,
   setStatusRefreshDelayMs,
   statusCacheWatchersHealthy,
+  stopStatusRefreshWorkerForTests,
   warmStatusRefreshWorker,
 } from "../../src/services/status-read-cache.ts";
 import { getDb } from "../../src/db/connection.ts";
@@ -169,6 +170,11 @@ function writeCursorHome(home: string): { logs: string; dbPath: string } {
 }
 
 describe("status perf", () => {
+  // Later test files in this bun process expect the CLI worker lifecycle.
+  afterAll(() => {
+    stopStatusRefreshWorkerForTests();
+  });
+
   it("keeps a warm status under budget on a large Cursor home", async () => {
     const context = await createInitializedTestContext("status-perf");
     try {
