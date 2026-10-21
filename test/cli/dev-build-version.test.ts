@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
+import packageJson from "../../package.json" with { type: "json" };
 import {
   formatDevBuildVersion,
   isReleaseBuild,
+  resolveBuildVersion,
 } from "../../src/version.ts";
 
 describe("formatDevBuildVersion", () => {
@@ -31,5 +33,20 @@ describe("formatDevBuildVersion", () => {
     expect(isReleaseBuild({ HT_RELEASE: "1" })).toBe(true);
     expect(isReleaseBuild({ HARNESSTAP_RELEASE: "1" })).toBe(true);
     expect(isReleaseBuild({})).toBe(false);
+  });
+});
+
+describe("npm publish build", () => {
+  // npm publish rebuilds dist/ through prepublishOnly, with whatever env the
+  // publish step has. 1.4.0 shipped as 1.4.0-dev+9dcdc1f that way (#501).
+  it("makes prepublishOnly a release build on its own", () => {
+    const script = packageJson.scripts.prepublishOnly;
+    expect(script).toMatch(/(^|\s)HT_RELEASE=1\s/);
+    expect(script).toContain("bun run build");
+  });
+
+  it("bakes the plain package version into a release build", () => {
+    expect(resolveBuildVersion({ HT_RELEASE: "1", GITHUB_SHA: "9dcdc1fa00000000" })).toBe(packageJson.version);
+    expect(resolveBuildVersion({ GITHUB_SHA: "9dcdc1fa00000000" })).toBe(`${packageJson.version}-dev+9dcdc1f`);
   });
 });

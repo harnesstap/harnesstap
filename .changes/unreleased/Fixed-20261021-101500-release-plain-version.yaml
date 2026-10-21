@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'The npm package and the Desktop sidecar report their release version (for example `1.4.0`) instead of a development string such as `1.4.0-dev+9dcdc1f`. `npm publish` rebuilt the CLI without the release flag.'
+time: 2026-10-21T20:15:00.000Z
+custom:
+  Issue: "501"

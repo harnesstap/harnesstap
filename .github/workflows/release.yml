@@ -231,6 +231,11 @@ jobs:
           fi
           echo "Publishing harnesstap@${VERSION} with dist-tag ${DIST_TAG} (highest stable: ${HIGHEST})."
           npm publish --access public --tag "$DIST_TAG"
+        env:
+          # npm publish rebuilds dist/ via prepublishOnly. That script sets
+          # HT_RELEASE itself; keep it here too so the published CLI never
+          # reports a -dev+<sha> version (#501).
+          HT_RELEASE: "1"
 
       # Immutable releases are on: a published release cannot take new assets.
       # Create a draft here; the desktop matrix uploads installers to it and
@@ -308,6 +313,9 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: write
+    env:
+      # The bundled ht-agent sidecar reports the package version, not -dev+<sha>.
+      HT_RELEASE: "1"
     defaults:
       run:
         shell: bash
