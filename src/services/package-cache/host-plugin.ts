@@ -13,6 +13,7 @@ import {
 import { createHash } from "node:crypto";
 import { dirname, join, relative, sep } from "node:path";
 import { getHarnesstapDir } from "../../db/connection.js";
+import { removeFileOrLink } from "../../utils/remove-file-or-link.js";
 import { parsePluginRef } from "../../plugins/claude-installed.js";
 import {
   findPackageCacheEntry,
@@ -92,7 +93,7 @@ function repairPackageTreeLinks(sourceRoot: string, destRoot: string): void {
     const target = linkTarget(join(sourceRoot, path));
     const dest = join(destRoot, path);
     if (target === undefined || !isSymlinkPath(dest) || linkTarget(dest) === target) continue;
-    rmSync(dest, { force: true });
+    removeFileOrLink(dest);
     symlinkSync(target, dest);
   }
 }
