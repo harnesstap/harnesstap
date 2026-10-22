@@ -49,7 +49,7 @@ export function announceBlocked(entry: BlockedHostPluginViewFiles): string {
   const more = entry.files.length - listed.length;
   const names = more > 0 ? `${listed.join(", ")}, and ${more} more` : listed.join(", ");
   return `Could not write ${formatCount(entry.files.length, "plugin file")} in ${where}: ${names}. `
-    + "HarnessTap does not remove or write through them, so the plugin there is incomplete. "
+    + "HarnessTap does not remove or write through what is in the way, so the plugin there is incomplete. "
     + "Move them away, then run the command again.";
 }
 
