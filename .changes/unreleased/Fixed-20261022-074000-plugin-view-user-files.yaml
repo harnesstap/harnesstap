@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'Files you add or edit in a plugin folder under `~/.claude/plugins/cache` are no longer deleted when you refresh, update, or switch profiles. HarnessTap now only treats files it wrote there as its own. When `--force-remove` replaces your files, it says which ones and backs them up, and `ht revert <id>` puts them back. Restoring never overwrites a file that changed since the backup unless you pass `--force-remove` again.'
+time: 2026-10-22T17:40:00.000000Z

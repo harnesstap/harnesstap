@@ -1,4 +1,7 @@
-import { pruneCreatedHostPluginView } from "./package-cache/host-plugin-views.js";
+import {
+  hostPluginViewWrittenHash,
+  pruneCreatedHostPluginView,
+} from "./package-cache/host-plugin-views.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskTextOnce } from "./status-disk-read.js";
 import {
@@ -123,6 +126,21 @@ export function isSymlinkPath(fullPath: string): boolean {
   }
 }
 
+/**
+ * Hash of a host plugin folder entry: a link hashes as its target (never
+ * followed), any other file as its bytes.
+ */
+export function hashFileOrLink(fullPath: string): string | undefined {
+  if (isSymlinkPath(fullPath)) {
+    try {
+      return hashGeneratedContent(`symlink:${readlinkSync(fullPath)}`);
+    } catch {
+      return undefined;
+    }
+  }
+  return hashOnDiskFile(fullPath);
+}
+
 function normalizeRelative(path: string): string {
   return path.replace(/\\/g, "/").replace(/^\.\//, "");
 }
@@ -134,6 +152,8 @@ export type ManagedPathOwnership = "unowned" | "owned" | "modified";
  * longer match what HarnessTap last wrote is `modified` and is never owned
  * again until a later apply actually writes the file.
  */
+const HOST_PLUGIN_CACHE_SEGMENT = "plugins/cache/";
+
 export function classifyManagedPathOwnership(
   rootPath: string,
   relativePath: string,
@@ -145,6 +165,17 @@ export function classifyManagedPathOwnership(
   }
   const fullPath = resolve(rootPath, normalized);
   const diskHash = hashOnDiskFile(fullPath);
+  if (normalized.includes(HOST_PLUGIN_CACHE_SEGMENT)) {
+    // In a host plugin folder the folder's record says what HarnessTap wrote.
+    const written = hostPluginViewWrittenHash(fullPath);
+    if (written === null) return "unowned";
+    if (written !== undefined) {
+      // Records from before links were kept as links hold the linked bytes.
+      const same = written === hashFileOrLink(fullPath)
+        || (isSymlinkPath(fullPath) && written === diskHash);
+      return same ? "owned" : "modified";
+    }
+  }
   if (owned.some((row) => row.generated_hash === diskHash)) {
     return "owned";
   }

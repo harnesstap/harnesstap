@@ -24,11 +24,13 @@ import { getHarnesstapDir } from "../../db/connection.js";
  *   still match; anything else in the folder is left alone unless the user
  *   agrees to replace it.
  *
- * Version 1 of the file was a plain array of created folders.
+ * Version 1 of the file was a plain array of created folders. Those records
+ * stay `legacy`: they do not say which files HarnessTap wrote.
  */
 export interface HostPluginViewRecord {
   created: boolean;
   files: Record<string, string>;
+  legacy?: boolean;
 }
 
 type HostPluginViewRecords = Record<string, HostPluginViewRecord>;
@@ -51,7 +53,7 @@ export function readHostPluginViewRecords(): HostPluginViewRecords {
   const records: HostPluginViewRecords = {};
   if (Array.isArray(parsed)) {
     for (const view of parsed) {
-      if (typeof view === "string") records[resolve(view)] = { created: true, files: {} };
+      if (typeof view === "string") records[resolve(view)] = { created: true, files: {}, legacy: true };
     }
     return records;
   }
@@ -64,7 +66,11 @@ export function readHostPluginViewRecords(): HostPluginViewRecords {
         if (typeof hash === "string") files[path] = hash;
       }
     }
-    records[resolve(view)] = { created: raw.created === true, files };
+    records[resolve(view)] = {
+      created: raw.created === true,
+      files,
+      ...(raw.legacy === true && Object.keys(files).length === 0 ? { legacy: true } : {}),
+    };
   }
   return records;
 }
@@ -79,7 +85,8 @@ function writeHostPluginViewRecords(records: HostPluginViewRecords): void {
       const hash = record.files[path];
       if (hash) files[path] = hash;
     }
-    sorted[view] = { created: record.created, files };
+    const legacy = record.legacy === true && Object.keys(files).length === 0;
+    sorted[view] = { created: record.created, files, ...(legacy ? { legacy: true } : {}) };
   }
   try {
     mkdirSync(dirname(hostPluginViewsPath()), { recursive: true });
@@ -114,7 +121,8 @@ export function recordHostPluginViewFiles(input: {
     // Nothing of HarnessTap's in a folder it did not create: no record.
     delete records[view];
   } else {
-    records[view] = { created, files };
+    const legacy = current.legacy === true && Object.keys(files).length === 0;
+    records[view] = { created, files, ...(legacy ? { legacy: true } : {}) };
   }
   writeHostPluginViewRecords(records);
 }
@@ -134,13 +142,52 @@ export function isInHostPluginViewCreatedByHarnessTap(absolutePath: string): boo
   return view !== undefined && records[view]?.created === true;
 }
 
-/** The hash HarnessTap recorded when it wrote `absolutePath` into a host plugin folder. */
-export function recordedHostPluginViewFileHash(absolutePath: string): string | undefined {
+function pathInView(view: string, absolutePath: string): string {
+  return relative(view, resolve(absolutePath)).split(sep).join("/");
+}
+
+/**
+ * Whether HarnessTap wrote `absolutePath` into a host plugin folder, from the
+ * folder's record alone. Once a record lists files it is the only proof: an
+ * apply emits the folder onto itself, so apply rows alone would claim every
+ * file in it, the user's own included.
+ *
+ * - a hash: HarnessTap wrote the file with these bytes
+ * - `null`: HarnessTap did not write it
+ * - `undefined`: no record covers the path, or only a version 1 record
+ */
+export function hostPluginViewWrittenHash(absolutePath: string): string | null | undefined {
   const records = readHostPluginViewRecords();
   const view = viewContaining(records, absolutePath);
-  if (!view) return undefined;
-  const rel = relative(view, resolve(absolutePath)).split(sep).join("/");
-  return records[view]?.files[rel];
+  const record = view ? records[view] : undefined;
+  if (!view || !record || record.legacy) return undefined;
+  return record.files[pathInView(view, absolutePath)] ?? null;
+}
+
+/** Stop recording `paths` (inside the folder) as written by HarnessTap. */
+export function forgetHostPluginViewFiles(hostView: string, paths: readonly string[]): void {
+  if (paths.length === 0) return;
+  const records = readHostPluginViewRecords();
+  const view = resolve(hostView);
+  const record = records[view];
+  if (!record) return;
+  const files = { ...record.files };
+  for (const path of paths) delete files[path];
+  records[view] = { ...record, files };
+  writeHostPluginViewRecords(records);
+}
+
+/** An apply wrote `absolutePath` inside a recorded host plugin folder: record its bytes too. */
+export function recordHostPluginViewWrite(absolutePath: string, hash: string): void {
+  const records = readHostPluginViewRecords();
+  const view = viewContaining(records, absolutePath);
+  const record = view ? records[view] : undefined;
+  if (!view || !record) return;
+  records[view] = {
+    ...record,
+    files: { ...record.files, [pathInView(view, absolutePath)]: hash },
+  };
+  writeHostPluginViewRecords(records);
 }
 
 /** Remove the empty folders under `dir`, then `dir` itself when it is empty. */

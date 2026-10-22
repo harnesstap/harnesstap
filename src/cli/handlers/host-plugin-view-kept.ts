@@ -1,12 +1,15 @@
 import {
   type KeptHostPluginViewFiles,
+  type ReplacedHostPluginViewFiles,
   replaceKeptHostPluginViewFiles,
   takeKeptHostPluginViewFiles,
+  takeReplacedHostPluginViewFiles,
 } from "../../services/package-cache/host-plugin.js";
 import { promptForConfirmation } from "../../services/wizards/shared.js";
 import { ui } from "../../ui/index.js";
 import { shortenHomePath } from "../../utils/home-path.js";
 import { formatCount } from "../formatting.js";
+import { formatCommand } from "../shared.js";
 import { canPromptInteractively } from "./plugin-auto-update.js";
 
 const LISTED_FILES = 5;
@@ -15,7 +18,8 @@ export interface SettleKeptHostPluginViewDeps {
   interactive: boolean;
   confirm: (input: { message: string; default?: boolean }) => Promise<boolean>;
   take: () => KeptHostPluginViewFiles[];
-  replace: (entry: KeptHostPluginViewFiles) => string[];
+  takeReplaced: () => ReplacedHostPluginViewFiles[];
+  replace: (entry: KeptHostPluginViewFiles) => { paths: string[]; backupId?: string };
 }
 
 function defaultDeps(): SettleKeptHostPluginViewDeps {
@@ -23,8 +27,38 @@ function defaultDeps(): SettleKeptHostPluginViewDeps {
     interactive: canPromptInteractively(),
     confirm: promptForConfirmation,
     take: takeKeptHostPluginViewFiles,
+    takeReplaced: takeReplacedHostPluginViewFiles,
     replace: replaceKeptHostPluginViewFiles,
   };
+}
+
+function listPaths(paths: readonly string[]): string {
+  const listed = paths.slice(0, LISTED_FILES);
+  const more = paths.length - listed.length;
+  return more > 0 ? `${listed.join(", ")}, and ${more} more` : listed.join(", ");
+}
+
+function restoreHint(backupId: string | undefined): string {
+  return backupId
+    ? ` To put the old files back, run \`${formatCommand(["revert", backupId])}\`.`
+    : "";
+}
+
+/**
+ * Say which files a host plugin refresh replaced or removed and how to put
+ * them back. Every one was backed up first.
+ */
+function announceReplaced(entry: ReplacedHostPluginViewFiles): string {
+  const where = shortenHomePath(entry.hostView);
+  const count = formatCount(entry.files.length, "file");
+  const theirs = entry.notWrittenByHarnessTap;
+  let what = `${count} in ${where}: ${listPaths(entry.files)}`;
+  if (theirs.length === entry.files.length) {
+    what = `${count} in ${where} that HarnessTap did not write or that changed since: ${listPaths(theirs)}`;
+  } else if (theirs.length > 0) {
+    what += `. Of those, HarnessTap did not write or you changed: ${listPaths(theirs)}`;
+  }
+  return `Backed up and replaced ${what}.${restoreHint(entry.backupId)}`;
 }
 
 function describeFiles(entry: KeptHostPluginViewFiles): string {
@@ -44,6 +78,10 @@ export async function settleKeptHostPluginViewFiles(
   options: { json?: boolean } = {},
   deps: SettleKeptHostPluginViewDeps = defaultDeps(),
 ): Promise<void> {
+  for (const entry of deps.takeReplaced()) {
+    // stderr, so --format json output stays clean.
+    console.error(announceReplaced(entry));
+  }
   for (const entry of deps.take()) {
     const where = shortenHomePath(entry.hostView);
     const count = formatCount(entry.files.length, "file");
@@ -54,8 +92,8 @@ export async function settleKeptHostPluginViewFiles(
         default: false,
       });
       if (confirmed) {
-        deps.replace(entry);
-        ui.success(`Replaced ${count} in ${where}. The old files are in the HarnessTap trash.`);
+        const { backupId } = deps.replace(entry);
+        ui.success(`Backed up and replaced ${count} in ${where}.${restoreHint(backupId)}`);
         continue;
       }
     }

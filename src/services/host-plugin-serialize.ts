@@ -20,6 +20,7 @@ import type {
   InstalledPluginsFile,
 } from "../plugins/claude-installed.js";
 import { parsePluginRef } from "../plugins/host-plugin-manifest.js";
+import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
 import { filterHostPluginRuntimeFiles } from "./host-plugin-runtime-modules.js";
 import { resolveInstallRoot } from "./resource-sync.js";
 import { translateEmittedSpecTree } from "./host-plugin-spec-emit.js";
@@ -249,6 +250,20 @@ function shadowedCursorMarketplaceNames(homeRoot: string): Set<string> {
   return names;
 }
 
+/**
+ * When the install root is a host plugin folder HarnessTap created, emit only
+ * the files it recorded writing. Files the user added there stay theirs: emitting
+ * them would let the apply record them as HarnessTap's.
+ */
+function onlyHarnessTapWrittenFiles<T extends { relativePath: string }>(
+  sourceRoot: string,
+  collected: T[],
+): T[] {
+  const record = readHostPluginViewRecord(sourceRoot);
+  if (!record?.created || record.legacy) return collected;
+  return collected.filter((file) => file.relativePath in record.files);
+}
+
 export interface EmitHostPluginTreesOptions {
   layout: HostPluginLayout;
   homeRoot: string;
@@ -298,7 +313,7 @@ export function emitHostPluginTrees(
       resource,
       cursorFolders?.get(originRef),
     );
-    const collected = collectPluginFiles(sourceRoot);
+    const collected = onlyHarnessTapWrittenFiles(sourceRoot, collectPluginFiles(sourceRoot));
     const allowRuntimeModules =
       getPlatform(options.layout)?.hostPluginRuntimeModules === true;
     const filtered = filterHostPluginRuntimeFiles(collected, allowRuntimeModules);

@@ -46,7 +46,12 @@ import {
 import { dropHarnessSkillsDuplicatingPluginSource } from "../../services/scan-dedup.js";
 import { handleUseCommand } from "../../services/use-command.js";
 import { promptForChoice } from "../../services/wizards/shared.js";
+import {
+  isHostPluginViewBackupId,
+  restoreHostPluginViewBackup,
+} from "../../services/package-cache/host-plugin-view-backups.js";
 import { ui } from "../../ui/index.js";
+import { shortenHomePath } from "../../utils/home-path.js";
 import {
   projectStatusPayloadToJson,
   renderProjectStatusHuman,
@@ -474,6 +479,48 @@ function handleHistoryCommand(
   });
 }
 
+/** `ht revert <backup id>` for files a plugin cache refresh backed up. */
+function revertHostPluginViewBackup(
+  backupId: string,
+  opts: { dryRun?: boolean; forceRemove?: boolean },
+  format: ReturnType<typeof parseOutputFormat>,
+): void {
+  const result = restoreHostPluginViewBackup(backupId, {
+    dryRun: opts.dryRun,
+    forceRemove: opts.forceRemove,
+  });
+  if (!result) return;
+  const changed = result.skipped.filter((file) => file.reason === "changed").map((file) => file.path);
+  if (format === "json") {
+    printJson({
+      dry_run: Boolean(opts.dryRun),
+      backup_id: backupId,
+      kind: "plugin-folder-backup",
+      folder: result.hostView,
+      restored: result.restored,
+      kept: changed,
+      replaced_backup_id: result.replacedBackupId ?? null,
+    });
+    return;
+  }
+  const where = shortenHomePath(result.hostView);
+  if (opts.dryRun) {
+    console.log(CLI_COPY.dryRunNothingChanged);
+  }
+  if (changed.length > 0) {
+    ui.warn(
+      `Kept ${formatCount(changed.length, "file")} in ${where} that changed since the backup: ${changed.join(", ")}. To back up the current copies and put the old ones back, run the command again with --force-remove.`,
+    );
+  }
+  if (result.replacedBackupId) {
+    ui.info(
+      `Backed up the files it replaced first. To undo, run \`${formatCommand(["revert", result.replacedBackupId])}\`.`,
+    );
+  }
+  const verb = opts.dryRun ? "Would restore" : "Restored";
+  ui.success(`${verb} ${formatCount(result.restored.length, "file")} in ${where}.`);
+}
+
 function handleRevertCommand(
   snapshotId: string | undefined,
   opts: { dryRun?: boolean; forceRemove?: boolean; format?: string },
@@ -485,6 +532,10 @@ function handleRevertCommand(
     fail("Pass a snapshot id.", {
       hint: `Run ${formatCommand("history --show-id")} to see your snapshots.`,
     });
+    return;
+  }
+  if (isHostPluginViewBackupId(snapshotId)) {
+    revertHostPluginViewBackup(snapshotId, opts, format);
     return;
   }
   const plan = resolveRevertPlan(snapshotId);

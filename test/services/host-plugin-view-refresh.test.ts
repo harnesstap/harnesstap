@@ -251,9 +251,10 @@ describe("settleKeptHostPluginViewFiles", () => {
         return true;
       },
       take: () => [entry],
+      takeReplaced: () => [],
       replace: (next) => {
         replaced.push(next);
-        return [];
+        return { paths: [] };
       },
     });
     expect(asked).toHaveLength(1);
@@ -272,9 +273,10 @@ describe("settleKeptHostPluginViewFiles", () => {
         interactive: false,
         confirm: async () => true,
         take: () => [entry],
+        takeReplaced: () => [],
         replace: (next) => {
           replaced.push(next);
-          return [];
+          return { paths: [] };
         },
       });
     } finally {

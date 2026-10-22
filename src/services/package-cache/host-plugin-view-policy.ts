@@ -12,8 +12,19 @@ export interface KeptHostPluginViewFiles {
   files: Array<{ path: string; reason: KeptHostPluginViewReason }>;
 }
 
+/** Files a host plugin refresh backed up, then replaced or removed. */
+export interface ReplacedHostPluginViewFiles {
+  hostView: string;
+  /** The id `ht revert` takes to put them back. */
+  backupId: string;
+  files: string[];
+  /** The subset HarnessTap did not write or that changed since (--force-remove). */
+  notWrittenByHarnessTap: string[];
+}
+
 let forceReplace = false;
 const kept: KeptHostPluginViewFiles[] = [];
+const replaced: ReplacedHostPluginViewFiles[] = [];
 
 /**
  * `--force-remove`: a host plugin refresh also replaces files HarnessTap did
@@ -34,8 +45,18 @@ export function recordKeptHostPluginViewFiles(entry: KeptHostPluginViewFiles): v
   kept.push(entry);
 }
 
-export function hasKeptHostPluginViewFiles(): boolean {
-  return kept.length > 0;
+export function recordReplacedHostPluginViewFiles(entry: ReplacedHostPluginViewFiles): void {
+  replaced.push(entry);
+}
+
+/** True when a host plugin refresh in this process kept or replaced files. */
+export function hasHostPluginViewNotices(): boolean {
+  return kept.length > 0 || replaced.length > 0;
+}
+
+/** Drain the files replaced by host plugin refreshes since the last call. */
+export function takeReplacedHostPluginViewFiles(): ReplacedHostPluginViewFiles[] {
+  return replaced.splice(0, replaced.length);
 }
 
 /** Drain the files kept by host plugin refreshes since the last call. */
