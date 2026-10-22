@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "bun:test";
@@ -12,6 +12,9 @@ import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { isClaudePluginRegistryPath } from "../../src/services/claude-plugin-registration-prune.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import { detectGlobalProfileStatus, hostPluginFolderChanges } from "../../src/services/global-profile-drift.ts";
+import { recordHostPluginViewFiles } from "../../src/services/package-cache/host-plugin-views.ts";
+import { hashFileOrLink } from "../../src/services/safe-file-removal.ts";
+import { getLatestGlobalApplySnapshotForProfile } from "../../src/models/global-apply-snapshot.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
 const INSTALLED = ".claude/plugins/installed_plugins.json";
@@ -19,7 +22,7 @@ const KNOWN = ".claude/plugins/known_marketplaces.json";
 const SETTINGS = ".claude/settings.json";
 
 /** A Claude-format marketplace repo listing plugin `dup` (skill, hook, MCP server). */
-function initMarketplace(root: string, name: string): string {
+function initMarketplace(root: string, name: string, extras = false): string {
   const repo = join(root, name);
   const plugin = join(repo, "plugins/dup");
   mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
@@ -44,6 +47,11 @@ function initMarketplace(root: string, name: string): string {
     join(plugin, ".mcp.json"),
     JSON.stringify({ mcpServers: { dupmcp: { command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/server.js"] } } }),
   );
+  if (extras) {
+    mkdirSync(join(plugin, "assets"), { recursive: true });
+    writeFileSync(join(plugin, "hooks/start.sh"), "#!/bin/sh\necho start\n");
+    writeFileSync(join(plugin, "assets/logo.bin"), Buffer.from([0, 1, 2, 3]));
+  }
   spawnSync("git", ["init", "-q"], { cwd: repo });
   spawnSync("git", ["add", "-A"], { cwd: repo });
   spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"], { cwd: repo });
@@ -51,8 +59,8 @@ function initMarketplace(root: string, name: string): string {
 }
 
 /** Profile `remote` depending on dup@mkta, with mkta then pointed at a remote URL. */
-async function setupRemoteProfile(rootDir: string): Promise<void> {
-  addMarketplace(getHarnesstapDir(), { url: initMarketplace(rootDir, "mkta"), name: "mkta", platforms: ["claude-code"] });
+async function setupRemoteProfile(rootDir: string, extras = false): Promise<void> {
+  addMarketplace(getHarnesstapDir(), { url: initMarketplace(rootDir, "mkta", extras), name: "mkta", platforms: ["claude-code"] });
   await importPluginFromMarketplace({ marketplace: "mkta", plugin: "dup" });
   const profile = createPlugin({ name: "remote" });
   setPluginTags(profile.id, ["profile"]);
@@ -155,6 +163,40 @@ describe("claude remote marketplace plugin registration", () => {
       expect(existsSync(join(home, ".claude/plugins/harnesstap-marketplaces/mkta"))).toBe(false);
       // The pre-change registries are backed up.
       expect(findFiles(join(getHarnesstapDir(), "trash"), "installed_plugins.json").length).toBeGreaterThan(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("writes only the files Claude reads into a plugin folder HarnessTap mirrored, and removes the whole folder on switch", async () => {
+    const context = await createInitializedTestContext("claude-remote-reg-mirror");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir, true);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyProfilePlugin("remote", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+      const cacheDir = readJson<{ plugins: Record<string, Array<{ installPath: string }>> }>(home, INSTALLED)
+        .plugins["dup@mkta"]?.[0]?.installPath ?? "";
+      // What the package download leaves: a copy HarnessTap made and recorded file by file.
+      const files: Record<string, string> = {};
+      for (const entry of readdirSync(cacheDir, { recursive: true }) as string[]) {
+        const hash = hashFileOrLink(join(cacheDir, entry));
+        if (hash && statSync(join(cacheDir, entry)).isFile()) files[entry.split("\\").join("/")] = hash;
+      }
+      recordHostPluginViewFiles({ hostView: cacheDir, created: true, files });
+
+      await applyProfilePlugin("remote", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+      const written = Object.keys(
+        getLatestGlobalApplySnapshotForProfile("remote")?.state?.platform_files["claude-code"] ?? {},
+      ).filter((path) => join(home, path).startsWith(`${cacheDir}/`))
+        .map((path) => join(home, path).slice(cacheDir.length + 1))
+        .sort();
+      expect(written).toEqual([".claude-plugin/plugin.json", ".mcp.json", "hooks/hooks.json", "skills/dup-skill/SKILL.md"]);
+      expect(existsSync(join(cacheDir, "hooks/start.sh"))).toBe(true);
+      expect(existsSync(join(cacheDir, "assets/logo.bin"))).toBe(true);
+
+      await applyProfilePlugin("plain", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+      expect(existsSync(cacheDir)).toBe(false);
     } finally {
       await context.cleanup();
     }

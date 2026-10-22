@@ -417,7 +417,17 @@ export function emitHostPluginTrees(
         alias_harnesses: [],
       });
     }
+    const sourceContent = remoteMarketplace && isMirroredHostPluginView(join(options.homeRoot, relativeRoot))
+      ? new Map(filtered.files.map((file) => [file.relativePath, file.content]))
+      : undefined;
     for (const file of translated.files) {
+      if (
+        sourceContent
+        && !isClaudeReadPluginFile(file.relativePath, file.encoding)
+        && sourceContent.get(file.relativePath) === file.content
+      ) {
+        continue;
+      }
       files.push({
         path: `${relativeRoot}/${file.relativePath}`,
         content: file.content,
@@ -475,6 +485,31 @@ export function emitHostPluginTrees(
     options.surfaceWarnings,
   );
   return files;
+}
+
+/**
+ * Files in a Claude Code plugin that Claude reads as configuration or as
+ * model instructions: manifests, MCP and hook config, skills, commands and
+ * agents. HarnessTap checks and tracks these when it writes them.
+ */
+const CLAUDE_READ_PLUGIN_FILE =
+  /^(?:\.claude-plugin\/[^/]+|\.mcp\.json|\.lsp\.json|settings\.json|hooks\/hooks\.json|(?:skills|commands|agents|output-styles)\/.+\.(?:md|mdc|markdown|json|ya?ml|txt))$/i;
+
+function isClaudeReadPluginFile(relativePath: string, encoding?: "utf8" | "base64"): boolean {
+  return encoding !== "base64" && CLAUDE_READ_PLUGIN_FILE.test(relativePath);
+}
+
+/**
+ * The folder is a copy of the package HarnessTap created and recorded
+ * file by file. The record keeps and removes the rest of its files with the
+ * files the apply writes, so the apply needs to write only the files Claude
+ * Code reads as config or instructions, and any file it translates. Writing
+ * every file would hold the whole package (often 100+ MB of assets and
+ * bundles) in memory several times over and in each apply snapshot.
+ */
+function isMirroredHostPluginView(folder: string): boolean {
+  const record = readHostPluginViewRecord(folder);
+  return record?.created === true && !record.legacy && Object.keys(record.files).length > 0;
 }
 
 /**
