@@ -1,5 +1,11 @@
 import { parseVersionConstraint } from "../../plugin-constraints.js";
+import { gitDependencyPinIssue } from "../../git-dependency-pin-check.js";
 import type { PluginDoctorCheckResult, PluginDoctorContext } from "../plugin-doctor.types.js";
+
+function checkGitDependencyPin(ref: string, constraint: string): PluginDoctorCheckResult[] {
+  const issue = gitDependencyPinIssue(ref, constraint);
+  return issue ? [{ severity: issue.severity === "error" ? "error" : "warn", message: issue.message }] : [];
+}
 
 export const pluginMetadataCheck = {
   id: "plugin-metadata",
@@ -8,6 +14,10 @@ export const pluginMetadataCheck = {
     const results: PluginDoctorCheckResult[] = [];
 
     for (const pin of plugins) {
+      if (pin.source_kind === "git") {
+        results.push(...checkGitDependencyPin(pin.ref, pin.version_constraint));
+        continue;
+      }
       if (!pin.ref.includes("@")) {
         results.push({
           severity: "error",

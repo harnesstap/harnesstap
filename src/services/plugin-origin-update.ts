@@ -8,6 +8,7 @@ import {
   stampPluginOrigin,
 } from "../models/plugin-model.js";
 import { refreshGitSource } from "../plugins/refresh.js";
+import { gitFetchRefForPin, type ResolveSemverTag } from "./git-pin-fetch.js";
 import type {
   OriginFingerprintKind,
   Plugin,
@@ -82,7 +83,10 @@ export type PluginOriginUpdateDeps = {
   refreshGit?: (options: {
     url: string;
     targetDir: string;
+    ref?: string;
   }) => OriginRefreshResult | Promise<OriginRefreshResult>;
+  /** Resolve a semver pin against the repository's tags. Tests inject this. */
+  resolveSemverTag?: ResolveSemverTag;
   listCatalogLatest?: (locator: {
     org: string;
     catalog: string;
@@ -438,12 +442,18 @@ export async function checkPluginOrigins(opts?: {
     return pending;
   };
 
-  const fetchGit = (url: string) => {
-    const existing = gitFetches.get(url);
+  // A pinned origin (#500) fetches its commit, tag or branch; a semver pin
+  // moves to the highest matching tag. Unpinned origins track HEAD.
+  const fetchGit = (url: string, pinnedRef?: string) => {
+    const key = pinnedRef ? `${url}#${pinnedRef}` : url;
+    const existing = gitFetches.get(key);
     if (existing) return existing;
     const targetDir = gitOriginCacheDir(harnesstapDir, url);
     const pending = Promise.resolve()
-      .then(() => refreshGit({ url, targetDir }))
+      .then(async () => {
+        const { fetchRef } = await gitFetchRefForPin(url, pinnedRef, opts?.deps?.resolveSemverTag);
+        return refreshGit({ url, targetDir, ...(fetchRef ? { ref: fetchRef } : {}) });
+      })
       .catch((error: unknown) => ({
         ok: false as const,
         message: thrownErrorMessage(error),
@@ -470,7 +480,7 @@ export async function checkPluginOrigins(opts?: {
         break;
       }
       case "git": {
-        const fetched = await fetchGit(locator.url);
+        const fetched = await fetchGit(locator.url, locator.ref);
         targetRow = await compareGitSha(
           target,
           locatorStr,

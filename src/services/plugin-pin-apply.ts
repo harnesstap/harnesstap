@@ -11,6 +11,7 @@ import {
 } from "./plugin-dependency.js";
 import {
   installPluginPins,
+  isPinnedGitConstraint,
   type InstallPluginPinResult,
   type InstallPluginPinsProgress,
 } from "./plugin-install.js";
@@ -208,6 +209,17 @@ export async function syncPluginPinsForApply(
           installPlatformId: options.installPlatformId,
           progress: options.progress,
         });
+
+  // A git dependency pinned to a commit, tag, branch or tag range that could
+  // not be fetched stops the apply with the git error (#500), instead of a
+  // later "no local version" message.
+  for (const install of installs) {
+    if (install.status !== "failed") continue;
+    const pin = pinsToInstall.find((candidate) => candidate.ref === install.ref);
+    if (!pin || parseDependencyRef(pin.ref).source_kind !== "git") continue;
+    if (!isPinnedGitConstraint(pin.version_constraint)) continue;
+    throw new Error(`Could not fetch git dependency ${pin.ref} at ${pin.version_constraint}: ${install.message}`);
+  }
 
   let syncedResourceCount = 0;
   const unresolvedPins: string[] = [];

@@ -146,3 +146,74 @@ it("refuses to overwrite an authored plugin of the same name", async () => {
   }
   expect(getPluginById(authored.id)?.origin).toBe("authored");
 });
+
+function pinnedRefreshFrom(root: string, seen: Array<string | undefined>, sha: string) {
+  return async (opts: { url: string; targetDir: string; ref?: string }) => {
+    seen.push(opts.ref);
+    mkdirSync(opts.targetDir, { recursive: true });
+    cpSync(root, opts.targetDir, { recursive: true });
+    return { ok: true as const, sha, message: "ok" };
+  };
+}
+
+it("fetches a pinned commit, tag or branch and keeps the pin on the origin (#500)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "ht-ponytail-pin-"));
+  writePluginJsonRoot(root, "ponytail");
+  const seen: Array<string | undefined> = [];
+
+  const imported = await importPluginFromGitHubRef("git@github.com:DietrichGebert/ponytail.git#F8797FE", {
+    refreshGit: pinnedRefreshFrom(root, seen, "f8797fe0123456789abcdef0123456789abcdef0"),
+  });
+  expect(seen).toEqual(["f8797fe"]);
+  expect(imported.origin_locator).toBe("https://github.com/DietrichGebert/ponytail.git#f8797fe");
+  expect(getPluginByName("ponytail")?.origin_locator).toBe(
+    "https://github.com/DietrichGebert/ponytail.git#f8797fe",
+  );
+  expect(getPluginByName("ponytail")?.origin_fingerprint).toBe("f8797fe0123456789abcdef0123456789abcdef0");
+
+  // Re-pinning the same repository to a branch updates the same plugin.
+  const repinned = await importPluginFromGitHubRef(
+    "DietrichGebert/ponytail",
+    { refreshGit: pinnedRefreshFrom(root, seen, "1111111111111111111111111111111111111111") },
+    { ref: "ref:main" },
+  );
+  expect(repinned.created).toBe(false);
+  expect(seen).toEqual(["f8797fe", "main"]);
+  expect(getPluginByName("ponytail")?.origin_locator).toBe(
+    "https://github.com/DietrichGebert/ponytail.git#main",
+  );
+});
+
+it("resolves a semver pin to the highest matching tag (#500)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "ht-ponytail-semver-"));
+  writePluginJsonRoot(root, "ponytail");
+  const seen: Array<string | undefined> = [];
+  const ranges: string[] = [];
+
+  const imported = await importPluginFromGitHubRef(
+    "DietrichGebert/ponytail",
+    {
+      refreshGit: pinnedRefreshFrom(root, seen, "2222222222222222222222222222222222222222"),
+      resolveSemverTag: async (_url, range) => {
+        ranges.push(range);
+        return "v1.4.2";
+      },
+    },
+    { ref: "^1.2.0" },
+  );
+  expect(ranges).toEqual(["^1.2.0"]);
+  expect(seen).toEqual(["v1.4.2"]);
+  expect(imported.origin_locator).toBe("https://github.com/DietrichGebert/ponytail.git#^1.2.0");
+});
+
+it("refuses a pin git cannot use before fetching (#500)", async () => {
+  const seen: Array<string | undefined> = [];
+  const attempt = importPluginFromGitHubRef(
+    "DietrichGebert/ponytail#bad..ref",
+    { refreshGit: pinnedRefreshFrom(ctx.homeDir, seen, "abc") },
+  );
+  await expect(attempt).rejects.toBeInstanceOf(GitPluginImportError);
+  await expect(attempt).rejects.toThrow("Invalid git dependency constraint");
+  expect(seen).toEqual([]);
+  expect(getPluginByName("ponytail")).toBeUndefined();
+});

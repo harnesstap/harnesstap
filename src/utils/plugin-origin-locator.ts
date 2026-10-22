@@ -2,7 +2,8 @@ import { parseDependencyRef } from "./plugin-dependency-ref.js";
 
 export type OriginLocator =
   | { kind: "marketplace"; ref: string }
-  | { kind: "git"; url: string }
+  /** `ref` pins a commit, tag or branch (#500). Stored as `<url>#<ref>`. */
+  | { kind: "git"; url: string; ref?: string }
   | { kind: "catalog"; org: string; catalog: string; slug: string };
 
 export function formatOriginLocator(locator: OriginLocator): string {
@@ -10,7 +11,7 @@ export function formatOriginLocator(locator: OriginLocator): string {
     case "marketplace":
       return locator.ref;
     case "git":
-      return locator.url;
+      return locator.ref ? `${locator.url}#${locator.ref}` : locator.url;
     case "catalog":
       return `${locator.org}/${locator.catalog}/${locator.slug}`;
     default: {
@@ -26,7 +27,7 @@ export function parseOriginLocator(raw: string): OriginLocator | null {
 
   const parsed = parseDependencyRef(trimmed);
   if (parsed.source_kind === "git") {
-    return { kind: "git", url: trimmed };
+    return splitGitLocator(trimmed);
   }
 
   const slashParts = trimmed.split("/");
@@ -42,4 +43,16 @@ export function parseOriginLocator(raw: string): OriginLocator | null {
   }
 
   return null;
+}
+
+/**
+ * `<url>#<ref>` pins a git origin to a commit, tag or branch. A locator
+ * written before pins existed has no `#` and tracks the default branch.
+ */
+export function splitGitLocator(raw: string): { kind: "git"; url: string; ref?: string } {
+  const hash = raw.lastIndexOf("#");
+  if (hash <= 0) return { kind: "git", url: raw };
+  const url = raw.slice(0, hash);
+  const ref = raw.slice(hash + 1).trim();
+  return ref ? { kind: "git", url, ref } : { kind: "git", url };
 }
