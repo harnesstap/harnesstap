@@ -98,6 +98,7 @@ import { captureManagedSnapshotState } from "../../services/snapshot-capture.js"
 import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseDependencyRef } from "../../utils/plugin-dependency-ref.js";
 import { marketplaceListsPlugin } from "../../services/host-plugin-source.js";
+import { marketplaceIsKnown } from "../../services/resource-sync-install.js";
 import type {
   ClaudePluginConfig,
   ClaudePluginEntry,
@@ -2536,6 +2537,15 @@ function handlePluginAddDependencyCommand(
   // A marketplace that HarnessTap can read must list the plugin; one not on
   // disk yet is checked when the profile installs it.
   const marketplace = parsedRef.source_kind === "marketplace" ? parsedRef.namespace : "";
+  if (marketplace && !marketplaceIsKnown(marketplace, resolveHomeRoot())) {
+    // Nothing could ever install it: no registered, well-known, host
+    // configured or library declared marketplace has this name.
+    process.exitCode = 1;
+    fail(`Marketplace ${marketplace} is not configured.`, {
+      hint: `ht marketplace add <git-url> --name ${marketplace}`,
+    });
+    return;
+  }
   if (
     marketplace
     && marketplaceListsPlugin({

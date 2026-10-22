@@ -142,6 +142,31 @@ describe("CLI plugin marketplace", () => {
     }
   });
 
+  it("refuses plugin add --to for a marketplace that is not configured", async () => {
+    const context = await createTestContext("cli-plugin-add-unknown-marketplace");
+    try {
+      await runCli(["init"]);
+      await runCli(["plugin", "create", "pins-plugin"]);
+
+      const add = await runCli(["plugin", "add", "x@neverheard", "--to", "pins-plugin"], {
+        isTTY: false,
+      });
+      expect(add.exitCode).toBe(1);
+      expect(add.stderr).toContain("Marketplace neverheard is not configured.");
+      expect(add.stderr).toContain("ht marketplace add <git-url> --name neverheard");
+
+      const show = await runCli(["plugin", "show", "pins-plugin", "--format", "json"], {
+        isTTY: false,
+      });
+      const plugin = JSON.parse(show.stdout.trim()) as {
+        dependencies: Array<{ dependency_name: string }>;
+      };
+      expect(plugin.dependencies.map((d) => d.dependency_name)).not.toContain("x@neverheard");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("requires --to for plugin add in non-interactive mode", async () => {
     const context = await createTestContext("cli-plugin-add-missing-plugin");
     try {
