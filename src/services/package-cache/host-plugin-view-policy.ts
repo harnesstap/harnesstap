@@ -79,6 +79,16 @@ export function recordReplacedHostPluginViewFiles(entry: ReplacedHostPluginViewF
   replaced.push(entry);
 }
 
+/** Plugin files a refresh wrote where there was no file, by folder, so a summary counts them. */
+const added = new Map<string, Set<string>>();
+
+export function recordAddedHostPluginViewFiles(hostView: string, paths: readonly string[]): void {
+  if (paths.length === 0) return;
+  const files = added.get(hostView) ?? new Set<string>();
+  for (const path of paths) files.add(path);
+  added.set(hostView, files);
+}
+
 /** The latest refresh of a folder replaces what an earlier one in this process found blocked. */
 export function recordBlockedHostPluginViewFiles(entry: BlockedHostPluginViewFiles): void {
   const index = blocked.findIndex((existing) => existing.hostView === entry.hostView);
@@ -100,7 +110,9 @@ export function hasHostPluginViewNotices(): boolean {
  * How many files the host plugin refreshes in this process replaced with the
  * plugin's version and how many they removed, so a summary can count them.
  */
-export function hostPluginViewChangeCounts(): { replaced: number; removed: number } {
+export function hostPluginViewChangeCounts(): { replaced: number; removed: number; added: number } {
+  let addedCount = 0;
+  for (const files of added.values()) addedCount += files.size;
   let replacedCount = 0;
   let removedCount = 0;
   for (const entry of replaced) {
@@ -108,11 +120,13 @@ export function hostPluginViewChangeCounts(): { replaced: number; removed: numbe
     removedCount += removedHere;
     replacedCount += entry.files.length - removedHere;
   }
-  return { replaced: replacedCount, removed: removedCount };
+  return { replaced: replacedCount, removed: removedCount, added: addedCount };
 }
 
 /** Drain the files replaced by host plugin refreshes since the last call. */
 export function takeReplacedHostPluginViewFiles(): ReplacedHostPluginViewFiles[] {
+  // The added files are counted in the same summary, so they drain together.
+  added.clear();
   return replaced.splice(0, replaced.length);
 }
 

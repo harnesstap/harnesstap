@@ -144,7 +144,7 @@ export function printApplySuccess(input: {
   snapshotId?: string;
 }): void {
   console.log(applyHeaderLine(input.name, input.harnessCount));
-  // Files a plugin cache folder refresh replaced or removed count too, so the
+  // Files a plugin cache folder refresh added, replaced or removed count too, so the
   // line never says nothing changed next to "Backed up and replaced ...".
   const pluginFolder = hostPluginViewChangeCounts();
   // Kept files in a plugin cache folder get their own, more detailed notice.
@@ -153,7 +153,7 @@ export function printApplySuccess(input: {
   const kept = input.kept.filter((entry) => !folderKept.has(entry.path));
   console.log(
     applyWroteLine({
-      wrote: input.wrote + pluginFolder.replaced,
+      wrote: input.wrote + pluginFolder.replaced + pluginFolder.added,
       removed: input.removed + pluginFolder.removed,
       kept: kept.length + folderKept.size,
       unchanged: input.unchanged,

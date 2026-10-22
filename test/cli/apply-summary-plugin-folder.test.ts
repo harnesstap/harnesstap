@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import { settleKeptHostPluginViewFiles } from "../../src/cli/handlers/host-plugin-view-kept.ts";
 import { printApplySuccess } from "../../src/cli/print-apply-summary.ts";
 import {
+  recordAddedHostPluginViewFiles,
   recordReplacedHostPluginViewFiles,
   takeReplacedHostPluginViewFiles,
 } from "../../src/services/package-cache/host-plugin-view-policy.ts";
@@ -55,6 +56,25 @@ describe("apply summary with plugin cache folder changes", () => {
     expect(text).toContain("Wrote 2, unchanged 6.");
     expect(text).not.toContain("Wrote 0");
     expect(text).not.toContain("Everything is up to date");
+  });
+
+  it("counts new plugin files next to replaced ones", () => {
+    recordReplacedHostPluginViewFiles({
+      hostView,
+      backupId: "01TEST",
+      files: ["skills/s47/SKILL.md", "skills/s47/b.md"],
+      notWrittenByHarnessTap: [],
+      removed: ["skills/s47/b.md"],
+    });
+    recordAddedHostPluginViewFiles(hostView, ["skills/s47/d.md"]);
+    recordAddedHostPluginViewFiles(hostView, ["skills/s47/d.md"]);
+    const out = capture();
+    try {
+      printApplySuccess({ name: "pr", harnessCount: 1, wrote: 0, removed: 0, kept: [], unchanged: 6 });
+    } finally {
+      out.restore();
+    }
+    expect(out.lines.join("\n")).toContain("Wrote 2, removed 1, unchanged 6.");
   });
 
   it("counts removals as removals and says so in the backup notice", async () => {
