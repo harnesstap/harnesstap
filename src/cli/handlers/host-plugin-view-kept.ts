@@ -1,7 +1,9 @@
 import {
+  type BlockedHostPluginViewFiles,
   type KeptHostPluginViewFiles,
   type ReplacedHostPluginViewFiles,
   replaceKeptHostPluginViewFiles,
+  takeBlockedHostPluginViewFiles,
   takeKeptHostPluginViewFiles,
   takeReplacedHostPluginViewFiles,
 } from "../../services/package-cache/host-plugin.js";
@@ -20,6 +22,7 @@ export interface SettleKeptHostPluginViewDeps {
   take: () => KeptHostPluginViewFiles[];
   takeReplaced: () => ReplacedHostPluginViewFiles[];
   replace: (entry: KeptHostPluginViewFiles) => { paths: string[]; backupId?: string };
+  takeBlocked?: () => BlockedHostPluginViewFiles[];
 }
 
 function defaultDeps(): SettleKeptHostPluginViewDeps {
@@ -29,7 +32,25 @@ function defaultDeps(): SettleKeptHostPluginViewDeps {
     take: takeKeptHostPluginViewFiles,
     takeReplaced: takeReplacedHostPluginViewFiles,
     replace: replaceKeptHostPluginViewFiles,
+    takeBlocked: takeBlockedHostPluginViewFiles,
   };
+}
+
+function describeBlocker(file: BlockedHostPluginViewFiles["files"][number]): string {
+  if (file.kind === "folder") return `${file.path} (a folder is at that path)`;
+  const what = file.kind === "link" ? "a link" : "a file";
+  return `${file.path} (${file.blockedBy} is ${what}, where the plugin needs a folder)`;
+}
+
+/** Plugin files a refresh could not write: say what is in the way, and fail the command. */
+export function announceBlocked(entry: BlockedHostPluginViewFiles): string {
+  const where = shortenHomePath(entry.hostView);
+  const listed = entry.files.slice(0, LISTED_FILES).map(describeBlocker);
+  const more = entry.files.length - listed.length;
+  const names = more > 0 ? `${listed.join(", ")}, and ${more} more` : listed.join(", ");
+  return `Could not write ${formatCount(entry.files.length, "plugin file")} in ${where}: ${names}. `
+    + "HarnessTap does not remove or write through what is in the way, so the plugin there is incomplete. "
+    + "Move them away, then run the command again.";
 }
 
 function listPaths(paths: readonly string[]): string {
@@ -108,6 +129,11 @@ export async function settleKeptHostPluginViewFiles(
   for (const entry of deps.takeReplaced()) {
     // stderr, so --format json output stays clean.
     console.error(announceReplaced(entry));
+  }
+  for (const entry of deps.takeBlocked?.() ?? []) {
+    // stderr, so --format json output stays clean.
+    console.error(`⚠ ${announceBlocked(entry)}`);
+    process.exitCode = 1;
   }
   for (const entry of deps.take()) {
     // Shown once per change: the same kept files were reported last time.
