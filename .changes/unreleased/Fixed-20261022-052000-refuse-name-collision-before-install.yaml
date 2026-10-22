@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'When a profile depends on a marketplace plugin whose name another marketplace''s plugin already holds (for example `dup@mktb` while `dup@mkta` is in the library), `ht profile use` now refuses it before installing it, so the refusal no longer leaves a `~/.claude/plugins/cache/mktb/dup` folder behind.'
+time: 2026-10-22T15:20:00.000Z

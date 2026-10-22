@@ -1,4 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import * as pluginInstall from "../../src/services/plugin-install.ts";
+import { syncPluginPinsForApply } from "../../src/services/plugin-pin-apply.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
@@ -141,6 +143,25 @@ describe("materializeUpstreamPlugin", () => {
       const skills = listResources({ type: "skill", includeComposition: true })
         .filter((row) => row.name === "dup-skill");
       expect(skills.map((row) => row.origin_ref)).toEqual(["dup@mkta"]);
+    });
+
+    it("refuses the second marketplace before installing it", async () => {
+      pluginPin("dup@mkta", "mkta");
+      linkedSkill("dup-skill", "dup@mkta");
+      materializeUpstreamPlugin({ ref: "dup@mkta", name: "dup", version: "1.0.0" });
+      const install = spyOn(pluginInstall, "installPluginPins");
+      try {
+        await expect(
+          syncPluginPinsForApply({
+            pins: [{ ref: "dup@mktb", version_constraint: "1.0.0" }],
+            homeRoot: ctx.homeDir,
+            yes: true,
+          }),
+        ).rejects.toThrow('dup@mktb and dup@mkta are both named "dup"');
+        expect(install).not.toHaveBeenCalled();
+      } finally {
+        install.mockRestore();
+      }
     });
 
     it("lets the second marketplace take the name once the first pin is deleted", () => {
