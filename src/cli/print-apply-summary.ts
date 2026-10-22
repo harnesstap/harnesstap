@@ -69,9 +69,8 @@ export function printApplyPayload(payload: {
       ui.warn(skipped.message);
     }
   }
-  if (!payload.dry_run && payload.removal_backup && (payload.removed_files?.length ?? 0) > 0) {
-    ui.info(`Backup: ${payload.removal_backup}`);
-  }
+  // The removal itself already printed "Removed N files. Backup: <dir>"
+  // (profile-apply warnSkippedRemovals), so the backup folder is not repeated.
 }
 
 export function printApplyDryRun(input: {
