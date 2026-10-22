@@ -10,6 +10,7 @@ import { addMarketplace, updateMarketplace } from "../../src/services/marketplac
 import { importPluginFromMarketplace } from "../../src/services/plugin-marketplace-import.ts";
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { isClaudePluginRegistryPath } from "../../src/services/claude-plugin-registration-prune.ts";
+import { isHarnessTapClaudeRecord } from "../../src/services/claude-plugin-record-owner.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import { maybeSyncActiveProfileBeforeSwitch } from "../../src/services/profile-switch-prompt.ts";
 import { detectGlobalProfileStatus, hostPluginFolderChanges } from "../../src/services/global-profile-drift.ts";
@@ -424,6 +425,146 @@ describe("claude marketplace entries Claude Code changed", () => {
       // The switch keeps it rather than deleting a file that changed.
       await switchToPlain();
       expect(readFileSync(join(home, MANIFEST_DIR, ".claude-plugin/marketplace.json"), "utf-8")).toBe("{}\n");
+    } finally {
+      await context.cleanup();
+    }
+  });
+});
+
+describe("plugins the user installed from a HarnessTap marketplace", () => {
+  const MANIFEST_DIR = ".claude/plugins/harnesstap-marketplaces/mkta";
+  type Rows = { plugins: Record<string, Array<Record<string, unknown>>> };
+
+  async function applyRemote(): Promise<void> {
+    await applyProfilePlugin("remote", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+    setActiveProfileName("remote");
+  }
+
+  async function switchToPlain(): Promise<string[]> {
+    const warn = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await applyProfilePlugin("plain", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+      return warn.mock.calls.map((call) => String(call[0]));
+    } finally {
+      warn.mockRestore();
+    }
+  }
+
+  /**
+   * What `claude plugin install dup@mkta` leaves after the marketplace was
+   * refreshed: the same cache folder, now with a record Claude Code wrote.
+   */
+  function userInstalls(home: string, repointMarketplace: boolean): { cacheDir: string; record: Record<string, unknown> } {
+    const rows = readJson<Rows>(home, INSTALLED);
+    const cacheDir = String(rows.plugins["dup@mkta"]?.[0]?.installPath);
+    const record = {
+      scope: "user",
+      installPath: cacheDir,
+      version: "1.0.0",
+      installedAt: "2026-10-22T23:17:11.448Z",
+      lastUpdated: "2026-10-22T23:17:11.448Z",
+      gitCommitSha: "2c606141936f1eeef17fa3043a72095b4765b9c2",
+    };
+    rows.plugins["dup@mkta"] = [record];
+    writeJson(home, INSTALLED, rows);
+    mkdirSync(join(cacheDir, ".in_use"), { recursive: true });
+    writeFileSync(join(cacheDir, "notes.txt"), "mine\n");
+    writeJson(home, SETTINGS, { enabledPlugins: { "dup@mkta": true } });
+    if (repointMarketplace) {
+      const known = readJson<Record<string, Record<string, unknown>>>(home, KNOWN);
+      known.mkta = { ...known.mkta, installLocation: join(home, ".claude/plugins/marketplaces/mkta") };
+      writeJson(home, KNOWN, known);
+    }
+    return { cacheDir, record };
+  }
+
+  it("keeps the record, the enabled key, the cache folder and the marketplace entry on switch away", async () => {
+    const context = await createInitializedTestContext("claude-user-install-switch");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      const { cacheDir, record } = userInstalls(home, true);
+      const known = readFileSync(join(home, KNOWN), "utf-8");
+      const settings = readFileSync(join(home, SETTINGS), "utf-8");
+
+      const warnings = await switchToPlain();
+      expect(readJson<Rows>(home, INSTALLED).plugins).toEqual({ "dup@mkta": [record] });
+      expect(readFileSync(join(home, KNOWN), "utf-8")).toBe(known);
+      expect(readFileSync(join(home, SETTINGS), "utf-8")).toBe(settings);
+      expect(existsSync(join(cacheDir, ".claude-plugin/plugin.json"))).toBe(true);
+      expect(readFileSync(join(cacheDir, "notes.txt"), "utf-8")).toBe("mine\n");
+      expect(warnings.some((line) => line.includes("claude plugin uninstall dup@mkta"))).toBe(true);
+      expect(warnings.some((line) => line.includes("claude plugin marketplace remove mkta"))).toBe(true);
+
+      // The folder is the user's now: a later switch removes nothing in it.
+      await applyRemote();
+      await switchToPlain();
+      expect(existsSync(join(cacheDir, ".claude-plugin/plugin.json"))).toBe(true);
+      expect(readJson<Rows>(home, INSTALLED).plugins).toEqual({ "dup@mkta": [record] });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("keeps HarnessTap's marketplace folder while the user's marketplace entry still points at it", async () => {
+    const context = await createInitializedTestContext("claude-user-install-ht-marketplace");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      const { record } = userInstalls(home, false);
+      const known = readFileSync(join(home, KNOWN), "utf-8");
+
+      await switchToPlain();
+      expect(existsSync(join(home, MANIFEST_DIR, ".claude-plugin/marketplace.json"))).toBe(true);
+      expect(readFileSync(join(home, KNOWN), "utf-8")).toBe(known);
+      expect(readJson<Rows>(home, INSTALLED).plugins).toEqual({ "dup@mkta": [record] });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("leaves the user's install and its folder alone when the profile is applied again", async () => {
+    const context = await createInitializedTestContext("claude-user-install-reapply");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      const { cacheDir, record } = userInstalls(home, true);
+      writeFileSync(join(cacheDir, ".claude-plugin/plugin.json"), JSON.stringify({ name: "dup", version: "1.0.0", note: "user" }));
+      const bytes = readFileSync(join(cacheDir, ".claude-plugin/plugin.json"), "utf-8");
+
+      await applyRemote();
+      expect(readJson<Rows>(home, INSTALLED).plugins).toEqual({ "dup@mkta": [record] });
+      expect(readFileSync(join(cacheDir, ".claude-plugin/plugin.json"), "utf-8")).toBe(bytes);
+      expect(readFileSync(join(cacheDir, "notes.txt"), "utf-8")).toBe("mine\n");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("still removes HarnessTap's own record shape, and tells the two apart by the record, not the marketplace", async () => {
+    const context = await createInitializedTestContext("claude-user-install-owner");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      const ref = "dup@mkta";
+      const own = readJson<Rows>(home, INSTALLED).plugins[ref]?.[0] ?? {};
+      expect(isHarnessTapClaudeRecord(home, own)).toBe(true);
+      expect(isHarnessTapClaudeRecord(home, { ...own, gitCommitSha: "abc" })).toBe(false);
+      expect(isHarnessTapClaudeRecord(home, { ...own, scope: "project" })).toBe(false);
+      expect(isHarnessTapClaudeRecord(home, { ...own, installPath: join(home, "elsewhere") })).toBe(false);
+      expect(isHarnessTapClaudeRecord(home, "x")).toBe(false);
+
+      await switchToPlain();
+      expect(existsSync(join(home, INSTALLED))).toBe(false);
+      expect(existsSync(join(String(own.installPath), ".claude-plugin/plugin.json"))).toBe(false);
     } finally {
       await context.cleanup();
     }

@@ -188,6 +188,11 @@ export function rewriteStaleMergeableHostConfigs(
     applyId: string;
     snapshotId?: string | null;
     dryRun?: boolean;
+    /**
+     * Plugin refs (`name@marketplace`) the user installed with Claude Code:
+     * their entries (such as `enabledPlugins`) stay.
+     */
+    keepPluginRefs?: ReadonlySet<string>;
   },
 ): HostConfigRewriteResult {
   const rewritten: string[] = [];
@@ -223,6 +228,10 @@ export function rewriteStaleMergeableHostConfigs(
     for (const row of rows) {
       const resource = getResource(row.resource_id);
       if (!resource) {
+        continue;
+      }
+      const keep = options.keepPluginRefs;
+      if (keep && pluginRegistryKeys(resource).some((key) => keep.has(key))) {
         continue;
       }
       const edit = tryEditAggregateContent(next, resource);

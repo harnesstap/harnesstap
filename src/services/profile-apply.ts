@@ -1,12 +1,15 @@
 import {
+  heldFolderOf,
   holdsOnlyLeavingHarnessTapRegistrations,
   isClaudePluginRegistryPath,
   planStaleClaudeRegistrations,
   pruneStaleClaudeRegistrationsOnDisk,
+  userHeldClaudePlugins,
+  writtenHarnessTapMarketplaces,
 } from "./claude-plugin-registration-prune.js";
 import { claudeChangedMarketplaces } from "./claude-marketplace-registration.js";
 import { isPreexistingPath } from "../models/preexisting-path.js";
-import { recordedHostPluginViewPaths } from "./package-cache/host-plugin-views.js";
+import { forgetHostPluginView, recordedHostPluginViewPaths } from "./package-cache/host-plugin-views.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -256,12 +259,23 @@ function removeStaleGlobalProfileFiles(
   // HarnessTap's marketplace folders.
   const staleClaudeRecords = planStaleClaudeRegistrations(homeRoot, desiredFiles);
   const changedMarketplaces = claudeChangedMarketplaces(homeRoot);
-  const staleFiles = planStaleGlobalProfileFiles(
+  // Plugins the user installed with Claude Code keep their folder, their
+  // marketplace and their enabledPlugins entry, whatever marketplace they
+  // came from.
+  const userHeld = userHeldClaudePlugins(homeRoot);
+  const heldStale = new Set<string>();
+  const plannedStale = planStaleGlobalProfileFiles(
     homeRoot,
     desiredFiles,
     previousTrackedFiles,
     harnesses,
-  ).filter((path) =>
+  );
+  const leavingMarketplaces = writtenHarnessTapMarketplaces(plannedStale);
+  const staleFiles = plannedStale.filter((path) => {
+    const held = heldFolderOf(userHeld.folders, path);
+    if (held) heldStale.add(held);
+    return !held;
+  }).filter((path) =>
     // Claude's plugin registries that HarnessTap merged into, that changed
     // since, or that hold anyone else's entries lose only HarnessTap's keys
     // (below), never the whole file.
@@ -285,6 +299,18 @@ function removeStaleGlobalProfileFiles(
     applyId: removed.applyId,
     snapshotId: options.snapshotId,
     dryRun: options.dryRun,
+    keepPluginRefs: userHeld.refs,
+  });
+  // Said once per folder HarnessTap set up: the folder record is dropped
+  // here, after which the folder is the user's like any other.
+  const heldWarnings = [...heldStale].sort().flatMap((folder) => {
+    const held = userHeld.folders.get(folder);
+    if (!held?.created) return [];
+    if (!options.dryRun && folder.startsWith(".claude/plugins/cache/")) {
+      forgetHostPluginView(join(homeRoot, folder));
+    }
+    return [`Kept ${folder}: you installed ${held.ref} with Claude Code and it uses this folder. `
+      + `Run \`claude plugin uninstall ${held.ref}\` if you no longer need it.`];
   });
   const prunedClaude = pruneStaleClaudeRegistrationsOnDisk(
     homeRoot,
@@ -295,6 +321,7 @@ function removeStaleGlobalProfileFiles(
       snapshotId: options.snapshotId,
       dryRun: options.dryRun,
       changedMarketplaces,
+      leavingMarketplaces,
     },
   );
   // A plugin folder left behind keeps the user's own files, even with
@@ -316,6 +343,7 @@ function removeStaleGlobalProfileFiles(
       ...[...new Set([...rewritten.rewritten, ...prunedClaude.rewritten])]
         .map((path) => `Updated ${path} (removed HarnessTap-managed keys).`),
       ...prunedClaude.warnings,
+      ...heldWarnings,
     ],
   };
 }
