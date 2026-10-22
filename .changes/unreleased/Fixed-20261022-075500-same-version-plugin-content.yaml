@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'When a marketplace changes a plugin without bumping its version, `ht plugin update` now refreshes HarnessTap''s cached copy of that version, so the next `ht profile use` or `ht apply` brings the new files into `~/.claude/plugins/cache`. Before, the old content stayed.'
+time: 2026-10-22T17:55:00.000000Z
