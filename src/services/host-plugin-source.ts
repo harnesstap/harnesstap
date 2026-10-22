@@ -24,6 +24,7 @@ import { readCachedMarketplaceJson } from "./marketplace-manifest-cache.js";
 import { listMarketplaces } from "./marketplace-registry.js";
 import {
   listCatalogPluginBranchVersions,
+  listCatalogPlugins,
   marketplaceCacheDir,
 } from "./marketplace-catalog.js";
 import { resolveMarketplacePluginDirectory } from "./plugin-origin-apply.js";
@@ -748,6 +749,50 @@ export function declaredPluginVersion(root: string): string | undefined {
   return undefined;
 }
 
+/** A marketplace that HarnessTap can read does not list the plugin. */
+export class PluginNotInMarketplaceError extends Error {
+  constructor(
+    readonly pluginName: string,
+    readonly marketplace: string,
+  ) {
+    super(`Plugin ${pluginName} not found in marketplace ${marketplace}.`);
+    this.name = "PluginNotInMarketplaceError";
+  }
+}
+
+/**
+ * Whether `marketplace` lists `pluginName`: true or false when a checkout
+ * (the host's or HarnessTap's cache) or the cached catalog can be read,
+ * undefined when nothing about the marketplace is on disk yet.
+ */
+export function marketplaceListsPlugin(input: {
+  homeRoot: string;
+  harnesstapDir: string;
+  marketplace: string;
+  pluginName: string;
+}): boolean | undefined {
+  let readable = false;
+  const roots = [
+    resolveMarketplaceRoot(input.homeRoot, input.marketplace),
+    marketplaceCacheDir(input.harnesstapDir, input.marketplace),
+  ];
+  for (const root of roots) {
+    if (!root) continue;
+    const file = readMarketplaceFile(root);
+    if (!file) continue;
+    readable = true;
+    if (file.plugins?.some((plugin) => isRecord(plugin) && plugin.name === input.pluginName)) {
+      return true;
+    }
+  }
+  const catalog = listCatalogPlugins(input.harnesstapDir, { name: input.marketplace });
+  if (catalog.length > 0) {
+    readable = true;
+    if (catalog.some((plugin) => plugin.name === input.pluginName)) return true;
+  }
+  return readable ? false : undefined;
+}
+
 async function resolveHostPluginDownloadSource(input: {
   originRef: string;
   homeRoot: string;
@@ -767,6 +812,18 @@ async function resolveHostPluginDownloadSource(input: {
       marketplaceCacheDir(input.harnesstapDir, marketplaceName),
       name,
     );
+  if (
+    !live
+    && marketplaceName
+    && marketplaceListsPlugin({
+      homeRoot: input.homeRoot,
+      harnesstapDir: input.harnesstapDir,
+      marketplace: marketplaceName,
+      pluginName: name,
+    }) === false
+  ) {
+    throw new PluginNotInMarketplaceError(name, marketplaceName);
+  }
   const snapshot = readHostPluginSourceSnapshot(
     input.originRef,
     input.configuredHarnesstapDir,
