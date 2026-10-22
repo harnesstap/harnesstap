@@ -62,6 +62,8 @@ export interface SafeRemovalSkip {
   path: string;
   reason: SafeRemovalSkipReason;
   message: string;
+  /** False when `--force-remove` would not remove the path either, so no hint should suggest it. */
+  forceable?: boolean;
 }
 
 /** A file `--force-remove` removed that would otherwise have been kept. */
@@ -372,6 +374,7 @@ export function planSafeFileRemovals(
         path: relativePath,
         reason: "unmanaged",
         message: `Skipped removing ${relativePath} (a folder HarnessTap didn't create).`,
+        forceable: false,
       });
       continue;
     }
@@ -381,6 +384,7 @@ export function planSafeFileRemovals(
         path: relativePath,
         reason: "preexisting",
         message: skipMessage(relativePath, "preexisting"),
+        forceable: false,
       });
       continue;
     }
@@ -398,6 +402,7 @@ export function planSafeFileRemovals(
         path: relativePath,
         reason: "unmanaged",
         message: skipMessage(relativePath, "unmanaged"),
+        ...(hostPluginViewSaysNotWritten(rootPath, relativePath) ? { forceable: false } : {}),
       });
       continue;
     }
