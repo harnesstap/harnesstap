@@ -65,7 +65,11 @@ describe("profile header status chrome", () => {
     });
 
     expect(componentSource).toContain("ChromeTooltip");
-    expect(componentSource).toContain('"aria-label": tooltip');
+    expect(componentSource).toContain(
+      "const label = statusRefreshingTooltip(tooltip, refreshing);",
+    );
+    expect(componentSource).toContain('"aria-label": label');
+    expect(componentSource).toContain("<ChromeTooltip content={label}>");
     expect(componentSource).toContain('"data-kind": kind');
     expect(componentSource).toContain("profile-header-status-dot");
     expect(componentSource).toContain("profile-header-status-warn");

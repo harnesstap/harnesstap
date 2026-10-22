@@ -90,7 +90,9 @@ describe("handleDiscoverSearch", () => {
     const body = (await response.json()) as {
       groups: Array<{ sourceId: string; sourceLabel: string }>;
     };
-    expect(body.groups.map((group) => group.sourceId)).toEqual(["local", "mkt:acme"]);
+    // Discover only searches marketplaces and catalogs; "local" is ignored
+    // (the Library has its own search).
+    expect(body.groups.map((group) => group.sourceId)).toEqual(["mkt:acme"]);
   });
 
   it("returns empty groups when sources are empty", async () => {

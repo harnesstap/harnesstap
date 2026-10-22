@@ -49,9 +49,12 @@ describe("desktop visual check", () => {
   });
 
   test("desktop:check runs shots, compare, axe, reduced motion, and trace", () => {
-    expect(check).toContain("--compare --axe");
-    expect(check).toContain("--reduced-motion");
-    expect(check).toContain("--trace");
+    // desktop-check.sh runs every walk through `ui-shots.mjs --suite`.
+    expect(check).toContain("node scripts/ui-shots.mjs --suite");
+    expect(shots).toContain('argv: ["--compare", "--axe", "--viewports", "1440x900"]');
+    expect(shots).toContain('argv: ["--compare", "--axe", "--viewports", "960x640"]');
+    expect(shots).toContain('argv: ["--reduced-motion", "--axe", "--viewports", "1440x900"]');
+    expect(shots).toContain('argv: ["--trace", "--viewports", "1440x900"]');
     expect(contributing).toContain("bun run desktop:check");
   });
 

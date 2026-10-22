@@ -80,6 +80,7 @@ jobs:
       plugins: ${{ steps.resolve.outputs.plugins }}
       services: ${{ steps.resolve.outputs.services }}
       cli: ${{ steps.resolve.outputs.cli }}
+      agent: ${{ steps.resolve.outputs.agent }}
       docs: ${{ steps.resolve.outputs.docs }}
       desktop: ${{ steps.resolve.outputs.desktop }}
       desktop_visual: ${{ steps.resolve.outputs.desktop_visual }}
@@ -127,11 +128,14 @@ jobs:
               - 'src/agent/**'
               - 'test/services/**'
               - 'test/integration/**'
-              - 'test/agent/init-apply-noop.test.ts'
             cli:
               - 'src/ui/**'
               - 'test/cli/**'
               - 'test/ui/**'
+            agent:
+              - 'src/agent/**'
+              - 'test/agent/**'
+              - '.github/workflows/ci.yml'
             docs:
               - 'docs/**'
               - 'test/docs/**'
@@ -143,6 +147,7 @@ jobs:
               - 'apps/desktop/tsconfig*.json'
               - 'apps/desktop/index.html'
               - 'apps/desktop/vite.config.ts'
+              - 'test/desktop/**'
               - '.github/workflows/ci.yml'
             desktop_visual:
               - 'apps/desktop/src/**'
@@ -160,7 +165,7 @@ jobs:
         id: resolve
         run: |
           if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            for area in global core platforms plugins services cli docs desktop; do
+            for area in global core platforms plugins services cli agent docs desktop; do
               echo "${area}=true" >> "$GITHUB_OUTPUT"
             done
             # Nightly visual is desktop-e2e.yml; do not duplicate it on every main push.
@@ -172,6 +177,7 @@ jobs:
             echo "plugins=${{ steps.filter.outputs.plugins }}" >> "$GITHUB_OUTPUT"
             echo "services=${{ steps.filter.outputs.services }}" >> "$GITHUB_OUTPUT"
             echo "cli=${{ steps.filter.outputs.cli }}" >> "$GITHUB_OUTPUT"
+            echo "agent=${{ steps.filter.outputs.agent }}" >> "$GITHUB_OUTPUT"
             echo "docs=${{ steps.filter.outputs.docs }}" >> "$GITHUB_OUTPUT"
             echo "desktop=${{ steps.filter.outputs.desktop }}" >> "$GITHUB_OUTPUT"
             echo "desktop_visual=${{ steps.filter.outputs.desktop_visual }}" >> "$GITHUB_OUTPUT"
@@ -259,6 +265,46 @@ jobs:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
       - run: bun run test:cli $BUN_TEST_ORDER
+
+  test-agent:
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.global == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.platforms == 'true' ||
+      needs.detect-changes.outputs.plugins == 'true' ||
+      needs.detect-changes.outputs.services == 'true' ||
+      needs.detect-changes.outputs.agent == 'true'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run test:agent $BUN_TEST_ORDER
+
+  # test/desktop imports Desktop components (react, clsx), so it needs the
+  # apps/desktop install too.
+  test-desktop:
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.global == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.services == 'true' ||
+      needs.detect-changes.outputs.cli == 'true' ||
+      needs.detect-changes.outputs.desktop == 'true'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - name: Install desktop dependencies
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
+      - run: bun run test:desktop $BUN_TEST_ORDER
 
   test-docs:
     needs: detect-changes
@@ -356,6 +402,8 @@ jobs:
       - test-plugins
       - test-services
       - test-cli
+      - test-agent
+      - test-desktop
       - test-docs
       - desktop-typecheck
       - desktop-visual
@@ -371,6 +419,7 @@ jobs:
           DETECT_PLUGINS: ${{ needs.detect-changes.outputs.plugins }}
           DETECT_SERVICES: ${{ needs.detect-changes.outputs.services }}
           DETECT_CLI: ${{ needs.detect-changes.outputs.cli }}
+          DETECT_AGENT: ${{ needs.detect-changes.outputs.agent }}
           DETECT_DOCS: ${{ needs.detect-changes.outputs.docs }}
           DETECT_DESKTOP: ${{ needs.detect-changes.outputs.desktop }}
           DETECT_DESKTOP_VISUAL: ${{ needs.detect-changes.outputs.desktop_visual }}
@@ -379,6 +428,8 @@ jobs:
           TEST_PLUGINS: ${{ needs.test-plugins.result }}
           TEST_SERVICES: ${{ needs.test-services.result }}
           TEST_CLI: ${{ needs.test-cli.result }}
+          TEST_AGENT: ${{ needs.test-agent.result }}
+          TEST_DESKTOP: ${{ needs.test-desktop.result }}
           TEST_DOCS: ${{ needs.test-docs.result }}
           DESKTOP_TYPECHECK: ${{ needs.desktop-typecheck.result }}
           DESKTOP_VISUAL: ${{ needs.desktop-visual.result }}
@@ -424,6 +475,8 @@ jobs:
           check_required test-plugins "$TEST_PLUGINS" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_PLUGINS" "$DETECT_SERVICES"
           check_required test-services "$TEST_SERVICES" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_PLATFORMS" "$DETECT_PLUGINS" "$DETECT_SERVICES" "$DETECT_CLI"
           check_required test-cli "$TEST_CLI" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_SERVICES" "$DETECT_CLI"
+          check_required test-agent "$TEST_AGENT" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_PLATFORMS" "$DETECT_PLUGINS" "$DETECT_SERVICES" "$DETECT_AGENT"
+          check_required test-desktop "$TEST_DESKTOP" "$DETECT_GLOBAL" "$DETECT_CORE" "$DETECT_SERVICES" "$DETECT_CLI" "$DETECT_DESKTOP"
           check_required test-docs "$TEST_DOCS" "$DETECT_GLOBAL" "$DETECT_DOCS"
           check_required desktop-typecheck "$DESKTOP_TYPECHECK" "$DETECT_DESKTOP"
           check_required desktop-visual "$DESKTOP_VISUAL" "$DETECT_DESKTOP_VISUAL"
