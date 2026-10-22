@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
-import { parsePluginRef } from "../plugins/claude-installed.js";
+import { parsePluginRef, readManifestVersion } from "../plugins/claude-installed.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { downloadHostPluginVersion } from "./host-plugin-source.js";
 import {
@@ -27,6 +27,11 @@ export function resolveCatalogPluginVersion(
   return "0.0.0";
 }
 
+function checkoutManifestVersion(installRoot: string): string | undefined {
+  const { version } = readManifestVersion(installRoot);
+  return version !== "unknown" && version.trim() ? version.trim() : undefined;
+}
+
 export async function installMarketplacePinIntoCache(input: {
   originRef: string;
   versionConstraint?: string;
@@ -46,12 +51,19 @@ export async function installMarketplacePinIntoCache(input: {
   });
   const catalog = await ensureMarketplaceCatalog(harnesstapDir, { name: marketplace });
   const entry = catalog.find((plugin) => plugin.name === name);
-  const version = resolveCatalogPluginVersion(entry?.version, input.versionConstraint);
   const checkout = marketplaceCacheDir(harnesstapDir, marketplace);
   const fromCatalog =
     (entry?.sourcePath ? join(checkout, entry.sourcePath) : undefined)
     ?? resolveMarketplacePluginDirectory(checkout, name);
-  if (fromCatalog && existsSync(fromCatalog) && isPluginInstallRoot(fromCatalog)) {
+  const inCheckout = fromCatalog && existsSync(fromCatalog) && isPluginInstallRoot(fromCatalog);
+  // marketplace.json may leave the version out; the plugin's own manifest then
+  // names it, as it does for Claude (O2), instead of a made-up 0.0.0.
+  const manifestVersion = inCheckout ? checkoutManifestVersion(fromCatalog) : undefined;
+  const version = resolveCatalogPluginVersion(
+    entry?.version?.trim() ? entry.version : manifestVersion,
+    input.versionConstraint,
+  );
+  if (inCheckout && fromCatalog) {
     const cached = ingestHostPluginTreeIntoCache({
       harnesstapDir,
       homeRoot,
