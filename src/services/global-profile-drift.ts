@@ -6,6 +6,12 @@ import { join } from "node:path";
 import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import { diffHostPluginView } from "./package-cache/host-plugin.js";
 import { emittedHostPluginTree } from "./host-plugin-serialize.js";
+import {
+  CLAUDE_KNOWN_MARKETPLACES_PATH,
+  HARNESSTAP_CLAUDE_MARKETPLACES_ROOT,
+  claudeChangedMarketplaces,
+  harnessTapClaudeMarketplaceManifestPath,
+} from "./claude-marketplace-registration.js";
 import { hostPluginPackageDir } from "./package-cache/paths.js";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
@@ -183,12 +189,12 @@ export function hostPluginFolderChanges(
       seen.add(path);
       if (difference.state === "missing") changes.push({ path, type: "deleted" });
       else if (difference.state === "stale") changes.push({ path, type: "modified" });
-      else {
-        changes.push({
-          path,
-          type: "modified",
-          removal_group: difference.state === "modified" ? "owned_modified" : "unmanaged",
-        });
+      else if (difference.state === "modified") {
+        // HarnessTap wrote the file and it changed since: in Claude Code's
+        // plugin cache, that is Claude Code updating the plugin.
+        changes.push({ path, type: "modified", removal_group: "owned_modified", changed_by: "claude-code" });
+      } else {
+        changes.push({ path, type: "modified", removal_group: "unmanaged" });
       }
     }
   }
@@ -207,6 +213,32 @@ function matchesEmitted(
   } catch {
     return false;
   }
+}
+
+function isHarnessTapClaudeMarketplaceFile(path: string): boolean {
+  return path.replaceAll("\\", "/").startsWith(`${HARNESSTAP_CLAUDE_MARKETPLACES_ROOT}/`);
+}
+
+/**
+ * Marketplace entries HarnessTap registers for this profile that Claude Code
+ * rewrote since. Apply leaves them as they are, so the file itself matches
+ * what apply would write; report each entry as a kept change.
+ */
+export function claudeChangedMarketplaceEntries(
+  homeRoot: string,
+  expectedFiles: ReadonlyArray<{ path: string }>,
+): DriftFileChange[] {
+  const wanted = new Set(expectedFiles.map((file) => file.path));
+  return [...claudeChangedMarketplaces(homeRoot)]
+    .filter((marketplace) => wanted.has(harnessTapClaudeMarketplaceManifestPath(marketplace)))
+    .sort()
+    .map((marketplace) => ({
+      path: CLAUDE_KNOWN_MARKETPLACES_PATH,
+      type: "modified" as const,
+      removal_group: "owned_modified" as const,
+      changed_by: "claude-code" as const,
+      detail: `marketplace ${marketplace}`,
+    }));
 }
 
 function keptContentDiff(
@@ -672,6 +704,8 @@ async function loadDriftCore(input: {
   traceSpan("drift.compare-files", () => {
   for (const file of expectedApply.expected_files ?? []) {
     if (isNativeAgentPluginCachePath(file.path)) continue;
+    // Compared with HarnessTap's copy of the plugin below.
+    if (isHostPluginViewPath(file.path)) continue;
     if (binaryExpectedFileMatchesDisk(join(homeRoot, file.path), file)) continue;
     const current = readGlobalFile(homeRoot, file.path);
     const owned = listMaterializationsForRootPath(homeRoot, file.path);
@@ -698,6 +732,11 @@ async function loadDriftCore(input: {
       if (fileContentsEquivalentForDrift(file.path, current, file.content)) {
         continue;
       }
+      if (isHarnessTapClaudeMarketplaceFile(file.path)) {
+        // Apply keeps a marketplace file HarnessTap wrote that changed since.
+        changes.push({ path: file.path, type: "modified", removal_group: "owned_modified", changed_by: "claude-code" });
+        continue;
+      }
       changes.push(
         withAffectedResources(
           keptContentDiff(file.path, keptModified, keptUnmanaged),
@@ -722,6 +761,7 @@ async function loadDriftCore(input: {
   traceSpan("drift.host-plugin-folders", () => {
     changes.push(...hostPluginFolderChanges(homeRoot, expectedApply.expected_files ?? [], changes));
   });
+  changes.push(...claudeChangedMarketplaceEntries(homeRoot, expectedApply.expected_files ?? []));
 
   const applied = Boolean(latestSnapshot);
   const blockingChanges = changes.filter((change) => !driftChangeIsKept(change));

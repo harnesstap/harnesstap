@@ -15,6 +15,7 @@ import {
   hostPluginViewForceReplace,
   pendingKeptHostPluginViewPaths,
 } from "../services/package-cache/host-plugin-view-policy.js";
+import { isClaudePluginRegistryPath } from "../services/claude-plugin-registration-prune.js";
 import { ui } from "../ui/index.js";
 
 export interface ApplyKeptFile {
@@ -104,7 +105,7 @@ export function printApplyDryRun(input: {
   if (input.wouldKeep.length > 0) {
     console.log(dryRunSectionHeader("keep", input.wouldKeep.length));
     for (const entry of input.wouldKeep) {
-      console.log(`  ${entry.path}   ${keptReasonLabel(entry.reason)}`);
+      console.log(`  ${entry.path}   ${keptReasonLabel(entry.reason, entry.path)}`);
     }
   }
   console.log("");
@@ -124,7 +125,12 @@ export function printKeptFiles(kept: readonly ApplyKeptFile[]): void {
   }
   console.log(keptFilesHeader(kept.length));
   for (const entry of kept) {
-    console.log(`  ${entry.path}   ${keptReasonLabel(entry.reason)}`);
+    console.log(`  ${entry.path}   ${keptReasonLabel(entry.reason, entry.path)}`);
+  }
+  // HarnessTap keeps the entries Claude Code changed in its plugin registries
+  // even with --force-remove, so suggesting it for those alone is wrong.
+  if (kept.every((entry) => isClaudePluginRegistryPath(entry.path))) {
+    return;
   }
   // With --force-remove already in effect, suggesting it again is wrong.
   console.log(

@@ -13,6 +13,13 @@ export interface DriftFileChange {
   affected_resources?: Array<{ type: string; name: string }>;
   /** How apply would treat this path when it is a planned removal or a skipped write. */
   removal_group?: "owned_unmodified" | "owned_modified" | "unmanaged";
+  /**
+   * Set when Claude Code rewrote what HarnessTap registered or wrote in its
+   * plugin folders (a marketplace refresh or a plugin update). Apply keeps it.
+   */
+  changed_by?: "claude-code";
+  /** What changed inside the file, when only part of it did (a marketplace entry). */
+  detail?: string;
 }
 
 /** User-modified or unmanaged paths apply will keep. They are not pending writes. */

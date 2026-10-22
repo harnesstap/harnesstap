@@ -62,8 +62,10 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
   }
   // Files in a plugin cache folder are the plugin's, not the profile's: they
   // cannot be saved to it, and apply keeps the user's own files there. They
-  // are listed by `profile status` but are not unsaved changes.
-  const changes = status.changes.filter((change) => !isHostPluginViewPath(change.path));
+  // are listed by `profile status` but are not unsaved changes. Neither are
+  // the plugin registry entries Claude Code changed: apply keeps those too.
+  const changes = status.changes.filter((change) =>
+    !isHostPluginViewPath(change.path) && change.changed_by !== "claude-code");
   if (changes.length === 0) {
     return "continue";
   }

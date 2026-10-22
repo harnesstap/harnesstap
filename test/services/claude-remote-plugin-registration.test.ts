@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 import { getHarnesstapDir } from "../../src/db/connection.ts";
 import { setHarnessPreference } from "../../src/models/harness.ts";
 import { createPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
@@ -11,6 +11,7 @@ import { importPluginFromMarketplace } from "../../src/services/plugin-marketpla
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { isClaudePluginRegistryPath } from "../../src/services/claude-plugin-registration-prune.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
+import { maybeSyncActiveProfileBeforeSwitch } from "../../src/services/profile-switch-prompt.ts";
 import { detectGlobalProfileStatus, hostPluginFolderChanges } from "../../src/services/global-profile-drift.ts";
 import { recordHostPluginViewFiles } from "../../src/services/package-cache/host-plugin-views.ts";
 import { hashFileOrLink } from "../../src/services/safe-file-removal.ts";
@@ -280,5 +281,151 @@ describe("claude remote marketplace plugin registration", () => {
     expect(isClaudePluginRegistryPath(".claude\\plugins\\installed_plugins.json")).toBe(true);
     expect(isClaudePluginRegistryPath(SETTINGS)).toBe(false);
     expect(isClaudePluginRegistryPath(".cursor/plugins/installed.json")).toBe(false);
+  });
+});
+
+describe("claude marketplace entries Claude Code changed", () => {
+  const MANIFEST_DIR = ".claude/plugins/harnesstap-marketplaces/mkta";
+  type Entry = { source?: unknown; installLocation?: string; lastUpdated?: string; autoUpdate?: boolean };
+
+  async function applyRemote(): Promise<void> {
+    await applyProfilePlugin("remote", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+    setActiveProfileName("remote");
+  }
+
+  async function switchToPlain(): Promise<string[]> {
+    const warn = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await applyProfilePlugin("plain", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+      return warn.mock.calls.map((call) => String(call[0]));
+    } finally {
+      warn.mockRestore();
+    }
+  }
+
+  it("turns auto-update off and keeps the entry bytes on a re-apply", async () => {
+    const context = await createInitializedTestContext("claude-mp-autoupdate");
+    try {
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      const first = readFileSync(join(context.homeDir, KNOWN), "utf-8");
+      expect(readJson<Record<string, Entry>>(context.homeDir, KNOWN).mkta?.autoUpdate).toBe(false);
+      await applyRemote();
+      expect(readFileSync(join(context.homeDir, KNOWN), "utf-8")).toBe(first);
+      expect((await detectGlobalProfileStatus({ harness: "claude-code" })).has_drift).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("turns auto-update off on an entry an earlier version wrote without it, and still removes it on switch", async () => {
+    const context = await createInitializedTestContext("claude-mp-legacy");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      const known = readJson<Record<string, Entry>>(home, KNOWN);
+      delete known.mkta?.autoUpdate;
+      writeJson(home, KNOWN, { ...known, "my-mp": { source: { source: "github", repo: "me/my-mp" }, installLocation: "/x", lastUpdated: "t" } });
+      await applyRemote();
+      expect(readJson<Record<string, Entry>>(home, KNOWN).mkta?.autoUpdate).toBe(false);
+
+      const warnings = await switchToPlain();
+      expect(Object.keys(readJson<object>(home, KNOWN))).toEqual(["my-mp"]);
+      expect(warnings.some((line) => line.includes("Claude Code changed"))).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports and keeps an entry a Claude Code marketplace refresh repointed at its own clone", async () => {
+    const context = await createInitializedTestContext("claude-mp-refreshed");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      // What `claude plugin marketplace update` leaves for a third-party marketplace.
+      const refreshed: Entry = {
+        source: { source: "git", url: "https://example.invalid/qa/mkta.git" },
+        installLocation: join(home, ".claude/plugins/marketplaces/mkta"),
+        lastUpdated: "2026-10-22T23:00:00.000Z",
+      };
+      writeJson(home, KNOWN, { ...readJson<object>(home, KNOWN), mkta: refreshed });
+
+      const status = await detectGlobalProfileStatus({ harness: "claude-code" });
+      expect(status.has_drift).toBe(false);
+      expect(status.changes.filter((change) => change.path === KNOWN)).toEqual([
+        { path: KNOWN, type: "modified", removal_group: "owned_modified", changed_by: "claude-code", detail: "marketplace mkta" },
+      ]);
+
+      // A re-apply leaves the entry as Claude Code wrote it.
+      await applyRemote();
+      expect(readJson<Record<string, Entry>>(home, KNOWN).mkta).toEqual(refreshed);
+      expect(existsSync(join(home, MANIFEST_DIR, ".claude-plugin/marketplace.json"))).toBe(true);
+
+      // Claude Code's change is not an unsaved profile change that blocks a switch.
+      expect(await maybeSyncActiveProfileBeforeSwitch({ targetProfileName: "plain", harness: "claude-code", yes: true })).toBe("continue");
+
+      const warnings = await switchToPlain();
+      expect(readJson<Record<string, Entry>>(home, KNOWN).mkta).toEqual(refreshed);
+      expect(warnings.some((line) => line.includes("Claude Code changed the entry for marketplace mkta"))).toBe(true);
+      // HarnessTap's own record (the only one, so the whole file) and folders still go.
+      expect(existsSync(join(home, INSTALLED))).toBe(false);
+      expect(existsSync(join(home, MANIFEST_DIR))).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports and keeps an entry whose auto-update Claude Code turned on", async () => {
+    const context = await createInitializedTestContext("claude-mp-autoupdate-on");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      const known = readJson<Record<string, Entry>>(home, KNOWN);
+      const changed = { ...known.mkta, autoUpdate: true };
+      writeJson(home, KNOWN, { ...known, mkta: changed });
+
+      const status = await detectGlobalProfileStatus({ harness: "claude-code" });
+      expect(status.has_drift).toBe(false);
+      expect(status.changes.some((change) => change.detail === "marketplace mkta" && change.changed_by === "claude-code")).toBe(true);
+      await applyRemote();
+      expect(readJson<Record<string, Entry>>(home, KNOWN).mkta).toEqual(changed);
+
+      const warnings = await switchToPlain();
+      expect(readJson<Record<string, Entry>>(home, KNOWN).mkta).toEqual(changed);
+      expect(warnings.some((line) => line.includes("claude plugin marketplace remove mkta"))).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports a marketplace manifest HarnessTap wrote that changed since as kept, changed by Claude Code", async () => {
+    const context = await createInitializedTestContext("claude-mp-manifest-changed");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      writeFileSync(join(home, MANIFEST_DIR, ".claude-plugin/marketplace.json"), "{}\n");
+      const status = await detectGlobalProfileStatus({ harness: "claude-code" });
+      expect(status.has_drift).toBe(false);
+      expect(status.changes).toContainEqual({
+        path: `${MANIFEST_DIR}/.claude-plugin/marketplace.json`,
+        type: "modified",
+        removal_group: "owned_modified",
+        changed_by: "claude-code",
+      });
+      // The switch keeps it rather than deleting a file that changed.
+      await switchToPlain();
+      expect(readFileSync(join(home, MANIFEST_DIR, ".claude-plugin/marketplace.json"), "utf-8")).toBe("{}\n");
+    } finally {
+      await context.cleanup();
+    }
   });
 });

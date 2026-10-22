@@ -231,6 +231,7 @@ export const CLI_COPY = {
   everythingUpToDate: "Everything is up to date.",
   snapshotSavedUndo: "Snapshot saved. Undo with:",
   keptYouChanged: "you changed it",
+  keptClaudeChanged: "Claude Code changed it",
   keptNotMade: "not made by HarnessTap",
   viewSnapshot: "View snapshot",
   keptFilesIntro: "you changed or that HarnessTap didn't create:",
@@ -418,10 +419,15 @@ export function dryRunSectionHeader(
   }
 }
 
-export function keptReasonLabel(reason: "modified" | "unmanaged"): string {
+/** Claude Code's plugin store, which it rewrites on a marketplace refresh or plugin update. */
+function isClaudePluginStorePath(path: string): boolean {
+  return path.replaceAll("\\", "/").startsWith(".claude/plugins/");
+}
+
+export function keptReasonLabel(reason: "modified" | "unmanaged", path?: string): string {
   switch (reason) {
     case "modified":
-      return CLI_COPY.keptYouChanged;
+      return path && isClaudePluginStorePath(path) ? CLI_COPY.keptClaudeChanged : CLI_COPY.keptYouChanged;
     case "unmanaged":
       return CLI_COPY.keptNotMade;
     default: {
