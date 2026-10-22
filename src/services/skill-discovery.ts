@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 
 export interface DiscoveredSkill {
   name: string;
@@ -61,7 +61,7 @@ function parseSkillMarkdown(raw: string): {
   content: string;
 } {
   try {
-    const parsed = matter(raw);
+    const parsed = parseFrontmatter(raw);
     return { data: parsed.data as Record<string, unknown>, content: parsed.content };
   } catch {
     return parseSkillFrontmatterFallback(raw);

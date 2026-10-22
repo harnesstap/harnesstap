@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 import type {
   ImportedResourceProvenance,
   ResourceCreateInput,
@@ -46,7 +46,7 @@ function readReferenceContent(skillDir: string, commandKey: string): string | un
 
     if (raw.startsWith("---")) {
       try {
-        const parsed = matter(raw);
+        const parsed = parseFrontmatter(raw);
         if (parsed.content === raw) {
           throw new Error("unclosed frontmatter");
         }

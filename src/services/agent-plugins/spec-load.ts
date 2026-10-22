@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import matter from "gray-matter";
+import { parseFrontmatter } from "../../utils/frontmatter.js";
 import semver from "semver";
 import type { McpServerMetadata, ResourceCreateInput, SkillMetadata } from "../../types.js";
 import { loadVerifiedPackageFiles } from "../apm-bundle.js";
@@ -215,7 +216,7 @@ function loadSkills(
     }
     let parsed: matter.GrayMatterFile<string>;
     try {
-      parsed = matter(entry.content);
+      parsed = parseFrontmatter(entry.content);
     } catch (error) {
       skipped.push({
         component: "skill",
