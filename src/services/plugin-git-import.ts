@@ -26,8 +26,12 @@ import type { OriginRefreshResult } from "./plugin-origin-update.js";
 import {
   GitPluginImportError,
   MISSING_PLUGIN_JSON_MESSAGE,
+  isGitHubPluginRef,
   normalizeGitHubPluginUrl,
+  splitGitHubPluginRef,
 } from "./github-plugin-ref.js";
+import { parseDependencyRef } from "../utils/plugin-dependency-ref.js";
+import { gitFetchRefForPin } from "./git-pin-fetch.js";
 import {
   pluginDescriptionFromManifest,
   semverSafePluginVersion,
@@ -44,8 +48,24 @@ export type ImportPluginFromGitHubDeps = {
   refreshGit?: (options: {
     url: string;
     targetDir: string;
+    ref?: string;
   }) => OriginRefreshResult | Promise<OriginRefreshResult>;
+  /** Resolve a semver range against the repository's tags. Tests inject this. */
+  resolveSemverTag?: (url: string, range: string) => Promise<string>;
 };
+
+export interface ImportPluginFromGitHubOptions {
+  /**
+   * Commit SHA, tag, branch, or semver range over tags (#500). Overrides a
+   * `#<ref>` suffix on the source. Empty tracks the default branch HEAD.
+   */
+  ref?: string;
+  /**
+   * Accept any git remote (file://, ssh, another host), not only GitHub.
+   * A profile's git dependency already names its remote.
+   */
+  anyGitRemote?: boolean;
+}
 
 export interface ImportedGitHubPlugin {
   plugin: Plugin;
@@ -59,16 +79,23 @@ function sameGitLocator(plugin: Plugin, url: string): boolean {
   if (!locator || locator.kind !== "git") {
     return false;
   }
-  return formatOriginLocator(locator) === url;
+  // A new pin on the same repository updates the same plugin.
+  return locator.url === url;
 }
 
 export async function importPluginFromGitHubRef(
   input: string,
   deps?: ImportPluginFromGitHubDeps,
+  options?: ImportPluginFromGitHubOptions,
 ): Promise<ImportedGitHubPlugin> {
+  const split = splitGitHubPluginRef(input);
+  const requestedRef = options?.ref?.trim() || split.ref;
   let url: string;
   try {
-    url = normalizeGitHubPluginUrl(input);
+    url = options?.anyGitRemote && !isGitHubPluginRef(split.source)
+      && parseDependencyRef(split.source).source_kind === "git"
+      ? split.source
+      : normalizeGitHubPluginUrl(split.source);
   } catch (error) {
     if (error instanceof GitPluginImportError) {
       throw error;
@@ -82,7 +109,20 @@ export async function importPluginFromGitHubRef(
   const harnesstapDir = getHarnesstapDir();
   const targetDir = gitOriginCacheDir(harnesstapDir, url);
   const refreshGit = deps?.refreshGit ?? refreshGitSource;
-  const refresh = await refreshGit({ url, targetDir });
+  let fetchRef: string | undefined;
+  let pinnedRef: string | undefined;
+  try {
+    ({ fetchRef, pinnedRef } = await gitFetchRefForPin(url, requestedRef, deps?.resolveSemverTag));
+  } catch (error) {
+    throw new GitPluginImportError(
+      "invalid_ref",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const originLocator = formatOriginLocator(
+    pinnedRef ? { kind: "git", url, ref: pinnedRef } : { kind: "git", url },
+  );
+  const refresh = await refreshGit({ url, targetDir, ...(fetchRef ? { ref: fetchRef } : {}) });
   if (!refresh.ok || !refresh.sha) {
     throw new GitPluginImportError(
       "clone_failed",
@@ -128,7 +168,7 @@ export async function importPluginFromGitHubRef(
 
   try {
     await applyCheckedPluginOrigin(plugin, {
-      origin_locator: url,
+      origin_locator: originLocator,
       origin_fingerprint: refresh.sha,
     });
     const pinRef = `${scan.plugin_name}@local`;
@@ -159,7 +199,7 @@ export async function importPluginFromGitHubRef(
     }
     return {
       plugin: updated,
-      origin_locator: url,
+      origin_locator: originLocator,
       origin_fingerprint: refresh.sha,
       created,
     };

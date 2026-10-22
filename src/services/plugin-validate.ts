@@ -1,6 +1,7 @@
 import { getPlugin, getPluginResources } from "../models/plugin-model.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
+import { gitDependencyPinIssue } from "./git-dependency-pin-check.js";
 import { dependenciesFromResources } from "./plugin-dependency.js";
 import {
   emptyDefinitionMessage,
@@ -70,6 +71,17 @@ export function validatePlugin(nameOrId: string): PluginValidationReport {
 
   const plugins = dependenciesFromResources(resources);
   for (const pin of plugins) {
+    if (pin.source_kind === "git") {
+      const issue = gitDependencyPinIssue(pin.ref, pin.version_constraint);
+      if (issue) {
+        issues.push({
+          severity: issue.severity,
+          code: issue.severity === "error" ? "invalid_version_constraint" : "unpinned_git_dependency",
+          message: issue.message,
+        });
+      }
+      continue;
+    }
     if (!pin.ref.includes("@")) {
       issues.push({
         severity: "error",
