@@ -39,6 +39,10 @@ function unknownMarketplaceReason(marketplace: string): string {
   return `marketplace ${marketplace} is not configured. Add it with ht marketplace add <git-url> --name ${marketplace}, then run this command again`;
 }
 
+function undeclaredDependencyReason(ref: string): string {
+  return `no plugin depends on ${ref}, so there is nothing to install. Add it with ht plugin add ${ref} --to <plugin>, then run this command again`;
+}
+
 /** Register `marketplace` when a library plugin's claude.toml declares its source. */
 function registerMarketplaceDeclaredByLibrary(marketplace: string): void {
   const harnesstapDir = getHarnesstapDir();
@@ -104,6 +108,10 @@ export async function syncResourcesInstallingDependencies(
           ...(result.failed ?? []),
           { ref, reason: new PluginNotInMarketplaceError(pluginName, marketplace).message },
         ];
+      } else if (result.checked === 0) {
+        // Listed, but nothing declares it and nothing is installed: say so
+        // instead of reporting success for a sync that checked nothing.
+        result.failed = [...(result.failed ?? []), { ref, reason: undeclaredDependencyReason(ref) }];
       }
     }
     return result;
