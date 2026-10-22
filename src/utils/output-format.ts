@@ -1,3 +1,5 @@
+import { hostPluginViewNoticesJson } from "../services/package-cache/host-plugin-view-policy.js";
+
 export type OutputFormat = "human" | "json";
 
 export function parseOutputFormat(
@@ -19,5 +21,15 @@ export function jsonReplacer(_key: string, value: unknown): unknown {
 }
 
 export function printJson(value: unknown): void {
-  console.log(JSON.stringify(value, jsonReplacer, 2));
+  // Files a plugin cache refresh kept or replaced during this command also
+  // go into the JSON, next to the stderr notice.
+  const notices = hostPluginViewNoticesJson();
+  const withNotices =
+    Object.keys(notices).length > 0
+    && typeof value === "object"
+    && value !== null
+    && !Array.isArray(value)
+      ? { ...value, ...notices }
+      : value;
+  console.log(JSON.stringify(withNotices, jsonReplacer, 2));
 }

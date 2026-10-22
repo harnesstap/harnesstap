@@ -62,11 +62,24 @@ function announceReplaced(entry: ReplacedHostPluginViewFiles): string {
 }
 
 function describeFiles(entry: KeptHostPluginViewFiles): string {
-  const listed = entry.files.slice(0, LISTED_FILES).map((file) =>
-    `${file.path} (${file.reason === "modified" ? "changed since HarnessTap wrote it" : "not written by HarnessTap"})`,
-  );
+  const listed = entry.files.slice(0, LISTED_FILES).map((file) => {
+    const why = file.reason === "modified" ? "changed since HarnessTap wrote it" : "not written by HarnessTap";
+    return `${file.path} (${file.inPlugin === false ? `${why}, not in the plugin` : why})`;
+  });
   const more = entry.files.length - listed.length;
   return more > 0 ? `${listed.join(", ")}, and ${more} more` : listed.join(", ");
+}
+
+/** "replace 1 file with the plugin's version and remove 2 the plugin does not have" */
+function describeChange(entry: KeptHostPluginViewFiles): string {
+  const missing = entry.files.filter((file) => file.inPlugin === false).length;
+  const differing = entry.files.length - missing;
+  const parts: string[] = [];
+  if (differing > 0) parts.push(`replace ${formatCount(differing, "file")} with the plugin's version`);
+  if (missing > 0) {
+    parts.push(`remove ${differing > 0 ? missing : formatCount(missing, "file")} the plugin does not have`);
+  }
+  return parts.join(" and ");
 }
 
 /**
@@ -83,12 +96,14 @@ export async function settleKeptHostPluginViewFiles(
     console.error(announceReplaced(entry));
   }
   for (const entry of deps.take()) {
+    // Shown once per change: the same kept files were reported last time.
+    if (entry.alreadyReported) continue;
     const where = shortenHomePath(entry.hostView);
     const count = formatCount(entry.files.length, "file");
     if (deps.interactive && !options.json) {
-      ui.warn(`${where}: the plugin update would replace ${count}: ${describeFiles(entry)}.`);
+      ui.warn(`Kept ${count} in ${where} that differ from the plugin: ${describeFiles(entry)}.`);
       const confirmed = await deps.confirm({
-        message: `Back up and replace ${count} in ${where} with the plugin's files?`,
+        message: `Back up the ${count} in ${where}, then ${describeChange(entry)}?`,
         default: false,
       });
       if (confirmed) {
@@ -99,7 +114,7 @@ export async function settleKeptHostPluginViewFiles(
     }
     // stderr, so --format json output stays clean.
     console.error(
-      `Kept ${count} in ${where} that the plugin update would replace: ${describeFiles(entry)}. To back them up and replace them, run the command again with --force-remove.`,
+      `Kept ${count} in ${where} that differ from the plugin: ${describeFiles(entry)}. To back them up, then ${describeChange(entry)}, run the command again with --force-remove.`,
     );
   }
 }

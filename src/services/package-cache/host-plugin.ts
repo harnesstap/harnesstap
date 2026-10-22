@@ -10,6 +10,7 @@ import {
   rmSync,
   symlinkSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join, relative, sep } from "node:path";
 import { getHarnesstapDir } from "../../db/connection.js";
 import { parsePluginRef } from "../../plugins/claude-installed.js";
@@ -37,6 +38,7 @@ import {
   readHostPluginViewRecord,
   recordHostPluginViewFiles,
   removeEmptyDirsUnder,
+  swapKeptNoticeSignature,
 } from "./host-plugin-views.js";
 import {
   hostPluginPackageDir,
@@ -247,7 +249,7 @@ export function mirrorHostPluginView(input: {
     if (ownership === "owned" || hostPluginViewForceReplace()) {
       replace.push(path);
     } else {
-      kept.push({ path, reason: ownership });
+      kept.push({ path, reason: ownership, inPlugin: packageSet.has(path) });
     }
   }
 
@@ -284,15 +286,39 @@ export function mirrorHostPluginView(input: {
   }
   removeEmptyDirsInside(hostView);
   recordHostPluginViewFiles({ hostView, created, files, dropFiles: replace });
+  const alreadyReported = swapKeptNoticeSignature(
+    hostView,
+    keptSignature(hostView, input.canonicalDir, kept),
+  );
   if (kept.length > 0) {
     recordKeptHostPluginViewFiles({
       homeRoot: input.homeRoot,
       hostView,
       canonicalDir: input.canonicalDir,
       files: kept,
+      alreadyReported,
     });
   }
   return hostView;
+}
+
+/**
+ * Identifies a set of kept files: their paths, why they were kept, their
+ * bytes and the plugin's bytes. It changes when either side changes, which
+ * is when the kept-files notice is shown again. Empty when nothing was kept.
+ */
+function keptSignature(
+  hostView: string,
+  canonicalDir: string,
+  kept: KeptHostPluginViewFiles["files"],
+): string {
+  if (kept.length === 0) return "";
+  const hash = createHash("sha256");
+  for (const file of [...kept].sort((a, b) => a.path.localeCompare(b.path))) {
+    const ours = file.inPlugin ? hashViewEntry(join(canonicalDir, file.path)) ?? "" : "";
+    hash.update(`${file.path}\0${file.reason}\0${hashViewEntry(join(hostView, file.path)) ?? ""}\0${ours}\n`);
+  }
+  return hash.digest("hex");
 }
 
 /** Remove the empty folders inside `dir`, never `dir` itself. */
