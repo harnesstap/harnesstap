@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'After `ht plugin update`, a marketplace plugin''s skills are no longer stored twice, so `ht apply` and `ht profile use` stop warning that a skill is "declared by p and p". The update now reuses the copy the last apply stored, and drops a second copy an earlier update left behind.'
+time: 2026-10-22T18:45:00.000000Z
