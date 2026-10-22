@@ -1,6 +1,7 @@
 /**
- * Test preload: run every test file against a throwaway HOME, and fail the run
- * if anything touches the real user's HarnessTap data directory.
+ * Test preload: run every test file against a throwaway HOME and temp dir,
+ * fail the run if anything touches the real user's HarnessTap data directory,
+ * and report HarnessTap temp dirs a run leaves in the real temp dir.
  *
  * Bun keeps `os.homedir()` from process start, so code that needs the home
  * directory must read `process.env.HOME` (see `src/utils/home-root.ts`).
@@ -104,6 +105,52 @@ function failure(changes: string[], where: string): Error {
   );
 }
 
+/** Temp dir names HarnessTap code and tests create. */
+const TEMP_PREFIX = /^(ht-|harnesstap-)/;
+
+function listTempEntries(dir: string): Set<string> {
+  try {
+    return new Set(readdirSync(dir).filter((name) => TEMP_PREFIX.test(name)));
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * HarnessTap temp entries that appeared in `dir` during this run. Entries that
+ * existed before the run, or that are older than it (another process), are
+ * never reported and never touched.
+ */
+export function leakedTempEntries(
+  dir: string,
+  before: Set<string>,
+  startedAtMs: number,
+): string[] {
+  const leaked: string[] = [];
+  for (const name of listTempEntries(dir)) {
+    if (before.has(name)) continue;
+    try {
+      if (lstatSync(join(dir, name)).mtimeMs + 1000 < startedAtMs) continue;
+    } catch {
+      continue;
+    }
+    leaked.push(join(dir, name));
+  }
+  return leaked.sort();
+}
+
+// Every temp dir a test (or a CLI subprocess it spawns) creates through
+// os.tmpdir() lands under one per-run root, removed when the run ends, so
+// individual tests do not each need a teardown for their mkdtemp dirs.
+const realTmp = tmpdir();
+const runStartedAtMs = Date.now();
+const realTmpBefore = listTempEntries(realTmp);
+const tmpRoot = resolve(mkdtempSync(join(realTmp, "ht-test-run-")));
+realTmpBefore.add(tmpRoot.slice(tmpRoot.lastIndexOf(sep) + 1));
+process.env.TMPDIR = tmpRoot;
+process.env.TMP = tmpRoot;
+process.env.TEMP = tmpRoot;
+
 const testRoot = resolve(mkdtempSync(join(tmpdir(), "ht-test-home-")));
 const guarded = guardedDirs(testRoot);
 const shallowBefore = new Map(guarded.map((dir) => [dir, snapshot(dir, false)]));
@@ -138,8 +185,23 @@ afterAll(() => {
     }
   }
   rmSync(testRoot, { recursive: true, force: true });
+  rmSync(tmpRoot, { recursive: true, force: true });
+  const leaked = leakedTempEntries(realTmp, realTmpBefore, runStartedAtMs);
+  if (leaked.length > 0) {
+    const message =
+      `This test run left ${leaked.length} HarnessTap temp dir(s) in ${realTmp}:\n  ` +
+      leaked.slice(0, 20).join("\n  ") +
+      "\nCreate temp dirs with os.tmpdir() (redirected per run by " +
+      "test/helpers/isolate-home.ts), not a hard-coded temp path.";
+    // Locally another process may be creating ht-* dirs at the same time, so
+    // only CI (one run per machine) treats a leak as a failure.
+    if (process.env.CI) throw new Error(message);
+    console.warn(`warning: ${message}`);
+  }
 });
 
 export const isolatedTestHome = testRoot;
+export const isolatedTempRoot = tmpRoot;
+export const realTempDir = realTmp;
 export const guardedHarnesstapDirs = guarded;
 export const realHarnesstapExists = guarded.some((dir) => existsSync(dir));
