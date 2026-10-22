@@ -7,10 +7,12 @@ import {
   dryRunWouldLine,
   forceRemoveHintLine,
   keptFilesHeader,
+  keptReportedBeforeLine,
   keptReasonLabel,
   snapshotSavedUndoLine,
 } from "../copy/cli.js";
 import {
+  allKeptHostPluginViewPaths,
   hostPluginViewChangeCounts,
   hostPluginViewForceReplace,
   pendingKeptHostPluginViewPaths,
@@ -157,16 +159,24 @@ export function printApplySuccess(input: {
   // List each kept file once, and count both.
   const folderKept = new Set(pendingKeptHostPluginViewPaths());
   const kept = input.kept.filter((entry) => !folderKept.has(entry.path));
+  // Kept files in a plugin cache folder that an earlier apply already reported get no
+  // notice again, but they are still kept, so the count and a pointer include them.
+  const listedPaths = new Set([...folderKept, ...kept.map((entry) => entry.path)]);
+  const reportedBefore = allKeptHostPluginViewPaths().filter((path) => !listedPaths.has(path));
+  const keptTotal = listedPaths.size + new Set(reportedBefore).size;
   console.log(
     applyWroteLine({
       wrote: input.wrote + pluginFolder.replaced + pluginFolder.added,
       removed: input.removed + pluginFolder.removed,
-      kept: kept.length + folderKept.size,
+      kept: keptTotal,
       unchanged: input.unchanged,
     }),
   );
   if (kept.length > 0) {
     printKeptFiles(kept);
+  }
+  if (reportedBefore.length > 0) {
+    console.log(keptReportedBeforeLine(new Set(reportedBefore).size));
   }
   if (input.snapshotId) {
     console.log(snapshotSavedUndoLine(`ht revert ${input.snapshotId}`));
