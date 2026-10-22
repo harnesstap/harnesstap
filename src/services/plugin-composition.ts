@@ -151,7 +151,7 @@ export function attachPluginPinToPlugin(
   pluginId: string,
   ref: string,
   versionConstraint: string,
-  opts?: { embedOnExport?: boolean; order?: number },
+  opts?: { embedOnExport?: boolean; order?: number; markDirty?: boolean },
 ): void {
   const constraint =
     versionConstraint === "latest" || versionConstraint === "*"
@@ -160,6 +160,7 @@ export function attachPluginPinToPlugin(
   addDependency(pluginId, ref, {
     ...(constraint ? { versionConstraint: constraint } : {}),
     ...(opts?.embedOnExport ? { embedOnExport: true } : {}),
+    ...(opts?.markDirty === false ? { markDirty: false } : {}),
   });
 }
 

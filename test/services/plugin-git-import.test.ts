@@ -217,3 +217,19 @@ it("refuses a pin git cannot use before fetching (#500)", async () => {
   expect(seen).toEqual([]);
   expect(getPluginByName("ponytail")).toBeUndefined();
 });
+
+it("records a freshly fetched git plugin as clean, not edited", async () => {
+  const root = mkdtempSync(join(tmpdir(), "ht-ponytail-clean-"));
+  writePluginJsonRoot(root, "ponytail");
+
+  const imported = await importPluginFromGitHubRef("DietrichGebert/ponytail", {
+    refreshGit: refreshFrom(root),
+  });
+  expect(getPluginById(imported.plugin.id)?.dirty).toBe(false);
+
+  // Fetching it again (apply, update) keeps it clean.
+  await importPluginFromGitHubRef("DietrichGebert/ponytail", {
+    refreshGit: refreshFrom(root),
+  });
+  expect(getPluginById(imported.plugin.id)?.dirty).toBe(false);
+});

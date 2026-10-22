@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'A plugin fetched from git (a git dependency at apply, or `ht plugin add` of a git URL) is recorded as a clean copy at its package version instead of showing as edited (`1.0.0*`) in `ht plugin list`.'
+time: 2026-10-22T10:05:00.000Z
+custom:
+  Issue: "499"
