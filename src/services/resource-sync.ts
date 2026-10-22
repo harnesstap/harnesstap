@@ -34,7 +34,10 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./plugin-composition.js";
 import { assertSyncable } from "./plugin-origin.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
-import { materializeUpstreamPlugin } from "./upstream-plugin.js";
+import {
+  assertNoMarketplacePluginNameCollision,
+  materializeUpstreamPlugin,
+} from "./upstream-plugin.js";
 import { hashResourceBody } from "./resource-hash.js";
 import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import { parsePluginRef } from "../plugins/claude-installed.js";
@@ -405,6 +408,10 @@ export async function syncPluginResource(
   const skipped: Resource[] = [];
 
   const originRef = pluginResource.origin_ref || formatPluginRef(pluginResource);
+  const parsedOrigin = parseDependencyRef(originRef);
+  if (parsedOrigin.source_kind === "marketplace") {
+    assertNoMarketplacePluginNameCollision(parsedOrigin.origin_ref);
+  }
   const installRoot = resolveInstallRoot(originRef, homeRoot, claudePluginsRoot);
   if (!installRoot) {
     stale.push({
