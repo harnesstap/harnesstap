@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { applyTrashRoot, executeSafeFileRemovals } from "../../src/services/safe-file-removal.ts";
+import { mirrorHostPluginView } from "../../src/services/package-cache/host-plugin.ts";
 import {
   backUpAndRemoveHostPluginViewFiles,
   isHostPluginViewBackupId,
@@ -106,13 +107,17 @@ describe("safe file removal of links", () => {
 describe("host plugin folder backups", () => {
   it("gives every trash entry an id ht revert takes, even when a removal fails midway", async () => {
     const context = await createInitializedTestContext("host-view-backup-id");
+    const canonicalDir = join(context.homeDir, "pkg");
+    mkdirSync(join(canonicalDir, ".claude-plugin"), { recursive: true });
+    writeFileSync(join(canonicalDir, ".claude-plugin/plugin.json"), '{"name":"p","version":"1.0.0"}\n');
+    writeFileSync(join(canonicalDir, "a.md"), "a\n");
+    // HarnessTap writes the folder, so a.md is its own and may be removed.
+    mirrorHostPluginView({ homeRoot: context.homeDir, marketplace: "m", pluginName: "p", version: "1.0.0", canonicalDir });
     const unlinkSpy = spyOn(fs, "unlinkSync").mockImplementation(() => {
       throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
     });
     try {
       const hostView = join(context.homeDir, ".claude/plugins/cache/m/p/1.0.0");
-      mkdirSync(hostView, { recursive: true });
-      writeFileSync(join(hostView, "a.md"), "a\n");
 
       expect(() =>
         backUpAndRemoveHostPluginViewFiles({ homeRoot: context.homeDir, hostView, paths: ["a.md"] }),
