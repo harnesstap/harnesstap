@@ -53,6 +53,10 @@ import {
 } from "../print-apply-summary.js";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
+import {
+  catalogPluginDisplayVersion,
+  catalogPluginVersionLabel,
+} from "../../services/marketplace-catalog-parse.js";
 import { ui } from "../../ui/index.js";
 import {
   getGitOrigin,
@@ -2394,7 +2398,7 @@ function printPluginSearchResults(
     rows: plugins.map((plugin) => ({
       name: plugin.name,
       ref: plugin.ref,
-      version: plugin.version ?? "",
+      version: catalogPluginDisplayVersion(plugin) ?? "",
       description: plugin.description ?? "",
     })),
     summary: formatCount(plugins.length, "plugin"),
@@ -2467,7 +2471,7 @@ async function handlePluginSearchCommand(
           ? `${plugin.name}: ${plugin.description}`
           : plugin.name,
         value: plugin.ref,
-        description: plugin.version ? `v${plugin.version}` : undefined,
+        description: catalogPluginVersionLabel(plugin),
       })),
     });
 

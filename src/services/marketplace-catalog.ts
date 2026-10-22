@@ -50,7 +50,7 @@ export interface MarketplacePluginBranchVersion {
   branch: string;
 }
 
-export const MARKETPLACE_CATALOG_INDEX_VERSION = 1;
+export const MARKETPLACE_CATALOG_INDEX_VERSION = 2;
 
 export interface StoredMarketplaceCatalog extends ParsedMarketplaceCatalog {
   marketplaceEntryName: string;

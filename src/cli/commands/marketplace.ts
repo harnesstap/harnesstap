@@ -23,6 +23,10 @@ import {
   promptForSearchableChoice,
   shouldUseBrowsePicker,
 } from "../../services/wizards/shared.js";
+import {
+  catalogPluginDisplayVersion,
+  catalogPluginVersionLabel,
+} from "../../services/marketplace-catalog-parse.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import {
@@ -268,7 +272,7 @@ async function handleMarketplaceShowCommand(
           ? `${plugin.name}: ${plugin.description}`
           : plugin.name,
         value: plugin.ref,
-        description: plugin.version ? `v${plugin.version}` : undefined,
+        description: catalogPluginVersionLabel(plugin),
       })),
     });
 
@@ -316,7 +320,7 @@ async function handleMarketplaceShowCommand(
       name: plugin.name,
       flavor: plugin.flavor ?? "",
       ref: plugin.ref,
-      version: plugin.version ?? "",
+      version: catalogPluginDisplayVersion(plugin) ?? "",
       description: plugin.description ?? "",
     })),
     summary: formatCount(plugins.length, "plugin"),
