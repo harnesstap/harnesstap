@@ -166,15 +166,12 @@ describe("refreshing a host plugin folder the user added files to", () => {
       { path: "user-notes.md", reason: "unmanaged", inPlugin: false },
     ]);
 
-    // The plugin's newer copy is there: kept unless --force-remove.
-    const first = restoreHostPluginViewBackup(replaced.backupId);
-    expect(first?.restored).toEqual([]);
-    expect(first?.skipped).toEqual([{ path: "skills/a/SKILL.md", reason: "changed" }]);
-    expect(readFileSync(view("skills/a/SKILL.md"), "utf8")).toBe("a v2\n");
-
-    const forced = restoreHostPluginViewBackup(replaced.backupId, { forceRemove: true });
-    expect(forced?.restored).toEqual(["skills/a/SKILL.md"]);
-    expect(forced?.replacedBackupId).toBeDefined();
+    // What is there now is exactly what HarnessTap wrote, so the printed
+    // revert id puts the user's version back without --force-remove.
+    const reverted = restoreHostPluginViewBackup(replaced.backupId);
+    expect(reverted?.skipped).toEqual([]);
+    expect(reverted?.restored).toEqual(["skills/a/SKILL.md"]);
+    expect(reverted?.replacedBackupId).toBeDefined();
     expect(readFileSync(view("skills/a/SKILL.md"), "utf8")).toBe("a v1\nUSER EDIT\n");
 
     // Restored files are the user's again: the next refresh keeps them.
