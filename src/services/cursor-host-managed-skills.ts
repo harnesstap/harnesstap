@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 import { getPlatform } from "../platforms/registry.js";
 
 export const CURSOR_HOST_MANAGED_SKILLS_DISPLAY_ROOT =
@@ -64,7 +64,7 @@ function tryParseSkillFrontmatter(content: string):
   | { data: Record<string, unknown>; content: string }
   | undefined {
   try {
-    const parsed = matter(content);
+    const parsed = parseFrontmatter(content);
     if (content.startsWith("---") && parsed.content === content) {
       return undefined;
     }

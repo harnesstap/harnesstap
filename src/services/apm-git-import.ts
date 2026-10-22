@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 import {
   addResourceToPlugin,
   createPlugin,
@@ -46,7 +46,7 @@ function importVirtualFile(
     );
   }
   const raw = readFileSync(absolute, "utf8");
-  const parsed = matter(raw);
+  const parsed = parseFrontmatter(raw);
   const data = isRecord(parsed.data) ? parsed.data : {};
   const fallback = basename(relativePath).replace(/\.(agent|prompt|instructions)\.md$/i, "");
   const name =

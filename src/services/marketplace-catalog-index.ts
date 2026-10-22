@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 import {
   HOST_PLUGIN_MANIFEST_RELATIVE_PATHS,
   readFirstHostPluginManifest,
@@ -119,7 +119,7 @@ function commandContents(pluginRoot: string): CatalogPluginContent[] {
       let description: string | undefined;
       if (entry.endsWith(".md")) {
         try {
-          const parsed = matter(readFileSync(absolute, "utf8"));
+          const parsed = parseFrontmatter(readFileSync(absolute, "utf8"));
           if (typeof parsed.data.description === "string") {
             description = parsed.data.description;
           }

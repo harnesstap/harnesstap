@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 import type { ResourceMetadata, ResourceType, RuleMetadata, SkillMetadata } from "../types.js";
 import {
   BundleSymlinkError,
@@ -122,7 +122,7 @@ function parseMarkdown(
   relativePath: string,
 ): { data: Record<string, unknown>; content: string } {
   const raw = readFileSync(join(projectRoot, relativePath), "utf-8");
-  const parsed = matter(raw);
+  const parsed = parseFrontmatter(raw);
   return {
     data: isRecord(parsed.data) ? { ...parsed.data } : {},
     content: parsed.content,

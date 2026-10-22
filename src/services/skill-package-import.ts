@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 import { createImportedSnapshot } from "../models/imported-snapshot.js";
 import { normalizeResourceInput, upsertResource } from "../models/resource.js";
 import type {
@@ -95,7 +96,7 @@ function buildSkillResource(input: {
   const raw = readFileSync(skillPath, "utf-8");
   let parsed: matter.GrayMatterFile<string>;
   try {
-    parsed = matter(raw);
+    parsed = parseFrontmatter(raw);
   } catch {
     throw new Error(`Malformed resource frontmatter: ${skillPath}`);
   }
