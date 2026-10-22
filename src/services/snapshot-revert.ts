@@ -18,9 +18,11 @@ import {
   executeSafeFileRemovals,
   classifyManagedPathOwnership,
   hashOnDiskFile,
+  isSharedMergedConfigPath,
   restoreSafeRemovalBackup,
   type SafeRemovalSkip,
 } from "./safe-file-removal.js";
+import { restoreRemovedOwnership } from "./removed-ownership.js";
 
 export type RevertKind = "project" | "global";
 
@@ -205,6 +207,16 @@ export function executeRevert(
     applyId: options.applyId ?? plan.id,
     snapshotId: plan.id,
   });
+
+  if (!options.dryRun) {
+    restoreRemovedOwnership({
+      snapshotId: plan.id,
+      rootPath: plan.rootPath,
+      restoredPaths: restored,
+      hashOf: hashOnDiskFile,
+      isMergedConfig: isSharedMergedConfigPath,
+    });
+  }
 
   const warnings = [
     ...skipped.filter((entry) => entry.reason !== "missing").map((entry) => entry.message),

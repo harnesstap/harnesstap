@@ -25,6 +25,7 @@ import {
 } from "../models/resource-materialization.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
+import { saveRemovedOwnership } from "./removed-ownership.js";
 import { shortenHomePath } from "../utils/home-path.js";
 
 const APPLY_TRASH_KEEP = 10;
@@ -397,10 +398,18 @@ export function backupAndRewriteFile(input: {
   snapshotId?: string | null;
 }): void {
   const fullPath = resolve(input.rootPath, input.relativePath);
+  if (!existsSync(fullPath)) {
+    // Nothing on disk to back up: a revert restoring a file an apply removed.
+    if (input.nextContent === null) return;
+    mkdirSync(dirname(fullPath), { recursive: true });
+    writeFileSync(fullPath, input.nextContent);
+    return;
+  }
   backupOnDiskFile(input);
   if (input.nextContent === null) {
     rmSync(fullPath, { force: true });
     pruneEmptyAncestors(fullPath, input.rootPath);
+    saveRemovedOwnership(input.snapshotId, input.rootPath, [input.relativePath]);
     deleteMaterializationsForRootPaths(input.rootPath, [input.relativePath]);
     return;
   }
@@ -437,6 +446,7 @@ export function executeSafeFileRemovals(
       snapshotId: options.snapshotId,
     });
   }
+  saveRemovedOwnership(options.snapshotId, rootPath, plan.remove);
   deleteMaterializationsForRootPaths(rootPath, plan.remove);
   pruneApplyTrash();
 

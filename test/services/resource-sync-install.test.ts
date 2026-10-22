@@ -104,6 +104,41 @@ describe("resource sync of a marketplace dependency", () => {
     ]);
   });
 
+  it("says a plugin is not in a known marketplace, declared or not", async () => {
+    addMarketplace(join(ctx.homeDir, ".harnesstap"), {
+      name: "local-market",
+      url: initMarketplace(),
+      platforms: ["claude-code"],
+    });
+    const undeclared = await syncResourcesInstallingDependencies({
+      selector: "plugin:nope@local-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(undeclared.failed).toEqual([
+      { ref: "nope@local-market", reason: "Plugin nope not found in marketplace local-market." },
+    ]);
+
+    const profile = createPlugin({ name: "prof", version: "1.0.0" });
+    addDependency(profile.id, "nope@local-market");
+    const declared = await syncResourcesInstallingDependencies({
+      selector: "plugin:nope@local-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(declared.failed).toEqual([
+      { ref: "nope@local-market", reason: "Plugin nope not found in marketplace local-market." },
+    ]);
+    expect(declared.stale.map((entry) => entry.reason)).toEqual([
+      "Plugin nope not found in marketplace local-market.",
+    ]);
+
+    // A plugin the marketplace lists is not reported.
+    const listed = await syncResourcesInstallingDependencies({
+      selector: "plugin:alpha@local-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(listed.failed ?? []).toEqual([]);
+  });
+
   it("resolves the marketplaces the public persona profiles depend on", () => {
     for (const name of [
       "addy-agent-skills",

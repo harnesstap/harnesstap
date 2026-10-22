@@ -317,6 +317,15 @@ export function registerResourceCommands(root: Command): void {
         return;
       }
 
+      if (result.checked === 0 && failed.length > 0) {
+        // Nothing was checked: the reason is the whole answer.
+        fail(
+          failed
+            .map((entry) => `Could not install ${entry.ref}: ${entry.reason.replace(/\.?$/, ".")}`)
+            .join("\n"),
+        );
+        return;
+      }
       ui.success(
         `Checked ${formatCount(result.checked, "resource")} ${ui.icons.bullet} ${result.updated.length} updated, ${result.unchanged.length} unchanged, ${result.skipped.length} skipped, ${result.stale.length} stale`,
       );

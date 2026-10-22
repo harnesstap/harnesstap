@@ -128,7 +128,10 @@ describe("G6 CLI error contract", () => {
       const result = runPackedCli(context.homeDir, ["resource", "sync", "plugin:foo@not-a-known-mkt"]);
       expect(result.status).toBe(1);
       expect(result.stderr + result.stdout).toContain("ht marketplace add <git-url> --name not-a-known-mkt");
-      expect(result.stderr).toContain("Could not install foo@not-a-known-mkt.");
+      expect(result.stderr).toContain(
+        "Could not install foo@not-a-known-mkt: marketplace not-a-known-mkt is not configured.",
+      );
+      expect(result.stdout).not.toContain("Checked 0 resources");
     } finally {
       await context.cleanup();
     }

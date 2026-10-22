@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'A plugin missing from a known marketplace fails with "Plugin X not found in marketplace M." instead of "its marketplace entry names no git source", and `resource sync plugin:X@M` exits 1 with that message even when no plugin declares it.'
+time: 2026-10-22T16:40:00.000000Z
