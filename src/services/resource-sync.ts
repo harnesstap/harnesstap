@@ -55,6 +55,8 @@ export interface SyncLinkedResourcesOptions {
   force?: boolean;
   homeRoot?: string;
   claudePluginsRoot?: string;
+  /** Read the plugin from this install root instead of looking it up. */
+  installRoot?: string;
 }
 
 export interface SyncLinkedResourcesResult {
@@ -418,7 +420,10 @@ export async function syncPluginResource(
   if (parsedOrigin.source_kind === "marketplace") {
     assertNoMarketplacePluginNameCollision(parsedOrigin.origin_ref);
   }
-  const installRoot = resolveInstallRoot(originRef, homeRoot, claudePluginsRoot);
+  const installRoot =
+    options.installRoot && existsSync(options.installRoot)
+      ? options.installRoot
+      : resolveInstallRoot(originRef, homeRoot, claudePluginsRoot);
   if (!installRoot) {
     stale.push({
       resource: pluginResource,
