@@ -6,7 +6,9 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import { listPlugins } from "../models/plugin-model.js";
 import { wellKnownMarketplaceEntry } from "./builtin-marketplaces.js";
 import { registerDeclaredMarketplaces } from "./claude-marketplace-bootstrap.js";
+import { marketplaceListsPlugin, PluginNotInMarketplaceError } from "./host-plugin-source.js";
 import { installMarketplacePinIntoCache } from "./marketplace-pin-cache.js";
+import { refreshMarketplaceCatalog } from "./marketplace-catalog.js";
 import { findKnownMarketplace } from "./marketplace-registry.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 import {
@@ -82,6 +84,27 @@ export async function syncResourcesInstallingDependencies(
         ...(result.failed ?? []),
         { ref, reason: unknownMarketplaceReason(marketplace) },
       ];
+    } else {
+      const pluginName = parseDependencyRef(ref).name;
+      const harnesstapDir = getHarnesstapDir();
+      const lookup = () =>
+        marketplaceListsPlugin({ homeRoot, harnesstapDir, marketplace, pluginName });
+      let listed = lookup();
+      if (listed === undefined && !options.dryRun && findKnownMarketplace(harnesstapDir, marketplace)) {
+        // Registered but never fetched: read its catalog once to answer.
+        const refreshed = await refreshMarketplaceCatalog(harnesstapDir, {
+          name: marketplace,
+          force: false,
+          unattended: false,
+        });
+        if (refreshed.ok) listed = lookup();
+      }
+      if (listed === false) {
+        result.failed = [
+          ...(result.failed ?? []),
+          { ref, reason: new PluginNotInMarketplaceError(pluginName, marketplace).message },
+        ];
+      }
     }
     return result;
   }
@@ -117,7 +140,9 @@ export async function syncResourcesInstallingDependencies(
         });
       } catch (error) {
         aggregated.checked += 1;
-        const reason = `could not install ${ref}: ${error instanceof Error ? error.message : String(error)}`;
+        const reason = error instanceof PluginNotInMarketplaceError
+          ? error.message
+          : `could not install ${ref}: ${error instanceof Error ? error.message : String(error)}`;
         aggregated.stale.push({ resource: pin, reason });
         aggregated.failed?.push({ ref, reason });
         continue;
