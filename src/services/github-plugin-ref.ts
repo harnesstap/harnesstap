@@ -24,7 +24,7 @@ const GH_PREFIX = /^gh:/i;
 function invalidRef(input: string): GitPluginImportError {
   return new GitPluginImportError(
     "invalid_ref",
-    `Unrecognized GitHub plugin source "${input}". Use https://github.com/owner/repo, owner/repo, or gh:owner/repo.`,
+    `Unrecognized GitHub plugin source "${input}". Use https://github.com/owner/repo, owner/repo, gh:owner/repo, or git@github.com:owner/repo.git, optionally followed by #<commit, tag or branch>.`,
   );
 }
 
@@ -50,6 +50,16 @@ export function normalizeGitHubPluginUrl(input: string): string {
 
   const withoutGh = GH_PREFIX.test(trimmed) ? trimmed.replace(GH_PREFIX, "") : trimmed;
   const candidate = withoutGh.trim();
+
+  const scp = /^git@github\.com:([^/]+)\/(.+)$/i.exec(candidate);
+  if (scp) {
+    const repo = (scp[2] ?? "").replace(/\.git$/i, "");
+    const owner = scp[1] ?? "";
+    if (!OWNER_REPO.test(`${owner}/${repo}`)) {
+      throw invalidRef(input);
+    }
+    return `https://github.com/${owner}/${repo}.git`;
+  }
 
   if (OWNER_REPO.test(candidate.replace(/\.git$/i, ""))) {
     const [owner, repo] = candidate.replace(/\.git$/i, "").split("/");
@@ -80,9 +90,19 @@ export function normalizeGitHubPluginUrl(input: string): string {
 
 export function isGitHubPluginRef(input: string): boolean {
   try {
-    normalizeGitHubPluginUrl(input);
+    normalizeGitHubPluginUrl(splitGitHubPluginRef(input).source);
     return true;
   } catch {
     return false;
   }
+}
+
+/** Split `<source>#<ref>` into the source and its pinned commit, tag or branch. */
+export function splitGitHubPluginRef(input: string): { source: string; ref?: string } {
+  const trimmed = input.trim();
+  const hash = trimmed.lastIndexOf("#");
+  if (hash <= 0) return { source: trimmed };
+  const ref = trimmed.slice(hash + 1).trim();
+  const source = trimmed.slice(0, hash).trim();
+  return ref ? { source, ref } : { source };
 }
