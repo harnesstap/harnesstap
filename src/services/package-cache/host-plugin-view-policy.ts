@@ -101,9 +101,13 @@ export function takeBlockedHostPluginViewFiles(): BlockedHostPluginViewFiles[] {
   return blocked.splice(0, blocked.length);
 }
 
-/** True when a host plugin refresh in this process kept, replaced or could not write files. */
+/**
+ * True when a host plugin refresh in this process kept, replaced, added or could
+ * not write files. Added files count too, so settling drains them and one
+ * command's count never leaks into the next one in the same process.
+ */
 export function hasHostPluginViewNotices(): boolean {
-  return kept.length > 0 || replaced.length > 0 || blocked.length > 0;
+  return kept.length > 0 || replaced.length > 0 || blocked.length > 0 || added.size > 0;
 }
 
 /**
