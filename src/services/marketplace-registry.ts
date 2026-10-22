@@ -14,7 +14,8 @@ function stripGitSuffix(value: string): string {
   return value.replace(/\.git$/i, "");
 }
 
-function isLocalFilesystemSource(value: string): boolean {
+/** True for a marketplace URL that is a path on this machine, not a git remote. */
+export function isLocalFilesystemSource(value: string): boolean {
   if (value.startsWith("file:")) return true;
   if (value.startsWith("/") || value.startsWith("./") || value.startsWith("../")) {
     return true;
