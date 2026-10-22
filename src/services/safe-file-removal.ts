@@ -24,6 +24,7 @@ import {
 } from "../models/resource-materialization.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
+import { shortenHomePath } from "../utils/home-path.js";
 
 const APPLY_TRASH_KEEP = 10;
 const CONTAINER_DIR_NAMES = new Set([
@@ -548,10 +549,7 @@ export function formatRemovalBackupNotice(
   if (result.removed.length === 0) {
     return undefined;
   }
-  const relativeTrash = result.backupDir.startsWith(homeRoot)
-    ? result.backupDir.slice(homeRoot.length).replace(/^[\\/]/, "")
-    : result.backupDir;
   const count = result.removed.length;
   const noun = count === 1 ? "file" : "files";
-  return `Removed ${count} ${noun}. Backup: ~/${relativeTrash.replace(/\\/g, "/")}`;
+  return `Removed ${count} ${noun}. Backup: ${shortenHomePath(result.backupDir, homeRoot)}`;
 }
