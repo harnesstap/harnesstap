@@ -180,7 +180,8 @@ export async function importPluginFromGitHubRef(
       sourceInstallRoot: targetDir,
       version: pinVersion,
     });
-    attachPluginPinToPlugin(plugin.id, pinRef, pinVersion);
+    // The self pin records what was fetched; it is not an edit to the plugin.
+    attachPluginPinToPlugin(plugin.id, pinRef, pinVersion, { markDirty: false });
     const pin = findPluginResourceByPin(pinRef, pinVersion) ?? findPluginResourceByPin(pinRef);
     if (pin) {
       const metadata: PluginPinMetadata = {
