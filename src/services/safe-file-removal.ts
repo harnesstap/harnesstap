@@ -429,6 +429,21 @@ function copyToTrash(applyId: string, relativePath: string, bytes: Buffer): stri
 }
 
 /**
+ * A removed link goes into the trash as a link, so the trash looks like what
+ * was removed. Where a link cannot be made the target is kept as text.
+ */
+function linkToTrash(applyId: string, relativePath: string, target: Buffer): void {
+  const dest = removalBackupTrashFile(applyId, relativePath);
+  if (pathExists(dest)) return;
+  mkdirSync(dirname(dest), { recursive: true });
+  try {
+    symlinkSync(target.toString("utf-8"), dest);
+  } catch {
+    writeFileSync(dest, target);
+  }
+}
+
+/**
  * Trash folders past the newest `keepLast` are deleted, except any folder that
  * holds the only copy of a backup row (the file was moved there): deleting it
  * would strand a removal `ht revert` can still undo. When the database cannot
@@ -571,7 +586,7 @@ function backupOnDiskFile(input: {
       content: target,
       mode: S_IFLNK | 0o777,
     });
-    copyToTrash(input.applyId, input.relativePath, target);
+    linkToTrash(input.applyId, input.relativePath, target);
     return;
   }
   let mode = 0;
@@ -733,13 +748,21 @@ export function restoreSafeRemovalBackup(input: {
     for (const name of readdirSync(dir)) {
       const full = join(dir, name);
       const rel = prefix ? `${prefix}/${name}` : name;
-      if (statSync(full).isDirectory()) {
+      const stat = lstatSync(full);
+      if (stat.isDirectory()) {
         walk(full, rel);
         continue;
       }
       const dest = resolve(input.rootPath, rel);
       mkdirSync(dirname(dest), { recursive: true });
-      writeFileSync(dest, readFileSync(full));
+      if (stat.isSymbolicLink()) {
+        // A link goes back as a link, never as the bytes it points to.
+        if (isSymlinkPath(dest)) removeFileOrLink(dest);
+        else if (pathExists(dest)) continue;
+        symlinkSync(readlinkSync(full), dest);
+      } else {
+        writeFileSync(dest, readFileSync(full));
+      }
       restored.push(rel);
     }
   };
