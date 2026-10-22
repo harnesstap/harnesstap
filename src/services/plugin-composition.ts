@@ -25,6 +25,7 @@ import {
 } from "./marketplace-catalog.js";
 import { installMarketplacePinIntoCache } from "./marketplace-pin-cache.js";
 import { syncPluginResource } from "./resource-sync.js";
+import { assertNoMarketplacePluginNameCollision } from "./upstream-plugin.js";
 import type { Plugin, Resource, ResourceType } from "../types.js";
 import {
   COMPOSITION_RESOURCE_TYPES,
@@ -341,6 +342,12 @@ function assertMarketplaceSourceStaysInRepo(ref: string): void {
   );
 }
 
+function assertNoMarketplaceNameCollisionForSelector(ref: string): void {
+  const parsed = parseDependencyRef(ref);
+  if (parsed.source_kind !== "marketplace") return;
+  assertNoMarketplacePluginNameCollision(parsed.origin_ref);
+}
+
 export async function addPluginAttachment(input: AddPluginAttachmentInput): Promise<string> {
   const explicitType = input.type;
   const selector = normalizeAttachmentSelector(input.selector, explicitType);
@@ -350,6 +357,7 @@ export async function addPluginAttachment(input: AddPluginAttachmentInput): Prom
 
   if (attachmentType === "plugin") {
     assertMarketplaceSourceStaysInRepo(stripTypePrefix(selector));
+    assertNoMarketplaceNameCollisionForSelector(stripTypePrefix(selector));
   }
 
   markPluginDirty(input.plugin.id);

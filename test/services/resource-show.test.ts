@@ -63,6 +63,25 @@ describe("resource show", () => {
     expect(output).toContain("Metadata");
   });
 
+  it("prints none for an empty description instead of a bare separator", () => {
+    const output = renderResourceShow(makeResource({ description: "" }));
+
+    expect(output).toMatch(/Description\s+none/);
+    expect(output).not.toMatch(/Description\s+:/);
+  });
+
+  it("prints the Updated time in the local time zone", () => {
+    const previous = process.env.TZ;
+    process.env.TZ = "Pacific/Tahiti";
+    try {
+      const output = renderResourceShow(makeResource());
+      expect(output).toContain("2026-01-01 14:00:00");
+      expect(output).not.toContain("2026-01-02 00:00:00");
+    } finally {
+      process.env.TZ = previous ?? "UTC";
+    }
+  });
+
   it("truncates content after 15 lines with a total line count", () => {
     const lines = Array.from({ length: 20 }, (_, index) => `line ${index + 1}`);
     const truncated = truncateResourceContent(lines.join("\n"));

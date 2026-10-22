@@ -18,6 +18,7 @@ import {
   parseTrackedBranches,
 } from "../config/settings.js";
 import { refreshGitSource } from "../plugins/refresh.js";
+import { resolveTelemetryProduct } from "../telemetry/product.js";
 import { runCommandWithTimeout } from "../utils/run-command-with-timeout.js";
 import {
   builtinMarketplaceEntry,
@@ -74,6 +75,8 @@ export interface RefreshMarketplaceCatalogOptions {
 export interface RefreshMarketplaceCatalogResult {
   ok: boolean;
   message: string;
+  /** git timed out; the cached catalog was left as it was. */
+  timedOut?: boolean;
   sha?: string;
   warnings?: string[];
 }
@@ -357,8 +360,27 @@ function catalogRefreshKey(harnesstapDir: string, name: string): string {
   return `${harnesstapDir}\0${name}`;
 }
 
-function logUnattendedRefreshFailure(name: string, message: string): void {
-  console.error(`[ht-agent] marketplace catalog refresh failed for ${name}: ${message}`);
+/**
+ * Log a failed background refresh. A timeout is expected when git or the network
+ * is slow: the cached catalog stays in use, so it is an info line in the Desktop
+ * agent log (or on stderr with HARNESSTAP_DEBUG=1), never a CLI error line.
+ */
+export function logUnattendedRefreshFailure(
+  name: string,
+  result: Pick<RefreshMarketplaceCatalogResult, "message" | "timedOut">,
+): void {
+  if (result.timedOut) {
+    const note = `[ht-agent] marketplace catalog refresh for ${name}: ${result.message} Using the cached catalog.`;
+    if (resolveTelemetryProduct() === "desktop") {
+      // Info level, like the per-request timing lines.
+      console.log(note);
+    } else if (process.env.HARNESSTAP_DEBUG === "1") {
+      // stderr keeps CLI stdout (and --format json) clean.
+      console.error(note);
+    }
+    return;
+  }
+  console.error(`[ht-agent] marketplace catalog refresh failed for ${name}: ${result.message}`);
 }
 
 async function refreshMarketplaceCatalogNow(
@@ -401,7 +423,11 @@ async function refreshMarketplaceCatalogNow(
     unattended,
   });
   if (!refresh.ok) {
-    return { ok: false, message: refresh.message };
+    return {
+      ok: false,
+      message: refresh.message,
+      ...(refresh.timedOut ? { timedOut: true } : {}),
+    };
   }
 
   const defaultCatalog = loadCatalogFromDir(cacheDir, entry.platforms, entry.name);
@@ -430,6 +456,7 @@ async function refreshMarketplaceCatalogNow(
         return {
           ok: false,
           message: `Tracked branch "${branch}": ${branchRefresh.message}`,
+          ...(branchRefresh.timedOut ? { timedOut: true } : {}),
         };
       }
       const branchCatalog = loadCatalogFromDir(branchDir, entry.platforms, entry.name);
@@ -553,7 +580,7 @@ export async function ensureMarketplaceCatalog(
       unattended: true,
     }).then((result) => {
       if (!result.ok) {
-        logUnattendedRefreshFailure(options.name, result.message);
+        logUnattendedRefreshFailure(options.name, result);
       }
     });
     return listCatalogPlugins(harnesstapDir, { name: options.name });

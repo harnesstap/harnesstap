@@ -1,4 +1,4 @@
-import { getDb } from "../../db/connection.js";
+import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import {
   addResourceToPlugin,
   createPlugin,
@@ -9,7 +9,9 @@ import {
 } from "../../models/plugin-model.js";
 import type { Resource } from "../../types.js";
 import { ensurePluginResource } from "../plugin-composition.js";
+import { parsePluginRef } from "../../plugins/host-plugin-manifest.js";
 import { isHostPluginPinResource } from "../host-plugin-serialize.js";
+import { isLocalFilesystemSource, listMarketplaces } from "../marketplace-registry.js";
 import { getPluginOverrides } from "../plugin-overrides.js";
 import type { SelectedPlugin } from "./types.js";
 import { walkDependencyGraph } from "./dependency-graph.js";
@@ -23,21 +25,56 @@ export { resolutionKey, resourceFingerprint } from "./resource-resolution.js";
 const EPHEMERAL_PREFIX = "__ht_ephemeral_root__";
 
 /**
+ * Upstream plugins materialized from a local marketplace install (`dup@mkta`
+ * where mkta is a folder on this machine) hold only material resources; their
+ * pin is the dependency edge that declared them. Map each such plugin name to
+ * the ref it was installed from, so apply registers it like a git import.
+ * Remote marketplace pins keep their current handling, which leaves a
+ * Claude-managed install and its installed_plugins.json record alone.
+ */
+function localMarketplaceUpstreamRefs(
+  selected: readonly SelectedPlugin[],
+): Map<string, string> {
+  const refs = new Map<string, string>();
+  let localMarketplaces: Set<string> | undefined;
+  for (const plugin of selected) {
+    if (plugin.depth === 0 || plugin.source !== "marketplace") continue;
+    const locator = getPluginById(plugin.pluginId)?.origin_locator;
+    if (!locator?.includes("@")) continue;
+    localMarketplaces ??= new Set(
+      listMarketplaces(getHarnesstapDir())
+        .filter((entry) => isLocalFilesystemSource(entry.url.trim()))
+        .map((entry) => entry.name),
+    );
+    if (localMarketplaces.has(parsePluginRef(locator).marketplace)) {
+      refs.set(plugin.name, locator);
+    }
+  }
+  return refs;
+}
+
+/**
  * Host plugin pins are composition resources, so material resolution drops them.
  * Claude and Cursor still need the plugin's own pin (ponytail@local) in the
  * apply set to register the install and to skip standalone copies of that
- * plugin's skills. Dependency edges named after other plugins are not pins.
+ * plugin's skills. A local marketplace dependency edge (dup@mkta) is the pin of
+ * the upstream plugin it installed. Other dependency edges are not pins.
  */
 function appendHostPluginPins(
   selected: readonly SelectedPlugin[],
   resources: readonly Resource[],
 ): Resource[] {
   const seen = new Set(resources.map((resource) => resource.id));
+  const upstreamRefs = localMarketplaceUpstreamRefs(selected);
   const pins: Resource[] = [];
   for (const plugin of selected) {
     if (plugin.name.startsWith(EPHEMERAL_PREFIX)) continue;
     for (const resource of getPluginResources(plugin.pluginId)) {
-      if (resource.name !== plugin.name) continue;
+      const ownPin = resource.name === plugin.name;
+      const marketplaceEdge =
+        resource.type === "plugin"
+        && upstreamRefs.get(resource.name) === resource.origin_ref;
+      if (!ownPin && !marketplaceEdge) continue;
       if (!resource.origin_ref?.includes("@")) continue;
       if (!isHostPluginPinResource(resource) || seen.has(resource.id)) {
         continue;

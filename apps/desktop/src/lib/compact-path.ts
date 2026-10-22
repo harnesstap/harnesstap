@@ -22,11 +22,8 @@ function inferredHomePrefix(path: string): string | null {
   return null;
 }
 
-/** Collapse `$HOME` to `~` and ellipsize the middle when the path is still long. */
-export function compactHomePath(
-  path: string,
-  maxLength: number = DEFAULT_MAX,
-): string {
+/** Collapse `$HOME` to `~` without shortening the rest of the path. */
+export function tildeHomePath(path: string): string {
   const configured = getDisplayHome();
   const configuredNorm = configured ? normalized(configured) : null;
   const pathNorm = normalized(path);
@@ -34,10 +31,18 @@ export function compactHomePath(
     && (pathNorm === configuredNorm || pathNorm.startsWith(`${configuredNorm}/`))
     ? configuredNorm
     : inferredHomePrefix(pathNorm);
-  let next = pathNorm;
-  if (home && (next === home || next.startsWith(`${home}/`))) {
-    next = `~${next.slice(home.length)}`;
+  if (home && (pathNorm === home || pathNorm.startsWith(`${home}/`))) {
+    return `~${pathNorm.slice(home.length)}`;
   }
+  return pathNorm;
+}
+
+/** Collapse `$HOME` to `~` and ellipsize the middle when the path is still long. */
+export function compactHomePath(
+  path: string,
+  maxLength: number = DEFAULT_MAX,
+): string {
+  const next = tildeHomePath(path);
   if (next.length <= maxLength) {
     return next;
   }

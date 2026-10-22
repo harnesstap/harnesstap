@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Desktop resource detail shows the Path, Origin and delete-plan paths under your home folder with `~`, like the CLI and the hover cards. Copy path, Reveal and Open still use the full path.'
+time: 2026-10-22T02:45:00.000Z
+custom:
+  Issue: "452"

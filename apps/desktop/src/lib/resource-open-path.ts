@@ -1,5 +1,7 @@
+import { tildeHomePath } from "./compact-path";
 import { isPluginTypeResource } from "./plugin-ref-detail";
 import {
+  formatOriginDisplayLabel,
   isPackageEntryFileName,
   packageDirectoryDisplayPath,
 } from "./resource-display";
@@ -38,8 +40,7 @@ function firstAbsolutePath(resource: LibraryResourceDetail): string {
   return "";
 }
 
-/** Path shown in the inspect Path field. Live files use the resolved absolute path. */
-export function resourcePathDisplay(resource: LibraryResourceDetail): string {
+function resourcePathDisplayAbsolute(resource: LibraryResourceDetail): string {
   if (isPluginTypeResource(resource.type)) {
     return resource.install_path?.trim() ?? "";
   }
@@ -53,6 +54,25 @@ export function resourcePathDisplay(resource: LibraryResourceDetail): string {
     return packageDirectoryDisplayPath(candidate);
   }
   return source;
+}
+
+/**
+ * Path shown in the inspect Path field: the resolved path with `$HOME` as `~`,
+ * like the CLI. Copy, reveal and open use `resourceOpenPath` (absolute).
+ */
+export function resourcePathDisplay(resource: LibraryResourceDetail): string {
+  const path = resourcePathDisplayAbsolute(resource);
+  return isAbsoluteFilesystemPath(path) ? tildeHomePath(path) : path;
+}
+
+/** Origin field text; a local origin path shows `$HOME` as `~`. */
+export function resourceOriginDisplay(resource: LibraryResourceDetail): string {
+  const ref = resource.origin_ref?.trim() ?? "";
+  return formatOriginDisplayLabel(
+    resource.origin_kind,
+    ref && isAbsoluteFilesystemPath(ref) ? tildeHomePath(ref) : ref,
+    { includeRef: !isPluginTypeResource(resource.type) },
+  );
 }
 
 /**

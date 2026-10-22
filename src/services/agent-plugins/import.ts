@@ -542,6 +542,8 @@ export function importApPackageFiles(
     addDependency(plugin.id, dependency.name, {
       versionConstraint: dependency.constraint,
       ...(embeddedNames.includes(dependency.name) ? { embedOnExport: true } : {}),
+      // Dependencies come with the package: the import is not an edit (#499).
+      markDirty: false,
     });
   }
 

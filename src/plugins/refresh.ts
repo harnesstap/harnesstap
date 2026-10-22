@@ -10,7 +10,7 @@ import {
   runCommandWithTimeout,
 } from "../utils/run-command-with-timeout.js";
 import { UNATTENDED_GIT_TIMEOUT_MS } from "../utils/spawn-command.js";
-import { mapGitStderr } from "../utils/git-errors.js";
+import { isCommandTimeoutStderr, mapGitStderr } from "../utils/git-errors.js";
 import { resolveCommandResult, type RunCommand } from "./run-command.js";
 
 export interface GitRefreshOptions {
@@ -67,6 +67,8 @@ export async function refreshGitSource(opts: GitRefreshOptions): Promise<{
   ok: boolean;
   sha?: string;
   message: string;
+  /** git was stopped at its timeout; nothing in `targetDir` changed. */
+  timedOut?: boolean;
 }> {
   const run = opts.runCommand ?? runCommandWithTimeout;
   const unattended = opts.unattended === true;
@@ -81,9 +83,9 @@ export async function refreshGitSource(opts: GitRefreshOptions): Promise<{
   const url = githubHttpsRemoteForAuth(opts.url, token);
   const git = (args: string[]) =>
     resolveCommandResult(run("git", [...githubGitConfigArgs(token), ...args], { timeoutMs, unattended }));
-  const fail = (message: string) => {
+  const fail = (message: string, timedOut = false) => {
     rmSync(staging, { recursive: true, force: true });
-    return { ok: false, message };
+    return { ok: false, message, ...(timedOut ? { timedOut: true } : {}) };
   };
 
   const ref = opts.ref?.trim() || undefined;
@@ -110,15 +112,15 @@ export async function refreshGitSource(opts: GitRefreshOptions): Promise<{
     if (clone.exitCode !== 0) {
       const stderr = clone.stderr.trim();
       if (ref && /not found|did not match|Remote branch .* not found/i.test(stderr || lastError)) {
-        return fail(`Git ref ${ref} was not found in ${opts.url}`);
+        return fail(`Git ref ${ref} was not found in ${opts.url}`, isCommandTimeoutStderr(stderr || lastError));
       }
-      return fail(mapGitStderr(stderr || lastError, opts.url));
+      return fail(mapGitStderr(stderr || lastError, opts.url), isCommandTimeoutStderr(stderr || lastError));
     }
   }
 
   const rev = await git(["-C", staging, "rev-parse", "HEAD"]);
   if (rev.exitCode !== 0) {
-    return fail(mapGitStderr(rev.stderr.trim() || "git rev-parse failed", opts.url));
+    return fail(mapGitStderr(rev.stderr.trim() || "git rev-parse failed", opts.url), isCommandTimeoutStderr(rev.stderr));
   }
   if (ref && COMMIT_LIKE.test(ref) && cloned && !rev.stdout.trim().toLowerCase().startsWith(ref.toLowerCase())) {
     return fail(`Checked out ${rev.stdout.trim()} instead of pinned commit ${ref} from ${opts.url}`);
