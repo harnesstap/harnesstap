@@ -1,8 +1,11 @@
 import { describe, expect, it, beforeEach } from "bun:test";
 import { renderHeader, renderSubheader, renderRule } from "../../src/ui/section.ts";
+import { restoreColorEnvAfterEach } from "../helpers/color-env.ts";
 import { disableColor, theme } from "../../src/ui/theme.ts";
 
 describe("ui section", () => {
+  restoreColorEnvAfterEach();
+
   beforeEach(() => {
     // Enable colors for tests
     delete process.env.NO_COLOR;

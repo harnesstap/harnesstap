@@ -1,8 +1,11 @@
 import { describe, expect, it, beforeEach } from "bun:test";
 import { renderTable, truncateTableCell } from "../../src/ui/table.ts";
+import { restoreColorEnvAfterEach } from "../helpers/color-env.ts";
 import { disableColor } from "../../src/ui/theme.ts";
 
 describe("ui table", () => {
+  restoreColorEnvAfterEach();
+
   beforeEach(() => {
     // Enable colors for tests
     delete process.env.NO_COLOR;
