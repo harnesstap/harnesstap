@@ -25,6 +25,7 @@ import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.
 import {
   HostPluginVersionError,
   ensureHostPluginVersionInstalled,
+  isCacheVersionDirectoryName,
   hostPluginMetadataForVersion,
   resolvedVersionFromInstallRoot,
   retargetHostPluginVersion,
@@ -444,7 +445,14 @@ export async function syncPluginResource(
   }
 
   if (!scan) {
-    const manifestVersion = readPluginVersionFromInstallRoot(scanRoot);
+    // A plugin with no skills or other material (an MCP-only plugin such as
+    // playwright) whose plugin.json declares no version is still a plugin:
+    // its cache directory names the version it was installed as.
+    const manifestVersion =
+      readPluginVersionFromInstallRoot(scanRoot)
+      ?? (isPluginInstallRoot(scanRoot) && isCacheVersionDirectoryName(basename(scanRoot))
+        ? basename(scanRoot)
+        : undefined);
     if (!manifestVersion) {
       stale.push({ resource: pluginResource, reason: "plugin tree is empty" });
       return { checked: 1, updated, stale, unchanged, skipped };

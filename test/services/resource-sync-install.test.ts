@@ -10,6 +10,7 @@ import { registerDeclaredMarketplaces } from "../../src/services/claude-marketpl
 import { addDependency } from "../../src/services/plugin-dependency.ts";
 import { wellKnownMarketplaceEntry } from "../../src/services/builtin-marketplaces.ts";
 import { syncResourcesInstallingDependencies } from "../../src/services/resource-sync-install.ts";
+import { syncPluginPinsForApply } from "../../src/services/plugin-pin-apply.ts";
 
 // `ht resource sync plugin:<name>@<marketplace>` is the fix apply prints for
 // a marketplace dependency with no local version. It must install the
@@ -148,5 +149,40 @@ describe("marketplaces a profile declares in claude.toml", () => {
     expect(urls.mine).toBe("https://github.com/me/mine");
     expect(urls["gh-market"]).toBe("https://github.com/acme/gh-market");
     expect(urls["git-market"]).toBe("https://example.com/acme/git-market");
+  });
+});
+
+describe("syncing an MCP-only plugin that declares no version", () => {
+  it("resolves it at the version it was installed as instead of calling the tree empty", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "ht-sync-mcp-only-"));
+    const pluginDir = join(repo, "external_plugins", "browser");
+    mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
+    mkdirSync(join(pluginDir, ".claude-plugin"), { recursive: true });
+    writeFileSync(
+      join(repo, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({ name: "mcp-market", plugins: [{ name: "browser", source: "./external_plugins/browser" }] }),
+    );
+    writeFileSync(join(pluginDir, ".claude-plugin", "plugin.json"), JSON.stringify({ name: "browser" }));
+    writeFileSync(
+      join(pluginDir, ".mcp.json"),
+      // The flat layout claude-plugins-official uses, with no mcpServers key.
+      JSON.stringify({ browser: { command: "npx", args: ["browser-mcp"] } }),
+    );
+    const git = (...args: string[]) =>
+      spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...args], { cwd: repo, stdio: "ignore" });
+    git("init");
+    git("add", ".");
+    git("commit", "-m", "init");
+    git("branch", "-M", "main");
+    addMarketplace(join(ctx.homeDir, ".harnesstap"), { name: "mcp-market", url: repo, platforms: ["claude-code"] });
+
+    const result = await syncPluginPinsForApply({
+      pins: [{ ref: "browser@mcp-market", version_constraint: "*" }],
+      homeRoot: ctx.homeDir,
+      projectRoot: ctx.homeDir,
+      yes: true,
+    });
+    expect(result.unresolvedPins).toEqual([]);
+    expect(getPluginByName("browser")).toBeDefined();
   });
 });
