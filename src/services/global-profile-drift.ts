@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import { diffHostPluginView } from "./package-cache/host-plugin.js";
+import { emittedHostPluginTree } from "./host-plugin-serialize.js";
 import { hostPluginPackageDir } from "./package-cache/paths.js";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
@@ -147,11 +148,10 @@ export function isHostPluginViewPath(path: string): boolean {
  */
 export function hostPluginFolderChanges(
   homeRoot: string,
-  expectedFiles: ReadonlyArray<{ path: string; content?: string; encoding?: "utf8" | "base64" }>,
+  expectedFiles: ReadonlyArray<{ path: string }>,
   known: readonly DriftFileChange[],
 ): DriftFileChange[] {
   const folders = new Map<string, { marketplace: string; name: string; version: string }>();
-  const expectedByPath = new Map(expectedFiles.map((file) => [file.path, file]));
   for (const file of expectedFiles) {
     const match = HOST_PLUGIN_VIEW_PATH.exec(file.path.replaceAll("\\", "/"));
     if (!match?.[1] || !match[2] || !match[3] || !match[4]) continue;
@@ -162,18 +162,22 @@ export function hostPluginFolderChanges(
   const harnesstapDir = harnesstapDirForHomeRoot(homeRoot);
   const changes: DriftFileChange[] = [];
   for (const [folder, plugin] of folders) {
+    const canonicalDir = hostPluginPackageDir(harnesstapDir, plugin.marketplace, plugin.name, plugin.version);
     const differences = diffHostPluginView({
       homeRoot,
       hostView: join(homeRoot, folder),
-      canonicalDir: hostPluginPackageDir(harnesstapDir, plugin.marketplace, plugin.name, plugin.version),
+      canonicalDir,
     });
+    // Spec plugins are translated for the host on write (`mcp.json` becomes
+    // `.mcp.json`, for example), so compare with what the apply writes.
+    const emitted = differences.length > 0
+      ? emittedHostPluginTree(canonicalDir, "claude-code", plugin.name)
+      : new Map<string, { content: string; encoding?: "utf8" | "base64" }>();
     for (const difference of differences) {
       const path = `${folder}/${difference.path}`;
       if (seen.has(path)) continue;
-      // Spec plugins are translated for the host on write (e.g. `mcp.json`
-      // becomes `.mcp.json`), so a file that holds exactly what apply writes
-      // is in sync even though it differs from the package copy.
-      if (difference.state !== "missing" && matchesExpectedContent(homeRoot, expectedByPath.get(path))) {
+      const written = emitted.get(difference.path);
+      if (difference.state === "missing" ? !written : matchesEmitted(join(homeRoot, path), written)) {
         continue;
       }
       seen.add(path);
@@ -191,13 +195,12 @@ export function hostPluginFolderChanges(
   return changes;
 }
 
-function matchesExpectedContent(
-  homeRoot: string,
-  file: { path: string; content?: string; encoding?: "utf8" | "base64" } | undefined,
+function matchesEmitted(
+  fullPath: string,
+  file: { content: string; encoding?: "utf8" | "base64" } | undefined,
 ): boolean {
-  if (file?.content === undefined) return false;
-  const fullPath = join(homeRoot, file.path);
-  const binary = binaryExpectedFileMatchesDisk(fullPath, { content: file.content, encoding: file.encoding });
+  if (!file) return false;
+  const binary = binaryExpectedFileMatchesDisk(fullPath, file);
   if (binary !== undefined) return binary;
   try {
     return readFileSync(fullPath, "utf-8") === file.content;

@@ -11,7 +11,8 @@ import type { Resource } from "../../types.js";
 import { ensurePluginResource } from "../plugin-composition.js";
 import { parsePluginRef } from "../../plugins/host-plugin-manifest.js";
 import { isHostPluginPinResource } from "../host-plugin-serialize.js";
-import { isLocalFilesystemSource, listMarketplaces } from "../marketplace-registry.js";
+import { findKnownMarketplace, isLocalFilesystemSource } from "../marketplace-registry.js";
+import { wellKnownMarketplaceEntry } from "../builtin-marketplaces.js";
 import { getPluginOverrides } from "../plugin-overrides.js";
 import {
   intersectHarnessScopes,
@@ -37,6 +38,23 @@ interface MarketplaceUpstream {
 }
 
 /**
+ * Whether HarnessTap knows `marketplace` as a local folder or a remote git
+ * URL. Unknown marketplaces return undefined: their installs belong to the
+ * host, and HarnessTap has nothing to register them from.
+ */
+function marketplaceLocality(
+  marketplace: string,
+  cache: Map<string, boolean | undefined>,
+): boolean | undefined {
+  if (cache.has(marketplace)) return cache.get(marketplace);
+  const url = (findKnownMarketplace(getHarnesstapDir(), marketplace)
+    ?? wellKnownMarketplaceEntry(marketplace))?.url?.trim();
+  const local = url ? isLocalFilesystemSource(url) : undefined;
+  cache.set(marketplace, local);
+  return local;
+}
+
+/**
  * Upstream plugins a marketplace dependency edge installed (`dup@mkta`, or
  * `superpowers@claude-plugins-official`) hold only material resources; their
  * pin is the dependency edge that declared them. Map each such plugin name to
@@ -46,20 +64,14 @@ function marketplaceUpstreamRefs(
   selected: readonly SelectedPlugin[],
 ): Map<string, MarketplaceUpstream> {
   const refs = new Map<string, MarketplaceUpstream>();
-  let localMarketplaces: Set<string> | undefined;
+  const locality = new Map<string, boolean | undefined>();
   for (const plugin of selected) {
     if (plugin.depth === 0 || plugin.source !== "marketplace") continue;
     const locator = getPluginById(plugin.pluginId)?.origin_locator;
     if (!locator?.includes("@")) continue;
-    localMarketplaces ??= new Set(
-      listMarketplaces(getHarnesstapDir())
-        .filter((entry) => isLocalFilesystemSource(entry.url.trim()))
-        .map((entry) => entry.name),
-    );
-    refs.set(plugin.name, {
-      ref: locator,
-      local: localMarketplaces.has(parsePluginRef(locator).marketplace),
-    });
+    const local = marketplaceLocality(parsePluginRef(locator).marketplace, locality);
+    if (local === undefined) continue;
+    refs.set(plugin.name, { ref: locator, local });
   }
   return refs;
 }

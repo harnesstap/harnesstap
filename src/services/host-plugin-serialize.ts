@@ -173,6 +173,27 @@ function collectPluginFiles(
   return files;
 }
 
+/**
+ * The files the apply writes into a host plugin folder for a plugin package:
+ * the package tree with spec plugins translated for the host (for example
+ * `mcp.json` written as Claude's `.mcp.json`).
+ */
+export function emittedHostPluginTree(
+  packageDir: string,
+  layout: HostPluginLayout,
+  pluginName: string,
+): Map<string, { content: string; encoding?: "utf8" | "base64" }> {
+  const filtered = filterHostPluginRuntimeFiles(
+    collectPluginFiles(packageDir),
+    getPlatform(layout)?.hostPluginRuntimeModules === true,
+  );
+  const translated = translateEmittedSpecTree(filtered.files, { layout, pluginName });
+  return new Map(translated.files.map((file) => [
+    file.relativePath,
+    { content: file.content, ...(file.encoding ? { encoding: file.encoding } : {}) },
+  ]));
+}
+
 function upsertSerializedFile(
   files: SerializedFile[],
   path: string,
@@ -205,8 +226,10 @@ function mergeInstalledPluginsContent(
   }
 
   const current = file.plugins[ref] ?? [];
+  const prior = current.find((row) => row.scope === record.scope);
   const rest = current.filter((row) => row.scope !== record.scope);
-  file.plugins[ref] = [record, ...rest];
+  // Keep fields Claude Code adds to its records (install dates, commit).
+  file.plugins[ref] = [prior ? { ...prior, ...record } : record, ...rest];
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 
