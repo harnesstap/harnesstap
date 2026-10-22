@@ -21,6 +21,8 @@ import {
   addDependency,
   listDependencies,
 } from "../../../src/services/plugin-dependency.ts";
+import { getDb } from "../../../src/db/connection.ts";
+import { assertPluginsCleanForShare } from "../../../src/services/plugin-versioning.ts";
 import type { TestContext } from "../../helpers/db.ts";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 
@@ -214,6 +216,46 @@ describe("importApPackageFiles", () => {
     expect(getPluginByName("imported")).toBeDefined();
     expect(getPluginResources(imported.id).map((r) => r.name)).toContain("deploy");
     expect(listDependencies(imported.id).map((d) => d.name)).toEqual(["base"]);
+  });
+
+  it("leaves a plugin imported with dependencies clean at its package version (#499)", () => {
+    createPlugin({ name: "base" });
+    const source = createPlugin({ name: "With deps", version: "1.0.0" });
+    addDependency(source.id, "base", { versionConstraint: "1.0.0" });
+    addResourceToPlugin(
+      source.id,
+      createResource({
+        type: "skill",
+        name: "hello",
+        description: "d",
+        content: "# Hello",
+        metadata: {},
+        source: "test",
+      }).id,
+    );
+    const files = buildApPackageFiles(source.id);
+
+    const imported = importApPackageFiles(files, { as: "with-deps-copy" });
+    const head = getPluginByName("with-deps-copy");
+    expect(head?.version).toBe("1.0.0");
+    expect(head?.dirty).toBe(false);
+    expect(listDependencies(imported.id).map((d) => d.name)).toEqual(["base"]);
+    expect(() => assertPluginsCleanForShare(head ? [head] : [])).not.toThrow();
+    const snapshot = getDb()
+      .prepare("SELECT plugin_id FROM plugin_working_snapshots WHERE plugin_id = ?")
+      .get(imported.id);
+    expect(snapshot ?? null).toBeNull();
+
+    // Exporting the unchanged import gives back the same package.
+    const reexported = buildApPackageFiles(imported.id);
+    const reparsed = parseApPackageFiles(reexported);
+    const original = parseApPackageFiles(files);
+    expect(reparsed.version).toBe(original.version);
+    expect(reparsed.dependencies).toEqual(original.dependencies);
+
+    // An edit after the import still marks the working head dirty.
+    addDependency(imported.id, "extra", { versionConstraint: "^1.0.0" });
+    expect(getPluginByName("with-deps-copy")?.dirty).toBe(true);
   });
 
   it("restores the local name when no override is given", () => {
