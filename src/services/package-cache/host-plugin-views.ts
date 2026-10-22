@@ -253,3 +253,38 @@ export function pruneCreatedHostPluginView(removedFile: string): void {
   delete records[view];
   writeHostPluginViewRecords(records);
 }
+
+function keptNoticesPath(): string {
+  return join(getHarnesstapDir(), "cache", "host-plugin-kept-notices.json");
+}
+
+/**
+ * Remember which kept files were last reported for a folder, so the notice
+ * shows once per change instead of on every apply. Returns true when
+ * `signature` matches the last report. An empty signature forgets the folder.
+ */
+export function swapKeptNoticeSignature(hostView: string, signature: string): boolean {
+  let notices: Record<string, string> = {};
+  try {
+    const parsed = JSON.parse(readFileSync(keptNoticesPath(), "utf8")) as unknown;
+    if (isRecord(parsed)) {
+      for (const [view, value] of Object.entries(parsed)) {
+        if (typeof value === "string") notices[view] = value;
+      }
+    }
+  } catch {
+    notices = {};
+  }
+  const view = resolve(hostView);
+  const same = signature !== "" && notices[view] === signature;
+  if (same || (signature === "" && notices[view] === undefined)) return same;
+  if (signature === "") delete notices[view];
+  else notices[view] = signature;
+  try {
+    mkdirSync(dirname(keptNoticesPath()), { recursive: true });
+    writeFileSync(keptNoticesPath(), `${JSON.stringify(notices, null, 2)}\n`);
+  } catch {
+    // Best effort: without it the notice only repeats.
+  }
+  return false;
+}

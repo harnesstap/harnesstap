@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { settleKeptHostPluginViewFiles } from "../../src/cli/handlers/host-plugin-view-kept.ts";
@@ -13,6 +13,7 @@ import {
 } from "../../src/services/package-cache/host-plugin.ts";
 import { hostPluginViewsPath } from "../../src/services/package-cache/host-plugin-views.ts";
 import { applyTrashRoot, executeSafeFileRemovals, hashOnDiskFile } from "../../src/services/safe-file-removal.ts";
+import { printJson } from "../../src/utils/output-format.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
@@ -110,8 +111,8 @@ describe("refreshing a host plugin folder HarnessTap created", () => {
     const kept = takeKeptHostPluginViewFiles();
     expect(kept).toHaveLength(1);
     expect(kept[0]?.files).toEqual([
-      { path: "notes/mine.md", reason: "unmanaged" },
-      { path: "skills/edited/SKILL.md", reason: "modified" },
+      { path: "notes/mine.md", reason: "unmanaged", inPlugin: false },
+      { path: "skills/edited/SKILL.md", reason: "modified", inPlugin: true },
     ]);
   });
 
@@ -120,7 +121,7 @@ describe("refreshing a host plugin folder HarnessTap created", () => {
     writeFileSync(view("skills/a/SKILL.md"), "my a\n");
     mirror(packageTree({ ...MANIFEST, "skills/a/SKILL.md": "a v2\n" }));
     const [entry] = takeKeptHostPluginViewFiles();
-    expect(entry?.files).toEqual([{ path: "skills/a/SKILL.md", reason: "modified" }]);
+    expect(entry?.files).toEqual([{ path: "skills/a/SKILL.md", reason: "modified", inPlugin: true }]);
     if (!entry) throw new Error("expected kept files");
 
     replaceKeptHostPluginViewFiles(entry);
@@ -233,6 +234,49 @@ describe("refreshing a host plugin folder HarnessTap did not create", () => {
   });
 });
 
+describe("reporting kept files once per change", () => {
+  it("flags a repeat of the same kept files and reports again once they change", () => {
+    const tree = packageTree({ ...MANIFEST, "skills/a/SKILL.md": "a v1\n" });
+    mirror(tree);
+    writeFileSync(view("skills/a/SKILL.md"), "my a\n");
+
+    mirror(tree);
+    expect(takeKeptHostPluginViewFiles()[0]?.alreadyReported).toBe(false);
+    mirror(tree);
+    expect(takeKeptHostPluginViewFiles()[0]?.alreadyReported).toBe(true);
+
+    writeFileSync(view("skills/a/SKILL.md"), "my a, edited again\n");
+    mirror(tree);
+    expect(takeKeptHostPluginViewFiles()[0]?.alreadyReported).toBe(false);
+    mirror(tree);
+    expect(takeKeptHostPluginViewFiles()[0]?.alreadyReported).toBe(true);
+  });
+
+  it("reports again after the folder was back in sync", () => {
+    const tree = packageTree({ ...MANIFEST, "skills/a/SKILL.md": "a v1\n" });
+    mirror(tree);
+    writeFileSync(view("skills/a/SKILL.md"), "my a\n");
+    mirror(tree);
+    takeKeptHostPluginViewFiles();
+
+    writeFileSync(view("skills/a/SKILL.md"), "a v1\n");
+    mirror(tree);
+    expect(takeKeptHostPluginViewFiles()).toEqual([]);
+    writeFileSync(view("skills/a/SKILL.md"), "my a\n");
+    mirror(tree);
+    expect(takeKeptHostPluginViewFiles()[0]?.alreadyReported).toBe(false);
+  });
+
+  it("does not hide the notice when one command refreshes the folder twice", () => {
+    const tree = packageTree({ ...MANIFEST, "skills/a/SKILL.md": "a v1\n" });
+    mirror(tree);
+    writeFileSync(view("skills/a/SKILL.md"), "my a\n");
+    mirror(tree);
+    mirror(tree);
+    expect(takeKeptHostPluginViewFiles()[0]?.alreadyReported).toBe(false);
+  });
+});
+
 describe("settleKeptHostPluginViewFiles", () => {
   const entry: KeptHostPluginViewFiles = {
     homeRoot: "/home/u",
@@ -287,5 +331,89 @@ describe("settleKeptHostPluginViewFiles", () => {
     expect(errors.join("\n")).toContain("--force-remove");
     expect(errors.join("\n")).toContain("skills/a/SKILL.md (changed since HarnessTap wrote it)");
   });
+
+  async function settleQuietly(
+    entries: KeptHostPluginViewFiles[],
+    interactive: boolean,
+  ): Promise<{ errors: string[]; asked: string[] }> {
+    const errors: string[] = [];
+    const asked: string[] = [];
+    const original = console.error;
+    const originalWarn = console.warn;
+    const originalLog = console.log;
+    console.error = (message?: unknown) => {
+      errors.push(String(message));
+    };
+    console.warn = console.error;
+    console.log = console.error;
+    try {
+      await settleKeptHostPluginViewFiles({}, {
+        interactive,
+        confirm: async ({ message }) => {
+          asked.push(message);
+          return false;
+        },
+        take: () => entries,
+        takeReplaced: () => [],
+        replace: () => ({ paths: [] }),
+      });
+    } finally {
+      console.error = original;
+      console.warn = originalWarn;
+      console.log = originalLog;
+    }
+    return { errors, asked };
+  }
+
+  it("says the plugin does not have a file instead of that it would replace it", async () => {
+    const { errors } = await settleQuietly(
+      [
+        {
+          ...entry,
+          files: [
+            { path: "notes/mine.md", reason: "unmanaged", inPlugin: false },
+            { path: "skills/a/SKILL.md", reason: "modified", inPlugin: true },
+          ],
+        },
+      ],
+      false,
+    );
+    const text = errors.join("\n");
+    expect(text).toContain("notes/mine.md (not written by HarnessTap, not in the plugin)");
+    expect(text).toContain("replace 1 file with the plugin's version and remove 1 the plugin does not have");
+    expect(text).not.toContain("would replace");
+  });
+
+  it("stays quiet and does not ask for files it already reported", async () => {
+    const quiet = await settleQuietly([{ ...entry, alreadyReported: true }], false);
+    expect(quiet.errors.join("\n")).not.toContain("Kept");
+    const asking = await settleQuietly([{ ...entry, alreadyReported: true }], true);
+    expect(asking.asked).toEqual([]);
+  });
 });
 
+describe("--format json", () => {
+  it("lists the kept files next to the command's own output", () => {
+    const tree = packageTree({ ...MANIFEST, "skills/a/SKILL.md": "a v1\n" });
+    mirror(tree);
+    writeFileSync(view("skills/a/SKILL.md"), "my a\n");
+    writeTextFile(view("notes/mine.md"), "mine\n");
+    mirror(tree);
+
+    const printed: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((message?: unknown) => {
+      printed.push(String(message));
+    });
+    try {
+      printJson({ ok: true });
+    } finally {
+      log.mockRestore();
+    }
+    const json = JSON.parse(printed.join("\n")) as Record<string, unknown>;
+    expect(json.ok).toBe(true);
+    expect(json.kept_plugin_files).toEqual([
+      { folder: view(), path: "notes/mine.md", reason: "not_written_by_harnesstap", in_plugin: false },
+      { folder: view(), path: "skills/a/SKILL.md", reason: "changed_since_written", in_plugin: true },
+    ]);
+  });
+});

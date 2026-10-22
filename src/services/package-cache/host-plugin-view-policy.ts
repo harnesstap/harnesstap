@@ -9,7 +9,14 @@ export interface KeptHostPluginViewFiles {
   homeRoot: string;
   hostView: string;
   canonicalDir: string;
-  files: Array<{ path: string; reason: KeptHostPluginViewReason }>;
+  files: Array<{
+    path: string;
+    reason: KeptHostPluginViewReason;
+    /** False when the plugin has no such file, so a refresh would remove it. */
+    inPlugin?: boolean;
+  }>;
+  /** Same files, same bytes and same plugin files as the last report: say nothing. */
+  alreadyReported?: boolean;
 }
 
 /** Files a host plugin refresh backed up, then replaced or removed. */
@@ -41,8 +48,12 @@ export function hostPluginViewForceReplace(): boolean {
 /** The latest refresh of a folder replaces what an earlier one in this process kept. */
 export function recordKeptHostPluginViewFiles(entry: KeptHostPluginViewFiles): void {
   const index = kept.findIndex((existing) => existing.hostView === entry.hostView);
-  if (index >= 0) kept.splice(index, 1);
-  kept.push(entry);
+  // A second refresh of the folder in the same command sees the signature the
+  // first one just stored; it is only a repeat when the first was one too.
+  const earlier = index >= 0 ? kept.splice(index, 1)[0] : undefined;
+  const alreadyReported =
+    entry.alreadyReported === true && (earlier === undefined || earlier.alreadyReported === true);
+  kept.push({ ...entry, alreadyReported });
 }
 
 export function recordReplacedHostPluginViewFiles(entry: ReplacedHostPluginViewFiles): void {
@@ -62,4 +73,36 @@ export function takeReplacedHostPluginViewFiles(): ReplacedHostPluginViewFiles[]
 /** Drain the files kept by host plugin refreshes since the last call. */
 export function takeKeptHostPluginViewFiles(): KeptHostPluginViewFiles[] {
   return kept.splice(0, kept.length);
+}
+
+/** What the refreshes in this process kept or replaced, for `--format json`. */
+export function hostPluginViewNoticesJson(): {
+  kept_plugin_files?: Array<{ folder: string; path: string; reason: string; in_plugin: boolean }>;
+  replaced_plugin_files?: Array<{
+    folder: string;
+    files: string[];
+    not_written_by_harnesstap: string[];
+    backup_id: string;
+  }>;
+} {
+  const out: ReturnType<typeof hostPluginViewNoticesJson> = {};
+  if (kept.length > 0) {
+    out.kept_plugin_files = kept.flatMap((entry) =>
+      entry.files.map((file) => ({
+        folder: entry.hostView,
+        path: file.path,
+        reason: file.reason === "modified" ? "changed_since_written" : "not_written_by_harnesstap",
+        in_plugin: file.inPlugin !== false,
+      })),
+    );
+  }
+  if (replaced.length > 0) {
+    out.replaced_plugin_files = replaced.map((entry) => ({
+      folder: entry.hostView,
+      files: entry.files,
+      not_written_by_harnesstap: entry.notWrittenByHarnessTap,
+      backup_id: entry.backupId,
+    }));
+  }
+  return out;
 }

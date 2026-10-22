@@ -136,9 +136,9 @@ describe("refreshing a host plugin folder the user added files to", () => {
     expect(readFileSync(view("skills/b/SKILL.md"), "utf8")).toBe("b v2\n");
     const [kept] = takeKeptHostPluginViewFiles();
     expect(kept?.files).toEqual([
-      { path: "skills/a/SKILL.md", reason: "modified" },
-      { path: "skills/a/mine.md", reason: "unmanaged" },
-      { path: "user-notes.md", reason: "unmanaged" },
+      { path: "skills/a/SKILL.md", reason: "modified", inPlugin: true },
+      { path: "skills/a/mine.md", reason: "unmanaged", inPlugin: false },
+      { path: "user-notes.md", reason: "unmanaged", inPlugin: false },
     ]);
     const [replaced] = takeReplacedHostPluginViewFiles();
     expect(replaced?.files).toEqual(["skills/b/SKILL.md"]);
