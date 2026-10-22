@@ -186,6 +186,8 @@ export const CLI_ERRORS = {
   noHarnesses: "Not set up for any harness yet.",
   unsavedChanges: (name: string, count: number): string =>
     `${quoteName(name)} has ${count} unsaved change${count === 1 ? "" : "s"}.`,
+  resourceSyncFailed: (refs: readonly string[]): string =>
+    `Could not install ${[...new Set(refs)].join(", ")}.`,
   resourceSyncStale: (count: number): string =>
     `${count} linked resource${count === 1 ? "" : "s"} ${count === 1 ? "is" : "are"} stale.`,
 } as const;

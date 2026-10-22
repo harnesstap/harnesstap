@@ -1,0 +1,3 @@
+kind: Fixed
+body: '`ht resource sync plugin:<name>@<marketplace>` now exits 1 when the dependency cannot be installed (an unknown marketplace or a failed download), with or without `--check`, and prints the `ht marketplace add <git-url> --name <marketplace>` hint for an unknown marketplace even when no plugin declares the dependency yet.'
+time: 2026-10-22T15:45:00.000Z

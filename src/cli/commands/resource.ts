@@ -304,9 +304,10 @@ export function registerResourceCommands(root: Command): void {
         dryRun: opts.dryRun,
       });
 
+      const failed = result.failed ?? [];
       if (format === "json") {
         printJson(result);
-        if (opts.check && result.stale.length > 0) {
+        if (failed.length > 0 || (opts.check && result.stale.length > 0)) {
           process.exitCode = 1;
         }
         return;
@@ -317,6 +318,14 @@ export function registerResourceCommands(root: Command): void {
       );
       for (const entry of result.stale) {
         ui.warn(`${entry.resource.type}:${entry.resource.name}: ${entry.reason}`);
+      }
+      const reported = new Set(result.stale.map((entry) => entry.reason));
+      for (const entry of failed) {
+        if (!reported.has(entry.reason)) ui.warn(`${entry.ref}: ${entry.reason}`);
+      }
+      if (failed.length > 0) {
+        fail(CLI_ERRORS.resourceSyncFailed(failed.map((entry) => entry.ref)));
+        return;
       }
       if (opts.check && result.stale.length > 0) {
         fail(CLI_ERRORS.resourceSyncStale(result.stale.length));
