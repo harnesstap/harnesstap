@@ -1,6 +1,7 @@
 [test]
-# CLI integration tests spawn subprocesses and mock globals; allow extra time.
-timeout = 30000
+# Bun ignores a `timeout` key here (oven-sh/bun#7789), so the per-test
+# timeout (30000 ms) is passed with `--timeout 30000` on every `bun test`
+# call in package.json scripts and CI workflows instead.
 # Match vitest-style file isolation: avoid leaked DB/env state between test files.
 isolate = true
 preload = ["./test/helpers/disable-telemetry.ts", "./test/helpers/isolate-home.ts"]

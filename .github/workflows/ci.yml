@@ -342,7 +342,7 @@ jobs:
         run: bunx vite build
 
       - name: Test linuxdeploy wrappers
-        run: bun test apps/desktop/scripts
+        run: bun test --timeout 30000 apps/desktop/scripts
 
   desktop-visual:
     name: desktop-visual
