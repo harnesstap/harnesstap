@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { restoreColorEnvAfterEach } from "../helpers/color-env.ts";
 
 describe("ui theme", () => {
   let originalStdoutIsTTY: boolean | undefined;
-  let originalNoColor: string | undefined;
+  restoreColorEnvAfterEach();
 
   afterEach(() => {
     if (originalStdoutIsTTY !== undefined) {
@@ -12,12 +13,6 @@ describe("ui theme", () => {
       });
       originalStdoutIsTTY = undefined;
     }
-    if (originalNoColor === undefined) {
-      delete process.env.NO_COLOR;
-    } else {
-      process.env.NO_COLOR = originalNoColor;
-    }
-    originalNoColor = undefined;
   });
 
   it("uses ASCII table chars when stdout is not a TTY", async () => {
@@ -31,7 +26,6 @@ describe("ui theme", () => {
   });
 
   it("disables color styles when NO_COLOR is set", async () => {
-    originalNoColor = process.env.NO_COLOR;
     process.env.NO_COLOR = "1";
     const { theme } = await import("../../src/ui/theme.ts");
     expect(theme.success("ok")).toBe("ok");
@@ -104,7 +98,6 @@ describe("ui theme", () => {
     });
 
     it("degrades gracefully to plain strings when NO_COLOR is set", async () => {
-      originalNoColor = process.env.NO_COLOR;
       process.env.NO_COLOR = "1";
       const { theme } = await import("../../src/ui/theme.ts");
       expect(theme.heading("Title")).toBe("Title");
@@ -132,6 +125,7 @@ describe("ui theme", () => {
       const chalkModule = await import("chalk");
       const originalLevel = chalkModule.default.level;
       chalkModule.default.level = 3;
+      delete process.env.NO_COLOR;
       try {
         const { styleResourceType } = await import("../../src/ui/theme.ts");
         const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);

@@ -1,12 +1,11 @@
-import { describe, expect, it, afterEach } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import chalk from "chalk";
 import { disableColor } from "../../src/ui/theme.ts";
 import { formatVersionWithDrift } from "../../src/ui/version-render.ts";
+import { restoreColorEnvAfterEach } from "../helpers/color-env.ts";
 
 describe("formatVersionWithDrift", () => {
-  afterEach(() => {
-    disableColor();
-  });
+  restoreColorEnvAfterEach();
 
   it("colors matching versions green", () => {
     chalk.level = 1;
