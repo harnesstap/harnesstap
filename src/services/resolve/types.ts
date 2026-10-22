@@ -104,6 +104,8 @@ export type RecoveryAction =
       label: string;
       pluginName: string;
       sourceKind?: DependencySourceKind;
+      /** The plugin whose apply fetches a git dependency. */
+      rootName?: string;
     }
   | {
       id: "create-plugin";
@@ -163,6 +165,21 @@ function marketplaceSyncCommand(pluginName: string, pluginRef?: string): string 
   return `ht resource sync ${typed}`;
 }
 
+/**
+ * A git dependency has no install command of its own: an apply of the plugin
+ * that declares it fetches it (a dry run does not).
+ */
+function gitFetchAction(pluginName: string, rootName: string, pluginRef?: string): RecoveryAction {
+  const source = pluginRef?.trim() ? ` from ${pluginRef.trim()}` : " from git";
+  return {
+    id: "sync-install",
+    label: `Apply ${rootName} without --dry-run to fetch ${pluginName}${source}`,
+    pluginName,
+    sourceKind: "git",
+    rootName,
+  };
+}
+
 function buildUnsatisfiable(input: {
   pluginName: string;
   requirers: ConstraintRecord[];
@@ -189,6 +206,8 @@ function buildUnsatisfiable(input: {
         versions: available,
         rootName,
       });
+    } else if (sourceKind === "git") {
+      actions.push(gitFetchAction(pluginName, rootName, input.pluginRef));
     } else if (sourceKind === "marketplace" || sourceKind === "catalog") {
       actions.push({
         id: "sync-install",
@@ -222,8 +241,9 @@ function buildUnsatisfiable(input: {
   }
 
   if (available.length === 0) {
-    const installAction: RecoveryAction =
-      sourceKind === "catalog" || sourceKind === "marketplace"
+    const installAction: RecoveryAction = sourceKind === "git"
+      ? gitFetchAction(pluginName, rootName, input.pluginRef)
+      : sourceKind === "catalog" || sourceKind === "marketplace"
         ? {
             id: "sync-install",
             label:
@@ -254,7 +274,9 @@ function buildUnsatisfiable(input: {
     const message = [
       `No local version of ${pluginName} is installed.`,
       ...requiredBy,
-      `  fix: ${installAction.label}, then re-apply`,
+      sourceKind === "git"
+        ? `  fix: ${installAction.label}`
+        : `  fix: ${installAction.label}, then re-apply`,
     ].join("\n");
     return {
       reason: "missing-inventory",
@@ -374,6 +396,9 @@ function hintForAction(action: RecoveryAction): string {
     case "sync-install":
       if (action.sourceKind === "catalog") {
         return `ht plugin pull ${action.pluginName}`;
+      }
+      if (action.sourceKind === "git") {
+        return `ht apply ${action.rootName ?? "<plugin>"}`;
       }
       if (action.sourceKind === "marketplace") {
         return action.label.startsWith("ht resource sync ")
