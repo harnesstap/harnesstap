@@ -12,6 +12,7 @@ import { ui } from "../ui/index.js";
 import {
   detectGlobalProfileStatus,
   type GlobalProfileStatus,
+  isHostPluginViewPath,
 } from "./global-profile-drift.js";
 import { commitManagedPathFromLive } from "./profile-commit-resource.js";
 import { stashManagedDriftChanges } from "./profile-stash.js";
@@ -59,11 +60,15 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
   if (!status.active_profile || status.active_profile === input.targetProfileName) {
     return "continue";
   }
-  if (status.changes.length === 0) {
+  // Files in a plugin cache folder are the plugin's, not the profile's: they
+  // cannot be saved to it, and apply keeps the user's own files there. They
+  // are listed by `profile status` but are not unsaved changes.
+  const changes = status.changes.filter((change) => !isHostPluginViewPath(change.path));
+  if (changes.length === 0) {
     return "continue";
   }
 
-  const count = status.changes.length;
+  const count = changes.length;
   const parsedChanges = parseSwitchChanges(input.changes);
   if (parsedChanges === "invalid") {
     ui.danger('Error: Invalid --changes. Use save, stash or discard.');
@@ -101,7 +106,7 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
     case "cancel":
       return "abort";
     case "save": {
-      for (const change of status.changes) {
+      for (const change of changes) {
         try {
           await commitManagedPathFromLive({
             profileSelector: status.active_profile,
@@ -118,7 +123,7 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
     }
     case "stash": {
       await stashManagedDriftChanges({
-        changes: status.changes,
+        changes,
       });
       ui.success(stashedChangesLine(count, "ht profile stash pop"));
       return "continue";
