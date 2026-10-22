@@ -1,12 +1,26 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { addMarketplace } from "../../src/services/marketplace-registry.ts";
-import { refreshMarketplaceCatalog } from "../../src/services/marketplace-catalog.ts";
-import { installMarketplacePinIntoCache } from "../../src/services/marketplace-pin-cache.ts";
+import {
+  marketplaceCatalogPath,
+  refreshMarketplaceCatalog,
+} from "../../src/services/marketplace-catalog.ts";
+import {
+  exactPinnedVersion,
+  installMarketplacePinIntoCache,
+} from "../../src/services/marketplace-pin-cache.ts";
 import { hostPluginPackageDir } from "../../src/services/package-cache/paths.ts";
 
 function initPluginMarketplace(): string {
@@ -68,6 +82,160 @@ describe("installMarketplacePinIntoCache", () => {
       expect(
         existsSync(hostPluginPackageDir(harnesstapDir, "local-market", "alpha", "1.0.0")),
       ).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+});
+
+/** A `git` on PATH that logs network calls and sleeps instead of reaching the remote. */
+function withSlowGit(sleepSeconds: number): { log: string; restore: () => void } {
+  const bin = mkdtempSync(join(tmpdir(), "ht-slow-git-"));
+  const log = join(bin, "calls.log");
+  writeFileSync(log, "");
+  const realGit = spawnSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).stdout.trim();
+  writeFileSync(
+    join(bin, "git"),
+    `#!/bin/sh\ncase " $* " in *" clone "*|*" fetch "*|*" ls-remote "*) echo "$*" >> "${log}"; exec sleep ${sleepSeconds};; esac\nexec "${realGit}" "$@"\n`,
+  );
+  chmodSync(join(bin, "git"), 0o755);
+  const previous = process.env.PATH;
+  process.env.PATH = `${bin}:${previous ?? ""}`;
+  return {
+    log,
+    restore: () => {
+      process.env.PATH = previous;
+    },
+  };
+}
+
+function makeCatalogStale(harnesstapDir: string, name: string): void {
+  const old = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  utimesSync(marketplaceCatalogPath(harnesstapDir, name), old, old);
+}
+
+describe("installMarketplacePinIntoCache with a slow marketplace remote (O3)", () => {
+  it("knows which constraints name one exact version", () => {
+    expect(exactPinnedVersion("1.0.0")).toBe("1.0.0");
+    expect(exactPinnedVersion(" 2.1.3 ")).toBe("2.1.3");
+    expect(exactPinnedVersion("^1.0.0")).toBeNull();
+    expect(exactPinnedVersion("latest")).toBeNull();
+    expect(exactPinnedVersion("*")).toBeNull();
+    expect(exactPinnedVersion("")).toBeNull();
+    expect(exactPinnedVersion(undefined)).toBeNull();
+  });
+
+  it("does not touch the remote for an exact version already in the package cache", async () => {
+    if (process.platform === "win32") return;
+    const context = await createTestContext("pin-cache-cached-exact");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      const repo = initPluginMarketplace();
+      addMarketplace(harnesstapDir, { name: "local-market", url: repo, platforms: ["claude-code"] });
+      await installMarketplacePinIntoCache({
+        originRef: "alpha@local-market",
+        versionConstraint: "1.0.0",
+        homeRoot: context.homeDir,
+        harnesstapDir,
+      });
+      makeCatalogStale(harnesstapDir, "local-market");
+
+      const git = withSlowGit(30);
+      try {
+        const started = Date.now();
+        const result = await installMarketplacePinIntoCache({
+          originRef: "alpha@local-market",
+          versionConstraint: "1.0.0",
+          homeRoot: context.homeDir,
+          harnesstapDir,
+        });
+        expect(Date.now() - started).toBeLessThan(5_000);
+        expect(result.version).toBe("1.0.0");
+        expect(existsSync(join(result.install_path, "plugin.json"))).toBe(true);
+        expect(readFileSync(git.log, "utf8")).toBe("");
+      } finally {
+        git.restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("answers from the stored catalog and refreshes a stale one in the background", async () => {
+    if (process.platform === "win32") return;
+    const context = await createTestContext("pin-cache-stale-latest");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      const repo = initPluginMarketplace();
+      addMarketplace(harnesstapDir, { name: "local-market", url: repo, platforms: ["claude-code"] });
+      const refresh = await refreshMarketplaceCatalog(harnesstapDir, {
+        name: "local-market",
+        force: true,
+      });
+      expect(refresh.ok).toBe(true);
+      makeCatalogStale(harnesstapDir, "local-market");
+
+      const git = withSlowGit(3);
+      try {
+        const started = Date.now();
+        const result = await installMarketplacePinIntoCache({
+          originRef: "alpha@local-market",
+          versionConstraint: "latest",
+          homeRoot: context.homeDir,
+          harnesstapDir,
+        });
+        // A foreground refresh would wait for the 3s git call.
+        expect(Date.now() - started).toBeLessThan(2_500);
+        expect(result.version).toBe("1.0.0");
+        // Let the background refresh finish before the home is removed.
+        await refreshMarketplaceCatalog(harnesstapDir, { name: "local-market", unattended: true });
+        expect(readFileSync(git.log, "utf8")).toContain("clone");
+      } finally {
+        git.restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+});
+
+describe("installMarketplacePinIntoCache without a marketplace.json version (O2)", () => {
+  it("takes the version from the plugin's own manifest instead of 0.0.0", async () => {
+    const context = await createTestContext("pin-cache-manifest-version");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      const repo = initPluginMarketplace();
+      writeFileSync(
+        join(repo, ".claude-plugin", "marketplace.json"),
+        JSON.stringify({
+          name: "local-market",
+          plugins: [{ name: "alpha", source: "./plugins/alpha" }],
+        }),
+      );
+      spawnSync("git", ["add", "."], { cwd: repo, stdio: "ignore" });
+      spawnSync(
+        "git",
+        ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "no version"],
+        { cwd: repo, stdio: "ignore" },
+      );
+      addMarketplace(harnesstapDir, { name: "local-market", url: repo, platforms: ["claude-code"] });
+
+      const result = await installMarketplacePinIntoCache({
+        originRef: "alpha@local-market",
+        versionConstraint: "",
+        homeRoot: context.homeDir,
+        harnesstapDir,
+      });
+      expect(result.version).toBe("1.0.0");
+      expect(
+        existsSync(hostPluginPackageDir(harnesstapDir, "local-market", "alpha", "1.0.0")),
+      ).toBe(true);
+      expect(
+        existsSync(hostPluginPackageDir(harnesstapDir, "local-market", "alpha", "0.0.0")),
+      ).toBe(false);
     } finally {
       await context.cleanup();
     }
@@ -282,6 +450,36 @@ describe("installMarketplacePinIntoCache for an entry that advertises no version
       }
     });
   }
+
+  it("installs the pinned commit of a tagless entry at its plugin.json version for *", async () => {
+    const context = await createTestContext("pin-cache-unversioned-star");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      const { marketplace } = initUnversionedEntryMarketplace({
+        name: "sha-market",
+        version: "1.11.0",
+        pinSha: true,
+      });
+      addMarketplace(harnesstapDir, { name: "sha-market", url: marketplace, platforms: ["claude-code"] });
+
+      const result = await installMarketplacePinIntoCache({
+        originRef: "gamma@sha-market",
+        versionConstraint: "*",
+        homeRoot: context.homeDir,
+        harnesstapDir,
+      });
+      expect(result.version).toBe("1.11.0");
+      expect(
+        existsSync(
+          join(hostPluginPackageDir(harnesstapDir, "sha-market", "gamma", "1.11.0"), "skills", "gamma-skill", "SKILL.md"),
+        ),
+      ).toBe(true);
+      expect(existsSync(hostPluginPackageDir(harnesstapDir, "sha-market", "gamma", "0.0.0"))).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
 
   it("refuses content that declares another version and says which", async () => {
     const context = await createTestContext("pin-cache-unversioned-mismatch");
