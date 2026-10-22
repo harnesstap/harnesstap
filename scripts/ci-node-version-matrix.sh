@@ -6,6 +6,7 @@
 #   EXPECT_INSTALL   true|false
 #   CHECK_GYP        true|false (fail if node-gyp actually compiled)
 #   IGNORE_SCRIPTS   true|false (skip native install; used on Node without prebuilds)
+#   BUNX_SMOKE       true|false (also run the tarball with `bun x`, #501)
 set -euo pipefail
 
 TARBALL="${TARBALL:?TARBALL is required}"
@@ -13,6 +14,7 @@ SUPPORTED="${SUPPORTED:?SUPPORTED is required}"
 EXPECT_INSTALL="${EXPECT_INSTALL:-true}"
 CHECK_GYP="${CHECK_GYP:-false}"
 IGNORE_SCRIPTS="${IGNORE_SCRIPTS:-false}"
+BUNX_SMOKE="${BUNX_SMOKE:-false}"
 
 if [[ ! -f "$TARBALL" ]]; then
   echo "Tarball not found: $TARBALL" >&2
@@ -142,5 +144,45 @@ if [[ "$IGNORE_SCRIPTS" == "true" ]]; then
 fi
 run_cli "npx --help" "${npx_env[@]}" npx "${npx_flags[@]}" -- ht --help
 run_cli "npx -V" "${npx_env[@]}" npx "${npx_flags[@]}" -- ht -V
+
+# #501: `bun x harnesstap` installs the package with bun and runs the node
+# bin on the Node.js on PATH. better-sqlite3 is optional, so a Node without
+# a prebuild must not fail the install with a node-gyp trace; an unsupported
+# Node prints the one-line guard, and `--bun` runs on bun:sqlite.
+if [[ "$BUNX_SMOKE" == "true" ]]; then
+  bun_prefix="$(mktemp -d)"
+  npm install -g --prefix "$bun_prefix" bun@1.3.14 >/dev/null 2>&1
+  bun_bin="$bun_prefix/bin/bun"
+  echo "bun $("$bun_bin" --version)"
+  bunx_home="$(mktemp -d)"
+  bunx_tmp="$(mktemp -d)"
+  bunx_out="$(mktemp)"
+  set +e
+  env HOME="$bunx_home" TMPDIR="$bunx_tmp" "$bun_bin" x -p "$TARBALL" ht --version >"$bunx_out" 2>&1
+  bunx_code=$?
+  set -e
+  echo "--- bun x ht --version (exit $bunx_code) ---"
+  cat "$bunx_out"
+  if grep -q "gyp ERR" "$bunx_out"; then
+    echo "G1 failed: bun x printed a node-gyp trace" >&2
+    exit 1
+  fi
+  if [[ "$SUPPORTED" == "true" ]]; then
+    [[ "$bunx_code" -eq 0 ]] || { echo "G1 failed: bun x exited $bunx_code on supported Node" >&2; exit 1; }
+  elif [[ "$bunx_code" -eq 0 ]] || ! grep -q "needs Node.js" "$bunx_out"; then
+    echo "G1 failed: bun x on unsupported Node did not print the Node version guard" >&2
+    exit 1
+  fi
+  set +e
+  env HOME="$bunx_home" TMPDIR="$bunx_tmp" "$bun_bin" x --bun -p "$TARBALL" ht --version >"$bunx_out" 2>&1
+  bunx_code=$?
+  set -e
+  echo "--- bun x --bun ht --version (exit $bunx_code) ---"
+  cat "$bunx_out"
+  if [[ "$bunx_code" -ne 0 ]] || [[ ! -s "$bunx_out" ]] || grep -q "gyp ERR" "$bunx_out"; then
+    echo "G1 failed: bun x --bun did not run the CLI on Bun" >&2
+    exit 1
+  fi
+fi
 
 echo "G1 smoke passed for Node $(node -p 'process.versions.node') (supported=$SUPPORTED)"

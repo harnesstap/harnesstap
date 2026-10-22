@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import {
   isNativeModuleMismatch,
+  isSqliteModuleMissing,
   NATIVE_MODULE_MISMATCH_MESSAGE,
   reportNativeModuleMismatch,
+  SQLITE_MODULE_MISSING_MESSAGE,
   withNativeModuleGuard,
 } from "../../src/db/native-module.ts";
 
@@ -82,5 +84,34 @@ describe("native sqlite module mismatch", () => {
 
     error.mockRestore();
     exit.mockRestore();
+  });
+
+  it("prints one line naming the fix when better-sqlite3 did not install (#501)", () => {
+    const missing = Object.assign(
+      new Error("Cannot find module 'better-sqlite3'\nRequire stack:\n- /usr/lib/node_modules/harnesstap/dist/bin.js"),
+      { code: "MODULE_NOT_FOUND" },
+    );
+    expect(isSqliteModuleMissing(missing)).toBe(true);
+    expect(isSqliteModuleMissing(Object.assign(new Error("Cannot find module 'chalk'"), { code: "MODULE_NOT_FOUND" }))).toBe(false);
+    expect(isSqliteModuleMissing(new Error("Could not locate the bindings file. Tried: better_sqlite3.node"))).toBe(true);
+
+    delete process.env.HARNESSTAP_DEBUG;
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    const exit = spyOn(process, "exit").mockImplementation((() => {
+      throw new Error("exit");
+    }) as typeof process.exit);
+    try {
+      expect(() =>
+        withNativeModuleGuard(() => {
+          throw missing;
+        }),
+      ).toThrow("exit");
+      expect(error.mock.calls).toEqual([[SQLITE_MODULE_MISSING_MESSAGE]]);
+      expect(SQLITE_MODULE_MISSING_MESSAGE).toContain("bun x --bun harnesstap@latest");
+      expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      error.mockRestore();
+      exit.mockRestore();
+    }
   });
 });

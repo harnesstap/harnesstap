@@ -32,3 +32,15 @@ New text for the Install section of README.md.
 <!-- append -->
 - `plugin show <name>`, `profile show <name>`, and `plugin doctor <name>` resolve a local plugin the same way as `profile use`: by name or ID, catalog slug, full catalog ref `org/catalog/slug` (optionally `@version`), or package display name. They never pull from the catalog.
 - `plugin doctor` re-reads the package a plugin was imported from: the `skipped-files` check fails for each file the import skipped, with its path and reason, and the output lists imported of discovered resources per type (`resource_counts` in JSON)
+
+## Install > npm global
+<!-- append -->
+`bun x harnesstap@latest` runs the CLI on the Node.js on `PATH`, which must be 22.12 or newer. With an older Node, `bun x --bun harnesstap@latest init` runs it on Bun instead, which needs no native SQLite build.
+
+## docs/cli/getting-started.md > Bun (alternative)
+<!-- append -->
+`bun x harnesstap@latest` runs the CLI on the Node.js on `PATH`, which must be 22.12 or newer; an older Node stops with one line saying so. Add `--bun` to run it on Bun instead, which needs no native SQLite build:
+
+```bash
+bun x --bun harnesstap@latest init
+```

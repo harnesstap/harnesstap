@@ -7,7 +7,6 @@
       "dependencies": {
         "@inquirer/core": "^10.3.2",
         "@inquirer/search": "^3.2.2",
-        "better-sqlite3": "^12.11.1",
         "chalk": "^5.4.1",
         "cli-table3": "^0.6.5",
         "commander": "^13.1.0",
@@ -31,6 +30,9 @@
         "happy-dom": "17.4.4",
         "tsup": "^8.3.5",
         "typescript": "^5.7.0",
+      },
+      "optionalDependencies": {
+        "better-sqlite3": "^12.11.1",
       },
     },
   },
