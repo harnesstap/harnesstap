@@ -1,4 +1,5 @@
 import { ui } from "../../ui/index.js";
+import { displayConstraint } from "./types.js";
 import type {
   ResolutionResult,
   ResourceDecisionReason,
@@ -29,7 +30,7 @@ export interface ExplainPayload {
     depth: number;
     reason: SelectionReason;
     path: string[];
-    constraints: Array<{ requirer: string; constraint: string }>;
+    constraints: Array<{ requirer: string; constraint: string; declared?: string }>;
   }>;
   resources: Array<{
     key: string;
@@ -62,6 +63,7 @@ export function explainPayload(result: ResolutionResult): ExplainPayload {
         constraints: plugin.constraints.map((record) => ({
           requirer: record.requirer,
           constraint: record.constraint,
+          ...(record.declared ? { declared: record.declared } : {}),
         })),
       })),
     resources: result.decisions.map((decision) => ({
@@ -91,7 +93,7 @@ export function renderExplain(result: ResolutionResult): string {
     for (const record of plugin.constraints) {
       lines.push(
         ui.theme.muted(
-          `    ${record.requirer} → ${plugin.name} ${record.constraint || "*"}`,
+          `    ${record.requirer} → ${plugin.name} ${displayConstraint(record)}`,
         ),
       );
     }

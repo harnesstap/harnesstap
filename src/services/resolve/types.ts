@@ -1,9 +1,21 @@
 import type { DependencySourceKind, Resource } from "../../types.js";
 
+/** The constraint to show for a record: the declared git ref, else the range. */
+export function displayConstraint(record: Pick<ConstraintRecord, "constraint" | "declared">): string {
+  if (record.declared) return record.declared;
+  return record.constraint || "*";
+}
+
 /** One version constraint on a plugin name, with the path that introduced it. */
 export interface ConstraintRecord {
   /** Raw constraint as declared, e.g. `^2.0.0`. Empty or `*` means any. */
   constraint: string;
+  /**
+   * What the dependency declared when it is not a version constraint, such
+   * as a git branch, tag or commit (`main`). `constraint` is then `*`, since
+   * the ref chooses what is fetched, not a version. Shown instead of `*`.
+   */
+  declared?: string;
   /**
    * Labels from the root down to and including the requirer.
    * A constraint declared by the root itself has `path.length === 1`.
@@ -141,7 +153,7 @@ function requirerLines(
 ): string[] {
   return requirers.map(
     (record) =>
-      `  ${record.requirer} → ${pluginName} ${record.constraint || "*"}`,
+      `  ${record.requirer} → ${pluginName} ${displayConstraint(record)}`,
   );
 }
 
@@ -237,7 +249,7 @@ function buildUnsatisfiable(input: {
     ];
     const requiredBy = requirers.map(
       (record) =>
-        `  required by: ${record.requirer} → ${pluginName} ${record.constraint || "*"}`,
+        `  required by: ${record.requirer} → ${pluginName} ${displayConstraint(record)}`,
     );
     const message = [
       `No local version of ${pluginName} is installed.`,
