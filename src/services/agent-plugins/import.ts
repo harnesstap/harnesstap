@@ -23,7 +23,7 @@ import type {
 import { DEPENDENCY_SOURCE_KINDS } from "../../types.js";
 import { parseHarnessScope } from "../harness-scope.js";
 import { parseHooksJsonContent } from "../hook-serialization.js";
-import { addDependency } from "../plugin-dependency.js";
+import { addDependency, parseDependencyRef } from "../plugin-dependency.js";
 import {
   setPluginResourceOverride,
   setPluginVersionOverride,
@@ -541,7 +541,10 @@ export function importApPackageFiles(
   for (const dependency of parsed.dependencies) {
     addDependency(plugin.id, dependency.name, {
       versionConstraint: dependency.constraint,
-      ...(embeddedNames.includes(dependency.name) ? { embedOnExport: true } : {}),
+      ...(embeddedNames.includes(dependency.name)
+        || embeddedNames.includes(parseDependencyRef(dependency.name).name)
+        ? { embedOnExport: true }
+        : {}),
       // Dependencies come with the package: the import is not an edit (#499).
       markDirty: false,
     });
