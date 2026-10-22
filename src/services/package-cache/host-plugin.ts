@@ -150,17 +150,39 @@ function sameBytes(left: string, right: string): boolean {
   }
 }
 
+/** True when every file under `dir` is in `gone` (paths inside `root`), so the folder ends up empty. */
+function emptiesOnceRemoved(root: string, dir: string, gone: ReadonlySet<string>): boolean {
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  return entries.every((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return emptiesOnceRemoved(root, full, gone);
+    return gone.has(relative(root, full).split(sep).join("/"));
+  });
+}
+
 /**
  * What keeps a plugin file from being written at `path` (inside the folder):
  * a real folder at the path, or a file or link where one of its folders goes.
+ *
+ * With `planOnly` (the paths a refresh is about to back up and remove), the
+ * folder is left as it is: those files count as already gone and an empty
+ * folder is not removed. That is what a dry run reports.
  */
 function hostViewWriteBlocker(
   hostView: string,
   path: string,
+  planOnly?: ReadonlySet<string>,
 ): { blockedBy: string; kind: "folder" | "file" | "link" } | undefined {
   const parts = path.split("/");
   for (let index = 1; index <= parts.length; index += 1) {
     const at = parts.slice(0, index).join("/");
+    // Removed before the write, so it is not in the way.
+    if (planOnly?.has(at)) return undefined;
     let stats: ReturnType<typeof lstatSync>;
     try {
       stats = lstatSync(join(hostView, at));
@@ -170,6 +192,11 @@ function hostViewWriteBlocker(
     if (index === parts.length) {
       if (!stats.isDirectory()) return undefined;
       // An empty folder may go (only empty folders are ever removed).
+      if (planOnly) {
+        return emptiesOnceRemoved(hostView, join(hostView, at), planOnly)
+          ? undefined
+          : { blockedBy: at, kind: "folder" };
+      }
       if (readdirSync(join(hostView, at)).length === 0) {
         rmdirSync(join(hostView, at));
         return undefined;
@@ -248,6 +275,74 @@ export function diffHostPluginView(input: {
   return differences.sort((a, b) => a.path.localeCompare(b.path));
 }
 
+interface HostPluginViewClassification {
+  created: boolean;
+  recorded: Record<string, string>;
+  packageSet: Set<string>;
+  applyWrites: Set<string>;
+  unchanged: Set<string>;
+  /** Files a refresh backs up and removes (and writes again when the plugin still has them). */
+  replace: string[];
+  ownedPaths: Set<string>;
+  kept: KeptHostPluginViewFiles["files"];
+}
+
+/**
+ * Sort the files of an existing host plugin folder into what a refresh leaves
+ * alone, replaces or keeps. Changes nothing: a dry run uses it as well.
+ */
+function classifyHostPluginView(input: {
+  homeRoot: string;
+  hostView: string;
+  canonicalDir: string;
+  packageFiles: readonly string[];
+}): HostPluginViewClassification {
+  const { hostView, packageFiles } = input;
+  const record = readHostPluginViewRecord(hostView);
+  const created = record?.created === true;
+  const recorded = { ...(record?.files ?? {}) };
+  const packageSet = new Set(packageFiles);
+  const applyWrites = claudeEmitDerivedPaths(input.canonicalDir, packageFiles);
+  const unchanged = new Set<string>();
+  const replace: string[] = [];
+  const ownedPaths = new Set<string>();
+  const kept: KeptHostPluginViewFiles["files"] = [];
+  for (const path of listTreeFiles(hostView)) {
+    if (packageSet.has(path) && sameBytes(join(hostView, path), join(input.canonicalDir, path))) {
+      unchanged.add(path);
+      continue;
+    }
+    const ownership = hostViewFileOwnership({
+      homeRoot: input.homeRoot,
+      hostView,
+      path,
+      recorded,
+    });
+    if (ownership === "owned" && applyWrites.has(path)) {
+      // The apply writes this file with its own bytes (for example the Claude
+      // manifest made from the package's root plugin.json). Replacing it here
+      // would only make the apply write it again, with a new backup, each run.
+      unchanged.add(path);
+      continue;
+    }
+    if (ownership === "owned") ownedPaths.add(path);
+    // --force-remove replaces only files HarnessTap wrote that changed since.
+    // A file HarnessTap did not write is the user's: it is always kept.
+    if (ownership === "owned" || (ownership === "modified" && hostPluginViewForceReplace())) {
+      replace.push(path);
+    } else {
+      kept.push({ path, reason: ownership, inPlugin: packageSet.has(path) });
+    }
+  }
+  const refused = planHostPluginViewRemovals({ homeRoot: input.homeRoot, hostView, paths: replace }).refused;
+  if (refused.length > 0) {
+    const refusedSet = new Set(refused.map((entry) => entry.path));
+    replace.splice(0, replace.length, ...replace.filter((path) => !refusedSet.has(path)));
+    for (const path of refusedSet) kept.push({ path, reason: "unmanaged", inPlugin: packageSet.has(path) });
+  }
+  return { created, recorded, packageSet, applyWrites, unchanged, replace, ownedPaths, kept };
+}
+
 /**
  * Write a plugin's package tree into the host plugin cache folder
  * (`~/.claude/plugins/cache/<mkt>/<name>/<ver>`).
@@ -297,48 +392,13 @@ export function mirrorHostPluginView(input: {
     return hostView;
   }
 
-  const record = readHostPluginViewRecord(hostView);
-  const created = record?.created === true;
-  const recorded = { ...(record?.files ?? {}) };
-  const packageSet = new Set(packageFiles);
-  const applyWrites = claudeEmitDerivedPaths(input.canonicalDir, packageFiles);
-  const unchanged = new Set<string>();
-  const replace: string[] = [];
-  const ownedPaths = new Set<string>();
-  const kept: KeptHostPluginViewFiles["files"] = [];
-  for (const path of listTreeFiles(hostView)) {
-    if (packageSet.has(path) && sameBytes(join(hostView, path), join(input.canonicalDir, path))) {
-      unchanged.add(path);
-      continue;
-    }
-    const ownership = hostViewFileOwnership({
+  const { created, recorded, packageSet, applyWrites, unchanged, replace, ownedPaths, kept } =
+    classifyHostPluginView({
       homeRoot: input.homeRoot,
       hostView,
-      path,
-      recorded,
+      canonicalDir: input.canonicalDir,
+      packageFiles,
     });
-    if (ownership === "owned" && applyWrites.has(path)) {
-      // The apply writes this file with its own bytes (for example the Claude
-      // manifest made from the package's root plugin.json). Replacing it here
-      // would only make the apply write it again, with a new backup, each run.
-      unchanged.add(path);
-      continue;
-    }
-    if (ownership === "owned") ownedPaths.add(path);
-    // --force-remove replaces only files HarnessTap wrote that changed since.
-    // A file HarnessTap did not write is the user's: it is always kept.
-    if (ownership === "owned" || (ownership === "modified" && hostPluginViewForceReplace())) {
-      replace.push(path);
-    } else {
-      kept.push({ path, reason: ownership, inPlugin: packageSet.has(path) });
-    }
-  }
-  const refused = planHostPluginViewRemovals({ homeRoot: input.homeRoot, hostView, paths: replace }).refused;
-  if (refused.length > 0) {
-    const refusedSet = new Set(refused.map((entry) => entry.path));
-    replace.splice(0, replace.length, ...replace.filter((path) => !refusedSet.has(path)));
-    for (const path of refusedSet) kept.push({ path, reason: "unmanaged", inPlugin: packageSet.has(path) });
-  }
 
   const backupId = backUpAndRemoveHostPluginViewFiles({
     homeRoot: input.homeRoot,
@@ -400,6 +460,82 @@ export function mirrorHostPluginView(input: {
     });
   }
   return hostView;
+}
+
+/** What `mirrorHostPluginView` would do to one host plugin folder. Paths are inside the folder. */
+export interface HostPluginViewMirrorPlan {
+  hostView: string;
+  /** New plugin files (not counting the ones the apply writes with its own bytes). */
+  add: string[];
+  /** Files backed up, then written again with the plugin's bytes. */
+  replace: string[];
+  /** Files backed up and removed because the plugin no longer has them. */
+  remove: string[];
+  kept: KeptHostPluginViewFiles["files"];
+  blocked: BlockedHostPluginViewFiles["files"];
+}
+
+/**
+ * The same plan `mirrorHostPluginView` follows, without changing anything and
+ * without recording any notice: what a dry run reports. Undefined when the
+ * refresh would leave the folder alone.
+ */
+export function planHostPluginViewMirror(input: {
+  homeRoot: string;
+  marketplace: string;
+  pluginName: string;
+  version: string;
+  canonicalDir: string;
+}): HostPluginViewMirrorPlan | undefined {
+  const hostView = cacheVersionDir(
+    input.homeRoot,
+    input.marketplace,
+    input.pluginName,
+    input.version,
+  );
+  if (!existsSync(input.canonicalDir)) return undefined;
+  if (existsSync(hostView) && isPluginInstallRoot(hostView) && hostView === input.canonicalDir) {
+    return undefined;
+  }
+  if (existsSync(hostView) && isUserClaudeInstallFolder(input.homeRoot, hostView)) return undefined;
+  const packageFiles = listTreeFiles(input.canonicalDir, (path) =>
+    shouldCopyPackageTreePath(input.canonicalDir, path),
+  );
+  if (!existsSync(hostView)) {
+    const applyWrites = claudeEmitDerivedPaths(input.canonicalDir, packageFiles);
+    return {
+      hostView,
+      add: packageFiles.filter((path) => !applyWrites.has(path)),
+      replace: [],
+      remove: [],
+      kept: [],
+      blocked: [],
+    };
+  }
+  const classified = classifyHostPluginView({
+    homeRoot: input.homeRoot,
+    hostView,
+    canonicalDir: input.canonicalDir,
+    packageFiles,
+  });
+  const keptSet = new Set(classified.kept.map((file) => file.path));
+  const replaceSet = new Set(classified.replace);
+  const toCopy = packageFiles.filter((path) => !classified.unchanged.has(path) && !keptSet.has(path));
+  const blocked: HostPluginViewMirrorPlan["blocked"] = [];
+  const writable = toCopy.filter((path) => {
+    const blocker = hostViewWriteBlocker(hostView, path, replaceSet);
+    if (blocker) blocked.push({ path, ...blocker });
+    return blocker === undefined;
+  });
+  const writableSet = new Set(writable);
+  return {
+    hostView,
+    add: writable.filter((path) => !replaceSet.has(path) && !classified.applyWrites.has(path)),
+    replace: classified.replace.filter((path) => writableSet.has(path)),
+    remove: classified.replace.filter((path) => !classified.packageSet.has(path)),
+    kept: classified.kept,
+    blocked,
+  };
 }
 
 /**

@@ -62,6 +62,7 @@ import { rewriteStaleMergeableHostConfigs } from "./host-config-strip.js";
 import { installPluginFromCatalog } from "./plugin-catalog-install.js";
 import type { PluginPinView, PluginRefView } from "./plugin-composition.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
+import { planHostPluginFoldersForPins } from "./host-plugin-apply-plan.js";
 import { collectPluginPinsForPrepare, preparePluginPinsForApply } from "./plugin-pin-apply.js";
 import { parsePluginSelector, resolveRemotePluginSelector } from "./plugin-selector.js";
 import { resolveComposition } from "./resolve/index.js";
@@ -145,6 +146,12 @@ export interface ApplyProfilePluginOptions {
    * (status/drift). Default true keeps extra live skill body for apply/preview.
    */
   mergeLiveSkillMarkdown?: boolean;
+  /**
+   * Dry run only: also plan the writes, keeps and blocked files in the host
+   * plugin cache folders of pinned marketplace plugins, as the real apply
+   * does while it installs them. Off for status, drift and previews.
+   */
+  planPluginFolders?: boolean;
 }
 
 export interface ApplyProfilePluginResult {
@@ -794,6 +801,11 @@ export async function applyProfilePlugin(
     const writeKeeps = traceSpan("dry-run.ownership-keeps", () =>
       skippedWriteKeepsForOwnership(homeRoot, materialized.skippedFiles),
     );
+    const folders = options.planPluginFolders
+      ? traceSpan("dry-run.plugin-folders", () =>
+          planHostPluginFoldersForPins({ homeRoot, pins: merged.pluginPins }),
+        )
+      : undefined;
     return {
       profile_name: profilePlugin.name,
       profile_plugin_id: profilePlugin.id,
@@ -802,7 +814,9 @@ export async function applyProfilePlugin(
       dry_run: true,
       cancelled: materialized.cancelled,
       files: files.map((file) => file.path),
-      written_files: materialized.writtenFiles,
+      written_files: folders
+        ? [...new Set([...materialized.writtenFiles, ...folders.write])]
+        : materialized.writtenFiles,
       skipped_files: materialized.skippedFiles,
       conflicts: materialized.conflicts.map((conflict) => conflict.path),
       expected_files: files.map((file) => ({
@@ -813,7 +827,12 @@ export async function applyProfilePlugin(
       ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
       ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
       resolution,
-      ...removalFields(plannedRemoval, writeKeeps),
+      ...removalFields(
+        folders
+          ? { ...plannedRemoval, removed: [...plannedRemoval.removed, ...folders.remove] }
+          : plannedRemoval,
+        folders ? [...writeKeeps, ...folders.kept] : writeKeeps,
+      ),
     };
   }
 
