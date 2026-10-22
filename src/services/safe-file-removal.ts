@@ -34,6 +34,7 @@ import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { saveRemovedOwnership } from "./removed-ownership.js";
 import { shortenHomePath } from "../utils/home-path.js";
+import { removeFileOrLink } from "../utils/remove-file-or-link.js";
 
 const APPLY_TRASH_KEEP = 10;
 const CONTAINER_DIR_NAMES = new Set([
@@ -529,7 +530,7 @@ function backupAndUnlink(input: {
 }): void {
   const fullPath = resolve(input.rootPath, input.relativePath);
   backupOnDiskFile(input);
-  rmSync(fullPath, { force: true });
+  removeFileOrLink(fullPath);
   pruneEmptyAncestors(fullPath, input.rootPath);
   pruneCreatedHostPluginView(fullPath);
 }
@@ -551,7 +552,7 @@ export function backupAndRewriteFile(input: {
   }
   backupOnDiskFile(input);
   if (input.nextContent === null) {
-    rmSync(fullPath, { force: true });
+    removeFileOrLink(fullPath);
     pruneEmptyAncestors(fullPath, input.rootPath);
     saveRemovedOwnership(input.snapshotId, input.rootPath, [input.relativePath]);
     deleteMaterializationsForRootPaths(input.rootPath, [input.relativePath]);
@@ -619,7 +620,7 @@ export function restoreSafeRemovalBackup(input: {
     const fullPath = resolve(input.rootPath, backup.relative_path);
     mkdirSync(dirname(fullPath), { recursive: true });
     if (((backup.mode ?? 0) & S_IFMT) === S_IFLNK) {
-      if (isSymlinkPath(fullPath)) rmSync(fullPath, { force: true });
+      if (isSymlinkPath(fullPath)) removeFileOrLink(fullPath);
       symlinkSync(Buffer.from(backup.content).toString("utf-8"), fullPath);
     } else {
       writeFileSync(fullPath, backup.content);

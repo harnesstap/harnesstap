@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { ulid } from "ulid";
 import { getHarnesstapDir } from "../../db/connection.js";
@@ -6,6 +6,7 @@ import { listApplyRemovalBackups } from "../../models/apply-removal-backup.js";
 import { executeSafeFileRemovals } from "../safe-file-removal.js";
 import { planHostPluginViewRemovals } from "./host-plugin-view-ownership.js";
 import { forgetHostPluginViewFiles } from "./host-plugin-views.js";
+import { removeFileOrLink } from "../../utils/remove-file-or-link.js";
 
 /**
  * Files a host plugin cache refresh backed up before replacing or removing
@@ -58,12 +59,8 @@ export function backUpAndRemoveHostPluginViewFiles(input: {
   const paths = planHostPluginViewRemovals(input).allowed;
   if (paths.length === 0) return undefined;
   const backupId = ulid();
-  const result = executeSafeFileRemovals(
-    input.homeRoot,
-    paths.map((path) => toHomePath(input.homeRoot, input.hostView, path)),
-    { mode: "listed", applyId: backupId },
-  );
-  if (result.removed.length === 0) return undefined;
+  // Record the id before anything goes to the trash, so every backed-up byte
+  // can be put back with `ht revert <id>`, even when a removal fails midway.
   const backups = readBackups();
   backups[backupId] = {
     home_root: input.homeRoot,
@@ -71,13 +68,27 @@ export function backUpAndRemoveHostPluginViewFiles(input: {
     files: [...paths],
     created_at: new Date().toISOString(),
   };
+  writeBackups(backups);
+  const result = executeSafeFileRemovals(
+    input.homeRoot,
+    paths.map((path) => toHomePath(input.homeRoot, input.hostView, path)),
+    { mode: "listed", applyId: backupId },
+  );
+  if (result.removed.length === 0) {
+    delete backups[backupId];
+    writeBackups(backups);
+    return undefined;
+  }
+  return backupId;
+}
+
+function writeBackups(backups: Record<string, HostPluginViewBackup>): void {
   try {
     mkdirSync(dirname(backupsPath()), { recursive: true });
     writeFileSync(backupsPath(), `${JSON.stringify({ version: 1, backups }, null, 2)}\n`);
   } catch {
     // The bytes are still in the HarnessTap trash under the backup id.
   }
-  return backupId;
 }
 
 export function isHostPluginViewBackupId(id: string): boolean {
@@ -171,7 +182,7 @@ export function restoreHostPluginViewBackup(
   for (const file of toWrite) {
     mkdirSync(dirname(file.fullPath), { recursive: true });
     if (file.isLink) {
-      if (existsSync(file.fullPath) || present(file.fullPath)) rmSync(file.fullPath, { force: true });
+      if (existsSync(file.fullPath) || present(file.fullPath)) removeFileOrLink(file.fullPath);
       symlinkSync(file.content.toString("utf-8"), file.fullPath);
     } else {
       writeFileSync(file.fullPath, file.content);
