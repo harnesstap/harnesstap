@@ -31,6 +31,8 @@ import {
 import type { Plugin } from "../types.js";
 import { PROFILE_PLUGIN_TAG } from "../constants/profile.js";
 import { markPluginClean } from "./plugin-versioning.js";
+import { isGitRefConstraint } from "../utils/git-dependency-constraint.js";
+import type { DependencySourceKind } from "../types.js";
 
 function ensureProfileTag(pluginId: string): void {
   const plugin = getPluginById(pluginId);
@@ -67,6 +69,7 @@ function catalogIdentity(
 function findLocalSatisfyingPlugin(
   name: string,
   constraint: string,
+  sourceKind: DependencySourceKind,
 ): Plugin | undefined {
   const trimmed = constraint.trim();
   const versions = listPluginVersions(name);
@@ -74,6 +77,12 @@ function findLocalSatisfyingPlugin(
     return undefined;
   }
   if (!trimmed || trimmed === "*" || trimmed === "latest") {
+    return getPluginByName(name);
+  }
+  // A git dependency pinned to a commit, tag or branch (#500) names what is
+  // fetched, not a plugin version. The git pin apply path checks out that
+  // ref, so any local copy stands in here for walking transitive deps.
+  if (sourceKind === "git" && isGitRefConstraint(trimmed)) {
     return getPluginByName(name);
   }
   const matching = versions.find((version) =>
@@ -201,6 +210,7 @@ export async function ensureMissingCatalogDependencies(
       const local = findLocalSatisfyingPlugin(
         dependency.name,
         dependency.version_constraint,
+        dependency.source_kind,
       );
       if (local) {
         queue.push(local.id);
