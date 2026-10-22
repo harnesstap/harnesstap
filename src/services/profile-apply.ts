@@ -1,3 +1,4 @@
+import { recordedHostPluginViewPaths } from "./package-cache/host-plugin-views.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -254,14 +255,7 @@ function removeStaleGlobalProfileFiles(
     previousTrackedFiles,
     harnesses,
   );
-  // `--force-remove` also takes the user's own files out of a plugin folder
-  // left behind (backed up like every removal); otherwise they are kept and
-  // listed below.
-  const forcedLeftovers = options.forceRemove
-    ? keptFilesInLeftHostPluginFolders(homeRoot, desiredFiles, staleFiles, staleFiles, [])
-      .map((skip) => skip.path)
-    : [];
-  const removed = removeGlobalMaterializedFiles(homeRoot, [...staleFiles, ...forcedLeftovers], {
+  const removed = removeGlobalMaterializedFiles(homeRoot, staleFiles, {
     dryRun: options.dryRun,
     forceRemove: options.forceRemove,
     applyId: options.applyId,
@@ -272,7 +266,8 @@ function removeStaleGlobalProfileFiles(
     snapshotId: options.snapshotId,
     dryRun: options.dryRun,
   });
-  // A plugin folder left behind keeps the user's own files: say so.
+  // A plugin folder left behind keeps the user's own files, even with
+  // --force-remove (HarnessTap never wrote them): say so.
   const keptInLeftFolders = keptFilesInLeftHostPluginFolders(
     homeRoot,
     desiredFiles,
@@ -815,7 +810,12 @@ export async function applyProfilePlugin(
       );
       warnSkippedRemovals(removal, writeKeeps);
       for (const result of applied.results) {
-        const installFiles = result.files.map((file) => file.path);
+        const emitted = result.files.map((file) => file.path);
+        // Files the install wrote into host plugin folders that the apply
+        // never emits (links such as AGENTS.md) belong to the manifest too.
+        const installFiles = [
+          ...new Set([...emitted, ...recordedHostPluginViewPaths(homeRoot, emitted)]),
+        ];
         if (installFiles.length === 0) continue;
         recordGlobalApplySnapshotInstall({
           snapshot_id: snapshot.id,

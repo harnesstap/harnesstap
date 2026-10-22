@@ -8,6 +8,10 @@ import { getPlatform } from "../platforms/registry.js";
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { isHarnessTapOwnedPath, type SafeRemovalSkip } from "./safe-file-removal.js";
+import {
+  isHostPluginCacheFilePath,
+  recordedHostPluginViewPaths,
+} from "./package-cache/host-plugin-views.js";
 
 export function collectOtherProfilesSnapshotTrackedFiles(
   incomingProfileName: string,
@@ -213,6 +217,7 @@ export function planStaleMergeableHostConfigFiles(
       (filePath) =>
         !desired.has(filePath)
         && isMergeableHostConfigPath(filePath)
+        && !isHostPluginCacheFilePath(filePath)
         && !isCursorHostManagedSkillsPath(filePath),
     ),
   );
@@ -248,11 +253,26 @@ export function planStaleGlobalProfileFiles(
   previousTrackedFiles: readonly string[],
   harnesses: string[],
 ): string[] {
-  const desired = new Set(desiredFiles);
-  const stale = previousTrackedFiles.filter(
+  // A host plugin folder still in use keeps every file HarnessTap wrote into
+  // it, links the apply never emits included.
+  const desired = new Set([
+    ...desiredFiles,
+    ...recordedHostPluginViewPaths(homeRoot, desiredFiles),
+  ]);
+  // A folder left behind: every file its record says HarnessTap wrote there
+  // is a candidate, even one an older manifest did not list. Each is still
+  // removed only while its bytes (or link target) match the record.
+  const previous = [
+    ...previousTrackedFiles,
+    ...recordedHostPluginViewPaths(
+      homeRoot,
+      previousTrackedFiles.filter((filePath) => !desired.has(filePath)),
+    ),
+  ];
+  const stale = [...new Set(previous)].filter(
     (filePath) =>
       !desired.has(filePath)
-      && !isMergeableHostConfigPath(filePath)
+      && (isHostPluginCacheFilePath(filePath) || !isMergeableHostConfigPath(filePath))
       && !isCursorHostManagedSkillsPath(filePath),
   );
   return expandStaleMcpConfigMirrors(

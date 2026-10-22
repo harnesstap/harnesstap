@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'After a profile switch or a plugin version bump, the files HarnessTap wrote into the old plugin cache folder (`~/.claude/plugins/cache/...`) are now removed, including the plugin''s own `CLAUDE.md` and links such as `AGENTS.md`. Each is removed only while it still matches what HarnessTap wrote (for a link, its target), with a backup, and folders left empty go too. Files you changed or added stay and changed ones are listed. Links an install writes are now recorded with the apply.'
+time: 2026-10-22T23:00:00.000000Z

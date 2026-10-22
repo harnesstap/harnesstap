@@ -147,6 +147,17 @@ function materialResourceKey(resource: Pick<Resource, "type" | "name">): string 
   return `${resource.type}:${resource.name}`;
 }
 
+function recordResolvedVersion(resource: Resource, version: string): void {
+  const metadata: PluginPinMetadata = {
+    ...(resource.metadata as PluginPinMetadata),
+    resolved_version: version,
+    sync_status: "synced",
+  };
+  getDb()
+    .prepare("UPDATE resources SET metadata = ?, updated_at = ? WHERE id = ?")
+    .run(JSON.stringify(metadata), new Date().toISOString(), resource.id);
+}
+
 function stampResolvedVersionFromExactConstraint(
   resource: Resource,
   constraint: string,
@@ -268,6 +279,22 @@ export async function syncPluginPinsForApply(
     );
 
     const metadata = (resource.metadata ?? {}) as PluginPinMetadata;
+    // A git dependency is fetched straight into the library as an upstream
+    // plugin, so there is no host install for a sync to read. Record the
+    // version the fetch imported instead of reporting it as not installed.
+    if (parseDependencyRef(pin.ref).source_kind === "git") {
+      const fetchedVersion = installs.find(
+        (install) =>
+          install.ref === pin.ref
+          && (install.status === "installed" || install.status === "already_installed"),
+      )?.version;
+      if (fetchedVersion) {
+        if (metadata.resolved_version !== fetchedVersion || metadata.sync_status !== "synced") {
+          recordResolvedVersion(resource, fetchedVersion);
+        }
+        continue;
+      }
+    }
     // An unpinned or range dependency follows the version the install just
     // cached (after `ht plugin update` bumped it), instead of the one an
     // earlier apply resolved.

@@ -25,7 +25,7 @@ export interface InstallPluginPinResult {
   scope: PluginScope;
   status: "installed" | "already_installed" | "failed" | "unsupported";
   message: string;
-  /** The version a marketplace install put in the package cache. */
+  /** The version a marketplace install cached, or a git fetch imported. */
   version?: string;
 }
 
@@ -57,6 +57,7 @@ export async function installPluginPinAsync(
         scope: options.scope,
         status: imported.created ? "installed" : "already_installed",
         message: `Fetched ${imported.origin_locator} at ${imported.origin_fingerprint.slice(0, 12)}`,
+        version: imported.plugin.version,
       };
     } catch (error) {
       // A pinned git dependency fails closed with the git error. An unpinned
