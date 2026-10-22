@@ -140,6 +140,12 @@ describe("global profile status cache", () => {
 
   it("serves the last status with refreshing set when an input mtime changes", async () => {
     const context = await createInitializedTestContext("status-cache-refresh");
+    // In the CLI lifecycle the worker exits once idle, and closing its
+    // database connection bumps PRAGMA data_version on this one. That lands a
+    // few ms after the refresh is stored, so the next read misses on
+    // data_version and recomputes. Keep the worker up, as the sidecar does, so
+    // only the mtime change drives a refresh.
+    warmStatusRefreshWorker();
     try {
       clearLiveReadCaches();
       const plugin = createPlugin({ name: "work" });
@@ -186,6 +192,7 @@ describe("global profile status cache", () => {
       expect(readStatusRefreshCompletionCount()).toBe(refreshes + 1);
       expect(readDriftCoreComputeCount()).toBe(computed);
     } finally {
+      stopStatusRefreshWorkerForTests();
       clearLiveReadCaches();
       await context.cleanup();
     }
