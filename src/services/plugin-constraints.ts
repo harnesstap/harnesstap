@@ -22,8 +22,18 @@ export function parseVersionConstraint(raw: string): VersionConstraint {
   if (semver.validRange(trimmed)) {
     return { kind: "range", range: trimmed };
   }
+  if (COMMIT_LIKE.test(trimmed)) {
+    // A marketplace entry can advertise a commit instead of a version
+    // (`chrome-devtools-mcp` shows `a878bcad3958`). Only a git dependency
+    // pins a commit; everything else is matched against plugin versions.
+    throw new Error(
+      `Invalid version constraint: ${raw}. It looks like a commit SHA, but this dependency takes a version or semver range (for example 1.11.0). To pin a commit, depend on the plugin's git repository instead.`,
+    );
+  }
   throw new Error(`Invalid version constraint: ${raw}`);
 }
+
+const COMMIT_LIKE = /^[0-9a-f]{7,40}$/i;
 
 export function satisfiesConstraint(constraint: string, installed: string): boolean {
   if (installed === "unknown") return false;

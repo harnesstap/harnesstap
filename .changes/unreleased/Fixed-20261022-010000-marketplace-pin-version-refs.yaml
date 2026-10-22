@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'A marketplace dependency pinned to a version now resolves when the marketplace entry lists a commit instead of a version, or when the plugin repository has no `v<version>` tag: HarnessTap also tries the `<name>-v<version>` tag, the entry''s pinned commit and the default branch, and keeps one only when its plugin.json declares the requested version (for example `chrome-devtools-mcp@claude-plugins-official` 1.11.0). A commit SHA given as a marketplace dependency version is reported as such, with how to pin a commit instead.'
+time: 2026-10-22T11:00:00.000Z
