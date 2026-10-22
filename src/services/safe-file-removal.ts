@@ -38,6 +38,7 @@ import {
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { saveRemovedOwnership } from "./removed-ownership.js";
+import { hashFileContentStreaming } from "./streaming-content-hash.js";
 import { shortenHomePath } from "../utils/home-path.js";
 import { removeFileOrLink } from "../utils/remove-file-or-link.js";
 
@@ -121,12 +122,7 @@ function hashOnDiskFileUncached(fullPath: string): string | undefined {
     const text = readDiskTextOnce(fullPath);
     return text === null ? undefined : hashGeneratedContent(text);
   }
-  try {
-    const bytes = readFileSync(fullPath);
-    return hashGeneratedContent(bytes.toString("utf-8"));
-  } catch {
-    return undefined;
-  }
+  return hashFileContentStreaming(fullPath);
 }
 
 const S_IFMT = 0o170000;
