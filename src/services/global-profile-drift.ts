@@ -3,6 +3,9 @@ import { unreadNotificationCount } from "./notifications.js";
 import { readUpstreamCheckSummary, type UpstreamCheckSummary } from "./upstream-check-read.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
+import { diffHostPluginView } from "./package-cache/host-plugin.js";
+import { hostPluginPackageDir } from "./package-cache/paths.js";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
 import { resolvePluginSelector } from "../models/plugin-model.js";
@@ -126,6 +129,54 @@ export function globalProfileStatusGaps(status: GlobalProfileStatus): {
 } {
   const missing = status.depth === "full" ? listMissingHarnessRows(status.harnesses) : [];
   return { inSync: !status.has_drift && missing.length === 0, missing };
+}
+
+const HOST_PLUGIN_VIEW_PATH = /^(\.claude\/plugins\/cache\/([^/]+)\/([^/]+)\/([^/]+))\//;
+
+/**
+ * A host plugin cache folder (`~/.claude/plugins/cache/<mkt>/<name>/<ver>`)
+ * is emitted from itself, so comparing the expected files with the disk finds
+ * nothing even when it holds the user's files instead of the plugin's. Compare
+ * each such folder with HarnessTap's copy of the plugin instead. Files a
+ * refresh would keep are reported as kept, not as pending writes.
+ */
+export function hostPluginFolderChanges(
+  homeRoot: string,
+  expectedFiles: ReadonlyArray<{ path: string }>,
+  known: readonly DriftFileChange[],
+): DriftFileChange[] {
+  const folders = new Map<string, { marketplace: string; name: string; version: string }>();
+  for (const file of expectedFiles) {
+    const match = HOST_PLUGIN_VIEW_PATH.exec(file.path.replaceAll("\\", "/"));
+    if (!match?.[1] || !match[2] || !match[3] || !match[4]) continue;
+    folders.set(match[1], { marketplace: match[2], name: match[3], version: match[4] });
+  }
+  if (folders.size === 0) return [];
+  const seen = new Set(known.map((change) => change.path));
+  const harnesstapDir = harnesstapDirForHomeRoot(homeRoot);
+  const changes: DriftFileChange[] = [];
+  for (const [folder, plugin] of folders) {
+    const differences = diffHostPluginView({
+      homeRoot,
+      hostView: join(homeRoot, folder),
+      canonicalDir: hostPluginPackageDir(harnesstapDir, plugin.marketplace, plugin.name, plugin.version),
+    });
+    for (const difference of differences) {
+      const path = `${folder}/${difference.path}`;
+      if (seen.has(path)) continue;
+      seen.add(path);
+      if (difference.state === "missing") changes.push({ path, type: "deleted" });
+      else if (difference.state === "stale") changes.push({ path, type: "modified" });
+      else {
+        changes.push({
+          path,
+          type: "modified",
+          removal_group: difference.state === "modified" ? "owned_modified" : "unmanaged",
+        });
+      }
+    }
+  }
+  return changes;
 }
 
 function keptContentDiff(
@@ -633,6 +684,10 @@ async function loadDriftCore(input: {
       );
     }
   }
+  });
+
+  traceSpan("drift.host-plugin-folders", () => {
+    changes.push(...hostPluginFolderChanges(homeRoot, expectedApply.expected_files ?? [], changes));
   });
 
   const applied = Boolean(latestSnapshot);

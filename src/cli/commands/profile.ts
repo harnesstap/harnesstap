@@ -1,5 +1,6 @@
 import { Option, type Command } from "commander";
 import { getDb } from "../../db/connection.js";
+import { type DriftFileChange, driftChangeIsKept } from "../../services/project-drift.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
 import { getPlugin } from "../../models/plugin-model.js";
@@ -271,6 +272,7 @@ profileCmd
         );
       } else if (gaps.inSync) {
         ui.success(`Global harness files are in sync with profile ${ui.theme.accent(status.active_profile)}.`);
+        printKeptStatusChanges(status.changes);
       } else {
         ui.warn(
           `Global harness files are out of sync with profile ${ui.theme.accent(status.active_profile)}.`,
@@ -317,6 +319,22 @@ profileCmd
       fail(err instanceof Error ? err.message : String(err));
     }
   });
+
+/**
+ * Files apply keeps (changed since HarnessTap wrote them, or not written by
+ * it) do not make the profile out of sync, but are still worth naming.
+ */
+function printKeptStatusChanges(changes: readonly DriftFileChange[]): void {
+  const kept = changes.filter(driftChangeIsKept);
+  if (kept.length === 0) return;
+  ui.dim(
+    `${formatCount(kept.length, "file")} ${kept.length === 1 ? "differs" : "differ"} from the profile and apply keeps ${kept.length === 1 ? "it" : "them"} as ${kept.length === 1 ? "it is" : "they are"}:`,
+  );
+  for (const change of kept) {
+    const why = change.removal_group === "owned_modified" ? "you changed it" : "not made by HarnessTap";
+    console.log(`  ${change.path}   ${why}`);
+  }
+}
 
 profileCmd
   .command("use")

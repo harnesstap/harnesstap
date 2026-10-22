@@ -184,6 +184,49 @@ function copyViewFiles(
   return hashes;
 }
 
+/** How one file of a host plugin folder differs from the plugin's package tree. */
+export interface HostPluginViewDifference {
+  /** Path inside the folder. */
+  path: string;
+  /**
+   * - `missing`: the plugin has it, the folder does not
+   * - `stale`: HarnessTap wrote it unchanged, the plugin's bytes differ or it left the plugin
+   * - `modified` / `unmanaged`: changed since HarnessTap wrote it, or not written by
+   *   HarnessTap; a refresh keeps it
+   */
+  state: "missing" | "stale" | KeptHostPluginViewReason;
+}
+
+/**
+ * Compare a host plugin cache folder with the plugin's package tree without
+ * changing anything: what the next refresh would add, replace or keep.
+ */
+export function diffHostPluginView(input: {
+  homeRoot: string;
+  hostView: string;
+  canonicalDir: string;
+}): HostPluginViewDifference[] {
+  const { hostView, canonicalDir } = input;
+  if (!existsSync(hostView) || !existsSync(canonicalDir) || hostView === canonicalDir) return [];
+  const packageFiles = listTreeFiles(canonicalDir, (path) =>
+    shouldCopyPackageTreePath(canonicalDir, path),
+  );
+  const packageSet = new Set(packageFiles);
+  const recorded = { ...(readHostPluginViewRecord(hostView)?.files ?? {}) };
+  const differences: HostPluginViewDifference[] = [];
+  const present = new Set<string>();
+  for (const path of listTreeFiles(hostView)) {
+    present.add(path);
+    if (packageSet.has(path) && sameBytes(join(hostView, path), join(canonicalDir, path))) continue;
+    const ownership = hostViewFileOwnership({ homeRoot: input.homeRoot, hostView, path, recorded });
+    differences.push({ path, state: ownership === "owned" ? "stale" : ownership });
+  }
+  for (const path of packageFiles) {
+    if (!present.has(path)) differences.push({ path, state: "missing" });
+  }
+  return differences.sort((a, b) => a.path.localeCompare(b.path));
+}
+
 /**
  * Write a plugin's package tree into the host plugin cache folder
  * (`~/.claude/plugins/cache/<mkt>/<name>/<ver>`).
