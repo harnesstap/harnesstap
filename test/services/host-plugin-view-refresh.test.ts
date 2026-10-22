@@ -222,15 +222,17 @@ describe("refreshing a host plugin folder HarnessTap did not create", () => {
     expect(takeKeptHostPluginViewFiles()).toHaveLength(1);
   });
 
-  it("replaces them with --force-remove, backing each one up", () => {
+  it("keeps them even with --force-remove", () => {
     writeTextFile(view("skills/claude/SKILL.md"), "from claude\n");
     setHostPluginViewForceReplace(true);
 
     mirror(packageTree({ ...MANIFEST, "skills/claude/SKILL.md": "package\n" }));
 
-    expect(readFileSync(view("skills/claude/SKILL.md"), "utf8")).toBe("package\n");
-    expect(trashFiles().get(`${VIEW}/skills/claude/SKILL.md`)).toBe("from claude\n");
-    expect(takeKeptHostPluginViewFiles()).toEqual([]);
+    expect(readFileSync(view("skills/claude/SKILL.md"), "utf8")).toBe("from claude\n");
+    expect(trashFiles().has(`${VIEW}/skills/claude/SKILL.md`)).toBe(false);
+    expect(takeKeptHostPluginViewFiles()[0]?.files).toEqual([
+      { path: "skills/claude/SKILL.md", reason: "unmanaged", inPlugin: true },
+    ]);
   });
 });
 
@@ -380,8 +382,31 @@ describe("settleKeptHostPluginViewFiles", () => {
     );
     const text = errors.join("\n");
     expect(text).toContain("notes/mine.md (not written by HarnessTap, not in the plugin)");
-    expect(text).toContain("replace 1 file with the plugin's version and remove 1 the plugin does not have");
+    expect(text).toContain("To back up the 1 file you changed, then replace 1 file with the plugin's version");
+    expect(text).toContain("HarnessTap never replaces or removes files it did not write, even with --force-remove.");
+    expect(text).not.toContain("remove 1 the plugin does not have");
     expect(text).not.toContain("would replace");
+  });
+
+  it("names the plugin does not have a file HarnessTap wrote that changed since", async () => {
+    const { errors } = await settleQuietly(
+      [{ ...entry, files: [{ path: "skills/old/SKILL.md", reason: "modified", inPlugin: false }] }],
+      false,
+    );
+    const text = errors.join("\n");
+    expect(text).toContain("To back them up, then remove 1 file the plugin does not have, run the command again with --force-remove.");
+    expect(text).not.toContain("never replaces");
+  });
+
+  it("does not offer --force-remove for files HarnessTap did not write", async () => {
+    const { errors, asked } = await settleQuietly(
+      [{ ...entry, files: [{ path: "notes/mine.md", reason: "unmanaged", inPlugin: false }] }],
+      true,
+    );
+    const text = errors.join("\n");
+    expect(asked).toEqual([]);
+    expect(text).not.toContain("run the command again with --force-remove");
+    expect(text).toContain("HarnessTap never replaces or removes files it did not write");
   });
 
   it("stays quiet and does not ask for files it already reported", async () => {

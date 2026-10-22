@@ -199,6 +199,13 @@ export type ManagedPathOwnership = "unowned" | "owned" | "modified";
  */
 const HOST_PLUGIN_CACHE_SEGMENT = "plugins/cache/";
 
+/** True when a host plugin folder's record says HarnessTap did not write the path. */
+function hostPluginViewSaysNotWritten(rootPath: string, relativePath: string): boolean {
+  const normalized = normalizeRelative(relativePath);
+  return normalized.includes(HOST_PLUGIN_CACHE_SEGMENT)
+    && hostPluginViewWrittenHash(resolve(rootPath, normalized)) === null;
+}
+
 export function classifyManagedPathOwnership(
   rootPath: string,
   relativePath: string,
@@ -378,7 +385,9 @@ export function planSafeFileRemovals(
 
     const ownership = classifyManagedPathOwnership(rootPath, relativePath);
     if (ownership === "unowned") {
-      if (options.forceRemove) {
+      // In a host plugin folder the folder's record says what HarnessTap
+      // wrote: a file it did not write is the user's, kept even with --force-remove.
+      if (options.forceRemove && !hostPluginViewSaysNotWritten(rootPath, relativePath)) {
         remove.push(relativePath);
         forced.push({ path: relativePath, reason: "unmanaged" });
         continue;

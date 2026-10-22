@@ -25,7 +25,7 @@ export interface ReplacedHostPluginViewFiles {
   /** The id `ht revert` takes to put them back. */
   backupId: string;
   files: string[];
-  /** The subset HarnessTap did not write or that changed since (--force-remove). */
+  /** The subset that changed since HarnessTap wrote it (--force-remove). Files HarnessTap did not write are never replaced. */
   notWrittenByHarnessTap: string[];
   /** The subset the plugin no longer has, so they were removed, not replaced. */
   removed?: string[];
