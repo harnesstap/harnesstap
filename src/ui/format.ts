@@ -13,15 +13,18 @@ export function shortenId(value: string): string {
   return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }
 
+/** Formats a timestamp in the local time zone, like the rest of the CLI output. */
 export function formatAbsoluteTime(
   value: string | number | Date,
   options?: { includeTime?: boolean },
 ): string {
   const date = value instanceof Date ? value : new Date(value);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   if (options?.includeTime) {
-    return date.toISOString().slice(0, 19).replace("T", " ");
+    return `${day} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   }
-  return date.toISOString().slice(0, 10);
+  return day;
 }
 
 export function formatRelativeTime(value: string | number | Date): string {
