@@ -1,8 +1,8 @@
 import { existsSync, lstatSync } from "node:fs";
-import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 import { getPluginByName } from "../models/plugin-model.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import { assertContainedPath } from "../utils/path-containment.js";
 import {
   isFilesystemApmDependency,
@@ -86,7 +86,7 @@ export function apmDependencyIdentity(dependency: ParsedApmDependency, declaring
 
 function expandHome(originRef: string): string {
   if (originRef.startsWith("~/") || originRef.startsWith("~\\")) {
-    return join(homedir(), originRef.slice(2));
+    return join(resolveHomeRoot(), originRef.slice(2));
   }
   return originRef;
 }

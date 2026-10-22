@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -8,6 +7,7 @@ import {
   type PluginMarketplaceEntry,
   type PluginMarketplacePlatform,
 } from "../config/settings.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import { builtinMarketplaceEntry, builtinMarketplaceGitUrl } from "./builtin-marketplaces.js";
 
 function stripGitSuffix(value: string): string {
@@ -42,7 +42,7 @@ export function normalizeMarketplaceUrl(url: string): string {
 
   if (isLocalFilesystemSource(trimmed)) {
     const expanded = trimmed.startsWith("~/")
-      ? resolve(homedir(), trimmed.slice(2))
+      ? resolve(resolveHomeRoot(), trimmed.slice(2))
       : isAbsolute(trimmed)
         ? trimmed
         : resolve(trimmed);

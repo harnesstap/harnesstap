@@ -3,4 +3,4 @@
 timeout = 30000
 # Match vitest-style file isolation: avoid leaked DB/env state between test files.
 isolate = true
-preload = ["./test/helpers/disable-telemetry.ts"]
+preload = ["./test/helpers/disable-telemetry.ts", "./test/helpers/isolate-home.ts"]
