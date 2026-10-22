@@ -113,7 +113,7 @@ describe("host plugin folder backups", () => {
     writeFileSync(join(canonicalDir, "a.md"), "a\n");
     // HarnessTap writes the folder, so a.md is its own and may be removed.
     mirrorHostPluginView({ homeRoot: context.homeDir, marketplace: "m", pluginName: "p", version: "1.0.0", canonicalDir });
-    const unlinkSpy = spyOn(fs, "unlinkSync").mockImplementation(() => {
+    const unlinkSpy = spyOn(fs, "renameSync").mockImplementation(() => {
       throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
     });
     try {
