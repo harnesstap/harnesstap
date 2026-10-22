@@ -92,6 +92,7 @@ export async function checkoutPluginVersionFromHistory(input: {
         mkdirSync(input.targetDir, { recursive: true });
         cpSync(source, input.targetDir, {
           recursive: true,
+          verbatimSymlinks: true,
           filter: (path) => !path.startsWith(join(tree, ".git")),
         });
         return { ok: true, commit };
