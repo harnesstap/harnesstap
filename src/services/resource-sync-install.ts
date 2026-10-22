@@ -3,7 +3,9 @@ import { listResources } from "../models/resource.js";
 import { marketplaceIsConfigured } from "../plugins/claude-plugin-ref.js";
 import type { PluginDependencyMetadata } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { listPlugins } from "../models/plugin-model.js";
 import { wellKnownMarketplaceEntry } from "./builtin-marketplaces.js";
+import { registerDeclaredMarketplaces } from "./claude-marketplace-bootstrap.js";
 import { installMarketplacePinIntoCache } from "./marketplace-pin-cache.js";
 import { findKnownMarketplace } from "./marketplace-registry.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
@@ -29,6 +31,19 @@ function marketplaceIsResolvable(marketplace: string, homeRoot: string): boolean
       ?? wellKnownMarketplaceEntry(marketplace)
       ?? (marketplaceIsConfigured(homeRoot, marketplace) ? marketplace : undefined),
   );
+}
+
+/** Register `marketplace` when a library plugin's claude.toml declares its source. */
+function registerMarketplaceDeclaredByLibrary(marketplace: string): void {
+  const harnesstapDir = getHarnesstapDir();
+  if (findKnownMarketplace(harnesstapDir, marketplace)) return;
+  for (const plugin of listPlugins()) {
+    const entry = plugin.claude?.marketplaces?.[marketplace];
+    if (!entry) continue;
+    if (registerDeclaredMarketplaces({ marketplaces: { [marketplace]: entry } }, harnesstapDir).added.length > 0) {
+      return;
+    }
+  }
 }
 
 /**
@@ -64,6 +79,7 @@ export async function syncResourcesInstallingDependencies(
     if (!options.dryRun && !resolveInstallRoot(ref, homeRoot, options.claudePluginsRoot)) {
       const metadata = pin.metadata as PluginDependencyMetadata;
       const marketplace = parseDependencyRef(ref).namespace;
+      registerMarketplaceDeclaredByLibrary(marketplace);
       if (!marketplaceIsResolvable(marketplace, homeRoot)) {
         aggregated.checked += 1;
         aggregated.stale.push({

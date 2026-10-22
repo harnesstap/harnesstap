@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'A profile''s dependencies on marketplaces it declares in `com.harnesstap/claude.toml` now resolve in a home without the `claude` binary: HarnessTap registers each missing declared marketplace (GitHub repo, git URL or local directory) itself on apply and on `ht resource sync`, and never changes one that is already registered.'
+time: 2026-10-22T13:00:00.000Z
