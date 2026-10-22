@@ -50,15 +50,26 @@ function restoreHint(backupId: string | undefined): string {
  */
 function announceReplaced(entry: ReplacedHostPluginViewFiles): string {
   const where = shortenHomePath(entry.hostView);
-  const count = formatCount(entry.files.length, "file");
+  const removed = new Set(entry.removed ?? []);
   const theirs = entry.notWrittenByHarnessTap;
+  const verb = removed.size === 0
+    ? "replaced"
+    : removed.size === entry.files.length
+      ? "removed"
+      : "replaced or removed";
+  const count = formatCount(entry.files.length, "file");
   let what = `${count} in ${where}: ${listPaths(entry.files)}`;
   if (theirs.length === entry.files.length) {
     what = `${count} in ${where} that HarnessTap did not write or that changed since: ${listPaths(theirs)}`;
   } else if (theirs.length > 0) {
     what += `. Of those, HarnessTap did not write or you changed: ${listPaths(theirs)}`;
   }
-  return `Backed up and replaced ${what}.${restoreHint(entry.backupId)}`;
+  if (removed.size > 0 && removed.size < entry.files.length) {
+    what += `. Removed because the plugin no longer has them: ${listPaths([...removed])}`;
+  } else if (removed.size > 0) {
+    what += ". The plugin no longer has them";
+  }
+  return `Backed up and ${verb} ${what}.${restoreHint(entry.backupId)}`;
 }
 
 function describeFiles(entry: KeptHostPluginViewFiles): string {

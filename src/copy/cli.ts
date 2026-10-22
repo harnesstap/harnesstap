@@ -343,7 +343,7 @@ export function applyWroteLine(input: {
     parts.push(`unchanged ${input.unchanged}`);
   }
   const [first, ...rest] = parts;
-  const head = first ?? "";
+  const head = first ? `${first.charAt(0).toUpperCase()}${first.slice(1)}` : "";
   if (rest.length === 0) {
     return `${head}.`;
   }
