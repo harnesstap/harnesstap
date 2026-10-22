@@ -19,6 +19,7 @@ import {
   upsertPackageCacheEntry,
 } from "../../models/package-cache-entry.js";
 import { cacheVersionDir } from "../host-plugin-source.js";
+import { claudeEmitDerivedPaths } from "../host-plugin-spec-emit.js";
 import { isPluginInstallRoot } from "../plugin-source-import.js";
 import {
   classifyManagedPathOwnership,
@@ -273,6 +274,7 @@ export function mirrorHostPluginView(input: {
   const created = record?.created === true;
   const recorded = { ...(record?.files ?? {}) };
   const packageSet = new Set(packageFiles);
+  const applyWrites = claudeEmitDerivedPaths(input.canonicalDir, packageFiles);
   const unchanged = new Set<string>();
   const replace: string[] = [];
   const ownedPaths = new Set<string>();
@@ -288,6 +290,13 @@ export function mirrorHostPluginView(input: {
       path,
       recorded,
     });
+    if (ownership === "owned" && applyWrites.has(path)) {
+      // The apply writes this file with its own bytes (for example the Claude
+      // manifest made from the package's root plugin.json). Replacing it here
+      // would only make the apply write it again, with a new backup, each run.
+      unchanged.add(path);
+      continue;
+    }
     if (ownership === "owned") ownedPaths.add(path);
     if (ownership === "owned" || hostPluginViewForceReplace()) {
       replace.push(path);

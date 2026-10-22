@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { lookupApSchema } from "./agent-plugins/schema-registry.js";
 import { ensurePluginDataDir } from "./plugin-data-dir.js";
 import {
@@ -112,6 +114,37 @@ function dataDirFor(pluginName: string, warnings: string[]): string {
     warnings.push(message);
     return "";
   }
+}
+
+/**
+ * Paths a Claude Code emit of an Agent Plugins package writes with bytes of
+ * its own (the Claude manifest, `.mcp.json`, mirrored command, agent and hook
+ * folders). Empty when the package has no current Agent Plugins manifest.
+ */
+export function claudeEmitDerivedPaths(
+  packageDir: string,
+  packageFiles: readonly string[],
+): Set<string> {
+  const paths = new Set<string>();
+  let content: string;
+  try {
+    content = readFileSync(join(packageDir, "plugin.json"), "utf8");
+  } catch {
+    return paths;
+  }
+  if (!specManifest([{ relativePath: "plugin.json", content }])) return paths;
+  paths.add(".claude-plugin/plugin.json");
+  if (packageFiles.includes("mcp.json")) paths.add(".mcp.json");
+  for (const [fromPrefix, toPrefix] of [
+    [HT_COMMANDS, "commands/"],
+    [HT_AGENTS, "agents/"],
+    [HT_HOOKS, "hooks/"],
+  ] as const) {
+    for (const path of packageFiles) {
+      if (path.startsWith(fromPrefix)) paths.add(`${toPrefix}${path.slice(fromPrefix.length)}`);
+    }
+  }
+  return paths;
 }
 
 /**
