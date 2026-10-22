@@ -4,6 +4,7 @@ import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
 import { getPlugin } from "../../models/plugin-model.js";
 import { dryRunStashLine, SWITCH_CHANGES_FLAG_HELP } from "../../copy/cli.js";
+import { harnessDisplayName } from "../../copy/scope.js";
 import { listAttachedPluginRefs } from "../../services/plugin-composition.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
 import { handlePluginListCommand } from "../../services/plugin-list.js";
@@ -19,7 +20,10 @@ import {
   useProfileCommand,
 } from "../../services/profile-commands.js";
 import { PinnedPluginInstallConsentError } from "../../services/plugin-pin-apply.js";
-import { detectGlobalProfileStatus } from "../../services/global-profile-drift.js";
+import {
+  detectGlobalProfileStatus,
+  globalProfileStatusGaps,
+} from "../../services/global-profile-drift.js";
 import { maybePromptProfilePluginDelete } from "../../services/profile-delete-prompt.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "../../services/profile-switch-prompt.js";
 import {
@@ -251,6 +255,7 @@ profileCmd
         depth,
         projectPath: opts.project,
       });
+      const gaps = globalProfileStatusGaps(status);
       if (format === "json") {
         printJson(status);
       } else if (!status.active_profile) {
@@ -264,7 +269,7 @@ profileCmd
         ui.hint(
           `Run ${formatHintCommand(["profile", "use", status.active_profile])} to materialize home harness files.`,
         );
-      } else if (!status.has_drift) {
+      } else if (gaps.inSync) {
         ui.success(`Global harness files are in sync with profile ${ui.theme.accent(status.active_profile)}.`);
       } else {
         ui.warn(
@@ -281,6 +286,14 @@ profileCmd
             console.log(`  ${change.path}`);
           }
         }
+        for (const gap of gaps.missing) {
+          const harnessName = harnessDisplayName(gap.harness);
+          ui.dim(
+            gap.kind === "plugin"
+              ? `Plugin ${gap.id} is not installed in ${harnessName}.`
+              : `MCP server ${gap.id} is missing or different in ${harnessName}.`,
+          );
+        }
         ui.hint(
           `Run ${formatHintCommand(["profile", "use", status.active_profile])} to refresh global harness files.`,
         );
@@ -296,7 +309,7 @@ profileCmd
         );
       }
 
-      if (opts.check && status.has_drift) {
+      if (opts.check && !gaps.inSync) {
         process.exitCode = 1;
       }
     } catch (err) {
