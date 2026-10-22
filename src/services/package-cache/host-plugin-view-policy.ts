@@ -87,6 +87,23 @@ export function takeReplacedHostPluginViewFiles(): ReplacedHostPluginViewFiles[]
   return replaced.splice(0, replaced.length);
 }
 
+/**
+ * Home-relative paths of the kept files a host plugin notice will report in
+ * this process (not the ones already reported last time). Peeks, never drains.
+ */
+export function pendingKeptHostPluginViewPaths(): string[] {
+  return kept
+    .filter((entry) => !entry.alreadyReported)
+    .flatMap((entry) => {
+      const root = entry.homeRoot.replace(/[\\/]+$/, "");
+      const folder = entry.hostView.replace(/\\/g, "/");
+      const prefix = `${root.replace(/\\/g, "/")}/`;
+      if (!folder.startsWith(prefix)) return [];
+      const rel = folder.slice(prefix.length).replace(/\/+$/, "");
+      return entry.files.map((file) => `${rel}/${file.path.replace(/\\/g, "/")}`);
+    });
+}
+
 /** Drain the files kept by host plugin refreshes since the last call. */
 export function takeKeptHostPluginViewFiles(): KeptHostPluginViewFiles[] {
   return kept.splice(0, kept.length);
