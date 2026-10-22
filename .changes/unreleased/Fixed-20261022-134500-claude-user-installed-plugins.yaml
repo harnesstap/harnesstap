@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'A plugin you install with Claude Code from a marketplace HarnessTap registered (for example `claude plugin install name@marketplace` after `claude plugin marketplace update`) is now yours: switching profiles keeps its installed_plugins.json record, its enabledPlugins entry, its cache folder and the marketplace entry it comes from, with a warning that names the `claude plugin uninstall` command, instead of deleting them. Applying the profile again leaves that install alone too.'
+time: 2026-10-22T13:45:00.000000000-10:00
