@@ -46,7 +46,7 @@ describe("buildApManifest", () => {
     addDependency(plugin.id, "web-search@anthropics");
     expect(buildApManifest(plugin.id).extensions?.["com.harnesstap"]?.dependencies).toEqual([
       { name: "base", constraint: "^2.0.0", source: "local" },
-      { name: "web-search", constraint: "*", source: "marketplace" },
+      { name: "web-search@anthropics", constraint: "*", source: "marketplace" },
     ]);
   });
 

@@ -69,8 +69,11 @@ describe("tracked directories parent title icons", () => {
     expect(parentTitle).not.toContain("entry.platform_ids.length");
   });
 
-  test("keeps comma-separated slugs on the parent meta line", () => {
-    expect(parentMeta).toContain("entry.platform_ids.join(\", \")");
+  test("keeps comma-separated harness names on the parent meta line", () => {
+    expect(modalSource).toContain(
+      'return ids.map((id) => harnessDisplayName(id)).join(", ");',
+    );
+    expect(parentMeta).toContain("platformNames(entry.platform_ids)");
     expect(parentMeta).toContain("entry.resource_count");
   });
 
@@ -107,8 +110,8 @@ describe("tracked directories nested folder icons", () => {
     expect(folderLabel).not.toContain("folder.platform_ids.length");
   });
 
-  test("keeps comma-separated slugs on the folder meta line", () => {
-    expect(folderMeta).toContain("folder.platform_ids.join(\", \")");
+  test("keeps comma-separated harness names on the folder meta line", () => {
+    expect(folderMeta).toContain("platformNames(folder.platform_ids)");
   });
 
   test("folder label row matches parent title flex alignment", () => {

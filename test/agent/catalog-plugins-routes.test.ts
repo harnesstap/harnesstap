@@ -140,9 +140,10 @@ describe("agent catalog plugin routes", () => {
       tagged: boolean;
     };
     expect(body.tagged).toBe(false);
-    expect(body.plugin.name).toBe("team-from-cloud");
+    // #475: a pull keeps the catalog slug, not the package's manifest name.
+    expect(body.plugin.name).toBe("team");
 
-    const installed = getPluginByName("team-from-cloud");
+    const installed = getPluginByName("team");
     expect(installed).toBeDefined();
     expect(isProfilePlugin(installed!)).toBe(false);
     expect(installed!.tags).not.toContain(PROFILE_PLUGIN_TAG);

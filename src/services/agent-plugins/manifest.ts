@@ -102,8 +102,10 @@ export function buildApManifest(pluginId: string, options?: { nested?: boolean }
     schema: HT_EXTENSION_SCHEMA,
     sourceName: plugin.name,
     profile: plugin.tags.includes("profile"),
+    // The full ref (`name@marketplace`, a git URL, `org/catalog/slug`) is
+    // what import reads back; the bare name would lose the source.
     dependencies: listDependencies(pluginId).map((dependency) => ({
-      name: dependency.name,
+      name: dependency.ref,
       constraint: dependency.version_constraint || "*",
       source: dependency.source_kind,
     })),
