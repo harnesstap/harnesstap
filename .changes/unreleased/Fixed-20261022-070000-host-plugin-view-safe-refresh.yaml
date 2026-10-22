@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'Refreshing a plugin in `~/.claude/plugins/cache` no longer deletes the existing folder. Only unchanged files HarnessTap wrote are replaced or removed, each backed up first; files it did not write or that changed are kept (asked in a terminal, `--force-remove` otherwise), and only empty folders are removed.'
+time: 2026-10-22T17:00:00.000000Z

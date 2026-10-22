@@ -84,6 +84,9 @@ describe("host plugin folders a HarnessTap install created", () => {
     expect(removal.skipped).toEqual([]);
     expect(existsSync(join(ctx.homeDir, ".claude/plugins/cache/mkta"))).toBe(false);
     expect(existsSync(join(removal.backupDir, ...SKILL.split("/")))).toBe(true);
-    expect(readFileSync(join(ctx.homeDir, ".harnesstap/cache/host-plugin-views.json"), "utf8").trim()).toBe("[]");
+    const records = JSON.parse(
+      readFileSync(join(ctx.homeDir, ".harnesstap/cache/host-plugin-views.json"), "utf8"),
+    ) as { views: Record<string, unknown> };
+    expect(records.views).toEqual({});
   });
 });

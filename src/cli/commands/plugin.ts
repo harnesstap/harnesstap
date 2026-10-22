@@ -2899,6 +2899,10 @@ pluginCmd
   )
   .option("--to <plugin>", "Plugin that receives the dependency (skips GitHub library import)")
   .addOption(new Option("--layer <plugin>", "Deprecated alias for --to").hideHelp())
+  .option(
+    "--force-remove",
+    "Back up and replace files in a host plugin cache folder that HarnessTap did not write",
+  )
   .option("--format <mode>", "Output format: human or json", "human")
   .description(
     "Import a GitHub plugin.json package into the library, or add a dependency to a plugin with --to",

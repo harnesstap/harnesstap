@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
-import { isInHostPluginViewCreatedByHarnessTap } from "./package-cache/host-plugin.js";
+import { isInHostPluginViewCreatedByHarnessTap } from "./package-cache/host-plugin-views.js";
 import { skippedDuplicateCommand, skippedHostPluginHook } from "../copy/cli.js";
 import {
   findImportedSnapshotOwnersByFile,
