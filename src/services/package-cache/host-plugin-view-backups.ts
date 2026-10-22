@@ -4,8 +4,8 @@ import { ulid } from "ulid";
 import { getHarnesstapDir } from "../../db/connection.js";
 import { listApplyRemovalBackups } from "../../models/apply-removal-backup.js";
 import { executeSafeFileRemovals } from "../safe-file-removal.js";
-import { planHostPluginViewRemovals } from "./host-plugin-view-ownership.js";
-import { forgetHostPluginViewFiles } from "./host-plugin-views.js";
+import { hostViewFileOwnership, planHostPluginViewRemovals } from "./host-plugin-view-ownership.js";
+import { forgetHostPluginViewFiles, readHostPluginViewRecord } from "./host-plugin-views.js";
 import { removeFileOrLink } from "../../utils/remove-file-or-link.js";
 
 /**
@@ -172,6 +172,7 @@ export function restoreHostPluginViewBackup(
   const rows = listApplyRemovalBackups({ apply_id: backupId });
   const toWrite: Array<{ path: string; fullPath: string; content: Buffer; isLink: boolean }> = [];
   const toReplace: string[] = [];
+  const recorded = { ...(readHostPluginViewRecord(backup.host_view)?.files ?? {}) };
   for (const row of rows) {
     const fullPath = resolve(backup.home_root, row.relative_path);
     const path = relative(backup.host_view, fullPath).split(sep).join("/");
@@ -198,7 +199,14 @@ export function restoreHostPluginViewBackup(
       toWrite.push({ path, fullPath, content, isLink });
       continue;
     }
-    if (present(fullPath) && !options.forceRemove) {
+    // A file with exactly the bytes HarnessTap wrote there (for example the
+    // plugin's version that replaced the backed-up one) is backed up and
+    // replaced without --force-remove; anything else needs it.
+    if (
+      present(fullPath)
+      && !options.forceRemove
+      && hostViewFileOwnership({ homeRoot: backup.home_root, hostView: backup.host_view, path, recorded }) !== "owned"
+    ) {
       result.skipped.push({ path, reason: "changed" });
       continue;
     }
