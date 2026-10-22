@@ -349,6 +349,8 @@ export function keptFilesInLeftHostPluginFolders(
         path,
         reason: "unmanaged",
         message: `Skipped removing ${path} (not managed by HarnessTap).`,
+        // HarnessTap never wrote it, so --force-remove would not remove it either.
+        forceable: false,
       });
     }
   }
