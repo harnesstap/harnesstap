@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import semver from "semver";
 import { getHarnesstapDir, harnesstapDirForHomeRoot } from "../db/connection.js";
@@ -671,7 +671,7 @@ export function cacheVersionDir(
 
 async function clonePluginVersion(input: {
   url: string;
-  gitRef: string;
+  gitRef: string | undefined;
   targetDir: string;
   runCommand: RunCommand;
 }): Promise<{ ok: boolean; message: string }> {
@@ -683,7 +683,7 @@ async function clonePluginVersion(input: {
     );
   return refreshGitSource({
     url: githubCloneUrl(input.url),
-    ref: input.gitRef,
+    ...(input.gitRef ? { ref: input.gitRef } : {}),
     targetDir: input.targetDir,
     runCommand: run,
   });
@@ -694,6 +694,7 @@ export function gitRefsToTry(input: {
   storedRef?: string | null;
   sourceRef?: string | null;
   advertisedVersion?: string | null;
+  pluginName?: string;
 }): string[] {
   const refs: string[] = [];
   const add = (value: string | null | undefined) => {
@@ -708,7 +709,43 @@ export function gitRefsToTry(input: {
   }
   add(`v${input.version}`);
   add(input.version);
+  // Monorepos and release tooling tag `<name>-v<version>`
+  // (chrome-devtools-mcp-v1.11.0).
+  if (input.pluginName) add(`${input.pluginName}-v${input.version}`);
   return refs;
+}
+
+/**
+ * Refs whose content is only taken when its plugin.json declares the
+ * requested version: the marketplace's pinned commit when the entry
+ * advertises a commit rather than that version, then the default branch
+ * (`undefined`). A plugin that is never tagged, or a marketplace entry that
+ * pins a commit and no version, still resolves when the content matches.
+ */
+export function verifiedGitRefsToTry(input: {
+  version: string;
+  sourceRef?: string | null;
+  advertisedVersion?: string | null;
+}): Array<string | undefined> {
+  const refs: Array<string | undefined> = [];
+  const sourceRef = input.sourceRef?.trim();
+  if (sourceRef && input.advertisedVersion !== input.version) refs.push(sourceRef);
+  refs.push(undefined);
+  return refs;
+}
+
+/** The version a plugin tree's own plugin.json declares, if any. */
+export function declaredPluginVersion(root: string): string | undefined {
+  for (const manifest of [join(root, ".claude-plugin", "plugin.json"), join(root, "plugin.json")]) {
+    if (!existsSync(manifest)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(manifest, "utf8")) as { version?: unknown };
+      if (typeof parsed.version === "string" && parsed.version.trim()) return parsed.version.trim();
+    } catch {
+      // An unreadable manifest declares nothing.
+    }
+  }
+  return undefined;
 }
 
 export async function downloadHostPluginVersion(input: {
@@ -767,22 +804,41 @@ export async function downloadHostPluginVersion(input: {
     snapshot,
     runCommand: input.runCommand,
   });
-  const refs = gitRefsToTry({
-    version: input.version,
-    storedRef: snapshot?.git_refs[input.version],
-    sourceRef: live?.gitRef ?? snapshot?.source_ref,
-    advertisedVersion: live?.version ?? snapshot?.advertised_version,
-  });
+  const sourceRef = live?.gitRef ?? snapshot?.source_ref;
+  const advertisedVersion = live?.version ?? snapshot?.advertised_version;
+  const candidates: Array<{ gitRef: string | undefined; verify: boolean }> = [
+    ...gitRefsToTry({
+      version: input.version,
+      storedRef: snapshot?.git_refs[input.version],
+      sourceRef,
+      advertisedVersion,
+      pluginName: name,
+    }).map((gitRef) => ({ gitRef, verify: false })),
+    ...verifiedGitRefsToTry({ version: input.version, sourceRef, advertisedVersion }).map(
+      (gitRef) => ({ gitRef, verify: true }),
+    ),
+  ];
   const run = input.runCommand ?? runCommandWithTimeout;
   if (sourceUrl) {
     let lastMessage = "git clone failed";
-    for (const gitRef of refs) {
+    const declared: string[] = [];
+    for (const { gitRef, verify } of candidates) {
       const cloned = await clonePluginVersion({
         url: sourceUrl,
         gitRef,
         targetDir: target,
         runCommand: run,
       });
+      if (cloned.ok && verify && isPluginInstallRoot(target)) {
+        const found = declaredPluginVersion(target);
+        if (found !== input.version) {
+          // Never keep another version's content under this version's name.
+          rmSync(target, { recursive: true, force: true });
+          const label = `${gitRef ?? "the default branch"} declares ${found ?? "no version"}`;
+          if (!declared.includes(label)) declared.push(label);
+          continue;
+        }
+      }
       if (cloned.ok && isPluginInstallRoot(target)) {
         upsertPackageCacheEntry({
           kind: "host_plugin",
@@ -805,7 +861,9 @@ export async function downloadHostPluginVersion(input: {
       lastMessage = cloned.message;
     }
     throw new Error(
-      `Could not download ${input.originRef}@${input.version}: ${lastMessage}`,
+      declared.length > 0
+        ? `Could not download ${input.originRef}@${input.version}: no tag ${input.version}, v${input.version} or ${name}-v${input.version}, and ${declared.join("; ")}`
+        : `Could not download ${input.originRef}@${input.version}: ${lastMessage}`,
     );
   }
   const advertised = live?.version ?? snapshot?.advertised_version;
