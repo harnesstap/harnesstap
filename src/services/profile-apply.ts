@@ -1,3 +1,4 @@
+import { recordedHostPluginViewPaths } from "./package-cache/host-plugin-views.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -797,7 +798,12 @@ export async function applyProfilePlugin(
       );
       warnSkippedRemovals(removal, writeKeeps);
       for (const result of applied.results) {
-        const installFiles = result.files.map((file) => file.path);
+        const emitted = result.files.map((file) => file.path);
+        // Files the install wrote into host plugin folders that the apply
+        // never emits (links such as AGENTS.md) belong to the manifest too.
+        const installFiles = [
+          ...new Set([...emitted, ...recordedHostPluginViewPaths(homeRoot, emitted)]),
+        ];
         if (installFiles.length === 0) continue;
         recordGlobalApplySnapshotInstall({
           snapshot_id: snapshot.id,
