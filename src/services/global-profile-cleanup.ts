@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   listGlobalApplySnapshotHeads,
@@ -7,7 +7,7 @@ import {
 import { getPlatform } from "../platforms/registry.js";
 import { isCursorHostManagedSkillsPath } from "./cursor-host-managed-skills.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
-import { isHarnessTapOwnedPath } from "./safe-file-removal.js";
+import { isHarnessTapOwnedPath, type SafeRemovalSkip } from "./safe-file-removal.js";
 import {
   isHostPluginCacheFilePath,
   recordedHostPluginViewPaths,
@@ -281,4 +281,76 @@ export function planStaleGlobalProfileFiles(
     harnesses,
     homeRoot,
   );
+}
+
+const HOST_PLUGIN_FOLDER_RE = /^(.*?(?:^|\/)plugins\/cache\/[^/]+\/[^/]+\/[^/]+)\//;
+
+function hostPluginFolderOf(path: string): string | undefined {
+  return HOST_PLUGIN_FOLDER_RE.exec(path.replace(/\\/g, "/"))?.[1];
+}
+
+function listFolderEntries(rootPath: string, folder: string): string[] {
+  const out: string[] = [];
+  const walk = (rel: string): void => {
+    let names: string[];
+    try {
+      names = readdirSync(join(rootPath, rel));
+    } catch {
+      return;
+    }
+    for (const name of names.sort()) {
+      const child = `${rel}/${name}`;
+      let isDir = false;
+      try {
+        // lstat: a link is an entry of its own, never followed.
+        isDir = lstatSync(join(rootPath, child)).isDirectory();
+      } catch {
+        continue;
+      }
+      if (isDir) walk(child);
+      else out.push(child);
+    }
+  };
+  walk(folder);
+  return out;
+}
+
+/**
+ * Files that stay in a host plugin folder the apply leaves behind (a profile
+ * switch or a version bump) and that the removal did not already report:
+ * the user's own files, which HarnessTap never wrote. Reported as kept so
+ * nothing is left there silently.
+ */
+export function keptFilesInLeftHostPluginFolders(
+  rootPath: string,
+  desiredFiles: readonly string[],
+  staleFiles: readonly string[],
+  removed: readonly string[],
+  skipped: readonly SafeRemovalSkip[],
+): SafeRemovalSkip[] {
+  const inUse = new Set(
+    desiredFiles.map(hostPluginFolderOf).filter((folder): folder is string => Boolean(folder)),
+  );
+  const left = new Set(
+    staleFiles
+      .map(hostPluginFolderOf)
+      .filter((folder): folder is string => Boolean(folder) && !inUse.has(folder as string)),
+  );
+  const reported = new Set([
+    ...removed,
+    ...skipped.filter((skip) => skip.reason !== "missing").map((skip) => skip.path),
+  ]);
+  const kept: SafeRemovalSkip[] = [];
+  for (const folder of [...left].sort()) {
+    if (!existsSync(join(rootPath, folder))) continue;
+    for (const path of listFolderEntries(rootPath, folder)) {
+      if (reported.has(path)) continue;
+      kept.push({
+        path,
+        reason: "unmanaged",
+        message: `Skipped removing ${path} (not managed by HarnessTap).`,
+      });
+    }
+  }
+  return kept;
 }

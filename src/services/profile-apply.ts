@@ -42,6 +42,7 @@ import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
 import { substituteResourcesForApply } from "./environment-var-substitution.js";
 import {
   collectOtherProfilesSnapshotTrackedFiles,
+  keptFilesInLeftHostPluginFolders,
   planStaleGlobalProfileFiles,
   planStaleMergeableHostConfigFiles,
 } from "./global-profile-cleanup.js";
@@ -265,11 +266,22 @@ function removeStaleGlobalProfileFiles(
     snapshotId: options.snapshotId,
     dryRun: options.dryRun,
   });
+  // A plugin folder left behind keeps the user's own files, even with
+  // --force-remove (HarnessTap never wrote them): say so.
+  const keptInLeftFolders = keptFilesInLeftHostPluginFolders(
+    homeRoot,
+    desiredFiles,
+    staleFiles,
+    removed.removed,
+    removed.skipped,
+  );
   return {
     ...removed,
     removed: [...removed.removed, ...rewritten.removed],
+    skipped: [...removed.skipped, ...keptInLeftFolders],
     warnings: [
       ...removed.warnings,
+      ...keptInLeftFolders.map((skip) => skip.message),
       ...rewritten.rewritten.map((path) => `Updated ${path} (removed HarnessTap-managed keys).`),
     ],
   };
