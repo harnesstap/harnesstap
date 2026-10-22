@@ -10,7 +10,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
-import { isInHostPluginViewCreatedByHarnessTap } from "./package-cache/host-plugin-views.js";
+import {
+  hostPluginViewWrittenHash,
+  isInHostPluginViewCreatedByHarnessTap,
+  recordHostPluginViewWrite,
+} from "./package-cache/host-plugin-views.js";
 import { skippedDuplicateCommand, skippedHostPluginHook } from "../copy/cli.js";
 import {
   findImportedSnapshotOwnersByFile,
@@ -70,6 +74,7 @@ import {
   classifyManagedPathOwnership,
   executeSafeFileRemovals,
   hasHarnessTapMaterialization,
+  hashFileOrLink,
   hashOnDiskFile,
   isHarnessTapOwnedPath,
   type SafeFileRemovalOptions,
@@ -588,6 +593,26 @@ export async function planMaterializationConflicts(
   });
 }
 
+/**
+ * True when `fullPath` is in a host plugin folder a HarnessTap install
+ * created and still holds the bytes HarnessTap wrote there. A version 1
+ * record (written before files were recorded) covers the whole folder.
+ */
+function holdsHarnessTapHostViewBytes(fullPath: string): boolean {
+  if (!isInHostPluginViewCreatedByHarnessTap(fullPath)) return false;
+  const written = hostPluginViewWrittenHash(fullPath);
+  if (written === undefined) return true;
+  return written !== null && written === hashFileOrLink(fullPath);
+}
+
+/** Keep a host plugin folder's record in step with what an apply writes into it. */
+function noteHostPluginViewWrite(fullPath: string): void {
+  if (!fullPath.split(sep).join("/").includes("/plugins/cache/")) return;
+  if (hostPluginViewWrittenHash(fullPath) === undefined) return;
+  const hash = hashFileOrLink(fullPath);
+  if (hash) recordHostPluginViewWrite(fullPath, hash);
+}
+
 export async function materializeFiles(
   files: SerializedFile[],
   rootPath: string,
@@ -672,7 +697,7 @@ export async function materializeFiles(
       return (
         (existsSync(fullPath)
           && !isHarnessTapOwnedPath(rootPath, file.path)
-          && !isInHostPluginViewCreatedByHarnessTap(fullPath))
+          && !holdsHarnessTapHostViewBytes(fullPath))
         || semanticallyMatchesExisting(fullPath, file)
       );
     });
@@ -712,9 +737,10 @@ export async function materializeFiles(
     }
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
     // A host plugin folder a HarnessTap install created holds HarnessTap's
-    // bytes, not the user's: never record them as preexisting.
-    const inCreatedHostView = isInHostPluginViewCreatedByHarnessTap(fullPath);
-    if (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path) && !inCreatedHostView) {
+    // bytes: never record them as preexisting. Anything else in it (a file
+    // the user added or changed) is the user's and is never adopted.
+    const htHostViewBytes = existsSync(fullPath) && holdsHarnessTapHostViewBytes(fullPath);
+    if (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path) && !htHostViewBytes) {
       if (!hasHarnessTapMaterialization(rootPath, file.path)) {
         recordPreexistingPath({
           root_path: rootPath,
@@ -728,7 +754,7 @@ export async function materializeFiles(
       }
     }
     if (semanticallyMatchesExisting(fullPath, file)) {
-      if (inCreatedHostView && !isHarnessTapOwnedPath(rootPath, file.path)) {
+      if (htHostViewBytes && !isHarnessTapOwnedPath(rootPath, file.path)) {
         adoptedFiles.push(file.path);
       }
       skippedFiles.push(file.path);
@@ -736,6 +762,7 @@ export async function materializeFiles(
     }
     writeSerializedFile(fullPath, file);
     writtenFiles.push(file.path);
+    noteHostPluginViewWrite(fullPath);
   }
 
   await clearLiveReadCachesAfterWrite();

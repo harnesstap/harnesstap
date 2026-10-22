@@ -19,10 +19,9 @@ import {
 } from "../../models/package-cache-entry.js";
 import { cacheVersionDir } from "../host-plugin-source.js";
 import { isPluginInstallRoot } from "../plugin-source-import.js";
-import { hashGeneratedContent } from "../materialization-ownership.js";
 import {
   classifyManagedPathOwnership,
-  executeSafeFileRemovals,
+  hashFileOrLink,
   hashOnDiskFile,
   isSymlinkPath,
 } from "../safe-file-removal.js";
@@ -31,7 +30,9 @@ import {
   type KeptHostPluginViewReason,
   hostPluginViewForceReplace,
   recordKeptHostPluginViewFiles,
+  recordReplacedHostPluginViewFiles,
 } from "./host-plugin-view-policy.js";
+import { backUpAndRemoveHostPluginViewFiles } from "./host-plugin-view-backups.js";
 import {
   readHostPluginViewRecord,
   recordHostPluginViewFiles,
@@ -96,8 +97,10 @@ function repairPackageTreeLinks(sourceRoot: string, destRoot: string): void {
 export {
   type KeptHostPluginViewFiles,
   type KeptHostPluginViewReason,
+  type ReplacedHostPluginViewFiles,
   setHostPluginViewForceReplace,
   takeKeptHostPluginViewFiles,
+  takeReplacedHostPluginViewFiles,
 } from "./host-plugin-view-policy.js";
 
 function listTreeFiles(root: string, filter?: (absolutePath: string) => boolean): string[] {
@@ -123,17 +126,7 @@ function listTreeFiles(root: string, filter?: (absolutePath: string) => boolean)
   return files.sort();
 }
 
-/**
- * Hash of a folder entry: a link hashes as its target (never followed), any
- * other entry as its bytes.
- */
-function hashViewEntry(path: string): string | undefined {
-  if (isSymlinkPath(path)) {
-    const target = linkTarget(path);
-    return target === undefined ? undefined : hashGeneratedContent(`symlink:${target}`);
-  }
-  return hashOnDiskFile(path);
-}
+const hashViewEntry = hashFileOrLink;
 
 function sameBytes(left: string, right: string): boolean {
   const leftLink = isSymlinkPath(left);
@@ -164,16 +157,6 @@ function hostViewFileOwnership(input: {
   const fromHome = relative(input.homeRoot, absolute).split(sep).join("/");
   const ownership = classifyManagedPathOwnership(input.homeRoot, fromHome);
   return ownership === "unowned" ? "unmanaged" : ownership;
-}
-
-/** Back up, then remove files of a host plugin folder (paths inside the folder). */
-function backUpAndRemoveViewFiles(homeRoot: string, hostView: string, paths: readonly string[]): void {
-  if (paths.length === 0) return;
-  executeSafeFileRemovals(
-    homeRoot,
-    paths.map((path) => relative(homeRoot, join(hostView, path)).split(sep).join("/")),
-    { mode: "listed" },
-  );
 }
 
 function copyViewFiles(
@@ -247,6 +230,7 @@ export function mirrorHostPluginView(input: {
   const packageSet = new Set(packageFiles);
   const unchanged = new Set<string>();
   const replace: string[] = [];
+  const ownedPaths = new Set<string>();
   const kept: KeptHostPluginViewFiles["files"] = [];
   for (const path of listTreeFiles(hostView)) {
     if (packageSet.has(path) && sameBytes(join(hostView, path), join(input.canonicalDir, path))) {
@@ -259,6 +243,7 @@ export function mirrorHostPluginView(input: {
       path,
       recorded,
     });
+    if (ownership === "owned") ownedPaths.add(path);
     if (ownership === "owned" || hostPluginViewForceReplace()) {
       replace.push(path);
     } else {
@@ -266,7 +251,19 @@ export function mirrorHostPluginView(input: {
     }
   }
 
-  backUpAndRemoveViewFiles(input.homeRoot, hostView, replace);
+  const backupId = backUpAndRemoveHostPluginViewFiles({
+    homeRoot: input.homeRoot,
+    hostView,
+    paths: replace,
+  });
+  if (backupId) {
+    recordReplacedHostPluginViewFiles({
+      hostView,
+      backupId,
+      files: replace,
+      notWrittenByHarnessTap: replace.filter((path) => !ownedPaths.has(path)),
+    });
+  }
   const keptSet = new Set(kept.map((file) => file.path));
   const files = copyViewFiles(
     input.canonicalDir,
@@ -321,14 +318,24 @@ function removeEmptyDirsInside(dir: string): void {
  * then write the package version (or leave it removed when the package no
  * longer has it). Returns the paths replaced or removed, inside the folder.
  */
-export function replaceKeptHostPluginViewFiles(entry: KeptHostPluginViewFiles): string[] {
-  if (!existsSync(entry.hostView)) return [];
+/**
+ * Replace the files a refresh kept, after backing them up. Returns the
+ * replaced paths and the backup id `ht revert` takes.
+ */
+export function replaceKeptHostPluginViewFiles(
+  entry: KeptHostPluginViewFiles,
+): { paths: string[]; backupId?: string } {
+  if (!existsSync(entry.hostView)) return { paths: [] };
   const paths = entry.files.map((file) => file.path);
   const present = paths.filter((path) => {
     const full = join(entry.hostView, path);
     return existsSync(full) || isSymlinkPath(full);
   });
-  backUpAndRemoveViewFiles(entry.homeRoot, entry.hostView, present);
+  const backupId = backUpAndRemoveHostPluginViewFiles({
+    homeRoot: entry.homeRoot,
+    hostView: entry.hostView,
+    paths: present,
+  });
   const packaged = paths.filter((path) => {
     const full = join(entry.canonicalDir, path);
     return existsSync(full) || isSymlinkPath(full);
@@ -337,7 +344,7 @@ export function replaceKeptHostPluginViewFiles(entry: KeptHostPluginViewFiles): 
   const files = copyViewFiles(entry.canonicalDir, entry.hostView, packaged);
   removeEmptyDirsInside(entry.hostView);
   recordHostPluginViewFiles({ hostView: entry.hostView, created: false, files, dropFiles: present });
-  return paths;
+  return { paths, backupId };
 }
 
 export function ingestHostPluginTreeIntoCache(input: {

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import {
-  hasKeptHostPluginViewFiles,
+  hasHostPluginViewNotices,
   setHostPluginViewForceReplace,
 } from "../services/package-cache/host-plugin-view-policy.js";
 import { configureProgramHelp } from "./help.js";
@@ -15,7 +15,7 @@ program.hook("preAction", (_root, actionCommand) => {
   setHostPluginViewForceReplace(actionCommand.opts().forceRemove === true);
 });
 program.hook("postAction", async (_root, actionCommand) => {
-  if (!hasKeptHostPluginViewFiles()) return;
+  if (!hasHostPluginViewNotices()) return;
   const { settleKeptHostPluginViewFiles } = await import("./handlers/host-plugin-view-kept.js");
   await settleKeptHostPluginViewFiles({ json: actionCommand.opts().format === "json" });
 });
