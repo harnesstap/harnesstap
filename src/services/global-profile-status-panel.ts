@@ -24,7 +24,10 @@ import {
   type DriftFileChange,
   type ProjectDriftReport,
 } from "./project-drift.js";
+import { getPluginById } from "../models/plugin-model.js";
 import type { McpServerMetadata } from "../types.js";
+import type { ResolutionResult } from "./resolve/types.js";
+import { hostPluginPinRef, isHostPluginPinResource } from "./host-plugin-serialize.js";
 
 export type GlobalProfileStatusDepth = "fast" | "full";
 export type PanelTrafficStatus = "green" | "yellow" | "red";
@@ -178,9 +181,53 @@ function readGlobalMcpServers(
   }
 }
 
+/**
+ * Declared marketplace pins the apply writes as standalone files and does not
+ * register with the host. Apply registers only the host plugin pins in its
+ * resolved resource set (own pins and local marketplace edges). A remote
+ * marketplace dependency it resolved to a library plugin is materialized as
+ * files, and its host install is left to the host. Status reads this from the
+ * same dry-run resolution, so status and apply agree on which declared plugins
+ * must be installed.
+ */
+export function filesOnlyMarketplacePinRefs(
+  resolution: Pick<ResolutionResult, "selected" | "resources" | "decisions">,
+): Set<string> {
+  const registered = new Set<string>();
+  for (const resource of resolution.resources) {
+    if (isHostPluginPinResource(resource)) registered.add(hostPluginPinRef(resource));
+  }
+  // Plugins whose material resources the apply writes. A stub with no
+  // content (a pin that was never synced) still needs a host install.
+  const withContent = new Set<string>();
+  for (const decision of resolution.decisions) {
+    for (const side of [decision.winner, ...decision.losers]) {
+      withContent.add(side.pluginName);
+    }
+  }
+  const refs = new Set<string>();
+  for (const plugin of resolution.selected) {
+    if (plugin.depth === 0 || plugin.source !== "marketplace") continue;
+    if (!withContent.has(plugin.name)) continue;
+    const locator = getPluginById(plugin.pluginId)?.origin_locator ?? "";
+    if (!locator.includes("@") || registered.has(locator)) continue;
+    refs.add(locator);
+  }
+  return refs;
+}
+
+/** A pin the apply wrote as files is reported only when the host has it. */
+function pinRequiresHostInstall(
+  pin: PluginConstraintPin,
+  filesOnlyRefs: ReadonlySet<string> | undefined,
+): boolean {
+  return !filesOnlyRefs?.has(pin.ref);
+}
+
 export function buildHarnessPluginRows(
   declaredPins: PluginConstraintPin[],
   homeRoot: string,
+  filesOnlyRefs?: ReadonlySet<string>,
 ): HarnessPluginStatusRow[] {
   const installed = loadInstalled(homeRoot).filter((row) => row.scope === "user");
   const matchedInstalledRefs = new Set<string>();
@@ -191,7 +238,7 @@ export function buildHarnessPluginRows(
     if (installedRef) {
       matchedInstalledRefs.add(installedRef);
       rows.push({ id: pin.ref, state: "installed" });
-    } else {
+    } else if (pinRequiresHostInstall(pin, filesOnlyRefs)) {
       rows.push({ id: pin.ref, state: "missing" });
     }
   }
@@ -221,6 +268,7 @@ function findEnabledCursorInstallForPin(
 export function buildCursorHarnessPluginRows(
   declaredPins: PluginConstraintPin[],
   homeRoot: string,
+  filesOnlyRefs?: ReadonlySet<string>,
 ): HarnessPluginStatusRow[] {
   const installs = listCursorPluginInstalls(homeRoot);
   const cursorNames = listCursorPluginFootprintNames(homeRoot);
@@ -239,7 +287,7 @@ export function buildCursorHarnessPluginRows(
     if (match) {
       matchedEnabledRefs.add(match.ref);
       rows.push({ id: pin.ref, state: "installed" });
-    } else {
+    } else if (pinRequiresHostInstall(pin, filesOnlyRefs)) {
       rows.push({ id: pin.ref, state: "missing" });
     }
   }
@@ -418,6 +466,8 @@ export function buildHarnessLiveStatusMap(input: {
   depth: GlobalProfileStatusDepth;
   homeRoot: string;
   declaredPins: PluginConstraintPin[];
+  /** Pins the apply writes as files; see filesOnlyMarketplacePinRefs. */
+  filesOnlyPinRefs?: ReadonlySet<string>;
   declaredMcpByHarness: Record<string, string[]>;
   expectedMcpConfigsByHarness?: Record<string, Record<string, McpServerMetadata>>;
 }): Record<string, HarnessLiveStatus> {
@@ -441,14 +491,19 @@ export function buildHarnessLiveStatusMap(input: {
       case "claude-code":
         plugins = traceSpan(
           "base.harness-live-status.plugins",
-          () => buildHarnessPluginRows(input.declaredPins, input.homeRoot),
+          () => buildHarnessPluginRows(input.declaredPins, input.homeRoot, input.filesOnlyPinRefs),
           harnessId,
         );
         break;
       case "cursor":
         plugins = traceSpan(
           "base.harness-live-status.plugins",
-          () => buildCursorHarnessPluginRows(input.declaredPins, input.homeRoot),
+          () =>
+            buildCursorHarnessPluginRows(
+              input.declaredPins,
+              input.homeRoot,
+              input.filesOnlyPinRefs,
+            ),
           harnessId,
         );
         break;
@@ -473,6 +528,24 @@ export function buildHarnessLiveStatusMap(input: {
   }
 
   return harnesses;
+}
+
+/** Declared plugins and MCP servers a full status found missing, per harness. */
+export function listMissingHarnessRows(
+  harnesses: Record<string, HarnessLiveStatus>,
+): Array<{ harness: string; kind: "plugin" | "mcp"; id: string }> {
+  const rows: Array<{ harness: string; kind: "plugin" | "mcp"; id: string }> = [];
+  for (const [harness, status] of Object.entries(harnesses)) {
+    for (const row of status.plugins) {
+      if (row.state === "missing") rows.push({ harness, kind: "plugin", id: row.id });
+    }
+    for (const row of status.mcp) {
+      if (row.state === "missing" || row.state === "mismatch") {
+        rows.push({ harness, kind: "mcp", id: row.name });
+      }
+    }
+  }
+  return rows;
 }
 
 export function countMissingHarnessRows(harnesses: Record<string, HarnessLiveStatus>): {

@@ -43,7 +43,14 @@ export function isHostPluginPinResource(
   );
 }
 
-function pluginRef(resource: Resource): string {
+/** The `name@marketplace` ref a host plugin pin installs as. */
+export function hostPluginPinRef(
+  resource: Pick<Resource, "name" | "metadata" | "origin_ref">,
+): string {
+  return pluginRef(resource);
+}
+
+function pluginRef(resource: Pick<Resource, "name" | "metadata" | "origin_ref">): string {
   if (resource.origin_ref?.includes("@")) {
     return resource.origin_ref;
   }

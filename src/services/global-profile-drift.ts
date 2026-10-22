@@ -28,6 +28,8 @@ import {
   computeGlobalProfilePanelStatus,
   countMissingHarnessRows,
   declaredMcpFromExpectedFiles,
+  filesOnlyMarketplacePinRefs,
+  listMissingHarnessRows,
   type GlobalProfileDriftSummary,
   type GlobalProfilePanelStatus,
   type GlobalProfileStatusDepth,
@@ -111,6 +113,19 @@ export interface GlobalProfileStatus {
   updates?: UpstreamCheckSummary;
   /** Unread notifications, for the Desktop bell. One indexed count, outside the cache. */
   unread_count?: number;
+}
+
+/**
+ * One answer to "is the global state in sync with the active profile" for the
+ * human output, `profile status --check`, and the JSON panel: file drift plus
+ * declared plugins and MCP servers a full status found missing.
+ */
+export function globalProfileStatusGaps(status: GlobalProfileStatus): {
+  inSync: boolean;
+  missing: Array<{ harness: string; kind: "plugin" | "mcp"; id: string }>;
+} {
+  const missing = status.depth === "full" ? listMissingHarnessRows(status.harnesses) : [];
+  return { inSync: !status.has_drift && missing.length === 0, missing };
 }
 
 function keptContentDiff(
@@ -230,10 +245,15 @@ function buildBaseStatusFields(input: {
       ? declaredMcpNamesFromMergedPlugins(input.pluginIds)
       : { "claude-code": [], cursor: [] });
 
+  const filesOnlyPinRefs = input.expectedApply?.resolution
+    ? filesOnlyMarketplacePinRefs(input.expectedApply.resolution)
+    : undefined;
+
   const harnesses = traceSpan("base.harness-live-status", () => buildHarnessLiveStatusMap({
     depth: input.depth,
     homeRoot,
     declaredPins,
+    ...(filesOnlyPinRefs ? { filesOnlyPinRefs } : {}),
     declaredMcpByHarness,
     ...(declaredFromExpected
       ? { expectedMcpConfigsByHarness: declaredFromExpected.configsByHarness }
