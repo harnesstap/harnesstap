@@ -133,6 +133,11 @@ export function globalProfileStatusGaps(status: GlobalProfileStatus): {
 
 const HOST_PLUGIN_VIEW_PATH = /^(\.claude\/plugins\/cache\/([^/]+)\/([^/]+)\/([^/]+))\//;
 
+/** True for a file inside a host plugin cache folder, which apply refreshes from the plugin. */
+export function isHostPluginViewPath(path: string): boolean {
+  return HOST_PLUGIN_VIEW_PATH.test(path.replaceAll("\\", "/"));
+}
+
 /**
  * A host plugin cache folder (`~/.claude/plugins/cache/<mkt>/<name>/<ver>`)
  * is emitted from itself, so comparing the expected files with the disk finds
