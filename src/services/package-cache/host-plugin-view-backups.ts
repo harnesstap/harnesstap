@@ -4,6 +4,7 @@ import { ulid } from "ulid";
 import { getHarnesstapDir } from "../../db/connection.js";
 import { listApplyRemovalBackups } from "../../models/apply-removal-backup.js";
 import { executeSafeFileRemovals } from "../safe-file-removal.js";
+import { planHostPluginViewRemovals } from "./host-plugin-view-ownership.js";
 import { forgetHostPluginViewFiles } from "./host-plugin-views.js";
 import { removeFileOrLink } from "../../utils/remove-file-or-link.js";
 
@@ -45,15 +46,18 @@ function toHomePath(homeRoot: string, hostView: string, path: string): string {
 
 /**
  * Back up, then remove files of a host plugin folder (paths inside the
- * folder). Returns the backup id `ht revert` takes, or undefined when there
- * was nothing to remove.
+ * folder). Real folders and files HarnessTap did not write are never removed,
+ * even with --force-remove (see `planHostPluginViewRemovals`, which callers use
+ * to know what stays). Returns the backup id `ht revert` takes, or undefined
+ * when there was nothing to remove.
  */
 export function backUpAndRemoveHostPluginViewFiles(input: {
   homeRoot: string;
   hostView: string;
   paths: readonly string[];
 }): string | undefined {
-  if (input.paths.length === 0) return undefined;
+  const paths = planHostPluginViewRemovals(input).allowed;
+  if (paths.length === 0) return undefined;
   const backupId = ulid();
   // Record the id before anything goes to the trash, so every backed-up byte
   // can be put back with `ht revert <id>`, even when a removal fails midway.
@@ -61,13 +65,13 @@ export function backUpAndRemoveHostPluginViewFiles(input: {
   backups[backupId] = {
     home_root: input.homeRoot,
     host_view: input.hostView,
-    files: [...input.paths],
+    files: [...paths],
     created_at: new Date().toISOString(),
   };
   writeBackups(backups);
   const result = executeSafeFileRemovals(
     input.homeRoot,
-    input.paths.map((path) => toHomePath(input.homeRoot, input.hostView, path)),
+    paths.map((path) => toHomePath(input.homeRoot, input.hostView, path)),
     { mode: "listed", applyId: backupId },
   );
   if (result.removed.length === 0) {
@@ -155,6 +159,16 @@ export function restoreHostPluginViewBackup(
     }
     if (present(fullPath)) toReplace.push(path);
     toWrite.push({ path, fullPath, content, isLink });
+  }
+  // Never restore over a folder or a file HarnessTap did not write, even with --force-remove.
+  const refused = new Set(
+    planHostPluginViewRemovals({ homeRoot: backup.home_root, hostView: backup.host_view, paths: toReplace })
+      .refused.map((entry) => entry.path),
+  );
+  if (refused.size > 0) {
+    for (const path of refused) result.skipped.push({ path, reason: "changed" });
+    toWrite.splice(0, toWrite.length, ...toWrite.filter((file) => !refused.has(file.path)));
+    toReplace.splice(0, toReplace.length, ...toReplace.filter((path) => !refused.has(path)));
   }
   if (options.dryRun) {
     result.restored = toWrite.map((file) => file.path);

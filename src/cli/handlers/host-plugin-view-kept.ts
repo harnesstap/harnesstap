@@ -60,9 +60,9 @@ function announceReplaced(entry: ReplacedHostPluginViewFiles): string {
   const count = formatCount(entry.files.length, "file");
   let what = `${count} in ${where}: ${listPaths(entry.files)}`;
   if (theirs.length === entry.files.length) {
-    what = `${count} in ${where} that HarnessTap did not write or that changed since: ${listPaths(theirs)}`;
+    what = `${count} in ${where} that changed since HarnessTap wrote them: ${listPaths(theirs)}`;
   } else if (theirs.length > 0) {
-    what += `. Of those, HarnessTap did not write or you changed: ${listPaths(theirs)}`;
+    what += `. Of those, changed since HarnessTap wrote them: ${listPaths(theirs)}`;
   }
   if (removed.size > 0 && removed.size < entry.files.length) {
     what += `. Removed because the plugin no longer has them: ${listPaths([...removed])}`;
@@ -82,9 +82,9 @@ function describeFiles(entry: KeptHostPluginViewFiles): string {
 }
 
 /** "replace 1 file with the plugin's version and remove 2 the plugin does not have" */
-function describeChange(entry: KeptHostPluginViewFiles): string {
-  const missing = entry.files.filter((file) => file.inPlugin === false).length;
-  const differing = entry.files.length - missing;
+function describeChange(files: KeptHostPluginViewFiles["files"]): string {
+  const missing = files.filter((file) => file.inPlugin === false).length;
+  const differing = files.length - missing;
   const parts: string[] = [];
   if (differing > 0) parts.push(`replace ${formatCount(differing, "file")} with the plugin's version`);
   if (missing > 0) {
@@ -93,10 +93,13 @@ function describeChange(entry: KeptHostPluginViewFiles): string {
   return parts.join(" and ");
 }
 
+const NEVER_THEIRS = "HarnessTap never replaces or removes files it did not write, even with --force-remove.";
+
 /**
  * A host plugin refresh keeps files in `~/.claude/plugins/cache/...` that
- * HarnessTap did not write or that changed since. Ask before replacing them
- * in a terminal; otherwise say they were kept and how to replace them.
+ * HarnessTap did not write or that changed since. Files that changed since
+ * HarnessTap wrote them can be replaced: ask in a terminal, otherwise say
+ * how. Files HarnessTap did not write are never replaced or removed.
  */
 export async function settleKeptHostPluginViewFiles(
   options: { json?: boolean } = {},
@@ -111,21 +114,34 @@ export async function settleKeptHostPluginViewFiles(
     if (entry.alreadyReported) continue;
     const where = shortenHomePath(entry.hostView);
     const count = formatCount(entry.files.length, "file");
-    if (deps.interactive && !options.json) {
+    const changed = entry.files.filter((file) => file.reason === "modified");
+    const theirs = entry.files.length - changed.length;
+    const changedCount = formatCount(changed.length, "file");
+    const which = theirs > 0 ? `up the ${changedCount} you changed` : "them up";
+    if (deps.interactive && !options.json && changed.length > 0) {
       ui.warn(`Kept ${count} in ${where} that differ from the plugin: ${describeFiles(entry)}.`);
       const confirmed = await deps.confirm({
-        message: `Back up the ${count} in ${where}, then ${describeChange(entry)}?`,
+        message: theirs > 0
+          ? `Back up the ${changedCount} you changed in ${where}, then ${describeChange(changed)}?`
+          : `Back up the ${count} in ${where}, then ${describeChange(changed)}?`,
         default: false,
       });
       if (confirmed) {
-        const { backupId } = deps.replace(entry);
-        ui.success(`Backed up and replaced ${count} in ${where}.${restoreHint(backupId)}`);
+        const { paths, backupId } = deps.replace(entry);
+        const kept = theirs > 0 ? ` ${NEVER_THEIRS}` : "";
+        ui.success(
+          `Backed up and replaced ${formatCount(paths.length, "file")} in ${where}.${restoreHint(backupId)}${kept}`,
+        );
         continue;
       }
     }
+    const howToReplace = changed.length > 0
+      ? ` To back ${which}, then ${describeChange(changed)}, run the command again with --force-remove.`
+      : "";
+    const never = theirs > 0 ? ` ${NEVER_THEIRS}` : "";
     // stderr, so --format json output stays clean.
     console.error(
-      `Kept ${count} in ${where} that differ from the plugin: ${describeFiles(entry)}. To back them up, then ${describeChange(entry)}, run the command again with --force-remove.`,
+      `Kept ${count} in ${where} that differ from the plugin: ${describeFiles(entry)}.${howToReplace}${never}`,
     );
   }
 }

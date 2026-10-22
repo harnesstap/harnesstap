@@ -145,7 +145,7 @@ describe("refreshing a host plugin folder the user added files to", () => {
     expect(replaced?.notWrittenByHarnessTap).toEqual([]);
   });
 
-  it("says what --force-remove replaced, and ht revert puts it back", () => {
+  it("says what --force-remove replaced, never touches files HarnessTap did not write, and ht revert puts it back", () => {
     mirror(packageTree({ ...MANIFEST, "skills/a/SKILL.md": "a v1\n" }));
     userEdits();
     setHostPluginViewForceReplace(true);
@@ -153,18 +153,23 @@ describe("refreshing a host plugin folder the user added files to", () => {
     mirror(packageTree({ ...MANIFEST, "skills/a/SKILL.md": "a v2\n" }));
 
     expect(readFileSync(view("skills/a/SKILL.md"), "utf8")).toBe("a v2\n");
-    expect(existsSync(view("user-notes.md"))).toBe(false);
+    expect(readFileSync(view("user-notes.md"), "utf8")).toBe("my notes\n");
+    expect(readFileSync(view("skills/a/mine.md"), "utf8")).toBe("mine\n");
     const [replaced] = takeReplacedHostPluginViewFiles();
     if (!replaced) throw new Error("expected a replaced notice");
-    expect(replaced.files.sort()).toEqual(["skills/a/SKILL.md", "skills/a/mine.md", "user-notes.md"]);
-    expect(replaced.notWrittenByHarnessTap.sort()).toEqual(replaced.files);
+    expect(replaced.files).toEqual(["skills/a/SKILL.md"]);
+    expect(replaced.removed).toEqual([]);
+    expect(replaced.notWrittenByHarnessTap).toEqual(["skills/a/SKILL.md"]);
     expect(isHostPluginViewBackupId(replaced.backupId)).toBe(true);
+    expect(takeKeptHostPluginViewFiles()[0]?.files).toEqual([
+      { path: "skills/a/mine.md", reason: "unmanaged", inPlugin: false },
+      { path: "user-notes.md", reason: "unmanaged", inPlugin: false },
+    ]);
 
     // The plugin's newer copy is there: kept unless --force-remove.
     const first = restoreHostPluginViewBackup(replaced.backupId);
-    expect(first?.restored.sort()).toEqual(["skills/a/mine.md", "user-notes.md"]);
+    expect(first?.restored).toEqual([]);
     expect(first?.skipped).toEqual([{ path: "skills/a/SKILL.md", reason: "changed" }]);
-    expect(readFileSync(view("user-notes.md"), "utf8")).toBe("my notes\n");
     expect(readFileSync(view("skills/a/SKILL.md"), "utf8")).toBe("a v2\n");
 
     const forced = restoreHostPluginViewBackup(replaced.backupId, { forceRemove: true });
