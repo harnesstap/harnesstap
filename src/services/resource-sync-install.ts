@@ -27,12 +27,18 @@ export function marketplaceDependencySelectorRef(selector: string | undefined): 
   return parseDependencyRef(ref).source_kind === "marketplace" ? ref : undefined;
 }
 
-function marketplaceIsResolvable(marketplace: string, homeRoot: string): boolean {
+export function marketplaceIsResolvable(marketplace: string, homeRoot: string): boolean {
   return Boolean(
     findKnownMarketplace(getHarnesstapDir(), marketplace)
       ?? wellKnownMarketplaceEntry(marketplace)
       ?? (marketplaceIsConfigured(homeRoot, marketplace) ? marketplace : undefined),
   );
+}
+
+/** True when `marketplace` is resolvable or a library plugin's claude.toml declares its source. */
+export function marketplaceIsKnown(marketplace: string, homeRoot: string): boolean {
+  if (marketplaceIsResolvable(marketplace, homeRoot)) return true;
+  return listPlugins().some((plugin) => Boolean(plugin.claude?.marketplaces?.[marketplace]));
 }
 
 function unknownMarketplaceReason(marketplace: string): string {
