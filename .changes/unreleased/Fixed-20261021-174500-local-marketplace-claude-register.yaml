@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'A plugin from a local Claude-format marketplace (`ht marketplace add <folder>`) is registered in `~/.claude/plugins/installed_plugins.json` and `enabledPlugins` when a profile is applied, so `profile status` reports it installed instead of missing. Claude loads its skills from the plugin, and Cursor gets it under `~/.cursor/plugins/local/`, the same way as a git-imported plugin. Plugins from remote marketplaces are unchanged.'
+time: 2026-10-22T03:45:00.000Z
+custom:
+  Issue: "449"
