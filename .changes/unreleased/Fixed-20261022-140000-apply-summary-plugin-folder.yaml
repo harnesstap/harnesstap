@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'The apply summary now counts the files a plugin cache folder refresh replaced or removed, so it no longer says "Wrote 0, removed 0" or "Everything is up to date" next to "Backed up and replaced ...". The backup notice says "removed" for files the plugin no longer has, and the summary line starts with a capital letter when nothing was written.'
+time: 2026-10-23T00:00:00.000000Z

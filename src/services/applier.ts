@@ -74,6 +74,7 @@ import {
 import {
   classifyManagedPathOwnership,
   executeSafeFileRemovals,
+  hasCurrentHarnessTapMaterialization,
   hasHarnessTapMaterialization,
   hashFileOrLink,
   hashOnDiskFile,
@@ -809,7 +810,9 @@ export async function materializeFiles(
       }
     }
     if (semanticallyMatchesExisting(fullPath, file)) {
-      if (htHostViewBytes && !isHarnessTapOwnedPath(rootPath, file.path)) {
+      // The folder's record already proves these bytes are HarnessTap's; give
+      // them an apply row too.
+      if (htHostViewBytes && !hasCurrentHarnessTapMaterialization(rootPath, file.path)) {
         adoptedFiles.push(file.path);
       }
       skippedFiles.push(file.path);

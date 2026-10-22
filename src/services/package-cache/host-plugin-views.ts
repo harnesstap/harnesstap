@@ -288,3 +288,44 @@ export function swapKeptNoticeSignature(hostView: string, signature: string): bo
   }
   return false;
 }
+
+const HOST_PLUGIN_CACHE_PATH_RE = /(?:^|\/)plugins\/cache\/[^/]+\/[^/]+\/[^/]+\//;
+
+/**
+ * True for a file inside a host plugin cache folder. Such a file is plugin
+ * payload written whole (a plugin's own CLAUDE.md included), never a host
+ * config merged key by key.
+ */
+export function isHostPluginCacheFilePath(path: string): boolean {
+  return HOST_PLUGIN_CACHE_PATH_RE.test(path.replace(/\\/g, "/"));
+}
+
+/**
+ * Every file the records say HarnessTap wrote into the host plugin folders
+ * holding any of `relativePaths` (paths under `rootPath`), links included,
+ * as paths under `rootPath`. Lets a manifest list files an install wrote that
+ * the apply itself never emits, such as an `AGENTS.md` link.
+ */
+export function recordedHostPluginViewPaths(
+  rootPath: string,
+  relativePaths: readonly string[],
+): string[] {
+  const cachePaths = relativePaths.filter(isHostPluginCacheFilePath);
+  if (cachePaths.length === 0) return [];
+  const records = readHostPluginViewRecords();
+  const root = resolve(rootPath);
+  const out = new Set<string>();
+  const views = new Set<string>();
+  for (const path of cachePaths) {
+    const view = viewContaining(records, resolve(root, path));
+    if (view) views.add(view);
+  }
+  for (const view of views) {
+    const record = records[view];
+    if (!record || record.legacy) continue;
+    const viewRel = relative(root, view).split(sep).join("/");
+    if (viewRel.startsWith("..")) continue;
+    for (const file of Object.keys(record.files)) out.add(`${viewRel}/${file}`);
+  }
+  return [...out];
+}

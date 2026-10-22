@@ -307,6 +307,7 @@ export function mirrorHostPluginView(input: {
       backupId,
       files: replace,
       notWrittenByHarnessTap: replace.filter((path) => !ownedPaths.has(path)),
+      removed: replace.filter((path) => !packageSet.has(path)),
     });
   }
   const keptSet = new Set(kept.map((file) => file.path));

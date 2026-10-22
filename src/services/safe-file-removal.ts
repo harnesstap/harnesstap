@@ -187,26 +187,26 @@ export function classifyManagedPathOwnership(
   relativePath: string,
 ): ManagedPathOwnership {
   const normalized = normalizeRelative(relativePath);
-  const owned = listMaterializationsForRootPath(rootPath, normalized);
-  if (owned.length === 0) {
-    return "unowned";
-  }
   const fullPath = resolve(rootPath, normalized);
   // A link out of the root is the user's: hash the link, never what it points at.
-  const diskHash = leafLinkLeavesRoot(rootPath, fullPath)
-    ? hashFileOrLink(fullPath)
-    : hashOnDiskFile(fullPath);
+  const linkLeavesRoot = leafLinkLeavesRoot(rootPath, fullPath);
   if (normalized.includes(HOST_PLUGIN_CACHE_SEGMENT)) {
-    // In a host plugin folder the folder's record says what HarnessTap wrote.
+    // In a host plugin folder the folder's record says what HarnessTap wrote,
+    // files an install wrote (such as links) that no apply row lists included.
     const written = hostPluginViewWrittenHash(fullPath);
     if (written === null) return "unowned";
     if (written !== undefined) {
       // Records from before links were kept as links hold the linked bytes.
       const same = written === hashFileOrLink(fullPath)
-        || (isSymlinkPath(fullPath) && written === diskHash);
+        || (isSymlinkPath(fullPath) && !linkLeavesRoot && written === hashOnDiskFile(fullPath));
       return same ? "owned" : "modified";
     }
   }
+  const owned = listMaterializationsForRootPath(rootPath, normalized);
+  if (owned.length === 0) {
+    return "unowned";
+  }
+  const diskHash = linkLeavesRoot ? hashFileOrLink(fullPath) : hashOnDiskFile(fullPath);
   if (owned.some((row) => row.generated_hash === diskHash)) {
     return "owned";
   }
@@ -218,6 +218,17 @@ export function hasHarnessTapMaterialization(
   relativePath: string,
 ): boolean {
   return listMaterializationsForRootPath(rootPath, normalizeRelative(relativePath)).length > 0;
+}
+
+/** True when an apply row records the bytes now on disk at the path. */
+export function hasCurrentHarnessTapMaterialization(
+  rootPath: string,
+  relativePath: string,
+): boolean {
+  const normalized = normalizeRelative(relativePath);
+  const diskHash = hashOnDiskFile(resolve(rootPath, normalized));
+  return listMaterializationsForRootPath(rootPath, normalized)
+    .some((row) => row.generated_hash === diskHash);
 }
 
 export function isHarnessTapOwnedPath(rootPath: string, relativePath: string): boolean {

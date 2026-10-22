@@ -9,6 +9,7 @@ import {
   keptReasonLabel,
   snapshotSavedUndoLine,
 } from "../copy/cli.js";
+import { hostPluginViewChangeCounts } from "../services/package-cache/host-plugin-view-policy.js";
 import { ui } from "../ui/index.js";
 
 export interface ApplyKeptFile {
@@ -134,10 +135,13 @@ export function printApplySuccess(input: {
   snapshotId?: string;
 }): void {
   console.log(applyHeaderLine(input.name, input.harnessCount));
+  // Files a plugin cache folder refresh replaced or removed count too, so the
+  // line never says nothing changed next to "Backed up and replaced ...".
+  const pluginFolder = hostPluginViewChangeCounts();
   console.log(
     applyWroteLine({
-      wrote: input.wrote,
-      removed: input.removed,
+      wrote: input.wrote + pluginFolder.replaced,
+      removed: input.removed + pluginFolder.removed,
       kept: input.kept.length,
       unchanged: input.unchanged,
     }),

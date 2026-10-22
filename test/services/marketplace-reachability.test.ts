@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import type { RunCommand } from "../../src/plugins/run-command.ts";
 import { checkMarketplaceReachability } from "../../src/services/marketplace-reachability.ts";
+import { GIT_LS_REMOTE_TIMEOUT_MS } from "../../src/services/marketplace-source-branches.ts";
 
 describe("checkMarketplaceReachability", () => {
   it("marks a reachable local directory healthy", async () => {
@@ -67,5 +68,22 @@ describe("checkMarketplaceReachability", () => {
     ).resolves.toEqual({
       status: "healthy",
     });
+  });
+
+  it("reports a timed-out remote check without waiting on the wall clock", async () => {
+    const seen: Array<{ args: string[]; timeoutMs?: number }> = [];
+    const run: RunCommand = (_command, args, options) => {
+      seen.push({ args, timeoutMs: options?.timeoutMs });
+      return { stdout: "", stderr: "Command timed out after 20000ms", exitCode: 124 };
+    };
+
+    await expect(
+      checkMarketplaceReachability("https://github.com/org/slow.git", { runCommand: run }),
+    ).resolves.toEqual({
+      status: "error",
+      reason: "Remote check timed out",
+    });
+    const lsRemote = seen.find((call) => call.args.includes("ls-remote"));
+    expect(lsRemote?.timeoutMs).toBe(GIT_LS_REMOTE_TIMEOUT_MS);
   });
 });
