@@ -471,6 +471,8 @@ export interface SnapshotState {
   disk_files?: Record<string, string>;
   /** Managed paths that were missing on disk when the snapshot was taken. */
   absent_paths?: string[];
+  /** Managed paths that were links when the snapshot was taken, with their targets. */
+  disk_links?: Record<string, string>;
 }
 
 export interface Snapshot {

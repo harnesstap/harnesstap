@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import {
   getGlobalApplySnapshot,
   listGlobalApplySnapshots,
@@ -12,11 +12,13 @@ import { hashGeneratedContent } from "./materialization-ownership.js";
 import {
   flattenLiveRestoreFiles,
   snapshotAbsentPaths,
+  snapshotLinks,
 } from "./snapshot-capture.js";
 import {
   backupAndRewriteFile,
   executeSafeFileRemovals,
   classifyManagedPathOwnership,
+  hashFileOrLink,
   hashOnDiskFile,
   isSharedMergedConfigPath,
   restoreSafeRemovalBackup,
@@ -33,6 +35,8 @@ export interface RevertPlan {
   label: string;
   createdAt: string;
   restoreFiles: SerializedFile[];
+  /** Links to put back as links. */
+  restoreLinks?: Array<{ path: string; target: string }>;
   absentPaths: string[];
   hasCapturedState: boolean;
 }
@@ -68,6 +72,7 @@ function capturedStateUseful(state: SnapshotState | undefined): boolean {
     || Object.keys(state.disk_files ?? {}).length > 0
     || (state.absent_paths?.length ?? 0) > 0
     || Object.keys(state.harness_files ?? {}).length > 0
+    || Object.keys(state.disk_links ?? {}).length > 0
   );
 }
 
@@ -95,6 +100,7 @@ export function resolveRevertPlan(snapshotId: string): RevertPlan | { error: str
       label: projectSnap.label,
       createdAt: projectSnap.created_at,
       restoreFiles: flattenLiveRestoreFiles(projectSnap.state),
+      restoreLinks: snapshotLinks(projectSnap.state),
       absentPaths: snapshotAbsentPaths(projectSnap.state),
       hasCapturedState: capturedStateUseful(projectSnap.state),
     };
@@ -114,6 +120,7 @@ export function resolveRevertPlan(snapshotId: string): RevertPlan | { error: str
     label: globalSnap.profile_name,
     createdAt: globalSnap.created_at,
     restoreFiles: state ? flattenLiveRestoreFiles(state) : [],
+    restoreLinks: state ? snapshotLinks(state) : [],
     absentPaths: state ? snapshotAbsentPaths(state) : [],
     hasCapturedState: capturedStateUseful(state),
   };
@@ -189,7 +196,36 @@ export function executeRevert(
     }
   }
 
+  const linksToMake: Array<{ path: string; target: string }> = [];
+  for (const link of plan.restoreLinks ?? []) {
+    const fullPath = resolve(plan.rootPath, link.path);
+    let current: string | null | undefined;
+    try {
+      current = lstatSync(fullPath).isSymbolicLink() ? readlinkSync(fullPath) : null;
+    } catch {
+      current = undefined;
+    }
+    if (current === link.target) {
+      restored.push(link.path);
+    } else if (current === undefined) {
+      linksToMake.push(link);
+      restored.push(link.path);
+    } else {
+      // Something else is there now: it is never removed to put the link back.
+      skipped.push({
+        path: link.path,
+        reason: "modified",
+        message: `Skipped restoring the link ${link.path} (something else is at that path now).`,
+      });
+    }
+  }
+
   if (!options.dryRun) {
+    for (const link of linksToMake) {
+      const fullPath = resolve(plan.rootPath, link.path);
+      mkdirSync(dirname(fullPath), { recursive: true });
+      symlinkSync(link.target, fullPath);
+    }
     for (const file of toWrite) {
       backupAndRewriteFile({
         rootPath: plan.rootPath,
@@ -213,7 +249,7 @@ export function executeRevert(
       snapshotId: plan.id,
       rootPath: plan.rootPath,
       restoredPaths: restored,
-      hashOf: hashOnDiskFile,
+      hashOf: hashFileOrLink,
       isMergedConfig: isSharedMergedConfigPath,
     });
   }
