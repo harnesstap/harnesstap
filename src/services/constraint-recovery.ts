@@ -52,6 +52,17 @@ function marketplaceDependencyMatches(
   );
 }
 
+function gitDependencyMatches(
+  dependency: { name: string; ref: string; source_kind: string },
+  pluginName: string,
+): boolean {
+  const ref = dependency.ref.replace(/\.git$/, "").replace(/\/+$/, "");
+  return (
+    dependency.source_kind === "git"
+    && (dependency.name === pluginName || ref === pluginName || ref.endsWith(`/${pluginName}`))
+  );
+}
+
 export async function runConstraintRecovery(
   input: RunConstraintRecoveryInput,
 ): Promise<void> {
@@ -171,8 +182,34 @@ export async function runConstraintRecovery(
         return;
       }
 
+      if (action.sourceKind === "git") {
+        const pins = listDependencies(root.id)
+          .filter((dependency) => gitDependencyMatches(dependency, action.pluginName))
+          .map((dependency) => ({
+            ref: dependency.ref,
+            version_constraint: dependency.version_constraint || "*",
+          }));
+        if (pins.length === 0) {
+          throw new Error(`No git dependency on ${action.pluginName} in ${input.rootName}`);
+        }
+        const syncResult = await syncPluginPinsForApply({
+          pins,
+          syncAll: true,
+          projectRoot: input.projectRoot ?? resolveHomeRoot(),
+        });
+        const failed = syncResult.installs.filter(
+          (install) => install.status === "failed" || install.status === "unsupported",
+        );
+        if (failed.length > 0) {
+          throw new Error(
+            `Could not fetch ${action.pluginName}: ${failed.map((install) => `${install.ref}: ${install.message}`).join("; ")}`,
+          );
+        }
+        return;
+      }
+
       throw new Error(
-        `Automated sync-install is only supported for marketplace and catalog dependencies. Create or import ${action.pluginName} first (ht plugin create ${action.pluginName}).`,
+        `Automated sync-install is only supported for marketplace, catalog and git dependencies. Create or import ${action.pluginName} first (ht plugin create ${action.pluginName}).`,
       );
     }
     default: {

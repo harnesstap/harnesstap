@@ -179,7 +179,7 @@ describe("runConstraintRecovery", () => {
         },
       }),
     ).rejects.toThrow(
-      "Automated sync-install is only supported for marketplace and catalog dependencies",
+      "Automated sync-install is only supported for marketplace, catalog and git dependencies",
     );
     await expect(
       runConstraintRecovery({
@@ -191,6 +191,24 @@ describe("runConstraintRecovery", () => {
         },
       }),
     ).rejects.toThrow("ht plugin create missing-plugin");
+  });
+
+  it("errors when git sync-install has no matching git dependency", async () => {
+    const root = createPlugin({ name: "my-setup" });
+    addDependency(root.id, "missing-plugin");
+
+    await expect(
+      runConstraintRecovery({
+        rootName: "my-setup",
+        action: {
+          id: "sync-install",
+          label: "Apply my-setup without --dry-run to fetch gdep",
+          pluginName: "gdep",
+          sourceKind: "git",
+          rootName: "my-setup",
+        },
+      }),
+    ).rejects.toThrow("No git dependency on gdep in my-setup");
   });
 
   it("errors when marketplace sync-install has no matching pin", async () => {

@@ -173,6 +173,30 @@ describe("selectVersion", () => {
     }
   });
 
+  it("points a missing git dependency at an apply that fetches it, not at plugin create", () => {
+    let caught: unknown;
+    try {
+      selectVersion({
+        name: "gdep",
+        available: [],
+        constraints: [record("*", "p500-4@1.0.0", 1)],
+        rootName: "p500-4",
+        sourceKind: "git",
+        pluginRef: "https://example.com/acme/gdep.git",
+      });
+    } catch (err) {
+      caught = err;
+    }
+    const error = caught as UnsatisfiableConstraintError;
+    expect(error.reason).toBe("missing-inventory");
+    expect(error.actions[0]).toMatchObject({ id: "sync-install", sourceKind: "git", rootName: "p500-4" });
+    expect(error.message).toContain(
+      "fix: Apply p500-4 without --dry-run to fetch gdep from https://example.com/acme/gdep.git",
+    );
+    expect(error.hints[0]).toBe("ht apply p500-4");
+    expect(error.hints.some((hint) => hint.includes("plugin create"))).toBe(false);
+  });
+
   it("falls back to a git SHA when only non-semver marketplace installs exist", () => {
     const result = selectVersion({
       name: "design-doc",
