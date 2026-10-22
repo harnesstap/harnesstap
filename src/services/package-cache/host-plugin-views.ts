@@ -177,6 +177,19 @@ export function forgetHostPluginViewFiles(hostView: string, paths: readonly stri
   writeHostPluginViewRecords(records);
 }
 
+/**
+ * Stop recording the folder as created by HarnessTap: it is the user's now
+ * (they installed the plugin into it with Claude Code), so HarnessTap never
+ * removes or rewrites anything in it again.
+ */
+export function forgetHostPluginView(hostView: string): void {
+  const records = readHostPluginViewRecords();
+  const view = resolve(hostView);
+  if (!records[view]) return;
+  delete records[view];
+  writeHostPluginViewRecords(records);
+}
+
 /** An apply wrote `absolutePath` inside a recorded host plugin folder: record its bytes too. */
 export function recordHostPluginViewWrite(absolutePath: string, hash: string): void {
   const records = readHostPluginViewRecords();

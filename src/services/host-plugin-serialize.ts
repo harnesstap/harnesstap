@@ -30,6 +30,7 @@ import {
 } from "./claude-marketplace-registration.js";
 import { parsePluginRef } from "../plugins/host-plugin-manifest.js";
 import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
+import { isHarnessTapClaudeRecord } from "./claude-plugin-record-owner.js";
 import { filterHostPluginRuntimeFiles } from "./host-plugin-runtime-modules.js";
 import { resolveInstallRoot } from "./resource-sync.js";
 import { translateEmittedSpecTree } from "./host-plugin-spec-emit.js";
@@ -514,8 +515,10 @@ function isMirroredHostPluginView(folder: string): boolean {
 
 /**
  * Where Claude Code has `originRef` installed outside HarnessTap, if it does:
- * a plugin record, or a folder at the install root, that HarnessTap did not
- * create. HarnessTap neither copies over nor registers such an install.
+ * a plugin record HarnessTap did not write (the user installed the plugin
+ * with Claude Code, even into a folder HarnessTap created), or a folder at
+ * the install root HarnessTap did not create. HarnessTap neither copies over
+ * nor registers such an install.
  */
 function foreignClaudeInstall(
   homeRoot: string,
@@ -524,7 +527,11 @@ function foreignClaudeInstall(
 ): string | undefined {
   const candidates: string[] = [];
   const record = getInstalledPluginRecord(homeRoot, originRef);
-  if (record) candidates.push(resolveInstalledRecordPath(homeRoot, record));
+  if (record) {
+    const recordPath = resolveInstalledRecordPath(homeRoot, record);
+    if (!isHarnessTapClaudeRecord(homeRoot, record)) return recordPath;
+    candidates.push(recordPath);
+  }
   const destination = join(homeRoot, relativeRoot);
   if (existsSync(destination)) candidates.push(destination);
   for (const path of candidates) {

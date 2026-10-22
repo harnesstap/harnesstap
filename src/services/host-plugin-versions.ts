@@ -24,6 +24,7 @@ import {
   readMarketplacePluginSource,
   resolveMarketplaceRoot,
 } from "./host-plugin-source.js";
+import { isHarnessTapClaudeRecord } from "./claude-plugin-record-owner.js";
 import { isPluginInstallRoot } from "./plugin-source-import.js";
 import { cacheVersionDir } from "./host-plugin-source.js";
 import { hostPluginPackagesParent } from "./package-cache/paths.js";
@@ -499,6 +500,16 @@ export function retargetHostPluginVersion(input: {
     selected.path,
   );
   const existing = getInstalledPluginRecord(homeRoot, originRef);
+  // HarnessTap's own record keeps its exact shape, so a later switch away
+  // still knows HarnessTap wrote it (see isHarnessTapClaudeRecord).
+  if (existing && isHarnessTapClaudeRecord(homeRoot, existing)) {
+    writeInstalledPluginRecord(homeRoot, originRef, {
+      scope: existing.scope,
+      installPath: relativePath,
+      version: selected.version,
+    });
+    return { version: selected.version, install_path: selected.path, unchanged: false };
+  }
   writeInstalledPluginRecord(homeRoot, originRef, {
     scope: existing?.scope ?? "user",
     installPath: relativePath,

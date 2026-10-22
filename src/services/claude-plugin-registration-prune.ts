@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute, join, relative, sep } from "node:path";
+import { join, relative, sep } from "node:path";
+import { claudeRecordInstallPath, isHarnessTapClaudeRecord } from "./claude-plugin-record-owner.js";
 import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
 import {
   CLAUDE_KNOWN_MARKETPLACES_PATH,
@@ -34,23 +35,17 @@ function parseObject(raw: string | undefined): Record<string, unknown> | undefin
   }
 }
 
-function recordInstallPath(homeRoot: string, row: unknown): string | undefined {
-  if (!isRecord(row) || typeof row.installPath !== "string") return undefined;
-  return isAbsolute(row.installPath)
-    ? row.installPath
-    : join(homeRoot, ".claude", "plugins", row.installPath);
-}
-
 function marketplaceOf(ref: string): string {
   const at = ref.lastIndexOf("@");
   return at > 0 ? ref.slice(at + 1) : "";
 }
 
 /**
- * Plugin records HarnessTap wrote that are going away: the record points at a
- * folder HarnessTap created (its host plugin view record says so) and
- * `isLeaving` says that folder is not part of what is applied now. Records the
- * user or Claude Code wrote never point at a folder HarnessTap created.
+ * Plugin records HarnessTap wrote that are going away: the record is the one
+ * HarnessTap writes (`isHarnessTapClaudeRecord`) and `isLeaving` says its
+ * folder is not part of what is applied now. A record Claude Code wrote when
+ * the user installed the plugin is the user's, even in a folder HarnessTap
+ * created.
  */
 export function staleHarnessTapClaudeRecords(
   homeRoot: string,
@@ -63,14 +58,65 @@ export function staleHarnessTapClaudeRecords(
   for (const [ref, rows] of Object.entries(plugins)) {
     if (!Array.isArray(rows)) continue;
     for (const row of rows) {
-      const path = recordInstallPath(homeRoot, row);
-      if (!path || !readHostPluginViewRecord(path)?.created || !isLeaving(path)) continue;
+      const path = claudeRecordInstallPath(homeRoot, row);
+      if (!path || !isHarnessTapClaudeRecord(homeRoot, row) || !isLeaving(path)) continue;
       const paths = stale.get(ref) ?? new Set<string>();
       paths.add(path);
       stale.set(ref, paths);
     }
   }
   return stale;
+}
+
+/**
+ * What plugins the user installed with Claude Code (records HarnessTap did
+ * not write, see `isHarnessTapClaudeRecord`) still use of what HarnessTap
+ * set up, so a switch away from the profile keeps it:
+ * - `refs`: their plugin refs, whose `enabledPlugins` entries stay.
+ * - `folders`: plugin folders HarnessTap created that such a record points
+ *   at, and HarnessTap marketplace folders their marketplace entry still
+ *   points at (home-relative), each with the plugin ref that uses it.
+ */
+export interface UserHeldClaudePlugins {
+  refs: Set<string>;
+  folders: Map<string, string>;
+}
+
+export function userHeldClaudePlugins(homeRoot: string): UserHeldClaudePlugins {
+  const held: UserHeldClaudePlugins = { refs: new Set(), folders: new Map() };
+  const plugins = parseObject(readHomeFile(homeRoot, CLAUDE_INSTALLED_PLUGINS_PATH))?.plugins;
+  if (!isRecord(plugins)) return held;
+  const known = parseObject(readHomeFile(homeRoot, CLAUDE_KNOWN_MARKETPLACES_PATH)) ?? {};
+  for (const [ref, rows] of Object.entries(plugins)) {
+    if (!Array.isArray(rows)) continue;
+    for (const row of rows) {
+      if (isHarnessTapClaudeRecord(homeRoot, row)) continue;
+      held.refs.add(ref);
+      const path = claudeRecordInstallPath(homeRoot, row);
+      if (path && readHostPluginViewRecord(path)?.created) {
+        held.folders.set(relative(homeRoot, path).split(sep).join("/"), ref);
+      }
+      const marketplace = marketplaceOf(ref);
+      const entry = known[marketplace];
+      const htDir = harnessTapClaudeMarketplaceDir(marketplace);
+      if (marketplace && isRecord(entry) && entry.installLocation === join(homeRoot, htDir)) {
+        held.folders.set(htDir, ref);
+      }
+    }
+  }
+  return held;
+}
+
+/** The folder in `folders` that holds `path` (home-relative), if any. */
+export function heldFolderOf(
+  folders: ReadonlyMap<string, string>,
+  path: string,
+): string | undefined {
+  const normalized = path.replaceAll("\\", "/");
+  for (const folder of folders.keys()) {
+    if (normalized.startsWith(`${folder}/`)) return folder;
+  }
+  return undefined;
 }
 
 /**
@@ -90,15 +136,17 @@ export function holdsOnlyLeavingHarnessTapRegistrations(
   const parsed = parseObject(readHomeFile(homeRoot, normalized));
   if (!parsed) return false;
   if (normalized === CLAUDE_KNOWN_MARKETPLACES_PATH) {
+    const userMarketplaces = new Set([...userHeldClaudePlugins(homeRoot).refs].map(marketplaceOf));
     return Object.entries(parsed).every(([marketplace, entry]) =>
-      claudeMarketplaceEntryOwner(homeRoot, marketplace, entry) === "harnesstap");
+      !userMarketplaces.has(marketplace)
+      && claudeMarketplaceEntryOwner(homeRoot, marketplace, entry) === "harnesstap");
   }
   if (normalized === CLAUDE_INSTALLED_PLUGINS_PATH) {
     if (Object.keys(parsed).some((key) => key !== "version" && key !== "plugins")) return false;
     const plugins = isRecord(parsed.plugins) ? parsed.plugins : {};
     return Object.entries(plugins).every(([ref, rows]) =>
       Array.isArray(rows) && rows.every((row) => {
-        const path = recordInstallPath(homeRoot, row);
+        const path = claudeRecordInstallPath(homeRoot, row);
         return path !== undefined && (stale.get(ref)?.has(path) ?? false);
       }));
   }
@@ -113,6 +161,11 @@ export interface PrunedClaudeRegistrations {
    * Claude Code changed them after HarnessTap wrote them.
    */
   keptChangedMarketplaces: string[];
+  /**
+   * HarnessTap's marketplace entries that stay because a plugin the user
+   * installed with Claude Code comes from them, with that plugin's ref.
+   */
+  keptUserMarketplaces: Map<string, string>;
 }
 
 /**
@@ -138,6 +191,7 @@ export function pruneClaudeRegistrations(
 ): PrunedClaudeRegistrations {
   const files = new Map<string, string>();
   const keptChangedMarketplaces: string[] = [];
+  const keptUserMarketplaces = new Map<string, string>();
   const installed = parseObject(contents.installed);
   const plugins = isRecord(installed?.plugins) ? { ...installed.plugins } : {};
   const gone = new Set<string>();
@@ -148,7 +202,7 @@ export function pruneClaudeRegistrations(
       const rows = plugins[ref];
       if (!Array.isArray(rows)) continue;
       const kept = rows.filter((row) => {
-        const path = recordInstallPath(homeRoot, row);
+        const path = claudeRecordInstallPath(homeRoot, row);
         return !path || !paths.has(path);
       });
       if (kept.length === rows.length) continue;
@@ -187,10 +241,22 @@ export function pruneClaudeRegistrations(
   const known = parseObject(contents.knownMarketplaces);
   if (known && contents.knownMarketplaces) {
     const used = new Set(Object.keys(plugins).map(marketplaceOf));
+    const userRefs = new Map<string, string>();
+    for (const [ref, rows] of Object.entries(plugins)) {
+      if (Array.isArray(rows) && rows.some((row) => !isHarnessTapClaudeRecord(homeRoot, row))) {
+        userRefs.set(marketplaceOf(ref), ref);
+      }
+    }
     const next = { ...known };
     let changed = false;
     for (const [marketplace, entry] of Object.entries(known)) {
-      if (keepMarketplaces.has(marketplace) || used.has(marketplace)) continue;
+      if (keepMarketplaces.has(marketplace)) continue;
+      const userRef = userRefs.get(marketplace);
+      if (userRef && claudeMarketplaceEntryOwner(homeRoot, marketplace, entry) !== "foreign") {
+        keptUserMarketplaces.set(marketplace, userRef);
+        continue;
+      }
+      if (used.has(marketplace)) continue;
       const owner = claudeMarketplaceEntryOwner(homeRoot, marketplace, entry);
       if (owner === "claude-changed" || changedMarketplaces.has(marketplace)) {
         keptChangedMarketplaces.push(marketplace);
@@ -208,7 +274,7 @@ export function pruneClaudeRegistrations(
     }
   }
 
-  return { files, keptChangedMarketplaces };
+  return { files, keptChangedMarketplaces, keptUserMarketplaces };
 }
 
 function readHomeFile(homeRoot: string, relativePath: string): string | undefined {
@@ -238,7 +304,8 @@ function leavingInstallPath(homeRoot: string, files: readonly string[]): (path: 
 const HT_MARKETPLACE_MANIFEST_RE =
   /^\.claude\/plugins\/harnesstap-marketplaces\/([^/]+)\/\.claude-plugin\/marketplace\.json$/;
 
-function writtenHarnessTapMarketplaces(files: readonly string[]): Set<string> {
+/** Marketplaces whose HarnessTap marketplace manifest is among `files`. */
+export function writtenHarnessTapMarketplaces(files: readonly string[]): Set<string> {
   const names = new Set<string>();
   for (const file of files) {
     const name = HT_MARKETPLACE_MANIFEST_RE.exec(file)?.[1];
@@ -314,6 +381,8 @@ export function pruneStaleClaudeRegistrationsOnDisk(
     snapshotId?: string | null;
     dryRun?: boolean;
     changedMarketplaces?: ReadonlySet<string>;
+    /** HarnessTap marketplaces this switch takes away (their folders were stale). */
+    leavingMarketplaces?: ReadonlySet<string>;
   },
 ): { rewritten: string[]; warnings: string[] } {
   const desired = new Set(desiredFiles);
@@ -346,5 +415,12 @@ export function pruneStaleClaudeRegistrationsOnDisk(
   }
   const warnings = pruned.keptChangedMarketplaces.map((marketplace) =>
     `${claudeChangedMarketplaceMessage(marketplace)} Remove it with \`claude plugin marketplace remove ${marketplace}\` if you no longer use it.`);
+  for (const [marketplace, ref] of pruned.keptUserMarketplaces) {
+    if (!options.leavingMarketplaces?.has(marketplace)) continue;
+    warnings.push(
+      `Kept Claude Code marketplace ${marketplace}: you installed ${ref} from it with Claude Code. `
+      + `Run \`claude plugin uninstall ${ref}\` and \`claude plugin marketplace remove ${marketplace}\` if you no longer need them.`,
+    );
+  }
   return { rewritten, warnings };
 }
