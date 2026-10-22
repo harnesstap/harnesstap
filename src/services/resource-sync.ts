@@ -518,16 +518,21 @@ export async function syncPluginResource(
   let checked = 1;
   for (const candidate of scan.resources) {
     checked += 1;
-    const namespace = pluginResource.name;
-    const existing = listResources({
+    // `plugin update` stores the same plugin's resources without a
+    // namespace, so match on name and origin first and keep whichever
+    // namespace the row already has; otherwise each path adds its own copy.
+    const sameOrigin = listResources({
       type: candidate.type,
       includeComposition: true,
-    }).find(
+    }).filter(
       (row) =>
         row.name === candidate.name &&
-        row.namespace === namespace &&
+        row.origin_kind === "marketplace_link" &&
         row.origin_ref === originRef,
     );
+    const existing =
+      sameOrigin.find((row) => row.namespace === pluginResource.name) ?? sameOrigin[0];
+    const namespace = existing?.namespace ?? pluginResource.name;
 
     if (existing && isPinned(existing) && !options.force) {
       skipped.push(existing);

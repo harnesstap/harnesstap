@@ -11,13 +11,12 @@ import {
   removeResourceFromPlugin,
   stampPluginOrigin,
 } from "../models/plugin-model.js";
-import { deleteResource, upsertResource } from "../models/resource.js";
+import { deleteResource, listResourcesByOriginRef, upsertResource } from "../models/resource.js";
 import {
   MATERIAL_RESOURCE_TYPES,
   type OriginFingerprintKind,
   type Plugin,
   type ResourceCreateInput,
-  type ResourceType,
 } from "../types.js";
 import { parseApPackageFiles } from "./agent-plugins/import.js";
 import type { ApPackageFiles } from "./agent-plugins/files.js";
@@ -192,10 +191,6 @@ function resolveCachedPluginDir(
   return undefined;
 }
 
-function resourceKey(resource: { type: ResourceType; name: string }): string {
-  return `${resource.type}:${resource.name}`;
-}
-
 function remainingAttachers(resourceId: string): number {
   const row = getDb()
     .prepare("SELECT COUNT(*) AS n FROM plugin_resources WHERE resource_id = ?")
@@ -217,13 +212,22 @@ function replacePluginAttachments(
   locatorStr: string,
 ): void {
   const keep = new Set<string>();
+  const linked = listResourcesByOriginRef(locatorStr, "marketplace_link");
+  const pluginName = getPluginById(pluginId)?.name;
   for (const resource of resources) {
     if (!MATERIAL_TYPES.has(resource.type)) continue;
+    // Apply syncs the same plugin under the plugin's name as namespace; reuse
+    // that row instead of adding a second copy the profile declares twice.
+    const same = linked.filter((row) => row.type === resource.type && row.name === resource.name);
+    const namespace =
+      (same.find((row) => row.namespace === pluginName) ?? same[0])?.namespace ??
+      resource.namespace ??
+      "";
     const result = upsertResource(
       {
         type: resource.type,
         name: resource.name,
-        namespace: resource.namespace ?? "",
+        namespace,
         description: resource.description,
         content: resource.content,
         metadata: resource.metadata,
@@ -236,12 +240,12 @@ function replacePluginAttachments(
     const upserted =
       result.action === "skipped" ? result.existing : result.resource;
     addResourceToPlugin(pluginId, upserted.id);
-    keep.add(resourceKey(resource));
+    keep.add(upserted.id);
   }
 
   for (const attached of getPluginResources(pluginId)) {
     if (!MATERIAL_TYPES.has(attached.type)) continue;
-    if (keep.has(resourceKey(attached))) continue;
+    if (keep.has(attached.id)) continue;
     removeResourceFromPlugin(pluginId, attached.id);
     if (remainingAttachers(attached.id) === 0) {
       deleteResource(attached.id);
