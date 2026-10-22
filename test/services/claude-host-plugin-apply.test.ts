@@ -9,9 +9,16 @@ import { createPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { addDependency } from "../../src/services/plugin-dependency.ts";
 import { importPluginFromGitHubRef } from "../../src/services/plugin-git-import.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
-import { detectGlobalProfileStatus } from "../../src/services/global-profile-drift.ts";
-import { buildHarnessPluginRows } from "../../src/services/global-profile-status-panel.ts";
-import { addMarketplace } from "../../src/services/marketplace-registry.ts";
+import {
+  detectGlobalProfileStatus,
+  globalProfileStatusGaps,
+} from "../../src/services/global-profile-drift.ts";
+import {
+  buildHarnessPluginRows,
+  hostRegisteredPinRefs,
+} from "../../src/services/global-profile-status-panel.ts";
+import { addMarketplace, updateMarketplace } from "../../src/services/marketplace-registry.ts";
+import { importPluginFromMarketplace } from "../../src/services/plugin-marketplace-import.ts";
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
@@ -197,5 +204,120 @@ describe("claude host plugin apply", () => {
       rmSync(home, { recursive: true, force: true });
     }
   });
-});
 
+  it("does not report a remote marketplace dependency applied as files as a missing plugin", async () => {
+    const context = await createInitializedTestContext("claude-host-plugin-remote-mkt");
+    try {
+      const repo = initLocalClaudeMarketplace(context.rootDir, "mkta");
+      addMarketplace(getHarnesstapDir(), { url: repo, name: "mkta", platforms: ["claude-code"] });
+      await importPluginFromMarketplace({ marketplace: "mkta", plugin: "dup" });
+      const profile = createPlugin({ name: "remote" });
+      setPluginTags(profile.id, ["profile"]);
+      addDependency(profile.id, "dup@mkta");
+      // Same library plugin, but its marketplace is now remote: apply writes the
+      // skill as a file and leaves the Claude install to Claude (B6).
+      updateMarketplace(getHarnesstapDir(), "mkta", { url: "https://example.invalid/qa/mkta.git" });
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+
+      const applied = await applyProfilePlugin("remote", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+        yes: true,
+        pull: false,
+      });
+      expect(applied.cancelled).toBe(false);
+      expect(applied.resolution && [...hostRegisteredPinRefs(applied.resolution.resources)]).toEqual([]);
+      expect(existsSync(join(context.homeDir, ".claude/skills/dup-skill/SKILL.md"))).toBe(true);
+      expect(existsSync(join(context.homeDir, ".claude/plugins/installed_plugins.json"))).toBe(false);
+
+      setActiveProfileName("remote");
+      const status = await detectGlobalProfileStatus({ harness: "claude-code" });
+      expect(status.has_drift).toBe(false);
+      expect(status.harnesses["claude-code"]?.plugins).toEqual([]);
+      expect(status.panel.reasons).not.toContain("missing_plugins");
+      expect(status.panel.status).toBe("green");
+      expect(globalProfileStatusGaps(status)).toEqual({ inSync: true, missing: [] });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports a registered plugin Claude no longer has as out of sync in every status view", async () => {
+    const context = await createInitializedTestContext("claude-host-plugin-unregistered");
+    try {
+      const repo = initLocalClaudeMarketplace(context.rootDir, "mkta");
+      addMarketplace(getHarnesstapDir(), { url: repo, name: "mkta", platforms: ["claude-code"] });
+      const profile = createPlugin({ name: "two" });
+      setPluginTags(profile.id, ["profile"]);
+      addDependency(profile.id, "dup@mkta");
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      const applied = await applyProfilePlugin("two", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+        yes: true,
+      });
+      expect(applied.cancelled).toBe(false);
+      setActiveProfileName("two");
+
+      // Claude uninstalled it: the registry entry is gone.
+      writeFileSync(
+        join(context.homeDir, ".claude/plugins/installed_plugins.json"),
+        `${JSON.stringify({ version: 2, plugins: {} }, null, 2)}\n`,
+      );
+
+      const status = await detectGlobalProfileStatus({ harness: "claude-code" });
+      expect(status.harnesses["claude-code"]?.plugins).toEqual([
+        { id: "dup@mkta", state: "missing" },
+      ]);
+      expect(status.panel.reasons).toContain("missing_plugins");
+      expect(globalProfileStatusGaps(status)).toEqual({
+        inSync: false,
+        missing: [{ harness: "claude-code", kind: "plugin", id: "dup@mkta" }],
+      });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("only requires a host install for pins the apply registers", () => {
+    const home = mkdtempSync(join(tmpdir(), "claude-registered-pins-"));
+    try {
+      mkdirSync(join(home, ".claude/plugins"), { recursive: true });
+      writeFileSync(
+        join(home, ".claude/plugins/installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "context7@claude-plugins-official": [
+              { scope: "user", installPath: "cache/claude-plugins-official/context7/1.0.0", version: "1.0.0" },
+            ],
+          },
+        }),
+      );
+      const pins = [
+        { ref: "superpowers@claude-plugins-official", version_constraint: "7.0.0" },
+        { ref: "context7@claude-plugins-official", version_constraint: "1.0.0" },
+        { ref: "dup@mkta", version_constraint: "*" },
+        { ref: "ponytail", version_constraint: "*" },
+      ];
+      expect(
+        buildHarnessPluginRows(pins, home, new Set(["dup@mkta", "ponytail@local"])),
+      ).toEqual([
+        // Applied as files, Claude has not installed it: no row.
+        // Claude installed it itself: still reported, not "extra".
+        { id: "context7@claude-plugins-official", state: "installed" },
+        { id: "dup@mkta", state: "missing" },
+        { id: "ponytail", state: "missing" },
+      ]);
+      // Without the apply's registered set every declared pin counts.
+      expect(buildHarnessPluginRows(pins, home).map((row) => row.state)).toEqual([
+        "missing",
+        "installed",
+        "missing",
+        "missing",
+      ]);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+});

@@ -24,7 +24,8 @@ import {
   type DriftFileChange,
   type ProjectDriftReport,
 } from "./project-drift.js";
-import type { McpServerMetadata } from "../types.js";
+import type { McpServerMetadata, Resource } from "../types.js";
+import { hostPluginPinRef, isHostPluginPinResource } from "./host-plugin-serialize.js";
 
 export type GlobalProfileStatusDepth = "fast" | "full";
 export type PanelTrafficStatus = "green" | "yellow" | "red";
@@ -178,9 +179,47 @@ function readGlobalMcpServers(
   }
 }
 
+/**
+ * Refs of the plugin pins an apply registers with the host (Claude
+ * installed_plugins.json and enabledPlugins, Cursor local plugins). This is the
+ * apply's own resolved resource set, so status and apply agree on which
+ * declared plugins must be installed. A declared pin that is not in this set
+ * (a remote marketplace dependency) is applied as standalone files, and its
+ * host install is left to the host.
+ */
+export function hostRegisteredPinRefs(
+  resources: ReadonlyArray<Pick<Resource, "type" | "name" | "metadata" | "origin_ref">>,
+): Set<string> {
+  const refs = new Set<string>();
+  for (const resource of resources) {
+    if (!isHostPluginPinResource(resource)) continue;
+    refs.add(hostPluginPinRef(resource));
+  }
+  return refs;
+}
+
+/**
+ * Whether a declared pin must be installed in the host for the profile to be
+ * applied. Without the apply's registered set (no dry run), every pin counts.
+ */
+function pinRequiresHostInstall(
+  pin: PluginConstraintPin,
+  registeredRefs: ReadonlySet<string> | undefined,
+): boolean {
+  if (registeredRefs === undefined || registeredRefs.has(pin.ref)) return true;
+  // A bare pin (`ponytail`) registers under its install ref (`ponytail@local`).
+  const declared = parsePluginRef(pin.ref);
+  if (declared.marketplace) return false;
+  for (const ref of registeredRefs) {
+    if (parsePluginRef(ref).name === declared.name) return true;
+  }
+  return false;
+}
+
 export function buildHarnessPluginRows(
   declaredPins: PluginConstraintPin[],
   homeRoot: string,
+  registeredRefs?: ReadonlySet<string>,
 ): HarnessPluginStatusRow[] {
   const installed = loadInstalled(homeRoot).filter((row) => row.scope === "user");
   const matchedInstalledRefs = new Set<string>();
@@ -191,7 +230,7 @@ export function buildHarnessPluginRows(
     if (installedRef) {
       matchedInstalledRefs.add(installedRef);
       rows.push({ id: pin.ref, state: "installed" });
-    } else {
+    } else if (pinRequiresHostInstall(pin, registeredRefs)) {
       rows.push({ id: pin.ref, state: "missing" });
     }
   }
@@ -221,6 +260,7 @@ function findEnabledCursorInstallForPin(
 export function buildCursorHarnessPluginRows(
   declaredPins: PluginConstraintPin[],
   homeRoot: string,
+  registeredRefs?: ReadonlySet<string>,
 ): HarnessPluginStatusRow[] {
   const installs = listCursorPluginInstalls(homeRoot);
   const cursorNames = listCursorPluginFootprintNames(homeRoot);
@@ -239,7 +279,7 @@ export function buildCursorHarnessPluginRows(
     if (match) {
       matchedEnabledRefs.add(match.ref);
       rows.push({ id: pin.ref, state: "installed" });
-    } else {
+    } else if (pinRequiresHostInstall(pin, registeredRefs)) {
       rows.push({ id: pin.ref, state: "missing" });
     }
   }
@@ -418,6 +458,8 @@ export function buildHarnessLiveStatusMap(input: {
   depth: GlobalProfileStatusDepth;
   homeRoot: string;
   declaredPins: PluginConstraintPin[];
+  /** Pins the apply registers with the host; see hostRegisteredPinRefs. */
+  registeredPinRefs?: ReadonlySet<string>;
   declaredMcpByHarness: Record<string, string[]>;
   expectedMcpConfigsByHarness?: Record<string, Record<string, McpServerMetadata>>;
 }): Record<string, HarnessLiveStatus> {
@@ -441,14 +483,19 @@ export function buildHarnessLiveStatusMap(input: {
       case "claude-code":
         plugins = traceSpan(
           "base.harness-live-status.plugins",
-          () => buildHarnessPluginRows(input.declaredPins, input.homeRoot),
+          () => buildHarnessPluginRows(input.declaredPins, input.homeRoot, input.registeredPinRefs),
           harnessId,
         );
         break;
       case "cursor":
         plugins = traceSpan(
           "base.harness-live-status.plugins",
-          () => buildCursorHarnessPluginRows(input.declaredPins, input.homeRoot),
+          () =>
+            buildCursorHarnessPluginRows(
+              input.declaredPins,
+              input.homeRoot,
+              input.registeredPinRefs,
+            ),
           harnessId,
         );
         break;
@@ -473,6 +520,24 @@ export function buildHarnessLiveStatusMap(input: {
   }
 
   return harnesses;
+}
+
+/** Declared plugins and MCP servers a full status found missing, per harness. */
+export function listMissingHarnessRows(
+  harnesses: Record<string, HarnessLiveStatus>,
+): Array<{ harness: string; kind: "plugin" | "mcp"; id: string }> {
+  const rows: Array<{ harness: string; kind: "plugin" | "mcp"; id: string }> = [];
+  for (const [harness, status] of Object.entries(harnesses)) {
+    for (const row of status.plugins) {
+      if (row.state === "missing") rows.push({ harness, kind: "plugin", id: row.id });
+    }
+    for (const row of status.mcp) {
+      if (row.state === "missing" || row.state === "mismatch") {
+        rows.push({ harness, kind: "mcp", id: row.name });
+      }
+    }
+  }
+  return rows;
 }
 
 export function countMissingHarnessRows(harnesses: Record<string, HarnessLiveStatus>): {
