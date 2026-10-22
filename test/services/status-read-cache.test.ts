@@ -234,9 +234,18 @@ describe("global profile status cache", () => {
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
       expect(readStatusCacheEpoch()).toBeGreaterThan(epoch);
+      const refreshes = readStatusRefreshCompletionCount();
       const during = await detectGlobalProfileStatus({ depth: "fast", harness: "claude-code" });
       expect(during.refreshing).toBe(true);
       expect(during.changes).toEqual([]);
+      // Let the refresh this read started finish here. Stopping the worker
+      // with it in flight moves it onto this thread, where it can land in
+      // whichever test runs next.
+      const settleDeadline = Date.now() + 8000;
+      while (readStatusRefreshCompletionCount() === refreshes && Date.now() < settleDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      }
+      expect(readStatusRefreshCompletionCount()).toBe(refreshes + 1);
     } finally {
       stopStatusRefreshWorkerForTests();
       clearLiveReadCaches();
