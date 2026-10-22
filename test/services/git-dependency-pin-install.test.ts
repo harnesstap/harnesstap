@@ -9,6 +9,7 @@ import { addDependency } from "../../src/services/plugin-dependency.ts";
 import { installPluginPinAsync } from "../../src/services/plugin-install.ts";
 import { ensureMissingCatalogDependencies } from "../../src/services/plugin-catalog-install.ts";
 import { gitOriginCacheDir } from "../../src/services/plugin-origin-apply.ts";
+import { renderExplain } from "../../src/services/resolve/explain.ts";
 import { resolveComposition } from "../../src/services/resolve/index.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 
@@ -100,6 +101,24 @@ describe("installing a pinned git dependency (#500)", () => {
     addDependency(profile.id, remoteUrl, { versionConstraint: first });
     const resolution = resolveComposition({ rootSelectors: ["prof"] });
     expect(resolution.selected.map((selected) => selected.name)).toContain("gitdep");
+  });
+
+  it("explains a dependency pinned to a branch with the branch, not *", async () => {
+    await installPluginPinAsync({
+      ref: remoteUrl,
+      scope: "user",
+      homeRoot: ctx.homeDir,
+      projectRoot: ctx.homeDir,
+      versionConstraint: "main",
+    });
+    const profile = createPlugin({ name: "prof", version: "1.0.0" });
+    addDependency(profile.id, remoteUrl, { versionConstraint: "main" });
+    const resolution = resolveComposition({ rootSelectors: ["prof"] });
+    const gitdep = resolution.selected.find((selected) => selected.name === "gitdep");
+    expect(gitdep?.constraints.map((record) => record.declared)).toEqual(["main"]);
+    const text = renderExplain(resolution);
+    expect(text).toContain("prof@1.0.0 → gitdep main");
+    expect(text).not.toContain("→ gitdep *");
   });
 
   it("fails with the missing ref named instead of falling back to HEAD", async () => {

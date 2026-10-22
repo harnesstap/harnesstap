@@ -153,8 +153,11 @@ export function walkDependencyGraph(input: {
           sourceKinds.set(name, dependency.source_kind);
         }
         const bucket = constraints.get(name) ?? [];
+        const mediated = mediationConstraint(dependency.source_kind, dependency.version_constraint);
+        const declared = dependency.version_constraint.trim();
         bucket.push({
-          constraint: mediationConstraint(dependency.source_kind, dependency.version_constraint),
+          constraint: mediated,
+          ...(dependency.source_kind === "git" && declared && mediated !== declared ? { declared } : {}),
           path: frame.path,
           requirer: frame.label,
         });

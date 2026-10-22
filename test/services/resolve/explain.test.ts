@@ -57,6 +57,32 @@ describe("renderExplain", () => {
     expect(text).toContain("mediation");
   });
 
+  it("shows the git ref a dependency declared instead of *", () => {
+    const pinned: ResolutionResult = {
+      ...result,
+      selected: result.selected.map((plugin) =>
+        plugin.name === "base"
+          ? {
+              ...plugin,
+              constraints: [
+                {
+                  constraint: "*",
+                  declared: "main",
+                  requirer: "team-standards@2.1.0",
+                  path: ["my-setup@1.0.0", "team-standards@2.1.0"],
+                },
+              ],
+            }
+          : plugin,
+      ),
+    };
+    expect(renderExplain(pinned)).toContain("team-standards@2.1.0 → base main");
+    expect(explainPayload(pinned).selected[0]?.constraints[0]).toMatchObject({
+      constraint: "*",
+      declared: "main",
+    });
+  });
+
   it("names winner, loser, and reason for every resource decision", () => {
     const text = renderExplain(result);
     expect(text).toContain("skill:alpha");
