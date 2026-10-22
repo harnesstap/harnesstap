@@ -258,6 +258,28 @@ describe("importApPackageFiles", () => {
     expect(getPluginByName("with-deps-copy")?.dirty).toBe(true);
   });
 
+  it("exports each dependency with its source so a re-import is identical", () => {
+    createPlugin({ name: "base" });
+    const source = createPlugin({ name: "Refs", version: "1.0.0" });
+    const refs = [
+      "context7@claude-plugins-official",
+      "https://github.com/acme/tools.git",
+      "acme/default/foundation",
+      "base",
+    ];
+    for (const ref of refs) addDependency(source.id, ref, { versionConstraint: "1.0.0" });
+    const files = buildApPackageFiles(source.id);
+    expect(parseApPackageFiles(files).dependencies.map((d) => d.name)).toEqual(refs);
+
+    const imported = importApPackageFiles(files, { as: "refs-copy" });
+    const deps = listDependencies(imported.id);
+    expect(deps.map((d) => d.ref)).toEqual(refs);
+    expect(deps.map((d) => d.source_kind)).toEqual(["marketplace", "git", "catalog", "local"]);
+    expect(parseApPackageFiles(buildApPackageFiles(imported.id)).dependencies).toEqual(
+      parseApPackageFiles(files).dependencies,
+    );
+  });
+
   it("restores the local name when no override is given", () => {
     const files = buildApPackageFiles(seedSource());
     // Re-import into a fresh context so the name is free.
