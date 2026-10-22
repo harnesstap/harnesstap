@@ -250,6 +250,26 @@ describe("plugin-source-import service", () => {
     }
   });
 
+  it("imports a skill whose description has an unquoted colon (claude-mem mem-search)", async () => {
+    const pluginRoot = createTempDir("plugin-source-colon-frontmatter");
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ name: "colon-plugin", version: "15.0.1" }),
+      );
+      writeTextFile(
+        join(pluginRoot, "skills/mem-search/SKILL.md"),
+        "---\nname: mem-search\ndescription: Search in three steps: search, timeline, then get.\n---\n# Search\n",
+      );
+      const entries = await scanPluginSource(pluginRoot);
+      const skill = entries[0]?.resources.find((resource) => resource.type === "skill");
+      expect(skill?.name).toBe("mem-search");
+      expect(skill?.description).toBe("Search in three steps: search, timeline, then get.");
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
   it("captures claude agent frontmatter options in canonical metadata", async () => {
     const pluginRoot = createTempDir("plugin-source-claude-agent");
 
