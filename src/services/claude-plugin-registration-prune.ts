@@ -224,6 +224,14 @@ export function pruneClaudeRegistrations(
     }
   }
 
+  // A record HarnessTap wrote may already be out of the file: the switch
+  // removed it with HarnessTap's own registry entries, or deleted the whole
+  // file. Its `enabledPlugins` entry goes just the same, once no record is left.
+  for (const ref of stale.keys()) {
+    const rows = plugins[ref];
+    if (!Array.isArray(rows) || rows.length === 0) gone.add(ref);
+  }
+
   const settings = parseObject(contents.settings);
   if (settings && contents.settings && gone.size > 0 && isRecord(settings.enabledPlugins)) {
     const enabled = { ...settings.enabledPlugins };

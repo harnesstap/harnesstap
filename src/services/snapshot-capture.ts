@@ -1,5 +1,6 @@
 import { existsSync, lstatSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { listApplyRemovalBackups } from "../models/apply-removal-backup.js";
 import type { Plugin, Resource, SerializedFile, SnapshotState } from "../types.js";
 
 export function emptySnapshotState(): SnapshotState {
@@ -40,18 +41,54 @@ export function flattenSnapshotFiles(state: SnapshotState): SerializedFile[] {
   return files;
 }
 
-/** Live bytes to restore on revert. New captures store those in disk_files. */
-export function flattenLiveRestoreFiles(state: SnapshotState): SerializedFile[] {
+/**
+ * Files the snapshot left to the removal backups: one entry per path, read
+ * from the backup only when the content is asked for. The first backup of a
+ * path wins (a later one may hold what a revert overwrote).
+ */
+function trashedRestoreFiles(state: SnapshotState, snapshotId: string): SerializedFile[] {
+  const wanted = new Set(state.trashed_files ?? []);
+  if (wanted.size === 0) return [];
+  const earliest = new Map<string, ReturnType<typeof listApplyRemovalBackups>[number]>();
+  for (const backup of listApplyRemovalBackups({ snapshot_id: snapshotId })) {
+    if (!wanted.has(backup.relative_path)) continue;
+    const current = earliest.get(backup.relative_path);
+    if (!current || backup.id < current.id) earliest.set(backup.relative_path, backup);
+  }
+  const files: SerializedFile[] = [];
+  for (const [path, backup] of earliest) {
+    files.push({
+      path,
+      get content(): string {
+        return backup.content.toString("utf-8");
+      },
+    });
+  }
+  return files;
+}
+
+/**
+ * Live bytes to restore on revert. New captures store those in disk_files,
+ * plus the files left to the removal backups when the snapshot id is known.
+ */
+export function flattenLiveRestoreFiles(state: SnapshotState, snapshotId?: string): SerializedFile[] {
   const hasLiveCapture =
     (state.disk_files !== undefined && Object.keys(state.disk_files).length > 0)
     || (state.absent_paths?.length ?? 0) > 0
-    || Object.keys(state.disk_links ?? {}).length > 0;
+    || Object.keys(state.disk_links ?? {}).length > 0
+    || (state.trashed_files?.length ?? 0) > 0;
   if (!hasLiveCapture) {
     return flattenSnapshotFiles(state);
   }
   const files: SerializedFile[] = [];
   for (const [path, content] of Object.entries(state.disk_files ?? {})) {
     files.push({ path, content });
+  }
+  if (snapshotId) {
+    const have = new Set(files.map((file) => file.path));
+    for (const file of trashedRestoreFiles(state, snapshotId)) {
+      if (!have.has(file.path)) files.push(file);
+    }
   }
   return files;
 }
@@ -72,6 +109,14 @@ function readLiveLink(rootPath: string, relativePath: string): string | undefine
     return lstatSync(fullPath).isSymbolicLink() ? readlinkSync(fullPath) : undefined;
   } catch {
     return undefined;
+  }
+}
+
+function isLiveRegularFile(rootPath: string, relativePath: string): boolean {
+  try {
+    return statSync(join(rootPath, relativePath)).isFile();
+  } catch {
+    return false;
   }
 }
 
@@ -96,11 +141,18 @@ export function captureManagedSnapshotState(input: {
     files: ReadonlyArray<{ path: string; content?: string }>;
   }>;
   extraPaths?: readonly string[];
+  /**
+   * Paths the apply may remove. A regular file there is noted but not read:
+   * if the apply removes it, the removal backup keeps its bytes; if not, it
+   * is untouched.
+   */
+  removalBackedPaths?: readonly string[];
 }): SnapshotState {
   const platform_files: Record<string, Record<string, string>> = {};
   const disk_files: Record<string, string> = {};
   const disk_links: Record<string, string> = {};
   const absent: string[] = [];
+  const trashed: string[] = [];
   const seen = new Set<string>();
 
   for (const result of input.generated) {
@@ -152,6 +204,23 @@ export function captureManagedSnapshotState(input: {
     disk_files[extra] = live;
   }
 
+  for (const path of input.removalBackedPaths ?? []) {
+    if (!path || seen.has(path)) {
+      continue;
+    }
+    seen.add(path);
+    const link = readLiveLink(input.rootPath, path);
+    if (link !== undefined) {
+      disk_links[path] = link;
+      continue;
+    }
+    if (isLiveRegularFile(input.rootPath, path)) {
+      trashed.push(path);
+    } else {
+      absent.push(path);
+    }
+  }
+
   return {
     plugins: input.plugins ?? [],
     resources: input.resources ?? [],
@@ -159,5 +228,6 @@ export function captureManagedSnapshotState(input: {
     ...(Object.keys(disk_files).length > 0 ? { disk_files } : {}),
     ...(absent.length > 0 ? { absent_paths: absent } : {}),
     ...(Object.keys(disk_links).length > 0 ? { disk_links } : {}),
+    ...(trashed.length > 0 ? { trashed_files: trashed } : {}),
   };
 }

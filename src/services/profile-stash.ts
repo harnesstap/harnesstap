@@ -223,7 +223,7 @@ function lastWrittenContent(profileName: string, relativePath: string): string |
   if (!snapshot?.state) {
     return undefined;
   }
-  return flattenLiveRestoreFiles(snapshot.state).find((file) => file.path === relativePath)?.content;
+  return flattenLiveRestoreFiles(snapshot.state, snapshot.id).find((file) => file.path === relativePath)?.content;
 }
 
 /**
