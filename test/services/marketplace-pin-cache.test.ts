@@ -451,6 +451,36 @@ describe("installMarketplacePinIntoCache for an entry that advertises no version
     });
   }
 
+  it("installs the pinned commit of a tagless entry at its plugin.json version for *", async () => {
+    const context = await createTestContext("pin-cache-unversioned-star");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      const { marketplace } = initUnversionedEntryMarketplace({
+        name: "sha-market",
+        version: "1.11.0",
+        pinSha: true,
+      });
+      addMarketplace(harnesstapDir, { name: "sha-market", url: marketplace, platforms: ["claude-code"] });
+
+      const result = await installMarketplacePinIntoCache({
+        originRef: "gamma@sha-market",
+        versionConstraint: "*",
+        homeRoot: context.homeDir,
+        harnesstapDir,
+      });
+      expect(result.version).toBe("1.11.0");
+      expect(
+        existsSync(
+          join(hostPluginPackageDir(harnesstapDir, "sha-market", "gamma", "1.11.0"), "skills", "gamma-skill", "SKILL.md"),
+        ),
+      ).toBe(true);
+      expect(existsSync(hostPluginPackageDir(harnesstapDir, "sha-market", "gamma", "0.0.0"))).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("refuses content that declares another version and says which", async () => {
     const context = await createTestContext("pin-cache-unversioned-mismatch");
     try {
@@ -471,5 +501,103 @@ describe("installMarketplacePinIntoCache for an entry that advertises no version
     } finally {
       await context.cleanup();
     }
+  });
+});
+
+/**
+ * A marketplace whose in-repo plugin declared 1.0.0 and then moved on to
+ * `headManifest` (another version, or none, as claude-plugins-official did
+ * for playwright).
+ */
+function initMovedOnMarketplace(headManifest: Record<string, unknown>): string {
+  const repo = mkdtempSync(join(tmpdir(), "ht-pin-moved-mkt-"));
+  const pluginDir = join(repo, "external_plugins", "delta");
+  mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(pluginDir, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(pluginDir, "skills", "delta-skill"), { recursive: true });
+  writeFileSync(
+    join(repo, ".claude-plugin", "marketplace.json"),
+    JSON.stringify({ name: "moved-market", plugins: [{ name: "delta", source: "./external_plugins/delta" }] }),
+  );
+  const writeRelease = (manifest: Record<string, unknown>, body: string) => {
+    writeFileSync(join(pluginDir, ".claude-plugin", "plugin.json"), JSON.stringify(manifest));
+    writeFileSync(
+      join(pluginDir, "skills", "delta-skill", "SKILL.md"),
+      `---\nname: delta-skill\ndescription: Delta skill\n---\n# ${body}\n`,
+    );
+  };
+  spawnSync("git", ["init"], { cwd: repo, stdio: "ignore" });
+  writeRelease({ name: "delta", version: "1.0.0" }, "one");
+  commitAll(repo, "delta 1.0.0");
+  writeRelease(headManifest, "head");
+  commitAll(repo, "move on");
+  spawnSync("git", ["branch", "-M", "main"], { cwd: repo, stdio: "ignore" });
+  return repo;
+}
+
+async function withMovedOnMarketplace(
+  label: string,
+  headManifest: Record<string, unknown>,
+  run: (homeRoot: string, harnesstapDir: string) => Promise<void>,
+): Promise<void> {
+  const context = await createTestContext(label);
+  try {
+    context.schema.initializeSchema(context.connection.getDb());
+    const harnesstapDir = join(context.homeDir, ".harnesstap");
+    addMarketplace(harnesstapDir, {
+      name: "moved-market",
+      url: initMovedOnMarketplace(headManifest),
+      platforms: ["claude-code"],
+    });
+    await run(context.homeDir, harnesstapDir);
+  } finally {
+    await context.cleanup();
+  }
+}
+
+function cachedSkill(harnesstapDir: string, version: string): string {
+  const cached = hostPluginPackageDir(harnesstapDir, "moved-market", "delta", version);
+  return readFileSync(join(cached, "skills", "delta-skill", "SKILL.md"), "utf8");
+}
+
+describe("installMarketplacePinIntoCache when the marketplace has moved past the pin", () => {
+  it("installs the commit that declared the pinned version, not the head", async () => {
+    await withMovedOnMarketplace("pin-cache-moved", { name: "delta", version: "2.0.0" }, async (homeRoot, harnesstapDir) => {
+      const result = await installMarketplacePinIntoCache({
+        originRef: "delta@moved-market",
+        versionConstraint: "1.0.0",
+        homeRoot,
+        harnesstapDir,
+      });
+      expect(result.version).toBe("1.0.0");
+      expect(cachedSkill(harnesstapDir, "1.0.0")).toContain("# one");
+    });
+  });
+
+  it("reports the marketplace version when no commit declared the pin", async () => {
+    await withMovedOnMarketplace("pin-cache-moved-missing", { name: "delta", version: "2.0.0" }, async (homeRoot, harnesstapDir) => {
+      await expect(
+        installMarketplacePinIntoCache({
+          originRef: "delta@moved-market",
+          versionConstraint: "3.0.0",
+          homeRoot,
+          harnesstapDir,
+        }),
+      ).rejects.toThrow(/is 2\.0\.0 in the marketplace.*Pin 2\.0\.0/);
+      expect(existsSync(hostPluginPackageDir(harnesstapDir, "moved-market", "delta", "3.0.0"))).toBe(false);
+    });
+  });
+
+  it("keeps using the marketplace copy of a plugin that no longer declares a version", async () => {
+    await withMovedOnMarketplace("pin-cache-unversioned", { name: "delta" }, async (homeRoot, harnesstapDir) => {
+      const result = await installMarketplacePinIntoCache({
+        originRef: "delta@moved-market",
+        versionConstraint: "1.0.0",
+        homeRoot,
+        harnesstapDir,
+      });
+      expect(result.version).toBe("1.0.0");
+      expect(cachedSkill(harnesstapDir, "1.0.0")).toContain("# head");
+    });
   });
 });

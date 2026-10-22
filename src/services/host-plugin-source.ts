@@ -748,6 +748,81 @@ export function declaredPluginVersion(root: string): string | undefined {
   return undefined;
 }
 
+async function resolveHostPluginDownloadSource(input: {
+  originRef: string;
+  homeRoot: string;
+  harnesstapDir: string;
+  configuredHarnesstapDir?: string;
+  runCommand?: RunCommand;
+}) {
+  const { name, marketplace } = parsePluginRef(input.originRef);
+  const marketplaceName = marketplace ?? "";
+  // A marketplace HarnessTap cloned itself (`ht marketplace add`, or a
+  // dependency install in a home the host never set up) lives in the
+  // HarnessTap cache, not under the host's plugins directory. Its entry still
+  // names the plugin's own source (for example a `url` or `github` repo).
+  const live =
+    readMarketplacePluginSource(input.homeRoot, marketplaceName, name)
+    ?? readMarketplacePluginSourceAt(
+      marketplaceCacheDir(input.harnesstapDir, marketplaceName),
+      name,
+    );
+  const snapshot = readHostPluginSourceSnapshot(
+    input.originRef,
+    input.configuredHarnesstapDir,
+  );
+  const sourceUrl = await resolveHostPluginCloneUrl({
+    homeRoot: input.homeRoot,
+    marketplace: marketplaceName,
+    live,
+    snapshot,
+    runCommand: input.runCommand,
+  });
+  const sourceRef = live?.gitRef ?? snapshot?.source_ref;
+  const advertisedVersion = live?.version ?? snapshot?.advertised_version;
+  return { live, snapshot, sourceUrl, sourceRef, advertisedVersion };
+}
+
+/**
+ * Clone the commit a marketplace entry pins (or the default branch) for a
+ * dependency with no version constraint, into `targetDir`, and report the
+ * version its plugin.json declares. For entries that list a commit or
+ * nothing as their version and whose repository has no tags.
+ */
+export async function downloadHostPluginUnpinned(input: {
+  originRef: string;
+  targetDir: string;
+  homeRoot?: string;
+  harnesstapDir?: string;
+  runCommand?: RunCommand;
+}): Promise<{ declaredVersion: string | undefined }> {
+  const homeRoot = input.homeRoot ?? resolveHomeRoot();
+  const harnesstapDir = input.harnesstapDir ?? harnesstapDirForHomeRoot(homeRoot);
+  const { sourceUrl, sourceRef } = await resolveHostPluginDownloadSource({
+    originRef: input.originRef,
+    homeRoot,
+    harnesstapDir,
+    configuredHarnesstapDir: input.harnesstapDir,
+    runCommand: input.runCommand,
+  });
+  if (!sourceUrl) {
+    throw new Error(`Could not download ${input.originRef}: its marketplace entry names no git source`);
+  }
+  const cloned = await clonePluginVersion({
+    url: sourceUrl,
+    gitRef: sourceRef?.trim() || undefined,
+    targetDir: input.targetDir,
+    runCommand: input.runCommand ?? runCommandWithTimeout,
+  });
+  if (!cloned.ok) {
+    throw new Error(`Could not download ${input.originRef}: ${cloned.message}`);
+  }
+  if (!isPluginInstallRoot(input.targetDir)) {
+    throw new Error(`Could not download ${input.originRef}: ${sourceRef ?? "the default branch"} is not a plugin root`);
+  }
+  return { declaredVersion: declaredPluginVersion(input.targetDir) };
+}
+
 export async function downloadHostPluginVersion(input: {
   originRef: string;
   version: string;
@@ -783,29 +858,14 @@ export async function downloadHostPluginVersion(input: {
       install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
     };
   }
-  // A marketplace HarnessTap cloned itself (`ht marketplace add`, or a
-  // dependency install in a home the host never set up) lives in the
-  // HarnessTap cache, not under the host's plugins directory. Its entry still
-  // names the plugin's own source (for example a `url` or `github` repo).
-  const live =
-    readMarketplacePluginSource(homeRoot, marketplace, name)
-    ?? readMarketplacePluginSourceAt(
-      marketplaceCacheDir(harnesstapDir, marketplace),
-      name,
-    );
-  const snapshot = readHostPluginSourceSnapshot(
-    input.originRef,
-    input.harnesstapDir,
-  );
-  const sourceUrl = await resolveHostPluginCloneUrl({
-    homeRoot,
-    marketplace,
-    live,
-    snapshot,
-    runCommand: input.runCommand,
-  });
-  const sourceRef = live?.gitRef ?? snapshot?.source_ref;
-  const advertisedVersion = live?.version ?? snapshot?.advertised_version;
+  const { live, snapshot, sourceUrl, sourceRef, advertisedVersion } =
+    await resolveHostPluginDownloadSource({
+      originRef: input.originRef,
+      homeRoot,
+      harnesstapDir,
+      configuredHarnesstapDir: input.harnesstapDir,
+      runCommand: input.runCommand,
+    });
   const candidates: Array<{ gitRef: string | undefined; verify: boolean }> = [
     ...gitRefsToTry({
       version: input.version,
@@ -857,6 +917,13 @@ export async function downloadHostPluginVersion(input: {
           version: input.version,
           install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
         };
+      }
+      if (cloned.ok) {
+        // The ref cloned but is not a plugin root (an in-repo plugin of a
+        // larger marketplace): leave no half-made version directory behind.
+        rmSync(target, { recursive: true, force: true });
+        lastMessage = `${gitRef ?? "the default branch"} is not a plugin root`;
+        continue;
       }
       lastMessage = cloned.message;
     }
