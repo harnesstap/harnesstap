@@ -25,6 +25,8 @@ export interface InstallPluginPinResult {
   scope: PluginScope;
   status: "installed" | "already_installed" | "failed" | "unsupported";
   message: string;
+  /** The version a marketplace install put in the package cache. */
+  version?: string;
 }
 
 /** True when a git dependency constraint names a commit, tag, branch or semver range. */
@@ -86,6 +88,7 @@ export async function installPluginPinAsync(
         scope: options.scope,
         status: "installed",
         message: `Cached ${options.ref}@${cached.version}`,
+        version: cached.version,
       };
     } catch {
       // Fall through to the host provider when the package cache cannot

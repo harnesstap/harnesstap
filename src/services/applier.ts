@@ -581,7 +581,14 @@ export async function planMaterializationConflicts(
     if (semanticallyMatchesExisting(fullPath, file)) return [];
     // A managed file the user edited is kept, not overwritten. It is not a
     // conflict that should cancel the apply.
-    if (classifyManagedPathOwnership(rootPath, file.path) === "modified") {
+    const ownership = classifyManagedPathOwnership(rootPath, file.path);
+    if (ownership === "modified") {
+      return [];
+    }
+    // The host plugin registry is merged entry by entry, and HarnessTap still
+    // owns the bytes on disk: pointing its own entry at a new version (after
+    // `ht plugin update`) is not someone else's change.
+    if (ownership === "owned" && isPluginRegistryManagedPath(file.path)) {
       return [];
     }
     const owners = findImportedSnapshotOwnersByFile(file.path);

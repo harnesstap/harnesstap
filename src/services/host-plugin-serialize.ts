@@ -1,5 +1,7 @@
 import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { basename, join, relative, sep } from "node:path";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
+import { hostPluginPackageDir } from "./package-cache/paths.js";
 import { listCursorPluginInstalls } from "../plugins/cursor-inventory.js";
 import {
   CURSOR_LOCAL_PLUGIN_SIDECAR,
@@ -264,6 +266,40 @@ function onlyHarnessTapWrittenFiles<T extends { relativePath: string }>(
   return collected.filter((file) => file.relativePath in record.files);
 }
 
+/**
+ * The tree to copy for a plugin pin. It is the installed copy, unless that copy
+ * is another version than the one the pin resolved to (after `ht plugin update`
+ * bumped it): then it is the package cache copy of the resolved version, so the
+ * files written under that version's folder are that version's.
+ */
+function hostPluginSourceRoot(
+  resource: Resource,
+  originRef: string,
+  homeRoot: string,
+): string | undefined {
+  const installed = resolveInstallRoot(originRef, homeRoot, undefined, {
+    preferCanonicalPackage: false,
+  });
+  const metadata = (resource.metadata ?? {}) as PluginDependencyMetadata;
+  const version = metadata.resolved_version?.trim();
+  const { name, marketplace } = parsePluginRef(originRef);
+  if (
+    !version
+    || !marketplace
+    || isLocalMarketplace(marketplace)
+    || (installed && basename(installed) === version)
+  ) {
+    return installed;
+  }
+  const cached = hostPluginPackageDir(
+    harnesstapDirForHomeRoot(homeRoot),
+    marketplace,
+    name,
+    version,
+  );
+  return existsSync(cached) ? cached : installed;
+}
+
 export interface EmitHostPluginTreesOptions {
   layout: HostPluginLayout;
   homeRoot: string;
@@ -303,9 +339,7 @@ export function emitHostPluginTrees(
       });
       continue;
     }
-    const sourceRoot = resolveInstallRoot(originRef, options.homeRoot, undefined, {
-      preferCanonicalPackage: false,
-    });
+    const sourceRoot = hostPluginSourceRoot(resource, originRef, options.homeRoot);
     if (!sourceRoot || !existsSync(sourceRoot)) continue;
 
     const relativeRoot = hostPluginRelativeRoot(

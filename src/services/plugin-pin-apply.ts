@@ -17,6 +17,9 @@ import {
   type InstallPluginPinsProgress,
 } from "./plugin-install.js";
 import { syncPluginResource } from "./resource-sync.js";
+import { hostPluginPackageDir } from "./package-cache/paths.js";
+import { harnesstapDirForHomeRoot } from "../db/connection.js";
+import { parsePluginRef } from "../plugins/claude-installed.js";
 import {
   validatePluginPinsAgainstInventory,
   type PluginConstraintPin,
@@ -265,7 +268,18 @@ export async function syncPluginPinsForApply(
     );
 
     const metadata = (resource.metadata ?? {}) as PluginPinMetadata;
-    const needsSync = options.syncAll || !metadata.resolved_version;
+    // An unpinned or range dependency follows the version the install just
+    // cached (after `ht plugin update` bumped it), instead of the one an
+    // earlier apply resolved.
+    const installedVersion = installs.find(
+      (install) => install.ref === pin.ref && install.status === "installed",
+    )?.version;
+    const movedOn = Boolean(
+      installedVersion
+      && metadata.resolved_version
+      && installedVersion !== metadata.resolved_version,
+    );
+    const needsSync = options.syncAll || !metadata.resolved_version || movedOn;
     if (!needsSync) {
       // Already resolved: still ensure the upstream plugin exists so the
       // graph can treat the install as an ordinary node without a re-sync.
@@ -306,7 +320,15 @@ export async function syncPluginPinsForApply(
     const syncTarget = resource;
     const syncResult = await traceSpan(
       "dry-run.plugin-pins.sync",
-      () => syncPluginResource(syncTarget, { policy: "overwrite", onConflict: "overwrite", homeRoot }),
+      () =>
+        syncPluginResource(syncTarget, {
+          policy: "overwrite",
+          onConflict: "overwrite",
+          homeRoot,
+          installRoot: movedOn && installedVersion
+            ? cachedHostPluginRoot(homeRoot, pin.ref, installedVersion)
+            : undefined,
+        }),
       pin.ref,
     );
     syncedResourceCount += syncResult.updated.length;
@@ -463,4 +485,17 @@ export async function preparePluginPinsForApply(
     extraMaterialized: 0,
     validationIssues,
   };
+}
+
+/** The package cache copy of a marketplace plugin version, if the ref names one. */
+function cachedHostPluginRoot(
+  homeRoot: string,
+  ref: string,
+  version: string,
+): string | undefined {
+  const { name, marketplace } = parsePluginRef(ref);
+  if (!marketplace) {
+    return undefined;
+  }
+  return hostPluginPackageDir(harnesstapDirForHomeRoot(homeRoot), marketplace, name, version);
 }
