@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
+import { isInHostPluginViewCreatedByHarnessTap } from "./package-cache/host-plugin.js";
 import { skippedDuplicateCommand, skippedHostPluginHook } from "../copy/cli.js";
 import {
   findImportedSnapshotOwnersByFile,
@@ -127,6 +128,11 @@ export interface MaterializationResult {
   cancelled: boolean;
   writtenFiles: string[];
   skippedFiles: string[];
+  /**
+   * Skipped because identical, in a host plugin folder a HarnessTap install
+   * created: recorded as owned like written files.
+   */
+  adoptedFiles?: string[];
   conflicts: MaterializationConflict[];
 }
 
@@ -651,6 +657,7 @@ export async function materializeFiles(
 
   const writtenFiles: string[] = [];
   const skippedFiles: string[] = [];
+  const adoptedFiles: string[] = [];
 
   if (options.dryRun) {
     const skippedPreexisting = files.filter((file) => {
@@ -663,7 +670,9 @@ export async function materializeFiles(
       }
       const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
       return (
-        (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path))
+        (existsSync(fullPath)
+          && !isHarnessTapOwnedPath(rootPath, file.path)
+          && !isInHostPluginViewCreatedByHarnessTap(fullPath))
         || semanticallyMatchesExisting(fullPath, file)
       );
     });
@@ -702,7 +711,10 @@ export async function materializeFiles(
       continue;
     }
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
-    if (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path)) {
+    // A host plugin folder a HarnessTap install created holds HarnessTap's
+    // bytes, not the user's: never record them as preexisting.
+    const inCreatedHostView = isInHostPluginViewCreatedByHarnessTap(fullPath);
+    if (existsSync(fullPath) && !isHarnessTapOwnedPath(rootPath, file.path) && !inCreatedHostView) {
       if (!hasHarnessTapMaterialization(rootPath, file.path)) {
         recordPreexistingPath({
           root_path: rootPath,
@@ -716,6 +728,9 @@ export async function materializeFiles(
       }
     }
     if (semanticallyMatchesExisting(fullPath, file)) {
+      if (inCreatedHostView && !isHarnessTapOwnedPath(rootPath, file.path)) {
+        adoptedFiles.push(file.path);
+      }
       skippedFiles.push(file.path);
       continue;
     }
@@ -729,6 +744,7 @@ export async function materializeFiles(
     cancelled: false,
     writtenFiles,
     skippedFiles,
+    adoptedFiles,
     conflicts: conflicts.filter(
       (conflict) =>
         !(
@@ -825,16 +841,21 @@ export async function applyToGlobal(
       platformResults: results.map((result) => ({
         platformId: result.platformId,
         files: result.files,
-        writtenPaths: materialized.writtenFiles.filter((filePath) =>
-          result.files.some((file) => file.path === filePath),
-        ),
+        writtenPaths: [
+          ...materialized.writtenFiles.filter((filePath) =>
+            result.files.some((file) => file.path === filePath),
+          ),
+          ...(materialized.adoptedFiles ?? []).filter((filePath) =>
+            result.files.some((file) => file.path === filePath),
+          ),
+        ],
       })),
     });
   }
 
   if (!materialized.cancelled && options.snapshotId) {
     const currentlyOwnedPaths = [
-      ...new Set([...materialized.writtenFiles, ...ownedSkippedFiles]),
+      ...new Set([...materialized.writtenFiles, ...ownedSkippedFiles, ...(materialized.adoptedFiles ?? [])]),
     ];
     removeImportedSnapshotOwnershipForFiles(currentlyOwnedPaths, options.snapshotId);
     for (const result of results) {

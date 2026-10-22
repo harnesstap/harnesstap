@@ -200,7 +200,11 @@ export function persistWrittenMaterializations(input: {
       if (!writtenPaths.has(file.path) || !file.ownership?.length) {
         return [];
       }
-      const generatedHash = hashGeneratedContent(file.content);
+      // Hash the bytes the way the on-disk check reads them, so a binary
+      // (base64) file is not seen as changed right after it is written.
+      const generatedHash = hashGeneratedContent(
+        file.encoding === "base64" ? Buffer.from(file.content, "base64").toString("utf-8") : file.content,
+      );
       return file.ownership.map((ownership) => ({
         resource_id: ownership.resource_id,
         path: file.path,
