@@ -51,6 +51,11 @@ describe("plugin folder refresh counts", () => {
     expect(hostPluginViewChangeCounts()).toEqual({ replaced: 1, removed: 1, added: 1 });
   });
 
+  it("counts every file of a new plugin folder, as a version bump creates", () => {
+    mirror({ ...MANIFEST, "skills/s/SKILL.md": "v1\n", "skills/s/b.md": "b\n" });
+    expect(hostPluginViewChangeCounts()).toEqual({ replaced: 0, removed: 0, added: 3 });
+  });
+
   it("does not count files again when nothing changed", () => {
     const files = { ...MANIFEST, "skills/s/SKILL.md": "v1\n" };
     mirror(files);
