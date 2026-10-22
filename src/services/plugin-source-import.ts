@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import matter from "gray-matter";
 import { parseFrontmatter as parseFrontmatterText } from "../utils/frontmatter.js";
 import { parse as parseToml } from "smol-toml";
@@ -27,7 +27,7 @@ interface PluginManifest {
   description?: string;
   commands?: string;
   hooks?: string;
-  skills?: string;
+  skills?: string | string[];
 }
 
 interface MarketplacePluginEntry {
@@ -46,7 +46,8 @@ interface ValidatedPluginManifest {
   description?: string;
   commands?: string;
   hooks?: string;
-  skills?: string;
+  /** plugin.json `skills`: one path or a list, each a skill or a folder of skills. */
+  skills?: string[];
 }
 
 interface PluginHooksConfig {
@@ -210,10 +211,11 @@ function validatePluginManifest(
     typeof manifest.hooks === "string" && manifest.hooks.trim().length > 0
       ? manifest.hooks.trim()
       : undefined;
-  const skills =
-    typeof manifest.skills === "string" && manifest.skills.trim().length > 0
-      ? manifest.skills.trim()
-      : undefined;
+  const skillPaths = (Array.isArray(manifest.skills) ? manifest.skills : [manifest.skills])
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const skills = skillPaths.length > 0 ? skillPaths : undefined;
   return {
     name,
     ...(version ? { version } : {}),
@@ -587,7 +589,7 @@ function buildProvenance(input: {
 
 function scanSkills(
   rootPath: string,
-  skillsDir: string | null,
+  skillDirs: string[],
   metadata: {
   importedAt: string;
   sourceKind: ImportedSourceKind;
@@ -597,11 +599,9 @@ function scanSkills(
   sourcePluginKind: PluginSourceRootKind;
 },
 ): ResourceInput[] {
-  if (!skillsDir) return [];
-
   const resources: ResourceInput[] = [];
-  for (const entry of listDir(skillsDir)) {
-    const skillDir = join(skillsDir, entry);
+  for (const skillDir of skillDirs) {
+    const entry = basename(skillDir);
     const skillPath = join(skillDir, "SKILL.md");
     const raw = readText(skillPath);
     if (!isDirectory(skillDir) || !raw) continue;
@@ -787,14 +787,40 @@ function resolveCommandsDir(
   return isDirectory(commandsDir) ? commandsDir : null;
 }
 
-function resolveSkillsDir(
+/**
+ * Skill folders a plugin ships: each folder under `skills/`, plus each path
+ * plugin.json `skills` lists, which as in Claude Code adds to `skills/`
+ * instead of replacing it. A listed path is either a skill (it has a
+ * SKILL.md) or a folder of skills. Paths that leave the plugin are ignored.
+ */
+function resolveSkillDirs(
   rootPath: string,
   manifest: ValidatedPluginManifest,
-): string | null {
-  const skillsDir = manifest.skills
-    ? join(rootPath, manifest.skills)
-    : join(rootPath, "skills");
-  return isDirectory(skillsDir) ? skillsDir : null;
+): string[] {
+  const root = resolve(rootPath);
+  const dirs: string[] = [];
+  const seen = new Set<string>();
+  const add = (dir: string) => {
+    const key = normalizePath(dir);
+    if (seen.has(key)) return;
+    seen.add(key);
+    dirs.push(dir);
+  };
+  const addContainer = (container: string) => {
+    for (const entry of listDir(container)) {
+      const dir = join(container, entry);
+      if (isDirectory(dir)) add(dir);
+    }
+  };
+  if (isDirectory(join(rootPath, "skills"))) addContainer(join(rootPath, "skills"));
+  for (const listed of manifest.skills ?? []) {
+    const candidate = resolve(rootPath, listed);
+    if (candidate !== root && !candidate.startsWith(`${root}${sep}`)) continue;
+    if (!isDirectory(candidate)) continue;
+    if (existsSync(join(candidate, "SKILL.md"))) add(candidate);
+    else addContainer(candidate);
+  }
+  return dirs;
 }
 
 function resolveHooksPath(
@@ -1158,7 +1184,7 @@ function scanPluginRootAt(
     ...specResources,
     ...(sourcePluginKind === "agent-plugin"
       ? []
-      : scanSkills(rootPath, resolveSkillsDir(rootPath, scanManifest), {
+      : scanSkills(rootPath, resolveSkillDirs(rootPath, scanManifest), {
           importedAt,
           sourceKind,
           sourceLabel,
