@@ -31,7 +31,24 @@ export interface ReplacedHostPluginViewFiles {
   removed?: string[];
 }
 
+/**
+ * Plugin files a host plugin refresh could not write because something
+ * HarnessTap did not create is in the way: a folder at the file's path, or a
+ * file or link where one of its folders goes. HarnessTap never removes or
+ * writes through it, so the plugin there is incomplete.
+ */
+export interface BlockedHostPluginViewFiles {
+  hostView: string;
+  files: Array<{
+    path: string;
+    /** Path (inside the folder) of what is in the way. */
+    blockedBy: string;
+    kind: "folder" | "file" | "link";
+  }>;
+}
+
 let forceReplace = false;
+const blocked: BlockedHostPluginViewFiles[] = [];
 const kept: KeptHostPluginViewFiles[] = [];
 const replaced: ReplacedHostPluginViewFiles[] = [];
 
@@ -62,9 +79,21 @@ export function recordReplacedHostPluginViewFiles(entry: ReplacedHostPluginViewF
   replaced.push(entry);
 }
 
-/** True when a host plugin refresh in this process kept or replaced files. */
+/** The latest refresh of a folder replaces what an earlier one in this process found blocked. */
+export function recordBlockedHostPluginViewFiles(entry: BlockedHostPluginViewFiles): void {
+  const index = blocked.findIndex((existing) => existing.hostView === entry.hostView);
+  if (index >= 0) blocked.splice(index, 1);
+  if (entry.files.length > 0) blocked.push(entry);
+}
+
+/** Drain the plugin files host plugin refreshes could not write since the last call. */
+export function takeBlockedHostPluginViewFiles(): BlockedHostPluginViewFiles[] {
+  return blocked.splice(0, blocked.length);
+}
+
+/** True when a host plugin refresh in this process kept, replaced or could not write files. */
 export function hasHostPluginViewNotices(): boolean {
-  return kept.length > 0 || replaced.length > 0;
+  return kept.length > 0 || replaced.length > 0 || blocked.length > 0;
 }
 
 /**
@@ -118,6 +147,7 @@ export function hostPluginViewNoticesJson(): {
     not_written_by_harnesstap: string[];
     backup_id: string;
   }>;
+  blocked_plugin_files?: Array<{ folder: string; path: string; blocked_by: string; kind: string }>;
 } {
   const out: ReturnType<typeof hostPluginViewNoticesJson> = {};
   if (kept.length > 0) {
@@ -137,6 +167,16 @@ export function hostPluginViewNoticesJson(): {
       not_written_by_harnesstap: entry.notWrittenByHarnessTap,
       backup_id: entry.backupId,
     }));
+  }
+  if (blocked.length > 0) {
+    out.blocked_plugin_files = blocked.flatMap((entry) =>
+      entry.files.map((file) => ({
+        folder: entry.hostView,
+        path: file.path,
+        blocked_by: file.blockedBy,
+        kind: file.kind,
+      })),
+    );
   }
   return out;
 }
