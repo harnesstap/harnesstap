@@ -217,7 +217,15 @@ export function mirrorHostPluginView(input: {
   );
   for (const path of unchanged) {
     const hash = recorded[path];
-    if (hash) files[path] = hash;
+    if (hash) {
+      files[path] = hash;
+    } else if (
+      hostViewFileOwnership({ homeRoot: input.homeRoot, hostView, path, recorded }) === "owned"
+    ) {
+      // An apply owns it (for example after a revert restored it): record it too.
+      const current = hashOnDiskFile(join(hostView, path));
+      if (current) files[path] = current;
+    }
   }
   removeEmptyDirsInside(hostView);
   recordHostPluginViewFiles({ hostView, created, files, dropFiles: replace });

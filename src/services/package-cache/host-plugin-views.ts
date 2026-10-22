@@ -109,7 +109,13 @@ export function recordHostPluginViewFiles(input: {
   const files = { ...current.files };
   for (const path of input.dropFiles ?? []) delete files[path];
   Object.assign(files, input.files);
-  records[view] = { created: current.created || input.created, files };
+  const created = current.created || input.created;
+  if (!created && Object.keys(files).length === 0) {
+    // Nothing of HarnessTap's in a folder it did not create: no record.
+    delete records[view];
+  } else {
+    records[view] = { created, files };
+  }
   writeHostPluginViewRecords(records);
 }
 
@@ -162,9 +168,9 @@ export function removeEmptyDirsUnder(dir: string): void {
 
 /**
  * After removing a file from a host plugin folder HarnessTap wrote, forget
- * its hash. In a folder HarnessTap created, also remove the folders it left
- * empty (container folders like `skills/` included, up to `plugins/cache`),
- * and forget the folder once it is gone. Only empty folders are removed, so
+ * its hash. In a folder HarnessTap created, or once the last file HarnessTap
+ * wrote there is gone, also remove the folders left empty (container folders
+ * like `skills/` included, up to `plugins/cache`), and forget the folder. Only empty folders are removed, so
  * nothing anyone else put there is touched.
  */
 export function pruneCreatedHostPluginView(removedFile: string): void {
@@ -175,12 +181,14 @@ export function pruneCreatedHostPluginView(removedFile: string): void {
   if (!record) return;
   const rel = relative(view, resolve(removedFile)).split(sep).join("/");
   delete record.files[rel];
-  if (!record.created) {
+  if (!record.created && Object.keys(record.files).length > 0) {
     writeHostPluginViewRecords(records);
     return;
   }
+  // HarnessTap made the folder, or its last file of HarnessTap's is gone.
   removeEmptyDirsUnder(view);
   if (existsSync(view)) {
+    if (!record.created && Object.keys(record.files).length === 0) delete records[view];
     writeHostPluginViewRecords(records);
     return;
   }

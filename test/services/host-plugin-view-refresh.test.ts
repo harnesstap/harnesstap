@@ -12,7 +12,7 @@ import {
   takeKeptHostPluginViewFiles,
 } from "../../src/services/package-cache/host-plugin.ts";
 import { hostPluginViewsPath } from "../../src/services/package-cache/host-plugin-views.ts";
-import { applyTrashRoot, hashOnDiskFile } from "../../src/services/safe-file-removal.ts";
+import { applyTrashRoot, executeSafeFileRemovals, hashOnDiskFile } from "../../src/services/safe-file-removal.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
@@ -157,6 +157,40 @@ describe("refreshing a host plugin folder HarnessTap created", () => {
     // matches the package, so it stays as it is.
     expect(readFileSync(view(".claude-plugin/plugin.json"), "utf8")).toBe(MANIFEST[".claude-plugin/plugin.json"]);
     expect(takeKeptHostPluginViewFiles()).toEqual([]);
+  });
+});
+
+describe("a host plugin folder ht revert restored", () => {
+  it("is HarnessTap's again through the manifest, and goes once its files are removed", () => {
+    // A revert restores the files and their manifest rows, but not the
+    // folder record, so the folder is no longer marked as created.
+    writeTextFile(view(".claude-plugin/plugin.json"), MANIFEST[".claude-plugin/plugin.json"]);
+    writeTextFile(view("skills/a/SKILL.md"), "a\n");
+    const pin = createResource({ type: "plugin", name: "dup", description: "", content: "{}", metadata: {}, source: "manual" });
+    for (const path of [".claude-plugin/plugin.json", "skills/a/SKILL.md"]) {
+      recordResourceMaterialization({
+        resource_id: pin.id,
+        scope: "global",
+        root_path: ctx.homeDir,
+        platform_id: "claude-code",
+        path: `${VIEW}/${path}`,
+        action: "delete-file",
+        ownership_key: "plugin:dup@mkta",
+        generated_hash: hashOnDiskFile(view(path)) ?? "",
+      });
+    }
+
+    mirror(packageTree({ ...MANIFEST, "skills/a/SKILL.md": "a\n" }));
+    expect(takeKeptHostPluginViewFiles()).toEqual([]);
+
+    const removal = executeSafeFileRemovals(ctx.homeDir, [
+      `${VIEW}/.claude-plugin/plugin.json`,
+      `${VIEW}/skills/a/SKILL.md`,
+    ]);
+    expect(removal.skipped).toEqual([]);
+    expect(existsSync(join(ctx.homeDir, ".claude/plugins/cache/mkta"))).toBe(false);
+    const records = JSON.parse(readFileSync(hostPluginViewsPath(), "utf8")) as { views: Record<string, unknown> };
+    expect(records.views).toEqual({});
   });
 });
 
