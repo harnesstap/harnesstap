@@ -1,8 +1,11 @@
 import { describe, expect, it, beforeEach } from "bun:test";
 import { renderDanger, renderSuccess, renderWarn } from "../../src/ui/status.ts";
+import { restoreColorEnvAfterEach } from "../helpers/color-env.ts";
 import { disableColor } from "../../src/ui/theme.ts";
 
 describe("ui status", () => {
+  restoreColorEnvAfterEach();
+
   beforeEach(() => {
     // Enable colors for tests (tests run with NO_COLOR by default in some environments)
     delete process.env.NO_COLOR;
