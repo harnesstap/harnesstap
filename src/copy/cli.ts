@@ -376,6 +376,14 @@ export function keptFilesHeader(count: number): string {
   return `Kept ${count} ${pluralNoun(count, "file")} ${CLI_COPY.keptFilesIntro}`;
 }
 
+export function keptLinkOutsideRoot(path: string): string {
+  return `Kept ${path}: it is your link to a file outside your home, and HarnessTap never writes through it.`;
+}
+
+export function skippedRemovalOutsideRoot(path: string): string {
+  return `Skipped removing ${path} (a folder above it links outside your home).`;
+}
+
 export function forceRemoveHintLine(count: number): string {
   return `To remove ${count === 1 ? "it" : "them"} too, run:`;
 }

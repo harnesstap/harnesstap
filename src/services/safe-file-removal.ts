@@ -11,6 +11,7 @@ import {
   readdirSync,
   readFileSync,
   readlinkSync,
+  realpathSync,
   rmdirSync,
   rmSync,
   statSync,
@@ -127,6 +128,33 @@ export function isSymlinkPath(fullPath: string): boolean {
 }
 
 /**
+ * True when the path is a link (the user's) whose target is outside the root.
+ * HarnessTap never writes through such a link and never replaces it while
+ * writing; the user keeps it.
+ */
+export function leafLinkLeavesRoot(rootPath: string, fullPath: string): boolean {
+  if (!isSymlinkPath(fullPath)) return false;
+  let root: string;
+  try {
+    root = realpathSync(rootPath);
+  } catch {
+    return true;
+  }
+  let target: string;
+  try {
+    target = realpathSync(fullPath);
+  } catch {
+    // Dangling: judge where it points.
+    try {
+      target = resolve(dirname(fullPath), readlinkSync(fullPath));
+    } catch {
+      return true;
+    }
+  }
+  return target !== root && !target.startsWith(`${root}${sep}`);
+}
+
+/**
  * Hash of a host plugin folder entry: a link hashes as its target (never
  * followed), any other file as its bytes.
  */
@@ -164,7 +192,10 @@ export function classifyManagedPathOwnership(
     return "unowned";
   }
   const fullPath = resolve(rootPath, normalized);
-  const diskHash = hashOnDiskFile(fullPath);
+  // A link out of the root is the user's: hash the link, never what it points at.
+  const diskHash = leafLinkLeavesRoot(rootPath, fullPath)
+    ? hashFileOrLink(fullPath)
+    : hashOnDiskFile(fullPath);
   if (normalized.includes(HOST_PLUGIN_CACHE_SEGMENT)) {
     // In a host plugin folder the folder's record says what HarnessTap wrote.
     const written = hostPluginViewWrittenHash(fullPath);
