@@ -1023,6 +1023,29 @@ function scanAllManifestHooks(
   return resources;
 }
 
+/**
+ * A plugin's `.mcp.json` either wraps its servers in `mcpServers` or, as
+ * Claude Code also accepts, lists them at the top level
+ * (`{"playwright": {"command": "npx", ...}}`).
+ */
+function parsePluginMcpDocument(document: unknown): ReturnType<typeof parseMcpServersDocument> {
+  const wrapped = parseMcpServersDocument(document);
+  if (Object.keys(wrapped).length > 0) return wrapped;
+  if (document === null || typeof document !== "object" || Array.isArray(document)) return wrapped;
+  const record = document as Record<string, unknown>;
+  if ("mcpServers" in record || "mcp_servers" in record || "mcp" in record) return wrapped;
+  const looksLikeServer = (value: unknown) =>
+    value !== null
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && (typeof (value as Record<string, unknown>).command === "string"
+      || typeof (value as Record<string, unknown>).url === "string");
+  const flat = Object.fromEntries(
+    Object.entries(record).filter(([key, value]) => !key.startsWith("$") && looksLikeServer(value)),
+  );
+  return Object.keys(flat).length > 0 ? parseMcpServersDocument({ mcpServers: flat }) : wrapped;
+}
+
 function scanMcpServers(
   rootPath: string,
   metadata: {
@@ -1041,7 +1064,7 @@ function scanMcpServers(
     if (document === null) {
       continue;
     }
-    const servers = parseMcpServersDocument(document);
+    const servers = parsePluginMcpDocument(document);
     const provenance = buildProvenance({
       ...metadata,
       relativePath: relativePath(rootPath, mcpPath),
