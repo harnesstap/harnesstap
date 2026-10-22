@@ -20,10 +20,21 @@ export function isSupportedNodeVersion(raw: string): boolean {
   return false;
 }
 
-export function nodeVersionRefusalMessage(raw: string): string {
+/** True when Bun's package runner (`bun x`, `bunx`) started this process. */
+export function launchedByBun(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env.npm_config_user_agent ?? "").startsWith("bun/");
+}
+
+export function nodeVersionRefusalMessage(
+  raw: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  // `bun x harnesstap` runs the `#!/usr/bin/env node` bin on the Node.js on
+  // PATH; `--bun` runs it on Bun, which needs no native module (#501).
+  const bunHint = launchedByBun(env) ? " Or run it on Bun: bun x --bun harnesstap@latest" : "";
   return (
     `HarnessTap needs Node.js ${MIN_SUPPORTED_NODE_MAJOR}.${MIN_SUPPORTED_NODE_MINOR} or newer. ` +
-    `You have v${raw}. Install Node 22 or 24 from https://nodejs.org`
+    `You have v${raw}. Install Node 22 or 24 from https://nodejs.org.${bunHint}`
   );
 }
 

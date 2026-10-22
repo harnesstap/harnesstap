@@ -37,3 +37,15 @@ New text for the Install section of README.md.
 <!-- append -->
 - A git dependency can be pinned. Its constraint takes a full or abbreviated commit SHA (`f8797fe`, or `#f8797fe`), a tag or branch name (`main`, `#main`, `ref:v1.2.0`), or a semver range that resolves to the highest matching tag (`^1.2.0`). Install and apply check out exactly that commit, tag or branch, record the commit on the plugin origin and in the lockfile, and stop with the git error when the ref does not exist. `plugin doctor` accepts these constraints and warns when a git dependency has no pin and tracks the default branch HEAD.
 - `plugin add <ref>#<commit, tag or branch>` imports a GitHub `plugin.json` package at that ref (`owner/repo#v1.2.0`, `https://github.com/owner/repo#f8797fe`, `git@github.com:owner/repo.git#main`). `plugin update` keeps the pin: a commit stays put, a branch moves to its new head, and a semver range moves to the highest matching tag.
+
+## Install > npm global
+<!-- append -->
+`bun x harnesstap@latest` runs the CLI on the Node.js on `PATH`, which must be 22.12 or newer. With an older Node, `bun x --bun harnesstap@latest init` runs it on Bun instead, which needs no native SQLite build.
+
+## docs/cli/getting-started.md > Bun (alternative)
+<!-- append -->
+`bun x harnesstap@latest` runs the CLI on the Node.js on `PATH`, which must be 22.12 or newer; an older Node stops with one line saying so. Add `--bun` to run it on Bun instead, which needs no native SQLite build:
+
+```bash
+bun x --bun harnesstap@latest init
+```

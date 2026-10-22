@@ -2,6 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test";
 import {
   assertSupportedRuntime,
   isSupportedNodeVersion,
+  launchedByBun,
   nodeVersionRefusalMessage,
 } from "../../src/node-version.ts";
 
@@ -46,5 +47,18 @@ describe("Node version support", () => {
 
     error.mockRestore();
     exit.mockRestore();
+  });
+
+  it("names bun x --bun when Bun's package runner started Node (#501)", () => {
+    const bunEnv = { npm_config_user_agent: "bun/1.4.2 npm/? node/v20.19.2 linux x64" };
+    const npmEnv = { npm_config_user_agent: "npm/10.8.2 node/v20.19.2 linux x64" };
+    expect(launchedByBun(bunEnv)).toBe(true);
+    expect(launchedByBun(npmEnv)).toBe(false);
+    expect(launchedByBun({})).toBe(false);
+    const fromBun = nodeVersionRefusalMessage("20.19.2", bunEnv);
+    expect(fromBun).toContain("needs Node.js 22.12 or newer");
+    expect(fromBun).toContain("bun x --bun harnesstap@latest");
+    expect(fromBun).not.toContain("\n");
+    expect(nodeVersionRefusalMessage("20.19.2", npmEnv)).not.toContain("--bun");
   });
 });
