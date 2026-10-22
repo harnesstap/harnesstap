@@ -397,6 +397,36 @@ developer_instructions = "Design contracts."
     }
   });
 
+  it("scans a flat .mcp.json that lists servers without mcpServers (playwright)", async () => {
+    const pluginRoot = createTempDir("plugin-source-flat-mcp-json");
+    try {
+      writeTextFile(join(pluginRoot, ".claude-plugin/plugin.json"), JSON.stringify({ name: "playwright" }));
+      writeTextFile(
+        join(pluginRoot, ".mcp.json"),
+        JSON.stringify({ playwright: { command: "npx", args: ["@playwright/mcp@latest"] } }),
+      );
+      const entries = await scanPluginSource(pluginRoot);
+      const servers = entries[0]?.resources.filter((resource) => resource.type === "mcp_server") ?? [];
+      expect(servers.map((server) => server.name)).toEqual(["playwright"]);
+      expect(servers[0]?.metadata).toMatchObject({ command: "npx", args: ["@playwright/mcp@latest"] });
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
+  it("reads no servers from a flat .mcp.json value that is not a server", async () => {
+    const pluginRoot = createTempDir("plugin-source-flat-mcp-other");
+    try {
+      writeTextFile(join(pluginRoot, ".claude-plugin/plugin.json"), JSON.stringify({ name: "odd" }));
+      writeTextFile(join(pluginRoot, ".mcp.json"), JSON.stringify({ note: { text: "hi" }, mcpServers: {} }));
+      writeTextFile(join(pluginRoot, "skills/one/SKILL.md"), "---\nname: one\ndescription: One\n---\n# one\n");
+      const entries = await scanPluginSource(pluginRoot);
+      expect(entries[0]?.resources.some((resource) => resource.type === "mcp_server")).toBe(false);
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
   it("rejects imported agent names that escape the target directory", async () => {
     const pluginRoot = createTempDir("plugin-source-agent-traversal");
 
