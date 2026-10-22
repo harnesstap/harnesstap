@@ -9,7 +9,10 @@ import {
   keptReasonLabel,
   snapshotSavedUndoLine,
 } from "../copy/cli.js";
-import { hostPluginViewChangeCounts } from "../services/package-cache/host-plugin-view-policy.js";
+import {
+  hostPluginViewChangeCounts,
+  pendingKeptHostPluginViewPaths,
+} from "../services/package-cache/host-plugin-view-policy.js";
 import { ui } from "../ui/index.js";
 
 export interface ApplyKeptFile {
@@ -137,16 +140,20 @@ export function printApplySuccess(input: {
   // Files a plugin cache folder refresh replaced or removed count too, so the
   // line never says nothing changed next to "Backed up and replaced ...".
   const pluginFolder = hostPluginViewChangeCounts();
+  // Kept files in a plugin cache folder get their own, more detailed notice.
+  // List each kept file once, and count both.
+  const folderKept = new Set(pendingKeptHostPluginViewPaths());
+  const kept = input.kept.filter((entry) => !folderKept.has(entry.path));
   console.log(
     applyWroteLine({
       wrote: input.wrote + pluginFolder.replaced,
       removed: input.removed + pluginFolder.removed,
-      kept: input.kept.length,
+      kept: kept.length + folderKept.size,
       unchanged: input.unchanged,
     }),
   );
-  if (input.kept.length > 0) {
-    printKeptFiles(input.kept);
+  if (kept.length > 0) {
+    printKeptFiles(kept);
   }
   if (input.snapshotId) {
     console.log(snapshotSavedUndoLine(`ht revert ${input.snapshotId}`));
