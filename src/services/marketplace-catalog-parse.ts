@@ -19,7 +19,10 @@ export type CatalogPluginFlavor =
 
 export interface CatalogPlugin {
   name: string;
+  /** marketplace.json version, else the entry's source sha (12 chars) or ref. */
   version?: string;
+  /** `version` from the plugin's own plugin.json, when the catalog can read it. */
+  manifestVersion?: string;
   ref: string;
   description?: string;
   tags?: string[];
@@ -64,6 +67,29 @@ function resolveVersion(entry: Record<string, unknown>): string | undefined {
   if (typeof ref === "string" && ref.length > 0) return ref;
 
   return undefined;
+}
+
+const COMMIT_SHA = /^[0-9a-f]{7,40}$/i;
+
+/**
+ * The version to show for a catalog plugin. A commit sha is not a version,
+ * so an entry that only lists one shows its plugin.json version, or nothing.
+ */
+export function catalogPluginDisplayVersion(
+  plugin: Pick<CatalogPlugin, "version" | "manifestVersion">,
+): string | undefined {
+  const version = plugin.version?.trim();
+  if (version && !COMMIT_SHA.test(version)) return version;
+  const manifestVersion = plugin.manifestVersion?.trim();
+  return manifestVersion || undefined;
+}
+
+/** `v1.2.0` for a picker hint, or undefined when no version is known. */
+export function catalogPluginVersionLabel(
+  plugin: Pick<CatalogPlugin, "version" | "manifestVersion">,
+): string | undefined {
+  const version = catalogPluginDisplayVersion(plugin);
+  return version ? `v${version}` : undefined;
 }
 
 function resolveDescription(entry: Record<string, unknown>): string | undefined {
@@ -236,6 +262,9 @@ function preferCatalogPlugin(current: CatalogPlugin, incoming: CatalogPlugin): C
   return {
     ...chosen,
     version: chosen.version ?? other.version,
+    ...((chosen.manifestVersion ?? other.manifestVersion)
+      ? { manifestVersion: chosen.manifestVersion ?? other.manifestVersion }
+      : {}),
     description: chosen.description ?? other.description,
     sourcePath: chosen.sourcePath ?? other.sourcePath,
     ...(tags.length > 0 ? { tags } : {}),

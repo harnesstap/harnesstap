@@ -144,7 +144,7 @@ export function enrichCatalogPlugin(
 ): CatalogPlugin {
   const pluginRoot = resolveMarketplaceCatalogPluginRoot(marketplaceRoot, plugin);
   if (!pluginRoot) {
-    const { packageFormat: _dropped, ...rest } = plugin;
+    const { packageFormat: _dropped, manifestVersion: _version, ...rest } = plugin;
     return rest;
   }
 
@@ -172,9 +172,12 @@ export function enrichCatalogPlugin(
   ];
 
   const packageFormat = agentPluginPackageFormat(pluginRoot);
-  const { packageFormat: _dropped, ...rest } = plugin;
+  const manifestVersion =
+    typeof manifest?.version === "string" ? manifest.version.trim() : "";
+  const { packageFormat: _dropped, manifestVersion: _version, ...rest } = plugin;
   return {
     ...rest,
+    ...(manifestVersion ? { manifestVersion } : {}),
     ...(description ? { description } : {}),
     ...(tags.length > 0 ? { tags } : {}),
     ...(contents.length > 0 ? { contents } : {}),

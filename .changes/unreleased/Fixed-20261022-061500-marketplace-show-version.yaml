@@ -1,0 +1,3 @@
+kind: Fixed
+body: '`marketplace show` and `plugin search` show a plugin''s plugin.json version when the marketplace entry lists none, and no longer show a commit sha as the version.'
+time: 2026-10-22T16:15:00.000000Z
