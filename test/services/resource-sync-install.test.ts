@@ -5,7 +5,8 @@ import { spawnSync } from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 import { createPlugin, getPluginByName } from "../../src/models/plugin-model.ts";
-import { addMarketplace } from "../../src/services/marketplace-registry.ts";
+import { addMarketplace, listMarketplaces } from "../../src/services/marketplace-registry.ts";
+import { registerDeclaredMarketplaces } from "../../src/services/claude-marketplace-bootstrap.ts";
 import { addDependency } from "../../src/services/plugin-dependency.ts";
 import { wellKnownMarketplaceEntry } from "../../src/services/builtin-marketplaces.ts";
 import { syncResourcesInstallingDependencies } from "../../src/services/resource-sync-install.ts";
@@ -99,5 +100,53 @@ describe("resource sync of a marketplace dependency", () => {
     ]) {
       expect(wellKnownMarketplaceEntry(name)?.url).toStartWith("https://github.com/");
     }
+  });
+});
+
+describe("marketplaces a profile declares in claude.toml", () => {
+  it("resolves a dependency on a declared marketplace without the claude binary", async () => {
+    const repo = initMarketplace();
+    const profile = createPlugin({
+      name: "prof",
+      version: "1.0.0",
+      claude: { marketplaces: { "local-market": { source: { source: "directory", path: repo } } } },
+    });
+    addDependency(profile.id, "alpha@local-market", { versionConstraint: "1.0.0" });
+
+    const result = await syncResourcesInstallingDependencies({
+      selector: "plugin:alpha@local-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(result.stale).toEqual([]);
+    expect(getPluginByName("alpha", "1.0.0")).toBeDefined();
+    expect(listMarketplaces(join(ctx.homeDir, ".harnesstap")).map((entry) => entry.name)).toContain("local-market");
+  });
+
+  it("registers github and git sources and leaves registered names alone", () => {
+    const harnesstapDir = join(ctx.homeDir, ".harnesstap");
+    addMarketplace(harnesstapDir, {
+      name: "mine",
+      url: "https://github.com/me/mine.git",
+      platforms: ["claude-code"],
+    });
+
+    const result = registerDeclaredMarketplaces(
+      {
+        marketplaces: {
+          mine: { source: { source: "github", repo: "someone-else/mine" } },
+          "gh-market": { source: { source: "github", repo: "acme/gh-market" } },
+          "git-market": { source: { source: "git", url: "https://example.com/acme/git-market.git" } },
+          gone: { source: { source: "directory", path: join(ctx.homeDir, "missing") } },
+        },
+      },
+      harnesstapDir,
+    );
+
+    expect(result.added.sort()).toEqual(["gh-market", "git-market"]);
+    expect(result.skipped.map((entry) => entry.name)).toEqual(["gone"]);
+    const urls = Object.fromEntries(listMarketplaces(harnesstapDir).map((entry) => [entry.name, entry.url]));
+    expect(urls.mine).toBe("https://github.com/me/mine");
+    expect(urls["gh-market"]).toBe("https://github.com/acme/gh-market");
+    expect(urls["git-market"]).toBe("https://example.com/acme/git-market");
   });
 });

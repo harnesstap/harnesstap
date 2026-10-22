@@ -34,6 +34,7 @@ import type { PluginScope } from "../plugins/types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   ensureClaudeMarketplacesFromConfig,
+  registerDeclaredMarketplaces,
 } from "./claude-marketplace-bootstrap.js";
 import {
   ensureCursorMarketplaces,
@@ -406,6 +407,9 @@ export async function preparePluginPinsForApply(
   };
 
   if (!options.skipSync && options.claudeConfig) {
+    // HarnessTap resolves the dependencies itself, so it must know the
+    // marketplaces the profile declares even when `claude` is not installed.
+    registerDeclaredMarketplaces(options.claudeConfig, getHarnesstapDir());
     await ensureClaudeMarketplacesFromConfig(options.claudeConfig, {
       homeRoot: options.homeRoot ?? resolveHomeRoot(),
       projectRoot: options.projectRoot,
