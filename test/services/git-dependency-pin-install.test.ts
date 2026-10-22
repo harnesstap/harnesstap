@@ -7,6 +7,7 @@ import { getDbPath } from "../../src/db/connection.ts";
 import { createPlugin, getPluginByName } from "../../src/models/plugin-model.ts";
 import { addDependency } from "../../src/services/plugin-dependency.ts";
 import { installPluginPinAsync } from "../../src/services/plugin-install.ts";
+import { ensureMissingCatalogDependencies } from "../../src/services/plugin-catalog-install.ts";
 import { gitOriginCacheDir } from "../../src/services/plugin-origin-apply.ts";
 import { resolveComposition } from "../../src/services/resolve/index.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
@@ -113,4 +114,23 @@ describe("installing a pinned git dependency (#500)", () => {
     expect(result.message).toContain("no-such-tag");
     expect(getPluginByName("gitdep")).toBeUndefined();
   });
+
+  // A second project apply re-checks the library for every dependency. A
+  // ref pin is not a semver range, so that check must not parse it as one.
+  for (const constraint of ["main", "#main", "ref:main", "full-sha"]) {
+    it(`re-checks an installed dependency pinned to ${constraint} without a semver error`, async () => {
+      const pin = constraint === "full-sha" ? first : constraint;
+      const installed = await installPluginPinAsync({
+        ref: remoteUrl,
+        scope: "user",
+        homeRoot: ctx.homeDir,
+        projectRoot: ctx.homeDir,
+        versionConstraint: pin,
+      });
+      expect(installed.status).toBe("installed");
+      const profile = createPlugin({ name: "prof", version: "1.0.0" });
+      addDependency(profile.id, remoteUrl, { versionConstraint: pin });
+      expect(await ensureMissingCatalogDependencies([profile.id])).toEqual([]);
+    });
+  }
 });

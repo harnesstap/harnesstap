@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Applying a profile to a project a second time no longer fails with "Invalid version constraint: main" when a git dependency is pinned to a branch, tag or full commit SHA.'
+time: 2026-10-22T09:45:00.000Z
+custom:
+  Issue: "500"
