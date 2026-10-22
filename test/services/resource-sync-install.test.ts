@@ -131,12 +131,28 @@ describe("resource sync of a marketplace dependency", () => {
       "Plugin nope not found in marketplace local-market.",
     ]);
 
-    // A plugin the marketplace lists is not reported.
+    // A plugin the marketplace lists but nothing depends on is not "not
+    // found", but the sync still fails: it had nothing to install.
     const listed = await syncResourcesInstallingDependencies({
       selector: "plugin:alpha@local-market",
       homeRoot: ctx.homeDir,
     });
-    expect(listed.failed ?? []).toEqual([]);
+    expect(listed.checked).toBe(0);
+    expect(listed.failed).toEqual([
+      {
+        ref: "alpha@local-market",
+        reason:
+          "no plugin depends on alpha@local-market, so there is nothing to install. Add it with ht plugin add alpha@local-market --to <plugin>, then run this command again",
+      },
+    ]);
+
+    addDependency(profile.id, "alpha@local-market", { versionConstraint: "1.0.0" });
+    const declaredListed = await syncResourcesInstallingDependencies({
+      selector: "plugin:alpha@local-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(declaredListed.failed ?? []).toEqual([]);
+    expect(declaredListed.checked).toBeGreaterThan(0);
   });
 
   it("resolves the marketplaces the public persona profiles depend on", () => {
