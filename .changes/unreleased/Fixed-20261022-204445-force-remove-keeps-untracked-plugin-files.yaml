@@ -1,0 +1,3 @@
+kind: Fixed
+body: '`--force-remove` no longer deletes files or folders you added to a Claude Code plugin folder (`~/.claude/plugins/cache/...`). It now replaces only files HarnessTap wrote that you changed since; files HarnessTap did not write are always kept, and the notice says so instead of claiming the plugin no longer has them.'
+time: 2026-10-22T20:44:45.000000Z

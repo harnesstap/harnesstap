@@ -5,7 +5,6 @@ import {
   lstatSync,
   mkdirSync,
   readFileSync,
-  rmSync,
   writeFileSync,
 } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
@@ -13,6 +12,7 @@ import { ulid } from "ulid";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { recordApplyRemovalBackup } from "../../models/apply-removal-backup.js";
 import { applyTrashRoot } from "../safe-file-removal.js";
+import { removeFileOrLink } from "../../utils/remove-file-or-link.js";
 import type { ApPackageFile, ApPackageFiles } from "./files.js";
 
 const SAFE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -224,7 +224,7 @@ export function installAgentPluginPackage(
     }
     backupFile(root, relativePath, applyId);
     backedUp.push(relativePath);
-    rmSync(dest, { force: true });
+    removeFileOrLink(dest);
     deleteInstallRow(plugin.name, plugin.version, relativePath);
   }
 

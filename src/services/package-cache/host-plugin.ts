@@ -13,6 +13,7 @@ import {
 import { createHash } from "node:crypto";
 import { dirname, join, relative, sep } from "node:path";
 import { getHarnesstapDir } from "../../db/connection.js";
+import { removeFileOrLink } from "../../utils/remove-file-or-link.js";
 import { parsePluginRef } from "../../plugins/claude-installed.js";
 import {
   findPackageCacheEntry,
@@ -22,9 +23,7 @@ import { cacheVersionDir } from "../host-plugin-source.js";
 import { claudeEmitDerivedPaths } from "../host-plugin-spec-emit.js";
 import { isPluginInstallRoot } from "../plugin-source-import.js";
 import {
-  classifyManagedPathOwnership,
   hashFileOrLink,
-  hashOnDiskFile,
   isSymlinkPath,
 } from "../safe-file-removal.js";
 import {
@@ -35,6 +34,7 @@ import {
   recordReplacedHostPluginViewFiles,
 } from "./host-plugin-view-policy.js";
 import { backUpAndRemoveHostPluginViewFiles } from "./host-plugin-view-backups.js";
+import { hostViewFileOwnership, planHostPluginViewRemovals } from "./host-plugin-view-ownership.js";
 import {
   readHostPluginViewRecord,
   recordHostPluginViewFiles,
@@ -92,7 +92,7 @@ function repairPackageTreeLinks(sourceRoot: string, destRoot: string): void {
     const target = linkTarget(join(sourceRoot, path));
     const dest = join(destRoot, path);
     if (target === undefined || !isSymlinkPath(dest) || linkTarget(dest) === target) continue;
-    rmSync(dest, { force: true });
+    removeFileOrLink(dest);
     symlinkSync(target, dest);
   }
 }
@@ -141,25 +141,6 @@ function sameBytes(left: string, right: string): boolean {
   } catch {
     return false;
   }
-}
-
-function hostViewFileOwnership(input: {
-  homeRoot: string;
-  hostView: string;
-  path: string;
-  recorded: Record<string, string>;
-}): "owned" | KeptHostPluginViewReason {
-  const absolute = join(input.hostView, input.path);
-  const recorded = input.recorded[input.path];
-  if (recorded) {
-    if (recorded === hashViewEntry(absolute)) return "owned";
-    // Records from before links were kept as links hold the linked bytes.
-    if (isSymlinkPath(absolute) && recorded === hashOnDiskFile(absolute)) return "owned";
-    return "modified";
-  }
-  const fromHome = relative(input.homeRoot, absolute).split(sep).join("/");
-  const ownership = classifyManagedPathOwnership(input.homeRoot, fromHome);
-  return ownership === "unowned" ? "unmanaged" : ownership;
 }
 
 function copyViewFiles(
@@ -235,10 +216,12 @@ export function diffHostPluginView(input: {
  * An existing folder is never removed wholesale. Files that already match
  * are left as they are. A file that differs or is no longer in the package is
  * replaced or removed only when HarnessTap wrote it and it is unchanged since;
- * every replaced or removed file is backed up first. Files HarnessTap did not
- * write, or that changed since, are kept and reported through
+ * every replaced or removed file is backed up first. Files that changed since
+ * HarnessTap wrote them are kept and reported through
  * `takeKeptHostPluginViewFiles` (replaced only with `--force-remove`, or when
- * the user agrees). Only folders left empty are removed.
+ * the user agrees). Files HarnessTap did not write and folders it did not
+ * create are always kept, even with `--force-remove`. Only folders left empty
+ * are removed.
  */
 export function mirrorHostPluginView(input: {
   homeRoot: string;
@@ -298,11 +281,19 @@ export function mirrorHostPluginView(input: {
       continue;
     }
     if (ownership === "owned") ownedPaths.add(path);
-    if (ownership === "owned" || hostPluginViewForceReplace()) {
+    // --force-remove replaces only files HarnessTap wrote that changed since.
+    // A file HarnessTap did not write is the user's: it is always kept.
+    if (ownership === "owned" || (ownership === "modified" && hostPluginViewForceReplace())) {
       replace.push(path);
     } else {
       kept.push({ path, reason: ownership, inPlugin: packageSet.has(path) });
     }
+  }
+  const refused = planHostPluginViewRemovals({ homeRoot: input.homeRoot, hostView, paths: replace }).refused;
+  if (refused.length > 0) {
+    const refusedSet = new Set(refused.map((entry) => entry.path));
+    replace.splice(0, replace.length, ...replace.filter((path) => !refusedSet.has(path)));
+    for (const path of refusedSet) kept.push({ path, reason: "unmanaged", inPlugin: packageSet.has(path) });
   }
 
   const backupId = backUpAndRemoveHostPluginViewFiles({
@@ -405,7 +396,13 @@ export function replaceKeptHostPluginViewFiles(
   entry: KeptHostPluginViewFiles,
 ): { paths: string[]; backupId?: string } {
   if (!existsSync(entry.hostView)) return { paths: [] };
-  const paths = entry.files.map((file) => file.path);
+  // Only files HarnessTap wrote that changed since: a file HarnessTap did
+  // not write is never replaced or removed.
+  const paths = planHostPluginViewRemovals({
+    homeRoot: entry.homeRoot,
+    hostView: entry.hostView,
+    paths: entry.files.filter((file) => file.reason === "modified").map((file) => file.path),
+  }).allowed;
   const present = paths.filter((path) => {
     const full = join(entry.hostView, path);
     return existsSync(full) || isSymlinkPath(full);
