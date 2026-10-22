@@ -25,6 +25,7 @@ import {
   type SafeRemovalSkip,
 } from "./safe-file-removal.js";
 import { restoreRemovedOwnership } from "./removed-ownership.js";
+import { restoreBlockedGroupMessage, restoreBlockedMessage, restoreBlocker } from "./restore-blocker.js";
 
 export type RevertKind = "project" | "global";
 
@@ -50,7 +51,7 @@ export interface RevertResult {
 
 const PREFIX_MIN = 8;
 
-type RestoreDecision = "write" | "skip-unmanaged" | "skip-modified" | "unchanged";
+type RestoreDecision = "write" | "skip-unmanaged" | "skip-modified" | "skip-blocked" | "unchanged";
 
 function parseStoredState(raw: unknown): SnapshotState | undefined {
   if (typeof raw !== "object" || raw === null) {
@@ -129,6 +130,9 @@ export function resolveRevertPlan(snapshotId: string): RevertPlan | { error: str
 
 function shouldRestorePath(rootPath: string, file: SerializedFile): RestoreDecision {
   const fullPath = resolve(rootPath, file.path);
+  if (restoreBlocker(rootPath, file.path) !== undefined) {
+    return "skip-blocked";
+  }
   if (!existsSync(fullPath)) {
     return "write";
   }
@@ -149,6 +153,29 @@ function shouldRestorePath(rootPath: string, file: SerializedFile): RestoreDecis
   return "skip-modified";
 }
 
+/** One warning per skip, except that the paths held up by the same file or folder share one. */
+function skippedWarnings(skipped: readonly SafeRemovalSkip[]): string[] {
+  const byBlocker = new Map<string, SafeRemovalSkip[]>();
+  const warnings: string[] = [];
+  for (const entry of skipped) {
+    if (entry.reason === "missing") continue;
+    if (entry.blockedBy === undefined) {
+      warnings.push(entry.message);
+      continue;
+    }
+    byBlocker.set(entry.blockedBy, [...(byBlocker.get(entry.blockedBy) ?? []), entry]);
+  }
+  for (const [blocker, entries] of byBlocker) {
+    const [first] = entries;
+    if (entries.length === 1 && first) {
+      warnings.push(first.message);
+      continue;
+    }
+    warnings.push(restoreBlockedGroupMessage(blocker, entries.map((entry) => entry.path)));
+  }
+  return warnings;
+}
+
 export function executeRevert(
   plan: RevertPlan,
   options: { dryRun?: boolean; forceRemove?: boolean; applyId?: string } = {},
@@ -161,6 +188,7 @@ export function executeRevert(
       ...restoreSafeRemovalBackup({
         snapshotId: plan.id,
         rootPath: plan.rootPath,
+        onSkip: (skip) => skipped.push(skip),
       }),
     );
   }
@@ -183,6 +211,16 @@ export function executeRevert(
           message: `Skipped restoring ${file.path} (modified since HarnessTap wrote it).`,
         });
         break;
+      case "skip-blocked": {
+        const blocker = restoreBlocker(plan.rootPath, file.path) ?? file.path;
+        skipped.push({
+          path: file.path,
+          reason: "unmanaged",
+          blockedBy: blocker,
+          message: restoreBlockedMessage(file.path, blocker),
+        });
+        break;
+      }
       case "skip-unmanaged":
         skipped.push({
           path: file.path,
@@ -200,6 +238,16 @@ export function executeRevert(
   const linksToMake: Array<{ path: string; target: string }> = [];
   for (const link of plan.restoreLinks ?? []) {
     const fullPath = resolve(plan.rootPath, link.path);
+    const blocker = restoreBlocker(plan.rootPath, link.path);
+    if (blocker !== undefined) {
+      skipped.push({
+        path: link.path,
+        reason: "unmanaged",
+        blockedBy: blocker,
+        message: restoreBlockedMessage(link.path, blocker, "link"),
+      });
+      continue;
+    }
     let current: string | null | undefined;
     try {
       current = lstatSync(fullPath).isSymbolicLink() ? readlinkSync(fullPath) : null;
@@ -256,7 +304,7 @@ export function executeRevert(
   }
 
   const warnings = [
-    ...skipped.filter((entry) => entry.reason !== "missing").map((entry) => entry.message),
+    ...skippedWarnings(skipped),
     ...removal.warnings,
   ];
 
