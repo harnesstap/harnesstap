@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'After `ht profile use` of a persona with marketplace dependencies, Desktop no longer shows the profile red with those plugins missing while `ht profile status` says in sync. A dependency that apply writes as files is not expected to be installed in Claude Code. `ht profile status` and `--check` now also report a profile plugin that Claude Code no longer has, the same way Desktop does.'
+time: 2026-10-22T11:00:00.000000Z

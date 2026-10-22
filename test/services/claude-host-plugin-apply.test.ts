@@ -15,7 +15,7 @@ import {
 } from "../../src/services/global-profile-drift.ts";
 import {
   buildHarnessPluginRows,
-  hostRegisteredPinRefs,
+  filesOnlyMarketplacePinRefs,
 } from "../../src/services/global-profile-status-panel.ts";
 import { addMarketplace, updateMarketplace } from "../../src/services/marketplace-registry.ts";
 import { importPluginFromMarketplace } from "../../src/services/plugin-marketplace-import.ts";
@@ -226,7 +226,9 @@ describe("claude host plugin apply", () => {
         pull: false,
       });
       expect(applied.cancelled).toBe(false);
-      expect(applied.resolution && [...hostRegisteredPinRefs(applied.resolution.resources)]).toEqual([]);
+      expect(applied.resolution && [...filesOnlyMarketplacePinRefs(applied.resolution)]).toEqual([
+        "dup@mkta",
+      ]);
       expect(existsSync(join(context.homeDir, ".claude/skills/dup-skill/SKILL.md"))).toBe(true);
       expect(existsSync(join(context.homeDir, ".claude/plugins/installed_plugins.json"))).toBe(false);
 
@@ -279,8 +281,8 @@ describe("claude host plugin apply", () => {
     }
   });
 
-  it("only requires a host install for pins the apply registers", () => {
-    const home = mkdtempSync(join(tmpdir(), "claude-registered-pins-"));
+  it("only skips a missing host install for pins the apply wrote as files", () => {
+    const home = mkdtempSync(join(tmpdir(), "claude-files-only-pins-"));
     try {
       mkdirSync(join(home, ".claude/plugins"), { recursive: true });
       writeFileSync(
@@ -297,23 +299,23 @@ describe("claude host plugin apply", () => {
       const pins = [
         { ref: "superpowers@claude-plugins-official", version_constraint: "7.0.0" },
         { ref: "context7@claude-plugins-official", version_constraint: "1.0.0" },
-        { ref: "dup@mkta", version_constraint: "*" },
-        { ref: "ponytail", version_constraint: "*" },
+        { ref: "demo@demo-market", version_constraint: "1.0.0" },
       ];
-      expect(
-        buildHarnessPluginRows(pins, home, new Set(["dup@mkta", "ponytail@local"])),
-      ).toEqual([
-        // Applied as files, Claude has not installed it: no row.
-        // Claude installed it itself: still reported, not "extra".
-        { id: "context7@claude-plugins-official", state: "installed" },
-        { id: "dup@mkta", state: "missing" },
-        { id: "ponytail", state: "missing" },
+      const filesOnly = new Set([
+        "superpowers@claude-plugins-official",
+        "context7@claude-plugins-official",
       ]);
-      // Without the apply's registered set every declared pin counts.
+      expect(buildHarnessPluginRows(pins, home, filesOnly)).toEqual([
+        // superpowers: written as files and Claude has not installed it, so no row.
+        // context7: Claude installed it itself, so it is still reported, not "extra".
+        { id: "context7@claude-plugins-official", state: "installed" },
+        // demo: the apply did not write it, so Claude must install it.
+        { id: "demo@demo-market", state: "missing" },
+      ]);
+      // Without the apply's resolution every declared pin counts.
       expect(buildHarnessPluginRows(pins, home).map((row) => row.state)).toEqual([
         "missing",
         "installed",
-        "missing",
         "missing",
       ]);
     } finally {

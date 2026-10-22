@@ -28,7 +28,7 @@ import {
   computeGlobalProfilePanelStatus,
   countMissingHarnessRows,
   declaredMcpFromExpectedFiles,
-  hostRegisteredPinRefs,
+  filesOnlyMarketplacePinRefs,
   listMissingHarnessRows,
   type GlobalProfileDriftSummary,
   type GlobalProfilePanelStatus,
@@ -245,15 +245,15 @@ function buildBaseStatusFields(input: {
       ? declaredMcpNamesFromMergedPlugins(input.pluginIds)
       : { "claude-code": [], cursor: [] });
 
-  const registeredPinRefs = input.expectedApply?.resolution
-    ? hostRegisteredPinRefs(input.expectedApply.resolution.resources)
+  const filesOnlyPinRefs = input.expectedApply?.resolution
+    ? filesOnlyMarketplacePinRefs(input.expectedApply.resolution)
     : undefined;
 
   const harnesses = traceSpan("base.harness-live-status", () => buildHarnessLiveStatusMap({
     depth: input.depth,
     homeRoot,
     declaredPins,
-    ...(registeredPinRefs ? { registeredPinRefs } : {}),
+    ...(filesOnlyPinRefs ? { filesOnlyPinRefs } : {}),
     declaredMcpByHarness,
     ...(declaredFromExpected
       ? { expectedMcpConfigsByHarness: declaredFromExpected.configsByHarness }
