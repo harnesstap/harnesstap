@@ -32,6 +32,7 @@ import {
   openResourcePath,
   removeProfileResource,
 } from "../lib/agent-client";
+import { tildeHomePath } from "../lib/compact-path";
 import { fieldKeyAction } from "../lib/library-field-edit";
 import {
   deleteLibraryResource,
@@ -63,6 +64,7 @@ import {
 import {
   resourceOpenPath,
   resourceOpenUsesSelector,
+  resourceOriginDisplay,
   resourcePathDisplay,
   resourcePathIsDirectory,
 } from "../lib/resource-open-path";
@@ -85,10 +87,7 @@ import {
   resourceDeleteDiskDisabled,
   resourceDeleteDiskNeedsConfirmation,
 } from "../lib/resource-delete";
-import {
-  formatOriginDisplayLabel,
-  formatResourceDisplayName,
-} from "../lib/resource-display";
+import { formatResourceDisplayName } from "../lib/resource-display";
 import { noSpellcheckProps } from "../lib/no-spellcheck";
 import type { LibraryResourceDetail, PluginContainedResource } from "../lib/types";
 import { Combobox } from "@/components/ui/combobox";
@@ -168,12 +167,6 @@ function displayName(
 ): string {
   return formatResourceDisplayName(resource, {
     disambiguatePlugin: duplicateNames?.has(resource.name) ?? false,
-  });
-}
-
-function originLabel(resource: LibraryResourceDetail): string {
-  return formatOriginDisplayLabel(resource.origin_kind, resource.origin_ref, {
-    includeRef: !isPluginTypeResource(resource.type),
   });
 }
 
@@ -1073,7 +1066,7 @@ export function ResourceDetailBody({
             icon={<MapPin size={16} aria-hidden />}
             fieldName="Origin"
             readOnly
-            display={originLabel(detail)}
+            display={resourceOriginDisplay(detail)}
             editing={false}
             onStartEdit={() => undefined}
           />
@@ -1208,7 +1201,7 @@ export function ResourceDetailBody({
             icon={<MapPin size={16} aria-hidden />}
             fieldName="Origin"
             readOnly
-            display={originLabel(detail)}
+            display={resourceOriginDisplay(detail)}
             editing={false}
             onStartEdit={() => undefined}
           />
@@ -1383,7 +1376,7 @@ export function ResourceDetailBody({
                         className="resource-detail-protected-path"
                       >
                         <p className="mono resource-detail-protected-path-value">
-                          {location.path}
+                          {tildeHomePath(location.path)}
                         </p>
                         <PathAccessActions
                           path={location.path}
@@ -1411,7 +1404,7 @@ export function ResourceDetailBody({
                         className="resource-detail-protected-path"
                       >
                         <p className="mono resource-detail-protected-path-value">
-                          {location.path}
+                          {tildeHomePath(location.path)}
                         </p>
                         <PathAccessActions
                           path={location.path}
