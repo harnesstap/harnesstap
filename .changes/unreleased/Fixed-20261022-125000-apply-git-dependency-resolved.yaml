@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'A successful `ht apply` with a git dependency no longer prints "Plugin pin <url> is not installed locally" and "has no resolved version" afterwards. Apply now records the version the git fetch imported, and the version check no longer compares a branch, tag or commit constraint with the plugin manifest version.'
+time: 2026-10-22T22:50:00.000000Z

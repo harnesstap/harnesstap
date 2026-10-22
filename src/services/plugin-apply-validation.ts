@@ -1,3 +1,4 @@
+import { parseDependencyRef } from "../utils/plugin-dependency-ref.js";
 import { findPluginResourceByPin } from "./plugin-composition.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
 import type { PluginPinMetadata } from "../types.js";
@@ -35,6 +36,12 @@ function validatePluginConstraintPins(
         installed: "never_synced",
         message: `Plugin pin ${row.ref} has no resolved version. Run: ht resource sync plugin_pin:${row.ref}`,
       });
+      continue;
+    }
+
+    // A git dependency's constraint is a commit, tag, branch or tag range
+    // that the fetch already enforced; its manifest version need not match.
+    if (parseDependencyRef(row.ref).source_kind === "git") {
       continue;
     }
 
