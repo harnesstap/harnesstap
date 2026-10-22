@@ -250,6 +250,26 @@ describe("plugin-source-import service", () => {
     }
   });
 
+  it("imports a skill whose description has an unquoted colon (claude-mem mem-search)", async () => {
+    const pluginRoot = createTempDir("plugin-source-colon-frontmatter");
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ name: "colon-plugin", version: "15.0.1" }),
+      );
+      writeTextFile(
+        join(pluginRoot, "skills/mem-search/SKILL.md"),
+        "---\nname: mem-search\ndescription: Search in three steps: search, timeline, then get.\n---\n# Search\n",
+      );
+      const entries = await scanPluginSource(pluginRoot);
+      const skill = entries[0]?.resources.find((resource) => resource.type === "skill");
+      expect(skill?.name).toBe("mem-search");
+      expect(skill?.description).toBe("Search in three steps: search, timeline, then get.");
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
   it("captures claude agent frontmatter options in canonical metadata", async () => {
     const pluginRoot = createTempDir("plugin-source-claude-agent");
 
@@ -334,6 +354,54 @@ developer_instructions = "Design contracts."
     });
   });
 
+  it("scans each skill a plugin.json skills list names (mattpocock-skills layout)", async () => {
+    const base = createTempDir("plugin-source-skills-list");
+    const pluginRoot = join(base, "plugin");
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({
+          name: "nested-skills",
+          version: "1.3.1",
+          skills: ["./skills/engineering/ask-matt", "./skills/engineering/tdd", "./skills/personal", "../outside"],
+        }),
+      );
+      const skill = (path: string, name: string) =>
+        writeTextFile(join(pluginRoot, path, "SKILL.md"), `---\nname: ${name}\ndescription: ${name} skill\n---\n# ${name}\n`);
+      skill("skills/engineering/ask-matt", "ask-matt");
+      skill("skills/engineering/tdd", "tdd");
+      skill("skills/engineering/not-listed", "not-listed");
+      skill("skills/personal/grill-me", "grill-me");
+      writeTextFile(join(pluginRoot, "../outside/SKILL.md"), "---\nname: outside\ndescription: x\n---\n# x\n");
+
+      const entries = await scanPluginSource(pluginRoot);
+      const names = (entries[0]?.resources ?? [])
+        .filter((resource) => resource.type === "skill")
+        .map((resource) => resource.name)
+        .sort();
+      expect(names).toEqual(["ask-matt", "grill-me", "tdd"]);
+    } finally {
+      cleanupDir(base);
+    }
+  });
+
+  it("adds a plugin.json skills path to the skills folder instead of replacing it", async () => {
+    const pluginRoot = createTempDir("plugin-source-skills-extra");
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ name: "extra-skills", version: "1.0.0", skills: "./extra" }),
+      );
+      writeTextFile(join(pluginRoot, "skills/base/SKILL.md"), "---\nname: base\ndescription: b\n---\n# b\n");
+      writeTextFile(join(pluginRoot, "extra/more/SKILL.md"), "---\nname: more\ndescription: m\n---\n# m\n");
+      const entries = await scanPluginSource(pluginRoot);
+      const names = (entries[0]?.resources ?? []).filter((r) => r.type === "skill").map((r) => r.name).sort();
+      expect(names).toEqual(["base", "more"]);
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
   it("accepts marketplace entry source as alias for path", async () => {
     const entries = await scanPluginSource(
       join(fixtureRoot, "impeccable-layout/.claude-plugin/marketplace.json"),
@@ -392,6 +460,36 @@ developer_instructions = "Design contracts."
           }),
         ]),
       );
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
+  it("scans a flat .mcp.json that lists servers without mcpServers (playwright)", async () => {
+    const pluginRoot = createTempDir("plugin-source-flat-mcp-json");
+    try {
+      writeTextFile(join(pluginRoot, ".claude-plugin/plugin.json"), JSON.stringify({ name: "playwright" }));
+      writeTextFile(
+        join(pluginRoot, ".mcp.json"),
+        JSON.stringify({ playwright: { command: "npx", args: ["@playwright/mcp@latest"] } }),
+      );
+      const entries = await scanPluginSource(pluginRoot);
+      const servers = entries[0]?.resources.filter((resource) => resource.type === "mcp_server") ?? [];
+      expect(servers.map((server) => server.name)).toEqual(["playwright"]);
+      expect(servers[0]?.metadata).toMatchObject({ command: "npx", args: ["@playwright/mcp@latest"] });
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
+  it("reads no servers from a flat .mcp.json value that is not a server", async () => {
+    const pluginRoot = createTempDir("plugin-source-flat-mcp-other");
+    try {
+      writeTextFile(join(pluginRoot, ".claude-plugin/plugin.json"), JSON.stringify({ name: "odd" }));
+      writeTextFile(join(pluginRoot, ".mcp.json"), JSON.stringify({ note: { text: "hi" }, mcpServers: {} }));
+      writeTextFile(join(pluginRoot, "skills/one/SKILL.md"), "---\nname: one\ndescription: One\n---\n# one\n");
+      const entries = await scanPluginSource(pluginRoot);
+      expect(entries[0]?.resources.some((resource) => resource.type === "mcp_server")).toBe(false);
     } finally {
       cleanupDir(pluginRoot);
     }
