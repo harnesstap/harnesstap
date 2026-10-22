@@ -101,6 +101,7 @@ jobs:
               - 'tsconfig.json'
               - 'biome.json'
               - 'tsup.config.ts'
+              - 'bunfig.toml'
               - 'src/types.ts'
               - 'src/version.ts'
               - 'src/index.ts'
