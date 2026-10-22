@@ -170,6 +170,28 @@ describe("claude remote marketplace plugin registration", () => {
     }
   });
 
+  it("takes its enabledPlugins key out of a settings.json that existed first, with no installed_plugins.json of the user's", async () => {
+    const context = await createInitializedTestContext("claude-remote-reg-settings-only");
+    try {
+      const home = context.homeDir;
+      writeJson(home, SETTINGS, { theme: "dark", enabledPlugins: { "mine@elsewhere": true } });
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+
+      await applyProfilePlugin("remote", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+      expect(readJson<{ enabledPlugins: Record<string, boolean> }>(home, SETTINGS).enabledPlugins).toEqual({
+        "mine@elsewhere": true,
+        "dup@mkta": true,
+      });
+
+      await applyProfilePlugin("plain", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
+      expect(existsSync(join(home, INSTALLED))).toBe(false);
+      expect(readJson<object>(home, SETTINGS)).toEqual({ theme: "dark", enabledPlugins: { "mine@elsewhere": true } });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("writes only the files Claude reads into a plugin folder HarnessTap mirrored, and removes the whole folder on switch", async () => {
     const context = await createInitializedTestContext("claude-remote-reg-mirror");
     try {
