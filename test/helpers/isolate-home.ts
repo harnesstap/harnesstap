@@ -6,6 +6,7 @@
  * Bun keeps `os.homedir()` from process start, so code that needs the home
  * directory must read `process.env.HOME` (see `src/utils/home-root.ts`).
  */
+import { plugin } from "bun";
 import { afterAll, afterEach } from "bun:test";
 import {
   existsSync,
@@ -16,6 +17,7 @@ import {
 } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve, sep } from "node:path";
+import { restoreEnv, snapshotEnv } from "./isolated-env.ts";
 
 type Snapshot = Map<string, string>;
 
@@ -162,6 +164,40 @@ process.env.USERPROFILE = testRoot;
 delete process.env.HARNESSTAP_HOME;
 process.env.HARNESSTAP_TEST_HOME_ROOT = testRoot;
 
+const envBaseline = snapshotEnv();
+const envLeaks: string[] = [];
+let currentTestFile: string | undefined;
+
+function checkEnvAfterFile(): void {
+  const drift = restoreEnv(envBaseline);
+  if (drift.length > 0) {
+    envLeaks.push(`${currentTestFile ?? "<unknown file>"}: ${drift.join(", ")}`);
+  }
+}
+
+// All test files share one process, so a file that changes HOME (or the other
+// isolated variables) without restoring it would leak into every later file.
+// A test file's module loads after the previous file's afterAll hooks, so this
+// is the point to put the baseline back and remember who leaked.
+plugin({
+  name: "harnesstap-test-env-guard",
+  setup(build) {
+    build.onLoad({ filter: /\.test\.[cm]?[jt]sx?$/ }, async (args) => {
+      if (currentTestFile !== undefined) checkEnvAfterFile();
+      currentTestFile = args.path;
+      const ext = args.path.slice(args.path.lastIndexOf(".") + 1);
+      const loader = ext.endsWith("tsx")
+        ? "tsx"
+        : ext.endsWith("ts")
+          ? "ts"
+          : ext.endsWith("jsx")
+            ? "jsx"
+            : "js";
+      return { contents: await Bun.file(args.path).text(), loader };
+    });
+  },
+});
+
 let reported = false;
 
 afterEach(() => {
@@ -176,12 +212,24 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  if (reported) return;
+  checkEnvAfterFile();
+  const envError =
+    envLeaks.length > 0
+      ? new Error(
+          `Test files changed the isolated environment without restoring it:\n  ${envLeaks.join("\n  ")}\n` +
+            "The preload restored it before the next file. Save and restore these " +
+            "variables in the file's afterEach/afterAll.",
+        )
+      : undefined;
+  if (reported) {
+    if (envError) throw envError;
+    return;
+  }
   for (const dir of guarded) {
     const changes = diff(deepBefore.get(dir) ?? new Map(), snapshot(dir, true));
     if (changes.length > 0) {
       reported = true;
-      throw failure(changes, "detected at the end of the run");
+      throw envError ?? failure(changes, "detected at the end of the run");
     }
   }
   rmSync(testRoot, { recursive: true, force: true });
@@ -195,9 +243,10 @@ afterAll(() => {
       "test/helpers/isolate-home.ts), not a hard-coded temp path.";
     // Locally another process may be creating ht-* dirs at the same time, so
     // only CI (one run per machine) treats a leak as a failure.
-    if (process.env.CI) throw new Error(message);
+    if (process.env.CI && !envError) throw new Error(message);
     console.warn(`warning: ${message}`);
   }
+  if (envError) throw envError;
 });
 
 export const isolatedTestHome = testRoot;

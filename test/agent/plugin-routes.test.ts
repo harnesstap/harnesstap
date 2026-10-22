@@ -5,13 +5,16 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import { createPlugin } from "../../src/models/plugin-model.ts";
 import { createProfileCommand } from "../../src/services/profile-commands.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("agent plugin routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
   const servers: Array<{ stop: () => void; url: string; token: string }> = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const server of servers.splice(0)) {
       server.stop();
     }

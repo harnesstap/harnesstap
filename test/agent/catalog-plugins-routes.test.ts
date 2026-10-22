@@ -12,6 +12,7 @@ import { isProfilePlugin, PROFILE_PLUGIN_TAG } from "../../src/constants/profile
 import { createPlugin, getPluginByName } from "../../src/models/plugin-model.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 const ACME_PLUGIN = {
   orgSlug: "acme",
@@ -27,11 +28,13 @@ const ACME_PLUGIN = {
 
 describe("agent catalog plugin routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
   const servers: Array<{ stop: () => void; url: string; token: string }> = [];
   const restoreFns: Array<() => void> = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const restore of restoreFns.splice(0)) restore();
     for (const server of servers.splice(0)) server.stop();
     for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });

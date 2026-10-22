@@ -14,12 +14,15 @@ import { writeStarterProjectConfig } from "../../src/services/project-config-wri
 import { bootstrapProjectWorkspace } from "../../src/services/bootstrap-project-workspace.ts";
 import { createProfileCommand } from "../../src/services/profile-commands.ts";
 import { writeTextFile } from "../helpers/fs.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("bootstrapProjectWorkspace", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });
     }

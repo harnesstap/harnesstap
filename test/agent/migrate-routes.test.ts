@@ -17,13 +17,16 @@ import {
   resolveExportScope,
 } from "../../src/services/migrate-scope.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("agent migrate routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
   const servers: Array<{ stop: () => void; url: string; token: string }> = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const server of servers.splice(0)) server.stop();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });

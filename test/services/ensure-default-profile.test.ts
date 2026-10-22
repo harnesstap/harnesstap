@@ -13,12 +13,15 @@ import {
   seedDefaultProfileFromLibrary,
 } from "../../src/services/ensure-default-profile.ts";
 import { createProfileCommand } from "../../src/services/profile-commands.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("ensureDefaultProfilePlugin", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });
     }

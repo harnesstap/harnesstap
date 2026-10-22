@@ -7,13 +7,16 @@ import { createProfileCommand } from "../../src/services/profile-commands.ts";
 import { cutPluginVersion } from "../../src/services/plugin-versioning.ts";
 import { createPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { writeStarterProjectConfig } from "../../src/services/project-config-write.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("agent routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
   const servers: Array<{ stop: () => void; url: string; token: string }> = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const server of servers.splice(0)) {
       server.stop();
     }

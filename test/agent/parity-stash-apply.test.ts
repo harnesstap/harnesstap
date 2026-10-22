@@ -13,17 +13,23 @@ import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 
 describe("POST /v1/profiles/stash/apply", () => {
-  const previousHome = process.env.HARNESSTAP_HOME;
+  const previousHarnesstapHome = process.env.HARNESSTAP_HOME;
+  const previousHome = process.env.HOME;
   const tempDirs: string[] = [];
 
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });
     }
-    if (previousHome === undefined) {
+    if (previousHarnesstapHome === undefined) {
       delete process.env.HARNESSTAP_HOME;
     } else {
-      process.env.HARNESSTAP_HOME = previousHome;
+      process.env.HARNESSTAP_HOME = previousHarnesstapHome;
+    }
+    if (previousHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = previousHome;
     }
   });
 
