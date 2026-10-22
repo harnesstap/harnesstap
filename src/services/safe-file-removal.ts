@@ -1,3 +1,4 @@
+import { pruneCreatedHostPluginView } from "./package-cache/host-plugin.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskTextOnce } from "./status-disk-read.js";
 import {
@@ -385,6 +386,7 @@ function backupAndUnlink(input: {
   backupOnDiskFile(input);
   rmSync(fullPath, { force: true });
   pruneEmptyAncestors(fullPath, input.rootPath);
+  pruneCreatedHostPluginView(fullPath);
 }
 
 export function backupAndRewriteFile(input: {

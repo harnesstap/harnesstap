@@ -1,5 +1,15 @@
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  rmdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { getHarnesstapDir } from "../../db/connection.js";
 import { parsePluginRef } from "../../plugins/claude-installed.js";
 import {
@@ -55,12 +65,55 @@ export function mirrorHostPluginView(input: {
   ) {
     return hostView;
   }
-  if (existsSync(hostView)) {
+  const existed = existsSync(hostView);
+  if (existed) {
     rmSync(hostView, { recursive: true, force: true });
   }
   mkdirSync(dirname(hostView), { recursive: true });
   copyPackageTree(input.canonicalDir, hostView);
+  if (!existed) recordCreatedHostView(hostView);
   return hostView;
+}
+
+/**
+ * Host plugin cache folders (`~/.claude/plugins/cache/<mkt>/<name>/<ver>`)
+ * that HarnessTap created from its package cache, kept in
+ * `<harnesstap>/cache/host-plugin-views.json`. An install (`plugin add`, a
+ * dependency sync) copies the tree there before the apply runs; the apply
+ * then emits the same bytes, finds them unchanged and writes nothing, so it
+ * would record no ownership and later call HarnessTap's own files "not made
+ * by HarnessTap". Folders that already existed (a Claude install) are never
+ * listed.
+ */
+function createdHostViewsPath(): string {
+  return join(getHarnesstapDir(), "cache", "host-plugin-views.json");
+}
+
+function readCreatedHostViews(): string[] {
+  try {
+    const parsed = JSON.parse(readFileSync(createdHostViewsPath(), "utf8")) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function recordCreatedHostView(hostView: string): void {
+  const views = readCreatedHostViews();
+  const resolved = resolve(hostView);
+  if (views.includes(resolved)) return;
+  try {
+    mkdirSync(dirname(createdHostViewsPath()), { recursive: true });
+    writeFileSync(createdHostViewsPath(), `${JSON.stringify([...views, resolved].sort(), null, 2)}\n`);
+  } catch {
+    // Best effort: without the record the files are only kept, never lost.
+  }
+}
+
+/** True when `absolutePath` is inside a host plugin folder HarnessTap created. */
+export function isInHostPluginViewCreatedByHarnessTap(absolutePath: string): boolean {
+  const target = resolve(absolutePath);
+  return readCreatedHostViews().some((view) => target.startsWith(`${view}${sep}`));
 }
 
 export function ingestHostPluginTreeIntoCache(input: {
@@ -141,4 +194,59 @@ export function resolveCanonicalHostPluginRoot(input: {
     }
   }
   return undefined;
+}
+
+function removeEmptyDirsUnder(dir: string): void {
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const child = join(dir, entry);
+    try {
+      if (statSync(child).isDirectory()) removeEmptyDirsUnder(child);
+    } catch {
+      // Unreadable entries stay.
+    }
+  }
+  try {
+    if (readdirSync(dir).length === 0) rmdirSync(dir);
+  } catch {
+    // A folder that cannot be read or removed stays.
+  }
+}
+
+/**
+ * After removing files from a host plugin folder HarnessTap created, remove
+ * the folders it left empty (container folders like `skills/` included, up
+ * to `plugins/cache`), and forget the folder once it is gone. Only empty
+ * folders are removed, so nothing anyone else put there is touched.
+ */
+export function pruneCreatedHostPluginView(removedFile: string): void {
+  const target = resolve(removedFile);
+  const views = readCreatedHostViews();
+  const view = views.find((candidate) => target.startsWith(`${candidate}${sep}`));
+  if (!view) return;
+  removeEmptyDirsUnder(view);
+  if (existsSync(view)) return;
+  let parent = dirname(view);
+  while (basename(parent) !== "cache" && parent !== dirname(parent)) {
+    try {
+      if (readdirSync(parent).length > 0) break;
+      rmdirSync(parent);
+    } catch {
+      break;
+    }
+    parent = dirname(parent);
+  }
+  try {
+    writeFileSync(
+      createdHostViewsPath(),
+      `${JSON.stringify(views.filter((candidate) => candidate !== view), null, 2)}\n`,
+    );
+  } catch {
+    // The record is pruned on the next removal.
+  }
 }
