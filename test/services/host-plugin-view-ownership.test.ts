@@ -90,3 +90,28 @@ describe("host plugin folders a HarnessTap install created", () => {
     expect(records.views).toEqual({});
   });
 });
+
+describe("host plugin folders that existed before HarnessTap", () => {
+  it("adopt the files HarnessTap added there and keep the user's as theirs", async () => {
+    const userSkill = join(ctx.homeDir, SKILL);
+    writeTextFile(userSkill, "user skill\n");
+    mirrorDup();
+    const manifest = `${VIEW}/.claude-plugin/plugin.json`;
+    const manifestBody = readFileSync(join(ctx.homeDir, manifest), "utf8");
+    expect(isInHostPluginViewCreatedByHarnessTap(userSkill)).toBe(false);
+
+    const result = await materializeFiles(
+      [
+        { path: SKILL, content: "user skill\n" },
+        { path: manifest, content: manifestBody },
+      ],
+      ctx.homeDir,
+      { conflictPolicy: "skip" },
+    );
+
+    expect(result.adoptedFiles).toEqual([manifest]);
+    expect(isPreexistingPath(ctx.homeDir, manifest)).toBe(false);
+    expect(isPreexistingPath(ctx.homeDir, SKILL)).toBe(true);
+    expect(readFileSync(userSkill, "utf8")).toBe("user skill\n");
+  });
+});

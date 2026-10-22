@@ -601,14 +601,15 @@ export async function planMaterializationConflicts(
 }
 
 /**
- * True when `fullPath` is in a host plugin folder a HarnessTap install
- * created and still holds the bytes HarnessTap wrote there. A version 1
- * record (written before files were recorded) covers the whole folder.
+ * True when `fullPath` is in a host plugin folder and still holds the bytes
+ * HarnessTap recorded writing there. That holds for a folder that existed
+ * before HarnessTap too: the files it added there are its own. A version 1
+ * record (written before files were recorded) covers the whole folder, but
+ * only for a folder a HarnessTap install created.
  */
 function holdsHarnessTapHostViewBytes(fullPath: string): boolean {
-  if (!isInHostPluginViewCreatedByHarnessTap(fullPath)) return false;
   const written = hostPluginViewWrittenHash(fullPath);
-  if (written === undefined) return true;
+  if (written === undefined) return isInHostPluginViewCreatedByHarnessTap(fullPath);
   return written !== null && written === hashFileOrLink(fullPath);
 }
 
