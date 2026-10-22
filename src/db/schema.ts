@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 import { semverSafePluginVersion } from "../services/plugin-semver.js";
 
-const SCHEMA_VERSION = 43;
+const SCHEMA_VERSION = 44;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -344,6 +344,8 @@ const MIGRATIONS: Record<number, Migration> = {
   41: migratePluginExcludes,
   42: migrateUpstreamChecks,
   43: migrateNotifications,
+  // Undo backups whose bytes live in the apply's trash folder, not the row.
+  44: migrateApplyRemovalBackupsInTrash,
 };
 
 function tableColumns(db: SqliteDatabase, name: string): string[] {
@@ -375,6 +377,14 @@ function migrateUpstreamChecks(db: SqliteDatabase): void {
  * Local notifications (B4). The same update is never notified twice: the
  * unique index covers (kind, plugin_name, payload.version).
  */
+function migrateApplyRemovalBackupsInTrash(db: SqliteDatabase): void {
+  const columns = tableColumns(db, "apply_removal_backups");
+  if (columns.length === 0 || columns.includes("in_trash")) return;
+  db.exec(
+    "ALTER TABLE apply_removal_backups ADD COLUMN in_trash INTEGER NOT NULL DEFAULT 0",
+  );
+}
+
 function migrateNotifications(db: SqliteDatabase): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS notifications (

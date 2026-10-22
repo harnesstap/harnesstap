@@ -5,6 +5,7 @@ import {
 import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskTextOnce } from "./status-disk-read.js";
 import {
+  copyFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -12,6 +13,7 @@ import {
   readFileSync,
   readlinkSync,
   realpathSync,
+  renameSync,
   rmdirSync,
   rmSync,
   statSync,
@@ -23,7 +25,10 @@ import { ulid } from "ulid";
 import { getHarnesstapDir } from "../db/connection.js";
 import {
   listApplyRemovalBackups,
+  listTrashPinnedApplyIds,
   recordApplyRemovalBackup,
+  recordTrashedApplyRemovalBackup,
+  removalBackupTrashFile,
 } from "../models/apply-removal-backup.js";
 import { isPreexistingPath } from "../models/preexisting-path.js";
 import {
@@ -33,6 +38,7 @@ import {
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { saveRemovedOwnership } from "./removed-ownership.js";
+import { hashFileContentStreaming } from "./streaming-content-hash.js";
 import { shortenHomePath } from "../utils/home-path.js";
 import { removeFileOrLink } from "../utils/remove-file-or-link.js";
 
@@ -116,12 +122,7 @@ function hashOnDiskFileUncached(fullPath: string): string | undefined {
     const text = readDiskTextOnce(fullPath);
     return text === null ? undefined : hashGeneratedContent(text);
   }
-  try {
-    const bytes = readFileSync(fullPath);
-    return hashGeneratedContent(bytes.toString("utf-8"));
-  } catch {
-    return undefined;
-  }
+  return hashFileContentStreaming(fullPath);
 }
 
 const S_IFMT = 0o170000;
@@ -419,15 +420,29 @@ export function planSafeFileRemovals(
 }
 
 function copyToTrash(applyId: string, relativePath: string, bytes: Buffer): string {
-  const dest = join(applyTrashRoot(), applyId, ...relativePath.split("/"));
+  const dest = removalBackupTrashFile(applyId, relativePath);
+  // A file already there may be the only copy of an earlier backup row.
+  if (pathExists(dest)) return dest;
   mkdirSync(dirname(dest), { recursive: true });
   writeFileSync(dest, bytes);
   return dest;
 }
 
+/**
+ * Trash folders past the newest `keepLast` are deleted, except any folder that
+ * holds the only copy of a backup row (the file was moved there): deleting it
+ * would strand a removal `ht revert` can still undo. When the database cannot
+ * be read nothing is pruned.
+ */
 export function pruneApplyTrash(keepLast = APPLY_TRASH_KEEP): void {
   const root = applyTrashRoot();
   if (!existsSync(root)) {
+    return;
+  }
+  let pinned: Set<string>;
+  try {
+    pinned = listTrashPinnedApplyIds();
+  } catch {
     return;
   }
   let entries: string[];
@@ -437,6 +452,7 @@ export function pruneApplyTrash(keepLast = APPLY_TRASH_KEEP): void {
     return;
   }
   const dirs = entries
+    .filter((name) => !pinned.has(name))
     .map((name) => {
       const full = join(root, name);
       try {
@@ -484,12 +500,66 @@ export function pruneEmptyAncestors(filePath: string, stopAt: string): void {
   }
 }
 
+function pathExists(path: string): boolean {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Put an unchanged file of HarnessTap's into the apply's trash folder without
+ * reading it: it is moved when `move` is set (the caller then has nothing
+ * left to remove), copied by the filesystem otherwise. Returns false when the
+ * trash already has a file at that place, so nothing there is overwritten.
+ */
+function stashPristineFile(input: {
+  fullPath: string;
+  relativePath: string;
+  applyId: string;
+  snapshotId?: string | null;
+  mode: number;
+  move: boolean;
+}): boolean {
+  const dest = removalBackupTrashFile(input.applyId, input.relativePath);
+  if (pathExists(dest)) return false;
+  mkdirSync(dirname(dest), { recursive: true });
+  if (input.move) {
+    try {
+      renameSync(input.fullPath, dest);
+    } catch (error) {
+      // Another filesystem: copy; the caller removes the original.
+      if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+      copyFileSync(input.fullPath, dest);
+    }
+  } else {
+    copyFileSync(input.fullPath, dest);
+  }
+  recordTrashedApplyRemovalBackup({
+    apply_id: input.applyId,
+    snapshot_id: input.snapshotId,
+    relative_path: input.relativePath,
+    mode: input.mode,
+  });
+  return true;
+}
+
+/**
+ * Back a file up before it goes. A regular file HarnessTap wrote and nobody
+ * changed (`pristine`) costs no copy of its bytes in the database: its trash
+ * file is the backup. Anything else (a file the user edited, a forced
+ * removal, a link) keeps the full copy in the database as well.
+ */
 function backupOnDiskFile(input: {
   rootPath: string;
   relativePath: string;
   applyId: string;
   snapshotId?: string | null;
-}): Buffer {
+  pristine?: boolean;
+  move?: boolean;
+}): void {
   const fullPath = resolve(input.rootPath, input.relativePath);
   if (isSymlinkPath(fullPath)) {
     // A link is backed up as its target, so it can be put back as a link.
@@ -502,15 +572,28 @@ function backupOnDiskFile(input: {
       mode: S_IFLNK | 0o777,
     });
     copyToTrash(input.applyId, input.relativePath, target);
-    return target;
+    return;
   }
-  const bytes = readFileSync(fullPath);
   let mode = 0;
   try {
     mode = statSync(fullPath).mode;
   } catch {
     mode = 0;
   }
+  if (
+    input.pristine
+    && stashPristineFile({
+      fullPath,
+      relativePath: input.relativePath,
+      applyId: input.applyId,
+      snapshotId: input.snapshotId,
+      mode,
+      move: input.move === true,
+    })
+  ) {
+    return;
+  }
+  const bytes = readFileSync(fullPath);
   recordApplyRemovalBackup({
     apply_id: input.applyId,
     snapshot_id: input.snapshotId,
@@ -519,7 +602,6 @@ function backupOnDiskFile(input: {
     mode,
   });
   copyToTrash(input.applyId, input.relativePath, bytes);
-  return bytes;
 }
 
 function backupAndUnlink(input: {
@@ -527,9 +609,10 @@ function backupAndUnlink(input: {
   relativePath: string;
   applyId: string;
   snapshotId?: string | null;
+  pristine: boolean;
 }): void {
   const fullPath = resolve(input.rootPath, input.relativePath);
-  backupOnDiskFile(input);
+  backupOnDiskFile({ ...input, move: true });
   removeFileOrLink(fullPath);
   pruneEmptyAncestors(fullPath, input.rootPath);
   pruneCreatedHostPluginView(fullPath);
@@ -584,12 +667,19 @@ export function executeSafeFileRemovals(
     };
   }
 
+  const forcedPaths = new Set((plan.forced ?? []).map((entry) => entry.path));
   for (const relativePath of plan.remove) {
+    const pristine = forcedPaths.has(relativePath)
+      ? false
+      : options.mode === "listed"
+        ? classifyManagedPathOwnership(rootPath, relativePath) === "owned"
+        : true;
     backupAndUnlink({
       rootPath,
       relativePath,
       applyId,
       snapshotId: options.snapshotId,
+      pristine,
     });
   }
   saveRemovedOwnership(options.snapshotId, rootPath, plan.remove);
