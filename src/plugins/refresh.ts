@@ -10,7 +10,7 @@ import {
   runCommandWithTimeout,
 } from "../utils/run-command-with-timeout.js";
 import { UNATTENDED_GIT_TIMEOUT_MS } from "../utils/spawn-command.js";
-import { mapGitStderr } from "../utils/git-errors.js";
+import { isCommandTimeoutStderr, mapGitStderr } from "../utils/git-errors.js";
 import { resolveCommandResult, type RunCommand } from "./run-command.js";
 
 export interface GitRefreshOptions {
@@ -26,6 +26,8 @@ export async function refreshGitSource(opts: GitRefreshOptions): Promise<{
   ok: boolean;
   sha?: string;
   message: string;
+  /** git was stopped at its timeout; nothing in `targetDir` changed. */
+  timedOut?: boolean;
 }> {
   const run = opts.runCommand ?? runCommandWithTimeout;
   const unattended = opts.unattended === true;
@@ -50,6 +52,7 @@ export async function refreshGitSource(opts: GitRefreshOptions): Promise<{
     return {
       ok: false,
       message: mapGitStderr(clone.stderr.trim() || "git clone failed", opts.url),
+      ...(isCommandTimeoutStderr(clone.stderr) ? { timedOut: true } : {}),
     };
   }
 
@@ -65,6 +68,7 @@ export async function refreshGitSource(opts: GitRefreshOptions): Promise<{
     return {
       ok: false,
       message: mapGitStderr(rev.stderr.trim() || "git rev-parse failed", opts.url),
+      ...(isCommandTimeoutStderr(rev.stderr) ? { timedOut: true } : {}),
     };
   }
 
