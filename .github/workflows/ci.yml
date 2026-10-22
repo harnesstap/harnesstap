@@ -500,11 +500,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # better-sqlite3 is optional (#501): Node 20 has no prebuild, its
+          # build fails, and the install still succeeds. Scripts stay on to
+          # prove that, and bun x runs the tarball too.
           - image: node:20-slim
             supported: "false"
             expect_install: "true"
             check_gyp: "false"
-            ignore_scripts: "true"
+            ignore_scripts: "false"
+            bunx_smoke: "true"
           - image: node:22.11-slim
             supported: "false"
             expect_install: "true"
@@ -534,6 +538,7 @@ jobs:
             -e EXPECT_INSTALL=${{ matrix.expect_install }} \
             -e CHECK_GYP=${{ matrix.check_gyp }} \
             -e IGNORE_SCRIPTS=${{ matrix.ignore_scripts }} \
+            -e BUNX_SMOKE=${{ matrix.bunx_smoke || 'false' }} \
             -v "$PWD/pack:/pack:ro" \
             -v "$PWD/scripts/ci-node-version-matrix.sh:/ci-node-version-matrix.sh:ro" \
             "${{ matrix.image }}" \

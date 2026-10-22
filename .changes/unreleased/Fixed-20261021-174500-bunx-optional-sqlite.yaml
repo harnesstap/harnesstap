@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`bun x harnesstap@latest` no longer fails with a page of node-gyp errors when the Node.js on `PATH` has no prebuilt `better-sqlite3`. The native SQLite module is now an optional dependency (Bun runs on `bun:sqlite`), so the install finishes, and an unsupported Node stops with one line that names Node 22.12 and, under Bun''s runner, `bun x --bun harnesstap@latest`. When the module is missing on a supported Node, the CLI says how to reinstall instead of printing a stack. `npm install -g harnesstap` on Node 20 also installs and prints the version requirement instead of failing.'
+time: 2026-10-22T03:45:00.000Z
+custom:
+  Issue: "501"

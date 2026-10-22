@@ -10,6 +10,10 @@ export const DRY_RUN_NOTHING_CHANGED = "Dry run. Nothing was changed.";
 export const NATIVE_MODULE_MISMATCH_MESSAGE =
   "HarnessTap was installed under a different Node.js version. Run: npm rebuild -g harnesstap";
 
+/** better-sqlite3 is optional (#501): Bun uses bun:sqlite, so an install may skip it. */
+export const SQLITE_MODULE_MISSING_MESSAGE =
+  "HarnessTap could not load its SQLite module (better-sqlite3), which did not install for this Node.js. Reinstall on Node 22.12 or newer: npm install -g harnesstap. Or run it on Bun: bun x --bun harnesstap@latest";
+
 /** Quote a user-provided token so a pasted hint parses as one Commander argument. */
 export function quoteCliArg(value: string): string {
   if (value.length === 0) {

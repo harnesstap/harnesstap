@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import type { Command } from "commander";
 import { getDb, getDbPath, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
-import { isNativeModuleMismatch } from "../../db/native-module.js";
+import { isNativeModuleMismatch, isSqliteModuleMissing } from "../../db/native-module.js";
 import { getHarnessPreference } from "../../models/harness.js";
 import { detectPlatforms } from "../../services/scanner.js";
 import { registeredHarnessesOf } from "../../services/harness-targets.js";
@@ -30,7 +30,9 @@ function nativeModuleStatus(): {
       engine: "better-sqlite3",
       detail: isNativeModuleMismatch(error)
         ? "NODE_MODULE_VERSION mismatch"
-        : error instanceof Error
+        : isSqliteModuleMissing(error)
+          ? "better-sqlite3 is not installed"
+          : error instanceof Error
           ? error.message
           : String(error),
     };
