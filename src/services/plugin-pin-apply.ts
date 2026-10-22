@@ -1,3 +1,4 @@
+import { assertNoMarketplacePluginNameCollision } from "./upstream-plugin.js";
 import { traceSpan } from "./status-trace.js";
 import { getDb, getHarnesstapDir } from "../db/connection.js";
 import {
@@ -203,6 +204,17 @@ export async function syncPluginPinsForApply(
     && !options.yes
   ) {
     throw new PinnedPluginInstallConsentError(options.profileName);
+  }
+
+  // Refuse a marketplace plugin whose name another marketplace's plugin
+  // already holds before installing it, so the refusal leaves no host cache
+  // folder behind.
+  if (!options.ignoreMissingInstall) {
+    for (const pin of pinsToInstall) {
+      if (parseDependencyRef(pin.ref).source_kind === "marketplace") {
+        assertNoMarketplacePluginNameCollision(pin.ref);
+      }
+    }
   }
 
   // --ignore-plugin-versions stamps exact constraints locally; skip marketplace
