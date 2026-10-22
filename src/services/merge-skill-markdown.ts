@@ -1,4 +1,5 @@
 import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 
 function normalizeNewlines(text: string): string {
   return text.replace(/\r\n/g, "\n");
@@ -13,8 +14,8 @@ function generatedIsLiveSubset(live: string, generated: string): boolean {
   if (liveNorm.startsWith(generatedNorm) || liveNorm.includes(generatedNorm)) {
     return true;
   }
-  const liveParsed = matter(liveNorm);
-  const generatedParsed = matter(generatedNorm);
+  const liveParsed = parseFrontmatter(liveNorm);
+  const generatedParsed = parseFrontmatter(generatedNorm);
   const generatedBody = generatedParsed.content.trim();
   if (generatedBody.length === 0) {
     return true;
@@ -38,8 +39,8 @@ export function mergeSkillMarkdown(
   if (normalizeNewlines(live) === normalizeNewlines(generated)) {
     return live;
   }
-  const liveParsed = matter(normalizeNewlines(live));
-  const generatedParsed = matter(normalizeNewlines(generated));
+  const liveParsed = parseFrontmatter(normalizeNewlines(live));
+  const generatedParsed = parseFrontmatter(normalizeNewlines(generated));
   const data: Record<string, unknown> = {
     ...(liveParsed.data as Record<string, unknown>),
     ...(generatedParsed.data as Record<string, unknown>),

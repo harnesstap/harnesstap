@@ -4,6 +4,8 @@ import type { TestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { createPlugin, getPluginById, getPluginByName, getPluginResources } from "../../src/models/plugin-model.ts";
 import { getPluginOrigin } from "../../src/services/plugin-origin.ts";
+import { listResources } from "../../src/models/resource.ts";
+import { syncPluginResource } from "../../src/services/resource-sync.ts";
 import { materializeUpstreamPlugin } from "../../src/services/upstream-plugin.ts";
 
 let ctx: TestContext;
@@ -105,5 +107,49 @@ describe("materializeUpstreamPlugin", () => {
         version: "1.2.0",
       }),
     ).toThrow(/authored/);
+  });
+
+  describe("two marketplaces shipping the same plugin name", () => {
+    function pluginPin(ref: string, namespace: string) {
+      return createResource({
+        type: "plugin",
+        name: "dup",
+        description: "",
+        content: "",
+        metadata: { source_kind: "marketplace", resolved_version: "1.0.0" },
+        source: "marketplace",
+        namespace,
+        origin_kind: "marketplace_link",
+        origin_ref: ref,
+      });
+    }
+
+    it("refuses the second marketplace and keeps the first one's resources", async () => {
+      pluginPin("dup@mkta", "mkta");
+      linkedSkill("dup-skill", "dup@mkta");
+      const first = materializeUpstreamPlugin({ ref: "dup@mkta", name: "dup", version: "1.0.0" });
+      const second = pluginPin("dup@mktb", "mktb");
+
+      expect(() =>
+        materializeUpstreamPlugin({ ref: "dup@mktb", name: "dup", version: "1.0.0" }),
+      ).toThrow('dup@mktb and dup@mkta are both named "dup"');
+      await expect(syncPluginResource(second, { policy: "overwrite" })).rejects.toThrow(
+        "Delete dup@mkta from the library first to use dup@mktb.",
+      );
+
+      expect(getPluginById(first.id)?.origin_locator).toBe("dup@mkta");
+      const skills = listResources({ type: "skill", includeComposition: true })
+        .filter((row) => row.name === "dup-skill");
+      expect(skills.map((row) => row.origin_ref)).toEqual(["dup@mkta"]);
+    });
+
+    it("lets the second marketplace take the name once the first pin is deleted", () => {
+      linkedSkill("dup-skill", "dup@mkta");
+      materializeUpstreamPlugin({ ref: "dup@mkta", name: "dup", version: "1.0.0" });
+      pluginPin("dup@mktb", "mktb");
+
+      const plugin = materializeUpstreamPlugin({ ref: "dup@mktb", name: "dup", version: "1.0.0" });
+      expect(getPluginById(plugin.id)?.origin_locator).toBe("dup@mktb");
+    });
   });
 });

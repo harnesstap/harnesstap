@@ -1,6 +1,6 @@
 import { parseUpstream, setPluginUpstream } from "../plugin-upstream.js";
 import { assertNoExtendsCycle, parseExcludeList, writePluginExcludes } from "../plugin-extends.js";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../../utils/frontmatter.js";
 import { getEnvironmentByName } from "../../models/environment.js";
 import {
   addResourceToPlugin,
@@ -211,7 +211,7 @@ function parseNativeMarkdownResources(
     if (!relativePath.startsWith(prefix) || !relativePath.endsWith(".md")) continue;
     const entry = files[relativePath];
     if (!entry) continue;
-    const parsed = matter(fileText(entry));
+    const parsed = parseFrontmatter(fileText(entry));
     const data = isRecord(parsed.data) ? { ...parsed.data } : {};
     const fallback = nativeBasename(relativePath, prefix);
     const name =
@@ -275,7 +275,7 @@ function parseMarkdownComponent(
     const basename = relativePath.slice(prefix.length, -".md".length);
     if (!basename || basename.includes("/")) continue;
 
-    const parsed = matter(fileText(entry));
+    const parsed = parseFrontmatter(fileText(entry));
     const data = isRecord(parsed.data) ? { ...parsed.data } : {};
     const name =
       typeof data.name === "string" && data.name.length > 0 ? data.name : basename;

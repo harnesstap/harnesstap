@@ -1,4 +1,5 @@
 import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 import { parse, stringify } from "smol-toml";
 import type { AgentMetadata } from "../types.js";
 
@@ -107,7 +108,7 @@ export function parseMarkdownAgent(
 
   if (raw.startsWith("---")) {
     try {
-      const parsed = matter(raw);
+      const parsed = parseFrontmatter(raw);
       if (parsed.content === raw) return undefined;
       data = parsed.data as Record<string, unknown>;
       instructions = parsed.content.trimStart();

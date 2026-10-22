@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import matter from "gray-matter";
+import { parseFrontmatter as parseFrontmatterText } from "../utils/frontmatter.js";
 import { parse as parseToml } from "smol-toml";
 import { normalizeAgentInput } from "./agent-bridge.js";
 import { collectHookEntries, commandReferencesPluginRoot } from "./hook-serialization.js";
@@ -279,7 +280,7 @@ function parseFrontmatter(filePath: string, content: string): {
 } {
   let parsed: matter.GrayMatterFile<string>;
   try {
-    parsed = matter(content);
+    parsed = parseFrontmatterText(content);
   } catch {
     throw new Error(`Malformed resource frontmatter: ${filePath}`);
   }

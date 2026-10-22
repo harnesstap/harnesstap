@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'A `SKILL.md`, agent or rule file with invalid YAML frontmatter is reported the same way every time it is read. Before, the second read of the same text in one process (the desktop agent, or a second import or doctor run) silently parsed it as a file with no frontmatter, so plugin import and doctor named a different reason or none.'
+time: 2026-10-22T03:15:00.000Z
+custom:
+  Issue: ""

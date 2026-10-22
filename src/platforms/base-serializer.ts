@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "../services/status-fs.js";
 import { dirname, join, relative, sep } from "node:path";
 import matter from "gray-matter";
+import { parseFrontmatter } from "../utils/frontmatter.js";
 import { normalizeAgentInput } from "../services/agent-bridge.js";
 import { mergeSkillMarkdown } from "../services/merge-skill-markdown.js";
 import { emitSkillAuxiliaryFiles, skillMetadataFromDir } from "../services/skill-auxiliary.js";
@@ -124,7 +125,7 @@ export abstract class BaseSerializer implements PlatformSerializer {
     data: Record<string, unknown>;
     content: string;
   } {
-    const parsed = matter(content);
+    const parsed = parseFrontmatter(content);
     return {
       data: parsed.data as Record<string, unknown>,
       content: parsed.content,
