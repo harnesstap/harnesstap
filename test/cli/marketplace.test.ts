@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -150,6 +150,34 @@ describe("CLI marketplace", () => {
         (payload.marketplaces as Array<{ name: string }>).some((row) => row.name === "bogus"),
       ).toBe(false);
     } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("prints a failed add's error once when git cannot clone the marketplace", async () => {
+    const context = await createTestContext("cli-mkt-clone-fails");
+    // A marketplace manifest outside a git repository passes the path check, then git clone fails.
+    const notRepo = mkdtempSync(join(tmpdir(), "ht-cli-mkt-not-repo-"));
+    mkdirSync(join(notRepo, ".claude-plugin"), { recursive: true });
+    writeFileSync(
+      join(notRepo, ".claude-plugin", "marketplace.json"),
+      JSON.stringify({ name: "not-repo", owner: { name: "qa" }, plugins: [] }),
+    );
+    try {
+      await runCli(["init"]);
+      const add = await runCli(["marketplace", "add", notRepo, "--no-interactive"], {
+        isTTY: false,
+      });
+      expect(add.exitCode).toBe(1);
+      const output = `${add.stdout}\n${add.stderr}`;
+      expect(output.split("Couldn't reach").length - 1).toBe(1);
+      expect(output).toContain("Nothing was saved.");
+      const list = await runCli(["marketplace", "list", "--format", "json"], {
+        isTTY: false,
+      });
+      expect(JSON.parse(list.stdout).marketplaces).toEqual([]);
+    } finally {
+      rmSync(notRepo, { recursive: true, force: true });
       await context.cleanup();
     }
   });

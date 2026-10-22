@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'A failed `ht marketplace add` prints its "Couldn''t reach" error once instead of twice. CLI errors no longer repeat a hint that says the same thing as the error.'
+time: 2026-10-22T03:15:00.000Z
+custom:
+  Issue: "451"
