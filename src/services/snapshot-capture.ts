@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin, Resource, SerializedFile, SnapshotState } from "../types.js";
 
@@ -44,7 +44,8 @@ export function flattenSnapshotFiles(state: SnapshotState): SerializedFile[] {
 export function flattenLiveRestoreFiles(state: SnapshotState): SerializedFile[] {
   const hasLiveCapture =
     (state.disk_files !== undefined && Object.keys(state.disk_files).length > 0)
-    || (state.absent_paths?.length ?? 0) > 0;
+    || (state.absent_paths?.length ?? 0) > 0
+    || Object.keys(state.disk_links ?? {}).length > 0;
   if (!hasLiveCapture) {
     return flattenSnapshotFiles(state);
   }
@@ -57,6 +58,21 @@ export function flattenLiveRestoreFiles(state: SnapshotState): SerializedFile[] 
 
 export function snapshotAbsentPaths(state: SnapshotState): string[] {
   return [...new Set(state.absent_paths ?? [])];
+}
+
+/** Links to restore as links on revert (never as the bytes they point to). */
+export function snapshotLinks(state: SnapshotState): Array<{ path: string; target: string }> {
+  return Object.entries(state.disk_links ?? {}).map(([path, target]) => ({ path, target }));
+}
+
+/** The target of a link at the path, or undefined when it is not a link. */
+function readLiveLink(rootPath: string, relativePath: string): string | undefined {
+  const fullPath = join(rootPath, relativePath);
+  try {
+    return lstatSync(fullPath).isSymbolicLink() ? readlinkSync(fullPath) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function readLiveFile(rootPath: string, relativePath: string): string | undefined {
@@ -83,6 +99,7 @@ export function captureManagedSnapshotState(input: {
 }): SnapshotState {
   const platform_files: Record<string, Record<string, string>> = {};
   const disk_files: Record<string, string> = {};
+  const disk_links: Record<string, string> = {};
   const absent: string[] = [];
   const seen = new Set<string>();
 
@@ -93,6 +110,14 @@ export function captureManagedSnapshotState(input: {
         continue;
       }
       seen.add(file.path);
+      const link = readLiveLink(input.rootPath, file.path);
+      if (link !== undefined) {
+        // A link is captured as a link: reading through it would restore a
+        // copy of what it points to, or drop a link to a folder.
+        disk_links[file.path] = link;
+        if (file.content !== undefined) bucket[file.path] = file.content;
+        continue;
+      }
       const live = readLiveFile(input.rootPath, file.path);
       if (live === undefined) {
         absent.push(file.path);
@@ -114,6 +139,11 @@ export function captureManagedSnapshotState(input: {
       continue;
     }
     seen.add(extra);
+    const link = readLiveLink(input.rootPath, extra);
+    if (link !== undefined) {
+      disk_links[extra] = link;
+      continue;
+    }
     const live = readLiveFile(input.rootPath, extra);
     if (live === undefined) {
       absent.push(extra);
@@ -128,5 +158,6 @@ export function captureManagedSnapshotState(input: {
     platform_files,
     ...(Object.keys(disk_files).length > 0 ? { disk_files } : {}),
     ...(absent.length > 0 ? { absent_paths: absent } : {}),
+    ...(Object.keys(disk_links).length > 0 ? { disk_links } : {}),
   };
 }
