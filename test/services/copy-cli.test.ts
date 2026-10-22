@@ -109,8 +109,8 @@ describe("DS-6 CLI copy", () => {
   it("pluralizes kept files, the force-remove hint, and dry-run stash", () => {
     expect(keptFilesHeader(1)).toBe("Kept 1 file you changed or that HarnessTap didn't create:");
     expect(keptFilesHeader(2)).toBe("Kept 2 files you changed or that HarnessTap didn't create:");
-    expect(forceRemoveHintLine(1)).toBe("To remove it too, run:");
-    expect(forceRemoveHintLine(3)).toBe("To remove them too, run:");
+    expect(forceRemoveHintLine(1)).toBe("To remove it too, run the command again with --force-remove.");
+    expect(forceRemoveHintLine(3)).toBe("To remove them too, run the command again with --force-remove.");
     expect(dryRunStashLine(1, "work")).toBe('Dry run. Would stash 1 change from "work".');
     expect(dryRunStashLine(2, "work")).toBe('Dry run. Would stash 2 changes from "work".');
   });

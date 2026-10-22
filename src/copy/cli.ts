@@ -151,7 +151,8 @@ export const CLI_HINTS = {
     `Run ht resource scope ${hintToken(name)} --add ${hintToken(harnesses)}.`,
   portableMcpTip: (name: string, harnessList: string, command: string): string =>
     `Tip: ${quoteName(name)} also works on ${harnessList}. Run ${command}.`,
-  forceRemove: "To remove them too, run: ht apply --force-remove",
+  forceRemove: "To remove them too, run the command again with --force-remove.",
+  forceRemoveAlreadyUsed: "HarnessTap never removes these, even with --force-remove.",
   revert: "Snapshot saved. Undo with: ht revert",
   stashPop: "Bring them back with: ht profile stash pop",
   harnessSet: "Run ht harness set to pick your harnesses.",
@@ -377,7 +378,7 @@ export function keptFilesHeader(count: number): string {
 }
 
 export function forceRemoveHintLine(count: number): string {
-  return `To remove ${count === 1 ? "it" : "them"} too, run:`;
+  return `To remove ${count === 1 ? "it" : "them"} too, run the command again with --force-remove.`;
 }
 
 export function restoredRemovedLine(
