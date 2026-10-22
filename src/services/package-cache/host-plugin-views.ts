@@ -4,7 +4,7 @@ import {
   readFileSync,
   readdirSync,
   rmdirSync,
-  statSync,
+  lstatSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -154,7 +154,8 @@ export function removeEmptyDirsUnder(dir: string): void {
   for (const entry of entries) {
     const child = join(dir, entry);
     try {
-      if (statSync(child).isDirectory()) removeEmptyDirsUnder(child);
+      // lstat: never follow a link into a folder outside this one.
+      if (lstatSync(child).isDirectory()) removeEmptyDirsUnder(child);
     } catch {
       // Unreadable entries stay.
     }

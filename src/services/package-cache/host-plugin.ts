@@ -2,11 +2,13 @@ import {
   type Dirent,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   rmSync,
-  statSync,
+  symlinkSync,
 } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { getHarnesstapDir } from "../../db/connection.js";
@@ -17,10 +19,12 @@ import {
 } from "../../models/package-cache-entry.js";
 import { cacheVersionDir } from "../host-plugin-source.js";
 import { isPluginInstallRoot } from "../plugin-source-import.js";
+import { hashGeneratedContent } from "../materialization-ownership.js";
 import {
   classifyManagedPathOwnership,
   executeSafeFileRemovals,
   hashOnDiskFile,
+  isSymlinkPath,
 } from "../safe-file-removal.js";
 import {
   type KeptHostPluginViewFiles,
@@ -53,11 +57,40 @@ function shouldCopyPackageTreePath(root: string, absolutePath: string): boolean 
 }
 
 function copyPackageTree(sourceRoot: string, destRoot: string): void {
+  // Links are copied as links with their target unchanged, so a relative
+  // link keeps pointing at its sibling instead of at the source checkout.
   cpSync(sourceRoot, destRoot, {
     recursive: true,
     force: true,
+    verbatimSymlinks: true,
     filter: (path) => shouldCopyPackageTreePath(sourceRoot, path),
   });
+}
+
+function linkTarget(path: string): string | undefined {
+  try {
+    return readlinkSync(path);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Earlier versions copied package trees following links, which turned a
+ * relative link into an absolute one into the source checkout (sometimes a
+ * scratch folder deleted since). Put such links in HarnessTap's own package
+ * cache back to the target the source has.
+ */
+function repairPackageTreeLinks(sourceRoot: string, destRoot: string): void {
+  const links = listTreeFiles(sourceRoot, (path) => shouldCopyPackageTreePath(sourceRoot, path))
+    .filter((path) => isSymlinkPath(join(sourceRoot, path)));
+  for (const path of links) {
+    const target = linkTarget(join(sourceRoot, path));
+    const dest = join(destRoot, path);
+    if (target === undefined || !isSymlinkPath(dest) || linkTarget(dest) === target) continue;
+    rmSync(dest, { force: true });
+    symlinkSync(target, dest);
+  }
 }
 
 export {
@@ -90,7 +123,23 @@ function listTreeFiles(root: string, filter?: (absolutePath: string) => boolean)
   return files.sort();
 }
 
+/**
+ * Hash of a folder entry: a link hashes as its target (never followed), any
+ * other entry as its bytes.
+ */
+function hashViewEntry(path: string): string | undefined {
+  if (isSymlinkPath(path)) {
+    const target = linkTarget(path);
+    return target === undefined ? undefined : hashGeneratedContent(`symlink:${target}`);
+  }
+  return hashOnDiskFile(path);
+}
+
 function sameBytes(left: string, right: string): boolean {
+  const leftLink = isSymlinkPath(left);
+  if (leftLink || isSymlinkPath(right)) {
+    return leftLink && isSymlinkPath(right) && linkTarget(left) === linkTarget(right);
+  }
   try {
     return readFileSync(left).equals(readFileSync(right));
   } catch {
@@ -107,7 +156,10 @@ function hostViewFileOwnership(input: {
   const absolute = join(input.hostView, input.path);
   const recorded = input.recorded[input.path];
   if (recorded) {
-    return recorded === hashOnDiskFile(absolute) ? "owned" : "modified";
+    if (recorded === hashViewEntry(absolute)) return "owned";
+    // Records from before links were kept as links hold the linked bytes.
+    if (isSymlinkPath(absolute) && recorded === hashOnDiskFile(absolute)) return "owned";
+    return "modified";
   }
   const fromHome = relative(input.homeRoot, absolute).split(sep).join("/");
   const ownership = classifyManagedPathOwnership(input.homeRoot, fromHome);
@@ -134,8 +186,14 @@ function copyViewFiles(
     const source = join(canonicalDir, path);
     const dest = join(hostView, path);
     mkdirSync(dirname(dest), { recursive: true });
-    cpSync(source, dest, { force: true });
-    const hash = hashOnDiskFile(dest);
+    if (isSymlinkPath(source)) {
+      const target = linkTarget(source);
+      if (target === undefined) continue;
+      symlinkSync(target, dest);
+    } else {
+      cpSync(source, dest, { force: true });
+    }
+    const hash = hashViewEntry(dest);
     if (hash) hashes[path] = hash;
   }
   return hashes;
@@ -223,7 +281,7 @@ export function mirrorHostPluginView(input: {
       hostViewFileOwnership({ homeRoot: input.homeRoot, hostView, path, recorded }) === "owned"
     ) {
       // An apply owns it (for example after a revert restored it): record it too.
-      const current = hashOnDiskFile(join(hostView, path));
+      const current = hashViewEntry(join(hostView, path));
       if (current) files[path] = current;
     }
   }
@@ -251,7 +309,7 @@ function removeEmptyDirsInside(dir: string): void {
   for (const entry of entries) {
     const child = join(dir, entry);
     try {
-      if (statSync(child).isDirectory()) removeEmptyDirsUnder(child);
+      if (lstatSync(child).isDirectory()) removeEmptyDirsUnder(child);
     } catch {
       // Unreadable entries stay.
     }
@@ -266,9 +324,15 @@ function removeEmptyDirsInside(dir: string): void {
 export function replaceKeptHostPluginViewFiles(entry: KeptHostPluginViewFiles): string[] {
   if (!existsSync(entry.hostView)) return [];
   const paths = entry.files.map((file) => file.path);
-  const present = paths.filter((path) => existsSync(join(entry.hostView, path)));
+  const present = paths.filter((path) => {
+    const full = join(entry.hostView, path);
+    return existsSync(full) || isSymlinkPath(full);
+  });
   backUpAndRemoveViewFiles(entry.homeRoot, entry.hostView, present);
-  const packaged = paths.filter((path) => existsSync(join(entry.canonicalDir, path)));
+  const packaged = paths.filter((path) => {
+    const full = join(entry.canonicalDir, path);
+    return existsSync(full) || isSymlinkPath(full);
+  });
   mkdirSync(entry.hostView, { recursive: true });
   const files = copyViewFiles(entry.canonicalDir, entry.hostView, packaged);
   removeEmptyDirsInside(entry.hostView);
@@ -300,6 +364,8 @@ export function ingestHostPluginTreeIntoCache(input: {
       rmSync(canonical, { recursive: true, force: true });
     }
     copyPackageTree(input.sourceInstallRoot, canonical);
+  } else if (canonical !== input.sourceInstallRoot) {
+    repairPackageTreeLinks(input.sourceInstallRoot, canonical);
   }
   const relative = hostPluginPackageRelativePath(marketplace, name, input.version);
   upsertPackageCacheEntry({

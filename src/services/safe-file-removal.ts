@@ -3,12 +3,15 @@ import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskTextOnce } from "./status-disk-read.js";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   rmdirSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
@@ -105,6 +108,18 @@ function hashOnDiskFileUncached(fullPath: string): string | undefined {
     return hashGeneratedContent(bytes.toString("utf-8"));
   } catch {
     return undefined;
+  }
+}
+
+const S_IFMT = 0o170000;
+const S_IFLNK = 0o120000;
+
+/** True when `fullPath` is a symbolic link, dangling or not. */
+export function isSymlinkPath(fullPath: string): boolean {
+  try {
+    return lstatSync(fullPath).isSymbolicLink();
+  } catch {
+    return false;
   }
 }
 
@@ -235,7 +250,7 @@ export function planSafeFileRemovals(
     seen.add(relativePath);
 
     const fullPath = resolve(rootPath, relativePath);
-    if (!existsSync(fullPath)) {
+    if (!existsSync(fullPath) && !isSymlinkPath(fullPath)) {
       skip.push({
         path: relativePath,
         reason: "missing",
@@ -359,6 +374,19 @@ function backupOnDiskFile(input: {
   snapshotId?: string | null;
 }): Buffer {
   const fullPath = resolve(input.rootPath, input.relativePath);
+  if (isSymlinkPath(fullPath)) {
+    // A link is backed up as its target, so it can be put back as a link.
+    const target = Buffer.from(readlinkSync(fullPath));
+    recordApplyRemovalBackup({
+      apply_id: input.applyId,
+      snapshot_id: input.snapshotId,
+      relative_path: input.relativePath,
+      content: target,
+      mode: S_IFLNK | 0o777,
+    });
+    copyToTrash(input.applyId, input.relativePath, target);
+    return target;
+  }
   const bytes = readFileSync(fullPath);
   let mode = 0;
   try {
@@ -472,7 +500,12 @@ export function restoreSafeRemovalBackup(input: {
   for (const backup of backups) {
     const fullPath = resolve(input.rootPath, backup.relative_path);
     mkdirSync(dirname(fullPath), { recursive: true });
-    writeFileSync(fullPath, backup.content);
+    if (((backup.mode ?? 0) & S_IFMT) === S_IFLNK) {
+      if (isSymlinkPath(fullPath)) rmSync(fullPath, { force: true });
+      symlinkSync(Buffer.from(backup.content).toString("utf-8"), fullPath);
+    } else {
+      writeFileSync(fullPath, backup.content);
+    }
     restored.push(backup.relative_path);
   }
   if (restored.length > 0) {

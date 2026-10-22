@@ -1004,7 +1004,7 @@ export async function downloadHostPluginVersion(input: {
       resolveMarketplacePluginDirectory(marketplaceRoot, name);
     if (pluginDir && existsSync(pluginDir) && isPluginInstallRoot(pluginDir)) {
       mkdirSync(dirname(target), { recursive: true });
-      cpSync(pluginDir, target, { recursive: true });
+      cpSync(pluginDir, target, { recursive: true, verbatimSymlinks: true });
       upsertPackageCacheEntry({
         kind: "host_plugin",
         origin_ref: input.originRef,
