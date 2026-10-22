@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Importing a plugin package that declares dependencies no longer marks the plugin as edited (`1.0.0*`). The dependencies come with the package, so the import is a clean working head at the package version, and `ht migrate export --plugin` exports it unchanged without a version bump. Edits made after the import still mark it edited.'
+time: 2026-10-22T02:30:00.000Z
+custom:
+  Issue: "499"

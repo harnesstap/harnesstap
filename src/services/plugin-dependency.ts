@@ -75,9 +75,18 @@ export function ensureDependencyResource(
 export function addDependency(
   pluginId: string,
   ref: string,
-  opts?: { versionConstraint?: string; embedOnExport?: boolean },
+  opts?: {
+    versionConstraint?: string;
+    embedOnExport?: boolean;
+    /**
+     * False when the dependency is part of the plugin as published, for
+     * example while a package import builds a fresh plugin. Such a plugin is
+     * a clean working head at its package version, not an edit.
+     */
+    markDirty?: boolean;
+  },
 ): Resource {
-  markPluginDirty(pluginId);
+  if (opts?.markDirty !== false) markPluginDirty(pluginId);
   const resource = ensureDependencyResource(ref, {
     ...(opts?.versionConstraint ? { versionConstraint: opts.versionConstraint } : {}),
     ...(opts?.embedOnExport ? { portable: "embed" as const } : {}),
