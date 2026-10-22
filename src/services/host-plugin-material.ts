@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getPlatform } from "../platforms/registry.js";
 import type { Resource, ResourceCreateInput, SerializerTarget } from "../types.js";
-import { hostPluginPinIsInstalled } from "./host-native-mcp.js";
+import { claudeInstallIsHarnessTapOnly, hostPluginPinIsInstalled } from "./host-native-mcp.js";
 import {
   type HostPluginLayout,
   isHostPluginPinResource,
@@ -54,11 +54,23 @@ function isHostPluginBundledMaterial(
   pins: ReadonlySet<string>,
   pinNames: ReadonlySet<string>,
   homeRoot: string,
+  platformId: HostPluginLayout,
 ): boolean {
+  const originRef = resource.origin_ref?.trim() ?? "";
+  // Claude Code also starts the MCP servers of a plugin it has registered,
+  // with CLAUDE_PLUGIN_ROOT set. A standalone copy in ~/.claude.json would run
+  // the server twice, or fail on the unresolved variable.
+  if (
+    platformId === "claude-code"
+    && resource.type === "mcp_server"
+    && originRef
+    && pins.has(originRef)
+  ) {
+    return true;
+  }
   if (!HOST_PLUGIN_BUNDLED_TYPES.has(resource.type)) {
     return false;
   }
-  const originRef = resource.origin_ref?.trim() ?? "";
   if (originRef && pins.has(originRef)) {
     return true;
   }
@@ -76,6 +88,9 @@ function isHostPluginBundledMaterial(
     resource.origin_kind === "marketplace_link"
     && originRef.includes("@")
     && hostPluginPinIsInstalled(homeRoot, originRef)
+    // Cursor does not load a Claude Code plugin HarnessTap registered for
+    // Claude only, so Cursor keeps the standalone copies.
+    && !(platformId === "cursor" && claudeInstallIsHarnessTapOnly(homeRoot, originRef))
   ) {
     return true;
   }
@@ -108,7 +123,8 @@ export function omitHostPluginBundledSkills(
   );
   const pinNames = new Set(pinResources.map((resource) => resource.name));
   return resources.filter(
-    (resource) => !isHostPluginBundledMaterial(resource, pins, pinNames, homeRoot),
+    (resource) =>
+      !isHostPluginBundledMaterial(resource, pins, pinNames, homeRoot, platformId),
   );
 }
 

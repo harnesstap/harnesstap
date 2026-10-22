@@ -17,10 +17,17 @@ import type {
   SerializedFile,
   SurfaceWarning,
 } from "../types.js";
-import type {
-  InstalledPluginRecord,
-  InstalledPluginsFile,
+import {
+  getInstalledPluginRecord,
+  type InstalledPluginRecord,
+  type InstalledPluginsFile,
+  resolveInstalledRecordPath,
 } from "../plugins/claude-installed.js";
+import {
+  type ClaudeMarketplacePlugin,
+  emitClaudeMarketplaceRegistrations,
+  remoteMarketplaceUrl,
+} from "./claude-marketplace-registration.js";
 import { parsePluginRef } from "../plugins/host-plugin-manifest.js";
 import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
 import { filterHostPluginRuntimeFiles } from "./host-plugin-runtime-modules.js";
@@ -326,9 +333,32 @@ export function emitHostPluginTrees(
     ? shadowedCursorMarketplaceNames(options.homeRoot)
     : null;
 
+  const claudeMarketplaces = new Map<string, ClaudeMarketplacePlugin[]>();
+
   for (const resource of resources) {
     if (!isHostPluginPinResource(resource)) continue;
     const originRef = pluginRef(resource);
+    const remoteMarketplace = options.layout === "claude-code"
+      && remoteMarketplaceUrl(options.homeRoot, marketplaceName(resource))
+      ? marketplaceName(resource)
+      : undefined;
+    if (remoteMarketplace) {
+      const foreign = foreignClaudeInstall(
+        options.homeRoot,
+        originRef,
+        hostPluginRelativeRoot("claude-code", resource),
+      );
+      if (foreign) {
+        options.surfaceWarnings?.push({
+          harness: "claude-code",
+          path: foreign,
+          category: "claude-plugin-install",
+          message: `Claude Code already has ${originRef} installed at ${foreign}, outside HarnessTap. Left that install in place.`,
+          alias_harnesses: [],
+        });
+        continue;
+      }
+    }
     if (shadowedNames?.has(resource.name)) {
       options.surfaceWarnings?.push({
         harness: "cursor",
@@ -390,11 +420,18 @@ export function emitHostPluginTrees(
 
     if (options.layout === "claude-code") {
       const metadata = (resource.metadata ?? {}) as PluginDependencyMetadata;
+      // Claude Code resolves a relative installPath against its working
+      // directory, so the plugin would only load when started from home.
       const record: InstalledPluginRecord = {
         scope: "user",
-        installPath: relativeRoot.replace(/^\.claude\/plugins\//, ""),
+        installPath: join(options.homeRoot, relativeRoot),
         version: metadata.resolved_version ?? "unknown",
       };
+      if (remoteMarketplace) {
+        const plugins = claudeMarketplaces.get(remoteMarketplace) ?? [];
+        plugins.push({ name: resource.name, version: record.version, relativeRoot });
+        claudeMarketplaces.set(remoteMarketplace, plugins);
+      }
       const existing = files.find((file) => file.path === installedPath)?.content
         ?? (existsSync(join(options.homeRoot, installedPath))
           ? readFileSync(join(options.homeRoot, installedPath), "utf-8")
@@ -408,5 +445,33 @@ export function emitHostPluginTrees(
     }
   }
 
+  emitClaudeMarketplaceRegistrations(
+    files,
+    options.homeRoot,
+    claudeMarketplaces,
+    options.surfaceWarnings,
+  );
   return files;
+}
+
+/**
+ * Where Claude Code has `originRef` installed outside HarnessTap, if it does:
+ * a plugin record, or a folder at the install root, that HarnessTap did not
+ * create. HarnessTap neither copies over nor registers such an install.
+ */
+function foreignClaudeInstall(
+  homeRoot: string,
+  originRef: string,
+  relativeRoot: string,
+): string | undefined {
+  const candidates: string[] = [];
+  const record = getInstalledPluginRecord(homeRoot, originRef);
+  if (record) candidates.push(resolveInstalledRecordPath(homeRoot, record));
+  const destination = join(homeRoot, relativeRoot);
+  if (existsSync(destination)) candidates.push(destination);
+  for (const path of candidates) {
+    const view = readHostPluginViewRecord(path);
+    if (!view?.created) return path;
+  }
+  return undefined;
 }

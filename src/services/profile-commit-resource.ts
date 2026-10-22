@@ -304,7 +304,7 @@ export function isInstructionManagedPath(path: string, rootPath?: string): boole
 export function isPluginRegistryManagedPath(path: string, rootPath?: string): boolean {
   const normalized = normalizeManagedPath(path, rootPath).replace(/^~\//, "");
   return (
-    /(^|\/)\.claude\/plugins\/installed_plugins\.json$/i.test(normalized)
+    /(^|\/)\.claude\/plugins\/(installed_plugins|known_marketplaces)\.json$/i.test(normalized)
     || /(^|\/)\.cursor\/plugins\/(installed_plugins\.json|installed\.json)$/i.test(normalized)
   );
 }

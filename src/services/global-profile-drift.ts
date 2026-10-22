@@ -147,10 +147,11 @@ export function isHostPluginViewPath(path: string): boolean {
  */
 export function hostPluginFolderChanges(
   homeRoot: string,
-  expectedFiles: ReadonlyArray<{ path: string }>,
+  expectedFiles: ReadonlyArray<{ path: string; content?: string; encoding?: "utf8" | "base64" }>,
   known: readonly DriftFileChange[],
 ): DriftFileChange[] {
   const folders = new Map<string, { marketplace: string; name: string; version: string }>();
+  const expectedByPath = new Map(expectedFiles.map((file) => [file.path, file]));
   for (const file of expectedFiles) {
     const match = HOST_PLUGIN_VIEW_PATH.exec(file.path.replaceAll("\\", "/"));
     if (!match?.[1] || !match[2] || !match[3] || !match[4]) continue;
@@ -169,6 +170,12 @@ export function hostPluginFolderChanges(
     for (const difference of differences) {
       const path = `${folder}/${difference.path}`;
       if (seen.has(path)) continue;
+      // Spec plugins are translated for the host on write (e.g. `mcp.json`
+      // becomes `.mcp.json`), so a file that holds exactly what apply writes
+      // is in sync even though it differs from the package copy.
+      if (difference.state !== "missing" && matchesExpectedContent(homeRoot, expectedByPath.get(path))) {
+        continue;
+      }
       seen.add(path);
       if (difference.state === "missing") changes.push({ path, type: "deleted" });
       else if (difference.state === "stale") changes.push({ path, type: "modified" });
@@ -182,6 +189,21 @@ export function hostPluginFolderChanges(
     }
   }
   return changes;
+}
+
+function matchesExpectedContent(
+  homeRoot: string,
+  file: { path: string; content?: string; encoding?: "utf8" | "base64" } | undefined,
+): boolean {
+  if (file?.content === undefined) return false;
+  const fullPath = join(homeRoot, file.path);
+  const binary = binaryExpectedFileMatchesDisk(fullPath, { content: file.content, encoding: file.encoding });
+  if (binary !== undefined) return binary;
+  try {
+    return readFileSync(fullPath, "utf-8") === file.content;
+  } catch {
+    return false;
+  }
 }
 
 function keptContentDiff(
@@ -302,7 +324,10 @@ function buildBaseStatusFields(input: {
       : { "claude-code": [], cursor: [] });
 
   const filesOnlyPinRefs = input.expectedApply?.resolution
-    ? filesOnlyMarketplacePinRefs(input.expectedApply.resolution)
+    ? {
+        "claude-code": filesOnlyMarketplacePinRefs(input.expectedApply.resolution, "claude-code"),
+        cursor: filesOnlyMarketplacePinRefs(input.expectedApply.resolution, "cursor"),
+      }
     : undefined;
 
   const harnesses = traceSpan("base.harness-live-status", () => buildHarnessLiveStatusMap({
