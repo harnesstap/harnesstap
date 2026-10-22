@@ -1,0 +1,3 @@
+kind: Fixed
+body: '`ht profile use` and `ht apply` no longer wait up to 2 minutes on a slow or unreachable marketplace remote when the pinned plugin is already cached. An exact version that is already in the package cache needs no network. Otherwise the stored catalog is used, and a stale one is refreshed in the background with the short timeout.'
+time: 2026-10-22T11:30:00.000000Z
