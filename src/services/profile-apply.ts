@@ -1,8 +1,10 @@
 import {
+  holdsOnlyLeavingHarnessTapRegistrations,
   isClaudePluginRegistryPath,
   planStaleClaudeRegistrations,
   pruneStaleClaudeRegistrationsOnDisk,
 } from "./claude-plugin-registration-prune.js";
+import { claudeChangedMarketplaces } from "./claude-marketplace-registration.js";
 import { isPreexistingPath } from "../models/preexisting-path.js";
 import { recordedHostPluginViewPaths } from "./package-cache/host-plugin-views.js";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -250,24 +252,29 @@ function removeStaleGlobalProfileFiles(
     snapshotId?: string;
   } = {},
 ): SafeFileRemovalResult {
-  // Claude's plugin registries that HarnessTap merged into, or that changed
-  // since, lose only HarnessTap's keys (below), never the whole file.
+  // Read before the removal below deletes the plugin folder records and
+  // HarnessTap's marketplace folders.
+  const staleClaudeRecords = planStaleClaudeRegistrations(homeRoot, desiredFiles);
+  const changedMarketplaces = claudeChangedMarketplaces(homeRoot);
   const staleFiles = planStaleGlobalProfileFiles(
     homeRoot,
     desiredFiles,
     previousTrackedFiles,
     harnesses,
   ).filter((path) =>
+    // Claude's plugin registries that HarnessTap merged into, that changed
+    // since, or that hold anyone else's entries lose only HarnessTap's keys
+    // (below), never the whole file.
     !isClaudePluginRegistryPath(path)
-    || (!isPreexistingPath(homeRoot, path) && isHarnessTapOwnedPath(homeRoot, path)));
+    || (!isPreexistingPath(homeRoot, path)
+      && isHarnessTapOwnedPath(homeRoot, path)
+      && holdsOnlyLeavingHarnessTapRegistrations(homeRoot, path, staleClaudeRecords)));
   const mergeFiles = planStaleMergeableHostConfigFiles(
     homeRoot,
     desiredFiles,
     previousTrackedFiles,
     harnesses,
   );
-  // Read before the removal below deletes the plugin folder records.
-  const staleClaudeRecords = planStaleClaudeRegistrations(homeRoot, desiredFiles);
   const removed = removeGlobalMaterializedFiles(homeRoot, staleFiles, {
     dryRun: options.dryRun,
     forceRemove: options.forceRemove,
@@ -287,6 +294,7 @@ function removeStaleGlobalProfileFiles(
       applyId: removed.applyId,
       snapshotId: options.snapshotId,
       dryRun: options.dryRun,
+      changedMarketplaces,
     },
   );
   // A plugin folder left behind keeps the user's own files, even with
@@ -305,8 +313,9 @@ function removeStaleGlobalProfileFiles(
     warnings: [
       ...removed.warnings,
       ...keptInLeftFolders.map((skip) => skip.message),
-      ...[...new Set([...rewritten.rewritten, ...prunedClaude])]
+      ...[...new Set([...rewritten.rewritten, ...prunedClaude.rewritten])]
         .map((path) => `Updated ${path} (removed HarnessTap-managed keys).`),
+      ...prunedClaude.warnings,
     ],
   };
 }

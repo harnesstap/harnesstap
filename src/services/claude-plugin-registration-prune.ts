@@ -3,8 +3,9 @@ import { isAbsolute, join, relative, sep } from "node:path";
 import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
 import {
   CLAUDE_KNOWN_MARKETPLACES_PATH,
+  claudeChangedMarketplaceMessage,
+  claudeMarketplaceEntryOwner,
   harnessTapClaudeMarketplaceDir,
-  isHarnessTapMarketplaceRegistration,
 } from "./claude-marketplace-registration.js";
 import type { SerializedFile } from "../types.js";
 import { applyJsonObjectUpdatePreservingFormat } from "./format-preserving-config.js";
@@ -72,9 +73,46 @@ export function staleHarnessTapClaudeRecords(
   return stale;
 }
 
+/**
+ * True when a Claude Code registry file holds nothing but what HarnessTap
+ * registered and is taking away: every `installed_plugins.json` record is in
+ * `stale`, every `known_marketplaces.json` entry is still HarnessTap's own.
+ * Only then may a switch remove the whole file; otherwise it loses just
+ * HarnessTap's keys, so an entry Claude Code or the user added or changed in
+ * the meantime stays.
+ */
+export function holdsOnlyLeavingHarnessTapRegistrations(
+  homeRoot: string,
+  relativePath: string,
+  stale: ReadonlyMap<string, ReadonlySet<string>>,
+): boolean {
+  const normalized = relativePath.replaceAll("\\", "/");
+  const parsed = parseObject(readHomeFile(homeRoot, normalized));
+  if (!parsed) return false;
+  if (normalized === CLAUDE_KNOWN_MARKETPLACES_PATH) {
+    return Object.entries(parsed).every(([marketplace, entry]) =>
+      claudeMarketplaceEntryOwner(homeRoot, marketplace, entry) === "harnesstap");
+  }
+  if (normalized === CLAUDE_INSTALLED_PLUGINS_PATH) {
+    if (Object.keys(parsed).some((key) => key !== "version" && key !== "plugins")) return false;
+    const plugins = isRecord(parsed.plugins) ? parsed.plugins : {};
+    return Object.entries(plugins).every(([ref, rows]) =>
+      Array.isArray(rows) && rows.every((row) => {
+        const path = recordInstallPath(homeRoot, row);
+        return path !== undefined && (stale.get(ref)?.has(path) ?? false);
+      }));
+  }
+  return false;
+}
+
 export interface PrunedClaudeRegistrations {
   /** New file contents, by home-relative path. Unchanged files are left out. */
   files: Map<string, string>;
+  /**
+   * HarnessTap's marketplace entries that would have gone but stay because
+   * Claude Code changed them after HarnessTap wrote them.
+   */
+  keptChangedMarketplaces: string[];
 }
 
 /**
@@ -82,7 +120,10 @@ export interface PrunedClaudeRegistrations {
  * leaving, key by key: their `installed_plugins.json` records, their
  * `enabledPlugins` entries once no record is left for the plugin, and
  * HarnessTap's own marketplace entries that no plugin record uses any more and
- * `keepMarketplaces` does not name. Everything else in those files stays.
+ * `keepMarketplaces` does not name. Everything else in those files stays,
+ * including a marketplace entry Claude Code changed since HarnessTap wrote it
+ * (`changedMarketplaces` names those whose change is no longer visible on
+ * disk, because HarnessTap's marketplace folder is already gone).
  */
 export function pruneClaudeRegistrations(
   homeRoot: string,
@@ -93,8 +134,10 @@ export function pruneClaudeRegistrations(
   },
   stale: ReadonlyMap<string, ReadonlySet<string>>,
   keepMarketplaces: ReadonlySet<string> = new Set(),
+  changedMarketplaces: ReadonlySet<string> = new Set(),
 ): PrunedClaudeRegistrations {
   const files = new Map<string, string>();
+  const keptChangedMarketplaces: string[] = [];
   const installed = parseObject(contents.installed);
   const plugins = isRecord(installed?.plugins) ? { ...installed.plugins } : {};
   const gone = new Set<string>();
@@ -148,7 +191,12 @@ export function pruneClaudeRegistrations(
     let changed = false;
     for (const [marketplace, entry] of Object.entries(known)) {
       if (keepMarketplaces.has(marketplace) || used.has(marketplace)) continue;
-      if (!isHarnessTapMarketplaceRegistration(homeRoot, marketplace, entry)) continue;
+      const owner = claudeMarketplaceEntryOwner(homeRoot, marketplace, entry);
+      if (owner === "claude-changed" || changedMarketplaces.has(marketplace)) {
+        keptChangedMarketplaces.push(marketplace);
+        continue;
+      }
+      if (owner !== "harnesstap") continue;
       delete next[marketplace];
       changed = true;
     }
@@ -160,7 +208,7 @@ export function pruneClaudeRegistrations(
     }
   }
 
-  return { files };
+  return { files, keptChangedMarketplaces };
 }
 
 function readHomeFile(homeRoot: string, relativePath: string): string | undefined {
@@ -252,14 +300,22 @@ export function pruneLeavingClaudeRegistrations(
  * After a switch removed HarnessTap's plugin folders, take its registrations
  * for them out of the Claude Code files that stayed (files the user had before
  * HarnessTap, or changed). Each file is backed up before it is rewritten.
- * Returns the paths rewritten (or that would be, on a dry run).
+ * Returns the paths rewritten (or that would be, on a dry run) and a warning
+ * for each marketplace entry kept because Claude Code changed it.
+ * `changedMarketplaces` comes from `claudeChangedMarketplaces`, read before
+ * the switch removed HarnessTap's marketplace folders.
  */
 export function pruneStaleClaudeRegistrationsOnDisk(
   homeRoot: string,
   stale: ReadonlyMap<string, ReadonlySet<string>>,
   desiredFiles: readonly string[],
-  options: { applyId: string; snapshotId?: string | null; dryRun?: boolean },
-): string[] {
+  options: {
+    applyId: string;
+    snapshotId?: string | null;
+    dryRun?: boolean;
+    changedMarketplaces?: ReadonlySet<string>;
+  },
+): { rewritten: string[]; warnings: string[] } {
   const desired = new Set(desiredFiles);
   const keepMarketplaces = writtenHarnessTapMarketplaces(desiredFiles);
   const pruned = pruneClaudeRegistrations(
@@ -271,6 +327,7 @@ export function pruneStaleClaudeRegistrationsOnDisk(
     },
     stale,
     keepMarketplaces,
+    options.changedMarketplaces,
   );
   const rewritten: string[] = [];
   for (const [relativePath, content] of pruned.files) {
@@ -287,5 +344,7 @@ export function pruneStaleClaudeRegistrationsOnDisk(
     }
     rewritten.push(relativePath);
   }
-  return rewritten;
+  const warnings = pruned.keptChangedMarketplaces.map((marketplace) =>
+    `${claudeChangedMarketplaceMessage(marketplace)} Remove it with \`claude plugin marketplace remove ${marketplace}\` if you no longer use it.`);
+  return { rewritten, warnings };
 }

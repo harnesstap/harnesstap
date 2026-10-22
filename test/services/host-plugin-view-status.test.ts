@@ -50,7 +50,7 @@ describe("host plugin folder status", () => {
     expect(changes.every(driftChangeIsKept)).toBe(true);
   });
 
-  it("reports files HarnessTap wrote that are missing or that the user changed", () => {
+  it("reports files HarnessTap wrote that are missing or that changed since, as changed by Claude Code", () => {
     const dir = canonical();
     mirrorHostPluginView({ homeRoot: ctx.homeDir, marketplace: "mkta", pluginName: "p", version: "1.0.0", canonicalDir: dir });
     rmSync(join(ctx.homeDir, VIEW, "skills/s/ref.md"));
@@ -63,7 +63,7 @@ describe("host plugin folder status", () => {
     );
     expect(changes).toEqual([
       { path: `${VIEW}/skills/s/ref.md`, type: "deleted" },
-      { path: `${VIEW}/skills/s/SKILL.md`, type: "modified", removal_group: "owned_modified" },
+      { path: `${VIEW}/skills/s/SKILL.md`, type: "modified", removal_group: "owned_modified", changed_by: "claude-code" },
     ]);
     // A path the file comparison already reported is not repeated.
     expect(

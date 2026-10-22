@@ -4,7 +4,7 @@ import { type DriftFileChange, driftChangeIsKept } from "../../services/project-
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
 import { getPlugin } from "../../models/plugin-model.js";
-import { dryRunStashLine, SWITCH_CHANGES_FLAG_HELP } from "../../copy/cli.js";
+import { CLI_COPY, dryRunStashLine, SWITCH_CHANGES_FLAG_HELP } from "../../copy/cli.js";
 import { harnessDisplayName } from "../../copy/scope.js";
 import { listAttachedPluginRefs } from "../../services/plugin-composition.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
@@ -285,7 +285,9 @@ profileCmd
             `${formatCount(status.changes.length, "file")} ${status.changes.length === 1 ? "differs" : "differ"} on disk.`,
           );
           for (const change of status.changes) {
-            console.log(`  ${change.path}`);
+            console.log(driftChangeIsKept(change)
+              ? `  ${change.path}   ${keptStatusReason(change)}`
+              : `  ${change.path}`);
           }
         }
         for (const gap of gaps.missing) {
@@ -331,9 +333,15 @@ function printKeptStatusChanges(changes: readonly DriftFileChange[]): void {
     `${formatCount(kept.length, "file")} ${kept.length === 1 ? "differs" : "differ"} from the profile and apply keeps ${kept.length === 1 ? "it" : "them"} as ${kept.length === 1 ? "it is" : "they are"}:`,
   );
   for (const change of kept) {
-    const why = change.removal_group === "owned_modified" ? "you changed it" : "not made by HarnessTap";
-    console.log(`  ${change.path}   ${why}`);
+    console.log(`  ${change.path}   ${keptStatusReason(change)}`);
   }
+}
+
+function keptStatusReason(change: DriftFileChange): string {
+  if (change.changed_by === "claude-code") {
+    return change.detail ? `Claude Code changed ${change.detail}` : CLI_COPY.keptClaudeChanged;
+  }
+  return change.removal_group === "owned_modified" ? "you changed it" : "not made by HarnessTap";
 }
 
 profileCmd
