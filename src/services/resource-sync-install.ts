@@ -33,6 +33,10 @@ function marketplaceIsResolvable(marketplace: string, homeRoot: string): boolean
   );
 }
 
+function unknownMarketplaceReason(marketplace: string): string {
+  return `marketplace ${marketplace} is not configured. Add it with ht marketplace add <git-url> --name ${marketplace}, then run this command again`;
+}
+
 /** Register `marketplace` when a library plugin's claude.toml declares its source. */
 function registerMarketplaceDeclaredByLibrary(marketplace: string): void {
   const harnesstapDir = getHarnesstapDir();
@@ -63,8 +67,23 @@ export async function syncResourcesInstallingDependencies(
         (resource) => resource.origin_ref === ref,
       )
     : [];
-  if (!ref || pins.length === 0) {
+  if (!ref) {
     return syncLinkedResources(options);
+  }
+  if (pins.length === 0) {
+    // No library plugin depends on it, so there is nothing to install; an
+    // unknown marketplace is still worth saying how to fix.
+    const result = await syncLinkedResources(options);
+    const marketplace = parseDependencyRef(ref).namespace;
+    const homeRoot = options.homeRoot ?? resolveHomeRoot();
+    registerMarketplaceDeclaredByLibrary(marketplace);
+    if (!marketplaceIsResolvable(marketplace, homeRoot)) {
+      result.failed = [
+        ...(result.failed ?? []),
+        { ref, reason: unknownMarketplaceReason(marketplace) },
+      ];
+    }
+    return result;
   }
 
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
@@ -74,6 +93,7 @@ export async function syncResourcesInstallingDependencies(
     stale: [],
     unchanged: [],
     skipped: [],
+    failed: [],
   };
   for (const pin of pins) {
     if (!options.dryRun && !resolveInstallRoot(ref, homeRoot, options.claudePluginsRoot)) {
@@ -84,8 +104,9 @@ export async function syncResourcesInstallingDependencies(
         aggregated.checked += 1;
         aggregated.stale.push({
           resource: pin,
-          reason: `marketplace ${marketplace} is not configured. Add it with ht marketplace add <git-url> --name ${marketplace}, then run this command again`,
+          reason: unknownMarketplaceReason(marketplace),
         });
+        aggregated.failed?.push({ ref, reason: unknownMarketplaceReason(marketplace) });
         continue;
       }
       try {
@@ -96,10 +117,9 @@ export async function syncResourcesInstallingDependencies(
         });
       } catch (error) {
         aggregated.checked += 1;
-        aggregated.stale.push({
-          resource: pin,
-          reason: `could not install ${ref}: ${error instanceof Error ? error.message : String(error)}`,
-        });
+        const reason = `could not install ${ref}: ${error instanceof Error ? error.message : String(error)}`;
+        aggregated.stale.push({ resource: pin, reason });
+        aggregated.failed?.push({ ref, reason });
         continue;
       }
     }

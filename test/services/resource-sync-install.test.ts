@@ -83,6 +83,27 @@ describe("resource sync of a marketplace dependency", () => {
     expect(result.stale[0]?.reason).toContain("ht marketplace add <git-url> --name nowhere-market");
   });
 
+  it("reports an install that fails as failed, not only stale", async () => {
+    const profile = createPlugin({ name: "prof", version: "1.0.0" });
+    addDependency(profile.id, "alpha@nowhere-market", { versionConstraint: "1.0.0" });
+    const declared = await syncResourcesInstallingDependencies({
+      selector: "plugin:alpha@nowhere-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(declared.failed?.map((entry) => entry.ref)).toEqual(["alpha@nowhere-market"]);
+
+    const undeclared = await syncResourcesInstallingDependencies({
+      selector: "plugin:beta@nowhere-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(undeclared.failed).toEqual([
+      expect.objectContaining({
+        ref: "beta@nowhere-market",
+        reason: expect.stringContaining("ht marketplace add <git-url> --name nowhere-market"),
+      }),
+    ]);
+  });
+
   it("resolves the marketplaces the public persona profiles depend on", () => {
     for (const name of [
       "addy-agent-skills",

@@ -63,6 +63,11 @@ export interface SyncLinkedResourcesResult {
   stale: Array<{ resource: Resource; reason: string }>;
   unchanged: Resource[];
   skipped: Resource[];
+  /**
+   * Dependencies that could not be installed or resolved (an unknown
+   * marketplace, a failed download). The command exits non-zero for these.
+   */
+  failed?: Array<{ ref: string; reason: string }>;
 }
 
 function defaultClaudePluginsRoot(homeRoot: string): string {

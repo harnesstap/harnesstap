@@ -121,6 +121,19 @@ describe("G6 CLI error contract", () => {
     }
   });
 
+  it("exits non-zero when resource sync cannot install a marketplace dependency", async () => {
+    const context = await createTestContext("cli-resource-sync-unknown-marketplace");
+    try {
+      await runCli(["init", "--no-interactive"]);
+      const result = runPackedCli(context.homeDir, ["resource", "sync", "plugin:foo@not-a-known-mkt"]);
+      expect(result.status).toBe(1);
+      expect(result.stderr + result.stdout).toContain("ht marketplace add <git-url> --name not-a-known-mkt");
+      expect(result.stderr).toContain("Could not install foo@not-a-known-mkt.");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("rejects --on-conflict abort with the invalid-value error", async () => {
     const context = await createTestContext("cli-g6-abort-rejected");
     try {
