@@ -1,4 +1,4 @@
-import { pruneCreatedHostPluginView } from "./package-cache/host-plugin.js";
+import { pruneCreatedHostPluginView } from "./package-cache/host-plugin-views.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskTextOnce } from "./status-disk-read.js";
 import {

@@ -282,6 +282,10 @@ export function registerResourceCommands(root: Command): void {
     .option("--force", "Sync pinned resources")
     .option("--dry-run", "Report linked resources without writing changes")
     .option("--check", "Exit 1 when any linked resource is stale")
+    .option(
+      "--force-remove",
+      "Back up and replace files in a host plugin cache folder that HarnessTap did not write",
+    )
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Sync plugin resources and marketplace-linked definitions from install trees")
     .action(async (selector: string | undefined, opts: { overwrite?: boolean; onConflict?: string; force?: boolean; dryRun?: boolean; check?: boolean; format?: string }) => {
