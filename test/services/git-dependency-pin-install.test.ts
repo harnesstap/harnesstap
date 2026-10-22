@@ -7,6 +7,8 @@ import { getDbPath } from "../../src/db/connection.ts";
 import { createPlugin, getPluginByName } from "../../src/models/plugin-model.ts";
 import { addDependency } from "../../src/services/plugin-dependency.ts";
 import { installPluginPinAsync } from "../../src/services/plugin-install.ts";
+import { syncPluginPinsForApply } from "../../src/services/plugin-pin-apply.ts";
+import { validatePluginPinsAgainstInventory } from "../../src/services/plugin-apply-validation.ts";
 import { ensureMissingCatalogDependencies } from "../../src/services/plugin-catalog-install.ts";
 import { gitOriginCacheDir } from "../../src/services/plugin-origin-apply.ts";
 import { renderExplain } from "../../src/services/resolve/explain.ts";
@@ -133,6 +135,20 @@ describe("installing a pinned git dependency (#500)", () => {
     expect(result.message).toContain("no-such-tag");
     expect(getPluginByName("gitdep")).toBeUndefined();
   });
+
+  // The fetch imports the plugin into the library, so apply must not then
+  // report the dependency as not installed or without a resolved version.
+  for (const pass of ["first", "second"]) {
+    it(`reports a fetched branch dependency as resolved on the ${pass} apply`, async () => {
+      const pins = [{ ref: remoteUrl, version_constraint: "main" }];
+      const options = { pins, homeRoot: ctx.homeDir, projectRoot: ctx.homeDir, yes: true };
+      if (pass === "second") await syncPluginPinsForApply(options);
+      const result = await syncPluginPinsForApply(options);
+      expect(result.installs.map((install) => install.version)).toEqual(["0.1.0"]);
+      expect(result.unresolvedPins).toEqual([]);
+      expect(validatePluginPinsAgainstInventory(pins)).toEqual([]);
+    });
+  }
 
   // A second project apply re-checks the library for every dependency. A
   // ref pin is not a semver range, so that check must not parse it as one.
