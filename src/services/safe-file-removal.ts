@@ -117,6 +117,15 @@ function hashOnDiskFileUncached(fullPath: string): string | undefined {
 const S_IFMT = 0o170000;
 const S_IFLNK = 0o120000;
 
+/** True when `fullPath` is a folder itself, not a link to one. */
+function isRealDirectory(fullPath: string): boolean {
+  try {
+    return lstatSync(fullPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 /** True when `fullPath` is a symbolic link, dangling or not. */
 export function isSymlinkPath(fullPath: string): boolean {
   try {
@@ -304,6 +313,18 @@ export function planSafeFileRemovals(
 
     if (mode === "listed") {
       remove.push(relativePath);
+      continue;
+    }
+
+    // HarnessTap only writes files and links here. A real folder at a tracked
+    // path is the user's, so it is kept even with --force-remove (reading it
+    // as a file would also abort the run after earlier removals).
+    if (isRealDirectory(fullPath)) {
+      skip.push({
+        path: relativePath,
+        reason: "unmanaged",
+        message: `Skipped removing ${relativePath} (a folder HarnessTap didn't create).`,
+      });
       continue;
     }
 
