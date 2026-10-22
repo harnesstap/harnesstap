@@ -44,12 +44,17 @@ export function fail(
   opts?: { hint?: string; hints?: string[]; exitCode?: number },
 ): void {
   process.exitCode = opts?.exitCode ?? 1;
-  console.error(ensureErrorPrefix(message));
+  const error = ensureErrorPrefix(message);
+  console.error(error);
   const hints = opts?.hints ?? (opts?.hint ? [opts.hint] : []);
+  // A hint that only repeats the error (for example a mapped git failure) is skipped.
+  const printed = new Set([error]);
   for (const hint of hints) {
-    if (hint.trim().length > 0) {
-      console.error(hint);
-    }
+    if (hint.trim().length === 0) continue;
+    const key = ensureErrorPrefix(hint);
+    if (printed.has(key)) continue;
+    printed.add(key);
+    console.error(hint);
   }
 }
 

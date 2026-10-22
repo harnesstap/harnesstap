@@ -121,20 +121,12 @@ async function handleMarketplaceAddCommand(
       force: true,
       unattended: false,
     });
-    if (!refresh.ok && result.status === "added") {
-      removeMarketplace(harnesstapDir, result.entry.name);
-      fail(marketplaceUnreachable(result.entry.url), {
-        hints: [refresh.message, marketplaceAddFailedNothingSaved()].filter(
-          (line) => line.trim().length > 0,
-        ),
-      });
-      return;
-    }
     if (!refresh.ok) {
+      if (result.status === "added") {
+        removeMarketplace(harnesstapDir, result.entry.name);
+      }
       fail(marketplaceUnreachable(result.entry.url), {
-        hints: [refresh.message, marketplaceAddFailedNothingSaved()].filter(
-          (line) => line.trim().length > 0,
-        ),
+        hints: [refresh.message, marketplaceAddFailedNothingSaved()],
       });
       return;
     }
