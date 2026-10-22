@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'A switch or apply with --force-remove no longer stops with "EISDIR: illegal operation on a directory" (after removing some files) when you replaced a file HarnessTap wrote with a folder of your own. The folder is kept and listed, even with --force-remove, and the other removals go ahead.'
+time: 2026-10-23T00:45:00.000000Z

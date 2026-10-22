@@ -4,6 +4,7 @@ import { traceSpan } from "./status-trace.js";
 import {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   realpathSync,
@@ -15,7 +16,7 @@ import {
   isInHostPluginViewCreatedByHarnessTap,
   recordHostPluginViewWrite,
 } from "./package-cache/host-plugin-views.js";
-import { skippedDuplicateCommand, skippedHostPluginHook } from "../copy/cli.js";
+import { keptLinkOutsideRoot, skippedRemovalOutsideRoot, skippedDuplicateCommand, skippedHostPluginHook } from "../copy/cli.js";
 import {
   findImportedSnapshotOwnersByFile,
   getImportedSnapshot,
@@ -77,9 +78,11 @@ import {
   hasHarnessTapMaterialization,
   hashFileOrLink,
   hashOnDiskFile,
+  leafLinkLeavesRoot,
   isHarnessTapOwnedPath,
   type SafeFileRemovalOptions,
   type SafeFileRemovalResult,
+  type SafeRemovalSkip,
 } from "./safe-file-removal.js";
 import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { captureManagedSnapshotState } from "./snapshot-capture.js";
@@ -201,7 +204,10 @@ function assertMaterializedPathIsSafeUncached(rootPath: string, relativePath: st
     ? computationSlot(`realpath-root:${rootPath}`, () => realpathSync(rootPath))
     : realpathSync(rootPath);
 
-  if (existsSync(fullPath)) {
+  // A link at the path itself is never followed: removal backs up and
+  // unlinks the link, and writers skip a link that leads out of the root
+  // (`leafLinkLeavesRoot`). Only the folders above it must stay inside.
+  if (existsSync(fullPath) && !isLeafLink(fullPath)) {
     const resolvedTarget = realpathSync(fullPath);
     if (resolvedTarget !== resolvedRoot && !resolvedTarget.startsWith(`${resolvedRoot}${sep}`)) {
       throw new Error(`Refusing to materialize path outside root via symlink: ${relativePath}`);
@@ -225,6 +231,18 @@ function assertMaterializedPathIsSafeUncached(rootPath: string, relativePath: st
   return fullPath;
 }
 
+function isLeafLink(fullPath: string): boolean {
+  try {
+    return lstatSync(fullPath).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+function warnKeptOutsideLink(relativePath: string): void {
+  console.error(`warning: ${keptLinkOutsideRoot(relativePath)}`);
+}
+
 function shouldPreserveUnownedFile(path: string): boolean {
   if (/\.(md|mdc)$/i.test(path)) {
     return false;
@@ -244,10 +262,25 @@ export function removeGlobalMaterializedFiles(
   const filtered = [...new Set(filePaths)].filter(
     (filePath) => !isCursorHostManagedSkillsPath(filePath),
   );
-  for (const filePath of filtered) {
-    assertMaterializedPathIsSafe(rootPath, filePath);
-  }
-  return executeSafeFileRemovals(rootPath, filtered, options);
+  // A path whose folders lead out of the root is never touched. It is kept
+  // and reported instead of failing the apply after its writes are done.
+  const unsafe: SafeRemovalSkip[] = [];
+  const safe = filtered.filter((filePath) => {
+    try {
+      assertMaterializedPathIsSafe(rootPath, filePath);
+      return true;
+    } catch {
+      unsafe.push({ path: filePath, reason: "unmanaged", message: skippedRemovalOutsideRoot(filePath) });
+      return false;
+    }
+  });
+  const result = executeSafeFileRemovals(rootPath, safe, options);
+  if (unsafe.length === 0) return result;
+  return {
+    ...result,
+    skipped: [...result.skipped, ...unsafe],
+    warnings: [...result.warnings, ...unsafe.map((skip) => skip.message)],
+  };
 }
 
 function removeMaterializedFiles(
@@ -548,6 +581,10 @@ export function writeFiles(
   pruneCursorLocalPlugins(projectRoot, files);
   for (const file of files) {
     const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
+    if (leafLinkLeavesRoot(projectRoot, fullPath)) {
+      warnKeptOutsideLink(file.path);
+      continue;
+    }
     if (semanticallyMatchesExisting(fullPath, file)) {
       continue;
     }
@@ -569,6 +606,8 @@ export async function planMaterializationConflicts(
     seen.add(file.path);
     if (isNativeAgentPluginCachePath(file.path)) return [];
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
+    // Kept as the user's link, never written through: not a conflict.
+    if (leafLinkLeavesRoot(rootPath, fullPath)) return [];
     if ((pathCounts.get(file.path) ?? 0) > 1) {
       return [{
         path: file.path,
@@ -698,6 +737,9 @@ export async function materializeFiles(
       if (decisions.get(file.path) === "skip") {
         return false;
       }
+      if (leafLinkLeavesRoot(rootPath, assertMaterializedPathIsSafe(rootPath, file.path))) {
+        return true;
+      }
       if (shouldPreserveUnownedFile(file.path)) {
         const fullMergeable = assertMaterializedPathIsSafe(rootPath, file.path);
         return semanticallyMatchesExisting(fullMergeable, file);
@@ -745,6 +787,11 @@ export async function materializeFiles(
       continue;
     }
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
+    if (leafLinkLeavesRoot(rootPath, fullPath)) {
+      warnKeptOutsideLink(file.path);
+      skippedFiles.push(file.path);
+      continue;
+    }
     // A host plugin folder a HarnessTap install created holds HarnessTap's
     // bytes: never record them as preexisting. Anything else in it (a file
     // the user added or changed) is the user's and is never adopted.

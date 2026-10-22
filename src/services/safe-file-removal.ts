@@ -11,6 +11,7 @@ import {
   readdirSync,
   readFileSync,
   readlinkSync,
+  realpathSync,
   rmdirSync,
   rmSync,
   statSync,
@@ -56,9 +57,16 @@ export interface SafeRemovalSkip {
   message: string;
 }
 
+/** A file `--force-remove` removed that would otherwise have been kept. */
+export interface SafeRemovalForced {
+  path: string;
+  reason: "unmanaged" | "modified";
+}
+
 export interface SafeRemovalPlan {
   remove: string[];
   skip: SafeRemovalSkip[];
+  forced?: SafeRemovalForced[];
 }
 
 export interface SafeFileRemovalOptions {
@@ -80,6 +88,7 @@ export interface SafeFileRemovalResult {
   removed: string[];
   skipped: SafeRemovalSkip[];
   warnings: string[];
+  forced?: SafeRemovalForced[];
 }
 
 export function applyTrashRoot(): string {
@@ -117,6 +126,15 @@ function hashOnDiskFileUncached(fullPath: string): string | undefined {
 const S_IFMT = 0o170000;
 const S_IFLNK = 0o120000;
 
+/** True when `fullPath` is a folder itself, not a link to one. */
+function isRealDirectory(fullPath: string): boolean {
+  try {
+    return lstatSync(fullPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 /** True when `fullPath` is a symbolic link, dangling or not. */
 export function isSymlinkPath(fullPath: string): boolean {
   try {
@@ -124,6 +142,33 @@ export function isSymlinkPath(fullPath: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * True when the path is a link (the user's) whose target is outside the root.
+ * HarnessTap never writes through such a link and never replaces it while
+ * writing; the user keeps it.
+ */
+export function leafLinkLeavesRoot(rootPath: string, fullPath: string): boolean {
+  if (!isSymlinkPath(fullPath)) return false;
+  let root: string;
+  try {
+    root = realpathSync(rootPath);
+  } catch {
+    return true;
+  }
+  let target: string;
+  try {
+    target = realpathSync(fullPath);
+  } catch {
+    // Dangling: judge where it points.
+    try {
+      target = resolve(dirname(fullPath), readlinkSync(fullPath));
+    } catch {
+      return true;
+    }
+  }
+  return target !== root && !target.startsWith(`${root}${sep}`);
 }
 
 /**
@@ -160,6 +205,8 @@ export function classifyManagedPathOwnership(
 ): ManagedPathOwnership {
   const normalized = normalizeRelative(relativePath);
   const fullPath = resolve(rootPath, normalized);
+  // A link out of the root is the user's: hash the link, never what it points at.
+  const linkLeavesRoot = leafLinkLeavesRoot(rootPath, fullPath);
   if (normalized.includes(HOST_PLUGIN_CACHE_SEGMENT)) {
     // In a host plugin folder the folder's record says what HarnessTap wrote,
     // files an install wrote (such as links) that no apply row lists included.
@@ -168,7 +215,7 @@ export function classifyManagedPathOwnership(
     if (written !== undefined) {
       // Records from before links were kept as links hold the linked bytes.
       const same = written === hashFileOrLink(fullPath)
-        || (isSymlinkPath(fullPath) && written === hashOnDiskFile(fullPath));
+        || (isSymlinkPath(fullPath) && !linkLeavesRoot && written === hashOnDiskFile(fullPath));
       return same ? "owned" : "modified";
     }
   }
@@ -176,7 +223,7 @@ export function classifyManagedPathOwnership(
   if (owned.length === 0) {
     return "unowned";
   }
-  const diskHash = hashOnDiskFile(fullPath);
+  const diskHash = linkLeavesRoot ? hashFileOrLink(fullPath) : hashOnDiskFile(fullPath);
   if (owned.some((row) => row.generated_hash === diskHash)) {
     return "owned";
   }
@@ -282,6 +329,7 @@ export function planSafeFileRemovals(
 ): SafeRemovalPlan {
   const remove: string[] = [];
   const skip: SafeRemovalSkip[] = [];
+  const forced: SafeRemovalForced[] = [];
   const mode = options.mode ?? "owned";
   const seen = new Set<string>();
 
@@ -307,6 +355,18 @@ export function planSafeFileRemovals(
       continue;
     }
 
+    // HarnessTap only writes files and links here. A real folder at a tracked
+    // path is the user's, so it is kept even with --force-remove (reading it
+    // as a file would also abort the run after earlier removals).
+    if (isRealDirectory(fullPath)) {
+      skip.push({
+        path: relativePath,
+        reason: "unmanaged",
+        message: `Skipped removing ${relativePath} (a folder HarnessTap didn't create).`,
+      });
+      continue;
+    }
+
     if (isPreexistingPath(rootPath, relativePath)) {
       skip.push({
         path: relativePath,
@@ -320,6 +380,7 @@ export function planSafeFileRemovals(
     if (ownership === "unowned") {
       if (options.forceRemove) {
         remove.push(relativePath);
+        forced.push({ path: relativePath, reason: "unmanaged" });
         continue;
       }
       skip.push({
@@ -332,6 +393,9 @@ export function planSafeFileRemovals(
 
     if (ownership === "owned" || options.forceRemove) {
       remove.push(relativePath);
+      if (ownership !== "owned") {
+        forced.push({ path: relativePath, reason: "modified" });
+      }
       continue;
     }
     skip.push({
@@ -341,7 +405,7 @@ export function planSafeFileRemovals(
     });
   }
 
-  return { remove, skip };
+  return forced.length > 0 ? { remove, skip, forced } : { remove, skip };
 }
 
 function copyToTrash(applyId: string, relativePath: string, bytes: Buffer): string {
@@ -506,6 +570,7 @@ export function executeSafeFileRemovals(
       removed: plan.remove,
       skipped: plan.skip,
       warnings,
+      ...(plan.forced ? { forced: plan.forced } : {}),
     };
   }
 
@@ -527,6 +592,7 @@ export function executeSafeFileRemovals(
     removed: plan.remove,
     skipped: plan.skip,
     warnings,
+    ...(plan.forced ? { forced: plan.forced } : {}),
   };
 }
 
@@ -639,5 +705,13 @@ export function formatRemovalBackupNotice(
   }
   const count = result.removed.length;
   const noun = count === 1 ? "file" : "files";
-  return `Removed ${count} ${noun}. Backup: ${shortenHomePath(result.backupDir, homeRoot)}`;
+  const backup = `Backup: ${shortenHomePath(result.backupDir, homeRoot)}`;
+  const forced = result.forced ?? [];
+  if (forced.length === 0) {
+    return `Removed ${count} ${noun}. ${backup}`;
+  }
+  const listed = forced
+    .map((entry) => `${entry.path} (${entry.reason === "modified" ? "you changed it" : "not made by HarnessTap"})`)
+    .join(", ");
+  return `Removed ${count} ${noun}, including ${forced.length} only because of --force-remove: ${listed}. ${backup}`;
 }
