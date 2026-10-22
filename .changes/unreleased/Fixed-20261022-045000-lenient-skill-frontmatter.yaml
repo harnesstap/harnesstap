@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'A marketplace plugin with a skill whose frontmatter has an unquoted `: ` in a value (such as `claude-mem`''s `mem-search` description) no longer imports as an empty plugin that `ht profile status --check` reports as not installed: HarnessTap reads such flat `key: value` lines as strings, as Claude Code does.'
+time: 2026-10-22T14:50:00.000Z

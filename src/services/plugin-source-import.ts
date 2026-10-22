@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import matter from "gray-matter";
-import { parseFrontmatter as parseFrontmatterText } from "../utils/frontmatter.js";
+import { parseFrontmatterLenient as parseFrontmatterText } from "../utils/frontmatter.js";
 import { parse as parseToml } from "smol-toml";
 import { normalizeAgentInput } from "./agent-bridge.js";
 import { collectHookEntries, commandReferencesPluginRoot } from "./hook-serialization.js";
