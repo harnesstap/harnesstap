@@ -27,6 +27,8 @@ export interface ReplacedHostPluginViewFiles {
   files: string[];
   /** The subset HarnessTap did not write or that changed since (--force-remove). */
   notWrittenByHarnessTap: string[];
+  /** The subset the plugin no longer has, so they were removed, not replaced. */
+  removed?: string[];
 }
 
 let forceReplace = false;
@@ -63,6 +65,21 @@ export function recordReplacedHostPluginViewFiles(entry: ReplacedHostPluginViewF
 /** True when a host plugin refresh in this process kept or replaced files. */
 export function hasHostPluginViewNotices(): boolean {
   return kept.length > 0 || replaced.length > 0;
+}
+
+/**
+ * How many files the host plugin refreshes in this process replaced with the
+ * plugin's version and how many they removed, so a summary can count them.
+ */
+export function hostPluginViewChangeCounts(): { replaced: number; removed: number } {
+  let replacedCount = 0;
+  let removedCount = 0;
+  for (const entry of replaced) {
+    const removedHere = entry.removed?.length ?? 0;
+    removedCount += removedHere;
+    replacedCount += entry.files.length - removedHere;
+  }
+  return { replaced: replacedCount, removed: removedCount };
 }
 
 /** Drain the files replaced by host plugin refreshes since the last call. */
