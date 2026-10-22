@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
@@ -720,47 +720,96 @@ describe("agent marketplace routes", () => {
     expect(denied.status).toBe(401);
   });
 
+  // Puts fake `git` and `gh` binaries first on PATH so the reachability route
+  // never spawns a real network probe or reads a real GitHub token. The fake
+  // `git ls-remote` fails immediately with a connection error, which keeps the
+  // remote check independent of machine load and network state.
+  function withUnreachableGitRemote(): { log: string; restore: () => void } {
+    const bin = mkdtempSync(join(tmpdir(), "ht-fake-git-"));
+    tempDirs.push(bin);
+    const log = join(bin, "calls.log");
+    writeFileSync(log, "");
+    writeFileSync(
+      join(bin, "git"),
+      `#!/bin/sh\necho "$*" >> "${log}"\necho "fatal: unable to access 'https://127.0.0.1:1/nope.git/': Failed to connect to 127.0.0.1 port 1: Connection refused" >&2\nexit 128\n`,
+    );
+    writeFileSync(join(bin, "gh"), "#!/bin/sh\nexit 1\n");
+    chmodSync(join(bin, "git"), 0o755);
+    chmodSync(join(bin, "gh"), 0o755);
+    const tokenKeys = ["HARNESSTAP_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"] as const;
+    const previous = {
+      PATH: process.env.PATH,
+      ...Object.fromEntries(tokenKeys.map((key) => [key, process.env[key]])),
+    } as Record<string, string | undefined>;
+    process.env.PATH = `${bin}:${previous.PATH ?? ""}`;
+    for (const key of tokenKeys) delete process.env[key];
+    return {
+      log,
+      restore: () => {
+        for (const [key, value] of Object.entries(previous)) {
+          if (value === undefined) delete process.env[key];
+          else process.env[key] = value;
+        }
+      },
+    };
+  }
+
   it("reports healthy and error reachability for listed marketplaces", async () => {
     const server = await withServer();
-    const localOk = mkdtempSync(join(tmpdir(), "ht-mkt-reach-ok-"));
-    mkdirSync(join(localOk, "plugins"), { recursive: true });
-    const localMissing = join(tmpdir(), `ht-mkt-reach-missing-${Date.now()}`);
-    writeFileSync(
-      join(process.env.HARNESSTAP_HOME ?? "", "config.json"),
-      `${JSON.stringify({
-        plugins: {
-          refreshMaxAgeHours: 24,
-          marketplaces: [
-            { name: "local-ok", url: localOk, platforms: ["claude-code"] },
-            { name: "local-missing", url: localMissing, platforms: ["claude-code"] },
-            {
-              name: "remote-down",
-              url: "https://127.0.0.1:1/nope.git",
-              platforms: ["claude-code"],
-            },
-          ],
-        },
-      }, null, 2)}\n`,
-    );
+    const git = process.platform === "win32" ? null : withUnreachableGitRemote();
+    try {
+      const localOk = mkdtempSync(join(tmpdir(), "ht-mkt-reach-ok-"));
+      tempDirs.push(localOk);
+      mkdirSync(join(localOk, "plugins"), { recursive: true });
+      const localMissing = join(tmpdir(), `ht-mkt-reach-missing-${Date.now()}`);
+      writeFileSync(
+        join(process.env.HARNESSTAP_HOME ?? "", "config.json"),
+        `${JSON.stringify({
+          plugins: {
+            refreshMaxAgeHours: 24,
+            marketplaces: [
+              { name: "local-ok", url: localOk, platforms: ["claude-code"] },
+              { name: "local-missing", url: localMissing, platforms: ["claude-code"] },
+              {
+                name: "remote-down",
+                url: "https://127.0.0.1:1/nope.git",
+                platforms: ["claude-code"],
+              },
+            ],
+          },
+        }, null, 2)}\n`,
+      );
 
-    const denied = await fetch(`${server.url}/v1/marketplaces/reachability`);
-    expect(denied.status).toBe(401);
+      const denied = await fetch(`${server.url}/v1/marketplaces/reachability`);
+      expect(denied.status).toBe(401);
 
-    const ok = await fetch(`${server.url}/v1/marketplaces/reachability`, {
-      headers: { Authorization: `Bearer ${server.token}` },
-    });
-    expect(ok.status).toBe(200);
-    const body = (await ok.json()) as {
-      marketplaces: Array<{ name: string; status: string; reason?: string }>;
-    };
-    const byName = Object.fromEntries(body.marketplaces.map((row) => [row.name, row]));
-    expect(byName["local-ok"]).toEqual({ name: "local-ok", status: "healthy" });
-    expect(byName["local-missing"]).toEqual({
-      name: "local-missing",
-      status: "error",
-      reason: "Local directory is missing",
-    });
-    expect(byName["remote-down"]?.status).toBe("error");
-    expect(byName["remote-down"]?.reason?.length).toBeGreaterThan(0);
+      const ok = await fetch(`${server.url}/v1/marketplaces/reachability`, {
+        headers: { Authorization: `Bearer ${server.token}` },
+      });
+      expect(ok.status).toBe(200);
+      const body = (await ok.json()) as {
+        marketplaces: Array<{ name: string; status: string; reason?: string }>;
+      };
+      const byName = Object.fromEntries(body.marketplaces.map((row) => [row.name, row]));
+      expect(byName["local-ok"]).toEqual({ name: "local-ok", status: "healthy" });
+      expect(byName["local-missing"]).toEqual({
+        name: "local-missing",
+        status: "error",
+        reason: "Local directory is missing",
+      });
+      expect(byName["remote-down"]?.status).toBe("error");
+      expect(byName["remote-down"]?.reason?.length).toBeGreaterThan(0);
+      if (git) {
+        expect(byName["remote-down"]?.reason).toBe("Could not reach the remote host");
+        // The remote probes (this one and the built-in default marketplace)
+        // are answered by the fake git instead of the real network.
+        const lsRemoteCalls = readFileSync(git.log, "utf8")
+          .split("\n")
+          .filter((line) => line.includes("ls-remote"));
+        expect(lsRemoteCalls.some((line) => line.includes("https://127.0.0.1:1/nope"))).toBe(true);
+      }
+    } finally {
+      git?.restore();
+    }
   });
 });
