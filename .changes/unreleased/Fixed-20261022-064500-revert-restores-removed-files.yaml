@@ -1,0 +1,3 @@
+kind: Fixed
+body: '`ht revert` restores files a profile switch removed instead of failing with "File not found", and they are HarnessTap''s again, so the next switch removes them instead of keeping them as "not made by HarnessTap".'
+time: 2026-10-22T16:45:00.000000Z
