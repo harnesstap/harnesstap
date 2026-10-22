@@ -64,7 +64,14 @@ describe("renderExplain", () => {
         plugin.name === "base"
           ? {
               ...plugin,
-              constraints: [{ ...plugin.constraints[0]!, constraint: "*", declared: "main" }],
+              constraints: [
+                {
+                  constraint: "*",
+                  declared: "main",
+                  requirer: "team-standards@2.1.0",
+                  path: ["my-setup@1.0.0", "team-standards@2.1.0"],
+                },
+              ],
             }
           : plugin,
       ),
