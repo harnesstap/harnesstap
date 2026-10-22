@@ -107,6 +107,11 @@ describe("claude remote marketplace plugin registration", () => {
         source: "git",
         url: "https://example.invalid/qa/mkta",
       });
+      // Claude Code rejects known_marketplaces.json when an entry has no lastUpdated.
+      const firstUpdated = readJson<Record<string, { lastUpdated?: string }>>(home, KNOWN).mkta?.lastUpdated;
+      expect(typeof firstUpdated).toBe("string");
+      await applyProfilePlugin("remote", { harness: "claude-code,cursor", conflictPolicy: "replace", yes: true, pull: false });
+      expect(readJson<Record<string, { lastUpdated?: string }>>(home, KNOWN).mkta?.lastUpdated).toBe(firstUpdated);
 
       // No standalone copy for Claude Code; Cursor delivery is unchanged.
       expect(findFiles(join(home, ".claude/skills"), "dup-skill/SKILL.md")).toEqual([]);

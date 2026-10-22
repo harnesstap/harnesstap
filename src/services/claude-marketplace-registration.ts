@@ -118,9 +118,13 @@ export function emitClaudeMarketplaceRegistrations(
       continue;
     }
     const dir = harnessTapClaudeMarketplaceDir(marketplace);
+    // Claude Code rejects the whole file when an entry lacks `lastUpdated`.
+    // Keep the time already recorded so a re-apply writes the same bytes.
+    const priorUpdated = isRecord(existing) ? existing.lastUpdated : undefined;
     known[marketplace] = {
       source: claudeMarketplaceSourceForUrl(url),
       installLocation: join(homeRoot, dir),
+      lastUpdated: typeof priorUpdated === "string" && priorUpdated ? priorUpdated : new Date().toISOString(),
     };
     changed = true;
     const manifest = {
