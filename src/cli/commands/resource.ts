@@ -8,7 +8,7 @@ import {
 } from "../../models/resource.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
 import { printResourceShow } from "../../services/resource-show.js";
-import { syncLinkedResources } from "../../services/resource-sync.js";
+import { syncResourcesInstallingDependencies } from "../../services/resource-sync-install.js";
 import { runResourceDeleteWizard } from "../../services/wizards/resource-delete.js";
 import { runResourceListWizard } from "../../services/wizards/resource-list.js";
 import { runResourceShowWizard } from "../../services/wizards/resource-show.js";
@@ -296,7 +296,7 @@ export function registerResourceCommands(root: Command): void {
         fail(error instanceof Error ? error.message : String(error));
         return;
       }
-      const result = await syncLinkedResources({
+      const result = await syncResourcesInstallingDependencies({
         selector,
         policy: opts.overwrite ? "overwrite" : "skip",
         onConflict: syncConflict,

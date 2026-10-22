@@ -49,3 +49,7 @@ New text for the Install section of README.md.
 ```bash
 bun x --bun harnesstap@latest init
 ```
+
+## docs/cli/command-reference.md > resource (`r`) > Important options
+<!-- append -->
+- `resource sync plugin:<name>@<marketplace>` installs a marketplace dependency that has no local version yet (the fix `apply` prints), then syncs it. When the marketplace is neither registered nor one HarnessTap knows by name, it says to run `ht marketplace add <git-url> --name <marketplace>` first. The public marketplaces named by the harnesstap-cloud profiles (for example `claude-code-workflows`, `impeccable`, `agentic-awesome-skills`) resolve by name in a fresh home, without `ht marketplace add`.

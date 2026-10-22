@@ -1,0 +1,103 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
+import { createPlugin, getPluginByName } from "../../src/models/plugin-model.ts";
+import { addMarketplace } from "../../src/services/marketplace-registry.ts";
+import { addDependency } from "../../src/services/plugin-dependency.ts";
+import { wellKnownMarketplaceEntry } from "../../src/services/builtin-marketplaces.ts";
+import { syncResourcesInstallingDependencies } from "../../src/services/resource-sync-install.ts";
+
+// `ht resource sync plugin:<name>@<marketplace>` is the fix apply prints for
+// a marketplace dependency with no local version. It must install the
+// dependency, not only reread an install that does not exist yet.
+function initMarketplace(): string {
+  const repo = mkdtempSync(join(tmpdir(), "ht-sync-install-mkt-"));
+  mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(repo, "plugins", "alpha", ".claude-plugin"), { recursive: true });
+  mkdirSync(join(repo, "plugins", "alpha", "skills", "alpha-skill"), { recursive: true });
+  writeFileSync(
+    join(repo, ".claude-plugin", "marketplace.json"),
+    JSON.stringify({
+      name: "local-market",
+      plugins: [{ name: "alpha", version: "1.0.0", source: "./plugins/alpha" }],
+    }),
+  );
+  writeFileSync(
+    join(repo, "plugins", "alpha", ".claude-plugin", "plugin.json"),
+    JSON.stringify({ name: "alpha", version: "1.0.0", description: "Alpha plugin" }),
+  );
+  writeFileSync(
+    join(repo, "plugins", "alpha", "skills", "alpha-skill", "SKILL.md"),
+    "---\nname: alpha-skill\ndescription: Alpha skill\n---\n# alpha\n",
+  );
+  const git = (...args: string[]) =>
+    spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...args], { cwd: repo, stdio: "ignore" });
+  git("init");
+  git("add", ".");
+  git("commit", "-m", "init");
+  git("branch", "-M", "main");
+  return repo;
+}
+
+let ctx: TestContext;
+beforeEach(async () => {
+  ctx = await createInitializedTestContext("sync-install-");
+});
+afterEach(async () => {
+  await ctx.cleanup();
+});
+
+describe("resource sync of a marketplace dependency", () => {
+  it("installs a dependency that was never installed, then syncs it", async () => {
+    addMarketplace(join(ctx.homeDir, ".harnesstap"), {
+      name: "local-market",
+      url: initMarketplace(),
+      platforms: ["claude-code"],
+    });
+    const profile = createPlugin({ name: "prof", version: "1.0.0" });
+    addDependency(profile.id, "alpha@local-market", { versionConstraint: "1.0.0" });
+
+    const result = await syncResourcesInstallingDependencies({
+      selector: "plugin:alpha@local-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(result.stale).toEqual([]);
+    expect(result.checked).toBeGreaterThan(0);
+    expect(getPluginByName("alpha", "1.0.0")).toBeDefined();
+  });
+
+  it("names the command that adds a marketplace it cannot resolve", async () => {
+    const profile = createPlugin({ name: "prof", version: "1.0.0" });
+    addDependency(profile.id, "alpha@nowhere-market", { versionConstraint: "1.0.0" });
+
+    const result = await syncResourcesInstallingDependencies({
+      selector: "plugin:alpha@nowhere-market",
+      homeRoot: ctx.homeDir,
+    });
+    expect(result.stale).toHaveLength(1);
+    expect(result.stale[0]?.reason).toContain("ht marketplace add <git-url> --name nowhere-market");
+  });
+
+  it("resolves the marketplaces the public persona profiles depend on", () => {
+    for (const name of [
+      "addy-agent-skills",
+      "agentic-awesome-skills",
+      "cc-dev-tools",
+      "claude-code-workflows",
+      "claude-orchestration",
+      "ecc",
+      "fullstack-dev-skills",
+      "impeccable",
+      "llm-council",
+      "mempalace",
+      "slidev-plugins",
+      "thedotmack",
+      "ui-ux-pro-max-skill",
+    ]) {
+      expect(wellKnownMarketplaceEntry(name)?.url).toStartWith("https://github.com/");
+    }
+  });
+});
