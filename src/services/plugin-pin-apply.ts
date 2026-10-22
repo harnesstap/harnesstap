@@ -168,6 +168,16 @@ function stampResolvedVersionFromExactConstraint(
   }
 }
 
+/**
+ * A marketplace or git dependency with an empty constraint is unpinned, the
+ * same as `*` or `latest`: it still installs (git tracks the default branch
+ * HEAD, and doctor warns). Other sources need no install step.
+ */
+function installsWhenUnpinned(ref: string): boolean {
+  const sourceKind = parseDependencyRef(ref).source_kind;
+  return sourceKind === "marketplace" || sourceKind === "git";
+}
+
 function effectivePinConstraint(constraint: string | undefined): string {
   const trimmed = constraint?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : "latest";
@@ -179,10 +189,7 @@ export async function syncPluginPinsForApply(
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
   const scope = options.scope ?? "user";
   const pinsToInstall = options.pins
-    .filter((pin) => {
-      if (pin.version_constraint.trim()) return true;
-      return parseDependencyRef(pin.ref).source_kind === "marketplace";
-    })
+    .filter((pin) => pin.version_constraint.trim() || installsWhenUnpinned(pin.ref))
     .map((pin) => ({
       ...pin,
       version_constraint: effectivePinConstraint(pin.version_constraint),
@@ -225,8 +232,7 @@ export async function syncPluginPinsForApply(
   const unresolvedPins: string[] = [];
 
   for (const pin of options.pins) {
-    const marketplacePin = parseDependencyRef(pin.ref).source_kind === "marketplace";
-    if (!pin.version_constraint.trim() && !marketplacePin) {
+    if (!pin.version_constraint.trim() && !installsWhenUnpinned(pin.ref)) {
       continue;
     }
     const versionConstraint = effectivePinConstraint(pin.version_constraint);

@@ -35,7 +35,7 @@ New text for the Install section of README.md.
 
 ## docs/cli/command-reference.md > plugin (`l`) > Important options
 <!-- append -->
-- A git dependency can be pinned. Its constraint takes a full or abbreviated commit SHA (`f8797fe`, or `#f8797fe`), a tag or branch name (`main`, `#main`, `ref:v1.2.0`), or a semver range that resolves to the highest matching tag (`^1.2.0`). Install and apply check out exactly that commit, tag or branch, record the commit on the plugin origin and in the lockfile, and stop with the git error when the ref does not exist. `plugin doctor` accepts these constraints and warns when a git dependency has no pin and tracks the default branch HEAD.
+- A git dependency can be pinned. Its constraint takes a full or abbreviated commit SHA (`f8797fe`, or `#f8797fe`), a tag or branch name (`main`, `#main`, `ref:v1.2.0`), or a semver range that resolves to the highest matching tag (`^1.2.0`). Install and apply check out exactly that commit, tag or branch, record the commit on the plugin origin and in the lockfile, and stop with the git error when the ref does not exist. An empty constraint, `*` or `latest` leaves the dependency unpinned: apply installs the default branch HEAD. `plugin doctor` accepts these constraints and warns when a git dependency has no pin and tracks the default branch HEAD.
 - `plugin add <ref>#<commit, tag or branch>` imports a GitHub `plugin.json` package at that ref (`owner/repo#v1.2.0`, `https://github.com/owner/repo#f8797fe`, `git@github.com:owner/repo.git#main`). `plugin update` keeps the pin: a commit stays put, a branch moves to its new head, and a semver range moves to the highest matching tag.
 
 ## Install > npm global

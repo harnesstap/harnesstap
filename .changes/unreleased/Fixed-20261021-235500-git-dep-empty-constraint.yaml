@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'A git dependency written with an empty constraint (`"constraint": ""`) is treated as unpinned, the same as `*`: apply installs the default branch HEAD instead of failing with "No local version of ... is installed", matching the `plugin doctor` warning.'
+time: 2026-10-22T09:55:00.000Z
+custom:
+  Issue: "500"
