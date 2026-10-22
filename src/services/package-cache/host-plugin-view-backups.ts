@@ -2,7 +2,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSy
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { ulid } from "ulid";
 import { getHarnesstapDir } from "../../db/connection.js";
-import { listApplyRemovalBackups } from "../../models/apply-removal-backup.js";
+import { listApplyRemovalBackups, type ApplyRemovalBackup } from "../../models/apply-removal-backup.js";
 import { executeSafeFileRemovals } from "../safe-file-removal.js";
 import { hostViewFileOwnership, planHostPluginViewRemovals } from "./host-plugin-view-ownership.js";
 import { forgetHostPluginViewFiles, readHostPluginViewRecord } from "./host-plugin-views.js";
@@ -131,8 +131,9 @@ function folderBlocker(hostView: string, path: string): string | undefined {
   return undefined;
 }
 
-function sameAsBackup(fullPath: string, content: Buffer, isLink: boolean): boolean {
+function sameAsBackup(fullPath: string, row: ApplyRemovalBackup, isLink: boolean): boolean {
   try {
+    const content = row.content;
     if (isLink) {
       return lstatSync(fullPath).isSymbolicLink() && readlinkSync(fullPath) === content.toString("utf-8");
     }
@@ -170,15 +171,15 @@ export function restoreHostPluginViewBackup(
     skipped: [],
   };
   const rows = listApplyRemovalBackups({ apply_id: backupId });
-  const toWrite: Array<{ path: string; fullPath: string; content: Buffer; isLink: boolean }> = [];
+  // Rows read their bytes only when asked: a big folder is never held in memory.
+  const toWrite: Array<{ path: string; fullPath: string; row: ApplyRemovalBackup; isLink: boolean }> = [];
   const toReplace: string[] = [];
   const recorded = { ...(readHostPluginViewRecord(backup.host_view)?.files ?? {}) };
   for (const row of rows) {
     const fullPath = resolve(backup.home_root, row.relative_path);
     const path = relative(backup.host_view, fullPath).split(sep).join("/");
-    const content = Buffer.from(row.content);
     const isLink = ((row.mode ?? 0) & S_IFMT) === S_IFLNK;
-    if (sameAsBackup(fullPath, content, isLink)) {
+    if (sameAsBackup(fullPath, row, isLink)) {
       result.skipped.push({ path, reason: "unchanged" });
       continue;
     }
@@ -196,7 +197,7 @@ export function restoreHostPluginViewBackup(
         continue;
       }
       if (!toReplace.includes(blocker)) toReplace.push(blocker);
-      toWrite.push({ path, fullPath, content, isLink });
+      toWrite.push({ path, fullPath, row, isLink });
       continue;
     }
     // A file with exactly the bytes HarnessTap wrote there (for example the
@@ -211,7 +212,7 @@ export function restoreHostPluginViewBackup(
       continue;
     }
     if (present(fullPath)) toReplace.push(path);
-    toWrite.push({ path, fullPath, content, isLink });
+    toWrite.push({ path, fullPath, row, isLink });
   }
   // Never restore over a folder or a file HarnessTap did not write, even with --force-remove.
   const refused = new Set(
@@ -236,9 +237,9 @@ export function restoreHostPluginViewBackup(
     mkdirSync(dirname(file.fullPath), { recursive: true });
     if (file.isLink) {
       if (existsSync(file.fullPath) || present(file.fullPath)) removeFileOrLink(file.fullPath);
-      symlinkSync(file.content.toString("utf-8"), file.fullPath);
+      symlinkSync(file.row.content.toString("utf-8"), file.fullPath);
     } else {
-      writeFileSync(file.fullPath, file.content);
+      writeFileSync(file.fullPath, file.row.content);
     }
     result.restored.push(file.path);
   }
