@@ -57,9 +57,16 @@ export interface SafeRemovalSkip {
   message: string;
 }
 
+/** A file `--force-remove` removed that would otherwise have been kept. */
+export interface SafeRemovalForced {
+  path: string;
+  reason: "unmanaged" | "modified";
+}
+
 export interface SafeRemovalPlan {
   remove: string[];
   skip: SafeRemovalSkip[];
+  forced?: SafeRemovalForced[];
 }
 
 export interface SafeFileRemovalOptions {
@@ -81,6 +88,7 @@ export interface SafeFileRemovalResult {
   removed: string[];
   skipped: SafeRemovalSkip[];
   warnings: string[];
+  forced?: SafeRemovalForced[];
 }
 
 export function applyTrashRoot(): string {
@@ -312,6 +320,7 @@ export function planSafeFileRemovals(
 ): SafeRemovalPlan {
   const remove: string[] = [];
   const skip: SafeRemovalSkip[] = [];
+  const forced: SafeRemovalForced[] = [];
   const mode = options.mode ?? "owned";
   const seen = new Set<string>();
 
@@ -350,6 +359,7 @@ export function planSafeFileRemovals(
     if (ownership === "unowned") {
       if (options.forceRemove) {
         remove.push(relativePath);
+        forced.push({ path: relativePath, reason: "unmanaged" });
         continue;
       }
       skip.push({
@@ -362,6 +372,9 @@ export function planSafeFileRemovals(
 
     if (ownership === "owned" || options.forceRemove) {
       remove.push(relativePath);
+      if (ownership !== "owned") {
+        forced.push({ path: relativePath, reason: "modified" });
+      }
       continue;
     }
     skip.push({
@@ -371,7 +384,7 @@ export function planSafeFileRemovals(
     });
   }
 
-  return { remove, skip };
+  return forced.length > 0 ? { remove, skip, forced } : { remove, skip };
 }
 
 function copyToTrash(applyId: string, relativePath: string, bytes: Buffer): string {
@@ -536,6 +549,7 @@ export function executeSafeFileRemovals(
       removed: plan.remove,
       skipped: plan.skip,
       warnings,
+      ...(plan.forced ? { forced: plan.forced } : {}),
     };
   }
 
@@ -557,6 +571,7 @@ export function executeSafeFileRemovals(
     removed: plan.remove,
     skipped: plan.skip,
     warnings,
+    ...(plan.forced ? { forced: plan.forced } : {}),
   };
 }
 
@@ -669,5 +684,13 @@ export function formatRemovalBackupNotice(
   }
   const count = result.removed.length;
   const noun = count === 1 ? "file" : "files";
-  return `Removed ${count} ${noun}. Backup: ${shortenHomePath(result.backupDir, homeRoot)}`;
+  const backup = `Backup: ${shortenHomePath(result.backupDir, homeRoot)}`;
+  const forced = result.forced ?? [];
+  if (forced.length === 0) {
+    return `Removed ${count} ${noun}. ${backup}`;
+  }
+  const listed = forced
+    .map((entry) => `${entry.path} (${entry.reason === "modified" ? "you changed it" : "not made by HarnessTap"})`)
+    .join(", ");
+  return `Removed ${count} ${noun}, including ${forced.length} only because of --force-remove: ${listed}. ${backup}`;
 }

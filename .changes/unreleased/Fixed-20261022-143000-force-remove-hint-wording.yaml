@@ -1,0 +1,3 @@
+kind: Fixed
+body: 'The kept files hint now says to run the same command again with --force-remove, instead of always suggesting "ht apply --force-remove". When --force-remove was already used, it no longer suggests it again; it says HarnessTap never removes those files. The removal notice also names the files --force-remove removed only because of the flag (files you changed or HarnessTap did not create).'
+time: 2026-10-23T00:30:00.000000Z

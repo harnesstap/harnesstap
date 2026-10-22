@@ -2,6 +2,7 @@ import {
   applyHeaderLine,
   applyWroteLine,
   CLI_COPY,
+  CLI_HINTS,
   dryRunSectionHeader,
   dryRunWouldLine,
   forceRemoveHintLine,
@@ -9,7 +10,10 @@ import {
   keptReasonLabel,
   snapshotSavedUndoLine,
 } from "../copy/cli.js";
-import { hostPluginViewChangeCounts } from "../services/package-cache/host-plugin-view-policy.js";
+import {
+  hostPluginViewChangeCounts,
+  hostPluginViewForceReplace,
+} from "../services/package-cache/host-plugin-view-policy.js";
 import { ui } from "../ui/index.js";
 
 export interface ApplyKeptFile {
@@ -121,7 +125,12 @@ export function printKeptFiles(kept: readonly ApplyKeptFile[]): void {
   for (const entry of kept) {
     console.log(`  ${entry.path}   ${keptReasonLabel(entry.reason)}`);
   }
-  console.log(`${forceRemoveHintLine(kept.length)} ht apply --force-remove`);
+  // With --force-remove already in effect, suggesting it again is wrong.
+  console.log(
+    hostPluginViewForceReplace()
+      ? CLI_HINTS.forceRemoveAlreadyUsed
+      : forceRemoveHintLine(kept.length),
+  );
 }
 
 export function printApplySuccess(input: {
