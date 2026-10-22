@@ -98,9 +98,37 @@ export function isHostPluginViewBackupId(id: string): boolean {
 export interface HostPluginViewRestoreResult {
   hostView: string;
   restored: string[];
-  skipped: Array<{ path: string; reason: "unchanged" | "changed" }>;
+  /**
+   * `blocked`: a file or link sits where one of the file's folders goes.
+   * `blockedBy` names it; `canForce` says --force-remove may back it up and
+   * remove it (HarnessTap wrote it and it is unchanged, or it changed since).
+   */
+  skipped: Array<{
+    path: string;
+    reason: "unchanged" | "changed" | "blocked";
+    blockedBy?: string;
+    canForce?: boolean;
+  }>;
   /** Set when --force-remove backed up current files before restoring over them. */
   replacedBackupId?: string;
+}
+
+/**
+ * The path (inside the folder) of a file or link that sits where one of
+ * `path`'s folders goes, so the file cannot be written without removing it.
+ */
+function folderBlocker(hostView: string, path: string): string | undefined {
+  const parts = path.split("/");
+  for (let index = 1; index < parts.length; index += 1) {
+    const at = parts.slice(0, index).join("/");
+    try {
+      const stats = lstatSync(join(hostView, at));
+      if (stats.isSymbolicLink() || !stats.isDirectory()) return at;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }
 
 function sameAsBackup(fullPath: string, content: Buffer, isLink: boolean): boolean {
@@ -151,6 +179,23 @@ export function restoreHostPluginViewBackup(
     const isLink = ((row.mode ?? 0) & S_IFMT) === S_IFLNK;
     if (sameAsBackup(fullPath, content, isLink)) {
       result.skipped.push({ path, reason: "unchanged" });
+      continue;
+    }
+    const blocker = folderBlocker(backup.host_view, path);
+    if (blocker !== undefined) {
+      // A file now sits where the backup needs a folder: like a changed
+      // file, it goes only with --force-remove, and only when the guard allows.
+      const canForce = planHostPluginViewRemovals({
+        homeRoot: backup.home_root,
+        hostView: backup.host_view,
+        paths: [blocker],
+      }).refused.length === 0;
+      if (!options.forceRemove || !canForce) {
+        result.skipped.push({ path, reason: "blocked", blockedBy: blocker, canForce });
+        continue;
+      }
+      if (!toReplace.includes(blocker)) toReplace.push(blocker);
+      toWrite.push({ path, fullPath, content, isLink });
       continue;
     }
     if (present(fullPath) && !options.forceRemove) {

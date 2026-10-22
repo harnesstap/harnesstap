@@ -7,6 +7,7 @@ import {
   readFileSync,
   readdirSync,
   readlinkSync,
+  rmdirSync,
   rmSync,
   symlinkSync,
 } from "node:fs";
@@ -27,9 +28,11 @@ import {
   isSymlinkPath,
 } from "../safe-file-removal.js";
 import {
+  type BlockedHostPluginViewFiles,
   type KeptHostPluginViewFiles,
   type KeptHostPluginViewReason,
   hostPluginViewForceReplace,
+  recordBlockedHostPluginViewFiles,
   recordKeptHostPluginViewFiles,
   recordReplacedHostPluginViewFiles,
 } from "./host-plugin-view-policy.js";
@@ -100,8 +103,10 @@ function repairPackageTreeLinks(sourceRoot: string, destRoot: string): void {
 export {
   type KeptHostPluginViewFiles,
   type KeptHostPluginViewReason,
+  type BlockedHostPluginViewFiles,
   type ReplacedHostPluginViewFiles,
   setHostPluginViewForceReplace,
+  takeBlockedHostPluginViewFiles,
   takeKeptHostPluginViewFiles,
   takeReplacedHostPluginViewFiles,
 } from "./host-plugin-view-policy.js";
@@ -141,6 +146,38 @@ function sameBytes(left: string, right: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * What keeps a plugin file from being written at `path` (inside the folder):
+ * a real folder at the path, or a file or link where one of its folders goes.
+ */
+function hostViewWriteBlocker(
+  hostView: string,
+  path: string,
+): { blockedBy: string; kind: "folder" | "file" | "link" } | undefined {
+  const parts = path.split("/");
+  for (let index = 1; index <= parts.length; index += 1) {
+    const at = parts.slice(0, index).join("/");
+    let stats: ReturnType<typeof lstatSync>;
+    try {
+      stats = lstatSync(join(hostView, at));
+    } catch {
+      return undefined;
+    }
+    if (index === parts.length) {
+      if (!stats.isDirectory()) return undefined;
+      // An empty folder may go (only empty folders are ever removed).
+      if (readdirSync(join(hostView, at)).length === 0) {
+        rmdirSync(join(hostView, at));
+        return undefined;
+      }
+      return { blockedBy: at, kind: "folder" };
+    }
+    if (stats.isSymbolicLink()) return { blockedBy: at, kind: "link" };
+    if (!stats.isDirectory()) return { blockedBy: at, kind: "file" };
+  }
+  return undefined;
 }
 
 function copyViewFiles(
@@ -311,11 +348,17 @@ export function mirrorHostPluginView(input: {
     });
   }
   const keptSet = new Set(kept.map((file) => file.path));
-  const files = copyViewFiles(
-    input.canonicalDir,
-    hostView,
-    packageFiles.filter((path) => !unchanged.has(path) && !keptSet.has(path)),
-  );
+  const toCopy = packageFiles.filter((path) => !unchanged.has(path) && !keptSet.has(path));
+  // Never write through or over something HarnessTap did not create: skip
+  // those files and say which path is in the way, so the rest still lands.
+  const blockedFiles: BlockedHostPluginViewFiles["files"] = [];
+  const writable = toCopy.filter((path) => {
+    const blocker = hostViewWriteBlocker(hostView, path);
+    if (blocker) blockedFiles.push({ path, ...blocker });
+    return blocker === undefined;
+  });
+  recordBlockedHostPluginViewFiles({ hostView, files: blockedFiles });
+  const files = copyViewFiles(input.canonicalDir, hostView, writable);
   for (const path of unchanged) {
     const hash = recorded[path];
     if (hash) {

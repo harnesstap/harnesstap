@@ -491,6 +491,7 @@ function revertHostPluginViewBackup(
   });
   if (!result) return;
   const changed = result.skipped.filter((file) => file.reason === "changed").map((file) => file.path);
+  const blocked = result.skipped.filter((file) => file.reason === "blocked");
   if (format === "json") {
     printJson({
       dry_run: Boolean(opts.dryRun),
@@ -499,6 +500,7 @@ function revertHostPluginViewBackup(
       folder: result.hostView,
       restored: result.restored,
       kept: changed,
+      blocked: blocked.map((file) => ({ path: file.path, blocked_by: file.blockedBy ?? null })),
       replaced_backup_id: result.replacedBackupId ?? null,
     });
     return;
@@ -510,6 +512,20 @@ function revertHostPluginViewBackup(
   if (changed.length > 0) {
     ui.warn(
       `Kept ${formatCount(changed.length, "file")} in ${where} that changed since the backup: ${changed.join(", ")}. To back up the current copies and put the old ones back, run the command again with --force-remove.`,
+    );
+  }
+  const describeBlocked = (files: typeof blocked) =>
+    files.map((file) => `${file.path} (${file.blockedBy} is in the way)`).join(", ");
+  const forceable = opts.forceRemove ? [] : blocked.filter((file) => file.canForce);
+  const notForceable = blocked.filter((file) => !forceable.includes(file));
+  if (forceable.length > 0) {
+    ui.warn(
+      `Could not restore ${formatCount(forceable.length, "file")} in ${where}: ${describeBlocked(forceable)}. To back up what is in the way and put the old ones back, run the command again with --force-remove.`,
+    );
+  }
+  if (notForceable.length > 0) {
+    ui.warn(
+      `Could not restore ${formatCount(notForceable.length, "file")} in ${where}: ${describeBlocked(notForceable)}. HarnessTap never removes files it did not write. Move them away, then run the command again.`,
     );
   }
   if (result.replacedBackupId) {
