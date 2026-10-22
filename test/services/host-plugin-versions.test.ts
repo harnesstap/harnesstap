@@ -187,6 +187,39 @@ describe("host plugin cache versions", () => {
     }
   });
 
+  it("resolves a real install tree past a record that points at a folder with no plugin in it", async () => {
+    const ctx = await createInitializedTestContext("host-plugin-versions-bare-record");
+    try {
+      const real = writePluginCache(ctx.homeDir, "claude-plugins-official", "code-review", "1.0.0");
+      const empty = join(ctx.homeDir, ".claude", "plugins", "cache", "claude-plugins-official", "code-review", "USERVER");
+      mkdirSync(empty, { recursive: true });
+      writeFileSync(join(empty, "USER.md"), "mine\n");
+      writeInstalled(ctx.homeDir, "code-review@claude-plugins-official", empty, "USERVER");
+
+      expect(resolveInstallRoot("code-review@claude-plugins-official", ctx.homeDir)).toBe(real);
+      expect(
+        resolveInstallRoot("code-review@claude-plugins-official", ctx.homeDir, undefined, {
+          preferCanonicalPackage: false,
+        }),
+      ).toBe(real);
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+
+  it("falls back to the folder a record names when no other install tree exists", async () => {
+    const ctx = await createInitializedTestContext("host-plugin-versions-bare-only");
+    try {
+      const empty = join(ctx.homeDir, ".claude", "plugins", "cache", "claude-plugins-official", "code-review", "USERVER");
+      mkdirSync(empty, { recursive: true });
+      writeInstalled(ctx.homeDir, "code-review@claude-plugins-official", empty, "USERVER");
+
+      expect(resolveInstallRoot("code-review@claude-plugins-official", ctx.homeDir)).toBe(empty);
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+
   it("retargets installed_plugins.json and syncs the library pin", async () => {
     const ctx = await createInitializedTestContext("host-plugin-versions-switch");
     try {

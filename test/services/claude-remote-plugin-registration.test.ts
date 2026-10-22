@@ -547,6 +547,40 @@ describe("plugins the user installed from a HarnessTap marketplace", () => {
     }
   });
 
+  it("applies and switches away when the user's own record points at a folder with no plugin in it", async () => {
+    const context = await createInitializedTestContext("claude-user-install-bare-folder");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      const bare = join(home, ".claude/plugins/cache/mkta/dup/9.9.9");
+      mkdirSync(bare, { recursive: true });
+      writeFileSync(join(bare, "USER.md"), "mine\n");
+      const record = {
+        scope: "user",
+        installPath: bare,
+        version: "9.9.9",
+        installedAt: "2026-10-22T23:17:11.448Z",
+        lastUpdated: "2026-10-22T23:17:11.448Z",
+        gitCommitSha: "2c606141936f1eeef17fa3043a72095b4765b9c2",
+      };
+      writeJson(home, INSTALLED, { version: 2, plugins: { "dup@mkta": [record] } });
+      writeJson(home, SETTINGS, { theme: "dark", enabledPlugins: { "dup@mkta": true } });
+      const settings = readFileSync(join(home, SETTINGS), "utf-8");
+
+      await applyRemote();
+      expect(readJson<Rows>(home, INSTALLED).plugins).toEqual({ "dup@mkta": [record] });
+      expect(readFileSync(join(bare, "USER.md"), "utf-8")).toBe("mine\n");
+
+      await switchToPlain();
+      expect(readJson<Rows>(home, INSTALLED).plugins).toEqual({ "dup@mkta": [record] });
+      expect(readFileSync(join(bare, "USER.md"), "utf-8")).toBe("mine\n");
+      expect(readFileSync(join(home, SETTINGS), "utf-8")).toBe(settings);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("still removes HarnessTap's own record shape, and tells the two apart by the record, not the marketplace", async () => {
     const context = await createInitializedTestContext("claude-user-install-owner");
     try {

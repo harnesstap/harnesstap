@@ -189,6 +189,10 @@ export function listExistingInstallRoots(
     roots.push(path);
   };
 
+  // A folder that holds no plugin (a stale or empty folder named by the user's
+  // own installed_plugins.json record) must not shadow a real install further
+  // down the list, so those come last.
+  const bare: string[] = [];
   for (const candidate of resolveInstallRootCandidates(
     originRef,
     homeRoot,
@@ -196,6 +200,10 @@ export function listExistingInstallRoots(
   )) {
     const resolved = resolveExistingInstallRoot(candidate);
     if (!resolved) {
+      continue;
+    }
+    if (!isPluginInstallRoot(resolved)) {
+      bare.push(resolved);
       continue;
     }
     const { marketplace: parsedMarketplace } = parsePluginRef(originRef);
@@ -209,6 +217,9 @@ export function listExistingInstallRoots(
         }),
       );
     }
+    add(resolved);
+  }
+  for (const resolved of bare) {
     add(resolved);
   }
   return roots;
@@ -226,13 +237,18 @@ export function resolveInstallRoot(
       homeRoot,
       claudePluginsRoot,
     );
+    let bare: string | undefined;
     for (const candidate of candidates) {
       const resolved = resolveExistingInstallRoot(candidate);
-      if (resolved) {
+      if (!resolved) {
+        continue;
+      }
+      if (isPluginInstallRoot(resolved)) {
         return resolved;
       }
+      bare ??= resolved;
     }
-    return undefined;
+    return bare;
   }
   return listExistingInstallRoots(originRef, homeRoot, claudePluginsRoot)[0];
 }
