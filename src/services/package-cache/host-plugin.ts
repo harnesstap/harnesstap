@@ -34,6 +34,7 @@ import {
   hostPluginViewForceReplace,
   recordBlockedHostPluginViewFiles,
   recordKeptHostPluginViewFiles,
+  recordAddedHostPluginViewFiles,
   recordReplacedHostPluginViewFiles,
 } from "./host-plugin-view-policy.js";
 import { backUpAndRemoveHostPluginViewFiles } from "./host-plugin-view-backups.js";
@@ -359,6 +360,12 @@ export function mirrorHostPluginView(input: {
   });
   recordBlockedHostPluginViewFiles({ hostView, files: blockedFiles });
   const files = copyViewFiles(input.canonicalDir, hostView, writable);
+  // New plugin files count as written; replaced ones are counted with their backup.
+  const replacedSet = new Set(replace);
+  recordAddedHostPluginViewFiles(
+    hostView,
+    writable.filter((path) => !replacedSet.has(path) && files[path] !== undefined && !applyWrites.has(path)),
+  );
   for (const path of unchanged) {
     const hash = recorded[path];
     if (hash) {
