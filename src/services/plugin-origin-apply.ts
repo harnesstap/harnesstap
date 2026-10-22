@@ -32,6 +32,8 @@ import {
 } from "./plugin-origin-locator.js";
 import { isPluginInstallRoot, scanPluginSource } from "./plugin-source-import.js";
 import { semverSafePluginVersion } from "./plugin-semver.js";
+import { declaredPluginVersion } from "./host-plugin-source.js";
+import { refreshCachedHostPluginVersion } from "./package-cache/host-plugin-refresh.js";
 
 export type PluginOriginApplyDeps = {
   downloadCatalogPackage?: (input: {
@@ -322,6 +324,7 @@ export async function applyCheckedPluginOrigin(
 
   let nextVersion: string;
   let resources: ResourceCreateInput[];
+  let marketplacePluginDir: string | undefined;
 
   switch (locator.kind) {
     case "marketplace": {
@@ -334,6 +337,7 @@ export async function applyCheckedPluginOrigin(
       const scanned = await scanMarketplaceOrGit(pluginDir, plugin.name);
       resources = scanned.resources;
       nextVersion = semverSafePluginVersion(scanned.version, fingerprint);
+      marketplacePluginDir = pluginDir;
       break;
     }
     case "git": {
@@ -378,6 +382,17 @@ export async function applyCheckedPluginOrigin(
     fingerprint: fingerprint || undefined,
     fingerprintKind: fingerprintKindFor(locator, fingerprint, check.origin_version),
   });
+  if (locator.kind === "marketplace" && marketplacePluginDir) {
+    // Same version, new content upstream: refresh the cached copy so the
+    // next apply brings it into the host plugin folder.
+    const cachedVersion = declaredPluginVersion(marketplacePluginDir) ?? nextVersion;
+    refreshCachedHostPluginVersion({
+      harnesstapDir,
+      originRef: locator.ref,
+      version: cachedVersion,
+      sourceInstallRoot: marketplacePluginDir,
+    });
+  }
 
   const after = getPluginById(plugin.id) ?? plugin;
   return updateRow(after, "updated", { local_version: after.version });
