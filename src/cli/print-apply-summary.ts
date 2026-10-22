@@ -7,10 +7,12 @@ import {
   dryRunWouldLine,
   forceRemoveHintLine,
   keptFilesHeader,
+  keptReportedBeforeLine,
   keptReasonLabel,
   snapshotSavedUndoLine,
 } from "../copy/cli.js";
 import {
+  allKeptHostPluginViewPaths,
   hostPluginViewChangeCounts,
   hostPluginViewForceReplace,
   pendingKeptHostPluginViewPaths,
@@ -21,14 +23,21 @@ import { ui } from "../ui/index.js";
 export interface ApplyKeptFile {
   path: string;
   reason: "modified" | "unmanaged";
+  /** False when --force-remove would not remove the file either. */
+  forceable?: boolean;
 }
 
 export function keptFromSkippedRemovals(
-  skipped: readonly { path: string; reason: string }[] | undefined,
+  skipped: readonly { path: string; reason: string; forceable?: boolean }[] | undefined,
 ): ApplyKeptFile[] {
   return (skipped ?? []).flatMap((entry) => {
     const reason = removalSkipReason(entry.reason);
-    return reason ? [{ path: entry.path, reason }] : [];
+    if (!reason) return [];
+    return [
+      entry.forceable === false
+        ? { path: entry.path, reason, forceable: false }
+        : { path: entry.path, reason },
+    ];
   });
 }
 
@@ -38,7 +47,7 @@ export function printApplyPayload(payload: {
   files: readonly unknown[];
   written_files: readonly string[];
   removed_files?: readonly string[];
-  skipped_removals?: readonly { path: string; reason: string; message?: string }[];
+  skipped_removals?: readonly { path: string; reason: string; message?: string; forceable?: boolean }[];
   snapshot_id?: string;
   dry_run?: boolean;
   removal_backup?: string;
@@ -132,11 +141,15 @@ export function printKeptFiles(kept: readonly ApplyKeptFile[]): void {
   if (kept.every((entry) => isClaudePluginRegistryPath(entry.path))) {
     return;
   }
-  // With --force-remove already in effect, suggesting it again is wrong.
+  // With --force-remove already in effect, or when it would remove none of
+  // these files, suggesting it is wrong.
+  const forceable = kept.filter(
+    (entry) => entry.forceable !== false && !isClaudePluginRegistryPath(entry.path),
+  );
   console.log(
-    hostPluginViewForceReplace()
+    hostPluginViewForceReplace() || forceable.length === 0
       ? CLI_HINTS.forceRemoveAlreadyUsed
-      : forceRemoveHintLine(kept.length),
+      : forceRemoveHintLine(forceable.length),
   );
 }
 
@@ -157,16 +170,24 @@ export function printApplySuccess(input: {
   // List each kept file once, and count both.
   const folderKept = new Set(pendingKeptHostPluginViewPaths());
   const kept = input.kept.filter((entry) => !folderKept.has(entry.path));
+  // Kept files in a plugin cache folder that an earlier apply already reported get no
+  // notice again, but they are still kept, so the count and a pointer include them.
+  const listedPaths = new Set([...folderKept, ...kept.map((entry) => entry.path)]);
+  const reportedBefore = allKeptHostPluginViewPaths().filter((path) => !listedPaths.has(path));
+  const keptTotal = listedPaths.size + new Set(reportedBefore).size;
   console.log(
     applyWroteLine({
       wrote: input.wrote + pluginFolder.replaced + pluginFolder.added,
       removed: input.removed + pluginFolder.removed,
-      kept: kept.length + folderKept.size,
+      kept: keptTotal,
       unchanged: input.unchanged,
     }),
   );
   if (kept.length > 0) {
     printKeptFiles(kept);
+  }
+  if (reportedBefore.length > 0) {
+    console.log(keptReportedBeforeLine(new Set(reportedBefore).size));
   }
   if (input.snapshotId) {
     console.log(snapshotSavedUndoLine(`ht revert ${input.snapshotId}`));

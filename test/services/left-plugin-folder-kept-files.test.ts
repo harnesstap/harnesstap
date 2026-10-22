@@ -36,6 +36,8 @@ describe("files kept in a plugin folder left behind", () => {
       [`${OLD}/skills/s/mine.md`, "unmanaged"],
       [`${OLD}/user-notes.md`, "unmanaged"],
     ]);
+    // HarnessTap never wrote them, so --force-remove would not remove them.
+    expect(kept.every((skip) => skip.forceable === false)).toBe(true);
   });
 
   it("says nothing about a folder still in use or already gone", () => {
