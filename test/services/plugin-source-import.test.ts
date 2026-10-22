@@ -334,6 +334,54 @@ developer_instructions = "Design contracts."
     });
   });
 
+  it("scans each skill a plugin.json skills list names (mattpocock-skills layout)", async () => {
+    const base = createTempDir("plugin-source-skills-list");
+    const pluginRoot = join(base, "plugin");
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({
+          name: "nested-skills",
+          version: "1.3.1",
+          skills: ["./skills/engineering/ask-matt", "./skills/engineering/tdd", "./skills/personal", "../outside"],
+        }),
+      );
+      const skill = (path: string, name: string) =>
+        writeTextFile(join(pluginRoot, path, "SKILL.md"), `---\nname: ${name}\ndescription: ${name} skill\n---\n# ${name}\n`);
+      skill("skills/engineering/ask-matt", "ask-matt");
+      skill("skills/engineering/tdd", "tdd");
+      skill("skills/engineering/not-listed", "not-listed");
+      skill("skills/personal/grill-me", "grill-me");
+      writeTextFile(join(pluginRoot, "../outside/SKILL.md"), "---\nname: outside\ndescription: x\n---\n# x\n");
+
+      const entries = await scanPluginSource(pluginRoot);
+      const names = (entries[0]?.resources ?? [])
+        .filter((resource) => resource.type === "skill")
+        .map((resource) => resource.name)
+        .sort();
+      expect(names).toEqual(["ask-matt", "grill-me", "tdd"]);
+    } finally {
+      cleanupDir(base);
+    }
+  });
+
+  it("adds a plugin.json skills path to the skills folder instead of replacing it", async () => {
+    const pluginRoot = createTempDir("plugin-source-skills-extra");
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ name: "extra-skills", version: "1.0.0", skills: "./extra" }),
+      );
+      writeTextFile(join(pluginRoot, "skills/base/SKILL.md"), "---\nname: base\ndescription: b\n---\n# b\n");
+      writeTextFile(join(pluginRoot, "extra/more/SKILL.md"), "---\nname: more\ndescription: m\n---\n# m\n");
+      const entries = await scanPluginSource(pluginRoot);
+      const names = (entries[0]?.resources ?? []).filter((r) => r.type === "skill").map((r) => r.name).sort();
+      expect(names).toEqual(["base", "more"]);
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
   it("accepts marketplace entry source as alias for path", async () => {
     const entries = await scanPluginSource(
       join(fixtureRoot, "impeccable-layout/.claude-plugin/marketplace.json"),
