@@ -13,6 +13,17 @@ import { parsePluginSelector } from "../plugin-selector.js";
 import { selectVersion } from "./version-mediation.js";
 import { UnsatisfiableConstraintError } from "./types.js";
 import type { ConstraintRecord, SelectedPlugin, SelectionReason } from "./types.js";
+import { isGitRefConstraint } from "../../utils/git-dependency-constraint.js";
+
+/**
+ * A git dependency pinned to a commit, tag or branch chooses what is fetched,
+ * not a plugin version, so it does not narrow version mediation (#500).
+ */
+function mediationConstraint(sourceKind: DependencySourceKind, constraint: string): string {
+  if (!constraint) return "*";
+  if (sourceKind === "git" && isGitRefConstraint(constraint)) return "*";
+  return constraint;
+}
 
 /** Safety valve: the fixpoint converges in far fewer passes in practice. */
 const MAX_PASSES = 64;
@@ -143,7 +154,7 @@ export function walkDependencyGraph(input: {
         }
         const bucket = constraints.get(name) ?? [];
         bucket.push({
-          constraint: dependency.version_constraint || "*",
+          constraint: mediationConstraint(dependency.source_kind, dependency.version_constraint),
           path: frame.path,
           requirer: frame.label,
         });

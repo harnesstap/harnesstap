@@ -5,6 +5,7 @@ import { parseDependencyRef } from "../utils/plugin-dependency-ref.js";
 import {
   formatOriginLocator,
   parseOriginLocator,
+  splitGitLocator,
   type OriginLocator,
 } from "../utils/plugin-origin-locator.js";
 
@@ -41,7 +42,7 @@ export function recoverOriginLocator(plugin: Plugin): OriginLocator | null {
       return { kind: "marketplace", ref: resource.origin_ref };
     }
     if (parsed.source_kind === "git") {
-      return { kind: "git", url: resource.origin_ref };
+      return splitGitLocator(resource.origin_ref);
     }
   }
 

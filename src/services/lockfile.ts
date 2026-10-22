@@ -136,9 +136,11 @@ function gitFieldsForPlugin(pluginId: string): Pick<
     plugin.origin_fingerprint_kind === "git_sha" && plugin.origin_fingerprint
       ? plugin.origin_fingerprint
       : undefined;
+  // A pinned git origin (#500) records the pin as written next to the commit.
+  const pinnedRef = locator?.kind === "git" ? locator.ref : undefined;
   return {
     ...(repo_url ? { repo_url } : {}),
-    ...(resolved_commit ? { resolved_commit, resolved_ref: resolved_commit } : {}),
+    ...(resolved_commit ? { resolved_commit, resolved_ref: pinnedRef ?? resolved_commit } : {}),
   };
 }
 

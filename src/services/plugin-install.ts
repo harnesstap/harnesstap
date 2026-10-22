@@ -6,6 +6,9 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import type { PluginConstraintPin } from "./plugin-apply-validation.js";
 import { clearLiveReadCaches } from "./live-read-cache.js";
 import { installMarketplacePinIntoCache } from "./marketplace-pin-cache.js";
+import { importPluginFromGitHubRef } from "./plugin-git-import.js";
+import { parseGitDependencyConstraint } from "../utils/git-dependency-constraint.js";
+import { parseDependencyRef } from "../utils/plugin-dependency-ref.js";
 
 export interface InstallPluginPinOptions {
   ref: string;
@@ -24,10 +27,49 @@ export interface InstallPluginPinResult {
   message: string;
 }
 
+/** True when a git dependency constraint names a commit, tag, branch or semver range. */
+export function isPinnedGitConstraint(constraint: string | undefined): boolean {
+  try {
+    return parseGitDependencyConstraint(constraint).kind !== "none";
+  } catch {
+    return true;
+  }
+}
+
 export async function installPluginPinAsync(
   options: InstallPluginPinOptions,
 ): Promise<InstallPluginPinResult> {
   const platformId = options.installPlatformId ?? "claude-code";
+  if (parseDependencyRef(options.ref).source_kind === "git") {
+    // Fetch the pinned commit, tag or branch into the HarnessTap git cache
+    // (#500). Fall through to the host provider when that is not possible.
+    try {
+      const imported = await importPluginFromGitHubRef(options.ref, undefined, {
+        ref: options.versionConstraint,
+        anyGitRemote: true,
+      });
+      clearLiveReadCaches();
+      return {
+        ref: options.ref,
+        platformId,
+        scope: options.scope,
+        status: imported.created ? "installed" : "already_installed",
+        message: `Fetched ${imported.origin_locator} at ${imported.origin_fingerprint.slice(0, 12)}`,
+      };
+    } catch (error) {
+      // A pinned git dependency fails closed with the git error. An unpinned
+      // one still falls back to the host provider, as before.
+      if (isPinnedGitConstraint(options.versionConstraint)) {
+        return {
+          ref: options.ref,
+          platformId,
+          scope: options.scope,
+          status: "failed",
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+  }
   const { marketplace } = parsePluginRef(options.ref);
   if (marketplace) {
     try {

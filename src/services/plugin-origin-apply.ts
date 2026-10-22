@@ -305,8 +305,14 @@ export async function applyCheckedPluginOrigin(
   check: OriginApplyCheck,
   deps?: PluginOriginApplyDeps,
 ): Promise<PluginOriginUpdateRow> {
+  const stored = recoverOriginLocator(plugin);
+  const checked = parseOriginLocator(check.origin_locator);
+  // Re-adding a git origin with a new pin (#500) keeps the repository and
+  // takes the new commit, tag or branch.
   const locator =
-    recoverOriginLocator(plugin) ?? parseOriginLocator(check.origin_locator);
+    stored?.kind === "git" && checked?.kind === "git" && stored.url === checked.url
+      ? checked
+      : stored ?? checked;
   if (!locator) {
     throw new Error("Cannot apply origin update without a locator");
   }

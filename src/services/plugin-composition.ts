@@ -1,3 +1,4 @@
+import { parseGitDependencyConstraint } from "../utils/git-dependency-constraint.js";
 import {
   addResourceToPlugin,
   removeResourceFromPlugin,
@@ -354,10 +355,15 @@ export async function addPluginAttachment(input: AddPluginAttachmentInput): Prom
   markPluginDirty(input.plugin.id);
 
   if (attachmentType === "plugin") {
-    if (input.version) {
-      parseVersionConstraint(input.version);
-    }
     const ref = stripTypePrefix(selector);
+    if (input.version) {
+      // A git dependency takes a commit, tag, branch or tag range (#500).
+      if (parseDependencyRef(ref).source_kind === "git") {
+        parseGitDependencyConstraint(input.version);
+      } else {
+        parseVersionConstraint(input.version);
+      }
+    }
     const resource = addDependency(input.plugin.id, ref, {
       ...(input.version ? { versionConstraint: input.version } : {}),
       ...(input.embed ? { embedOnExport: true } : {}),
