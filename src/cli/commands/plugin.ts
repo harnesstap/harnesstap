@@ -96,6 +96,8 @@ import {
 import { createSnapshot } from "../../models/snapshot.js";
 import { captureManagedSnapshotState } from "../../services/snapshot-capture.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
+import { parseDependencyRef } from "../../utils/plugin-dependency-ref.js";
+import { marketplaceListsPlugin } from "../../services/host-plugin-source.js";
 import type {
   ClaudePluginConfig,
   ClaudePluginEntry,
@@ -2527,6 +2529,26 @@ function handlePluginAddDependencyCommand(
   if (!plugin) {
     process.exitCode = 1;
     fail(`Plugin not found: ${targetName}`);
+    return;
+  }
+
+  const parsedRef = parseDependencyRef(ref);
+  // A marketplace that HarnessTap can read must list the plugin; one not on
+  // disk yet is checked when the profile installs it.
+  const marketplace = parsedRef.source_kind === "marketplace" ? parsedRef.namespace : "";
+  if (
+    marketplace
+    && marketplaceListsPlugin({
+      homeRoot: resolveHomeRoot(),
+      harnesstapDir: getHarnesstapDir(),
+      marketplace,
+      pluginName: parsedRef.name,
+    }) === false
+  ) {
+    process.exitCode = 1;
+    fail(`Plugin ${parsedRef.name} not found in marketplace ${marketplace}.`, {
+      hint: `ht marketplace show ${marketplace}`,
+    });
     return;
   }
 

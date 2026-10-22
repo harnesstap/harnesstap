@@ -117,6 +117,31 @@ describe("CLI plugin marketplace", () => {
     }
   });
 
+  it("refuses plugin add --to for a plugin the marketplace does not list", async () => {
+    const context = await createTestContext("cli-plugin-add-unlisted");
+    try {
+      await runCli(["init"]);
+      await setupLocalMarketplace();
+      await runCli(["plugin", "create", "pins-plugin"]);
+
+      const add = await runCli(["plugin", "add", "nosuch@local-market", "--to", "pins-plugin"], {
+        isTTY: false,
+      });
+      expect(add.exitCode).toBe(1);
+      expect(add.stderr).toContain("Plugin nosuch not found in marketplace local-market.");
+
+      const show = await runCli(["plugin", "show", "pins-plugin", "--format", "json"], {
+        isTTY: false,
+      });
+      const plugin = JSON.parse(show.stdout.trim()) as {
+        dependencies: Array<{ dependency_name: string }>;
+      };
+      expect(plugin.dependencies.map((d) => d.dependency_name)).not.toContain("nosuch@local-market");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("requires --to for plugin add in non-interactive mode", async () => {
     const context = await createTestContext("cli-plugin-add-missing-plugin");
     try {
