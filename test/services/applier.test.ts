@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { describe, expect, it, mock } from "bun:test";
+import { describe, expect, it, mock, spyOn } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResource } from "../helpers/resources.ts";
 
@@ -655,7 +655,7 @@ describe("applier services", () => {
     }
   });
 
-  it("rejects global writes to symlinked file targets that escape the home root", async () => {
+  it("keeps a symlinked file target that leads out of the home and never writes through it", async () => {
     const context = await createInitializedTestContext("applier-global-file-symlink");
 
     try {
@@ -665,14 +665,20 @@ describe("applier services", () => {
       writeFileSync(outsideFile, '{"outside":true}', "utf-8");
       symlinkSync(outsideFile, join(context.homeDir, ".copilot/mcp-config.json"), "file");
 
-      await expect(
-        applier.materializeFiles(
+      const warn = spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const result = await applier.materializeFiles(
           [{ path: ".copilot/mcp-config.json", content: "{}" }],
           context.homeDir,
           { conflictPolicy: "replace" },
-        ),
-      ).rejects.toThrow(/outside root|symlink/i);
+        );
+        expect(result.skippedFiles).toEqual([".copilot/mcp-config.json"]);
+        expect(result.writtenFiles).toEqual([]);
+      } finally {
+        warn.mockRestore();
+      }
 
+      expect(lstatSync(join(context.homeDir, ".copilot/mcp-config.json")).isSymbolicLink()).toBe(true);
       expect(readFileSync(outsideFile, "utf-8")).toBe('{"outside":true}');
     } finally {
       await context.cleanup();

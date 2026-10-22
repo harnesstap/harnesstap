@@ -11,6 +11,7 @@ import {
   readdirSync,
   readFileSync,
   readlinkSync,
+  realpathSync,
   rmdirSync,
   rmSync,
   statSync,
@@ -127,6 +128,33 @@ export function isSymlinkPath(fullPath: string): boolean {
 }
 
 /**
+ * True when the path is a link (the user's) whose target is outside the root.
+ * HarnessTap never writes through such a link and never replaces it while
+ * writing; the user keeps it.
+ */
+export function leafLinkLeavesRoot(rootPath: string, fullPath: string): boolean {
+  if (!isSymlinkPath(fullPath)) return false;
+  let root: string;
+  try {
+    root = realpathSync(rootPath);
+  } catch {
+    return true;
+  }
+  let target: string;
+  try {
+    target = realpathSync(fullPath);
+  } catch {
+    // Dangling: judge where it points.
+    try {
+      target = resolve(dirname(fullPath), readlinkSync(fullPath));
+    } catch {
+      return true;
+    }
+  }
+  return target !== root && !target.startsWith(`${root}${sep}`);
+}
+
+/**
  * Hash of a host plugin folder entry: a link hashes as its target (never
  * followed), any other file as its bytes.
  */
@@ -160,6 +188,8 @@ export function classifyManagedPathOwnership(
 ): ManagedPathOwnership {
   const normalized = normalizeRelative(relativePath);
   const fullPath = resolve(rootPath, normalized);
+  // A link out of the root is the user's: hash the link, never what it points at.
+  const linkLeavesRoot = leafLinkLeavesRoot(rootPath, fullPath);
   if (normalized.includes(HOST_PLUGIN_CACHE_SEGMENT)) {
     // In a host plugin folder the folder's record says what HarnessTap wrote,
     // files an install wrote (such as links) that no apply row lists included.
@@ -168,7 +198,7 @@ export function classifyManagedPathOwnership(
     if (written !== undefined) {
       // Records from before links were kept as links hold the linked bytes.
       const same = written === hashFileOrLink(fullPath)
-        || (isSymlinkPath(fullPath) && written === hashOnDiskFile(fullPath));
+        || (isSymlinkPath(fullPath) && !linkLeavesRoot && written === hashOnDiskFile(fullPath));
       return same ? "owned" : "modified";
     }
   }
@@ -176,7 +206,7 @@ export function classifyManagedPathOwnership(
   if (owned.length === 0) {
     return "unowned";
   }
-  const diskHash = hashOnDiskFile(fullPath);
+  const diskHash = linkLeavesRoot ? hashFileOrLink(fullPath) : hashOnDiskFile(fullPath);
   if (owned.some((row) => row.generated_hash === diskHash)) {
     return "owned";
   }
