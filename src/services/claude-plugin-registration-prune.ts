@@ -73,13 +73,14 @@ export function staleHarnessTapClaudeRecords(
  * not write, see `isHarnessTapClaudeRecord`) still use of what HarnessTap
  * set up, so a switch away from the profile keeps it:
  * - `refs`: their plugin refs, whose `enabledPlugins` entries stay.
- * - `folders`: plugin folders HarnessTap created that such a record points
- *   at, and HarnessTap marketplace folders their marketplace entry still
- *   points at (home-relative), each with the plugin ref that uses it.
+ * - `folders`: the plugin folders such records point at, and HarnessTap
+ *   marketplace folders their marketplace entry still points at
+ *   (home-relative), each with the plugin ref that uses it. `created` is
+ *   true while HarnessTap still records the folder as one it set up.
  */
 export interface UserHeldClaudePlugins {
   refs: Set<string>;
-  folders: Map<string, string>;
+  folders: Map<string, { ref: string; created: boolean }>;
 }
 
 export function userHeldClaudePlugins(homeRoot: string): UserHeldClaudePlugins {
@@ -93,14 +94,15 @@ export function userHeldClaudePlugins(homeRoot: string): UserHeldClaudePlugins {
       if (isHarnessTapClaudeRecord(homeRoot, row)) continue;
       held.refs.add(ref);
       const path = claudeRecordInstallPath(homeRoot, row);
-      if (path && readHostPluginViewRecord(path)?.created) {
-        held.folders.set(relative(homeRoot, path).split(sep).join("/"), ref);
+      const folder = path ? relative(homeRoot, path).split(sep).join("/") : "";
+      if (path && folder && !folder.startsWith("..")) {
+        held.folders.set(folder, { ref, created: readHostPluginViewRecord(path)?.created === true });
       }
       const marketplace = marketplaceOf(ref);
       const entry = known[marketplace];
       const htDir = harnessTapClaudeMarketplaceDir(marketplace);
       if (marketplace && isRecord(entry) && entry.installLocation === join(homeRoot, htDir)) {
-        held.folders.set(htDir, ref);
+        held.folders.set(htDir, { ref, created: true });
       }
     }
   }
@@ -109,7 +111,7 @@ export function userHeldClaudePlugins(homeRoot: string): UserHeldClaudePlugins {
 
 /** The folder in `folders` that holds `path` (home-relative), if any. */
 export function heldFolderOf(
-  folders: ReadonlyMap<string, string>,
+  folders: ReadonlyMap<string, unknown>,
   path: string,
 ): string | undefined {
   const normalized = path.replaceAll("\\", "/");
@@ -252,7 +254,8 @@ export function pruneClaudeRegistrations(
     for (const [marketplace, entry] of Object.entries(known)) {
       if (keepMarketplaces.has(marketplace)) continue;
       const userRef = userRefs.get(marketplace);
-      if (userRef && claudeMarketplaceEntryOwner(homeRoot, marketplace, entry) !== "foreign") {
+      if (userRef && (changedMarketplaces.has(marketplace)
+        || claudeMarketplaceEntryOwner(homeRoot, marketplace, entry) !== "foreign")) {
         keptUserMarketplaces.set(marketplace, userRef);
         continue;
       }

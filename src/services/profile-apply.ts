@@ -301,13 +301,16 @@ function removeStaleGlobalProfileFiles(
     dryRun: options.dryRun,
     keepPluginRefs: userHeld.refs,
   });
-  const heldWarnings = [...heldStale].sort().map((folder) => {
-    const ref = userHeld.folders.get(folder) as string;
+  // Said once per folder HarnessTap set up: the folder record is dropped
+  // here, after which the folder is the user's like any other.
+  const heldWarnings = [...heldStale].sort().flatMap((folder) => {
+    const held = userHeld.folders.get(folder);
+    if (!held?.created) return [];
     if (!options.dryRun && folder.startsWith(".claude/plugins/cache/")) {
       forgetHostPluginView(join(homeRoot, folder));
     }
-    return `Kept ${folder}: you installed ${ref} with Claude Code and it uses this folder. `
-      + `Run \`claude plugin uninstall ${ref}\` if you no longer need it.`;
+    return [`Kept ${folder}: you installed ${held.ref} with Claude Code and it uses this folder. `
+      + `Run \`claude plugin uninstall ${held.ref}\` if you no longer need it.`];
   });
   const prunedClaude = pruneStaleClaudeRegistrationsOnDisk(
     homeRoot,

@@ -1,4 +1,5 @@
-import { isAbsolute, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { isAbsolute, join, resolve } from "node:path";
 import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
 
 /** The keys of the `installed_plugins.json` record HarnessTap writes, sorted. */
@@ -35,4 +36,26 @@ export function isHarnessTapClaudeRecord(homeRoot: string, row: unknown): boolea
   if (row.scope !== "user" || typeof row.version !== "string") return false;
   const path = claudeRecordInstallPath(homeRoot, row);
   return path !== undefined && readHostPluginViewRecord(path)?.created === true;
+}
+
+/**
+ * True when `installed_plugins.json` has a record HarnessTap did not write
+ * pointing at `folder`: the user installed a plugin there with Claude Code,
+ * so the folder is theirs and HarnessTap leaves it as it is.
+ */
+export function isUserClaudeInstallFolder(homeRoot: string, folder: string): boolean {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(join(homeRoot, ".claude", "plugins", "installed_plugins.json"), "utf-8"));
+  } catch {
+    return false;
+  }
+  const plugins = isRecord(parsed) ? parsed.plugins : undefined;
+  if (!isRecord(plugins)) return false;
+  const wanted = resolve(folder);
+  return Object.values(plugins).some((rows) =>
+    Array.isArray(rows) && rows.some((row) => {
+      const path = claudeRecordInstallPath(homeRoot, row);
+      return path !== undefined && resolve(path) === wanted && !isHarnessTapClaudeRecord(homeRoot, row);
+    }));
 }

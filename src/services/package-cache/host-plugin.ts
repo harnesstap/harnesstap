@@ -11,6 +11,7 @@ import {
   rmSync,
   symlinkSync,
 } from "node:fs";
+import { isUserClaudeInstallFolder } from "../claude-plugin-record-owner.js";
 import { createHash } from "node:crypto";
 import { dirname, join, relative, sep } from "node:path";
 import { getHarnesstapDir } from "../../db/connection.js";
@@ -279,6 +280,11 @@ export function mirrorHostPluginView(input: {
     && isPluginInstallRoot(hostView)
     && hostView === input.canonicalDir
   ) {
+    return hostView;
+  }
+  // The user installed the plugin into this folder with Claude Code: it is
+  // theirs now, so nothing is copied, replaced or removed in it.
+  if (existsSync(hostView) && isUserClaudeInstallFolder(input.homeRoot, hostView)) {
     return hostView;
   }
   const packageFiles = listTreeFiles(input.canonicalDir, (path) =>
