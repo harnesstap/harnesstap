@@ -73,6 +73,7 @@ function capturedStateUseful(state: SnapshotState | undefined): boolean {
     || (state.absent_paths?.length ?? 0) > 0
     || Object.keys(state.harness_files ?? {}).length > 0
     || Object.keys(state.disk_links ?? {}).length > 0
+    || (state.trashed_files?.length ?? 0) > 0
   );
 }
 
@@ -119,7 +120,7 @@ export function resolveRevertPlan(snapshotId: string): RevertPlan | { error: str
     rootPath: resolveHomeRoot(),
     label: globalSnap.profile_name,
     createdAt: globalSnap.created_at,
-    restoreFiles: state ? flattenLiveRestoreFiles(state) : [],
+    restoreFiles: state ? flattenLiveRestoreFiles(state, globalSnap.id) : [],
     restoreLinks: state ? snapshotLinks(state) : [],
     absentPaths: state ? snapshotAbsentPaths(state) : [],
     hasCapturedState: capturedStateUseful(state),

@@ -912,10 +912,15 @@ export async function applyToGlobal(
   });
   const allFiles = results.flatMap((result) => result.files);
   gateDeployFiles(allFiles, { forceUnicode: options.forceUnicode, rootPath: homeRoot });
+  // A tracked file the apply no longer emits can only change by being
+  // removed, and every removal keeps its own backup. Read only the rest.
+  const emittedPaths = new Set(allFiles.map((file) => file.path));
+  const previousTracked = options.previousTrackedFiles ?? [];
   const preApplyState = captureManagedSnapshotState({
     rootPath: homeRoot,
     generated: results,
-    extraPaths: options.previousTrackedFiles,
+    extraPaths: previousTracked.filter((path) => emittedPaths.has(path)),
+    removalBackedPaths: previousTracked.filter((path) => !emittedPaths.has(path)),
   });
   const materialized = await materializeFiles(allFiles, homeRoot, {
     conflictPolicy: options.conflictPolicy ?? "prompt",
