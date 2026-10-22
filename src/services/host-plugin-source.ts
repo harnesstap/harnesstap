@@ -858,6 +858,13 @@ export async function downloadHostPluginVersion(input: {
           install_path: cacheVersionDir(homeRoot, marketplace, name, input.version),
         };
       }
+      if (cloned.ok) {
+        // The ref cloned but is not a plugin root (an in-repo plugin of a
+        // larger marketplace): leave no half-made version directory behind.
+        rmSync(target, { recursive: true, force: true });
+        lastMessage = `${gitRef ?? "the default branch"} is not a plugin root`;
+        continue;
+      }
       lastMessage = cloned.message;
     }
     throw new Error(
