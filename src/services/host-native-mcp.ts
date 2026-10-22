@@ -1,6 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadInstalled, parsePluginRef } from "../plugins/claude-installed.js";
+import {
+  getInstalledPluginRecord,
+  loadInstalled,
+  parsePluginRef,
+  resolveInstalledRecordPath,
+} from "../plugins/claude-installed.js";
+import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
 import { findInstalledRefForCatalogPin } from "../plugins/claude-plugin-ref.js";
 import { listCursorNativeMcpPluginNames } from "../plugins/cursor-enablement.js";
 import { listCursorPluginInstalls } from "../plugins/providers/cursor.js";
@@ -72,6 +78,22 @@ export function hostPluginPinIsInstalled(homeRoot: string, pinRef: string): bool
   }
   const { name } = parsePluginRef(pinRef);
   return listCursorPluginInstalls(homeRoot).some(
+    (row) => row.ref === pinRef || row.name === name,
+  );
+}
+
+/**
+ * The Claude Code install of `pinRef` is a cache folder HarnessTap created and
+ * registered, and no Cursor install of it exists. Such an install exists only
+ * because an apply registered the plugin for Claude Code.
+ */
+export function claudeInstallIsHarnessTapOnly(homeRoot: string, pinRef: string): boolean {
+  const record = getInstalledPluginRecord(homeRoot, pinRef);
+  if (!record) return false;
+  const view = readHostPluginViewRecord(resolveInstalledRecordPath(homeRoot, record));
+  if (!view?.created || view.legacy) return false;
+  const { name } = parsePluginRef(pinRef);
+  return !listCursorPluginInstalls(homeRoot).some(
     (row) => row.ref === pinRef || row.name === name,
   );
 }

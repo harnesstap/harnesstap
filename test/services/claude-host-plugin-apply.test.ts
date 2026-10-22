@@ -205,7 +205,7 @@ describe("claude host plugin apply", () => {
     }
   });
 
-  it("does not report a remote marketplace dependency applied as files as a missing plugin", async () => {
+  it("registers a remote marketplace dependency as a native Claude plugin, not standalone skills", async () => {
     const context = await createInitializedTestContext("claude-host-plugin-remote-mkt");
     try {
       const repo = initLocalClaudeMarketplace(context.rootDir, "mkta");
@@ -214,8 +214,8 @@ describe("claude host plugin apply", () => {
       const profile = createPlugin({ name: "remote" });
       setPluginTags(profile.id, ["profile"]);
       addDependency(profile.id, "dup@mkta");
-      // Same library plugin, but its marketplace is now remote: apply writes the
-      // skill as a file and leaves the Claude install to Claude (B6).
+      // Same library plugin, but its marketplace is now remote: Claude Code
+      // gets it as a real plugin so its hooks, commands and MCP load.
       updateMarketplace(getHarnesstapDir(), "mkta", { url: "https://example.invalid/qa/mkta.git" });
       setHarnessPreference({ registered_harnesses: ["claude-code"] });
 
@@ -226,16 +226,29 @@ describe("claude host plugin apply", () => {
         pull: false,
       });
       expect(applied.cancelled).toBe(false);
-      expect(applied.resolution && [...filesOnlyMarketplacePinRefs(applied.resolution)]).toEqual([
-        "dup@mkta",
-      ]);
-      expect(existsSync(join(context.homeDir, ".claude/skills/dup-skill/SKILL.md"))).toBe(true);
-      expect(existsSync(join(context.homeDir, ".claude/plugins/installed_plugins.json"))).toBe(false);
+      expect(applied.resolution && [...filesOnlyMarketplacePinRefs(applied.resolution)]).toEqual([]);
+      expect(existsSync(join(context.homeDir, ".claude/skills/dup-skill/SKILL.md"))).toBe(false);
+
+      const installed = JSON.parse(
+        readFileSync(join(context.homeDir, ".claude/plugins/installed_plugins.json"), "utf-8"),
+      ) as { plugins: Record<string, Array<{ installPath: string }>> };
+      const installPath = installed.plugins["dup@mkta"]?.[0]?.installPath ?? "";
+      expect(installPath.startsWith(join(context.homeDir, ".claude/plugins/cache/mkta/dup/"))).toBe(true);
+      expect(existsSync(join(installPath, "skills/dup-skill/SKILL.md"))).toBe(true);
+      const settings = JSON.parse(readFileSync(join(context.homeDir, ".claude/settings.json"), "utf-8")) as {
+        enabledPlugins?: Record<string, boolean>;
+      };
+      expect(settings.enabledPlugins?.["dup@mkta"]).toBe(true);
+      const known = JSON.parse(
+        readFileSync(join(context.homeDir, ".claude/plugins/known_marketplaces.json"), "utf-8"),
+      ) as Record<string, { installLocation?: string }>;
+      const marketplaceDir = join(context.homeDir, ".claude/plugins/harnesstap-marketplaces/mkta");
+      expect(known.mkta?.installLocation).toBe(marketplaceDir);
+      expect(existsSync(join(marketplaceDir, ".claude-plugin/marketplace.json"))).toBe(true);
 
       setActiveProfileName("remote");
       const status = await detectGlobalProfileStatus({ harness: "claude-code" });
       expect(status.has_drift).toBe(false);
-      expect(status.harnesses["claude-code"]?.plugins).toEqual([]);
       expect(status.panel.reasons).not.toContain("missing_plugins");
       expect(status.panel.status).toBe("green");
       expect(globalProfileStatusGaps(status)).toEqual({ inSync: true, missing: [] });

@@ -1,3 +1,4 @@
+import { pruneLeavingClaudeRegistrations } from "./claude-plugin-registration-prune.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskBytesOnce, readDiskTextOnce } from "./status-disk-read.js";
 import { traceSpan } from "./status-trace.js";
@@ -125,6 +126,12 @@ export interface GenerateFilesOptions extends SerializeOptions {
   previousManagedPlacements?: ReadonlyMap<string, readonly string[]>;
   /** When false, keep per-harness skill emits (status/drift). Default true. */
   pinSkillEmits?: boolean;
+  /**
+   * The resources are the whole global profile: Claude Code plugin
+   * registrations HarnessTap wrote for plugins outside it are taken out of
+   * the shared registry files.
+   */
+  replacesHarnessTapRegistrations?: boolean;
 }
 
 export interface GlobalApplyOptions extends GenerateFilesOptions, MaterializeFilesOptions {
@@ -487,6 +494,9 @@ export async function generateFiles(
       files = traceSpan("gen.claude-plugin-extensions", () =>
         applyClaudePluginExtensions(files, claudeConfig, projectRoot),
       pid);
+    }
+    if (pid === "claude-code" && target === "global" && options.replacesHarnessTapRegistrations) {
+      files = pruneLeavingClaudeRegistrations(files, projectRoot);
     }
     const serialized = files;
     files = await traceSpan("gen.resource-ownership", () =>

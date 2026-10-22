@@ -1,6 +1,6 @@
 import { traceSpan } from "../services/status-trace.js";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { computationSlot } from "../services/status-computation.js";
 import type { ResourceCreateInput } from "../types.js";
 import {
@@ -59,7 +59,7 @@ export function resolveInstalledRecordPath(
   homeRoot: string,
   record: InstalledPluginRecord,
 ): string {
-  return record.installPath.startsWith("/")
+  return isAbsolute(record.installPath)
     ? record.installPath
     : join(claudePluginsDir(homeRoot), record.installPath);
 }

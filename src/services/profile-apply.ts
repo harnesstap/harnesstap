@@ -1,3 +1,9 @@
+import {
+  isClaudePluginRegistryPath,
+  planStaleClaudeRegistrations,
+  pruneStaleClaudeRegistrationsOnDisk,
+} from "./claude-plugin-registration-prune.js";
+import { isPreexistingPath } from "../models/preexisting-path.js";
 import { recordedHostPluginViewPaths } from "./package-cache/host-plugin-views.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -59,6 +65,7 @@ import type { ResolutionResult } from "./resolve/types.js";
 import {
   formatRemovalBackupNotice,
   groupPlannedRemovals,
+  isHarnessTapOwnedPath,
   mergeSafeRemovalSkips,
   skippedWriteKeepsForOwnership,
   type PlannedRemovals,
@@ -243,18 +250,24 @@ function removeStaleGlobalProfileFiles(
     snapshotId?: string;
   } = {},
 ): SafeFileRemovalResult {
+  // Claude's plugin registries that HarnessTap merged into, or that changed
+  // since, lose only HarnessTap's keys (below), never the whole file.
   const staleFiles = planStaleGlobalProfileFiles(
     homeRoot,
     desiredFiles,
     previousTrackedFiles,
     harnesses,
-  );
+  ).filter((path) =>
+    !isClaudePluginRegistryPath(path)
+    || (!isPreexistingPath(homeRoot, path) && isHarnessTapOwnedPath(homeRoot, path)));
   const mergeFiles = planStaleMergeableHostConfigFiles(
     homeRoot,
     desiredFiles,
     previousTrackedFiles,
     harnesses,
   );
+  // Read before the removal below deletes the plugin folder records.
+  const staleClaudeRecords = planStaleClaudeRegistrations(homeRoot, desiredFiles);
   const removed = removeGlobalMaterializedFiles(homeRoot, staleFiles, {
     dryRun: options.dryRun,
     forceRemove: options.forceRemove,
@@ -266,6 +279,16 @@ function removeStaleGlobalProfileFiles(
     snapshotId: options.snapshotId,
     dryRun: options.dryRun,
   });
+  const prunedClaude = pruneStaleClaudeRegistrationsOnDisk(
+    homeRoot,
+    staleClaudeRecords,
+    desiredFiles,
+    {
+      applyId: removed.applyId,
+      snapshotId: options.snapshotId,
+      dryRun: options.dryRun,
+    },
+  );
   // A plugin folder left behind keeps the user's own files, even with
   // --force-remove (HarnessTap never wrote them): say so.
   const keptInLeftFolders = keptFilesInLeftHostPluginFolders(
@@ -282,7 +305,8 @@ function removeStaleGlobalProfileFiles(
     warnings: [
       ...removed.warnings,
       ...keptInLeftFolders.map((skip) => skip.message),
-      ...rewritten.rewritten.map((path) => `Updated ${path} (removed HarnessTap-managed keys).`),
+      ...[...new Set([...rewritten.rewritten, ...prunedClaude])]
+        .map((path) => `Updated ${path} (removed HarnessTap-managed keys).`),
     ],
   };
 }
@@ -699,6 +723,7 @@ export async function applyProfilePlugin(
         target: "global",
         claudeConfig: merged.claude,
         resolvedEnvironment,
+        replacesHarnessTapRegistrations: true,
         pinSkillEmits: options.pinSkillEmits,
         mergeLiveSkillMarkdown: options.mergeLiveSkillMarkdown,
       }),
@@ -765,6 +790,7 @@ export async function applyProfilePlugin(
     conflictResolver: options.conflictResolver,
     resolvedEnvironment,
     claudeConfig: merged.claude,
+    replacesHarnessTapRegistrations: true,
     forceUnicode: options.forceUnicode,
     previousTrackedFiles,
   });

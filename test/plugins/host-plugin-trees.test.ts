@@ -241,7 +241,7 @@ describe("host plugin serialize", () => {
         plugins: Record<string, Array<{ installPath: string }>>;
       };
       expect(parsed.plugins["demo@cursor-public"]?.[0]?.installPath).toBe(
-        "cache/cursor-public/demo/2.0.0",
+        join(home, ".claude/plugins/cache/cursor-public/demo/2.0.0"),
       );
       expect(
         files.some((file) =>
@@ -522,7 +522,7 @@ describe("host plugin serialize", () => {
       expect(parsed.version).toBe(2);
       expect(parsed.plugins["demo@demo-market"]?.[0]).toMatchObject({
         scope: "user",
-        installPath: "cache/demo-market/demo/1.0.0",
+        installPath: join(home, ".claude/plugins/cache/demo-market/demo/1.0.0"),
         version: "1.0.0",
       });
       const settings = JSON.parse(

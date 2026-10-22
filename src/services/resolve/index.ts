@@ -11,8 +11,14 @@ import type { Resource } from "../../types.js";
 import { ensurePluginResource } from "../plugin-composition.js";
 import { parsePluginRef } from "../../plugins/host-plugin-manifest.js";
 import { isHostPluginPinResource } from "../host-plugin-serialize.js";
-import { isLocalFilesystemSource, listMarketplaces } from "../marketplace-registry.js";
+import { findKnownMarketplace, isLocalFilesystemSource } from "../marketplace-registry.js";
+import { wellKnownMarketplaceEntry } from "../builtin-marketplaces.js";
 import { getPluginOverrides } from "../plugin-overrides.js";
+import {
+  intersectHarnessScopes,
+  resourceHarnessScope,
+  type HarnessScope,
+} from "../harness-scope.js";
 import type { SelectedPlugin } from "./types.js";
 import { walkDependencyGraph } from "./dependency-graph.js";
 import { resolveResources } from "./resource-resolution.js";
@@ -24,62 +30,103 @@ export { resolutionKey, resourceFingerprint } from "./resource-resolution.js";
 /** Prefix for synthesized roots. Never persisted beyond one resolution. */
 const EPHEMERAL_PREFIX = "__ht_ephemeral_root__";
 
+/** Where an upstream plugin a marketplace dependency edge installed comes from. */
+interface MarketplaceUpstream {
+  ref: string;
+  /** The marketplace is a folder on this machine (`dup@mkta`). */
+  local: boolean;
+}
+
 /**
- * Upstream plugins materialized from a local marketplace install (`dup@mkta`
- * where mkta is a folder on this machine) hold only material resources; their
- * pin is the dependency edge that declared them. Map each such plugin name to
- * the ref it was installed from, so apply registers it like a git import.
- * Remote marketplace pins keep their current handling, which leaves a
- * Claude-managed install and its installed_plugins.json record alone.
+ * Whether HarnessTap knows `marketplace` as a local folder or a remote git
+ * URL. Unknown marketplaces return undefined: their installs belong to the
+ * host, and HarnessTap has nothing to register them from.
  */
-function localMarketplaceUpstreamRefs(
+function marketplaceLocality(
+  marketplace: string,
+  cache: Map<string, boolean | undefined>,
+): boolean | undefined {
+  if (cache.has(marketplace)) return cache.get(marketplace);
+  const url = (findKnownMarketplace(getHarnesstapDir(), marketplace)
+    ?? wellKnownMarketplaceEntry(marketplace))?.url?.trim();
+  const local = url ? isLocalFilesystemSource(url) : undefined;
+  cache.set(marketplace, local);
+  return local;
+}
+
+/**
+ * Upstream plugins a marketplace dependency edge installed (`dup@mkta`, or
+ * `superpowers@claude-plugins-official`) hold only material resources; their
+ * pin is the dependency edge that declared them. Map each such plugin name to
+ * the ref it was installed from, so apply can register it with the host.
+ */
+function marketplaceUpstreamRefs(
   selected: readonly SelectedPlugin[],
-): Map<string, string> {
-  const refs = new Map<string, string>();
-  let localMarketplaces: Set<string> | undefined;
+): Map<string, MarketplaceUpstream> {
+  const refs = new Map<string, MarketplaceUpstream>();
+  const locality = new Map<string, boolean | undefined>();
   for (const plugin of selected) {
     if (plugin.depth === 0 || plugin.source !== "marketplace") continue;
     const locator = getPluginById(plugin.pluginId)?.origin_locator;
     if (!locator?.includes("@")) continue;
-    localMarketplaces ??= new Set(
-      listMarketplaces(getHarnesstapDir())
-        .filter((entry) => isLocalFilesystemSource(entry.url.trim()))
-        .map((entry) => entry.name),
-    );
-    if (localMarketplaces.has(parsePluginRef(locator).marketplace)) {
-      refs.set(plugin.name, locator);
-    }
+    const local = marketplaceLocality(parsePluginRef(locator).marketplace, locality);
+    if (local === undefined) continue;
+    refs.set(plugin.name, { ref: locator, local });
   }
   return refs;
 }
 
 /**
+ * Only Claude Code registers a remote marketplace upstream as a host plugin.
+ * Claude loads the plugin from its cache with hooks, commands, agents and MCP
+ * servers and sets CLAUDE_PLUGIN_ROOT, which standalone copies cannot do.
+ * Codex and Cursor keep the standalone files from the library plugin.
+ */
+const REMOTE_UPSTREAM_PIN_SCOPE: HarnessScope = {
+  kind: "subset",
+  harnesses: ["claude-code"],
+};
+
+/**
  * Host plugin pins are composition resources, so material resolution drops them.
  * Claude and Cursor still need the plugin's own pin (ponytail@local) in the
  * apply set to register the install and to skip standalone copies of that
- * plugin's skills. A local marketplace dependency edge (dup@mkta) is the pin of
- * the upstream plugin it installed. Other dependency edges are not pins.
+ * plugin's skills. A marketplace dependency edge is the pin of the upstream
+ * plugin it installed: a local marketplace edge (dup@mkta) applies to every
+ * host plugin harness, a remote one to Claude Code only. Other dependency
+ * edges are not pins.
  */
 function appendHostPluginPins(
   selected: readonly SelectedPlugin[],
   resources: readonly Resource[],
 ): Resource[] {
   const seen = new Set(resources.map((resource) => resource.id));
-  const upstreamRefs = localMarketplaceUpstreamRefs(selected);
+  const upstreamRefs = marketplaceUpstreamRefs(selected);
   const pins: Resource[] = [];
   for (const plugin of selected) {
     if (plugin.name.startsWith(EPHEMERAL_PREFIX)) continue;
     for (const resource of getPluginResources(plugin.pluginId)) {
       const ownPin = resource.name === plugin.name;
-      const marketplaceEdge =
-        resource.type === "plugin"
-        && upstreamRefs.get(resource.name) === resource.origin_ref;
+      const upstream = resource.type === "plugin"
+        ? upstreamRefs.get(resource.name)
+        : undefined;
+      const marketplaceEdge = upstream?.ref === resource.origin_ref;
       if (!ownPin && !marketplaceEdge) continue;
       if (!resource.origin_ref?.includes("@")) continue;
       if (!isHostPluginPinResource(resource) || seen.has(resource.id)) {
         continue;
       }
       seen.add(resource.id);
+      if (!ownPin && upstream && !upstream.local) {
+        pins.push({
+          ...resource,
+          harness_scope: intersectHarnessScopes(
+            resourceHarnessScope(resource),
+            REMOTE_UPSTREAM_PIN_SCOPE,
+          ),
+        });
+        continue;
+      }
       pins.push(resource);
     }
   }

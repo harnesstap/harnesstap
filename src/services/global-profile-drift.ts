@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { harnesstapDirForHomeRoot } from "../db/connection.js";
 import { diffHostPluginView } from "./package-cache/host-plugin.js";
+import { emittedHostPluginTree } from "./host-plugin-serialize.js";
 import { hostPluginPackageDir } from "./package-cache/paths.js";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
@@ -161,14 +162,24 @@ export function hostPluginFolderChanges(
   const harnesstapDir = harnesstapDirForHomeRoot(homeRoot);
   const changes: DriftFileChange[] = [];
   for (const [folder, plugin] of folders) {
+    const canonicalDir = hostPluginPackageDir(harnesstapDir, plugin.marketplace, plugin.name, plugin.version);
     const differences = diffHostPluginView({
       homeRoot,
       hostView: join(homeRoot, folder),
-      canonicalDir: hostPluginPackageDir(harnesstapDir, plugin.marketplace, plugin.name, plugin.version),
+      canonicalDir,
     });
+    // Spec plugins are translated for the host on write (`mcp.json` becomes
+    // `.mcp.json`, for example), so compare with what the apply writes.
+    const emitted = differences.length > 0
+      ? emittedHostPluginTree(canonicalDir, "claude-code", plugin.name)
+      : new Map<string, { content: string; encoding?: "utf8" | "base64" }>();
     for (const difference of differences) {
       const path = `${folder}/${difference.path}`;
       if (seen.has(path)) continue;
+      const written = emitted.get(difference.path);
+      if (difference.state === "missing" ? !written : matchesEmitted(join(homeRoot, path), written)) {
+        continue;
+      }
       seen.add(path);
       if (difference.state === "missing") changes.push({ path, type: "deleted" });
       else if (difference.state === "stale") changes.push({ path, type: "modified" });
@@ -182,6 +193,20 @@ export function hostPluginFolderChanges(
     }
   }
   return changes;
+}
+
+function matchesEmitted(
+  fullPath: string,
+  file: { content: string; encoding?: "utf8" | "base64" } | undefined,
+): boolean {
+  if (!file) return false;
+  const binary = binaryExpectedFileMatchesDisk(fullPath, file);
+  if (binary !== undefined) return binary;
+  try {
+    return readFileSync(fullPath, "utf-8") === file.content;
+  } catch {
+    return false;
+  }
 }
 
 function keptContentDiff(
@@ -302,7 +327,10 @@ function buildBaseStatusFields(input: {
       : { "claude-code": [], cursor: [] });
 
   const filesOnlyPinRefs = input.expectedApply?.resolution
-    ? filesOnlyMarketplacePinRefs(input.expectedApply.resolution)
+    ? {
+        "claude-code": filesOnlyMarketplacePinRefs(input.expectedApply.resolution, "claude-code"),
+        cursor: filesOnlyMarketplacePinRefs(input.expectedApply.resolution, "cursor"),
+      }
     : undefined;
 
   const harnesses = traceSpan("base.harness-live-status", () => buildHarnessLiveStatusMap({

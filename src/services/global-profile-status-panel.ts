@@ -1,3 +1,4 @@
+import { resourceAppliesToHarness } from "./harness-scope.js";
 import { traceSpan } from "./status-trace.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -182,20 +183,24 @@ function readGlobalMcpServers(
 }
 
 /**
- * Declared marketplace pins the apply writes as standalone files and does not
- * register with the host. Apply registers only the host plugin pins in its
- * resolved resource set (own pins and local marketplace edges). A remote
- * marketplace dependency it resolved to a library plugin is materialized as
- * files, and its host install is left to the host. Status reads this from the
- * same dry-run resolution, so status and apply agree on which declared plugins
- * must be installed.
+ * Declared marketplace pins the apply writes to `harnessId` as standalone
+ * files and does not register with that host. Apply registers the host plugin
+ * pins in its resolved resource set that apply to the harness: own pins and
+ * local marketplace edges everywhere, remote marketplace edges with Claude Code
+ * only. Anything else it resolved to a library plugin is materialized as files,
+ * and its host install is left to the host. Status reads this from the same
+ * dry-run resolution, so status and apply agree on which declared plugins must
+ * be installed.
  */
 export function filesOnlyMarketplacePinRefs(
   resolution: Pick<ResolutionResult, "selected" | "resources" | "decisions">,
+  harnessId: string = "claude-code",
 ): Set<string> {
   const registered = new Set<string>();
   for (const resource of resolution.resources) {
-    if (isHostPluginPinResource(resource)) registered.add(hostPluginPinRef(resource));
+    if (isHostPluginPinResource(resource) && resourceAppliesToHarness(resource, harnessId)) {
+      registered.add(hostPluginPinRef(resource));
+    }
   }
   // Plugins whose material resources the apply writes. A stub with no
   // content (a pin that was never synced) still needs a host install.
@@ -466,8 +471,8 @@ export function buildHarnessLiveStatusMap(input: {
   depth: GlobalProfileStatusDepth;
   homeRoot: string;
   declaredPins: PluginConstraintPin[];
-  /** Pins the apply writes as files; see filesOnlyMarketplacePinRefs. */
-  filesOnlyPinRefs?: ReadonlySet<string>;
+  /** Pins the apply writes as files, per harness; see filesOnlyMarketplacePinRefs. */
+  filesOnlyPinRefs?: Readonly<Record<string, ReadonlySet<string>>>;
   declaredMcpByHarness: Record<string, string[]>;
   expectedMcpConfigsByHarness?: Record<string, Record<string, McpServerMetadata>>;
 }): Record<string, HarnessLiveStatus> {
@@ -491,7 +496,11 @@ export function buildHarnessLiveStatusMap(input: {
       case "claude-code":
         plugins = traceSpan(
           "base.harness-live-status.plugins",
-          () => buildHarnessPluginRows(input.declaredPins, input.homeRoot, input.filesOnlyPinRefs),
+          () => buildHarnessPluginRows(
+            input.declaredPins,
+            input.homeRoot,
+            input.filesOnlyPinRefs?.[harnessId],
+          ),
           harnessId,
         );
         break;
@@ -502,7 +511,7 @@ export function buildHarnessLiveStatusMap(input: {
             buildCursorHarnessPluginRows(
               input.declaredPins,
               input.homeRoot,
-              input.filesOnlyPinRefs,
+              input.filesOnlyPinRefs?.[harnessId],
             ),
           harnessId,
         );

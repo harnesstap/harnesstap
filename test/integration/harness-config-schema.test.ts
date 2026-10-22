@@ -201,7 +201,7 @@ describe("G9 harness config schema", () => {
       expect(registry.version).toBe(2);
       expect(registry.plugins["ponytail@local"]?.[0]).toMatchObject({
         scope: "user",
-        installPath: "cache/local/ponytail/5.1.0",
+        installPath: join(context.homeDir, ".claude/plugins/cache/local/ponytail/5.1.0"),
         version: "5.1.0",
       });
 
