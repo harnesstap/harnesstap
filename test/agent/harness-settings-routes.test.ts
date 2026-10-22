@@ -4,13 +4,16 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import { setHarnessPreference } from "../../src/models/harness.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("agent harness settings routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
   const servers: Array<{ stop: () => void; url: string; token: string }> = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const server of servers.splice(0)) server.stop();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });

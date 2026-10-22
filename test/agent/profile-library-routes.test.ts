@@ -7,13 +7,16 @@ import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-model
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import { ensureLiveLibraryRef } from "../../src/services/live-library-ref.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("agent library routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
   const servers: Array<{ stop: () => void; url: string; token: string }> = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const server of servers.splice(0)) {
       server.stop();
     }

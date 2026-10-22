@@ -10,6 +10,7 @@ import {
   leakedTempEntries,
   realTempDir,
 } from "./isolate-home.ts";
+import { ISOLATED_ENV_KEYS, restoreEnv, snapshotEnv } from "./isolated-env.ts";
 
 describe("test home isolation preload", () => {
   test("HOME points at a throwaway directory", () => {
@@ -59,6 +60,22 @@ describe("test temp dir isolation preload", () => {
       ]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("isolated env restore", () => {
+  test("restoreEnv puts drifted keys back and reports them", () => {
+    const saved = snapshotEnv(["HT_ENV_PROBE_A", "HT_ENV_PROBE_B"]);
+    process.env.HT_ENV_PROBE_A = "changed";
+    expect(restoreEnv(saved)).toEqual(["HT_ENV_PROBE_A=changed (expected <unset>)"]);
+    expect(process.env.HT_ENV_PROBE_A).toBeUndefined();
+    expect(restoreEnv(saved)).toEqual([]);
+  });
+
+  test("the isolated keys cover HOME, HARNESSTAP_HOME and the temp dir", () => {
+    for (const key of ["HOME", "USERPROFILE", "HARNESSTAP_HOME", "TMPDIR", "TMP", "TEMP"]) {
+      expect(ISOLATED_ENV_KEYS).toContain(key as (typeof ISOLATED_ENV_KEYS)[number]);
     }
   });
 });

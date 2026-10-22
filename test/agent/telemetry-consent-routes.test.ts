@@ -7,15 +7,18 @@ import {
   TELEMETRY_CONSENT_TITLE,
   TELEMETRY_CLI_DISABLE_INSTRUCTIONS,
 } from "../../src/telemetry/copy.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("agent telemetry consent routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const previousTelemetry = process.env.HARNESSTAP_TELEMETRY;
   const previousKey = process.env.HARNESSTAP_POSTHOG_PROJECT_API_KEY;
   const tempDirs: string[] = [];
   const servers: Array<{ stop: () => void; url: string; token: string }> = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const server of servers.splice(0)) server.stop();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });

@@ -10,12 +10,15 @@ import { createAgentFetchHandler } from "../../src/agent/routes.ts";
 import { writeAgentTokenFile } from "../../src/agent/token.ts";
 import { getDb } from "../../src/db/connection.ts";
 import { initializeSchema } from "../../src/db/schema.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("agent profile stash routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -7,12 +7,15 @@ import { initializeSchema } from "../../src/db/schema.ts";
 import { createEnvironment, listEnvironments } from "../../src/models/environment.ts";
 import { ensureDefaultEnvironment } from "../../src/services/ensure-default-environment.ts";
 import { getGlobalActiveEnvironmentName } from "../../src/services/environment-session.ts";
+import { saveIsolatedEnv } from "../helpers/isolated-env.ts";
 
 describe("ensureDefaultEnvironment", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
+  const isolatedEnv = saveIsolatedEnv();
   const tempDirs: string[] = [];
 
   afterEach(() => {
+    isolatedEnv.restore();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });
     }
