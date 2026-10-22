@@ -193,3 +193,115 @@ describe("installMarketplacePinIntoCache with a fresh home", () => {
     }
   });
 });
+
+/**
+ * A plugin repo whose plugin.json declares `version`, optionally tagged, and a
+ * marketplace that lists it by URL with no version (optionally pinning the
+ * commit with `sha`, as claude-plugins-official does for chrome-devtools-mcp).
+ */
+function initUnversionedEntryMarketplace(input: {
+  name: string;
+  version: string;
+  tag?: string;
+  pinSha?: boolean;
+}): { marketplace: string } {
+  const pluginRepo = mkdtempSync(join(tmpdir(), "ht-pin-unversioned-plugin-"));
+  mkdirSync(join(pluginRepo, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(pluginRepo, "skills", "gamma-skill"), { recursive: true });
+  writeFileSync(
+    join(pluginRepo, ".claude-plugin", "plugin.json"),
+    JSON.stringify({ name: "gamma", version: input.version }),
+  );
+  writeFileSync(
+    join(pluginRepo, "skills", "gamma-skill", "SKILL.md"),
+    "---\nname: gamma-skill\ndescription: Gamma skill\n---\n# gamma\n",
+  );
+  spawnSync("git", ["init"], { cwd: pluginRepo, stdio: "ignore" });
+  commitAll(pluginRepo, "release");
+  if (input.tag) spawnSync("git", ["tag", input.tag], { cwd: pluginRepo, stdio: "ignore" });
+  const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: pluginRepo, encoding: "utf8" }).stdout.trim();
+
+  const marketplace = mkdtempSync(join(tmpdir(), "ht-pin-unversioned-mkt-"));
+  mkdirSync(join(marketplace, ".claude-plugin"), { recursive: true });
+  writeFileSync(
+    join(marketplace, ".claude-plugin", "marketplace.json"),
+    JSON.stringify({
+      name: input.name,
+      plugins: [
+        {
+          name: "gamma",
+          source: {
+            source: "url",
+            url: `file://${pluginRepo}`,
+            ...(input.pinSha ? { sha } : {}),
+          },
+        },
+      ],
+    }),
+  );
+  spawnSync("git", ["init"], { cwd: marketplace, stdio: "ignore" });
+  commitAll(marketplace, "init");
+  spawnSync("git", ["branch", "-M", "main"], { cwd: marketplace, stdio: "ignore" });
+  return { marketplace };
+}
+
+describe("installMarketplacePinIntoCache for an entry that advertises no version", () => {
+  const cases = [
+    { title: "a commit-pinned entry tagged <name>-v<version>", tag: "gamma-v1.11.0", pinSha: true },
+    { title: "a commit-pinned entry with no tags", pinSha: true },
+    { title: "an untagged repository whose plugin.json declares the version" },
+  ];
+  for (const testCase of cases) {
+    it(`resolves ${testCase.title}`, async () => {
+      const context = await createTestContext("pin-cache-unversioned");
+      try {
+        context.schema.initializeSchema(context.connection.getDb());
+        const harnesstapDir = join(context.homeDir, ".harnesstap");
+        const { marketplace } = initUnversionedEntryMarketplace({
+          name: "sha-market",
+          version: "1.11.0",
+          ...(testCase.tag ? { tag: testCase.tag } : {}),
+          ...(testCase.pinSha ? { pinSha: true } : {}),
+        });
+        addMarketplace(harnesstapDir, { name: "sha-market", url: marketplace, platforms: ["claude-code"] });
+
+        const result = await installMarketplacePinIntoCache({
+          originRef: "gamma@sha-market",
+          versionConstraint: "1.11.0",
+          homeRoot: context.homeDir,
+          harnesstapDir,
+        });
+        expect(result.version).toBe("1.11.0");
+        expect(
+          existsSync(
+            join(hostPluginPackageDir(harnesstapDir, "sha-market", "gamma", "1.11.0"), "skills", "gamma-skill", "SKILL.md"),
+          ),
+        ).toBe(true);
+      } finally {
+        await context.cleanup();
+      }
+    });
+  }
+
+  it("refuses content that declares another version and says which", async () => {
+    const context = await createTestContext("pin-cache-unversioned-mismatch");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      const { marketplace } = initUnversionedEntryMarketplace({ name: "sha-market", version: "1.11.0", pinSha: true });
+      addMarketplace(harnesstapDir, { name: "sha-market", url: marketplace, platforms: ["claude-code"] });
+
+      await expect(
+        installMarketplacePinIntoCache({
+          originRef: "gamma@sha-market",
+          versionConstraint: "2.0.0",
+          homeRoot: context.homeDir,
+          harnesstapDir,
+        }),
+      ).rejects.toThrow(/declares 1\.11\.0/);
+      expect(existsSync(hostPluginPackageDir(harnesstapDir, "sha-market", "gamma", "2.0.0"))).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+});

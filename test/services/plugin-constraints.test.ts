@@ -37,4 +37,10 @@ describe("plugin-constraints", () => {
     expect(satisfiesConstraint("latest", "unknown")).toBe(false);
     expect(() => parseVersionConstraint("newest")).toThrow(/Invalid version constraint: newest/);
   });
+
+  it("explains a commit SHA given where a version is expected", () => {
+    expect(() => parseVersionConstraint("a878bcad3958")).toThrow(
+      /looks like a commit SHA.*depend on the plugin's git repository instead/,
+    );
+  });
 });
