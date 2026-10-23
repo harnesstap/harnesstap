@@ -471,6 +471,12 @@ export interface SnapshotState {
   disk_files?: Record<string, string>;
   /** Live files that are not valid UTF-8 text (images, fonts), as base64 bytes. */
   disk_files_base64?: Record<string, string>;
+  /**
+   * Permission bits (for example 0o755) of the live files in `disk_files` and
+   * `disk_files_base64`. Snapshots taken before this was recorded have none:
+   * revert then leaves the mode the write gives.
+   */
+  disk_modes?: Record<string, number>;
   /** Managed paths that were missing on disk when the snapshot was taken. */
   absent_paths?: string[];
   /** Managed paths that were links when the snapshot was taken, with their targets. */

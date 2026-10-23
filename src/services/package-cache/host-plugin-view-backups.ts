@@ -3,6 +3,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { ulid } from "ulid";
 import { getHarnesstapDir } from "../../db/connection.js";
 import { listApplyRemovalBackups, type ApplyRemovalBackup } from "../../models/apply-removal-backup.js";
+import { backupFileMode, restoreFileMode } from "../file-mode.js";
 import { executeSafeFileRemovals, hashFileOrLink } from "../safe-file-removal.js";
 import { hostViewFileOwnership, planHostPluginViewRemovals } from "./host-plugin-view-ownership.js";
 import {
@@ -260,6 +261,7 @@ export function restoreHostPluginViewBackup(
       symlinkSync(file.row.content, file.fullPath);
     } else {
       writeFileSync(file.fullPath, file.row.content);
+      restoreFileMode(file.fullPath, backupFileMode(file.row));
     }
     result.restored.push(file.path);
   }
