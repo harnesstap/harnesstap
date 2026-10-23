@@ -97,6 +97,7 @@ export function gitRemoteFromArgs(args: string[], cwd?: string): string | undefi
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       timeout: 5_000,
+      env: process.env,
     }).trim();
     return url ? redactRemote(url) : remote;
   } catch {
