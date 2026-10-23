@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'A file kept in a plugin cache folder is no longer listed twice after `ht apply` or `ht profile use`, once in the kept list and again in the plugin folder notice. The kept count still includes it.'
-time: 2026-10-22T15:30:00.000000-10:00

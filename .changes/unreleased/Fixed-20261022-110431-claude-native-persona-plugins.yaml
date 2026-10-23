@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Plugins a profile installs from a remote marketplace are now registered with Claude Code as real plugins (marketplace, installed_plugins.json and enabledPlugins, merged key by key) instead of copied in as standalone skills, so their hooks, commands, agents and MCP servers (with CLAUDE_PLUGIN_ROOT) work. Switching profiles removes only the registrations and plugin folders HarnessTap added, with backups, and keeps your own plugins and settings. No claude binary is needed. Codex and Cursor still get the standalone files.'
-time: 2026-10-22T11:04:31-10:00

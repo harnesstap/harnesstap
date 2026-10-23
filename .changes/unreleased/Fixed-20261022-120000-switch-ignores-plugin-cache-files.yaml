@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Switching profiles no longer stops with "has N unsaved changes" because of files in a plugin cache folder (`~/.claude/plugins/cache/...`). Those files belong to the plugin, not to the profile. Apply still keeps your own files there and lists them.'
-time: 2026-10-22T22:00:00.000000Z

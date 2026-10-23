@@ -1,5 +1,0 @@
-kind: Fixed
-body: '`ht resource show` prints `none` for an empty Description or Path instead of a bare `:`, and the Updated time (also in `plugin show` and `catalog list`) is shown in local time instead of UTC. `environment show` and `environment list` print `none` for an empty description too.'
-time: 2026-10-22T02:30:00.000Z
-custom:
-  Issue: "453"

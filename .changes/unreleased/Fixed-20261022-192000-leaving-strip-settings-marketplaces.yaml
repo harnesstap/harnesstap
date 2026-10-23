@@ -1,5 +1,0 @@
-kind: Fixed
-body: Switching away from a profile removes the `extraKnownMarketplaces` entries HarnessTap added to Claude Code's settings.json also when the switch writes settings.json itself, for example because the profile manages `hooks`. Before, those entries stayed behind (such as `claude-plugins-official` after `ht profile use default`) and Claude Code cloned the marketplaces again. Entries you wrote, and those of marketplaces the new profile declares, stay.
-time: 2026-10-22T19:20:00.000Z
-custom:
-  Issue: ""

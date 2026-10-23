@@ -1,5 +1,0 @@
-kind: Fixed
-body: When `claude` is not on your PATH, a marketplace HarnessTap registers for Claude Code (for example `ecc` and `llm-council`) now names the same repository in `known_marketplaces.json` and in settings.json `extraKnownMarketplaces`. They used to differ, so Claude Code ignored the marketplace ("added but ignored") and listed its plugins as failed to load.
-time: 2026-10-22T19:00:00.000Z
-custom:
-  Issue: ""

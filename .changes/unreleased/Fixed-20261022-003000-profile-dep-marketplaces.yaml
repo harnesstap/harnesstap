@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'In a fresh home, profiles that depend on public marketplaces other than `claude-plugins-official` (for example `reverse-engineering@claude-code-workflows`, `impeccable@impeccable`, `agentic-awesome-skills`) apply without `ht marketplace add`. The fix that apply prints, `ht resource sync plugin:<name>@<marketplace>`, now installs the dependency instead of checking 0 resources, and names the `ht marketplace add` command when the marketplace is unknown.'
-time: 2026-10-22T10:30:00.000Z

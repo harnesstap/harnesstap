@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'An MCP server shipped in a Claude plugin dependency (for example context7) is now written to ~/.claude.json on a global profile apply, and to other harnesses, instead of being dropped because its package-relative `.mcp.json` source looked like the Claude project MCP file.'
-time: 2026-10-19T00:30:00.000000Z
-custom:
-  Issue: ""

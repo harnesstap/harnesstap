@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Files HarnessTap adds to a `~/.claude/plugins/cache` folder that already existed (for example one Claude installed) now count as HarnessTap''s, so switching profiles removes them (with a backup) instead of keeping them as "not made by HarnessTap". The files that were there before stay yours and are kept.'
-time: 2026-10-22T19:45:00.000000Z

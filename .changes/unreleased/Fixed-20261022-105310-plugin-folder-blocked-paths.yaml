@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'A folder or file of yours in the way of a plugin file no longer stops the rest of the plugin from being written. The command names the blocked paths and exits non-zero. ht revert says what is in the way, also in a dry run, and with --force-remove backs up a file HarnessTap wrote that is in the way, instead of failing with EEXIST.'
-time: 2026-10-22T10:53:10-10:00

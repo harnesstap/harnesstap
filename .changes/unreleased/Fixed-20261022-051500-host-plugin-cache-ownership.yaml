@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Switching away from a profile no longer keeps the `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>` files of its marketplace plugins as "not made by HarnessTap". HarnessTap now remembers the host plugin folders its own installs create, counts their files as its own when an apply finds them already in place, and removes the folders left empty when it removes those files (with the usual backup). Folders it did not create, such as a Claude Code install, are left alone.'
-time: 2026-10-22T15:15:00.000Z

@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'A profile pinning a marketplace plugin to a version the marketplace has moved past now installs the commit that declared that version (or says which version is available) instead of caching the current copy under the pinned version, and an MCP-only plugin that declares no version, such as playwright@claude-plugins-official, no longer fails resource sync with "plugin tree is empty". A dependency with no version constraint on an entry that lists a commit or no version (such as `llm-council-plugin@llm-council`) installs that commit at the version its plugin.json declares instead of failing on 0.0.0.'
-time: 2026-10-22T12:00:00.000Z

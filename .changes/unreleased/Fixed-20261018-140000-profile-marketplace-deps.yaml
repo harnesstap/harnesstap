@@ -1,5 +1,0 @@
-kind: Fixed
-body: '`ht profile use` installs a profile''s marketplace dependencies in a home that has never registered their marketplace. `claude-plugins-official` and `karpathy-skills` resolve to their public git source, and a plugin that a marketplace lists by its own `url` or `github` source is cloned at the pinned version even when only HarnessTap (not the host) has the marketplace checkout.'
-time: 2026-10-19T00:00:00.000Z
-custom:
-  Issue: ""

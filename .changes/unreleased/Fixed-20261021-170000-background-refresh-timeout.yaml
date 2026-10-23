@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'A background marketplace catalog refresh that times out no longer logs "Couldn''t reach". The cached catalog stays in use, the CLI prints nothing, and the Desktop agent log notes the timeout. A git timeout in an explicit refresh now says "Timed out after <n>s reaching <url>" instead of "Couldn''t reach".'
-time: 2026-10-22T03:00:00.000Z
-custom:
-  Issue: "450"

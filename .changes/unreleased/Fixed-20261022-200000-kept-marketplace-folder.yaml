@@ -1,5 +1,0 @@
-kind: Fixed
-body: The marketplace folders HarnessTap registers with Claude Code now live in `~/.claude/plugins/marketplaces/`, where Claude Code accepts them, so `claude plugin marketplace update` no longer fails with "corrupted installLocation" (an update replaces the folder with a clone, which HarnessTap then leaves alone). When a marketplace folder stays because you installed a plugin from it with Claude Code, its `marketplace.json` now lists only the plugins still installed, so installing one no longer fails with "Source path does not exist".
-time: 2026-10-22T20:00:00.000Z
-custom:
-  Issue: ""

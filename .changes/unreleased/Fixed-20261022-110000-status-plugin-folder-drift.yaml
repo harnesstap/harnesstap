@@ -1,3 +1,0 @@
-kind: Fixed
-body: '`ht profile status` now compares each `~/.claude/plugins/cache` folder with the plugin itself, so it reports plugin files that are missing or out of date instead of saying in sync, and lists the files there that you changed or that HarnessTap did not write (apply keeps those).'
-time: 2026-10-22T21:00:00.000000Z

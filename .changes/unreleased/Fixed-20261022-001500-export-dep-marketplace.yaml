@@ -1,5 +1,0 @@
-kind: Fixed
-body: '`ht migrate export` keeps each dependency''s source: a marketplace dependency is written as `context7@claude-plugins-official` instead of `context7`, and a git dependency keeps its URL, so re-importing the export gives back the same dependencies.'
-time: 2026-10-22T10:15:00.000Z
-custom:
-  Issue: "499"

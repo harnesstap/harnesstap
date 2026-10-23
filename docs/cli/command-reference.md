@@ -480,6 +480,12 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 
 - `ht plugin auto-update` prints how plugin updates are checked; `--mode off|notify|install` and `--frequency hourly|daily|weekly` change it (stored under `updates` in `~/.harnesstap/config.jsonc`). Install mode installs minor and patch versions inside the range for pulled catalog plugins, never a major. After the first successful `ht plugin update --all` that installs something in an interactive terminal, HarnessTap asks once "Keep plugins up to date?" with the same choices; non-interactive runs never ask.
 
+- `plugin show <name>`, `profile show <name>`, and `plugin doctor <name>` resolve a local plugin the same way as `profile use`: by name or ID, catalog slug, full catalog ref `org/catalog/slug` (optionally `@version`), or package display name. They never pull from the catalog.
+- `plugin doctor` re-reads the package a plugin was imported from: the `skipped-files` check fails for each file the import skipped, with its path and reason, and the output lists imported of discovered resources per type (`resource_counts` in JSON)
+
+- A git dependency can be pinned. Its constraint takes a full or abbreviated commit SHA (`f8797fe`, or `#f8797fe`), a tag or branch name (`main`, `#main`, `ref:v1.2.0`), or a semver range that resolves to the highest matching tag (`^1.2.0`). Install and apply check out exactly that commit, tag or branch, record the commit on the plugin origin and in the lockfile, and stop with the git error when the ref does not exist. An empty constraint, `*` or `latest` leaves the dependency unpinned: apply installs the default branch HEAD. `plugin doctor` accepts these constraints and warns when a git dependency has no pin and tracks the default branch HEAD.
+- `plugin add <ref>#<commit, tag or branch>` imports a GitHub `plugin.json` package at that ref (`owner/repo#v1.2.0`, `https://github.com/owner/repo#f8797fe`, `git@github.com:owner/repo.git#main`). `plugin update` keeps the pin: a commit stays put, a branch moves to its new head, and a semver range moves to the highest matching tag.
+
 ## notifications
 
 Local notifications about plugin updates. HarnessTap writes one when a check finds a new version, when a synced profile's parent publishes, when install mode updates a plugin, and when update checks keep failing. The same version is never notified twice.
@@ -598,6 +604,8 @@ A cancelled `profile use` does not list `.harnesstap/cache/native-agent-plugins/
 
 `profile use` auto-pulls missing published `plugin` composition refs by default. If the profile plugin defines `default_environment_id`, the home active environment pointer is updated on switch.
 
+- `profile use <name>` takes the local profile name, the catalog slug, the full catalog ref `org/catalog/slug` (optionally `@version`), or the package display name. When no local profile matches, it pulls the profile from the catalog first. With `--no-pull` or `--dry-run`, or when the catalog lookup or download fails, it stops and prints the exact `ht profile pull` command to run.
+
 ## resource (`r`)
 
 Manage individual imported resources such as instructions, skills, rules, or agents.
@@ -632,6 +640,10 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `resource list --all` - show every resource per type (default caps at 10 per type)
 - `plugin edit` selectors accept `type:name@namespace` for compose-safe resolution
 - Host plugin pins are `plugin` resources; use `resource sync`, `plugin show`, `plugin doctor`, `plugin fork`, and `apply --strict-plugin-versions` for pin workflows
+
+- `resource sync plugin:<name>@<marketplace>` installs a marketplace dependency that has no local version yet (the fix `apply` prints), then syncs it. When the marketplace is neither registered nor one HarnessTap knows by name, it says to run `ht marketplace add <git-url> --name <marketplace>` first, also when no plugin declares the dependency yet. When a dependency cannot be installed, `resource sync` exits 1. A plugin a known marketplace does not list fails with `Plugin <name> not found in marketplace <marketplace>.`, also when no plugin declares it. The public marketplaces named by the harnesstap-cloud profiles (for example `claude-code-workflows`, `impeccable`, `agentic-awesome-skills`) resolve by name in a fresh home, without `ht marketplace add`.
+- Refreshing a plugin in the host plugin cache (`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>`) never removes the folder wholesale. Only files HarnessTap wrote and that are unchanged are replaced or removed, each one backed up first, and only empty folders go. Files it did not write, or that changed since, are kept: in a terminal it asks before replacing them, otherwise it lists them and says to rerun with `--force-remove` (also on `plugin add` and `resource sync`). `ht revert <id>` with the id it prints puts the replaced files back, without `--force-remove` as long as each file still holds what HarnessTap wrote.
+- A profile that declares marketplaces in `com.harnesstap/claude.toml` (`[marketplaces.<name>.source]`, a GitHub repo, a git URL or a local directory) has them registered with HarnessTap when it is applied or its dependencies are synced, so its dependencies resolve without the `claude` binary. Only missing names are added; a marketplace you already registered is left as it is.
 
 ## environment (`e`)
 
@@ -738,3 +750,6 @@ For multiplayer distribution, use `plugin publish` / `plugin pull` via HarnessTa
 Workspace archives include Agent Plugins packages, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
 
 See [Scenario 28](../scenarios/details/28-machine-migration.md) and [Scenario 17](../scenarios/details/17-migrate-state.md).
+
+- `migrate import --strict` / `--no-strict`: a plugin package with files that would not be imported (a `SKILL.md` without frontmatter or with invalid YAML, an invalid `mcp.json` server, root `rules/`, `instructions/` or `mcp-servers/` directories) is refused with every file, its path and the reason, and exit `1`. `--strict` is the default when the terminal is not interactive, with `--format json`, and in CI. On an interactive terminal the import warns and goes ahead; `--no-strict` does the same anywhere. Each plugin import prints imported of discovered resources per type.
+

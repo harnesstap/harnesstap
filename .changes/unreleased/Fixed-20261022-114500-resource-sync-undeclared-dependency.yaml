@@ -1,3 +1,0 @@
-kind: Fixed
-body: '`ht resource sync plugin:<name>@<marketplace>` for a plugin that the marketplace lists but no plugin depends on now exits 1. It says to add it with `ht plugin add <name>@<marketplace> --to <plugin>` instead of reporting "Checked 0 resources".'
-time: 2026-10-22T21:45:00.000000Z

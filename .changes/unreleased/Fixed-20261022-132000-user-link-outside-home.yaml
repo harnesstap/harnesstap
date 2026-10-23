@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Replacing a file HarnessTap wrote with a link to a file outside your home no longer makes every apply and profile switch fail with "Refusing to materialize path outside root via symlink". The link is kept as your change and listed, HarnessTap never writes through it, and `--force-remove` replaces or removes the link itself (never its target) with a backup. A file under a folder that links outside your home is kept and reported instead of failing the apply halfway.'
-time: 2026-10-22T23:20:00.000000Z

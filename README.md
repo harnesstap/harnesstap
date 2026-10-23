@@ -115,6 +115,8 @@ export PATH="$HOME/.bun/bin:$PATH"
 
 </details>
 
+`bun x harnesstap@latest` runs the CLI on the Node.js on `PATH`, which must be 22.12 or newer. With an older Node, `bun x --bun harnesstap@latest init` runs it on Bun instead, which needs no native SQLite build.
+
 ---
 
 ## Quick start

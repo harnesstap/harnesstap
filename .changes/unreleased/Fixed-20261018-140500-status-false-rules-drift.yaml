@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Profile status no longer reports `.claude/rules` files as out of sync after you open a pulled catalog profile in the Library or run `ht plugin doctor` on it. Those read paths attached files from the package tree that the package manifest does not declare (for example a persona''s `rules/`), so the profile stack changed without an apply and status listed files that were never written.'
-time: 2026-10-19T00:05:00.000Z
-custom:
-  Issue: ""

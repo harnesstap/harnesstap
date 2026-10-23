@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Re-applying a profile with a git plugin dependency that ships only a root `plugin.json` no longer replaces `.claude-plugin/plugin.json` in `~/.claude/plugins/cache/...` on every run and makes a new backup each time. The refresh of the plugin folder now leaves the files the apply wrote to the apply, so a second apply reports everything up to date.'
-time: 2026-10-22T23:30:00.000000Z

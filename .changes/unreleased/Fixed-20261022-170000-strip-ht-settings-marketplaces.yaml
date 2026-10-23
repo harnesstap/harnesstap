@@ -1,5 +1,0 @@
-kind: Fixed
-body: Switching away from a profile removes the `extraKnownMarketplaces` entries HarnessTap added to Claude Code's settings.json, so Claude Code no longer clones those marketplaces again on its next start. An entry you wrote or changed stays, a backup is kept, and `ht revert` puts the entries back.
-time: 2026-10-22T17:00:00.000Z
-custom:
-  Issue: ""

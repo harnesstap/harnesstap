@@ -37,6 +37,12 @@ bun x harnesstap@latest init
 
 `ht` is shorthand for `harnesstap` throughout these docs.
 
+`bun x harnesstap@latest` runs the CLI on the Node.js on `PATH`, which must be 22.12 or newer; an older Node stops with one line saying so. Add `--bun` to run it on Bun instead, which needs no native SQLite build:
+
+```bash
+bun x --bun harnesstap@latest init
+```
+
 ## Quick start
 
 Apply a public catalog baseline in a few minutes.

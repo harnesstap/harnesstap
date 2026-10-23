@@ -1,5 +1,0 @@
-kind: Fixed
-body: '`ht revert` now leaves ownership consistent. After `use staff-engineer`, `use default`, `revert`, settings.json is no longer skipped as modified: the `enabledPlugins` and `extraKnownMarketplaces` keys the switch took out are put back key by key and every other key stays as it is, so the restored plugins are enabled again. A host plugin file a revert puts back byte for byte is HarnessTap''s again, so the next refresh replaces or removes it through the normal safe removal instead of leaving a stale SKILL.md. A plugin whose files cannot all be put back (a file or folder of yours is in the way) is skipped whole, with its record in `installed_plugins.json` and its `enabledPlugins` key, instead of being half restored and registered.'
-time: 2026-10-22T16:00:00.000Z
-custom:
-  Issue: ""

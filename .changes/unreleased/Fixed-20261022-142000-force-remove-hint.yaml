@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'The apply summary suggests running the command again with --force-remove only when it would remove at least one of the kept files. When every kept file is a plugin folder file HarnessTap did not write, a folder, or a file that was already there, it says HarnessTap never removes these, even with --force-remove.'
-time: 2026-10-22T14:20:00.000Z
-custom:
-  Issue: ""

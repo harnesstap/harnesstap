@@ -1,3 +1,0 @@
-kind: Fixed
-body: '`ht revert` puts links back as links. It used to restore a link to a file as a copy of that file, and leave out a link to a folder. When something else is at the path now, revert leaves it and says so.'
-time: 2026-10-22T21:03:18.000000Z

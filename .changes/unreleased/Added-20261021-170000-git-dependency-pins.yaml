@@ -1,5 +1,0 @@
-kind: Added
-body: 'Git dependencies can be pinned to a commit SHA (full or abbreviated), a tag or a branch, written `f8797fe`, `#main` or `ref:v1.2.0`; a semver constraint resolves to the highest matching tag. Install and apply check out exactly that ref instead of the default branch HEAD, record the resolved commit, and fail with the git error when the ref does not exist. `ht plugin doctor` accepts these constraints instead of reporting "Invalid version constraint", no longer asks a git URL for a marketplace, and warns when a git dependency is not pinned. `ht plugin add owner/repo#<ref>` imports a GitHub package at a ref, and `ht plugin update` keeps the pin.'
-time: 2026-10-22T03:00:00.000Z
-custom:
-  Issue: "500"

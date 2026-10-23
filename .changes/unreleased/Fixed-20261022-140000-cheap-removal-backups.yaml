@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Removing a big plugin set (for example `ht profile use default` after a persona with thousands of downloaded plugin files) no longer copies every file into the undo database and the trash. Files HarnessTap wrote and nobody changed are moved into the trash, the undo row keeps no copy of their bytes, and `ht revert` reads them back from the trash. Files you edited, forced removals and links keep a full copy as before, and trash folders that hold the only copy of an undo are never pruned.'
-time: 2026-10-22T14:00:00.000000000-10:00

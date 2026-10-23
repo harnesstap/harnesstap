@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'The notice about files kept in a `~/.claude/plugins/cache` folder now says which ones the plugin does not have (`--force-remove` would remove those, not replace them), shows once per change instead of on every `ht profile use` or `ht apply`, and the kept files are listed under `kept_plugin_files` in `--format json` output.'
-time: 2026-10-22T19:30:00.000000Z
