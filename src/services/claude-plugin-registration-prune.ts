@@ -10,7 +10,7 @@ import {
   claudeMarketplaceEntryOwner,
   harnessTapClaudeMarketplaceDir,
 } from "./claude-marketplace-registration.js";
-import type { SerializedFile } from "../types.js";
+import type { ClaudePluginConfig, SerializedFile } from "../types.js";
 import { applyJsonObjectUpdatePreservingFormat } from "./format-preserving-config.js";
 import { backupAndRewriteFile } from "./safe-file-removal.js";
 
@@ -40,6 +40,16 @@ function parseObject(raw: string | undefined): Record<string, unknown> | undefin
 function marketplaceOf(ref: string): string {
   const at = ref.lastIndexOf("@");
   return at > 0 ? ref.slice(at + 1) : "";
+}
+
+/** The marketplaces a profile's Claude config names: declared ones, and those of the plugins it enables. */
+export function declaredClaudeMarketplaces(config: ClaudePluginConfig | undefined): ReadonlySet<string> {
+  const names = new Set(Object.keys(config?.marketplaces ?? {}));
+  for (const plugin of config?.plugins ?? []) {
+    const marketplace = marketplaceOf(plugin.id);
+    if (marketplace) names.add(marketplace);
+  }
+  return names;
 }
 
 /**
@@ -376,6 +386,8 @@ export function planStaleClaudeRegistrations(
 export function pruneLeavingClaudeRegistrations(
   files: SerializedFile[],
   homeRoot: string,
+  /** Marketplaces the applied profile declares: their `extraKnownMarketplaces` entries stay. */
+  declaredMarketplaces: ReadonlySet<string> = new Set(),
 ): SerializedFile[] {
   const paths = files.map((file) => file.path);
   const pendingOrOnDisk = (relativePath: string): string | undefined =>
@@ -391,7 +403,9 @@ export function pruneLeavingClaudeRegistrations(
       knownMarketplaces: pendingOrOnDisk(CLAUDE_KNOWN_MARKETPLACES_PATH),
     },
     stale,
-    writtenHarnessTapMarketplaces(paths),
+    new Set([...writtenHarnessTapMarketplaces(paths), ...declaredMarketplaces]),
+    new Set(),
+    { stripSettingsMarketplaces: true },
   );
   if (pruned.files.size === 0) return files;
   // Only files this apply writes anyway: one it leaves alone is pruned on
