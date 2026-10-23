@@ -178,8 +178,8 @@ type LinkOutcome =
   | { kind: "skip"; link: { path: string; target: string }; skip: SafeRemovalSkip }
   | { kind: "present" | "make"; link: { path: string; target: string } };
 
-function textRestoreFile(path: string, text: string): RestoreFile {
-  return { path, content: text, bytes: Buffer.from(text, "utf-8") };
+function textRestoreFile(path: string, text: string, mode?: number): RestoreFile {
+  return { path, content: text, bytes: Buffer.from(text, "utf-8"), ...(mode === undefined ? {} : { mode }) };
 }
 
 /** One warning per skip, except that the paths held up by the same file or folder share one. */
@@ -279,13 +279,14 @@ export function executeRevert(
       file = textRestoreFile(
         planned.path,
         withoutEnabledKeys(planned.content, heldBack.enabledKeys, readLive(plan.rootPath, planned.path)),
+        planned.mode,
       );
     } else if (heldBack && heldBack.recordKeys.length > 0 && planned.path.endsWith("/plugins/installed_plugins.json")) {
       const live = readLive(plan.rootPath, planned.path);
       const text = withoutInstalledRecords(planned.content, heldBack.recordKeys, live);
       // Nothing left to register and no registry there: do not create an empty one.
       if (live === undefined && registersNoPlugin(text)) continue;
-      file = textRestoreFile(planned.path, text);
+      file = textRestoreFile(planned.path, text, planned.mode);
     }
     switch (decision) {
       case "write":
@@ -359,6 +360,7 @@ export function executeRevert(
         rootPath: plan.rootPath,
         relativePath: file.path,
         nextContent: file.bytes,
+        mode: file.mode,
         applyId: options.applyId ?? plan.id,
         snapshotId: plan.id,
       });

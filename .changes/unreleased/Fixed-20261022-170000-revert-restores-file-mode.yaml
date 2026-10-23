@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht revert` puts files back with the mode they had, so restored scripts and hooks stay executable. After `ht profile use <name>` then `ht profile use default`, reverting wrote every removed file with the default mode (0644), which dropped the executable bit from hundreds of scripts. Files kept in the trash, files captured live in the snapshot (new snapshots record their mode), and older removal records without a mode (the trash file''s mode is used) all get their mode back. Links are restored as links and no mode is applied to them.'
+time: 2026-10-22T17:00:00.000Z
+custom:
+  Issue: ""

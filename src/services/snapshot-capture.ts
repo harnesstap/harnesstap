@@ -1,6 +1,7 @@
 import { existsSync, lstatSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { listApplyRemovalBackups } from "../models/apply-removal-backup.js";
+import { listApplyRemovalBackups, type ApplyRemovalBackup } from "../models/apply-removal-backup.js";
+import { backupFileMode, permissionBits } from "./file-mode.js";
 import type { Plugin, Resource, SerializedFile, SnapshotState } from "../types.js";
 
 export function emptySnapshotState(): SnapshotState {
@@ -51,11 +52,14 @@ export function flattenSnapshotFiles(state: SnapshotState): SerializedFile[] {
  */
 export interface RestoreFile extends SerializedFile {
   readonly bytes: Buffer;
+  /** Permission bits to give the restored file; absent when the mode was never recorded. */
+  readonly mode?: number;
 }
 
-function restoreFileFrom(path: string, readBytes: () => Buffer): RestoreFile {
+function restoreFileFrom(path: string, readBytes: () => Buffer, mode?: number): RestoreFile {
   return {
     path,
+    ...(mode === undefined ? {} : { mode }),
     get bytes(): Buffer {
       return readBytes();
     },
@@ -89,7 +93,7 @@ function isUtf8Text(bytes: Buffer): boolean {
 function trashedRestoreFiles(state: SnapshotState, snapshotId: string): RestoreFile[] {
   const wanted = new Set(state.trashed_files ?? []);
   if (wanted.size === 0) return [];
-  const earliest = new Map<string, ReturnType<typeof listApplyRemovalBackups>[number]>();
+  const earliest = new Map<string, ApplyRemovalBackup>();
   for (const backup of listApplyRemovalBackups({ snapshot_id: snapshotId })) {
     if (!wanted.has(backup.relative_path)) continue;
     const current = earliest.get(backup.relative_path);
@@ -97,7 +101,7 @@ function trashedRestoreFiles(state: SnapshotState, snapshotId: string): RestoreF
   }
   const files: RestoreFile[] = [];
   for (const [path, backup] of earliest) {
-    files.push(restoreFileFrom(path, () => backup.content));
+    files.push(restoreFileFrom(path, () => backup.content, backupFileMode(backup)));
   }
   return files;
 }
@@ -118,10 +122,10 @@ export function flattenLiveRestoreFiles(state: SnapshotState, snapshotId?: strin
   }
   const files: RestoreFile[] = [];
   for (const [path, content] of Object.entries(state.disk_files ?? {})) {
-    files.push(restoreFileFrom(path, () => Buffer.from(content, "utf-8")));
+    files.push(restoreFileFrom(path, () => Buffer.from(content, "utf-8"), state.disk_modes?.[path]));
   }
   for (const [path, content] of Object.entries(state.disk_files_base64 ?? {})) {
-    files.push(restoreFileFrom(path, () => Buffer.from(content, "base64")));
+    files.push(restoreFileFrom(path, () => Buffer.from(content, "base64"), state.disk_modes?.[path]));
   }
   if (snapshotId) {
     const have = new Set(files.map((file) => file.path));
@@ -160,7 +164,7 @@ function isLiveRegularFile(rootPath: string, relativePath: string): boolean {
 }
 
 /** A live file's exact bytes, as text when they are valid UTF-8 and as base64 otherwise. */
-type LiveFile = { text: string } | { base64: string };
+type LiveFile = ({ text: string } | { base64: string }) & { mode: number };
 
 function readLiveFile(rootPath: string, relativePath: string): LiveFile | undefined {
   const fullPath = join(rootPath, relativePath);
@@ -169,7 +173,10 @@ function readLiveFile(rootPath: string, relativePath: string): LiveFile | undefi
       return undefined;
     }
     const bytes = readFileSync(fullPath);
-    return isUtf8Text(bytes) ? { text: bytes.toString("utf-8") } : { base64: bytes.toString("base64") };
+    const mode = permissionBits(statSync(fullPath).mode);
+    return isUtf8Text(bytes)
+      ? { text: bytes.toString("utf-8"), mode }
+      : { base64: bytes.toString("base64"), mode };
   } catch {
     return undefined;
   }
@@ -194,7 +201,9 @@ export function captureManagedSnapshotState(input: {
   const platform_files: Record<string, Record<string, string>> = {};
   const disk_files: Record<string, string> = {};
   const disk_files_base64: Record<string, string> = {};
+  const disk_modes: Record<string, number> = {};
   const keepLive = (path: string, live: LiveFile): void => {
+    disk_modes[path] = live.mode;
     if ("text" in live) disk_files[path] = live.text;
     else disk_files_base64[path] = live.base64;
   };
@@ -275,6 +284,7 @@ export function captureManagedSnapshotState(input: {
     platform_files,
     ...(Object.keys(disk_files).length > 0 ? { disk_files } : {}),
     ...(Object.keys(disk_files_base64).length > 0 ? { disk_files_base64 } : {}),
+    ...(Object.keys(disk_modes).length > 0 ? { disk_modes } : {}),
     ...(absent.length > 0 ? { absent_paths: absent } : {}),
     ...(Object.keys(disk_links).length > 0 ? { disk_links } : {}),
     ...(trashed.length > 0 ? { trashed_files: trashed } : {}),
