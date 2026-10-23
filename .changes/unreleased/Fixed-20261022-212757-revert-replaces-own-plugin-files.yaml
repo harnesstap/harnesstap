@@ -1,3 +1,0 @@
-kind: Fixed
-body: '`ht revert <id>` for files that `--force-remove` replaced in the host plugin cache now puts them back without `--force-remove` when each file still holds what HarnessTap wrote, instead of keeping them as changed since the backup and restoring nothing.'
-time: 2026-10-22T11:27:57.000000000-10:00

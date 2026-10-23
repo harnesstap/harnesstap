@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'ht revert no longer stops with a raw EEXIST or ENOTDIR error when a file or folder of yours is where a removed file has to go. It skips those paths and names what is in the way, never removes it (also with --force-remove), and restores the rest. The dry run shows the same skips as the real run.'
-time: 2026-10-22T15:00:00.000Z
-custom:
-  Issue: ""

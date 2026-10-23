@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Switching profiles no longer reads every tracked plugin file into memory and into the undo snapshot. Files the switch removes are kept by their own removal backups, so a switch away from a large persona stays small and `ht revert` still restores them.'
-time: 2026-10-22T15:15:00.000000-10:00

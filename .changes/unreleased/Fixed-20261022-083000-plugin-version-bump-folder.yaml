@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'After `ht plugin update` moves a marketplace plugin to a new version, the next apply now writes that version into its own folder under `~/.claude/plugins/cache` and points Claude at it, instead of staying on the old version. Switching to another profile later removes the files HarnessTap wrote in the new folder, so it is no longer left behind.'
-time: 2026-10-22T18:30:00.000000Z

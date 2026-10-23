@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Removing a link that a plugin shipped (for example AGENTS.md pointing to CLAUDE.md, or a link to a folder) now removes the link itself on Node.js. Before, the link stayed on disk while the summary said it was removed, and each --force-remove run backed it up again. A plugin cache backup now always gets an id that ht revert takes, even when a removal fails midway.'
-time: 2026-10-22T20:38:14.000000000Z

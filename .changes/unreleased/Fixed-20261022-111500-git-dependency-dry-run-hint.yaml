@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'When a git dependency is not fetched yet, `ht apply --dry-run` (and `--explain`) now says to run the apply without `--dry-run` to fetch it, instead of suggesting `ht plugin create`. The interactive recovery can also fetch it.'
-time: 2026-10-22T21:15:00.000000Z

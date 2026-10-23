@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'When a plugin version bump or a profile switch leaves an old plugin cache folder behind, apply now lists the files of yours it keeps there (for example notes you added) instead of keeping them silently. They stay even with `--force-remove`, because HarnessTap never wrote them.'
-time: 2026-10-22T23:10:00.000000Z

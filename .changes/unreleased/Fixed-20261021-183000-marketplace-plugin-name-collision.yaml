@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Adding a plugin from a second marketplace that shares a name with one already in the library now stops with an error naming both, instead of silently replacing the first plugin''s skills in the library and on disk.'
-time: 2026-10-22T04:30:00.000000Z
-custom:
-  Issue: "448"

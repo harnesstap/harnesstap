@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'Applying a profile no longer fails with "plugin tree is empty" and a useless `resource sync` hint when your own Claude Code install record for one of its plugins (such as code-review@claude-plugins-official) points at a folder that holds no plugin. HarnessTap now looks past that folder for a real copy, leaves your record and folder alone, and switching away keeps them.'
-time: 2026-10-22T14:15:00.000000000-10:00

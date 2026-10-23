@@ -1,3 +1,0 @@
-kind: Fixed
-body: '`ht plugin add <name>@<marketplace> --to <plugin>` now exits 1 with "Marketplace <marketplace> is not configured." and an `ht marketplace add <git-url> --name <marketplace>` hint when no registered, well-known, host or library declared marketplace has that name, instead of adding a dependency that cannot install.'
-time: 2026-10-22T22:40:00.000000Z

@@ -1,5 +1,0 @@
-kind: Fixed
-body: '`ht profile use <profile> --dry-run` now plans the pinned marketplace plugin folders the way the real apply does: it counts the plugin files it would write, lists the user files it would keep, names the files a user file in the way keeps it from writing (same warning as the real run), and exits 1 in that case, instead of saying "Would write 2" and exiting 0.'
-time: 2026-10-22T14:00:00.000Z
-custom:
-  Issue: ""

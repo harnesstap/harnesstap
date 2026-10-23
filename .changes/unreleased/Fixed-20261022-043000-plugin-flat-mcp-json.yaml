@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'A plugin whose `.mcp.json` lists its servers at the top level instead of under `mcpServers` (such as `playwright@claude-plugins-official`) now has those servers imported and written to Claude Code, Cursor and Codex, so `ht profile status --check` no longer reports it as not installed after `ht profile use`.'
-time: 2026-10-22T14:30:00.000Z

@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "root": {
     "aliases": [],
     "flags": [
@@ -678,8 +678,10 @@
             "flags": [
               "--environment",
               "--format",
+              "--no-strict",
               "--plugin",
               "--resource",
+              "--strict",
               "--workspace"
             ],
             "args": 1,
@@ -782,6 +784,7 @@
           "add": {
             "aliases": [],
             "flags": [
+              "--force-remove",
               "--format",
               "--layer",
               "--to"
@@ -1592,6 +1595,7 @@
               "--check",
               "--dry-run",
               "--force",
+              "--force-remove",
               "--format",
               "--on-conflict",
               "--overwrite"

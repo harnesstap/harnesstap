@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'The "Backup:" line after an apply removes files now prints the full path when HARNESSTAP_HOME is outside your home directory, instead of a broken `~//...` path. Home paths are matched on a directory boundary and, on Windows, with either separator and any drive-letter case.'
-time: 2026-10-22T09:59:00.000000Z

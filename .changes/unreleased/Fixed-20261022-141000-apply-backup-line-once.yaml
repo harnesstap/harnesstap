@@ -1,3 +1,0 @@
-kind: Fixed
-body: 'An apply or profile switch that backs up removed files now prints the backup folder once ("Removed N files. Backup: ..."), instead of repeating a second "Backup:" line after the summary.'
-time: 2026-10-23T00:10:00.000000Z
