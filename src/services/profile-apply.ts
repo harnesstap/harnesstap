@@ -1,3 +1,4 @@
+import { reconcileMarketplacePluginTrees } from "./claude-marketplace-plugin-trees.js";
 import {
   heldFolderOf,
   holdsOnlyLeavingHarnessTapRegistrations,
@@ -617,6 +618,7 @@ export async function clearGlobalProfileApply(
     },
   );
   warnSkippedRemovals(removed);
+  reconcileMarketplacePluginTrees(homeRoot);
 
   return {
     profile_name: CLEARED_GLOBAL_PROFILE_NAME,
@@ -909,6 +911,7 @@ export async function applyProfilePlugin(
       removal = plannedRemoval;
     }
   }
+  if (!applied.cancelled) reconcileMarketplacePluginTrees(homeRoot);
   if (!applied.cancelled && defaultEnvironmentName) {
     writeHomeActiveEnvironment(defaultEnvironmentName);
   }

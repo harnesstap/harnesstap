@@ -1,0 +1,5 @@
+kind: Fixed
+body: "`claude plugin install <plugin>@<marketplace>` now works from a marketplace HarnessTap registers with Claude Code. The marketplace's plugin entries used `../../cache/...` paths that Claude Code rejects; they are now `./plugins/<name>` paths, and each marketplace folder holds those trees as hard links to the plugin folders HarnessTap already keeps (copies where links are not possible). A file you changed or added there stays when the plugin leaves."
+time: 2026-10-22T18:00:00.000Z
+custom:
+  Issue: ""
