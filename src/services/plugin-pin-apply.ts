@@ -105,6 +105,12 @@ export interface SyncPluginPinsForApplyOptions {
   installPlatformId?: string;
   /** When true, stamp exact constraints without a local install tree. */
   ignoreMissingInstall?: boolean;
+  /**
+   * With ignoreMissingInstall, still install pins whose constraint is not exact
+   * (`*`, ranges, latest): there is no version to stamp, so skipping the
+   * install leaves them unresolvable (--ignore-plugin-versions).
+   */
+  installInexactPins?: boolean;
   yes?: boolean;
   interactive?: boolean;
   profileName?: string;
@@ -129,6 +135,7 @@ export interface PreparePluginPinsForApplyOptions {
   scope?: PluginScope;
   installPlatformId?: string;
   ignoreMissingInstall?: boolean;
+  installInexactPins?: boolean;
   yes?: boolean;
   interactive?: boolean;
   profileName?: string;
@@ -156,6 +163,14 @@ function recordResolvedVersion(resource: Resource, version: string): void {
   getDb()
     .prepare("UPDATE resources SET metadata = ?, updated_at = ? WHERE id = ?")
     .run(JSON.stringify(metadata), new Date().toISOString(), resource.id);
+}
+
+function isExactConstraint(constraint: string): boolean {
+  try {
+    return parseVersionConstraint(constraint).kind === "exact";
+  } catch {
+    return false;
+  }
 }
 
 function stampResolvedVersionFromExactConstraint(
@@ -232,17 +247,23 @@ export async function syncPluginPinsForApply(
   }
 
   // --ignore-plugin-versions stamps exact constraints locally; skip marketplace
-  // install attempts that can hang or fail without a real host install.
-  const installs =
-    options.ignoreMissingInstall && !options.syncAll
-      ? []
-      : await installPluginPins(pinsToInstall, {
-          homeRoot,
-          projectRoot: options.projectRoot,
-          scope,
-          installPlatformId: options.installPlatformId,
-          progress: options.progress,
-        });
+  // install attempts that can hang or fail without a real host install. A pin
+  // with no exact version to stamp is still installed, or it never resolves.
+  const skipInstalls = options.ignoreMissingInstall && !options.syncAll;
+  const pinsToInstallNow = !skipInstalls
+    ? pinsToInstall
+    : options.installInexactPins
+      ? pinsToInstall.filter((pin) => !isExactConstraint(pin.version_constraint))
+      : [];
+  const installs = pinsToInstallNow.length === 0
+    ? []
+    : await installPluginPins(pinsToInstallNow, {
+        homeRoot,
+        projectRoot: options.projectRoot,
+        scope,
+        installPlatformId: options.installPlatformId,
+        progress: options.progress,
+      });
 
   // A git dependency pinned to a commit, tag, branch or tag range that could
   // not be fetched stops the apply with the git error (#500), instead of a
@@ -495,6 +516,7 @@ export async function preparePluginPinsForApply(
       scope: options.scope,
       installPlatformId: options.installPlatformId,
       ignoreMissingInstall: options.ignoreMissingInstall,
+      installInexactPins: options.installInexactPins,
       yes: options.yes,
       interactive: options.interactive,
       profileName: options.profileName,

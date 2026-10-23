@@ -1,0 +1,3 @@
+kind: Fixed
+body: '`ht apply --ignore-plugin-versions` no longer fails with "No local version of X is installed" for a dependency pinned to `*`, `latest` or a version range that is not installed yet. Only exact pins skip the host install now, since they are the only ones HarnessTap can resolve without it.'
+time: 2026-10-22T15:15:00.000000000-10:00
