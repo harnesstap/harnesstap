@@ -37,7 +37,7 @@ import {
 } from "../models/resource-materialization.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
-import { saveRemovedOwnership } from "./removed-ownership.js";
+import { saveRemovedHostPluginViews, saveRemovedOwnership } from "./removed-ownership.js";
 import { restoreBlockedMessage, restoreBlocker } from "./restore-blocker.js";
 import { hashFileContentStreaming } from "./streaming-content-hash.js";
 import { shortenHomePath } from "../utils/home-path.js";
@@ -658,6 +658,7 @@ export function backupAndRewriteFile(input: {
   }
   backupOnDiskFile(input);
   if (input.nextContent === null) {
+    saveRemovedHostPluginViews(input.snapshotId, input.rootPath, [input.relativePath]);
     removeFileOrLink(fullPath);
     pruneEmptyAncestors(fullPath, input.rootPath);
     saveRemovedOwnership(input.snapshotId, input.rootPath, [input.relativePath]);
@@ -690,6 +691,7 @@ export function executeSafeFileRemovals(
     };
   }
 
+  saveRemovedHostPluginViews(options.snapshotId, rootPath, plan.remove);
   const forcedPaths = new Set((plan.forced ?? []).map((entry) => entry.path));
   for (const relativePath of plan.remove) {
     const pristine = forcedPaths.has(relativePath)

@@ -24,7 +24,8 @@ import {
   restoreSafeRemovalBackup,
   type SafeRemovalSkip,
 } from "./safe-file-removal.js";
-import { restoreRemovedOwnership } from "./removed-ownership.js";
+import { restoreRemovedHostPluginViews, restoreRemovedOwnership } from "./removed-ownership.js";
+import { heldBackByRegistry, withoutEnabledKeys } from "./revert-plugin-registry.js";
 import { restoreBlockedGroupMessage, restoreBlockedMessage, restoreBlocker } from "./restore-blocker.js";
 
 export type RevertKind = "project" | "global";
@@ -193,9 +194,25 @@ export function executeRevert(
     );
   }
 
+  const decisions = plan.restoreFiles.map((file) => ({
+    file,
+    decision: shouldRestorePath(plan.rootPath, file),
+  }));
+  const kept = new Set(
+    decisions.filter((entry) => entry.decision.startsWith("skip")).map((entry) => entry.file.path),
+  );
+  const heldBack = heldBackByRegistry(plan.restoreFiles, kept);
+  if (heldBack) skipped.push(...heldBack.skips);
+  const isHeldBack = (path: string): boolean =>
+    heldBack?.prefixes.some((prefix) => path.startsWith(prefix)) === true;
+
   const toWrite: SerializedFile[] = [];
-  for (const file of plan.restoreFiles) {
-    const decision = shouldRestorePath(plan.rootPath, file);
+  for (const { file: planned, decision } of decisions) {
+    if (isHeldBack(planned.path)) continue;
+    const file =
+      heldBack && heldBack.enabledKeys.length > 0 && planned.path.endsWith("/settings.json")
+        ? { ...planned, content: withoutEnabledKeys(planned.content, heldBack.enabledKeys) }
+        : planned;
     switch (decision) {
       case "write":
         toWrite.push(file);
@@ -300,6 +317,12 @@ export function executeRevert(
       restoredPaths: restored,
       hashOf: hashFileOrLink,
       isMergedConfig: isSharedMergedConfigPath,
+    });
+    restoreRemovedHostPluginViews({
+      snapshotId: plan.id,
+      rootPath: plan.rootPath,
+      restoredPaths: restored,
+      hashOf: hashFileOrLink,
     });
   }
 

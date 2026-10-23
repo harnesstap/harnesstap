@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'After ht revert, the plugin folders it restores are HarnessTap''s again, so the next ht profile use removes them with their registrations instead of keeping them as yours. A plugin is restored whole or not at all: when ht revert keeps your own installed_plugins.json or known_marketplaces.json as it is, it also leaves out the plugins and marketplaces those files would have registered, their cache files and their enabledPlugins keys, and says so.'
+time: 2026-10-22T15:30:00.000Z
+custom:
+  Issue: "579"
