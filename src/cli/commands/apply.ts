@@ -104,6 +104,7 @@ async function handleGlobalApplyCommand(
   });
   const applyOptions = {
     dryRun: opts.dryRun,
+    planPluginFolders: opts.dryRun,
     harness: opts.harness,
     account: opts.account,
     baseUrl: opts.baseUrl,

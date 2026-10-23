@@ -463,6 +463,7 @@ profileCmd
       }
       const payload = await useProfileCommand(target.selector, {
         dryRun: opts.dryRun,
+        planPluginFolders: opts.dryRun,
         harness: opts.harness,
         pull: opts.pull,
         account: opts.account,

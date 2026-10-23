@@ -55,6 +55,53 @@ export function exactPinnedVersion(versionConstraint: string | undefined): strin
   return semver.valid(trimmed) === trimmed && trimmed.length > 0 ? trimmed : null;
 }
 
+/**
+ * The version and plugin tree `installMarketplacePinIntoCache` would take for
+ * a pin when the stored marketplace catalog and checkout answer it, found
+ * without the network and without changing anything. Undefined when the
+ * install needs a download, a tag or the marketplace history, or the
+ * constraint is a range.
+ */
+export function peekMarketplacePinSource(input: {
+  originRef: string;
+  versionConstraint?: string;
+  harnesstapDir?: string;
+}): { version: string; canonicalDir: string } | undefined {
+  const { name, marketplace } = parsePluginRef(input.originRef);
+  if (!marketplace) return undefined;
+  const harnesstapDir = input.harnesstapDir ?? getHarnesstapDir();
+  const pinned = exactPinnedVersion(input.versionConstraint);
+  if (pinned) {
+    const canonical = hostPluginPackageDir(harnesstapDir, marketplace, name, pinned);
+    if (existsSync(canonical) && isPluginInstallRoot(canonical)) {
+      return { version: pinned, canonicalDir: canonical };
+    }
+  }
+  const constraint = input.versionConstraint?.trim();
+  if (constraint && constraint !== "*" && constraint !== "latest" && !pinned) return undefined;
+  const entry = listCatalogPlugins(harnesstapDir, { name: marketplace }).find(
+    (plugin) => plugin.name === name,
+  );
+  const checkout = marketplaceCacheDir(harnesstapDir, marketplace);
+  const pluginDir =
+    (entry?.sourcePath ? join(checkout, entry.sourcePath) : undefined)
+    ?? resolveMarketplacePluginDirectory(checkout, name);
+  if (!pluginDir || !existsSync(pluginDir) || !isPluginInstallRoot(pluginDir)) return undefined;
+  if (pinned) {
+    const current = checkoutPluginVersion(pluginDir, entry?.version);
+    if (current && current !== pinned) return undefined;
+  }
+  const version = resolveCatalogPluginVersion(
+    entry?.version?.trim() ? entry.version : checkoutManifestVersion(pluginDir),
+    input.versionConstraint,
+  );
+  const canonical = hostPluginPackageDir(harnesstapDir, marketplace, name, version);
+  return {
+    version,
+    canonicalDir: existsSync(canonical) && isPluginInstallRoot(canonical) ? canonical : pluginDir,
+  };
+}
+
 export async function installMarketplacePinIntoCache(input: {
   originRef: string;
   versionConstraint?: string;
