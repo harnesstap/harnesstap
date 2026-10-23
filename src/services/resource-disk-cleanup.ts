@@ -831,9 +831,9 @@ export async function executeResourceDiskDeletion(
   }
 
   type Backup =
-    | { kind: "file"; path: string; content: string; existed: true }
+    | { kind: "file"; path: string; content: Buffer; existed: true }
     | { kind: "file"; path: string; existed: false }
-    | { kind: "directory"; path: string; entries: Map<string, string> };
+    | { kind: "directory"; path: string; entries: Map<string, Buffer> };
 
   const backups: Backup[] = [];
   const deletedFiles: string[] = [];
@@ -847,14 +847,14 @@ export async function executeResourceDiskDeletion(
           continue;
         }
         mkdirSync(dirname(backup.path), { recursive: true });
-        writeFileSync(backup.path, backup.content, "utf-8");
+        writeFileSync(backup.path, backup.content);
         continue;
       }
       mkdirSync(backup.path, { recursive: true });
       for (const [rel, content] of backup.entries) {
         const full = join(backup.path, rel);
         mkdirSync(dirname(full), { recursive: true });
-        writeFileSync(full, content, "utf-8");
+        writeFileSync(full, content);
       }
     }
   };
@@ -870,7 +870,7 @@ export async function executeResourceDiskDeletion(
             backups.push({
               kind: "file",
               path: location.path,
-              content: readFileSync(location.path, "utf-8"),
+              content: readFileSync(location.path),
               existed: true,
             });
             rmSync(location.path, { force: true });
@@ -896,7 +896,7 @@ export async function executeResourceDiskDeletion(
               backups.push({
                 kind: "file",
                 path: skillMd,
-                content: readFileSync(skillMd, "utf-8"),
+                content: readFileSync(skillMd),
                 existed: true,
               });
               rmSync(skillMd, { force: true });
@@ -905,7 +905,7 @@ export async function executeResourceDiskDeletion(
             deletedFiles.push(skillMd);
             break;
           }
-          const entries = new Map<string, string>();
+          const entries = new Map<string, Buffer>();
           const walk = (dir: string, prefix = ""): void => {
             for (const name of readdirSync(dir)) {
               const full = join(dir, name);
@@ -913,7 +913,7 @@ export async function executeResourceDiskDeletion(
               if (lstatSync(full).isDirectory()) {
                 walk(full, rel);
               } else {
-                entries.set(rel, readFileSync(full, "utf-8"));
+                entries.set(rel, readFileSync(full));
               }
             }
           };
@@ -945,11 +945,12 @@ export async function executeResourceDiskDeletion(
           break;
         }
         case "edit-file": {
-          const content = readFileSync(location.path, "utf-8");
+          const original = readFileSync(location.path);
+          const content = original.toString("utf-8");
           backups.push({
             kind: "file",
             path: location.path,
-            content,
+            content: original,
             existed: true,
           });
           const edit = tryEditAggregateContent(content, resource);
