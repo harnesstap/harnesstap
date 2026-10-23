@@ -132,13 +132,23 @@ function readLiveFile(rootPath: string, relativePath: string): string | undefine
   }
 }
 
+/**
+ * The generated file as `readFileSync(path, "utf-8")` would read it back, so
+ * drift detection compares like with like. A base64 file (an image, an archive)
+ * holds its bytes as base64 text, which never equals what the disk reads as.
+ */
+function generatedText(file: { content?: string; encoding?: "utf8" | "base64" }): string {
+  const content = file.content ?? "";
+  return file.encoding === "base64" ? Buffer.from(content, "base64").toString("utf-8") : content;
+}
+
 export function captureManagedSnapshotState(input: {
   rootPath: string;
   plugins?: Plugin[];
   resources?: Resource[];
   generated: ReadonlyArray<{
     platformId: string;
-    files: ReadonlyArray<{ path: string; content?: string }>;
+    files: ReadonlyArray<{ path: string; content?: string; encoding?: "utf8" | "base64" }>;
   }>;
   extraPaths?: readonly string[];
   /**
@@ -167,7 +177,7 @@ export function captureManagedSnapshotState(input: {
         // A link is captured as a link: reading through it would restore a
         // copy of what it points to, or drop a link to a folder.
         disk_links[file.path] = link;
-        if (file.content !== undefined) bucket[file.path] = file.content;
+        if (file.content !== undefined) bucket[file.path] = generatedText(file);
         continue;
       }
       const live = readLiveFile(input.rootPath, file.path);
@@ -176,7 +186,7 @@ export function captureManagedSnapshotState(input: {
       } else {
         disk_files[file.path] = live;
       }
-      const expected = file.content ?? live;
+      const expected = file.content === undefined ? live : generatedText(file);
       if (expected !== undefined) {
         bucket[file.path] = expected;
       }
