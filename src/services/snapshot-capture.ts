@@ -14,12 +14,12 @@ export function emptySnapshotState(): SnapshotState {
 export function flattenSnapshotFiles(state: SnapshotState): SerializedFile[] {
   const files: SerializedFile[] = [];
   const seen = new Set<string>();
-  const push = (path: string, content: string): void => {
+  const push = (path: string, content: string, encoding?: SerializedFile["encoding"]): void => {
     if (seen.has(path)) {
       return;
     }
     seen.add(path);
-    files.push({ path, content });
+    files.push(encoding ? { path, content, encoding } : { path, content });
   };
   for (const bucket of Object.values(state.platform_files)) {
     for (const [path, content] of Object.entries(bucket)) {
@@ -38,7 +38,47 @@ export function flattenSnapshotFiles(state: SnapshotState): SerializedFile[] {
       push(path, content);
     }
   }
+  for (const [path, content] of Object.entries(state.disk_files_base64 ?? {})) {
+    push(path, content, "base64");
+  }
   return files;
+}
+
+/**
+ * A file to put back on revert. `bytes` is exactly what to write. `content` is
+ * a text view for code that reads JSON or text configs; it is lossy for a file
+ * that is not UTF-8 text, so it is never what gets written.
+ */
+export interface RestoreFile extends SerializedFile {
+  readonly bytes: Buffer;
+}
+
+function restoreFileFrom(path: string, readBytes: () => Buffer): RestoreFile {
+  return {
+    path,
+    get bytes(): Buffer {
+      return readBytes();
+    },
+    get content(): string {
+      return readBytes().toString("utf-8");
+    },
+  };
+}
+
+/** A plan file with bytes: lazy files pass through, plain serialized files get their bytes decoded. */
+export function asRestoreFile(file: SerializedFile | RestoreFile): RestoreFile {
+  if ("bytes" in file) return file;
+  return restoreFileFrom(file.path, () => serializedFileToBytes(file));
+}
+
+/** The bytes of a serialized file: base64 when the encoding says so, otherwise UTF-8. */
+export function serializedFileToBytes(file: Pick<SerializedFile, "content" | "encoding">): Buffer {
+  return Buffer.from(file.content, file.encoding === "base64" ? "base64" : "utf-8");
+}
+
+/** True when the bytes survive a trip through a string (they are valid UTF-8 text). */
+function isUtf8Text(bytes: Buffer): boolean {
+  return Buffer.from(bytes.toString("utf-8"), "utf-8").equals(bytes);
 }
 
 /**
@@ -46,7 +86,7 @@ export function flattenSnapshotFiles(state: SnapshotState): SerializedFile[] {
  * from the backup only when the content is asked for. The first backup of a
  * path wins (a later one may hold what a revert overwrote).
  */
-function trashedRestoreFiles(state: SnapshotState, snapshotId: string): SerializedFile[] {
+function trashedRestoreFiles(state: SnapshotState, snapshotId: string): RestoreFile[] {
   const wanted = new Set(state.trashed_files ?? []);
   if (wanted.size === 0) return [];
   const earliest = new Map<string, ReturnType<typeof listApplyRemovalBackups>[number]>();
@@ -55,14 +95,9 @@ function trashedRestoreFiles(state: SnapshotState, snapshotId: string): Serializ
     const current = earliest.get(backup.relative_path);
     if (!current || backup.id < current.id) earliest.set(backup.relative_path, backup);
   }
-  const files: SerializedFile[] = [];
+  const files: RestoreFile[] = [];
   for (const [path, backup] of earliest) {
-    files.push({
-      path,
-      get content(): string {
-        return backup.content.toString("utf-8");
-      },
-    });
+    files.push(restoreFileFrom(path, () => backup.content));
   }
   return files;
 }
@@ -71,18 +106,22 @@ function trashedRestoreFiles(state: SnapshotState, snapshotId: string): Serializ
  * Live bytes to restore on revert. New captures store those in disk_files,
  * plus the files left to the removal backups when the snapshot id is known.
  */
-export function flattenLiveRestoreFiles(state: SnapshotState, snapshotId?: string): SerializedFile[] {
+export function flattenLiveRestoreFiles(state: SnapshotState, snapshotId?: string): RestoreFile[] {
   const hasLiveCapture =
     (state.disk_files !== undefined && Object.keys(state.disk_files).length > 0)
+    || Object.keys(state.disk_files_base64 ?? {}).length > 0
     || (state.absent_paths?.length ?? 0) > 0
     || Object.keys(state.disk_links ?? {}).length > 0
     || (state.trashed_files?.length ?? 0) > 0;
   if (!hasLiveCapture) {
-    return flattenSnapshotFiles(state);
+    return flattenSnapshotFiles(state).map((file) => restoreFileFrom(file.path, () => serializedFileToBytes(file)));
   }
-  const files: SerializedFile[] = [];
+  const files: RestoreFile[] = [];
   for (const [path, content] of Object.entries(state.disk_files ?? {})) {
-    files.push({ path, content });
+    files.push(restoreFileFrom(path, () => Buffer.from(content, "utf-8")));
+  }
+  for (const [path, content] of Object.entries(state.disk_files_base64 ?? {})) {
+    files.push(restoreFileFrom(path, () => Buffer.from(content, "base64")));
   }
   if (snapshotId) {
     const have = new Set(files.map((file) => file.path));
@@ -120,13 +159,17 @@ function isLiveRegularFile(rootPath: string, relativePath: string): boolean {
   }
 }
 
-function readLiveFile(rootPath: string, relativePath: string): string | undefined {
+/** A live file's exact bytes, as text when they are valid UTF-8 and as base64 otherwise. */
+type LiveFile = { text: string } | { base64: string };
+
+function readLiveFile(rootPath: string, relativePath: string): LiveFile | undefined {
   const fullPath = join(rootPath, relativePath);
   try {
     if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
       return undefined;
     }
-    return readFileSync(fullPath, "utf-8");
+    const bytes = readFileSync(fullPath);
+    return isUtf8Text(bytes) ? { text: bytes.toString("utf-8") } : { base64: bytes.toString("base64") };
   } catch {
     return undefined;
   }
@@ -160,6 +203,11 @@ export function captureManagedSnapshotState(input: {
 }): SnapshotState {
   const platform_files: Record<string, Record<string, string>> = {};
   const disk_files: Record<string, string> = {};
+  const disk_files_base64: Record<string, string> = {};
+  const keepLive = (path: string, live: LiveFile): void => {
+    if ("text" in live) disk_files[path] = live.text;
+    else disk_files_base64[path] = live.base64;
+  };
   const disk_links: Record<string, string> = {};
   const absent: string[] = [];
   const trashed: string[] = [];
@@ -184,9 +232,10 @@ export function captureManagedSnapshotState(input: {
       if (live === undefined) {
         absent.push(file.path);
       } else {
-        disk_files[file.path] = live;
+        keepLive(file.path, live);
       }
-      const expected = file.content === undefined ? live : generatedText(file);
+      const liveText = live !== undefined && "text" in live ? live.text : undefined;
+      const expected = file.content === undefined ? liveText : generatedText(file);
       if (expected !== undefined) {
         bucket[file.path] = expected;
       }
@@ -211,7 +260,7 @@ export function captureManagedSnapshotState(input: {
       absent.push(extra);
       continue;
     }
-    disk_files[extra] = live;
+    keepLive(extra, live);
   }
 
   for (const path of input.removalBackedPaths ?? []) {
@@ -236,6 +285,7 @@ export function captureManagedSnapshotState(input: {
     resources: input.resources ?? [],
     platform_files,
     ...(Object.keys(disk_files).length > 0 ? { disk_files } : {}),
+    ...(Object.keys(disk_files_base64).length > 0 ? { disk_files_base64 } : {}),
     ...(absent.length > 0 ? { absent_paths: absent } : {}),
     ...(Object.keys(disk_links).length > 0 ? { disk_links } : {}),
     ...(trashed.length > 0 ? { trashed_files: trashed } : {}),

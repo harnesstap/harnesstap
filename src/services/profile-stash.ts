@@ -212,18 +212,22 @@ function readHomeFile(homeRoot: string, relativePath: string): string | null {
     return null;
   }
   try {
-    return readFileSync(fullPath, "utf-8");
+    const bytes = readFileSync(fullPath);
+    const text = bytes.toString("utf-8");
+    // The stash keeps text. A file that is not UTF-8 text (an image, a font)
+    // would come back changed, so it is left in place, never stashed or rewritten.
+    return Buffer.from(text, "utf-8").equals(bytes) ? text : null;
   } catch {
     return null;
   }
 }
 
-function lastWrittenContent(profileName: string, relativePath: string): string | undefined {
+function lastWrittenContent(profileName: string, relativePath: string): Buffer | undefined {
   const snapshot = getLatestGlobalApplySnapshotForProfile(profileName);
   if (!snapshot?.state) {
     return undefined;
   }
-  return flattenLiveRestoreFiles(snapshot.state, snapshot.id).find((file) => file.path === relativePath)?.content;
+  return flattenLiveRestoreFiles(snapshot.state, snapshot.id).find((file) => file.path === relativePath)?.bytes;
 }
 
 /**
@@ -260,7 +264,7 @@ export async function stashManagedDriftChanges(input: {
         }
         const fullPath = resolve(homeRoot, file.path);
         mkdirSync(dirname(fullPath), { recursive: true });
-        writeFileSync(fullPath, previous, "utf-8");
+        writeFileSync(fullPath, previous);
       }
     }
 
