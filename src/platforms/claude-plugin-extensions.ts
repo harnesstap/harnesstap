@@ -4,7 +4,11 @@ import {
   getInstalledPluginRecord,
   type InstalledPluginsFile,
 } from "../plugins/claude-installed.js";
-import type { ClaudePluginConfig, SerializedFile } from "../types.js";
+import {
+  CLAUDE_KNOWN_MARKETPLACES_PATH,
+  harnessTapRegisteredSources,
+} from "../services/claude-marketplace-registration.js";
+import type { ClaudeMarketplaceEntry, ClaudePluginConfig, SerializedFile } from "../types.js";
 
 const SETTINGS_PATH = ".claude/settings.json";
 const INSTALLED_PLUGINS_PATH = ".claude/plugins/installed_plugins.json";
@@ -54,6 +58,38 @@ function enabledPluginsRecord(value: unknown): Record<string, boolean> {
 }
 
 /**
+ * A marketplace HarnessTap registered in `known_marketplaces.json` (because
+ * `claude` was not there to add it) keeps that entry's source in
+ * `extraKnownMarketplaces` too: Claude Code ignores a marketplace whose two
+ * sources differ. A marketplace Claude Code added itself keeps the declared
+ * source.
+ */
+function declaredMarketplacesWithRegisteredSources(
+  declared: Record<string, ClaudeMarketplaceEntry>,
+  files: readonly SerializedFile[],
+  projectRoot: string,
+): Record<string, ClaudeMarketplaceEntry> {
+  const pending = files.find((file) => file.path === CLAUDE_KNOWN_MARKETPLACES_PATH)?.content;
+  const knownPath = join(projectRoot, CLAUDE_KNOWN_MARKETPLACES_PATH);
+  let knownRaw = pending;
+  if (knownRaw === undefined && existsSync(knownPath)) {
+    try {
+      knownRaw = readFileSync(knownPath, "utf-8");
+    } catch {
+      return declared;
+    }
+  }
+  const registered = harnessTapRegisteredSources(projectRoot, knownRaw);
+  if (registered.size === 0) return declared;
+  const aligned: Record<string, ClaudeMarketplaceEntry> = {};
+  for (const [name, entry] of Object.entries(declared)) {
+    const source = registered.get(name);
+    aligned[name] = source ? { ...entry, source: source as unknown as ClaudeMarketplaceEntry["source"] } : entry;
+  }
+  return aligned;
+}
+
+/**
  * Merge Claude marketplace and plugin config into serialized files.
  * `enabledPlugins` is merged key by key and never replaces unrelated entries.
  * A pin this apply is writing into installed_plugins.json counts as installed
@@ -77,7 +113,7 @@ export function applyClaudePluginExtensions(
   if (config.marketplaces && Object.keys(config.marketplaces).length > 0) {
     settings.extraKnownMarketplaces = mergeRecord(
       settings.extraKnownMarketplaces as Record<string, unknown> | undefined,
-      config.marketplaces as Record<string, unknown>,
+      declaredMarketplacesWithRegisteredSources(config.marketplaces, files, projectRoot),
     );
   }
 

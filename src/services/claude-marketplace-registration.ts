@@ -134,6 +134,26 @@ export function claudeMarketplaceEntryOwner(
   return "harnesstap";
 }
 
+/**
+ * The `source` of each marketplace entry in `knownRaw` (the pending or
+ * on-disk `known_marketplaces.json`) that is still the registration HarnessTap
+ * wrote, by marketplace name. Claude Code ignores a marketplace whose
+ * `known_marketplaces.json` source differs from its `extraKnownMarketplaces`
+ * entry, so a profile's declared entry takes the source recorded here.
+ */
+export function harnessTapRegisteredSources(
+  homeRoot: string,
+  knownRaw: string | undefined,
+): Map<string, Record<string, unknown>> {
+  const sources = new Map<string, Record<string, unknown>>();
+  for (const [marketplace, entry] of Object.entries(readKnownMarketplaces(knownRaw))) {
+    if (!isRecord(entry) || !isRecord(entry.source)) continue;
+    if (claudeMarketplaceEntryOwner(homeRoot, marketplace, entry) !== "harnesstap") continue;
+    sources.set(marketplace, entry.source);
+  }
+  return sources;
+}
+
 /** The registration HarnessTap wrote and nothing changed since. */
 export function isHarnessTapMarketplaceRegistration(
   homeRoot: string,
