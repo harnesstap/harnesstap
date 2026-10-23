@@ -1,7 +1,17 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import type { CommandResult, RunCommandOptions } from "../plugins/run-command.js";
+import {
+  DEFAULT_CLAUDE_PLUGIN_TIMEOUT_MS,
+  DEFAULT_GIT_NETWORK_TIMEOUT_MS,
+  gitStallMessage,
+  gitTimeoutMessage,
+  gitTimeoutOverrideMs,
+  isClaudePluginCommand,
+  isGitNetworkCommand,
+  withGitLowSpeedEnv,
+} from "./git-network.js";
 
-export const DEFAULT_GIT_CLONE_TIMEOUT_MS = 120_000;
+export const DEFAULT_GIT_CLONE_TIMEOUT_MS = DEFAULT_GIT_NETWORK_TIMEOUT_MS;
 export const UNATTENDED_GIT_TIMEOUT_MS = 15_000;
 export const UNATTENDED_SSH_CONNECT_TIMEOUT_SEC = 15;
 
@@ -20,11 +30,11 @@ export function stopInflightCommands(): void {
 }
 
 export function gitCommandEnv(options?: { unattended?: boolean }): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = {
+  const env: NodeJS.ProcessEnv = withGitLowSpeedEnv({
     ...process.env,
     GIT_TERMINAL_PROMPT: "0",
     GCM_INTERACTIVE: "never",
-  };
+  });
   if (!options?.unattended) {
     return env;
   }
@@ -39,11 +49,33 @@ export function gitCommandEnv(options?: { unattended?: boolean }): NodeJS.Proces
   return env;
 }
 
-export function resolveCommandTimeoutMs(options?: RunCommandOptions): number | undefined {
+/**
+ * The limit for a command. A git network call or a `claude plugin` call, which
+ * runs git, always has one: HARNESSTAP_GIT_TIMEOUT_SECONDS when set, else the
+ * caller's value, else the default. Background (unattended) calls keep their short limit.
+ */
+export function resolveCommandTimeoutMs(
+  options?: RunCommandOptions,
+  command?: string,
+  args: string[] = [],
+): number | undefined {
   if (options?.unattended) {
     return options.timeoutMs ?? UNATTENDED_GIT_TIMEOUT_MS;
   }
+  const override = gitTimeoutOverrideMs();
+  if (command === "git" && isGitNetworkCommand(args)) {
+    return override ?? options?.timeoutMs ?? DEFAULT_GIT_NETWORK_TIMEOUT_MS;
+  }
+  if (command !== undefined && isClaudePluginCommand(command, args)) {
+    return Math.max(override ?? 0, options?.timeoutMs ?? DEFAULT_CLAUDE_PLUGIN_TIMEOUT_MS);
+  }
   return options?.timeoutMs;
+}
+
+function commandEnv(command: string, args: string[], options?: RunCommandOptions): NodeJS.ProcessEnv {
+  if (command === "git") return gitCommandEnv(options);
+  if (isClaudePluginCommand(command, args)) return withGitLowSpeedEnv(process.env);
+  return process.env;
 }
 
 export function spawnCommand(
@@ -51,14 +83,14 @@ export function spawnCommand(
   args: string[],
   options?: RunCommandOptions,
 ): Promise<CommandResult> {
-  const timeoutMs = resolveCommandTimeoutMs(options);
+  const timeoutMs = resolveCommandTimeoutMs(options, command, args);
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
     let settled = false;
     const child = spawn(command, args, {
       cwd: options?.cwd,
-      env: command === "git" ? gitCommandEnv(options) : process.env,
+      env: commandEnv(command, args, options),
       stdio: ["ignore", "pipe", "pipe"],
     });
     inflightChildren.add(child);
@@ -75,9 +107,15 @@ export function spawnCommand(
       ? undefined
       : setTimeout(() => {
         child.kill("SIGTERM");
+        // A grandchild such as git remote-https can keep the pipes open after the kill.
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        const watched = (command === "git" && isGitNetworkCommand(args)) || isClaudePluginCommand(command, args);
         finish({
           stdout,
-          stderr: `Command timed out after ${timeoutMs}ms: ${command} ${args.join(" ")}`,
+          stderr: watched
+            ? gitTimeoutMessage(command, args, timeoutMs, options?.cwd)
+            : `Command timed out after ${timeoutMs}ms: ${command} ${args.join(" ")}`,
           exitCode: 124,
         });
       }, timeoutMs);
@@ -99,9 +137,10 @@ export function spawnCommand(
       });
     });
     child.on("close", (code) => {
+      const stalled = code !== 0 && command === "git" ? gitStallMessage(args, stderr, options?.cwd) : undefined;
       finish({
         stdout,
-        stderr,
+        stderr: stalled ?? stderr,
         exitCode: code ?? 1,
       });
     });
