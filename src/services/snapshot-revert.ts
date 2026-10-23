@@ -10,9 +10,11 @@ import type { SerializedFile, SnapshotState } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import {
+  asRestoreFile,
   flattenLiveRestoreFiles,
   snapshotAbsentPaths,
   snapshotLinks,
+  type RestoreFile,
 } from "./snapshot-capture.js";
 import {
   backupAndRewriteFile,
@@ -37,7 +39,7 @@ export interface RevertPlan {
   rootPath: string;
   label: string;
   createdAt: string;
-  restoreFiles: SerializedFile[];
+  restoreFiles: Array<SerializedFile | RestoreFile>;
   /** Links to put back as links. */
   restoreLinks?: Array<{ path: string; target: string }>;
   absentPaths: string[];
@@ -73,6 +75,7 @@ function capturedStateUseful(state: SnapshotState | undefined): boolean {
   return (
     Object.keys(state.platform_files).length > 0
     || Object.keys(state.disk_files ?? {}).length > 0
+    || Object.keys(state.disk_files_base64 ?? {}).length > 0
     || (state.absent_paths?.length ?? 0) > 0
     || Object.keys(state.harness_files ?? {}).length > 0
     || Object.keys(state.disk_links ?? {}).length > 0
@@ -138,7 +141,7 @@ function readLive(rootPath: string, path: string): string | undefined {
   }
 }
 
-function shouldRestorePath(rootPath: string, file: SerializedFile): RestoreDecision {
+function shouldRestorePath(rootPath: string, file: RestoreFile): RestoreDecision {
   const fullPath = resolve(rootPath, file.path);
   if (restoreBlocker(rootPath, file.path) !== undefined) {
     return "skip-blocked";
@@ -146,8 +149,8 @@ function shouldRestorePath(rootPath: string, file: SerializedFile): RestoreDecis
   if (!existsSync(fullPath)) {
     return "write";
   }
-  const onDisk = readFileSync(fullPath, "utf-8");
-  if (onDisk === file.content) {
+  const wanted = file.bytes;
+  if (readFileSync(fullPath).equals(wanted)) {
     return "unchanged";
   }
   const ownership = classifyManagedPathOwnership(rootPath, file.path);
@@ -157,10 +160,14 @@ function shouldRestorePath(rootPath: string, file: SerializedFile): RestoreDecis
   if (ownership === "owned") {
     return "write";
   }
-  if (hashOnDiskFile(fullPath) === hashGeneratedContent(file.content)) {
+  if (hashOnDiskFile(fullPath) === hashGeneratedContent(wanted.toString("utf-8"))) {
     return "unchanged";
   }
   return "skip-modified";
+}
+
+function textRestoreFile(path: string, text: string): RestoreFile {
+  return { path, content: text, bytes: Buffer.from(text, "utf-8") };
 }
 
 /** One warning per skip, except that the paths held up by the same file or folder share one. */
@@ -203,24 +210,28 @@ export function executeRevert(
     );
   }
 
-  const decisions = plan.restoreFiles.map((file) => ({
+  const planFiles = plan.restoreFiles.map(asRestoreFile);
+  const decisions = planFiles.map((file) => ({
     file,
     decision: shouldRestorePath(plan.rootPath, file),
   }));
   const kept = new Set(
     decisions.filter((entry) => entry.decision.startsWith("skip")).map((entry) => entry.file.path),
   );
-  const heldBack = heldBackByRegistry(plan.restoreFiles, kept);
+  const heldBack = heldBackByRegistry(planFiles, kept);
   if (heldBack) skipped.push(...heldBack.skips);
   const isHeldBack = (path: string): boolean =>
     heldBack?.prefixes.some((prefix) => path.startsWith(prefix)) === true;
 
-  const toWrite: SerializedFile[] = [];
+  const toWrite: RestoreFile[] = [];
   for (const { file: planned, decision } of decisions) {
     if (isHeldBack(planned.path)) continue;
-    const file =
+    const file: RestoreFile =
       heldBack && heldBack.enabledKeys.length > 0 && planned.path.endsWith("/settings.json")
-        ? { ...planned, content: withoutEnabledKeys(planned.content, heldBack.enabledKeys, readLive(plan.rootPath, planned.path)) }
+        ? textRestoreFile(
+            planned.path,
+            withoutEnabledKeys(planned.content, heldBack.enabledKeys, readLive(plan.rootPath, planned.path)),
+          )
         : planned;
     switch (decision) {
       case "write":
@@ -305,7 +316,7 @@ export function executeRevert(
       backupAndRewriteFile({
         rootPath: plan.rootPath,
         relativePath: file.path,
-        nextContent: file.content,
+        nextContent: file.bytes,
         applyId: options.applyId ?? plan.id,
         snapshotId: plan.id,
       });

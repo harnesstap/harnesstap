@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht revert` restores images, fonts, and other files that are not UTF-8 text byte for byte. A revert that restored files removed by `ht profile use` (such as a plugin''s PNG icons) wrote them back as garbled, larger text; the removal backups were intact but the restore decoded them as text. Snapshots now keep such files as bytes, and the restore of removal backups and the rollback of a failed resource delete never go through a string. Drift stashing leaves a modified file that is not UTF-8 text in place instead of stashing a lossy copy.'
+time: 2026-10-22T15:00:00.000Z
+custom:
+  Issue: ""
