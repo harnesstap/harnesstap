@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht revert` of the first apply of a plugin now removes the plugin cache that apply installed under `~/.claude/plugins/cache`. The install runs before the apply takes its snapshot, so the snapshot counted every cache file as already there and the revert left hundreds of files behind (420 for staff-engineer, 5155 for agentic). The snapshot now records the files HarnessTap just wrote as absent before the apply. A revert still removes only files whose hash matches what HarnessTap wrote, keeps and warns about a file you changed or added, backs up what it removes, and puts back a file an earlier apply already owned.'
+time: 2026-10-22T12:00:00.000Z
+custom:
+  Issue: ""
