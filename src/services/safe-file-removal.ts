@@ -35,6 +35,7 @@ import {
   deleteMaterializationsForRootPaths,
   listMaterializationsForRootPath,
 } from "../models/resource-materialization.js";
+import { forgetMissingSettingsMarketplaces } from "./claude-settings-marketplaces.js";
 import { forgetMissingEnabledKeys, isClaudeSettingsPath } from "./claude-enabled-plugin-keys.js";
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
@@ -667,11 +668,17 @@ export function backupAndRewriteFile(input: {
     pruneEmptyAncestors(fullPath, input.rootPath);
     saveRemovedOwnership(input.snapshotId, input.rootPath, [input.relativePath]);
     deleteMaterializationsForRootPaths(input.rootPath, [input.relativePath]);
-    if (isClaudeSettingsPath(input.relativePath)) forgetMissingEnabledKeys(fullPath, input.snapshotId);
+    if (isClaudeSettingsPath(input.relativePath)) {
+      forgetMissingEnabledKeys(fullPath, input.snapshotId);
+      forgetMissingSettingsMarketplaces(fullPath, input.snapshotId);
+    }
     return;
   }
   writeFileSync(fullPath, input.nextContent);
-  if (isClaudeSettingsPath(input.relativePath)) forgetMissingEnabledKeys(fullPath, input.snapshotId);
+  if (isClaudeSettingsPath(input.relativePath)) {
+    forgetMissingEnabledKeys(fullPath, input.snapshotId);
+    forgetMissingSettingsMarketplaces(fullPath, input.snapshotId);
+  }
 }
 
 export function executeSafeFileRemovals(
