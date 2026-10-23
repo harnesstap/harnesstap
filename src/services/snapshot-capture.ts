@@ -207,6 +207,13 @@ export function captureManagedSnapshotState(input: {
    * is untouched.
    */
   removalBackedPaths?: readonly string[];
+  /**
+   * Paths that are on disk only because HarnessTap wrote them for this apply
+   * (a plugin install copies its tree into the host cache before the apply
+   * runs). They are recorded as absent, so a revert removes them instead of
+   * treating them as files that were there before.
+   */
+  createdForApply?: ReadonlySet<string>;
 }): SnapshotState {
   const platform_files: Record<string, Record<string, string>> = {};
   const disk_files: Record<string, string> = {};
@@ -229,6 +236,11 @@ export function captureManagedSnapshotState(input: {
         continue;
       }
       seen.add(file.path);
+      if (input.createdForApply?.has(file.path)) {
+        absent.push(file.path);
+        if (file.content !== undefined) bucket[file.path] = file.content;
+        continue;
+      }
       const link = readLiveLink(input.rootPath, file.path);
       if (link !== undefined) {
         // A link is captured as a link: reading through it would restore a
@@ -252,6 +264,12 @@ export function captureManagedSnapshotState(input: {
     if (Object.keys(bucket).length > 0) {
       platform_files[result.platformId] = bucket;
     }
+  }
+
+  for (const path of input.createdForApply ?? []) {
+    if (seen.has(path)) continue;
+    seen.add(path);
+    absent.push(path);
   }
 
   for (const extra of input.extraPaths ?? []) {

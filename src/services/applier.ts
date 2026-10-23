@@ -89,6 +89,7 @@ import {
 } from "./safe-file-removal.js";
 import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { captureManagedSnapshotState } from "./snapshot-capture.js";
+import { hostPluginFilesCreatedForApply } from "./host-plugin-install-files.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -933,6 +934,7 @@ export async function applyToGlobal(
     generated: results,
     extraPaths: previousTracked.filter((path) => emittedPaths.has(path)),
     removalBackedPaths: previousTracked.filter((path) => !emittedPaths.has(path)),
+    createdForApply: new Set(hostPluginFilesCreatedForApply(homeRoot, [...emittedPaths])),
   });
   const materialized = await materializeFiles(allFiles, homeRoot, {
     conflictPolicy: options.conflictPolicy ?? "prompt",
