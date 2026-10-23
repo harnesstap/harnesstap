@@ -220,4 +220,66 @@ describe("revert restores a plugin whole or not at all", () => {
     });
     expect(real.restored).not.toContain(`${VIEW}/skills/a.md`);
   });
+
+  it("keeps the live value of a held key instead of dropping it", () => {
+    const content = `${JSON.stringify({ enabledPlugins: { "dup@mkta": true, "x@other": true } }, null, 2)}\n`;
+    const live = `${JSON.stringify({ enabledPlugins: { "dup@mkta": false } }, null, 2)}\n`;
+    expect(JSON.parse(withoutEnabledKeys(content, ["dup@mkta"], live))).toEqual({
+      enabledPlugins: { "dup@mkta": false, "x@other": true },
+    });
+    expect(JSON.parse(withoutEnabledKeys(content, ["dup@mkta"], "{}"))).toEqual({
+      enabledPlugins: { "x@other": true },
+    });
+  });
+
+  it("does not hold back a plugin the user installed with Claude Code", () => {
+    const claudeRow = {
+      scope: "user",
+      installPath: "/h/.claude/plugins/cache/mymkt/myplug/1.0.0",
+      version: "1.0.0",
+      installedAt: "2026-10-01T00:00:00.000Z",
+      lastUpdated: "2026-10-01T00:00:00.000Z",
+      gitCommitSha: "abc",
+    };
+    const htRow = { scope: "user", installPath: "/h/.claude/plugins/cache/mkta/dup/1.0.0", version: "1.0.0" };
+    const registry = JSON.stringify({ version: 2, plugins: { "myplug@mymkt": [claudeRow], "dup@mkta": [htRow] } });
+    const held = heldBackByRegistry([{ path: REGISTRY, content: registry }], new Set([REGISTRY]));
+    expect(held?.enabledKeys).toEqual(["dup@mkta"]);
+    expect(held?.prefixes).toEqual([".claude/plugins/cache/mkta/dup/"]);
+  });
+
+  it("a revert keeps the user's own enabledPlugins key when their registry is kept", () => {
+    const home = resolveHomeRoot();
+    const claudeRow = {
+      scope: "user",
+      installPath: join(home, ".claude/plugins/cache/mymkt/myplug/1.0.0"),
+      version: "1.0.0",
+      installedAt: "2026-10-01T00:00:00.000Z",
+      lastUpdated: "2026-10-01T00:00:00.000Z",
+      gitCommitSha: "abc",
+    };
+    const registry = `${JSON.stringify({ version: 2, plugins: { "myplug@mymkt": [claudeRow] } })}\n`;
+    const settings = `${JSON.stringify({ enabledPlugins: { "myplug@mymkt": true } }, null, 2)}\n`;
+    writeTextFile(join(home, REGISTRY), `${registry}\n`);
+    writeTextFile(join(home, SETTINGS), settings);
+    const plan: RevertPlan = {
+      kind: "global",
+      id: "01TESTREVERTUSERPLUGINKEY0000",
+      rootPath: home,
+      label: "default",
+      createdAt: new Date().toISOString(),
+      restoreFiles: [
+        { path: REGISTRY, content: registry },
+        { path: SETTINGS, content: settings },
+      ],
+      absentPaths: [],
+      hasCapturedState: true,
+    };
+
+    executeRevert(plan);
+
+    expect(JSON.parse(readFileSync(join(home, SETTINGS), "utf8"))).toEqual({
+      enabledPlugins: { "myplug@mymkt": true },
+    });
+  });
 });

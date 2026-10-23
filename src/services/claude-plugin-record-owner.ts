@@ -27,15 +27,28 @@ export function claudeRecordInstallPath(homeRoot: string, row: unknown): string 
  * user's. The marketplace name says nothing about who installed a plugin.
  */
 export function isHarnessTapClaudeRecord(homeRoot: string, row: unknown): boolean {
+  if (!hasHarnessTapRecordShape(row)) return false;
+  const path = claudeRecordInstallPath(homeRoot, row);
+  return path !== undefined && readHostPluginViewRecord(path)?.created === true;
+}
+
+/** True when the record has the keys HarnessTap writes and nothing else. */
+export function hasHarnessTapRecordShape(row: unknown): boolean {
   if (!isRecord(row)) return false;
   const keys = Object.keys(row).sort();
   if (keys.length !== HARNESSTAP_RECORD_KEYS.length
     || keys.some((key, index) => key !== HARNESSTAP_RECORD_KEYS[index])) {
     return false;
   }
-  if (row.scope !== "user" || typeof row.version !== "string") return false;
-  const path = claudeRecordInstallPath(homeRoot, row);
-  return path !== undefined && readHostPluginViewRecord(path)?.created === true;
+  return row.scope === "user" && typeof row.version === "string";
+}
+
+/**
+ * True when the record carries more than HarnessTap writes (Claude Code adds
+ * install dates and the commit): the user installed that plugin themselves.
+ */
+export function hasClaudeWrittenRecordShape(row: unknown): boolean {
+  return isRecord(row) && typeof row.installPath === "string" && !hasHarnessTapRecordShape(row);
 }
 
 /**

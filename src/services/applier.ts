@@ -1,3 +1,4 @@
+import { forgetMissingEnabledKeys, isClaudeSettingsPath, recordAddedEnabledKeys } from "./claude-enabled-plugin-keys.js";
 import { pruneLeavingClaudeRegistrations } from "./claude-plugin-registration-prune.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskBytesOnce, readDiskTextOnce } from "./status-disk-read.js";
@@ -572,8 +573,15 @@ function applySerializedFileMode(fullPath: string, file: SerializedFile): void {
 
 function writeSerializedFile(fullPath: string, file: SerializedFile): void {
   mkdirSync(dirname(fullPath), { recursive: true });
+  const settings = isClaudeSettingsPath(file.path);
+  const before = settings && existsSync(fullPath) ? readFileSync(fullPath, "utf-8") : undefined;
   writeFileSync(fullPath, serializedFileBytes(file));
   applySerializedFileMode(fullPath, file);
+  if (settings) {
+    // The enabledPlugins keys this write added are HarnessTap's to take out again.
+    recordAddedEnabledKeys(fullPath, before, file.content);
+    forgetMissingEnabledKeys(fullPath);
+  }
 }
 
 function pruneCursorLocalPlugins(rootPath: string, files: readonly SerializedFile[]): void {

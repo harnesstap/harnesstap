@@ -135,4 +135,45 @@ describe("applyClaudePluginExtensions", () => {
     expect(settings.enabledPlugins["formatter@team-plugins"]).toBe(true);
     expect(settings.enabledPlugins["keep@elsewhere"]).toBe(true);
   });
+  it("keeps a plugin the user disabled in settings.json disabled", () => {
+    const projectDir = createTempDir("claude-plugin-ext-user-false");
+    mkdirSync(join(projectDir, ".claude"), { recursive: true });
+    writeFileSync(
+      join(projectDir, ".claude", "settings.json"),
+      JSON.stringify({ enabledPlugins: { "formatter@team-plugins": false } }, null, 2),
+    );
+
+    const files = applyClaudePluginExtensions(
+      [
+        {
+          path: ".claude/plugins/installed_plugins.json",
+          content: JSON.stringify({
+            version: 2,
+            plugins: {
+              "formatter@team-plugins": [
+                { scope: "user", installPath: "cache/team-plugins/formatter/1.0.0", version: "1.0.0" },
+              ],
+              "linter@team-plugins": [
+                { scope: "user", installPath: "cache/team-plugins/linter/1.0.0", version: "1.0.0" },
+              ],
+            },
+          }),
+        },
+      ],
+      {
+        plugins: [
+          { id: "formatter@team-plugins", enabled: true },
+          { id: "linter@team-plugins", enabled: true },
+        ],
+      },
+      projectDir,
+    );
+
+    const settings = JSON.parse(
+      files.find((file) => file.path === ".claude/settings.json")?.content ?? "{}",
+    ) as { enabledPlugins: Record<string, boolean> };
+
+    expect(settings.enabledPlugins["formatter@team-plugins"]).toBe(false);
+    expect(settings.enabledPlugins["linter@team-plugins"]).toBe(true);
+  });
 });

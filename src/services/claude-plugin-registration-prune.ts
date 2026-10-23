@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { isHarnessTapEnabledKey } from "./claude-enabled-plugin-keys.js";
 import { claudeRecordInstallPath, isHarnessTapClaudeRecord } from "./claude-plugin-record-owner.js";
 import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
 import {
@@ -235,7 +236,10 @@ export function pruneClaudeRegistrations(
   const settings = parseObject(contents.settings);
   if (settings && contents.settings && gone.size > 0 && isRecord(settings.enabledPlugins)) {
     const enabled = { ...settings.enabledPlugins };
-    const drop = Object.keys(enabled).filter((ref) => gone.has(ref) && enabled[ref] === true);
+    // Only a key HarnessTap added: one the user wrote stays, even for a plugin that is gone.
+    const settingsPath = join(homeRoot, CLAUDE_SETTINGS_PATH);
+    const drop = Object.keys(enabled).filter((ref) =>
+      gone.has(ref) && enabled[ref] === true && isHarnessTapEnabledKey(settingsPath, ref));
     if (drop.length > 0) {
       for (const ref of drop) delete enabled[ref];
       const next = { ...settings };

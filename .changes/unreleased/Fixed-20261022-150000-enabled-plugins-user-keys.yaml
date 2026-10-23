@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'A switch or revert no longer removes or changes an `enabledPlugins` key of `~/.claude/settings.json` the user wrote. HarnessTap records the keys it adds and only takes those out on `ht profile use`, so a key you had stays, and a plugin you set to `false` stays `false` (HarnessTap''s copy of it is then not enabled) instead of being flipped to `true`. A key a switch takes out is restored by `ht revert` and given back to HarnessTap. A revert no longer drops the key of a plugin you installed with Claude Code (it is not held back with HarnessTap''s plugins), and a held-back plugin keeps whatever key the file has now.'
+time: 2026-10-22T15:00:00.000Z
+custom:
+  Issue: ""
