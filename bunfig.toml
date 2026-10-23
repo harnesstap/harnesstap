@@ -4,4 +4,4 @@
 # call in package.json scripts and CI workflows instead.
 # Match vitest-style file isolation: avoid leaked DB/env state between test files.
 isolate = true
-preload = ["./test/helpers/disable-telemetry.ts", "./test/helpers/isolate-home.ts"]
+preload = ["./test/helpers/disable-telemetry.ts", "./test/helpers/isolate-home.ts", "./test/helpers/reset-process-state.ts"]

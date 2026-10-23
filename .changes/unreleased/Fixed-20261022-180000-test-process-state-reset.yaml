@@ -1,0 +1,5 @@
+kind: Fixed
+body: Test runs reset the host plugin refresh notices (kept, replaced, blocked and added files, and the force-replace flag) after every test, so a randomized full run no longer prints the counts of an earlier test's refresh in a later test.
+time: 2026-10-22T18:00:00.000Z
+custom:
+  Issue: ""
