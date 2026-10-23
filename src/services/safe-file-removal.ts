@@ -40,6 +40,7 @@ import { forgetMissingEnabledKeys, isClaudeSettingsPath } from "./claude-enabled
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { saveRemovedHostPluginViews, saveRemovedOwnership } from "./removed-ownership.js";
+import { backupFileMode, permissionBits, restoreFileMode } from "./file-mode.js";
 import { restoreBlockedMessage, restoreBlocker } from "./restore-blocker.js";
 import { hashFileContentStreaming } from "./streaming-content-hash.js";
 import { shortenHomePath } from "../utils/home-path.js";
@@ -652,6 +653,8 @@ export function backupAndRewriteFile(input: {
   nextContent: string | Buffer | null;
   applyId: string;
   snapshotId?: string | null;
+  /** Permission bits to give the written file; the file keeps its mode (or gets the default) when absent. */
+  mode?: number;
 }): void {
   const fullPath = resolve(input.rootPath, input.relativePath);
   if (!existsSync(fullPath)) {
@@ -659,6 +662,7 @@ export function backupAndRewriteFile(input: {
     if (input.nextContent === null) return;
     mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, input.nextContent);
+    restoreFileMode(fullPath, input.mode);
     return;
   }
   backupOnDiskFile(input);
@@ -675,6 +679,7 @@ export function backupAndRewriteFile(input: {
     return;
   }
   writeFileSync(fullPath, input.nextContent);
+  restoreFileMode(fullPath, input.mode);
   if (isClaudeSettingsPath(input.relativePath)) {
     forgetMissingEnabledKeys(fullPath, input.snapshotId);
     forgetMissingSettingsMarketplaces(fullPath, input.snapshotId);
@@ -774,6 +779,7 @@ export function restoreSafeRemovalBackup(input: {
       symlinkSync(backup.content, fullPath);
     } else {
       writeFileSync(fullPath, backup.content);
+      restoreFileMode(fullPath, backupFileMode(backup));
     }
     restored.push(backup.relative_path);
   }
@@ -806,6 +812,7 @@ export function restoreSafeRemovalBackup(input: {
         symlinkSync(readlinkSync(full, { encoding: "buffer" }), dest);
       } else {
         writeFileSync(dest, readFileSync(full));
+        restoreFileMode(dest, permissionBits(stat.mode));
       }
       restored.push(rel);
     }
