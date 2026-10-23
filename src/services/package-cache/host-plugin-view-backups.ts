@@ -3,9 +3,13 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { ulid } from "ulid";
 import { getHarnesstapDir } from "../../db/connection.js";
 import { listApplyRemovalBackups, type ApplyRemovalBackup } from "../../models/apply-removal-backup.js";
-import { executeSafeFileRemovals } from "../safe-file-removal.js";
+import { executeSafeFileRemovals, hashFileOrLink } from "../safe-file-removal.js";
 import { hostViewFileOwnership, planHostPluginViewRemovals } from "./host-plugin-view-ownership.js";
-import { forgetHostPluginViewFiles, readHostPluginViewRecord } from "./host-plugin-views.js";
+import {
+  forgetHostPluginViewFiles,
+  readHostPluginViewRecord,
+  recordHostPluginViewFiles,
+} from "./host-plugin-views.js";
 import { removeFileOrLink } from "../../utils/remove-file-or-link.js";
 
 /**
@@ -19,6 +23,13 @@ interface HostPluginViewBackup {
   host_view: string;
   /** Paths inside the folder. */
   files: string[];
+  /**
+   * The hash of each file HarnessTap had written and that was unchanged when
+   * it was backed up. A restore that puts exactly those bytes back records
+   * the file as HarnessTap's again, so a later refresh replaces or removes it
+   * through the normal safe removal instead of keeping it as a stranger.
+   */
+  owned?: Record<string, string>;
   created_at: string;
 }
 
@@ -59,6 +70,14 @@ export function backUpAndRemoveHostPluginViewFiles(input: {
   const paths = planHostPluginViewRemovals(input).allowed;
   if (paths.length === 0) return undefined;
   const backupId = ulid();
+  const recorded = { ...(readHostPluginViewRecord(input.hostView)?.files ?? {}) };
+  const owned: Record<string, string> = {};
+  for (const path of paths) {
+    const hash = recorded[path];
+    if (hash && hostViewFileOwnership({ homeRoot: input.homeRoot, hostView: input.hostView, path, recorded }) === "owned") {
+      owned[path] = hash;
+    }
+  }
   // Record the id before anything goes to the trash, so every backed-up byte
   // can be put back with `ht revert <id>`, even when a removal fails midway.
   const backups = readBackups();
@@ -66,6 +85,7 @@ export function backUpAndRemoveHostPluginViewFiles(input: {
     home_root: input.homeRoot,
     host_view: input.hostView,
     files: [...paths],
+    ...(Object.keys(owned).length > 0 ? { owned } : {}),
     created_at: new Date().toISOString(),
   };
   writeBackups(backups);
@@ -243,6 +263,19 @@ export function restoreHostPluginViewBackup(
     }
     result.restored.push(file.path);
   }
-  forgetHostPluginViewFiles(backup.host_view, result.restored);
+  // Bytes HarnessTap had written there, back as they were, are HarnessTap's
+  // again; anything else restored stays the user's.
+  const again: Record<string, string> = {};
+  const forget: string[] = [];
+  for (const path of result.restored) {
+    const wanted = backup.owned?.[path];
+    const now = hashFileOrLink(join(backup.host_view, path));
+    if (wanted !== undefined && now === wanted) again[path] = wanted;
+    else forget.push(path);
+  }
+  forgetHostPluginViewFiles(backup.host_view, forget);
+  if (Object.keys(again).length > 0) {
+    recordHostPluginViewFiles({ hostView: backup.host_view, created: false, files: again });
+  }
   return result;
 }
