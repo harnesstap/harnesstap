@@ -622,6 +622,7 @@ export async function handleProjectApplyCommand(
       syncAll: opts.syncPlugins,
       scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
       ignoreMissingInstall: Boolean(opts.ignorePluginVersions || opts.dryRun),
+      installInexactPins: Boolean(opts.ignorePluginVersions && !opts.dryRun),
       yes: Boolean(opts.yes),
       interactive: opts.noInteractive === true ? false : opts.interactive,
       progress: {
@@ -815,6 +816,7 @@ export async function handleProjectApplyCommand(
       syncAll: opts.syncPlugins,
       scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
       ignoreMissingInstall: opts.ignorePluginVersions,
+      installInexactPins: Boolean(opts.ignorePluginVersions),
       yes: Boolean(opts.yes),
       interactive: opts.noInteractive === true ? false : opts.interactive,
       progress: {
