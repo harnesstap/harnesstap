@@ -26,6 +26,7 @@ import {
   restoreSafeRemovalBackup,
   type SafeRemovalSkip,
 } from "./safe-file-removal.js";
+import { isClaudeSettingsPath, restoreForgottenEnabledKeys } from "./claude-enabled-plugin-keys.js";
 import { restoreRemovedHostPluginViews, restoreRemovedOwnership } from "./removed-ownership.js";
 import { heldBackByRegistry, withoutEnabledKeys } from "./revert-plugin-registry.js";
 import { restoreBlockedGroupMessage, restoreBlockedMessage, restoreBlocker } from "./restore-blocker.js";
@@ -132,6 +133,14 @@ export function resolveRevertPlan(snapshotId: string): RevertPlan | { error: str
   };
 }
 
+function readLive(rootPath: string, path: string): string | undefined {
+  try {
+    return readFileSync(resolve(rootPath, path), "utf-8");
+  } catch {
+    return undefined;
+  }
+}
+
 function shouldRestorePath(rootPath: string, file: RestoreFile): RestoreDecision {
   const fullPath = resolve(rootPath, file.path);
   if (restoreBlocker(rootPath, file.path) !== undefined) {
@@ -219,7 +228,10 @@ export function executeRevert(
     if (isHeldBack(planned.path)) continue;
     const file: RestoreFile =
       heldBack && heldBack.enabledKeys.length > 0 && planned.path.endsWith("/settings.json")
-        ? textRestoreFile(planned.path, withoutEnabledKeys(planned.content, heldBack.enabledKeys))
+        ? textRestoreFile(
+            planned.path,
+            withoutEnabledKeys(planned.content, heldBack.enabledKeys, readLive(plan.rootPath, planned.path)),
+          )
         : planned;
     switch (decision) {
       case "write":
@@ -332,6 +344,9 @@ export function executeRevert(
       restoredPaths: restored,
       hashOf: hashFileOrLink,
     });
+    for (const path of new Set(restored)) {
+      if (isClaudeSettingsPath(path)) restoreForgottenEnabledKeys(resolve(plan.rootPath, path), plan.id);
+    }
   }
 
   const warnings = [

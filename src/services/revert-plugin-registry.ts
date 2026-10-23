@@ -1,4 +1,5 @@
 import type { SerializedFile } from "../types.js";
+import { hasClaudeWrittenRecordShape } from "./claude-plugin-record-owner.js";
 import type { SafeRemovalSkip } from "./safe-file-removal.js";
 
 /**
@@ -8,7 +9,9 @@ import type { SafeRemovalSkip } from "./safe-file-removal.js";
  * the plugins and marketplaces the snapshot registered there stay out too,
  * their cache files and `enabledPlugins` keys with them. Restoring them would
  * leave a plugin the host does not know and HarnessTap cannot tell from the
- * user's own.
+ * user's own. A plugin the user installed with Claude Code (its record holds
+ * what Claude Code writes) is the user's: a switch never removed it, so it is
+ * not held back, and a revert never changes its `enabledPlugins` key.
  */
 const REGISTRY_RE = /^(.*)\/plugins\/(installed_plugins|known_marketplaces)\.json$/;
 
@@ -27,6 +30,20 @@ function jsonKeys(content: string | undefined, field?: string): string[] {
     const parsed = JSON.parse(content) as Record<string, unknown>;
     const value = field ? parsed[field] : parsed;
     return typeof value === "object" && value !== null ? Object.keys(value) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The refs of `installed_plugins.json` content whose records HarnessTap could have written. */
+function harnessTapRegistered(content: string | undefined): string[] {
+  if (content === undefined) return [];
+  try {
+    const plugins = (JSON.parse(content) as { plugins?: unknown }).plugins;
+    if (typeof plugins !== "object" || plugins === null) return [];
+    return Object.entries(plugins as Record<string, unknown>)
+      .filter(([, rows]) => !(Array.isArray(rows) && rows.length > 0 && rows.every(hasClaudeWrittenRecordShape)))
+      .map(([ref]) => ref);
   } catch {
     return [];
   }
@@ -62,7 +79,7 @@ export function heldBackByRegistry(
     const cache = `${pluginsDir}/cache/`;
     const installed = `${pluginsDir}/installed_plugins.json`;
     const file = registry.slice(pluginsDir.length + 1);
-    const registered = jsonKeys(content.get(installed), "plugins");
+    const registered = harnessTapRegistered(content.get(installed));
     if (match[2] === "installed_plugins") {
       const names: string[] = [];
       for (const key of registered) {
@@ -103,15 +120,39 @@ export function heldBackByRegistry(
   return held;
 }
 
-/** The settings content without the `enabledPlugins` keys of the plugins held back. */
-export function withoutEnabledKeys(content: string, keys: readonly string[]): string {
+function enabledPluginsOf(raw: string | undefined): Record<string, unknown> {
+  if (raw === undefined) return {};
+  try {
+    const enabled = (JSON.parse(raw) as { enabledPlugins?: unknown }).enabledPlugins;
+    return typeof enabled === "object" && enabled !== null && !Array.isArray(enabled)
+      ? (enabled as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The settings content with the `enabledPlugins` keys of the plugins held
+ * back left as they are on disk now (`live`): dropped when the file has no
+ * such key, never dropped when it does, so a key the user has is not lost.
+ */
+export function withoutEnabledKeys(
+  content: string,
+  keys: readonly string[],
+  live?: string,
+): string {
   if (keys.length === 0) return content;
   try {
     const parsed = JSON.parse(content) as Record<string, unknown>;
     const enabled = parsed.enabledPlugins;
     if (typeof enabled !== "object" || enabled === null) return content;
     const next = { ...(enabled as Record<string, unknown>) };
-    for (const key of keys) delete next[key];
+    const onDisk = enabledPluginsOf(live);
+    for (const key of keys) {
+      if (key in onDisk) next[key] = onDisk[key];
+      else delete next[key];
+    }
     const indent = /^\{\n( +)"/.exec(content)?.[1]?.length ?? 2;
     const tail = content.endsWith("\n") ? "\n" : "";
     return `${JSON.stringify({ ...parsed, enabledPlugins: next }, null, indent)}${tail}`;

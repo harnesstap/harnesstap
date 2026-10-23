@@ -9,6 +9,7 @@ import { getResource } from "../models/resource.js";
 import { listMaterializationsForRootPath } from "../models/resource-materialization.js";
 import { isPreexistingPath } from "../models/preexisting-path.js";
 import type { Resource } from "../types.js";
+import { isClaudeSettingsPath, isHarnessTapEnabledKey } from "./claude-enabled-plugin-keys.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { backupAndRewriteFile } from "./safe-file-removal.js";
 
@@ -70,6 +71,7 @@ function stripMcpServer(
 function stripJsonObject(
   obj: Record<string, unknown>,
   resource: Resource,
+  canDropEnabledKey: (key: string) => boolean,
 ): Record<string, unknown> | null {
   const mcpNext = stripMcpServer(obj, resource);
   if (mcpNext) {
@@ -90,7 +92,7 @@ function stripJsonObject(
 
   if (isRecord(obj.enabledPlugins)) {
     const enabled = { ...obj.enabledPlugins };
-    const keys = matchingRecordKeys(enabled, resource);
+    const keys = matchingRecordKeys(enabled, resource).filter(canDropEnabledKey);
     if (keys.length > 0) {
       for (const key of keys) {
         delete enabled[key];
@@ -126,9 +128,14 @@ function stripJsonObject(
   return null;
 }
 
+/**
+ * `canDropEnabledKey` says whether an `enabledPlugins` key of the resource may
+ * be taken out: by default any, a switch passes only the keys HarnessTap added.
+ */
 export function tryEditAggregateContent(
   content: string,
   resource: Resource,
+  canDropEnabledKey: (key: string) => boolean = () => true,
 ): { ok: true; content: string; emptied: boolean } | { ok: false; reason: string } {
   const trimmed = content.trimStart();
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
@@ -137,7 +144,7 @@ export function tryEditAggregateContent(
       if (!isRecord(parsed)) {
         return { ok: false, reason: "Shared file section cannot be identified" };
       }
-      const next = stripJsonObject(parsed, resource);
+      const next = stripJsonObject(parsed, resource, canDropEnabledKey);
       if (!next) {
         return { ok: false, reason: "Shared file section cannot be identified" };
       }
@@ -156,7 +163,7 @@ export function tryEditAggregateContent(
     if (!isRecord(parsed)) {
       return { ok: false, reason: "Shared file section cannot be identified" };
     }
-    const next = stripJsonObject(parsed, resource);
+    const next = stripJsonObject(parsed, resource, canDropEnabledKey);
     if (!next) {
       return { ok: false, reason: "Shared file section cannot be identified" };
     }
@@ -234,7 +241,13 @@ export function rewriteStaleMergeableHostConfigs(
       if (keep && pluginRegistryKeys(resource).some((key) => keep.has(key))) {
         continue;
       }
-      const edit = tryEditAggregateContent(next, resource);
+      const edit = tryEditAggregateContent(
+        next,
+        resource,
+        isClaudeSettingsPath(relativePath)
+          ? (key) => isHarnessTapEnabledKey(fullPath, key)
+          : undefined,
+      );
       if (!edit.ok) {
         continue;
       }

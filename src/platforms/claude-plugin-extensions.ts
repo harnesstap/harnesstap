@@ -82,15 +82,17 @@ export function applyClaudePluginExtensions(
   }
 
   if (config.plugins && config.plugins.length > 0) {
+    const onDisk = enabledPluginsRecord(settings.enabledPlugins);
     const enabledPlugins = {
-      ...enabledPluginsRecord(settings.enabledPlugins),
+      ...onDisk,
       ...enabledPluginsRecord(generatedSettings.enabledPlugins),
     };
     for (const plugin of config.plugins) {
       const installed =
         Boolean(getInstalledPluginRecord(projectRoot, plugin.id))
         || pendingInstalls.has(plugin.id);
-      if (installed) {
+      // A plugin the user disabled in settings.json stays disabled.
+      if (installed && !(onDisk[plugin.id] === false && plugin.enabled !== false)) {
         enabledPlugins[plugin.id] = plugin.enabled !== false;
       }
     }

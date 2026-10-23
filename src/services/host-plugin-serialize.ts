@@ -251,20 +251,37 @@ function enabledPluginsFromRaw(raw: string | undefined): Record<string, boolean>
   return {};
 }
 
+/**
+ * Enable the plugin in settings.json unless the user disabled it there: an
+ * explicit `false` is the user's choice and stays, with a warning.
+ */
 function mergeEnabledPlugin(
   files: SerializedFile[],
   homeRoot: string,
   ref: string,
+  surfaceWarnings?: SurfaceWarning[],
 ): void {
   const settingsPath = ".claude/settings.json";
   const existingOnDisk = existsSync(join(homeRoot, settingsPath))
     ? readFileSync(join(homeRoot, settingsPath), "utf-8")
     : undefined;
   const generated = files.find((file) => file.path === settingsPath)?.content;
+  const disabledByUser = enabledPluginsFromRaw(existingOnDisk)[ref] === false;
+  if (disabledByUser) {
+    surfaceWarnings?.push({
+      harness: "claude-code",
+      path: settingsPath,
+      category: "claude-plugin-disabled",
+      message:
+        `${ref} is disabled in your Claude Code settings.json (enabledPlugins), so HarnessTap left it disabled. `
+        + `Set it to true there, or run \`claude plugin enable ${ref}\`, to use it.`,
+      alias_harnesses: [],
+    });
+  }
   const enabled = {
     ...enabledPluginsFromRaw(existingOnDisk),
     ...enabledPluginsFromRaw(generated),
-    [ref]: true,
+    ...(disabledByUser ? {} : { [ref]: true }),
   };
   const overlay = JSON.stringify({ enabledPlugins: enabled }, null, 2);
   const merged = mergeClaudeSettingsContent(
@@ -475,7 +492,7 @@ export function emitHostPluginTrees(
         installedPath,
         mergeInstalledPluginsContent(existing, originRef, record),
       );
-      mergeEnabledPlugin(files, options.homeRoot, originRef);
+      mergeEnabledPlugin(files, options.homeRoot, originRef, options.surfaceWarnings);
     }
   }
 
