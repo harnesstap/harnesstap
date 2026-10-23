@@ -44,6 +44,25 @@ export function printUnicodeGateWarnings(
   }
 }
 
+/** Where Claude Code keeps the plugin trees HarnessTap installs, relative to the apply root. */
+const CLAUDE_PLUGIN_CACHE_PREFIX = ".claude/plugins/cache/";
+
+/** Source and script files: run by the host, not read as instructions or config. */
+const PROGRAM_FILE_EXTENSION =
+  /\.(?:c?js|mjs|jsx|c?ts|mts|tsx|py|rb|pl|php|lua|sh|bash|zsh|fish|ps1|bat|cmd)$/i;
+
+/**
+ * A third-party plugin's program file in the Claude plugin cache. Its code can
+ * carry a bidi control in a string or regex literal without hiding anything
+ * from a model, so critical findings there are reported as warnings. Skills,
+ * commands, agents, hooks.json and MCP config stay fully gated.
+ */
+export function isPluginProgramFile(path: string): boolean {
+  const normalized = path.replaceAll("\\", "/");
+  return normalized.startsWith(CLAUDE_PLUGIN_CACHE_PREFIX)
+    && PROGRAM_FILE_EXTENSION.test(normalized);
+}
+
 function unchangedFileIdentity(
   file: DeployFile,
   rootPath: string | undefined,
@@ -65,8 +84,12 @@ export function gateDeployFiles(
 ): DeployGateResult {
   const findings: UnicodeScanFinding[] = [];
   for (const file of files) {
+    const scanned = scanUnicodeText(file.content, file.path, unchangedFileIdentity(file, options.rootPath));
     findings.push(
-      ...scanUnicodeText(file.content, file.path, unchangedFileIdentity(file, options.rootPath)),
+      ...(isPluginProgramFile(file.path)
+        ? scanned.map((finding) =>
+            finding.severity === "critical" ? { ...finding, severity: "warning" as const } : finding)
+        : scanned),
     );
   }
   assertUnicodeAllowed(findings, options.forceUnicode === true);
