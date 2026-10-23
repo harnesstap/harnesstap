@@ -18,9 +18,11 @@ import { removeFileOrLink } from "../utils/remove-file-or-link.js";
 import {
   HARNESSTAP_CLAUDE_MARKETPLACES_ROOT,
   MARKETPLACE_PLUGIN_TREE_DIR,
+  harnessTapClaudeMarketplaceManifestPath,
+  hasHarnessTapMarketplaceManifest,
   marketplacePluginSource,
 } from "./claude-marketplace-registration.js";
-import { hashFileOrLink } from "./safe-file-removal.js";
+import { backupAndRewriteFile, hashFileOrLink } from "./safe-file-removal.js";
 
 /**
  * Claude Code installs a plugin from a marketplace by copying the folder its
@@ -254,6 +256,9 @@ export function reconcileMarketplacePluginTrees(homeRoot: string): void {
   }
   for (const marketplace of marketplaces) {
     const dir = join(root, marketplace);
+    // A folder Claude Code cloned a marketplace into (its own, or one that
+    // `claude plugin marketplace update` made out of HarnessTap's) is not ours.
+    if (!hasHarnessTapMarketplaceManifest(homeRoot, marketplace)) continue;
     for (const plugin of listedPlugins(join(dir, ".claude-plugin", "marketplace.json"))) {
       const view = join(homeRoot, ".claude", "plugins", "cache", marketplace, plugin.name, plugin.version.replace(/[\\/]/g, "-"));
       const target = join(dir, MARKETPLACE_PLUGIN_TREE_DIR, plugin.name);
@@ -265,8 +270,63 @@ export function reconcileMarketplacePluginTrees(homeRoot: string): void {
   }
   for (const [target, recorded] of Object.entries(records.trees)) {
     if (handled.has(target)) continue;
+    // The files there are the clone's now: forget them, touch nothing.
+    if (isClonedMarketplaceFolder(homeRoot, target)) continue;
     const kept = dropTree(target, recorded, join(homeRoot, ".claude", "plugins"));
     if (Object.keys(kept).length > 0) next[target] = kept;
   }
   writeRecords(homeRoot, { version: 1, trees: next });
+}
+
+/** True when `target` lies in a marketplace folder whose manifest is not HarnessTap's. */
+function isClonedMarketplaceFolder(homeRoot: string, target: string): boolean {
+  const root = join(homeRoot, HARNESSTAP_CLAUDE_MARKETPLACES_ROOT);
+  const rel = relative(root, target);
+  if (rel.startsWith("..")) return false;
+  const marketplace = rel.split(sep)[0];
+  if (!marketplace) return false;
+  return existsSync(join(homeRoot, harnessTapClaudeMarketplaceManifestPath(marketplace)))
+    && !hasHarnessTapMarketplaceManifest(homeRoot, marketplace);
+}
+
+/**
+ * Take the plugins a kept marketplace folder no longer has an install folder
+ * for out of its `marketplace.json`: Claude Code fails an install of a listed
+ * plugin whose source path is missing ("Source path does not exist"). A folder
+ * stays when a plugin the user installed with Claude Code uses it, while the
+ * plugins HarnessTap installed there are gone. Only HarnessTap's manifest is
+ * rewritten (backed up first), and only when a listed plugin remains.
+ * Returns true when the manifest was (or, on a dry run, would be) rewritten.
+ */
+export function pruneKeptMarketplaceManifest(
+  homeRoot: string,
+  marketplace: string,
+  options: { applyId: string; snapshotId?: string | null; dryRun?: boolean },
+): boolean {
+  if (!hasHarnessTapMarketplaceManifest(homeRoot, marketplace)) return false;
+  const relativePath = harnessTapClaudeMarketplaceManifestPath(marketplace);
+  let raw: string;
+  let parsed: unknown;
+  try {
+    raw = readFileSync(join(homeRoot, relativePath), "utf8");
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    return false;
+  }
+  if (!isRecord(parsed) || !Array.isArray(parsed.plugins)) return false;
+  const remaining = parsed.plugins.filter((entry) => {
+    if (!isRecord(entry) || typeof entry.name !== "string" || typeof entry.version !== "string") return true;
+    const view = join(homeRoot, ".claude", "plugins", "cache", marketplace, entry.name, entry.version.replace(/[\\/]/g, "-"));
+    return existsSync(view);
+  });
+  if (remaining.length === 0 || remaining.length === parsed.plugins.length) return false;
+  if (options.dryRun) return true;
+  backupAndRewriteFile({
+    rootPath: homeRoot,
+    relativePath,
+    nextContent: `${JSON.stringify({ ...parsed, plugins: remaining }, null, 2)}\n`,
+    applyId: options.applyId,
+    snapshotId: options.snapshotId,
+  });
+  return true;
 }

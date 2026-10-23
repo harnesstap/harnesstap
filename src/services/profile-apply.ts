@@ -1,4 +1,5 @@
-import { reconcileMarketplacePluginTrees } from "./claude-marketplace-plugin-trees.js";
+import { pruneKeptMarketplaceManifest, reconcileMarketplacePluginTrees } from "./claude-marketplace-plugin-trees.js";
+
 import {
   heldFolderOf,
   holdsOnlyLeavingHarnessTapRegistrations,
@@ -8,7 +9,11 @@ import {
   userHeldClaudePlugins,
   writtenHarnessTapMarketplaces,
 } from "./claude-plugin-registration-prune.js";
-import { claudeChangedMarketplaces } from "./claude-marketplace-registration.js";
+import {
+  HARNESSTAP_CLAUDE_MARKETPLACES_ROOT,
+  claudeChangedMarketplaces,
+  harnessTapClaudeMarketplaceManifestPath,
+} from "./claude-marketplace-registration.js";
 import { isPreexistingPath } from "../models/preexisting-path.js";
 import { forgetHostPluginView, recordedHostPluginViewPaths } from "./package-cache/host-plugin-views.js";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -320,6 +325,19 @@ function removeStaleGlobalProfileFiles(
     return [`Kept ${folder}: you installed ${held.ref} with Claude Code and it uses this folder. `
       + `Run \`claude plugin uninstall ${held.ref}\` if you no longer need it.`];
   });
+  // A marketplace folder kept for a plugin the user installed still lists the
+  // plugins HarnessTap installed there and just removed.
+  const prunedManifests = [...heldStale].flatMap((folder) => {
+    const prefix = `${HARNESSTAP_CLAUDE_MARKETPLACES_ROOT}/`;
+    const marketplace = folder.startsWith(prefix) ? folder.slice(prefix.length) : "";
+    if (!marketplace || marketplace.includes("/")) return [];
+    const done = pruneKeptMarketplaceManifest(homeRoot, marketplace, {
+      applyId: removed.applyId,
+      snapshotId: options.snapshotId,
+      dryRun: options.dryRun,
+    });
+    return done ? [harnessTapClaudeMarketplaceManifestPath(marketplace)] : [];
+  });
   const prunedClaude = pruneStaleClaudeRegistrationsOnDisk(
     homeRoot,
     staleClaudeRecords,
@@ -348,7 +366,7 @@ function removeStaleGlobalProfileFiles(
     warnings: [
       ...removed.warnings,
       ...keptInLeftFolders.map((skip) => skip.message),
-      ...[...new Set([...rewritten.rewritten, ...prunedClaude.rewritten])]
+      ...[...new Set([...rewritten.rewritten, ...prunedClaude.rewritten, ...prunedManifests])]
         .map((path) => `Updated ${path} (removed HarnessTap-managed keys).`),
       ...prunedClaude.warnings,
       ...heldWarnings,
