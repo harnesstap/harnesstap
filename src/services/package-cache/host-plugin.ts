@@ -389,6 +389,12 @@ export function mirrorHostPluginView(input: {
     mkdirSync(hostView, { recursive: true });
     const files = copyViewFiles(input.canonicalDir, hostView, packageFiles);
     recordHostPluginViewFiles({ hostView, created: true, files });
+    // A new folder's files all count as written, except the ones the apply writes itself.
+    const applyOwned = claudeEmitDerivedPaths(input.canonicalDir, packageFiles);
+    recordAddedHostPluginViewFiles(
+      hostView,
+      packageFiles.filter((path) => files[path] !== undefined && !applyOwned.has(path)),
+    );
     return hostView;
   }
 

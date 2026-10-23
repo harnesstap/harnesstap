@@ -578,6 +578,9 @@ function handleRevertCommand(
   }
   if (opts.dryRun) {
     console.log(CLI_COPY.dryRunNothingChanged);
+    for (const warning of result.warnings) {
+      ui.warn(warning);
+    }
     console.log(
       restoredRemovedLine(result.restored.length, result.removed.length, {
         dryRun: true,

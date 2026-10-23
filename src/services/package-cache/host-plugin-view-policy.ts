@@ -101,9 +101,13 @@ export function takeBlockedHostPluginViewFiles(): BlockedHostPluginViewFiles[] {
   return blocked.splice(0, blocked.length);
 }
 
-/** True when a host plugin refresh in this process kept, replaced or could not write files. */
+/**
+ * True when a host plugin refresh in this process kept, replaced, added or could
+ * not write files. Added files count too, so settling drains them and one
+ * command's count never leaks into the next one in the same process.
+ */
 export function hasHostPluginViewNotices(): boolean {
-  return kept.length > 0 || replaced.length > 0 || blocked.length > 0;
+  return kept.length > 0 || replaced.length > 0 || blocked.length > 0 || added.size > 0;
 }
 
 /**
@@ -135,8 +139,20 @@ export function takeReplacedHostPluginViewFiles(): ReplacedHostPluginViewFiles[]
  * this process (not the ones already reported last time). Peeks, never drains.
  */
 export function pendingKeptHostPluginViewPaths(): string[] {
+  return keptHostPluginViewPaths((entry) => !entry.alreadyReported);
+}
+
+/**
+ * Home-relative paths of every kept file a host plugin refresh found in this
+ * process, including the ones a notice already reported last time.
+ */
+export function allKeptHostPluginViewPaths(): string[] {
+  return keptHostPluginViewPaths(() => true);
+}
+
+function keptHostPluginViewPaths(include: (entry: KeptHostPluginViewFiles) => boolean): string[] {
   return kept
-    .filter((entry) => !entry.alreadyReported)
+    .filter(include)
     .flatMap((entry) => {
       const root = entry.homeRoot.replace(/[\\/]+$/, "");
       const folder = entry.hostView.replace(/\\/g, "/");

@@ -38,6 +38,7 @@ import {
 import { hashGeneratedContent } from "./materialization-ownership.js";
 import { isMergeableHostConfigPath } from "./merged-host-config.js";
 import { saveRemovedOwnership } from "./removed-ownership.js";
+import { restoreBlockedMessage, restoreBlocker } from "./restore-blocker.js";
 import { hashFileContentStreaming } from "./streaming-content-hash.js";
 import { shortenHomePath } from "../utils/home-path.js";
 import { removeFileOrLink } from "../utils/remove-file-or-link.js";
@@ -61,7 +62,11 @@ export type SafeRemovalSkipReason =
 export interface SafeRemovalSkip {
   path: string;
   reason: SafeRemovalSkipReason;
+  /** A revert left the path alone because this path (home-relative) is in the way. */
+  blockedBy?: string;
   message: string;
+  /** False when `--force-remove` would not remove the path either, so no hint should suggest it. */
+  forceable?: boolean;
 }
 
 /** A file `--force-remove` removed that would otherwise have been kept. */
@@ -372,6 +377,7 @@ export function planSafeFileRemovals(
         path: relativePath,
         reason: "unmanaged",
         message: `Skipped removing ${relativePath} (a folder HarnessTap didn't create).`,
+        forceable: false,
       });
       continue;
     }
@@ -381,6 +387,7 @@ export function planSafeFileRemovals(
         path: relativePath,
         reason: "preexisting",
         message: skipMessage(relativePath, "preexisting"),
+        forceable: false,
       });
       continue;
     }
@@ -398,6 +405,7 @@ export function planSafeFileRemovals(
         path: relativePath,
         reason: "unmanaged",
         message: skipMessage(relativePath, "unmanaged"),
+        ...(hostPluginViewSaysNotWritten(rootPath, relativePath) ? { forceable: false } : {}),
       });
       continue;
     }
@@ -426,6 +434,21 @@ function copyToTrash(applyId: string, relativePath: string, bytes: Buffer): stri
   mkdirSync(dirname(dest), { recursive: true });
   writeFileSync(dest, bytes);
   return dest;
+}
+
+/**
+ * A removed link goes into the trash as a link, so the trash looks like what
+ * was removed. Where a link cannot be made the target is kept as text.
+ */
+function linkToTrash(applyId: string, relativePath: string, target: Buffer): void {
+  const dest = removalBackupTrashFile(applyId, relativePath);
+  if (pathExists(dest)) return;
+  mkdirSync(dirname(dest), { recursive: true });
+  try {
+    symlinkSync(target.toString("utf-8"), dest);
+  } catch {
+    writeFileSync(dest, target);
+  }
 }
 
 /**
@@ -571,7 +594,7 @@ function backupOnDiskFile(input: {
       content: target,
       mode: S_IFLNK | 0o777,
     });
-    copyToTrash(input.applyId, input.relativePath, target);
+    linkToTrash(input.applyId, input.relativePath, target);
     return;
   }
   let mode = 0;
@@ -700,7 +723,23 @@ export function restoreSafeRemovalBackup(input: {
   applyId?: string;
   snapshotId?: string;
   rootPath: string;
+  /** Called for a path left alone because something is in the way. */
+  onSkip?: (skip: SafeRemovalSkip) => void;
 }): string[] {
+  /** True when `fullPath` can take the restored file; says why not otherwise. */
+  const free = (relativePath: string, fullPath: string): boolean => {
+    const blocker = restoreBlocker(input.rootPath, relativePath);
+    if (blocker === undefined && !pathExists(fullPath)) return true;
+    input.onSkip?.({
+      path: relativePath,
+      reason: "unmanaged",
+      ...(blocker === undefined ? {} : { blockedBy: blocker }),
+      message: blocker === undefined
+        ? `Skipped restoring ${relativePath} (something is at that path now).`
+        : restoreBlockedMessage(relativePath, blocker),
+    });
+    return false;
+  };
   const backups = listApplyRemovalBackups({
     apply_id: input.applyId,
     snapshot_id: input.snapshotId,
@@ -708,16 +747,16 @@ export function restoreSafeRemovalBackup(input: {
   const restored: string[] = [];
   for (const backup of backups) {
     const fullPath = resolve(input.rootPath, backup.relative_path);
+    if (!free(backup.relative_path, fullPath)) continue;
     mkdirSync(dirname(fullPath), { recursive: true });
     if (((backup.mode ?? 0) & S_IFMT) === S_IFLNK) {
-      if (isSymlinkPath(fullPath)) removeFileOrLink(fullPath);
       symlinkSync(Buffer.from(backup.content).toString("utf-8"), fullPath);
     } else {
       writeFileSync(fullPath, backup.content);
     }
     restored.push(backup.relative_path);
   }
-  if (restored.length > 0) {
+  if (backups.length > 0) {
     return restored;
   }
 
@@ -733,13 +772,20 @@ export function restoreSafeRemovalBackup(input: {
     for (const name of readdirSync(dir)) {
       const full = join(dir, name);
       const rel = prefix ? `${prefix}/${name}` : name;
-      if (statSync(full).isDirectory()) {
+      const stat = lstatSync(full);
+      if (stat.isDirectory()) {
         walk(full, rel);
         continue;
       }
       const dest = resolve(input.rootPath, rel);
+      if (!free(rel, dest)) continue;
       mkdirSync(dirname(dest), { recursive: true });
-      writeFileSync(dest, readFileSync(full));
+      if (stat.isSymbolicLink()) {
+        // A link goes back as a link, never as the bytes it points to.
+        symlinkSync(readlinkSync(full), dest);
+      } else {
+        writeFileSync(dest, readFileSync(full));
+      }
       restored.push(rel);
     }
   };

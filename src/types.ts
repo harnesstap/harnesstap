@@ -473,6 +473,13 @@ export interface SnapshotState {
   absent_paths?: string[];
   /** Managed paths that were links when the snapshot was taken, with their targets. */
   disk_links?: Record<string, string>;
+  /**
+   * Regular files the apply was going to remove. Their bytes are not stored in
+   * the snapshot: the removal backups under the same snapshot id hold them
+   * (moved into the trash, or kept inline when the file was edited), and
+   * revert reads them from there.
+   */
+  trashed_files?: string[];
 }
 
 export interface Snapshot {

@@ -378,6 +378,10 @@ export function keptFilesHeader(count: number): string {
   return `Kept ${count} ${pluralNoun(count, "file")} ${CLI_COPY.keptFilesIntro}`;
 }
 
+export function keptReportedBeforeLine(count: number): string {
+  return `${count} more kept ${pluralNoun(count, "file")} in a plugin folder ${count === 1 ? "was" : "were"} listed by an earlier apply. \`ht profile status\` lists every kept file.`;
+}
+
 export function keptLinkOutsideRoot(path: string): string {
   return `Kept ${path}: it is your link to a file outside your home, and HarnessTap never writes through it.`;
 }
