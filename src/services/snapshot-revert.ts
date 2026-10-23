@@ -1,3 +1,4 @@
+import { reconcileMarketplacePluginTrees } from "./claude-marketplace-plugin-trees.js";
 import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import {
@@ -388,6 +389,8 @@ export function executeRevert(
       if (isClaudeSettingsPath(path)) restoreForgottenEnabledKeys(resolve(plan.rootPath, path), plan.id);
     }
   }
+
+  if (!options.dryRun) reconcileMarketplacePluginTrees(plan.rootPath);
 
   const warnings = [
     ...skippedWarnings(skipped),

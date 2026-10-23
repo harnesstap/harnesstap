@@ -11,6 +11,14 @@ export const CLAUDE_KNOWN_MARKETPLACES_PATH = ".claude/plugins/known_marketplace
 /** Parent of the marketplace folders HarnessTap registers with Claude Code. */
 export const HARNESSTAP_CLAUDE_MARKETPLACES_ROOT = ".claude/plugins/harnesstap-marketplaces";
 
+/** Folder inside a marketplace folder that holds the plugin trees Claude Code installs from. */
+export const MARKETPLACE_PLUGIN_TREE_DIR = "plugins";
+
+/** The `source` of a marketplace entry: a `./` path inside the marketplace folder, as Claude Code requires. */
+export function marketplacePluginSource(pluginName: string): string {
+  return `./${MARKETPLACE_PLUGIN_TREE_DIR}/${pluginName}`;
+}
+
 /**
  * Folder HarnessTap registers as a marketplace's `installLocation`. It sits
  * apart from `~/.claude/plugins/marketplaces/`, where Claude Code clones the
@@ -265,8 +273,10 @@ function writeHarnessTapMarketplaceManifest(
       .map((plugin) => ({
         name: plugin.name,
         version: plugin.version,
-        // Relative to the marketplace folder: two levels up is ~/.claude/plugins.
-        source: `../../${plugin.relativeRoot.replace(/^\.claude\/plugins\//, "")}`,
+        // Claude Code takes only a `./` path inside the marketplace folder:
+        // the plugin tree HarnessTap keeps there is made by
+        // `reconcileMarketplacePluginTrees`.
+        source: marketplacePluginSource(plugin.name),
       })),
   };
   const manifestPath = harnessTapClaudeMarketplaceManifestPath(marketplace);
