@@ -12,7 +12,11 @@ on:
 jobs:
   e2e:
     if: github.event_name != 'workflow_dispatch' || github.event.inputs.update_baselines != 'true'
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04 on Oct 21. There webkit2gtk-driver is
+    # gone (now webkitgtk-webdriver) and the golden path never sees the app UI
+    # (agent-connected is not displayed), while the same commit passes on 24.04.
+    # Move the pin only after the golden path passes on the newer image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
