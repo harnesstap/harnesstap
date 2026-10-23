@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Switching away from a profile whose plugins `claude plugin marketplace add` cloned now removes the `extraKnownMarketplaces` entries that call declared in `~/.claude/settings.json` (when no kept plugin needs them and you did not change them), so Claude Code does not clone the marketplaces again, and prints a "Kept" notice naming each marketplace clone it leaves behind, with its folder, its size and the `claude plugin marketplace remove` command. The clones belong to Claude Code and are never deleted.'
+time: 2026-10-22T14:00:00.000Z
+custom:
+  Issue: ""

@@ -128,6 +128,24 @@ export function recordAddedSettingsMarketplaces(
 }
 
 /**
+ * Run `action`, a `claude plugin marketplace add` HarnessTap starts: Claude
+ * Code declares the marketplace in `extraKnownMarketplaces` itself ("declared
+ * in user settings"), so the entry is there before any apply writes the file.
+ * The entries the call added are HarnessTap's to take out again, the same as
+ * the ones an apply adds. An entry the file already had stays the user's.
+ */
+export async function recordSettingsMarketplacesAddedBy<T>(homeRoot: string, action: () => Promise<T>): Promise<T> {
+  const settingsPath = join(homeRoot, ".claude", "settings.json");
+  const before = readIfExists(settingsPath);
+  try {
+    return await action();
+  } finally {
+    const after = readIfExists(settingsPath);
+    if (after !== undefined) recordAddedSettingsMarketplaces(settingsPath, before, after);
+  }
+}
+
+/**
  * Forget the recorded entries the file no longer has with the same value (a
  * switch removed them, or the user did or changed them). With `snapshotId` the
  * ones removed are saved for a revert.
