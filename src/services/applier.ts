@@ -1,3 +1,4 @@
+import { forgetMissingSettingsMarketplaces, recordAddedSettingsMarketplaces } from "./claude-settings-marketplaces.js";
 import { forgetMissingEnabledKeys, isClaudeSettingsPath, recordAddedEnabledKeys } from "./claude-enabled-plugin-keys.js";
 import { pruneLeavingClaudeRegistrations } from "./claude-plugin-registration-prune.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
@@ -581,6 +582,9 @@ function writeSerializedFile(fullPath: string, file: SerializedFile): void {
     // The enabledPlugins keys this write added are HarnessTap's to take out again.
     recordAddedEnabledKeys(fullPath, before, file.content);
     forgetMissingEnabledKeys(fullPath);
+    // Likewise the extraKnownMarketplaces entries it added.
+    recordAddedSettingsMarketplaces(fullPath, before, file.content);
+    forgetMissingSettingsMarketplaces(fullPath);
   }
 }
 

@@ -26,6 +26,7 @@ import {
   restoreSafeRemovalBackup,
   type SafeRemovalSkip,
 } from "./safe-file-removal.js";
+import { restoreForgottenSettingsMarketplaces } from "./claude-settings-marketplaces.js";
 import { isClaudeSettingsPath, restoreForgottenEnabledKeys } from "./claude-enabled-plugin-keys.js";
 import { restoreRemovedHostPluginViews, restoreRemovedOwnership } from "./removed-ownership.js";
 import { heldBackByRegistry, withoutEnabledKeys } from "./revert-plugin-registry.js";
@@ -345,7 +346,9 @@ export function executeRevert(
       hashOf: hashFileOrLink,
     });
     for (const path of new Set(restored)) {
-      if (isClaudeSettingsPath(path)) restoreForgottenEnabledKeys(resolve(plan.rootPath, path), plan.id);
+      if (!isClaudeSettingsPath(path)) continue;
+      restoreForgottenEnabledKeys(resolve(plan.rootPath, path), plan.id);
+      restoreForgottenSettingsMarketplaces(resolve(plan.rootPath, path), plan.id);
     }
   }
 
