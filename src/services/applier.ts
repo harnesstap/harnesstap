@@ -1,6 +1,6 @@
 import { forgetMissingSettingsMarketplaces, recordAddedSettingsMarketplaces } from "./claude-settings-marketplaces.js";
 import { forgetMissingEnabledKeys, isClaudeSettingsPath, recordAddedEnabledKeys } from "./claude-enabled-plugin-keys.js";
-import { pruneLeavingClaudeRegistrations } from "./claude-plugin-registration-prune.js";
+import { declaredClaudeMarketplaces, pruneLeavingClaudeRegistrations } from "./claude-plugin-registration-prune.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskBytesOnce, readDiskTextOnce } from "./status-disk-read.js";
 import { traceSpan } from "./status-trace.js";
@@ -498,7 +498,7 @@ export async function generateFiles(
       pid);
     }
     if (pid === "claude-code" && target === "global" && options.replacesHarnessTapRegistrations) {
-      files = pruneLeavingClaudeRegistrations(files, projectRoot);
+      files = pruneLeavingClaudeRegistrations(files, projectRoot, declaredClaudeMarketplaces(claudeConfig));
     }
     const serialized = files;
     files = await traceSpan("gen.resource-ownership", () =>
