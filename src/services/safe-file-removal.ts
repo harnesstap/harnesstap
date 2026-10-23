@@ -445,7 +445,7 @@ function linkToTrash(applyId: string, relativePath: string, target: Buffer): voi
   if (pathExists(dest)) return;
   mkdirSync(dirname(dest), { recursive: true });
   try {
-    symlinkSync(target.toString("utf-8"), dest);
+    symlinkSync(target, dest);
   } catch {
     writeFileSync(dest, target);
   }
@@ -586,7 +586,7 @@ function backupOnDiskFile(input: {
   const fullPath = resolve(input.rootPath, input.relativePath);
   if (isSymlinkPath(fullPath)) {
     // A link is backed up as its target, so it can be put back as a link.
-    const target = Buffer.from(readlinkSync(fullPath));
+    const target = readlinkSync(fullPath, { encoding: "buffer" });
     recordApplyRemovalBackup({
       apply_id: input.applyId,
       snapshot_id: input.snapshotId,
@@ -646,7 +646,8 @@ function backupAndUnlink(input: {
 export function backupAndRewriteFile(input: {
   rootPath: string;
   relativePath: string;
-  nextContent: string | null;
+  /** The bytes to write; a string is written as UTF-8. Never decode a file to pass it here. */
+  nextContent: string | Buffer | null;
   applyId: string;
   snapshotId?: string | null;
 }): void {
@@ -760,7 +761,7 @@ export function restoreSafeRemovalBackup(input: {
     if (!free(backup.relative_path, fullPath)) continue;
     mkdirSync(dirname(fullPath), { recursive: true });
     if (((backup.mode ?? 0) & S_IFMT) === S_IFLNK) {
-      symlinkSync(Buffer.from(backup.content).toString("utf-8"), fullPath);
+      symlinkSync(backup.content, fullPath);
     } else {
       writeFileSync(fullPath, backup.content);
     }
@@ -792,7 +793,7 @@ export function restoreSafeRemovalBackup(input: {
       mkdirSync(dirname(dest), { recursive: true });
       if (stat.isSymbolicLink()) {
         // A link goes back as a link, never as the bytes it points to.
-        symlinkSync(readlinkSync(full), dest);
+        symlinkSync(readlinkSync(full, { encoding: "buffer" }), dest);
       } else {
         writeFileSync(dest, readFileSync(full));
       }

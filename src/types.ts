@@ -469,6 +469,8 @@ export interface SnapshotState {
   harness_files?: Record<string, Record<string, string>>;
   /** Live files that were not assigned to a generated platform bucket. */
   disk_files?: Record<string, string>;
+  /** Live files that are not valid UTF-8 text (images, fonts), as base64 bytes. */
+  disk_files_base64?: Record<string, string>;
   /** Managed paths that were missing on disk when the snapshot was taken. */
   absent_paths?: string[];
   /** Managed paths that were links when the snapshot was taken, with their targets. */

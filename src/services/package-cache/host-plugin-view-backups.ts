@@ -135,7 +135,7 @@ function sameAsBackup(fullPath: string, row: ApplyRemovalBackup, isLink: boolean
   try {
     const content = row.content;
     if (isLink) {
-      return lstatSync(fullPath).isSymbolicLink() && readlinkSync(fullPath) === content.toString("utf-8");
+      return lstatSync(fullPath).isSymbolicLink() && readlinkSync(fullPath, { encoding: "buffer" }).equals(content);
     }
     return !lstatSync(fullPath).isSymbolicLink() && readFileSync(fullPath).equals(content);
   } catch {
@@ -237,7 +237,7 @@ export function restoreHostPluginViewBackup(
     mkdirSync(dirname(file.fullPath), { recursive: true });
     if (file.isLink) {
       if (existsSync(file.fullPath) || present(file.fullPath)) removeFileOrLink(file.fullPath);
-      symlinkSync(file.row.content.toString("utf-8"), file.fullPath);
+      symlinkSync(file.row.content, file.fullPath);
     } else {
       writeFileSync(file.fullPath, file.row.content);
     }
