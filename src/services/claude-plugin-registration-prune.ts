@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { isHarnessTapEnabledKey } from "./claude-enabled-plugin-keys.js";
+import { isHarnessTapSettingsMarketplace } from "./claude-settings-marketplaces.js";
 import { claudeRecordInstallPath, isHarnessTapClaudeRecord } from "./claude-plugin-record-owner.js";
 import { readHostPluginViewRecord } from "./package-cache/host-plugin-views.js";
 import {
@@ -191,6 +192,7 @@ export function pruneClaudeRegistrations(
   stale: ReadonlyMap<string, ReadonlySet<string>>,
   keepMarketplaces: ReadonlySet<string> = new Set(),
   changedMarketplaces: ReadonlySet<string> = new Set(),
+  options: { stripSettingsMarketplaces?: boolean } = {},
 ): PrunedClaudeRegistrations {
   const files = new Map<string, string>();
   const keptChangedMarketplaces: string[] = [];
@@ -249,6 +251,28 @@ export function pruneClaudeRegistrations(
         CLAUDE_SETTINGS_PATH,
         applyJsonObjectUpdatePreservingFormat(contents.settings, next),
       );
+    }
+  }
+
+  // The extraKnownMarketplaces entries HarnessTap added (and nobody changed)
+  // for marketplaces no plugin record or applied file uses any more: left in
+  // place, Claude Code clones them again on its next start.
+  const currentSettings = files.get(CLAUDE_SETTINGS_PATH) ?? contents.settings;
+  const settingsNow = parseObject(currentSettings);
+  if (options.stripSettingsMarketplaces && (!contents.installed || installed) && settingsNow && currentSettings && isRecord(settingsNow.extraKnownMarketplaces)) {
+    const entries = { ...settingsNow.extraKnownMarketplaces };
+    const inUse = new Set(Object.keys(plugins).map(marketplaceOf));
+    const settingsPath = join(homeRoot, CLAUDE_SETTINGS_PATH);
+    const drop = Object.keys(entries).filter((name) =>
+      !keepMarketplaces.has(name)
+      && !inUse.has(name)
+      && isHarnessTapSettingsMarketplace(settingsPath, name, entries[name]));
+    if (drop.length > 0) {
+      for (const name of drop) delete entries[name];
+      const next = { ...settingsNow };
+      if (Object.keys(entries).length === 0) delete next.extraKnownMarketplaces;
+      else next.extraKnownMarketplaces = entries;
+      files.set(CLAUDE_SETTINGS_PATH, applyJsonObjectUpdatePreservingFormat(currentSettings, next));
     }
   }
 
@@ -412,6 +436,7 @@ export function pruneStaleClaudeRegistrationsOnDisk(
     stale,
     keepMarketplaces,
     options.changedMarketplaces,
+    { stripSettingsMarketplaces: true },
   );
   const rewritten: string[] = [];
   for (const [relativePath, content] of pruned.files) {
