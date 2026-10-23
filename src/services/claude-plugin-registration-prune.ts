@@ -259,7 +259,7 @@ export function pruneClaudeRegistrations(
   // place, Claude Code clones them again on its next start.
   const currentSettings = files.get(CLAUDE_SETTINGS_PATH) ?? contents.settings;
   const settingsNow = parseObject(currentSettings);
-  if (options.stripSettingsMarketplaces && settingsNow && currentSettings && isRecord(settingsNow.extraKnownMarketplaces)) {
+  if (options.stripSettingsMarketplaces && (!contents.installed || installed) && settingsNow && currentSettings && isRecord(settingsNow.extraKnownMarketplaces)) {
     const entries = { ...settingsNow.extraKnownMarketplaces };
     const inUse = new Set(Object.keys(plugins).map(marketplaceOf));
     const settingsPath = join(homeRoot, CLAUDE_SETTINGS_PATH);
