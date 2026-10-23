@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'A stalled git remote no longer hangs `ht profile use` and other commands. Every git clone, fetch and ls-remote now stops after 60 seconds, and git itself aborts a transfer that stays under 1000 bytes per second for 30 seconds. The `claude plugin` calls that clone marketplaces get the same stall detection and a 10 minute limit. The error names the repository (without credentials), for example `git ls-remote timed out after 60s for https://github.com/owner/repo.git`. Set `HARNESSTAP_GIT_TIMEOUT_SECONDS` to change the limit, and `GIT_HTTP_LOW_SPEED_LIMIT` or `GIT_HTTP_LOW_SPEED_TIME` to change the stall detection. A timed-out call also closes its output pipes, so a leftover git child cannot keep the command waiting.'
+time: 2026-10-22T13:00:00.000Z
+custom:
+  Issue: ""

@@ -1,6 +1,5 @@
-import { spawn } from "node:child_process";
 import { access, constants, stat } from "node:fs/promises";
-import type { CommandResult, RunCommand } from "../plugins/run-command.js";
+import { defaultRunCommand, type CommandResult, type RunCommand } from "../plugins/run-command.js";
 import {
   githubGitConfigArgs,
   githubHttpsRemoteForAuth,
@@ -44,6 +43,14 @@ export function shortRemoteReachabilityReason(stderr: string): string {
     return "Git is not available";
   }
   if (
+    lower.includes("timed out")
+    || lower.includes("timeout")
+    || lower.includes("stalled")
+    || lower.includes("signal: sigterm")
+  ) {
+    return "Remote check timed out";
+  }
+  if (
     lower.includes("authentication failed")
     || lower.includes("could not read username")
     || lower.includes("access denied")
@@ -60,13 +67,6 @@ export function shortRemoteReachabilityReason(stderr: string): string {
     || lower.includes("404")
   ) {
     return "Remote repository was not found";
-  }
-  if (
-    lower.includes("timed out")
-    || lower.includes("timeout")
-    || lower.includes("signal: sigterm")
-  ) {
-    return "Remote check timed out";
   }
   if (
     lower.includes("could not resolve host")
@@ -89,52 +89,7 @@ function runGitAsync(
   runCommand: RunCommand | undefined,
   timeoutMs: number,
 ): Promise<CommandResult> {
-  if (runCommand) {
-    return Promise.resolve(runCommand("git", args, { timeoutMs }));
-  }
-
-  return new Promise((resolve) => {
-    const child = spawn("git", args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-    });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-    const finish = (result: CommandResult) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(result);
-    };
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-    }, timeoutMs);
-    child.stdout?.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-    child.on("error", (error) => {
-      const missing = "code" in error && error.code === "ENOENT";
-      finish({
-        stdout,
-        stderr: missing ? "git: command not found" : error.message,
-        exitCode: missing ? 127 : 1,
-      });
-    });
-    child.on("close", (code, signal) => {
-      const timedOut = signal === "SIGTERM";
-      finish({
-        stdout,
-        stderr: timedOut && !stderr.trim()
-          ? `Command timed out after ${timeoutMs}ms`
-          : stderr,
-        exitCode: timedOut ? 124 : (code ?? 1),
-      });
-    });
-  });
+  return Promise.resolve((runCommand ?? defaultRunCommand)("git", args, { timeoutMs }));
 }
 
 async function checkLocalPath(path: string): Promise<MarketplaceReachability> {
