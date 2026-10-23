@@ -29,7 +29,13 @@ import {
 import { restoreForgottenSettingsMarketplaces } from "./claude-settings-marketplaces.js";
 import { isClaudeSettingsPath, restoreForgottenEnabledKeys } from "./claude-enabled-plugin-keys.js";
 import { restoreRemovedHostPluginViews, restoreRemovedOwnership } from "./removed-ownership.js";
-import { heldBackByRegistry, withoutEnabledKeys } from "./revert-plugin-registry.js";
+import {
+  heldBackByRegistry,
+  registersNoPlugin,
+  withSnapshotSettingsKeys,
+  withoutEnabledKeys,
+  withoutInstalledRecords,
+} from "./revert-plugin-registry.js";
 import { restoreBlockedGroupMessage, restoreBlockedMessage, restoreBlocker } from "./restore-blocker.js";
 
 export type RevertKind = "project" | "global";
@@ -167,6 +173,10 @@ function shouldRestorePath(rootPath: string, file: RestoreFile): RestoreDecision
   return "skip-modified";
 }
 
+type LinkOutcome =
+  | { kind: "skip"; link: { path: string; target: string }; skip: SafeRemovalSkip }
+  | { kind: "present" | "make"; link: { path: string; target: string } };
+
 function textRestoreFile(path: string, text: string): RestoreFile {
   return { path, content: text, bytes: Buffer.from(text, "utf-8") };
 }
@@ -219,6 +229,41 @@ export function executeRevert(
   const kept = new Set(
     decisions.filter((entry) => entry.decision.startsWith("skip")).map((entry) => entry.file.path),
   );
+  const linkOutcomes = (plan.restoreLinks ?? []).map((link): LinkOutcome => {
+    const fullPath = resolve(plan.rootPath, link.path);
+    const blocker = restoreBlocker(plan.rootPath, link.path);
+    if (blocker !== undefined) {
+      return {
+        kind: "skip",
+        link,
+        skip: {
+          path: link.path,
+          reason: "unmanaged",
+          blockedBy: blocker,
+          message: restoreBlockedMessage(link.path, blocker, "link"),
+        },
+      };
+    }
+    let current: string | null | undefined;
+    try {
+      current = lstatSync(fullPath).isSymbolicLink() ? readlinkSync(fullPath) : null;
+    } catch {
+      current = undefined;
+    }
+    if (current === link.target) return { kind: "present", link };
+    if (current === undefined) return { kind: "make", link };
+    // Something else is there now: it is never removed to put the link back.
+    return {
+      kind: "skip",
+      link,
+      skip: {
+        path: link.path,
+        reason: "modified",
+        message: `Skipped restoring the link ${link.path} (something else is at that path now).`,
+      },
+    };
+  });
+  for (const entry of linkOutcomes) if (entry.kind === "skip") kept.add(entry.link.path);
   const heldBack = heldBackByRegistry(planFiles, kept);
   if (heldBack) skipped.push(...heldBack.skips);
   const isHeldBack = (path: string): boolean =>
@@ -226,14 +271,21 @@ export function executeRevert(
 
   const toWrite: RestoreFile[] = [];
   for (const { file: planned, decision } of decisions) {
-    if (isHeldBack(planned.path)) continue;
-    const file: RestoreFile =
-      heldBack && heldBack.enabledKeys.length > 0 && planned.path.endsWith("/settings.json")
-        ? textRestoreFile(
-            planned.path,
-            withoutEnabledKeys(planned.content, heldBack.enabledKeys, readLive(plan.rootPath, planned.path)),
-          )
-        : planned;
+    // A file that cannot be put back says why; the others of a held back plugin say nothing.
+    if (isHeldBack(planned.path) && !(heldBack?.recordKeys.length && decision.startsWith("skip"))) continue;
+    let file: RestoreFile = planned;
+    if (heldBack && heldBack.enabledKeys.length > 0 && planned.path.endsWith("/settings.json")) {
+      file = textRestoreFile(
+        planned.path,
+        withoutEnabledKeys(planned.content, heldBack.enabledKeys, readLive(plan.rootPath, planned.path)),
+      );
+    } else if (heldBack && heldBack.recordKeys.length > 0 && planned.path.endsWith("/plugins/installed_plugins.json")) {
+      const live = readLive(plan.rootPath, planned.path);
+      const text = withoutInstalledRecords(planned.content, heldBack.recordKeys, live);
+      // Nothing left to register and no registry there: do not create an empty one.
+      if (live === undefined && registersNoPlugin(text)) continue;
+      file = textRestoreFile(planned.path, text);
+    }
     switch (decision) {
       case "write":
         toWrite.push(file);
@@ -242,13 +294,24 @@ export function executeRevert(
       case "unchanged":
         restored.push(file.path);
         break;
-      case "skip-modified":
+      case "skip-modified": {
+        // settings.json changed since HarnessTap wrote it (Claude Code rewrites
+        // it too): add the plugin and marketplace keys the switch removed,
+        // key by key, and leave the rest of the file as it is.
+        const live = isClaudeSettingsPath(file.path) ? readLive(plan.rootPath, file.path) : undefined;
+        const merged = live === undefined ? undefined : withSnapshotSettingsKeys(file.content, live);
+        if (merged !== undefined) {
+          if (merged !== live) toWrite.push(textRestoreFile(file.path, merged));
+          restored.push(file.path);
+          break;
+        }
         skipped.push({
           path: file.path,
           reason: "modified",
           message: `Skipped restoring ${file.path} (modified since HarnessTap wrote it).`,
         });
         break;
+      }
       case "skip-blocked": {
         const blocker = restoreBlocker(plan.rootPath, file.path) ?? file.path;
         skipped.push({
@@ -274,37 +337,14 @@ export function executeRevert(
   }
 
   const linksToMake: Array<{ path: string; target: string }> = [];
-  for (const link of plan.restoreLinks ?? []) {
-    const fullPath = resolve(plan.rootPath, link.path);
-    const blocker = restoreBlocker(plan.rootPath, link.path);
-    if (blocker !== undefined) {
-      skipped.push({
-        path: link.path,
-        reason: "unmanaged",
-        blockedBy: blocker,
-        message: restoreBlockedMessage(link.path, blocker, "link"),
-      });
+  for (const entry of linkOutcomes) {
+    if (isHeldBack(entry.link.path) && entry.kind !== "skip") continue;
+    if (entry.kind === "skip") {
+      skipped.push(entry.skip);
       continue;
     }
-    let current: string | null | undefined;
-    try {
-      current = lstatSync(fullPath).isSymbolicLink() ? readlinkSync(fullPath) : null;
-    } catch {
-      current = undefined;
-    }
-    if (current === link.target) {
-      restored.push(link.path);
-    } else if (current === undefined) {
-      linksToMake.push(link);
-      restored.push(link.path);
-    } else {
-      // Something else is there now: it is never removed to put the link back.
-      skipped.push({
-        path: link.path,
-        reason: "modified",
-        message: `Skipped restoring the link ${link.path} (something else is at that path now).`,
-      });
-    }
+    if (entry.kind === "make") linksToMake.push(entry.link);
+    restored.push(entry.link.path);
   }
 
   if (!options.dryRun) {
