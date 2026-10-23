@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { isHarnessTapEnabledKey } from "./claude-enabled-plugin-keys.js";
 import { isHarnessTapSettingsMarketplace } from "./claude-settings-marketplaces.js";
@@ -180,6 +180,12 @@ export interface PrunedClaudeRegistrations {
    * installed with Claude Code comes from them, with that plugin's ref.
    */
   keptUserMarketplaces: Map<string, string>;
+  /**
+   * Marketplaces Claude Code cloned itself while HarnessTap installed plugins
+   * from them: the clone and its `known_marketplaces.json` entry stay, with
+   * the folder of the clone. HarnessTap never deletes what Claude Code owns.
+   */
+  keptClaudeClones: Map<string, string>;
 }
 
 /**
@@ -202,11 +208,18 @@ export function pruneClaudeRegistrations(
   stale: ReadonlyMap<string, ReadonlySet<string>>,
   keepMarketplaces: ReadonlySet<string> = new Set(),
   changedMarketplaces: ReadonlySet<string> = new Set(),
-  options: { stripSettingsMarketplaces?: boolean } = {},
+  options: {
+    stripSettingsMarketplaces?: boolean;
+    /** HarnessTap marketplaces this switch takes away: a Claude Code clone of one is named when it stays. */
+    leavingMarketplaces?: ReadonlySet<string>;
+  } = {},
 ): PrunedClaudeRegistrations {
   const files = new Map<string, string>();
   const keptChangedMarketplaces: string[] = [];
   const keptUserMarketplaces = new Map<string, string>();
+  const keptClaudeClones = new Map<string, string>();
+  // Marketplaces whose HarnessTap-written `extraKnownMarketplaces` entry went.
+  const strippedSettings = new Set<string>();
   const installed = parseObject(contents.installed);
   const plugins = isRecord(installed?.plugins) ? { ...installed.plugins } : {};
   const gone = new Set<string>();
@@ -278,7 +291,10 @@ export function pruneClaudeRegistrations(
       && !inUse.has(name)
       && isHarnessTapSettingsMarketplace(settingsPath, name, entries[name]));
     if (drop.length > 0) {
-      for (const name of drop) delete entries[name];
+      for (const name of drop) {
+        delete entries[name];
+        strippedSettings.add(name);
+      }
       const next = { ...settingsNow };
       if (Object.keys(entries).length === 0) delete next.extraKnownMarketplaces;
       else next.extraKnownMarketplaces = entries;
@@ -311,7 +327,14 @@ export function pruneClaudeRegistrations(
         keptChangedMarketplaces.push(marketplace);
         continue;
       }
-      if (owner !== "harnesstap") continue;
+      if (owner !== "harnesstap") {
+        const location = isRecord(entry) && typeof entry.installLocation === "string" ? entry.installLocation : undefined;
+        const ours = strippedSettings.has(marketplace)
+          || options.leavingMarketplaces?.has(marketplace)
+          || changedMarketplaces.has(marketplace);
+        if (ours && location && existsSync(location)) keptClaudeClones.set(marketplace, location);
+        continue;
+      }
       delete next[marketplace];
       changed = true;
     }
@@ -323,7 +346,7 @@ export function pruneClaudeRegistrations(
     }
   }
 
-  return { files, keptChangedMarketplaces, keptUserMarketplaces };
+  return { files, keptChangedMarketplaces, keptUserMarketplaces, keptClaudeClones };
 }
 
 function readHomeFile(homeRoot: string, relativePath: string): string | undefined {
@@ -450,7 +473,7 @@ export function pruneStaleClaudeRegistrationsOnDisk(
     stale,
     keepMarketplaces,
     options.changedMarketplaces,
-    { stripSettingsMarketplaces: true },
+    { stripSettingsMarketplaces: true, leavingMarketplaces: options.leavingMarketplaces },
   );
   const rewritten: string[] = [];
   for (const [relativePath, content] of pruned.files) {
@@ -476,5 +499,38 @@ export function pruneStaleClaudeRegistrationsOnDisk(
       + `Run \`claude plugin uninstall ${ref}\` and \`claude plugin marketplace remove ${marketplace}\` if you no longer need them.`,
     );
   }
+  const clones = [...pruned.keptClaudeClones].filter(([marketplace]) => !pruned.keptChangedMarketplaces.includes(marketplace));
+  if (clones.length > 0) warnings.push(keptClaudeClonesMessage(clones));
   return { rewritten, warnings };
+}
+
+/** The "Kept" notice for marketplaces Claude Code cloned itself, with the folder and size of each. */
+function keptClaudeClonesMessage(clones: ReadonlyArray<readonly [string, string]>): string {
+  const lines = clones.map(([marketplace, folder]) =>
+    `  ${marketplace}: ${folder} (${formatFolderSize(folderSize(folder))}), remove with \`claude plugin marketplace remove ${marketplace}\``);
+  return `Kept ${clones.length === 1 ? "this marketplace" : `these ${clones.length} marketplaces`} Claude Code cloned `
+    + "while HarnessTap installed plugins from them. Claude Code owns the clones, so HarnessTap does not delete them:\n"
+    + lines.join("\n");
+}
+
+function folderSize(folder: string): number {
+  let total = 0;
+  const pending = [folder];
+  for (let dir = pending.pop(); dir !== undefined; dir = pending.pop()) {
+    try {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) pending.push(path);
+        else if (entry.isFile()) total += statSync(path).size;
+      }
+    } catch {
+      // A folder that cannot be read counts as empty.
+    }
+  }
+  return total;
+}
+
+function formatFolderSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${Math.round(bytes / (1024 * 1024))} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }

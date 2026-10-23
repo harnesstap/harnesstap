@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { recordSettingsMarketplacesAddedBy } from "../../services/claude-settings-marketplaces.js";
 import { getSourcesToRefresh, markSourceRefreshed } from "../refresh-cache.js";
 import {
   claudePluginsDir,
@@ -106,7 +107,7 @@ export class ClaudeCodePluginProvider implements PluginProvider {
     if (marketplaceIsConfigured(ctx.homeRoot, marketplace)) {
       return;
     }
-    await this.runClaude(["marketplace", "add", repo], ctx);
+    await recordSettingsMarketplacesAddedBy(ctx.homeRoot, () => this.runClaude(["marketplace", "add", repo], ctx));
   }
 
   private async bootstrapMarketplacesForRef(

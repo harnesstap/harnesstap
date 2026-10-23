@@ -4,6 +4,7 @@ import { marketplaceIsConfigured } from "../plugins/claude-plugin-ref.js";
 import { defaultRunCommand, resolveCommandResult } from "../plugins/run-command.js";
 import type { ClaudeMarketplaceSource, ClaudePluginConfig } from "../types.js";
 import { wellKnownMarketplaceEntry } from "./builtin-marketplaces.js";
+import { recordSettingsMarketplacesAddedBy } from "./claude-settings-marketplaces.js";
 import { addMarketplace, findKnownMarketplace, isLocalFilesystemSource } from "./marketplace-registry.js";
 
 export interface MarketplaceRepoEntry {
@@ -64,7 +65,7 @@ export async function ensureClaudeMarketplacesFromConfig(
   const added: string[] = [];
   for (const { name, repo } of extractMarketplaceRepos(config)) {
     if (marketplaceIsConfigured(options.homeRoot, name)) continue;
-    const result = await run(["marketplace", "add", repo]);
+    const result = await recordSettingsMarketplacesAddedBy(options.homeRoot, async () => run(["marketplace", "add", repo]));
     if (result.exitCode === 0) added.push(name);
   }
   return added;
