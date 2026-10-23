@@ -5,6 +5,7 @@ import {
   readdirSync,
   rmdirSync,
   lstatSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -43,7 +44,62 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+interface CachedRecords {
+  path: string;
+  signature: string;
+  records: HostPluginViewRecords;
+}
+
+let cachedRecords: CachedRecords | undefined;
+
+/** A file modified this recently could still be rewritten within the same timestamp tick. */
+const RACY_WINDOW_MS = 1000;
+
+function recordsSignature(path: string): { signature: string; settled: boolean } | undefined {
+  try {
+    const stat = statSync(path, { bigint: true });
+    return {
+      signature: `${stat.ino}:${stat.size}:${stat.mtimeNs}`,
+      settled: Date.now() - Number(stat.mtimeNs / 1_000_000n) > RACY_WINDOW_MS,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The records as parsed from disk, shared: callers must not change them. A
+ * removal of thousands of files asks for them once per file, so the parse is
+ * kept while the file is unchanged (same inode, size and modified time).
+ */
+function peekHostPluginViewRecords(): HostPluginViewRecords {
+  const path = hostPluginViewsPath();
+  const current = recordsSignature(path);
+  if (current === undefined) {
+    cachedRecords = undefined;
+    return {};
+  }
+  if (cachedRecords && cachedRecords.path === path && cachedRecords.signature === current.signature) {
+    return cachedRecords.records;
+  }
+  const records = parseHostPluginViewRecords();
+  // A freshly written file is not trusted yet: a second write in the same tick
+  // would look identical. Once it is older than the window, it is.
+  cachedRecords = current.settled ? { path, signature: current.signature, records } : undefined;
+  return records;
+}
+
+/** The records to change and write back: a copy, never the shared parse. */
 export function readHostPluginViewRecords(): HostPluginViewRecords {
+  const shared = peekHostPluginViewRecords();
+  const copy: HostPluginViewRecords = {};
+  for (const [view, record] of Object.entries(shared)) {
+    copy[view] = { ...record, files: { ...record.files } };
+  }
+  return copy;
+}
+
+function parseHostPluginViewRecords(): HostPluginViewRecords {
   let parsed: unknown;
   try {
     parsed = JSON.parse(readFileSync(hostPluginViewsPath(), "utf8")) as unknown;
@@ -88,6 +144,7 @@ function writeHostPluginViewRecords(records: HostPluginViewRecords): void {
     const legacy = record.legacy === true && Object.keys(files).length === 0;
     sorted[view] = { created: record.created, files, ...(legacy ? { legacy: true } : {}) };
   }
+  cachedRecords = undefined;
   try {
     mkdirSync(dirname(hostPluginViewsPath()), { recursive: true });
     writeFileSync(
@@ -100,7 +157,7 @@ function writeHostPluginViewRecords(records: HostPluginViewRecords): void {
 }
 
 export function readHostPluginViewRecord(hostView: string): HostPluginViewRecord | undefined {
-  return readHostPluginViewRecords()[resolve(hostView)];
+  return peekHostPluginViewRecords()[resolve(hostView)];
 }
 
 /** Record the files HarnessTap wrote into a host plugin folder. */
@@ -137,7 +194,7 @@ function viewContaining(
 
 /** True when `absolutePath` is inside a host plugin folder HarnessTap created. */
 export function isInHostPluginViewCreatedByHarnessTap(absolutePath: string): boolean {
-  const records = readHostPluginViewRecords();
+  const records = peekHostPluginViewRecords();
   const view = viewContaining(records, absolutePath);
   return view !== undefined && records[view]?.created === true;
 }
@@ -157,7 +214,7 @@ function pathInView(view: string, absolutePath: string): string {
  * - `undefined`: no record covers the path, or only a version 1 record
  */
 export function hostPluginViewWrittenHash(absolutePath: string): string | null | undefined {
-  const records = readHostPluginViewRecords();
+  const records = peekHostPluginViewRecords();
   const view = viewContaining(records, absolutePath);
   const record = view ? records[view] : undefined;
   if (!view || !record || record.legacy) return undefined;
@@ -235,35 +292,48 @@ export function removeEmptyDirsUnder(dir: string): void {
  * nothing anyone else put there is touched.
  */
 export function pruneCreatedHostPluginView(removedFile: string): void {
+  pruneCreatedHostPluginViews([removedFile]);
+}
+
+/**
+ * `pruneCreatedHostPluginView` for many removed files at once: the records are
+ * read and written once, and each affected folder is cleaned up once, after
+ * all of its files are forgotten. The result matches pruning file by file.
+ */
+export function pruneCreatedHostPluginViews(removedFiles: readonly string[]): void {
+  if (removedFiles.length === 0) return;
   const records = readHostPluginViewRecords();
-  const view = viewContaining(records, removedFile);
-  if (!view) return;
-  const record = records[view];
-  if (!record) return;
-  const rel = relative(view, resolve(removedFile)).split(sep).join("/");
-  delete record.files[rel];
-  if (!record.created && Object.keys(record.files).length > 0) {
-    writeHostPluginViewRecords(records);
-    return;
+  const touched = new Set<string>();
+  for (const removedFile of removedFiles) {
+    const view = viewContaining(records, removedFile);
+    const record = view ? records[view] : undefined;
+    if (!view || !record) continue;
+    delete record.files[relative(view, resolve(removedFile)).split(sep).join("/")];
+    touched.add(view);
   }
-  // HarnessTap made the folder, or its last file of HarnessTap's is gone.
-  removeEmptyDirsUnder(view);
-  if (existsSync(view)) {
-    if (!record.created && Object.keys(record.files).length === 0) delete records[view];
-    writeHostPluginViewRecords(records);
-    return;
-  }
-  let parent = dirname(view);
-  while (basename(parent) !== "cache" && parent !== dirname(parent)) {
-    try {
-      if (readdirSync(parent).length > 0) break;
-      rmdirSync(parent);
-    } catch {
-      break;
+  if (touched.size === 0) return;
+  for (const view of touched) {
+    const record = records[view];
+    if (!record) continue;
+    if (!record.created && Object.keys(record.files).length > 0) continue;
+    // HarnessTap made the folder, or its last file of HarnessTap's is gone.
+    removeEmptyDirsUnder(view);
+    if (existsSync(view)) {
+      if (!record.created && Object.keys(record.files).length === 0) delete records[view];
+      continue;
     }
-    parent = dirname(parent);
+    let parent = dirname(view);
+    while (basename(parent) !== "cache" && parent !== dirname(parent)) {
+      try {
+        if (readdirSync(parent).length > 0) break;
+        rmdirSync(parent);
+      } catch {
+        break;
+      }
+      parent = dirname(parent);
+    }
+    delete records[view];
   }
-  delete records[view];
   writeHostPluginViewRecords(records);
 }
 
@@ -325,7 +395,7 @@ export function recordedHostPluginViewPaths(
 ): string[] {
   const cachePaths = relativePaths.filter(isHostPluginCacheFilePath);
   if (cachePaths.length === 0) return [];
-  const records = readHostPluginViewRecords();
+  const records = peekHostPluginViewRecords();
   const root = resolve(rootPath);
   const out = new Set<string>();
   const views = new Set<string>();

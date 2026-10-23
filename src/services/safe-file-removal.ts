@@ -1,6 +1,6 @@
 import {
   hostPluginViewWrittenHash,
-  pruneCreatedHostPluginView,
+  pruneCreatedHostPluginViews,
 } from "./package-cache/host-plugin-views.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
 import { readDiskTextOnce } from "./status-disk-read.js";
@@ -633,12 +633,14 @@ function backupAndUnlink(input: {
   applyId: string;
   snapshotId?: string | null;
   pristine: boolean;
+  /** Collects the removed path, so the host plugin folder records are pruned once at the end. */
+  removedPaths: string[];
 }): void {
   const fullPath = resolve(input.rootPath, input.relativePath);
   backupOnDiskFile({ ...input, move: true });
   removeFileOrLink(fullPath);
   pruneEmptyAncestors(fullPath, input.rootPath);
-  pruneCreatedHostPluginView(fullPath);
+  input.removedPaths.push(fullPath);
 }
 
 export function backupAndRewriteFile(input: {
@@ -693,19 +695,25 @@ export function executeSafeFileRemovals(
 
   saveRemovedHostPluginViews(options.snapshotId, rootPath, plan.remove);
   const forcedPaths = new Set((plan.forced ?? []).map((entry) => entry.path));
-  for (const relativePath of plan.remove) {
-    const pristine = forcedPaths.has(relativePath)
-      ? false
-      : options.mode === "listed"
-        ? classifyManagedPathOwnership(rootPath, relativePath) === "owned"
-        : true;
-    backupAndUnlink({
-      rootPath,
-      relativePath,
-      applyId,
-      snapshotId: options.snapshotId,
-      pristine,
-    });
+  const removedPaths: string[] = [];
+  try {
+    for (const relativePath of plan.remove) {
+      const pristine = forcedPaths.has(relativePath)
+        ? false
+        : options.mode === "listed"
+          ? classifyManagedPathOwnership(rootPath, relativePath) === "owned"
+          : true;
+      backupAndUnlink({
+        rootPath,
+        relativePath,
+        applyId,
+        snapshotId: options.snapshotId,
+        pristine,
+        removedPaths,
+      });
+    }
+  } finally {
+    pruneCreatedHostPluginViews(removedPaths);
   }
   saveRemovedOwnership(options.snapshotId, rootPath, plan.remove);
   deleteMaterializationsForRootPaths(rootPath, plan.remove);
