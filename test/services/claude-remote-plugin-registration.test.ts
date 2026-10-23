@@ -60,13 +60,32 @@ function initMarketplace(root: string, name: string, extras = false): string {
   return repo;
 }
 
-/** Profile `remote` depending on dup@mkta, with mkta then pointed at a remote URL. */
-async function setupRemoteProfile(rootDir: string, extras = false): Promise<void> {
-  addMarketplace(getHarnesstapDir(), { url: initMarketplace(rootDir, "mkta", extras), name: "mkta", platforms: ["claude-code"] });
+/** Add plugin `second` (a skill) to the marketplace repo `repo` and commit it. */
+function addSecondPlugin(repo: string): void {
+  const plugin = join(repo, "plugins/second");
+  mkdirSync(join(plugin, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(plugin, "skills/second-skill"), { recursive: true });
+  writeFileSync(join(plugin, ".claude-plugin/plugin.json"), JSON.stringify({ name: "second", version: "1.0.0" }));
+  writeFileSync(join(plugin, "skills/second-skill/SKILL.md"), "---\nname: second-skill\ndescription: second\n---\nsecond\n");
+  const manifest = join(repo, ".claude-plugin/marketplace.json");
+  const parsed = JSON.parse(readFileSync(manifest, "utf-8")) as { plugins: unknown[] };
+  parsed.plugins.push({ name: "second", source: "./plugins/second", description: "second" });
+  writeFileSync(manifest, JSON.stringify(parsed));
+  spawnSync("git", ["add", "-A"], { cwd: repo });
+  spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "second"], { cwd: repo });
+}
+
+/** Profile `remote` depending on dup@mkta (and second@mkta), with mkta then pointed at a remote URL. */
+async function setupRemoteProfile(rootDir: string, extras = false, withSecond = false): Promise<void> {
+  const repo = initMarketplace(rootDir, "mkta", extras);
+  if (withSecond) addSecondPlugin(repo);
+  addMarketplace(getHarnesstapDir(), { url: repo, name: "mkta", platforms: ["claude-code"] });
   await importPluginFromMarketplace({ marketplace: "mkta", plugin: "dup" });
+  if (withSecond) await importPluginFromMarketplace({ marketplace: "mkta", plugin: "second" });
   const profile = createPlugin({ name: "remote" });
   setPluginTags(profile.id, ["profile"]);
   addDependency(profile.id, "dup@mkta");
+  if (withSecond) addDependency(profile.id, "second@mkta");
   updateMarketplace(getHarnesstapDir(), "mkta", { url: "https://example.invalid/qa/mkta.git" });
   const empty = createPlugin({ name: "plain" });
   setPluginTags(empty.id, ["profile"]);
@@ -110,7 +129,7 @@ describe("claude remote marketplace plugin registration", () => {
 
       const manifest = readJson<{ plugins: Array<{ name: string; source: string }> }>(
         home,
-        ".claude/plugins/harnesstap-marketplaces/mkta/.claude-plugin/marketplace.json",
+        ".claude/plugins/marketplaces/mkta/.claude-plugin/marketplace.json",
       );
       expect(manifest.plugins.map((plugin) => plugin.name)).toEqual(["dup"]);
       expect(readJson<Record<string, { source: unknown }>>(home, KNOWN).mkta?.source).toEqual({
@@ -162,7 +181,7 @@ describe("claude remote marketplace plugin registration", () => {
       expect(Object.keys(readJson<object>(home, KNOWN))).toEqual(["my-mp"]);
       expect(readJson<object>(home, SETTINGS)).toEqual({ theme: "dark", enabledPlugins: { "foo@my-mp": true } });
       expect(existsSync(cacheDir)).toBe(false);
-      expect(existsSync(join(home, ".claude/plugins/harnesstap-marketplaces/mkta"))).toBe(false);
+      expect(existsSync(join(home, ".claude/plugins/marketplaces/mkta"))).toBe(false);
       // The pre-change registries are backed up.
       expect(findFiles(join(getHarnesstapDir(), "trash"), "installed_plugins.json").length).toBeGreaterThan(0);
     } finally {
@@ -241,7 +260,7 @@ describe("claude remote marketplace plugin registration", () => {
       const applied = await applyProfilePlugin("remote", { harness: "claude-code", conflictPolicy: "replace", yes: true, pull: false });
       expect(applied.cancelled).toBe(false);
       expect(readJson<{ plugins: object }>(home, INSTALLED).plugins).toEqual({ "dup@mkta": [record] });
-      expect(existsSync(join(home, ".claude/plugins/harnesstap-marketplaces/mkta"))).toBe(false);
+      expect(existsSync(join(home, ".claude/plugins/marketplaces/mkta"))).toBe(false);
     } finally {
       await context.cleanup();
     }
@@ -308,7 +327,7 @@ describe("claude remote marketplace plugin registration", () => {
 });
 
 describe("claude marketplace entries Claude Code changed", () => {
-  const MANIFEST_DIR = ".claude/plugins/harnesstap-marketplaces/mkta";
+  const MANIFEST_DIR = ".claude/plugins/marketplaces/mkta";
   type Entry = { source?: unknown; installLocation?: string; lastUpdated?: string; autoUpdate?: boolean };
 
   async function applyRemote(): Promise<void> {
@@ -454,7 +473,7 @@ describe("claude marketplace entries Claude Code changed", () => {
 });
 
 describe("plugins the user installed from a HarnessTap marketplace", () => {
-  const MANIFEST_DIR = ".claude/plugins/harnesstap-marketplaces/mkta";
+  const MANIFEST_DIR = ".claude/plugins/marketplaces/mkta";
   type Rows = { plugins: Record<string, Array<Record<string, unknown>>> };
 
   async function applyRemote(): Promise<void> {
@@ -525,6 +544,32 @@ describe("plugins the user installed from a HarnessTap marketplace", () => {
       await switchToPlain();
       expect(existsSync(join(cacheDir, ".claude-plugin/plugin.json"))).toBe(true);
       expect(readJson<Rows>(home, INSTALLED).plugins).toEqual({ "dup@mkta": [record] });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("lists only the plugins still installed in a marketplace folder kept for the user's plugin", async () => {
+    const context = await createInitializedTestContext("claude-user-install-prune-manifest");
+    try {
+      const home = context.homeDir;
+      await setupRemoteProfile(context.rootDir, false, true);
+      setHarnessPreference({ registered_harnesses: ["claude-code"] });
+      await applyRemote();
+      const manifestPath = join(home, MANIFEST_DIR, ".claude-plugin/marketplace.json");
+      const names = () =>
+        (readJson<{ plugins: Array<{ name: string }> }>(home, `${MANIFEST_DIR}/.claude-plugin/marketplace.json`)).plugins.map((p) => p.name);
+      expect(names()).toEqual(["dup", "second"]);
+      expect(existsSync(join(home, MANIFEST_DIR, "plugins/second"))).toBe(true);
+      userInstalls(home, false);
+
+      await switchToPlain();
+      expect(existsSync(manifestPath)).toBe(true);
+      expect(names()).toEqual(["dup"]);
+      expect(existsSync(join(home, MANIFEST_DIR, "plugins/second"))).toBe(false);
+      expect(existsSync(join(home, MANIFEST_DIR, "plugins/dup/.claude-plugin/plugin.json"))).toBe(true);
+      const manifest = readJson<{ owner: { name: string } }>(home, `${MANIFEST_DIR}/.claude-plugin/marketplace.json`);
+      expect(manifest.owner.name).toBe("HarnessTap");
     } finally {
       await context.cleanup();
     }

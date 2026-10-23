@@ -8,8 +8,12 @@ import { findKnownMarketplace, isLocalFilesystemSource } from "./marketplace-reg
 /** Claude Code's list of marketplaces, keyed by marketplace name. */
 export const CLAUDE_KNOWN_MARKETPLACES_PATH = ".claude/plugins/known_marketplaces.json";
 
-/** Parent of the marketplace folders HarnessTap registers with Claude Code. */
-export const HARNESSTAP_CLAUDE_MARKETPLACES_ROOT = ".claude/plugins/harnesstap-marketplaces";
+/**
+ * Parent of the marketplace folders HarnessTap registers with Claude Code.
+ * Claude Code accepts an `installLocation` only inside this folder (it calls
+ * any other one "corrupted" and refuses `claude plugin marketplace update`).
+ */
+export const HARNESSTAP_CLAUDE_MARKETPLACES_ROOT = ".claude/plugins/marketplaces";
 
 /** Folder inside a marketplace folder that holds the plugin trees Claude Code installs from. */
 export const MARKETPLACE_PLUGIN_TREE_DIR = "plugins";
@@ -20,9 +24,11 @@ export function marketplacePluginSource(pluginName: string): string {
 }
 
 /**
- * Folder HarnessTap registers as a marketplace's `installLocation`. It sits
- * apart from `~/.claude/plugins/marketplaces/`, where Claude Code clones the
- * marketplaces it adds itself, so neither ever writes into the other's folder.
+ * Folder HarnessTap registers as a marketplace's `installLocation`. It is the
+ * folder Claude Code clones a marketplace into, so `claude plugin marketplace
+ * update` works on it: that replaces the folder with a real clone, which
+ * `hasHarnessTapMarketplaceManifest` then no longer finds HarnessTap's manifest
+ * in, and HarnessTap leaves it alone (see `claudeMarketplaceEntryOwner`).
  */
 export function harnessTapClaudeMarketplaceDir(marketplace: string): string {
   return `${HARNESSTAP_CLAUDE_MARKETPLACES_ROOT}/${marketplace}`;
@@ -92,12 +98,25 @@ export function harnessTapClaudeMarketplaceManifestPath(marketplace: string): st
 }
 
 /** True when HarnessTap's marketplace manifest for `marketplace` is on disk. */
-function hasHarnessTapMarketplaceManifest(homeRoot: string, marketplace: string): boolean {
+export function hasHarnessTapMarketplaceManifest(homeRoot: string, marketplace: string): boolean {
   const fullPath = join(homeRoot, harnessTapClaudeMarketplaceManifestPath(marketplace));
   if (!existsSync(fullPath)) return false;
   try {
     const parsed = JSON.parse(readFileSync(fullPath, "utf-8")) as unknown;
     return isRecord(parsed) && isRecord(parsed.owner) && parsed.owner.name === "HarnessTap";
+  } catch {
+    return false;
+  }
+}
+
+/** True when HarnessTap once made plugin trees in the folder it registers for `marketplace`. */
+function hasPluginTreeRecord(homeRoot: string, marketplace: string): boolean {
+  try {
+    const path = join(harnesstapDirForHomeRoot(homeRoot), "cache", "marketplace-plugin-trees.json");
+    const parsed = JSON.parse(readFileSync(path, "utf-8")) as unknown;
+    if (!isRecord(parsed) || !isRecord(parsed.trees)) return false;
+    const prefix = `${join(homeRoot, harnessTapClaudeMarketplaceDir(marketplace))}/`;
+    return Object.keys(parsed.trees).some((target) => target.startsWith(prefix));
   } catch {
     return false;
   }
@@ -124,6 +143,14 @@ export function claudeMarketplaceEntryOwner(
   const location = (entry as KnownMarketplaceEntry).installLocation;
   if (location !== join(homeRoot, harnessTapClaudeMarketplaceDir(marketplace))) {
     return hasHarnessTapMarketplaceManifest(homeRoot, marketplace) ? "claude-changed" : "foreign";
+  }
+  // The folder holds a marketplace manifest that is not HarnessTap's: either
+  // `claude plugin marketplace update` replaced HarnessTap's folder with a clone
+  // (Claude Code's now), or Claude Code cloned the marketplace there itself
+  // (never HarnessTap's).
+  const manifest = join(homeRoot, harnessTapClaudeMarketplaceManifestPath(marketplace));
+  if (existsSync(manifest) && !hasHarnessTapMarketplaceManifest(homeRoot, marketplace)) {
+    return hasPluginTreeRecord(homeRoot, marketplace) ? "claude-changed" : "foreign";
   }
   if (Object.keys(entry).some((key) => !HARNESSTAP_ENTRY_KEYS.has(key))) return "claude-changed";
   // Entries written before auto-update was turned off have no `autoUpdate`.

@@ -351,7 +351,7 @@ function leavingInstallPath(homeRoot: string, files: readonly string[]): (path: 
 }
 
 const HT_MARKETPLACE_MANIFEST_RE =
-  /^\.claude\/plugins\/harnesstap-marketplaces\/([^/]+)\/\.claude-plugin\/marketplace\.json$/;
+  /^\.claude\/plugins\/marketplaces\/([^/]+)\/\.claude-plugin\/marketplace\.json$/;
 
 /** Marketplaces whose HarnessTap marketplace manifest is among `files`. */
 export function writtenHarnessTapMarketplaces(files: readonly string[]): Set<string> {

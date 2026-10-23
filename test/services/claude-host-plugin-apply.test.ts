@@ -242,7 +242,7 @@ describe("claude host plugin apply", () => {
       const known = JSON.parse(
         readFileSync(join(context.homeDir, ".claude/plugins/known_marketplaces.json"), "utf-8"),
       ) as Record<string, { installLocation?: string }>;
-      const marketplaceDir = join(context.homeDir, ".claude/plugins/harnesstap-marketplaces/mkta");
+      const marketplaceDir = join(context.homeDir, ".claude/plugins/marketplaces/mkta");
       expect(known.mkta?.installLocation).toBe(marketplaceDir);
       expect(existsSync(join(marketplaceDir, ".claude-plugin/marketplace.json"))).toBe(true);
 

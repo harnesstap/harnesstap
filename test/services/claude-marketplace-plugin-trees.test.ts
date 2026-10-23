@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 const MP = "acme";
-const mpDir = () => join(ctx.homeDir, ".claude/plugins/harnesstap-marketplaces", MP);
+const mpDir = () => join(ctx.homeDir, ".claude/plugins/marketplaces", MP);
 const view = (name: string, version = "1.0.0") =>
   join(ctx.homeDir, ".claude/plugins/cache", MP, name, version);
 const tree = (name: string) => join(mpDir(), "plugins", name);
@@ -37,7 +37,7 @@ function listPlugin(name: string, version = "1.0.0"): void {
     // First entry.
   }
   plugins.push({ name, version, source: marketplacePluginSource(name) });
-  put(path, JSON.stringify({ name: MP, plugins }));
+  put(path, JSON.stringify({ name: MP, owner: { name: "HarnessTap" }, plugins }));
 }
 
 describe("marketplace manifest sources", () => {

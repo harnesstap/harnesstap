@@ -101,7 +101,7 @@ export function heldBackByRegistry(
     } else {
       const marketplaces = jsonKeys(content.get(registry));
       for (const marketplace of marketplaces) {
-        held.prefixes.push(`${cache}${marketplace}/`, `${pluginsDir}/harnesstap-marketplaces/${marketplace}/`);
+        held.prefixes.push(`${cache}${marketplace}/`, `${pluginsDir}/marketplaces/${marketplace}/`);
         for (const key of [...registered, ...pluginsInCache(files, cache)]) {
           if (key.endsWith(`@${marketplace}`)) held.enabledKeys.push(key);
         }
