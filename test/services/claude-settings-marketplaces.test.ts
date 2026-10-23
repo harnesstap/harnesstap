@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
@@ -11,6 +12,7 @@ import {
   CLAUDE_SETTINGS_PATH,
   pruneClaudeRegistrations,
 } from "../../src/services/claude-plugin-registration-prune.ts";
+import { getHarnesstapDir } from "../../src/db/connection.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 
 let ctx: TestContext;
@@ -67,6 +69,55 @@ describe("settings.json extraKnownMarketplaces provenance", () => {
     const path = join(ctx.homeDir, CLAUDE_SETTINGS_PATH);
     recordAddedSettingsMarketplaces(path, settingsJson({}), settingsJson({ ht: entry("ht/ht") }));
     expect(isHarnessTapSettingsMarketplace(path, "ht", entry("someone/else"))).toBe(false);
+  });
+});
+
+describe("entries Claude Code rewrote with another key order", () => {
+  const written = { source: { source: "github", repo: "ht/ht" }, autoUpdate: true };
+  const reordered = { autoUpdate: true, source: { repo: "ht/ht", source: "github" } };
+  const withEntry = (value: unknown): string => `${JSON.stringify({ extraKnownMarketplaces: { ht: value } }, null, 2)}\n`;
+
+  it("still owns an entry whose keys were reordered", () => {
+    const path = join(ctx.homeDir, CLAUDE_SETTINGS_PATH);
+    recordAddedSettingsMarketplaces(path, "{}", withEntry(written));
+    expect(isHarnessTapSettingsMarketplace(path, "ht", reordered)).toBe(true);
+    expect(isHarnessTapSettingsMarketplace(path, "ht", { ...reordered, autoUpdate: false })).toBe(false);
+  });
+
+  it("strips a reordered entry on a switch", () => {
+    const path = join(ctx.homeDir, CLAUDE_SETTINGS_PATH);
+    recordAddedSettingsMarketplaces(path, "{}", withEntry(written));
+    const result = pruneClaudeRegistrations(
+      ctx.homeDir,
+      { settings: withEntry(reordered), installed: installedJson([]) },
+      new Map(),
+      new Set(),
+      new Set(),
+      { stripSettingsMarketplaces: true },
+    );
+    const out = result.files.get(CLAUDE_SETTINGS_PATH);
+    expect(out).toBeDefined();
+    expect((JSON.parse(out ?? "{}") as { extraKnownMarketplaces?: unknown }).extraKnownMarketplaces).toBeUndefined();
+  });
+
+  it("keeps an entry across a status check that sees the new key order", () => {
+    const path = writeSettings({});
+    recordAddedSettingsMarketplaces(path, "{}", withEntry(written));
+    writeFileSync(path, withEntry(reordered));
+    forgetMissingSettingsMarketplaces(path);
+    expect(isHarnessTapSettingsMarketplace(path, "ht", written)).toBe(true);
+  });
+
+  it("still owns an entry recorded with the hash earlier versions wrote", () => {
+    const path = join(ctx.homeDir, CLAUDE_SETTINGS_PATH);
+    const legacy = createHash("sha256").update(JSON.stringify(written)).digest("hex");
+    mkdirSync(join(getHarnesstapDir(), "cache"), { recursive: true });
+    writeFileSync(
+      join(getHarnesstapDir(), "cache", "claude-settings-marketplaces.json"),
+      JSON.stringify({ version: 1, files: { [path]: { ht: legacy } } }),
+    );
+    expect(isHarnessTapSettingsMarketplace(path, "ht", written)).toBe(true);
+    expect(isHarnessTapSettingsMarketplace(path, "ht", { ...written, autoUpdate: false })).toBe(false);
   });
 });
 

@@ -62,8 +62,28 @@ function writeJson(path: string, value: unknown): void {
   }
 }
 
+/** JSON with object keys in sorted order: Claude Code rewrites settings.json with its own key order. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  if (isRecord(value)) {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "";
+}
+
+function sha256(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
+}
+
 function entryHash(entry: unknown): string {
-  return createHash("sha256").update(JSON.stringify(entry) ?? "").digest("hex");
+  return sha256(canonicalJson(entry));
+}
+
+/** True when `recorded` is the hash of `entry`, as now written or as records written before the key order was ignored. */
+function matchesRecorded(recorded: string | undefined, entry: unknown): boolean {
+  if (recorded === undefined) return false;
+  return recorded === entryHash(entry) || recorded === sha256(JSON.stringify(entry) ?? "");
 }
 
 function entriesIn(raw: string | undefined): Record<string, unknown> | undefined {
@@ -86,8 +106,7 @@ function readIfExists(path: string): string | undefined {
 
 /** True when HarnessTap added the entry `name` to `settingsPath` and `entry` is still what it wrote. */
 export function isHarnessTapSettingsMarketplace(settingsPath: string, name: string, entry: unknown): boolean {
-  const hash = readRecords().files[resolve(settingsPath)]?.[name];
-  return hash !== undefined && hash === entryHash(entry);
+  return matchesRecorded(readRecords().files[resolve(settingsPath)]?.[name], entry);
 }
 
 /** After an apply wrote `after` over `before`, record the entries it added. */
@@ -120,7 +139,7 @@ export function forgetMissingSettingsMarketplaces(settingsPath: string, snapshot
   if (!recorded || Object.keys(recorded).length === 0) return;
   const now = entriesIn(readIfExists(key)) ?? {};
   const gone = Object.entries(recorded).filter(([name]) => !(name in now));
-  const stale = Object.entries(recorded).filter(([name]) => name in now && entryHash(now[name]) !== recorded[name]);
+  const stale = Object.entries(recorded).filter(([name]) => name in now && !matchesRecorded(recorded[name], now[name]));
   if (gone.length === 0 && stale.length === 0) return;
   const drop = new Set([...gone, ...stale].map(([name]) => name));
   const rest = Object.fromEntries(Object.entries(recorded).filter(([name]) => !drop.has(name)));
@@ -147,7 +166,7 @@ export function restoreForgottenSettingsMarketplaces(settingsPath: string, snaps
   const saved = isRecord(parsed) && isRecord(parsed[key]) ? (parsed[key] as EntryHashes) : undefined;
   if (!saved) return;
   const now = entriesIn(readIfExists(key)) ?? {};
-  const back = Object.entries(saved).filter(([name, hash]) => name in now && entryHash(now[name]) === hash);
+  const back = Object.entries(saved).filter(([name, hash]) => name in now && matchesRecorded(hash, now[name]));
   if (back.length === 0) return;
   const records = readRecords();
   records.files[key] = { ...(records.files[key] ?? {}), ...Object.fromEntries(back) };
