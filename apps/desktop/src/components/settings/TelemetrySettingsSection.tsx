@@ -21,6 +21,9 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
+export const TELEMETRY_ENV_OFF_LABEL = "Turned off by HARNESSTAP_TELEMETRY=0.";
+export const TELEMETRY_ENV_ON_LABEL = "Turned on by HARNESSTAP_TELEMETRY=1.";
+
 export function TelemetrySettingsSection({
   open,
   baseUrl,
@@ -85,11 +88,13 @@ export function TelemetrySettingsSection({
   };
 
   const checked = status?.preference === true || (status?.preference === null && status.enabled);
-  const envNote =
-    status?.env_override === false
-      ? "HARNESSTAP_TELEMETRY=0 currently disables capture, even if this switch is on."
-      : status?.env_override === true
-        ? "HARNESSTAP_TELEMETRY=1 currently enables capture, even if this switch is off."
+  // An env override decides capture, so the switch shows the effective state and is locked.
+  const envOverride = status?.env_override ?? null;
+  const envLabel =
+    envOverride === false
+      ? TELEMETRY_ENV_OFF_LABEL
+      : envOverride === true
+        ? TELEMETRY_ENV_ON_LABEL
         : null;
   const canReset = Boolean(status?.consented) && !disabled && !busy && Boolean(baseUrl && token);
 
@@ -125,14 +130,15 @@ export function TelemetrySettingsSection({
       <div className="switch-after-create settings-show-all flex items-center gap-2">
         <Switch
           id="settings-telemetry-enabled"
-          checked={checked}
-          disabled={disabled || busy || !status}
+          checked={envOverride ?? checked}
+          disabled={disabled || busy || !status || envOverride !== null}
           onCheckedChange={(value) => void onToggle(value)}
           data-testid="settings-telemetry-enabled"
         />
-        <Label htmlFor="settings-telemetry-enabled">Send anonymous usage telemetry</Label>
+        <Label htmlFor="settings-telemetry-enabled">
+          {envLabel ?? "Send anonymous usage telemetry"}
+        </Label>
       </div>
-      {envNote ? <p className="field-note muted">{envNote}</p> : null}
       <div className="dialog-actions">
         <button
           className="btn"

@@ -1,4 +1,7 @@
+import { FolderOpen } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CHOOSE_PROJECT_LABEL } from "../ChooseProjectButton";
+import { EmptyState } from "../EmptyState";
 import type { TelemetryConsentStatus } from "../../lib/types";
 import { CheckForUpdatesSettings } from "./CheckForUpdatesSettings";
 import { PluginUpdateSettings } from "./PluginUpdateSettings";
@@ -6,6 +9,8 @@ import { ProjectConfigInspect } from "./ProjectConfigInspect";
 import { ProjectHarnessOverrideSection } from "./ProjectHarnessOverrideSection";
 import { ResolveOrderSettings } from "./ResolveOrderSettings";
 import { TelemetrySettingsSection } from "./TelemetrySettingsSection";
+
+export const SETTINGS_NO_PROJECT_TITLE = "Open a project to see its config.";
 
 export type SettingsTab = "project" | "advanced";
 
@@ -38,7 +43,9 @@ export function SettingsParitySections(props: {
   return (
     <>
       <div hidden={props.tab !== "project"}>
-        <ProjectConfigInspect
+        {props.inspectProjectPath ? (
+          <>
+            <ProjectConfigInspect
           open={props.open}
           baseUrl={props.baseUrl}
           token={props.token}
@@ -57,6 +64,19 @@ export function SettingsParitySections(props: {
           onSaved={props.onSaved}
           onDirtyChange={setOverrideDirty}
         />
+          </>
+        ) : (
+          <EmptyState
+            testId="settings-project-empty"
+            title={SETTINGS_NO_PROJECT_TITLE}
+            action={{
+              label: CHOOSE_PROJECT_LABEL,
+              icon: <FolderOpen size={16} aria-hidden />,
+              disabled: props.disabled,
+              onClick: props.onBrowseProject,
+            }}
+          />
+        )}
       </div>
       <div hidden={props.tab !== "advanced"}>
         <CheckForUpdatesSettings

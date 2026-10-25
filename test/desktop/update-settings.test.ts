@@ -41,7 +41,7 @@ describe("plugin update settings copy", () => {
 
   it("labels the frequency and disables it when Off, with the short Settings description", () => {
     const fields = src("components/settings/UpdatePreferenceFields.tsx");
-    expect(fields).toContain("Check for updates</Label>");
+    expect(fields).toContain("Check every</Label>");
     expect(fields).toContain('disabled={disabled || mode === "off"}');
     expect(src("components/settings/PluginUpdateSettings.tsx")).toContain("For pulled plugins and synced profiles.");
   });

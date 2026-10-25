@@ -249,9 +249,7 @@ export function ProjectHarnessOverrideSection({
           {error}
         </div>
       ) : null}
-      {!projectPath ? (
-        <p className="muted">Select a project to set a harness override.</p>
-      ) : loading && harnesses.length === 0 && !error ? (
+      {loading && harnesses.length === 0 && !error ? (
         <p className="muted">Loading harness override...</p>
       ) : !projectAvailable ? (
         <>

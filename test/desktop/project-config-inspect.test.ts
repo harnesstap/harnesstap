@@ -63,7 +63,8 @@ describe("settings project config picker", () => {
     expect(inspectSource).toContain('testId="project-config-path"');
     expect(inspectSource).toContain("onSelectProject");
     expect(inspectSource).toContain("onBrowseProject");
-    expect(inspectSource).toContain("Select a project to inspect its config.");
+    expect(sectionsSource).toContain("SETTINGS_NO_PROJECT_TITLE");
+    expect(sectionsSource).toContain("props.inspectProjectPath ? (");
   });
 
   test("picker uses a distinct test id from the header project control", () => {

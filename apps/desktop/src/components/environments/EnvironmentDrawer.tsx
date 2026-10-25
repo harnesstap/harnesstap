@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChooseProjectButton } from "../ChooseProjectButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,8 @@ export interface EnvironmentDrawerProps {
   disabled?: boolean;
   onClose: () => void;
   onSaved: (message: string, name: string) => void;
+  /** Opens the project folder picker; enables From project once a project is chosen. */
+  onChooseProject?: () => void;
 }
 
 type SecretProvider = "keychain" | "env" | "file";
@@ -89,6 +92,7 @@ export function EnvironmentDrawer({
   disabled = false,
   onClose,
   onSaved,
+  onChooseProject,
 }: EnvironmentDrawerProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -425,6 +429,15 @@ export function EnvironmentDrawer({
                     title: "From project",
                     description: "Capture from the selected project directory.",
                     disabled: !projectPath,
+                    action: !projectPath && onChooseProject
+                      ? (
+                        <ChooseProjectButton
+                          onClick={onChooseProject}
+                          disabled={controlsDisabled}
+                          testId="environment-choose-project"
+                        />
+                      )
+                      : undefined,
                   },
                   {
                     value: "from-plugin",
@@ -433,11 +446,6 @@ export function EnvironmentDrawer({
                   },
                 ]}
               />
-              {!projectPath ? (
-                <p className="field-note muted" title="Choose a project directory">
-                  Choose a project directory
-                </p>
-              ) : null}
               <Collapse open={source === "from-plugin"}>
                 <SelectionList
                   title="Plugins"
