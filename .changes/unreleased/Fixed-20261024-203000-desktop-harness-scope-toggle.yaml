@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Desktop: on the Harnesses tab the header Scope switch now shows Global, since harness setup is machine-wide, and Project is greyed out with a tooltip pointing to the project harness override in Settings > Project. Before, the switch showed the scope picked on another tab and clicking it left the Harnesses tab. Library, Discover and Environments keep the scope you picked when you come back from Harnesses.'
-time: 2026-10-25T06:30:00.000Z
-custom:
-  Issue: ""

@@ -10,12 +10,7 @@ import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace
 import { HarnessesWorkspace } from "./components/harnesses/HarnessesWorkspace";
 import { ResourcesPanel } from "./components/ResourcesPanel";
 import { SourcesWorkspace } from "./components/SourcesWorkspace";
-import {
-  activeHeaderDestination,
-  headerClickIntent,
-  headerDestinationTarget,
-  type HeaderDestination,
-} from "./lib/header-destination";
+import { headerClickIntent, type Destination } from "./lib/header-destination";
 import type { ProfileContentsResource } from "./lib/types";
 import { useAgentSession } from "./state/agent-session";
 import { useCloudAuth } from "./state/cloud-auth";
@@ -185,6 +180,15 @@ export function App() {
     [ctrl.closeEditProfile, ctrl.profiles, ctrl.selectProfile, nav, openPluginInLibrary],
   );
 
+  const enterProjectScope = useCallback(
+    async (path: string) => {
+      if (await project.ensureProjectReady(path)) {
+        nav.setScope("project");
+      }
+    },
+    [nav.setScope, project.ensureProjectReady],
+  );
+
   const onSelectScope = useCallback(
     (next: Scope) => {
       ctrl.closeEditProfile();
@@ -194,53 +198,50 @@ export function App() {
         return;
       }
       void (async () => {
-        let path = projectPath;
-        if (!path) {
-          const selected = await project.browseProject();
-          path = selected ?? "";
-          if (!path) {
-            return;
-          }
-        }
-        if (await project.ensureProjectReady(path)) {
-          nav.setScope("project");
+        const path = projectPath || (await project.browseProject());
+        if (path) {
+          await enterProjectScope(path);
         }
       })();
     },
-    [ctrl.closeEditProfile, nav, project, projectPath],
+    [ctrl.closeEditProfile, enterProjectScope, nav, project.browseProject, projectPath],
   );
 
-  const onHeaderDestinationClick = useCallback(
-    (clicked: HeaderDestination) => {
-      const active = activeHeaderDestination(nav.destination, nav.scope);
-      if (headerClickIntent(active, clicked) === "reset") {
-        switch (clicked) {
-          case "library":
-          case "discover":
-          case "environments":
-          case "harnesses":
-            nav.resetCurrent();
-            return;
-          case "global":
-          case "project":
-            ctrl.setProfileFilter("");
-            ctrl.closeEditProfile();
-            return;
-          default: {
-            const neverClicked: never = clicked;
-            return neverClicked;
-          }
-        }
+  // Picking a project on the Profile tab opens that project's profiles.
+  const onPickProject = useCallback(
+    (path: string) => {
+      selectProject(path);
+      ctrl.closeEditProfile();
+      void enterProjectScope(path);
+    },
+    [ctrl.closeEditProfile, enterProjectScope, selectProject],
+  );
+
+  const onBrowseProjectScope = useCallback(() => {
+    void (async () => {
+      const path = await project.browseProject();
+      if (path) {
+        ctrl.closeEditProfile();
+        await enterProjectScope(path);
       }
-      const target = headerDestinationTarget(clicked);
-      if (target.scope) {
-        onSelectScope(target.scope);
+    })();
+  }, [ctrl.closeEditProfile, enterProjectScope, project.browseProject]);
+
+  const onHeaderDestinationClick = useCallback(
+    (clicked: Destination) => {
+      if (headerClickIntent(nav.destination, clicked) === "reset") {
+        if (clicked === "scope") {
+          ctrl.setProfileFilter("");
+          ctrl.closeEditProfile();
+          return;
+        }
+        nav.resetCurrent();
         return;
       }
       ctrl.closeEditProfile();
-      nav.go(target.destination);
+      nav.go(clicked);
     },
-    [ctrl.closeEditProfile, ctrl.setProfileFilter, nav, onSelectScope],
+    [ctrl.closeEditProfile, ctrl.setProfileFilter, nav],
   );
 
   const attachProfileName = selectedProfile ?? activeProfile;
@@ -294,6 +295,9 @@ export function App() {
             bootstrapError={project.bootstrapError}
             onDismissBootstrapError={project.clearBootstrapError}
             onBootstrap={() => void project.ensureProjectReady()}
+            onSelectScope={onSelectScope}
+            onPickProject={onPickProject}
+            onBrowseProject={onBrowseProjectScope}
             onOpenPlugin={openPluginInLibrary}
             onOpenCreateProfile={overlays.openCreateProfile}
             onOpenStashBrowse={() => overlays.openOverlay("stashBrowse")}
@@ -402,16 +406,10 @@ export function App() {
           client={client}
           connected={connected}
           destination={nav.destination}
-          scope={nav.scope}
           switching={switching}
-          bootstrapBusy={bootstrapBusy}
           migrateBusy={migrateBusy}
-          projectPath={projectPath}
-          projectReady={projectReady}
           cloudAuth={cloud.cloudAuth}
           onDestinationClick={onHeaderDestinationClick}
-          onSelectProject={selectProject}
-          onBrowseProject={() => void browseProject()}
           onOpenMigrateExport={() => overlays.openOverlay("migrateExport")}
           onOpenMigrateImport={() => overlays.openOverlay("migrateImport")}
           onOpenNotification={openNotificationTarget}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HardDriveDownload, Plus, TextQuote } from "lucide-react";
-import { formatView } from "../../lib/api/scope";
+import { formatView, type Scope } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
   shouldShowPendingApprovalsStrip,
@@ -26,6 +26,7 @@ import { ProjectHistoryControl } from "../parity/ProjectHistoryControl";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
 import { Banner } from "./Banner";
+import { ProfileScopeSwitch } from "./ProfileScopeSwitch";
 import { ProfilesRail } from "./ProfilesRail";
 import { UpdatesBanner } from "./UpdatesBanner";
 import { useUpstreamUpdates } from "../../state/use-upstream-updates";
@@ -46,6 +47,10 @@ export interface ScopeWorkspaceProps {
   bootstrapError: string | null;
   onDismissBootstrapError: () => void;
   onBootstrap: () => void;
+  /** Profile page header scope switch. */
+  onSelectScope: (scope: Scope) => void;
+  onPickProject: (path: string) => void;
+  onBrowseProject: () => void;
   onOpenPlugin: (pluginName: string) => void;
   onOpenCreateProfile: (source?: ProfileCreateSource, switchAfterCreate?: boolean) => void;
   onOpenStashBrowse: () => void;
@@ -64,6 +69,9 @@ export function ScopeWorkspace({
   bootstrapError,
   onDismissBootstrapError,
   onBootstrap,
+  onSelectScope,
+  onPickProject,
+  onBrowseProject,
   onOpenPlugin,
   onOpenCreateProfile,
   onOpenStashBrowse,
@@ -214,6 +222,17 @@ export function ScopeWorkspace({
             .join(" ")}
           aria-label="Live state"
         >
+          <div className="profile-page-header">
+            <ProfileScopeSwitch
+              scope={scope}
+              projectPath={projectPath}
+              disabled={switching || bootstrapBusy}
+              onSelectScope={onSelectScope}
+              onPickProject={onPickProject}
+              onBrowseProject={onBrowseProject}
+            />
+          </div>
+
           {bootstrapError ? (
             <Banner tone="error" message={bootstrapError} onDismiss={onDismissBootstrapError} />
           ) : null}

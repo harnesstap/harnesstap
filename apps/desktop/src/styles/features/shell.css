@@ -46,6 +46,132 @@
   overflow: hidden;
 }
 
+/* Profile page header: Global | Project: <name> with the project chevron. */
+.profile-page-header {
+  display: flex;
+  align-items: center;
+}
+
+/*
+ * Fixed geometry: widths come from PROFILE_SCOPE_SWITCH (lib/profile-scope.ts)
+ * as custom properties, so the switch is the same size in every state and
+ * selecting a side or opening the dropdown never moves the header. Weight and
+ * padding do not change with selection either.
+ */
+.profile-scope-switch {
+  flex: none;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: stretch;
+  gap: var(--profile-scope-gap);
+  width: calc(
+    2 * (var(--profile-scope-border) + var(--profile-scope-pad)) +
+      var(--profile-scope-global-w) + var(--profile-scope-gap) + var(--profile-scope-project-w)
+  );
+  padding: var(--profile-scope-pad);
+  background: var(--bg);
+  border: var(--profile-scope-border) solid var(--border);
+  border-radius: 4px;
+}
+
+.profile-scope-project {
+  flex: none;
+  display: inline-flex;
+  align-items: stretch;
+  width: var(--profile-scope-project-w);
+  min-width: 0;
+  border-radius: 3px;
+}
+
+.profile-scope-option,
+.project-picker-trigger.is-chevron {
+  appearance: none;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-meta);
+  font-weight: 400;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.profile-scope-option {
+  flex: none;
+  min-width: 0;
+  padding: 0 0.65rem;
+}
+
+.profile-scope-global {
+  width: var(--profile-scope-global-w);
+  justify-content: center;
+}
+
+.profile-scope-project-option {
+  width: calc(var(--profile-scope-project-w) - var(--profile-scope-chevron-w));
+  overflow: hidden;
+}
+
+.profile-scope-project-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Active segment: accent fill, an inset ring and medium-weight text, so the
+ * state reads without colour alone. The ring is a box-shadow and the widths
+ * are fixed, so the weight change cannot move or resize anything.
+ */
+.profile-scope-option.on,
+.profile-scope-project.on {
+  background: var(--surface-selected);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.profile-scope-option.on,
+.profile-scope-project.on .profile-scope-option,
+.profile-scope-project.on .project-picker-trigger.is-chevron {
+  color: var(--fg);
+}
+
+.profile-scope-option.on,
+.profile-scope-project.on .profile-scope-option {
+  font-weight: 500;
+}
+
+.profile-scope-option:hover:not(:disabled):not(.on),
+.profile-scope-project:not(.on) .profile-scope-option:hover:not(:disabled),
+.project-picker-trigger.is-chevron:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.profile-scope-option:disabled,
+.project-picker-trigger.is-chevron:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: default;
+}
+
+.project-picker.is-chevron {
+  flex: none;
+  min-width: 0;
+  display: inline-flex;
+  width: var(--profile-scope-chevron-w);
+}
+
+.project-picker-trigger.is-chevron {
+  flex: none;
+  width: var(--profile-scope-chevron-w);
+  justify-content: center;
+  padding: 0;
+}
+
 .project-picker-filter {
   width: 100%;
   border: 0;
@@ -68,8 +194,8 @@
 .project-picker-item {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.5rem;
   text-align: left;
   border: 0;
   border-bottom: 1px solid var(--border);
@@ -78,9 +204,27 @@
   padding: 0.55rem 0.65rem;
 }
 
-.project-picker-item:hover,
-.project-picker-item.selected {
+.project-picker-item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Hover is a neutral lift; the current project keeps the accent tint and a check. */
+.project-picker-item:hover {
+  background: var(--surface-hover);
+}
+
+.project-picker-item.selected,
+.project-picker-item.selected:hover {
   background: var(--surface-selected);
+}
+
+.project-picker-item-check {
+  flex: none;
+  color: var(--accent);
 }
 
 .project-picker-item-name {

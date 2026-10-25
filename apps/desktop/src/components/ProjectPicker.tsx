@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { FolderOpen } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, FolderOpen } from "lucide-react";
 import { useOverlayLayer } from "../state/overlay-stack";
 import {
   filterRecentProjects,
@@ -10,8 +10,12 @@ import {
 import { compactHomePath } from "../lib/compact-path";
 import { noResultsTitle } from "../lib/empty-copy";
 import { noSpellcheckProps } from "../lib/no-spellcheck";
+import { ChromeTooltip } from "./ChromeTooltip";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
+
+/** Tooltip and accessible name of the dropdown footer's folder button. */
+export const OPEN_ANOTHER_PROJECT_TOOLTIP = "Open another project";
 
 interface ProjectPickerProps {
   projectPath: string;
@@ -19,6 +23,15 @@ interface ProjectPickerProps {
   testId?: string;
   onSelect: (path: string) => void;
   onBrowse: () => void;
+  /** `chevron`: icon-only trigger labelled `chevronLabel` (Profile scope switch). */
+  variant?: "field" | "chevron";
+  chevronLabel?: string;
+  /** Where the chevron's tooltip sits, and its gap in px from the chevron. */
+  chevronTooltipSide?: "top" | "right" | "bottom" | "left";
+  chevronTooltipOffset?: number;
+  /** Controlled open state; omit both to let the picker own it. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ProjectPicker({
@@ -27,8 +40,32 @@ export function ProjectPicker({
   testId = "project-path",
   onSelect,
   onBrowse,
+  variant = "field",
+  chevronLabel = "Switch project",
+  chevronTooltipSide = "bottom",
+  chevronTooltipOffset = 4,
+  open: openProp,
+  onOpenChange,
 }: ProjectPickerProps) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const openRef = useRef(open);
+  openRef.current = open;
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  const controlled = openProp !== undefined;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (next === openRef.current) {
+        return;
+      }
+      if (!controlled) {
+        setOpenState(next);
+      }
+      onOpenChangeRef.current?.(next);
+    },
+    [controlled],
+  );
   const [filter, setFilter] = useState("");
   const [recent, setRecent] = useState<RecentProject[]>(() => loadRecentProjects());
   const rootRef = useRef<HTMLDivElement>(null);
@@ -62,7 +99,7 @@ export function ProjectPicker({
     return () => {
       window.removeEventListener("mousedown", onPointerDown);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   // Popover layer: Esc closes it, Tab is not trapped, focus returns to the trigger.
   useOverlayLayer({
@@ -76,8 +113,29 @@ export function ProjectPicker({
     ? projectDisplayName(projectPath)
     : "Select a project...";
 
-  return (
-    <div className="project-picker" ref={rootRef}>
+  const trigger = variant === "chevron"
+    ? (
+      <ChromeTooltip
+        content={chevronLabel}
+        side={chevronTooltipSide}
+        sideOffset={chevronTooltipOffset}
+      >
+        <button
+          type="button"
+          className="project-picker-trigger is-chevron"
+          id={testId}
+          data-testid={testId}
+          disabled={disabled}
+          aria-label={chevronLabel}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <ChevronDown size={14} strokeWidth={2} aria-hidden="true" />
+        </button>
+      </ChromeTooltip>
+    )
+    : (
       <button
         type="button"
         className="project-picker-trigger"
@@ -86,7 +144,7 @@ export function ProjectPicker({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => setOpen(!open)}
         title={projectPath || "Choose a project directory"}
       >
         <span className="project-picker-label">{label}</span>
@@ -94,6 +152,14 @@ export function ProjectPicker({
           ▾
         </span>
       </button>
+    );
+
+  return (
+    <div
+      className={`project-picker${variant === "chevron" ? " is-chevron" : ""}`}
+      ref={rootRef}
+    >
+      {trigger}
       <Presence
         open={open}
         enter="m-scale-in"
@@ -133,12 +199,23 @@ export function ProjectPicker({
                     setOpen(false);
                   }}
                 >
-                  <span className="project-picker-item-name">
-                    {projectDisplayName(row.path)}
+                  <span className="project-picker-item-text">
+                    <span className="project-picker-item-name">
+                      {projectDisplayName(row.path)}
+                    </span>
+                    <span className="project-picker-item-path mono muted">
+                      {compactHomePath(row.path)}
+                    </span>
                   </span>
-                  <span className="project-picker-item-path mono muted">
-                    {compactHomePath(row.path)}
-                  </span>
+                  {selected ? (
+                    <Check
+                      className="project-picker-item-check"
+                      data-testid="project-picker-current-check"
+                      size={14}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  ) : null}
                 </button>
               );
             })
@@ -146,7 +223,7 @@ export function ProjectPicker({
         </div>
         <div className="project-picker-footer">
           <IconActionButton
-            label="Browse..."
+            label={OPEN_ANOTHER_PROJECT_TOOLTIP}
             onClick={() => {
               setOpen(false);
               onBrowse();

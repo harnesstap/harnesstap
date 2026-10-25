@@ -191,6 +191,134 @@ async function clickHeader(page, name) {
   await page.getByRole("button", { name }).first().click({ timeout: T });
 }
 
+/** Profile tab, then the Global side of its scope switch. */
+async function openGlobalProfile(page) {
+  await clickHeader(page, /^profile$/i);
+  await page.getByTestId("profile-scope-global").click({ timeout: T });
+}
+
+/** Profile tab on Project. With no project set yet, Project opens the project dropdown; Browse uses the shim folder picker. */
+async function openProjectProfile(page) {
+  await clickHeader(page, /^profile$/i);
+  await page.getByTestId("profile-scope-project").click({ timeout: T });
+  const browse = page.locator(".project-picker-footer button").first();
+  if (await browse.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await browse.click({ timeout: T });
+  }
+  await page
+    .locator('[data-testid="profile-scope-project"][aria-pressed="true"]')
+    .waitFor({ timeout: T });
+}
+
+/**
+ * The Profile scope switch has fixed segment widths: its box must not move or
+ * resize between Global, Project, a long project name, no project and the open
+ * dropdown, and the chevron must stay inside it. The first measurement on a
+ * page is the reference for the rest of that walk.
+ */
+const switchReference = new WeakMap();
+
+async function switchGeometry(page) {
+  return page.evaluate(() => {
+    const root = document.querySelector('[data-testid="profile-scope-switch"]');
+    const chevron = root?.querySelector('[data-testid="project-path"]');
+    const label = root?.querySelector('[data-testid="profile-scope-project-label"]');
+    if (!root || !chevron || !label) return null;
+    const r = root.getBoundingClientRect();
+    const c = chevron.getBoundingClientRect();
+    const round = (n) => Math.round(n * 2) / 2;
+    return {
+      box: [r.x, r.y, r.width, r.height].map(round).join(","),
+      width: round(r.width),
+      chevronInside: c.width > 0 && c.left >= r.left && c.right <= r.right + 0.5,
+      truncated: label.scrollWidth > label.clientWidth + 0.5,
+      ellipsis: getComputedStyle(label).textOverflow === "ellipsis",
+    };
+  });
+}
+
+async function assertSwitchStable(page, state) {
+  const geo = await switchGeometry(page);
+  if (!geo) throw new Error(`profile scope switch missing (${state})`);
+  if (!geo.chevronInside) throw new Error(`project chevron not visible inside the switch (${state})`);
+  const reference = switchReference.get(page);
+  if (!reference) {
+    switchReference.set(page, geo.box);
+  } else if (reference !== geo.box) {
+    throw new Error(`profile scope switch moved or resized on ${state}: ${reference} -> ${geo.box}`);
+  }
+  console.log(`shots: profile switch ${state}: ${geo.box}`);
+  return geo;
+}
+
+/** Long project name: render it in the real label, check truncation and size, then restore. */
+async function assertSwitchLongName(page) {
+  const original = await page.getByTestId("profile-scope-project-label").evaluate((label) => {
+    const text = label.textContent;
+    label.textContent = `Project: ${"a-really-long-project-folder-name-".repeat(3)}end`;
+    return text;
+  });
+  try {
+    const geo = await assertSwitchStable(page, "long project name");
+    if (!geo.truncated || !geo.ellipsis) throw new Error("long project name is not cut with an ellipsis");
+  } finally {
+    await page.getByTestId("profile-scope-project-label").evaluate((label, text) => {
+      label.textContent = text;
+    }, original);
+  }
+}
+
+/**
+ * Each switch tooltip (Global, Project, chevron) must open clear of the
+ * profile title block under the switch: no overlap with any text in it.
+ */
+async function assertSwitchTooltipsClearTitle(page, state) {
+  for (const testId of ["profile-scope-global", "profile-scope-project", "project-path"]) {
+    // Leave first: a pointer already over the control after a click sends no new enter.
+    await page.mouse.move(0, 0);
+    await page.getByTestId(testId).hover({ timeout: T });
+    const tip = page.locator(".chrome-tooltip").first();
+    await tip.waitFor({ state: "visible", timeout: T });
+    await page.waitForTimeout(150);
+    const overlap = await page.evaluate(() => {
+      const tipEl = document.querySelector(".chrome-tooltip");
+      const identity = document.querySelector("main .live-toolbar-identity");
+      if (!tipEl || !identity) return "";
+      const t = tipEl.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(identity);
+      for (const r of range.getClientRects()) {
+        if (r.width === 0 || r.height === 0) continue;
+        if (r.left < t.right && r.right > t.left && r.top < t.bottom && r.bottom > t.top) {
+          return `tooltip ${Math.round(t.left)},${Math.round(t.top)} ${Math.round(t.width)}x${Math.round(t.height)} covers title text at ${Math.round(r.left)},${Math.round(r.top)}`;
+        }
+      }
+      return "";
+    });
+    await page.mouse.move(0, 0);
+    await tip.waitFor({ state: "hidden", timeout: T }).catch(() => {});
+    if (overlap) throw new Error(`${testId} tooltip over the profile title (${state}): ${overlap}`);
+  }
+}
+
+/** Global, Project, dropdown open and a long name all keep the switch box. */
+async function assertSwitchStableAcrossStates(page) {
+  await assertSwitchStable(page, "project");
+  await page.getByTestId("profile-scope-global").click({ timeout: T });
+  await page.locator('[data-testid="profile-scope-global"][aria-pressed="true"]').waitFor({ timeout: T });
+  await assertSwitchStable(page, "global with a project");
+  await page.getByTestId("project-path").click({ timeout: T });
+  await page.locator('[data-testid="project-path"][aria-expanded="true"]').waitFor({ timeout: T });
+  await assertSwitchStable(page, "dropdown open");
+  await pressEscape(page);
+  await page.locator('[data-testid="project-path"][aria-expanded="false"]').waitFor({ timeout: T });
+  await page.getByTestId("profile-scope-project").click({ timeout: T });
+  await page.locator('[data-testid="profile-scope-project"][aria-pressed="true"]').waitFor({ timeout: T });
+  await assertSwitchStable(page, "project again");
+  await assertSwitchTooltipsClearTitle(page, "project");
+  await assertSwitchLongName(page);
+}
+
 async function dismissTrackedDirectories(page) {
   const dialog = page.getByRole("dialog", { name: /tracked directories/i });
   if (await dialog.isVisible().catch(() => false)) {
@@ -313,14 +441,17 @@ const SCREENS = [
   {
     name: "scope-global",
     run: async (page) => {
-      await clickHeader(page, /global scope/i);
+      await openGlobalProfile(page);
+      await assertSwitchStable(page, "global, no project");
+      await assertSwitchTooltipsClearTitle(page, "global, no project");
       await assertRailNamesUseFullWidth(page);
     },
   },
   {
     name: "scope-project",
     run: async (page) => {
-      await clickHeader(page, /project scope/i);
+      await openProjectProfile(page);
+      await assertSwitchStableAcrossStates(page);
       await waitForResourceRows(page);
     },
   },
@@ -487,7 +618,7 @@ const SCREENS = [
       await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 15_000 });
       await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
       await waitForConnected(page);
-      await clickHeader(page, /global scope/i);
+      await openGlobalProfile(page);
       await openLibrary(page);
       await waitForResourceRows(page);
       await main(page).locator(".resource-type-tab").filter({ hasText: /plugin refs?$/ }).first().click({ timeout: T });

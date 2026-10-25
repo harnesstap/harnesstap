@@ -2,22 +2,20 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from "rea
 import {
   Cable,
   Download,
-  FolderGit2,
-  Globe,
   Library,
   PackageSearch,
   Settings,
+  SquareUserRound,
   Upload,
   User,
 } from "lucide-react";
-import { headerScopeState, type HeaderDestination } from "../../lib/header-destination";
+import { PROFILE_TAB_TOOLTIP } from "../../lib/profile-scope";
 import type { CloudAuthStatus } from "../../lib/types";
 import type { AgentClient } from "../../state/agent-session";
-import type { Destination, Scope } from "../../state/navigation";
+import type { Destination } from "../../state/navigation";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { IconActionButton } from "../IconActionButton";
 import { ParityChrome } from "../parity/ParityChrome";
-import { ProjectPicker } from "../ProjectPicker";
 import {
   refreshDesktopUpdateStatus,
   UpdateAvailableControl,
@@ -66,16 +64,10 @@ export interface AppHeaderProps {
   client: AgentClient | null;
   connected: boolean;
   destination: Destination;
-  scope: Scope;
   switching: boolean;
-  bootstrapBusy: boolean;
   migrateBusy: boolean;
-  projectPath: string;
-  projectReady: boolean;
   cloudAuth: CloudAuthStatus | null;
-  onDestinationClick: (clicked: HeaderDestination) => void;
-  onSelectProject: (path: string) => void;
-  onBrowseProject: () => void;
+  onDestinationClick: (clicked: Destination) => void;
   onOpenMigrateExport: () => void;
   onOpenMigrateImport: () => void;
   /** Bell row click: open the profile, or the plugin in the Library. */
@@ -84,21 +76,15 @@ export interface AppHeaderProps {
   onOpenAccount: () => void;
 }
 
-/** Brand, destinations, scope segment, project cluster, and utility actions. */
+/** Brand, the five destination tabs, and utility actions. */
 export function AppHeader({
   client,
   connected,
   destination,
-  scope,
   switching,
-  bootstrapBusy,
   migrateBusy,
-  projectPath,
-  projectReady,
   cloudAuth,
   onDestinationClick,
-  onSelectProject,
-  onBrowseProject,
   onOpenMigrateExport,
   onOpenMigrateImport,
   onOpenNotification,
@@ -120,15 +106,6 @@ export function AppHeader({
     void refreshDesktopUpdateStatus(baseUrl, token);
   }, [baseUrl, connected, token]);
 
-  const scopeState = headerScopeState(destination, scope);
-  const shownScope = scopeState.scope;
-  const projectScopeDisabled = scopeState.projectDisabledReason !== null;
-  const projectTooltip = scopeState.projectDisabledReason
-    ?? (!projectPath
-      ? "Choose a project directory"
-      : !projectReady
-        ? "Sets up this repo as a HarnessTap project on first use"
-        : "Project");
   const accountTooltip = cloudAuth?.authenticated && cloudAuth.email
     ? `Account (${cloudAuth.email})`
     : "Account";
@@ -197,67 +174,22 @@ export function AppHeader({
             <span className="header-focus-label">Harness</span>
           </button>,
         )}
-      </div>
-      <div className="header-scope">
-        <span className="header-scope-label" id="header-scope-label">
-          Scope
-        </span>
-        <div
-          className="header-focus-segment"
-          role="group"
-          aria-labelledby="header-scope-label"
-        >
-          {maybeTooltip(
-            iconDestinations,
-            "Global",
-            <button
-              type="button"
-              className={shownScope === "global" ? "on" : ""}
-              data-testid="view-global"
-              onClick={() => onDestinationClick("global")}
-              disabled={switching || bootstrapBusy}
-              aria-label="Global scope"
-              aria-pressed={shownScope === "global"}
-            >
-              <Globe size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-              <span className="header-focus-label">Global</span>
-            </button>,
-          )}
-          {maybeTooltip(
-            iconDestinations || projectTooltip !== "Project",
-            projectTooltip,
-            <button
-              type="button"
-              className={shownScope === "project" ? "on" : ""}
-              data-testid="view-project"
-              onClick={() => {
-                if (!projectScopeDisabled) {
-                  onDestinationClick("project");
-                }
-              }}
-              disabled={switching || bootstrapBusy}
-              aria-disabled={projectScopeDisabled || undefined}
-              aria-label="Project scope"
-              aria-pressed={shownScope === "project"}
-            >
-              <FolderGit2 size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-              <span className="header-focus-label">Project</span>
-            </button>,
-          )}
-        </div>
-      </div>
-      {destination === "scope" && scope === "project" ? (
-        <div className="header-project-cluster">
-          <ProjectPicker
-            projectPath={projectPath}
+        <ChromeTooltip content={PROFILE_TAB_TOOLTIP}>
+          <button
+            type="button"
+            className={`header-focus-btn labeled${destination === "scope" ? " on" : ""}`}
+            data-testid="nav-profile"
+            onClick={() => onDestinationClick("scope")}
             disabled={switching}
-            onSelect={onSelectProject}
-            onBrowse={onBrowseProject}
-          />
-        </div>
-      ) : (
-        <div className="header-project-cluster header-focus-spacer" aria-hidden />
-      )}
+            aria-label="Profile"
+            aria-current={destination === "scope" ? "page" : undefined}
+          >
+            <SquareUserRound size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+            <span className="header-focus-label">Profile</span>
+          </button>
+        </ChromeTooltip>
+      </div>
+      <div className="header-focus-spacer" aria-hidden />
       <div
         className="header-status"
         data-testid={connected ? "agent-connected" : undefined}

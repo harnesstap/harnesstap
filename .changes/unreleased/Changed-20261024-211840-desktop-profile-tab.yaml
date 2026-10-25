@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Desktop: the top bar now has five equal tabs, Library, Discover, Env, Harness and Profile, with exactly one active at a time. The Scope label and the Global | Project switch are gone from the header. Open Profile to see your profiles: its page header has a Global | Project: <name> switch, and the chevron next to the project name opens the project list. The selected side is filled and in bolder text, and the switch keeps the same size whichever side is selected, so the chevron is always visible; a long project name is shortened and its tooltip shows it in full. In the project list, the current project has a check mark, and the folder button (Open another project) picks one that is not listed. If no project is set yet, clicking Project opens that list instead of an empty page. The app remembers the last scope you picked across restarts (Global on first run), and Library and Environments keep using it. Harness stays global.'
+time: 2026-10-25T07:18:40.000Z
+custom:
+  Issue: ""
