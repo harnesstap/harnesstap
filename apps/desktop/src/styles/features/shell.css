@@ -46,6 +46,81 @@
   overflow: hidden;
 }
 
+/* Profile page header: Global | Project: <name> with the project chevron. */
+.profile-page-header {
+  display: flex;
+  align-items: center;
+}
+
+.profile-scope-switch {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.profile-scope-project {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 3px;
+}
+
+.profile-scope-option,
+.project-picker-trigger.is-chevron {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-meta);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.profile-scope-option {
+  padding: 0 0.65rem;
+}
+
+.profile-scope-option.on,
+.profile-scope-project.on,
+.profile-scope-project.on .profile-scope-option,
+.profile-scope-project.on .project-picker-trigger.is-chevron {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+.profile-scope-option:hover:not(:disabled):not(.on),
+.profile-scope-project:not(.on) .profile-scope-option:hover:not(:disabled),
+.project-picker-trigger.is-chevron:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.profile-scope-option:disabled,
+.project-picker-trigger.is-chevron:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: default;
+}
+
+.project-picker.is-chevron {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: inline-flex;
+}
+
+.project-picker-trigger.is-chevron {
+  width: auto;
+  justify-content: center;
+  padding: 0 0.4rem;
+}
+
 .project-picker-filter {
   width: 100%;
   border: 0;

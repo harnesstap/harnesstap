@@ -71,7 +71,22 @@ async function waitForLibraryLoaded(): Promise<void> {
 }
 
 async function openScope(): Promise<void> {
-  await clickTestId("view-global");
+  await clickTestId("nav-profile");
+  await clickTestId("profile-scope-global");
+}
+
+/** Profile tab on Project. With no project set yet, Project opens the project dropdown; Browse picks the e2e project. */
+async function openProjectScope(): Promise<void> {
+  await clickTestId("nav-profile");
+  await clickTestId("profile-scope-project");
+  const browse = await $(".project-picker-footer button");
+  const dropdownOpened = await browse
+    .waitForDisplayed({ timeout: 3000 })
+    .then(() => true)
+    .catch(() => false);
+  if (dropdownOpened) {
+    await browse.click();
+  }
 }
 
 async function openEditProfile(name: string): Promise<void> {
@@ -230,13 +245,15 @@ describe("Golden path", () => {
   });
 
   it("shows project scope resources after refresh", async () => {
-    await clickTestId("view-project");
+    await openProjectScope();
 
-    const projectPath = await waitForTestId("project-path");
-    await expect(projectPath).toHaveAttribute(
-      "title",
-      expect.stringContaining(isolation().project),
+    const projectName = isolation().project.split(/[\\/]/).filter(Boolean).pop() ?? "";
+    const projectButton = await waitForTestId("profile-scope-project");
+    await browser.waitUntil(
+      async () => (await projectButton.getAttribute("aria-pressed")) === "true",
+      { timeout: 10000, timeoutMsg: "Project scope did not become active" },
     );
+    await expect(projectButton).toHaveText(`Project: ${projectName}`);
 
     await clickTestId("live-status-refresh");
     await assertResourceRows(PROJECT_RESOURCE_NAMES);

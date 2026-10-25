@@ -116,17 +116,18 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain('case "harnesses":');
     const parityIdx = appSource.indexOf("<ParityChrome");
     const harnessesIdx = appSource.indexOf('aria-label="Harnesses"');
-    const scopeIdx = appSource.indexOf('aria-label="Global scope"');
+    const profileIdx = appSource.indexOf('aria-label="Profile"');
     expect(parityIdx).toBeGreaterThan(-1);
     expect(harnessesIdx).toBeGreaterThan(parityIdx);
-    expect(scopeIdx).toBeGreaterThan(harnessesIdx);
+    expect(profileIdx).toBeGreaterThan(harnessesIdx);
   });
 
-  test("DESIGN.md lists inventories as destinations and Global/Project as Scope", () => {
+  test("DESIGN.md lists five destination tabs and puts Global/Project on the Profile page", () => {
     expect(designSource).toContain(
-      "Header destinations (equal-weight primary nav): **Library | Discover | Env | Harness**",
+      "Header destinations (equal-weight primary nav): **Library | Discover | Env | Harness | Profile**",
     );
-    expect(designSource).toContain("quieter **Scope** segmented switch");
+    expect(designSource).toContain("The header has no scope control.");
+    expect(designSource).toContain("**Global | Project: <name>** text segmented switch");
     expect(designSource).toMatch(/\|\s*Discover\s*\|/);
   });
 
@@ -144,32 +145,29 @@ describe("desktop header chrome", () => {
     expect(paritySource).toContain('aria-label="Environments"');
   });
 
-  test("labels header destinations Library, Discover, Env, Harness, Global, and Project", () => {
+  test("labels header destinations Library, Discover, Env, Harness, and Profile", () => {
     expect(appSource).toMatch(/<Library[\s\S]*\/>\s*<span className="header-focus-label">Library<\/span>/);
     expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*<span className="header-focus-label">Discover<\/span>/);
     expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*<span className="header-focus-label">Env<\/span>/);
     expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harness<\/span>/);
-    expect(appSource).toMatch(/<Globe[\s\S]*\/>\s*<span className="header-focus-label">Global<\/span>/);
-    expect(appSource).toMatch(/<FolderGit2[\s\S]*\/>\s*<span className="header-focus-label">Project<\/span>/);
+    expect(appSource).toMatch(/<SquareUserRound[\s\S]*\/>\s*<span className="header-focus-label">Profile<\/span>/);
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");
     expect(cssSource).toContain(".header-focus-btn.labeled");
-    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Env | Harness**");
+    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Env | Harness | Profile**");
     expect(designSource).toContain("Header destinations show icon plus name");
-    expect(appSource).toContain("header-scope");
-    expect(appSource).toContain('id="header-scope-label"');
+    expect(appSource).not.toContain("header-scope");
     expect(appSource).toContain('label="Settings"');
     expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
     expect(appSource).toContain('aria-current={destination === "library" ? "page" : undefined}');
-    expect(appSource).toContain("aria-pressed={shownScope === \"global\"}");
+    expect(appSource).toContain('aria-current={destination === "scope" ? "page" : undefined}');
     expect(appSource).toContain("HeaderMoreMenu");
     expect(appSource).not.toContain('title="Library"');
     expect(appSource).not.toContain('title="Discover"');
     expect(paritySource).not.toContain('title="Environments"');
     expect(cssSource).toContain("container-type: inline-size");
-    expect(cssSource).toContain("minmax(280px, 1fr)");
     expect(cssSource).toContain(
-      "grid-template-columns: max-content max-content max-content minmax(280px, 1fr) max-content",
+      "grid-template-columns: max-content max-content minmax(0, 1fr) max-content",
     );
     expect(cssSource).not.toContain("minmax(0, auto)");
     expect(cssSource).toContain(".project-picker {");
@@ -177,21 +175,23 @@ describe("desktop header chrome", () => {
     expect(cssSource).toContain(".project-picker-menu");
     expect(cssSource).toContain("min-width: 22rem");
     expect(designSource).toContain("Window minimum size is 960×600");
-    expect(designSource).toContain("do not shrink or clip into the Scope divider");
+    expect(designSource).toContain("never shrink or clip");
   });
 
-  test("keeps only the project picker in the top navbar project cluster", () => {
+  test("keeps the scope switch and project picker out of the top navbar", () => {
     const header = sliceBetween(
       appSource,
       "export function AppHeader",
       "export function AppOverlays",
     );
-    expect(header).toContain("<ProjectPicker");
+    expect(header).not.toContain("<ProjectPicker");
+    expect(header).not.toContain("view-global");
+    expect(header).not.toContain("view-project");
     expect(header).not.toContain('data-testid="project-install"');
     expect(header).not.toContain("ProjectHistoryControl");
     expect(header).not.toContain("HardDriveDownload");
-    expect(designSource).toContain("Project picker appears only when Project");
-    expect(designSource).toContain("live-state toolbar");
+    expect(appSource).toContain("<ProfileScopeSwitch");
+    expect(designSource).toContain("Install and History live on the Project live-state toolbar");
   });
 
   test("replaces the HarnessTap wordmark with the brand mark", () => {
@@ -213,8 +213,9 @@ describe("desktop header chrome", () => {
     const destBlock = sliceBetween(
       cssSource,
       ".header-focus-controls {",
-      ".header-scope {",
+      ".header-focus-btn {",
     );
+    expect(destBlock).toContain("grid-auto-columns: 1fr");
     expect(destBlock).toContain("min-width: max-content");
     expect(destBlock).toContain("overflow: visible");
     expect(destBlock).toContain("flex: 0 0 auto");
@@ -292,13 +293,11 @@ describe("desktop header chrome", () => {
 
 describe("header re-click home", () => {
   test("classifies header clicks with headerClickIntent", () => {
-    expect(appSource).toContain("activeHeaderDestination");
-    expect(appSource).toContain("headerClickIntent");
+    expect(appSource).toContain("headerClickIntent(nav.destination, clicked)");
     expect(appSource).toContain("onHeaderDestinationClick");
     expect(appSource).toContain('onClick={() => onDestinationClick("library")}');
     expect(appSource).toContain('onClick={() => onDestinationClick("discover")}');
-    expect(appSource).toContain('onClick={() => onDestinationClick("global")}');
-    expect(appSource).toContain('onDestinationClick("project");');
+    expect(appSource).toContain('onClick={() => onDestinationClick("scope")}');
     expect(appSource).toContain("onDestinationClick(\"environments\")");
     expect(appSource).toContain('onClick={() => onDestinationClick("harnesses")}');
   });
@@ -308,20 +307,17 @@ describe("header re-click home", () => {
     expect(appSource).toContain("homeResetNonce={nav.resetNonce}");
     const resetBlock = sliceBetween(
       appSource,
-      'headerClickIntent(active, clicked) === "reset"',
-      "headerDestinationTarget(clicked)",
+      'headerClickIntent(nav.destination, clicked) === "reset"',
+      "nav.go(clicked)",
     );
-    expect(resetBlock).toContain('case "library"');
-    expect(resetBlock).toContain('case "discover"');
-    expect(resetBlock).toContain('case "environments"');
-    expect(resetBlock).toContain('case "harnesses"');
+    expect(resetBlock).toContain("nav.resetCurrent()");
   });
 
-  test("Global and Project re-click clear profile search and close edit without changing selection", () => {
+  test("Profile re-click clears profile search and closes edit without changing selection or scope", () => {
     const resetBlock = sliceBetween(
       appSource,
-      'headerClickIntent(active, clicked) === "reset"',
-      "headerDestinationTarget(clicked)",
+      'clicked === "scope"',
+      "nav.resetCurrent()",
     );
     expect(resetBlock).toContain('ctrl.setProfileFilter("")');
     expect(resetBlock).toContain("ctrl.closeEditProfile()");

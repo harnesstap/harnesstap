@@ -11,7 +11,7 @@
   container-type: inline-size;
   container-name: app-header;
   display: grid;
-  grid-template-columns: max-content max-content max-content minmax(280px, 1fr) max-content;
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
@@ -52,21 +52,11 @@
   min-width: 0;
 }
 
-.header-project-cluster,
-.header-project-row {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: 280px;
-}
-
-.header-project-cluster .header-focus-btn,
-.header-project-row .header-focus-btn {
-  flex: 0 0 auto;
-}
-
+/* Five equal tabs: each takes the width of the widest label. */
 .header-focus-controls {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   align-items: center;
   gap: 0.35rem;
   flex: 0 0 auto;
@@ -75,49 +65,7 @@
   height: var(--header-focus-size);
 }
 
-.header-focus-controls .header-focus-btn {
-  flex: 0 0 auto;
-}
-
-.header-scope {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex: 0 0 auto;
-  margin-left: 0.15rem;
-  padding-left: 0.65rem;
-  border-left: 1px solid var(--border);
-  height: var(--header-focus-size);
-}
-
-.header-scope-label {
-  font-family: var(--mono);
-  font-size: var(--text-micro);
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
-  color: var(--muted);
-  line-height: 1;
-}
-
-.header-scope .header-focus-segment {
-  height: calc(var(--header-focus-size) - 4px);
-  background: var(--surface);
-  border-color: color-mix(in srgb, var(--border) 80%, transparent);
-}
-
-.header-scope .header-focus-segment button {
-  font-size: var(--text-meta);
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.header-scope .header-focus-segment button.on {
-  background: var(--surface-2);
-  color: var(--fg);
-}
-
-.header-focus-btn,
-.header-focus-segment button {
+.header-focus-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -130,8 +78,7 @@
   color: var(--muted);
 }
 
-.header-focus-btn.labeled,
-.header-focus-segment button {
+.header-focus-btn.labeled {
   width: auto;
   padding: 0 0.55rem;
   gap: 0.35rem;
@@ -148,48 +95,16 @@
   background: var(--bg);
 }
 
-.header-focus-btn.on,
-.header-focus-segment button.on {
+.header-focus-btn.on {
   background: var(--surface-2);
   color: var(--fg);
 }
 
-.header-focus-btn:disabled,
-.header-focus-segment button:disabled,
-.header-focus-segment button[aria-disabled="true"] {
+.header-focus-btn:disabled {
   opacity: var(--opacity-disabled);
 }
 
-.header-focus-segment button[aria-disabled="true"] {
-  cursor: not-allowed;
-}
-
-.header-focus-segment {
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
-  box-sizing: border-box;
-  height: var(--header-focus-size);
-  margin: 0;
-  padding: 2px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
-.header-focus-segment button {
-  flex: 0 0 auto;
-  width: auto;
-  min-width: calc(var(--header-focus-size) - 6px);
-  height: auto;
-  border: 0;
-  border-radius: 3px;
-  background: transparent;
-}
-
-.header-focus-controls svg,
-.header-project-cluster svg,
-.header-project-row svg {
+.header-focus-controls svg {
   display: block;
   width: var(--header-focus-icon);
   height: var(--header-focus-icon);
@@ -197,7 +112,7 @@
 }
 
 .header-focus-spacer {
-  min-width: 280px;
+  min-width: 0;
 }
 
 .layout {
@@ -366,13 +281,11 @@
   align-items: center;
 }
 
-.app-header.is-compact-dest .header-focus-label,
-.app-header.is-compact-dest .header-scope-label {
+.app-header.is-compact-dest .header-focus-label {
   display: none;
 }
 
-.app-header.is-compact-dest .header-focus-btn.labeled,
-.app-header.is-compact-dest .header-focus-segment button {
+.app-header.is-compact-dest .header-focus-btn.labeled {
   width: var(--header-focus-size);
   min-width: var(--icon-action-size);
   min-height: var(--icon-action-size);
@@ -380,13 +293,11 @@
 }
 
 @container app-header (max-width: 960px) {
-  .header-focus-label,
-  .header-scope-label {
+  .header-focus-label {
     display: none;
   }
 
-  .header-focus-btn.labeled,
-  .header-scope .header-focus-segment button {
+  .header-focus-btn.labeled {
     width: var(--header-focus-size);
     min-width: var(--icon-action-size);
     min-height: var(--icon-action-size);

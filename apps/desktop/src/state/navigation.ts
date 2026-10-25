@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 import type { Scope } from "../lib/api/scope";
 import type { Destination } from "../lib/header-destination";
+import { loadProfileScope, saveProfileScope } from "../lib/profile-scope";
 import {
   canPopScreenHistory,
   popScreenHistory,
@@ -109,10 +110,20 @@ export interface Navigation {
   resetCurrent: () => void;
 }
 
-export function useNavigation(
-  initial: NavigationState = initialNavigationState,
-): Navigation {
-  const [state, dispatch] = useReducer(navigationReducer, initial);
+/** First-launch state with the remembered Profile scope. */
+export function restoredNavigationState(): NavigationState {
+  return { ...initialNavigationState, scope: loadProfileScope() };
+}
+
+export function useNavigation(initial?: NavigationState): Navigation {
+  const [state, dispatch] = useReducer(
+    navigationReducer,
+    initial,
+    (start) => start ?? restoredNavigationState(),
+  );
+  useEffect(() => {
+    saveProfileScope(state.scope);
+  }, [state.scope]);
   const back = useCallback(() => dispatch({ type: "back" }), []);
   const go = useCallback(
     (destination: Destination) => dispatch({ type: "go", destination }),

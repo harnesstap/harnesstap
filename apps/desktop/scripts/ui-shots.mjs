@@ -191,6 +191,25 @@ async function clickHeader(page, name) {
   await page.getByRole("button", { name }).first().click({ timeout: T });
 }
 
+/** Profile tab, then the Global side of its scope switch. */
+async function openGlobalProfile(page) {
+  await clickHeader(page, /^profile$/i);
+  await page.getByTestId("profile-scope-global").click({ timeout: T });
+}
+
+/** Profile tab on Project. With no project set yet, Project opens the project dropdown; Browse uses the shim folder picker. */
+async function openProjectProfile(page) {
+  await clickHeader(page, /^profile$/i);
+  await page.getByTestId("profile-scope-project").click({ timeout: T });
+  const browse = page.locator(".project-picker-footer button").first();
+  if (await browse.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await browse.click({ timeout: T });
+  }
+  await page
+    .locator('[data-testid="profile-scope-project"][aria-pressed="true"]')
+    .waitFor({ timeout: T });
+}
+
 async function dismissTrackedDirectories(page) {
   const dialog = page.getByRole("dialog", { name: /tracked directories/i });
   if (await dialog.isVisible().catch(() => false)) {
@@ -313,14 +332,14 @@ const SCREENS = [
   {
     name: "scope-global",
     run: async (page) => {
-      await clickHeader(page, /global scope/i);
+      await openGlobalProfile(page);
       await assertRailNamesUseFullWidth(page);
     },
   },
   {
     name: "scope-project",
     run: async (page) => {
-      await clickHeader(page, /project scope/i);
+      await openProjectProfile(page);
       await waitForResourceRows(page);
     },
   },
@@ -487,7 +506,7 @@ const SCREENS = [
       await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 15_000 });
       await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
       await waitForConnected(page);
-      await clickHeader(page, /global scope/i);
+      await openGlobalProfile(page);
       await openLibrary(page);
       await waitForResourceRows(page);
       await main(page).locator(".resource-type-tab").filter({ hasText: /plugin refs?$/ }).first().click({ timeout: T });
