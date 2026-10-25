@@ -82,7 +82,7 @@ import {
   formatResourceDeleteSuccess,
   protectedDeleteLocations,
   RESOURCE_DELETE_DISK_LABEL,
-  RESOURCE_DELETE_LIBRARY_LABEL,
+  deleteLocationActionLabel,
   resourceCanRemoveFromActiveProfile,
   resourceDeleteDiskDisabled,
   resourceDeleteDiskNeedsConfirmation,
@@ -116,7 +116,7 @@ export type ResourceDetailChrome = "dialog" | "pane";
 
 export type ResourceDetailEditingField = "name" | "description" | "content";
 
-const DELETE_TOOLTIP = "Remove from library";
+const DELETE_TOOLTIP = "Delete from library";
 
 function libraryResourceNoun(type: string): string {
   if (type === "skill") {
@@ -262,6 +262,8 @@ export function ResourceDetailBody({
   const [deletePlan, setDeletePlan] = useState<ResourceDeletePlan | null>(null);
   const [deleteForceChecked, setDeleteForceChecked] = useState(false);
   const deleteForceId = useId();
+  const deleteDiskId = useId();
+  const [deleteDiskChecked, setDeleteDiskChecked] = useState(false);
   const [protectionPlan, setProtectionPlan] = useState<ResourceDeletePlan | null>(
     null,
   );
@@ -612,6 +614,7 @@ export function ResourceDetailBody({
       const plan = await previewLibraryResourceDelete(baseUrl, token, target.selector);
       setDeletePlan(plan);
       setDeleteForceChecked(false);
+      setDeleteDiskChecked(false);
       setConfirm("delete");
     } catch (planError: unknown) {
       setActionError(errorMessage(planError, "Could not preview resource delete"));
@@ -642,9 +645,7 @@ export function ResourceDetailBody({
         formatResourceDeleteSuccess(mode, quoteResource(detail), result),
       );
       onLibraryChanged?.();
-      setConfirm(null);
-      setDeletePlan(null);
-      setDeleteForceChecked(false);
+      closeDeleteConfirm();
       onDeleted?.();
     } catch (deleteError: unknown) {
       setActionError(errorMessage(deleteError, "Could not delete resource"));
@@ -1277,40 +1278,64 @@ export function ResourceDetailBody({
     <p className="muted">No details available.</p>
   );
 
+  const closeDeleteConfirm = () => {
+    setConfirm(null);
+    setDeletePlan(null);
+    setDeleteForceChecked(false);
+    setDeleteDiskChecked(false);
+  };
+  const protectedLocations = deletePlan ? protectedDeleteLocations(deletePlan) : [];
+  const diskGroups = deletePlanSummary
+    ? deletePlanSummary.groups
+        .map((group) => ({
+          ...group,
+          locations: group.locations.filter((location) => location.action !== "protected"),
+        }))
+        .filter((group) => group.locations.length > 0)
+    : [];
+
   const confirms = (
     <>
       <ConfirmDialog
         open={confirm === "delete" && detail !== null}
         title="Delete this resource?"
+        tone="destructive"
         description={
           detail
-            ? `Choose how to remove ${detail.type} "${detail.name}". Library-only keeps on-disk files. Library + disk removes known global, project, and source locations.`
+            ? `Delete ${detail.type} "${detail.name}" from the library. Files on disk stay unless you also delete them.`
             : ""
         }
-        confirmLabel={RESOURCE_DELETE_DISK_LABEL}
+        confirmLabel="Delete"
         cancelLabel="Cancel"
         confirmBusy={busy}
-        confirmDisabled={diskDeleteDisabled || (diskDeleteNeedsConfirm && !deleteForceChecked)}
-        confirmHint={diskDeleteHint}
-        secondaryLabel={RESOURCE_DELETE_LIBRARY_LABEL}
-        secondaryBusy={busy}
-        onSecondary={() => void runDelete("library")}
-        tertiaryLabel={canRemoveFromActive ? "Remove from active profile" : undefined}
-        tertiaryBusy={busy}
-        onTertiary={canRemoveFromActive ? () => void runRemoveFromActive() : undefined}
-        onConfirm={() => void runDelete("library_and_disk")}
+        confirmDisabled={deleteDiskChecked && diskDeleteNeedsConfirm && !deleteForceChecked}
+        confirmHint="Confirm deleting the changed copy on disk"
+        onConfirm={() => void runDelete(deleteDiskChecked ? "library_and_disk" : "library")}
         onCancel={() => {
           if (!busy) {
-            setConfirm(null);
-            setDeletePlan(null);
-            setDeleteForceChecked(false);
+            closeDeleteConfirm();
           }
         }}
       >
         {deleteAttacherCopy ? (
-          <div className="muted">
+          <div className="muted resource-delete-attachers">
             {deleteAttacherCopy.profilesLine ? (
-              <p>{deleteAttacherCopy.profilesLine}</p>
+              <p>
+                {deleteAttacherCopy.profilesLine}
+                {canRemoveFromActive && deleteAttachers?.active_profile ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      disabled={busy}
+                      onClick={() => void runRemoveFromActive()}
+                    >
+                      Remove from {deleteAttachers.active_profile} instead
+                    </button>
+                  </>
+                ) : null}
+              </p>
             ) : null}
             {deleteAttacherCopy.pluginsLine ? (
               <p>
@@ -1323,9 +1348,7 @@ export function ResourceDetailBody({
                         type="button"
                         className="resource-detail-plugin-link"
                         onClick={() => {
-                          setConfirm(null);
-                          setDeletePlan(null);
-                          setDeleteForceChecked(false);
+                          closeDeleteConfirm();
                           onOpenOwningPlugin(pluginName);
                         }}
                       >
@@ -1343,19 +1366,57 @@ export function ResourceDetailBody({
             ) : null}
           </div>
         ) : null}
-        {deletePlanSummary ? (
-          <div className="muted">
+        {protectedLocations.length > 0 ? (
+          <div className="resource-detail-protected">
+            {protectedLocations.map((location) => (
+              <div
+                key={`${location.scope}:${location.path}`}
+                className="resource-detail-protected-path"
+              >
+                <p className="resource-detail-protected-path-value">
+                  Protected: <span className="mono">{tildeHomePath(location.path)}</span>
+                </p>
+                <PathAccessActions
+                  path={location.path}
+                  disabled={disabled || !baseUrl || loading}
+                  opening={openingPath === location.path}
+                  onReveal={(next) => void openContainedPath(next, true)}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className="resource-delete-disk-option">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={deleteDiskId}
+              checked={deleteDiskChecked}
+              disabled={busy || diskDeleteDisabled}
+              onCheckedChange={(value) => {
+                setDeleteDiskChecked(value === true);
+                setDeleteForceChecked(false);
+              }}
+            />
+            <Label htmlFor={deleteDiskId} className="font-normal">
+              {RESOURCE_DELETE_DISK_LABEL}
+            </Label>
+          </div>
+          {diskDeleteHint ? <p className="muted">{diskDeleteHint}</p> : null}
+        </div>
+        {deleteDiskChecked && deletePlanSummary ? (
+          <div className="muted resource-delete-disk-plan">
             {deletePlanSummary.emptyMessage ? (
               <p>{deletePlanSummary.emptyMessage}</p>
             ) : null}
-            {deletePlanSummary.groups.map((group) => (
+            {diskGroups.map((group) => (
               <div key={group.scope}>
                 <p>
                   <strong>{group.label}</strong>
                 </p>
                 {group.locations.map((location) => (
                   <p key={`${location.scope}:${location.path}`}>
-                    {location.action}: {location.path}
+                    {deleteLocationActionLabel(location.action)}:{" "}
+                    <span className="mono">{tildeHomePath(location.path)}</span>
                     {location.project_name ? ` (${location.project_name})` : ""}
                   </p>
                 ))}
@@ -1389,37 +1450,9 @@ export function ResourceDetailBody({
                   : null}
               </div>
             ) : null}
-            {deletePlanSummary.blockers.length > 0 ? (
-              <div className="resource-detail-protected">
-                <p>
-                  <strong>Protected</strong>
-                </p>
-                {deletePlanSummary.blockers.map((blocker) => (
-                  <p key={blocker}>{blocker}</p>
-                ))}
-                {deletePlan
-                  ? protectedDeleteLocations(deletePlan).map((location) => (
-                      <div
-                        key={`${location.scope}:${location.path}`}
-                        className="resource-detail-protected-path"
-                      >
-                        <p className="mono resource-detail-protected-path-value">
-                          {tildeHomePath(location.path)}
-                        </p>
-                        <PathAccessActions
-                          path={location.path}
-                          disabled={disabled || !baseUrl || loading}
-                          opening={openingPath === location.path}
-                          onReveal={(next) => void openContainedPath(next, true)}
-                        />
-                      </div>
-                    ))
-                  : null}
-              </div>
-            ) : null}
           </div>
         ) : null}
-        {diskDeleteNeedsConfirm ? (
+        {deleteDiskChecked && diskDeleteNeedsConfirm ? (
           <div className="flex items-center gap-2">
             <Checkbox
               id={deleteForceId}

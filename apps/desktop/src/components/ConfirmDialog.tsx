@@ -23,10 +23,8 @@ export interface ConfirmDialogProps {
   secondaryBusy?: boolean;
   secondaryDisabled?: boolean;
   onSecondary?: () => void;
-  tertiaryLabel?: string;
-  tertiaryBusy?: boolean;
-  tertiaryDisabled?: boolean;
-  onTertiary?: () => void;
+  /** "destructive" renders the secondary as a red outline button (e.g. "Remove anyway"). */
+  secondaryTone?: "default" | "destructive";
   onConfirm: () => void;
   onCancel: () => void;
   children?: ReactNode;
@@ -50,10 +48,7 @@ export function ConfirmDialog({
   secondaryBusy = false,
   secondaryDisabled = false,
   onSecondary,
-  tertiaryLabel,
-  tertiaryBusy = false,
-  tertiaryDisabled = false,
-  onTertiary,
+  secondaryTone = "default",
   onConfirm,
   onCancel,
   children,
@@ -61,7 +56,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const anyBusy = confirmBusy || secondaryBusy || tertiaryBusy;
+  const anyBusy = confirmBusy || secondaryBusy;
   const showCancel = Boolean(cancelLabel);
   const safeActionRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useDialogDismiss(
@@ -127,21 +122,15 @@ export function ConfirmDialog({
                 {cancelLabel}
               </button>
             ) : null}
-            {tertiaryLabel && onTertiary ? (
-              <button
-                className={["btn", tertiaryBusy ? "is-busy" : ""].filter(Boolean).join(" ")}
-                type="button"
-                disabled={tertiaryDisabled || anyBusy}
-                aria-busy={tertiaryBusy}
-                onClick={onTertiary}
-              >
-                {tertiaryBusy ? <ButtonSpinner size={16} /> : null}
-                {tertiaryLabel}
-              </button>
-            ) : null}
             {secondaryLabel && onSecondary ? (
               <button
-                className={["btn", secondaryBusy ? "is-busy" : ""].filter(Boolean).join(" ")}
+                className={[
+                  "btn",
+                  secondaryTone === "destructive" ? "destructive-secondary" : "",
+                  secondaryBusy ? "is-busy" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 type="button"
                 disabled={secondaryDisabled || anyBusy}
                 aria-busy={secondaryBusy}

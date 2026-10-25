@@ -50,8 +50,21 @@ export function resourceCanRemoveFromActiveProfile(
   return Boolean(attachers.active_profile) && attachers.in_active_profile;
 }
 
-export const RESOURCE_DELETE_LIBRARY_LABEL = "Delete from library";
-export const RESOURCE_DELETE_DISK_LABEL = "Delete from library + disk";
+/** Opt-in on the single Delete confirm; library-only is the default. */
+export const RESOURCE_DELETE_DISK_LABEL = "Also delete files on disk";
+
+const DELETE_LOCATION_ACTION_LABELS: Record<ResourceDeletePlan["locations"][number]["action"], string> = {
+  "delete-file": "Delete",
+  "delete-directory": "Delete folder",
+  "edit-file": "Edit",
+  protected: "Protected",
+};
+
+export function deleteLocationActionLabel(
+  action: ResourceDeletePlan["locations"][number]["action"],
+): string {
+  return DELETE_LOCATION_ACTION_LABELS[action];
+}
 export const DISK_DELETE_CONFIRM_CHECKBOX_LABEL =
   "Disk copy differs from library. Delete anyway?";
 
@@ -107,7 +120,7 @@ export function diskDeleteDisabledExplanation(
     reasons.length > 0
       ? reasons.join(" ")
       : "One or more on-disk locations are protected.";
-  return `Delete from library + disk is unavailable. ${detail} Delete from library still removes the library entry.`;
+  return `Files on disk can't be deleted here. ${detail} Delete still removes the library entry.`;
 }
 
 export function diskDeleteConfirmationExplanation(

@@ -21,12 +21,12 @@ export function RiskyRemovalDialog({
   return (
     <ConfirmDialog
       open={open}
-      title={REMOVAL_CONFIRM_COPY.title}
+      title={REMOVAL_CONFIRM_COPY.title(modified.length + unmanaged.length)}
       description={
         <div data-testid="risky-removal-dialog">
           <p className="muted">{REMOVAL_CONFIRM_COPY.description}</p>
           {modified.length > 0 ? (
-            <>
+            <div className="risky-removal-group">
               <p className="muted">{REMOVAL_CONFIRM_COPY.modifiedHeading}</p>
               <ul className="library-bulk-delete-list">
                 {modified.map((path) => (
@@ -35,10 +35,10 @@ export function RiskyRemovalDialog({
                   </li>
                 ))}
               </ul>
-            </>
+            </div>
           ) : null}
           {unmanaged.length > 0 ? (
-            <>
+            <div className="risky-removal-group">
               <p className="muted">{REMOVAL_CONFIRM_COPY.unmanagedHeading}</p>
               <ul className="library-bulk-delete-list">
                 {unmanaged.map((path) => (
@@ -47,12 +47,13 @@ export function RiskyRemovalDialog({
                   </li>
                 ))}
               </ul>
-            </>
+            </div>
           ) : null}
         </div>
       }
-      confirmLabel={REMOVAL_CONFIRM_COPY.keepTheseFiles}
-      secondaryLabel={REMOVAL_CONFIRM_COPY.removeThemToo}
+      confirmLabel={REMOVAL_CONFIRM_COPY.applyAndKeep}
+      secondaryLabel={REMOVAL_CONFIRM_COPY.removeAnyway}
+      secondaryTone="destructive"
       cancelLabel={REMOVAL_CONFIRM_COPY.cancel}
       confirmBusy={busy}
       secondaryBusy={busy}

@@ -4,10 +4,8 @@ export function syncHarnessesTooltip(): string {
 
 export function syncHarnessesConfirmBody(): string {
   return (
-    `Merges plugins, MCP, skills, and other resources across your registered harnesses. ` +
-    `Prefers shared paths. ` +
-    `Cursor and Claude plugin skills also land in .agents for tools that do not load those plugins. ` +
-    `Newest on-disk copy wins when the same resource differs.`
+    "Copy resources between your harnesses so each one has the same set. " +
+    "If two copies differ, the newest one wins."
   );
 }
 

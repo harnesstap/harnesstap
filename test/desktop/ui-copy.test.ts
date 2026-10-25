@@ -21,10 +21,10 @@ describe("desktop ui-copy (DS-1 / DS-6)", () => {
       PREVIEW_FILE_COPY.willRemove,
       PREVIEW_FILE_COPY.keptChanged,
       PREVIEW_FILE_COPY.keptUnmanaged,
-      REMOVAL_CONFIRM_COPY.title,
+      REMOVAL_CONFIRM_COPY.title(2),
       REMOVAL_CONFIRM_COPY.description,
-      REMOVAL_CONFIRM_COPY.keepTheseFiles,
-      REMOVAL_CONFIRM_COPY.removeThemToo,
+      REMOVAL_CONFIRM_COPY.applyAndKeep,
+      REMOVAL_CONFIRM_COPY.removeAnyway,
       APPLY_RESULT_COPY.wroteRemovedKept(3, 1, 2),
       APPLY_RESULT_COPY.viewSnapshot,
       APPLY_RESULT_COPY.takenLine("just now"),
@@ -40,16 +40,16 @@ describe("desktop ui-copy (DS-1 / DS-6)", () => {
 
   it("formats the apply result toast", () => {
     expect(applyResultToastTitle({ wrote: 3, removed: 1, kept: 2 })).toBe(
-      "Wrote 3, removed 1, kept 2",
+      "Applied. Wrote 3 files, removed 1 file, kept 2.",
     );
     expect(applyResultToastTitle({ wrote: 0, removed: 0, kept: 0, unchanged: 32 })).toBe(
       "Everything is up to date. 32 unchanged.",
     );
     expect(applyResultToastTitle({ wrote: 0, removed: 0, kept: 6, unchanged: 16 })).toBe(
-      "Wrote 0, removed 0, kept 6",
+      "Applied. Kept 6.",
     );
     expect(applyResultToastTitle({ wrote: 0, removed: 1, kept: 23 })).toBe(
-      "Wrote 0, removed 1, kept 23",
+      "Applied. Removed 1 file, kept 23.",
     );
   });
 });
