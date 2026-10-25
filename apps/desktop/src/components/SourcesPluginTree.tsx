@@ -1,6 +1,6 @@
 import { AlignLeft, FileCode2, Package, TextQuote } from "lucide-react";
 import type { SourcesHit } from "../lib/sources-search";
-import { presenceLabel } from "../lib/sources-search";
+import { presenceLabel, sentenceCaseDescription } from "../lib/sources-search";
 import { DiscoverDetailChrome } from "./discover/DiscoverDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
 import {
@@ -52,7 +52,11 @@ export function SourcesPluginTree({
           icon={<TextQuote size={16} aria-hidden />}
           fieldName="Description"
           readOnly
-          display={hit.description?.trim() || undefined}
+          display={
+            hit.description?.trim()
+              ? sentenceCaseDescription(hit.description)
+              : undefined
+          }
           placeholder="No description"
           editing={false}
           onStartEdit={() => undefined}

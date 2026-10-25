@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fetchLibraryResourceDetail } from "../lib/agent-client";
-import { desktopDiscoverError } from "../lib/discover-error";
+import {
+  DISCOVER_MARKETPLACES_UNREACHABLE,
+  DISCOVER_SOURCE_ERROR_TOOLTIP,
+  desktopDiscoverError,
+  discoverSourceUnreachable,
+} from "../lib/discover-error";
 import { unregisterCatalog } from "../lib/api/publish";
 import { removeMarketplace } from "../lib/api/marketplace-remove";
 import {
@@ -85,6 +90,7 @@ import {
 } from "../lib/sources-sidebar";
 import type { PluginMarketplaceEntry } from "../lib/types";
 import { Cloud, Store, ArrowLeft, List } from "lucide-react";
+import { AddToProfileDialog } from "./AddToProfileDialog";
 import { ConnectCatalogPanel } from "./ConnectCatalogPanel";
 import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
@@ -94,7 +100,11 @@ import { ManageMarketplacesModal } from "./ManageMarketplacesModal";
 import { MarketplaceEditPanel } from "./MarketplaceEditPanel";
 import { PinToPluginPanel } from "./PinToPluginPanel";
 import { SourceSidebar } from "./SourceSidebar";
-import { SourcesListPane, type SourcesGroupError } from "./SourcesListPane";
+import {
+  DiscoverSourceErrorBanner,
+  SourcesListPane,
+  type SourcesGroupError,
+} from "./SourcesListPane";
 import { SourcesPluginTree, type SourcesTreeFile } from "./SourcesPluginTree";
 import { SourcesPreviewPane } from "./SourcesPreviewPane";
 import type { SourcesRecordActionsProps } from "./SourcesRecordActions";
@@ -206,13 +216,13 @@ export interface SourcesWorkspaceProps {
   onSuccess?: (message: string) => void;
   onSignIn?: () => void;
   onOpenInLibrary?: (selector: string) => void;
-  currentProfileName?: string | null;
-  onAddToProfileAndApply?: (item: {
-    kind: "plugin" | "resource";
-    id: string;
-    name: string;
-    type: string;
-  }) => Promise<void>;
+  /** Profiles Discover can add to; the picker defaults to `defaultProfileName`. */
+  profileNames?: readonly string[];
+  defaultProfileName?: string | null;
+  onAddToProfile?: (
+    profileName: string,
+    item: { kind: "plugin" | "resource"; id: string; name: string },
+  ) => Promise<void>;
   cloudAuthenticated?: boolean;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
@@ -227,8 +237,9 @@ export function SourcesWorkspace({
   onSuccess,
   onSignIn,
   onOpenInLibrary,
-  currentProfileName = null,
-  onAddToProfileAndApply,
+  profileNames = [],
+  defaultProfileName = null,
+  onAddToProfile: onAddItemToProfile,
   cloudAuthenticated = false,
   canWorkspaceBack = false,
   onWorkspaceBack,
@@ -249,6 +260,7 @@ export function SourcesWorkspace({
   const searchGenerationRef = useRef(0);
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
   const marketplaces = snapshot.marketplaces;
+  const marketplaceListError = snapshot.error;
   const scope = snapshot.scope;
   const sourceInventoryReady = snapshot.sourceInventoryReady;
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
@@ -808,19 +820,31 @@ export function SourcesWorkspace({
 
   const groupErrors = useMemo(() => {
     const next: Record<string, SourcesGroupError> = {};
+    const unreachable = (
+      label: string,
+      raw: string,
+      manageMarketplaces = false,
+    ): SourcesGroupError => ({
+      message: discoverSourceUnreachable(label),
+      detail: desktopDiscoverError(raw),
+      authRequired: false,
+      manageMarketplaces,
+    });
     if (localError && checkedRows.some((row) => row.id === "local")) {
-      next.local = { message: desktopDiscoverError(localError), authRequired: false };
+      next.local = {
+        message: "Couldn't load your Library. Retry to try again.",
+        detail: desktopDiscoverError(localError),
+        authRequired: false,
+      };
     }
     for (const row of checkedRows) {
       if (row.kind !== "marketplace") {
         continue;
       }
-      const marketplaceError = marketplaceHits[row.id]?.error;
+      const marketplaceError = marketplaceHits[row.id]?.error
+        ?? (marketplaceHits[row.id] ? null : marketplaceListError);
       if (marketplaceError) {
-        next[row.id] = {
-          message: desktopDiscoverError(marketplaceError),
-          authRequired: false,
-        };
+        next[row.id] = unreachable(row.label, marketplaceError, true);
       }
     }
     const cloudRows = checkedRows.filter(
@@ -835,10 +859,7 @@ export function SourcesWorkspace({
       }
     } else if (cloudRequestError) {
       for (const row of cloudRows) {
-        next[row.id] = {
-          message: desktopDiscoverError(cloudRequestError),
-          authRequired: false,
-        };
+        next[row.id] = unreachable(row.label, cloudRequestError);
       }
     } else {
       for (const cloudError of cloudErrors) {
@@ -846,10 +867,10 @@ export function SourcesWorkspace({
         if (!sourceId) {
           continue;
         }
-        next[sourceId] = {
-          message: desktopDiscoverError(cloudError.message),
-          authRequired: isCloudAuthMessage(cloudError.message),
-        };
+        const authRequired = isCloudAuthMessage(cloudError.message);
+        next[sourceId] = authRequired
+          ? { message: desktopDiscoverError(cloudError.message), authRequired }
+          : unreachable(cloudError.sourceLabel, cloudError.message);
       }
     }
     return next;
@@ -860,6 +881,7 @@ export function SourcesWorkspace({
     cloudRequestError,
     localError,
     marketplaceHits,
+    marketplaceListError,
     rows,
   ]);
 
@@ -1229,7 +1251,7 @@ export function SourcesWorkspace({
       }
       return null;
     }
-    setActionError("Could not add this item to the current profile.");
+    setActionError("Could not add this item to a profile.");
     return null;
   };
 
@@ -1254,12 +1276,26 @@ export function SourcesWorkspace({
     }
   };
 
-  const onAddToProfile = async (hit: SourcesHit) => {
-    if (!baseUrl || busy) {
+  const [addProfileHit, setAddProfileHit] = useState<SourcesHit | null>(null);
+  const [addProfileName, setAddProfileName] = useState<string | null>(null);
+
+  const onAddToProfile = (hit: SourcesHit) => {
+    if (!baseUrl || busy || profileNames.length === 0) {
       return;
     }
-    if (!currentProfileName || !onAddToProfileAndApply) {
-      setActionError("No profile selected.");
+    setActionError(null);
+    setActionAuthRequired(false);
+    const preferred = defaultProfileName && profileNames.includes(defaultProfileName)
+      ? defaultProfileName
+      : profileNames[0] ?? null;
+    setAddProfileName(preferred);
+    setAddProfileHit(hit);
+  };
+
+  const onAddToProfileConfirm = async () => {
+    const hit = addProfileHit;
+    const profileName = addProfileName;
+    if (!baseUrl || !hit || !profileName || !onAddItemToProfile || busy) {
       return;
     }
     setBusy(true);
@@ -1270,16 +1306,14 @@ export function SourcesWorkspace({
       if (!target) {
         return;
       }
-      await onAddToProfileAndApply({
-        ...target,
-        type: target.kind === "plugin" ? "plugin" : hit.typeLabel,
-      });
+      await onAddItemToProfile(profileName, target);
       void librarySnapshotStore.invalidate();
       refresh();
     } catch (addError: unknown) {
-      applyInstallError(addError, "Could not add to the current profile.");
+      applyInstallError(addError, `Could not add to ${profileName}.`);
     } finally {
       setBusy(false);
+      setAddProfileHit((current) => (current === hit ? null : current));
     }
   };
 
@@ -1338,12 +1372,11 @@ export function SourcesWorkspace({
       authRequired: actionAuthRequired,
       collision: pullCollision,
       asName: pullAsName,
-      hitName: hit.name,
-      currentProfileName,
+      hasProfiles: profileNames.length > 0,
       onAsNameChange: setPullAsName,
       onSignIn,
       onAddToLibrary: () => void onAddToLibrary(hit),
-      onAddToProfile: () => void onAddToProfile(hit),
+      onAddToProfile: () => onAddToProfile(hit),
       onPinToPlugin: () => {
         resetActionState();
         setPinError(null);
@@ -1443,6 +1476,7 @@ export function SourcesWorkspace({
             onClearQuery={() => applyListQueryOrChecks(() => setQuery(""))}
             onClearFilters={() => applyListQueryOrChecks(resetSourcesFilters)}
             onRetry={refresh}
+            onManageMarketplaces={() => setManageMarketplacesOpen(true)}
             recordActions={recordActionsProps}
           />
         );
@@ -1584,14 +1618,11 @@ export function SourcesWorkspace({
         </div>
       </div>
 
-      <div className="resources-panel-layout">
+      <div className="resources-panel-layout sources-panel-layout">
         <SourceSidebar
           query={query}
           onQueryChange={(next) => {
             applyListQueryOrChecks(() => setQuery(next));
-          }}
-          onClear={() => {
-            applyListQueryOrChecks(resetSourcesFilters);
           }}
           notInLibrary={notInLibrary}
           onNotInLibraryChange={(next) => {
@@ -1606,7 +1637,7 @@ export function SourcesWorkspace({
           sourceErrors={Object.fromEntries(
             Object.entries(groupErrors).map(([id, groupError]) => [
               id,
-              groupError.message,
+              groupError.authRequired ? groupError.message : DISCOVER_SOURCE_ERROR_TOOLTIP,
             ]),
           )}
           originCheckError={originCheckError}
@@ -1621,6 +1652,19 @@ export function SourcesWorkspace({
             <div className="banner error" role="alert">
               {error}
             </div>
+          ) : null}
+          {marketplaceListError && marketplaces.length === 0 ? (
+            <DiscoverSourceErrorBanner
+              error={{
+                message: DISCOVER_MARKETPLACES_UNREACHABLE,
+                detail: desktopDiscoverError(marketplaceListError),
+                authRequired: false,
+                manageMarketplaces: true,
+              }}
+              disabled={controlsDisabled}
+              onRetry={refresh}
+              onManageMarketplaces={() => setManageMarketplacesOpen(true)}
+            />
           ) : null}
           <Crossfade activeKey={pane.mode} className="sources-pane-crossfade">
             {renderMainPane()}
@@ -1671,6 +1715,16 @@ export function SourcesWorkspace({
           onSuccess?.(message);
           refresh();
         }}
+      />
+      <AddToProfileDialog
+        open={addProfileHit !== null}
+        itemName={addProfileHit?.name ?? ""}
+        profileNames={profileNames}
+        profileName={addProfileName}
+        busy={busy}
+        onProfileChange={setAddProfileName}
+        onConfirm={() => void onAddToProfileConfirm()}
+        onCancel={() => setAddProfileHit(null)}
       />
       <PinToPluginPanel
         open={pinOpen}

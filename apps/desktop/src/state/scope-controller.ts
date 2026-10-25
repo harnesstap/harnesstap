@@ -6,6 +6,8 @@ import {
   discardAllProfileResources,
   discardProfileResource,
   attachProfileComposition,
+  detachProfileComposition,
+  fetchProfileDetail,
   cancelSwitch,
   commitProfileResource,
   cutProfile,
@@ -73,6 +75,7 @@ import {
 } from "./status-store";
 import { toast } from "./toast-store";
 import { applySuccessToast, type ApplySnapshotView } from "../lib/apply-result";
+import { addedProfileAttachments, type ProfileAttachmentRef } from "../lib/profile-attachment-diff";
 import {
   emptyPlannedRemovals,
   riskyRemovalPaths,
@@ -1071,6 +1074,52 @@ export function useScopeController(input: ScopeControllerInput) {
     [client, maybeAutoReapplyAfterMutation, refreshProfilePreview, runSwitch, selectedProfile],
   );
 
+  /**
+   * Adds a Library item to any profile without applying it. Returns exactly what
+   * the profile gained so Undo can remove only that.
+   */
+  const handleAddLibraryItemToProfile = useCallback(
+    async (
+      profileName: string,
+      item: { kind: "plugin" | "resource"; id: string },
+    ): Promise<ProfileAttachmentRef[]> => {
+      if (!client) {
+        return [];
+      }
+      const before = await fetchProfileDetail(client.baseUrl, client.token, profileName);
+      const after = await attachProfileComposition(
+        client.baseUrl,
+        client.token,
+        profileName,
+        item.kind === "plugin" ? { pluginId: item.id } : { resourceId: item.id },
+      );
+      if (selectedProfile === profileName) {
+        await refreshProfilePreview();
+      } else {
+        await refreshStatus("full");
+      }
+      return addedProfileAttachments(before, after);
+    },
+    [client, refreshProfilePreview, refreshStatus, selectedProfile],
+  );
+
+  const handleUndoProfileAttachments = useCallback(
+    async (profileName: string, added: readonly ProfileAttachmentRef[]) => {
+      if (!client || added.length === 0) {
+        return;
+      }
+      for (const ref of added) {
+        await detachProfileComposition(client.baseUrl, client.token, profileName, ref);
+      }
+      if (selectedProfile === profileName) {
+        await refreshProfilePreview();
+      } else {
+        await refreshStatus("full");
+      }
+    },
+    [client, refreshProfilePreview, refreshStatus, selectedProfile],
+  );
+
   const handleHarnessScopeChange = useCallback(
     async (item: ProfileInventoryItem, scope: HarnessScope) => {
       if (!client || !selectedProfile || !item.resource.id) {
@@ -1678,6 +1727,8 @@ export function useScopeController(input: ScopeControllerInput) {
     handleAddAllResources,
     handleActivateResources,
     handleAttachLibraryItem,
+    handleAddLibraryItemToProfile,
+    handleUndoProfileAttachments,
     handleHarnessScopeChange,
     handleCommitManagedChanges,
     handleOpenResourceInEditor,

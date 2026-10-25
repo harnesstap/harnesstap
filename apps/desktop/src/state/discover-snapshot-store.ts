@@ -13,6 +13,7 @@ import type {
   MarketplacePluginsResult,
   PluginMarketplaceEntry,
 } from "../lib/types";
+import { readCachedMarketplaces, writeCachedMarketplaces } from "../lib/discover-marketplace-cache";
 import type { AgentClient } from "./agent-session";
 import {
   librarySnapshotStore,
@@ -277,6 +278,7 @@ export function createDiscoverSnapshotStore(
       const fetchedSourceIds = state.fetchedSourceIds.includes("local")
         ? state.fetchedSourceIds
         : [...state.fetchedSourceIds, "local"];
+      writeCachedMarketplaces(marketplaceResult.marketplaces);
       setState({
         marketplaces: marketplaceResult.marketplaces,
         scope,
@@ -290,6 +292,9 @@ export function createDiscoverSnapshotStore(
         return;
       }
       setState({
+        ...(state.marketplaces.length === 0
+          ? { marketplaces: readCachedMarketplaces() }
+          : {}),
         sourceInventoryReady: true,
         error: errorMessage(error, "Could not load sources."),
         hydrated: true,

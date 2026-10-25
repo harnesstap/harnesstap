@@ -5,6 +5,10 @@ import { readDesktopShellSource } from "../helpers/desktop-shell-source";
 import { readDesktopCss } from "./helpers/desktop-css.ts";
 
 const appSource = readDesktopShellSource();
+const scopeControllerSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/state/scope-controller.ts"),
+  "utf8",
+);
 const workspaceSource = readFileSync(
   join(
     import.meta.dir,
@@ -110,19 +114,19 @@ describe("sources workspace chrome", () => {
 
   test("source sidebar groups checkboxes under Marketplaces and Cloud", () => {
     expect(sidebarSource).toContain("groupSourceRows");
-    expect(sidebarSource).toContain("resource-filter-section-label");
-    expect(sidebarSource).toContain("{section.label}");
+    expect(sidebarSource).toContain('<span className="eyebrow">{section.label}</span>');
+    expect(sidebarSource).not.toContain("resource-filter-section-label");
+    expect(sidebarSource).not.toContain("source-tree-children");
+    expect(cssBlock(stylesSource, ".sources-sidebar .source-row-list")).toContain("gap: 0.5rem;");
   });
 
-  test("sidebar Clear filters resets search and default-checked sources", () => {
-    expect(sidebarSource).toContain("isSourcesFilterActive");
-    expect(sidebarSource).toContain("onClear");
-    expect(sidebarSource).toContain('label="Clear filters"');
-    expect(sidebarSource).not.toContain('aria-label="Clear search"');
-    expect(sidebarSource).not.toContain("query.trim() === \"\"");
+  test("sidebar keeps only the inline clear; Clear filters lives in the no-match state", () => {
+    expect(sidebarSource).not.toContain("onClear");
+    expect(sidebarSource).not.toContain('label="Clear filters"');
+    expect(sidebarSource).not.toContain("FilterX");
+    expect(sidebarSource).toContain('placeholder="Search by name, description, or skill"');
     expect(workspaceSource).toContain("function resetSourcesFilters");
     expect(workspaceSource).toContain("resetSourcesFilters()");
-    expect(workspaceSource).toContain("applyListQueryOrChecks(resetSourcesFilters)");
     expect(workspaceSource).toContain("setNotInLibraryPreference(DEFAULT_NOT_IN_LIBRARY)");
     expect(workspaceSource).toContain("readNotInLibraryPreference");
     expect(workspaceSource).toContain("writeNotInLibraryPreference");
@@ -166,7 +170,7 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain("onToggleAll=");
     expect(workspaceSource).toContain("nextCheckedSourceIds");
     expect(workspaceSource).toContain("nextCheckedSourceIdsForChild");
-    expect(sidebarSource).toContain("sourceChildChecked");
+    expect(sidebarSource).toContain("checked={checkedIds.includes(row.id)}");
     expect(sidebarSource).toContain("source-master-row");
   });
 
@@ -425,8 +429,8 @@ describe("sources search list and preview", () => {
     expect(listPaneSource).toContain("SourcesPresenceIcon");
     expect(listPaneSource).toContain("sourcesHitRowDetail");
     expect(listPaneSource).not.toContain("hit.version ?? hit.typeLabel");
-    expect(sourcesSearchSource).toContain("In library");
-    expect(sourcesSearchSource).toContain("Remote only");
+    expect(sourcesSearchSource).toContain("In your Library");
+    expect(sourcesSearchSource).toContain("Not in your Library");
     expect(listPaneSource).toContain("useVirtualizer");
     expect(listPaneSource).toContain("flattenDiscoverListItems");
     expect(listPaneSource).toContain('data-testid="sources-list"');
@@ -522,11 +526,12 @@ describe("sources search list and preview", () => {
     expect(recordActionsSource).toContain("discoverAddToProfileTooltip");
     expect(recordActionsSource).toContain("showAddToProfile");
     expect(recordActionsSource).toMatch(
-      /showAddToProfile \? \([\s\S]*?primary\b[\s\S]*?label=\{discoverAddToProfileLabel\(\)\}/,
+      /showAddToProfile \? \([\s\S]*?primary=\{!compact\}[\s\S]*?label=\{discoverAddToProfileLabel\(\)\}/,
     );
     expect(recordActionsSource).toContain("variant === \"list\"");
     expect(recordActionsSource).toContain("showOpenInLibrary = !compact && actions.showOpenInLibrary");
-    expect(recordActionsSource).toContain("<Link size={16}");
+    expect(recordActionsSource).toContain("showPinToPlugin = !compact && actions.showPinToPlugin");
+    expect(recordActionsSource).toContain("title={PIN_TO_PLUGIN_TOOLTIP}");
     expect(recordActionsSource).not.toContain('label="Attach to plugin"');
     expect(recordActionsSource).toContain('label="Open in Library"');
     expect(recordActionsSource).toContain("discover-action-helper");
@@ -547,19 +552,21 @@ describe("sources search list and preview", () => {
     expect(appSource).toContain("setLibraryFocusPlugin");
   });
 
-  test("Discover can add a hit to the current profile and apply", () => {
-    expect(workspaceSource).toContain("currentProfileName");
-    expect(workspaceSource).toContain("onAddToProfileAndApply");
+  test("Discover Add to profile asks which profile, never applies, and offers Undo", () => {
+    expect(workspaceSource).not.toContain("currentProfileName");
+    expect(workspaceSource).not.toContain("onAddToProfileAndApply");
     expect(workspaceSource).toContain("discoverAttachTarget");
-    expect(workspaceSource).toContain("onAddToProfile:");
-    expect(appSource).toContain("currentProfileName=");
-    expect(appSource).toContain("onAddToProfileAndApply=");
-    expect(appSource).toContain("apply: \"always\"");
-    const attach = appSource.slice(
-      appSource.indexOf("const handleAttachLibraryItem"),
+    expect(workspaceSource).toContain("<AddToProfileDialog");
+    expect(appSource).not.toContain("onAddToProfileAndApply");
+    expect(appSource).toContain("handleAddLibraryItemToProfile");
+    expect(appSource).toContain("handleUndoProfileAttachments");
+    expect(appSource).toContain("discoverAddedToProfileToast");
+    const add = scopeControllerSource.slice(
+      scopeControllerSource.indexOf("const handleAddLibraryItemToProfile"),
+      scopeControllerSource.indexOf("const handleUndoProfileAttachments"),
     );
-    expect(attach).toContain('options?.apply === "always"');
-    expect(attach).toContain("runSwitch(true, selectedProfile");
+    expect(add).toContain("attachProfileComposition");
+    expect(add).not.toContain("runSwitch");
   });
 });
 

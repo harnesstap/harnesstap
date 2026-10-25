@@ -20,7 +20,7 @@ describe("desktopDiscoverError", () => {
       join(import.meta.dir, "../../apps/desktop/src/components/SourcesWorkspace.tsx"),
       "utf8",
     );
-    expect(source).toContain("desktopDiscoverError(marketplaceError)");
+    expect(source).toContain("detail: desktopDiscoverError(raw)");
     expect(source).toContain("desktopDiscoverError(cloudError.message)");
   });
 });
