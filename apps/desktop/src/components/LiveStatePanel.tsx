@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Trash2,
   UnfoldVertical,
+  Wrench,
   X,
 } from "lucide-react";
 import { ChromeTooltip } from "./ChromeTooltip";
@@ -48,7 +49,8 @@ import {
   type StackChangeTone,
 } from "../lib/contents-diff";
 import { fileChangeRowActions } from "../lib/file-change-actions";
-import { PREVIEW_FILE_COPY, REMOVAL_GROUP_COPY } from "../lib/ui-copy";
+import { HARNESS_NOT_SET_UP_COPY, PREVIEW_FILE_COPY, REMOVAL_GROUP_COPY } from "../lib/ui-copy";
+import { isHarnessNotSetUp } from "../lib/harness-not-set-up";
 import {
   resolveProfileResourceStack,
 } from "../lib/profile-resource-stack";
@@ -1488,6 +1490,8 @@ export interface LiveStatePanelProps {
   onDismissResourceActionError?: () => void;
   onRecoveryAction?: (action: RecoveryAction) => void;
   recoveryBusy?: boolean;
+  /** Opens Harness > Detect harnesses when apply has no harness to write to. */
+  onSetUpHarness?: () => void;
   onSuccess?: (message: string) => void;
   onLibraryChanged?: () => void;
   onOpenPlugin?: (pluginName: string) => void;
@@ -1543,6 +1547,7 @@ export function LiveStatePanel({
   onDismissResourceActionError,
   onRecoveryAction,
   recoveryBusy = false,
+  onSetUpHarness,
   onSuccess,
   onLibraryChanged,
   onOpenPlugin,
@@ -1687,17 +1692,18 @@ export function LiveStatePanel({
   const enabledSourceContents = resourceStack.contents;
   const profileResourceRows = useMemo(
     () =>
+      // Without a selection the stack is the active profile's: never list it as its own resource.
       flattenProfileResourceList(enabledSourceContents, {
-        selectedProfile,
+        selectedProfile: selectedProfile ?? activeProfile,
       }),
-    [enabledSourceContents, selectedProfile],
+    [enabledSourceContents, selectedProfile, activeProfile],
   );
   const liveResourceRows = useMemo(
     () =>
       flattenProfileResourceList(liveContents ?? null, {
-        selectedProfile,
+        selectedProfile: selectedProfile ?? activeProfile,
       }),
-    [liveContents, selectedProfile],
+    [liveContents, selectedProfile, activeProfile],
   );
   const notStagedResources =
     applyPreview?.not_staged
@@ -1790,7 +1796,8 @@ export function LiveStatePanel({
         : "clean"
       : null;
 
-  const previewWarning = applyPreview?.warning ?? null;
+  const harnessNotSetUp = isHarnessNotSetUp(applyPreview);
+  const previewWarning = harnessNotSetUp ? null : applyPreview?.warning ?? null;
   const showPreviewError = Boolean(selectedProfile && applyPreviewError);
   const showBootstrapBanner =
     view === "project"
@@ -1869,6 +1876,25 @@ export function LiveStatePanel({
               />
             ) : null}
           </div>
+        </div>
+      ) : null}
+      {harnessNotSetUp ? (
+        <div className="banner" role="status" aria-label="Harness not set up">
+          <div>
+            <strong>{HARNESS_NOT_SET_UP_COPY.title}</strong>
+            <div className="muted">{HARNESS_NOT_SET_UP_COPY.body}</div>
+          </div>
+          {onSetUpHarness ? (
+            <div className="banner-actions">
+              <IconActionButton
+                primary
+                showLabel
+                label={HARNESS_NOT_SET_UP_COPY.action}
+                onClick={onSetUpHarness}
+                icon={<Wrench size={ICON_SIZE} strokeWidth={2} aria-hidden />}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
       {previewWarning ? (

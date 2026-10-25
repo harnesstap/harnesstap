@@ -44,7 +44,7 @@ import {
 } from "../lib/composition-membership";
 import { fieldKeyAction } from "../lib/library-field-edit";
 import { noSpellcheckProps } from "../lib/no-spellcheck";
-import { validateCutRows } from "../lib/cut-versions-form";
+import { nextPatchVersion, validateCutRows } from "../lib/cut-versions-form";
 import {
   cutLibraryPlugin,
   deleteLibraryPlugin,
@@ -258,6 +258,7 @@ export function PluginPackageDetail({
   const [applyOpen, setApplyOpen] = useState(false);
   const [cutOpen, setCutOpen] = useState(false);
   const [cutVersion, setCutVersion] = useState("");
+  const [cutEdited, setCutEdited] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -1306,7 +1307,8 @@ export function PluginPackageDetail({
             title={CUT_TOOLTIP}
             label="Tags"
             onClick={() => {
-              setCutVersion("");
+              setCutVersion(nextPatchVersion(detail?.plugin.version ?? ""));
+              setCutEdited(false);
               setCutOpen(true);
             }}
             icon={<Tag size={16} aria-hidden />}
@@ -1818,7 +1820,7 @@ export function PluginPackageDetail({
       <ConfirmDialog
         open={cutOpen}
         title="Tag plugin version"
-        description="Freeze the current working state under a new semver version. The previous version is kept in history."
+        description="Freeze the current working state under a new version. The previous version is kept in history."
         confirmLabel="Tag version"
         confirmDisabled={!cutValid}
         confirmBusy={confirmBusy}
@@ -1836,10 +1838,13 @@ export function PluginPackageDetail({
           <Input
             id="plugin-cut-version"
             value={cutVersion}
-            onChange={(event) => setCutVersion(event.target.value)}
+            onChange={(event) => {
+              setCutVersion(event.target.value);
+              setCutEdited(true);
+            }}
             disabled={confirmBusy}
           />
-          {detail && cutErrors[detail.plugin.name] ? (
+          {detail && cutEdited && cutErrors[detail.plugin.name] ? (
             <p className="muted">{cutErrors[detail.plugin.name]}</p>
           ) : null}
         </div>
@@ -1886,7 +1891,8 @@ export function PluginPackageDetail({
           disabled={chromeLocked}
           onSuccess={onSuccess}
           onRequestCut={() => {
-            setCutVersion("");
+            setCutVersion(nextPatchVersion(detail.plugin.version));
+            setCutEdited(false);
             setCutOpen(true);
           }}
         />

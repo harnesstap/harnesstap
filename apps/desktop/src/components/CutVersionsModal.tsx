@@ -3,6 +3,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import {
   type CutVersionRow,
   validateCutRows,
+  visibleCutErrors,
 } from "../lib/cut-versions-form";
 import { noSpellcheckProps } from "../lib/no-spellcheck";
 
@@ -23,13 +24,14 @@ export function CutVersionsModal({
   onConfirm,
   onCancel,
 }: CutVersionsModalProps) {
-  const errors = useMemo(() => validateCutRows(rows), [rows]);
-  const confirmDisabled = Object.keys(errors).length > 0;
+  const allErrors = useMemo(() => validateCutRows(rows), [rows]);
+  const errors = visibleCutErrors(rows, allErrors);
+  const confirmDisabled = Object.keys(allErrors).length > 0;
 
   const updateRow = (name: string, newVersion: string) => {
     onRowsChange(
       rows.map((row) =>
-        row.name === name ? { ...row, newVersion } : row,
+        row.name === name ? { ...row, newVersion, edited: true } : row,
       ),
     );
   };
@@ -40,7 +42,7 @@ export function CutVersionsModal({
       title="Tag profile version"
       description={
         <p className="muted">
-          Freeze the current working state under a new semver version. The
+          Freeze the current working state under a new version. The
           previous version is kept in history.
         </p>
       }
@@ -56,7 +58,7 @@ export function CutVersionsModal({
             <tr>
               <th scope="col">Profile</th>
               <th scope="col">Current</th>
-              <th scope="col">New version</th>
+              <th scope="col">Version</th>
             </tr>
           </thead>
           <tbody>

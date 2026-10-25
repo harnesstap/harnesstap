@@ -35,6 +35,7 @@ import {
   isMergeableHostConfigPath,
 } from "./merged-host-config.js";
 import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import { registeredHarnessIds } from "./resource-apply-selector.js";
 import {
   type ApplyProfilePluginResult,
   applyProfilePlugin,
@@ -95,6 +96,8 @@ export interface ProfileApplyPreview {
   relative_to_active: boolean;
   warning?: string;
   recovery_actions?: RecoveryAction[];
+  /** True when no harness is registered, so apply has nowhere to write. */
+  not_set_up?: boolean;
   /** App-managed inventory for home scope; never applied or persisted. */
   host_managed?: HostManagedStatus;
 }
@@ -822,6 +825,9 @@ export async function previewProfileApply(
   const profile = input.profile.trim();
   const contents = buildProfileContents(profile);
   const relativeToActive = getActiveProfileName() === profile;
+  const notSetUpFields = !input.harness?.trim() && registeredHarnessIds().length === 0
+    ? { not_set_up: true as const }
+    : {};
   const notStaged = await detectNotStagedProfileResources({
     profileSelector: profile,
     scope: input.scope,
@@ -845,6 +851,7 @@ export async function previewProfileApply(
       removals: projectPreview.removals,
       relative_to_active: relativeToActive,
       ...spreadWarningFields(projectPreview),
+      ...notSetUpFields,
     };
   }
 
@@ -864,5 +871,6 @@ export async function previewProfileApply(
       profileSkills: profileSkillNameMap(contents?.resources ?? []),
     }),
     ...spreadWarningFields(homePreview),
+    ...notSetUpFields,
   };
 }

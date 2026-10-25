@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { validateCutRows } from "./cut-versions-form";
+import { nextPatchVersion, validateCutRows, visibleCutErrors } from "./cut-versions-form";
 
 describe("validateCutRows", () => {
   it("returns no errors when every row has a valid new version", () => {
@@ -55,7 +55,7 @@ describe("validateCutRows", () => {
         },
       ]),
     ).toEqual({
-      focus: "Invalid semver version",
+      focus: "Use a version like 1.2.3",
     });
   });
 
@@ -91,5 +91,25 @@ describe("validateCutRows", () => {
       focus: "Must differ from current version",
       alt: "Version is required",
     });
+  });
+});
+
+describe("nextPatchVersion", () => {
+  it("bumps the patch and drops prerelease tags", () => {
+    expect(nextPatchVersion("1.0.0")).toBe("1.0.1");
+    expect(nextPatchVersion("2.3.9-beta.1")).toBe("2.3.10");
+    expect(nextPatchVersion("not-semver")).toBe("");
+  });
+});
+
+describe("visibleCutErrors", () => {
+  it("hides errors until the row is edited", () => {
+    const rows = [
+      { name: "a", currentVersion: "1.0.0", newVersion: "1.0.0" },
+      { name: "b", currentVersion: "1.0.0", newVersion: "1.0.0", edited: true },
+    ];
+    const errors = validateCutRows(rows);
+    expect(Object.keys(errors).sort()).toEqual(["a", "b"]);
+    expect(visibleCutErrors(rows, errors)).toEqual({ b: "Must differ from current version" });
   });
 });

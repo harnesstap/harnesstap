@@ -16,6 +16,12 @@ export const MARKETPLACE_URL_INVALID =
 export const DETECT_HARNESSES_COMMAND = "Detect harnesses";
 export const SYNC_HARNESSES_COMMAND = "Sync harnesses";
 
+export const HARNESS_NOT_SET_UP_COPY = {
+  title: "Not set up for any harness yet.",
+  body: "Run ht harness set, or pass --harness <slugs>.",
+  action: "Set up harness",
+} as const;
+
 export const CONFLICT_POLICY_COPY = {
   replace: "Replace the existing one",
   skip: "Keep the existing one and move on",
