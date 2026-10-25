@@ -88,24 +88,25 @@ describe("plugin composition fields", () => {
     expect(commitCurrent).toContain("commitEnvironment");
   });
 
-  test("package detail composition lists plugin members and keeps an add FAB", () => {
+  test("package detail composition puts its add button on the Composition heading", () => {
     expect(packagesSource).toContain("pluginDetailCompositionEntries");
     expect(packagesSource).toContain("resources={compositionMembers}");
     expect(packagesSource).not.toContain("resources={membership}");
-    expect(packagesSource).toContain('data-testid="plugin-composition-fab"');
-    expect(packagesSource).toContain('aria-label={isProfile ? "Add to profile" : "Add to plugin"}');
-    expect(packagesSource).toContain('title="Add to plugin"');
+    expect(packagesSource).toContain('data-testid="plugin-composition-add"');
+    expect(packagesSource).toContain('label={isProfile ? "Add to profile" : "Add to plugin"}');
+    expect(packagesSource).not.toContain("scope-inventory-fab");
     expect(packagesSource).toContain("ScopeAddToProfileModal");
     expect(packagesSource).not.toContain("pinMarketplacePlugin");
     expect(packagesSource).not.toContain("fetchMarketplacePlugins");
   });
 
-  test("edit profile composition lists members and keeps an add FAB", () => {
+  test("edit profile composition puts its add button on the Composition heading", () => {
     expect(editSource).toContain("pluginDetailCompositionEntries");
     expect(editSource).toContain("resources={compositionMembers}");
     expect(editSource).not.toContain("resources={membership}");
-    expect(editSource).toContain('data-testid="edit-profile-composition-fab"');
-    expect(editSource).toContain('aria-label="Add to profile"');
+    expect(editSource).toContain('data-testid="edit-profile-composition-add"');
+    expect(editSource).toContain('label="Add to profile"');
+    expect(editSource).not.toContain("scope-inventory-fab");
     expect(editSource).toContain('title="Add to profile"');
     expect(editSource).toContain("ScopeAddToProfileModal");
     expect(editSource).not.toContain("addPluginPin");

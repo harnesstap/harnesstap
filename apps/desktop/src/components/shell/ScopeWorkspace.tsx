@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { HardDriveDownload, Plus, TextQuote } from "lucide-react";
+import { HardDriveDownload, History, Plus, TextQuote } from "lucide-react";
 import { formatView, type Scope } from "../../lib/api/scope";
 import {
   pendingApprovalsFromTrust,
@@ -15,7 +15,7 @@ import { toast } from "../../state/toast-store";
 import { EditedChip } from "../EditedChip";
 import { EditProfilePane } from "../EditProfilePane";
 import { FieldIdentityIcon } from "../FieldIdentityIcon";
-import { IconActionButton } from "../IconActionButton";
+import { OverflowMenu, type OverflowMenuItem } from "../OverflowMenu";
 import { LoadErrorState } from "../LoadErrorState";
 import { LiveStatePanel } from "../LiveStatePanel";
 import { ApplyProgressStrip, isApplyStepActive, stepState, switchStepClassName } from "../live/ApplyProgressStrip";
@@ -129,9 +129,29 @@ export function ScopeWorkspace({
   });
   const editCloseGuardRef = useRef<(() => boolean) | null>(null);
   const [setupOverwriteOpen, setSetupOverwriteOpen] = useState(false);
+  const [projectHistoryOpen, setProjectHistoryOpen] = useState(false);
   const refreshLiveStatus = useCallback(async () => {
     return ctrl.refreshStatus("full");
   }, [ctrl]);
+  const projectMenuItems: OverflowMenuItem[] =
+    scope === "project" && projectPath
+      ? [
+          {
+            id: "project-install",
+            label: ctrl.installBusy ? "Installing..." : "Install project config",
+            icon: <HardDriveDownload size={16} aria-hidden />,
+            disabled: !connected || !token || switching || bootstrapBusy || !projectReady || ctrl.installBusy,
+            onSelect: () => void ctrl.runProjectInstall(),
+          },
+          {
+            id: "project-history",
+            label: "Project history",
+            icon: <History size={16} aria-hidden />,
+            disabled: switching || ctrl.installBusy || !connected,
+            onSelect: () => setProjectHistoryOpen(true),
+          },
+        ]
+      : [];
   useRegisterCommands(
     "scope",
     useMemo(
@@ -376,37 +396,6 @@ export function ScopeWorkspace({
                   disabled={!connected || switching}
                   onRefresh={refreshLiveStatus}
                 />
-                {scope === "project" && projectPath ? (
-                  <>
-                    <IconActionButton
-                      data-testid="project-install"
-                      label="Install"
-                      title="Install project config"
-                      busy={ctrl.installBusy}
-                      disabled={
-                        !connected
-                        || !token
-                        || switching
-                        || bootstrapBusy
-                        || !projectReady
-                      }
-                      onClick={() => void ctrl.runProjectInstall()}
-                      icon={<HardDriveDownload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-                    />
-                    <ProjectHistoryControl
-                      baseUrl={baseUrl}
-                      token={token}
-                      connected={connected}
-                      switching={switching || ctrl.installBusy}
-                      projectPath={projectPath}
-                      onSuccess={(message) => toast({ tone: "success", title: message })}
-                      onProfilesChanged={() => {
-                        void ctrl.refreshProfiles();
-                        void ctrl.refreshStatus("full");
-                      }}
-                    />
-                  </>
-                ) : null}
                 {selectedProfile ? (
                   <ProfileHeaderActions
                     ctrl={ctrl}
@@ -419,6 +408,25 @@ export function ScopeWorkspace({
                     onOverwrite={() => setSetupOverwriteOpen(true)}
                     onOpenPlugin={onOpenPlugin}
                     onRequestSignIn={onRequestSignIn}
+                    projectItems={projectMenuItems}
+                  />
+                ) : (
+                  <OverflowMenu testId="profile-overflow" items={projectMenuItems} disabled={!connected} />
+                )}
+                {scope === "project" && projectPath ? (
+                  <ProjectHistoryControl
+                    open={projectHistoryOpen}
+                    onOpenChange={setProjectHistoryOpen}
+                    baseUrl={baseUrl}
+                    token={token}
+                    connected={connected}
+                    switching={switching || ctrl.installBusy}
+                    projectPath={projectPath}
+                    onSuccess={(message) => toast({ tone: "success", title: message })}
+                    onProfilesChanged={() => {
+                      void ctrl.refreshProfiles();
+                      void ctrl.refreshStatus("full");
+                    }}
                   />
                 ) : null}
               </div>
@@ -542,15 +550,6 @@ export function ScopeWorkspace({
               activatingResources={ctrl.activatingResources}
               previewChanges={ctrl.previewChanges}
               onClosePreview={() => ctrl.setPreviewChanges(false)}
-              editMode={ctrl.inventoryEditMode}
-              onToggleEditMode={() => {
-                if (ctrl.inventoryEditMode) {
-                  ctrl.setInventoryEditMode(false);
-                  return;
-                }
-                ctrl.setInventoryEditMode(true);
-                ctrl.setPreviewChanges(false);
-              }}
               railPrimaryIsReapply={ctrl.showReapply}
               onCommitManagedChanges={
                 actionsEnabled ? ctrl.handleCommitManagedChanges : undefined

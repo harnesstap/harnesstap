@@ -81,7 +81,6 @@ import type {
   LibraryPlugin,
   LibraryResource,
 } from "../lib/types";
-import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EditedChip } from "./EditedChip";
 import { DuplicateDialog } from "./DuplicateDialog";
@@ -1724,19 +1723,15 @@ export function PluginPackageDetail({
             <div className="banner">{record.parent_missing}</div>
           ) : null
         }
-        footer={
-          <ChromeTooltip content={isProfile ? "Add to profile" : "Add to plugin"}>
-            <button
-              type="button"
-              className="scope-inventory-fab icon-action primary"
-              data-testid="plugin-composition-fab"
-              aria-label={isProfile ? "Add to profile" : "Add to plugin"}
-              disabled={pickersDisabled}
-              onClick={() => setAddModalOpen(true)}
-            >
-              <Plus size={20} strokeWidth={2} aria-hidden />
-            </button>
-          </ChromeTooltip>
+        headerAction={
+          <IconActionButton
+            data-testid="plugin-composition-add"
+            label={isProfile ? "Add to profile" : "Add to plugin"}
+            title={isProfile ? "Add to profile" : "Add to plugin"}
+            disabled={pickersDisabled}
+            onClick={() => setAddModalOpen(true)}
+            icon={<Plus size={16} strokeWidth={2} aria-hidden />}
+          />
         }
       />
     </>

@@ -91,14 +91,15 @@ async function openProjectScope(): Promise<void> {
 
 async function openEditProfile(name: string): Promise<void> {
   await waitForTestId(`profile-rail-${name}`);
-  const testId = `edit-profile-${name}`;
+  await clickTestId(`profile-rail-${name}`);
+  await waitForTestId("profile-edit");
   await browser.execute((id: string) => {
     const el = document.querySelector(`[data-testid="${id}"]`);
     if (!(el instanceof HTMLElement)) {
       throw new Error(`missing ${id}`);
     }
     el.click();
-  }, testId);
+  }, "profile-edit");
 }
 
 async function addMarketplaceFromDiscover(): Promise<void> {
@@ -170,7 +171,7 @@ async function addMarketplacePluginFromDiscover(ref: string): Promise<void> {
 }
 
 async function addLibraryPluginOnEditProfile(pluginName: string): Promise<void> {
-  await clickTestId("edit-profile-composition-fab");
+  await clickTestId("edit-profile-composition-add");
   const search = await $(".scope-add-modal input[type='search']");
   await search.waitForDisplayed();
   await search.setValue(pluginName);

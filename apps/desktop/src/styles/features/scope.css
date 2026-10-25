@@ -98,21 +98,6 @@
   white-space: nowrap;
 }
 
-.profile-item-action {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0.35rem;
-  margin: auto 0;
-  background: var(--profile-row-bg);
-  box-shadow: -0.5rem 0 0.5rem var(--profile-row-bg);
-}
-
-.profile-item-edit {
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* Sits in the row's left padding, clear of the in-use mark and the name. */
 .profile-item-handle {
   position: absolute;
@@ -128,16 +113,9 @@
   pointer-events: none;
 }
 
-.profile-item:hover .profile-item-edit,
-.profile-item:focus-within .profile-item-edit,
 .profile-item:hover .profile-item-handle,
 .profile-item:focus-within .profile-item-handle {
   opacity: 1;
-}
-
-.profile-item:hover .profile-item-edit,
-.profile-item:focus-within .profile-item-edit {
-  pointer-events: auto;
 }
 
 .profile-item.selected {
@@ -309,6 +287,18 @@
   font-size: var(--text-value);
 }
 
+.composition-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.edit-profile-section .composition-heading h3 {
+  margin: 0;
+}
+
 .edit-metadata-details {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -422,8 +412,9 @@
   color: var(--muted);
 }
 
+/* Modified is neutral; amber stays for "needs review" (owned_modified). */
 .file-change-kind-badge.update {
-  color: var(--yellow);
+  color: var(--fg);
 }
 
 .apply-diff-kind-badge {
@@ -546,7 +537,7 @@
 }
 
 .file-change-group-count.update {
-  color: var(--yellow);
+  color: var(--fg);
 }
 
 .file-change-group-count.owned_unmodified {

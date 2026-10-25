@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Desktop: the profile header keeps only Edit and History as icons (Duplicate, Tag, Install, Project history, Overwrite and more move to one menu); the rail pencil, the Active Edit toggle, the Library funnel clear and header Import are gone; Composition add sits on its heading; profile tags are removable pills; Target preview counts read "1 subagent" and "N file changes".'
+time: 2026-10-25T23:51:00.000000Z
+custom:
+  Issue: ""
