@@ -74,3 +74,23 @@ describe("navigation history", () => {
     expect(destinationForNumberKey("5")).toBe(null);
   });
 });
+
+describe("scope across tabs", () => {
+  it("visiting Harnesses keeps the Project scope chosen for Library and Environments", () => {
+    const state = run([
+      { type: "set-scope", scope: "project" },
+      { type: "go", destination: "library" },
+      { type: "go", destination: "harnesses" },
+      { type: "go", destination: "library" },
+    ]);
+    expect(state.destination).toBe("library");
+    expect(state.scope).toBe("project");
+
+    const environments = run([
+      { type: "go", destination: "harnesses" },
+      { type: "go", destination: "environments" },
+    ], state);
+    expect(environments.destination).toBe("environments");
+    expect(environments.scope).toBe("project");
+  });
+});

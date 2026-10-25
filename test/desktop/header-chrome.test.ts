@@ -161,7 +161,7 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain('label="Settings"');
     expect(designSource).toContain("each icon-only with a Radix tooltip plus `aria-label`");
     expect(appSource).toContain('aria-current={destination === "library" ? "page" : undefined}');
-    expect(appSource).toContain("aria-pressed={scope === \"global\"}");
+    expect(appSource).toContain("aria-pressed={shownScope === \"global\"}");
     expect(appSource).toContain("HeaderMoreMenu");
     expect(appSource).not.toContain('title="Library"');
     expect(appSource).not.toContain('title="Discover"');
@@ -298,7 +298,7 @@ describe("header re-click home", () => {
     expect(appSource).toContain('onClick={() => onDestinationClick("library")}');
     expect(appSource).toContain('onClick={() => onDestinationClick("discover")}');
     expect(appSource).toContain('onClick={() => onDestinationClick("global")}');
-    expect(appSource).toContain('onClick={() => onDestinationClick("project")}');
+    expect(appSource).toContain('onDestinationClick("project");');
     expect(appSource).toContain("onDestinationClick(\"environments\")");
     expect(appSource).toContain('onClick={() => onDestinationClick("harnesses")}');
   });

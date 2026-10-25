@@ -51,6 +51,38 @@ export function activeHeaderDestination(
   }
 }
 
+/** Tooltip on the disabled Project scope button while Harnesses is open. */
+export const HARNESS_GLOBAL_SCOPE_TOOLTIP =
+  "Harness settings are global. Set a project override in Settings > Project.";
+
+export interface HeaderScopeState {
+  /** Scope the segment shows as selected. */
+  scope: Scope;
+  /** Set when the current destination has no project scope; Project is disabled. */
+  projectDisabledReason: string | null;
+}
+
+/**
+ * What the header Scope segment shows for a destination. Harnesses is the
+ * machine-wide registry, so it always reads Global and leaves the shared
+ * scope untouched for the scoped destinations.
+ */
+export function headerScopeState(destination: Destination, scope: Scope): HeaderScopeState {
+  switch (destination) {
+    case "harnesses":
+      return { scope: "global", projectDisabledReason: HARNESS_GLOBAL_SCOPE_TOOLTIP };
+    case "library":
+    case "discover":
+    case "environments":
+    case "scope":
+      return { scope, projectDisabledReason: null };
+    default: {
+      const neverDestination: never = destination;
+      return neverDestination;
+    }
+  }
+}
+
 /** Split a header click into the destination it targets and, for the scope segment, the scope. */
 export function headerDestinationTarget(
   clicked: HeaderDestination,

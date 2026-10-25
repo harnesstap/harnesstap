@@ -10,7 +10,7 @@ import {
   Upload,
   User,
 } from "lucide-react";
-import type { HeaderDestination } from "../../lib/header-destination";
+import { headerScopeState, type HeaderDestination } from "../../lib/header-destination";
 import type { CloudAuthStatus } from "../../lib/types";
 import type { AgentClient } from "../../state/agent-session";
 import type { Destination, Scope } from "../../state/navigation";
@@ -120,11 +120,15 @@ export function AppHeader({
     void refreshDesktopUpdateStatus(baseUrl, token);
   }, [baseUrl, connected, token]);
 
-  const projectTooltip = !projectPath
-    ? "Choose a project directory"
-    : !projectReady
-      ? "Sets up this repo as a HarnessTap project on first use"
-      : "Project";
+  const scopeState = headerScopeState(destination, scope);
+  const shownScope = scopeState.scope;
+  const projectScopeDisabled = scopeState.projectDisabledReason !== null;
+  const projectTooltip = scopeState.projectDisabledReason
+    ?? (!projectPath
+      ? "Choose a project directory"
+      : !projectReady
+        ? "Sets up this repo as a HarnessTap project on first use"
+        : "Project");
   const accountTooltip = cloudAuth?.authenticated && cloudAuth.email
     ? `Account (${cloudAuth.email})`
     : "Account";
@@ -208,12 +212,12 @@ export function AppHeader({
             "Global",
             <button
               type="button"
-              className={scope === "global" ? "on" : ""}
+              className={shownScope === "global" ? "on" : ""}
               data-testid="view-global"
               onClick={() => onDestinationClick("global")}
               disabled={switching || bootstrapBusy}
               aria-label="Global scope"
-              aria-pressed={scope === "global"}
+              aria-pressed={shownScope === "global"}
             >
               <Globe size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
               <span className="header-focus-label">Global</span>
@@ -224,12 +228,17 @@ export function AppHeader({
             projectTooltip,
             <button
               type="button"
-              className={scope === "project" ? "on" : ""}
+              className={shownScope === "project" ? "on" : ""}
               data-testid="view-project"
-              onClick={() => onDestinationClick("project")}
+              onClick={() => {
+                if (!projectScopeDisabled) {
+                  onDestinationClick("project");
+                }
+              }}
               disabled={switching || bootstrapBusy}
+              aria-disabled={projectScopeDisabled || undefined}
               aria-label="Project scope"
-              aria-pressed={scope === "project"}
+              aria-pressed={shownScope === "project"}
             >
               <FolderGit2 size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
               <span className="header-focus-label">Project</span>

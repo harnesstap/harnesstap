@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   activeHeaderDestination,
+  HARNESS_GLOBAL_SCOPE_TOOLTIP,
   headerClickIntent,
   headerDestinationTarget,
+  headerScopeState,
 } from "../../apps/desktop/src/lib/header-destination.ts";
 
 describe("activeHeaderDestination", () => {
@@ -57,5 +59,27 @@ describe("headerClickIntent", () => {
     expect(headerClickIntent("global", "project")).toBe("switch");
     expect(headerClickIntent("project", "library")).toBe("switch");
     expect(headerClickIntent("environments", "global")).toBe("switch");
+  });
+});
+
+describe("headerScopeState", () => {
+  test("Harnesses always reads Global and disables Project", () => {
+    for (const scope of ["global", "project"] as const) {
+      expect(headerScopeState("harnesses", scope)).toEqual({
+        scope: "global",
+        projectDisabledReason: HARNESS_GLOBAL_SCOPE_TOOLTIP,
+      });
+    }
+  });
+
+  test("scoped destinations show the shared scope with Project enabled", () => {
+    for (const destination of ["library", "discover", "environments", "scope"] as const) {
+      for (const scope of ["global", "project"] as const) {
+        expect(headerScopeState(destination, scope)).toEqual({
+          scope,
+          projectDisabledReason: null,
+        });
+      }
+    }
   });
 });
