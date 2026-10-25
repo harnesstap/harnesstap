@@ -80,6 +80,18 @@ jobs:
           fi
           bash scripts/stamp-release-version.sh "$TAG"
 
+      # The stamp edits the harnesstap-desktop version line in Cargo.lock as
+      # text. Confirm cargo agrees with the result so a release commit can
+      # never carry a lock that the next local build rewrites.
+      - name: Set up Rust for the Cargo.lock check
+        if: steps.plan.outputs.action == 'prepare'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check stamped Cargo.lock is current
+        if: steps.plan.outputs.action == 'prepare'
+        working-directory: apps/desktop/src-tauri
+        run: cargo update --workspace --locked
+
       - name: Fold pending README and docs text and refresh released CLI surface
         if: steps.plan.outputs.action == 'prepare'
         run: |

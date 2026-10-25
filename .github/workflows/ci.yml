@@ -394,6 +394,22 @@ jobs:
         shell: bash
         run: bun run check:compiled-sidecar
 
+  # Cargo.lock must match Cargo.toml. A dependency added without its lock
+  # entries passes every other job (none of them build the Tauri crate) and
+  # then shows up as a modified Cargo.lock after the first local Desktop
+  # build. `cargo update --workspace --locked` resolves from the index only
+  # (no crate downloads) and fails when the committed lock would change.
+  desktop-cargo-lock:
+    name: desktop-cargo-lock
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check Cargo.lock is current
+        working-directory: apps/desktop/src-tauri
+        run: cargo update --workspace --locked
+
   validate:
     runs-on: ubuntu-26.04
     needs:
@@ -409,6 +425,7 @@ jobs:
       - desktop-typecheck
       - desktop-visual
       - desktop-sidecar
+      - desktop-cargo-lock
     if: always()
     steps:
       - name: Fail if required tests did not succeed
@@ -435,6 +452,7 @@ jobs:
           DESKTOP_TYPECHECK: ${{ needs.desktop-typecheck.result }}
           DESKTOP_VISUAL: ${{ needs.desktop-visual.result }}
           DESKTOP_SIDECAR: ${{ needs.desktop-sidecar.result }}
+          DESKTOP_CARGO_LOCK: ${{ needs.desktop-cargo-lock.result }}
         run: |
           set -euo pipefail
           failed=0
@@ -482,6 +500,7 @@ jobs:
           check_required desktop-typecheck "$DESKTOP_TYPECHECK" "$DETECT_DESKTOP"
           check_required desktop-visual "$DESKTOP_VISUAL" "$DETECT_DESKTOP_VISUAL"
           check_required desktop-sidecar "$DESKTOP_SIDECAR" "true"
+          check_required desktop-cargo-lock "$DESKTOP_CARGO_LOCK" "true"
           if [ "$failed" -ne 0 ]; then
             exit 1
           fi
