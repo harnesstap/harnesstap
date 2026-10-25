@@ -78,9 +78,12 @@ describe("environments workspace chrome", () => {
       "{row.value_count} values · {row.secret_ref_count} secrets",
     );
     expect(workspaceSource).not.toContain("{row.reference_count} plugins");
-    expect(workspaceSource).toContain("Plugins referencing this environment");
-    expect(workspaceSource).toContain("link-btn");
+    expect(workspaceSource).toContain('title="Used by profiles"');
+    expect(workspaceSource).toContain("inventory-chip environment-profile-pill");
+    expect(workspaceSource).toContain("No profiles use this environment yet.");
+    expect(workspaceSource).not.toContain("Plugins referencing this environment");
     expect(workspaceSource).toContain("onOpenPlugin");
+    expect(appSource).toContain("onOpenPlugin={openProfileOrPlugin}");
     expect(appSource).toContain("setLibraryFocusPlugin");
     expect(appSource).toContain("focusPluginName={libraryFocusPlugin}");
   });
@@ -110,7 +113,9 @@ describe("environments workspace chrome", () => {
     expect(workspaceSource).toContain("aria-current");
     expect(workspaceSource).toContain("is-current");
     expect(workspaceSource).toContain("inspectEnvironment");
-    expect(workspaceSource).toContain("environment-row-select-");
+    // One way to delete: the detail header trash. No bulk edit mode in the header.
+    expect(workspaceSource).not.toContain("environment-row-select-");
+    expect(workspaceSource).not.toContain("environments-edit-mode");
     expect(workspaceSource).not.toContain("selectEnvironment");
     expect(stylesSource).toContain(".resources-list-env");
   });

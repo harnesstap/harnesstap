@@ -29,7 +29,7 @@ function errorMessage(error: unknown): string {
   if (error instanceof AgentApiError) {
     return error.message;
   }
-  return error instanceof Error ? error.message : "Could not remove profile";
+  return error instanceof Error ? error.message : "Could not delete profile";
 }
 
 export function ProfileDeleteControls({
@@ -95,8 +95,8 @@ export function ProfileDeleteControls({
             className={["profile-remove-action", busy ? "is-busy" : ""]
               .filter(Boolean)
               .join(" ")}
-            label="Remove profile"
-            title="Remove profile"
+            label="Delete profile"
+            title="Delete profile"
             disabled={busy || builtinEmpty}
             busy={busy}
             onClick={() => {
@@ -112,8 +112,8 @@ export function ProfileDeleteControls({
             className={["profile-remove-action", busy ? "is-busy" : ""]
               .filter(Boolean)
               .join(" ")}
-            label="Remove profile"
-            title="Remove profile"
+            label="Delete profile"
+            title="Delete profile"
             disabled={busy || builtinEmpty}
             busy={busy}
             onClick={() => {
@@ -129,9 +129,9 @@ export function ProfileDeleteControls({
       <ConfirmDialog
         open={confirmOpen}
         tone="destructive"
-        title="Remove this profile?"
-        description={`This removes the profile tag from ${profileName}. Harness files already on disk stay until you apply another profile. The plugin stays in the library unless you choose to delete it.`}
-        confirmLabel="Remove profile"
+        title="Delete this profile?"
+        description="Files already written to your harnesses stay until you apply another profile."
+        confirmLabel="Delete profile"
         cancelLabel="Cancel"
         confirmBusy={busy}
         onConfirm={() => {
@@ -159,7 +159,7 @@ export function ProfileDeleteControls({
             onCheckedChange={(value) => setDeletePlugin(value === true)}
           />
           <Label htmlFor={checkboxId} className="font-medium leading-snug">
-            Also delete the plugin from the library
+            Also delete it from the Library
           </Label>
         </div>
       </ConfirmDialog>
