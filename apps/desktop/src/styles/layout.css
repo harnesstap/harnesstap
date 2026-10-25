@@ -155,8 +155,13 @@
 }
 
 .header-focus-btn:disabled,
-.header-focus-segment button:disabled {
+.header-focus-segment button:disabled,
+.header-focus-segment button[aria-disabled="true"] {
   opacity: var(--opacity-disabled);
+}
+
+.header-focus-segment button[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 .header-focus-segment {
