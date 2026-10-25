@@ -36,7 +36,9 @@ export interface EnvironmentsWorkspaceProps {
   token: string | null;
   connected?: boolean;
   switching?: boolean;
+  /** Open project, used only as the From project capture source. */
   projectPath: string | null;
+  onChooseProject?: () => void;
   disabled?: boolean;
   /** Bump while mounted to clear the name filter and deselect (header re-click). */
   homeResetNonce?: number;
@@ -55,6 +57,7 @@ export function EnvironmentsWorkspace({
   connected: connectedProp,
   switching: switchingProp,
   projectPath,
+  onChooseProject,
   disabled = false,
   homeResetNonce = 0,
   autoOpenCreate = false,
@@ -481,6 +484,7 @@ export function EnvironmentsWorkspace({
         baseUrl={baseUrl}
         token={token}
         projectPath={projectPath}
+        onChooseProject={onChooseProject}
         disabled={controlsDisabled}
         onClose={() => setDrawerOpen(false)}
         onSaved={(message, name) => {

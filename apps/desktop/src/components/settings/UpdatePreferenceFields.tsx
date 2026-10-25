@@ -46,7 +46,7 @@ export function UpdatePreferenceFields({
         }))}
       />
       <div className="flex items-center gap-2">
-        <Label htmlFor={frequencyId}>Check for updates</Label>
+        <Label htmlFor={frequencyId}>Check every</Label>
         <Select
           value={frequency}
           disabled={disabled || mode === "off"}

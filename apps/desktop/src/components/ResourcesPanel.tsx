@@ -139,6 +139,10 @@ export interface ResourcesPanelProps {
   homeResetNonce?: number;
   disabled?: boolean;
   projectPath?: string | null;
+  /** Open project; Import falls back to it in global scope. */
+  openProjectPath?: string | null;
+  /** Opens the project folder picker from the Import drawer. */
+  onChooseProject?: () => void;
   selectedProfile?: string | null;
   /** Profile targeted by the create-form "add and apply" checkbox; hides it when null. */
   attachProfileName?: string | null;
@@ -171,6 +175,8 @@ export function ResourcesPanel({
   homeResetNonce = 0,
   disabled = false,
   projectPath,
+  openProjectPath,
+  onChooseProject,
   selectedProfile,
   attachProfileName,
   onAddToProfile,
@@ -265,6 +271,7 @@ export function ResourcesPanel({
   paneRef.current = pane;
   const resolvedProjectPath =
     (projectPath && projectPath.trim())
+    || (openProjectPath && openProjectPath.trim())
     || loadRecentProjects()[0]?.path
     || "";
   const filterRef = useRef<HTMLInputElement>(null);
@@ -1432,6 +1439,7 @@ export function ResourcesPanel({
         projectPath={resolvedProjectPath}
         selectedProfile={selectedProfile ?? null}
         disabled={disabled}
+        onChooseProject={onChooseProject}
         onClose={() => setImportOpen(false)}
         onImported={(message) => {
           setResourcesReloadKey((value) => value + 1);

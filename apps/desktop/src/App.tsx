@@ -231,6 +231,11 @@ export function App() {
     })();
   }, [ctrl.closeEditProfile, enterProjectScope, project.browseProject]);
 
+  // "Choose project" inside a drawer: pick a folder without changing scope.
+  const onChooseProject = useCallback(() => {
+    void project.browseProject();
+  }, [project.browseProject]);
+
   const onHeaderDestinationClick = useCallback(
     (clicked: Destination) => {
       if (headerClickIntent(nav.destination, clicked) === "reset") {
@@ -345,7 +350,8 @@ export function App() {
           <MemoEnvironmentsWorkspace
             baseUrl={client?.baseUrl ?? null}
             token={client?.token ?? null}
-            projectPath={scopedProjectPath}
+            projectPath={projectPath || null}
+            onChooseProject={onChooseProject}
             disabled={switching}
             disconnected={shellDisconnected}
             homeResetNonce={nav.resetNonce}
@@ -388,6 +394,8 @@ export function App() {
             disconnected={shellDisconnected}
             homeResetNonce={nav.resetNonce}
             projectPath={scopedProjectPath}
+            openProjectPath={projectPath || null}
+            onChooseProject={onChooseProject}
             selectedProfile={selectedProfile}
             attachProfileName={attachProfileName}
             onAddToProfile={onAddToProfile}
