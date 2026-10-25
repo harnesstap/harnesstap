@@ -107,6 +107,7 @@ export function AppOverlays({
         baseUrl={baseUrl}
         token={token}
         projectPath={projectPath}
+        onChooseProject={onBrowseProject}
         disabled={switching}
         initialSource={overlays.createProfile.source}
         initialSwitchAfterCreate={overlays.createProfile.switchAfterCreate}

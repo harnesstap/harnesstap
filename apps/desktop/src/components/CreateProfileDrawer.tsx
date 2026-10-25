@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChooseProjectButton } from "./ChooseProjectButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,8 @@ interface CreateProfileDrawerProps {
   token: string | null;
   projectPath: string;
   disabled?: boolean;
+  /** Opens the project folder picker; enables From project once a project is chosen. */
+  onChooseProject?: () => void;
   /** Prefill source when the screen opens (e.g. untracked-project CTA). */
   initialSource?: ProfileCreateSource;
   /** Prefill “Switch after create” when the screen opens. */
@@ -82,6 +85,7 @@ export function CreateProfileDrawer({
   baseUrl,
   token,
   projectPath,
+  onChooseProject,
   disabled = false,
   initialSource = "compose",
   initialSwitchAfterCreate = false,
@@ -399,15 +403,18 @@ export function CreateProfileDrawer({
                 title: "From project",
                 description: "Import configuration from the selected project.",
                 disabled: !projectPath,
+                action: !projectPath && onChooseProject
+                  ? (
+                    <ChooseProjectButton
+                      onClick={onChooseProject}
+                      disabled={controlsDisabled}
+                      testId="create-profile-choose-project"
+                    />
+                  )
+                  : undefined,
               },
             ]}
           />
-
-          {!projectPath ? (
-            <p className="field-note muted">
-              Choose a project in the top bar to enable From project.
-            </p>
-          ) : null}
 
           {source === "compose" ? (
             <div className="compose-library compose-library-unified">

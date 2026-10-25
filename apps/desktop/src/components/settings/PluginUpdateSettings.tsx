@@ -65,7 +65,6 @@ export function PluginUpdateSettings({ open, baseUrl, token, disabled = false }:
         <UpdatePreferenceFields
           idPrefix="settings-updates"
           legend="Mode"
-          className="mb-6"
           mode={settings.mode}
           frequency={settings.frequency}
           disabled={disabled || busy}

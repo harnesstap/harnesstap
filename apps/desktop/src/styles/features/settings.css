@@ -198,6 +198,12 @@
 .settings-section h3 {
   margin: 0;
   font-size: var(--text-value);
+  font-weight: 700;
+}
+
+/* Section headings sit 24px below the previous section's last line. */
+.settings-section + .settings-section {
+  margin-top: 1.5rem;
 }
 
 .settings-section .project-picker {
@@ -433,4 +439,20 @@
     border-bottom: 1px solid var(--border);
     max-height: 220px;
   }
+}
+
+/* Section actions sit under their heading copy, not floated right. */
+.settings-section > .dialog-actions {
+  justify-content: flex-start;
+  margin-top: 0.5rem;
+}
+
+/* Telemetry sub-headings and bullets stay below the section heading and match body copy. */
+.settings-section .telemetry-consent-section h4 {
+  font-size: var(--text-body);
+  font-weight: 700;
+}
+
+.settings-section .telemetry-scope-list {
+  font-size: var(--text-body);
 }

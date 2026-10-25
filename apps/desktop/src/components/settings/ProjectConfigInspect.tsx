@@ -215,11 +215,7 @@ export function ProjectConfigInspect({
           onBrowse={onBrowseProject}
         />
       </div>
-      {!projectPath ? (
-        <p className="muted">Select a project to inspect its config.</p>
-      ) : loading ? (
-        <p className="muted">Loading project config...</p>
-      ) : null}
+      {loading ? <p className="muted">Loading project config...</p> : null}
       {loadError ?? openError ? (
         <div className="banner error" role="alert">
           {loadError ?? openError}

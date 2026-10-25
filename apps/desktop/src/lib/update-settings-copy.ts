@@ -11,9 +11,9 @@ export const UPDATE_MODE_OPTIONS: ReadonlyArray<{ value: UpdateMode; title: stri
 ];
 
 export const UPDATE_FREQUENCY_OPTIONS: ReadonlyArray<{ value: UpdateFrequency; label: string }> = [
-  { value: "hourly", label: "Hourly" },
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
+  { value: "hourly", label: "Hour" },
+  { value: "daily", label: "Day" },
+  { value: "weekly", label: "Week" },
 ];
 
 export const KEEP_UP_TO_DATE_TITLE = "Keep plugins up to date?";

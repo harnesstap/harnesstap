@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChooseProjectButton } from "../ChooseProjectButton";
 import { open as openDirectoryDialog } from "@tauri-apps/plugin-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,8 @@ export interface ImportLibraryDrawerProps {
   disabled?: boolean;
   onClose: () => void;
   onImported: (message: string) => void;
+  /** Opens the project folder picker; enables the project sources once one is chosen. */
+  onChooseProject?: () => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -83,6 +86,7 @@ export function ImportLibraryDrawer({
   disabled = false,
   onClose,
   onImported,
+  onChooseProject,
 }: ImportLibraryDrawerProps) {
   const [kind, setKind] = useState<LibraryImportKind>("scan");
   const [addSource, setAddSource] = useState("");
@@ -270,6 +274,15 @@ export function ImportLibraryDrawer({
                 title: "Project scan",
                 description: "Import harness files from the selected project.",
                 disabled: !hasProject,
+                action: !hasProject && onChooseProject
+                  ? (
+                    <ChooseProjectButton
+                      onClick={onChooseProject}
+                      disabled={disabled || busy}
+                      testId="import-choose-project"
+                    />
+                  )
+                  : undefined,
                 testId: "import-source-scan",
               },
               {
@@ -287,11 +300,6 @@ export function ImportLibraryDrawer({
               },
             ]}
           />
-          {!hasProject ? (
-            <p className="muted">
-              Choose a project in the top bar to enable Project scan and Plugin from-project.
-            </p>
-          ) : null}
 
           {kind === "scan" || kind === "from_project" ? (
             <p className="muted" data-testid="import-project-path">{projectPath}</p>

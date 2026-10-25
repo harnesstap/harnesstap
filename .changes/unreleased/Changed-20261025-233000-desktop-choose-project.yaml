@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Desktop: "From project" options in Create profile, Create environment and Import now offer an inline Choose project button, Settings > Project shows a single "Open a project to see its config." empty state, and Settings > Advanced reads more clearly (Check every, left-aligned actions, a locked telemetry switch when HARNESSTAP_TELEMETRY is set).'
+time: 2026-10-25T23:30:00.000000Z
+custom:
+  Issue: ""

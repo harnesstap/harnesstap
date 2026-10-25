@@ -492,6 +492,14 @@
   flex: 0 0 auto;
 }
 
+/* Inline "Choose project" step inside a source card: compact, sized to its label. */
+.btn.choose-project-button {
+  width: auto;
+  min-height: 32px;
+  padding: 0.25rem 0.6rem;
+  font-size: var(--text-body);
+}
+
 .confirm-dialog-body {
   margin: 0;
 }
