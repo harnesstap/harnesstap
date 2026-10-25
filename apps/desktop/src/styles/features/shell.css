@@ -52,25 +52,41 @@
   align-items: center;
 }
 
+/*
+ * Fixed geometry: widths come from PROFILE_SCOPE_SWITCH (lib/profile-scope.ts)
+ * as custom properties, so the switch is the same size in every state and
+ * selecting a side or opening the dropdown never moves the header. Weight and
+ * padding do not change with selection either.
+ */
 .profile-scope-switch {
+  flex: none;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: stretch;
-  gap: 2px;
-  padding: 2px;
+  gap: var(--profile-scope-gap);
+  width: calc(
+    2 * (var(--profile-scope-border) + var(--profile-scope-pad)) +
+      var(--profile-scope-global-w) + var(--profile-scope-gap) + var(--profile-scope-project-w)
+  );
+  padding: var(--profile-scope-pad);
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: var(--profile-scope-border) solid var(--border);
   border-radius: 4px;
 }
 
 .profile-scope-project {
+  flex: none;
   display: inline-flex;
   align-items: stretch;
+  width: var(--profile-scope-project-w);
+  min-width: 0;
   border-radius: 3px;
 }
 
 .profile-scope-option,
 .project-picker-trigger.is-chevron {
   appearance: none;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   min-height: 28px;
@@ -86,7 +102,26 @@
 }
 
 .profile-scope-option {
+  flex: none;
+  min-width: 0;
   padding: 0 0.65rem;
+}
+
+.profile-scope-global {
+  width: var(--profile-scope-global-w);
+  justify-content: center;
+}
+
+.profile-scope-project-option {
+  width: calc(var(--profile-scope-project-w) - var(--profile-scope-chevron-w));
+  overflow: hidden;
+}
+
+.profile-scope-project-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-scope-option.on,
@@ -110,15 +145,17 @@
 }
 
 .project-picker.is-chevron {
-  flex: 0 0 auto;
+  flex: none;
   min-width: 0;
   display: inline-flex;
+  width: var(--profile-scope-chevron-w);
 }
 
 .project-picker-trigger.is-chevron {
-  width: auto;
+  flex: none;
+  width: var(--profile-scope-chevron-w);
   justify-content: center;
-  padding: 0 0.4rem;
+  padding: 0;
 }
 
 .project-picker-filter {

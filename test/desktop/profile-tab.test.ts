@@ -12,7 +12,10 @@ import type { Destination } from "../../apps/desktop/src/lib/header-destination.
 import {
   GLOBAL_SCOPE_TOOLTIP,
   loadProfileScope,
+  PROFILE_SCOPE_SWITCH,
+  PROFILE_SCOPE_SWITCH_WIDTH,
   PROFILE_TAB_TOOLTIP,
+  profileScopeTooltipOffsets,
   projectScopeLabel,
   projectScopeTooltip,
   SWITCH_PROJECT_TOOLTIP,
@@ -30,6 +33,15 @@ const DESKTOP_SRC = join(import.meta.dir, "../../apps/desktop/src");
 const headerSource = readFileSync(join(DESKTOP_SRC, "components/shell/AppHeader.tsx"), "utf8");
 const switchSource = readFileSync(join(DESKTOP_SRC, "components/shell/ProfileScopeSwitch.tsx"), "utf8");
 const pickerSource = readFileSync(join(DESKTOP_SRC, "components/ProjectPicker.tsx"), "utf8");
+const shellCss = readFileSync(join(DESKTOP_SRC, "styles/features/shell.css"), "utf8");
+
+/** Bodies of the CSS rules whose selector is exactly `selector` (not part of a list). */
+function cssRule(selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const bodies = [...shellCss.matchAll(new RegExp(`(?:\\}|\\*/)\\s*${escaped} \\{([^}]*)\\}`, "g"))].map((m) => m[1]);
+  if (bodies.length === 0) throw new Error(`no CSS rule for ${selector}`);
+  return bodies.join("\n");
+}
 
 const DOM_GLOBALS = [
   "window",
@@ -320,6 +332,99 @@ describe("Profile scope switch", () => {
   });
 });
 
+describe("Profile scope switch geometry", () => {
+  async function renderSwitch(scope: Scope, projectPath: string): Promise<HTMLElement> {
+    await render(
+      createElement(ProfileScopeSwitch, {
+        scope,
+        projectPath,
+        onSelectScope: () => {},
+        onPickProject: () => {},
+        onBrowseProject: () => {},
+      }),
+    );
+    return byTestId("profile-scope-switch");
+  }
+
+  const LONG = "/work/a-really-long-project-folder-name-that-will-never-fit-in-the-switch";
+
+  it("has one fixed outer width", () => {
+    const { globalWidth, projectWidth, chevronWidth, gap, padding, border } = PROFILE_SCOPE_SWITCH;
+    expect(PROFILE_SCOPE_SWITCH_WIDTH).toBe(2 * (border + padding) + globalWidth + gap + projectWidth);
+    expect(projectWidth).toBeGreaterThan(chevronWidth + globalWidth);
+  });
+
+  it("keeps the same sizing in Global, Project, long name, no project and dropdown open", async () => {
+    const shapes: string[] = [];
+    const shapeOf = (root: HTMLElement) =>
+      JSON.stringify({
+        style: root.getAttribute("style"),
+        classes: [
+          ...root.querySelectorAll(
+            ".profile-scope-global, .profile-scope-project, .profile-scope-project-option, .project-picker-trigger",
+          ),
+        ].map((el) => (el.getAttribute("class") ?? "").replace(/\s*\bon\b/g, "")),
+      });
+    shapes.push(shapeOf(await renderSwitch("global", "/work/acme-app")));
+    shapes.push(shapeOf(await renderSwitch("project", "/work/acme-app")));
+    shapes.push(shapeOf(await renderSwitch("project", LONG)));
+    shapes.push(shapeOf(await renderSwitch("global", "")));
+    const root = await renderSwitch("global", "/work/acme-app");
+    await act(async () => {
+      byTestId("project-path").click();
+    });
+    expect(byTestId("project-path").getAttribute("aria-expanded")).toBe("true");
+    shapes.push(shapeOf(root));
+    expect(JSON.parse(shapes[0]).classes).toEqual([
+      "profile-scope-option profile-scope-global",
+      "profile-scope-project",
+      "profile-scope-option profile-scope-project-option",
+      "project-picker-trigger is-chevron",
+    ]);
+    expect(new Set(shapes).size).toBe(1);
+    expect(root.getAttribute("style")).toContain(`--profile-scope-project-w: ${PROFILE_SCOPE_SWITCH.projectWidth}px`);
+  });
+
+  it("keeps the full long name in the label and the tooltip, with the chevron after it", async () => {
+    await renderSwitch("project", LONG);
+    const label = byTestId("profile-scope-project-label");
+    expect(label.textContent).toBe("Project: a-really-long-project-folder-name-that-will-never-fit-in-the-switch");
+    expect(projectScopeTooltip(LONG)).toBe(
+      "Project profile for a-really-long-project-folder-name-that-will-never-fit-in-the-switch",
+    );
+    const segment = byTestId("profile-scope-switch").querySelector(".profile-scope-project");
+    expect(segment?.lastElementChild?.querySelector('[data-testid="project-path"]')).not.toBeNull();
+  });
+
+  it("CSS fixes both segment widths, truncates the name and keeps weight constant", () => {
+    expect(cssRule(".profile-scope-switch")).toMatch(/width: calc\(/);
+    expect(cssRule(".profile-scope-switch")).toMatch(/flex: none/);
+    expect(cssRule(".profile-scope-global")).toContain("width: var(--profile-scope-global-w)");
+    expect(cssRule(".profile-scope-project")).toContain("width: var(--profile-scope-project-w)");
+    expect(cssRule(".profile-scope-project-option")).toContain(
+      "width: calc(var(--profile-scope-project-w) - var(--profile-scope-chevron-w))",
+    );
+    expect(cssRule(".project-picker-trigger.is-chevron")).toContain("width: var(--profile-scope-chevron-w)");
+    const label = cssRule(".profile-scope-project-label");
+    expect(label).toContain("text-overflow: ellipsis");
+    expect(label).toContain("overflow: hidden");
+    expect(label).toContain("white-space: nowrap");
+    const selected = shellCss.match(/\.profile-scope-option\.on,[^{]*\{([^}]*)\}/)?.[1] ?? "";
+    expect(selected).not.toMatch(/font-weight|padding|width|border:/);
+  });
+
+  it("opens every switch tooltip to the right of the switch, clear of the title", () => {
+    const offsets = profileScopeTooltipOffsets();
+    const { chevronWidth, projectWidth, gap } = PROFILE_SCOPE_SWITCH;
+    expect(offsets.project - offsets.chevron).toBe(chevronWidth);
+    expect(offsets.global - offsets.chevron).toBe(gap + projectWidth);
+    expect(switchSource).toMatch(/content=\{GLOBAL_SCOPE_TOOLTIP\} side="right" sideOffset=\{TOOLTIP_OFFSETS\.global\}/);
+    expect(switchSource).toMatch(/side="right"\s+sideOffset=\{TOOLTIP_OFFSETS\.project\}/);
+    expect(switchSource).toContain('chevronTooltipSide="right"');
+    expect(switchSource).toContain("chevronTooltipOffset={TOOLTIP_OFFSETS.chevron}");
+  });
+});
+
 describe("tooltip copy", () => {
   it("uses the exact tooltip text", () => {
     expect(PROFILE_TAB_TOOLTIP).toBe("Your Global and Project profiles");
@@ -334,13 +439,13 @@ describe("tooltip copy", () => {
       /<ChromeTooltip content=\{PROFILE_TAB_TOOLTIP\}>\s*<button[^>]*data-testid="nav-profile"/,
     );
     expect(switchSource).toMatch(
-      /<ChromeTooltip content=\{GLOBAL_SCOPE_TOOLTIP\}>\s*<button[^>]*data-testid="profile-scope-global"/,
+      /<ChromeTooltip content=\{GLOBAL_SCOPE_TOOLTIP\}[^>]*>\s*<button[^>]*data-testid="profile-scope-global"/,
     );
     expect(switchSource).toMatch(
-      /<ChromeTooltip content=\{projectScopeTooltip\(projectPath\)\}>\s*<button[^>]*data-testid="profile-scope-project"/,
+      /<ChromeTooltip\s+content=\{projectScopeTooltip\(projectPath\)\}[^>]*>\s*<button[^>]*data-testid="profile-scope-project"/,
     );
     expect(switchSource).toContain("chevronLabel={SWITCH_PROJECT_TOOLTIP}");
-    expect(pickerSource).toMatch(/<ChromeTooltip content=\{chevronLabel\}>/);
+    expect(pickerSource).toMatch(/<ChromeTooltip\s+content=\{chevronLabel\}/);
   });
 
   it("has no em dashes, en dashes or Unicode ellipses", () => {

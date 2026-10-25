@@ -11,10 +11,13 @@ export function ChromeTooltip({
   content,
   children,
   side = "bottom",
+  sideOffset = 4,
 }: {
   content: string;
   children: ReactNode;
   side?: "top" | "right" | "bottom" | "left";
+  /** Gap in px between the trigger and the tooltip. */
+  sideOffset?: number;
 }) {
   const [open, setOpen] = useState(false);
   const hoverTimer = useRef<number | null>(null);
@@ -79,7 +82,7 @@ export function ChromeTooltip({
         <Tooltip.Content
           className="chrome-tooltip"
           side={side}
-          sideOffset={4}
+          sideOffset={sideOffset}
           collisionPadding={8}
         >
           {content}

@@ -210,6 +210,81 @@ async function openProjectProfile(page) {
     .waitFor({ timeout: T });
 }
 
+/**
+ * The Profile scope switch has fixed segment widths: its box must not move or
+ * resize between Global, Project, a long project name, no project and the open
+ * dropdown, and the chevron must stay inside it. The first measurement on a
+ * page is the reference for the rest of that walk.
+ */
+const switchReference = new WeakMap();
+
+async function switchGeometry(page) {
+  return page.evaluate(() => {
+    const root = document.querySelector('[data-testid="profile-scope-switch"]');
+    const chevron = root?.querySelector('[data-testid="project-path"]');
+    const label = root?.querySelector('[data-testid="profile-scope-project-label"]');
+    if (!root || !chevron || !label) return null;
+    const r = root.getBoundingClientRect();
+    const c = chevron.getBoundingClientRect();
+    const round = (n) => Math.round(n * 2) / 2;
+    return {
+      box: [r.x, r.y, r.width, r.height].map(round).join(","),
+      width: round(r.width),
+      chevronInside: c.width > 0 && c.left >= r.left && c.right <= r.right + 0.5,
+      truncated: label.scrollWidth > label.clientWidth + 0.5,
+      ellipsis: getComputedStyle(label).textOverflow === "ellipsis",
+    };
+  });
+}
+
+async function assertSwitchStable(page, state) {
+  const geo = await switchGeometry(page);
+  if (!geo) throw new Error(`profile scope switch missing (${state})`);
+  if (!geo.chevronInside) throw new Error(`project chevron not visible inside the switch (${state})`);
+  const reference = switchReference.get(page);
+  if (!reference) {
+    switchReference.set(page, geo.box);
+  } else if (reference !== geo.box) {
+    throw new Error(`profile scope switch moved or resized on ${state}: ${reference} -> ${geo.box}`);
+  }
+  console.log(`shots: profile switch ${state}: ${geo.box}`);
+  return geo;
+}
+
+/** Long project name: render it in the real label, check truncation and size, then restore. */
+async function assertSwitchLongName(page) {
+  const original = await page.getByTestId("profile-scope-project-label").evaluate((label) => {
+    const text = label.textContent;
+    label.textContent = `Project: ${"a-really-long-project-folder-name-".repeat(3)}end`;
+    return text;
+  });
+  try {
+    const geo = await assertSwitchStable(page, "long project name");
+    if (!geo.truncated || !geo.ellipsis) throw new Error("long project name is not cut with an ellipsis");
+  } finally {
+    await page.getByTestId("profile-scope-project-label").evaluate((label, text) => {
+      label.textContent = text;
+    }, original);
+  }
+}
+
+/** Global, Project, dropdown open and a long name all keep the switch box. */
+async function assertSwitchStableAcrossStates(page) {
+  await assertSwitchStable(page, "project");
+  await page.getByTestId("profile-scope-global").click({ timeout: T });
+  await page.locator('[data-testid="profile-scope-global"][aria-pressed="true"]').waitFor({ timeout: T });
+  await assertSwitchStable(page, "global with a project");
+  await page.getByTestId("project-path").click({ timeout: T });
+  await page.locator('[data-testid="project-path"][aria-expanded="true"]').waitFor({ timeout: T });
+  await assertSwitchStable(page, "dropdown open");
+  await pressEscape(page);
+  await page.locator('[data-testid="project-path"][aria-expanded="false"]').waitFor({ timeout: T });
+  await page.getByTestId("profile-scope-project").click({ timeout: T });
+  await page.locator('[data-testid="profile-scope-project"][aria-pressed="true"]').waitFor({ timeout: T });
+  await assertSwitchStable(page, "project again");
+  await assertSwitchLongName(page);
+}
+
 async function dismissTrackedDirectories(page) {
   const dialog = page.getByRole("dialog", { name: /tracked directories/i });
   if (await dialog.isVisible().catch(() => false)) {
@@ -333,6 +408,7 @@ const SCREENS = [
     name: "scope-global",
     run: async (page) => {
       await openGlobalProfile(page);
+      await assertSwitchStable(page, "global, no project");
       await assertRailNamesUseFullWidth(page);
     },
   },
@@ -340,6 +416,7 @@ const SCREENS = [
     name: "scope-project",
     run: async (page) => {
       await openProjectProfile(page);
+      await assertSwitchStableAcrossStates(page);
       await waitForResourceRows(page);
     },
   },

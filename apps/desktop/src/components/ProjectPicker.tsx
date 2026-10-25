@@ -23,6 +23,9 @@ interface ProjectPickerProps {
   /** `chevron`: icon-only trigger labelled `chevronLabel` (Profile scope switch). */
   variant?: "field" | "chevron";
   chevronLabel?: string;
+  /** Where the chevron's tooltip sits, and its gap in px from the chevron. */
+  chevronTooltipSide?: "top" | "right" | "bottom" | "left";
+  chevronTooltipOffset?: number;
   /** Controlled open state; omit both to let the picker own it. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -36,6 +39,8 @@ export function ProjectPicker({
   onBrowse,
   variant = "field",
   chevronLabel = "Switch project",
+  chevronTooltipSide = "bottom",
+  chevronTooltipOffset = 4,
   open: openProp,
   onOpenChange,
 }: ProjectPickerProps) {
@@ -107,7 +112,11 @@ export function ProjectPicker({
 
   const trigger = variant === "chevron"
     ? (
-      <ChromeTooltip content={chevronLabel}>
+      <ChromeTooltip
+        content={chevronLabel}
+        side={chevronTooltipSide}
+        sideOffset={chevronTooltipOffset}
+      >
         <button
           type="button"
           className="project-picker-trigger is-chevron"
