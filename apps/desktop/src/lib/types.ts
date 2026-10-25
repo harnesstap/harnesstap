@@ -444,6 +444,8 @@ export interface ProfileApplyPreview {
   relative_to_active: boolean;
   warning?: string;
   recovery_actions?: RecoveryAction[];
+  /** No harness is registered, so apply has nowhere to write. */
+  not_set_up?: boolean;
 }
 
 export interface ProfileAddResourceRequest {

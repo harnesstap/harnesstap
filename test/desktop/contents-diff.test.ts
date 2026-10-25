@@ -910,6 +910,34 @@ describe("managedPathFromResourceSource", () => {
 });
 
 describe("flattenProfileResourceList", () => {
+  it("lists an attached plugin once when its pin shares the attachment", () => {
+    const rows = flattenProfileResourceList(
+      contents({
+        plugins: [
+          { id: "self", name: "global default", version: "1.0.0", resources: [] },
+          {
+            id: "p1",
+            name: "origin-apps",
+            version: "0.1.0",
+            attachment_id: "att1",
+            origin_ref: "origin-apps@cursor-public",
+            resources: [{ type: "skill", name: "origin-api" }],
+          },
+        ],
+        resources: [{ type: "skill", name: "origin-api" }],
+        plugin_pins: [
+          { ref: "origin-apps", version_constraint: "", attachment_id: "att1" },
+          { ref: "pstack@cursor-public", version_constraint: "" },
+        ],
+      }),
+      { selectedProfile: "global default" },
+    );
+    expect(rows.map((row) => row.key)).toEqual([
+      "plugin:p1",
+      "pin:pstack@cursor-public",
+    ]);
+  });
+
   it("lists plugin packages, pins, and loose material without nested plugin contents", () => {
     const stacked = contents({
       plugins: [

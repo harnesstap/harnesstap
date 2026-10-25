@@ -403,7 +403,7 @@ describe("Global/Project scope inventory chrome", () => {
     const openPluginInLibrary = appSource.slice(
       appSource.indexOf("const openPluginInLibrary = useCallback("),
     );
-    expect(openPluginInLibrary).toContain("(pluginName: string) => {");
+    expect(openPluginInLibrary).toContain("(pluginName: string, version?: string) => {");
     expect(openPluginInLibrary).toContain("setLibraryFocusPlugin(pluginName)");
     expect(appSource).toContain('const goToLibrary = useCallback(() => nav.go("library")');
     expect(designSource).toContain(

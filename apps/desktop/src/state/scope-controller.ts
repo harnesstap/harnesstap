@@ -24,7 +24,7 @@ import { postApply } from "../lib/api/apply-plugin";
 import { postApprove, postDeny } from "../lib/api/approve";
 import { scopeToView, type Scope } from "../lib/api/scope";
 import { flattenProfileResourceList } from "../lib/contents-diff";
-import type { CutVersionRow } from "../lib/cut-versions-form";
+import { type CutVersionRow, nextPatchVersion } from "../lib/cut-versions-form";
 import {
   trustFieldsFromUnknown,
   type ExecutableTrustFields,
@@ -1452,7 +1452,7 @@ export function useScopeController(input: ScopeControllerInput) {
 
   // Cut version.
   const openCutForProfile = useCallback((name: string, version: string) => {
-    setCutRows([{ name, currentVersion: version, newVersion: version }]);
+    setCutRows([{ name, currentVersion: version, newVersion: nextPatchVersion(version) }]);
     setCutModalOpen(true);
   }, []);
 
