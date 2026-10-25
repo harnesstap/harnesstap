@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, FolderOpen } from "lucide-react";
+import { Check, ChevronDown, FolderOpen } from "lucide-react";
 import { useOverlayLayer } from "../state/overlay-stack";
 import {
   filterRecentProjects,
@@ -13,6 +13,9 @@ import { noSpellcheckProps } from "../lib/no-spellcheck";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
+
+/** Tooltip and accessible name of the dropdown footer's folder button. */
+export const OPEN_ANOTHER_PROJECT_TOOLTIP = "Open another project";
 
 interface ProjectPickerProps {
   projectPath: string;
@@ -196,12 +199,23 @@ export function ProjectPicker({
                     setOpen(false);
                   }}
                 >
-                  <span className="project-picker-item-name">
-                    {projectDisplayName(row.path)}
+                  <span className="project-picker-item-text">
+                    <span className="project-picker-item-name">
+                      {projectDisplayName(row.path)}
+                    </span>
+                    <span className="project-picker-item-path mono muted">
+                      {compactHomePath(row.path)}
+                    </span>
                   </span>
-                  <span className="project-picker-item-path mono muted">
-                    {compactHomePath(row.path)}
-                  </span>
+                  {selected ? (
+                    <Check
+                      className="project-picker-item-check"
+                      data-testid="project-picker-current-check"
+                      size={14}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  ) : null}
                 </button>
               );
             })
@@ -209,7 +223,7 @@ export function ProjectPicker({
         </div>
         <div className="project-picker-footer">
           <IconActionButton
-            label="Browse..."
+            label={OPEN_ANOTHER_PROJECT_TOOLTIP}
             onClick={() => {
               setOpen(false);
               onBrowse();

@@ -6,6 +6,7 @@ import { Tooltip } from "../../apps/desktop/node_modules/radix-ui/dist/index.mjs
 import { act, createElement } from "../../apps/desktop/node_modules/react/index.js";
 import { createRoot, type Root } from "../../apps/desktop/node_modules/react-dom/client.js";
 import { AppHeader, type AppHeaderProps } from "../../apps/desktop/src/components/shell/AppHeader.tsx";
+import { OPEN_ANOTHER_PROJECT_TOOLTIP } from "../../apps/desktop/src/components/ProjectPicker.tsx";
 import { ProfileScopeSwitch } from "../../apps/desktop/src/components/shell/ProfileScopeSwitch.tsx";
 import type { Scope } from "../../apps/desktop/src/lib/api/scope.ts";
 import type { Destination } from "../../apps/desktop/src/lib/header-destination.ts";
@@ -322,7 +323,7 @@ describe("Profile scope switch", () => {
       byTestId("project-path").click();
     });
     const browse = [...document.querySelectorAll<HTMLButtonElement>(".project-picker-footer button")].find(
-      (el) => el.getAttribute("aria-label") === "Browse..." || el.textContent?.includes("Browse..."),
+      (el) => el.getAttribute("aria-label") === OPEN_ANOTHER_PROJECT_TOOLTIP,
     );
     expect(browse).toBeDefined();
     await act(async () => {
@@ -409,8 +410,36 @@ describe("Profile scope switch geometry", () => {
     expect(label).toContain("text-overflow: ellipsis");
     expect(label).toContain("overflow: hidden");
     expect(label).toContain("white-space: nowrap");
-    const selected = shellCss.match(/\.profile-scope-option\.on,[^{]*\{([^}]*)\}/)?.[1] ?? "";
-    expect(selected).not.toMatch(/font-weight|padding|width|border:/);
+    const onRules = [...shellCss.matchAll(/(?:^|\n)([^{}\n][^{}]*\.on[^{}]*)\{([^}]*)\}/g)]
+      .filter((m) => m[1].includes("profile-scope"))
+      .map((m) => m[2]);
+    expect(onRules.length).toBeGreaterThan(0);
+    for (const body of onRules) {
+      expect(body).not.toMatch(/padding|width|border:|margin/);
+    }
+  });
+
+  it("marks the active segment with a stronger fill, a ring and medium-weight text", () => {
+    const base = shellCss.match(/\.profile-scope-option,\s*\.project-picker-trigger\.is-chevron \{([^}]*)\}/)?.[1] ?? "";
+    expect(base).toContain("font-weight: 400");
+    const fill = shellCss.match(/\.profile-scope-option\.on,\s*\.profile-scope-project\.on \{([^}]*)\}/)?.[1] ?? "";
+    expect(fill).toContain("background: var(--surface-selected)");
+    expect(fill).toContain("box-shadow: inset 0 0 0 1px var(--border-strong)");
+    const weight =
+      shellCss.match(/\.profile-scope-option\.on,\s*\.profile-scope-project\.on \.profile-scope-option \{([^}]*)\}/)?.[1] ?? "";
+    expect(weight).toContain("font-weight: 500");
+  });
+
+  it("puts the active class and pressed state on the selected segment only", async () => {
+    const root = await renderSwitch("global", "/work/acme-app");
+    expect(root.querySelector(".profile-scope-global")?.classList.contains("on")).toBe(true);
+    expect(root.querySelector(".profile-scope-project")?.classList.contains("on")).toBe(false);
+    expect(byTestId("profile-scope-global").getAttribute("aria-pressed")).toBe("true");
+    expect(byTestId("profile-scope-project").getAttribute("aria-pressed")).toBe("false");
+    const project = await renderSwitch("project", "/work/acme-app");
+    expect(project.querySelector(".profile-scope-global")?.classList.contains("on")).toBe(false);
+    expect(project.querySelector(".profile-scope-project")?.classList.contains("on")).toBe(true);
+    expect(byTestId("profile-scope-project").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("opens every switch tooltip to the right of the switch, clear of the title", () => {
@@ -422,6 +451,60 @@ describe("Profile scope switch geometry", () => {
     expect(switchSource).toMatch(/side="right"\s+sideOffset=\{TOOLTIP_OFFSETS\.project\}/);
     expect(switchSource).toContain('chevronTooltipSide="right"');
     expect(switchSource).toContain("chevronTooltipOffset={TOOLTIP_OFFSETS.chevron}");
+  });
+});
+
+describe("project dropdown", () => {
+  async function openDropdown(projectPath: string) {
+    await render(
+      createElement(ProfileScopeSwitch, {
+        scope: "project",
+        projectPath,
+        onSelectScope: () => {},
+        onPickProject: () => {},
+        onBrowseProject: () => {},
+      }),
+    );
+    await act(async () => {
+      byTestId("project-path").click();
+    });
+    return [...document.querySelectorAll<HTMLElement>('[role="option"]')];
+  }
+
+  it("shows a check and aria-selected on the current project row only", async () => {
+    rememberProject("/work/other-repo");
+    rememberProject("/work/acme-app");
+    const rows = await openDropdown("/work/acme-app");
+    expect(rows.length).toBe(2);
+    const current = rows.find((el) => el.textContent?.includes("acme-app"));
+    const other = rows.find((el) => el.textContent?.includes("other-repo"));
+    expect(current?.getAttribute("aria-selected")).toBe("true");
+    expect(other?.getAttribute("aria-selected")).toBe("false");
+    expect(current?.querySelectorAll('[data-testid="project-picker-current-check"]').length).toBe(1);
+    expect(other?.querySelector('[data-testid="project-picker-current-check"]')).toBeNull();
+    expect(document.querySelectorAll('[data-testid="project-picker-current-check"]').length).toBe(1);
+  });
+
+  it("has no check when no recent project is the current one", async () => {
+    rememberProject("/work/other-repo");
+    await openDropdown("");
+    expect(document.querySelector('[data-testid="project-picker-current-check"]')).toBeNull();
+  });
+
+  it("styles hover differently from the current row", () => {
+    expect(shellCss).toMatch(/\.project-picker-item:hover \{\s*background: var\(--surface-hover\);/);
+    expect(shellCss).toMatch(
+      /\.project-picker-item\.selected,\s*\.project-picker-item\.selected:hover \{\s*background: var\(--surface-selected\);/,
+    );
+  });
+
+  it("labels the footer folder button Open another project", async () => {
+    expect(OPEN_ANOTHER_PROJECT_TOOLTIP).toBe("Open another project");
+    expect(pickerSource).toContain("label={OPEN_ANOTHER_PROJECT_TOOLTIP}");
+    await openDropdown("/work/acme-app");
+    const footer = document.querySelectorAll<HTMLButtonElement>(".project-picker-footer button");
+    expect(footer.length).toBe(1);
+    expect(footer[0].getAttribute("aria-label")).toBe("Open another project");
   });
 });
 
