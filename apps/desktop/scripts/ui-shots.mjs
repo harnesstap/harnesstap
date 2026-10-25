@@ -268,6 +268,39 @@ async function assertSwitchLongName(page) {
   }
 }
 
+/**
+ * Each switch tooltip (Global, Project, chevron) must open clear of the
+ * profile title block under the switch: no overlap with any text in it.
+ */
+async function assertSwitchTooltipsClearTitle(page, state) {
+  for (const testId of ["profile-scope-global", "profile-scope-project", "project-path"]) {
+    // Leave first: a pointer already over the control after a click sends no new enter.
+    await page.mouse.move(0, 0);
+    await page.getByTestId(testId).hover({ timeout: T });
+    const tip = page.locator(".chrome-tooltip").first();
+    await tip.waitFor({ state: "visible", timeout: T });
+    await page.waitForTimeout(150);
+    const overlap = await page.evaluate(() => {
+      const tipEl = document.querySelector(".chrome-tooltip");
+      const identity = document.querySelector("main .live-toolbar-identity");
+      if (!tipEl || !identity) return "";
+      const t = tipEl.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(identity);
+      for (const r of range.getClientRects()) {
+        if (r.width === 0 || r.height === 0) continue;
+        if (r.left < t.right && r.right > t.left && r.top < t.bottom && r.bottom > t.top) {
+          return `tooltip ${Math.round(t.left)},${Math.round(t.top)} ${Math.round(t.width)}x${Math.round(t.height)} covers title text at ${Math.round(r.left)},${Math.round(r.top)}`;
+        }
+      }
+      return "";
+    });
+    await page.mouse.move(0, 0);
+    await tip.waitFor({ state: "hidden", timeout: T }).catch(() => {});
+    if (overlap) throw new Error(`${testId} tooltip over the profile title (${state}): ${overlap}`);
+  }
+}
+
 /** Global, Project, dropdown open and a long name all keep the switch box. */
 async function assertSwitchStableAcrossStates(page) {
   await assertSwitchStable(page, "project");
@@ -282,6 +315,7 @@ async function assertSwitchStableAcrossStates(page) {
   await page.getByTestId("profile-scope-project").click({ timeout: T });
   await page.locator('[data-testid="profile-scope-project"][aria-pressed="true"]').waitFor({ timeout: T });
   await assertSwitchStable(page, "project again");
+  await assertSwitchTooltipsClearTitle(page, "project");
   await assertSwitchLongName(page);
 }
 
@@ -409,6 +443,7 @@ const SCREENS = [
     run: async (page) => {
       await openGlobalProfile(page);
       await assertSwitchStable(page, "global, no project");
+      await assertSwitchTooltipsClearTitle(page, "global, no project");
       await assertRailNamesUseFullWidth(page);
     },
   },
