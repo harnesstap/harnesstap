@@ -29,6 +29,7 @@ import { Check, Plus, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { ResourceSelectionList } from "./CompositionPickers";
+import { DisabledReason } from "./DisabledReason";
 
 /** Create-profile screen: compose / home / project sources. */
 interface CreateProfileDrawerProps {
@@ -202,6 +203,18 @@ export function CreateProfileDrawer({
     source,
     token,
   ]);
+  const createProfileBlockedReason = useMemo(() => {
+    if (!name.trim()) {
+      return "Enter a profile name";
+    }
+    if (source === "compose") {
+      return libraryLoading ? "Loading the Library" : "Pick at least one resource";
+    }
+    if (source === "project") {
+      return "Choose a project";
+    }
+    return null;
+  }, [libraryLoading, name, source]);
 
   const buildRequest = (use: boolean): ProfileCreateRequest => {
     const common = {
@@ -329,19 +342,21 @@ export function CreateProfileDrawer({
               {busy ? "Creating..." : "Create profile"}
             </button>
           ) : (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              data-testid="create-profile-submit"
-              onClick={() => void runPreview()}
-              disabled={!canContinue || controlsDisabled}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
-              {busy ? "Previewing..." : "Continue"}
-            </button>
+            <DisabledReason reason={!canContinue && !controlsDisabled ? createProfileBlockedReason : null}>
+              <button
+                className={["btn", "primary", busy ? "is-busy" : ""]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="button"
+                data-testid="create-profile-submit"
+                onClick={() => void runPreview()}
+                disabled={!canContinue || controlsDisabled}
+                aria-busy={busy}
+              >
+                {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
+                {busy ? "Previewing..." : "Continue"}
+              </button>
+            </DisabledReason>
           )}
         </>
       }

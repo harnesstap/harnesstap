@@ -53,21 +53,36 @@ export const REMOVAL_GROUP_COPY = {
 } as const;
 
 export const REMOVAL_CONFIRM_COPY = {
-  title: "Some files will not be removed",
+  title(kept: number): string {
+    return kept === 1 ? "1 file will be kept" : `${kept} files will be kept`;
+  },
   description:
-    "These files were changed by you or were not made by HarnessTap. Apply will keep them unless you choose to remove them too.",
-  keepTheseFiles: "Keep these files",
-  removeThemToo: "Remove them too",
+    "You changed these files, or HarnessTap did not make them. Apply keeps them unless you remove them anyway.",
+  applyAndKeep: "Apply and keep",
+  removeAnyway: "Remove anyway",
   cancel: "Cancel",
   modifiedHeading: PREVIEW_FILE_COPY.keptChanged,
   unmanagedHeading: PREVIEW_FILE_COPY.keptUnmanaged,
 } as const;
 
+function fileCount(n: number): string {
+  return n === 1 ? "1 file" : `${n} files`;
+}
+
 export const APPLY_RESULT_COPY = {
   viewSnapshot: "View snapshot",
   close: "Close",
   wroteRemovedKept(wrote: number, removed: number, kept: number): string {
-    return `Wrote ${wrote}, removed ${removed}, kept ${kept}`;
+    const parts = [
+      wrote > 0 ? `wrote ${fileCount(wrote)}` : null,
+      removed > 0 ? `removed ${fileCount(removed)}` : null,
+      kept > 0 ? `kept ${kept}` : null,
+    ].filter((part): part is string => part !== null);
+    if (parts.length === 0) {
+      return "Applied.";
+    }
+    const sentence = parts.join(", ");
+    return `Applied. ${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
   },
   everythingUpToDate(unchanged: number): string {
     return `Everything is up to date. ${unchanged} unchanged.`;

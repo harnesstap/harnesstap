@@ -4,6 +4,7 @@ import { describe, expect, test } from "bun:test";
 import type { ResourceDeletePlan } from "../../apps/desktop/src/lib/api/resource-mutate.ts";
 import {
   diskDeleteConfirmationExplanation,
+  deleteLocationActionLabel,
   diskDeleteDisabledExplanation,
   DISK_DELETE_CONFIRM_CHECKBOX_LABEL,
   formatResourceDeleteAttachers,
@@ -13,7 +14,6 @@ import {
   confirmableDeleteLocations,
   protectedDeleteLocations,
   RESOURCE_DELETE_DISK_LABEL,
-  RESOURCE_DELETE_LIBRARY_LABEL,
   resourceCanRemoveFromActiveProfile,
   resourceDeleteDiskDisabled,
   resourceDeleteDiskNeedsConfirmation,
@@ -138,9 +138,14 @@ describe("resourceCanRemoveFromActiveProfile", () => {
 });
 
 describe("resource delete plan helpers", () => {
-  test("exposes both delete action labels", () => {
-    expect(RESOURCE_DELETE_LIBRARY_LABEL).toBe("Delete from library");
-    expect(RESOURCE_DELETE_DISK_LABEL).toBe("Delete from library + disk");
+  test("disk delete is an opt-in checkbox label", () => {
+    expect(RESOURCE_DELETE_DISK_LABEL).toBe("Also delete files on disk");
+  });
+
+  test("labels disk plan actions in sentence case", () => {
+    expect(deleteLocationActionLabel("delete-file")).toBe("Delete");
+    expect(deleteLocationActionLabel("edit-file")).toBe("Edit");
+    expect(deleteLocationActionLabel("protected")).toBe("Protected");
   });
 
   test("groups plan locations by scope", () => {
@@ -207,7 +212,7 @@ describe("resource delete plan helpers", () => {
       humanizeDiskDeleteReason("Shared file section cannot be identified"),
     );
     expect(diskDeleteDisabledExplanation(plan)).toContain(
-      "Delete from library + disk is unavailable",
+      "Files on disk can't be deleted here.",
     );
     expect(protectedDeleteLocations(plan)).toHaveLength(1);
   });
@@ -236,11 +241,11 @@ describe("resource delete plan helpers", () => {
 });
 
 describe("resource delete confirm chrome", () => {
-  test("lists attachers and offers Remove from active profile", () => {
+  test("lists attachers and offers Remove from active profile as an inline link", () => {
     expect(detailSource).toContain("formatResourceDeleteAttachers");
     expect(detailSource).toContain("resourceCanRemoveFromActiveProfile");
-    expect(detailSource).toContain("Remove from active profile");
-    expect(detailSource).toContain("tertiaryLabel={canRemoveFromActive");
+    expect(detailSource).toContain("Remove from {deleteAttachers.active_profile} instead");
+    expect(confirmSource).not.toContain("tertiaryLabel");
     expect(detailSource).toContain("removeProfileResource");
     expect(confirmSource).toContain("confirmHint");
     expect(detailSource).toContain("diskDeleteDisabledExplanation");
@@ -251,12 +256,13 @@ describe("resource delete confirm chrome", () => {
     expect(detailSource).toContain("onOpenOwningPlugin");
   });
 
-  test("loads the delete plan and exposes both delete modes", () => {
+  test("one Delete button, library-only unless the disk checkbox is on", () => {
     expect(detailSource).toContain("previewLibraryResourceDelete");
-    expect(detailSource).toContain("RESOURCE_DELETE_LIBRARY_LABEL");
     expect(detailSource).toContain("RESOURCE_DELETE_DISK_LABEL");
-    expect(detailSource).toContain('runDelete("library")');
-    expect(detailSource).toContain('runDelete("library_and_disk")');
+    expect(detailSource).toContain('confirmLabel="Delete"');
+    expect(detailSource).toContain('runDelete(deleteDiskChecked ? "library_and_disk" : "library")');
+    expect(detailSource).toContain("disabled={busy || diskDeleteDisabled}");
+    expect(detailSource).toContain("Protected: <span");
     expect(mutateSource).toContain("delete-plan");
     expect(mutateSource).toContain("library_and_disk");
   });
@@ -264,7 +270,7 @@ describe("resource delete confirm chrome", () => {
   test("documents listing attachers on resource delete", () => {
     expect(designSource).toContain("list profiles and plugins that still attach");
     expect(designSource).toContain("Remove from active profile");
-    expect(designSource).toContain("Delete from library + disk");
+    expect(designSource).toContain("Also delete files on disk");
     expect(designSource).toContain("Protected");
     expect(designSource).toContain("Delete anyway");
   });

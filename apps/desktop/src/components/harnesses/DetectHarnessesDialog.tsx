@@ -84,6 +84,40 @@ function ProposalGroup({
   );
 }
 
+function harnessCount(count: number): string {
+  return `${count} ${count === 1 ? "harness" : "harnesses"}`;
+}
+
+/** Title, why, and a confirm verb that names what the click does. */
+export function detectDialogCopy(
+  proposal: DetectProposal | null,
+  chosen: ReadonlySet<HarnessId>,
+): { title: string; description: string; confirmLabel: string } {
+  const removes = proposal?.remove ?? [];
+  const adding = (proposal?.add ?? []).filter((entry) => chosen.has(entry.id)).length;
+  const removing = removes.filter((entry) => chosen.has(entry.id)).length;
+  if (removes.length === 0) {
+    return {
+      title: "Harnesses found",
+      description: "Add these to HarnessTap? Nothing on disk changes.",
+      confirmLabel: adding > 0 ? `Add ${harnessCount(adding)}` : "Add harnesses",
+    };
+  }
+  let confirmLabel = "Update harnesses";
+  if (adding > 0 && removing === 0) {
+    confirmLabel = `Add ${harnessCount(adding)}`;
+  } else if (removing > 0 && adding === 0) {
+    confirmLabel = `Remove ${harnessCount(removing)}`;
+  } else if (adding > 0 && removing > 0) {
+    confirmLabel = `Update ${harnessCount(adding + removing)}`;
+  }
+  return {
+    title: "Harnesses changed",
+    description: "Update your HarnessTap list to match this machine? Nothing on disk changes.",
+    confirmLabel,
+  };
+}
+
 export function DetectHarnessesDialog({
   proposal,
   selection,
@@ -102,14 +136,16 @@ export function DetectHarnessesDialog({
     setChosen((current) => toggled(current, id, on));
   };
 
+  const copy = detectDialogCopy(proposal, chosen);
+
   return (
     <ConfirmDialog
       open={proposal !== null}
-      title="Detected changes"
-      description="Harnesses found on this machine differ from your list. Choose what to apply. Files on disk stay."
-      confirmLabel="Apply"
+      title={copy.title}
+      description={copy.description}
+      confirmLabel={copy.confirmLabel}
       confirmDisabled={chosen.size === 0}
-      confirmHint="Choose at least one change"
+      confirmHint="Pick at least one harness"
       confirmBusy={busy}
       onConfirm={() => onApply(chosen)}
       onCancel={onCancel}

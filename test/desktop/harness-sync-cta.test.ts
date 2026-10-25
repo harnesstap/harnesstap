@@ -53,9 +53,9 @@ describe("Harnesses sync CTA", () => {
     expect(dialogSource).toContain("Counting resource changes...");
     expect(dialogSource).toContain("formatHarnessSyncChangeSummary");
     expect(dialogSource).toContain("file-change-kind-badge");
-    expect(dialogSource).toContain('mark: "+"');
-    expect(dialogSource).toContain('mark: "−"');
-    expect(dialogSource).toContain('mark: "~"');
+    expect(dialogSource).toContain('label: "to add"');
+    expect(dialogSource).toContain('label: "to remove"');
+    expect(dialogSource).toContain('label: "to update"');
     expect(dialogSource).toContain('confirmDisabled={counting}');
     expect(apiSource).toContain("/v1/harness/sync");
     expect(apiSource).toContain("dry_run: true");
@@ -63,9 +63,9 @@ describe("Harnesses sync CTA", () => {
     expect(syncHarnessesTooltip()).toBe(
       "Merge across registered harnesses. Newest on-disk copy wins conflicts.",
     );
-    expect(syncHarnessesConfirmBody()).toContain("Prefers shared paths.");
-    expect(syncHarnessesConfirmBody()).toContain(
-      "Cursor and Claude plugin skills also land in .agents",
+    expect(syncHarnessesConfirmBody()).toBe(
+      "Copy resources between your harnesses so each one has the same set. " +
+        "If two copies differ, the newest one wins.",
     );
     expect(syncHarnessesConfirmBody()).not.toContain("—");
     expect(syncHarnessesDisabledReason({

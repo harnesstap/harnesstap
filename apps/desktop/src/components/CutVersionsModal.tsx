@@ -48,6 +48,11 @@ export function CutVersionsModal({
       }
       confirmLabel="Tag version"
       confirmDisabled={confirmDisabled}
+      confirmHint={
+        confirmDisabled && Object.keys(errors).length === 0
+          ? "Enter a new version"
+          : undefined
+      }
       confirmBusy={busy}
       onConfirm={onConfirm}
       onCancel={onCancel}

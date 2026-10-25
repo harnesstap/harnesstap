@@ -22,6 +22,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { IconActionButton } from "./IconActionButton";
 import { MarketplaceTrackedBranchesField } from "./MarketplaceTrackedBranchesField";
+import { DisabledReason } from "./DisabledReason";
 
 const BRANCH_LIST_DEBOUNCE_MS = 400;
 
@@ -217,6 +218,18 @@ export function MarketplaceEditPanel({
     && !typeDetecting
     && typeDetection?.status === "inferred"
     && platforms.length > 0;
+  let marketplaceBlockedReason: string | null = null;
+  if (!url.trim()) {
+    marketplaceBlockedReason = "Enter a marketplace URL";
+  } else if (typeDetecting) {
+    marketplaceBlockedReason = "Checking the URL";
+  } else if (typeDetection?.status !== "inferred") {
+    marketplaceBlockedReason = "Enter a URL HarnessTap can read";
+  } else if (!resolvedName) {
+    marketplaceBlockedReason = "Enter a name";
+  } else if (platforms.length === 0) {
+    marketplaceBlockedReason = "No supported harness found at this URL";
+  }
   const dirty = marketplaceDraftIsDirty({
     url,
     name,
@@ -379,19 +392,21 @@ export function MarketplaceEditPanel({
             <X size={16} aria-hidden />
             Cancel
           </button>
-          <button
-            className={["btn", "primary", busy ? "is-busy" : ""]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            data-testid={mode === "add" ? "marketplace-add" : "marketplace-save"}
-            onClick={() => void onSubmit()}
-            disabled={!canSubmit || controlsDisabled}
-            aria-busy={busy}
-          >
-            {busy ? <ButtonSpinner size={16} /> : mode === "add" ? <Plus size={16} aria-hidden /> : <Check size={16} aria-hidden />}
-            {busy ? (mode === "add" ? "Adding..." : "Saving...") : submitLabel}
-          </button>
+          <DisabledReason reason={!canSubmit && !controlsDisabled ? marketplaceBlockedReason : null}>
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              data-testid={mode === "add" ? "marketplace-add" : "marketplace-save"}
+              onClick={() => void onSubmit()}
+              disabled={!canSubmit || controlsDisabled}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : mode === "add" ? <Plus size={16} aria-hidden /> : <Check size={16} aria-hidden />}
+              {busy ? (mode === "add" ? "Adding..." : "Saving...") : submitLabel}
+            </button>
+          </DisabledReason>
         </>
       }
     >
