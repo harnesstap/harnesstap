@@ -281,7 +281,7 @@ describe("ConfirmDialog focus trap", () => {
   });
 });
 
-describe("Remove profile dialog", () => {
+describe("Delete profile dialog", () => {
   it("is a destructive confirm so Cancel is focused ahead of the checkbox", () => {
     const source = readFileSync(
       join(
@@ -291,6 +291,6 @@ describe("Remove profile dialog", () => {
       "utf8",
     );
     expect(source).toContain('tone="destructive"');
-    expect(source).toContain("Also delete the plugin from the library");
+    expect(source).toContain("Also delete it from the Library");
   });
 });

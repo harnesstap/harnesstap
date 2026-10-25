@@ -45,6 +45,7 @@ export function App() {
 
   const [libraryReloadKey, setLibraryReloadKey] = useState(0);
   const [libraryFocusPlugin, setLibraryFocusPlugin] = useState<string | null>(null);
+  const [libraryFocusVersion, setLibraryFocusVersion] = useState<string | null>(null);
   const [libraryFocusResource, setLibraryFocusResource] = useState<string | null>(null);
   const [environmentCreateOpen, setEnvironmentCreateOpen] = useState(false);
   const [pendingHarnessAction, setPendingHarnessAction] = useState<
@@ -132,8 +133,9 @@ export function App() {
   }, []);
 
   const openPluginInLibrary = useCallback(
-    (pluginName: string) => {
+    (pluginName: string, version?: string) => {
       setLibraryFocusPlugin(pluginName);
+      setLibraryFocusVersion(version ?? null);
       goToLibrary();
     },
     [goToLibrary],
@@ -168,8 +170,8 @@ export function App() {
     [goToLibrary],
   );
 
-  // A bell row opens the profile it is about; a plain plugin opens in the Library.
-  const openNotificationTarget = useCallback(
+  // A profile name opens that profile; a plain plugin opens in the Library (bell rows, env Used by profiles).
+  const openProfileOrPlugin = useCallback(
     (name: string) => {
       if (ctrl.profiles.some((profile) => profile.name === name)) {
         ctrl.closeEditProfile();
@@ -290,7 +292,10 @@ export function App() {
     () => ctrl.profiles.map((profile) => profile.name),
     [ctrl.profiles],
   );
-  const onFocusPluginConsumed = useCallback(() => setLibraryFocusPlugin(null), []);
+  const onFocusPluginConsumed = useCallback(() => {
+    setLibraryFocusPlugin(null);
+    setLibraryFocusVersion(null);
+  }, []);
   const onFocusResourceConsumed = useCallback(() => setLibraryFocusResource(null), []);
   const onImported = useCallback(
     (message: string) => {
@@ -328,6 +333,7 @@ export function App() {
             onOpenCreateProfile={overlays.openCreateProfile}
             onOpenStashBrowse={() => overlays.openOverlay("stashBrowse")}
             onRequestSignIn={openCloudAccount}
+            onSetUpHarness={onDetectHarnesses}
             onCreateEnvironment={() => {
               setEnvironmentCreateOpen(true);
               nav.go("environments");
@@ -345,7 +351,7 @@ export function App() {
             homeResetNonce={nav.resetNonce}
             autoOpenCreate={environmentCreateOpen}
             onAutoOpenCreateConsumed={onEnvironmentCreateConsumed}
-            onOpenPlugin={openPluginInLibrary}
+            onOpenPlugin={openProfileOrPlugin}
             canWorkspaceBack={nav.hasHistory}
             onWorkspaceBack={nav.back}
             onSuccess={onSuccessToast}
@@ -386,6 +392,7 @@ export function App() {
             attachProfileName={attachProfileName}
             onAddToProfile={onAddToProfile}
             focusPluginName={libraryFocusPlugin}
+            focusPluginVersion={libraryFocusVersion}
             onFocusPluginConsumed={onFocusPluginConsumed}
             focusResourceSelector={libraryFocusResource}
             onFocusResourceConsumed={onFocusResourceConsumed}
@@ -438,7 +445,7 @@ export function App() {
           onDestinationClick={onHeaderDestinationClick}
           onOpenMigrateExport={() => overlays.openOverlay("migrateExport")}
           onOpenMigrateImport={() => overlays.openOverlay("migrateImport")}
-          onOpenNotification={openNotificationTarget}
+          onOpenNotification={openProfileOrPlugin}
           onOpenSettings={() => overlays.openOverlay("settings")}
           onOpenAccount={openCloudAccount}
         />

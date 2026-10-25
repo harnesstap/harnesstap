@@ -8,7 +8,6 @@ import {
   GripVertical,
   Pencil,
   Plus,
-  RefreshCw,
   RotateCw,
   X,
 } from "lucide-react";
@@ -23,6 +22,7 @@ import { noResultsTitle } from "../../lib/empty-copy";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { profileHeaderStatus } from "../../lib/reapply";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { LoadErrorState } from "../LoadErrorState";
 import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
 import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
@@ -100,6 +100,9 @@ export function ProfilesRail({
   });
   const showRailSkeleton =
     profiles.length === 0 && !profilesError && (profilesRefreshing || !hasStatus);
+  // Nothing loaded: the main pane shows the single error state, so the rail
+  // stays quiet and offers no create action until profiles load.
+  const profilesLoadFailed = Boolean(profilesError) && profiles.length === 0;
 
   const [draggingProfile, setDraggingProfile] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<
@@ -301,6 +304,7 @@ export function ProfilesRail({
                   : undefined
               }
             />
+            {profilesLoadFailed ? null : (
             <IconActionButton
               primary
               className="rail-icon-action profile-create-action"
@@ -311,6 +315,7 @@ export function ProfilesRail({
               title="Create a new profile"
               icon={<Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
             />
+            )}
           </div>
         </div>
       </div>
@@ -342,16 +347,11 @@ export function ProfilesRail({
         onDragOver={onProfileListDragOver}
         onDrop={onProfileListDrop}
       >
-        {profilesError && (
-          <EmptyState
-            title="Could not load profiles"
-            body={profilesError}
-            action={{
-              label: "Retry",
-              disabled: switching,
-              onClick: () => void ctrl.refreshProfiles(),
-              icon: <RefreshCw size={16} strokeWidth={2} aria-hidden="true" />,
-            }}
+        {profilesError && !profilesLoadFailed && (
+          <LoadErrorState
+            noun="profiles"
+            retryDisabled={switching}
+            onRetry={() => void ctrl.refreshProfiles()}
           />
         )}
         {showRailSkeleton ? <SkeletonRow count={6} height={40} /> : null}
