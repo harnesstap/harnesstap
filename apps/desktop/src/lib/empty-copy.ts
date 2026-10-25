@@ -1,9 +1,12 @@
+/** Filter-miss title on every surface: `No matches for "x"`, with a "Clear filter" action. */
+export const CLEAR_FILTER_LABEL = "Clear filter";
+
 export function noResultsTitle(query: string): string {
   const trimmed = query.trim();
   if (trimmed.length === 0) {
-    return "No results";
+    return "No matches";
   }
-  return `No results for "${trimmed}"`;
+  return `No matches for "${trimmed}"`;
 }
 
 export type CatalogListEmptyKind = "none" | "catalog-empty" | "filter-empty";

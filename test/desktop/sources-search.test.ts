@@ -878,18 +878,18 @@ describe("discoverListEmptyCopy", () => {
       action: null,
     });
     expect(discoverListEmptyCopy({ query: "ship" })).toEqual({
-      message: 'No results for "ship"',
-      hint: "Clear search to see every source again.",
+      message: 'No matches for "ship"',
+      hint: "Clear the filter to see every source.",
       action: "clear-search",
     });
   });
 
-  test("offers Clear filters when Not in my library hides every hit", () => {
+  test("offers Clear filter when Not in my library hides every hit", () => {
     expect(
       discoverListEmptyCopy({ query: "", notInLibrary: true, unfilteredCount: 3 }),
     ).toEqual({
-      message: "No results",
-      hint: "Clear filters to see every source again.",
+      message: "No matches",
+      hint: "Clear the filter to see every source.",
       action: "clear-filters",
     });
     expect(
@@ -902,8 +902,8 @@ describe("discoverListEmptyCopy", () => {
     expect(
       discoverListEmptyCopy({ query: "ship", notInLibrary: true }),
     ).toEqual({
-      message: 'No results for "ship"',
-      hint: "Clear search to see every source again.",
+      message: 'No matches for "ship"',
+      hint: "Clear the filter to see every source.",
       action: "clear-search",
     });
   });

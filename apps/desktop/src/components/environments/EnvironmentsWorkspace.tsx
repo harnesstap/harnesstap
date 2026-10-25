@@ -23,7 +23,7 @@ import {
 } from "../../lib/api/environments";
 import { toast } from "../../state/toast-store";
 import { useRegisterCommands } from "../../state/command-registry";
-import { noResultsTitle } from "../../lib/empty-copy";
+import { CLEAR_FILTER_LABEL, noResultsTitle } from "../../lib/empty-copy";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { ENVIRONMENTS_EMPTY_COPY } from "../../lib/ui-copy";
 import { EnvironmentDrawer } from "./EnvironmentDrawer";
@@ -365,7 +365,7 @@ export function EnvironmentsWorkspace({
               <input
                 className="resources-panel-filter"
                 type="search"
-                placeholder="Filter environments"
+                placeholder="Filter by name or description"
                 aria-label="Filter environments"
                 value={query}
                 data-workspace-filter=""
@@ -386,10 +386,11 @@ export function EnvironmentsWorkspace({
               </ul>
             ) : filtered.length === 0 ? (
               <EmptyState
+                variant="no-match"
                 title={noResultsTitle(query)}
                 body="Clear the filter to see every environment."
                 action={{
-                  label: "Clear filter",
+                  label: CLEAR_FILTER_LABEL,
                   onClick: () => setQuery(""),
                   icon: <FilterX size={ACTION_ICON_SIZE} aria-hidden />,
                 }}

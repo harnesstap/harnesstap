@@ -25,6 +25,7 @@ import { resourceRowVirtualStyle } from "../lib/resource-row-virtual";
 import { Cloud, FilterX, Library, LogIn, Store } from "lucide-react";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { EmptyState, type EmptyStateAction } from "./EmptyState";
+import { CLEAR_FILTER_LABEL } from "../lib/empty-copy";
 import { Banner } from "./shell/Banner";
 import { IconActionButton } from "./IconActionButton";
 import { Skeleton } from "./shell/Skeleton";
@@ -288,7 +289,7 @@ export function SourcesListPane({
       case "clear-search":
         if (clearSearch) {
           action = {
-            label: "Clear search",
+            label: CLEAR_FILTER_LABEL,
             onClick: clearSearch,
             icon: <FilterX size={16} aria-hidden />,
           };
@@ -297,7 +298,7 @@ export function SourcesListPane({
       case "clear-filters":
         if (onClearFilters) {
           action = {
-            label: "Clear filters",
+            label: CLEAR_FILTER_LABEL,
             onClick: onClearFilters,
             icon: <FilterX size={16} aria-hidden />,
           };
@@ -314,6 +315,7 @@ export function SourcesListPane({
       <EmptyState
         className="discover-empty"
         testId="discover-empty"
+        variant={empty.action ? "no-match" : undefined}
         title={empty.message}
         body={empty.hint}
         action={action}

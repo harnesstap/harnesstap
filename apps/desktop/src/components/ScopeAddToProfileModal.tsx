@@ -248,7 +248,7 @@ export function ScopeAddToProfileModal({
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Filter by name"
+              placeholder="Filter by name or description"
               aria-label="Filter library items"
               disabled={controlsDisabled || loading}
               {...noSpellcheckProps}
