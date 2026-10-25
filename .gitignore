@@ -10,6 +10,9 @@ out/
 apps/desktop/dist/
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/binaries/
+# tauri-build regenerates these for the host OS on every build (Tauri's own
+# templates ignore them). capabilities/*.json use the hosted $schema URL.
+apps/desktop/src-tauri/gen/schemas/
 *.bun-build
 
 # Coverage
