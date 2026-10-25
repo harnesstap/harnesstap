@@ -44,6 +44,7 @@ import { toast } from "../../state/toast-store";
 import { useEscapeWhenNoLayer } from "../../state/overlay-stack";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { EmptyState } from "../EmptyState";
+import { LoadErrorState } from "../LoadErrorState";
 import { LibraryDetailChrome } from "../LibraryDetailChrome";
 import { ResourceDetailBody } from "../ResourceDetailBody";
 import { Banner } from "../shell/Banner";
@@ -344,6 +345,8 @@ export function HarnessesWorkspace({
     onWorkspaceBack?.();
   };
 
+  // The inventory never loaded: show one error state instead of a banner over the empty state.
+  const inventoryLoadFailed = Boolean(ctrl.error) && inventory === null;
   const rows = useMemo(() => configuredHarnesses(inventory), [inventory]);
   const available = useMemo(() => availableHarnesses(inventory), [inventory]);
   const selection = inventory?.selection ?? null;
@@ -563,7 +566,7 @@ export function HarnessesWorkspace({
         </div>
       </div>
 
-      {ctrl.error ? (
+      {ctrl.error && !inventoryLoadFailed ? (
         <Banner
           tone="error"
           message={ctrl.error}
@@ -573,6 +576,16 @@ export function HarnessesWorkspace({
         />
       ) : null}
 
+      {inventoryLoadFailed ? (
+        <div className="resources-panel-body">
+          <LoadErrorState
+            noun="harnesses"
+            testId="harnesses-load-error"
+            retryDisabled={ctrl.busy.kind === "loading"}
+            onRetry={() => void ctrl.refresh()}
+          />
+        </div>
+      ) : (
       <div className="resources-panel-layout harnesses-workspace-layout">
         <HarnessSidebar
           rows={rows}
@@ -599,6 +612,7 @@ export function HarnessesWorkspace({
         />
         <div className="resources-panel-body">{renderMain()}</div>
       </div>
+      )}
 
       <PluginPullReportDialog
         open={pullOpen}

@@ -386,7 +386,13 @@ export function EnvironmentDrawer({
               onChange={(event) => setName(event.target.value)}
               disabled={controlsDisabled || mode === "edit"}
               readOnly={mode === "edit"}
+              aria-describedby={mode === "edit" ? "environment-name-hint" : undefined}
             />
+            {mode === "edit" ? (
+              <p id="environment-name-hint" className="muted m-0 text-xs">
+                Names can&apos;t be changed after creating.
+              </p>
+            ) : null}
           </div>
           <div className="form-field gap-1.5">
             <Label htmlFor="environment-description">
@@ -455,7 +461,7 @@ export function EnvironmentDrawer({
                 {envVars.map((row, index) => (
                   <div className="flex gap-2" key={`create-env-${index}`}>
                     <Input
-                      placeholder="KEY"
+                      placeholder="Key"
                       value={row.key}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -466,7 +472,7 @@ export function EnvironmentDrawer({
                         )}
                     />
                     <Input
-                      placeholder="VALUE"
+                      placeholder="Value"
                       value={row.value}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -495,7 +501,7 @@ export function EnvironmentDrawer({
                   onCheckedChange={setUseAfterCreate}
                   disabled={controlsDisabled}
                 />
-                <Label htmlFor="use-after-create">Use after create</Label>
+                <Label htmlFor="use-after-create">Make active after creating</Label>
               </div>
             </>
           ) : (
@@ -508,7 +514,7 @@ export function EnvironmentDrawer({
                 {envVars.map((row, index) => (
                   <div className="flex gap-2" key={`env-${index}`}>
                     <Input
-                      placeholder="KEY"
+                      placeholder="Key"
                       value={row.key}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -519,7 +525,7 @@ export function EnvironmentDrawer({
                         )}
                     />
                     <Input
-                      placeholder="VALUE"
+                      placeholder="Value"
                       value={row.value}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -547,7 +553,7 @@ export function EnvironmentDrawer({
                 {secrets.map((row, index) => (
                   <div className="flex gap-2" key={`secret-${index}`}>
                     <Input
-                      placeholder="KEY"
+                      placeholder="Key"
                       value={row.key}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -579,7 +585,7 @@ export function EnvironmentDrawer({
                       </SelectContent>
                     </Select>
                     <Input
-                      placeholder="ref"
+                      placeholder="Ref"
                       value={row.ref}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -607,7 +613,7 @@ export function EnvironmentDrawer({
                 {models.map((row, index) => (
                   <div className="flex gap-2" key={`model-${index}`}>
                     <Input
-                      placeholder="name"
+                      placeholder="Name"
                       value={row.name}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -618,7 +624,7 @@ export function EnvironmentDrawer({
                         )}
                     />
                     <Input
-                      placeholder="model"
+                      placeholder="Model"
                       value={row.model}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -629,7 +635,7 @@ export function EnvironmentDrawer({
                         )}
                     />
                     <Input
-                      placeholder="provider"
+                      placeholder="Provider"
                       value={row.provider}
                       disabled={controlsDisabled}
                       onChange={(event) =>
@@ -678,7 +684,7 @@ export function EnvironmentDrawer({
                       </SelectContent>
                     </Select>
                     <Input
-                      placeholder="pattern"
+                      placeholder="Pattern"
                       value={row.pattern}
                       disabled={controlsDisabled}
                       onChange={(event) =>

@@ -168,8 +168,8 @@ export function App() {
     [goToLibrary],
   );
 
-  // A bell row opens the profile it is about; a plain plugin opens in the Library.
-  const openNotificationTarget = useCallback(
+  // A profile name opens that profile; a plain plugin opens in the Library (bell rows, env Used by profiles).
+  const openProfileOrPlugin = useCallback(
     (name: string) => {
       if (ctrl.profiles.some((profile) => profile.name === name)) {
         ctrl.closeEditProfile();
@@ -325,7 +325,7 @@ export function App() {
             homeResetNonce={nav.resetNonce}
             autoOpenCreate={environmentCreateOpen}
             onAutoOpenCreateConsumed={onEnvironmentCreateConsumed}
-            onOpenPlugin={openPluginInLibrary}
+            onOpenPlugin={openProfileOrPlugin}
             canWorkspaceBack={nav.hasHistory}
             onWorkspaceBack={nav.back}
             onSuccess={onSuccessToast}
@@ -419,7 +419,7 @@ export function App() {
           onDestinationClick={onHeaderDestinationClick}
           onOpenMigrateExport={() => overlays.openOverlay("migrateExport")}
           onOpenMigrateImport={() => overlays.openOverlay("migrateImport")}
-          onOpenNotification={openNotificationTarget}
+          onOpenNotification={openProfileOrPlugin}
           onOpenSettings={() => overlays.openOverlay("settings")}
           onOpenAccount={openCloudAccount}
         />

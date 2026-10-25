@@ -16,6 +16,7 @@ import { EditedChip } from "../EditedChip";
 import { EditProfilePane } from "../EditProfilePane";
 import { FieldIdentityIcon } from "../FieldIdentityIcon";
 import { IconActionButton } from "../IconActionButton";
+import { LoadErrorState } from "../LoadErrorState";
 import { LiveStatePanel } from "../LiveStatePanel";
 import { ApplyProgressStrip, isApplyStepActive, stepState, switchStepClassName } from "../live/ApplyProgressStrip";
 import { ProfileHeaderStatus } from "../live/ProfileHeaderStatus";
@@ -99,6 +100,8 @@ export function ScopeWorkspace({
   const token = client?.token ?? null;
   const baseUrl = client?.baseUrl ?? null;
   const status = useStatusStore((state) => state.status);
+  // The profile list failed and nothing is loaded: one error state, no create CTAs.
+  const profilesLoadFailed = Boolean(ctrl.profilesError) && ctrl.profiles.length === 0;
   const statusError = useStatusStore((state) => state.statusError);
   const upstreamUpdates = useUpstreamUpdates(baseUrl, token);
   const statusUpdatesKey = `${status?.updates?.count ?? 0}:${status?.updates?.major_count ?? 0}`;
@@ -279,6 +282,7 @@ export function ScopeWorkspace({
             />
           ) : null}
 
+          {profilesLoadFailed ? null : (
           <div className="live-toolbar">
             <div className="live-toolbar-identity">
               <div className="status-line" aria-live="polite">
@@ -419,6 +423,7 @@ export function ScopeWorkspace({
                 ) : null}
               </div>
           </div>
+          )}
 
           {statusError && (
             <Banner
@@ -428,7 +433,13 @@ export function ScopeWorkspace({
             />
           )}
 
-          {ctrl.visibleProfiles.length === 0 && !ctrl.profilesError ? (
+          {profilesLoadFailed ? (
+            <LoadErrorState
+              noun="profiles"
+              testId="profiles-load-error"
+              onRetry={() => void ctrl.refreshProfiles()}
+            />
+          ) : ctrl.visibleProfiles.length === 0 && !ctrl.profilesError ? (
             <div className="scope-first-run" data-testid="scope-first-run">
               <h2>Create your first profile</h2>
               <p className="muted">

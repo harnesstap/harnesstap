@@ -88,11 +88,13 @@ describe("profile delete chrome", () => {
     expect(deleteSource).toContain('variant?: "labeled" | "icon" | "menu"');
     expect(deleteSource).toContain("IconActionButton");
     expect(deleteSource).toContain("Trash2");
-    expect(deleteSource).toContain('label="Remove profile"');
+    expect(deleteSource).toContain('label="Delete profile"');
+    expect(deleteSource).toContain('title="Delete this profile?"');
+    expect(deleteSource).not.toContain("profile tag");
     expect(deleteSource).toContain("profile-remove-action");
     expect(deleteSource).not.toContain("profile-delete-footer");
     expect(deleteSource).toContain("ConfirmDialog");
-    expect(deleteSource).toContain("Also delete the plugin from the library");
+    expect(deleteSource).toContain("Also delete it from the Library");
     expect(deleteSource).toContain("confirm-dialog-option");
     expect(deleteSource).not.toContain("text-muted-foreground");
     expect(stylesSource).toContain(".confirm-dialog-extra");

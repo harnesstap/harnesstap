@@ -209,3 +209,18 @@ export function formatUserPath(path: string, home?: string): string {
   const keep = Math.floor((USER_PATH_MAX - 3) / 2);
   return `${tilde.slice(0, keep)}...${tilde.slice(-keep)}`;
 }
+
+/** One error state for a list that failed to load (replaces its empty state). */
+export function loadErrorCopy(noun: string) {
+  return {
+    title: `Couldn't load ${noun}`,
+    body: "Check that the HarnessTap agent is running, then try again.",
+    action: "Retry",
+  } as const;
+}
+
+export const ENVIRONMENTS_EMPTY_COPY = {
+  title: "No environments yet",
+  body: "Use one to share env vars, secrets, models, and permissions across profiles.",
+  action: "Create environment",
+} as const;

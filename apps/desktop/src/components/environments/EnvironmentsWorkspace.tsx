@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, Copy, Eye, EyeOff, FilterX, Pencil, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { EmptyState } from "../EmptyState";
 import { IconActionButton } from "../IconActionButton";
+import { LoadErrorState } from "../LoadErrorState";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
 import {
@@ -23,16 +24,12 @@ import {
 import { toast } from "../../state/toast-store";
 import { useRegisterCommands } from "../../state/command-registry";
 import { noResultsTitle } from "../../lib/empty-copy";
-import { pruneSelectedIds } from "../../lib/library-bulk-edit";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
+import { ENVIRONMENTS_EMPTY_COPY } from "../../lib/ui-copy";
 import { EnvironmentDrawer } from "./EnvironmentDrawer";
 
 const ACTION_ICON_SIZE = 16;
 const LIST_SKELETON_COUNT = 6;
-
-function stopRowSelect(event: MouseEvent) {
-  event.stopPropagation();
-}
 
 export interface EnvironmentsWorkspaceProps {
   baseUrl: string | null;
@@ -77,9 +74,9 @@ export function EnvironmentsWorkspace({
   const listLoadedRef = useRef(false);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /** Set when the list itself failed to load; replaces the empty state. */
+  const [listError, setListError] = useState<string | null>(null);
   const [inspectedName, setInspectedName] = useState<string | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const homeResetNonceSeen = useRef(homeResetNonce);
 
   useEffect(() => {
@@ -89,8 +86,6 @@ export function EnvironmentsWorkspace({
     homeResetNonceSeen.current = homeResetNonce;
     setQuery("");
     setInspectedName(null);
-    setEditMode(false);
-    setSelectedIds(new Set());
   }, [homeResetNonce]);
 
   useEffect(() => {
@@ -154,7 +149,7 @@ export function EnvironmentsWorkspace({
         }
         setRows(nextRows);
         listLoadedRef.current = true;
-        setError(null);
+        setListError(null);
         setInspectedName((current) => {
           if (current !== null) {
             return current;
@@ -164,7 +159,7 @@ export function EnvironmentsWorkspace({
       })
       .catch((loadError: unknown) => {
         if (!cancelled) {
-          setError(
+          setListError(
             loadError instanceof Error
               ? loadError.message
               : "Could not load environments",
@@ -224,22 +219,14 @@ export function EnvironmentsWorkspace({
   const deleteNames = deleteTargets.map((row) => row.name);
   const referencedNames = detail?.references.plugins.map((plugin) => plugin.name) ?? [];
   const showListSkeleton = listLoading && rows.length === 0;
+  const listFailed = listError !== null && !listLoadedRef.current && !listLoading;
+  const listEmpty = !listFailed && !showListSkeleton && rows.length === 0;
   const showDetailSkeleton = Boolean(inspectedName) && (!detail || detail.environment.name !== inspectedName);
-  const knownIds = useMemo(() => new Set(filtered.map((row) => row.id)), [filtered]);
-  const selectedRows = useMemo(
-    () => rows.filter((row) => selectedIds.has(row.id)),
-    [rows, selectedIds],
-  );
-
-  useEffect(() => {
-    if (!editMode) {
-      setSelectedIds(new Set());
-    }
-  }, [editMode]);
-
-  useEffect(() => {
-    setSelectedIds((current) => pruneSelectedIds(current, knownIds));
-  }, [knownIds]);
+  const openCreate = () => {
+    setDrawerMode("create");
+    setEditName(undefined);
+    setDrawerOpen(true);
+  };
 
   const inspectEnvironment = (name: string) => {
     if (name === inspectedName) {
@@ -248,18 +235,6 @@ export function EnvironmentsWorkspace({
     setInspectedName(name);
     setDetail(null);
     setDetailRefreshing(true);
-  };
-
-  const toggleSelected = (id: string) => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
   };
 
   const onUse = async (name: string) => {
@@ -296,13 +271,6 @@ export function EnvironmentsWorkspace({
       if (inspectedName && names.includes(inspectedName)) {
         setInspectedName(null);
       }
-      setSelectedIds((current) => {
-        const next = new Set(current);
-        for (const row of deleteTargets) {
-          next.delete(row.id);
-        }
-        return next;
-      });
       setDeleteTargets([]);
       setForceChecked(false);
       refresh();
@@ -346,52 +314,47 @@ export function EnvironmentsWorkspace({
                 refresh();
               }}
             />
-            <IconActionButton
-              data-testid="environments-edit-mode"
-              label={editMode ? "Done" : "Edit"}
-              aria-pressed={editMode}
-              disabled={controlsDisabled || !baseUrl || rows.length === 0}
-              onClick={() => setEditMode((current) => !current)}
-              icon={
-                editMode
-                  ? <Check size={ACTION_ICON_SIZE} aria-hidden />
-                  : <Pencil size={ACTION_ICON_SIZE} aria-hidden />
-              }
-            />
-            {editMode ? (
+            {listFailed ? null : (
               <IconActionButton
-                className="profile-remove-action"
-                data-testid="environments-delete-selected"
-                label="Delete selected"
-                disabled={controlsDisabled || selectedRows.length === 0}
-                onClick={() => {
-                  if (selectedRows.length === 0) {
-                    return;
-                  }
-                  setDeleteTargets(selectedRows);
-                  setForceChecked(false);
-                }}
-                icon={<Trash2 size={ACTION_ICON_SIZE} aria-hidden />}
+                label="Create environment"
+                primary
+                data-testid="create-environment"
+                disabled={controlsDisabled || !baseUrl}
+                onClick={openCreate}
+                icon={<Plus size={ACTION_ICON_SIZE} aria-hidden />}
               />
-            ) : null}
-            <IconActionButton
-              label="Create environment"
-              primary
-              data-testid="create-environment"
-              disabled={controlsDisabled || !baseUrl}
-              onClick={() => {
-                setDrawerMode("create");
-                setEditName(undefined);
-                setDrawerOpen(true);
-              }}
-              icon={<Plus size={ACTION_ICON_SIZE} aria-hidden />}
-            />
+            )}
           </div>
         </div>
       </div>
 
       {error ? <div className="banner error">{error}</div> : null}
 
+      {listFailed ? (
+        <div className="resources-panel-body">
+          <LoadErrorState
+            noun="environments"
+            testId="environments-load-error"
+            retryDisabled={controlsDisabled || !baseUrl}
+            onRetry={refresh}
+          />
+        </div>
+      ) : listEmpty ? (
+        <div className="resources-panel-body">
+          <EmptyState
+            testId="environments-empty"
+            title={ENVIRONMENTS_EMPTY_COPY.title}
+            body={ENVIRONMENTS_EMPTY_COPY.body}
+            action={{
+              label: ENVIRONMENTS_EMPTY_COPY.action,
+              primary: true,
+              disabled: controlsDisabled || !baseUrl,
+              onClick: openCreate,
+              icon: <Plus size={ACTION_ICON_SIZE} aria-hidden />,
+            }}
+          />
+        </div>
+      ) : (
       <div className="resources-panel-layout">
         <aside
           className="resource-filter-sidebar environment-list-sidebar"
@@ -410,13 +373,6 @@ export function EnvironmentsWorkspace({
                 disabled={controlsDisabled}
                 {...noSpellcheckProps}
               />
-              <IconActionButton
-                className="resource-filter-clear"
-                label="Clear filter"
-                disabled={controlsDisabled || query.trim() === ""}
-                onClick={() => setQuery("")}
-                icon={<FilterX size={ACTION_ICON_SIZE} aria-hidden />}
-              />
             </div>
           </div>
           <div className="environment-list-scroll">
@@ -429,57 +385,22 @@ export function EnvironmentsWorkspace({
                 ))}
               </ul>
             ) : filtered.length === 0 ? (
-              rows.length === 0 ? (
-                <EmptyState
-                  title="No environments yet"
-                  body="Create one to reuse env vars, secrets, and models."
-                  action={{
-                    label: "Create environment",
-                    primary: true,
-                    disabled: controlsDisabled || !baseUrl,
-                    onClick: () => {
-                      setDrawerMode("create");
-                      setEditName(undefined);
-                      setDrawerOpen(true);
-                    },
-                    icon: <Plus size={ACTION_ICON_SIZE} aria-hidden />,
-                  }}
-                />
-              ) : (
-                <EmptyState
-                  title={noResultsTitle(query)}
-                  body="Clear the filter to see every environment."
-                  action={{
-                    label: "Clear filter",
-                    onClick: () => setQuery(""),
-                    icon: <FilterX size={ACTION_ICON_SIZE} aria-hidden />,
-                  }}
-                />
-              )
+              <EmptyState
+                title={noResultsTitle(query)}
+                body="Clear the filter to see every environment."
+                action={{
+                  label: "Clear filter",
+                  onClick: () => setQuery(""),
+                  icon: <FilterX size={ACTION_ICON_SIZE} aria-hidden />,
+                }}
+              />
             ) : (
               <ul className="resources-list">
                 {filtered.map((row) => {
                   const inspected = inspectedName === row.name;
-                  const selected = selectedIds.has(row.id);
                   return (
                     <li className="resources-list-item" key={row.id}>
                       <div className="environment-list-row">
-                        {editMode ? (
-                          <span
-                            className="resource-row-checkbox"
-                            onClick={stopRowSelect}
-                          >
-                            <Checkbox
-                              data-testid={`environment-row-select-${row.name}`}
-                              aria-label={`Select ${row.name}`}
-                              checked={selected}
-                              disabled={controlsDisabled}
-                              onCheckedChange={() => {
-                                toggleSelected(row.id);
-                              }}
-                            />
-                          </span>
-                        ) : null}
                         <button
                           type="button"
                           className={[
@@ -550,6 +471,7 @@ export function EnvironmentsWorkspace({
           )}
         </div>
       </div>
+      )}
 
       <EnvironmentDrawer
         open={drawerOpen}
@@ -571,22 +493,14 @@ export function EnvironmentsWorkspace({
 
       <ConfirmDialog
         open={deleteTargets.length > 0}
-        title={
-          deleteTargets.length > 1
-            ? `Delete ${deleteTargets.length} environments?`
-            : "Delete environment?"
-        }
+        title={`Delete "${deleteNames[0] ?? ""}"?`}
         description={
           needsForce
-            ? deleteTargets.length === 1
-              && deleteNames[0] === detail?.environment.name
-              ? `${deleteNames[0]} is still the default environment for these plugins: ${referencedNames.join(", ") || "configured plugins"}. Deleting it will clear those defaults.`
-              : "At least one is still the default for a plugin. Deleting will clear those defaults."
-            : deleteTargets.length > 1
-              ? "This removes the selected environments and their stored values. This cannot be undone."
-              : `This removes ${deleteNames[0]} and its stored values. This cannot be undone.`
+            ? `It is the default environment for ${referencedNames.join(", ") || "some profiles"}. Deleting it clears those defaults and its stored values. This can't be undone.`
+            : "Its stored values are deleted too. This can't be undone."
         }
-        confirmLabel={deleteBusy ? "Deleting..." : "Delete"}
+        tone="destructive"
+        confirmLabel={deleteBusy ? "Deleting..." : "Delete environment"}
         confirmDisabled={needsForce && !forceChecked}
         confirmBusy={deleteBusy}
         onConfirm={() => void onConfirmDelete()}
@@ -605,7 +519,7 @@ export function EnvironmentsWorkspace({
               onCheckedChange={(value) => setForceChecked(value === true)}
             />
             <Label htmlFor="env-delete-force" className="font-normal text-muted-foreground">
-              Delete even though plugins reference this environment
+              Delete even though profiles use this environment
             </Label>
           </div>
         ) : null}
@@ -672,7 +586,7 @@ function EnvironmentDetail({
     || secrets.length > 0
     || models.length > 0
     || permissions.length > 0;
-  const empty = !hasInventory && plugins.length === 0;
+  const empty = !hasInventory;
   const clipboard = formatEnvironmentClipboard(payload);
 
   const copyAll = async () => {
@@ -738,7 +652,7 @@ function EnvironmentDetail({
       </div>
       {empty ? (
         <p className="muted">No values or secrets yet.</p>
-      ) : hasInventory ? (
+      ) : (
         <dl className="resource-detail-kv">
           {envVars.length > 0 ? (
             <div>
@@ -814,28 +728,31 @@ function EnvironmentDetail({
             </div>
           ) : null}
         </dl>
-      ) : null}
-      {plugins.length > 0 ? (
-        <EnvironmentInventoryBlock title="Plugins referencing this environment">
-          <ul className="environment-kv-list">
+      )}
+      <EnvironmentInventoryBlock title="Used by profiles">
+        {plugins.length > 0 ? (
+          <ul className="environment-profile-pills" aria-label="Used by profiles">
             {plugins.map((plugin) => (
               <li key={plugin.id}>
                 {onOpenPlugin ? (
                   <button
                     type="button"
-                    className="link-btn"
+                    className="inventory-chip environment-profile-pill"
+                    title={`Open ${plugin.name}`}
                     onClick={() => onOpenPlugin(plugin.name)}
                   >
                     {plugin.name}
                   </button>
                 ) : (
-                  plugin.name
+                  <span className="inventory-chip environment-profile-pill">{plugin.name}</span>
                 )}
               </li>
             ))}
           </ul>
-        </EnvironmentInventoryBlock>
-      ) : null}
+        ) : (
+          <p className="muted">No profiles use this environment yet.</p>
+        )}
+      </EnvironmentInventoryBlock>
     </div>
   );
 }
