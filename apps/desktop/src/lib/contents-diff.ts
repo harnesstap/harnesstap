@@ -783,8 +783,27 @@ export function flattenProfileResourceList(
       plugin,
     });
   }
+  // An attached plugin also comes back as a pin with the same attachment.
+  // List it once, as the plugin.
+  const listedPluginRefs = new Set<string>();
+  for (const plugin of contents.plugins ?? []) {
+    if (isSelectedProfileSelfRef(selected, plugin)) {
+      continue;
+    }
+    for (const ref of [plugin.attachment_id, plugin.name, plugin.origin_ref]) {
+      if (ref) {
+        listedPluginRefs.add(ref);
+      }
+    }
+  }
   for (const pin of contents.plugin_pins ?? []) {
     if (isSelectedProfilePinSelfRef(selected, pin.ref)) {
+      continue;
+    }
+    if (
+      (pin.attachment_id && listedPluginRefs.has(pin.attachment_id))
+      || listedPluginRefs.has(pin.ref)
+    ) {
       continue;
     }
     rows.push({

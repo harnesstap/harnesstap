@@ -52,11 +52,13 @@ export interface ScopeWorkspaceProps {
   onSelectScope: (scope: Scope) => void;
   onPickProject: (path: string) => void;
   onBrowseProject: () => void;
-  onOpenPlugin: (pluginName: string) => void;
+  onOpenPlugin: (pluginName: string, version?: string) => void;
   onOpenCreateProfile: (source?: ProfileCreateSource, switchAfterCreate?: boolean) => void;
   onOpenStashBrowse: () => void;
   onRequestSignIn: () => void;
   onCreateEnvironment: () => void;
+  /** Opens Harness > Detect harnesses. */
+  onSetUpHarness: () => void;
 }
 
 /** Profiles rail plus the live-state pane (or the profile editor) for the selected scope. */
@@ -78,6 +80,7 @@ export function ScopeWorkspace({
   onOpenStashBrowse,
   onRequestSignIn,
   onCreateEnvironment,
+  onSetUpHarness,
 }: ScopeWorkspaceProps) {
   const {
     client,
@@ -486,6 +489,7 @@ export function ScopeWorkspace({
               previewRefreshing={preview.refreshing}
               applyPreviewError={ctrl.applyPreviewError}
               onRetryPreview={ctrl.retryPreview}
+              onSetUpHarness={onSetUpHarness}
               onDismissPreviewError={ctrl.dismissPreviewError}
               liveHarnesses={status?.harnesses}
               hasFullHarnessSnapshot={ctrl.hasFullHarnessSnapshot}

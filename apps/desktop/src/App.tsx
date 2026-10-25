@@ -43,6 +43,7 @@ export function App() {
 
   const [libraryReloadKey, setLibraryReloadKey] = useState(0);
   const [libraryFocusPlugin, setLibraryFocusPlugin] = useState<string | null>(null);
+  const [libraryFocusVersion, setLibraryFocusVersion] = useState<string | null>(null);
   const [libraryFocusResource, setLibraryFocusResource] = useState<string | null>(null);
   const [environmentCreateOpen, setEnvironmentCreateOpen] = useState(false);
   const [pendingHarnessAction, setPendingHarnessAction] = useState<
@@ -130,8 +131,9 @@ export function App() {
   }, []);
 
   const openPluginInLibrary = useCallback(
-    (pluginName: string) => {
+    (pluginName: string, version?: string) => {
       setLibraryFocusPlugin(pluginName);
+      setLibraryFocusVersion(version ?? null);
       goToLibrary();
     },
     [goToLibrary],
@@ -264,7 +266,10 @@ export function App() {
     }) => ctrl.handleAttachLibraryItem(item, { apply: "always" }),
     [ctrl.handleAttachLibraryItem],
   );
-  const onFocusPluginConsumed = useCallback(() => setLibraryFocusPlugin(null), []);
+  const onFocusPluginConsumed = useCallback(() => {
+    setLibraryFocusPlugin(null);
+    setLibraryFocusVersion(null);
+  }, []);
   const onFocusResourceConsumed = useCallback(() => setLibraryFocusResource(null), []);
   const onImported = useCallback(
     (message: string) => {
@@ -302,6 +307,7 @@ export function App() {
             onOpenCreateProfile={overlays.openCreateProfile}
             onOpenStashBrowse={() => overlays.openOverlay("stashBrowse")}
             onRequestSignIn={openCloudAccount}
+            onSetUpHarness={onDetectHarnesses}
             onCreateEnvironment={() => {
               setEnvironmentCreateOpen(true);
               nav.go("environments");
@@ -360,6 +366,7 @@ export function App() {
             attachProfileName={attachProfileName}
             onAddToProfile={onAddToProfile}
             focusPluginName={libraryFocusPlugin}
+            focusPluginVersion={libraryFocusVersion}
             onFocusPluginConsumed={onFocusPluginConsumed}
             focusResourceSelector={libraryFocusResource}
             onFocusResourceConsumed={onFocusResourceConsumed}

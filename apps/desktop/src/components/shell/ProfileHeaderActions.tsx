@@ -21,6 +21,7 @@ import { IconActionButton } from "../IconActionButton";
 import { OverflowMenu, type OverflowMenuItem } from "../OverflowMenu";
 import { ProfileDeleteControls } from "../parity/ProfileDeleteControls";
 import { PublishProfileDrawer } from "../parity/PublishProfileDrawer";
+import { ProfileHistoryDialog } from "./ProfileHistoryDialog";
 
 const ICON_SIZE = 18;
 
@@ -53,7 +54,7 @@ export function ProfileHeaderActions({
   switching: boolean;
   reloadKey: number;
   onOverwrite: () => void;
-  onOpenPlugin: (name: string) => void;
+  onOpenPlugin: (name: string, version?: string) => void;
   onRequestSignIn: () => void;
 }) {
   const summary = ctrl.selectedProfileSummary;
@@ -63,6 +64,7 @@ export function ProfileHeaderActions({
   const [duplicateBusy, setDuplicateBusy] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const locked = !connected || switching || busy;
 
@@ -215,8 +217,8 @@ export function ProfileHeaderActions({
       <IconActionButton
         className="status-edit-action"
         data-testid="profile-history"
-        onClick={() => onOpenPlugin(profileName)}
-        disabled={!connected}
+        onClick={() => setHistoryOpen(true)}
+        disabled={!connected || !baseUrl}
         label="History"
         title="Browse versions"
         icon={<History size={ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
@@ -256,6 +258,16 @@ export function ProfileHeaderActions({
         onSuccess={(message) => toast({ tone: "success", title: message })}
         onRequestSignIn={onRequestSignIn}
         onRequestCut={(name, version) => ctrl.openCutForProfile(name, version)}
+      />
+      <ProfileHistoryDialog
+        open={historyOpen}
+        profileName={profileName}
+        headVersion={summary?.version ?? ""}
+        headDirty={summary?.dirty ?? false}
+        baseUrl={baseUrl}
+        token={token}
+        onClose={() => setHistoryOpen(false)}
+        onOpenVersion={(version) => onOpenPlugin(profileName, version)}
       />
       <DuplicateDialog
         open={duplicateOpen}

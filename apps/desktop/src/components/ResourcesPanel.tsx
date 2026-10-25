@@ -147,6 +147,8 @@ export interface ResourcesPanelProps {
   onSuccess?: (message: string) => void;
   onApplyResult?: (result: ApplyPluginResult) => void;
   focusPluginName?: string | null;
+  /** Opens that frozen version of `focusPluginName`. */
+  focusPluginVersion?: string | null;
   onFocusPluginConsumed?: () => void;
   focusResourceSelector?: string | null;
   onFocusResourceConsumed?: () => void;
@@ -176,6 +178,7 @@ export function ResourcesPanel({
   onSuccess,
   onApplyResult,
   focusPluginName,
+  focusPluginVersion = null,
   onFocusPluginConsumed,
   focusResourceSelector,
   onFocusResourceConsumed,
@@ -205,6 +208,8 @@ export function ResourcesPanel({
   );
   const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
   const trackedDirsIntroAttempted = useRef(false);
+  // A deep link (History, Open in Library) is navigation, not a first visit.
+  const arrivedViaDeepLink = useRef(Boolean(focusPluginName || focusResourceSelector));
   const [fieldEditing, setFieldEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
@@ -295,6 +300,9 @@ export function ResourcesPanel({
 
   useEffect(() => {
     if (!autoOpenTrackedDirectories || trackedDirsIntroAttempted.current) {
+      return;
+    }
+    if (arrivedViaDeepLink.current) {
       return;
     }
     if (libraryLoadFailed) {
@@ -425,10 +433,10 @@ export function ResourcesPanel({
       mode: "detail",
       target: { kind: "plugin-package", selector: focusPluginName },
     });
-    setPluginHistoryMode("head");
-    setPluginFrozenVersion(null);
+    setPluginHistoryMode(focusPluginVersion ? "frozen" : "head");
+    setPluginFrozenVersion(focusPluginVersion);
     onFocusPluginConsumed?.();
-  }, [focusPluginName, onFocusPluginConsumed]);
+  }, [focusPluginName, focusPluginVersion, onFocusPluginConsumed]);
 
   useEffect(() => {
     if (!focusResourceSelector) {

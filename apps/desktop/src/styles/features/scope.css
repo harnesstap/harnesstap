@@ -362,10 +362,6 @@
   font: inherit;
 }
 
-.edit-profile-pane .compose-library {
-  min-height: 280px;
-}
-
 .edit-profile-pane .selection-list-rows {
   max-height: min(50vh, 420px);
   overflow: auto;
@@ -636,6 +632,11 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Banners above the inventory keep a 12px gap to the filter row. */
+.live-pane > .live-inventory-host {
+  gap: 12px;
 }
 
 .live-inventory-host .scope-inventory-pane,
