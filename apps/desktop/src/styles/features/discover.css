@@ -18,8 +18,30 @@
   font-weight: 600;
 }
 
-.source-tree-children {
-  padding-left: 0.85rem;
+/* The Discover search placeholder names every field it matches; give it room to show in full. */
+.resources-panel-layout.sources-panel-layout {
+  --resources-sidebar-track: 272px;
+}
+
+/* Discover sidebar matches the Library sidebar: 12px between sections, 8px between rows. */
+.sources-sidebar .source-row-list {
+  gap: 0.5rem;
+}
+
+.discover-source-error-detail {
+  margin-top: 0.35rem;
+  font-size: var(--text-meta);
+}
+
+.discover-source-error-detail summary {
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.discover-source-error-detail code {
+  display: block;
+  margin-top: 0.25rem;
+  overflow-wrap: anywhere;
 }
 
 .source-row-check {
@@ -165,8 +187,12 @@
   width: 100%;
 }
 
-.sources-list-virtual .resources-type-heading {
+/* Source group headings use the same eyebrow as the sidebar section labels. */
+.sources-list-virtual .resources-type-heading.eyebrow {
   padding-top: 0.5rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .sources-workspace .resources-panel-body {

@@ -123,6 +123,10 @@ export interface SourcesHitGroup {
 export interface DiscoverListGroupError {
   message: string;
   authRequired: boolean;
+  /** Raw agent error, shown only behind Details. */
+  detail?: string;
+  /** Offer Manage marketplaces next to Retry. */
+  manageMarketplaces?: boolean;
 }
 
 export type DiscoverListVirtualItem =
@@ -259,14 +263,20 @@ export function sourcesHitUpdateBadge(hit: SourcesHit): string | null {
 export function presenceLabel(presence: Presence): string {
   switch (presence) {
     case "in_library":
-      return "In library";
+      return "In your Library";
     case "remote_only":
-      return "Remote only";
+      return "Not in your Library";
     default: {
       const neverPresence: never = presence;
       return neverPresence;
     }
   }
+}
+
+/** Display-only: capitalise the first letter of an upstream description. */
+export function sentenceCaseDescription(description: string): string {
+  const trimmed = description.trim();
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
 /** Discover row subtitle: version and description. Type stays on the row icon. */
@@ -280,7 +290,7 @@ export function sourcesHitRowDetail(
   }
   const description = hit.description?.trim();
   if (description) {
-    parts.push(description);
+    parts.push(sentenceCaseDescription(description));
   }
   if (parts.length === 0) {
     return null;

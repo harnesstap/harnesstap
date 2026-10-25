@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, FilterX, Unlink, Unplug } from "lucide-react";
+import { AlertTriangle, Unlink, Unplug } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { sourcesSidebarChangeAction } from "../lib/sources-pane";
@@ -7,9 +7,7 @@ import { ButtonSpinner } from "./ButtonSpinner";
 import { Banner } from "./shell/Banner";
 import {
   groupSourceRows,
-  isSourcesFilterActive,
   sourceCheckState,
-  sourceChildChecked,
   type SourceCheckState,
   type SourceRow,
 } from "../lib/sources-sidebar";
@@ -27,7 +25,6 @@ type PendingConfirm =
 export interface SourceSidebarProps {
   query: string;
   onQueryChange: (query: string) => void;
-  onClear: () => void;
   notInLibrary: boolean;
   onNotInLibraryChange: (notInLibrary: boolean) => void;
   rows: SourceRow[];
@@ -90,7 +87,6 @@ function sourceMasterChecked(
 export function SourceSidebar({
   query,
   onQueryChange,
-  onClear,
   notInLibrary,
   onNotInLibraryChange,
   rows,
@@ -114,12 +110,6 @@ export function SourceSidebar({
   }, [confirmOpen, onConfirmOpenChange]);
   const sidebarChange = sourcesSidebarChangeAction({ busy, confirmOpen });
   const controlsDisabled = disabled || sidebarChange === "block";
-  const dirty = isSourcesFilterActive(
-    query,
-    checkedIds,
-    rows,
-    notInLibrary,
-  );
   const checkState = sourceCheckState(checkedIds, rows);
   const masterChecked = sourceMasterChecked(checkState);
 
@@ -150,40 +140,33 @@ export function SourceSidebar({
   };
 
   return (
-    <aside className="resource-filter-sidebar" aria-label="Discover filters">
-      <div className="resource-filter-section">
-        <div className="resource-filter-search-row">
-          <input
-            className="resources-panel-filter"
-            type="search"
-            placeholder="Search to add"
-            aria-label="Search to add"
-            value={query}
-            data-workspace-filter=""
-            onChange={(event) => {
-              const next = event.target.value;
-              applySidebarChange(() => onQueryChange(next));
-            }}
-            disabled={controlsDisabled}
-            {...noSpellcheckProps}
-          />
-          {refreshing ? (
-            <span
-              className="sources-sidebar-refresh"
-              aria-label="Refreshing sources"
-              role="status"
-            >
-              <ButtonSpinner size={14} />
-            </span>
-          ) : null}
-          <IconActionButton
-            className="resource-filter-clear"
-            label="Clear filters"
-            disabled={controlsDisabled || !dirty}
-            onClick={() => applySidebarChange(() => onClear())}
-            icon={<FilterX size={ACTION_ICON_SIZE} aria-hidden />}
-          />
-        </div>
+    <aside className="resource-filter-sidebar sources-sidebar" aria-label="Discover filters">
+      <div className="resource-filter-search-row">
+        <input
+          className="resources-panel-filter"
+          type="search"
+          placeholder="Search by name, description, or skill"
+          aria-label="Search by name, description, or skill"
+          value={query}
+          data-workspace-filter=""
+          onChange={(event) => {
+            const next = event.target.value;
+            applySidebarChange(() => onQueryChange(next));
+          }}
+          disabled={controlsDisabled}
+          {...noSpellcheckProps}
+        />
+        {refreshing ? (
+          <span
+            className="sources-sidebar-refresh"
+            aria-label="Refreshing sources"
+            role="status"
+          >
+            <ButtonSpinner size={14} />
+          </span>
+        ) : null}
+      </div>
+      <div className="resource-filter-section source-row-list">
         <div className="source-row">
           <div className="source-row-check">
             <Checkbox
@@ -201,17 +184,7 @@ export function SourceSidebar({
             </Label>
           </div>
         </div>
-      </div>
-      {originCheckError ? (
-        <Banner
-          tone="error"
-          message={originCheckError}
-          onRetry={onRetryOriginCheck}
-          testId="sources-origin-check-error"
-        />
-      ) : null}
-      {rows.length > 0 ? (
-        <div className="resource-filter-section source-row-list source-tree">
+        {rows.length > 0 ? (
           <div className="source-row source-master-row">
             <div className="source-row-check">
               <Checkbox
@@ -227,22 +200,29 @@ export function SourceSidebar({
               </Label>
             </div>
           </div>
-        </div>
+        ) : null}
+      </div>
+      {originCheckError ? (
+        <Banner
+          tone="error"
+          message={originCheckError}
+          onRetry={onRetryOriginCheck}
+          testId="sources-origin-check-error"
+        />
       ) : null}
       {groupSourceRows(rows).map((section) => (
         <div
           key={section.id}
-          className="resource-filter-section source-row-list source-tree-children"
+          className="resource-filter-section source-row-list"
+          role="group"
+          aria-label={section.label}
         >
-          <span className="resource-filter-section-label">{section.label}</span>
+          <span className="eyebrow">{section.label}</span>
           {section.rows.map((row) => (
             <SourceRowItem
               key={row.id}
               row={row}
-              checked={sourceChildChecked(
-                checkState,
-                checkedIds.includes(row.id),
-              )}
+              checked={checkedIds.includes(row.id)}
               disabled={controlsDisabled}
               sourceError={sourceErrors?.[row.id]}
               onToggle={() => applySidebarChange(() => onToggle(row.id))}

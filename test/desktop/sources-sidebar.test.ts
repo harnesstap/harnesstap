@@ -7,7 +7,6 @@ import {
   nextCheckedSourceIds,
   nextCheckedSourceIdsForChild,
   sourceCheckState,
-  sourceChildChecked,
 } from "../../apps/desktop/src/lib/sources-sidebar.ts";
 
 describe("buildSourceRows", () => {
@@ -188,14 +187,6 @@ describe("nextCheckedSourceIds", () => {
   });
 });
 
-describe("sourceChildChecked", () => {
-  test("hides child checks while All is selected", () => {
-    expect(sourceChildChecked("all", true)).toBe(false);
-    expect(sourceChildChecked("mixed", true)).toBe(true);
-    expect(sourceChildChecked("none", false)).toBe(false);
-  });
-});
-
 describe("nextCheckedSourceIdsForChild", () => {
   const rows = buildSourceRows({
     marketplaces: [{ name: "demo" }],
@@ -205,10 +196,11 @@ describe("nextCheckedSourceIdsForChild", () => {
   });
   const defaults = defaultCheckedSourceIds(rows);
 
-  test("starts a specific selection from All", () => {
-    expect(nextCheckedSourceIdsForChild(defaults, rows, "mkt:demo")).toEqual([
-      "mkt:demo",
-    ]);
+  test("unchecking one child from All leaves the rest checked (tri-state parent)", () => {
+    const next = nextCheckedSourceIdsForChild(defaults, rows, "mkt:demo");
+    expect(next).toEqual(defaults.filter((id) => id !== "mkt:demo"));
+    expect(sourceCheckState(next, rows)).toBe("mixed");
+    expect(sourceCheckState(nextCheckedSourceIdsForChild(next, rows, "mkt:demo"), rows)).toBe("all");
   });
 
   test("toggles a child when selection is already mixed", () => {

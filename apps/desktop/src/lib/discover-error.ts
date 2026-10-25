@@ -10,3 +10,14 @@ export function desktopDiscoverError(message: string): string {
   }
   return message;
 }
+
+/** Sidebar tooltip on a source that failed to load. The banner in the list has Retry. */
+export const DISCOVER_SOURCE_ERROR_TOOLTIP = "Couldn't load. Retry to try again.";
+
+/** Banner copy for a source Discover could not reach. The raw error goes behind Details. */
+export function discoverSourceUnreachable(sourceLabel: string): string {
+  return `Couldn't reach ${sourceLabel}. Check your connection, then retry.`;
+}
+
+export const DISCOVER_MARKETPLACES_UNREACHABLE =
+  "Couldn't reach your marketplaces. Check your connection, then retry.";

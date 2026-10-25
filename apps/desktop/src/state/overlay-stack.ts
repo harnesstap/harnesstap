@@ -146,11 +146,28 @@ export const overlayStack: OverlayStack = createOverlayStack();
 
 let listenerCount = 0;
 
+const PORTAL_CONTENT_SELECTOR =
+  '[data-radix-popper-content-wrapper], [role="listbox"], [role="menu"]';
+
+function focusInPortalAboveTopLayer(): boolean {
+  const top = overlayStack.top();
+  const root = top?.getRoot();
+  const active = document.activeElement;
+  if (!root || !(active instanceof HTMLElement) || root.contains(active)) {
+    return false;
+  }
+  return active.closest(PORTAL_CONTENT_SELECTOR) !== null;
+}
+
 function onWindowKeyDown(event: KeyboardEvent): void {
   if (event.defaultPrevented) {
     return;
   }
   if (event.key === "Escape") {
+    // An open select or menu portal inside the layer closes itself first.
+    if (focusInPortalAboveTopLayer()) {
+      return;
+    }
     overlayStack.dispatchEscape(event);
     return;
   }

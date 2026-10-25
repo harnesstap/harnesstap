@@ -22,7 +22,7 @@ import {
   type SourcesHitGroup,
 } from "../lib/sources-search";
 import { resourceRowVirtualStyle } from "../lib/resource-row-virtual";
-import { Cloud, FilterX, Library, LogIn } from "lucide-react";
+import { Cloud, FilterX, Library, LogIn, Store } from "lucide-react";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { EmptyState, type EmptyStateAction } from "./EmptyState";
 import { Banner } from "./shell/Banner";
@@ -51,7 +51,51 @@ export interface SourcesListPaneProps {
   onClearQuery?: () => void;
   onClearFilters?: () => void;
   onRetry?: () => void;
+  onManageMarketplaces?: () => void;
   recordActions?: (hit: SourcesHit) => SourcesRecordActionsProps;
+}
+
+/** One source failed: plain copy, Retry, optional Manage marketplaces, raw error behind Details. */
+export function DiscoverSourceErrorBanner({
+  error,
+  disabled = false,
+  onRetry,
+  onManageMarketplaces,
+}: {
+  error: SourcesGroupError;
+  disabled?: boolean;
+  onRetry?: () => void;
+  onManageMarketplaces?: () => void;
+}) {
+  return (
+    <Banner
+      tone="error"
+      testId="discover-source-error"
+      message={
+        <>
+          <span>{error.message}</span>
+          {error.detail && error.detail !== error.message ? (
+            <details className="discover-source-error-detail">
+              <summary>Details</summary>
+              <code>{error.detail}</code>
+            </details>
+          ) : null}
+        </>
+      }
+      onRetry={onRetry}
+      retryBusy={disabled}
+    >
+      {error.manageMarketplaces && onManageMarketplaces ? (
+        <IconActionButton
+          label="Manage marketplaces"
+          showLabel
+          disabled={disabled}
+          onClick={onManageMarketplaces}
+          icon={<Store size={16} aria-hidden />}
+        />
+      ) : null}
+    </Banner>
+  );
 }
 
 export function SourcesOriginUpdateBadge({ hit }: { hit: SourcesHit }) {
@@ -129,6 +173,7 @@ function DiscoverListItem({
   onOpenHit,
   onSignIn,
   onRetry,
+  onManageMarketplaces,
   recordActions,
 }: {
   item: DiscoverListVirtualItem;
@@ -136,12 +181,13 @@ function DiscoverListItem({
   onOpenHit: (hit: SourcesHit) => void;
   onSignIn?: () => void;
   onRetry?: () => void;
+  onManageMarketplaces?: () => void;
   recordActions?: (hit: SourcesHit) => SourcesRecordActionsProps;
 }) {
   switch (item.kind) {
     case "heading":
       return (
-        <h3 className="resources-type-heading">
+        <h3 className="resources-type-heading eyebrow">
           <span>{item.sourceLabel}</span>
           <span className="muted">{item.count}</span>
         </h3>
@@ -150,11 +196,11 @@ function DiscoverListItem({
       return item.error.authRequired ? (
         <SourcesSignInPrompt onSignIn={onSignIn} disabled={disabled} />
       ) : (
-        <Banner
-          tone="error"
-          message={item.error.message}
+        <DiscoverSourceErrorBanner
+          error={item.error}
+          disabled={disabled}
           onRetry={onRetry}
-          retryBusy={disabled}
+          onManageMarketplaces={onManageMarketplaces}
         />
       );
     case "hit": {
@@ -213,6 +259,7 @@ export function SourcesListPane({
   onClearQuery,
   onClearFilters,
   onRetry,
+  onManageMarketplaces,
   recordActions,
 }: SourcesListPaneProps) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -303,6 +350,7 @@ export function SourcesListPane({
                 onOpenHit={onOpenHit}
                 onSignIn={onSignIn}
                 onRetry={onRetry}
+                onManageMarketplaces={onManageMarketplaces}
                 recordActions={recordActions}
               />
             </div>

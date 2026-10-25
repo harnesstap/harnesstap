@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Tooltip } from "radix-ui";
 import { AppHeader } from "./components/shell/AppHeader";
 import { AppOverlays } from "./components/shell/AppOverlays";
@@ -24,6 +24,8 @@ import { librarySnapshotStore } from "./state/library-snapshot-store";
 import { statusStore, useStatusPolling } from "./state/status-store";
 import { useTelemetryConsent } from "./state/telemetry-consent";
 import { toast } from "./state/toast-store";
+import { discoverAddedToProfileToast } from "./lib/sources-record-actions";
+import { DETACH_UNDO_MS } from "./lib/duplicate-profile";
 
 // Workspaces keep their own state; a status poll must not re-render them.
 const MemoResourcesPanel = memo(ResourcesPanel);
@@ -255,14 +257,38 @@ export function App() {
       ctrl.handleAddResource(resource, attachProfileName ?? undefined),
     [attachProfileName, ctrl.handleAddResource],
   );
-  const onAddToProfileAndApply = useCallback(
-    (item: {
-      kind: "plugin" | "resource";
-      id: string;
-      name: string;
-      type: string;
-    }) => ctrl.handleAttachLibraryItem(item, { apply: "always" }),
-    [ctrl.handleAttachLibraryItem],
+  const onDiscoverAddToProfile = useCallback(
+    async (profileName: string, item: { kind: "plugin" | "resource"; id: string; name: string }) => {
+      const added = await ctrl.handleAddLibraryItemToProfile(profileName, item);
+      if (added.length === 0) {
+        toast({ tone: "info", title: `${item.name} is already in ${profileName}.` });
+        return;
+      }
+      toast({
+        tone: "success",
+        title: discoverAddedToProfileToast(item.name, profileName),
+        durationMs: DETACH_UNDO_MS,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void ctrl.handleUndoProfileAttachments(profileName, added).then(
+              () => toast({ tone: "info", title: `Removed ${item.name} from ${profileName}.` }),
+              (error: unknown) =>
+                toast({
+                  tone: "error",
+                  title: `Could not undo adding ${item.name}.`,
+                  detail: error instanceof Error ? error.message : undefined,
+                }),
+            );
+          },
+        },
+      });
+    },
+    [ctrl.handleAddLibraryItemToProfile, ctrl.handleUndoProfileAttachments],
+  );
+  const discoverProfileNames = useMemo(
+    () => ctrl.profiles.map((profile) => profile.name),
+    [ctrl.profiles],
   );
   const onFocusPluginConsumed = useCallback(() => setLibraryFocusPlugin(null), []);
   const onFocusResourceConsumed = useCallback(() => setLibraryFocusResource(null), []);
@@ -447,8 +473,9 @@ export function App() {
                 canWorkspaceBack={nav.hasHistory}
                 onWorkspaceBack={nav.back}
                 onOpenInLibrary={openInLibrary}
-                currentProfileName={attachProfileName}
-                onAddToProfileAndApply={onAddToProfileAndApply}
+                profileNames={discoverProfileNames}
+                defaultProfileName={attachProfileName}
+                onAddToProfile={onDiscoverAddToProfile}
                 onSuccess={onSuccessToast}
               />
             </div>

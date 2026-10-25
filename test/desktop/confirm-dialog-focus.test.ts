@@ -233,6 +233,35 @@ describe("ConfirmDialog focus trap", () => {
     expect(document.activeElement).toBe(opener);
   });
 
+  it("leaves Escape to an open select or menu portal instead of closing the dialog", async () => {
+    await openDialog();
+    expect(document.querySelector("[role=\"dialog\"]")).not.toBeNull();
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("role", "listbox");
+    const option = document.createElement("div");
+    option.setAttribute("role", "option");
+    option.tabIndex = -1;
+    option.textContent = "work";
+    wrapper.appendChild(option);
+    document.body.appendChild(wrapper);
+    option.focus();
+    expect(document.activeElement).toBe(option);
+    await act(async () => {
+      pressKey("Escape");
+    });
+    expect(overlayStack.isEmpty()).toBe(false);
+    wrapper.remove();
+    const cancel = [...document.querySelectorAll("[role=\"dialog\"] button")].find(
+      (button) => labelOf(button) === "Cancel",
+    );
+    (cancel as HTMLButtonElement | undefined)?.focus();
+    await act(async () => {
+      pressKey("Escape");
+    });
+    await flushFocus();
+    expect(overlayStack.isEmpty()).toBe(true);
+  });
+
   it("focuses a text field before the first button", async () => {
     await openDialog({ withField: true });
     expect(document.activeElement).toBeInstanceOf(HTMLInputElement);
