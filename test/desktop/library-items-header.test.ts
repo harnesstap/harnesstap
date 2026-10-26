@@ -44,12 +44,13 @@ const headerRow = sliceBetween(
 );
 
 describe("library items header actions", () => {
-  test("clusters Edit, Import, and Tracked directories as icon actions", () => {
+  test("clusters Edit, Tracked directories, and Update all as icon actions", () => {
     expect(headerRow).toContain('className="resources-panel-header-actions"');
     const clusterIdx = headerRow.indexOf("resources-panel-header-actions");
     expect(headerRow.slice(clusterIdx)).toContain("IconActionButton");
     expect(headerRow.slice(clusterIdx)).toContain("library-edit-mode");
-    expect(headerRow.slice(clusterIdx)).toContain('label="Import"');
+    // Import lives in the create picker only (one path per action).
+    expect(headerRow.slice(clusterIdx)).not.toContain('label="Import"');
     expect(headerRow.slice(clusterIdx)).toContain('label="Tracked directories"');
   });
 
@@ -68,10 +69,10 @@ describe("library items header actions", () => {
     expect(headerRow).not.toContain('data-testid="library-create-resource"');
   });
 
-  test("renders Import as an icon-only secondary action", () => {
-    expect(headerRow).toContain('label="Import"');
-    expect(headerRow).toContain("FolderDown");
-    expect(headerRow).toContain("setImportOpen(true)");
+  test("gives Update all its own glyph so the title spinner is the only refresh", () => {
+    expect(headerRow).toContain('label="Update all"');
+    expect(headerRow).toContain("<CircleArrowUp");
+    expect(headerRow).not.toContain("<RefreshCw");
   });
 
   test("renders Tracked directories as an icon-only secondary action", () => {

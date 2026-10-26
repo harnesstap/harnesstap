@@ -425,20 +425,10 @@
 }
 
 /* Edit pane: the list is as tall as its rows, with no empty band under the
-   last one, and scrolls past min(50vh, 420px). The add button floats at the
-   pane's corner instead of sitting inside the list. */
+   last one, and scrolls past min(50vh, 420px). The add button sits on the
+   Composition heading, so nothing floats over the rows. */
 .edit-profile-pane .compose-library-unified .selection-list-rows {
   height: auto;
   min-height: 0;
   max-height: min(50vh, 420px);
-}
-
-.edit-profile-pane .scope-inventory-fab {
-  position: fixed;
-  right: 1.5rem;
-  bottom: 1.5rem;
-}
-
-.edit-profile-pane .edit-profile-body {
-  padding-bottom: 4rem;
 }

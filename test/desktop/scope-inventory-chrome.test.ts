@@ -46,10 +46,10 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("sole profile-apply CTA");
   });
 
-  it("swaps main content to Target preview from Preview changes", () => {
-    expect(appSource).toContain('label="Preview changes"');
-    expect(appSource).toContain("FileDiff");
-    expect(appSource).not.toMatch(/label="Preview changes"[\s\S]{0,200}<Eye /);
+  it("swaps main content to Target preview from the rail Preview link", () => {
+    // One path: the rail link opens the preview; the header has no Preview icon.
+    expect(appSource).not.toContain('label="Preview changes"');
+    expect(appSource).toContain("setPreviewChanges(true)");
     expect(liveStateSource).toContain("previewChanges");
     expect(liveStateSource).toContain("onClosePreview");
     expect(liveStateSource).toContain('label="Close preview"');
@@ -167,56 +167,50 @@ describe("Global/Project scope inventory chrome", () => {
     expect(designSource).toContain("Ghost **Add all**");
   });
 
-  it("places Refresh, Project Install and History on the live-toolbar before the profile actions", () => {
-    const toolbar = appSource.slice(
-      appSource.indexOf('className="live-toolbar-actions"'),
-      appSource.indexOf("<ProfileHeaderActions"),
-    );
+  it("keeps Refresh on the live-toolbar and moves Project Install and History into the overflow", () => {
+    const toolbar = appSource.slice(appSource.indexOf('className="live-toolbar-actions"'));
     expect(toolbar).toContain('testId="live-status-refresh"');
-    expect(toolbar).toContain('data-testid="project-install"');
-    expect(toolbar).toContain('title="Install project config"');
-    expect(toolbar).toContain("HardDriveDownload");
-    expect(toolbar).toContain("ProjectHistoryControl");
-    expect(toolbar).toContain("ctrl.runProjectInstall");
-    const refreshIdx = toolbar.indexOf('testId="live-status-refresh"');
-    const installIdx = toolbar.indexOf('data-testid="project-install"');
-    const historyIdx = toolbar.indexOf("ProjectHistoryControl");
-    expect(refreshIdx).toBeGreaterThan(-1);
-    expect(installIdx).toBeGreaterThan(refreshIdx);
-    expect(historyIdx).toBeGreaterThan(installIdx);
+    expect(toolbar).toContain("projectItems={projectMenuItems}");
+    expect(appSource).toContain('id: "project-install"');
+    expect(appSource).toContain('"Install project config"');
+    expect(appSource).toContain("HardDriveDownload");
+    expect(appSource).toContain('id: "project-history"');
+    expect(appSource).toContain('label: "Project history"');
+    expect(appSource).toContain("ctrl.runProjectInstall");
+    expect(appSource).toContain("<ProjectHistoryControl");
+    expect(appSource).not.toContain('data-testid="project-install"');
     expect(designSource).toContain("Install project config");
     expect(designSource).toContain("live-state toolbar");
   });
 
-  it("opens profile edit from the header pencil after Overwrite; Active Edit toggles row mode", () => {
-    expect(appSource).toContain("inventoryEditMode");
+  it("opens profile edit from the header pencil only; Active has no Edit toggle", () => {
+    expect(appSource).not.toContain("inventoryEditMode");
     expect(appSource).toContain("live-toolbar-identity");
     expect(appSource).toContain("live-toolbar-actions");
-    expect(appSource).toContain("onToggleEditMode");
+    expect(appSource).not.toContain("onToggleEditMode");
     expect(appSource).toContain('"btn", "primary"');
-    // Edit, Duplicate, Tags, History as icons; Overwrite moved to the overflow.
+    // Edit and History as icons; Duplicate, Tag and Overwrite in the overflow.
     expect(appSource).toContain('label: "Overwrite with current setup"');
     expect(appSource).toContain("HardDriveUpload");
     expect(appSource).toContain("ctrl.overwritingWithSetup");
     expect(appSource).toContain("Overwrite with current setup?");
     const editIdx = appSource.indexOf("ctrl.openEditProfile(profileName)");
-    const duplicateIdx = appSource.indexOf('data-testid="profile-duplicate"', editIdx);
-    const historyIdx = appSource.indexOf('data-testid="profile-history"', duplicateIdx);
+    const historyIdx = appSource.indexOf('data-testid="profile-history"', editIdx);
     const overflowIdx = appSource.indexOf('testId="profile-overflow"', historyIdx);
     expect(editIdx).toBeGreaterThan(-1);
-    expect(duplicateIdx).toBeGreaterThan(editIdx);
-    expect(historyIdx).toBeGreaterThan(duplicateIdx);
+    expect(historyIdx).toBeGreaterThan(editIdx);
     expect(overflowIdx).toBeGreaterThan(historyIdx);
+    expect(appSource).toContain('id: "duplicate"');
+    expect(appSource).not.toContain('data-testid="profile-duplicate"');
     expect(appSource).not.toContain("Active · ${n} file");
     expect(appSource).not.toContain("status-view-changes");
     expect(liveStateSource).toContain("editMode");
-    expect(liveStateSource).toContain('data-testid="inventory-active-edit"');
-    expect(liveStateSource).toContain('label={editMode ? "Done" : "Edit"}');
-    expect(liveStateSource).toContain("onToggleEdit={section === \"active\" ? onToggleEditMode : undefined}");
+    expect(liveStateSource).not.toContain('data-testid="inventory-active-edit"');
+    expect(liveStateSource).not.toContain("onToggleEdit");
     expect(liveStateSource).toContain("resource-row-checkbox");
     expect(liveStateSource).toContain("data-testid={`inventory-row-select-${item.key}`}");
     expect(liveStateSource).toContain("activateChip");
-    expect(designSource).toContain("toggles that checkbox and does not open details");
+    expect(designSource).toContain("Active** section header has no Edit toggle");
     expect(liveStateSource).toContain("profile-remove-action");
     expect(liveStateSource).toContain("Remove from profile?");
     expect(liveStateSource).toContain("inventory-chip");
@@ -236,12 +230,10 @@ describe("Global/Project scope inventory chrome", () => {
     expect(stylesSource).toContain(".inventory-chip-cluster");
     expect(stylesSource).toContain("flex-wrap: wrap");
     expect(stylesSource).not.toContain(".resource-row.inventory-row");
-    expect(designSource).toContain("leading checkbox");
-    expect(designSource).toContain("[checkbox?][status glyph?] name");
-    expect(designSource).toContain("Delete selected");
-    expect(designSource).toContain("icon-only accent **Overwrite**");
+    expect(designSource).toContain("`[status glyph?] name [trailing icon actions]`");
+    expect(designSource).toContain("**Overwrite with current setup**");
     expect(designSource).toContain("opens the full-screen profile edit pane");
-    expect(designSource).toContain("**Active** section header has labeled **Edit**");
+    expect(designSource).not.toContain("**Active** section header has labeled **Edit**");
     expect(designSource).not.toContain("`Active · N files differ`");
   });
 

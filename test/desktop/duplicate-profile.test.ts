@@ -67,7 +67,8 @@ describe("duplicate dialog", () => {
   test("is reachable from the profile page header too", () => {
     const header = src("components/shell/ProfileHeaderActions.tsx");
     expect(header).toContain("<DuplicateDialog");
-    expect(header).toContain('data-testid="profile-duplicate"');
+    expect(header).toContain('id: "duplicate"');
+    expect(header).toContain('testId="profile-overflow"');
   });
 });
 

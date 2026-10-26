@@ -44,10 +44,10 @@ describe("desktop icon chrome", () => {
     expect(iconButtonSource).toContain("aria-label={showLabel ? undefined : label}");
   });
 
-  test("converts Profiles filter Clear and Project Install to icon-only", () => {
-    expect(appSource).toContain('label="Clear"');
+  test("keeps one rail filter clear and puts Project Install in the overflow", () => {
+    expect(appSource).not.toContain('label="Clear"');
     expect(appSource).not.toContain("rail-clear-button");
-    expect(appSource).toContain('data-testid="project-install"');
+    expect(appSource).toContain('id: "project-install"');
     expect(appSource).toContain("HardDriveDownload");
     expect(appSource).toContain('variant="menu"');
   });
@@ -89,7 +89,7 @@ describe("desktop icon chrome", () => {
     expect(designSource).toContain("No em dashes in Desktop system/UI strings");
     expect(designSource).toContain("One idea per string");
     expect(appSource).toContain('label="Refresh live status"');
-    expect(appSource).toContain('title="Install project config"');
+    expect(appSource).toContain('"Install project config"');
     expect(appSource).not.toContain("rescanning tracked directories");
     expect(appSource).not.toContain("ht install");
     expect(appSource).not.toContain(" — ");
@@ -148,8 +148,7 @@ describe("desktop icon chrome", () => {
     expect(designSource).toContain("Agents use **Bot**");
     expect(designSource).toContain("Pencil stays profile **Edit**");
     expect(designSource).toContain("the Settings gear stays Settings");
-    expect(appSource).toContain("profile-item-edit");
-    expect(appSource).toContain("<Pencil size={RAIL_ICON_SIZE}");
+    expect(appSource).not.toContain("profile-item-edit");
     expect(appSource).toContain('label="Settings"');
     expect(appSource).toContain("<Settings size={HEADER_ICON_SIZE}");
     expect(appSource).toContain("profile-create-action");

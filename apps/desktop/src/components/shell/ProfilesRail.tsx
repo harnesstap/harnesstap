@@ -6,10 +6,8 @@ import {
   Check,
   FilterX,
   GripVertical,
-  Pencil,
   Plus,
   RotateCw,
-  X,
 } from "lucide-react";
 import {
   insertBeforeIndexForDrop,
@@ -331,15 +329,6 @@ export function ProfilesRail({
           aria-label="Filter profiles by name, description, or tags"
           {...noSpellcheckProps}
         />
-        {profileFilter.trim() ? (
-          <IconActionButton
-            label="Clear"
-            title="Clear"
-            disabled={switching}
-            onClick={ctrl.clearProfileFilter}
-            icon={<X size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-          />
-        ) : null}
       </div>
       <div
         className={["profiles-list", dropTarget === "end" ? "drop-target-end" : ""]
@@ -496,20 +485,6 @@ export function ProfilesRail({
                   </ChromeTooltip>
                 ) : null}
               </button>
-              <IconActionButton
-                className="profile-item-action profile-item-edit"
-                data-testid={`edit-profile-${profile.name}`}
-                label={`Edit ${profile.name}`}
-                title={`Edit ${profile.name}`}
-                draggable={false}
-                onDragStart={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-                disabled={!connected || switching || stashBusy}
-                onClick={() => ctrl.openEditProfile(profile.name)}
-                icon={<Pencil size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-              />
             </div>
           );
         })}
@@ -518,7 +493,7 @@ export function ProfilesRail({
         {ctrl.applyHelperState.kind === "changes" ? (
           <p className="muted apply-helper">
             {ctrl.applyHelperState.changeCount}{" "}
-            {ctrl.applyHelperState.changeCount === 1 ? "change" : "changes"}
+            {ctrl.applyHelperState.changeCount === 1 ? "file change" : "file changes"}
             {" · "}
             <button
               type="button"

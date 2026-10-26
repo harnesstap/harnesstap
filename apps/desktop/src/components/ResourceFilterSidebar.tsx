@@ -1,5 +1,4 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type Ref } from "react";
-import { FilterX } from "lucide-react";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
   Select,
@@ -8,13 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { IconActionButton } from "./IconActionButton";
 import { noSpellcheckProps } from "../lib/no-spellcheck";
 import {
   buildNamespaceFacetOptions,
   buildOriginFacetOptions,
   formatOriginKindLabel,
-  isResourceFilterStateActive,
   isUpdatedFilterValid,
   originFilterValue,
   type NamespaceFacetOption,
@@ -28,7 +25,6 @@ export interface ResourceFilterSidebarProps {
   resources: LibraryResource[];
   state: ResourceFilterState;
   onChange: (next: ResourceFilterState) => void;
-  onClear: () => void;
   disabled?: boolean;
   searchInputRef?: Ref<HTMLInputElement>;
 }
@@ -146,7 +142,6 @@ export function ResourceFilterSidebar({
   resources,
   state,
   onChange,
-  onClear,
   disabled = false,
   searchInputRef,
 }: ResourceFilterSidebarProps) {
@@ -180,7 +175,6 @@ export function ResourceFilterSidebar({
       ),
     [resources, state.originKind],
   );
-  const dirty = isResourceFilterStateActive(state);
   const customInvalid =
     state.updated.preset === "custom" && !isUpdatedFilterValid(state.updated);
 
@@ -213,13 +207,6 @@ export function ResourceFilterSidebar({
             disabled={disabled}
             aria-label="Filter resources"
             {...noSpellcheckProps}
-          />
-          <IconActionButton
-            className="resource-filter-clear"
-            label="Clear filters"
-            disabled={disabled || !dirty}
-            onClick={onClear}
-            icon={<FilterX size={16} aria-hidden />}
           />
         </div>
       </div>
