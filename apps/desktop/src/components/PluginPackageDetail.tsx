@@ -149,7 +149,7 @@ type PluginEditingField =
 
 const APPLY_TOOLTIP = "Apply plugin graph";
 const UPDATE_TOOLTIP = "Update from origin";
-const DELETE_TOOLTIP = "Remove from library";
+const DELETE_TOOLTIP = "Delete from library";
 const CUT_TOOLTIP = "Tag a new version";
 const DUPLICATE_TOOLTIP = "Duplicate";
 const DOCTOR_TOOLTIP = "Run Doctor";
@@ -1860,7 +1860,7 @@ export function PluginPackageDetail({
               local library and its composition attachments. Resources in the
               library are not deleted.
               {detail.plugin.tags.includes("profile")
-                ? " This plugin is also a profile. Deleting it removes it from the library. To keep the plugin and only drop the profile tag, use Profiles."
+                ? " This plugin is also a profile, so the profile goes too. To keep the plugin as a plain plugin, delete the profile from Profiles instead."
                 : ""}
             </>
           ) : (

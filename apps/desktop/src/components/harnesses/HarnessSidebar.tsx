@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Check, Pencil, Plus, ScanSearch, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   canRemoveHarness,
   diskPresenceLabel,
@@ -11,8 +11,6 @@ import {
 import type { HarnessesBusy } from "../../state/harnesses-controller";
 import { HarnessIcon } from "../HarnessIcons";
 import { IconActionButton } from "../IconActionButton";
-import { ButtonSpinner } from "../ButtonSpinner";
-import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
 
 const ICON_SIZE = 16;
 const SKELETON_COUNT = 4;
@@ -26,20 +24,8 @@ export interface HarnessSidebarProps {
   disabled: boolean;
   busy: HarnessesBusy;
   onSelect: (id: HarnessId) => void;
-  onAdd: () => void;
-  onDetect: () => void;
-  onRefresh: () => void | Promise<void>;
-  onToggleEdit: () => void;
   /** Trash click; the workspace opens the confirm dialog. */
   onRemove: (id: HarnessId) => void;
-  syncLabel: string;
-  syncTitle: string;
-  syncDisabled: boolean;
-  syncHidden: boolean;
-  syncBusy: boolean;
-  syncHelper: string | null;
-  syncError: string | null;
-  onSync: () => void;
 }
 
 function rowSubtitle(entry: HarnessEntry): string {
@@ -59,19 +45,7 @@ export function HarnessSidebar({
   disabled,
   busy,
   onSelect,
-  onAdd,
-  onDetect,
-  onRefresh,
-  onToggleEdit,
   onRemove,
-  syncLabel,
-  syncTitle,
-  syncDisabled,
-  syncHidden,
-  syncBusy,
-  syncHelper,
-  syncError,
-  onSync,
 }: HarnessSidebarProps) {
   const working = busy.kind !== "idle";
   const showSkeleton = loading && rows.length === 0;
@@ -81,46 +55,6 @@ export function HarnessSidebar({
       className="resource-filter-sidebar harness-list-sidebar"
       aria-label="Harness list"
     >
-      <div className="resource-filter-section">
-        <div className="harness-sidebar-actions">
-          <WorkspaceRefreshButton
-            testId="harnesses-refresh"
-            label="Refresh harnesses"
-            disabled={disabled || working}
-            onRefresh={onRefresh}
-          />
-          <IconActionButton
-            label="Add harness"
-            primary
-            data-testid="add-harness"
-            disabled={disabled || working}
-            onClick={onAdd}
-            icon={<Plus size={ICON_SIZE} aria-hidden />}
-          />
-          {rows.length > 0 ? (
-            <IconActionButton
-              label="Detect harnesses"
-              data-testid="detect-harnesses"
-              disabled={disabled || working}
-              busy={busy.kind === "detecting"}
-              onClick={onDetect}
-              icon={<ScanSearch size={ICON_SIZE} aria-hidden />}
-            />
-          ) : null}
-          <IconActionButton
-            label={editing ? "Done" : "Edit"}
-            data-testid="edit-harnesses"
-            aria-pressed={editing}
-            disabled={disabled || (rows.length === 0 && !editing)}
-            onClick={onToggleEdit}
-            icon={
-              editing
-                ? <Check size={ICON_SIZE} aria-hidden />
-                : <Pencil size={ICON_SIZE} aria-hidden />
-            }
-          />
-        </div>
-      </div>
       <div className="harness-list-scroll">
         {showSkeleton ? (
           <ul className="resources-list" aria-busy="true" aria-label="Loading harnesses">
@@ -133,9 +67,7 @@ export function HarnessSidebar({
               </li>
             ))}
           </ul>
-        ) : rows.length === 0 ? (
-          <p className="muted harness-list-empty-hint">None set up yet.</p>
-        ) : (
+        ) : rows.length === 0 ? null : (
           <ul className="resources-list" aria-label="Harnesses">
             {rows.map((entry) => {
               const selected = selectedId === entry.id;
@@ -183,38 +115,6 @@ export function HarnessSidebar({
           </ul>
         )}
       </div>
-      {syncHidden ? null : (
-        <div className="rail-controls harness-sync-controls">
-          {syncHelper ? (
-            <p className="muted apply-helper" data-testid="sync-harnesses-helper">
-              {syncHelper}
-            </p>
-          ) : null}
-          {syncError ? (
-            <p className="muted apply-helper harness-sync-error" data-testid="sync-harnesses-error">
-              {syncError}
-            </p>
-          ) : null}
-          <button
-            className={["btn", "primary", "rail-apply-action", syncBusy ? "is-busy" : ""]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            data-testid="sync-harnesses"
-            onClick={onSync}
-            disabled={syncDisabled || syncBusy}
-            aria-busy={syncBusy}
-            title={syncTitle}
-          >
-            {syncLabel}
-            {syncBusy ? (
-              <ButtonSpinner size={16} />
-            ) : (
-              <ArrowLeftRight size={16} strokeWidth={2} aria-hidden="true" />
-            )}
-          </button>
-        </div>
-      )}
     </aside>
   );
 }

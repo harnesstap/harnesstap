@@ -4,7 +4,7 @@ import type { DuplicateMode } from "./api/library-plugins";
 export function duplicateModeCopy(parent: string): Record<DuplicateMode, { label: string; hint: string }> {
   return {
     inherit: {
-      label: "Include as a resource of a new profile",
+      label: "Add it to a new profile",
       hint: `The new profile contains ${parent} and gets its updates. Hide anything you don't need.`,
     },
     copy: {

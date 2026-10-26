@@ -146,6 +146,37 @@
   cursor: not-allowed;
 }
 
+/* One disabled look for filled actions: neutral fill, 40% text, no accent or red. */
+.btn.primary:disabled:not(.is-busy),
+.btn.destructive:disabled:not(.is-busy),
+.icon-action.primary:disabled:not(.is-busy),
+.icon-action.destructive:disabled:not(.is-busy) {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: color-mix(in srgb, var(--fg) 40%, transparent);
+  opacity: 1;
+}
+
+.btn.destructive-secondary {
+  border-color: color-mix(in srgb, var(--red) 60%, var(--border));
+  color: var(--red);
+  font-weight: 600;
+}
+
+.btn.destructive-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+}
+
+/* Hover target for a disabled control's reason tooltip (disabled buttons get no pointer events). */
+.disabled-reason-host {
+  display: inline-flex;
+}
+
+.disabled-reason-host.is-block {
+  display: flex;
+  width: 100%;
+}
+
 .btn.is-busy,
 .icon-action.is-busy {
   cursor: wait;
@@ -630,4 +661,8 @@
     background-color var(--duration-instant) var(--ease-out),
     color var(--duration-instant) var(--ease-out),
     border-color var(--duration-instant) var(--ease-out);
+}
+
+.risky-removal-group + .risky-removal-group {
+  margin-top: var(--space-2);
 }
