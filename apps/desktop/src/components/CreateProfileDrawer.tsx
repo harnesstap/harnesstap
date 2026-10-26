@@ -312,7 +312,7 @@ export function CreateProfileDrawer({
     <FullScreenPanel
       titleId="create-profile-title"
       title="Create profile"
-      eyebrow="Profile library"
+      eyebrow="Profiles"
       closeLabel="Close create profile"
       closeDisabled={controlsDisabled}
       onClose={onClose}

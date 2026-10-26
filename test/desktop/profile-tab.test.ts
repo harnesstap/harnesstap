@@ -162,8 +162,8 @@ async function hoverOpensTooltip(trigger: HTMLElement): Promise<boolean> {
 const TABS: Array<{ destination: Destination; ariaLabel: string; label: string }> = [
   { destination: "library", ariaLabel: "Library", label: "Library" },
   { destination: "discover", ariaLabel: "Discover", label: "Discover" },
-  { destination: "environments", ariaLabel: "Environments", label: "Env" },
-  { destination: "harnesses", ariaLabel: "Harnesses", label: "Harness" },
+  { destination: "environments", ariaLabel: "Environments", label: "Environments" },
+  { destination: "harnesses", ariaLabel: "Harnesses", label: "Harnesses" },
   { destination: "scope", ariaLabel: "Profile", label: "Profile" },
 ];
 

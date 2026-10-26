@@ -171,7 +171,7 @@ export function AppHeader({
             aria-current={destination === "harnesses" ? "page" : undefined}
           >
             <Cable size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-            <span className="header-focus-label">Harness</span>
+            <span className="header-focus-label">Harnesses</span>
           </button>,
         )}
         <ChromeTooltip content={PROFILE_TAB_TOOLTIP}>

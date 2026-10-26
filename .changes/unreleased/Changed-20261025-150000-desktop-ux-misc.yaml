@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Desktop: header tabs read "Environments" and "Harnesses" like the palette, Ctrl+5 opens Profile, Export and Import ask a plain question per step with a "Choose file" picker, Account uses normal-width buttons with Cloud and GitHub sections, Add marketplace shows the inferred type read-only, the Library drops repeated labels, and the create picker shows every type at 1440 wide.'
+time: 2026-10-26T01:00:00.000000Z
+custom:
+  Issue: ""

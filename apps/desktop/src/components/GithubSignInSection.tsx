@@ -286,9 +286,7 @@ export function GithubSignInSection({
           </p>
           <div className="cloud-account-actions">
             <button
-              className={["btn", "primary", busy ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
+              className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
               type="button"
               onClick={() => void onSignIn()}
               disabled={controlsDisabled || !baseUrl}

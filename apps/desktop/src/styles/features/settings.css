@@ -348,16 +348,6 @@
   outline: none;
 }
 
-.full-screen-panel-body.migrate-export-body,
-.full-screen-panel-body.migrate-import-body {
-  align-items: center;
-}
-
-.full-screen-panel-body.migrate-export-body > *,
-.full-screen-panel-body.migrate-import-body > * {
-  width: min(40rem, 100%);
-}
-
 .harness-generic-info {
   display: inline-flex;
   align-items: center;
@@ -398,6 +388,11 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+
+/* P2-10: account actions are normal-width buttons, not full-width bars. */
+.cloud-account-actions .btn {
+  width: auto;
 }
 
 .cloud-user-code {
@@ -455,4 +450,42 @@
 
 .settings-section .telemetry-scope-list {
   font-size: var(--text-body);
+}
+
+/* Export / Import drawers: step heading, described scope radios, and the file chooser. */
+.migrate-step-heading {
+  margin: 0 0 0.75rem;
+  font-size: var(--text-value);
+  font-weight: 600;
+}
+
+.migrate-scope-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.migrate-scope-option > button {
+  margin-top: 0.15rem;
+}
+
+.migrate-scope-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.migrate-file-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.migrate-file-picker .btn {
+  width: auto;
+}
+
+.migrate-file-path {
+  overflow-wrap: anywhere;
 }

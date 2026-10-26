@@ -382,3 +382,8 @@
   padding-left: 0;
   flex-shrink: 0;
 }
+
+/* P2-11: read-only inferred marketplace type, sized like the field hints. */
+.marketplace-type-readout {
+  font-size: var(--text-meta);
+}

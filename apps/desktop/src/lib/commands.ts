@@ -16,6 +16,7 @@ export type ShortcutId =
   | "discover"
   | "environments"
   | "harnesses"
+  | "profile"
   | "scope-global"
   | "scope-project"
   | "filter"
@@ -81,6 +82,13 @@ export const SHORTCUTS: readonly ShortcutSpec[] = [
     ignoreWhenTyping: false,
     modifier: true,
     key: "4",
+  },
+  {
+    id: "profile",
+    label: "Go to Profile",
+    ignoreWhenTyping: false,
+    modifier: true,
+    key: "5",
   },
   {
     id: "scope-global",

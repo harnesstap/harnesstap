@@ -23,6 +23,9 @@ import { toast } from "../../state/toast-store";
 import { ChromeTooltip } from "../ChromeTooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
+/** Clears the header bar so the popover sits below the bell, not over its neighbours (P2-20). */
+export const NOTIFICATIONS_POPOVER_OFFSET_PX = 14;
+
 const HEADER_ICON_SIZE = 18;
 
 export interface NotificationsBellProps {
@@ -132,6 +135,7 @@ export function NotificationsBell({ baseUrl, token, disabled = false, onOpen }: 
       <PopoverContent
         ref={contentRef}
         align="end"
+        sideOffset={NOTIFICATIONS_POPOVER_OFFSET_PX}
         aria-label="Notifications"
         className="notifications-popover w-auto p-0"
         data-testid="notifications-popover"
@@ -157,8 +161,12 @@ export function NotificationsBell({ baseUrl, token, disabled = false, onOpen }: 
               className="icon-action notifications-icon-btn"
               data-testid="notifications-mark-all"
               aria-label="Mark all as read"
-              disabled={busy || count === 0}
-              onClick={() => void markAll()}
+              aria-disabled={busy || count === 0}
+              onClick={() => {
+                // aria-disabled (not disabled) so the tooltip still names the action.
+                if (busy || count === 0) return;
+                void markAll();
+              }}
             >
               <CheckCheck size={16} strokeWidth={2} aria-hidden="true" />
             </button>

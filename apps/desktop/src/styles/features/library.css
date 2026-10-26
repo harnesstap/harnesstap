@@ -568,6 +568,24 @@
   margin-top: 0.15rem;
 }
 
+/* P2-22: the sidebar border runs the full height, and its Origin radios are plain like the other filters. */
+.resources-panel-filter-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.resources-panel-filter-col > .resource-filter-sidebar {
+  flex: 1;
+}
+
+.resource-filter-sidebar .resource-filter-option,
+.resource-filter-sidebar .resource-filter-option.selected {
+  border: 0;
+  background: none;
+  padding: 0.15rem 0;
+}
+
 .resource-filter-updated-select {
   width: 100%;
   min-width: 0;

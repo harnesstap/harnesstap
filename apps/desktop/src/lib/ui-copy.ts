@@ -204,7 +204,7 @@ export function hoverTypeLabel(type: string): string {
 
 export const CREATE_RESOURCE_COPY = {
   subagentTitle: "Subagent",
-  subagentDescription: "A subagent definition with optional model settings.",
+  subagentDescription: "An agent with its own prompt and model.",
 } as const;
 
 const USER_PATH_MAX = 48;

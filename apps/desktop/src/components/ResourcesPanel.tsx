@@ -1267,7 +1267,7 @@ export function ResourcesPanel({
       </div>
 
       <div className="resources-panel-layout">
-        <div>
+        <div className="resources-panel-filter-col">
           <ResourceFilterSidebar
             resources={snapshotEntries}
             state={filterState}

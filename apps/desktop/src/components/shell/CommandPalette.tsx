@@ -105,6 +105,14 @@ export function CommandPaletteHost({
         run: () => nav.go("harnesses"),
       },
       {
+        id: "goto-profile",
+        section: "goto",
+        label: "Profile",
+        shortcut: formatShortcutKeys(shortcutById("profile")),
+        keywords: ["profiles", "scope", "apply"],
+        run: () => nav.go("scope"),
+      },
+      {
         id: "goto-global",
         section: "goto",
         label: "Global",
@@ -233,7 +241,8 @@ export function CommandPaletteHost({
         case "library":
         case "discover":
         case "environments":
-        case "harnesses": {
+        case "harnesses":
+        case "profile": {
           const destination = destinationForNumberKey(shortcutById(id).key);
           if (destination) {
             setPaletteOpen(false);
