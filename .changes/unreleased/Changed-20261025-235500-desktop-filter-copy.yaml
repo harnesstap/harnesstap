@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Desktop: filter placeholders now say what they match (name and description, or name, type, and source), and every filter miss reads No matches for "query" with a Clear filter action at the same spot under the filter.'
+time: 2026-10-25T23:09:50.000000Z
+custom:
+  Issue: ""

@@ -287,7 +287,7 @@ export function ResourceSelectionList({
       <Input
         className="selection-list-filter h-8 text-xs"
         type="search"
-        placeholder="Filter by name"
+        placeholder="Filter by name or description"
         value={filter}
         onChange={(event) => onFilterChange(event.target.value)}
         aria-label="Filter library items"
