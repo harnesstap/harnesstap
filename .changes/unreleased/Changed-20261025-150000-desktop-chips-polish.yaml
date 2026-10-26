@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Desktop: zero-count type chips are hidden everywhere (All stays), the overflow is a "+N" button, and chips line up with the filter. One Active/Inactive status pill replaces the ad hoc badges, the reconnect banner is neutral with a spinner and plain copy, changed-type badges explain themselves, harness icons have tooltips, names underline only on hover, row checkboxes center on the first line, versions read "v1.0.0" next to the name, and harness instruction chips show "CLAUDE.md" with the harness icon.'
+time: 2026-10-26T01:00:00.000000Z
+custom:
+  Issue: ""

@@ -99,39 +99,63 @@ function instructionFileName(resource: ResourceDisplaySource): string | null {
   return null;
 }
 
-function platformNameForInstructionResource(name: string): string | null {
+type InstructionPlatform = { id: string; name: string };
+
+function platformForInstructionResource(name: string): InstructionPlatform | null {
   if (!name.endsWith("-instructions") || name === AGENTS_INSTRUCTIONS_RESOURCE_NAME) {
     return null;
   }
   const prefix = name.slice(0, -"-instructions".length);
   const platforms = getAllPlatforms();
-  const exact = platforms.find((platform) => platform.id === prefix);
-  if (exact) {
-    return exact.name;
-  }
-  const withCli = platforms.find((platform) => platform.id === `${prefix}-cli`);
-  if (withCli) {
-    return withCli.name;
-  }
-  const withCode = platforms.find(
-    (platform) => platform.id === `${prefix}-code` || platform.id.startsWith(`${prefix}-`),
-  );
-  if (withCode) {
-    return withCode.name;
-  }
-  return null;
+  const match =
+    platforms.find((platform) => platform.id === prefix) ??
+    platforms.find((platform) => platform.id === `${prefix}-cli`) ??
+    platforms.find(
+      (platform) => platform.id === `${prefix}-code` || platform.id.startsWith(`${prefix}-`),
+    );
+  return match ? { id: match.id, name: match.name } : null;
+}
+
+function hasNamespaceQualifier(resource: ResourceDisplaySource): boolean {
+  const namespace = resource.namespace?.trim() ?? "";
+  return namespace.length > 0 && namespace !== GLOBAL_SCOPE_LABEL;
 }
 
 function instructionQualifier(resource: ResourceDisplaySource): string {
-  const namespace = resource.namespace?.trim() ?? "";
-  if (namespace.length > 0 && namespace !== GLOBAL_SCOPE_LABEL) {
-    return namespace;
+  if (hasNamespaceQualifier(resource)) {
+    return resource.namespace?.trim() ?? "";
   }
-  const fromName = platformNameForInstructionResource(resource.name);
-  if (fromName) {
-    return fromName;
+  return platformForInstructionResource(resource.name)?.name ?? SHARED_INSTRUCTION_SCOPE_LABEL;
+}
+
+export type InstructionHarnessParts = {
+  /** Bare file name, e.g. `CLAUDE.md`. */
+  file: string;
+  harnessId: string;
+  harnessName: string;
+};
+
+/**
+ * Chip form of a harness-specific instruction file: the bare file name plus
+ * the harness it belongs to, so a chip can show an icon instead of the
+ * `(Claude Code)` suffix. Null for shared or namespaced instructions, which
+ * keep the full label so peers stay distinct.
+ */
+export function instructionHarnessParts(
+  resource: ResourceDisplaySource,
+): InstructionHarnessParts | null {
+  if (resource.type !== "instruction" || isAgentsMdResource(resource)) {
+    return null;
   }
-  return SHARED_INSTRUCTION_SCOPE_LABEL;
+  if (hasNamespaceQualifier(resource)) {
+    return null;
+  }
+  const platform = platformForInstructionResource(resource.name);
+  const file = instructionFileName(resource);
+  if (!platform || !file) {
+    return null;
+  }
+  return { file, harnessId: platform.id, harnessName: platform.name };
 }
 
 export function formatInstructionInventoryLabel(

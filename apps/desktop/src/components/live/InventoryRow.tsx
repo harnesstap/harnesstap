@@ -19,6 +19,7 @@ import { HarnessScopeControl } from "./HarnessScopeControl";
 import { displayNameForHarness, type HarnessScope, type SerializerTarget } from "../../lib/harness-scope-ui";
 import { chipHarnessHint, chipHarnessLabel } from "../../lib/chip-harness";
 import { HarnessMark } from "../HarnessIcons";
+import { instructionHarnessParts } from "../../lib/resource-display";
 
 const CHIP_STATUS_GLYPH_PX = 12;
 const CHIP_ACTION_ICON_PX = 14;
@@ -107,6 +108,9 @@ export function InventoryRow({
     : null;
   const harnessHint = inProfile ? chipHarnessHint(storedScope, registeredHarnesses) : null;
   const harnessTextId = useId();
+  // `CLAUDE.md` plus the harness icon; the full `CLAUDE.md (Claude Code)` stays
+  // in the hover card and the accessible name.
+  const instructionParts = instructionHarnessParts(item.resource);
   const toolsControl = editMode && showScope && onHarnessScopeChange && item.resource.id ? (
     <HarnessScopeControl
       resourceName={item.label}
@@ -236,14 +240,25 @@ export function InventoryRow({
         <button
           type="button"
           className="inventory-chip-name"
+          aria-label={instructionParts ? item.label : undefined}
           aria-describedby={harnessLabel ? harnessTextId : undefined}
           onClick={(event) => {
             event.stopPropagation();
             activateChip();
           }}
         >
-          {item.label}
+          {instructionParts ? instructionParts.file : item.label}
         </button>
+        {instructionParts ? (
+          <span
+            className="inventory-chip-hint"
+            data-testid="inventory-chip-instruction-harness"
+            data-kind="instruction"
+            aria-hidden="true"
+          >
+            <HarnessMark id={instructionParts.harnessId} size={CHIP_HINT_ICON_PX} />
+          </span>
+        ) : null}
         {harnessHint ? (
           <span
             className="inventory-chip-hint"

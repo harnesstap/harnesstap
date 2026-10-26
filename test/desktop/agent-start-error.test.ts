@@ -30,7 +30,10 @@ describe("formatAgentStartError", () => {
       })}`),
     ).toBe(AGENT_START_COPY.newerSchema);
     expect(AGENT_START_COPY.newerSchema).not.toMatch(/sidecar/i);
-    expect(CONNECT_SPLASH_COPY.unreachable).toBe("Can't reach the HarnessTap agent");
+    expect(CONNECT_SPLASH_COPY.unreachable).toBe(
+      "Can't reach the HarnessTap agent. It may still be starting.",
+    );
+    expect(CONNECT_SPLASH_COPY.reconnecting).toBe("Reconnecting to the HarnessTap agent...");
     expect(CONNECT_SPLASH_COPY.starting).toBe("Starting the agent");
   });
 

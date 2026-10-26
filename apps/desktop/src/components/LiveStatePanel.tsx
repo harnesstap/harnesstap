@@ -704,7 +704,7 @@ function ProfilePluginPackageRow({
       </ResourceRowLeading>
       <ResourceRowIdentity label={plugin.name} />
       <ResourceRowTrailing>
-        <span className="enabled-detail muted">@{plugin.version}</span>
+        <span className="enabled-detail muted">v{plugin.version}</span>
       </ResourceRowTrailing>
     </ResourceRowRoot>
   );
@@ -1807,7 +1807,7 @@ export function LiveStatePanel({
     && (!projectReady || previewWarning === PROJECT_NOT_TRACKED_WARNING);
   const showNotTrackedActions = showBootstrapBanner;
   const inactiveHeaderHint = !selectedIsActive
-    ? "Applies when you Apply this profile"
+    ? "Not applied yet. Apply from the sidebar."
     : view === "project" && !appliedProp
       ? "Found on disk. Apply to track these with this profile."
       : null;

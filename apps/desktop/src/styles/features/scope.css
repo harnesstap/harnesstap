@@ -229,12 +229,6 @@
   gap: 0.5rem;
 }
 
-.edit-active-badge {
-  font-size: var(--text-micro);
-  font-weight: 500;
-  color: var(--green);
-  text-transform: lowercase;
-}
 
 .edit-profile-title .muted,
 .edit-profile-last-edit {

@@ -930,8 +930,7 @@ describe("filterProfileInventoryItems", () => {
       "No skills in this profile yet",
     );
     const tabs = visibleResourceTypeTabs(counts, disableOpts);
-    expect(tabs).toContain("plugin");
-    expect(tabs).toContain("skill");
+    expect(tabs).toEqual(["all", "plugin"]);
     expect(tabs).not.toContain("plugin_ref");
     expect(tabs).not.toContain("plugin_pin");
     expect(collectTypeTabAttention(searched).size).toBe(0);

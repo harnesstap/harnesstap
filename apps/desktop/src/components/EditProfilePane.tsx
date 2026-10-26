@@ -47,6 +47,7 @@ import { OverflowMenu, type OverflowMenuItem } from "./OverflowMenu";
 import { SyncedChip } from "./SyncedChip";
 import { ChromeTooltip } from "./ChromeTooltip";
 import { EditedChip } from "./EditedChip";
+import { StatusPill } from "./StatusPill";
 import { IconActionButton } from "./IconActionButton";
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
@@ -610,7 +611,7 @@ export function EditProfilePane({
           <h2>
             Edit · {profileName}
             {detail?.active ? (
-              <span className="badge edit-active-badge">active</span>
+              <StatusPill kind="active" />
             ) : null}
             {detail?.profile.version ? (
               <span className="badge badge-meta">v{detail.profile.version}</span>
