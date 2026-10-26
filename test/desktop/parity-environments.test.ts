@@ -65,12 +65,12 @@ describe("filterEnvironmentsByQuery", () => {
 describe("environments workspace chrome", () => {
   it("marks the active environment on the list, not as a header sidecar status", () => {
     expect(workspaceSource).toContain("row.is_global_active");
-    expect(workspaceSource).toContain('<span className="badge">active</span>');
+    expect(workspaceSource).toContain('<StatusPill kind="active" />');
     expect(workspaceSource).not.toContain("sidecarStatusCopy");
     expect(workspaceSource).not.toContain("Sidecar in sync");
     expect(workspaceSource).not.toContain("edit-active-badge");
     expect(workspaceSource).not.toContain("fetchEnvironmentStatus");
-    expect(stylesSource).toContain(".resources-list-name .badge");
+    expect(stylesSource).toContain(".resources-list-name .status-pill");
   });
 
   it("keeps plugin references in details, not the sidebar inventory line", () => {

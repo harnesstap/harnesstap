@@ -19,6 +19,7 @@ import {
   TYPE_TABS_LESS_LABEL,
   typeTabAttentionTooltip,
   typeTabCountsFromRecord,
+  typeTabsMoreAriaLabel,
   typeTabsMoreLabel,
   typeTabZeroStateCopy,
   visibleResourceTypeTabs,
@@ -76,15 +77,10 @@ describe("visibleResourceTypeTabs", () => {
     ]);
   });
 
-  it("keeps empty types selectable when emptyMode is show", () => {
+  it("hides zero-count types but keeps All when emptyMode is show", () => {
     const counts = countResourceTypeTabs(["agent"]);
     const tabs = visibleResourceTypeTabs(counts, { emptyMode: "show" });
-    expect(tabs[0]).toBe(ALL_RESOURCE_TYPE_TAB);
-    expect(tabs).toContain("agent");
-    expect(tabs).toContain("skill");
-    expect(tabs).toContain("plugin");
-    expect(tabs).toContain("mcp_server");
-    expect(tabs).not.toContain("plugin_ref");
+    expect(tabs).toEqual([ALL_RESOURCE_TYPE_TAB, "agent"]);
     expect(resourceTypeTabPillsText("skill", counts, { emptyMode: "show" })).toBe(
       "0 skills",
     );
@@ -94,15 +90,10 @@ describe("visibleResourceTypeTabs", () => {
     expect(resourceTypeTabEmptyDisabled("skill", counts)).toBe(true);
   });
 
-  it("keeps empty types when emptyMode is disable", () => {
+  it("hides zero-count types but keeps All when emptyMode is disable", () => {
     const counts = countResourceTypeTabs(["skill"]);
     const tabs = visibleResourceTypeTabs(counts, { emptyMode: "disable" });
-    expect(tabs[0]).toBe(ALL_RESOURCE_TYPE_TAB);
-    expect(tabs).toContain("skill");
-    expect(tabs).toContain("plugin");
-    expect(tabs).toContain("command");
-    expect(tabs).not.toContain("plugin_ref");
-    expect(tabs).not.toContain("plugin_pin");
+    expect(tabs).toEqual([ALL_RESOURCE_TYPE_TAB, "skill"]);
     expect(resourceTypeTabItemCount("plugin", counts)).toBe(0);
   });
 
@@ -217,16 +208,11 @@ describe("resource type tab aria-labels", () => {
 });
 
 describe("resourceTypeTabEmptyDisabled", () => {
-  it("renders every canonical type tab at count 0", () => {
+  it("shows only All when every type is at count 0", () => {
     const counts = new Map<string, number>();
     const tabs = visibleResourceTypeTabs(counts, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS);
-    expect(tabs[0]).toBe(ALL_RESOURCE_TYPE_TAB);
+    expect(tabs).toEqual([ALL_RESOURCE_TYPE_TAB]);
     for (const type of RESOURCE_TYPE_TAB_ORDER) {
-      if (type === "plugin_ref") {
-        expect(tabs).not.toContain(type);
-        continue;
-      }
-      expect(tabs).toContain(type);
       expect(resourceTypeTabItemCount(type, counts)).toBe(0);
       expect(resourceTypeTabEmptyDisabled(type, counts)).toBe(true);
       expect(
@@ -235,16 +221,7 @@ describe("resourceTypeTabEmptyDisabled", () => {
     }
   });
 
-  it("never packs zero-count tabs into an N more overflow on showing surfaces", () => {
-    const counts = new Map<string, number>();
-    const tabs = visibleResourceTypeTabs(counts, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS);
-    expect(tabs.length).toBeGreaterThan(4);
-    for (const type of tabs) {
-      if (type === ALL_RESOURCE_TYPE_TAB) {
-        continue;
-      }
-      expect(resourceTypeTabEmptyDisabled(type, counts)).toBe(true);
-    }
+  it("wraps type tabs on showing surfaces instead of an N more overflow", () => {
     const panel = readFileSync(
       join(import.meta.dir, "../../apps/desktop/src/components/ResourcesPanel.tsx"),
       "utf8",
@@ -274,25 +251,25 @@ describe("resourceTypeTabEmptyDisabled", () => {
 describe("typeTabAttentionTooltip", () => {
   it("uses singular type nouns for a single add-count", () => {
     expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 0 }, "mcp_server")).toBe(
-      "1 MCP to add",
+      "Changed since last apply: 1 MCP to add",
     );
     expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 0 }, "skill")).toBe(
-      "1 Skill to add",
+      "Changed since last apply: 1 Skill to add",
     );
     expect(typeTabAttentionTooltip({ toAdd: 1, inactive: 2 }, "plugin")).toBe(
-      "1 Plugin to add · 2 inactive",
+      "Changed since last apply: 1 Plugin to add · 2 inactive",
     );
   });
 
   it("pluralizes type nouns when adding more than one", () => {
     expect(typeTabAttentionTooltip({ toAdd: 2, inactive: 3 }, "mcp_server")).toBe(
-      "2 MCPs to add · 3 inactive",
+      "Changed since last apply: 2 MCPs to add · 3 inactive",
     );
     expect(typeTabAttentionTooltip({ toAdd: 2, inactive: 0 }, "skill")).toBe(
-      "2 Skills to add",
+      "Changed since last apply: 2 Skills to add",
     );
     expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 4 }, "plugin")).toBe(
-      "4 inactive",
+      "Changed since last apply: 4 inactive",
     );
     expect(typeTabAttentionTooltip({ toAdd: 0, inactive: 0 }, "skill")).toBeNull();
     expect(typeTabAttentionTooltip(undefined, "skill")).toBeNull();
@@ -343,9 +320,11 @@ describe("collapsedTypeTabFit", () => {
 });
 
 describe("typeTabsMoreLabel", () => {
-  it("pluralizes N more and keeps Less exact", () => {
-    expect(typeTabsMoreLabel(1)).toBe("1 more");
-    expect(typeTabsMoreLabel(3)).toBe("3 more");
+  it("labels the overflow +N with a spoken count and keeps Less exact", () => {
+    expect(typeTabsMoreLabel(1)).toBe("+1");
+    expect(typeTabsMoreLabel(3)).toBe("+3");
+    expect(typeTabsMoreAriaLabel(1)).toBe("Show 1 more type");
+    expect(typeTabsMoreAriaLabel(6)).toBe("Show 6 more types");
     expect(TYPE_TABS_LESS_LABEL).toBe("Less");
   });
 });
@@ -371,12 +350,11 @@ describe("resolveResourceTypeTab", () => {
     );
   });
 
-  it("keeps All and empty types on Library show mode after a Subagents-only peek", () => {
+  it("keeps All on Library show mode after a Subagents-only peek", () => {
     const peek = countResourceTypeTabs(Array.from({ length: 40 }, () => "agent"));
     expect(visibleResourceTypeTabs(peek)).toEqual(["agent"]);
     const library = visibleResourceTypeTabs(peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS);
-    expect(library[0]).toBe(ALL_RESOURCE_TYPE_TAB);
-    expect(library).toContain("skill");
+    expect(library).toEqual([ALL_RESOURCE_TYPE_TAB, "agent"]);
     expect(resolveResourceTypeTab(null, peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS)).toBeNull();
     expect(resolveResourceTypeTab("skill", peek, LIBRARY_RESOURCE_TYPE_TAB_OPTIONS)).toBeNull();
     expect(resourceTypeTabLocksEmpty("show")).toBe(true);

@@ -176,7 +176,7 @@ export function ResourceRowMeta({
 }): ReactNode {
   return (
     <div className={cn("resource-row-meta", className)}>
-      <RelatedHarnessIcons harnessIds={harnessIds} tooltip={false} />
+      <RelatedHarnessIcons harnessIds={harnessIds} />
     </div>
   );
 }

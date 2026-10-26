@@ -122,9 +122,10 @@ export function applyResultToastTitle(input: {
 /** Connect splash (DT-6). ASCII punctuation only. Never says sidecar. */
 export const CONNECT_SPLASH_COPY = {
   starting: "Starting the agent",
-  couldNotConnect: "Can't reach the HarnessTap agent",
-  sidecarConnectionFailed: "Can't reach the HarnessTap agent",
-  unreachable: "Can't reach the HarnessTap agent",
+  couldNotConnect: "Can't reach the HarnessTap agent. It may still be starting.",
+  sidecarConnectionFailed: "Can't reach the HarnessTap agent. It may still be starting.",
+  unreachable: "Can't reach the HarnessTap agent. It may still be starting.",
+  reconnecting: "Reconnecting to the HarnessTap agent...",
   unexpectedStop: "The HarnessTap agent stopped unexpectedly.",
   retry: "Retry",
   openLogs: "Open logs",

@@ -64,7 +64,7 @@ describe("Global/Project scope inventory chrome", () => {
     );
   });
 
-  it("uses one full-span search and wide type tabs with empty types disabled", () => {
+  it("uses one full-span search and wide type tabs with empty types hidden", () => {
     expect(liveStateSource).toContain('label="Filter resources"');
     expect(liveStateSource).toContain('emptyMode="disable"');
     expect(liveStateSource).toContain("includeAll={true}");
@@ -72,8 +72,8 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).not.toContain("resource-type-tab-empty");
     expect(liveStateSource).not.toContain("emptyTypesPillLabel");
     expect(designSource).not.toContain("`+N empty`");
-    expect(designSource).toContain("`0 Permissions`");
-    expect(designSource).toContain("`No plugins in this profile yet`");
+    expect(designSource).not.toContain("`0 Permissions`");
+    expect(designSource).toContain("Hide zero-count types everywhere");
     expect(designSource).not.toContain("`No Permissions found`");
     expect(designSource).toContain("No resources yet");
     expect(tabsSource).toContain("resourceTypeTabUnit");

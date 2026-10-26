@@ -45,7 +45,6 @@ const RESOURCE_TYPE_TAB_FOLD: Record<string, string> = {
  * canonical types. Real resource types stay visible when emptyMode is
  * disable or show.
  */
-const RESOURCE_TYPE_TAB_HIDE_WHEN_EMPTY = new Set(["plugin_ref"]);
 
 /** Fold pin (and other aliases) into the tab they belong to. */
 export function foldResourceTypeTab(type: string): string {
@@ -54,10 +53,6 @@ export function foldResourceTypeTab(type: string): string {
 
 function tabHasItems(type: string, counts: ReadonlyMap<string, number>): boolean {
   return (counts.get(type) ?? 0) > 0;
-}
-
-function keepEmptyDisabledTab(type: string): boolean {
-  return KNOWN_TAB_TYPES.has(type) && !RESOURCE_TYPE_TAB_HIDE_WHEN_EMPTY.has(type);
 }
 
 /** Short human labels for type tabs (Desktop voice). */
@@ -131,15 +126,14 @@ export type ResourceTypeTabOptions = {
   includeAll?: boolean;
   /**
    * hide (default): presence-filter empty types.
-   * disable / show: keep every canonical type visible, including count 0.
-   * Zero pills stay muted and aria-disabled; they are never overflow-collapsed.
+   * disable / show: always keep All; zero-count types are still hidden.
    */
   emptyMode?: ResourceTypeTabEmptyMode;
   /** Muted zero-count tooltip. Default profile. */
   emptySurface?: TypeTabZeroSurface;
 };
 
-/** Library type strip: every canonical type, including count 0. */
+/** Library type strip: All plus every type with matches. */
 export const LIBRARY_RESOURCE_TYPE_TAB_OPTIONS: ResourceTypeTabOptions = {
   includeAll: true,
   emptyMode: "show",
@@ -238,19 +232,15 @@ function presentResourceTypeTabs(counts: ReadonlyMap<string, number>): string[] 
 /**
  * Presence-filtered tabs: hide empty types. Show All only when at least two
  * types are present, unless `includeAll` is false.
- * `emptyMode: "disable"` or `"show"` keeps every canonical type visible (plus All).
+ * `emptyMode: "disable"` or `"show"` always keeps All, even with one type or none.
  */
 export function visibleResourceTypeTabs(
   counts: ReadonlyMap<string, number>,
   options?: ResourceTypeTabOptions,
 ): string[] {
   if (showsEmptyCanonicalTabs(emptyMode(options))) {
-    const tabs = [
-      ...RESOURCE_TYPE_TAB_ORDER.filter(
-        (type) => tabHasItems(type, counts) || keepEmptyDisabledTab(type),
-      ),
-      ...extraPresentTabs(counts),
-    ];
+    // Zero-count types are hidden (review P1-12); All always stays.
+    const tabs = presentResourceTypeTabs(counts);
     if (includeAllTab(options)) {
       return [ALL_RESOURCE_TYPE_TAB, ...tabs];
     }
@@ -340,9 +330,14 @@ export function resourceTypeTabItemCount(
 
 export const TYPE_TABS_LESS_LABEL = "Less";
 
-/** Trailing overflow control. `1 more` / `3 more`, never the total. */
+/** Trailing overflow button text. `+1` / `+3`, never the total. */
 export function typeTabsMoreLabel(hiddenCount: number): string {
-  return `${hiddenCount} more`;
+  return `+${hiddenCount}`;
+}
+
+/** Accessible name for the overflow button. */
+export function typeTabsMoreAriaLabel(hiddenCount: number): string {
+  return `Show ${hiddenCount} more ${hiddenCount === 1 ? "type" : "types"}`;
 }
 
 export type CollapsedTypeTabFit = {
@@ -476,6 +471,9 @@ export function resourceTypeTabAttentionNoun(type: string, count: number): strin
 }
 
 /** `1 MCP to add · M inactive` when those buckets have rows. */
+/** Lead-in for the pencil badge on a type tab (review P1-19). */
+export const TYPE_TAB_ATTENTION_PREFIX = "Changed since last apply";
+
 export function typeTabAttentionTooltip(
   attention: TypeTabAttention | undefined,
   type: string,
@@ -495,5 +493,5 @@ export function typeTabAttentionTooltip(
   if (parts.length === 0) {
     return null;
   }
-  return parts.join(" · ");
+  return `${TYPE_TAB_ATTENTION_PREFIX}: ${parts.join(" · ")}`;
 }

@@ -32,6 +32,7 @@ describe("connect splash copy", () => {
       CONNECT_SPLASH_COPY.couldNotConnect,
       CONNECT_SPLASH_COPY.sidecarConnectionFailed,
       CONNECT_SPLASH_COPY.unreachable,
+      CONNECT_SPLASH_COPY.reconnecting,
       CONNECT_SPLASH_COPY.retry,
       CONNECT_SPLASH_COPY.openLogs,
       CONNECT_SPLASH_COPY.openLogsFailed("permission denied"),

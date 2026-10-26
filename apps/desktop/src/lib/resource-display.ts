@@ -14,6 +14,7 @@ export {
   groupedOriginKind,
   hookInventoryWireFromResource,
   inferContainedFileType,
+  instructionHarnessParts,
   isAgentsMdResource,
   isPackageEntryFileName,
   packageDirectoryDisplayPath,
@@ -23,5 +24,6 @@ export { formatPluginOriginDisplay } from "../../../../src/ui/plugin-origin-disp
 export type {
   HookDisplayInput,
   HookInventoryWire,
+  InstructionHarnessParts,
   PluginDisplayOptions,
 } from "../../../../src/ui/resource-display.ts";

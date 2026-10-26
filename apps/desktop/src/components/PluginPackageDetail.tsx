@@ -1016,14 +1016,14 @@ export function PluginPackageDetail({
       case "frozen": {
         const frozen = frozenDetail?.plugin ?? null;
         if (frozen) {
-          return `@${frozen.version}`;
+          return `v${frozen.version}`;
         }
-        return frozenVersion ? `@${frozenVersion}` : "";
+        return frozenVersion ? `v${frozenVersion}` : "";
       }
       case "history":
       case "head":
         return detail
-          ? `@${detail.plugin.version}`
+          ? `v${detail.plugin.version}`
           : "";
       default: {
         const _exhaustive: never = historyMode;
@@ -1080,6 +1080,9 @@ export function PluginPackageDetail({
           }}
         >
           {detail?.plugin.name ?? selector}
+          {versionSuffix ? (
+            <span className="mono library-detail-version">{versionSuffix}</span>
+          ) : null}
           {fieldsReadOnly ? null : (
             <IconActionButton
               className="library-field-edit-trigger"
@@ -1093,9 +1096,6 @@ export function PluginPackageDetail({
             />
           )}
         </span>
-        {versionSuffix ? (
-          <span className="mono library-detail-version">{versionSuffix}</span>
-        ) : null}
         {editedChip}
       </>
     );

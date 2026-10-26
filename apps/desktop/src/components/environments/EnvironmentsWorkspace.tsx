@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { StatusPill } from "../StatusPill";
 import { Check, Copy, Eye, EyeOff, FilterX, Pencil, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -420,7 +421,7 @@ export function EnvironmentsWorkspace({
                           <span className="resources-list-name">
                             {row.name}
                             {row.is_global_active ? (
-                              <span className="badge">active</span>
+                              <StatusPill kind="active" />
                             ) : null}
                           </span>
                           {row.description ? (
