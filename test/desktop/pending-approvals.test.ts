@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import {
-  pendingApprovalCliHint,
   pendingApprovalsFromTrust,
   shouldShowPendingApprovalsStrip,
   trustFieldsFromUnknown,
@@ -29,12 +28,5 @@ describe("pending approvals from apply/switch trust fields", () => {
     expect(pendingApprovalsFromTrust(fields)).toEqual([
       { ref: "acme/hooks", types: ["hooks", "bin"] },
     ]);
-  });
-
-  it("returns approve/deny CLI hints for pending refs", () => {
-    expect(pendingApprovalCliHint(["acme/hooks"])).toEqual({
-      approve: "ht approve acme/hooks",
-      deny: "ht deny acme/hooks",
-    });
   });
 });

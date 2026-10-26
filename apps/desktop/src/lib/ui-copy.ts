@@ -20,7 +20,7 @@ export const HARNESSES_EMPTY_BODY = "Detect the agents on this machine, or add o
 
 export const HARNESS_NOT_SET_UP_COPY = {
   title: "Not set up for any harness yet.",
-  body: "Run ht harness set, or pass --harness <slugs>.",
+  body: "Detect the agents on this machine to apply profiles.",
   action: "Set up harness",
 } as const;
 
@@ -92,9 +92,20 @@ export const APPLY_RESULT_COPY = {
   takenLine(relative: string): string {
     return `Taken ${relative}`;
   },
-  undoWith(snapshotId: string): string {
-    return `Undo with ht revert ${snapshotId}`;
+  undo: "Revert puts back the files from before this apply. Files you changed since are kept.",
+  revert: "Revert",
+  reverting: "Reverting...",
+  reverted(restored: number, removed: number, kept: number): string {
+    const parts = [
+      `restored ${restored} file${restored === 1 ? "" : "s"}`,
+      `removed ${removed}`,
+    ];
+    if (kept > 0) {
+      parts.push(`kept ${kept} you changed`);
+    }
+    return `Reverted: ${parts.join(", ")}.`;
   },
+  revertFailed: "Could not revert",
 };
 
 export const OWNED_REPLACE_COPY = {
@@ -232,7 +243,7 @@ export function formatUserPath(path: string, home?: string): string {
 export function loadErrorCopy(noun: string) {
   return {
     title: `Couldn't load ${noun}`,
-    body: "Check that the HarnessTap agent is running, then try again.",
+    body: "Something went wrong talking to the HarnessTap agent. Try again.",
     action: "Retry",
   } as const;
 }

@@ -1,4 +1,4 @@
-import { pendingApprovalCliHint, type PendingApprovalItem } from "../lib/pending-approvals";
+import type { PendingApprovalItem } from "../lib/pending-approvals";
 import { Ban, Check } from "lucide-react";
 import { IconActionButton } from "./IconActionButton";
 
@@ -19,8 +19,6 @@ export function PendingApprovalsStrip({
     return null;
   }
 
-  const refs = items.map((item) => item.ref);
-  const hint = pendingApprovalCliHint(refs);
   const canDecide = Boolean(onApprove || onDeny);
 
   return (
@@ -67,9 +65,9 @@ export function PendingApprovalsStrip({
             </li>
           ))}
         </ul>
-        <p className="muted pending-approvals-hint">
-          {hint.approve} · {hint.deny}
-        </p>
+        {canDecide ? null : (
+          <p className="muted pending-approvals-hint">Open a project to approve or deny these.</p>
+        )}
       </div>
     </div>
   );

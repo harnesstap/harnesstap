@@ -348,4 +348,80 @@ describe("parity project history tryHandle", () => {
     });
     expect(readFileSync(join(projectDir, "CLAUDE.md"), "utf-8")).toBe("# Modified");
   });
+  describe("POST /v1/revert (any snapshot)", () => {
+    function revertRequest(body: string, headers: HeadersInit = authHeaders()) {
+      return new Request("http://127.0.0.1/v1/revert", { method: "POST", headers, body });
+    }
+
+    it("requires auth", async () => {
+      const response = await tryHandle(
+        revertRequest("{}", { "content-type": "application/json" }),
+        TOKEN,
+        idle,
+      );
+      expect(response?.status).toBe(401);
+    });
+
+    it("refuses while a switch is running", async () => {
+      const response = await tryHandle(revertRequest(JSON.stringify({ snapshotId: "x" })), TOKEN, {
+        isAgentSwitchInProgress: () => true,
+      });
+      expect(response?.status).toBe(409);
+    });
+
+    it("needs a snapshot id", async () => {
+      const response = await tryHandle(revertRequest(JSON.stringify({})), TOKEN, idle);
+      expect(response?.status).toBe(400);
+      await expect(response?.json()).resolves.toEqual({
+        error: "invalid_body",
+        message: "snapshotId is required",
+      });
+    });
+
+    it("returns 404 for an unknown snapshot", async () => {
+      withHome();
+      const response = await tryHandle(
+        revertRequest(JSON.stringify({ snapshotId: "missing-snapshot" })),
+        TOKEN,
+        idle,
+      );
+      expect(response?.status).toBe(404);
+      await expect(response?.json()).resolves.toEqual({
+        error: "snapshot_not_found",
+        message: "Snapshot not found: missing-snapshot",
+      });
+    });
+
+    it("reverts a project snapshot without a project path and keeps edited files", async () => {
+      const { projectDir } = withHome();
+      const project = createProject({
+        git_origin: "git@github.com:acme/history-any.git",
+        name: "any",
+        local_path: projectDir,
+      });
+      const snapshot = createSnapshot({
+        project_id: project.id,
+        label: "Before applying: any",
+        state: {
+          plugins: [],
+          resources: [],
+          platform_files: { "claude-code": { "CLAUDE.md": "# Original" } },
+        },
+      });
+      writeFileSync(join(projectDir, "CLAUDE.md"), "# Mine", "utf-8");
+      const response = await tryHandle(
+        revertRequest(JSON.stringify({ snapshotId: snapshot.id })),
+        TOKEN,
+        idle,
+      );
+      expect(response?.status).toBe(200);
+      expect(await response?.json()).toMatchObject({
+        kind: "project",
+        restored_file_count: 0,
+        removed_file_count: 0,
+        snapshot: { id: snapshot.id, label: snapshot.label },
+      });
+      expect(readFileSync(join(projectDir, "CLAUDE.md"), "utf-8")).toBe("# Mine");
+    });
+  });
 });

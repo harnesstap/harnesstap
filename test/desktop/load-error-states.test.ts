@@ -84,7 +84,7 @@ describe("load error copy", () => {
   it("names the noun and points at the agent", () => {
     const copy = loadErrorCopy("environments");
     expect(copy.title).toBe("Couldn't load environments");
-    expect(copy.body).toBe("Check that the HarnessTap agent is running, then try again.");
+    expect(copy.body).toBe("Something went wrong talking to the HarnessTap agent. Try again.");
     expect(copy.action).toBe("Retry");
   });
 });
