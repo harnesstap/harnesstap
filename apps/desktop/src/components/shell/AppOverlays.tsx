@@ -293,10 +293,15 @@ export function AppOverlays({
             <ApplySnapshotDescription snapshot={ctrl.applySnapshot} />
           ) : null
         }
-        confirmLabel={APPLY_RESULT_COPY.close}
-        cancelLabel={null}
-        onConfirm={() => ctrl.setApplySnapshot(null)}
-        onCancel={() => ctrl.setApplySnapshot(null)}
+        confirmLabel={ctrl.revertBusy ? APPLY_RESULT_COPY.reverting : APPLY_RESULT_COPY.revert}
+        confirmBusy={ctrl.revertBusy}
+        cancelLabel={APPLY_RESULT_COPY.close}
+        onConfirm={() => void ctrl.revertApplySnapshot()}
+        onCancel={() => {
+          if (!ctrl.revertBusy) {
+            ctrl.setApplySnapshot(null);
+          }
+        }}
       />
 
       <CutVersionsModal

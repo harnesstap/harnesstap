@@ -43,7 +43,7 @@ describe("apply snapshot dialog and action toast", () => {
     expect(controller).not.toMatch(/setApplySnapshot\([^)]+\);\s*toast\(/);
     expect(controller).toContain("onClick: () => setApplySnapshot(applyToast.snapshot)");
     expect(overlays).toContain("ctrl.applySnapshot !== null");
-    expect(overlays).toContain("cancelLabel={null}");
+    expect(overlays).toContain("cancelLabel={APPLY_RESULT_COPY.close}");
     expect(overlays).not.toContain('cancelLabel=""');
     expect(confirm).toContain("const showCancel = Boolean(cancelLabel)");
   });
@@ -62,9 +62,15 @@ describe("apply snapshot dialog and action toast", () => {
     expect(copy.taken).toBe("Taken just now");
     expect(copy.changed).toBe("Applied. Wrote 7 files, removed 1 file, kept 2.");
     expect(copy.undo).toBe(
-      "Undo with ht revert 01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "Revert puts back the files from before this apply. Files you changed since are kept.",
     );
     expect(APPLY_RESULT_COPY.close).toBe("Close");
+    expect(APPLY_RESULT_COPY.reverted(2, 1, 0)).toBe("Reverted: restored 2 files, removed 1.");
+    expect(APPLY_RESULT_COPY.reverted(1, 0, 3)).toBe(
+      "Reverted: restored 1 file, removed 0, kept 3 you changed.",
+    );
+    expect(overlays).toContain("ctrl.revertApplySnapshot()");
+    expect(overlays).toContain("APPLY_RESULT_COPY.revert");
     expect(overlays).toContain("applySnapshotDialogCopy");
   });
 

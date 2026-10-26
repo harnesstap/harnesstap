@@ -26,7 +26,8 @@ describe("desktop pending approvals chrome", () => {
     expect(stripSource).toContain("yellow");
     expect(stripSource).toContain('label="Approve"');
     expect(stripSource).toContain('label="Deny"');
-    expect(stripSource).toContain("pendingApprovalCliHint");
+    expect(stripSource).not.toContain("ht approve");
+    expect(stripSource).toContain("Open a project to approve or deny these.");
   });
 
   test("Project workspace has an Install menu item that posts empty plugins", () => {
