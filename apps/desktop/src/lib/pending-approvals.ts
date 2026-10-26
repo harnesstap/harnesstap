@@ -90,12 +90,3 @@ export function shouldShowPendingApprovalsStrip(
   return pendingApprovalsFromTrust(fields).length > 0;
 }
 
-export function pendingApprovalCliHint(refs: string[]): {
-  approve: string;
-  deny: string;
-} {
-  return {
-    approve: refs.length === 0 ? "ht approve <PACKAGE_REF>" : `ht approve ${refs.join(" ")}`,
-    deny: refs.length === 0 ? "ht deny <PACKAGE_REF>" : `ht deny ${refs.join(" ")}`,
-  };
-}

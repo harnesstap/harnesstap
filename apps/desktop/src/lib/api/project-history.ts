@@ -21,6 +21,36 @@ export interface ProjectRevertResult {
   };
 }
 
+export interface SnapshotRevertResult {
+  kind: "project" | "global";
+  restored_file_count: number;
+  removed_file_count: number;
+  skipped_file_count: number;
+  snapshot: { id: string; created_at: string; label: string };
+}
+
+/** Revert any apply snapshot (project or global). Edited and unowned files are kept. */
+export async function revertSnapshot(
+  baseUrl: string,
+  token: string | null,
+  snapshotId: string,
+): Promise<SnapshotRevertResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/revert", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ snapshotId }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+    throw new AgentApiError(
+      body.message ?? `Could not revert snapshot (${body.error ?? response.status})`,
+      response.status,
+      body.error,
+    );
+  }
+  return (await response.json()) as SnapshotRevertResult;
+}
+
 export class ProjectHistoryApiError extends AgentApiError {
   readonly hints: string[];
 

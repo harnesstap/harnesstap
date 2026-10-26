@@ -9,6 +9,8 @@ import type { Snapshot } from "../../types.js";
 
 const HISTORY_PATH = "/v1/project/history";
 const REVERT_PATH = "/v1/project/revert";
+/** Revert any apply snapshot, project or global: Desktop's View snapshot dialog. */
+const SNAPSHOT_REVERT_PATH = "/v1/revert";
 
 export async function tryHandle(
   request: Request,
@@ -22,6 +24,9 @@ export async function tryHandle(
     }
     if (request.method === "POST" && pathname === REVERT_PATH) {
       return handleRevertPost(request, token, deps);
+    }
+    if (request.method === "POST" && pathname === SNAPSHOT_REVERT_PATH) {
+      return handleSnapshotRevertPost(request, token, deps);
     }
     return null;
   } catch (error) {
@@ -169,5 +174,58 @@ async function handleRevertPost(
       created_at: snapshot.created_at,
       label: snapshot.label,
     },
+  });
+}
+
+async function handleSnapshotRevertPost(
+  request: Request,
+  token: string,
+  deps: { isAgentSwitchInProgress: () => boolean },
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+  if (deps.isAgentSwitchInProgress()) {
+    return jsonResponse(
+      {
+        error: "switch_in_progress",
+        message: "Another profile switch is already running",
+      },
+      { status: 409 },
+    );
+  }
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "invalid_json" }, { status: 400 });
+  }
+  const snapshotId =
+    typeof body === "object" && body !== null && typeof (body as Record<string, unknown>).snapshotId === "string"
+      ? ((body as Record<string, unknown>).snapshotId as string).trim()
+      : "";
+  if (!snapshotId) {
+    return jsonResponse(
+      { error: "invalid_body", message: "snapshotId is required" },
+      { status: 400 },
+    );
+  }
+  const plan = resolveRevertPlan(snapshotId);
+  if ("error" in plan) {
+    return jsonResponse(
+      { error: "snapshot_not_found", message: `Snapshot not found: ${snapshotId}` },
+      { status: 404 },
+    );
+  }
+  // Same safety as the CLI revert: unowned and edited files are skipped, never
+  // overwritten, and nothing is force-removed.
+  const result = executeRevert(plan);
+  return jsonResponse({
+    kind: plan.kind,
+    restored_file_count: result.restored.length,
+    removed_file_count: result.removed.length,
+    skipped_file_count: result.skipped.filter((entry) => entry.reason !== "missing").length,
+    snapshot: { id: plan.id, created_at: plan.createdAt, label: plan.label },
   });
 }

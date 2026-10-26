@@ -24,6 +24,7 @@ import {
 } from "../lib/agent-client";
 import { postApply } from "../lib/api/apply-plugin";
 import { postApprove, postDeny } from "../lib/api/approve";
+import { revertSnapshot } from "../lib/api/project-history";
 import { scopeToView, type Scope } from "../lib/api/scope";
 import { flattenProfileResourceList } from "../lib/contents-diff";
 import { type CutVersionRow, nextPatchVersion } from "../lib/cut-versions-form";
@@ -191,6 +192,7 @@ export function useScopeController(input: ScopeControllerInput) {
     options?: { progressLabel?: string; successToast?: string };
   } | null>(null);
   const [applySnapshot, setApplySnapshot] = useState<ApplySnapshotView | null>(null);
+  const [revertBusy, setRevertBusy] = useState(false);
   const [reapplyConfirmOpen, setReapplyConfirmOpen] = useState(false);
   const [pendingRestoreChange, setPendingRestoreChange] =
     useState<DriftFileChange | null>(null);
@@ -1377,6 +1379,30 @@ export function useScopeController(input: ScopeControllerInput) {
     }
   }, [client, projectPath, refreshStatus]);
 
+  const revertApplySnapshot = useCallback(async () => {
+    if (!client || !applySnapshot || revertBusy) {
+      return;
+    }
+    setRevertBusy(true);
+    try {
+      const result = await revertSnapshot(client.baseUrl, client.token, applySnapshot.id);
+      toast({
+        tone: "success",
+        title: APPLY_RESULT_COPY.reverted(
+          result.restored_file_count,
+          result.removed_file_count,
+          result.skipped_file_count,
+        ),
+      });
+      setApplySnapshot(null);
+      await refreshStatus("full");
+    } catch (error) {
+      toast({ tone: "error", title: messageOf(error, APPLY_RESULT_COPY.revertFailed) });
+    } finally {
+      setRevertBusy(false);
+    }
+  }, [client, applySnapshot, revertBusy, refreshStatus]);
+
   const decidePendingApproval = useCallback(
     async (side: "allow" | "deny", ref: string) => {
       if (!client || !client.token || !projectPath) {
@@ -1677,6 +1703,8 @@ export function useScopeController(input: ScopeControllerInput) {
     onRemoveRiskyRemovalsToo,
     applySnapshot,
     setApplySnapshot,
+    revertBusy,
+    revertApplySnapshot,
     onCancelSwitch,
     runSwitch,
     maybeAutoReapplyAfterMutation,

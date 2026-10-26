@@ -28,7 +28,8 @@ describe("desktop ui-copy (DS-1 / DS-6)", () => {
       APPLY_RESULT_COPY.wroteRemovedKept(3, 1, 2),
       APPLY_RESULT_COPY.viewSnapshot,
       APPLY_RESULT_COPY.takenLine("just now"),
-      APPLY_RESULT_COPY.undoWith("abc"),
+      APPLY_RESULT_COPY.undo,
+      APPLY_RESULT_COPY.reverted(3, 1, 2),
     ].join("\n");
     expect(blob).not.toMatch(/[\u2013\u2014\u2026]/);
   });

@@ -143,6 +143,6 @@ export function applySnapshotDialogCopy(
       formatLastEditRelative(new Date(snapshot.takenAt), now),
     ),
     changed: applyResultToastTitle(snapshot),
-    undo: APPLY_RESULT_COPY.undoWith(snapshot.id),
+    undo: APPLY_RESULT_COPY.undo,
   };
 }
