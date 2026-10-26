@@ -263,7 +263,8 @@
 /* ── Library create-resource ─────────────────────────────────────── */
 .resource-type-dialog {
   width: min(480px, calc(100vw - 48px));
-  max-height: min(640px, calc(100vh - 96px));
+  /* P2-13: grow to fit every type at 1440x900; scroll only on short windows. */
+  max-height: calc(100vh - 64px);
   overflow-y: auto;
 }
 

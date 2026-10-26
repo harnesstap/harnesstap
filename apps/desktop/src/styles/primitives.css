@@ -53,7 +53,8 @@
   line-height: 1;
 }
 
-.icon-action:disabled {
+.icon-action:disabled,
+.icon-action[aria-disabled="true"] {
   opacity: var(--opacity-disabled);
   cursor: not-allowed;
 }

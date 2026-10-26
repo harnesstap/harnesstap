@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   detectMigrateImportScope,
   migrateImport,
 } from "../lib/agent-client";
 import {
+  MIGRATE_IMPORT_SCOPE_HEADING,
+  migrateImportScopeOptions,
   migrateImportSteps,
   migrateStepCopy,
   migrateStepPosition,
@@ -19,7 +19,8 @@ import type {
 import { ArrowLeft, ChevronRight, FolderDown, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
-import { IconActionButton } from "./IconActionButton";
+import { MigrateFilePicker } from "./MigrateFilePicker";
+import { MigrateScopeRadios } from "./MigrateScopeRadios";
 import { Presence } from "./motion/Presence";
 import { DisabledReason } from "./DisabledReason";
 
@@ -255,20 +256,13 @@ export function MigrateImportDrawer({
       }
     >
           {step === "path" ? (
-            <div className="form-field gap-2">
-              <Label>Import file</Label>
-              <div className="flex flex-wrap items-center gap-2">
-                <IconActionButton
-                  label="Choose file..."
-                  onClick={() => void pickImportPath()}
-                  disabled={controlsDisabled}
-                  icon={<FolderDown size={16} aria-hidden />}
-                />
-                <span className="mono text-xs">
-                  {importPath ?? "No file selected"}
-                </span>
-              </div>
-            </div>
+            <MigrateFilePicker
+              label="Import file"
+              icon={<FolderDown size={16} aria-hidden />}
+              path={importPath}
+              onChoose={() => void pickImportPath()}
+              disabled={controlsDisabled}
+            />
           ) : null}
 
           {step === "scope" ? (
@@ -278,45 +272,17 @@ export function MigrateImportDrawer({
                   Detected as: <strong>{scopeLabel(detectedScope)}</strong>
                 </p>
               ) : null}
-              <RadioGroup
+              <MigrateScopeRadios
+                idPrefix="migrate-import-scope"
+                heading={MIGRATE_IMPORT_SCOPE_HEADING}
+                options={migrateImportScopeOptions}
                 value={scope}
-                onValueChange={(value) => {
-                  setScope(value as MigrateScope);
+                onValueChange={(nextScope) => {
+                  setScope(nextScope);
                   setError(null);
                 }}
                 disabled={controlsDisabled}
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem
-                    value="workspace"
-                    id="migrate-import-scope-workspace"
-                  />
-                  <Label
-                    htmlFor="migrate-import-scope-workspace"
-                    className="font-normal"
-                  >
-                    Full workspace (archive)
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="plugin" id="migrate-import-scope-plugin" />
-                  <Label htmlFor="migrate-import-scope-plugin" className="font-normal">
-                    Plugin package
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem
-                    value="resource"
-                    id="migrate-import-scope-resource"
-                  />
-                  <Label
-                    htmlFor="migrate-import-scope-resource"
-                    className="font-normal"
-                  >
-                    Single resource
-                  </Label>
-                </div>
-              </RadioGroup>
+              />
             </>
           ) : null}
 

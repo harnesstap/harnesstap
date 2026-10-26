@@ -109,9 +109,7 @@ export function libraryRowBadge(entry: LibraryListEntry): string | null {
   if (entry.listKind === "plugin-package") {
     return `${entry.version ?? ""}${entry.dirty ? " edited" : ""}`;
   }
-  if (isPluginRefRow(entry)) {
-    return "plugin ref";
-  }
+  // P2-13: plugin refs carry no "plugin ref" badge; the tab and row icon already say so.
   return null;
 }
 

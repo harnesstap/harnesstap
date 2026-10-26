@@ -93,14 +93,14 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
   plugin: {
     type: "plugin",
     title: "Plugin",
-    description: "A versioned context package composed from library resources.",
+    description: "A versioned bundle of library resources.",
     supportsComposition: true,
     fields: [nameField(), descriptionField()],
   },
   instruction: {
     type: "instruction",
     title: "Instruction",
-    description: "Standing guidance injected into the model context.",
+    description: "Guidance the model always sees.",
     fields: [nameField(), descriptionField(), contentField()],
   },
   skill: {
@@ -112,7 +112,7 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
   rule: {
     type: "rule",
     title: "Rule",
-    description: "Guidance applied to prompts, optionally scoped by globs.",
+    description: "Guidance for prompts, optionally limited to matching files.",
     fields: [
       nameField(),
       descriptionField(),
@@ -138,7 +138,7 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
   mcp_server: {
     type: "mcp_server",
     title: "MCP server",
-    description: "A Model Context Protocol server registration.",
+    description: "A tool server the agent can call.",
     fields: [
       nameField(),
       descriptionField(),
@@ -186,7 +186,7 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
   permission: {
     type: "permission",
     title: "Permission",
-    description: "An allow, deny, or ask rule for tool usage patterns.",
+    description: "Allow, deny, or ask before a tool runs.",
     fields: [
       nameField(),
       descriptionField(),
@@ -215,7 +215,7 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
   hook: {
     type: "hook",
     title: "Hook",
-    description: "A command triggered by a harness lifecycle event.",
+    description: "A command that runs on a harness event.",
     fields: [
       nameField(),
       descriptionField(),
@@ -287,13 +287,13 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
   command: {
     type: "command",
     title: "Command",
-    description: "A slash-command prompt template.",
+    description: "A reusable slash-command prompt.",
     fields: [nameField(), descriptionField(), contentField()],
   },
   env_var: {
     type: "env_var",
     title: "Environment variable",
-    description: "A single environment variable entry.",
+    description: "One environment variable.",
     fields: [
       nameField(),
       descriptionField(),
@@ -318,7 +318,7 @@ export const RESOURCE_CREATE_SCHEMAS: Record<CreateResourceType, ResourceCreateS
   model_config: {
     type: "model_config",
     title: "Model config",
-    description: "A named model and provider configuration.",
+    description: "A named model and provider.",
     fields: [
       nameField(),
       descriptionField(),

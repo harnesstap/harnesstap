@@ -114,7 +114,7 @@ describe("groupLibraryListByFilterType", () => {
 });
 
 describe("libraryRowBadge", () => {
-  it("keeps version on packages and plugin ref on composition rows", () => {
+  it("keeps version on packages and no plugin ref badge on composition rows", () => {
     const entries = mergeLibraryList(
       [resource({ id: "r1", type: "plugin", name: "nested" })],
       [pluginHead],
@@ -122,7 +122,7 @@ describe("libraryRowBadge", () => {
     expect(libraryRowBadge(entryOfKind(entries, "plugin-package"))).toBe(
       "1.0.0",
     );
-    expect(libraryRowBadge(entryOfKind(entries, "resource"))).toBe("plugin ref");
+    expect(libraryRowBadge(entryOfKind(entries, "resource"))).toBe(null);
     expect(libraryRowFormatBadge(entryOfKind(entries, "plugin-package"))).toBe(null);
     const labeled = mergeLibraryList(
       [],

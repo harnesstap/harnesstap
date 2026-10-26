@@ -365,12 +365,12 @@ export function CloudAccountDrawer({
     <FullScreenPanel
       titleId="cloud-account-title"
       title="Account"
-      eyebrow="HarnessTap Cloud"
       closeLabel="Close account panel"
       closeDisabled={busy || switchingSlug !== null || disabled}
       onClose={onClose}
       bodyClassName="cloud-account-body"
     >
+          <div className="eyebrow">Cloud</div>
           {error && (
             <div className="banner error" role="alert">
               {error}
@@ -484,11 +484,7 @@ export function CloudAccountDrawer({
               </p>
               <div className="cloud-account-actions">
                 <button
-                  className={[
-                    "btn",
-                    "primary",
-                    busy ? "is-busy" : "",
-                  ]
+                  className={["btn", busy ? "is-busy" : ""]
                     .filter(Boolean)
                     .join(" ")}
                   type="button"

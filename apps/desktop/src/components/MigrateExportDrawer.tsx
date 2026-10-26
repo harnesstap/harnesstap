@@ -11,6 +11,8 @@ import {
 } from "../lib/agent-client";
 import {
   defaultMigrateExportFilename,
+  MIGRATE_EXPORT_SCOPE_HEADING,
+  migrateExportScopeOptions,
   type PluginPackageFormat,
   formatResourceSelector,
   migrateExportSteps,
@@ -28,7 +30,8 @@ import type {
 import { ArrowLeft, Check, ChevronRight, Save, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
-import { IconActionButton } from "./IconActionButton";
+import { MigrateFilePicker } from "./MigrateFilePicker";
+import { MigrateScopeRadios } from "./MigrateScopeRadios";
 import { Presence } from "./motion/Presence";
 
 export interface MigrateExportDrawerProps {
@@ -455,10 +458,12 @@ export function MigrateExportDrawer({
       }
     >
           {step === "scope" ? (
-            <RadioGroup
+            <MigrateScopeRadios
+              idPrefix="migrate-scope"
+              heading={MIGRATE_EXPORT_SCOPE_HEADING}
+              options={migrateExportScopeOptions}
               value={scope}
-              onValueChange={(value) => {
-                const nextScope = value as MigrateScope;
+              onValueChange={(nextScope) => {
                 setScope(nextScope);
                 setSelectedPlugin(null);
                 setSelectedResource(null);
@@ -468,26 +473,7 @@ export function MigrateExportDrawer({
                 setError(null);
               }}
               disabled={controlsDisabled}
-            >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="workspace" id="migrate-scope-workspace" />
-                <Label htmlFor="migrate-scope-workspace" className="font-normal">
-                  Full workspace (archive)
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="plugin" id="migrate-scope-plugin" />
-                <Label htmlFor="migrate-scope-plugin" className="font-normal">
-                  Plugin package
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="resource" id="migrate-scope-resource" />
-                <Label htmlFor="migrate-scope-resource" className="font-normal">
-                  HarnessTap package (for HarnessTap and Cloud)
-                </Label>
-              </div>
-            </RadioGroup>
+            />
           ) : null}
 
           {step === "target" ? renderTargetStep() : null}
@@ -561,19 +547,14 @@ export function MigrateExportDrawer({
           ) : null}
 
           {step === "path" ? (
-            <div className="form-field gap-2">
-              <Label>Save export as</Label>
-              <div className="flex flex-wrap items-center gap-2">
-                <IconActionButton
-                  label="Choose file..."
-                  onClick={() => void pickExportPath()}
-                  disabled={controlsDisabled}
-                  icon={<Save size={16} aria-hidden />}
-                />
-                <span className="mono text-xs">
-                  {exportPath ?? "No file selected"}
-                </span>
-              </div>
+            <div className="flex flex-col gap-2">
+              <MigrateFilePicker
+                label="Save export as"
+                icon={<Save size={16} aria-hidden />}
+                path={exportPath}
+                onChoose={() => void pickExportPath()}
+                disabled={controlsDisabled}
+              />
               <p className="muted m-0 text-[11px]">
                 Suggested name: <span className="mono">{defaultFilename}</span>
               </p>

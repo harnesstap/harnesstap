@@ -95,10 +95,10 @@ export function MarketplaceTrackedBranchesField({
     ? "Listing branches..."
     : sourceReady
       ? "Leave empty for the default branch"
-      : "Type a URL or path to list branches";
+      : "Enter a URL above to see branches";
 
   const emptyLabel = !sourceReady
-    ? "Type a URL or path to list branches"
+    ? "Enter a URL above to see branches"
     : loading
       ? "Listing branches..."
       : options.length === 0

@@ -1220,7 +1220,6 @@ export function ResourceDetailBody({
             containedFileList
           ) : (
             <>
-              <h3 className="library-detail-section">Content</h3>
               <LibraryFieldRow
                 icon={<FileCode2 size={16} aria-hidden />}
                 fieldName="Content"

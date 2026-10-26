@@ -8,6 +8,10 @@ import {
   removeResourceTrackedDirectory,
 } from "../lib/agent-client";
 import { harnessDisplayName } from "../lib/harness-meta";
+import {
+  trackedDirectoryKindBadge,
+  trackedDirectoryPathLine,
+} from "../lib/tracked-directory-display";
 import type { ResourceTrackedDirectoryEntry } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { RelatedHarnessIcons } from "./HarnessIcons";
@@ -26,19 +30,6 @@ interface ResourceTrackedDirectoriesModalProps {
 
 function platformNames(ids: readonly string[]): string {
   return ids.map((id) => harnessDisplayName(id)).join(", ");
-}
-
-function kindLabel(kind: ResourceTrackedDirectoryEntry["kind"]): string {
-  switch (kind) {
-    case "home_default":
-      return "Home defaults";
-    case "custom":
-      return "Custom";
-    default: {
-      const neverKind: never = kind;
-      return neverKind;
-    }
-  }
 }
 
 export function ResourceTrackedDirectoriesModal({
@@ -271,18 +262,20 @@ export function ResourceTrackedDirectoriesModal({
                     </div>
                   );
   
+                  const kindBadge = trackedDirectoryKindBadge(entry);
+                  const pathLine = trackedDirectoryPathLine(entry);
                   const main = (
                     <div className="resource-tracked-dirs-item-main">
                       <div className="resource-tracked-dirs-item-title">
                         <span>{entry.label}</span>
                         <RelatedHarnessIcons harnessIds={entry.platform_ids} />
-                        <span className="resource-tracked-dirs-kind muted">
-                          {kindLabel(entry.kind)}
-                        </span>
+                        {kindBadge ? (
+                          <span className="resource-tracked-dirs-kind muted">{kindBadge}</span>
+                        ) : null}
                       </div>
-                      <span className="mono resource-tracked-dirs-path muted">
-                        {entry.display_path ?? entry.path}
-                      </span>
+                      {pathLine ? (
+                        <span className="mono resource-tracked-dirs-path muted">{pathLine}</span>
+                      ) : null}
                       <div className="resource-tracked-dirs-meta muted">
                         {entry.resource_count}{" "}
                         {entry.resource_count === 1 ? "resource" : "resources"}

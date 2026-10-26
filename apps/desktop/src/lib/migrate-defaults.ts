@@ -87,3 +87,50 @@ export function formatResourceSelector(resource: {
     resource.namespace ? `@${resource.namespace}` : ""
   }`;
 }
+
+export interface MigrateScopeOption {
+  value: MigrateScope;
+  label: string;
+  description: string;
+}
+
+export const MIGRATE_EXPORT_SCOPE_HEADING = "What do you want to export?";
+export const MIGRATE_IMPORT_SCOPE_HEADING = "What is in this file?";
+export const MIGRATE_NO_FILE_COPY = "No file selected";
+export const MIGRATE_CHOOSE_FILE_COPY = "Choose file";
+
+export const migrateExportScopeOptions: readonly MigrateScopeOption[] = [
+  {
+    value: "workspace",
+    label: "Full workspace",
+    description: "Everything, as one archive.",
+  },
+  {
+    value: "plugin",
+    label: "Plugin package",
+    description: "One plugin, in the Agent Plugins format other tools can read.",
+  },
+  {
+    value: "resource",
+    label: "HarnessTap package",
+    description: "One resource, for HarnessTap and Cloud.",
+  },
+];
+
+export const migrateImportScopeOptions: readonly MigrateScopeOption[] = [
+  {
+    value: "workspace",
+    label: "Full workspace",
+    description: "An archive of a whole HarnessTap setup.",
+  },
+  {
+    value: "plugin",
+    label: "Plugin package",
+    description: "One plugin in the Agent Plugins format.",
+  },
+  {
+    value: "resource",
+    label: "Single resource",
+    description: "One resource from a HarnessTap package.",
+  },
+];

@@ -110,7 +110,7 @@ describe("desktop header chrome", () => {
   test("exposes Harnesses as a workspace destination after Environments", () => {
     expect(appSource).toContain('aria-label="Harnesses"');
     expect(appSource).toContain('onDestinationClick("harnesses")');
-    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harness<\/span>/);
+    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harnesses<\/span>/);
     expect(appSource).toContain("<MemoHarnessesWorkspace");
     expect(appSource).toContain("inventoryReloadKey={libraryReloadKey}");
     expect(appSource).toContain('case "harnesses":');
@@ -148,8 +148,8 @@ describe("desktop header chrome", () => {
   test("labels header destinations Library, Discover, Env, Harness, and Profile", () => {
     expect(appSource).toMatch(/<Library[\s\S]*\/>\s*<span className="header-focus-label">Library<\/span>/);
     expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*<span className="header-focus-label">Discover<\/span>/);
-    expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*<span className="header-focus-label">Env<\/span>/);
-    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harness<\/span>/);
+    expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*<span className="header-focus-label">Environments<\/span>/);
+    expect(appSource).toMatch(/<Cable[\s\S]*\/>\s*<span className="header-focus-label">Harnesses<\/span>/);
     expect(appSource).toMatch(/<SquareUserRound[\s\S]*\/>\s*<span className="header-focus-label">Profile<\/span>/);
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");

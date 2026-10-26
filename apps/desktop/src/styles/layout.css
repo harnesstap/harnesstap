@@ -238,16 +238,12 @@
 }
 
 .full-screen-panel-body.cloud-browse-body,
-.full-screen-panel-body.stash-browse-body,
-.full-screen-panel-body.migrate-export-body,
-.full-screen-panel-body.migrate-import-body {
+.full-screen-panel-body.stash-browse-body {
   align-items: stretch;
 }
 
 .full-screen-panel-body.cloud-browse-body > *,
-.full-screen-panel-body.stash-browse-body > *,
-.full-screen-panel-body.migrate-export-body > *,
-.full-screen-panel-body.migrate-import-body > * {
+.full-screen-panel-body.stash-browse-body > * {
   width: auto;
 }
 
@@ -265,9 +261,7 @@
 }
 
 .full-screen-panel:has(.cloud-browse-body) .full-screen-panel-actions,
-.full-screen-panel:has(.stash-browse-body) .full-screen-panel-actions,
-.full-screen-panel:has(.migrate-export-body) .full-screen-panel-actions,
-.full-screen-panel:has(.migrate-import-body) .full-screen-panel-actions {
+.full-screen-panel:has(.stash-browse-body) .full-screen-panel-actions {
   padding: 0.75rem 1rem;
 }
 

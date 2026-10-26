@@ -23,6 +23,7 @@ import { FullScreenPanel } from "./FullScreenPanel";
 import { IconActionButton } from "./IconActionButton";
 import { MarketplaceTrackedBranchesField } from "./MarketplaceTrackedBranchesField";
 import { DisabledReason } from "./DisabledReason";
+import { marketplaceTypeReadout } from "../lib/marketplace-type-readout";
 
 const BRANCH_LIST_DEBOUNCE_MS = 400;
 
@@ -473,46 +474,35 @@ export function MarketplaceEditPanel({
               sourceReady={sourceReady}
               onChange={setTrackedBranches}
             />
-            <p className="muted">Empty tracks the default branch only. Extra branches are opt-in.</p>
+            <p className="muted">Leave empty to track the default branch.</p>
           </div>
-          <div className="form-field gap-1.5">
-            <Label id="marketplace-type-label">Type</Label>
-            {typeDetecting ? (
-              <p
-                className="muted"
+          {typeDetection?.status === "error" ? (
+            <div className="banner error" role="alert" data-testid="marketplace-type-status">
+              {typeDetection.message}
+            </div>
+          ) : typeDetection?.status === "ambiguous" ? (
+            <div className="banner" role="status" data-testid="marketplace-type-status">
+              {typeDetection.message}
+            </div>
+          ) : (
+            <p className="marketplace-type-readout m-0">
+              <span id="marketplace-type-label" className="muted">
+                Type:
+              </span>{" "}
+              <span
                 role="status"
                 data-testid="marketplace-type-status"
                 aria-labelledby="marketplace-type-label"
+                className={typeDetecting || !typeDetection ? "muted" : undefined}
               >
-                Detecting type...
-              </p>
-            ) : typeDetection?.status === "error" ? (
-              <div
-                className="banner error"
-                role="alert"
-                data-testid="marketplace-type-status"
-              >
-                {typeDetection.message}
-              </div>
-            ) : typeDetection?.status === "ambiguous" ? (
-              <div
-                className="banner"
-                role="status"
-                data-testid="marketplace-type-status"
-              >
-                {typeDetection.message}
-              </div>
-            ) : (
-              <p
-                className="muted"
-                role="status"
-                data-testid="marketplace-type-status"
-                aria-labelledby="marketplace-type-label"
-              >
-                {typeDetection?.message ?? "Type is inferred from the URL or path."}
-              </p>
-            )}
-          </div>
+                {typeDetecting
+                  ? "Detecting type..."
+                  : typeDetection
+                    ? marketplaceTypeReadout(typeDetection.message)
+                    : "Set from the URL or path"}
+              </span>
+            </p>
+          )}
     </FullScreenPanel>
       <ConfirmDialog
         open={discardOpen}

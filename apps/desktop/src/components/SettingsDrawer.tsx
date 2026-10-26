@@ -67,7 +67,6 @@ export function SettingsDrawer({
     <FullScreenPanel
       titleId="settings-drawer-title"
       title="Settings"
-      eyebrow="Preferences"
       closeLabel="Close settings"
       onClose={requestClose}
       testId="settings-drawer"
