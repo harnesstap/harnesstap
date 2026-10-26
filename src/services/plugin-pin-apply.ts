@@ -45,6 +45,7 @@ import {
   selectCursorMarketplacesToEnsure,
 } from "./cursor-marketplace-bootstrap.js";
 import { listMarketplaces } from "./marketplace-registry.js";
+import { planMarketplacePinVersion } from "./marketplace-pin-cache.js";
 import {
   installPinnedPluginsHint,
   installPinnedPluginsNeedsYes,
@@ -83,6 +84,15 @@ export function collectPluginPinsForPrepare(
 export interface SyncPluginPinsForApplyProgress extends InstallPluginPinsProgress {
   onSyncStart?: (ref: string) => void;
   onSyncComplete?: (ref: string) => void;
+  /** Dry-run: a pin that is not installed yet and would install at `version`. */
+  onPlanned?: (planned: PlannedPluginInstall) => void;
+}
+
+/** A dependency `apply --dry-run` would install, and the version it would take. */
+export interface PlannedPluginInstall {
+  ref: string;
+  name: string;
+  version: string;
 }
 
 export class PinnedPluginInstallConsentError extends Error {
@@ -111,6 +121,13 @@ export interface SyncPluginPinsForApplyOptions {
    * install leaves them unresolvable (--ignore-plugin-versions).
    */
   installInexactPins?: boolean;
+  /**
+   * Dry-run: install nothing and record no resolved version. A pin that is
+   * not installed yet only gets the graph node the resolver needs, at the
+   * version an install would take (read from the marketplace catalog for
+   * `*`, ranges and latest), and is reported in `planned`.
+   */
+  planOnly?: boolean;
   yes?: boolean;
   interactive?: boolean;
   profileName?: string;
@@ -121,6 +138,8 @@ export interface SyncPluginPinsForApplyResult {
   installs: InstallPluginPinResult[];
   syncedResourceCount: number;
   unresolvedPins: string[];
+  /** Dry-run only: pins a real apply would install. */
+  planned?: PlannedPluginInstall[];
 }
 
 export interface PreparePluginPinsForApplyOptions {
@@ -136,6 +155,8 @@ export interface PreparePluginPinsForApplyOptions {
   installPlatformId?: string;
   ignoreMissingInstall?: boolean;
   installInexactPins?: boolean;
+  /** Dry-run: see SyncPluginPinsForApplyOptions.planOnly. Also leaves host marketplaces alone. */
+  planOnly?: boolean;
   yes?: boolean;
   interactive?: boolean;
   profileName?: string;
@@ -219,6 +240,10 @@ export async function syncPluginPinsForApply(
 ): Promise<SyncPluginPinsForApplyResult> {
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
   const scope = options.scope ?? "user";
+  const planOnly = Boolean(options.planOnly);
+  const ignoreMissingInstall = Boolean(options.ignoreMissingInstall) || planOnly;
+  const syncAll = Boolean(options.syncAll) && !planOnly;
+  const planned: PlannedPluginInstall[] = [];
   const pinsToInstall = options.pins
     .filter((pin) => pin.version_constraint.trim() || installsWhenUnpinned(pin.ref))
     .map((pin) => ({
@@ -228,7 +253,7 @@ export async function syncPluginPinsForApply(
 
   if (
     pinsToInstall.length > 0
-    && !options.ignoreMissingInstall
+    && !ignoreMissingInstall
     && options.interactive === false
     && !options.yes
   ) {
@@ -238,7 +263,7 @@ export async function syncPluginPinsForApply(
   // Refuse a marketplace plugin whose name another marketplace's plugin
   // already holds before installing it, so the refusal leaves no host cache
   // folder behind.
-  if (!options.ignoreMissingInstall) {
+  if (!ignoreMissingInstall) {
     for (const pin of pinsToInstall) {
       if (parseDependencyRef(pin.ref).source_kind === "marketplace") {
         assertNoMarketplacePluginNameCollision(pin.ref);
@@ -249,10 +274,10 @@ export async function syncPluginPinsForApply(
   // --ignore-plugin-versions stamps exact constraints locally; skip marketplace
   // install attempts that can hang or fail without a real host install. A pin
   // with no exact version to stamp is still installed, or it never resolves.
-  const skipInstalls = options.ignoreMissingInstall && !options.syncAll;
+  const skipInstalls = ignoreMissingInstall && !syncAll;
   const pinsToInstallNow = !skipInstalls
     ? pinsToInstall
-    : options.installInexactPins
+    : options.installInexactPins && !planOnly
       ? pinsToInstall.filter((pin) => !isExactConstraint(pin.version_constraint))
       : [];
   const installs = pinsToInstallNow.length === 0
@@ -327,7 +352,7 @@ export async function syncPluginPinsForApply(
       && metadata.resolved_version
       && installedVersion !== metadata.resolved_version,
     );
-    const needsSync = options.syncAll || !metadata.resolved_version || movedOn;
+    const needsSync = syncAll || !metadata.resolved_version || movedOn;
     if (!needsSync) {
       // Already resolved: still ensure the upstream plugin exists so the
       // graph can treat the install as an ordinary node without a re-sync.
@@ -343,9 +368,18 @@ export async function syncPluginPinsForApply(
       continue;
     }
 
+    // Dry-run: an exact pin names its version, so plan it without recording
+    // it. Stamping it would make the next real apply skip the sync and apply
+    // the plugin with no resources.
+    const exactVersion = planOnly ? exactConstraintVersion(pin.version_constraint) : null;
+    if (exactVersion) {
+      planInstall(pin.ref, exactVersion, planned, options.progress);
+      continue;
+    }
+
     // --ignore-plugin-versions: stamp exact constraints into upstream stubs
     // without contacting marketplaces (avoids hangs / missing installs).
-    if (options.ignoreMissingInstall && !options.syncAll) {
+    if (ignoreMissingInstall && !syncAll) {
       const stamped = stampResolvedVersionFromExactConstraint(
         resource,
         pin.version_constraint,
@@ -398,7 +432,17 @@ export async function syncPluginPinsForApply(
       continue;
     }
 
-    if (options.ignoreMissingInstall) {
+    if (planOnly) {
+      // Dry-run with a `*`, range or latest pin that is not installed: take
+      // the version from the marketplace catalog, as the install would.
+      const plannedVersion = await planInexactPinVersion(pin.ref, pin.version_constraint, homeRoot);
+      if (plannedVersion) {
+        planInstall(pin.ref, plannedVersion, planned, options.progress);
+      }
+      continue;
+    }
+
+    if (ignoreMissingInstall) {
       const stamped = stampResolvedVersionFromExactConstraint(
         resource,
         pin.version_constraint,
@@ -419,7 +463,54 @@ export async function syncPluginPinsForApply(
     unresolvedPins.push(pin.ref);
   }
 
-  return { installs, syncedResourceCount, unresolvedPins };
+  return {
+    installs,
+    syncedResourceCount,
+    unresolvedPins,
+    ...(planOnly ? { planned } : {}),
+  };
+}
+
+function exactConstraintVersion(constraint: string): string | null {
+  try {
+    const parsed = parseVersionConstraint(constraint);
+    return parsed.kind === "exact" ? parsed.version : null;
+  } catch {
+    return null;
+  }
+}
+
+async function planInexactPinVersion(
+  ref: string,
+  constraint: string,
+  homeRoot: string,
+): Promise<string | undefined> {
+  if (parseDependencyRef(ref).source_kind !== "marketplace") return undefined;
+  try {
+    return await planMarketplacePinVersion({
+      originRef: ref,
+      versionConstraint: effectivePinConstraint(constraint),
+      homeRoot,
+      harnesstapDir: getHarnesstapDir(),
+    });
+  } catch {
+    // An unreachable marketplace leaves the pin unresolved, as before.
+    return undefined;
+  }
+}
+
+/** Give the resolver a node for a pin a dry-run would install, without recording a version. */
+function planInstall(
+  ref: string,
+  version: string,
+  planned: PlannedPluginInstall[],
+  progress: SyncPluginPinsForApplyProgress | undefined,
+): void {
+  const { name } = parseDependencyRef(ref);
+  materializeUpstreamPlugin({ ref, name, version });
+  const entry = { ref, name, version };
+  planned.push(entry);
+  progress?.onPlanned?.(entry);
 }
 
 /**
@@ -492,6 +583,9 @@ export async function preparePluginPinsForApply(
     // HarnessTap resolves the dependencies itself, so it must know the
     // marketplaces the profile declares even when `claude` is not installed.
     registerDeclaredMarketplaces(options.claudeConfig, getHarnesstapDir());
+  }
+  // A dry-run leaves the harnesses' own marketplace lists alone.
+  if (!options.skipSync && options.claudeConfig && !options.planOnly) {
     await ensureClaudeMarketplacesFromConfig(options.claudeConfig, {
       homeRoot: options.homeRoot ?? resolveHomeRoot(),
       projectRoot: options.projectRoot,
@@ -499,14 +593,16 @@ export async function preparePluginPinsForApply(
   }
 
   if (!options.skipSync && options.pins.length > 0) {
-    const cursorEntries = selectCursorMarketplacesToEnsure(
-      listMarketplaces(getHarnesstapDir()),
-      options.pins.map((pin) => pin.ref),
-    );
-    await ensureCursorMarketplaces(cursorEntries, {
-      homeRoot: options.homeRoot ?? resolveHomeRoot(),
-      projectRoot: options.projectRoot,
-    });
+    if (!options.planOnly) {
+      const cursorEntries = selectCursorMarketplacesToEnsure(
+        listMarketplaces(getHarnesstapDir()),
+        options.pins.map((pin) => pin.ref),
+      );
+      await ensureCursorMarketplaces(cursorEntries, {
+        homeRoot: options.homeRoot ?? resolveHomeRoot(),
+        projectRoot: options.projectRoot,
+      });
+    }
 
     syncResult = await syncPluginPinsForApply({
       pins: options.pins,
@@ -517,6 +613,7 @@ export async function preparePluginPinsForApply(
       installPlatformId: options.installPlatformId,
       ignoreMissingInstall: options.ignoreMissingInstall,
       installInexactPins: options.installInexactPins,
+      planOnly: options.planOnly,
       yes: options.yes,
       interactive: options.interactive,
       profileName: options.profileName,

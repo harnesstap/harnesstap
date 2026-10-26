@@ -16,7 +16,11 @@ import {
 } from "../../services/applier.js";
 import { persistWrittenMaterializations } from "../../services/materialization-ownership.js";
 import { skillPlacementsFromPaths } from "../../services/shared-emit-paths.js";
-import { collectPluginPinsForPrepare, preparePluginPinsForApply } from "../../services/plugin-pin-apply.js";
+import {
+  collectPluginPinsForPrepare,
+  preparePluginPinsForApply,
+  type PlannedPluginInstall,
+} from "../../services/plugin-pin-apply.js";
 import { resolveComposition } from "../../services/resolve/index.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
 import { substituteResourcesForApply } from "../../services/environment-var-substitution.js";
@@ -354,15 +358,18 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     return plugin.id;
   });
   const rootPluginPins = collectPluginPinsForPrepare(rootPluginIds);
+  let plannedInstalls: PlannedPluginInstall[] = [];
   if (rootPluginPins.length > 0) {
-    await preparePluginPinsForApply({
+    const prepared = await preparePluginPinsForApply({
       pins: rootPluginPins,
       baseResources: [],
       projectRoot,
       claudeConfig: mergePluginsById(rootPluginIds).claude,
       skipSync: false,
       ignoreMissingInstall: parsed.dryRun,
+      planOnly: parsed.dryRun,
     });
+    plannedInstalls = prepared.planned ?? [];
   }
 
   const resolution = resolveComposition({
@@ -488,6 +495,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
         files: result.files.map((file) => ({ path: file.path })),
       })),
       would_remove: stalePlan.removed,
+      would_install_plugins: plannedInstalls,
       would_keep: stalePlan.skipped.map((entry) => ({
         path: entry.path,
         reason: entry.reason,

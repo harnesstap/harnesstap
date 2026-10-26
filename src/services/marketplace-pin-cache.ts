@@ -201,6 +201,74 @@ export async function installMarketplacePinIntoCache(input: {
   return downloadAndIngest(input.originRef, version, homeRoot, harnesstapDir);
 }
 
+/**
+ * The version `installMarketplacePinIntoCache` would install for an inexact
+ * pin (`*`, `latest`, a range), found the same way (stored or refreshed
+ * marketplace catalog, then the checkout's plugin manifest, then a scratch
+ * download for an unpinned entry outside the checkout) but without writing the
+ * package cache or any harness. Used by `apply --dry-run` to plan the install.
+ * Undefined when no version can be found or none satisfies a range.
+ */
+export async function planMarketplacePinVersion(input: {
+  originRef: string;
+  versionConstraint?: string;
+  homeRoot?: string;
+  harnesstapDir?: string;
+}): Promise<string | undefined> {
+  const { name, marketplace } = parsePluginRef(input.originRef);
+  if (!marketplace) return undefined;
+  const pinned = exactPinnedVersion(input.versionConstraint);
+  if (pinned) return pinned;
+  const homeRoot = input.homeRoot ?? resolveHomeRoot();
+  const harnesstapDir = input.harnesstapDir ?? getHarnesstapDir();
+
+  const storedEntry = listCatalogPlugins(harnesstapDir, { name: marketplace }).find(
+    (plugin) => plugin.name === name,
+  );
+  if (storedEntry === undefined) {
+    await refreshMarketplaceCatalog(harnesstapDir, {
+      name: marketplace,
+      force: false,
+      unattended: false,
+    });
+  }
+  const catalog = await ensureMarketplaceCatalog(harnesstapDir, { name: marketplace });
+  const entry = catalog.find((plugin) => plugin.name === name);
+  const checkout = marketplaceCacheDir(harnesstapDir, marketplace);
+  const fromCatalog =
+    (entry?.sourcePath ? join(checkout, entry.sourcePath) : undefined)
+    ?? resolveMarketplacePluginDirectory(checkout, name);
+  const inCheckout = Boolean(fromCatalog && existsSync(fromCatalog) && isPluginInstallRoot(fromCatalog));
+  const manifestVersion = inCheckout && fromCatalog ? checkoutManifestVersion(fromCatalog) : undefined;
+  const advertised = entry?.version?.trim() ? entry.version.trim() : manifestVersion;
+
+  const constraint = input.versionConstraint?.trim();
+  const unpinned = !constraint || constraint === "*" || constraint === "latest";
+  if (!unpinned) {
+    // A range: plan the version the marketplace offers when it satisfies it.
+    const offered = advertised && semver.valid(advertised) ? advertised : undefined;
+    return offered && constraint && semver.satisfies(offered, constraint) ? offered : undefined;
+  }
+  if (inCheckout || (advertised && semver.valid(advertised))) {
+    return resolveCatalogPluginVersion(advertised, constraint);
+  }
+  if (!entry) return undefined;
+  // Same as installUnpinnedSource: read the version from a scratch download,
+  // then drop it instead of caching it.
+  const scratch = mkdtempSync(join(tmpdir(), "ht-pin-plan-"));
+  try {
+    const { declaredVersion } = await downloadHostPluginUnpinned({
+      originRef: input.originRef,
+      targetDir: join(scratch, "plugin"),
+      homeRoot,
+      harnesstapDir,
+    });
+    return declaredVersion ?? "0.0.0";
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 async function installUnpinnedSource(
   originRef: string,
   homeRoot: string,
