@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Desktop Profile page: an attached plugin is listed once instead of twice; when no harness is set up, the warning has a Set up harness button that opens Harness and detects harnesses; the History button opens the profile version history, and picking a frozen version opens it in Library without the tracked folders intro; Tag version prefills the next patch version, labels the field Version, and only shows errors after you edit it (also in Library); the warning banner has a 12px gap below it, and Edit composition no longer leaves a gap above Default environment.'
-time: 2026-10-25T22:30:00.000Z
-custom:
-  Issue: ""
