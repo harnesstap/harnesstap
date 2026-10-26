@@ -109,10 +109,11 @@ describe("project identity without a git remote", () => {
 });
 
 describe("migrating to the origin once it appears", () => {
-  it("moves history to the origin project, backs up first, and a rerun is a no-op", () => {
+  it("moves history to the origin project, backs up first, and a rerun is a no-op", async () => {
     const { home, projectDir } = setup();
     const pathProject = ensureProjectForRoot(projectDir);
     const first = snapshot(pathProject.id, "first");
+    await Bun.sleep(5);
     const second = snapshot(pathProject.id, "second");
     initGitRepo(projectDir, ORIGIN);
 
