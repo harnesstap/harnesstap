@@ -156,6 +156,8 @@ export const CONNECT_SPLASH_COPY = {
   reconnecting: "Reconnecting to the HarnessTap agent...",
   unexpectedStop: "The HarnessTap agent stopped unexpectedly.",
   retry: "Retry",
+  restartAgent: "Restart agent",
+  restarting: "Restarting...",
   openLogs: "Open logs",
   openLogsFailed(reason: string): string {
     return reason
@@ -176,9 +178,9 @@ export const AGENT_START_COPY = {
   newerSchema:
     "This data was saved by a newer HarnessTap. Update the app to open it.",
   portInUse:
-    "Port 7474 is already in use. Close the other HarnessTap process and try again.",
+    "Another app is using the HarnessTap agent port. Quit it, then select Restart agent.",
   homeNotWritable:
-    "HarnessTap can't write to its data folder. Check folder permissions and try again.",
+    "HarnessTap can't write to its data folder. Check the folder's permissions, then select Restart agent.",
 } as const;
 
 /** Title-case type line on hover cards (DT-15). */

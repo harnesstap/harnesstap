@@ -413,7 +413,7 @@ fn wait_for_sidecar_ready(state: &AppState, timeout_ms: u64) -> Result<u16, Stri
         }
         thread::sleep(Duration::from_millis(50));
     }
-    Err("ht-agent sidecar did not report its port; check ~/.harnesstap for a stale agent".to_string())
+    Err("ht-agent sidecar did not report its port".to_string())
 }
 
 fn wait_for_port_file(timeout_ms: u64) -> Option<u16> {
