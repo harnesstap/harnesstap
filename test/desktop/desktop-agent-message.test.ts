@@ -12,7 +12,6 @@ import {
   recoveryActionLabel,
 } from "../../apps/desktop/src/lib/desktop-agent-message.ts";
 import type { RecoveryAction } from "../../apps/desktop/src/lib/types.ts";
-import { GIT_ORIGIN_HINTS } from "../../src/cli/shared.ts";
 import { UnsatisfiableConstraintError } from "../../src/services/resolve/types.ts";
 
 const DESKTOP_SRC = join(import.meta.dir, "../../apps/desktop/src");
@@ -65,7 +64,6 @@ function agentMessagesShownInDesktop(): { text: string; actions: RecoveryAction[
       text: "Cannot pull lint: multiple catalog dependencies match. Use ht plugin pull with org/catalog/lint.",
       actions: [],
     },
-    { text: GIT_ORIGIN_HINTS.join("\n"), actions: [] },
   ];
 }
 
@@ -164,10 +162,8 @@ describe("agent messages shown in Desktop", () => {
 describe("project history without a git remote", () => {
   const drawer = readFileSync(join(DESKTOP_SRC, "components/parity/ProjectHistoryDrawer.tsx"), "utf-8");
 
-  it("offers an Add remote form instead of git command hints", () => {
-    expect(drawer).not.toMatch(/hints\.map|originHints/);
-    expect(drawer).toContain('aria-label="Remote URL"');
-    expect(drawer).toMatch(/"Add remote"/);
-    expect(drawer).toMatch(/addProjectGitOrigin\(baseUrl, token, \{ projectPath, url \}\)/);
+  it("lists history with no remote prompt: a remote is not needed", () => {
+    expect(drawer).not.toMatch(/no_git_origin|originHints|hints\.map|Remote URL|Add remote|git remote/i);
+    expect(drawer).toMatch(/label="Revert"/);
   });
 });

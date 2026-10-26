@@ -14,10 +14,6 @@ const DESKTOP_REWRITES: readonly { match: RegExp; text: string }[] = [
     match: /^No harness targets configured\b/,
     text: "No harness is set up for this project. Open Harnesses and select Detect.",
   },
-  {
-    match: /^No git remote origin configured\b/,
-    text: "This project has no git remote. Add one in History to keep snapshots.",
-  },
 ];
 
 function splitSentences(line: string): string[] {

@@ -1,4 +1,4 @@
-import { AgentApiError, agentFetch, throwAgentError } from "./http";
+import { AgentApiError, agentFetch } from "./http";
 
 export interface ProjectHistorySnapshot {
   id: string;
@@ -124,26 +124,4 @@ export async function revertProjectSnapshot(
     );
   }
   return (await response.json()) as ProjectRevertResult;
-}
-
-export interface ProjectGitOriginResult {
-  origin: string;
-  initialized: boolean;
-}
-
-/** Add `origin` to a project with none (git init first if needed). Never replaces one. */
-export async function addProjectGitOrigin(
-  baseUrl: string,
-  token: string | null,
-  input: { projectPath: string; url: string },
-): Promise<ProjectGitOriginResult> {
-  const response = await agentFetch(baseUrl, token, "/v1/project/git-origin", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!response.ok) {
-    await throwAgentError(response, "Could not add the remote");
-  }
-  return (await response.json()) as ProjectGitOriginResult;
 }

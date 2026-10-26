@@ -1,5 +1,5 @@
 kind: Changed
-body: 'Desktop no longer shows command instructions from the agent: recovery buttons say Install or Fetch instead of a CLI command, error text drops "run ..." hints, and Project history without a git remote offers an Add remote form.'
+body: 'Desktop no longer shows command instructions from the agent: recovery buttons say Install or Fetch instead of a CLI command, error text drops "run ..." hints, and a project folder without a git remote (or without git) now keeps snapshots, drift, History and revert in the CLI and Desktop, keyed by its folder path. When the folder later gains a remote, its history moves to the remote-keyed project automatically after a database backup in ~/.harnesstap/backups.'
 time: 2026-10-26T02:26:08.000000000Z
 custom:
   Issue: ""

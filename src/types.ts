@@ -395,7 +395,10 @@ export interface PluginDependencyRef {
 
 export interface Project {
   id: string;
+  /** Normalized origin URL, or "" for a project identified by its folder. */
   git_origin: string;
+  /** Path-based identity (see services/project-identity.ts), or "" once the project has an origin. */
+  local_id?: string;
   name: string;
   local_path: string;
   created_at: string;

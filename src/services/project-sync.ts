@@ -5,7 +5,6 @@ import {
   getProjectHarnessConfig,
   setProjectHarnessConfig,
 } from "../models/harness.js";
-import { upsertProject } from "../models/project.js";
 import { createSnapshot } from "../models/snapshot.js";
 import { captureManagedSnapshotState } from "./snapshot-capture.js";
 import type { CursorSkillMode, Resource, ResourceCreateInput, SerializedFile } from "../types.js";
@@ -16,7 +15,6 @@ import {
   mergeReferenceResourceInputs,
 } from "./reference-resources.js";
 import { generateFiles, writeFiles } from "./applier.js";
-import { getGitOrigin, normalizeGitUrl, projectNameFromUrl } from "./git.js";
 import {
   detectHarnessSurfaces,
   mirrorSurfaceWarnings,
@@ -25,6 +23,7 @@ import {
 import {
   uniqueHarnessTargets,
 } from "./harness-targets.js";
+import { ensureProjectForRoot } from "./project-identity.js";
 
 export type ProjectReferenceStrategy = "disk" | "plugin" | "agents" | "auto" | "main";
 
@@ -279,29 +278,20 @@ export async function syncProject(
     forceShiftReference,
     referenceStrategy = "disk",
   } = options;
-  const gitOrigin = getGitOrigin(projectRoot);
+  const project = ensureProjectForRoot(projectRoot);
+  const projectId = project.id;
 
-  let projectId: string | undefined;
-  if (gitOrigin) {
-    const project = upsertProject({
-      git_origin: normalizeGitUrl(gitOrigin),
-      name: projectNameFromUrl(gitOrigin),
-      local_path: projectRoot,
+  if (forceShiftReference) {
+    const current = getProjectHarnessConfig(project.id);
+    setProjectHarnessConfig({
+      project_id: project.id,
+      registered_harnesses: uniqueHarnessTargets([
+        forceShiftReference,
+        ...(current?.registered_harnesses ?? []),
+      ]),
+      materialization_strategy: current?.materialization_strategy,
+      cursor_skill_mode: current?.cursor_skill_mode,
     });
-    projectId = project.id;
-
-    if (forceShiftReference) {
-      const current = getProjectHarnessConfig(project.id);
-      setProjectHarnessConfig({
-        project_id: project.id,
-        registered_harnesses: uniqueHarnessTargets([
-          forceShiftReference,
-          ...(current?.registered_harnesses ?? []),
-        ]),
-        materialization_strategy: current?.materialization_strategy,
-        cursor_skill_mode: current?.cursor_skill_mode,
-      });
-    }
   }
 
   const harnesses = resolveSyncHarnesses(
@@ -355,17 +345,15 @@ export async function syncProject(
     };
   }
 
-  if (gitOrigin && projectId) {
-    createSnapshot({
-      project_id: projectId,
-      label: `Before mirror (${harnesses.from_harness})`,
-      state: captureManagedSnapshotState({
-        rootPath: projectRoot,
-        resources,
-        generated: allGenerated,
-      }),
-    });
-  }
+  createSnapshot({
+    project_id: projectId,
+    label: `Before mirror (${harnesses.from_harness})`,
+    state: captureManagedSnapshotState({
+      rootPath: projectRoot,
+      resources,
+      generated: allGenerated,
+    }),
+  });
 
   const mainFiles = mainGenerated[0]?.files ?? [];
   let filesWritten = 0;

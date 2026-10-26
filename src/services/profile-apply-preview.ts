@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { resolvePluginSelector } from "../models/plugin-model.js";
-import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
+import { getProjectByLocalPath } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
 import type { McpServerMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -24,7 +24,6 @@ import {
 } from "./cursor-host-managed-skills.js";
 import { binaryExpectedFileMatchesDisk, fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import { isNativeAgentPluginCachePath } from "./native-agent-plugins.js";
-import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import {
   buildHarnessLiveStatusMap,
   declaredMcpFromExpectedFiles,
@@ -64,6 +63,7 @@ import {
 } from "./safe-file-removal.js";
 import { detectPlatforms } from "./scanner.js";
 import { withAffectedResources } from "./scoped-file-content-delta.js";
+import { findProjectForRoot } from "./project-identity.js";
 
 export type ProfileApplyPreviewScope = "home" | "project";
 
@@ -591,11 +591,9 @@ async function collectHomeExpectedManagedFiles(
 }
 
 function snapshotPreviousPaths(resolvedRoot: string): string[] {
-  const gitOriginRaw = getGitOrigin(resolvedRoot);
-  const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
   const project =
-    getProjectByLocalPath(resolvedRoot)
-    ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
+    findProjectForRoot(resolvedRoot)
+    ?? getProjectByLocalPath(resolvedRoot)
     ?? null;
   const snapshot = project ? getLatestSnapshot(project.id) : null;
   return snapshot

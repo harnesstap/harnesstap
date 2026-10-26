@@ -14,7 +14,7 @@ describe("harness-settings service", () => {
     }
   });
 
-  it("getHarnessSettings returns an empty registered set, catalog, and unavailable project without git", async () => {
+  it("getHarnessSettings returns an empty registered set, catalog, and an available project without git", async () => {
     const context = await createInitializedTestContext("harness-settings-get");
     try {
       const { getHarnessSettings } = await import(
@@ -37,11 +37,7 @@ describe("harness-settings service", () => {
       const generic = payload.harnesses.find((h) => !h.supported);
       expect(generic).toBeDefined();
       expect(Array.isArray(generic?.supports)).toBe(true);
-      expect(payload.project).toEqual({
-        available: false,
-        override: false,
-        reason: "Project has no git origin",
-      });
+      expect(payload.project).toEqual({ available: true, override: false });
     } finally {
       await context.cleanup();
     }
@@ -146,7 +142,7 @@ describe("harness-settings service", () => {
     }
   });
 
-  it("does not persist global preference when project path lacks git origin", async () => {
+  it("saves a project override for a folder without git", async () => {
     const context = await createInitializedTestContext("harness-settings-nogit-put");
     try {
       const { putHarnessSettings } = await import(
@@ -163,19 +159,21 @@ describe("harness-settings service", () => {
       const projectDir = mkdtempSync(join(tmpdir(), "ht-hs-nogit-put-"));
       tempDirs.push(projectDir);
 
-      await expect(
-        putHarnessSettings({
-          global: { registered_harnesses: ["codex"] },
-          project: {
-            path: projectDir,
-            override: true,
-            registered_harnesses: ["cursor"],
-          },
-        }),
-      ).rejects.toThrow(/git origin/i);
+      await putHarnessSettings({
+        global: { registered_harnesses: ["codex"] },
+        project: {
+          path: projectDir,
+          override: true,
+          registered_harnesses: ["cursor"],
+        },
+      });
 
-      expect(getHarnessPreference()).toMatchObject({
-        registered_harnesses: ["claude-code", "cursor"],
+      expect(getHarnessPreference()).toMatchObject({ registered_harnesses: ["codex"] });
+      const { getHarnessSettings } = await import("../../src/services/harness-settings.ts");
+      expect(getHarnessSettings(projectDir).project).toMatchObject({
+        available: true,
+        override: true,
+        registered_harnesses: ["cursor"],
       });
     } finally {
       await context.cleanup();

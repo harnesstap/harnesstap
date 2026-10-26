@@ -8,7 +8,7 @@ import { getDb, closeDb } from "../../src/db/connection.ts";
 import { initializeSchema } from "../../src/db/schema.ts";
 import { createProject } from "../../src/models/project.ts";
 import { createSnapshot } from "../../src/models/snapshot.ts";
-import { GIT_ORIGIN_HINTS } from "../../src/cli/shared.ts";
+import { ensureProjectForRoot } from "../../src/services/project-identity.ts";
 import { initGitRepo } from "../helpers/git.ts";
 
 const TOKEN = "test-token";
@@ -65,18 +65,66 @@ describe("parity project history tryHandle", () => {
     });
   });
 
-  it("GET history without origin returns 400 no_git_origin and GIT_ORIGIN_HINTS", async () => {
-    const { projectDir } = withHome();
-    const request = new Request(
+  function historyRequest(projectDir: string): Request {
+    return new Request(
       `http://127.0.0.1/v1/project/history?projectPath=${encodeURIComponent(projectDir)}`,
     );
-    const response = await tryHandle(request, TOKEN, idle);
-    expect(response?.status).toBe(400);
-    await expect(response?.json()).resolves.toEqual({
-      error: "no_git_origin",
-      message: "No git remote origin configured.",
-      hints: [...GIT_ORIGIN_HINTS],
+  }
+
+  function snapshotOf(projectId: string, label: string, body: string) {
+    return createSnapshot({
+      project_id: projectId,
+      label,
+      state: {
+        plugins: [],
+        resources: [],
+        platform_files: { "claude-code": { "CLAUDE.md": body } },
+      },
     });
+  }
+
+  it("GET history in a folder without git and no project yet returns project_linked false", async () => {
+    const { projectDir } = withHome();
+    const response = await tryHandle(historyRequest(projectDir), TOKEN, idle);
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({ snapshots: [], project_linked: false });
+  });
+
+  it("GET history lists snapshots for a folder without git", async () => {
+    const { projectDir } = withHome();
+    const project = ensureProjectForRoot(projectDir);
+    const snapshot = snapshotOf(project.id, "Before applying: no-git", "# a");
+    const response = await tryHandle(historyRequest(projectDir), TOKEN, idle);
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as { snapshots: Array<{ id: string }>; project_linked: boolean };
+    expect(body.project_linked).toBe(true);
+    expect(body.snapshots.map((row) => row.id)).toEqual([snapshot.id]);
+  });
+
+  it("GET history lists snapshots for a git repo without origin", async () => {
+    const { projectDir } = withHome();
+    execFileSync("git", ["init", "-q"], { cwd: projectDir, stdio: "pipe" });
+    const project = ensureProjectForRoot(projectDir);
+    const snapshot = snapshotOf(project.id, "Before applying: no-origin", "# a");
+    const response = await tryHandle(historyRequest(projectDir), TOKEN, idle);
+    const body = (await response?.json()) as { snapshots: Array<{ id: string }> };
+    expect(body.snapshots.map((row) => row.id)).toEqual([snapshot.id]);
+  });
+
+  it("GET history keeps a folder's snapshots after it gains an origin", async () => {
+    const { projectDir } = withHome();
+    const project = ensureProjectForRoot(projectDir);
+    const older = snapshotOf(project.id, "Before applying: older", "# a");
+    await Bun.sleep(5);
+    const newer = snapshotOf(project.id, "Before applying: newer", "# b");
+    initGitRepo(projectDir, "git@github.com:acme/history-gained.git");
+    for (let run = 0; run < 2; run += 1) {
+      const response = await tryHandle(historyRequest(projectDir), TOKEN, idle);
+      const body = (await response?.json()) as { snapshots: Array<{ id: string }> };
+      expect(body.snapshots.map((row) => row.id)).toEqual([newer.id, older.id]);
+    }
+    const rows = getDb().prepare("SELECT git_origin FROM projects").all() as Array<{ git_origin: string }>;
+    expect(rows).toEqual([{ git_origin: "git@github.com:acme/history-gained.git" }]);
   });
 
   it("GET history with origin but no project row returns empty list and project_linked false", async () => {
@@ -208,18 +256,33 @@ describe("parity project history tryHandle", () => {
     });
   });
 
-  it("POST revert without origin returns 400 no_git_origin", async () => {
+  it("POST revert works in a folder without git", async () => {
     const { projectDir } = withHome();
+    const project = ensureProjectForRoot(projectDir);
+    const snapshot = snapshotOf(project.id, "Before applying: no-git", "# Original");
     const request = new Request("http://127.0.0.1/v1/project/revert", {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ snapshotId: "missing", projectPath: projectDir }),
+      body: JSON.stringify({ snapshotId: snapshot.id, projectPath: projectDir }),
     });
     const response = await tryHandle(request, TOKEN, idle);
-    expect(response?.status).toBe(400);
-    const body = (await response?.json()) as { error: string; hints: string[] };
-    expect(body.error).toBe("no_git_origin");
-    expect(body.hints).toEqual([...GIT_ORIGIN_HINTS]);
+    expect(response?.status).toBe(200);
+    expect(((await response?.json()) as { snapshot: { id: string } }).snapshot.id).toBe(snapshot.id);
+  });
+
+  it("POST revert refuses a snapshot from another folder without git", async () => {
+    const { dir, projectDir } = withHome();
+    const otherDir = join(dir, "other");
+    mkdirSync(otherDir, { recursive: true });
+    ensureProjectForRoot(otherDir);
+    const snapshot = snapshotOf(ensureProjectForRoot(projectDir).id, "Before applying: a", "# a");
+    const request = new Request("http://127.0.0.1/v1/project/revert", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ snapshotId: snapshot.id, projectPath: otherDir }),
+    });
+    const response = await tryHandle(request, TOKEN, idle);
+    expect(response?.status).toBe(409);
   });
 
   it("POST revert unknown snapshot returns 404", async () => {
@@ -423,100 +486,6 @@ describe("parity project history tryHandle", () => {
         snapshot: { id: snapshot.id, label: snapshot.label },
       });
       expect(readFileSync(join(projectDir, "CLAUDE.md"), "utf-8")).toBe("# Mine");
-    });
-  });
-  describe("POST /v1/project/git-origin", () => {
-    function post(body: unknown, auth = true): Request {
-      return new Request("http://127.0.0.1/v1/project/git-origin", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(auth ? { authorization: `Bearer ${TOKEN}` } : {}),
-        },
-        body: JSON.stringify(body),
-      });
-    }
-
-    function originOf(projectDir: string): string {
-      return execFileSync("git", ["config", "--get", "remote.origin.url"], {
-        cwd: projectDir,
-        encoding: "utf-8",
-      }).trim();
-    }
-
-    it("requires auth", async () => {
-      const { projectDir } = withHome();
-      const response = await tryHandle(post({ projectPath: projectDir, url: "x" }, false), TOKEN, idle);
-      expect(response?.status).toBe(401);
-    });
-
-    it("returns 409 while a switch runs", async () => {
-      const { projectDir } = withHome();
-      const response = await tryHandle(
-        post({ projectPath: projectDir, url: "https://github.com/acme/app" }),
-        TOKEN,
-        { isAgentSwitchInProgress: () => true },
-      );
-      expect(response?.status).toBe(409);
-    });
-
-    it("rejects a missing url and an option-like url", async () => {
-      const { projectDir } = withHome();
-      const missing = await tryHandle(post({ projectPath: projectDir }), TOKEN, idle);
-      expect(missing?.status).toBe(400);
-      const optionLike = await tryHandle(
-        post({ projectPath: projectDir, url: "--upload-pack=evil" }),
-        TOKEN,
-        idle,
-      );
-      expect(optionLike?.status).toBe(400);
-      expect(((await optionLike?.json()) as { error: string }).error).toBe("invalid_url");
-    });
-
-    it("returns 404 for a folder that does not exist", async () => {
-      const { dir } = withHome();
-      const response = await tryHandle(
-        post({ projectPath: join(dir, "missing"), url: "https://github.com/acme/app" }),
-        TOKEN,
-        idle,
-      );
-      expect(response?.status).toBe(404);
-    });
-
-    it("initializes a plain folder and adds origin, then history loads", async () => {
-      const { projectDir } = withHome();
-      const response = await tryHandle(
-        post({ projectPath: projectDir, url: "https://github.com/acme/app.git" }),
-        TOKEN,
-        idle,
-      );
-      expect(response?.status).toBe(200);
-      expect(await response?.json()).toEqual({
-        origin: "https://github.com/acme/app.git",
-        initialized: true,
-      });
-      expect(originOf(projectDir)).toBe("https://github.com/acme/app.git");
-      const history = await tryHandle(
-        new Request(
-          `http://127.0.0.1/v1/project/history?projectPath=${encodeURIComponent(projectDir)}`,
-        ),
-        TOKEN,
-        idle,
-      );
-      expect(history?.status).toBe(200);
-    });
-
-    it("never replaces an existing origin", async () => {
-      const { projectDir } = withHome();
-      initGitRepo(projectDir, "git@github.com:acme/keep.git");
-      const response = await tryHandle(
-        post({ projectPath: projectDir, url: "https://github.com/acme/other" }),
-        TOKEN,
-        idle,
-      );
-      expect(response?.status).toBe(409);
-      expect(((await response?.json()) as { error: string }).error).toBe("origin_exists");
-      expect(originOf(projectDir)).toBe("git@github.com:acme/keep.git");
     });
   });
 });

@@ -4,7 +4,6 @@ import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import type { ImportConflictPolicy } from "../../models/resource.js";
-import { getProjectByOrigin, upsertProject } from "../../models/project.js";
 import { listImportedSnapshots } from "../../models/imported-snapshot.js";
 import { listSnapshots } from "../../models/snapshot.js";
 import {
@@ -21,11 +20,6 @@ import {
   generateFiles,
   materializeFiles,
 } from "../../services/applier.js";
-import {
-  getGitOrigin,
-  normalizeGitUrl,
-  projectNameFromUrl,
-} from "../../services/git.js";
 import { detectProjectDriftFromLatest } from "../../services/project-drift.js";
 import { buildProjectStatusPayload } from "../../services/project-status-payload.js";
 import { scanPluginSource } from "../../services/plugin-source-import.js";
@@ -65,8 +59,8 @@ import { ON_CONFLICT_APPLY_HELP } from "../messages.js";
 import {
   fail,
   formatCommand,
-  reportNoGitOrigin,
 } from "../shared.js";
+import { ensureProjectForRoot, findProjectForRoot, resolveProjectIdentity } from "../../services/project-identity.js";
 
 function resolveScanConflictPolicy(opts: {
   overwrite?: boolean;
@@ -390,25 +384,15 @@ async function handleScanCommand(
     }
   }
 
-  const gitOrigin = getGitOrigin(projectRoot);
-  if (!gitOrigin) {
-    return;
-  }
-
-  const normalized = normalizeGitUrl(gitOrigin);
-  const name = projectNameFromUrl(gitOrigin);
-  const existingProject = getProjectByOrigin(normalized);
-  upsertProject({
-    git_origin: normalized,
-    name,
-    local_path: projectRoot,
-  });
+  const identity = resolveProjectIdentity(projectRoot);
+  const existingProject = findProjectForRoot(projectRoot, identity);
+  const { name } = ensureProjectForRoot(projectRoot, identity);
 
   if (!existingProject) {
     console.log("");
     ui.success(`Project linked: ${name}`);
     ui.hint(
-      "Enables apply snapshots, drift checks (status --check), history, and revert for this repository.",
+      "Enables apply snapshots, drift checks (status --check), history, and revert for this folder.",
     );
   } else if (resolve(existingProject.local_path) !== resolve(projectRoot)) {
     ui.hint(`Updated local path for ${name}.`);
@@ -429,12 +413,7 @@ function handleHistoryCommand(
     fail(error instanceof Error ? error.message : String(error));
     return;
   }
-  const gitOrigin = getGitOrigin(projectRoot);
-  if (!gitOrigin) {
-    reportNoGitOrigin(formatCommand("history"));
-    return;
-  }
-  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  const project = findProjectForRoot(projectRoot);
   if (!project) {
     if (format === "json") {
       printJson({ snapshots: [] });
@@ -610,13 +589,7 @@ async function handleProjectStatusCommand(
   }
 
   if (opts.check) {
-    const gitOrigin = getGitOrigin(projectRoot);
-    if (!gitOrigin) {
-      reportNoGitOrigin(formatCommand("status --check"));
-      return;
-    }
-    const normalizedOrigin = normalizeGitUrl(gitOrigin);
-    const project = getProjectByOrigin(normalizedOrigin);
+    const project = findProjectForRoot(projectRoot);
     if (!project) {
       if (format === "json") {
         printJson({

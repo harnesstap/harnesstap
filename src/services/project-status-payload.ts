@@ -8,17 +8,17 @@ import { assessProjectScanStatus, type ProjectScanStatus } from "./project-scan-
 import { validatePluginPinsAgainstInventory } from "./plugin-apply-validation.js";
 import { listAttachedPluginPins } from "./plugin-composition.js";
 import { getPluginById, getPluginResources, resolvePluginSelector } from "../models/plugin-model.js";
-import { getProjectByLocalPath, getProjectByOrigin, getProjectConfiguredPlugins } from "../models/project.js";
+import { getProjectByLocalPath, getProjectConfiguredPlugins } from "../models/project.js";
 import { detectProjectDriftFromLatest, type ProjectDriftReport } from "./project-drift.js";
 import { compareLockToResolution, readLockfile, type LockDrift } from "./lockfile.js";
 import { resolveComposition } from "./resolve/index.js";
 import { detectPlatforms } from "./scanner.js";
-import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import { isProfilePlugin } from "../constants/profile.js";
 import { listSnapshots } from "../models/snapshot.js";
 import type { Plugin, Project, Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 import { formatCount } from "../copy/plurals.js";
+import { findProjectForRoot, resolveProjectIdentity } from "./project-identity.js";
 
 export interface AppliedPluginStatusRow {
   plugin: Plugin;
@@ -237,12 +237,12 @@ export function formatDriftStatusLabel(
 
 export async function buildProjectStatusPayload(projectRoot: string): Promise<ProjectStatusPayload> {
   const resolvedRoot = resolve(projectRoot);
-  const gitOriginRaw = getGitOrigin(resolvedRoot);
-  const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
-  const projectByPath = getProjectByLocalPath(resolvedRoot);
+  const identity = resolveProjectIdentity(resolvedRoot);
+  const gitOriginRaw = identity.kind === "origin" ? identity.gitOriginRaw : undefined;
+  const gitOrigin = identity.kind === "origin" ? identity.gitOrigin : null;
   const project =
-    projectByPath
-    ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
+    findProjectForRoot(resolvedRoot, identity)
+    ?? getProjectByLocalPath(resolvedRoot)
     ?? null;
   const configuredPluginIds = project
     ? getProjectConfiguredPlugins(project.id).map((row) => row.plugin_id)

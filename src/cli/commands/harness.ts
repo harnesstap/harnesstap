@@ -9,13 +9,7 @@ import {
   setHarnessPreference,
   setProjectHarnessConfig,
 } from "../../models/harness.js";
-import { getProjectByOrigin, upsertProject } from "../../models/project.js";
 import { getAllPlatforms } from "../../platforms/registry.js";
-import {
-  getGitOrigin,
-  normalizeGitUrl,
-  projectNameFromUrl,
-} from "../../services/git.js";
 import { resolveHarnessSelection } from "../../services/harness-config.js";
 import {
   syncConfiguredHarnesses,
@@ -36,8 +30,8 @@ import { configureCommandGroup } from "../help.js";
 import {
   fail,
   formatCommand,
-  reportNoGitOrigin,
 } from "../shared.js";
+import { ensureProjectForRoot, findProjectForRoot } from "../../services/project-identity.js";
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
 
@@ -143,17 +137,7 @@ async function handleHarnessProjectSetCommand(opts: {
   const db = getDb();
   initializeSchema(db);
   const projectRoot = resolve(opts.project);
-  const gitOrigin = getGitOrigin(projectRoot);
-  if (!gitOrigin) {
-    reportNoGitOrigin(`${formatCommand("harness project set --project . --harnesses claude-code,cursor")}`);
-    return;
-  }
-
-  const project = upsertProject({
-    git_origin: normalizeGitUrl(gitOrigin),
-    name: projectNameFromUrl(gitOrigin),
-    local_path: projectRoot,
-  });
+  const project = ensureProjectForRoot(projectRoot);
 
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
@@ -240,13 +224,7 @@ function handleHarnessProjectStatusCommand(opts: {
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(opts.project);
-  const gitOrigin = getGitOrigin(projectRoot);
-  if (!gitOrigin) {
-    reportNoGitOrigin(`${formatCommand("harness project status --project .")}`);
-    return;
-  }
-
-  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  const project = findProjectForRoot(projectRoot);
   const config = project ? getProjectHarnessConfig(project.id) : undefined;
 
   if (format === "json") {
