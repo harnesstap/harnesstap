@@ -21,6 +21,7 @@ import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { IconActionButton } from "./IconActionButton";
 import { Presence } from "./motion/Presence";
+import { DisabledReason } from "./DisabledReason";
 
 export interface MigrateImportDrawerProps {
   open: boolean;
@@ -235,18 +236,20 @@ export function MigrateImportDrawer({
               {busy ? "Importing..." : "Import"}
             </button>
           ) : (
-            <button
-              className={["btn", "primary", detecting ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              onClick={() => void handleNext()}
-              disabled={controlsDisabled || !canGoNext}
-              aria-busy={detecting}
-            >
-              {detecting ? <ButtonSpinner size={16} /> : <ChevronRight size={16} aria-hidden />}
-              {detecting ? "Detecting..." : "Next"}
-            </button>
+            <DisabledReason reason={!canGoNext && !controlsDisabled && step === "path" ? "Choose a file to import" : null}>
+              <button
+                className={["btn", "primary", detecting ? "is-busy" : ""]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="button"
+                onClick={() => void handleNext()}
+                disabled={controlsDisabled || !canGoNext}
+                aria-busy={detecting}
+              >
+                {detecting ? <ButtonSpinner size={16} /> : <ChevronRight size={16} aria-hidden />}
+                {detecting ? "Detecting..." : "Next"}
+              </button>
+            </DisabledReason>
           )}
         </>
       }

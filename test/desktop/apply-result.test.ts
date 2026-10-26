@@ -45,6 +45,6 @@ describe("desktop apply result counts", () => {
     expect(outcome.removed).toBe(0);
     expect(outcome.kept).toBe(3);
     expect(outcome.unchanged).toBe(27);
-    expect(applySuccessToast(result).title).toBe("Wrote 0, removed 0, kept 3");
+    expect(applySuccessToast(result).title).toBe("Applied. Kept 3.");
   });
 });

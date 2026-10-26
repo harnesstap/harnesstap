@@ -31,6 +31,7 @@ import { toast } from "../../state/toast-store";
 import { useStatusStore } from "../../state/status-store";
 import { SkeletonRow } from "./Skeleton";
 import { RailProfileName } from "./RailProfileName";
+import { DisabledReason } from "../DisabledReason";
 
 const RAIL_ICON_SIZE = 15;
 /** The grip overlays the row's left padding, so it stays narrower than it. */
@@ -504,25 +505,27 @@ export function ProfilesRail({
         ) : ctrl.applyHelper ? (
           <p className="muted apply-helper">{ctrl.applyHelper}</p>
         ) : null}
-        <button
-          className={["btn", "primary", "rail-apply-action", switching ? "is-busy" : ""]
-            .filter(Boolean)
-            .join(" ")}
-          type="button"
-          onClick={ctrl.onApplyClick}
-          disabled={ctrl.applyDisabled}
-          aria-busy={switching}
-          title={ctrl.applyButtonTitle}
-        >
-          {switching ? "Applying..." : ctrl.showReapply ? "Re-apply" : "Apply"}
-          {switching ? (
-            <ButtonSpinner size={16} />
-          ) : ctrl.showReapply ? (
-            <RotateCw size={16} strokeWidth={2} aria-hidden="true" />
-          ) : (
-            <Check size={16} strokeWidth={2} aria-hidden="true" />
-          )}
-        </button>
+        <DisabledReason block reason={ctrl.applyDisabled && !switching ? ctrl.applyButtonTitle : null}>
+          <button
+            className={["btn", "primary", "rail-apply-action", switching ? "is-busy" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            onClick={ctrl.onApplyClick}
+            disabled={ctrl.applyDisabled}
+            aria-busy={switching}
+            title={ctrl.applyButtonTitle}
+          >
+            {switching ? "Applying..." : ctrl.showReapply ? "Re-apply" : "Apply"}
+            {switching ? (
+              <ButtonSpinner size={16} />
+            ) : ctrl.showReapply ? (
+              <RotateCw size={16} strokeWidth={2} aria-hidden="true" />
+            ) : (
+              <Check size={16} strokeWidth={2} aria-hidden="true" />
+            )}
+          </button>
+        </DisabledReason>
       </div>
     </nav>
   );

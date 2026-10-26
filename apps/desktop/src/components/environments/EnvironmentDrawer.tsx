@@ -30,6 +30,7 @@ import {
   type EnvironmentCreateMode,
   type EnvironmentShowPayload,
 } from "../../lib/api/environments";
+import { DisabledReason } from "../DisabledReason";
 
 export interface EnvironmentDrawerProps {
   open: boolean;
@@ -221,6 +222,14 @@ export function EnvironmentDrawer({
     projectPath,
     plugins: selectedPluginNames,
   });
+  let createEnvironmentBlockedReason: string | null = null;
+  if (!name.trim()) {
+    createEnvironmentBlockedReason = "Enter an environment name";
+  } else if (source === "from-project") {
+    createEnvironmentBlockedReason = "Choose a project";
+  } else if (source === "from-plugin") {
+    createEnvironmentBlockedReason = "Pick at least one plugin";
+  }
   const controlsDisabled = disabled || busy;
   const title = mode === "create" ? "Create environment" : `Edit ${environmentName ?? name}`;
 
@@ -356,16 +365,18 @@ export function EnvironmentDrawer({
               Cancel
             </button>
             {mode === "create" ? (
-              <button
-                className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-                type="button"
-                onClick={() => void runCreate()}
-                disabled={!canSubmit || controlsDisabled}
-                aria-busy={busy}
-              >
-                {busy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
-                {busy ? "Creating..." : "Create environment"}
-              </button>
+              <DisabledReason reason={!canSubmit && !controlsDisabled ? createEnvironmentBlockedReason : null}>
+                <button
+                  className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+                  type="button"
+                  onClick={() => void runCreate()}
+                  disabled={!canSubmit || controlsDisabled}
+                  aria-busy={busy}
+                >
+                  {busy ? <ButtonSpinner size={16} /> : <Plus size={16} aria-hidden />}
+                  {busy ? "Creating..." : "Create environment"}
+                </button>
+              </DisabledReason>
             ) : (
               <button
                 className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}

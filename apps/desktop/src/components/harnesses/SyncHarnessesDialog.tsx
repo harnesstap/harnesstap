@@ -20,12 +20,11 @@ export interface SyncHarnessesDialogProps {
 const HARNESS_SYNC_KIND_BADGES: ReadonlyArray<{
   key: keyof HarnessSyncChangeKinds;
   kindClass: "add" | "remove" | "update";
-  mark: string;
   label: string;
 }> = [
-  { key: "added", kindClass: "add", mark: "+", label: "added" },
-  { key: "removed", kindClass: "remove", mark: "−", label: "removed" },
-  { key: "modified", kindClass: "update", mark: "~", label: "modified" },
+  { key: "added", kindClass: "add", label: "to add" },
+  { key: "removed", kindClass: "remove", label: "to remove" },
+  { key: "modified", kindClass: "update", label: "to update" },
 ];
 
 function HarnessSyncChangeBadges({
@@ -34,19 +33,15 @@ function HarnessSyncChangeBadges({
   counts: HarnessSyncChangeKinds;
 }): ReactNode {
   const summary = formatHarnessSyncChangeSummary(counts);
-  const badges = HARNESS_SYNC_KIND_BADGES.flatMap(({ key, kindClass, mark, label }) => {
+  const badges = HARNESS_SYNC_KIND_BADGES.flatMap(({ key, kindClass, label }) => {
     const count = counts[key];
     if (count <= 0) return [];
     return [
       <span
         key={key}
         className={`file-change-kind-badge apply-diff-kind-badge static ${kindClass}`}
-        aria-label={`${count} ${label}`}
       >
-        <span className="file-change-kind-mark" aria-hidden>
-          {mark}
-        </span>
-        <span>{count}</span>
+        {count} {label}
       </span>,
     ];
   });

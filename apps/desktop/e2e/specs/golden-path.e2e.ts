@@ -388,8 +388,8 @@ describe("Golden path", () => {
     }
     const dialog = await $("[data-testid='risky-removal-dialog']");
     if (await dialog.isDisplayed().catch(() => false)) {
-      await expect($("h2*=Some files will not be removed")).toBeDisplayed();
-      const keep = await $("button*=Keep these files");
+      await expect($("h2*=will be kept")).toBeDisplayed();
+      const keep = await $("button*=Apply and keep");
       await keep.click();
     }
     expect(existsSync(notes)).toBe(true);

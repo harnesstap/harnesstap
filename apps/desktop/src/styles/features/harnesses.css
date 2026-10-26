@@ -10,20 +10,6 @@
   flex-shrink: 0;
 }
 
-.harness-list-empty-hint {
-  margin: var(--space-4) 0 0;
-  padding: 0 var(--space-1);
-  font-size: var(--text-meta);
-}
-
-.harness-sync-controls {
-  margin: auto -0.75rem -0.65rem;
-}
-
-.harness-sync-error {
-  color: var(--red);
-}
-
 .harness-sync-preview {
   margin-top: 0.75rem;
   display: flex;
@@ -68,12 +54,6 @@
   margin: 0;
   min-height: var(--icon-action-size);
   font-size: var(--text-meta);
-}
-
-.harness-sidebar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
 }
 
 .harness-list-scroll {

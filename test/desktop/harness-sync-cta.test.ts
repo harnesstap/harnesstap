@@ -43,8 +43,10 @@ const stylesSource = readDesktopCss();
 
 describe("Harnesses sync CTA", () => {
   it("uses the Profiles Apply twin classes and locked copy", () => {
-    expect(sidebarSource).toContain('className={["btn", "primary", "rail-apply-action"');
-    expect(sidebarSource).toContain("ArrowLeftRight");
+    expect(sidebarSource).not.toContain("rail-apply-action");
+    expect(sidebarSource).not.toContain("sync-harnesses");
+    expect(workspaceSource).toContain('data-testid="sync-harnesses"');
+    expect(workspaceSource).toContain("ArrowLeftRight");
     expect(workspaceSource).toContain("SYNC_HARNESSES_COMMAND");
     expect(workspaceSource).toContain("Syncing...");
     expect(workspaceSource).toContain("<SyncHarnessesDialog");
@@ -53,9 +55,9 @@ describe("Harnesses sync CTA", () => {
     expect(dialogSource).toContain("Counting resource changes...");
     expect(dialogSource).toContain("formatHarnessSyncChangeSummary");
     expect(dialogSource).toContain("file-change-kind-badge");
-    expect(dialogSource).toContain('mark: "+"');
-    expect(dialogSource).toContain('mark: "−"');
-    expect(dialogSource).toContain('mark: "~"');
+    expect(dialogSource).toContain('label: "to add"');
+    expect(dialogSource).toContain('label: "to remove"');
+    expect(dialogSource).toContain('label: "to update"');
     expect(dialogSource).toContain('confirmDisabled={counting}');
     expect(apiSource).toContain("/v1/harness/sync");
     expect(apiSource).toContain("dry_run: true");
@@ -63,9 +65,9 @@ describe("Harnesses sync CTA", () => {
     expect(syncHarnessesTooltip()).toBe(
       "Merge across registered harnesses. Newest on-disk copy wins conflicts.",
     );
-    expect(syncHarnessesConfirmBody()).toContain("Prefers shared paths.");
-    expect(syncHarnessesConfirmBody()).toContain(
-      "Cursor and Claude plugin skills also land in .agents",
+    expect(syncHarnessesConfirmBody()).toBe(
+      "Copy resources between your harnesses so each one has the same set. " +
+        "If two copies differ, the newest one wins.",
     );
     expect(syncHarnessesConfirmBody()).not.toContain("—");
     expect(syncHarnessesDisabledReason({
@@ -88,10 +90,10 @@ describe("Harnesses sync CTA", () => {
       modified: 5,
     })).toBe("1 added, 3 removed, 5 modified");
     expect(HARNESS_SYNC_PREVIEW_ERROR).not.toContain("—");
-    expect(designSource).toContain("Sticky footer under the configured list");
+    expect(designSource).toContain("Header icon-action **Sync harnesses**");
     expect(designSource).toContain("Counting resource changes…");
     expect(designSource).toContain("dry_run: true");
-    expect(stylesSource).toContain(".harness-sync-controls");
+    expect(stylesSource).not.toContain(".harness-sync-controls");
     expect(stylesSource).toContain(".harness-sync-preview-badges");
     expect(workspaceSource).not.toContain("—");
     expect(dialogSource).not.toContain("—");
