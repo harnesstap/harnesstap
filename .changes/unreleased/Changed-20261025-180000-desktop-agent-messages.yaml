@@ -1,0 +1,5 @@
+kind: Changed
+body: 'Desktop no longer shows command instructions from the agent: recovery buttons say Install or Fetch instead of a CLI command, error text drops "run ..." hints, and Project history without a git remote offers an Add remote form.'
+time: 2026-10-26T02:26:08.000000000Z
+custom:
+  Issue: ""

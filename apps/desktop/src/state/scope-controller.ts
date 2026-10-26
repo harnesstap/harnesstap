@@ -76,6 +76,7 @@ import {
 } from "./status-store";
 import { toast } from "./toast-store";
 import { applySuccessToast, type ApplySnapshotView } from "../lib/apply-result";
+import { recoveryActionLabel } from "../lib/desktop-agent-message";
 import { addedProfileAttachments, type ProfileAttachmentRef } from "../lib/profile-attachment-diff";
 import {
   emptyPlannedRemovals,
@@ -665,8 +666,8 @@ export function useScopeController(input: ScopeControllerInput) {
         toast({
           tone: "success",
           title: next?.warning
-            ? `Recovered: ${action.label}. Review remaining issues.`
-            : `Recovered: ${action.label}`,
+            ? `Recovered: ${recoveryActionLabel(action)}. Review remaining issues.`
+            : `Recovered: ${recoveryActionLabel(action)}`,
         });
         if (selectedProfile === statusStore.getState().status?.active_profile) {
           await refreshStatus("full");

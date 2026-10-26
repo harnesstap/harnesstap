@@ -101,6 +101,7 @@ import {
   visibleLibraryRows,
 } from "../state/library-snapshot-store";
 import type { LibraryResource, ProfileDetail, ProfileSummary } from "../lib/types";
+import { desktopAgentText } from "../lib/desktop-agent-message";
 
 const LIBRARY_SEARCH_DEBOUNCE_MS = 250;
 
@@ -903,7 +904,7 @@ export function ResourcesPanel({
       const failed = report.results.find((row) => row.status === "failed");
       if (failed) {
         setActionError(
-          failed.message ?? "Could not update plugins from origin",
+          desktopAgentText(failed.message ?? "Could not update plugins from origin"),
         );
       } else if (report.summary.updated > 0) {
         onSuccess?.(

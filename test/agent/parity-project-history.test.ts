@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "bun:test";
 import { tryHandle } from "../../src/agent/parity-handlers/project-history.ts";
 import { getDb, closeDb } from "../../src/db/connection.ts";
@@ -422,6 +423,100 @@ describe("parity project history tryHandle", () => {
         snapshot: { id: snapshot.id, label: snapshot.label },
       });
       expect(readFileSync(join(projectDir, "CLAUDE.md"), "utf-8")).toBe("# Mine");
+    });
+  });
+  describe("POST /v1/project/git-origin", () => {
+    function post(body: unknown, auth = true): Request {
+      return new Request("http://127.0.0.1/v1/project/git-origin", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(auth ? { authorization: `Bearer ${TOKEN}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+    }
+
+    function originOf(projectDir: string): string {
+      return execFileSync("git", ["config", "--get", "remote.origin.url"], {
+        cwd: projectDir,
+        encoding: "utf-8",
+      }).trim();
+    }
+
+    it("requires auth", async () => {
+      const { projectDir } = withHome();
+      const response = await tryHandle(post({ projectPath: projectDir, url: "x" }, false), TOKEN, idle);
+      expect(response?.status).toBe(401);
+    });
+
+    it("returns 409 while a switch runs", async () => {
+      const { projectDir } = withHome();
+      const response = await tryHandle(
+        post({ projectPath: projectDir, url: "https://github.com/acme/app" }),
+        TOKEN,
+        { isAgentSwitchInProgress: () => true },
+      );
+      expect(response?.status).toBe(409);
+    });
+
+    it("rejects a missing url and an option-like url", async () => {
+      const { projectDir } = withHome();
+      const missing = await tryHandle(post({ projectPath: projectDir }), TOKEN, idle);
+      expect(missing?.status).toBe(400);
+      const optionLike = await tryHandle(
+        post({ projectPath: projectDir, url: "--upload-pack=evil" }),
+        TOKEN,
+        idle,
+      );
+      expect(optionLike?.status).toBe(400);
+      expect(((await optionLike?.json()) as { error: string }).error).toBe("invalid_url");
+    });
+
+    it("returns 404 for a folder that does not exist", async () => {
+      const { dir } = withHome();
+      const response = await tryHandle(
+        post({ projectPath: join(dir, "missing"), url: "https://github.com/acme/app" }),
+        TOKEN,
+        idle,
+      );
+      expect(response?.status).toBe(404);
+    });
+
+    it("initializes a plain folder and adds origin, then history loads", async () => {
+      const { projectDir } = withHome();
+      const response = await tryHandle(
+        post({ projectPath: projectDir, url: "https://github.com/acme/app.git" }),
+        TOKEN,
+        idle,
+      );
+      expect(response?.status).toBe(200);
+      expect(await response?.json()).toEqual({
+        origin: "https://github.com/acme/app.git",
+        initialized: true,
+      });
+      expect(originOf(projectDir)).toBe("https://github.com/acme/app.git");
+      const history = await tryHandle(
+        new Request(
+          `http://127.0.0.1/v1/project/history?projectPath=${encodeURIComponent(projectDir)}`,
+        ),
+        TOKEN,
+        idle,
+      );
+      expect(history?.status).toBe(200);
+    });
+
+    it("never replaces an existing origin", async () => {
+      const { projectDir } = withHome();
+      initGitRepo(projectDir, "git@github.com:acme/keep.git");
+      const response = await tryHandle(
+        post({ projectPath: projectDir, url: "https://github.com/acme/other" }),
+        TOKEN,
+        idle,
+      );
+      expect(response?.status).toBe(409);
+      expect(((await response?.json()) as { error: string }).error).toBe("origin_exists");
+      expect(originOf(projectDir)).toBe("git@github.com:acme/keep.git");
     });
   });
 });

@@ -59,6 +59,7 @@ import { HarnessDetail } from "./HarnessDetail";
 import { HarnessSidebar } from "./HarnessSidebar";
 import { PluginPullReportDialog } from "./PluginPullReportDialog";
 import { SyncHarnessesDialog } from "./SyncHarnessesDialog";
+import { desktopAgentText } from "../../lib/desktop-agent-message";
 
 /** Add, detect confirm, and remove confirm never stack. */
 type HarnessesOverlay =
@@ -441,7 +442,7 @@ export function HarnessesWorkspace({
       toast({ tone: "success", title: "Harnesses synced" });
       return;
     }
-    toast({ tone: "error", title: result.message ?? "Could not sync harnesses" });
+    toast({ tone: "error", title: desktopAgentText(result.message ?? "Could not sync harnesses") });
   };
 
   const renderMain = (): ReactNode => {

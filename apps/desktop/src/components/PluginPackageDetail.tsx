@@ -109,6 +109,7 @@ import {
   type ScopeLibraryPick,
 } from "./ScopeAddToProfileModal";
 import { toast } from "../state/toast-store";
+import { desktopAgentText } from "../lib/desktop-agent-message";
 
 export interface PluginPackageDetailProps {
   selector: string;
@@ -1147,7 +1148,7 @@ export function PluginPackageDetail({
       const failed = report.results.find((row) => row.status === "failed");
       if (failed) {
         setActionError(
-          failed.message ?? "Could not update this plugin in the library",
+          desktopAgentText(failed.message ?? "Could not update this plugin in the library"),
         );
       } else if (report.results.some((row) => row.status === "updated")) {
         onSuccess(`Updated ${detail.plugin.name} in the library`);

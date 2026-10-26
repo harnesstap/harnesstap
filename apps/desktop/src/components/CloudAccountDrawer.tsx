@@ -22,6 +22,7 @@ import { ButtonSpinner } from "./ButtonSpinner";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { GithubSignInSection } from "./GithubSignInSection";
 import { Presence } from "./motion/Presence";
+import { desktopAgentText } from "../lib/desktop-agent-message";
 
 interface CloudAccountDrawerProps {
   open: boolean;
@@ -178,7 +179,7 @@ export function CloudAccountDrawer({
       }
       clearPoll();
       setBusy(false);
-      setError(result.message ?? "Cloud login failed.");
+      setError(desktopAgentText(result.message ?? "Cloud login failed."));
       applyStatus(await fetchCloudAuthStatus(baseUrl, token));
     } catch (pollError) {
       clearPoll();

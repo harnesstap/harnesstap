@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import { statSync } from "node:fs";
 import { requireAgentBearerAuth } from "../auth.js";
 import { jsonResponse } from "../http.js";
 import { GIT_ORIGIN_HINTS } from "../../cli/shared.js";
@@ -9,6 +11,8 @@ import type { Snapshot } from "../../types.js";
 
 const HISTORY_PATH = "/v1/project/history";
 const REVERT_PATH = "/v1/project/revert";
+/** Desktop's "Add remote" form: set origin when the project has none. */
+const GIT_ORIGIN_PATH = "/v1/project/git-origin";
 /** Revert any apply snapshot, project or global: Desktop's View snapshot dialog. */
 const SNAPSHOT_REVERT_PATH = "/v1/revert";
 
@@ -24,6 +28,9 @@ export async function tryHandle(
     }
     if (request.method === "POST" && pathname === REVERT_PATH) {
       return handleRevertPost(request, token, deps);
+    }
+    if (request.method === "POST" && pathname === GIT_ORIGIN_PATH) {
+      return handleGitOriginPost(request, token, deps);
     }
     if (request.method === "POST" && pathname === SNAPSHOT_REVERT_PATH) {
       return handleSnapshotRevertPost(request, token, deps);
@@ -228,4 +235,105 @@ async function handleSnapshotRevertPost(
     skipped_file_count: result.skipped.filter((entry) => entry.reason !== "missing").length,
     snapshot: { id: plan.id, created_at: plan.createdAt, label: plan.label },
   });
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function insideGitWorkTree(projectPath: string): boolean {
+  try {
+    execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
+      cwd: projectPath,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** A remote URL git will take as a value: no whitespace or control characters, not an option. */
+function isAcceptableRemoteUrl(url: string): boolean {
+  if (url.length === 0 || url.length > 2048 || url.startsWith("-") || /\s/.test(url)) {
+    return false;
+  }
+  return [...url].every((char) => char.charCodeAt(0) >= 0x20 && char.charCodeAt(0) !== 0x7f);
+}
+
+/**
+ * Add `origin` to a project that has none, running `git init` first when the
+ * folder is not a repository yet. An existing origin is never changed (409).
+ */
+async function handleGitOriginPost(
+  request: Request,
+  token: string,
+  deps: { isAgentSwitchInProgress: () => boolean },
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+  if (deps.isAgentSwitchInProgress()) {
+    return jsonResponse(
+      { error: "switch_in_progress", message: "Another profile switch is already running" },
+      { status: 409 },
+    );
+  }
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "invalid_json" }, { status: 400 });
+  }
+  const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  const projectPath = typeof record.projectPath === "string" ? record.projectPath.trim() : "";
+  const url = typeof record.url === "string" ? record.url.trim() : "";
+  if (!projectPath || !url) {
+    return jsonResponse(
+      { error: "invalid_body", message: "projectPath and url are required" },
+      { status: 400 },
+    );
+  }
+  if (!isAcceptableRemoteUrl(url)) {
+    return jsonResponse(
+      { error: "invalid_url", message: "Enter a remote URL, like https://github.com/org/repo." },
+      { status: 400 },
+    );
+  }
+  if (!isDirectory(projectPath)) {
+    return jsonResponse(
+      { error: "project_not_found", message: `Project folder not found: ${projectPath}` },
+      { status: 404 },
+    );
+  }
+  const existing = getGitOrigin(projectPath);
+  if (existing) {
+    return jsonResponse(
+      { error: "origin_exists", message: `This project already has a remote: ${existing}`, origin: existing },
+      { status: 409 },
+    );
+  }
+  const initialized = !insideGitWorkTree(projectPath);
+  try {
+    if (initialized) {
+      execFileSync("git", ["init"], { cwd: projectPath, stdio: ["ignore", "pipe", "pipe"] });
+    }
+    execFileSync("git", ["remote", "add", "origin", url], {
+      cwd: projectPath,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const stderr = (error as { stderr?: Buffer | string }).stderr?.toString().trim() ?? "";
+    const detail = stderr.split("\n")[0]?.replace(/^(?:fatal|error):\s*/, "") ?? "";
+    return jsonResponse(
+      { error: "git_failed", message: `Could not add the remote. ${detail}`.trim() },
+      { status: 500 },
+    );
+  }
+  return jsonResponse({ origin: url, initialized });
 }

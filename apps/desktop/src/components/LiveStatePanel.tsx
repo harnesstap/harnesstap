@@ -120,6 +120,7 @@ import { ResourceCreatePanel } from "./ResourceCreatePanel";
 import type { CreateResourceType } from "../lib/resource-create-schema";
 import { fetchHarnessSettings, fetchLibraryResources } from "../lib/agent-client";
 import type { HarnessSettingsPayload, LibraryResource } from "../lib/types";
+import { desktopAgentText } from "../lib/desktop-agent-message";
 
 const ICON_SIZE = 14;
 const STACK_CHANGES_SUBTITLE = "What apply would add or remove.";
@@ -1799,7 +1800,8 @@ export function LiveStatePanel({
       : null;
 
   const harnessNotSetUp = isHarnessNotSetUp(applyPreview);
-  const previewWarning = harnessNotSetUp ? null : applyPreview?.warning ?? null;
+  const rawPreviewWarning = harnessNotSetUp ? null : applyPreview?.warning ?? null;
+  const previewWarning = rawPreviewWarning ? desktopAgentText(rawPreviewWarning) : null;
   const showPreviewError = Boolean(selectedProfile && applyPreviewError);
   const showBootstrapBanner =
     view === "project"

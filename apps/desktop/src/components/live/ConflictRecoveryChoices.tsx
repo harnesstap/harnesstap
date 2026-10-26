@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { recoveryActionLabel } from "../../lib/desktop-agent-message";
 import type { RecoveryAction } from "../../lib/types";
 
 type ResourceOverrideAction = Extract<RecoveryAction, { id: "override-resource" }>;
@@ -31,7 +32,7 @@ export function ConflictRecoveryChoices({
             onClick={() => onRecoveryAction(action)}
             disabled={recoveryBusy}
           >
-            {action.label}
+            {recoveryActionLabel(action)}
           </button>
         ))}
       </div>
@@ -47,7 +48,7 @@ export function ConflictRecoveryChoices({
           role="listitem"
         >
           <div className="conflict-choice-header">
-            <div className="conflict-choice-title">{action.label}</div>
+            <div className="conflict-choice-title">{recoveryActionLabel(action)}</div>
             {action.source ? (
               <div className="conflict-choice-source">{action.source}</div>
             ) : null}

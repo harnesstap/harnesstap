@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
+  addProjectGitOrigin,
   fetchProjectHistory,
   ProjectHistoryApiError,
   revertProjectSnapshot,
   type ProjectHistorySnapshot,
 } from "../../lib/api/project-history";
-import { Undo2 } from "lucide-react";
+import { Link2, Undo2 } from "lucide-react";
 import { noResultsTitle } from "../../lib/empty-copy";
 import { formatCount } from "../../lib/plurals";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -65,7 +66,9 @@ export function ProjectHistoryDrawer({
   const [loading, setLoading] = useState(false);
   const [snapshots, setSnapshots] = useState<ProjectHistorySnapshot[]>([]);
   const [projectLinked, setProjectLinked] = useState(true);
-  const [originHints, setOriginHints] = useState<string[] | null>(null);
+  const [needsOrigin, setNeedsOrigin] = useState(false);
+  const [originUrl, setOriginUrl] = useState("");
+  const [originBusy, setOriginBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<ProjectHistorySnapshot | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -80,7 +83,8 @@ export function ProjectHistoryDrawer({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setOriginHints(null);
+    setNeedsOrigin(false);
+    setOriginUrl("");
     setFilter("");
     setPending(null);
     void fetchProjectHistory(baseUrl, projectPath)
@@ -96,7 +100,7 @@ export function ProjectHistoryDrawer({
           return;
         }
         if (loadError instanceof ProjectHistoryApiError && loadError.code === "no_git_origin") {
-          setOriginHints(loadError.hints);
+          setNeedsOrigin(true);
           setSnapshots([]);
           return;
         }
@@ -131,18 +135,36 @@ export function ProjectHistoryDrawer({
       .then((result) => {
         setSnapshots(result.snapshots);
         setProjectLinked(result.project_linked);
-        setOriginHints(null);
+        setNeedsOrigin(false);
         setError(null);
       })
       .catch((loadError: unknown) => {
         if (loadError instanceof ProjectHistoryApiError && loadError.code === "no_git_origin") {
-          setOriginHints(loadError.hints);
+          setNeedsOrigin(true);
           setSnapshots([]);
           return;
         }
         setError(loadError instanceof Error ? loadError.message : "Could not load history.");
       })
       .finally(() => setLoading(false));
+  };
+
+  const addOrigin = async () => {
+    const url = originUrl.trim();
+    if (!baseUrl || !projectPath || !url || originBusy || chromeBlocked) {
+      return;
+    }
+    setOriginBusy(true);
+    setError(null);
+    try {
+      await addProjectGitOrigin(baseUrl, token, { projectPath, url });
+      onSuccess("Remote added.");
+      reload();
+    } catch (originError: unknown) {
+      setError(originError instanceof Error ? originError.message : "Could not add the remote.");
+    } finally {
+      setOriginBusy(false);
+    }
   };
 
   const confirmRevert = async () => {
@@ -189,16 +211,44 @@ export function ProjectHistoryDrawer({
         closeDisabled={confirmBusy || pending !== null}
         onClose={onClose}
       >
-            {originHints ? (
-              <div className="banner error" role="alert">
-                <div>No git remote origin configured.</div>
-                {originHints.map((hint) => (
-                  <p className="muted" key={hint}>{hint}</p>
-                ))}
-              </div>
+            {needsOrigin ? (
+              <form
+                className="banner"
+                role="status"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void addOrigin();
+                }}
+              >
+                <div>
+                  <div>Snapshots and history need a git remote for this project.</div>
+                  <div className="muted">
+                    Sets up git in this folder if needed. An existing remote is never changed.
+                  </div>
+                </div>
+                <div className="banner-actions">
+                  <Input
+                    style={{ width: "18rem" }}
+                    value={originUrl}
+                    onChange={(event) => setOriginUrl(event.target.value)}
+                    placeholder="https://github.com/org/repo"
+                    aria-label="Remote URL"
+                    disabled={originBusy || chromeBlocked}
+                  />
+                  <IconActionButton
+                    primary
+                    showLabel
+                    type="submit"
+                    busy={originBusy}
+                    label={originBusy ? "Adding..." : "Add remote"}
+                    disabled={!originUrl.trim() || chromeBlocked}
+                    icon={<Link2 size={16} aria-hidden />}
+                  />
+                </div>
+              </form>
             ) : null}
             {error ? <div className="banner error" role="alert">{error}</div> : null}
-            {!originHints ? (
+            {!needsOrigin ? (
               <>
                 <Input
                   value={filter}
