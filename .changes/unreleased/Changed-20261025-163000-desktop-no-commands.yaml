@@ -1,5 +1,0 @@
-kind: Changed
-body: 'Desktop no longer tells you to run commands: the apply snapshot dialog has a Revert button, the harness banner and load errors point at in-app actions, and pending approvals no longer show CLI hints.'
-time: 2026-10-26T02:14:06.000000000Z
-custom:
-  Issue: ""

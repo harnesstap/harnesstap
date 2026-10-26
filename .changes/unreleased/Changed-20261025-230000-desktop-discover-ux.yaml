@@ -1,5 +1,0 @@
-kind: Changed
-body: 'Desktop Discover: Add to profile now asks which profile to add the item to, adds it without applying, and offers Undo in the confirmation toast; Undo removes only what was just added and keeps the Library copy. Each row shows Add to profile as its main action, with Add to Library next to it; Pin to a plugin moved to the item detail view. When a marketplace cannot be reached, the banner names it, has a Details toggle with the raw error and a Manage marketplaces button, and the last known marketplace list stays visible. The sidebar search placeholder reads "Search by name, description, or skill", the source list uses the same section labels and spacing as Library, All sources is a tri-state parent of its sources, and descriptions start with a capital letter. Pressing Escape in an open dropdown inside a dialog now closes only the dropdown.'
-time: 2026-10-25T23:00:00.000Z
-custom:
-  Issue: ""

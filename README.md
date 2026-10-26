@@ -141,7 +141,7 @@ ht apply engineering-foundation --project .
 ht status .
 ```
 
-`ht apply engineering-foundation` resolves the public catalog when the plugin is not already local. When the repository has a git `origin`, apply stores a snapshot first; restore with `ht revert`.
+`ht apply engineering-foundation` resolves the public catalog when the plugin is not already local. Apply stores a snapshot first, in a git repository or any other folder (no remote needed); restore with `ht revert`.
 
 ### Machine: profile switch
 

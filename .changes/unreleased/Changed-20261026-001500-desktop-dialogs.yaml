@@ -1,5 +1,0 @@
-kind: Changed
-body: 'Desktop: disabled buttons now look disabled and say why on hover; the Library delete dialog has one Delete button with an opt-in "Also delete files on disk"; the kept-files, detect, and sync dialogs use plainer copy and clearer buttons.'
-time: 2026-10-25T23:19:10.000000Z
-custom:
-  Issue: ""

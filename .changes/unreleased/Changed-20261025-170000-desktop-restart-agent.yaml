@@ -1,5 +1,0 @@
-kind: Changed
-body: 'Desktop restarts its agent by itself when it stops responding, and the offline splash and reconnect banner offer a Restart agent button instead of telling you to close processes or check folders.'
-time: 2026-10-26T02:18:29.000000000Z
-custom:
-  Issue: ""
