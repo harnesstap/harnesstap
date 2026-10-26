@@ -664,6 +664,21 @@
     border-color var(--duration-instant) var(--ease-out);
 }
 
+/* A filter miss sits 80px under its filter on every surface, never centered in the pane. */
+.empty-state.empty-state-no-match {
+  margin-top: calc(80px - var(--space-4));
+}
+
+/* The quoted query wraps as one word: it moves to its own line instead of breaking at a hyphen. */
+.empty-state-query {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 .risky-removal-group + .risky-removal-group {
   margin-top: var(--space-2);
 }

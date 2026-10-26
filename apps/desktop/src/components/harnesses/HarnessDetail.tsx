@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { FilterX } from "lucide-react";
-import { noResultsTitle } from "../../lib/empty-copy";
+import { CLEAR_FILTER_LABEL, noResultsTitle } from "../../lib/empty-copy";
 import {
   diskPresenceLabel,
   filterHarnessLocations,
@@ -111,6 +111,7 @@ export function HarnessDetail({
         typeTab={typeTab}
         onTypeTab={onTypeTab}
         emptySurface="harness"
+        searchPlaceholder="Filter by name or description"
         searchTrailing={
           <HarnessFilterMenu
             entry={entry}
@@ -125,10 +126,11 @@ export function HarnessDetail({
       {empty ? (
         filtering ? (
           <EmptyState
+            variant="no-match"
             title={noResultsTitle(search)}
-            body="Clear filters to see every resource."
+            body="Clear the filter to see every resource."
             action={{
-              label: "Clear filters",
+              label: CLEAR_FILTER_LABEL,
               onClick: clearFilters,
               icon: <FilterX size={ICON_SIZE} aria-hidden />,
             }}

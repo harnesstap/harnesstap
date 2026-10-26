@@ -248,6 +248,12 @@
   gap: 0.75rem;
 }
 
+/* A filter miss sits under the filter like every other list, not mid-viewport. */
+.sources-workspace .discover-empty.empty-state-no-match {
+  justify-content: flex-start;
+  padding-top: 0;
+}
+
 .sources-workspace .discover-empty h2 {
   font-size: var(--text-title);
   font-weight: 600;

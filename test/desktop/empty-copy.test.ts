@@ -18,9 +18,9 @@ const css = readDesktopCss();
 
 describe("noResultsTitle", () => {
   test("quotes a trimmed query and falls back without one", () => {
-    expect(noResultsTitle("")).toBe("No results");
-    expect(noResultsTitle("   ")).toBe("No results");
-    expect(noResultsTitle(" ship ")).toBe('No results for "ship"');
+    expect(noResultsTitle("")).toBe("No matches");
+    expect(noResultsTitle("   ")).toBe("No matches");
+    expect(noResultsTitle(" ship ")).toBe('No matches for "ship"');
   });
 });
 
@@ -77,9 +77,9 @@ describe("empty state recipe", () => {
   test("DESIGN.md locks the empty-state heading, why, and miss copy", () => {
     expect(designSource).toContain("**Empty states**");
     expect(designSource).toContain("EmptyState");
-    expect(designSource).toContain('No results for "<query>"');
+    expect(designSource).toContain('No matches for "<query>"');
     expect(designSource).toContain('Never "You\'re caught up" for a query miss');
-    expect(designSource).toContain("**Clear search**");
+    expect(designSource).toContain("**Clear filter**");
   });
 
   test("shared empty-state CSS uses the title token and a 320px max width", () => {

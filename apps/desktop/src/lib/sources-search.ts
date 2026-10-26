@@ -333,14 +333,14 @@ export function discoverListEmptyCopy(input: {
   if (trimmed.length > 0) {
     return {
       message: noResultsTitle(trimmed),
-      hint: "Clear search to see every source again.",
+      hint: "Clear the filter to see every source.",
       action: "clear-search",
     };
   }
   if (input.notInLibrary && !catalogEmpty) {
     return {
-      message: "No results",
-      hint: "Clear filters to see every source again.",
+      message: noResultsTitle(""),
+      hint: "Clear the filter to see every source.",
       action: "clear-filters",
     };
   }

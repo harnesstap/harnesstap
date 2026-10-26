@@ -112,7 +112,8 @@ describe("Harnesses workspace sidebar width", () => {
 
 describe("Harnesses resource filter field", () => {
   it("disables spelling correction on Filter resources", () => {
-    expect(liveHeaderSource).toContain('placeholder="Filter resources"');
+    expect(liveHeaderSource).toContain("placeholder={searchPlaceholder}");
+    expect(liveHeaderSource).toContain("noSpellcheckProps");
     expect(liveHeaderSource).toContain("{...noSpellcheckProps}");
   });
 
@@ -153,7 +154,7 @@ describe("Harnesses empty inventory sections", () => {
     expect(inventoryListSource).toContain("section.resources.length > 0");
     expect(detailSource).toContain("Nothing to list for this harness.");
     expect(detailSource).toContain("noResultsTitle");
-    expect(detailSource).toContain("Clear filters");
+    expect(detailSource).toContain("CLEAR_FILTER_LABEL");
     expect(designSource).toContain(
       "Hide harness sections with no resources after the current type, search, origin, and marketplace filters",
     );
